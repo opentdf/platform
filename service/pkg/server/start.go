@@ -22,6 +22,8 @@ import (
 	"github.com/opentdf/platform/service/internal/config"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cryptoproviders"
+	"github.com/opentdf/platform/service/pkg/cryptoproviders/providers"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
@@ -287,10 +289,19 @@ func Start(f ...StartOptions) error {
 		}
 	}
 
+	// Start CryptoService
+	cryptSvc := cryptoproviders.NewCryptoService(providers.NewDefault(logger), logger)
+	fp, err := providers.NewFileProvider(providers.FileProviderConfig{BasePath: "."}, logger)
+	if err != nil {
+		logger.Error("issue creating file provider", slog.String("error", err.Error()))
+		return fmt.Errorf("issue creating file provider: %w", err)
+	}
+	cryptSvc.RegisterProvider(fp)
+
 	defer client.Close()
 
 	logger.Info("starting services")
-	err = startServices(ctx, *cfg, otdf, client, logger, svcRegistry)
+	err = startServices(ctx, *cfg, otdf, client, cryptSvc, logger, svcRegistry)
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)

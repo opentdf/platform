@@ -12,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
+
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cryptoproviders"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,12 +64,12 @@ func generateECKeyPairPEM(curve elliptic.Curve) (privatePEM, publicPEM []byte, e
 }
 
 func TestDefault_Identifier(t *testing.T) {
-	provider := NewDefault()
+	provider := NewDefault(logger.CreateTestLogger())
 	assert.Equal(t, "default", provider.Identifier())
 }
 
 func TestDefault_Symmetric_RoundTrip(t *testing.T) {
-	provider := NewDefault()
+	provider := NewDefault(logger.CreateTestLogger())
 	ctx := context.Background()
 	key := make([]byte, 32) // AES-256 key
 	_, err := rand.Read(key)
@@ -88,7 +90,7 @@ func TestDefault_Symmetric_RoundTrip(t *testing.T) {
 }
 
 func TestDefault_Symmetric_Errors(t *testing.T) {
-	provider := NewDefault()
+	provider := NewDefault(logger.CreateTestLogger())
 	ctx := context.Background()
 	key := make([]byte, 32)
 	_, err := rand.Read(key)
@@ -124,21 +126,20 @@ func TestDefault_Symmetric_Errors(t *testing.T) {
 }
 
 func TestDefault_Asymmetric_RSA_RoundTrip(t *testing.T) {
-	provider := NewDefault()
+	provider := NewDefault(logger.CreateTestLogger())
 	ctx := context.Background()
 
 	privatePEM, publicPEM, err := generateRSAKeyPairPEM(2048)
 	require.NoError(t, err)
 
 	plainText := []byte("this is a secret message for RSA")
-	hash := crypto.SHA256 // Default hash used in DecryptAsymmetric
 
 	// Encrypt Options
 	encryptOpts := cryptoproviders.EncryptOpts{
-		KeyRef: cryptoproviders.NewKeyRef(publicPEM, policy.Algorithm_ALGORITHM_RSA_2048),
 		Data:   plainText,
-		Hash:   hash,
+		KeyRef: cryptoproviders.KeyRef{Key: publicPEM, Algorithm: policy.Algorithm_ALGORITHM_RSA_2048},
 	}
+	encryptOpts.Hash = crypto.SHA1
 
 	// Encrypt
 	cipherText, ephemeralKey, err := provider.EncryptAsymmetric(ctx, encryptOpts)
@@ -149,8 +150,8 @@ func TestDefault_Asymmetric_RSA_RoundTrip(t *testing.T) {
 
 	// Decrypt Options
 	decryptOpts := cryptoproviders.DecryptOpts{
-		KeyRef:     cryptoproviders.NewKeyRef(privatePEM, policy.Algorithm_ALGORITHM_RSA_2048),
 		CipherText: cipherText,
+		KeyRef:     cryptoproviders.KeyRef{Key: privatePEM, Algorithm: policy.Algorithm_ALGORITHM_RSA_2048},
 		// KEK not needed for default provider direct decryption
 	}
 
@@ -161,30 +162,27 @@ func TestDefault_Asymmetric_RSA_RoundTrip(t *testing.T) {
 }
 
 func TestDefault_Asymmetric_RSA_Errors(t *testing.T) {
-	provider := NewDefault()
+	provider := NewDefault(logger.CreateTestLogger())
 	ctx := context.Background()
 	_, publicPEM, err := generateRSAKeyPairPEM(2048)
 	require.NoError(t, err)
 	plainText := []byte("test rsa error")
-	hash := crypto.SHA256
 
 	// Encrypt with bad public key PEM
 	encryptOptsBadPub := cryptoproviders.EncryptOpts{
-		KeyRef: cryptoproviders.NewKeyRef([]byte("bad pem"), policy.Algorithm_ALGORITHM_RSA_2048),
 		Data:   plainText,
-		Hash:   hash,
+		KeyRef: cryptoproviders.KeyRef{Key: []byte("bad pem"), Algorithm: policy.Algorithm_ALGORITHM_RSA_2048},
 	}
 	_, _, err = provider.EncryptAsymmetric(ctx, encryptOptsBadPub)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to decode PEM block")
 
 	// Encrypt with non-RSA public key (using EC key as wrong type)
-	_, ecPubPEM, err := generateECKeyPairPEM(elliptic.P256())
+	_, ecPublicPEM, err := generateECKeyPairPEM(elliptic.P256())
 	require.NoError(t, err)
 	encryptOptsWrongType := cryptoproviders.EncryptOpts{
-		KeyRef: cryptoproviders.NewKeyRef(ecPubPEM, policy.Algorithm_ALGORITHM_RSA_2048), // Mismatched algo
 		Data:   plainText,
-		Hash:   hash,
+		KeyRef: cryptoproviders.KeyRef{Key: ecPublicPEM, Algorithm: policy.Algorithm_ALGORITHM_RSA_2048}, // Use EC public key with RSA algorithm
 	}
 	_, _, err = provider.EncryptAsymmetric(ctx, encryptOptsWrongType)
 	assert.Error(t, err)
@@ -192,39 +190,39 @@ func TestDefault_Asymmetric_RSA_Errors(t *testing.T) {
 
 	// --- Decryption Errors ---
 	encryptOptsGood := cryptoproviders.EncryptOpts{
-		KeyRef: cryptoproviders.NewKeyRef(publicPEM, policy.Algorithm_ALGORITHM_RSA_2048),
 		Data:   plainText,
-		Hash:   hash,
+		KeyRef: cryptoproviders.KeyRef{Key: publicPEM, Algorithm: policy.Algorithm_ALGORITHM_RSA_2048},
 	}
+	encryptOptsGood.Hash = crypto.SHA1 // Specify hash function for RSA-OAEP
 	cipherText, _, err := provider.EncryptAsymmetric(ctx, encryptOptsGood)
 	require.NoError(t, err)
 
 	// Decrypt with bad private key PEM
 	decryptOptsBadPriv := cryptoproviders.DecryptOpts{
-		KeyRef:     cryptoproviders.NewKeyRef([]byte("bad pem"), policy.Algorithm_ALGORITHM_RSA_2048),
 		CipherText: cipherText,
+		KeyRef:     cryptoproviders.KeyRef{Key: []byte("bad pem"), Algorithm: policy.Algorithm_ALGORITHM_RSA_2048},
 	}
 	_, err = provider.DecryptAsymmetric(ctx, decryptOptsBadPriv)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to decode PEM block")
 
 	// Decrypt with non-RSA private key
-	ecPrivPEM, _, err := generateECKeyPairPEM(elliptic.P256())
+	ecPrivatePEMForWrongType, _, err := generateECKeyPairPEM(elliptic.P256())
 	require.NoError(t, err)
 	decryptOptsWrongType := cryptoproviders.DecryptOpts{
-		KeyRef:     cryptoproviders.NewKeyRef(ecPrivPEM, policy.Algorithm_ALGORITHM_RSA_2048), // Mismatched algo
 		CipherText: cipherText,
+		KeyRef:     cryptoproviders.KeyRef{Key: ecPrivatePEMForWrongType, Algorithm: policy.Algorithm_ALGORITHM_RSA_2048}, // Use EC private key with RSA algorithm
 	}
 	_, err = provider.DecryptAsymmetric(ctx, decryptOptsWrongType)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not an RSA private key") // Updated to match actual error
 
 	// Decrypt with wrong private key
-	wrongPrivPEM, _, err := generateRSAKeyPairPEM(2048)
+	wrongRSAPrivatePEM, _, err := generateRSAKeyPairPEM(2048)
 	require.NoError(t, err)
 	decryptOptsWrongKey := cryptoproviders.DecryptOpts{
-		KeyRef:     cryptoproviders.NewKeyRef(wrongPrivPEM, policy.Algorithm_ALGORITHM_RSA_2048),
 		CipherText: cipherText,
+		KeyRef:     cryptoproviders.KeyRef{Key: wrongRSAPrivatePEM, Algorithm: policy.Algorithm_ALGORITHM_RSA_2048}, // Use a different RSA private key
 	}
 	_, err = provider.DecryptAsymmetric(ctx, decryptOptsWrongKey)
 	assert.Error(t, err) // Decryption error (likely crypto/rsa: decryption error)
@@ -232,12 +230,11 @@ func TestDefault_Asymmetric_RSA_Errors(t *testing.T) {
 }
 
 func TestDefault_Asymmetric_EC_RoundTrip(t *testing.T) {
-	provider := NewDefault()
+	provider := NewDefault(logger.CreateTestLogger())
 	ctx := context.Background()
 
 	// Use P-256 curve
 	curve := elliptic.P256()
-	algo := policy.Algorithm_ALGORITHM_EC_P256
 	privatePEM, publicPEM, err := generateECKeyPairPEM(curve)
 	require.NoError(t, err)
 
@@ -245,25 +242,31 @@ func TestDefault_Asymmetric_EC_RoundTrip(t *testing.T) {
 
 	// Encrypt Options
 	encryptOpts := cryptoproviders.EncryptOpts{
-		KeyRef: cryptoproviders.NewKeyRef(publicPEM, algo),
 		Data:   plainText,
+		KeyRef: cryptoproviders.KeyRef{Key: publicPEM, Algorithm: policy.Algorithm_ALGORITHM_EC_P256},
 		// No Hash needed for EC
 	}
+	// In the context of rewrap, EphemeralKey is used for the recipient's public key
+	encryptOpts.EphemeralKey = publicPEM
 
 	// Encrypt
-	cipherText, ephemeralPubPEM, err := provider.EncryptAsymmetric(ctx, encryptOpts)
+	cipherText, ephemeralPubKeyBytes, err := provider.EncryptAsymmetric(ctx, encryptOpts)
 	require.NoError(t, err)
 	require.NotEmpty(t, cipherText)
-	require.NotEmpty(t, ephemeralPubPEM)
+	require.NotEmpty(t, ephemeralPubKeyBytes)
 	assert.NotEqual(t, plainText, cipherText)
+
+	// PEM encode the ephemeral public key for decryption
+	ephemeralPubPEM := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: ephemeralPubKeyBytes})
 
 	// Decrypt Options
 	decryptOpts := cryptoproviders.DecryptOpts{
-		KeyRef:       cryptoproviders.NewKeyRef(privatePEM, algo),
-		CipherText:   cipherText,
-		EphemeralKey: ephemeralPubPEM,
+		CipherText: cipherText,
+		KeyRef:     cryptoproviders.KeyRef{Key: privatePEM, Algorithm: policy.Algorithm_ALGORITHM_EC_P256},
 		// KEK not needed
 	}
+
+	decryptOpts.EphemeralKey = ephemeralPubPEM
 
 	// Decrypt
 	decryptedText, err := provider.DecryptAsymmetric(ctx, decryptOpts)
@@ -272,119 +275,120 @@ func TestDefault_Asymmetric_EC_RoundTrip(t *testing.T) {
 }
 
 func TestDefault_Asymmetric_EC_Errors(t *testing.T) {
-	provider := NewDefault()
+	provider := NewDefault(logger.CreateTestLogger())
 	ctx := context.Background()
-	curve := elliptic.P256()
-	algo := policy.Algorithm_ALGORITHM_EC_P256
-	privatePEM, publicPEM, err := generateECKeyPairPEM(curve)
+	privatePEM, publicPEM, err := generateECKeyPairPEM(elliptic.P256())
 	require.NoError(t, err)
 	plainText := []byte("test ec error")
 
 	// Encrypt with bad public key PEM
 	encryptOptsBadPub := cryptoproviders.EncryptOpts{
-		KeyRef: cryptoproviders.NewKeyRef([]byte("bad pem"), algo),
 		Data:   plainText,
+		KeyRef: cryptoproviders.KeyRef{Key: []byte("bad pem"), Algorithm: policy.Algorithm_ALGORITHM_EC_P256},
 	}
 	_, _, err = provider.EncryptAsymmetric(ctx, encryptOptsBadPub)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to decode PEM block")
 
 	// Encrypt with non-EC public key (using RSA key as wrong type)
-	_, rsaPubPEM, err := generateRSAKeyPairPEM(2048)
+	_, rsaPublicPEMForWrongType, err := generateRSAKeyPairPEM(2048)
 	require.NoError(t, err)
 	encryptOptsWrongType := cryptoproviders.EncryptOpts{
-		KeyRef: cryptoproviders.NewKeyRef(rsaPubPEM, algo), // Mismatched algo
 		Data:   plainText,
+		KeyRef: cryptoproviders.KeyRef{Key: rsaPublicPEMForWrongType, Algorithm: policy.Algorithm_ALGORITHM_EC_P256}, // Use RSA public key with EC algorithm
 	}
+	encryptOptsWrongType.EphemeralKey = rsaPublicPEMForWrongType
 	_, _, err = provider.EncryptAsymmetric(ctx, encryptOptsWrongType)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not an ECDH public key") // Error comes from type assertion
 
 	// --- Decryption Errors ---
 	encryptOptsGood := cryptoproviders.EncryptOpts{
-		KeyRef: cryptoproviders.NewKeyRef(publicPEM, algo),
 		Data:   plainText,
+		KeyRef: cryptoproviders.KeyRef{Key: publicPEM, Algorithm: policy.Algorithm_ALGORITHM_EC_P256},
 	}
-	cipherText, ephemeralPubPEM, err := provider.EncryptAsymmetric(ctx, encryptOptsGood)
+	// In the context of rewrap, EphemeralKey is used for the recipient's public key
+	encryptOptsGood.EphemeralKey = publicPEM
+	cipherText, ephemeralPubKeyBytes, err := provider.EncryptAsymmetric(ctx, encryptOptsGood)
 	require.NoError(t, err)
-	require.NotEmpty(t, ephemeralPubPEM)
+	require.NotEmpty(t, ephemeralPubKeyBytes)
+
+	// PEM encode the ephemeral public key for decryption
+	ephemeralPubPEM := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: ephemeralPubKeyBytes})
 
 	// Decrypt with bad private key PEM
 	decryptOptsBadPriv := cryptoproviders.DecryptOpts{
-		KeyRef:       cryptoproviders.NewKeyRef([]byte("bad pem"), algo),
-		CipherText:   cipherText,
-		EphemeralKey: ephemeralPubPEM,
+		CipherText: cipherText,
+		KeyRef:     cryptoproviders.KeyRef{Key: []byte("bad pem"), Algorithm: policy.Algorithm_ALGORITHM_EC_P256},
 	}
+	decryptOptsBadPriv.EphemeralKey = ephemeralPubPEM
 	_, err = provider.DecryptAsymmetric(ctx, decryptOptsBadPriv)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to decode PEM block")
 
 	// Decrypt with non-EC private key
-	rsaPrivPEM, _, err := generateRSAKeyPairPEM(2048)
+	rsaPrivatePEMForWrongType2, _, err := generateRSAKeyPairPEM(2048)
 	require.NoError(t, err)
 	decryptOptsWrongType := cryptoproviders.DecryptOpts{
-		KeyRef:       cryptoproviders.NewKeyRef(rsaPrivPEM, algo), // Mismatched algo
-		CipherText:   cipherText,
-		EphemeralKey: ephemeralPubPEM,
+		CipherText: cipherText,
+		KeyRef:     cryptoproviders.KeyRef{Key: rsaPrivatePEMForWrongType2, Algorithm: policy.Algorithm_ALGORITHM_EC_P256}, // Use RSA private key with EC algorithm
 	}
+	decryptOptsWrongType.EphemeralKey = ephemeralPubPEM
 	_, err = provider.DecryptAsymmetric(ctx, decryptOptsWrongType)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not an ECDH private key") // Updated to match actual error
 
 	// Decrypt with wrong private key
-	wrongPrivPEM, _, err := generateECKeyPairPEM(curve)
+	wrongECPrivatePEM, _, err := generateECKeyPairPEM(elliptic.P256())
 	require.NoError(t, err)
 	decryptOptsWrongKey := cryptoproviders.DecryptOpts{
-		KeyRef:       cryptoproviders.NewKeyRef(wrongPrivPEM, algo),
-		CipherText:   cipherText,
-		EphemeralKey: ephemeralPubPEM,
+		CipherText: cipherText,
+		KeyRef:     cryptoproviders.KeyRef{Key: wrongECPrivatePEM, Algorithm: policy.Algorithm_ALGORITHM_EC_P256}, // Use a different EC private key
 	}
+	decryptOptsWrongKey.EphemeralKey = ephemeralPubPEM
 	_, err = provider.DecryptAsymmetric(ctx, decryptOptsWrongKey)
 	assert.Error(t, err) // Should be GCM auth error as shared secret will differ
 	assert.Contains(t, err.Error(), "cipher: message authentication failed")
 
 	// Decrypt with bad ephemeral key PEM
 	decryptOptsBadEphemeral := cryptoproviders.DecryptOpts{
-		KeyRef:       cryptoproviders.NewKeyRef(privatePEM, algo),
-		CipherText:   cipherText,
-		EphemeralKey: []byte("bad pem"),
+		CipherText: cipherText,
+		KeyRef:     cryptoproviders.KeyRef{Key: privatePEM, Algorithm: policy.Algorithm_ALGORITHM_EC_P256},
 	}
+	decryptOptsBadEphemeral.EphemeralKey = []byte("bad pem")
 	_, err = provider.DecryptAsymmetric(ctx, decryptOptsBadEphemeral)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to decode PEM block")
 
 	// Decrypt with non-EC ephemeral key
 	decryptOptsWrongEphemeralType := cryptoproviders.DecryptOpts{
-		KeyRef:       cryptoproviders.NewKeyRef(privatePEM, algo),
-		CipherText:   cipherText,
-		EphemeralKey: rsaPubPEM, // Using RSA pub key here
+		CipherText: cipherText,
+		KeyRef:     cryptoproviders.KeyRef{Key: privatePEM, Algorithm: policy.Algorithm_ALGORITHM_EC_P256},
 	}
+	decryptOptsWrongEphemeralType.EphemeralKey = rsaPublicPEMForWrongType
 	_, err = provider.DecryptAsymmetric(ctx, decryptOptsWrongEphemeralType)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not an ECDH public key (ephemeral)")
 
 	// Decrypt with ciphertext too short
 	decryptOptsShortCipher := cryptoproviders.DecryptOpts{
-		KeyRef:       cryptoproviders.NewKeyRef(privatePEM, algo),
-		CipherText:   []byte("short"),
-		EphemeralKey: ephemeralPubPEM,
+		CipherText: []byte("short"),
+		KeyRef:     cryptoproviders.KeyRef{Key: privatePEM, Algorithm: policy.Algorithm_ALGORITHM_EC_P256},
 	}
+	decryptOptsShortCipher.EphemeralKey = ephemeralPubPEM
 	_, err = provider.DecryptAsymmetric(ctx, decryptOptsShortCipher)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "ciphertext too short")
 }
 
 func TestDefault_UnsupportedAlgorithm(t *testing.T) {
-	provider := NewDefault()
+	provider := NewDefault(logger.CreateTestLogger())
 	ctx := context.Background()
 	plainText := []byte("test")
-	keyBytes := []byte("dummy key")
-	algo := policy.Algorithm_ALGORITHM_UNSPECIFIED
-
 	// Encrypt Asymmetric
 	encryptOpts := cryptoproviders.EncryptOpts{
-		KeyRef: cryptoproviders.NewKeyRef(keyBytes, algo),
 		Data:   plainText,
+		KeyRef: cryptoproviders.KeyRef{Key: []byte{}, Algorithm: policy.Algorithm_ALGORITHM_UNSPECIFIED}, // Use unspecified algorithm
 	}
 	_, _, err := provider.EncryptAsymmetric(ctx, encryptOpts)
 	assert.Error(t, err)
@@ -392,8 +396,8 @@ func TestDefault_UnsupportedAlgorithm(t *testing.T) {
 
 	// Decrypt Asymmetric
 	decryptOpts := cryptoproviders.DecryptOpts{
-		KeyRef:     cryptoproviders.NewKeyRef(keyBytes, algo),
 		CipherText: []byte("dummy cipher"),
+		KeyRef:     cryptoproviders.KeyRef{Key: []byte{}, Algorithm: policy.Algorithm_ALGORITHM_UNSPECIFIED}, // Use unspecified algorithm
 	}
 	_, err = provider.DecryptAsymmetric(ctx, decryptOpts)
 	assert.Error(t, err)

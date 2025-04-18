@@ -10,12 +10,12 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"io"
 
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cryptoproviders"
 )
 
@@ -33,11 +33,13 @@ const (
 )
 
 // Default implements the cryptographic provider interface using standard Go crypto packages
-type Default struct{}
+type Default struct {
+	l *logger.Logger
+}
 
 // NewDefault creates a new instance of the default crypto provider
-func NewDefault() *Default {
-	return &Default{}
+func NewDefault(l *logger.Logger) *Default {
+	return &Default{l: l}
 }
 
 // Identifier returns the unique identifier for this provider
@@ -126,7 +128,7 @@ func (d *Default) EncryptAsymmetric(_ context.Context, opts cryptoproviders.Encr
 
 	if opts.KeyRef.IsEC() {
 		// The KeyRef contains the recipient's public key
-		pub, err := parsePEMPublicKey(opts.KeyRef.GetRawBytes())
+		pub, err := parsePEMPublicKey(opts.EphemeralKey)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -147,27 +149,16 @@ func (d *Default) EncryptAsymmetric(_ context.Context, opts cryptoproviders.Encr
 			return nil, nil, fmt.Errorf("failed to compute ECDH shared secret: %w", err)
 		}
 
-		// Use shared secret to derive encryption key
-		sharedKey := sha256.Sum256(secret)
+		// Use shared secret to derive decryption key
+		dk, err := DeriveKeyHKDF(secret, opts.Salt, "", len(secret))
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to derive decryption key: %w", err)
+		}
 
-		// Encrypt data using AES-GCM
-		block, err := aes.NewCipher(sharedKey[:])
+		cipherText, err := d.EncryptSymmetric(context.Background(), dk, opts.Data)
 		if err != nil {
 			return nil, nil, err
 		}
-
-		gcm, err := cipher.NewGCM(block)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		nonce := make([]byte, gcm.NonceSize())
-		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-			return nil, nil, err
-		}
-
-		// Encrypt and append nonce
-		cipherText := gcm.Seal(nonce, nonce, opts.Data, nil)
 
 		// Marshal ephemeral public key
 		ephemeralPubKeyBytes, err := x509.MarshalPKIXPublicKey(ephemeralPriv.PublicKey())
@@ -175,10 +166,7 @@ func (d *Default) EncryptAsymmetric(_ context.Context, opts cryptoproviders.Encr
 			return nil, nil, err
 		}
 
-		return cipherText, pem.EncodeToMemory(&pem.Block{
-			Type:  "PUBLIC KEY", // Standard PEM type for public keys
-			Bytes: ephemeralPubKeyBytes,
-		}), nil
+		return cipherText, ephemeralPubKeyBytes, nil
 	}
 
 	return nil, nil, fmt.Errorf("unsupported algorithm")
@@ -228,26 +216,13 @@ func (d *Default) DecryptAsymmetric(_ context.Context, opts cryptoproviders.Decr
 		}
 
 		// Use shared secret to derive decryption key
-		sharedKey := sha256.Sum256(secret)
 
-		// Decrypt data using AES-GCM
-		block, err := aes.NewCipher(sharedKey[:])
+		dk, err := DeriveKeyHKDF(secret, opts.Salt, "", len(secret))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to derive decryption key: %w", err)
 		}
 
-		gcm, err := cipher.NewGCM(block)
-		if err != nil {
-			return nil, err
-		}
-
-		nonceSize := gcm.NonceSize()
-		if len(opts.CipherText) < nonceSize {
-			return nil, fmt.Errorf("ciphertext too short")
-		}
-
-		nonce, cipherText := opts.CipherText[:nonceSize], opts.CipherText[nonceSize:]
-		return gcm.Open(nil, nonce, cipherText, nil)
+		return d.DecryptSymmetric(context.Background(), dk, opts.CipherText)
 	}
 
 	return nil, fmt.Errorf("unsupported algorithm")
@@ -301,4 +276,16 @@ func (d *Default) DecryptSymmetric(_ context.Context, key []byte, cipherText []b
 		return nil, fmt.Errorf("failed to decrypt: %w", err)
 	}
 	return plaintext, nil
+}
+
+func (d *Default) UnwrapKey(ctx context.Context, pkCtx *cryptoproviders.PrivateKeyContext, kek []byte) ([]byte, error) {
+	if len(pkCtx.WrappedKey) == 0 {
+		return nil, fmt.Errorf("no wrapped key provided")
+	}
+
+	if len(kek) == 0 {
+		return nil, fmt.Errorf("no key encryption key (KEK) provided")
+	}
+
+	return d.DecryptSymmetric(ctx, kek, pkCtx.WrappedKey)
 }

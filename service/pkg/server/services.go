@@ -17,6 +17,7 @@ import (
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
 	logging "github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cryptoproviders"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policy"
@@ -112,7 +113,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 // based on the configuration and namespace mode. It creates a new service logger
 // and a database client if required. It registers the services with the gRPC server,
 // in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
-func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry) error {
+func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, cryptoService *cryptoproviders.CryptoService, logger *logging.Logger, reg serviceregistry.Registry) error {
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
 		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.
@@ -173,6 +174,7 @@ func startServices(ctx context.Context, cfg config.Config, otdf *server.OpenTDFS
 				RegisterReadinessCheck: health.RegisterReadinessCheck,
 				OTDF:                   otdf, // TODO: REMOVE THIS
 				Tracer:                 tracer,
+				CryptoService:          cryptoService,
 			})
 			if err != nil {
 				return err

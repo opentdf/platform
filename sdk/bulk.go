@@ -95,6 +95,46 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 	tdfDecryptors := make(map[string]decryptor)
 	policyTDF := make(map[string]*BulkTDF)
 
+	switch bulkReq.TDFType {
+	case Nano:
+		dummy := &NanoTDFReaderConfig{}
+		for _, opt := range bulkReq.NanoTDFDecryptOptions {
+			_ = opt(dummy)
+		}
+
+		if !dummy.ignoreAllowList && dummy.kasAllowlist == nil {
+			// if no kasAllowlist is set, we get the allowlist from the registry
+			allowlist, err := allowListFromKASRegistry(ctx, s.KeyAccessServerRegistry, s.conn.Target())
+			if err != nil {
+				return fmt.Errorf("failed to get allowlist from registry: %w", err)
+			}
+			bulkReq.NanoTDFDecryptOptions = append(
+				bulkReq.NanoTDFDecryptOptions,
+				withNanoKasAllowlist(allowlist),
+			)
+		}
+	case Standard:
+		dummy := &TDFReaderConfig{}
+		for _, opt := range bulkReq.TDF3DecryptOptions {
+			_ = opt(dummy)
+		}
+		if !dummy.ignoreAllowList && dummy.kasAllowlist == nil {
+			// if no kasAllowlist is set, we get the allowlist from the registry
+			if !dummy.ignoreAllowList && dummy.kasAllowlist == nil {
+				// if no kasAllowlist is set, we get the allowlist from the registry
+				allowlist, err := allowListFromKASRegistry(ctx, s.KeyAccessServerRegistry, s.conn.Target())
+				if err != nil {
+					return fmt.Errorf("failed to get allowlist from registry: %w", err)
+				}
+				bulkReq.TDF3DecryptOptions = append(
+					bulkReq.TDF3DecryptOptions,
+					withKasAllowlist(allowlist),
+				)
+			}
+		}
+	case Invalid:
+	}
+
 	for i, tdf := range bulkReq.TDFs {
 		policyID := fmt.Sprintf("policy-%d", i)
 		decryptor, err := s.createDecryptor(tdf, bulkReq) //nolint:contextcheck // dont want to change signature of LoadTDF

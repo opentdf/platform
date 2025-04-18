@@ -594,10 +594,8 @@ func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
 		if config.expectedError != "" {
 			s.Require().Error(err)
 			s.Require().ErrorContains(err, config.expectedError)
-		} else {
-			if err != nil {
-				s.Require().ErrorIs(err, io.EOF)
-			}
+		} else if err != nil {
+			s.Require().ErrorIs(err, io.EOF)
 		}
 
 		_ = os.Remove(tdfFilename)

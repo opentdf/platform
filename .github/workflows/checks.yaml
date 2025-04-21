@@ -284,7 +284,7 @@ jobs:
     name: otdfctl e2e tests
     runs-on: ubuntu-latest
     steps:
-      - uses: opentdf/platform/test/start-up-with-containers@use-dockerhub-keycloak-image
+      - uses: opentdf/platform/test/start-up-with-containers@main
         with:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: opentdf/otdfctl/e2e@main

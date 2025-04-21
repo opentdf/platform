@@ -18,13 +18,25 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
-type ActionsService struct { //nolint:revive // ActionsService is a valid name for this struct
+// Re-exported action names for consumers of ActionService protos
+const (
+	// Stored name of the standard 'create' action
+	ActionNameCreate = string(policydb.ActionCreate)
+	// Stored name of the standard 'read' action
+	ActionNameRead = string(policydb.ActionRead)
+	// Stored name of the standard 'update' action
+	ActionNameUpdate = string(policydb.ActionUpdate)
+	// Stored name of the standard 'delete' action
+	ActionNameDelete = string(policydb.ActionDelete)
+)
+
+type ActionService struct {
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 	config   *policyconfig.Config
 }
 
-func OnConfigUpdate(actionsSvc *ActionsService) serviceregistry.OnConfigUpdateHook {
+func OnConfigUpdate(actionsSvc *ActionService) serviceregistry.OnConfigUpdateHook {
 	return func(_ context.Context, cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
 		if err != nil {
@@ -40,7 +52,7 @@ func OnConfigUpdate(actionsSvc *ActionsService) serviceregistry.OnConfigUpdateHo
 }
 
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[actionsconnect.ActionServiceHandler] {
-	actionsSvc := new(ActionsService)
+	actionsSvc := new(ActionService)
 	onUpdateConfigHook := OnConfigUpdate(actionsSvc)
 
 	return &serviceregistry.Service[actionsconnect.ActionServiceHandler]{
@@ -67,7 +79,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	}
 }
 
-func (a *ActionsService) GetAction(ctx context.Context, req *connect.Request[actions.GetActionRequest]) (*connect.Response[actions.GetActionResponse], error) {
+func (a *ActionService) GetAction(ctx context.Context, req *connect.Request[actions.GetActionRequest]) (*connect.Response[actions.GetActionResponse], error) {
 	rsp := &actions.GetActionResponse{}
 
 	var loggableIdentifier slog.Attr
@@ -88,7 +100,7 @@ func (a *ActionsService) GetAction(ctx context.Context, req *connect.Request[act
 	return connect.NewResponse(rsp), nil
 }
 
-func (a *ActionsService) ListActions(ctx context.Context, req *connect.Request[actions.ListActionsRequest]) (*connect.Response[actions.ListActionsResponse], error) {
+func (a *ActionService) ListActions(ctx context.Context, req *connect.Request[actions.ListActionsRequest]) (*connect.Response[actions.ListActionsResponse], error) {
 	a.logger.DebugContext(ctx, "listing actions")
 	rsp, err := a.dbClient.ListActions(ctx, req.Msg)
 	if err != nil {
@@ -98,7 +110,7 @@ func (a *ActionsService) ListActions(ctx context.Context, req *connect.Request[a
 	return connect.NewResponse(rsp), nil
 }
 
-func (a *ActionsService) CreateAction(ctx context.Context, req *connect.Request[actions.CreateActionRequest]) (*connect.Response[actions.CreateActionResponse], error) {
+func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[actions.CreateActionRequest]) (*connect.Response[actions.CreateActionResponse], error) {
 	a.logger.DebugContext(ctx, "creating action", slog.String("name", req.Msg.GetName()))
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
@@ -126,7 +138,7 @@ func (a *ActionsService) CreateAction(ctx context.Context, req *connect.Request[
 	return connect.NewResponse(rsp), nil
 }
 
-func (a *ActionsService) UpdateAction(ctx context.Context, req *connect.Request[actions.UpdateActionRequest]) (*connect.Response[actions.UpdateActionResponse], error) {
+func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[actions.UpdateActionRequest]) (*connect.Response[actions.UpdateActionResponse], error) {
 	actionID := req.Msg.GetId()
 	a.logger.DebugContext(ctx, "updating action", slog.String("id", actionID))
 	rsp := &actions.UpdateActionResponse{}
@@ -168,7 +180,7 @@ func (a *ActionsService) UpdateAction(ctx context.Context, req *connect.Request[
 	return connect.NewResponse(rsp), nil
 }
 
-func (a *ActionsService) DeleteAction(ctx context.Context, req *connect.Request[actions.DeleteActionRequest]) (*connect.Response[actions.DeleteActionResponse], error) {
+func (a *ActionService) DeleteAction(ctx context.Context, req *connect.Request[actions.DeleteActionRequest]) (*connect.Response[actions.DeleteActionResponse], error) {
 	rsp := &actions.DeleteActionResponse{}
 	actionID := req.Msg.GetId()
 

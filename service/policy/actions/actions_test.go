@@ -12,19 +12,18 @@ import (
 )
 
 const (
-	validUUID                    = "00000000-0000-0000-0000-000000000000"
-	errMessageUUID               = "string.uuid"
-	errMessageMaxLength          = "string.max_len"
-	errMessageRequiredActionName = "action_name_format"
-	errMessageOptionalActionName = "action_name_format"
-	errMessageURI                = "string.uri"
-	errMessageRequired           = "required"
+	validUUID                  = "00000000-0000-0000-0000-000000000000"
+	errMessageUUID             = "string.uuid"
+	errMessageMaxLength        = "string.max_len"
+	errMessageActionNameFormat = "action_name_format"
+	errMessageURI              = "string.uri"
+	errMessageRequired         = "required"
 )
 
 var (
 	validNames = []string{"valid_Name", "valid_name", "NAME", "NAME-IS-VALID", "SOME_VALID_NAME", "valid-name", strings.Repeat("a", 253), strings.Repeat("a", 1)}
 
-	invalidNameTests = []string{
+	actionNamesInvalidFormat = []string{
 		"!",
 		"name with space",
 		"slash/",
@@ -54,19 +53,19 @@ func (s *ActionSuite) SetupSuite() {
 	s.v = v
 }
 
-func TestActionsServiceProtos(t *testing.T) {
+func TestActionServiceProtos(t *testing.T) {
 	suite.Run(t, new(ActionSuite))
 }
 
 func (s *ActionSuite) Test_CreateActionRequest_Fails() {
-	for _, name := range invalidNameTests {
+	for _, name := range actionNamesInvalidFormat {
 		s.Run(name, func() {
 			req := &actions.CreateActionRequest{
 				Name: name,
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
-			s.Require().Contains(err.Error(), errMessageRequiredActionName)
+			s.Require().Contains(err.Error(), errMessageActionNameFormat)
 		})
 	}
 
@@ -146,7 +145,7 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageRequired)
 
-	for _, name := range invalidNameTests {
+	for _, name := range actionNamesInvalidFormat {
 		s.Run(name, func() {
 			req = &actions.GetActionRequest{
 				Identifier: &actions.GetActionRequest_Name{
@@ -155,7 +154,7 @@ func (s *ActionSuite) Test_GetAction_Fails() {
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
-			s.Require().Contains(err.Error(), errMessageRequiredActionName)
+			s.Require().Contains(err.Error(), errMessageActionNameFormat)
 		})
 	}
 
@@ -222,7 +221,7 @@ func (s *ActionSuite) Test_UpdateActionRequest_Fails() {
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), errMessageUUID)
 
-	for _, name := range invalidNameTests {
+	for _, name := range actionNamesInvalidFormat {
 		s.Run(name, func() {
 			req = &actions.UpdateActionRequest{
 				Id:   validUUID,
@@ -230,7 +229,7 @@ func (s *ActionSuite) Test_UpdateActionRequest_Fails() {
 			}
 			err := s.v.Validate(req)
 			s.Require().Error(err)
-			s.Require().Contains(err.Error(), errMessageRequiredActionName)
+			s.Require().Contains(err.Error(), errMessageActionNameFormat)
 		})
 	}
 

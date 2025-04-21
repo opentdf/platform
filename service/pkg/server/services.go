@@ -148,17 +148,14 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 		}
 
 		var svcDBClient *db.Client
-		var tracer trace.Tracer
-		if cfg.Trace.Enabled {
-			tracer = otel.Tracer(tracing.ServiceName)
-		}
+		tracer := otel.Tracer(tracing.ServiceName)
 
 		for _, svc := range namespace.Services {
 			// Get new db client if it is required and not already created
 			if svc.IsDBRequired() && svcDBClient == nil {
 				logger.Debug("creating database client", slog.String("namespace", ns))
 				var err error
-				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, ns, svc.DBMigrations())
+				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, tracer, ns, svc.DBMigrations())
 				if err != nil {
 					return err
 				}
@@ -232,10 +229,10 @@ func extractServiceLoggerConfig(cfg config.ServiceConfig) (string, error) {
 // newServiceDBClient creates a new database client for the specified namespace.
 // It initializes the client with the provided context, logger configuration, database configuration,
 // namespace, and migrations. It returns the created client and any error encountered during creation.
-func newServiceDBClient(ctx context.Context, logCfg logging.Config, dbCfg db.Config, ns string, migrations *embed.FS) (*db.Client, error) {
+func newServiceDBClient(ctx context.Context, logCfg logging.Config, dbCfg db.Config, trace trace.Tracer, ns string, migrations *embed.FS) (*db.Client, error) {
 	var err error
 
-	client, err := db.New(ctx, dbCfg, logCfg,
+	client, err := db.New(ctx, dbCfg, logCfg, &trace,
 		db.WithService(ns),
 		db.WithMigrations(migrations),
 	)

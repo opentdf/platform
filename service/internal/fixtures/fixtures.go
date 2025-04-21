@@ -81,7 +81,7 @@ type FixtureDataAction struct {
 }
 
 // Relation table intermediating subject mappings and actions
-type FixtueDataSubjectMappingsActionRelation struct {
+type FixtureDataSubjectMappingsActionRelation struct {
 	SubjectMappingID string `yaml:"subject_mapping_id"`
 	ActionName       string `yaml:"action_name"`
 }
@@ -158,8 +158,8 @@ type FixtureData struct {
 		Data     map[string]FixtureDataAction `yaml:"data"`
 	} `yaml:"custom_actions"`
 	SubjectMappingActions struct {
-		Metadata FixtureMetadata                                    `yaml:"metadata"`
-		Data     map[string]FixtueDataSubjectMappingsActionRelation `yaml:"data"`
+		Metadata FixtureMetadata                                     `yaml:"metadata"`
+		Data     map[string]FixtureDataSubjectMappingsActionRelation `yaml:"data"`
 	} `yaml:"subject_mapping_actions_relation"`
 	SubjectConditionSet struct {
 		Metadata FixtureMetadata                `yaml:"metadata"`

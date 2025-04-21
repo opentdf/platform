@@ -29,7 +29,7 @@ CREATE TRIGGER actions_updated_at
   EXECUTE FUNCTION update_updated_at();
 
 -- 1a. Create intermediary table to hold the mapping of actions to subject_mappings (potentially many to many)
-CREATE TABLE subject_mapping_actions (
+CREATE TABLE IF NOT EXISTS subject_mapping_actions (
     subject_mapping_id UUID NOT NULL REFERENCES subject_mappings(id) ON DELETE CASCADE,
     action_id UUID NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),

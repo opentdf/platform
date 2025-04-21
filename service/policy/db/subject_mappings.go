@@ -279,7 +279,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 			actionNames = append(actionNames, ActionCreate.String())
 		default:
 			return nil, db.WrapIfKnownInvalidQueryErr(
-				errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing requred 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
+				errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing required 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
 			)
 		}
 	}
@@ -486,7 +486,7 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 				actionNames = append(actionNames, ActionCreate.String())
 			default:
 				return nil, db.WrapIfKnownInvalidQueryErr(
-					errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing requred 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
+					errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing required 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
 				)
 			}
 		}

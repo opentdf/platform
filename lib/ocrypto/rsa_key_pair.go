@@ -10,7 +10,7 @@ import (
 )
 
 type RsaKeyPair struct {
-	privateKey *rsa.PrivateKey
+	PrivateKey *rsa.PrivateKey
 }
 
 func FromRSA(k *rsa.PrivateKey) RsaKeyPair {
@@ -19,42 +19,42 @@ func FromRSA(k *rsa.PrivateKey) RsaKeyPair {
 
 // NewRSAKeyPair Generates an RSA key pair of the given bit size.
 func NewRSAKeyPair(bits int) (RsaKeyPair, error) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, bits)
+	PrivateKey, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return RsaKeyPair{}, fmt.Errorf("rsa.GenerateKe failed: %w", err)
 	}
 
-	rsaKeyPair := RsaKeyPair{privateKey: privateKey}
+	rsaKeyPair := RsaKeyPair{PrivateKey: PrivateKey}
 	return rsaKeyPair, nil
 }
 
 // PrivateKeyInPemFormat Returns private key in pem format.
 func (keyPair RsaKeyPair) PrivateKeyInPemFormat() (string, error) {
-	if keyPair.privateKey == nil {
+	if keyPair.PrivateKey == nil {
 		return "", errors.New("failed to generate PEM formatted private key")
 	}
 
-	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(keyPair.privateKey)
+	PrivateKeyBytes, err := x509.MarshalPKCS8PrivateKey(keyPair.PrivateKey)
 	if err != nil {
 		return "", fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
 	}
 
-	privateKeyPem := pem.EncodeToMemory(
+	PrivateKeyPem := pem.EncodeToMemory(
 		&pem.Block{
 			Type:  "PRIVATE KEY",
-			Bytes: privateKeyBytes,
+			Bytes: PrivateKeyBytes,
 		},
 	)
-	return string(privateKeyPem), nil
+	return string(PrivateKeyPem), nil
 }
 
 // PublicKeyInPemFormat Returns public key in pem format.
 func (keyPair RsaKeyPair) PublicKeyInPemFormat() (string, error) {
-	if keyPair.privateKey == nil {
+	if keyPair.PrivateKey == nil {
 		return "", errors.New("failed to generate PEM formatted public key")
 	}
 
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&keyPair.privateKey.PublicKey)
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(&keyPair.PrivateKey.PublicKey)
 	if err != nil {
 		return "", fmt.Errorf("x509.MarshalPKIXPublicKey failed: %w", err)
 	}
@@ -71,10 +71,10 @@ func (keyPair RsaKeyPair) PublicKeyInPemFormat() (string, error) {
 
 // KeySize Return the size of this rsa key pair.
 func (keyPair RsaKeyPair) KeySize() (int, error) {
-	if keyPair.privateKey == nil {
+	if keyPair.PrivateKey == nil {
 		return -1, errors.New("failed to return key size")
 	}
-	return keyPair.privateKey.N.BitLen(), nil
+	return keyPair.PrivateKey.N.BitLen(), nil
 }
 
 // GetKeyType returns the key type (RSAKey)

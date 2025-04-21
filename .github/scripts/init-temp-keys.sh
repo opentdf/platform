@@ -59,7 +59,7 @@ docker run \
     -v $(pwd)/keys:/keys \
     --entrypoint keytool \
     --user $(id -u):$(id -g) \
-    cgr.dev/chainguard/keycloak@sha256:37895558d2e0e93ffff75da5900f9ae7e79ec6d1c390b18b2ecea6cee45ec26f \
+    keycloak/keycloak:25.0 \
     -importkeystore \
     -srckeystore /keys/ca.p12 \
     -srcstoretype PKCS12 \

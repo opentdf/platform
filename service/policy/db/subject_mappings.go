@@ -264,6 +264,10 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 			actionIDs = append(actionIDs, a.GetId())
 		case a.GetName() != "":
 			actionNames = append(actionNames, strings.ToLower(a.GetName()))
+		case a.GetStandard().Enum() != nil:
+			// TODO: remove this support for interpreting standard action proto enums to new CRUDable actions once circular CI testing is resolved
+			c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
+			actionNames = append(actionIDs, strings.ToLower(a.GetStandard().Enum().String()))
 		default:
 			return nil, db.WrapIfKnownInvalidQueryErr(
 				errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing requred 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
@@ -464,6 +468,10 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 				actionIDs = append(actionIDs, a.GetId())
 			case a.GetName() != "":
 				actionNames = append(actionNames, strings.ToLower(a.GetName()))
+			case a.GetStandard().Enum() != nil:
+				// TODO: remove this support for interpreting standard action proto enums to new CRUDable actions once circular CI testing is resolved
+				c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
+				actionNames = append(actionIDs, strings.ToLower(a.GetStandard().Enum().String()))
 			default:
 				return nil, db.WrapIfKnownInvalidQueryErr(
 					errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing requred 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),

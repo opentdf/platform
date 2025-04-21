@@ -51,6 +51,12 @@ func unmarshalSubjectSetsProto(conditionJSON []byte) ([]*policy.SubjectSet, erro
 	return ss, nil
 }
 
+var (
+	// TODO: remove once circular CI is resolved
+	deprecatedStandardActionDecrypt  = policy.Action_STANDARD_ACTION_DECRYPT.Enum()
+	deprecatedStandardActionTransmit = policy.Action_STANDARD_ACTION_TRANSMIT.Enum()
+)
+
 /*
 	Subject Condition Sets
 */
@@ -264,10 +270,13 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 			actionIDs = append(actionIDs, a.GetId())
 		case a.GetName() != "":
 			actionNames = append(actionNames, strings.ToLower(a.GetName()))
-		case a.GetStandard().Enum() != nil:
-			// TODO: remove this support for interpreting standard action proto enums to new CRUDable actions once circular CI testing is resolved
+		// TODO: remove this support for interpreting standard action proto enums to new CRUDable actions once circular CI testing is resolved
+		case a.GetStandard().Enum() == deprecatedStandardActionDecrypt:
 			c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
-			actionNames = append(actionIDs, strings.ToLower(a.GetStandard().Enum().String()))
+			actionNames = append(actionNames, ActionRead.String())
+		case a.GetStandard().Enum() == deprecatedStandardActionTransmit:
+			c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
+			actionNames = append(actionNames, ActionCreate.String())
 		default:
 			return nil, db.WrapIfKnownInvalidQueryErr(
 				errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing requred 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
@@ -468,10 +477,13 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 				actionIDs = append(actionIDs, a.GetId())
 			case a.GetName() != "":
 				actionNames = append(actionNames, strings.ToLower(a.GetName()))
-			case a.GetStandard().Enum() != nil:
 				// TODO: remove this support for interpreting standard action proto enums to new CRUDable actions once circular CI testing is resolved
+			case a.GetStandard().Enum() == deprecatedStandardActionDecrypt:
 				c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
-				actionNames = append(actionIDs, strings.ToLower(a.GetStandard().Enum().String()))
+				actionNames = append(actionNames, ActionRead.String())
+			case a.GetStandard().Enum() == deprecatedStandardActionTransmit:
+				c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
+				actionNames = append(actionNames, ActionCreate.String())
 			default:
 				return nil, db.WrapIfKnownInvalidQueryErr(
 					errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing requred 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),

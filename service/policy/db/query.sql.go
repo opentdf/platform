@@ -3967,7 +3967,9 @@ func (q *Queries) listPublicKeys(ctx context.Context, arg listPublicKeysParams) 
 const listRegisteredResourceValues = `-- name: listRegisteredResourceValues :many
 WITH counted AS (
     SELECT COUNT(id) AS total
-    FROM registered_resources
+    FROM registered_resource_values
+    WHERE
+        NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
 )
 SELECT
     id,
@@ -4001,7 +4003,9 @@ type listRegisteredResourceValuesRow struct {
 //
 //	WITH counted AS (
 //	    SELECT COUNT(id) AS total
-//	    FROM registered_resources
+//	    FROM registered_resource_values
+//	    WHERE
+//	        NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
 //	)
 //	SELECT
 //	    id,

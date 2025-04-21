@@ -16,12 +16,14 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type AttributesService struct { //nolint:revive // AttributesService is a valid name for this struct
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 	config   *policyconfig.Config
+	trace.Tracer
 }
 
 func OnConfigUpdate(as *AttributesService) serviceregistry.OnConfigUpdateHook {
@@ -57,7 +59,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 					logger.Error("error getting attributes service policy config", slog.String("error", err.Error()))
 					panic(err)
 				}
-
+				as.Tracer = srp.Tracer
 				as.logger = logger
 				as.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				as.config = cfg
@@ -104,6 +106,9 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 func (s *AttributesService) ListAttributes(ctx context.Context,
 	req *connect.Request[attributes.ListAttributesRequest],
 ) (*connect.Response[attributes.ListAttributesResponse], error) {
+	ctx, span := s.Tracer.Start(ctx, "ListAttributes")
+	defer span.End()
+
 	state := req.Msg.GetState().String()
 	s.logger.Debug("listing attribute definitions", slog.String("state", state))
 
@@ -118,6 +123,9 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 func (s *AttributesService) GetAttribute(ctx context.Context,
 	req *connect.Request[attributes.GetAttributeRequest],
 ) (*connect.Response[attributes.GetAttributeResponse], error) {
+	ctx, span := s.Tracer.Start(ctx, "GetAttribute")
+	defer span.End()
+
 	rsp := &attributes.GetAttributeResponse{}
 
 	var identifier any
@@ -140,6 +148,9 @@ func (s *AttributesService) GetAttribute(ctx context.Context,
 func (s *AttributesService) GetAttributeValuesByFqns(ctx context.Context,
 	req *connect.Request[attributes.GetAttributeValuesByFqnsRequest],
 ) (*connect.Response[attributes.GetAttributeValuesByFqnsResponse], error) {
+	ctx, span := s.Tracer.Start(ctx, "GetAttributeValuesByFqns")
+	defer span.End()
+
 	rsp := &attributes.GetAttributeValuesByFqnsResponse{}
 
 	fqnsToAttributes, err := s.dbClient.GetAttributesByValueFqns(ctx, req.Msg)

@@ -53,8 +53,8 @@ func unmarshalSubjectSetsProto(conditionJSON []byte) ([]*policy.SubjectSet, erro
 
 var (
 	// TODO: remove once circular CI is resolved
-	deprecatedStandardActionDecrypt  = policy.Action_STANDARD_ACTION_DECRYPT.Enum()
-	deprecatedStandardActionTransmit = policy.Action_STANDARD_ACTION_TRANSMIT.Enum()
+	deprecatedStandardActionDecrypt  = policy.Action_STANDARD_ACTION_DECRYPT.String()
+	deprecatedStandardActionTransmit = policy.Action_STANDARD_ACTION_TRANSMIT.String()
 )
 
 /*
@@ -271,10 +271,10 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		case a.GetName() != "":
 			actionNames = append(actionNames, strings.ToLower(a.GetName()))
 		// TODO: remove this support for interpreting standard action proto enums to new CRUDable actions once circular CI testing is resolved
-		case a.GetStandard().Enum() == deprecatedStandardActionDecrypt:
+		case a.GetStandard().String() == deprecatedStandardActionDecrypt:
 			c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
 			actionNames = append(actionNames, ActionRead.String())
-		case a.GetStandard().Enum() == deprecatedStandardActionTransmit:
+		case a.GetStandard().String() == deprecatedStandardActionTransmit:
 			c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
 			actionNames = append(actionNames, ActionCreate.String())
 		default:
@@ -478,10 +478,10 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 			case a.GetName() != "":
 				actionNames = append(actionNames, strings.ToLower(a.GetName()))
 				// TODO: remove this support for interpreting standard action proto enums to new CRUDable actions once circular CI testing is resolved
-			case a.GetStandard().Enum() == deprecatedStandardActionDecrypt:
+			case a.GetStandard().String() == deprecatedStandardActionDecrypt:
 				c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
 				actionNames = append(actionNames, ActionRead.String())
-			case a.GetStandard().Enum() == deprecatedStandardActionTransmit:
+			case a.GetStandard().String() == deprecatedStandardActionTransmit:
 				c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
 				actionNames = append(actionNames, ActionCreate.String())
 			default:

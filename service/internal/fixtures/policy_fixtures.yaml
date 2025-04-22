@@ -655,3 +655,49 @@ namespace_key_map:
       key_id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
     - namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896 # deactivated
       key_id: d433e903-e3d1-4823-9b3e-7b188e7c6060
+
+##
+# Registered Resources
+#
+##
+registered_resources:
+  metadata:
+    table_name: registered_resources
+    columns:
+      - id
+      - name
+  data:
+    res_with_values:
+      id: f3a1b2c4-5d6e-7f89-0a1b-2c3d4e5f6789
+      name: res_with_values
+    res_with_values2:
+      id: 39cd944b-d703-4330-936a-83b3d497c8d4
+      name: res_with_values2
+    res_only:
+      id: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
+      name: res_only
+
+##
+# Registered Resource Values
+#
+##
+registered_resource_values:
+  metadata:
+    table_name: registered_resource_values
+    columns:
+      - id
+      - registered_resource_id
+      - value
+  data:
+    res_with_values__value1:
+      id: 1d2c3b4a-5e6f-7a89-0b1c-2d3e4f5a6789
+      registered_resource_id: f3a1b2c4-5d6e-7f89-0a1b-2c3d4e5f6789
+      value: res_with_values__value1
+    res_with_values__value2:
+      id: 9e8f7a6b-5c4d-3b2a-1d0c-8f7e6a5b4c3d
+      registered_resource_id: f3a1b2c4-5d6e-7f89-0a1b-2c3d4e5f6789
+      value: res_with_values__value2
+    res_with_values2__value1:
+      id: a932ff01-cca6-41f6-a147-7eba7560611b
+      registered_resource_id: 39cd944b-d703-4330-936a-83b3d497c8d4
+      value: res_with_values2__value1

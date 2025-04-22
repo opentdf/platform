@@ -1231,8 +1231,6 @@ INSERT INTO attribute_value_public_key_map (value_id, key_id) VALUES ($1, $2);
 -- name: removePublicKeyFromAttributeValue :execrows
 DELETE FROM attribute_value_public_key_map WHERE value_id = $1 AND key_id = $2;
 
-----------------------------------------------------------------
-
 
 ---------------------------------------------------------------- 
 -- ACTIONS
@@ -1326,3 +1324,109 @@ WHERE id = $1
   AND is_standard = FALSE;
 
 ----------------------------------------------------------------
+-- REGISTERED RESOURCES
+----------------------------------------------------------------
+
+-- name: createRegisteredResource :one
+INSERT INTO registered_resources (name, metadata)
+VALUES ($1, $2)
+RETURNING id;
+
+-- name: getRegisteredResource :one
+-- TODO add FQN support
+SELECT
+    r.id,
+    r.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+    JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'id', v.id,
+            'value', v.value
+        )
+    ) FILTER (WHERE v.id IS NOT NULL) as values
+FROM registered_resources r
+LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+WHERE r.id = $1
+GROUP BY r.id;
+
+-- name: listRegisteredResources :many
+WITH counted AS (
+    SELECT COUNT(id) AS total
+    FROM registered_resources
+)
+SELECT
+    r.id,
+    r.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+    JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'id', v.id,
+            'value', v.value
+        )
+    ) FILTER (WHERE v.id IS NOT NULL) as values,
+    counted.total
+FROM registered_resources r
+CROSS JOIN counted
+LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+GROUP BY r.id, counted.total
+LIMIT @limit_ 
+OFFSET @offset_;
+
+-- name: updateRegisteredResource :execrows
+UPDATE registered_resources
+SET
+    name = COALESCE(sqlc.narg('name'), name),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1;
+
+-- name: deleteRegisteredResource :execrows
+DELETE FROM registered_resources WHERE id = $1;
+
+
+----------------------------------------------------------------
+-- REGISTERED RESOURCE VALUES
+----------------------------------------------------------------
+
+-- name: createRegisteredResourceValue :one
+INSERT INTO registered_resource_values (registered_resource_id, value, metadata)
+VALUES ($1, $2, $3)
+RETURNING id;
+
+-- name: getRegisteredResourceValue :one
+SELECT
+    id,
+    registered_resource_id,
+    value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM registered_resource_values
+WHERE id = $1;
+
+-- name: listRegisteredResourceValues :many
+WITH counted AS (
+    SELECT COUNT(id) AS total
+    FROM registered_resource_values
+    WHERE
+        NULLIF(@registered_resource_id, '') IS NULL OR registered_resource_id = @registered_resource_id::UUID
+)
+SELECT
+    id,
+    registered_resource_id,
+    value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    counted.total
+FROM registered_resource_values
+CROSS JOIN counted
+WHERE
+    NULLIF(@registered_resource_id, '') IS NULL OR registered_resource_id = @registered_resource_id::UUID
+LIMIT @limit_
+OFFSET @offset_;
+
+-- name: updateRegisteredResourceValue :execrows
+UPDATE registered_resource_values
+SET
+    value = COALESCE(sqlc.narg('value'), value),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1;
+
+-- name: deleteRegisteredResourceValue :execrows
+DELETE FROM registered_resource_values WHERE id = $1;

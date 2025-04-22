@@ -239,6 +239,36 @@ type PublicKey struct {
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 }
 
+// Table to store registered resources
+type RegisteredResource struct {
+	// Primary key for the table
+	ID string `json:"id"`
+	// Name for the registered resource
+	Name string `json:"name"`
+	// Metadata for the registered resource (see protos for structure)
+	Metadata []byte `json:"metadata"`
+	// Timestamp when the record was created
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	// Timestamp when the record was last updated
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+// Table to store registered resource values
+type RegisteredResourceValue struct {
+	// Primary key for the table
+	ID string `json:"id"`
+	// Foreign key to the registered_resources table
+	RegisteredResourceID string `json:"registered_resource_id"`
+	// Value for the registered resource value
+	Value string `json:"value"`
+	// Metadata for the registered resource value (see protos for structure)
+	Metadata []byte `json:"metadata"`
+	// Timestamp when the record was created
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	// Timestamp when the record was last updated
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 // Table to store associated terms that should map resource data to attribute values
 type ResourceMapping struct {
 	// Primary key for the table

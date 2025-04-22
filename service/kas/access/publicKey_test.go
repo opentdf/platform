@@ -1,6 +1,7 @@
 package access
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -44,7 +45,7 @@ func (m *MockKeyDetails) IsLegacy() bool {
 	return m.legacy
 }
 
-func (m *MockKeyDetails) ExportPublicKey(format security.KeyType) (string, error) {
+func (m *MockKeyDetails) ExportPublicKey(ctx context.Context, format security.KeyType) (string, error) {
 	switch format {
 	case security.KeyTypeJWK:
 		if m.jwkData == "" {
@@ -61,7 +62,7 @@ func (m *MockKeyDetails) ExportPublicKey(format security.KeyType) (string, error
 	}
 }
 
-func (m *MockKeyDetails) ExportCertificate() (string, error) {
+func (m *MockKeyDetails) ExportCertificate(ctx context.Context) (string, error) {
 	if m.certData == "" {
 		return "", errors.New("certificate not available")
 	}
@@ -83,7 +84,7 @@ func (m *MockSecurityProvider) AddKey(key *MockKeyDetails) {
 	m.keys[key.id] = key
 }
 
-func (m *MockSecurityProvider) FindKeyByAlgorithm(algorithm string, includeLegacy bool) (security.KeyDetails, error) {
+func (m *MockSecurityProvider) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (security.KeyDetails, error) {
 	for _, key := range m.keys {
 		if key.algorithm == algorithm && (!key.legacy || includeLegacy) {
 			return key, nil
@@ -92,14 +93,14 @@ func (m *MockSecurityProvider) FindKeyByAlgorithm(algorithm string, includeLegac
 	return nil, security.ErrCertNotFound
 }
 
-func (m *MockSecurityProvider) FindKeyByID(id security.KeyIdentifier) (security.KeyDetails, error) {
+func (m *MockSecurityProvider) FindKeyByID(ctx context.Context, id security.KeyIdentifier) (security.KeyDetails, error) {
 	if key, ok := m.keys[id]; ok {
 		return key, nil
 	}
 	return nil, security.ErrCertNotFound
 }
 
-func (m *MockSecurityProvider) ListKeys() ([]security.KeyDetails, error) {
+func (m *MockSecurityProvider) ListKeys(ctx context.Context) ([]security.KeyDetails, error) {
 	var keys []security.KeyDetails
 	for _, key := range m.keys {
 		keys = append(keys, key)
@@ -107,23 +108,23 @@ func (m *MockSecurityProvider) ListKeys() ([]security.KeyDetails, error) {
 	return keys, nil
 }
 
-func (m *MockSecurityProvider) RSADecrypt(keyID security.KeyIdentifier, ciphertext []byte) ([]byte, error) {
+func (m *MockSecurityProvider) RSADecrypt(ctx context.Context, keyID security.KeyIdentifier, ciphertext []byte) ([]byte, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) ECDecrypt(keyID security.KeyIdentifier, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
+func (m *MockSecurityProvider) ECDecrypt(ctx context.Context, keyID security.KeyIdentifier, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) GenerateNanoTDFSymmetricKey(kasKID security.KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
+func (m *MockSecurityProvider) GenerateNanoTDFSymmetricKey(ctx context.Context, kasKID security.KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) GenerateEphemeralKasKeys() (any, []byte, error) {
+func (m *MockSecurityProvider) GenerateEphemeralKasKeys(ctx context.Context) (any, []byte, error) {
 	return nil, nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) GenerateNanoTDFSessionKey(privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error) {
+func (m *MockSecurityProvider) GenerateNanoTDFSessionKey(ctx context.Context, privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
@@ -151,7 +152,7 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 		algorithm: security.AlgorithmECP256R1,
 		legacy:    false,
 		pemData:   "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEn6WYEj3sxP/IR0W1O5TYHKPyhceF\nki4Y/9YYeK/D3QkYQrv+DkKXPKkR/MQS6uzmHZY9NS8XbcwJ4cGpR6l4FQ==\n-----END PUBLIC KEY-----",
-		certData:  "-----BEGIN CERTIFICATE-----\nMIIBcTCCARegAwIBAgIUTxgZ1CzWBXgysrV4bKVGw+1iBTwwCgYIKoZIzj0EAwIw\nDjEMMAoGA1UEAwwDa2FzMB4XDTIzMDYxMzAwMDAwMFoXDTI0MDYxMzAwMDAwMFow\nDjEMMAoGA1UEAwwDa2FzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEn6WYEj3s\nxP/IR0W1O5TYHKPyhceFki4Y/9YYeK/D3QkYQrv+DkKXPKkR/MQS6uzmHZY9NS8X\nbcwJ4cGpR6l4FaNmMGQwHQYDVR0OBBYEFFQ8TIybvYhMKH0E+lOVDS0F7r9PMB8G\nA1UdIwQYMBaAFFQ8TIybvYhMKH0E+lOVDS0F7r9PMA8GA1UdEwEB/wQFMAMBAf8w\nEQYDVR0gBAowCDAGBgRVHSAAMAoGCCqGSM49BAMCA0gAMEUCIQD5adIeKGCpbI1E\nJr3jVwQNJL6+bLGXRORhIeKjpvd3egIgRZ7qwTpjZwrkXpDS2i1ODQjj2Ap9ZeMN\nzuDaXdOl90E=\n-----END CERTIFICATE-----",
+		certData:  "-----BEGIN CERTIFICATE-----\nMIIBcTCCARegAwIBAgIUTxgZ1CzWBXgysrV4bKVGw+1iBTwwCgYIKoZIzj0EAwIw\nDjEMMAoGA1UEAwwDa2FzMB4XDTIzMDYxMzAwMDAwMFoXDTI4MDYxMzAwMDAwMFow\nDjEMMAoGA1UEAwwDa2FzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEn6WYEj3s\nxP/IR0W1O5TYHKPyhceFki4Y/9YYeK/D3QkYQrv+DkKXPKkR/MQS6uzmHZY9NS8X\nbcwJ4cGpR6l4FaNmMGQwHQYDVR0OBBYEFFQ8TIybvYhMKH0E+lOVDS0F7r9PMB8G\nA1UdIwQYMBaAFFQ8TIybvYhMKH0E+lOVDS0F7r9PMA8GA1UdEwEB/wQFMAMBAf8w\nEQYDVR0gBAowCDAGBgRVHSAAMAoGCCqGSM49BAMCA0gAMEUCIQD5adIeKGCpbI1E\nJr3jVwQNJL6+bLGXRORhIeKjpvd3egIgRZ7qwTpjZwrkXpDS2i1ODQjj2Ap9ZeMN\nzuDaXdOl90E=\n-----END CERTIFICATE-----",
 	})
 
 	kasURI := urlHost(t)

@@ -1,8 +1,10 @@
 package security
 
 import (
+	"context"
 	"crypto"
 	"crypto/elliptic"
+	"errors"
 )
 
 // SecurityProviderAdapter adapts a CryptoProvider to the SecurityProvider interface
@@ -18,7 +20,7 @@ func NewSecurityProviderAdapter(cryptoProvider CryptoProvider) SecurityProvider 
 }
 
 // FindKeyByAlgorithm finds a key by algorithm using the underlying CryptoProvider
-func (a *SecurityProviderAdapter) FindKeyByAlgorithm(algorithm string, includeLegacy bool) (KeyDetails, error) {
+func (a *SecurityProviderAdapter) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (KeyDetails, error) {
 	// Get the key ID for this algorithm
 	kid := a.cryptoProvider.FindKID(algorithm)
 	if kid == "" {
@@ -32,7 +34,7 @@ func (a *SecurityProviderAdapter) FindKeyByAlgorithm(algorithm string, includeLe
 }
 
 // FindKeyByID finds a key by ID
-func (a *SecurityProviderAdapter) FindKeyByID(id KeyIdentifier) (KeyDetails, error) {
+func (a *SecurityProviderAdapter) FindKeyByID(ctx context.Context, id KeyIdentifier) (KeyDetails, error) {
 	// Legacy CryptoProvider doesn't have a direct method for this, so we create
 	// a KeyDetails with the given ID and let individual operations validate
 	return &KeyDetailsAdapter{
@@ -42,7 +44,7 @@ func (a *SecurityProviderAdapter) FindKeyByID(id KeyIdentifier) (KeyDetails, err
 }
 
 // ListKeys lists all available keys
-func (a *SecurityProviderAdapter) ListKeys() ([]KeyDetails, error) {
+func (a *SecurityProviderAdapter) ListKeys(ctx context.Context) ([]KeyDetails, error) {
 	// This is a limited implementation as CryptoProvider doesn't expose a list of all keys
 	var keys []KeyDetails
 
@@ -60,28 +62,62 @@ func (a *SecurityProviderAdapter) ListKeys() ([]KeyDetails, error) {
 	return keys, nil
 }
 
-// RSADecrypt decrypts data with an RSA key
-func (a *SecurityProviderAdapter) RSADecrypt(keyID KeyIdentifier, ciphertext []byte) ([]byte, error) {
-	return a.cryptoProvider.RSADecrypt(crypto.SHA1, string(keyID), "", ciphertext)
+// Decrypt implements the unified decryption method for both RSA and EC
+func (a *SecurityProviderAdapter) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) ([]byte, error) {
+	kid := string(keyID)
+
+	// Try to determine the key type
+	keyType, err := a.determineKeyType(ctx, kid)
+	if err != nil {
+		return nil, err
+	}
+
+	switch keyType {
+	case AlgorithmRSA2048:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for RSA decryption")
+		}
+		return a.cryptoProvider.RSADecrypt(crypto.SHA1, kid, "", ciphertext)
+
+	case AlgorithmECP256R1:
+		if len(ephemeralPublicKey) == 0 {
+			return nil, errors.New("ephemeral public key is required for EC decryption")
+		}
+		return a.cryptoProvider.ECDecrypt(kid, ephemeralPublicKey, ciphertext)
+
+	default:
+		return nil, errors.New("unsupported key algorithm")
+	}
 }
 
-// ECDecrypt decrypts data with an EC key
-func (a *SecurityProviderAdapter) ECDecrypt(keyID KeyIdentifier, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
-	return a.cryptoProvider.ECDecrypt(string(keyID), ephemeralPublicKey, ciphertext)
+// determineKeyType tries to determine the algorithm of a key based on its ID
+// This is a helper method for the Decrypt method
+func (a *SecurityProviderAdapter) determineKeyType(ctx context.Context, kid string) (string, error) {
+	// First try RSA
+	if _, err := a.cryptoProvider.RSAPublicKey(kid); err == nil {
+		return AlgorithmRSA2048, nil
+	}
+
+	// Then try EC
+	if _, err := a.cryptoProvider.ECPublicKey(kid); err == nil {
+		return AlgorithmECP256R1, nil
+	}
+
+	return "", errors.New("could not determine key type")
 }
 
 // GenerateNanoTDFSymmetricKey generates a symmetric key for NanoTDF
-func (a *SecurityProviderAdapter) GenerateNanoTDFSymmetricKey(kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
+func (a *SecurityProviderAdapter) GenerateNanoTDFSymmetricKey(ctx context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
 	return a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(kasKID), ephemeralPublicKeyBytes, curve)
 }
 
 // GenerateEphemeralKasKeys generates ephemeral keys for KAS operations
-func (a *SecurityProviderAdapter) GenerateEphemeralKasKeys() (any, []byte, error) {
+func (a *SecurityProviderAdapter) GenerateEphemeralKasKeys(ctx context.Context) (any, []byte, error) {
 	return a.cryptoProvider.GenerateEphemeralKasKeys()
 }
 
 // GenerateNanoTDFSessionKey generates a session key for NanoTDF
-func (a *SecurityProviderAdapter) GenerateNanoTDFSessionKey(privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error) {
+func (a *SecurityProviderAdapter) GenerateNanoTDFSessionKey(ctx context.Context, privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error) {
 	return a.cryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, ephemeralPublicKey)
 }
 
@@ -110,7 +146,7 @@ func (k *KeyDetailsAdapter) IsLegacy() bool {
 	return k.legacy
 }
 
-func (k *KeyDetailsAdapter) ExportPublicKey(format KeyType) (string, error) {
+func (k *KeyDetailsAdapter) ExportPublicKey(ctx context.Context, format KeyType) (string, error) {
 	kid := string(k.id)
 	switch format {
 	case KeyTypeJWK:
@@ -128,7 +164,7 @@ func (k *KeyDetailsAdapter) ExportPublicKey(format KeyType) (string, error) {
 	}
 }
 
-func (k *KeyDetailsAdapter) ExportCertificate() (string, error) {
+func (k *KeyDetailsAdapter) ExportCertificate(ctx context.Context) (string, error) {
 	kid := string(k.id)
 	// Only EC keys have certificates in the current implementation
 	return k.cryptoProvider.ECCertificate(kid)

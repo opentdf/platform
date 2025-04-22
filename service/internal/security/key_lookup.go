@@ -1,6 +1,7 @@
 package security
 
 import (
+	"context"
 	"errors"
 )
 
@@ -33,21 +34,21 @@ type KeyDetails interface {
 	IsLegacy() bool
 
 	// ExportPublicKey exports the public key in the specified format
-	ExportPublicKey(format KeyType) (string, error)
+	ExportPublicKey(ctx context.Context, format KeyType) (string, error)
 
 	// ExportCertificate exports the certificate associated with the key, if available
-	ExportCertificate() (string, error)
+	ExportCertificate(ctx context.Context) (string, error)
 }
 
 // KeyLookup provides methods to locate keys by various criteria
 type KeyLookup interface {
 	// FindKeyByAlgorithm returns a key for the specified algorithm
 	// If includeLegacy is true, legacy keys will be included in the search
-	FindKeyByAlgorithm(algorithm string, includeLegacy bool) (KeyDetails, error)
+	FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (KeyDetails, error)
 
 	// FindKeyByID returns a key with the specified ID
-	FindKeyByID(id KeyIdentifier) (KeyDetails, error)
+	FindKeyByID(ctx context.Context, id KeyIdentifier) (KeyDetails, error)
 
 	// ListKeys returns all available keys
-	ListKeys() ([]KeyDetails, error)
+	ListKeys(ctx context.Context) ([]KeyDetails, error)
 }

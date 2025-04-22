@@ -1,6 +1,7 @@
 package security
 
 import (
+	"context"
 	"crypto/elliptic"
 )
 
@@ -9,20 +10,19 @@ type SecurityProvider interface {
 	// Embed KeyLookup interface for key management capabilities
 	KeyLookup
 
-	// RSADecrypt decrypts RSA encrypted data
-	RSADecrypt(keyID KeyIdentifier, ciphertext []byte) ([]byte, error)
-
-	// ECDecrypt decrypts data encrypted with an EC key
-	ECDecrypt(keyID KeyIdentifier, ephemeralPublicKey, ciphertext []byte) ([]byte, error)
+	// Decrypt decrypts data that was encrypted with the key identified by keyID
+	// For EC keys, ephemeralPublicKey must be non-nil
+	// For RSA keys, ephemeralPublicKey should be nil
+	Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) ([]byte, error)
 
 	// GenerateNanoTDFSymmetricKey generates a symmetric key for NanoTDF
-	GenerateNanoTDFSymmetricKey(kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error)
+	GenerateNanoTDFSymmetricKey(ctx context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error)
 
 	// GenerateEphemeralKasKeys generates ephemeral keys for KAS operations
-	GenerateEphemeralKasKeys() (any, []byte, error)
+	GenerateEphemeralKasKeys(ctx context.Context) (any, []byte, error)
 
 	// GenerateNanoTDFSessionKey generates a session key for NanoTDF
-	GenerateNanoTDFSessionKey(privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error)
+	GenerateNanoTDFSessionKey(ctx context.Context, privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error)
 
 	// Close releases any resources held by the provider
 	Close()

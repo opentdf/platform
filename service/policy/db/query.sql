@@ -870,15 +870,15 @@ WITH counted AS (
 SELECT
     sm.id,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
     ) AS standard_actions,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
     ) AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
@@ -907,15 +907,15 @@ OFFSET @offset_;
 SELECT
     sm.id,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
     ) AS standard_actions,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
     ) AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
@@ -935,15 +935,15 @@ GROUP BY av.id, sm.id, scs.id;
 SELECT
     sm.id,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
     ) AS standard_actions,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
     ) AS custom_actions,
     JSON_BUILD_OBJECT(
@@ -978,7 +978,6 @@ inserted_actions AS (
     SELECT 
         (SELECT id FROM inserted_mapping),
         unnest(sqlc.arg('action_ids')::uuid[])
-    RETURNING subject_mapping_id
 )
 SELECT id FROM inserted_mapping;
 
@@ -999,7 +998,6 @@ WITH
             subject_mapping_id = sqlc.arg('id')
             AND sqlc.narg('action_ids')::UUID[] IS NOT NULL
             AND action_id NOT IN (SELECT unnest(sqlc.narg('action_ids')::UUID[]))
-        RETURNING action_id
     ),
     -- Insert actions that are not already related to the mapping
     action_insert AS (
@@ -1016,7 +1014,6 @@ WITH
                 FROM subject_mapping_actions
                 WHERE subject_mapping_id = sqlc.arg('id') AND action_id = a
             )
-        RETURNING action_id
     ),
     update_count AS (
         SELECT COUNT(*) AS cnt
@@ -1231,9 +1228,6 @@ INSERT INTO attribute_value_public_key_map (value_id, key_id) VALUES ($1, $2);
 -- name: removePublicKeyFromAttributeValue :execrows
 DELETE FROM attribute_value_public_key_map WHERE value_id = $1 AND key_id = $2;
 
-----------------------------------------------------------------
-
-
 ---------------------------------------------------------------- 
 -- ACTIONS
 ----------------------------------------------------------------
@@ -1326,3 +1320,109 @@ WHERE id = $1
   AND is_standard = FALSE;
 
 ----------------------------------------------------------------
+-- REGISTERED RESOURCES
+----------------------------------------------------------------
+
+-- name: createRegisteredResource :one
+INSERT INTO registered_resources (name, metadata)
+VALUES ($1, $2)
+RETURNING id;
+
+-- name: getRegisteredResource :one
+-- TODO add FQN support
+SELECT
+    r.id,
+    r.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+    JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'id', v.id,
+            'value', v.value
+        )
+    ) FILTER (WHERE v.id IS NOT NULL) as values
+FROM registered_resources r
+LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+WHERE r.id = $1
+GROUP BY r.id;
+
+-- name: listRegisteredResources :many
+WITH counted AS (
+    SELECT COUNT(id) AS total
+    FROM registered_resources
+)
+SELECT
+    r.id,
+    r.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+    JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'id', v.id,
+            'value', v.value
+        )
+    ) FILTER (WHERE v.id IS NOT NULL) as values,
+    counted.total
+FROM registered_resources r
+CROSS JOIN counted
+LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+GROUP BY r.id, counted.total
+LIMIT @limit_ 
+OFFSET @offset_;
+
+-- name: updateRegisteredResource :execrows
+UPDATE registered_resources
+SET
+    name = COALESCE(sqlc.narg('name'), name),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1;
+
+-- name: deleteRegisteredResource :execrows
+DELETE FROM registered_resources WHERE id = $1;
+
+
+----------------------------------------------------------------
+-- REGISTERED RESOURCE VALUES
+----------------------------------------------------------------
+
+-- name: createRegisteredResourceValue :one
+INSERT INTO registered_resource_values (registered_resource_id, value, metadata)
+VALUES ($1, $2, $3)
+RETURNING id;
+
+-- name: getRegisteredResourceValue :one
+SELECT
+    id,
+    registered_resource_id,
+    value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM registered_resource_values
+WHERE id = $1;
+
+-- name: listRegisteredResourceValues :many
+WITH counted AS (
+    SELECT COUNT(id) AS total
+    FROM registered_resource_values
+    WHERE
+        NULLIF(@registered_resource_id, '') IS NULL OR registered_resource_id = @registered_resource_id::UUID
+)
+SELECT
+    id,
+    registered_resource_id,
+    value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    counted.total
+FROM registered_resource_values
+CROSS JOIN counted
+WHERE
+    NULLIF(@registered_resource_id, '') IS NULL OR registered_resource_id = @registered_resource_id::UUID
+LIMIT @limit_
+OFFSET @offset_;
+
+-- name: updateRegisteredResourceValue :execrows
+UPDATE registered_resource_values
+SET
+    value = COALESCE(sqlc.narg('value'), value),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1;
+
+-- name: deleteRegisteredResourceValue :execrows
+DELETE FROM registered_resource_values WHERE id = $1;

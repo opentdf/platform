@@ -2817,6 +2817,59 @@ func (q *Queries) createPublicKey(ctx context.Context, arg createPublicKeyParams
 	return id, err
 }
 
+const createRegisteredResource = `-- name: createRegisteredResource :one
+
+INSERT INTO registered_resources (name, metadata)
+VALUES ($1, $2)
+RETURNING id
+`
+
+type createRegisteredResourceParams struct {
+	Name     string `json:"name"`
+	Metadata []byte `json:"metadata"`
+}
+
+// --------------------------------------------------------------
+// REGISTERED RESOURCES
+// --------------------------------------------------------------
+//
+//	INSERT INTO registered_resources (name, metadata)
+//	VALUES ($1, $2)
+//	RETURNING id
+func (q *Queries) createRegisteredResource(ctx context.Context, arg createRegisteredResourceParams) (string, error) {
+	row := q.db.QueryRow(ctx, createRegisteredResource, arg.Name, arg.Metadata)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const createRegisteredResourceValue = `-- name: createRegisteredResourceValue :one
+
+INSERT INTO registered_resource_values (registered_resource_id, value, metadata)
+VALUES ($1, $2, $3)
+RETURNING id
+`
+
+type createRegisteredResourceValueParams struct {
+	RegisteredResourceID string `json:"registered_resource_id"`
+	Value                string `json:"value"`
+	Metadata             []byte `json:"metadata"`
+}
+
+// --------------------------------------------------------------
+// REGISTERED RESOURCE VALUES
+// --------------------------------------------------------------
+//
+//	INSERT INTO registered_resource_values (registered_resource_id, value, metadata)
+//	VALUES ($1, $2, $3)
+//	RETURNING id
+func (q *Queries) createRegisteredResourceValue(ctx context.Context, arg createRegisteredResourceValueParams) (string, error) {
+	row := q.db.QueryRow(ctx, createRegisteredResourceValue, arg.RegisteredResourceID, arg.Value, arg.Metadata)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
 const createSubjectMapping = `-- name: createSubjectMapping :one
 WITH inserted_mapping AS (
     INSERT INTO subject_mappings (
@@ -2832,7 +2885,6 @@ inserted_actions AS (
     SELECT 
         (SELECT id FROM inserted_mapping),
         unnest($4::uuid[])
-    RETURNING subject_mapping_id
 )
 SELECT id FROM inserted_mapping
 `
@@ -2860,7 +2912,6 @@ type createSubjectMappingParams struct {
 //	    SELECT
 //	        (SELECT id FROM inserted_mapping),
 //	        unnest($4::uuid[])
-//	    RETURNING subject_mapping_id
 //	)
 //	SELECT id FROM inserted_mapping
 func (q *Queries) createSubjectMapping(ctx context.Context, arg createSubjectMappingParams) (string, error) {
@@ -2918,6 +2969,36 @@ DELETE FROM public_keys WHERE id = $1
 //	DELETE FROM public_keys WHERE id = $1
 func (q *Queries) deletePublicKey(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deletePublicKey, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteRegisteredResource = `-- name: deleteRegisteredResource :execrows
+DELETE FROM registered_resources WHERE id = $1
+`
+
+// deleteRegisteredResource
+//
+//	DELETE FROM registered_resources WHERE id = $1
+func (q *Queries) deleteRegisteredResource(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteRegisteredResource, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteRegisteredResourceValue = `-- name: deleteRegisteredResourceValue :execrows
+DELETE FROM registered_resource_values WHERE id = $1
+`
+
+// deleteRegisteredResourceValue
+//
+//	DELETE FROM registered_resource_values WHERE id = $1
+func (q *Queries) deleteRegisteredResourceValue(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteRegisteredResourceValue, id)
 	if err != nil {
 		return 0, err
 	}
@@ -3050,19 +3131,109 @@ func (q *Queries) getPublicKey(ctx context.Context, id string) (getPublicKeyRow,
 	return i, err
 }
 
+const getRegisteredResource = `-- name: getRegisteredResource :one
+SELECT
+    r.id,
+    r.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+    JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'id', v.id,
+            'value', v.value
+        )
+    ) FILTER (WHERE v.id IS NOT NULL) as values
+FROM registered_resources r
+LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+WHERE r.id = $1
+GROUP BY r.id
+`
+
+type getRegisteredResourceRow struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Metadata []byte `json:"metadata"`
+	Values   []byte `json:"values"`
+}
+
+// TODO add FQN support
+//
+//	SELECT
+//	    r.id,
+//	    r.name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+//	    JSON_AGG(
+//	        JSON_BUILD_OBJECT(
+//	            'id', v.id,
+//	            'value', v.value
+//	        )
+//	    ) FILTER (WHERE v.id IS NOT NULL) as values
+//	FROM registered_resources r
+//	LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+//	WHERE r.id = $1
+//	GROUP BY r.id
+func (q *Queries) getRegisteredResource(ctx context.Context, id string) (getRegisteredResourceRow, error) {
+	row := q.db.QueryRow(ctx, getRegisteredResource, id)
+	var i getRegisteredResourceRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Metadata,
+		&i.Values,
+	)
+	return i, err
+}
+
+const getRegisteredResourceValue = `-- name: getRegisteredResourceValue :one
+SELECT
+    id,
+    registered_resource_id,
+    value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+FROM registered_resource_values
+WHERE id = $1
+`
+
+type getRegisteredResourceValueRow struct {
+	ID                   string `json:"id"`
+	RegisteredResourceID string `json:"registered_resource_id"`
+	Value                string `json:"value"`
+	Metadata             []byte `json:"metadata"`
+}
+
+// getRegisteredResourceValue
+//
+//	SELECT
+//	    id,
+//	    registered_resource_id,
+//	    value,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
+//	FROM registered_resource_values
+//	WHERE id = $1
+func (q *Queries) getRegisteredResourceValue(ctx context.Context, id string) (getRegisteredResourceValueRow, error) {
+	row := q.db.QueryRow(ctx, getRegisteredResourceValue, id)
+	var i getRegisteredResourceValueRow
+	err := row.Scan(
+		&i.ID,
+		&i.RegisteredResourceID,
+		&i.Value,
+		&i.Metadata,
+	)
+	return i, err
+}
+
 const getSubjectMapping = `-- name: getSubjectMapping :one
 SELECT
     sm.id,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
     ) AS standard_actions,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
     ) AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
@@ -3093,15 +3264,15 @@ type getSubjectMappingRow struct {
 //	SELECT
 //	    sm.id,
 //	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-//	        FROM subject_mapping_actions sma
-//	        JOIN actions a ON sma.action_id = a.id
+//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+//	        FROM actions a
+//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
 //	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
 //	    ) AS standard_actions,
 //	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-//	        FROM subject_mapping_actions sma
-//	        JOIN actions a ON sma.action_id = a.id
+//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+//	        FROM actions a
+//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
 //	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
 //	    ) AS custom_actions,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
@@ -3131,8 +3302,6 @@ func (q *Queries) getSubjectMapping(ctx context.Context, id string) (getSubjectM
 }
 
 const listActions = `-- name: listActions :many
-
-
 
 WITH counted AS (
     SELECT COUNT(id) AS total FROM actions
@@ -3166,7 +3335,6 @@ type listActionsRow struct {
 	Total      int64  `json:"total"`
 }
 
-// --------------------------------------------------------------
 // --------------------------------------------------------------
 // ACTIONS
 // --------------------------------------------------------------
@@ -3934,6 +4102,173 @@ func (q *Queries) listPublicKeys(ctx context.Context, arg listPublicKeysParams) 
 	return items, nil
 }
 
+const listRegisteredResourceValues = `-- name: listRegisteredResourceValues :many
+WITH counted AS (
+    SELECT COUNT(id) AS total
+    FROM registered_resource_values
+    WHERE
+        NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
+)
+SELECT
+    id,
+    registered_resource_id,
+    value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    counted.total
+FROM registered_resource_values
+CROSS JOIN counted
+WHERE
+    NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
+LIMIT $3
+OFFSET $2
+`
+
+type listRegisteredResourceValuesParams struct {
+	RegisteredResourceID interface{} `json:"registered_resource_id"`
+	Offset               int32       `json:"offset_"`
+	Limit                int32       `json:"limit_"`
+}
+
+type listRegisteredResourceValuesRow struct {
+	ID                   string `json:"id"`
+	RegisteredResourceID string `json:"registered_resource_id"`
+	Value                string `json:"value"`
+	Metadata             []byte `json:"metadata"`
+	Total                int64  `json:"total"`
+}
+
+// listRegisteredResourceValues
+//
+//	WITH counted AS (
+//	    SELECT COUNT(id) AS total
+//	    FROM registered_resource_values
+//	    WHERE
+//	        NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
+//	)
+//	SELECT
+//	    id,
+//	    registered_resource_id,
+//	    value,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+//	    counted.total
+//	FROM registered_resource_values
+//	CROSS JOIN counted
+//	WHERE
+//	    NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
+//	LIMIT $3
+//	OFFSET $2
+func (q *Queries) listRegisteredResourceValues(ctx context.Context, arg listRegisteredResourceValuesParams) ([]listRegisteredResourceValuesRow, error) {
+	rows, err := q.db.Query(ctx, listRegisteredResourceValues, arg.RegisteredResourceID, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []listRegisteredResourceValuesRow
+	for rows.Next() {
+		var i listRegisteredResourceValuesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RegisteredResourceID,
+			&i.Value,
+			&i.Metadata,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRegisteredResources = `-- name: listRegisteredResources :many
+WITH counted AS (
+    SELECT COUNT(id) AS total
+    FROM registered_resources
+)
+SELECT
+    r.id,
+    r.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+    JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'id', v.id,
+            'value', v.value
+        )
+    ) FILTER (WHERE v.id IS NOT NULL) as values,
+    counted.total
+FROM registered_resources r
+CROSS JOIN counted
+LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+GROUP BY r.id, counted.total
+LIMIT $2 
+OFFSET $1
+`
+
+type listRegisteredResourcesParams struct {
+	Offset int32 `json:"offset_"`
+	Limit  int32 `json:"limit_"`
+}
+
+type listRegisteredResourcesRow struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Metadata []byte `json:"metadata"`
+	Values   []byte `json:"values"`
+	Total    int64  `json:"total"`
+}
+
+// listRegisteredResources
+//
+//	WITH counted AS (
+//	    SELECT COUNT(id) AS total
+//	    FROM registered_resources
+//	)
+//	SELECT
+//	    r.id,
+//	    r.name,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+//	    JSON_AGG(
+//	        JSON_BUILD_OBJECT(
+//	            'id', v.id,
+//	            'value', v.value
+//	        )
+//	    ) FILTER (WHERE v.id IS NOT NULL) as values,
+//	    counted.total
+//	FROM registered_resources r
+//	CROSS JOIN counted
+//	LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+//	GROUP BY r.id, counted.total
+//	LIMIT $2
+//	OFFSET $1
+func (q *Queries) listRegisteredResources(ctx context.Context, arg listRegisteredResourcesParams) ([]listRegisteredResourcesRow, error) {
+	rows, err := q.db.Query(ctx, listRegisteredResources, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []listRegisteredResourcesRow
+	for rows.Next() {
+		var i listRegisteredResourcesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Metadata,
+			&i.Values,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSubjectMappings = `-- name: listSubjectMappings :many
 
 WITH counted AS (
@@ -3943,15 +4278,15 @@ WITH counted AS (
 SELECT
     sm.id,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
     ) AS standard_actions,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
     ) AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
@@ -4003,15 +4338,15 @@ type listSubjectMappingsRow struct {
 //	SELECT
 //	    sm.id,
 //	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-//	        FROM subject_mapping_actions sma
-//	        JOIN actions a ON sma.action_id = a.id
+//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+//	        FROM actions a
+//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
 //	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
 //	    ) AS standard_actions,
 //	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-//	        FROM subject_mapping_actions sma
-//	        JOIN actions a ON sma.action_id = a.id
+//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+//	        FROM actions a
+//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
 //	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
 //	    ) AS custom_actions,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
@@ -4067,15 +4402,15 @@ const matchSubjectMappings = `-- name: matchSubjectMappings :many
 SELECT
     sm.id,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
     ) AS standard_actions,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
     ) AS custom_actions,
     JSON_BUILD_OBJECT(
@@ -4109,15 +4444,15 @@ type matchSubjectMappingsRow struct {
 //	SELECT
 //	    sm.id,
 //	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-//	        FROM subject_mapping_actions sma
-//	        JOIN actions a ON sma.action_id = a.id
+//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+//	        FROM actions a
+//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
 //	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
 //	    ) AS standard_actions,
 //	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-//	        FROM subject_mapping_actions sma
-//	        JOIN actions a ON sma.action_id = a.id
+//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+//	        FROM actions a
+//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
 //	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
 //	    ) AS custom_actions,
 //	    JSON_BUILD_OBJECT(
@@ -4291,6 +4626,64 @@ func (q *Queries) updatePublicKey(ctx context.Context, arg updatePublicKeyParams
 	return i, err
 }
 
+const updateRegisteredResource = `-- name: updateRegisteredResource :execrows
+UPDATE registered_resources
+SET
+    name = COALESCE($2, name),
+    metadata = COALESCE($3, metadata)
+WHERE id = $1
+`
+
+type updateRegisteredResourceParams struct {
+	ID       string      `json:"id"`
+	Name     pgtype.Text `json:"name"`
+	Metadata []byte      `json:"metadata"`
+}
+
+// updateRegisteredResource
+//
+//	UPDATE registered_resources
+//	SET
+//	    name = COALESCE($2, name),
+//	    metadata = COALESCE($3, metadata)
+//	WHERE id = $1
+func (q *Queries) updateRegisteredResource(ctx context.Context, arg updateRegisteredResourceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateRegisteredResource, arg.ID, arg.Name, arg.Metadata)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateRegisteredResourceValue = `-- name: updateRegisteredResourceValue :execrows
+UPDATE registered_resource_values
+SET
+    value = COALESCE($2, value),
+    metadata = COALESCE($3, metadata)
+WHERE id = $1
+`
+
+type updateRegisteredResourceValueParams struct {
+	ID       string      `json:"id"`
+	Value    pgtype.Text `json:"value"`
+	Metadata []byte      `json:"metadata"`
+}
+
+// updateRegisteredResourceValue
+//
+//	UPDATE registered_resource_values
+//	SET
+//	    value = COALESCE($2, value),
+//	    metadata = COALESCE($3, metadata)
+//	WHERE id = $1
+func (q *Queries) updateRegisteredResourceValue(ctx context.Context, arg updateRegisteredResourceValueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateRegisteredResourceValue, arg.ID, arg.Value, arg.Metadata)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateSubjectMapping = `-- name: updateSubjectMapping :execrows
 WITH
     subject_mapping_update AS (
@@ -4308,7 +4701,6 @@ WITH
             subject_mapping_id = $3
             AND $4::UUID[] IS NOT NULL
             AND action_id NOT IN (SELECT unnest($4::UUID[]))
-        RETURNING action_id
     ),
     -- Insert actions that are not already related to the mapping
     action_insert AS (
@@ -4325,7 +4717,6 @@ WITH
                 FROM subject_mapping_actions
                 WHERE subject_mapping_id = $3 AND action_id = a
             )
-        RETURNING action_id
     ),
     update_count AS (
         SELECT COUNT(*) AS cnt
@@ -4360,7 +4751,6 @@ type updateSubjectMappingParams struct {
 //	            subject_mapping_id = $3
 //	            AND $4::UUID[] IS NOT NULL
 //	            AND action_id NOT IN (SELECT unnest($4::UUID[]))
-//	        RETURNING action_id
 //	    ),
 //	    -- Insert actions that are not already related to the mapping
 //	    action_insert AS (
@@ -4377,7 +4767,6 @@ type updateSubjectMappingParams struct {
 //	                FROM subject_mapping_actions
 //	                WHERE subject_mapping_id = $3 AND action_id = a
 //	            )
-//	        RETURNING action_id
 //	    ),
 //	    update_count AS (
 //	        SELECT COUNT(*) AS cnt

@@ -1,12 +1,12 @@
 ```mermaid
 erDiagram
     actions {
-        timestamp_without_time_zone created_at 
+        timestamp_with_time_zone created_at 
         uuid id PK "Unique identifier for the action"
         boolean is_standard "Whether the action is standard (proto-enum) or custom (user-defined)."
         jsonb metadata "Metadata for the action (see protos for structure)"
         character_varying name UK "Unique name of the action, e.g. read, write, etc."
-        timestamp_without_time_zone updated_at 
+        timestamp_with_time_zone updated_at 
     }
 
     attribute_definition_key_access_grants {

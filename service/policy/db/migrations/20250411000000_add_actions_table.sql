@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS subject_mapping_actions (
     PRIMARY KEY (subject_mapping_id, action_id)
 );
 
-CREATE INDEX idx_subject_mapping_actions_subject ON subject_mapping_actions(subject_mapping_id);
-CREATE INDEX idx_subject_mapping_actions_action ON subject_mapping_actions(action_id);
+CREATE INDEX IF NOT EXISTS idx_subject_mapping_actions_subject ON subject_mapping_actions(subject_mapping_id);
+CREATE INDEX IF NOT EXISTS idx_subject_mapping_actions_action ON subject_mapping_actions(action_id);
 
 -- 2. Insert standard CRUD actions from protos
 INSERT INTO actions (name, is_standard) VALUES
@@ -141,10 +141,6 @@ END $$;
 
 -- 3e. Drop the old JSONB column
 ALTER TABLE subject_mappings DROP COLUMN actions;
-
--- 4. New indexes on the relation table
-CREATE INDEX IF NOT EXISTS idx_subject_mapping_actions_subject ON subject_mapping_actions(subject_mapping_id);
-CREATE INDEX IF NOT EXISTS idx_subject_mapping_actions_action ON subject_mapping_actions(action_id);
 
 -- +goose StatementEnd
 

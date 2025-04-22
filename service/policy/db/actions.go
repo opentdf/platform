@@ -153,9 +153,6 @@ func (c PolicyDBClient) UpdateAction(ctx context.Context, req *actions.UpdateAct
 		if err != nil {
 			return nil, err
 		}
-		if a.GetMetadata() == nil {
-			return nil, nil //nolint:nilnil // no metadata does not mean no error
-		}
 		return a.GetMetadata(), nil
 	})
 	if err != nil {
@@ -164,13 +161,9 @@ func (c PolicyDBClient) UpdateAction(ctx context.Context, req *actions.UpdateAct
 
 	// Update what fields were patched to update
 	updateParams := updateCustomActionParams{
-		ID: req.GetId(),
-	}
-	if metadataJSON != nil {
-		updateParams.Metadata = metadataJSON
-	}
-	if req.GetName() != "" {
-		updateParams.Name = pgtypeText(strings.ToLower(req.GetName()))
+		ID:       req.GetId(),
+		Name:     pgtypeText(strings.ToLower(req.GetName())),
+		Metadata: metadataJSON,
 	}
 
 	count, err := c.Queries.updateCustomAction(ctx, updateParams)

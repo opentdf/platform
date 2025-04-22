@@ -3227,15 +3227,15 @@ const getSubjectMapping = `-- name: getSubjectMapping :one
 SELECT
     sm.id,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
     ) AS standard_actions,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
     ) AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
@@ -3266,15 +3266,15 @@ type getSubjectMappingRow struct {
 //	SELECT
 //	    sm.id,
 //	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-//	        FROM subject_mapping_actions sma
-//	        JOIN actions a ON sma.action_id = a.id
+//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+//	        FROM actions a
+//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
 //	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
 //	    ) AS standard_actions,
 //	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-//	        FROM subject_mapping_actions sma
-//	        JOIN actions a ON sma.action_id = a.id
+//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+//	        FROM actions a
+//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
 //	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
 //	    ) AS custom_actions,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
@@ -4280,15 +4280,15 @@ WITH counted AS (
 SELECT
     sm.id,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
     ) AS standard_actions,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
     ) AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
@@ -4340,15 +4340,15 @@ type listSubjectMappingsRow struct {
 //	SELECT
 //	    sm.id,
 //	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-//	        FROM subject_mapping_actions sma
-//	        JOIN actions a ON sma.action_id = a.id
+//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+//	        FROM actions a
+//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
 //	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
 //	    ) AS standard_actions,
 //	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-//	        FROM subject_mapping_actions sma
-//	        JOIN actions a ON sma.action_id = a.id
+//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+//	        FROM actions a
+//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
 //	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
 //	    ) AS custom_actions,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
@@ -4404,15 +4404,15 @@ const matchSubjectMappings = `-- name: matchSubjectMappings :many
 SELECT
     sm.id,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
     ) AS standard_actions,
     (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-        FROM subject_mapping_actions sma
-        JOIN actions a ON sma.action_id = a.id
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
         WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
     ) AS custom_actions,
     JSON_BUILD_OBJECT(
@@ -4446,15 +4446,15 @@ type matchSubjectMappingsRow struct {
 //	SELECT
 //	    sm.id,
 //	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-//	        FROM subject_mapping_actions sma
-//	        JOIN actions a ON sma.action_id = a.id
+//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+//	        FROM actions a
+//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
 //	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
 //	    ) AS standard_actions,
 //	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name, 'metadata', a.metadata))
-//	        FROM subject_mapping_actions sma
-//	        JOIN actions a ON sma.action_id = a.id
+//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+//	        FROM actions a
+//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
 //	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
 //	    ) AS custom_actions,
 //	    JSON_BUILD_OBJECT(

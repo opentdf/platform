@@ -191,66 +191,52 @@ subject_mappings:
       - id
       - attribute_value_id
       - subject_condition_set_id
-      - actions
   data:
     subject_mapping_subject_attribute1:
       id: 812fab35-9aa4-4e73-bf22-c96638d58ea4
       attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
       # subject_condition_set1
       subject_condition_set_id: b3903282-06f9-41a4-924a-7b8eb43dffe0
-      actions:
-        - standard: STANDARD_ACTION_DECRYPT
 
     subject_mapping_subject_attribute2:
       id: e6a3f940-e24f-4383-8763-718a1a304948
       attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
       # subject_condition_set2
       subject_condition_set_id: 798aacd2-abaf-4623-975e-3bb8ca43e318
-      actions:
-        - standard: STANDARD_ACTION_TRANSMIT
-        - standard: STANDARD_ACTION_DECRYPT
 
     subject_mapping_subject_attribute3:
       id: 9d06c757-06b9-4713-8fbd-5ef007b1afe2
       attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
       # subject_condition_set3
       subject_condition_set_id: eaf866c0-327f-4826-846a-5041c3c22f06
-      actions:
-        - standard: STANDARD_ACTION_TRANSMIT
-        - custom: custom_action_1
 
     subject_mapping_subject_simple_in:
       id: 3c623ede-df88-4906-8a78-ebdfacadcd57
       attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
       # subject_condition_simple_in
       subject_condition_set_id: 3c623ede-df88-4906-8a78-ebdfacadcd57
-      actions:
-        - standard: STANDARD_ACTION_DECRYPT
 
     subject_mapping_subject_simple_not_in:
       id: 1b9508a7-746a-4705-a1f1-4b6e676377ce
       attribute_value_id: 532e5957-28f7-466d-91e2-493e9431cd83
       # subject_condition_simple_not_in
       subject_condition_set_id: cf17ec4c-d206-4b74-b3db-5ce07d6995cc
-      actions:
-        - standard: STANDARD_ACTION_DECRYPT
 
     subject_mapping_scenario_blue:
       id: 1748761a-bd8c-4b23-8560-16ba7a181f19
       attribute_value_id: c2140825-0969-44c9-8dd6-5d7e0a856b9c
       # subject_condition_working_group_blue_scenario
       subject_condition_set_id: 10d03422-7eae-43b9-ac3b-d10400171858
-      actions:
-        - standard: STANDARD_ACTION_DECRYPT
+
 
     subject_mapping_sdk_attribute1:
       id: bc28cacb-1687-4c87-9c63-eae55e271320
       attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
       # subject_condition_sdk_client
       subject_condition_set_id: 86621a00-b63e-42e9-bea5-40ba52d98ede
-      actions:
-        - standard: STANDARD_ACTION_TRANSMIT
-        - standard: STANDARD_ACTION_DECRYPT
+      # actions:
+      #   - standard: create
+      #   - standard: read
 
 subject_condition_set:
   metadata:
@@ -373,6 +359,60 @@ subject_condition_set:
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
                     subject_external_values:
                       - opentdf-sdk
+
+##
+# Actions
+#
+# Note: Standard Actions [create, read, update, delete] inserted by migration
+##
+custom_actions:
+  metadata:
+    table_name: actions
+    columns:
+      - id
+      - name
+      - is_standard
+  data:
+    custom_action_1:
+      id: e3e3df5f-02c8-4a41-88af-1c7436a43722
+      name: custom_action_1
+      is_standard: false
+    other_special_action:
+      id: ef31bac8-7d9b-46c4-8dbb-5965df87b824
+      name: other-special-action
+      is_standard: false
+
+subject_mapping_actions_relation:
+  metadata:
+    table_name: subject_mapping_actions
+    columns:
+      - subject_mapping_id
+      - action_id
+  data:
+    subject_mapping_subject_attribute1_read:
+      subject_mapping_id: 812fab35-9aa4-4e73-bf22-c96638d58ea4
+      action_name: read
+    subject_mapping_subject_attribute2_read:
+      subject_mapping_id: e6a3f940-e24f-4383-8763-718a1a304948
+      action_name: read
+    subject_mapping_subject_attribute2_create:
+      subject_mapping_id: e6a3f940-e24f-4383-8763-718a1a304948
+      action_name: create
+    subject_mapping_subject_attribute3_create:
+      subject_mapping_id: 9d06c757-06b9-4713-8fbd-5ef007b1afe2
+      action_name: create
+    subject_mapping_subject_attribute3_custom_action_1:
+      subject_mapping_id: 9d06c757-06b9-4713-8fbd-5ef007b1afe2
+      action_name: custom_action_1
+    subject_mapping_subject_simple_in_read:
+      subject_mapping_id: 3c623ede-df88-4906-8a78-ebdfacadcd57
+      action_name: read
+    subject_mapping_subject_simple_not_in_read:
+      subject_mapping_id: 1b9508a7-746a-4705-a1f1-4b6e676377ce
+      action_name: read
+    subject_mapping_scenario_blue_read:
+      subject_mapping_id: 1748761a-bd8c-4b23-8560-16ba7a181f19
+      action_name: read
 
 ##
 # Resource Mapping Groups

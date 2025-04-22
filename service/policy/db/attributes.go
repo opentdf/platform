@@ -283,7 +283,7 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 }
 
 func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string) ([]*policy.Attribute, error) {
-	list, err := c.Queries.ListAttributesByDefOrValueFqns(ctx, fqns)
+	list, err := c.Queries.listAttributesByDefOrValueFqns(ctx, fqns)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

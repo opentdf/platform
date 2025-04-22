@@ -1,5 +1,14 @@
 ```mermaid
 erDiagram
+    actions {
+        timestamp_with_time_zone created_at 
+        uuid id PK "Unique identifier for the action"
+        boolean is_standard "Whether the action is standard (proto-enum) or custom (user-defined)."
+        jsonb metadata "Metadata for the action (see protos for structure)"
+        character_varying name UK "Unique name of the action, e.g. read, write, etc."
+        timestamp_with_time_zone updated_at 
+    }
+
     attribute_definition_key_access_grants {
         uuid attribute_definition_id PK,FK "Foreign key to the attribute definition"
         uuid key_access_server_id PK,FK "Foreign key to the KAS registration"
@@ -143,8 +152,13 @@ erDiagram
         timestamp_with_time_zone updated_at 
     }
 
+    subject_mapping_actions {
+        uuid action_id PK,FK 
+        timestamp_without_time_zone created_at 
+        uuid subject_mapping_id PK,FK 
+    }
+
     subject_mappings {
-        jsonb actions "Actions that the subject entity can perform on the attribute value (see protos for details)"
         uuid attribute_value_id FK "Foreign key to the attribute value"
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
@@ -153,6 +167,7 @@ erDiagram
         timestamp_with_time_zone updated_at 
     }
 
+    subject_mapping_actions }o--|| actions : "action_id"
     attribute_definition_key_access_grants }o--|| attribute_definitions : "attribute_definition_id"
     attribute_definition_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_definition_public_key_map }o--|| attribute_definitions : "definition_id"
@@ -177,4 +192,6 @@ erDiagram
     registered_resource_values }o--|| registered_resources : "registered_resource_id"
     resource_mappings }o--|| resource_mapping_groups : "group_id"
     subject_mappings }o--|| subject_condition_set : "subject_condition_set_id"
+    subject_mapping_actions }o--|| subject_mappings : "subject_mapping_id"
 ```
+<style>div.mermaid{overflow-x:scroll;}div.mermaid>svg{width:250rem;}</style>

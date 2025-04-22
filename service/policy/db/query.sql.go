@@ -2885,7 +2885,6 @@ inserted_actions AS (
     SELECT 
         (SELECT id FROM inserted_mapping),
         unnest($4::uuid[])
-    RETURNING subject_mapping_id
 )
 SELECT id FROM inserted_mapping
 `
@@ -2913,7 +2912,6 @@ type createSubjectMappingParams struct {
 //	    SELECT
 //	        (SELECT id FROM inserted_mapping),
 //	        unnest($4::uuid[])
-//	    RETURNING subject_mapping_id
 //	)
 //	SELECT id FROM inserted_mapping
 func (q *Queries) createSubjectMapping(ctx context.Context, arg createSubjectMappingParams) (string, error) {
@@ -4703,7 +4701,6 @@ WITH
             subject_mapping_id = $3
             AND $4::UUID[] IS NOT NULL
             AND action_id NOT IN (SELECT unnest($4::UUID[]))
-        RETURNING action_id
     ),
     -- Insert actions that are not already related to the mapping
     action_insert AS (
@@ -4720,7 +4717,6 @@ WITH
                 FROM subject_mapping_actions
                 WHERE subject_mapping_id = $3 AND action_id = a
             )
-        RETURNING action_id
     ),
     update_count AS (
         SELECT COUNT(*) AS cnt
@@ -4755,7 +4751,6 @@ type updateSubjectMappingParams struct {
 //	            subject_mapping_id = $3
 //	            AND $4::UUID[] IS NOT NULL
 //	            AND action_id NOT IN (SELECT unnest($4::UUID[]))
-//	        RETURNING action_id
 //	    ),
 //	    -- Insert actions that are not already related to the mapping
 //	    action_insert AS (
@@ -4772,7 +4767,6 @@ type updateSubjectMappingParams struct {
 //	                FROM subject_mapping_actions
 //	                WHERE subject_mapping_id = $3 AND action_id = a
 //	            )
-//	        RETURNING action_id
 //	    ),
 //	    update_count AS (
 //	        SELECT COUNT(*) AS cnt

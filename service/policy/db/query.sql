@@ -978,7 +978,6 @@ inserted_actions AS (
     SELECT 
         (SELECT id FROM inserted_mapping),
         unnest(sqlc.arg('action_ids')::uuid[])
-    RETURNING subject_mapping_id
 )
 SELECT id FROM inserted_mapping;
 
@@ -999,7 +998,6 @@ WITH
             subject_mapping_id = sqlc.arg('id')
             AND sqlc.narg('action_ids')::UUID[] IS NOT NULL
             AND action_id NOT IN (SELECT unnest(sqlc.narg('action_ids')::UUID[]))
-        RETURNING action_id
     ),
     -- Insert actions that are not already related to the mapping
     action_insert AS (
@@ -1016,7 +1014,6 @@ WITH
                 FROM subject_mapping_actions
                 WHERE subject_mapping_id = sqlc.arg('id') AND action_id = a
             )
-        RETURNING action_id
     ),
     update_count AS (
         SELECT COUNT(*) AS cnt

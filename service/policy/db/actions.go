@@ -153,9 +153,6 @@ func (c PolicyDBClient) UpdateAction(ctx context.Context, req *actions.UpdateAct
 		if err != nil {
 			return nil, err
 		}
-		if a.GetMetadata() == nil {
-			return nil, nil //nolint:nilnil // no metadata does not mean no error
-		}
 		return a.GetMetadata(), nil
 	})
 	if err != nil {

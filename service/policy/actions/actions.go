@@ -17,6 +17,18 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
+// Re-exported action names for consumers of ActionService protos
+const (
+	// Stored name of the standard 'create' action
+	ActionNameCreate = string(policydb.ActionCreate)
+	// Stored name of the standard 'read' action
+	ActionNameRead = string(policydb.ActionRead)
+	// Stored name of the standard 'update' action
+	ActionNameUpdate = string(policydb.ActionUpdate)
+	// Stored name of the standard 'delete' action
+	ActionNameDelete = string(policydb.ActionDelete)
+)
+
 type ActionService struct {
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger

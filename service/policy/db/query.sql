@@ -314,7 +314,7 @@ GROUP BY ad.id, n.name, counted.total
 LIMIT @limit_ 
 OFFSET @offset_; 
 
--- name: ListAttributesByDefOrValueFqns :many
+-- name: listAttributesByDefOrValueFqns :many
 -- get the attribute definition for the provided value or definition fqn
 WITH target_definition AS (
     SELECT DISTINCT
@@ -393,7 +393,20 @@ value_subject_mappings AS (
 		JSON_AGG(
             JSON_BUILD_OBJECT(
                 'id', sm.id,
-                'actions', sm.actions,
+                'actions', (
+                    SELECT COALESCE(
+                        JSON_AGG(
+                            JSON_BUILD_OBJECT(
+                                'id', a.id,
+                                'name', a.name
+                            )
+                        ) FILTER (WHERE a.id IS NOT NULL),
+                        '[]'::JSON
+                    )
+                    FROM subject_mapping_actions sma
+                    LEFT JOIN actions a ON sma.action_id = a.id
+                    WHERE sma.subject_mapping_id = sm.id
+                ),
                 'subject_condition_set', JSON_BUILD_OBJECT(
                     'id', scs.id,
                     'subject_sets', scs.condition
@@ -430,7 +443,6 @@ values AS (
 	WHERE av.active = TRUE
 	GROUP BY av.attribute_definition_id
 )
-
 SELECT
 	td.id,
 	td.name,
@@ -850,15 +862,25 @@ RETURNING id;
 -- SUBJECT MAPPINGS
 ----------------------------------------------------------------
 
--- name: ListSubjectMappings :many
+-- name: listSubjectMappings :many
 WITH counted AS (
     SELECT COUNT(sm.id) AS total
     FROM subject_mappings sm
 )
-
 SELECT
     sm.id,
-    sm.actions,
+    (
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
+        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
+    ) AS standard_actions,
+    (
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
+        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
+    ) AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
     JSON_BUILD_OBJECT(
         'id', scs.id,
@@ -881,10 +903,21 @@ GROUP BY av.id, sm.id, scs.id, counted.total, fqns.fqn
 LIMIT @limit_
 OFFSET @offset_;
 
--- name: GetSubjectMapping :one
+-- name: getSubjectMapping :one
 SELECT
     sm.id,
-    sm.actions,
+    (
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
+        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
+    ) AS standard_actions,
+    (
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
+        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
+    ) AS custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
     JSON_BUILD_OBJECT(
         'id', scs.id,
@@ -898,10 +931,21 @@ LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
 WHERE sm.id = $1
 GROUP BY av.id, sm.id, scs.id;
 
--- name: MatchSubjectMappings :many
+-- name: matchSubjectMappings :many
 SELECT
     sm.id,
-    sm.actions,
+    (
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
+        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
+    ) AS standard_actions,
+    (
+        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
+        FROM actions a
+        JOIN subject_mapping_actions sma ON sma.action_id = a.id
+        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
+    ) AS custom_actions,
     JSON_BUILD_OBJECT(
         'id', scs.id,
         'subject_sets', scs.condition
@@ -919,21 +963,66 @@ WHERE ns.active = true AND ad.active = true and av.active = true AND EXISTS (
 )
 GROUP BY av.id, sm.id, scs.id;
 
+-- name: createSubjectMapping :one
+WITH inserted_mapping AS (
+    INSERT INTO subject_mappings (
+        attribute_value_id,
+        metadata,
+        subject_condition_set_id
+    )
+    VALUES ($1, $2, $3)
+    RETURNING id
+),
+inserted_actions AS (
+    INSERT INTO subject_mapping_actions (subject_mapping_id, action_id)
+    SELECT 
+        (SELECT id FROM inserted_mapping),
+        unnest(sqlc.arg('action_ids')::uuid[])
+)
+SELECT id FROM inserted_mapping;
 
--- name: CreateSubjectMapping :one
-INSERT INTO subject_mappings (attribute_value_id, actions, metadata, subject_condition_set_id)
-VALUES ($1, $2, $3, $4)
-RETURNING id;
+-- name: updateSubjectMapping :execrows
+WITH
+    subject_mapping_update AS (
+        UPDATE subject_mappings
+        SET
+            metadata = COALESCE(sqlc.narg('metadata')::JSONB, metadata),
+            subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id')::UUID, subject_condition_set_id)
+        WHERE id = sqlc.arg('id')
+        RETURNING id
+    ),
+    -- Delete any actions that are NOT in the new list
+    action_delete AS (
+        DELETE FROM subject_mapping_actions
+        WHERE
+            subject_mapping_id = sqlc.arg('id')
+            AND sqlc.narg('action_ids')::UUID[] IS NOT NULL
+            AND action_id NOT IN (SELECT unnest(sqlc.narg('action_ids')::UUID[]))
+    ),
+    -- Insert actions that are not already related to the mapping
+    action_insert AS (
+        INSERT INTO
+            subject_mapping_actions (subject_mapping_id, action_id)
+        SELECT
+            sqlc.arg('id'),
+            a
+        FROM unnest(sqlc.narg('action_ids')::UUID[]) AS a
+        WHERE
+            sqlc.narg('action_ids')::UUID[] IS NOT NULL
+            AND NOT EXISTS (
+                SELECT 1
+                FROM subject_mapping_actions
+                WHERE subject_mapping_id = sqlc.arg('id') AND action_id = a
+            )
+    ),
+    update_count AS (
+        SELECT COUNT(*) AS cnt
+        FROM subject_mapping_update
+    )
+SELECT cnt
+FROM update_count;
 
--- name: UpdateSubjectMapping :execrows
-UPDATE subject_mappings
-SET
-    actions = COALESCE(sqlc.narg('actions'), actions),
-    metadata = COALESCE(sqlc.narg('metadata'), metadata),
-    subject_condition_set_id = COALESCE(sqlc.narg('subject_condition_set_id'), subject_condition_set_id)
-WHERE id = $1;
-
--- name: DeleteSubjectMapping :execrows
+-- name: deleteSubjectMapping :execrows
 DELETE FROM subject_mappings WHERE id = $1;
 
 
@@ -1139,6 +1228,97 @@ INSERT INTO attribute_value_public_key_map (value_id, key_id) VALUES ($1, $2);
 -- name: removePublicKeyFromAttributeValue :execrows
 DELETE FROM attribute_value_public_key_map WHERE value_id = $1 AND key_id = $2;
 
+
+---------------------------------------------------------------- 
+-- ACTIONS
+----------------------------------------------------------------
+
+-- name: listActions :many
+WITH counted AS (
+    SELECT COUNT(id) AS total FROM actions
+)
+SELECT 
+    a.id,
+    a.name,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+        'labels', a.metadata -> 'labels', 
+        'created_at', a.created_at, 
+        'updated_at', a.updated_at
+    )) as metadata,
+    a.is_standard,
+    counted.total
+FROM actions a
+CROSS JOIN counted
+LIMIT @limit_ 
+OFFSET @offset_;
+
+-- name: getAction :one
+SELECT 
+    id,
+    name,
+    is_standard,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
+FROM actions a
+WHERE 
+  (sqlc.narg('id')::uuid IS NULL OR a.id = sqlc.narg('id')::uuid)
+  AND (sqlc.narg('name')::text IS NULL OR a.name = sqlc.narg('name')::text);
+
+-- name: createOrListActionsByName :many
+WITH input_actions AS (
+    SELECT unnest(sqlc.arg('action_names')::text[]) AS name
+),
+new_actions AS (
+    INSERT INTO actions (name, is_standard)
+    SELECT 
+        input.name, 
+        FALSE -- custom actions
+    FROM input_actions input
+    WHERE NOT EXISTS (
+        SELECT 1 FROM actions a WHERE LOWER(a.name) = LOWER(input.name)
+    )
+    ON CONFLICT (name) DO NOTHING
+    RETURNING id, name, is_standard, created_at
+),
+all_actions AS (
+    -- Get existing actions that match input names
+    SELECT a.id, a.name, a.is_standard, a.created_at, 
+           TRUE AS pre_existing
+    FROM actions a
+    JOIN input_actions input ON LOWER(a.name) = LOWER(input.name)
+    
+    UNION ALL
+    
+    -- Include newly created actions
+    SELECT id, name, is_standard, created_at,
+           FALSE AS pre_existing
+    FROM new_actions
+)
+SELECT 
+    id,
+    name,
+    is_standard,
+    created_at,
+    pre_existing
+FROM all_actions
+ORDER BY name;
+
+-- name: createCustomAction :one
+INSERT INTO actions (name, metadata, is_standard)
+VALUES ($1, $2, FALSE)
+RETURNING id;
+
+-- name: updateCustomAction :execrows
+UPDATE actions
+SET
+    name = COALESCE(sqlc.narg('name'), name),
+    metadata = COALESCE(sqlc.narg('metadata'), metadata)
+WHERE id = $1
+  AND is_standard = FALSE;
+
+-- name: deleteCustomAction :execrows
+DELETE FROM actions
+WHERE id = $1
+  AND is_standard = FALSE;
 
 ----------------------------------------------------------------
 -- REGISTERED RESOURCES

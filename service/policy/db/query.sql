@@ -1221,7 +1221,9 @@ WHERE id = $1;
 -- name: listRegisteredResourceValues :many
 WITH counted AS (
     SELECT COUNT(id) AS total
-    FROM registered_resources
+    FROM registered_resource_values
+    WHERE
+        NULLIF(@registered_resource_id, '') IS NULL OR registered_resource_id = @registered_resource_id::UUID
 )
 SELECT
     id,

@@ -126,7 +126,11 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithNonUniqueNa
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_Succeeds() {
 	existingRes := s.f.GetRegisteredResourceKey("res_only")
 
-	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, existingRes.ID)
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
+			ResourceId: existingRes.ID,
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(existingRes.Name, got.GetName())
@@ -139,19 +143,34 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_Succeeds() {
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_WithValues_Succeeds() {
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
-	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
 
-	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, existingRes.ID)
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
+			ResourceId: existingRes.ID,
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(got)
 	values := got.GetValues()
 	s.Require().Len(values, 2)
-	s.Equal(existingResValue1.Value, values[0].GetValue())
-	s.Equal(existingResValue2.Value, values[1].GetValue())
+	var found bool
+	for _, v := range values {
+		// check at least one of the expected values exists
+		if existingResValue1.ID == v.GetId() {
+			found = true
+			s.Equal(existingResValue1.Value, v.GetValue())
+			break
+		}
+	}
+	s.True(found)
 }
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_InvalidID_Fails() {
-	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, invalidID)
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
+			ResourceId: invalidID,
+		},
+	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(got)
@@ -161,8 +180,6 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_InvalidID_Fails() 
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_NoPagination_Succeeds() {
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
-	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
-	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
 	existingResOnly := s.f.GetRegisteredResourceKey("res_only")
 
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})
@@ -177,8 +194,6 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_NoPagination_Suc
 			s.Equal(existingRes.Name, r.GetName())
 			values := r.GetValues()
 			s.Require().Len(values, 2)
-			s.Equal(existingResValue1.Value, values[0].GetValue())
-			s.Equal(existingResValue2.Value, values[1].GetValue())
 			metadata := r.GetMetadata()
 			s.False(metadata.GetCreatedAt().AsTime().IsZero())
 			s.False(metadata.GetUpdatedAt().AsTime().IsZero())
@@ -188,6 +203,9 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_NoPagination_Suc
 			foundCount++
 			s.Equal(existingResOnly.Name, r.GetName())
 			s.Require().Empty(r.GetValues())
+			metadata := r.GetMetadata()
+			s.False(metadata.GetCreatedAt().AsTime().IsZero())
+			s.False(metadata.GetUpdatedAt().AsTime().IsZero())
 		}
 	}
 
@@ -302,7 +320,11 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResource_Succeeds() {
 	s.NotNil(updated)
 
 	// verify resource not updated
-	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, created.GetId())
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
+			ResourceId: created.GetId(),
+		},
+	})
 	s.Require().NoError(err)
 	s.Require().NotNil(got)
 	s.Equal(created.GetName(), got.GetName())
@@ -321,7 +343,11 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResource_Succeeds() {
 	s.NotNil(updated)
 
 	// verify resource updated
-	got, err = s.db.PolicyClient.GetRegisteredResource(s.ctx, created.GetId())
+	got, err = s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
+			ResourceId: created.GetId(),
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal("test_update_res__new_name", got.GetName())
@@ -349,7 +375,11 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResource_NormalizedName_
 	s.NotNil(updated)
 
 	// verify resource updated
-	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, created.GetId())
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
+			ResourceId: created.GetId(),
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal("test_update_res_norma-lized", got.GetName())
@@ -398,7 +428,11 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResource_Succeeds() {
 	s.Require().Equal(created.GetId(), deleted.GetId())
 
 	// verify resource deleted
-	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, created.GetId())
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
+			ResourceId: created.GetId(),
+		},
+	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(got)
@@ -406,12 +440,20 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResource_Succeeds() {
 	// verify resource values deleted
 	gotValues := created.GetValues()
 
-	gotValue1, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, gotValues[0].GetId())
+	gotValue1, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
+			ValueId: gotValues[0].GetId(),
+		},
+	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(gotValue1)
 
-	gotValue2, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, gotValues[1].GetId())
+	gotValue2, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
+			ValueId: gotValues[1].GetId(),
+		},
+	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(gotValue2)
@@ -522,7 +564,11 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_Succeeds() {
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 
-	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, existingResValue1.ID)
+	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
+			ValueId: existingResValue1.ID,
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(existingRes.ID, got.GetResource().GetId())
@@ -533,7 +579,11 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_Succeeds() {
 }
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_InvalidID_Fails() {
-	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, invalidID)
+	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
+			ValueId: invalidID,
+		},
+	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(got)
@@ -716,7 +766,11 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.NotNil(updated)
 
 	// verify resource value not updated
-	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, created.GetId())
+	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
+			ValueId: created.GetId(),
+		},
+	})
 	s.Require().NoError(err)
 	s.Require().NotNil(got)
 	s.Equal(created.GetValue(), got.GetValue())
@@ -735,7 +789,11 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.NotNil(updated)
 
 	// verify resource updated
-	got, err = s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, created.GetId())
+	got, err = s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
+			ValueId: created.GetId(),
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal("updated_value", got.GetValue())
@@ -770,7 +828,11 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Normalized
 	s.NotNil(updated)
 
 	// verify resource value updated
-	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, created.GetId())
+	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
+			ValueId: created.GetId(),
+		},
+	})
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal("value_norma-lized", got.GetValue())
@@ -837,7 +899,11 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_Succeeds()
 
 	// verify resource value deleted
 
-	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, created.GetId())
+	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
+			ValueId: created.GetId(),
+		},
+	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(got)

@@ -65,24 +65,25 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 		}
 	}
 
-	return c.GetRegisteredResource(ctx, createdID)
+	return c.GetRegisteredResource(ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
+			ResourceId: createdID,
+		},
+	})
 }
 
-func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, identifier any) (*policy.RegisteredResource, error) {
+func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registeredresources.GetRegisteredResourceRequest) (*policy.RegisteredResource, error) {
 	var id string
 
-	switch i := identifier.(type) {
-	case string:
-		id = i
-	case *registeredresources.GetRegisteredResourceRequest_ResourceId:
+	switch {
+	case r.GetResourceId() != "":
 		// TODO: refactor to pgtype.UUID once the query supports both id and fqn
-		id = i.ResourceId
-	case *registeredresources.GetRegisteredResourceRequest_Fqn:
+		id = r.GetResourceId()
+	case r.GetFqn() != "":
 		// TODO: implement
 		return nil, errors.New("FQN support not yet implemented")
 	default:
-		// unexpected type
-		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
+		return nil, db.ErrSelectIdentifierInvalid
 	}
 
 	rr, err := c.Queries.getRegisteredResource(ctx, id)
@@ -166,7 +167,11 @@ func (c PolicyDBClient) UpdateRegisteredResource(ctx context.Context, r *registe
 	id := r.GetId()
 	name := strings.ToLower(r.GetName())
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		v, err := c.GetRegisteredResource(ctx, id)
+		v, err := c.GetRegisteredResource(ctx, &registeredresources.GetRegisteredResourceRequest{
+			Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
+				ResourceId: id,
+			},
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -230,24 +235,26 @@ func (c PolicyDBClient) CreateRegisteredResourceValue(ctx context.Context, r *re
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return c.GetRegisteredResourceValue(ctx, createdID)
+	return c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
+			ValueId: createdID,
+		},
+	})
 }
 
-func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, identifier any) (*policy.RegisteredResourceValue, error) {
+func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *registeredresources.GetRegisteredResourceValueRequest) (*policy.RegisteredResourceValue, error) {
 	var id string
 
-	switch i := identifier.(type) {
-	case string:
-		id = i
-	case *registeredresources.GetRegisteredResourceValueRequest_ValueId:
+	switch {
+	case r.GetValueId() != "":
 		// TODO: refactor to pgtype.UUID once the query supports both id and fqn
-		id = i.ValueId
-	case *registeredresources.GetRegisteredResourceRequest_Fqn:
+		id = r.GetValueId()
+	case r.GetFqn() != "":
 		// TODO: implement
 		return nil, errors.New("FQN support not yet implemented")
 	default:
 		// unexpected type
-		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
+		return nil, db.ErrSelectIdentifierInvalid
 	}
 
 	rv, err := c.Queries.getRegisteredResourceValue(ctx, id)
@@ -327,7 +334,11 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 	id := r.GetId()
 	value := strings.ToLower(r.GetValue())
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		v, err := c.GetRegisteredResourceValue(ctx, id)
+		v, err := c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
+			Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
+				ValueId: id,
+			},
+		})
 		if err != nil {
 			return nil, err
 		}

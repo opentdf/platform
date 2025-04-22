@@ -440,7 +440,6 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResource_Succeeds() {
 	// verify resource values deleted
 	gotValues := created.GetValues()
 
-	// gotValue1, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, gotValues[0].GetId())
 	gotValue1, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
 		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
 			ValueId: gotValues[0].GetId(),

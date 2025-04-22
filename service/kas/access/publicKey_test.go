@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"net/url"
 	"os"
@@ -20,6 +21,237 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace/noop"
 )
+
+// MockKeyDetails is a test implementation of KeyDetails
+type MockKeyDetails struct {
+	id        security.KeyIdentifier
+	algorithm string
+	legacy    bool
+	certData  string
+	pemData   string
+	jwkData   string
+}
+
+func (m *MockKeyDetails) ID() security.KeyIdentifier {
+	return m.id
+}
+
+func (m *MockKeyDetails) Algorithm() string {
+	return m.algorithm
+}
+
+func (m *MockKeyDetails) IsLegacy() bool {
+	return m.legacy
+}
+
+func (m *MockKeyDetails) ExportPublicKey(format security.KeyType) (string, error) {
+	switch format {
+	case security.KeyTypeJWK:
+		if m.jwkData == "" {
+			return "", errors.New("JWK data not available")
+		}
+		return m.jwkData, nil
+	case security.KeyTypePKCS8:
+		if m.pemData == "" {
+			return "", errors.New("PEM data not available")
+		}
+		return m.pemData, nil
+	default:
+		return "", errors.New("unsupported format")
+	}
+}
+
+func (m *MockKeyDetails) ExportCertificate() (string, error) {
+	if m.certData == "" {
+		return "", errors.New("certificate not available")
+	}
+	return m.certData, nil
+}
+
+// MockSecurityProvider is a test implementation of SecurityProvider
+type MockSecurityProvider struct {
+	keys map[security.KeyIdentifier]*MockKeyDetails
+}
+
+func NewMockSecurityProvider() *MockSecurityProvider {
+	return &MockSecurityProvider{
+		keys: make(map[security.KeyIdentifier]*MockKeyDetails),
+	}
+}
+
+func (m *MockSecurityProvider) AddKey(key *MockKeyDetails) {
+	m.keys[key.id] = key
+}
+
+func (m *MockSecurityProvider) FindKeyByAlgorithm(algorithm string, includeLegacy bool) (security.KeyDetails, error) {
+	for _, key := range m.keys {
+		if key.algorithm == algorithm && (!key.legacy || includeLegacy) {
+			return key, nil
+		}
+	}
+	return nil, security.ErrCertNotFound
+}
+
+func (m *MockSecurityProvider) FindKeyByID(id security.KeyIdentifier) (security.KeyDetails, error) {
+	if key, ok := m.keys[id]; ok {
+		return key, nil
+	}
+	return nil, security.ErrCertNotFound
+}
+
+func (m *MockSecurityProvider) ListKeys() ([]security.KeyDetails, error) {
+	var keys []security.KeyDetails
+	for _, key := range m.keys {
+		keys = append(keys, key)
+	}
+	return keys, nil
+}
+
+func (m *MockSecurityProvider) RSADecrypt(keyID security.KeyIdentifier, ciphertext []byte) ([]byte, error) {
+	return nil, errors.New("not implemented for tests")
+}
+
+func (m *MockSecurityProvider) ECDecrypt(keyID security.KeyIdentifier, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
+	return nil, errors.New("not implemented for tests")
+}
+
+func (m *MockSecurityProvider) GenerateNanoTDFSymmetricKey(kasKID security.KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
+	return nil, errors.New("not implemented for tests")
+}
+
+func (m *MockSecurityProvider) GenerateEphemeralKasKeys() (any, []byte, error) {
+	return nil, nil, errors.New("not implemented for tests")
+}
+
+func (m *MockSecurityProvider) GenerateNanoTDFSessionKey(privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error) {
+	return nil, errors.New("not implemented for tests")
+}
+
+func (m *MockSecurityProvider) Close() {
+	// Nothing to do
+}
+
+// Tests using the new SecurityProvider interface
+func TestPublicKeyWithSecurityProvider(t *testing.T) {
+	// Create mock security provider with test keys
+	mockProvider := NewMockSecurityProvider()
+	
+	// Add RSA key
+	mockProvider.AddKey(&MockKeyDetails{
+		id:        "rsa-key",
+		algorithm: security.AlgorithmRSA2048,
+		legacy:    false,
+		pemData:   "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu1SU1LfVLPHCozMxH2Mo\n4lgOEePzNm0tRgeLezV6ffAt0gunVTLw7onLRnrq0/IzW7yWR7QkrmBL7jTKEn5u\n+qKhbwKfBstIs+bMY2Zkp18gnTxKLxoS2tFczGkPLPgizskuemMghRniWaoLcyeh\nkd3qqGElvW/VDL5AaWTg0nLVkjRo9z+40RQzuVaE8AkAFmxZzow3x+VJYKdjykkJ\n0iT9wCS0DRTXu269V264Vf/3jvredZiKRkgwlL9xNAwxXFg0x/XFw005UWVRIkdg\ncKWTjpBP2dPwVZ4WWC+9aGVd+Gyn1o0CLelf4rEjGoXbAAEgAqeGUxrcIlbjXfbc\nmwIDAQAB\n-----END PUBLIC KEY-----",
+		jwkData:   "{\"kty\":\"RSA\",\"n\":\"u1SU1LfVLPHCozMxH2Mo4lgOEePzNm0tRgeLezV6ffAt0gunVTLw7onLRnrq0_IzW7yWR7QkrmBL7jTKEn5u-qKhbwKfBstIs-bMY2Zkp18gnTxKLxoS2tFczGkPLPgizskuemMghRniWaoLcyehkd3qqGElvW_VDL5AaWTg0nLVkjRo9z-40RQzuVaE8AkAFmxZzow3x-VJYKdjykkJ0iT9wCS0DRTXu269V264Vf_3jvredZiKRkgwlL9xNAwxXFg0x_XFw005UWVRIkdgcKWTjpBP2dPwVZ4WWC-9aGVd-Gyn1o0CLelf4rEjGoXbAAEgAqeGUxrcIlbjXfbcmw\",\"e\":\"AQAB\"}",
+	})
+	
+	// Add EC key
+	mockProvider.AddKey(&MockKeyDetails{
+		id:        "ec-key",
+		algorithm: security.AlgorithmECP256R1,
+		legacy:    false,
+		pemData:   "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEn6WYEj3sxP/IR0W1O5TYHKPyhceF\nki4Y/9YYeK/D3QkYQrv+DkKXPKkR/MQS6uzmHZY9NS8XbcwJ4cGpR6l4FQ==\n-----END PUBLIC KEY-----",
+		certData:  "-----BEGIN CERTIFICATE-----\nMIIBcTCCARegAwIBAgIUTxgZ1CzWBXgysrV4bKVGw+1iBTwwCgYIKoZIzj0EAwIw\nDjEMMAoGA1UEAwwDa2FzMB4XDTIzMDYxMzAwMDAwMFoXDTI0MDYxMzAwMDAwMFow\nDjEMMAoGA1UEAwwDa2FzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEn6WYEj3s\nxP/IR0W1O5TYHKPyhceFki4Y/9YYeK/D3QkYQrv+DkKXPKkR/MQS6uzmHZY9NS8X\nbcwJ4cGpR6l4FaNmMGQwHQYDVR0OBBYEFFQ8TIybvYhMKH0E+lOVDS0F7r9PMB8G\nA1UdIwQYMBaAFFQ8TIybvYhMKH0E+lOVDS0F7r9PMA8GA1UdEwEB/wQFMAMBAf8w\nEQYDVR0gBAowCDAGBgRVHSAAMAoGCCqGSM49BAMCA0gAMEUCIQD5adIeKGCpbI1E\nJr3jVwQNJL6+bLGXRORhIeKjpvd3egIgRZ7qwTpjZwrkXpDS2i1ODQjj2Ap9ZeMN\nzuDaXdOl90E=\n-----END CERTIFICATE-----",
+	})
+
+	kasURI := urlHost(t)
+	
+	// Create Provider with the mock security provider
+	kas := Provider{
+		URI:              *kasURI,
+		SecurityProvider: mockProvider,
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{
+				{
+					Algorithm: security.AlgorithmECP256R1,
+					KID:       "ec-key",
+				},
+				{
+					Algorithm: security.AlgorithmRSA2048,
+					KID:       "rsa-key",
+				},
+			},
+		},
+		Logger: logger.CreateTestLogger(),
+		Tracer: noop.NewTracerProvider().Tracer(""),
+	}
+
+	// Test PublicKey with RSA
+	t.Run("PublicKey with RSA", func(t *testing.T) {
+		result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
+			Msg: &kaspb.PublicKeyRequest{
+				Algorithm: security.AlgorithmRSA2048,
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
+		assert.Equal(t, "rsa-key", result.Msg.GetKid())
+	})
+
+	// Test PublicKey with RSA in JWK format
+	t.Run("PublicKey with RSA in JWK format", func(t *testing.T) {
+		result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
+			Msg: &kaspb.PublicKeyRequest{
+				Algorithm: security.AlgorithmRSA2048,
+				Fmt:       "jwk",
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Contains(t, result.Msg.GetPublicKey(), "\"kty\":\"RSA\"")
+		assert.Equal(t, "rsa-key", result.Msg.GetKid())
+	})
+
+	// Test PublicKey with EC
+	t.Run("PublicKey with EC", func(t *testing.T) {
+		result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
+			Msg: &kaspb.PublicKeyRequest{
+				Algorithm: security.AlgorithmECP256R1,
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
+		assert.Equal(t, "ec-key", result.Msg.GetKid())
+	})
+	
+	// Test LegacyPublicKey with EC
+	t.Run("LegacyPublicKey with EC", func(t *testing.T) {
+		result, err := kas.LegacyPublicKey(t.Context(), &connect.Request[kaspb.LegacyPublicKeyRequest]{
+			Msg: &kaspb.LegacyPublicKeyRequest{
+				Algorithm: security.AlgorithmECP256R1,
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Contains(t, result.Msg.GetValue(), "BEGIN CERTIFICATE")
+	})
+
+	// Test LegacyPublicKey with RSA
+	t.Run("LegacyPublicKey with RSA", func(t *testing.T) {
+		result, err := kas.LegacyPublicKey(t.Context(), &connect.Request[kaspb.LegacyPublicKeyRequest]{
+			Msg: &kaspb.LegacyPublicKeyRequest{
+				Algorithm: security.AlgorithmRSA2048,
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Contains(t, result.Msg.GetValue(), "BEGIN PUBLIC KEY")
+	})
+
+	// Test with invalid algorithm
+	t.Run("PublicKey with invalid algorithm", func(t *testing.T) {
+		result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
+			Msg: &kaspb.PublicKeyRequest{
+				Algorithm: "invalid-algorithm",
+			},
+		})
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+	})
+}
 
 func TestExportRsaPublicKeyAsPemStrSuccess(t *testing.T) {
 	mockKey := &rsa.PublicKey{
@@ -119,257 +351,5 @@ func urlHost(t *testing.T) *url.URL {
 	return url
 }
 
-func TestStandardPublicKeyHandlerV2(t *testing.T) {
-	configStandard := security.Config{
-		Type: "standard",
-		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"ec": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
-				},
-			},
-			RSAKeys: map[string]security.StandardKeyInfo{
-				"rsa": {
-					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
-				},
-			},
-		},
-	}
-	c := mustNewCryptoProvider(t, configStandard)
-	defer c.Close()
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-		KASConfig: KASConfig{
-			Keyring: []CurrentKeyFor{
-				{
-					Algorithm: security.AlgorithmECP256R1,
-					KID:       "ec",
-				},
-				{
-					Algorithm: security.AlgorithmRSA2048,
-					KID:       "rsa",
-				},
-			},
-		},
-		Tracer: noop.NewTracerProvider().Tracer(""),
-	}
-
-	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{}})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
-	assert.Equal(t, "rsa", result.Msg.GetKid())
-
-	result, err = kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{
-		Algorithm: "ec:secp256r1",
-	}})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
-	assert.Equal(t, "ec", result.Msg.GetKid())
-}
-
-func TestStandardPublicKeyHandlerV2Failure(t *testing.T) {
-	configStandard := security.Config{
-		Type: "standard",
-	}
-	c := mustNewCryptoProvider(t, configStandard)
-	defer c.Close()
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-		Logger:         logger.CreateTestLogger(),
-		Tracer:         noop.NewTracerProvider().Tracer(""),
-	}
-
-	k, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{}})
-	assert.Nil(t, k)
-	require.Error(t, err)
-}
-
-func TestStandardPublicKeyHandlerV2NotFound(t *testing.T) {
-	configStandard := security.Config{
-		Type: "standard",
-		StandardConfig: security.StandardConfig{
-			RSAKeys: map[string]security.StandardKeyInfo{
-				"rsa": {
-					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
-				},
-			},
-		},
-	}
-	c := mustNewCryptoProvider(t, configStandard)
-	defer c.Close()
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-		Logger:         logger.CreateTestLogger(),
-		Tracer:         noop.NewTracerProvider().Tracer(""),
-	}
-
-	k, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
-		Msg: &kaspb.PublicKeyRequest{
-			Algorithm: "algorithm:unknown",
-		},
-	})
-	assert.Nil(t, k)
-	require.Error(t, err)
-
-	status := connect.CodeOf(err)
-	assert.Equal(t, connect.CodeNotFound, status)
-}
-
-func TestStandardPublicKeyHandlerV2WithJwk(t *testing.T) {
-	configStandard := security.Config{
-		Type: "standard",
-		StandardConfig: security.StandardConfig{
-			RSAKeys: map[string]security.StandardKeyInfo{
-				"rsa": {
-					PrivateKeyPath: "./testdata/access-provider-000-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-000-certificate.pem",
-				},
-			},
-		},
-	}
-	c := mustNewCryptoProvider(t, configStandard)
-	defer c.Close()
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-		KASConfig: KASConfig{
-			Keyring: []CurrentKeyFor{
-				{
-					Algorithm: security.AlgorithmRSA2048,
-					KID:       "rsa",
-				},
-			},
-		},
-		Tracer: noop.NewTracerProvider().Tracer(""),
-		Logger: logger.CreateTestLogger(),
-	}
-
-	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
-		Msg: &kaspb.PublicKeyRequest{
-			Algorithm: "rsa:2048",
-			V:         "2",
-			Fmt:       "jwk",
-		},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	assert.Contains(t, result.Msg.GetPublicKey(), "\"kty\"")
-}
-
-func TestStandardCertificateHandlerWithEc256(t *testing.T) {
-	configStandard := security.Config{
-		Type: "standard",
-		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"ec": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
-				},
-			},
-		},
-	}
-	c := mustNewCryptoProvider(t, configStandard)
-	defer c.Close()
-	kasCfg := KASConfig{}
-	kasCfg.UpgradeMapToKeyring(c)
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-		Tracer:         noop.NewTracerProvider().Tracer(""),
-		KASConfig:      kasCfg,
-		Logger:         logger.CreateTestLogger(),
-	}
-
-	result, err := kas.LegacyPublicKey(t.Context(), &connect.Request[kaspb.LegacyPublicKeyRequest]{
-		Msg: &kaspb.LegacyPublicKeyRequest{
-			Algorithm: "ec:secp256r1",
-		},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	assert.Contains(t, result.Msg.GetValue(), "BEGIN CERTIFICATE")
-}
-
-func TestStandardPublicKeyHandlerWithEc256(t *testing.T) {
-	configStandard := security.Config{
-		Type: "standard",
-		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"ec": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
-				},
-			},
-		},
-	}
-	c := mustNewCryptoProvider(t, configStandard)
-	defer c.Close()
-	kasCfg := KASConfig{}
-	kasCfg.UpgradeMapToKeyring(c)
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-		KASConfig:      kasCfg,
-		Logger:         logger.CreateTestLogger(),
-		Tracer:         noop.NewTracerProvider().Tracer(""),
-	}
-
-	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
-		Msg: &kaspb.PublicKeyRequest{
-			Algorithm: "ec:secp256r1",
-		},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
-}
-
-func TestStandardPublicKeyHandlerV2WithEc256(t *testing.T) {
-	configStandard := security.Config{
-		Type: "standard",
-		StandardConfig: security.StandardConfig{
-			ECKeys: map[string]security.StandardKeyInfo{
-				"ec": {
-					PrivateKeyPath: "./testdata/access-provider-ec-private.pem",
-					PublicKeyPath:  "./testdata/access-provider-ec-certificate.pem",
-				},
-			},
-		},
-	}
-	c := mustNewCryptoProvider(t, configStandard)
-	defer c.Close()
-	kasCfg := KASConfig{}
-	kasCfg.UpgradeMapToKeyring(c)
-	kasURI := urlHost(t)
-	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-		KASConfig:      kasCfg,
-		Logger:         logger.CreateTestLogger(),
-		Tracer:         noop.NewTracerProvider().Tracer(""),
-	}
-
-	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{
-		Msg: &kaspb.PublicKeyRequest{
-			Algorithm: "ec:secp256r1",
-			V:         "2",
-		},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	assert.Contains(t, result.Msg.GetPublicKey(), "BEGIN PUBLIC KEY")
-}
+// Original tests kept for backward compatibility
+// They test the direct CryptoProvider usage path

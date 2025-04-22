@@ -19,14 +19,37 @@ const (
 
 type Provider struct {
 	kaspb.AccessServiceServer
-	URI            url.URL `json:"uri"`
-	SDK            *otdf.SDK
-	AttributeSvc   *url.URL
-	CryptoProvider security.CryptoProvider
-	Logger         *logger.Logger
-	Config         *config.ServiceConfig
+	URI              url.URL `json:"uri"`
+	SDK              *otdf.SDK
+	AttributeSvc     *url.URL
+	SecurityProvider security.SecurityProvider
+	CryptoProvider   security.CryptoProvider // Kept for backward compatibility
+	Logger           *logger.Logger
+	Config           *config.ServiceConfig
 	KASConfig
 	trace.Tracer
+}
+
+// Deprecated: Use SecurityProvider instead
+func (p *Provider) GetCryptoProvider() security.CryptoProvider {
+	return p.CryptoProvider
+}
+
+// GetSecurityProvider returns the SecurityProvider
+func (p *Provider) GetSecurityProvider() security.SecurityProvider {
+	// If SecurityProvider is explicitly set, use it
+	if p.SecurityProvider != nil {
+		return p.SecurityProvider
+	}
+
+	// Otherwise, create an adapter from CryptoProvider if available
+	if p.CryptoProvider != nil {
+		return security.NewSecurityProviderAdapter(p.CryptoProvider)
+	}
+
+	// This shouldn't happen in normal operation
+	p.Logger.Error("no security provider available")
+	return nil
 }
 
 type KASConfig struct {

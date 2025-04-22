@@ -45,7 +45,7 @@ func (a *SecurityProviderAdapter) FindKeyByID(id KeyIdentifier) (KeyDetails, err
 func (a *SecurityProviderAdapter) ListKeys() ([]KeyDetails, error) {
 	// This is a limited implementation as CryptoProvider doesn't expose a list of all keys
 	var keys []KeyDetails
-	
+
 	// Try to find keys for known algorithms
 	for _, alg := range []string{AlgorithmRSA2048, AlgorithmECP256R1} {
 		if kid := a.cryptoProvider.FindKID(alg); kid != "" {
@@ -56,7 +56,7 @@ func (a *SecurityProviderAdapter) ListKeys() ([]KeyDetails, error) {
 			})
 		}
 	}
-	
+
 	return keys, nil
 }
 

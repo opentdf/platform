@@ -41,13 +41,13 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 	}
 	var pem string
 	var err error
-	
+
 	// Get the security provider
 	securityProvider := p.GetSecurityProvider()
 	if securityProvider == nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
 	}
-	
+
 	// Find the key ID
 	kid, err := p.lookupKid(ctx, algorithm)
 	if err != nil {
@@ -56,7 +56,7 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 
 	// Convert string KID to KeyIdentifier type
 	keyID := security.KeyIdentifier(kid)
-	
+
 	// Find the key by ID
 	keyDetails, err := securityProvider.FindKeyByID(keyID)
 	if err != nil {
@@ -84,7 +84,7 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 	default:
 		return nil, connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("invalid algorithm")))
 	}
-	
+
 	return connect.NewResponse(&wrapperspb.StringValue{Value: pem}), nil
 }
 
@@ -97,7 +97,7 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 		algorithm = security.AlgorithmRSA2048
 	}
 	fmt := req.Msg.GetFmt()
-	
+
 	// Find the key ID
 	kid, err := p.lookupKid(ctx, algorithm)
 	if err != nil {
@@ -134,7 +134,7 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 	if err != nil {
 		return r("", kid, err)
 	}
-	
+
 	switch algorithm {
 	case security.AlgorithmECP256R1:
 		// For EC keys, export the public key

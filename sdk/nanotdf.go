@@ -1050,8 +1050,8 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 			}
 			handler.config.kasAllowlist = allowList
 		} else {
-			slog.Warn("No KAS allowlist provided and no KeyAccessServerRegistry available, ignoring allowlist")
-			handler.config.ignoreAllowList = true
+			slog.Error("No KAS allowlist provided and no KeyAccessServerRegistry available")
+			return 0, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
 		}
 	}
 

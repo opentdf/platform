@@ -695,8 +695,8 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 			}
 			config.kasAllowlist = allowList
 		} else {
-			slog.Warn("No KAS allowlist provided and no KeyAccessServerRegistry available, ignoring allowlist")
-			config.ignoreAllowList = true
+			slog.Error("No KAS allowlist provided and no KeyAccessServerRegistry available")
+			return nil, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
 		}
 	}
 

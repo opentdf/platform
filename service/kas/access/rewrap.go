@@ -94,10 +94,6 @@ func err403(s string) error {
 	return connect.NewError(connect.CodePermissionDenied, errors.Join(ErrUser, status.Error(codes.PermissionDenied, s)))
 }
 
-func err500(s string) error {
-	return connect.NewError(connect.CodeInternal, errors.Join(ErrInternal, status.Error(codes.Internal, s)))
-}
-
 func generateHMACDigest(ctx context.Context, msg, key []byte, logger logger.Logger) ([]byte, error) {
 	mac := hmac.New(sha256.New, key)
 	_, err := mac.Write(msg)
@@ -728,13 +724,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		return "", results
 	}
 
-	privateKeyHandle, ephemeralKeyPEM, err := p.GetSecurityProvider().GenerateEphemeralKasKeys()
-	if err != nil {
-		failAllKaos(requests, results, err500("entropy failure"))
-		p.Logger.WarnContext(ctx, "failure in GenerateEphemeralKasKeys", "err", err)
-		return "", results
-	}
-	sessionKey, err := p.GetSecurityProvider().GenerateNanoTDFSessionKey(privateKeyHandle, []byte(clientPublicKey))
+	sessionKey, err := p.GetSecurityProvider().GenerateNanoTDFSessionKey(ctx, clientPublicKey)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure in GenerateNanoTDFSessionKey", "err", err)
 		failAllKaos(requests, results, err400("keypair mismatch"))
@@ -771,7 +761,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 				failedKAORewrap(kaoResults, kao, err403("forbidden"))
 				continue
 			}
-			cipherText, err := wrapKeyAES(sessionKey, kaoInfo.DEK)
+			cipherText, err := kaoInfo.DEK.Export(sessionKey)
 			if err != nil {
 				p.Logger.Audit.RewrapFailure(ctx, auditEventParams)
 				failedKAORewrap(kaoResults, kao, err403("forbidden"))
@@ -786,7 +776,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
 		}
 	}
-	return string(ephemeralKeyPEM), results
+	return string(sessionKey.EphemeralKey()), results
 }
 
 func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]kaoResult) {
@@ -825,7 +815,7 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 			return nil, results
 		}
 
-		symmetricKey, err := p.GetSecurityProvider().GenerateNanoTDFSymmetricKey(kid, header.EphemeralKey, ecCurve)
+		symmetricKey, err := p.GetSecurityProvider().GenerateNanoTDFSymmetricKey(ctx, security.KeyIdentifier(kid), header.EphemeralKey, ecCurve)
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("failed to generate symmetric key: %w", err))
 			return nil, results
@@ -851,7 +841,7 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 		}
 		results[kao.GetKeyAccessObjectId()] = kaoResult{
 			ID:  kao.GetKeyAccessObjectId(),
-			DEK: security.UnwrappedKeyData(symmetricKey),
+			DEK: security.NewStandardUnwrappedKey(symmetricKey),
 		}
 		return policy, results
 	}
@@ -884,20 +874,6 @@ func extractNanoPolicy(symmetricKey []byte, header sdk.NanoTDFHeader) (*Policy, 
 		return nil, fmt.Errorf("Error unmarshalling policy:%w", err)
 	}
 	return &policy, nil
-}
-
-func wrapKeyAES(sessionKey, dek []byte) ([]byte, error) {
-	gcm, err := ocrypto.NewAESGcm(sessionKey)
-	if err != nil {
-		return nil, fmt.Errorf("crypto.NewAESGcm:%w", err)
-	}
-
-	cipherText, err := gcm.Encrypt(dek)
-	if err != nil {
-		return nil, fmt.Errorf("crypto.AsymEncryption.encrypt:%w", err)
-	}
-
-	return cipherText, nil
 }
 
 func failAllKaos(reqs []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, results policyKAOResults, err error) {

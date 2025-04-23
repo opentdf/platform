@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
@@ -108,7 +109,7 @@ func (m *MockSecurityProvider) ListKeys(ctx context.Context) ([]security.KeyDeta
 	return keys, nil
 }
 
-func (m *MockSecurityProvider) Decrypt(ctx context.Context, keyID security.KeyIdentifier, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
+func (m *MockSecurityProvider) Decrypt(ctx context.Context, keyID security.KeyIdentifier, ephemeralPublicKey, ciphertext []byte) (security.UnwrappedKeyData, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
@@ -116,11 +117,7 @@ func (m *MockSecurityProvider) GenerateNanoTDFSymmetricKey(ctx context.Context, 
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) GenerateEphemeralKasKeys(ctx context.Context) (any, []byte, error) {
-	return nil, nil, errors.New("not implemented for tests")
-}
-
-func (m *MockSecurityProvider) GenerateNanoTDFSessionKey(ctx context.Context, privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error) {
+func (m *MockSecurityProvider) GenerateNanoTDFSessionKey(ctx context.Context, ephemeralPublicKey string) (ocrypto.PublicKeyEncryptor, error) {
 	return nil, errors.New("not implemented for tests")
 }
 

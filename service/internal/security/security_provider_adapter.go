@@ -21,6 +21,14 @@ type StandardUnwrappedKey struct {
 	logger *slog.Logger
 }
 
+// NewStandardUnwrappedKey creates a new instance of StandardUnwrappedKey
+func NewStandardUnwrappedKey(rawKey []byte) *StandardUnwrappedKey {
+	return &StandardUnwrappedKey{
+		rawKey: rawKey,
+		logger: slog.Default(),
+	}
+}
+
 // Export returns the raw key data, optionally encrypting it with the provided encryptor
 func (k *StandardUnwrappedKey) Export(encryptor ocrypto.PublicKeyEncryptor) ([]byte, error) {
 	if encryptor == nil {
@@ -95,7 +103,7 @@ func (k *StandardUnwrappedKey) generateHMACDigest(ctx context.Context, msg []byt
 	return mac.Sum(nil), nil
 }
 
-func convertPEMToJWK(pemKey string) (string, error) {
+func convertPEMToJWK(_ string) (string, error) {
 	// Implement the conversion logic here or use an external library if available.
 	// For now, return a placeholder error to indicate the function is not implemented.
 	return "", errors.New("convertPEMToJWK function is not implemented")
@@ -281,7 +289,7 @@ func (a *SecurityProviderAdapter) Decrypt(ctx context.Context, keyID KeyIdentifi
 
 // determineKeyType tries to determine the algorithm of a key based on its ID
 // This is a helper method for the Decrypt method
-func (a *SecurityProviderAdapter) determineKeyType(ctx context.Context, kid string) (string, error) {
+func (a *SecurityProviderAdapter) determineKeyType(_ context.Context, kid string) (string, error) {
 	// First try RSA
 	if _, err := a.cryptoProvider.RSAPublicKey(kid); err == nil {
 		return AlgorithmRSA2048, nil
@@ -300,14 +308,9 @@ func (a *SecurityProviderAdapter) GenerateNanoTDFSymmetricKey(ctx context.Contex
 	return a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(kasKID), ephemeralPublicKeyBytes, curve)
 }
 
-// GenerateEphemeralKasKeys generates ephemeral keys for KAS operations
-func (a *SecurityProviderAdapter) GenerateEphemeralKasKeys(ctx context.Context) (any, []byte, error) {
-	return a.cryptoProvider.GenerateEphemeralKasKeys()
-}
-
 // GenerateNanoTDFSessionKey generates a session key for NanoTDF
-func (a *SecurityProviderAdapter) GenerateNanoTDFSessionKey(ctx context.Context, privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error) {
-	return a.cryptoProvider.GenerateNanoTDFSessionKey(privateKeyHandle, ephemeralPublicKey)
+func (a *SecurityProviderAdapter) GenerateNanoTDFSessionKey(ctx context.Context, ephemeralPublicKey string) (ocrypto.PublicKeyEncryptor, error) {
+	return ocrypto.FromPublicPEM(ephemeralPublicKey)
 }
 
 // Close releases any resources held by the provider

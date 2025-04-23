@@ -30,11 +30,8 @@ type SecurityProvider interface {
 	// GenerateNanoTDFSymmetricKey generates a symmetric key for NanoTDF
 	GenerateNanoTDFSymmetricKey(ctx context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error)
 
-	// GenerateEphemeralKasKeys generates ephemeral keys for KAS operations
-	GenerateEphemeralKasKeys(ctx context.Context) (any, []byte, error)
-
 	// GenerateNanoTDFSessionKey generates a session key for NanoTDF
-	GenerateNanoTDFSessionKey(ctx context.Context, privateKeyHandle any, ephemeralPublicKey []byte) ([]byte, error)
+	GenerateNanoTDFSessionKey(ctx context.Context, ephemeralPublicKey string) (ocrypto.PublicKeyEncryptor, error)
 
 	// Close releases any resources held by the provider
 	Close()

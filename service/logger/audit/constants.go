@@ -22,6 +22,8 @@ const (
 	ObjectTypeResourceMappingGroup
 	ObjectTypePublicKey
 	ObjectTypeAction
+	ObjectTypeRegisteredResource
+	ObjectTypeRegisteredResourceValue
 )
 
 func (ot ObjectType) String() string {
@@ -41,6 +43,8 @@ func (ot ObjectType) String() string {
 		"resource_mapping_group",
 		"public_key",
 		"action",
+		"registered_resource",
+		"registered_resource_value",
 	}[ot]
 }
 

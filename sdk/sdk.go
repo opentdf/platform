@@ -22,6 +22,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
@@ -70,6 +71,7 @@ type SDK struct {
 	EntityResoution         entityresolution.EntityResolutionServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Namespaces              namespaces.NamespaceServiceClient
+	RegisteredResources     registeredresources.RegisteredResourcesServiceClient
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	Unsafe                  unsafe.UnsafeServiceClient
@@ -198,6 +200,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		Actions:                 actions.NewActionServiceClient(platformConn),
 		Attributes:              attributes.NewAttributesServiceClient(platformConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(platformConn),
+		RegisteredResources:     registeredresources.NewRegisteredResourcesServiceClient(platformConn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(platformConn),
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(platformConn),
 		Unsafe:                  unsafe.NewUnsafeServiceClient(platformConn),

@@ -40,6 +40,7 @@ runs:
         path: otdf-test-platform
         repository: strantalis/platform
         persist-credentials: false
+        clean: false
         sparse-checkout: | 
           docker-compose.yaml
         sparse-checkout-cone-mode: false

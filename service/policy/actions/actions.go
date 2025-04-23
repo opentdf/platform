@@ -2,7 +2,6 @@ package actions
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -10,11 +9,25 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/actions/actionsconnect"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
+)
+
+// Re-exported action names for consumers of ActionService protos
+const (
+	// Stored name of the standard 'create' action
+	ActionNameCreate = string(policydb.ActionCreate)
+	// Stored name of the standard 'read' action
+	ActionNameRead = string(policydb.ActionRead)
+	// Stored name of the standard 'update' action
+	ActionNameUpdate = string(policydb.ActionUpdate)
+	// Stored name of the standard 'delete' action
+	ActionNameDelete = string(policydb.ActionDelete)
 )
 
 type ActionService struct {
@@ -66,22 +79,118 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	}
 }
 
-func (a *ActionService) GetAction(context.Context, *connect.Request[actions.GetActionRequest]) (*connect.Response[actions.GetActionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetAction is not implemented"))
+func (a *ActionService) GetAction(ctx context.Context, req *connect.Request[actions.GetActionRequest]) (*connect.Response[actions.GetActionResponse], error) {
+	rsp := &actions.GetActionResponse{}
+
+	a.logger.DebugContext(ctx, "getting action", slog.Any("identifier", req.Msg.GetIdentifier()))
+
+	action, err := a.dbClient.GetAction(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
+	}
+	rsp.Action = action
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (a *ActionService) ListActions(context.Context, *connect.Request[actions.ListActionsRequest]) (*connect.Response[actions.ListActionsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListActions is not implemented"))
+func (a *ActionService) ListActions(ctx context.Context, req *connect.Request[actions.ListActionsRequest]) (*connect.Response[actions.ListActionsResponse], error) {
+	a.logger.DebugContext(ctx, "listing actions")
+	rsp, err := a.dbClient.ListActions(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+	}
+	a.logger.DebugContext(ctx, "listed actions")
+	return connect.NewResponse(rsp), nil
 }
 
-func (a *ActionService) CreateAction(context.Context, *connect.Request[actions.CreateActionRequest]) (*connect.Response[actions.CreateActionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("CreateAction is not implemented"))
+func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[actions.CreateActionRequest]) (*connect.Response[actions.CreateActionResponse], error) {
+	a.logger.DebugContext(ctx, "creating action", slog.String("name", req.Msg.GetName()))
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeAction,
+	}
+	rsp := &actions.CreateActionResponse{}
+
+	err := a.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		action, err := txClient.CreateAction(ctx, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.ObjectID = action.GetId()
+		auditParams.Original = action
+		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Action = action
+		return nil
+	})
+	if err != nil {
+		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("action", req.Msg.String()))
+	}
+	return connect.NewResponse(rsp), nil
 }
 
-func (a *ActionService) UpdateAction(context.Context, *connect.Request[actions.UpdateActionRequest]) (*connect.Response[actions.UpdateActionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("UpdateAction is not implemented"))
+func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[actions.UpdateActionRequest]) (*connect.Response[actions.UpdateActionResponse], error) {
+	actionID := req.Msg.GetId()
+	a.logger.DebugContext(ctx, "updating action", slog.String("id", actionID))
+	rsp := &actions.UpdateActionResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeAction,
+		ObjectID:   actionID,
+	}
+
+	err := a.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		original, err := txClient.GetAction(ctx, &actions.GetActionRequest{
+			Identifier: &actions.GetActionRequest_Id{
+				Id: actionID,
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		updated, err := txClient.UpdateAction(ctx, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.Original = original
+		auditParams.Updated = updated
+		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Action = updated
+		return nil
+	})
+	if err != nil {
+		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("action", req.Msg.String()))
+	}
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (a *ActionService) DeleteAction(context.Context, *connect.Request[actions.DeleteActionRequest]) (*connect.Response[actions.DeleteActionResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("DeleteAction is not implemented"))
+func (a *ActionService) DeleteAction(ctx context.Context, req *connect.Request[actions.DeleteActionRequest]) (*connect.Response[actions.DeleteActionResponse], error) {
+	rsp := &actions.DeleteActionResponse{}
+	actionID := req.Msg.GetId()
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeAction,
+		ObjectID:   actionID,
+	}
+	a.logger.DebugContext(ctx, "deleting action", slog.String("id", actionID))
+
+	deleted, err := a.dbClient.DeleteAction(ctx, req.Msg)
+	if err != nil {
+		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("action", req.Msg.String()))
+	}
+
+	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	rsp.Action = deleted
+
+	return connect.NewResponse(rsp), nil
 }

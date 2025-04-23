@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -288,12 +289,8 @@ func (s *RoundtripSuite) CreateTestData() error {
 		_, err = client.SubjectMapping.CreateSubjectMapping(context.Background(), &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId: attributeID,
 			Actions: []*policy.Action{
-				{Value: &policy.Action_Standard{
-					Standard: policy.Action_STANDARD_ACTION_DECRYPT,
-				}},
-				{Value: &policy.Action_Standard{
-					Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
-				}},
+				{Name: actions.ActionNameCreate},
+				{Name: actions.ActionNameRead},
 			},
 			NewSubjectConditionSet: &subjectmapping.SubjectConditionSetCreate{
 				SubjectSets: []*policy.SubjectSet{

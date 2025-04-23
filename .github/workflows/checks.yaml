@@ -1,4 +1,4 @@
-name: 'Checks'
+name: "Checks"
 
 env:
   IS_RELEASE_BRANCH: ${{ startsWith(github.head_ref, 'release-please-') }}
@@ -101,7 +101,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version-file: 'service/go.mod'
+          go-version-file: "service/go.mod"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -173,7 +173,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version-file: 'service/go.mod'
+          go-version-file: "service/go.mod"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -246,7 +246,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: save benchmark results as a comment
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
         with:
           script: |
@@ -259,6 +259,17 @@ jobs:
               issue_number: context.issue.number,
               body,
             });
+
+      - name: save benchmark results as a step summary
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+            const metricsOutput = process.env.BENCHMARK_METRICS_OUTPUT || '## Standard Benchmark Skipped or Failed';
+            const bulkOutput = process.env.BENCHMARK_BULK_OUTPUT || '## Bulk Benchmark Skipped or Failed';
+            const summaryContent = `${metricsOutput}\n\n${bulkOutput}`;
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryContent + '\n');
 
   image:
     name: image build
@@ -289,7 +300,7 @@ jobs:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: opentdf/otdfctl/e2e@main
         with:
-          otdfctl-ref: 'main'
+          otdfctl-ref: "main"
 
   buflint:
     name: Protocol Buffer Lint and Gencode Up-to-date check
@@ -305,10 +316,10 @@ jobs:
       - uses: bufbuild/buf-breaking-action@c57b3d842a5c3f3b454756ef65305a50a587c5ba
         with:
           input: service
-          against: 'https://github.com/opentdf/platform.git#branch=main,subdir=service'
+          against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version-file: 'service/go.mod'
+          go-version-file: "service/go.mod"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -353,7 +364,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version-file: 'service/go.mod'
+          go-version-file: "service/go.mod"
           check-latest: false
           cache: false
       - name: check service licenses

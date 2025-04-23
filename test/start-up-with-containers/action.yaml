@@ -34,6 +34,7 @@ runs:
         ref: ${{ inputs.platform-ref }}
         persist-credentials: false
     - name: Download most up-to-date docker-compose.yaml
+      shell: bash
       run: |
         curl https://raw.githubusercontent.com/opentdf/platform/refs/heads/main/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
     - name: Set up go (platform's go version)

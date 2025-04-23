@@ -1,4 +1,4 @@
-name: 'Checks'
+name: "Checks"
 
 env:
   IS_RELEASE_BRANCH: ${{ startsWith(github.head_ref, 'release-please-') }}
@@ -101,7 +101,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version-file: 'service/go.mod'
+          go-version-file: "service/go.mod"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -173,7 +173,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version-file: 'service/go.mod'
+          go-version-file: "service/go.mod"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -273,7 +273,7 @@ jobs:
           push: false
 
   platform-xtest:
-    uses: opentdf/tests/.github/workflows/xtest.yml@main
+    uses: opentdf/tests/.github/workflows/xtest.yml@image-fix
     with:
       focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version
@@ -289,7 +289,7 @@ jobs:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: opentdf/otdfctl/e2e@main
         with:
-          otdfctl-ref: 'main'
+          otdfctl-ref: "main"
 
   buflint:
     name: Protocol Buffer Lint and Gencode Up-to-date check
@@ -305,10 +305,10 @@ jobs:
       - uses: bufbuild/buf-breaking-action@c57b3d842a5c3f3b454756ef65305a50a587c5ba
         with:
           input: service
-          against: 'https://github.com/opentdf/platform.git#branch=main,subdir=service'
+          against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version-file: 'service/go.mod'
+          go-version-file: "service/go.mod"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -353,7 +353,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version-file: 'service/go.mod'
+          go-version-file: "service/go.mod"
           check-latest: false
           cache: false
       - name: check service licenses

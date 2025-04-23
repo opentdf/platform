@@ -115,7 +115,15 @@ type ECDecryptor struct {
 	info []byte
 }
 
-func NewECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, error) {
+func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
+	// TK Move salt and info out of library, into API option functions
+	digest := sha256.New()
+	digest.Write([]byte("TDF"))
+	salt := digest.Sum(nil)
+
+	return ECDecryptor{sk, salt, nil}, nil
+}
+func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, error) {
 	return ECDecryptor{sk, salt, info}, nil
 }
 func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, error) {

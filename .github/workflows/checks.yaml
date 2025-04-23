@@ -273,7 +273,7 @@ jobs:
           push: false
 
   platform-xtest:
-    uses: opentdf/tests/.github/workflows/xtest.yml@image-fix
+    uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version

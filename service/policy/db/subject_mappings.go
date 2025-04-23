@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
@@ -508,10 +506,6 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 
 	_, err = c.Queries.updateSubjectMapping(ctx, updateParams)
 	if err != nil {
-		// CTE behavior requires custom handling with divide by zero to detect 0 count
-		if strings.Contains(err.Error(), pgerrcode.DivisionByZero) {
-			err = pgx.ErrNoRows
-		}
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 

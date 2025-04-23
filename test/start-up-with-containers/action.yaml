@@ -32,6 +32,13 @@ runs:
         # use a distinct path to avoid conflicts
         path: otdf-test-platform
         ref: ${{ inputs.platform-ref }}
+        persist-credentials: false
+    - name: Checkout most up-to-date docker-compose.yaml
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      with:
+        persist-credentials: false
+        sparse-checkout: | 
+          docker-compose.yaml
     - name: Set up go (platform's go version)
       id: setup-go
       uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0

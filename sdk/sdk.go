@@ -21,6 +21,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
@@ -66,6 +67,7 @@ type SDK struct {
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
+	RegisteredResources     registeredresources.RegisteredResourcesServiceClient
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Unsafe                  unsafe.UnsafeServiceClient

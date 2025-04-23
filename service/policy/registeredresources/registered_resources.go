@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
-	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources/registeredresourcesconnect"
 	"github.com/opentdf/platform/service/logger"
@@ -86,22 +85,24 @@ func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Contex
 		ObjectType: audit.ObjectTypeRegisteredResource,
 	}
 
+	s.logger.DebugContext(ctx, "creating registered resource", slog.String("name", req.Msg.GetName()))
+
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		item, err := txClient.CreateRegisteredResource(ctx, req.Msg)
+		resource, err := txClient.CreateRegisteredResource(ctx, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
-		auditParams.ObjectID = item.GetId()
-		auditParams.Original = item
+		auditParams.ObjectID = resource.GetId()
+		auditParams.Original = resource
 		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-		rsp.Resource = item
+		rsp.Resource = resource
 		return nil
 	})
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("registered resouce", req.Msg.String()))
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("registered resource", req.Msg.String()))
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -110,56 +111,68 @@ func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Contex
 func (s *RegisteredResourcesService) GetRegisteredResource(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceRequest]) (*connect.Response[registeredresources.GetRegisteredResourceResponse], error) {
 	rsp := &registeredresources.GetRegisteredResourceResponse{}
 
-	item, err := s.dbClient.GetRegisteredResource(ctx, req.Msg)
+	s.logger.DebugContext(ctx, "getting registered resource", slog.Any("identifier", req.Msg.GetIdentifier()))
+
+	resource, err := s.dbClient.GetRegisteredResource(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
 	}
-	rsp.Resource = item
+	rsp.Resource = resource
 
 	return connect.NewResponse(rsp), nil
 }
 
 func (s *RegisteredResourcesService) ListRegisteredResources(ctx context.Context, req *connect.Request[registeredresources.ListRegisteredResourcesRequest]) (*connect.Response[registeredresources.ListRegisteredResourcesResponse], error) {
+	s.logger.DebugContext(ctx, "listing registered resources")
+
 	rsp, err := s.dbClient.ListRegisteredResources(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
+	s.logger.DebugContext(ctx, "listed registered resources")
+
 	return connect.NewResponse(rsp), nil
 }
 
 func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Context, req *connect.Request[registeredresources.UpdateRegisteredResourceRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceResponse], error) {
+	resourceID := req.Msg.GetId()
+
 	rsp := &registeredresources.UpdateRegisteredResourceResponse{}
 
-	resourceID := req.Msg.GetId()
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,
 		ObjectType: audit.ObjectTypeRegisteredResource,
 		ObjectID:   resourceID,
 	}
 
-	original, err := s.dbClient.GetRegisteredResource(ctx, &registeredresources.GetRegisteredResourceRequest{
-		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-			ResourceId: resourceID,
-		},
+	s.logger.DebugContext(ctx, "updating registered resource", slog.String("id", resourceID))
+
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		original, err := txClient.GetRegisteredResource(ctx, &registeredresources.GetRegisteredResourceRequest{
+			Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
+				ResourceId: resourceID,
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		updated, err := txClient.UpdateRegisteredResource(ctx, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.Original = original
+		auditParams.Updated = updated
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Resource = updated
+		return nil
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", resourceID))
-	}
-
-	updated, err := s.dbClient.UpdateRegisteredResource(ctx, req.Msg)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("resource", req.Msg.String()))
-	}
-
-	auditParams.Original = original
-	auditParams.Updated = updated
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.Resource = &policy.RegisteredResource{
-		Id: resourceID,
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("registered resource", req.Msg.String()))
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -176,17 +189,17 @@ func (s *RegisteredResourcesService) DeleteRegisteredResource(ctx context.Contex
 		ObjectID:   resourceID,
 	}
 
-	_, err := s.dbClient.DeleteRegisteredResource(ctx, resourceID)
+	s.logger.DebugContext(ctx, "deleting registered resource", slog.String("id", resourceID))
+
+	deleted, err := s.dbClient.DeleteRegisteredResource(ctx, resourceID)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", resourceID))
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("registered resource", req.Msg.String()))
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	rsp.Resource = &policy.RegisteredResource{
-		Id: resourceID,
-	}
+	rsp.Resource = deleted
 
 	return connect.NewResponse(rsp), nil
 }
@@ -201,21 +214,23 @@ func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.C
 		ObjectType: audit.ObjectTypeRegisteredResourceValue,
 	}
 
+	s.logger.DebugContext(ctx, "creating registered resource value", slog.String("value", req.Msg.GetValue()))
+
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		item, err := txClient.CreateRegisteredResourceValue(ctx, req.Msg)
+		value, err := txClient.CreateRegisteredResourceValue(ctx, req.Msg)
 		if err != nil {
-			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
-		auditParams.ObjectID = item.GetId()
-		auditParams.Original = item
+		auditParams.ObjectID = value.GetId()
+		auditParams.Original = value
 		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-		rsp.Value = item
+		rsp.Value = value
 		return nil
 	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("registered resource value", req.Msg.String()))
 	}
 
@@ -225,56 +240,69 @@ func (s *RegisteredResourcesService) CreateRegisteredResourceValue(ctx context.C
 func (s *RegisteredResourcesService) GetRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceValueRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValueResponse], error) {
 	rsp := &registeredresources.GetRegisteredResourceValueResponse{}
 
-	item, err := s.dbClient.GetRegisteredResourceValue(ctx, req.Msg)
+	s.logger.DebugContext(ctx, "getting registered resource value", slog.Any("identifier", req.Msg.GetIdentifier()))
+
+	value, err := s.dbClient.GetRegisteredResourceValue(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
 	}
-	rsp.Value = item
+	rsp.Value = value
 
 	return connect.NewResponse(rsp), nil
 }
 
 func (s *RegisteredResourcesService) ListRegisteredResourceValues(ctx context.Context, req *connect.Request[registeredresources.ListRegisteredResourceValuesRequest]) (*connect.Response[registeredresources.ListRegisteredResourceValuesResponse], error) {
+	s.logger.DebugContext(ctx, "listing registered resource values")
+
 	rsp, err := s.dbClient.ListRegisteredResourceValues(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
+	s.logger.DebugContext(ctx, "listed registered resource values")
+
 	return connect.NewResponse(rsp), nil
 }
 
 func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.Context, req *connect.Request[registeredresources.UpdateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceValueResponse], error) {
+	valueID := req.Msg.GetId()
+
 	rsp := &registeredresources.UpdateRegisteredResourceValueResponse{}
 
-	valueID := req.Msg.GetId()
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,
 		ObjectType: audit.ObjectTypeRegisteredResourceValue,
 		ObjectID:   valueID,
 	}
 
-	original, err := s.dbClient.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
-		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-			ValueId: valueID,
-		},
+	s.logger.DebugContext(ctx, "updating registered resource value", slog.String("id", valueID))
+
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		original, err := txClient.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
+			Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
+				ValueId: valueID,
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		updated, err := txClient.UpdateRegisteredResourceValue(ctx, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.Original = original
+		auditParams.Updated = updated
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Value = updated
+
+		return nil
 	})
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", valueID))
-	}
-
-	updated, err := s.dbClient.UpdateRegisteredResourceValue(ctx, req.Msg)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("resource", req.Msg.String()))
-	}
-
-	auditParams.Original = original
-	auditParams.Updated = updated
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.Value = &policy.RegisteredResourceValue{
-		Id: valueID,
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("registered resource value", req.Msg.String()))
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -291,17 +319,17 @@ func (s *RegisteredResourcesService) DeleteRegisteredResourceValue(ctx context.C
 		ObjectID:   valueID,
 	}
 
-	_, err := s.dbClient.DeleteRegisteredResourceValue(ctx, valueID)
+	s.logger.DebugContext(ctx, "deleting registered resource value", slog.String("id", valueID))
+
+	deleted, err := s.dbClient.DeleteRegisteredResourceValue(ctx, valueID)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", valueID))
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("registered resource value", req.Msg.String()))
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	rsp.Value = &policy.RegisteredResourceValue{
-		Id: valueID,
-	}
+	rsp.Value = deleted
 
 	return connect.NewResponse(rsp), nil
 }

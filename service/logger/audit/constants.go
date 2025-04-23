@@ -40,6 +40,9 @@ func (ot ObjectType) String() string {
 		"key_object",
 		"entity_object",
 		"resource_mapping_group",
+		"public_key",
+		"registered_resource",
+		"registered_resource_value",
 	}[ot]
 }
 

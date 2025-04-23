@@ -34,8 +34,8 @@ func NewRegistrations() []serviceregistry.IService {
 		resourcemapping.NewRegistration(namespace, dbRegister),
 		subjectmapping.NewRegistration(namespace, dbRegister),
 		kasregistry.NewRegistration(namespace, dbRegister),
-		registeredresources.NewRegistration(namespace, dbRegister),
 		unsafe.NewRegistration(namespace, dbRegister),
+		registeredresources.NewRegistration(namespace, dbRegister),
 	}...)
 	return registrations
 }

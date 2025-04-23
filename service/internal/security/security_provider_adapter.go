@@ -182,7 +182,7 @@ func (a *InProcessProvider) WithLogger(logger *slog.Logger) *InProcessProvider {
 }
 
 // FindKeyByAlgorithm finds a key by algorithm using the underlying CryptoProvider
-func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm string, includeLegacy bool) (KeyDetails, error) {
+func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm string, _ bool) (KeyDetails, error) {
 	// Get the key ID for this algorithm
 	kid := a.cryptoProvider.FindKID(algorithm)
 	if kid == "" {

@@ -63,7 +63,7 @@ func (m *MockKeyDetails) ExportPublicKey(_ context.Context, format security.KeyT
 	}
 }
 
-func (m *MockKeyDetails) ExportCertificate(ctx context.Context) (string, error) {
+func (m *MockKeyDetails) ExportCertificate(_ context.Context) (string, error) {
 	if m.certData == "" {
 		return "", errors.New("certificate not available")
 	}

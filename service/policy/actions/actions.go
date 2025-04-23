@@ -116,11 +116,11 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 		if err != nil {
 			return err
 		}
-		
+
 		auditParams.ObjectID = action.GetId()
 		auditParams.Original = action
 		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-		
+
 		rsp.Action = action
 		return nil
 	})
@@ -151,16 +151,16 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 		if err != nil {
 			return err
 		}
-		
+
 		updated, err := txClient.UpdateAction(ctx, req.Msg)
 		if err != nil {
 			return err
 		}
-		
+
 		auditParams.Original = original
 		auditParams.Updated = updated
 		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-		
+
 		rsp.Action = updated
 		return nil
 	})

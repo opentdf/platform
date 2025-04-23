@@ -310,7 +310,7 @@ func (a *SecurityProviderAdapter) GenerateNanoTDFSymmetricKey(ctx context.Contex
 
 // GenerateNanoTDFSessionKey generates a session key for NanoTDF
 func (a *SecurityProviderAdapter) GenerateNanoTDFSessionKey(ctx context.Context, ephemeralPublicKey string) (ocrypto.PublicKeyEncryptor, error) {
-	return ocrypto.FromPublicPEM(ephemeralPublicKey)
+	return ocrypto.FromPublicPEM(ephemeralPublicKey, versionSalt(), nil)
 }
 
 // Close releases any resources held by the provider

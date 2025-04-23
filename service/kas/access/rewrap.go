@@ -94,6 +94,10 @@ func err403(s string) error {
 	return connect.NewError(connect.CodePermissionDenied, errors.Join(ErrUser, status.Error(codes.PermissionDenied, s)))
 }
 
+func err500(s string) error {
+	return connect.NewError(connect.CodeInternal, errors.Join(ErrInternal, status.Error(codes.Internal, s)))
+}
+
 func generateHMACDigest(ctx context.Context, msg, key []byte, logger logger.Logger) ([]byte, error) {
 	mac := hmac.New(sha256.New, key)
 	_, err := mac.Write(msg)
@@ -730,6 +734,12 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		failAllKaos(requests, results, err400("keypair mismatch"))
 		return "", results
 	}
+	sessionKeyPEM, err := sessionKey.PublicKeyInPemFormat()
+	if err != nil {
+		p.Logger.WarnContext(ctx, "failure in PublicKeyToPem", "err", err)
+		failAllKaos(requests, results, err500(""))
+		return "", results
+	}
 
 	for _, pdpAccess := range pdpAccessResults {
 		policy := pdpAccess.Policy
@@ -776,7 +786,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)
 		}
 	}
-	return string(sessionKey.EphemeralKey()), results
+	return sessionKeyPEM, results
 }
 
 func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]kaoResult) {

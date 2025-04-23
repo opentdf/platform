@@ -23,16 +23,12 @@ type Provider struct {
 	SDK              *otdf.SDK
 	AttributeSvc     *url.URL
 	SecurityProvider security.KeyManager
-	CryptoProvider   security.CryptoProvider // Kept for backward compatibility
-	Logger           *logger.Logger
-	Config           *config.ServiceConfig
+	// Deprecated: Use SecurityProvider instead
+	CryptoProvider security.CryptoProvider // Kept for backward compatibility
+	Logger         *logger.Logger
+	Config         *config.ServiceConfig
 	KASConfig
 	trace.Tracer
-}
-
-// Deprecated: Use SecurityProvider instead
-func (p *Provider) GetCryptoProvider() security.CryptoProvider {
-	return p.CryptoProvider
 }
 
 // GetSecurityProvider returns the SecurityProvider

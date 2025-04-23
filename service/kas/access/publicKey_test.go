@@ -321,10 +321,10 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 	kasURI := urlHost(t)
 
 	kas := Provider{
-		URI:            *kasURI,
-		CryptoProvider: c,
-		Logger:         logger.CreateTestLogger(),
-		Tracer:         noop.NewTracerProvider().Tracer(""),
+		URI:              *kasURI,
+		SecurityProvider: security.NewSecurityProviderAdapter(c),
+		Logger:           logger.CreateTestLogger(),
+		Tracer:           noop.NewTracerProvider().Tracer(""),
 	}
 
 	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{Fmt: "pkcs8"}})

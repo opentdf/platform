@@ -280,6 +280,7 @@ jobs:
   platform-xtest:
     permissions:
       contents: read
+      packages: read
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go

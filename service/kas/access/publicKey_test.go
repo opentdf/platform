@@ -85,7 +85,7 @@ func (m *MockSecurityProvider) AddKey(key *MockKeyDetails) {
 	m.keys[key.id] = key
 }
 
-func (m *MockSecurityProvider) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (security.KeyDetails, error) {
+func (m *MockSecurityProvider) FindKeyByAlgorithm(_ context.Context, algorithm string, includeLegacy bool) (security.KeyDetails, error) {
 	for _, key := range m.keys {
 		if key.algorithm == algorithm && (!key.legacy || includeLegacy) {
 			return key, nil
@@ -94,14 +94,14 @@ func (m *MockSecurityProvider) FindKeyByAlgorithm(ctx context.Context, algorithm
 	return nil, security.ErrCertNotFound
 }
 
-func (m *MockSecurityProvider) FindKeyByID(ctx context.Context, id security.KeyIdentifier) (security.KeyDetails, error) {
+func (m *MockSecurityProvider) FindKeyByID(_ context.Context, id security.KeyIdentifier) (security.KeyDetails, error) {
 	if key, ok := m.keys[id]; ok {
 		return key, nil
 	}
 	return nil, security.ErrCertNotFound
 }
 
-func (m *MockSecurityProvider) ListKeys(ctx context.Context) ([]security.KeyDetails, error) {
+func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]security.KeyDetails, error) {
 	var keys []security.KeyDetails
 	for _, key := range m.keys {
 		keys = append(keys, key)
@@ -109,15 +109,15 @@ func (m *MockSecurityProvider) ListKeys(ctx context.Context) ([]security.KeyDeta
 	return keys, nil
 }
 
-func (m *MockSecurityProvider) Decrypt(ctx context.Context, keyID security.KeyIdentifier, ephemeralPublicKey, ciphertext []byte) (security.UnwrappedKeyData, error) {
+func (m *MockSecurityProvider) Decrypt(_ context.Context, _ security.KeyIdentifier, _, _ []byte) (security.UnwrappedKeyData, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) GenerateNanoTDFSymmetricKey(ctx context.Context, kasKID security.KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
+func (m *MockSecurityProvider) GenerateNanoTDFSymmetricKey(_ context.Context, _ security.KeyIdentifier, _ []byte, curve elliptic.Curve) ([]byte, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) GenerateNanoTDFSessionKey(ctx context.Context, ephemeralPublicKey string) (ocrypto.PublicKeyEncryptor, error) {
+func (m *MockSecurityProvider) GenerateNanoTDFSessionKey(_ context.Context, _ string) (ocrypto.PublicKeyEncryptor, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
@@ -241,7 +241,7 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 				Algorithm: "invalid-algorithm",
 			},
 		})
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Nil(t, result)
 		assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
 	})

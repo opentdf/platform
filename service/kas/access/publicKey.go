@@ -20,12 +20,12 @@ const (
 )
 
 func (p *Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
-	if len(p.KASConfig.Keyring) == 0 {
+	if len(p.Keyring) == 0 {
 		p.Logger.WarnContext(ctx, "no default keys found", "algorithm", algorithm)
 		return "", connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("no default keys configured")))
 	}
 
-	for _, k := range p.KASConfig.Keyring {
+	for _, k := range p.Keyring {
 		if k.Algorithm == algorithm && !k.Legacy {
 			return k.KID, nil
 		}
@@ -89,7 +89,7 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 }
 
 func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.PublicKeyRequest]) (*connect.Response[kaspb.PublicKeyResponse], error) {
-	ctx, span := p.Tracer.Start(ctx, "PublicKey")
+	ctx, span := p.Start(ctx, "PublicKey")
 	defer span.End()
 
 	algorithm := req.Msg.GetAlgorithm()

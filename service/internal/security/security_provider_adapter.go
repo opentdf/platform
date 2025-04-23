@@ -6,8 +6,6 @@ import (
 	"crypto/elliptic"
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -48,8 +46,8 @@ func (k *StandardUnwrappedKey) Export(encryptor ocrypto.PublicKeyEncryptor) ([]b
 }
 
 // VerifyBinding checks if the policy binding matches the given policy data
-func (k *StandardUnwrappedKey) VerifyBinding(ctx context.Context, policy []byte) error {
-	if k.rawKey == nil || len(k.rawKey) == 0 {
+func (k *StandardUnwrappedKey) VerifyBinding(ctx context.Context, policy, policyBinding []byte) error {
+	if len(k.rawKey) == 0 {
 		return errors.New("key data is empty")
 	}
 
@@ -61,26 +59,7 @@ func (k *StandardUnwrappedKey) VerifyBinding(ctx context.Context, policy []byte)
 		return errors.New("bad request")
 	}
 
-	policyBinding := ""
-	if ctx.Value("policyBinding") != nil {
-		policyBinding = ctx.Value("policyBinding").(string)
-	} else {
-		return errors.New("policy binding not found in context")
-	}
-
-	expectedHMAC := make([]byte, base64.StdEncoding.DecodedLen(len(policyBinding)))
-	n, err := base64.StdEncoding.Decode(expectedHMAC, []byte(policyBinding))
-	if err == nil {
-		n, err = hex.Decode(expectedHMAC, expectedHMAC[:n])
-	}
-	expectedHMAC = expectedHMAC[:n]
-	if err != nil {
-		if k.logger != nil {
-			k.logger.WarnContext(ctx, "invalid policy binding", "err", err)
-		}
-		return errors.New("bad request")
-	}
-	if !hmac.Equal(actualHMAC, expectedHMAC) {
+	if !hmac.Equal(actualHMAC, policyBinding) {
 		if k.logger != nil {
 			k.logger.WarnContext(ctx, "policy hmac mismatch", "policyBinding", policyBinding)
 		}

@@ -10,7 +10,7 @@ import (
 // UnwrappedKeyData represents a decrypted key with operations that can be performed on it
 type UnwrappedKeyData interface {
 	// VerifyBinding checks if the policy binding matches the given policy data
-	VerifyBinding(ctx context.Context, policy []byte) error
+	VerifyBinding(ctx context.Context, policy, binding []byte) error
 
 	// Export returns the raw key data, optionally encrypting it with the provided encryptor
 	Export(encryptor ocrypto.PublicKeyEncryptor) ([]byte, error)

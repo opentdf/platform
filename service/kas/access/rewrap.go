@@ -436,7 +436,7 @@ func (p *Provider) Rewrap(ctx context.Context, req *connect.Request[kaspb.Rewrap
 }
 
 func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.UnsignedRewrapRequest_WithPolicyRequest) (*Policy, map[string]kaoResult, error) {
-	ctx, span := p.Tracer.Start(ctx, "tdf3Rewrap")
+	ctx, span := p.Start(ctx, "tdf3Rewrap")
 	defer span.End()
 
 	results := make(map[string]kaoResult)
@@ -459,7 +459,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
 
-			if !p.KASConfig.ECTDFEnabled {
+			if !p.ECTDFEnabled {
 				p.Logger.WarnContext(ctx, "ec-wrapped not enabled")
 				failedKAORewrap(results, kao, err400("bad request"))
 				continue
@@ -527,7 +527,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				kidsToCheck = []security.KeyIdentifier{kid}
 			} else {
 				p.Logger.InfoContext(ctx, "kid free kao")
-				for _, k := range p.KASConfig.Keyring {
+				for _, k := range p.Keyring {
 					if k.Algorithm == security.AlgorithmRSA2048 && k.Legacy {
 						kidsToCheck = append(kidsToCheck, security.KeyIdentifier(k.KID))
 					}
@@ -555,11 +555,26 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		}
 
 		// Store policy binding in context for verification
-		policyBinding := kao.GetKeyAccessObject().GetPolicyBinding().GetHash()
-		ctxWithBinding := context.WithValue(ctx, "policyBinding", policyBinding)
+		policyBindingB64Encoded := kao.GetKeyAccessObject().GetPolicyBinding().GetHash()
+		policyBinding := make([]byte, base64.StdEncoding.DecodedLen(len(policyBindingB64Encoded)))
+		n, err := base64.StdEncoding.Decode(policyBinding, []byte(policyBindingB64Encoded))
+		if err != nil {
+			p.Logger.WarnContext(ctx, "invalid policy binding encoding", "err", err)
+			failedKAORewrap(results, kao, err400("bad request"))
+			continue
+		}
+		if n == 64 { // 32 bytes of hex encoded data = 256 bit sha-2
+			// Sometimes the policy binding is a b64 encoded hex encoded string
+			// Decode it again if so.
+			dehexed := make([]byte, hex.DecodedLen(n>>1))
+			_, err = hex.Decode(dehexed, policyBinding[:n])
+			if err == nil {
+				policyBinding = dehexed
+			}
+		}
 
 		// Verify policy binding using the UnwrappedKeyData interface
-		if err := unwrappedKey.VerifyBinding(ctxWithBinding, []byte(req.GetPolicy().GetBody())); err != nil {
+		if err := unwrappedKey.VerifyBinding(ctx, []byte(req.GetPolicy().GetBody()), policyBinding); err != nil {
 			failedKAORewrap(results, kao, err)
 			continue
 		}
@@ -587,7 +602,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entity *entityInfo) (string, policyKAOResults) {
 	if p.Tracer != nil {
 		var span trace.Span
-		ctx, span = p.Tracer.Start(ctx, "rewrap-tdf3")
+		ctx, span = p.Start(ctx, "rewrap-tdf3")
 		defer span.End()
 	}
 
@@ -633,7 +648,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			failAllKaos(requests, results, err400("invalid request"))
 			return "", results
 		}
-		if !p.KASConfig.ECTDFEnabled {
+		if !p.ECTDFEnabled {
 			p.Logger.ErrorContext(ctx, "ec rewrap not enabled")
 			failAllKaos(requests, results, err400("invalid request"))
 			return "", results
@@ -700,7 +715,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 }
 
 func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entity *entityInfo) (string, policyKAOResults) {
-	ctx, span := p.Tracer.Start(ctx, "nanoTDFRewrap")
+	ctx, span := p.Start(ctx, "nanoTDFRewrap")
 	defer span.End()
 
 	results := make(policyKAOResults)

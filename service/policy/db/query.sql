@@ -1228,7 +1228,6 @@ INSERT INTO attribute_value_public_key_map (value_id, key_id) VALUES ($1, $2);
 -- name: removePublicKeyFromAttributeValue :execrows
 DELETE FROM attribute_value_public_key_map WHERE value_id = $1 AND key_id = $2;
 
-
 ---------------------------------------------------------------- 
 -- ACTIONS
 ----------------------------------------------------------------

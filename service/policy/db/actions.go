@@ -199,8 +199,7 @@ func (c PolicyDBClient) DeleteAction(ctx context.Context, req *actions.DeleteAct
 		}
 		// standard action
 		name := strings.ToLower(got.GetName())
-		isStandard := ActionStandard(name).IsValid()
-		if isStandard {
+		if ActionStandard(name).IsValid() {
 			return nil, fmt.Errorf("cannot delete standard action %s: %w", name, db.ErrRestrictViolation)
 		}
 		return nil, db.ErrNotFound

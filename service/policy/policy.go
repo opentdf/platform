@@ -4,6 +4,7 @@ import (
 	"embed"
 
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/opentdf/platform/service/policy/attributes"
 	"github.com/opentdf/platform/service/policy/db/migrations"
 	"github.com/opentdf/platform/service/policy/kasregistry"
@@ -35,6 +36,7 @@ func NewRegistrations() []serviceregistry.IService {
 		subjectmapping.NewRegistration(namespace, dbRegister),
 		kasregistry.NewRegistration(namespace, dbRegister),
 		unsafe.NewRegistration(namespace, dbRegister),
+		actions.NewRegistration(namespace, dbRegister),
 		registeredresources.NewRegistration(namespace, dbRegister),
 	}...)
 	return registrations

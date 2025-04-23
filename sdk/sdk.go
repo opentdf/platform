@@ -18,6 +18,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
@@ -64,15 +65,16 @@ type SDK struct {
 	conn                    *grpc.ClientConn
 	dialOptions             []grpc.DialOption
 	tokenSource             auth.AccessTokenSource
-	Namespaces              namespaces.NamespaceServiceClient
+	Actions                 actions.ActionServiceClient
 	Attributes              attributes.AttributesServiceClient
+	Authorization           authorization.AuthorizationServiceClient
+	EntityResoution         entityresolution.EntityResolutionServiceClient
+	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
+	Namespaces              namespaces.NamespaceServiceClient
 	RegisteredResources     registeredresources.RegisteredResourcesServiceClient
 	ResourceMapping         resourcemapping.ResourceMappingServiceClient
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
-	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Unsafe                  unsafe.UnsafeServiceClient
-	Authorization           authorization.AuthorizationServiceClient
-	EntityResoution         entityresolution.EntityResolutionServiceClient
 	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 }
 
@@ -195,6 +197,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		conn:                    platformConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
+		Actions:                 actions.NewActionServiceClient(platformConn),
 		Attributes:              attributes.NewAttributesServiceClient(platformConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(platformConn),
 		RegisteredResources:     registeredresources.NewRegisteredResourcesServiceClient(platformConn),

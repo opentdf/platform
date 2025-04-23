@@ -133,6 +133,8 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 			return fmt.Errorf("failed to get allowlist from registry: %w", err)
 		}
 		bulkReq.kasAllowlist = allowlist
+		bulkReq.NanoTDFDecryptOptions = append(bulkReq.NanoTDFDecryptOptions, withNanoKasAllowlist(bulkReq.kasAllowlist))
+		bulkReq.TDF3DecryptOptions = append(bulkReq.TDF3DecryptOptions, withKasAllowlist(bulkReq.kasAllowlist))
 	}
 
 	for i, tdf := range bulkReq.TDFs {

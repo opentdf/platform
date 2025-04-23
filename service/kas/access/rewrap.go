@@ -566,7 +566,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		if n == 64 { //nolint:mnd // 32 bytes of hex encoded data = 256 bit sha-2
 			// Sometimes the policy binding is a b64 encoded hex encoded string
 			// Decode it again if so.
-			dehexed := make([]byte, hex.DecodedLen(n>>1))
+			dehexed := make([]byte, hex.DecodedLen(n))
 			_, err = hex.Decode(dehexed, policyBinding[:n])
 			if err == nil {
 				policyBinding = dehexed

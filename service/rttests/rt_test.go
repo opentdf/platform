@@ -433,12 +433,15 @@ func bulk(client *sdk.SDK, tdfSuccess []string, tdfFail []string, plaintext stri
 		context.Background(),
 		sdk.WithTDFs(passTDF...),
 		sdk.WithTDFType(sdk.Standard),
-		sdk.WithTDF3DecryptOptions(
-			sdk.WithKasAllowlist([]string{"http://some-non-existant:8080"}),
-		))
+		sdk.WithBulkKasAllowlist([]string{"http://some-non-existant:8080"}),
+	)
 	for _, tdf := range passTDF {
 		if tdf.Error == nil {
 			return fmt.Errorf("no expected err")
+		}
+		slog.Error("pass tdf error", "error", tdf.Error.Error())
+		if !strings.Contains(tdf.Error.Error(), "KasAllowlist") {
+			return fmt.Errorf("did not receive kas allowlist error")
 		}
 	}
 

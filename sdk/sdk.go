@@ -66,8 +66,8 @@ type SDK struct {
 	tokenSource             auth.AccessTokenSource
 	Namespaces              namespaces.NamespaceServiceClient
 	Attributes              attributes.AttributesServiceClient
-	ResourceMapping         resourcemapping.ResourceMappingServiceClient
 	RegisteredResources     registeredresources.RegisteredResourcesServiceClient
+	ResourceMapping         resourcemapping.ResourceMappingServiceClient
 	SubjectMapping          subjectmapping.SubjectMappingServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Unsafe                  unsafe.UnsafeServiceClient
@@ -197,6 +197,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		tokenSource:             accessTokenSource,
 		Attributes:              attributes.NewAttributesServiceClient(platformConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(platformConn),
+		RegisteredResources:     registeredresources.NewRegisteredResourcesServiceClient(platformConn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(platformConn),
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(platformConn),
 		Unsafe:                  unsafe.NewUnsafeServiceClient(platformConn),

@@ -88,8 +88,8 @@ func convertPEMToJWK(_ string) (string, error) {
 	return "", errors.New("convertPEMToJWK function is not implemented")
 }
 
-// SecurityProviderAdapter adapts a CryptoProvider to the SecurityProvider interface
-type SecurityProviderAdapter struct {
+// InProcessProvider adapts a CryptoProvider to the SecurityProvider interface
+type InProcessProvider struct {
 	cryptoProvider CryptoProvider
 	logger         *slog.Logger
 }
@@ -145,7 +145,7 @@ func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format KeyType) (
 	}
 }
 
-func (k *KeyDetailsAdapter) ExportCertificate(ctx context.Context) (string, error) {
+func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error) {
 	kid := string(k.id)
 	if k.algorithm == AlgorithmECP256R1 {
 		return k.cryptoProvider.ECCertificate(kid)
@@ -154,21 +154,21 @@ func (k *KeyDetailsAdapter) ExportCertificate(ctx context.Context) (string, erro
 }
 
 // NewSecurityProviderAdapter creates a new adapter that implements SecurityProvider using a CryptoProvider
-func NewSecurityProviderAdapter(cryptoProvider CryptoProvider) SecurityProvider {
-	return &SecurityProviderAdapter{
+func NewSecurityProviderAdapter(cryptoProvider CryptoProvider) KeyManager {
+	return &InProcessProvider{
 		cryptoProvider: cryptoProvider,
 		logger:         slog.Default(),
 	}
 }
 
 // WithLogger sets the logger for the adapter
-func (a *SecurityProviderAdapter) WithLogger(logger *slog.Logger) *SecurityProviderAdapter {
+func (a *InProcessProvider) WithLogger(logger *slog.Logger) *InProcessProvider {
 	a.logger = logger
 	return a
 }
 
 // FindKeyByAlgorithm finds a key by algorithm using the underlying CryptoProvider
-func (a *SecurityProviderAdapter) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (KeyDetails, error) {
+func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm string, includeLegacy bool) (KeyDetails, error) {
 	// Get the key ID for this algorithm
 	kid := a.cryptoProvider.FindKID(algorithm)
 	if kid == "" {
@@ -182,7 +182,7 @@ func (a *SecurityProviderAdapter) FindKeyByAlgorithm(ctx context.Context, algori
 }
 
 // FindKeyByID finds a key by ID
-func (a *SecurityProviderAdapter) FindKeyByID(_ context.Context, id KeyIdentifier) (KeyDetails, error) {
+func (a *InProcessProvider) FindKeyByID(_ context.Context, id KeyIdentifier) (KeyDetails, error) {
 	// Try to determine the algorithm by checking if the key works with known algorithms
 	for _, alg := range []string{AlgorithmECP256R1, AlgorithmRSA2048} {
 		// This is a hack since the original provider doesn't have a way to check if a key exists
@@ -210,7 +210,7 @@ func (a *SecurityProviderAdapter) FindKeyByID(_ context.Context, id KeyIdentifie
 }
 
 // ListKeys lists all available keys
-func (a *SecurityProviderAdapter) ListKeys(_ context.Context) ([]KeyDetails, error) {
+func (a *InProcessProvider) ListKeys(_ context.Context) ([]KeyDetails, error) {
 	// This is a limited implementation as CryptoProvider doesn't expose a list of all keys
 	var keys []KeyDetails
 
@@ -229,7 +229,7 @@ func (a *SecurityProviderAdapter) ListKeys(_ context.Context) ([]KeyDetails, err
 }
 
 // Decrypt implements the unified decryption method for both RSA and EC
-func (a *SecurityProviderAdapter) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (UnwrappedKeyData, error) {
+func (a *InProcessProvider) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKeyData, error) {
 	kid := string(keyID)
 
 	// Try to determine the key type
@@ -268,7 +268,7 @@ func (a *SecurityProviderAdapter) Decrypt(ctx context.Context, keyID KeyIdentifi
 
 // determineKeyType tries to determine the algorithm of a key based on its ID
 // This is a helper method for the Decrypt method
-func (a *SecurityProviderAdapter) determineKeyType(_ context.Context, kid string) (string, error) {
+func (a *InProcessProvider) determineKeyType(_ context.Context, kid string) (string, error) {
 	// First try RSA
 	if _, err := a.cryptoProvider.RSAPublicKey(kid); err == nil {
 		return AlgorithmRSA2048, nil
@@ -282,17 +282,17 @@ func (a *SecurityProviderAdapter) determineKeyType(_ context.Context, kid string
 	return "", errors.New("could not determine key type")
 }
 
-// GenerateNanoTDFSymmetricKey generates a symmetric key for NanoTDF
-func (a *SecurityProviderAdapter) GenerateNanoTDFSymmetricKey(ctx context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
+// DeriveKey generates a symmetric key for NanoTDF
+func (a *InProcessProvider) DeriveKey(_ context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
 	return a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(kasKID), ephemeralPublicKeyBytes, curve)
 }
 
-// GenerateNanoTDFSessionKey generates a session key for NanoTDF
-func (a *SecurityProviderAdapter) GenerateNanoTDFSessionKey(ctx context.Context, ephemeralPublicKey string) (ocrypto.PublicKeyEncryptor, error) {
+// GenerateECSessionKey generates a session key for NanoTDF
+func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (ocrypto.PublicKeyEncryptor, error) {
 	return ocrypto.FromPublicPEM(ephemeralPublicKey, versionSalt(), nil)
 }
 
 // Close releases any resources held by the provider
-func (a *SecurityProviderAdapter) Close() {
+func (a *InProcessProvider) Close() {
 	a.cryptoProvider.Close()
 }

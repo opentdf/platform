@@ -7,8 +7,8 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 )
 
-// UnwrappedKeyData represents a decrypted key with operations that can be performed on it
-type UnwrappedKeyData interface {
+// ProtectedKeyData represents a decrypted key with operations that can be performed on it
+type ProtectedKeyData interface {
 	// VerifyBinding checks if the policy binding matches the given policy data
 	VerifyBinding(ctx context.Context, policy, binding []byte) error
 
@@ -16,8 +16,8 @@ type UnwrappedKeyData interface {
 	Export(encryptor ocrypto.PublicKeyEncryptor) ([]byte, error)
 }
 
-// SecurityProvider combines key lookup functionality with cryptographic operations
-type SecurityProvider interface {
+// KeyManager combines key lookup functionality with cryptographic operations
+type KeyManager interface {
 	// Embed KeyLookup interface for key management capabilities
 	KeyLookup
 
@@ -25,13 +25,13 @@ type SecurityProvider interface {
 	// For EC keys, ephemeralPublicKey must be non-nil
 	// For RSA keys, ephemeralPublicKey should be nil
 	// Returns an UnwrappedKeyData interface for further operations
-	Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (UnwrappedKeyData, error)
+	Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKeyData, error)
 
-	// GenerateNanoTDFSymmetricKey generates a symmetric key for NanoTDF
-	GenerateNanoTDFSymmetricKey(ctx context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error)
+	// DeriveKey computes an agreed upon secret key, which NanoTDF may directly as the DEK or a key split
+	DeriveKey(ctx context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error)
 
-	// GenerateNanoTDFSessionKey generates a session key for NanoTDF
-	GenerateNanoTDFSessionKey(ctx context.Context, ephemeralPublicKey string) (ocrypto.PublicKeyEncryptor, error)
+	// GenerateECSessionKey generates a private session key, for use with a client-provided ephemeral public key
+	GenerateECSessionKey(ctx context.Context, ephemeralPublicKey string) (ocrypto.PublicKeyEncryptor, error)
 
 	// Close releases any resources held by the provider
 	Close()

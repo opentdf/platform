@@ -22,7 +22,7 @@ type Provider struct {
 	URI              url.URL `json:"uri"`
 	SDK              *otdf.SDK
 	AttributeSvc     *url.URL
-	SecurityProvider security.SecurityProvider
+	SecurityProvider security.KeyManager
 	CryptoProvider   security.CryptoProvider // Kept for backward compatibility
 	Logger           *logger.Logger
 	Config           *config.ServiceConfig
@@ -36,7 +36,7 @@ func (p *Provider) GetCryptoProvider() security.CryptoProvider {
 }
 
 // GetSecurityProvider returns the SecurityProvider
-func (p *Provider) GetSecurityProvider() security.SecurityProvider {
+func (p *Provider) GetSecurityProvider() security.KeyManager {
 	// If SecurityProvider is explicitly set, use it
 	if p.SecurityProvider != nil {
 		return p.SecurityProvider

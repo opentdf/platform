@@ -46,7 +46,7 @@ func (m *MockKeyDetails) IsLegacy() bool {
 	return m.legacy
 }
 
-func (m *MockKeyDetails) ExportPublicKey(ctx context.Context, format security.KeyType) (string, error) {
+func (m *MockKeyDetails) ExportPublicKey(_ context.Context, format security.KeyType) (string, error) {
 	switch format {
 	case security.KeyTypeJWK:
 		if m.jwkData == "" {
@@ -109,15 +109,15 @@ func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]security.KeyDetail
 	return keys, nil
 }
 
-func (m *MockSecurityProvider) Decrypt(_ context.Context, _ security.KeyIdentifier, _, _ []byte) (security.UnwrappedKeyData, error) {
+func (m *MockSecurityProvider) Decrypt(_ context.Context, _ security.KeyIdentifier, _, _ []byte) (security.ProtectedKeyData, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) GenerateNanoTDFSymmetricKey(_ context.Context, _ security.KeyIdentifier, _ []byte, curve elliptic.Curve) ([]byte, error) {
+func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ security.KeyIdentifier, _ []byte, _ elliptic.Curve) ([]byte, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) GenerateNanoTDFSessionKey(_ context.Context, _ string) (ocrypto.PublicKeyEncryptor, error) {
+func (m *MockSecurityProvider) GenerateECSessionKey(_ context.Context, _ string) (ocrypto.PublicKeyEncryptor, error) {
 	return nil, errors.New("not implemented for tests")
 }
 

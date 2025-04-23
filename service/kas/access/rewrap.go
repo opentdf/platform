@@ -65,7 +65,7 @@ type entityInfo struct {
 
 type kaoResult struct {
 	ID       string
-	DEK      security.UnwrappedKeyData
+	DEK      security.ProtectedKeyData
 	Encapped []byte
 	Error    error
 
@@ -454,7 +454,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			continue
 		}
 
-		var unwrappedKey security.UnwrappedKeyData
+		var unwrappedKey security.ProtectedKeyData
 		var err error
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
@@ -563,7 +563,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			failedKAORewrap(results, kao, err400("bad request"))
 			continue
 		}
-		if n == 64 { // 32 bytes of hex encoded data = 256 bit sha-2
+		if n == 64 { //nolint:mnd // 32 bytes of hex encoded data = 256 bit sha-2
 			// Sometimes the policy binding is a b64 encoded hex encoded string
 			// Decode it again if so.
 			dehexed := make([]byte, hex.DecodedLen(n>>1))
@@ -743,7 +743,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		return "", results
 	}
 
-	sessionKey, err := p.GetSecurityProvider().GenerateNanoTDFSessionKey(ctx, clientPublicKey)
+	sessionKey, err := p.GetSecurityProvider().GenerateECSessionKey(ctx, clientPublicKey)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure in GenerateNanoTDFSessionKey", "err", err)
 		failAllKaos(requests, results, err400("keypair mismatch"))
@@ -840,7 +840,7 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 			return nil, results
 		}
 
-		symmetricKey, err := p.GetSecurityProvider().GenerateNanoTDFSymmetricKey(ctx, security.KeyIdentifier(kid), header.EphemeralKey, ecCurve)
+		symmetricKey, err := p.GetSecurityProvider().DeriveKey(ctx, security.KeyIdentifier(kid), header.EphemeralKey, ecCurve)
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("failed to generate symmetric key: %w", err))
 			return nil, results

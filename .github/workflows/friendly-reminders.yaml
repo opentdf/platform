@@ -23,22 +23,45 @@ jobs:
         run: |
           # iterate over work file, cd and run go mod tidy, capturing output
           : > go-mod-tidy-output.txt
+          : > go-mod-tidy-changes.txt
           while IFS="" read -r line || [ -n "$line" ]; do
             (cd "$line" && go mod tidy >>../go-mod-tidy-output.txt 2>&1)
+            CHANGES=$(cd "$line" && git status --porcelain)
+            if [ -n "$CHANGES" ]; then
+              echo "Module: $line" >> go-mod-tidy-changes.txt
+              echo "$CHANGES" | sed 's/^/  /' >> go-mod-tidy-changes.txt
+              echo "" >> go-mod-tidy-changes.txt
+            fi
           done < <(go work edit --json | jq -r '.Use.[].DiskPath')
-          # check if any changes were made
-          git status --porcelain >>"$GITHUB_OUTPUT"
+          if [ -s go-mod-tidy-changes.txt ]; then
+            echo "changes_detected=true" >> "$GITHUB_OUTPUT"
+            # Export the changes for the next step
+            echo "mod_tidy_changes<<EOF" >> "$GITHUB_OUTPUT"
+            cat go-mod-tidy-changes.txt >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          else
+            echo "changes_detected=false" >> "$GITHUB_OUTPUT"
+            echo "mod_tidy_changes=" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Prepare PR comment artifact
         run: |
           PR_NUMBER="${{ github.event.pull_request.number }}"
+          MOD_CHANGES="${MOD_TIDY_CHANGES}"
           {
             echo "$PR_NUMBER"
             echo "Friendly Reminders: \`go mod tidy\` Output"
             echo '```'
             cat go-mod-tidy-output.txt
             echo '```'
+            if [ -n "$MOD_CHANGES" ]; then
+              echo ""
+              echo "Modules with changes after go mod tidy:"
+              echo "$MOD_CHANGES"
+            fi
           } > pr-comment.txt
+        env:
+          MOD_TIDY_CHANGES: ${{ steps.go-mod-tidy.outputs.mod_tidy_changes }}
 
       - name: Upload go mod tidy PR comment artifact
         uses: actions/upload-artifact@v4

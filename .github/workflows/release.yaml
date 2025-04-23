@@ -81,10 +81,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - run: |
-          matrix_path=${MATRIX_PATH}
-          git checkout -b "update-go-mods-for-$matrix_path"
-          git push -f -u origin "update-go-mods-for-$matrix_path"
-          cd "$matrix_path" || exit 1
+          git checkout -b "update-go-mods-for-${MATRIX_PATH}"
+          git push -f -u origin "update-go-mods-for-${MATRIX_PATH}"
+          cd "${MATRIX_PATH}" || exit 1
           <<<"$RELEASED_PATHS" jq -r '.[]'| while IFS= read -r x; do
             export pkg="github.com/opentdf/platform/${x}"
             if go mod edit --json | jq -e '.Replace[] | select(.Old.Path == env.pkg)'; then
@@ -122,10 +121,9 @@ jobs:
           private-key: "${{ secrets.AUTOMATION_KEY }}"
       - name: create pull request
         run: |
-          matrix_path="${MATRIX_PATH}"
           git restore .
-          git pull origin "update-go-mods-for-$matrix_path"
-          gh pr create -B main -H "update-go-mods-for-$matrix_path" --fill
+          git pull origin "update-go-mods-for-${MATRIX_PATH}"
+          gh pr create -B main -H "update-go-mods-for-${MATRIX_PATH}" --fill
           gh pr merge --auto --squash
         env:
           GITHUB_TOKEN: "${{ steps.generate_token.outputs.token }}"

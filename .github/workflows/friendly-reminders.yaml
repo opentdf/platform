@@ -28,17 +28,24 @@ jobs:
             (cd "$line" && go mod tidy >>../go-mod-tidy-output.txt 2>&1)
             CHANGES=$(cd "$line" && git status --porcelain)
             if [ -n "$CHANGES" ]; then
-              echo "Module: $line" >> go-mod-tidy-changes.txt
-              echo "$CHANGES" | sed 's/^/  /' >> go-mod-tidy-changes.txt
-              echo "" >> go-mod-tidy-changes.txt
+              {
+                echo "Module: $line"
+                # Add two spaces to the start of each line in $CHANGES using parameter expansion
+                while IFS= read -r change_line; do
+                  echo "  $change_line"
+                done <<< "$CHANGES"
+                echo ""
+              } >> go-mod-tidy-changes.txt
             fi
           done < <(go work edit --json | jq -r '.Use.[].DiskPath')
           if [ -s go-mod-tidy-changes.txt ]; then
             echo "changes_detected=true" >> "$GITHUB_OUTPUT"
             # Export the changes for the next step
-            echo "mod_tidy_changes<<EOF" >> "$GITHUB_OUTPUT"
-            cat go-mod-tidy-changes.txt >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
+            {
+              echo "mod_tidy_changes<<EOF"
+              cat go-mod-tidy-changes.txt
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
           else
             echo "changes_detected=false" >> "$GITHUB_OUTPUT"
             echo "mod_tidy_changes=" >> "$GITHUB_OUTPUT"

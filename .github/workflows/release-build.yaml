@@ -80,22 +80,20 @@ jobs:
 
       - name: Generate Reports
         run: |
-          digest="${DIGEST}"
           repo="${{ secrets.DOCKER_REPO }}"
-          trivy image --scanners vuln --format cyclonedx --output bom-cyclonedx.json $repo@$digest
-          trivy image --format spdx-json --output bom-spdx.json $repo@$digest
-          trivy image --format cosign-vuln --output cosign-vuln.json $repo@$digest
+          trivy image --scanners vuln --format cyclonedx --output bom-cyclonedx.json "$repo@$DIGEST"
+          trivy image --format spdx-json --output bom-spdx.json "$repo@$DIGEST"
+          trivy image --format cosign-vuln --output cosign-vuln.json "$repo@$DIGEST"
         env:
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
 
       - name: Cosign Attest SBOM
         run: |
-          digest="${DIGEST}"
           repo="${{ secrets.DOCKER_REPO }}"
-          cosign attest --type cyclonedx --predicate bom-cyclonedx.json '$repo@$digest'
-          cosign attest --type spdxjson -predicate bom-spdx.json '$repo@$digest'
-          cosign attest --type vuln --predicate cosign-vuln.json '$repo@$digest'
-          cosign attest --type spdxjson -predicate bom-spdx.json '$repo@$digest'
-          cosign attest --type vuln --predicate cosign-vuln.json '$repo@$digest'
+          cosign attest --type cyclonedx --predicate bom-cyclonedx.json "$repo@$DIGEST"
+          cosign attest --type spdxjson -predicate bom-spdx.json "$repo@$DIGEST"
+          cosign attest --type vuln --predicate cosign-vuln.json "$repo@$DIGEST"
+          cosign attest --type spdxjson -predicate bom-spdx.json "$repo@$DIGEST"
+          cosign attest --type vuln --predicate cosign-vuln.json "$repo@$DIGEST"
         env:
           DIGEST: ${{ steps.build-and-push.outputs.digest }}

@@ -195,6 +195,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		conn:                    platformConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
+		Actions:                 actions.NewActionServiceClient(platformConn),
 		Attributes:              attributes.NewAttributesServiceClient(platformConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(platformConn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(platformConn),

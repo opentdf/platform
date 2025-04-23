@@ -1,4 +1,4 @@
-name: 'Checks'
+name: "Checks"
 
 env:
   IS_RELEASE_BRANCH: ${{ startsWith(github.head_ref, 'release-please-') }}
@@ -24,7 +24,6 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       checks: write
-      contents: read
       pull-requests: read
     strategy:
       matrix:
@@ -36,9 +35,10 @@ jobs:
           - lib/fixtures
           - lib/flattening
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
           go-version-file: ${{ matrix.directory }}/go.mod
@@ -93,15 +93,18 @@ jobs:
         if: env.IS_RELEASE_BRANCH == 'false'
 
   integration:
+    permissions: {}
     name: integration tests
     runs-on: ubuntu-22.04
     env:
       TLS_ENABLED: "true"
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version-file: 'service/go.mod'
+          go-version-file: "service/go.mod"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -165,15 +168,19 @@ jobs:
         run: test/rego/custom-entity.bats
 
   benchmark:
+    permissions:
+      actions: write
     name: benchmark tests
     runs-on: ubuntu-22.04
     env:
       TLS_ENABLED: "true"
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version-file: 'service/go.mod'
+          go-version-file: "service/go.mod"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -238,6 +245,9 @@ jobs:
           OUTPUT=$(./examples/examples metrics)
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          echo "$PR_NUMBER" > pr-comment.txt
+          echo "## Benchmark Results" >> pr-comment.txt
+          echo "$OUTPUT" >  pr-comment.txt
 
           {
             echo "BENCHMARK_METRICS_OUTPUT<<EOO";
@@ -245,26 +255,21 @@ jobs:
             echo "EOO"
           } >> "$GITHUB_ENV"
 
-      - name: save benchmark results as a comment
+      - name: upload benchmark PR comment artifact
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            const metricsOutput = process.env.BENCHMARK_METRICS_OUTPUT || '## Standard Benchmark Skipped or Failed';
-            const bulkOutput = process.env.BENCHMARK_BULK_OUTPUT || '## Bulk Benchmark Skipped or Failed';
-            const body = `${metricsOutput}\n\n${bulkOutput}`;
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
+          name: "${{ github.workflow }}.${{ github.job }}.${{ github.event.pull_request.number }}"
+          path: pr-comment.txt
 
   image:
+    permissions: {}
     name: image build
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+        with:
+          persist-credentials: false
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6.10.0
         with:
@@ -273,6 +278,7 @@ jobs:
           push: false
 
   platform-xtest:
+    permissions: {}
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go
@@ -281,6 +287,7 @@ jobs:
 
   # test latest otdfctl CLI 'main' against platform PR branch
   otdfctl-test:
+    permissions: {}
     name: otdfctl e2e tests
     runs-on: ubuntu-latest
     steps:
@@ -289,13 +296,16 @@ jobs:
           platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: opentdf/otdfctl/e2e@main
         with:
-          otdfctl-ref: 'main'
+          otdfctl-ref: "main"
 
   buflint:
+    permissions: {}
     name: Protocol Buffer Lint and Gencode Up-to-date check
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+        with:
+          persist-credentials: false
       - uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99
         with:
           github_token: ${{ github.token }}
@@ -305,10 +315,10 @@ jobs:
       - uses: bufbuild/buf-breaking-action@c57b3d842a5c3f3b454756ef65305a50a587c5ba
         with:
           input: service
-          against: 'https://github.com/opentdf/platform.git#branch=main,subdir=service'
+          against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version-file: 'service/go.mod'
+          go-version-file: "service/go.mod"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -331,6 +341,7 @@ jobs:
         run: git diff-files --quiet --ignore-submodules
 
   ci:
+    permissions: {}
     needs:
       - buflint
       - go
@@ -344,16 +355,36 @@ jobs:
     if: ${{ !cancelled() }}
     steps:
       - if: contains(needs.*.result, 'failure')
-        run: echo "Failed due to ${{ contains(needs.*.result, 'failure') }}" && exit 1
+        name: Check for failed jobs and report
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const needs = context.needs;
+            const failedJobs = [];
+            for (const jobName in needs) {
+              if (needs[jobName].result === 'failure') {
+                failedJobs.push(jobName);
+              }
+            }
+            if (failedJobs.length > 0) {
+              core.setFailed(`One or more dependent jobs failed: ${failedJobs.join(', ')}`);
+            } else {
+              // This else block might not be strictly necessary due to the outer 'if' condition,
+              // but it's good practice if you were to remove the outer 'if'.
+              console.log('No dependent jobs failed.');
+            }
 
   license:
+    permissions: {}
     name: license check
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version-file: 'service/go.mod'
+          go-version-file: "service/go.mod"
           check-latest: false
           cache: false
       - name: check service licenses

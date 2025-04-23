@@ -1,0 +1,22 @@
+name: 'Sticky PR Comment'
+description: 'Posts a sticky comment to a pull request using marocchino/sticky-pull-request-comment'
+inputs:
+  pr_number:
+    description: 'Pull request number'
+    required: true
+  comment_body:
+    description: 'Comment body'
+    required: true
+  header:
+    description: 'Sticky comment header'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Post sticky comment
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        number: ${{ inputs.pr_number }}
+        message: ${{ inputs.comment_body }}
+        header: ${{ inputs.header }}
+        github_token: ${{ github.token }}

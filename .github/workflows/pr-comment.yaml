@@ -1,0 +1,115 @@
+name: PR Comment
+
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers] We need this action to comment on pull requests even when coming from forks. It is not executing any code or scripts, only comments on pull requests.
+    workflows:
+      - Checks
+      - "👋 Friendly Reminders"
+    types:
+      - completed
+
+jobs:
+  prepare-comments:
+    permissions:
+      actions: write
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      comments: ${{ steps.collect.outputs.comments }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install unzipper
+      - name: Download all PR comment artifacts
+        id: download
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # V7.0.1
+        with:
+          script: |
+            const run_id = context.payload.workflow_run.id;
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id,
+            });
+            // Match artifacts named <workflow>.<job>.<pr number>
+            const prArtifacts = artifacts.data.artifacts.filter(a => /^[^.]+\.[^.]+\.\d+$/.test(a.name));
+            if (prArtifacts.length === 0) {
+              core.setFailed('No PR comment artifacts found');
+              return;
+            }
+            const fs = require('fs');
+            const path = require('path');
+            const unzip = require('unzipper');
+            for (const artifact of prArtifacts) {
+              const download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+                archive_format: 'zip',
+              });
+              const buffer = Buffer.from(download.data);
+              const zipPath = path.join(process.env.GITHUB_WORKSPACE, `${artifact.name}.zip`);
+              fs.writeFileSync(zipPath, buffer);
+              await fs.createReadStream(zipPath)
+                .pipe(unzip.Extract({ path: process.env.GITHUB_WORKSPACE }))
+                .promise();
+            }
+            core.setOutput('artifacts', prArtifacts.map(a => a.name).join(','));
+
+      - name: Collect PR comment info
+        id: collect
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          ARTIFACT_OUTPUT: ${{ steps.download.outputs.artifacts }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const artifacts = process.env.ARTIFACT_OUTPUT;
+            let comments = [];
+
+            for (const art of artifacts.split(',')) {
+              const header = art.substring(0, art.lastIndexOf('.'));
+              const prNumber = art.substring(art.lastIndexOf('.') + 1);
+
+              let commentFile = 'pr-comment.txt';
+              if (!fs.existsSync(commentFile)) {
+                commentFile = path.join(art, 'pr-comment.txt');
+              }
+              if (!fs.existsSync(commentFile)) {
+                console.log(`Comment file not found for artifact ${art}`);
+                continue;
+              }
+              const commentBody = fs.readFileSync(commentFile, 'utf8');
+              comments.push({
+                pr_number: prNumber,
+                comment_body: commentBody,
+                header: header,
+              });
+            }
+            // Output as JSON string
+            core.setOutput('comments', JSON.stringify(comments));
+
+  post-comments:
+    permissions:
+      pull-requests: write
+    needs: prepare-comments
+    runs-on: ubuntu-latest
+    if: ${{ needs.prepare-comments.outputs.comments != '[]' && needs.prepare-comments.outputs.comments != '' }}
+    strategy:
+      matrix:
+        comment: ${{ fromJson(needs.prepare-comments.outputs.comments) }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/sticky-pr-comment
+      - name: Post sticky comment to PR
+        uses: ./.github/actions/sticky-pr-comment
+        with:
+          pr_number: ${{ matrix.comment.pr_number }}
+          comment_body: ${{ matrix.comment.comment_body }}
+          header: ${{ matrix.comment.header }}

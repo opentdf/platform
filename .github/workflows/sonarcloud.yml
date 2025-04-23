@@ -2,28 +2,24 @@ name: SonarCloud
 on:
   schedule:
     - cron: "0 5 * * 2,4,6"
-#  pull_request:
-#    types:
-#      - opened
-#      - synchronize
-#      - reopened
 
 jobs:
   gotest:
-    name: 'Generate Golang Test Reports'
+    name: "Generate Golang Test Reports"
     runs-on: ubuntu-latest
     permissions:
       contents: read
 
     steps:
+      - name: "Checkout repo"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+        with:
+          persist-credentials: false
 
-      - name: 'Checkout repo'
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
-
-      - name: 'Setup Go'
+      - name: "Setup Go"
         uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version: '1.23'
+          go-version: "1.23"
           check-latest: false
           cache-dependency-path: |
             service/go.sum
@@ -31,13 +27,13 @@ jobs:
             examples/go.sum
             protocol/go/go.sum
 
-      - name: 'Generate Golang Test Reports'
+      - name: "Generate Golang Test Reports"
         run: go test -v -coverprofile coverage.out -json ./sdk/... ./service/... ./lib/ocrypto | tee coverage.json
 
-      - name: 'Cover report'
+      - name: "Cover report"
         run: go tool cover -func=coverage.out
 
-      - name: 'Archive Golang Test Results'
+      - name: "Archive Golang Test Results"
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 #v4.6.2
         with:
           name: code-coverage-report
@@ -45,26 +41,28 @@ jobs:
           retention-days: 3
 
   sonarcloud:
-    name: 'SonarCloud'
+    name: "SonarCloud"
     runs-on: ubuntu-latest
     needs: [gotest]
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: ${{ github.repository == 'opentdf/platform' }}
     permissions:
       contents: read
 
     steps:
-      - name: 'Checkout repo'
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+      - name: "Checkout repo"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
         with:
-          fetch-depth: 0
+          persist-credentials: false
+          sparse-checkout: |
+            sonar-project.properties
 
-      - name: 'Download Code Coverage Report'
+      - name: "Download Code Coverage Report"
         uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e #v4.2.1
         with:
           name: code-coverage-report
 
-      - name: 'SonarCloud Scan'
+      - name: "SonarCloud Scan"
         uses: SonarSource/sonarqube-scan-action@0303d6b62e310685c0e34d0b9cde218036885c4d #v5.0.0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

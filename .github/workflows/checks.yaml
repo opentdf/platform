@@ -278,7 +278,8 @@ jobs:
           push: false
 
   platform-xtest:
-    permissions: {}
+    permissions:
+      contents: read
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go

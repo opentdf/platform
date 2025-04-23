@@ -229,7 +229,7 @@ func (a *InProcessProvider) ListKeys(_ context.Context) ([]KeyDetails, error) {
 }
 
 // Decrypt implements the unified decryption method for both RSA and EC
-func (a *InProcessProvider) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKeyData, error) {
+func (a *InProcessProvider) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error) {
 	kid := string(keyID)
 
 	// Try to determine the key type

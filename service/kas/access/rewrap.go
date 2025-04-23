@@ -65,7 +65,7 @@ type entityInfo struct {
 
 type kaoResult struct {
 	ID       string
-	DEK      security.ProtectedKeyData
+	DEK      security.ProtectedKey
 	Encapped []byte
 	Error    error
 
@@ -454,7 +454,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			continue
 		}
 
-		var unwrappedKey security.ProtectedKeyData
+		var unwrappedKey security.ProtectedKey
 		var err error
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":

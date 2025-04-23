@@ -451,7 +451,7 @@ func (s *StandardCrypto) ECDecrypt(keyID string, ephemeralPublicKey, ciphertext 
 }
 
 // Decrypt implements the SecurityProvider Decrypt method
-func (s *StandardCrypto) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKeyData, error) {
+func (s *StandardCrypto) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error) {
 	kid := string(keyID)
 	ska, ok := s.keysByID[kid]
 	if !ok {

@@ -7,8 +7,8 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 )
 
-// ProtectedKeyData represents a decrypted key with operations that can be performed on it
-type ProtectedKeyData interface {
+// ProtectedKey represents a decrypted key with operations that can be performed on it
+type ProtectedKey interface {
 	// VerifyBinding checks if the policy binding matches the given policy data
 	VerifyBinding(ctx context.Context, policy, binding []byte) error
 
@@ -25,7 +25,7 @@ type KeyManager interface {
 	// For EC keys, ephemeralPublicKey must be non-nil
 	// For RSA keys, ephemeralPublicKey should be nil
 	// Returns an UnwrappedKeyData interface for further operations
-	Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKeyData, error)
+	Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error)
 
 	// DeriveKey computes an agreed upon secret key, which NanoTDF may directly as the DEK or a key split
 	DeriveKey(ctx context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error)

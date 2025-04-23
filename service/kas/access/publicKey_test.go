@@ -109,7 +109,7 @@ func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]security.KeyDetail
 	return keys, nil
 }
 
-func (m *MockSecurityProvider) Decrypt(_ context.Context, _ security.KeyIdentifier, _, _ []byte) (security.ProtectedKeyData, error) {
+func (m *MockSecurityProvider) Decrypt(_ context.Context, _ security.KeyIdentifier, _, _ []byte) (security.ProtectedKey, error) {
 	return nil, errors.New("not implemented for tests")
 }
 

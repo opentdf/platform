@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package policy.actions;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "policy/objects.proto";
+import "policy/selectors.proto";
+
+/*
+   Actions CRUD Operations
+*/
+
+message GetActionRequest {
+  // Required
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+    string id = 1 [(buf.validate.field).string.uuid = true];
+    string name = 2 [
+      (buf.validate.field).string.max_len = 253,
+      (buf.validate.field).cel = {
+        id: "action_name_format"
+        message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
+        expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+      }
+    ];
+  }
+}
+message GetActionResponse {
+  policy.Action action = 1;
+
+  // Subject Mappings driving entitlement to the action
+  repeated policy.SubjectMapping subject_mappings = 2;
+}
+
+message ListActionsRequest {
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+message ListActionsResponse {
+  repeated policy.Action actions_standard = 1;
+  repeated policy.Action actions_custom = 2;
+
+  policy.PageResponse pagination = 10;
+}
+
+// Create a new Custom action name with optional metadata.
+// Creation of Standard actions is not supported.
+message CreateActionRequest {
+  // Required
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "action_name_format"
+      message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
+      expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+
+  // Optional
+  common.MetadataMutable metadata = 100;
+}
+message CreateActionResponse {
+  policy.Action action = 1;
+}
+
+// Metadata may be updated for either Custom or Standard actions.
+// Names may only be updated for Custom actions.
+message UpdateActionRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+
+  // Optional
+  // Custom actions only: replaces the existing action name
+  string name = 2 [
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "action_name_format"
+      message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
+      expression: "size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateActionResponse {
+  policy.Action action = 1;
+}
+
+// Custom only: deletion of Standard actions is not supported.
+message DeleteActionRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message DeleteActionResponse {
+  policy.Action action = 1;
+}
+
+service ActionService {
+  rpc GetAction(GetActionRequest) returns (GetActionResponse) {}
+  rpc ListActions(ListActionsRequest) returns (ListActionsResponse) {}
+  rpc CreateAction(CreateActionRequest) returns (CreateActionResponse) {}
+  rpc UpdateAction(UpdateActionRequest) returns (UpdateActionResponse) {}
+  rpc DeleteAction(DeleteActionRequest) returns (DeleteActionResponse) {}
+}

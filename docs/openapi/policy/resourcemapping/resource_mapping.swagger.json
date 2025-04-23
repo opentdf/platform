@@ -450,7 +450,7 @@
         "STANDARD_ACTION_TRANSMIT"
       ],
       "default": "STANDARD_ACTION_UNSPECIFIED",
-      "title": "Standard actions supported by the platform"
+      "title": "- STANDARD_ACTION_DECRYPT: Deprecated\nMigrate to 'read' action name\n - STANDARD_ACTION_TRANSMIT: Deprecated\nMigrate to 'create' action name"
     },
     "commonMetadata": {
       "type": "object",
@@ -500,11 +500,23 @@
     "policyAction": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string",
+          "title": "Generated uuid in database"
+        },
         "standard": {
-          "$ref": "#/definitions/ActionStandardAction"
+          "$ref": "#/definitions/ActionStandardAction",
+          "title": "Deprecated"
         },
         "custom": {
+          "type": "string",
+          "title": "Deprecated"
+        },
+        "name": {
           "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
         }
       },
       "title": "An action an entity can take"
@@ -571,8 +583,7 @@
         "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
         "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
       ],
-      "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
-      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't\nviolated when users add new enum values to an enum in a given package"
+      "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED"
     },
     "policyCondition": {
       "type": "object",
@@ -602,8 +613,7 @@
         "CONDITION_BOOLEAN_TYPE_ENUM_AND",
         "CONDITION_BOOLEAN_TYPE_ENUM_OR"
       ],
-      "default": "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED",
-      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't\nviolated when users add new enum values to an enum in a given package"
+      "default": "CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED"
     },
     "policyConditionGroup": {
       "type": "object",
@@ -904,8 +914,7 @@
         "SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS"
       ],
       "default": "SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED",
-      "description": "- SUBJECT_MAPPING_OPERATOR_ENUM_IN: operator that returns true if a value in a list matches the string\n - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN: operator that returns true if a value is not in a list that is matched by\nstring\n - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS: operator that returns true if a value in a list contains the substring",
-      "title": "buflint ENUM_VALUE_PREFIX: to make sure that C++ scoping rules aren't\nviolated when users add new enum values to an enum in a given package"
+      "title": "- SUBJECT_MAPPING_OPERATOR_ENUM_IN: operator that returns true if a value in a list matches the string\n - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN: operator that returns true if a value is not in a list that is matched by\nstring\n - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS: operator that returns true if a value in a list contains the substring"
     },
     "policySubjectSet": {
       "type": "object",

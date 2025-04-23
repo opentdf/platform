@@ -3,6 +3,7 @@ package db
 import (
 	"testing"
 
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -88,5 +89,61 @@ func Test_GetNextOffset(t *testing.T) {
 	for _, test := range cases {
 		result := getNextOffset(test.currOffset, test.limit, test.total)
 		assert.Equal(t, test.expected, result, test.scenario)
+	}
+}
+
+func Test_UnmarshalAllActionsProto(t *testing.T) {
+	tests := []struct {
+		name              string
+		stdActionsJSON    []byte
+		customActionsJSON []byte
+		wantLen           int
+	}{
+		{
+			name:              "Only Standard Actions",
+			stdActionsJSON:    []byte(`[{"id":"std1", "name":"Standard One"}, {"id":"std2", "name":"Standard Two"}]`),
+			customActionsJSON: []byte(`[]`),
+			wantLen:           2,
+		},
+		{
+			name:              "Only Custom Actions",
+			stdActionsJSON:    []byte(`[]`),
+			customActionsJSON: []byte(`[{"id":"custom1", "name":"Custom One"}, {"id":"custom2", "name":"Custom Two"}]`),
+			wantLen:           2,
+		},
+		{
+			name:              "Both Standard and Custom Actions",
+			stdActionsJSON:    []byte(`[{"id":"std1", "name":"Standard One"}, {"id":"std2", "name":"Standard Two"}]`),
+			customActionsJSON: []byte(`[{"id":"custom1", "name":"Custom One"}, {"id":"custom2", "name":"Custom Two"}]`),
+			wantLen:           4,
+		},
+		{
+			name:              "Empty Actions",
+			stdActionsJSON:    []byte(`[]`),
+			customActionsJSON: []byte(`[]`),
+			wantLen:           0,
+		},
+		{
+			name:              "Nil Actions",
+			stdActionsJSON:    nil,
+			customActionsJSON: nil,
+			wantLen:           0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actions := []*policy.Action{}
+
+			err := unmarshalAllActionsProto(tt.stdActionsJSON, tt.customActionsJSON, &actions)
+
+			if err != nil {
+				t.Errorf("unmarshalAllActionsProto() unexpected error = %v", err)
+			}
+
+			if len(actions) != tt.wantLen {
+				t.Errorf("unmarshalAllActionsProto() len(actions) = %v, wantLen %v", len(actions), tt.wantLen)
+			}
+		})
 	}
 }

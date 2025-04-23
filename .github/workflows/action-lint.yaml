@@ -5,20 +5,20 @@ on:
     branches:
       - main
     paths:
-      - '.github/workflows/**'
+      - ".github/workflows/**"
 
 jobs:
-    actionlint:
-        runs-on: ubuntu-22.04
-        name: actionlint
-        permissions:
-            contents: read
-            pull-requests: write
-            checks: write
-        steps:
-            - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-            - name: "Run reviewdog actionlint"
-              uses: reviewdog/action-actionlint@664c8ef5435569dd2880e62d891ab3ecdf98dc60 # v1.57.0
-              with:
-                reporter: "github-pr-review"
-                fail_on_error: true
+  actionlint:
+    runs-on: ubuntu-22.04
+    name: actionlint
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+      - name: "Run reviewdog actionlint"
+        uses: reviewdog/action-actionlint@664c8ef5435569dd2880e62d891ab3ecdf98dc60 # v1.57.0
+        with:
+          reporter: "github-pr-review"
+          fail_level: error

@@ -1041,7 +1041,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 		return 0, fmt.Errorf("createNanoTDFDecryptHandler failed: %w", err)
 	}
 
-	if handler.config.kasAllowlist == nil && !handler.config.ignoreAllowList {
+	if len(handler.config.kasAllowlist) == 0 && !handler.config.ignoreAllowList {
 		if s.KeyAccessServerRegistry != nil {
 			// retrieve the registered kases if not provided
 			allowList, err := allowListFromKASRegistry(ctx, s.KeyAccessServerRegistry, s.conn.Target())

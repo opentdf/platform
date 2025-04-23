@@ -126,7 +126,7 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 	tdfDecryptors := make(map[string]decryptor)
 	policyTDF := make(map[string]*BulkTDF)
 
-	if !bulkReq.ignoreAllowList && bulkReq.kasAllowlist == nil {
+	if !bulkReq.ignoreAllowList && len(bulkReq.kasAllowlist) == 0 {
 		// if no kasAllowlist is set, we get the allowlist from the registry
 		allowlist, err := allowListFromKASRegistry(ctx, s.KeyAccessServerRegistry, s.conn.Target())
 		if err != nil {

@@ -304,7 +304,7 @@ func getKasAddress(kasURL string) (string, error) {
 }
 
 func newAllowList(kasList []string) (AllowList, error) {
-	allowList := make(AllowList)
+	allowList := make(AllowList, len(kasList))
 	for _, kasURL := range kasList {
 		err := allowList.Add(kasURL)
 		if err != nil {

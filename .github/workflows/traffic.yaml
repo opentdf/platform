@@ -3,6 +3,8 @@ on:
     # runs once a week on sunday
     - cron: "55 23 * * 0"
 
+permissions: {}
+
 jobs:
   traffic:
     runs-on: ubuntu-latest

@@ -6,6 +6,8 @@ on:
     # hour or 00:00. See discussion: https://github.com/orgs/community/discussions/27130)
     - cron: "15 0 * * *"
 
+permissions: {}
+
 jobs:
   db-flakiness-recovery:
     runs-on: ubuntu-22.04

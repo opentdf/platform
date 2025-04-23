@@ -8,6 +8,8 @@ on:
 #      - synchronize
 #      - reopened
 
+permissions: {}
+
 jobs:
   gotest:
     name: "Generate Golang Test Reports"

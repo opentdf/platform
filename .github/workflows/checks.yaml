@@ -19,6 +19,8 @@ on:
       - checks_requested
   workflow_call:
 
+permissions: {}
+
 jobs:
   go:
     runs-on: ubuntu-22.04

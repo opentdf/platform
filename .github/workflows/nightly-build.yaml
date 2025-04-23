@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: "0 0 * * *"
 
+permissions: {}
+
 jobs:
   nightly:
     if: (github.event_name == 'schedule' && github.repository == 'opentdf/platform')

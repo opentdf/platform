@@ -22,7 +22,7 @@ jobs:
         uses: reviewdog/action-actionlint@664c8ef5435569dd2880e62d891ab3ecdf98dc60 # v1.57.0
         with:
           reporter: "github-pr-review"
-          fail_level: true
+          fail_level: error
   zizmor:
     name: Zizmor Audit
     runs-on: ubuntu-latest

@@ -38,6 +38,7 @@ runs:
       with:
         ref: main
         path: otdf-test-platform
+        repository: strantalis/platform
         persist-credentials: false
         sparse-checkout: | 
           docker-compose.yaml

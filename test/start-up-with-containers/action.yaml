@@ -36,8 +36,8 @@ runs:
     - name: Download latest init-temp-keys.sh and docker-compose.yaml
       shell: bash
       run: |
-        curl https://github.com/opentdf/platform/blob/main/.github/scripts/init-temp-keys.sh > otdf-test-platform/.github/scripts/init-temp-keys.sh
-        curl https://raw.githubusercontent.com/opentdf/platform/refs/heads/main/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
+        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/keycloak-image-fix/.github/scripts/init-temp-keys.sh > otdf-test-platform/.github/scripts/init-temp-keys.sh
+        curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/keycloak-image-fix/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
     - name: Set up go (platform's go version)
       id: setup-go
       uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0

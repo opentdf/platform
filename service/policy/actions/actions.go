@@ -114,18 +114,18 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 	err := a.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		action, err := txClient.CreateAction(ctx, req.Msg)
 		if err != nil {
-			a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
-
+		
 		auditParams.ObjectID = action.GetId()
 		auditParams.Original = action
 		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
+		
 		rsp.Action = action
 		return nil
 	})
 	if err != nil {
+		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("action", req.Msg.String()))
 	}
 	return connect.NewResponse(rsp), nil
@@ -149,24 +149,23 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 			},
 		})
 		if err != nil {
-			a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-			return db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("action", req.Msg.String()))
+			return err
 		}
-
+		
 		updated, err := txClient.UpdateAction(ctx, req.Msg)
 		if err != nil {
-			a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-			return db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("action", req.Msg.String()))
+			return err
 		}
-
+		
 		auditParams.Original = original
 		auditParams.Updated = updated
 		a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
+		
 		rsp.Action = updated
 		return nil
 	})
 	if err != nil {
+		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("action", req.Msg.String()))
 	}
 

@@ -27,6 +27,20 @@ func NewStandardUnwrappedKey(rawKey []byte) *StandardUnwrappedKey {
 	}
 }
 
+func (k *StandardUnwrappedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]byte, error) {
+	aesGcm, err := ocrypto.NewAESGcm(k.rawKey)
+	if err != nil {
+		return nil, err
+	}
+
+	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(iv, body, tagSize)
+	if err != nil {
+		return nil, err
+	}
+
+	return decryptedData, nil
+}
+
 // Export returns the raw key data, optionally encrypting it with the provided encryptor
 func (k *StandardUnwrappedKey) Export(encryptor ocrypto.PublicKeyEncryptor) ([]byte, error) {
 	if encryptor == nil {
@@ -283,8 +297,9 @@ func (a *InProcessProvider) determineKeyType(_ context.Context, kid string) (str
 }
 
 // DeriveKey generates a symmetric key for NanoTDF
-func (a *InProcessProvider) DeriveKey(_ context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
-	return a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(kasKID), ephemeralPublicKeyBytes, curve)
+func (a *InProcessProvider) DeriveKey(_ context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error) {
+	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(kasKID), ephemeralPublicKeyBytes, curve)
+	return NewStandardUnwrappedKey(k), err
 }
 
 // GenerateECSessionKey generates a session key for NanoTDF

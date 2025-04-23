@@ -113,7 +113,7 @@ func (m *MockSecurityProvider) Decrypt(_ context.Context, _ security.KeyIdentifi
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ security.KeyIdentifier, _ []byte, _ elliptic.Curve) ([]byte, error) {
+func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ security.KeyIdentifier, _ []byte, _ elliptic.Curve) (security.ProtectedKey, error) {
 	return nil, errors.New("not implemented for tests")
 }
 

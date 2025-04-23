@@ -866,29 +866,25 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 		}
 		results[kao.GetKeyAccessObjectId()] = kaoResult{
 			ID:  kao.GetKeyAccessObjectId(),
-			DEK: security.NewStandardUnwrappedKey(symmetricKey),
+			DEK: symmetricKey,
 		}
 		return policy, results
 	}
 	return nil, results
 }
 
-func extractNanoPolicy(symmetricKey []byte, header sdk.NanoTDFHeader) (*Policy, error) {
-	gcm, err := ocrypto.NewAESGcm(symmetricKey)
-	if err != nil {
-		return nil, fmt.Errorf("crypto.NewAESGcm:%w", err)
-	}
-
+func extractNanoPolicy(symmetricKey security.ProtectedKey, header sdk.NanoTDFHeader) (*Policy, error) {
 	const (
 		kIvLen = 12
 	)
+	// The IV is always an empty 12 bytes for the policy.
 	iv := make([]byte, kIvLen)
 	tagSize, err := sdk.SizeOfAuthTagForCipher(header.GetCipher())
 	if err != nil {
 		return nil, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
 	}
 
-	policyData, err := gcm.DecryptWithIVAndTagSize(iv, header.EncryptedPolicyBody, tagSize)
+	policyData, err := symmetricKey.DecryptAESGCM(iv, header.EncryptedPolicyBody, tagSize)
 	if err != nil {
 		return nil, fmt.Errorf("Error decrypting policy body:%w", err)
 	}

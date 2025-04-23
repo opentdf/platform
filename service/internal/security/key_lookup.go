@@ -2,11 +2,6 @@ package security
 
 import (
 	"context"
-	"errors"
-)
-
-var (
-	ErrCertNotFound = errors.New("certificate not found")
 )
 
 // KeyType represents the format in which a key can be exported

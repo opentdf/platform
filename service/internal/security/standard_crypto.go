@@ -1,6 +1,7 @@
 package security
 
 import (
+	"context"
 	"crypto"
 	"crypto/ecdh"
 	"crypto/elliptic"
@@ -267,6 +268,7 @@ func (s StandardCrypto) ECCertificate(kid string) (string, error) {
 	return ec.ecCertificatePEM, nil
 }
 
+// Exports the EC public key with kid as a pem encode pkix
 func (s StandardCrypto) ECPublicKey(kid string) (string, error) {
 	k, ok := s.keysByID[kid]
 	if !ok {
@@ -441,27 +443,65 @@ func versionSalt() []byte {
 
 // ECDecrypt uses hybrid ECIES to decrypt the data.
 func (s *StandardCrypto) ECDecrypt(keyID string, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
-	ska, ok := s.keysByID[keyID]
-	if !ok {
-		return nil, fmt.Errorf("key [%s] not found", keyID)
-	}
-	sk, ok := ska.(StandardECCrypto)
-	if !ok {
-		return nil, fmt.Errorf("key [%s] is not an EC key", keyID)
-	}
-	if sk.sk == nil {
-		// Parse the private key
-		loaded, err := ocrypto.ECPrivateKeyFromPem([]byte(sk.ecPrivateKeyPem))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse EC private key: %w", err)
-		}
-		sk.sk = loaded
-	}
-
-	ed, err := ocrypto.NewSaltedECDecryptor(sk.sk, TDFSalt(), nil)
+	unwrappedKey, err := s.Decrypt(context.Background(), KeyIdentifier(keyID), ciphertext, ephemeralPublicKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create EC decryptor: %w", err)
+		return nil, err
+	}
+	return unwrappedKey.Export(nil)
+}
+
+// Decrypt implements the SecurityProvider Decrypt method
+func (s *StandardCrypto) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (UnwrappedKeyData, error) {
+	kid := string(keyID)
+	ska, ok := s.keysByID[kid]
+	if !ok {
+		return nil, fmt.Errorf("key [%s] not found", kid)
 	}
 
-	return ed.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
+	var rawKey []byte
+	var err error
+
+	switch key := ska.(type) {
+	case StandardECCrypto:
+		if ephemeralPublicKey == nil || len(ephemeralPublicKey) == 0 {
+			return nil, fmt.Errorf("ephemeral public key is required for EC decryption")
+		}
+
+		if key.sk == nil {
+			// Parse the private key
+			loaded, err := ocrypto.ECPrivateKeyFromPem([]byte(key.ecPrivateKeyPem))
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse EC private key: %w", err)
+			}
+			key.sk = loaded
+		}
+
+		ed, err := ocrypto.NewECDecryptor(key.sk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create EC decryptor: %w", err)
+		}
+
+		rawKey, err = ed.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with ephemeral key: %w", err)
+		}
+
+	case StandardRSACrypto:
+		if ephemeralPublicKey != nil && len(ephemeralPublicKey) > 0 {
+			return nil, fmt.Errorf("ephemeral public key should not be provided for RSA decryption")
+		}
+
+		rawKey, err = key.asymDecryption.Decrypt(ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data: %w", err)
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported key type for key ID [%s]", kid)
+	}
+
+	return &StandardUnwrappedKey{
+		rawKey: rawKey,
+		logger: slog.Default(),
+	}, nil
 }

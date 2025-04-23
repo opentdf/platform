@@ -108,11 +108,7 @@ func (m *MockSecurityProvider) ListKeys(ctx context.Context) ([]security.KeyDeta
 	return keys, nil
 }
 
-func (m *MockSecurityProvider) RSADecrypt(ctx context.Context, keyID security.KeyIdentifier, ciphertext []byte) ([]byte, error) {
-	return nil, errors.New("not implemented for tests")
-}
-
-func (m *MockSecurityProvider) ECDecrypt(ctx context.Context, keyID security.KeyIdentifier, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
+func (m *MockSecurityProvider) Decrypt(ctx context.Context, keyID security.KeyIdentifier, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
 	return nil, errors.New("not implemented for tests")
 }
 

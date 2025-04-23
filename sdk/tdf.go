@@ -991,14 +991,6 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 	for i, kao := range r.manifest.EncryptionInformation.KeyAccessObjs {
 		kaoID := fmt.Sprintf("kao-%d", i)
 
-		// if ignoreing allowlist then warn
-		// if kas url is not allowed then return error
-		if r.config.ignoreAllowList {
-			slog.Warn(fmt.Sprintf("KasAllowlist is ignored, kas url %s is allowed", kao.KasURL))
-		} else if !r.config.kasAllowlist.IsAllowed(kao.KasURL) {
-			return nil, fmt.Errorf("KasAllowlist: kas url %s is not allowed", kao.KasURL)
-		}
-
 		key, err := ocrypto.Base64Decode([]byte(kao.WrappedKey))
 		if err != nil {
 			return nil, fmt.Errorf("could not decode wrapper key: %w", err)
@@ -1262,7 +1254,17 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 	if err != nil {
 		return err
 	}
-	for _, req := range reqs {
+	for kasurl, req := range reqs {
+		// if ignoreing allowlist then warn
+		// if kas url is not allowed then return error
+		if r.config.ignoreAllowList {
+			slog.Warn(fmt.Sprintf("KasAllowlist is ignored, kas url %s is allowed", kasurl))
+		} else if !r.config.kasAllowlist.IsAllowed(kasurl) {
+			reqFail(fmt.Errorf("KasAllowlist: kas url %s is not allowed", kasurl), req)
+			continue
+		}
+
+		// if allowed then unwrap
 		policyRes, err := kasClient.unwrap(ctx, req)
 		if err != nil {
 			reqFail(err, req)

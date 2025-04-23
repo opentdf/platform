@@ -575,7 +575,8 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 		// Verify policy binding using the UnwrappedKeyData interface
 		if err := unwrappedKey.VerifyBinding(ctx, []byte(req.GetPolicy().GetBody()), policyBinding); err != nil {
-			failedKAORewrap(results, kao, err)
+			p.Logger.WarnContext(ctx, "failure to verify policy binding", "err", err)
+			failedKAORewrap(results, kao, err400("bad request"))
 			continue
 		}
 

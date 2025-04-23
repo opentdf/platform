@@ -67,17 +67,11 @@ func (k *StandardUnwrappedKey) VerifyBinding(ctx context.Context, policy, policy
 
 	actualHMAC, err := k.generateHMACDigest(ctx, policy)
 	if err != nil {
-		if k.logger != nil {
-			k.logger.WarnContext(ctx, "unable to generate policy hmac", "err", err)
-		}
-		return errors.New("bad request")
+		return fmt.Errorf("unable to generate policy hmac: %w", err)
 	}
 
 	if !hmac.Equal(actualHMAC, policyBinding) {
-		if k.logger != nil {
-			k.logger.WarnContext(ctx, "policy hmac mismatch", "policyBinding", policyBinding)
-		}
-		return errors.New("bad request")
+		return errors.New("policy hmac mismatch")
 	}
 
 	return nil

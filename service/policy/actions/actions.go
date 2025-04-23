@@ -82,18 +82,11 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 func (a *ActionService) GetAction(ctx context.Context, req *connect.Request[actions.GetActionRequest]) (*connect.Response[actions.GetActionResponse], error) {
 	rsp := &actions.GetActionResponse{}
 
-	var loggableIdentifier slog.Attr
-	if req.Msg.GetId() != "" {
-		loggableIdentifier = slog.String("id", req.Msg.GetId())
-	} else {
-		loggableIdentifier = slog.String("name", req.Msg.GetName())
-	}
-
-	a.logger.DebugContext(ctx, "getting action", loggableIdentifier)
+	a.logger.DebugContext(ctx, "getting action", slog.Any("identifier", req.Msg.GetIdentifier()))
 
 	action, err := a.dbClient.GetAction(ctx, req.Msg)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, loggableIdentifier)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
 	}
 	rsp.Action = action
 
@@ -157,13 +150,13 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 		})
 		if err != nil {
 			a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-			return db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", actionID))
+			return db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("action", req.Msg.String()))
 		}
 
 		updated, err := txClient.UpdateAction(ctx, req.Msg)
 		if err != nil {
 			a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-			return db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", actionID))
+			return db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("action", req.Msg.String()))
 		}
 
 		auditParams.Original = original
@@ -174,7 +167,7 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 		return nil
 	})
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", actionID))
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("action", req.Msg.String()))
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -191,13 +184,14 @@ func (a *ActionService) DeleteAction(ctx context.Context, req *connect.Request[a
 	}
 	a.logger.DebugContext(ctx, "deleting action", slog.String("id", actionID))
 
-	_, err := a.dbClient.DeleteAction(ctx, req.Msg)
+	deleted, err := a.dbClient.DeleteAction(ctx, req.Msg)
 	if err != nil {
 		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", actionID))
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("action", req.Msg.String()))
 	}
 
 	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+	rsp.Action = deleted
 
 	return connect.NewResponse(rsp), nil
 }

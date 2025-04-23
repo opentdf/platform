@@ -26,7 +26,7 @@ type mockTestServiceOptions struct {
 	dbRegister         serviceregistry.DBRegister
 }
 
-const numExpectedServices = 7
+const numExpectedPolicyServices = 7
 
 func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.IService, *spyTestService) {
 	spy := &spyTestService{}
@@ -114,7 +114,7 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_
 
 	policy, err := registry.GetNamespace(servicePolicy)
 	suite.Require().NoError(err)
-	suite.Len(policy.Services, numExpectedServices)
+	suite.Len(policy.Services, numExpectedPolicyServices)
 	suite.Equal(modeCore, policy.Mode)
 
 	wellKnown, err := registry.GetNamespace(serviceWellKnown)
@@ -145,7 +145,7 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_Core_Expect_Cor
 
 	policy, err := registry.GetNamespace(servicePolicy)
 	suite.Require().NoError(err)
-	suite.Len(policy.Services, numExpectedServices)
+	suite.Len(policy.Services, numExpectedPolicyServices)
 	suite.Equal(modeCore, policy.Mode)
 
 	wellKnown, err := registry.GetNamespace(serviceWellKnown)
@@ -172,7 +172,7 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 
 	policy, err := registry.GetNamespace(servicePolicy)
 	suite.Require().NoError(err)
-	suite.Len(policy.Services, numExpectedServices)
+	suite.Len(policy.Services, numExpectedPolicyServices)
 	suite.Equal(modeCore, policy.Mode)
 
 	wellKnown, err := registry.GetNamespace(serviceWellKnown)
@@ -199,7 +199,7 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 
 	policy, err := registry.GetNamespace(servicePolicy)
 	suite.Require().NoError(err)
-	suite.Len(policy.Services, numExpectedServices)
+	suite.Len(policy.Services, numExpectedPolicyServices)
 	suite.Equal(modeCore, policy.Mode)
 
 	wellKnown, err := registry.GetNamespace(serviceWellKnown)

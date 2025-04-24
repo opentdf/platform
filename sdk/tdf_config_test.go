@@ -218,18 +218,30 @@ func TestAllowList_Add(t *testing.T) {
 		{
 			name:        "Valid URL with port",
 			kasURL:      "https://example.com:443",
-			entry:       "example.com:443",
+			entry:       "https://example.com:443",
 			expectError: false,
 		},
 		{
 			name:        "Valid URL without port",
-			kasURL:      "https://example.com",
-			entry:       "example.com",
+			kasURL:      "https://example.com/something",
+			entry:       "https://example.com:443",
+			expectError: false,
+		},
+		{
+			name:        "Valid http URL with port",
+			kasURL:      "http://example.com:8080/hello",
+			entry:       "http://example.com:8080",
+			expectError: false,
+		},
+		{
+			name:        "Valid http URL without port",
+			kasURL:      "http://example.com",
+			entry:       "http://example.com",
 			expectError: false,
 		},
 		{
 			name:        "Invalid URL",
-			kasURL:      "invalid-url",
+			kasURL:      "http://:8080",
 			expectError: true,
 		},
 		{
@@ -257,6 +269,8 @@ func TestAllowList_IsAllowed(t *testing.T) {
 	allowList := make(AllowList)
 	_ = allowList.Add("https://example.com:443")
 	_ = allowList.Add("https://another.com")
+	_ = allowList.Add("http://one-more.com")
+	_ = allowList.Add("without-schema:8080")
 
 	tests := []struct {
 		name     string
@@ -272,6 +286,26 @@ func TestAllowList_IsAllowed(t *testing.T) {
 			name:     "Allowed URL without port",
 			kasURL:   "https://another.com",
 			expected: true,
+		},
+		{
+			name:     "Allowed URL without schema",
+			kasURL:   "https://without-schema:8080",
+			expected: true,
+		},
+		{
+			name:     "Allowed URL with http",
+			kasURL:   "http://one-more.com",
+			expected: true,
+		},
+		{
+			name:     "Not allowed url based on schema",
+			kasURL:   "http://another.com",
+			expected: false,
+		},
+		{
+			name:     "Not allowed url based on port",
+			kasURL:   "https://another.com:9090",
+			expected: false,
 		},
 		{
 			name:     "Not allowed URL",
@@ -295,24 +329,16 @@ func TestAllowList_IsAllowed(t *testing.T) {
 
 func TestWithKasAllowlist(t *testing.T) {
 	tests := []struct {
-		name        string
-		kasList     []string
-		expectError bool
+		name    string
+		kasList []string
 	}{
 		{
-			name:        "Valid KAS URLs",
-			kasList:     []string{"https://example.com:443", "https://another.com"},
-			expectError: false,
+			name:    "With KAS URLs",
+			kasList: []string{"https://example.com:443", "https://another.com"},
 		},
 		{
-			name:        "Invalid KAS URL",
-			kasList:     []string{"invalid-url"},
-			expectError: true,
-		},
-		{
-			name:        "Empty KAS list",
-			kasList:     []string{},
-			expectError: false,
+			name:    "Empty KAS list",
+			kasList: []string{},
 		},
 	}
 
@@ -320,13 +346,9 @@ func TestWithKasAllowlist(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			config := &TDFReaderConfig{}
 			err := WithKasAllowlist(tt.kasList)(config)
-			if tt.expectError {
-				require.Error(t, err, "Expected an error for test case: %s", tt.name)
-			} else {
-				require.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
-				for _, kasURL := range tt.kasList {
-					assert.True(t, config.kasAllowlist.IsAllowed(kasURL), "Expected KAS URL to be allowed: %s", kasURL)
-				}
+			require.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
+			for _, kasURL := range tt.kasList {
+				assert.True(t, config.kasAllowlist.IsAllowed(kasURL), "Expected KAS URL to be allowed: %s", kasURL)
 			}
 		})
 	}

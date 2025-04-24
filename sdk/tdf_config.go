@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strings"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -284,23 +285,37 @@ type TDFReaderConfig struct {
 type AllowList map[string]bool
 
 func getKasAddress(kasURL string) (string, error) {
+	// default to https if no scheme is provided
+	if !strings.Contains(kasURL, "://") {
+		kasURL = "https://" + kasURL
+	}
 	parsedURL, err := url.Parse(kasURL)
 	if err != nil {
 		return "", fmt.Errorf("cannot parse kas url(%s): %w", kasURL, err)
 	}
-
-	// Needed to support buffconn for testing
-	if parsedURL.Host == "" && parsedURL.Port() == "" {
-		return "", nil
+	if parsedURL.Hostname() == "" {
+		return "", fmt.Errorf("no host parsed from url: %s", kasURL)
 	}
 
-	port := parsedURL.Port()
-	// if port is empty, default to 443.
-	if port == "" {
-		return parsedURL.Hostname(), nil
+	// Default to "https" if no scheme is provided
+	if parsedURL.Scheme == "" {
+		parsedURL.Scheme = "https"
 	}
 
-	return net.JoinHostPort(parsedURL.Hostname(), port), nil
+	// Default to port 443 if no port is provided
+	if parsedURL.Port() != "" {
+		parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
+	} else if parsedURL.Scheme == "https" {
+		parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), "443")
+
+	}
+
+	// Reconstruct the URL with only the scheme, host, and port
+	parsedURL.Path = ""
+	parsedURL.RawQuery = ""
+	parsedURL.Fragment = ""
+
+	return parsedURL.String(), nil
 }
 
 func newAllowList(kasList []string) (AllowList, error) {

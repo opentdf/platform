@@ -47,6 +47,7 @@ const (
 	ErrPlatformAuthzEndpointNotFound  = Error("authorization_endpoint not found in well-known idp configuration")
 	ErrPlatformTokenEndpointNotFound  = Error("token_endpoint not found in well-known idp configuration")
 	ErrPlatformPublicClientIDNotFound = Error("public_client_id not found in well-known idp configuration")
+	ErrPlatformEndpointNotFound       = Error("platform_endpoint not found in well-known configuration")
 	ErrAccessTokenInvalid             = Error("access token is invalid")
 )
 
@@ -114,6 +115,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		dialOptions = append(dialOptions, cfg.extraDialOptions...)
 	}
 
+	unsanitizedPlatformEndpoint := platformEndpoint
 	// IF IPC is disabled we build a validated healthy connection to the platform
 	if !cfg.ipc {
 		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
@@ -152,6 +154,9 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 				return nil, err
 			}
 		}
+	}
+	if cfg.PlatformConfiguration != nil {
+		cfg.PlatformConfiguration["platform_endpoint"] = unsanitizedPlatformEndpoint
 	}
 
 	var uci []grpc.UnaryClientInterceptor

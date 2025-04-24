@@ -662,7 +662,7 @@ func allowListFromKASRegistry(ctx context.Context, kasRegistryClient kasregistry
 		}
 	}
 	// grpc target does not have a scheme
-	err = kasAllowlist.Add("http://" + platformURL)
+	err = kasAllowlist.Add(platformURL)
 	if err != nil {
 		return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
 	}
@@ -689,7 +689,11 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	if len(config.kasAllowlist) == 0 && !config.ignoreAllowList {
 		if s.KeyAccessServerRegistry != nil {
 			// retrieve the registered kases if not provided
-			allowList, err := allowListFromKASRegistry(context.Background(), s.KeyAccessServerRegistry, s.conn.Target())
+			platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
+			if err != nil {
+				return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
+			}
+			allowList, err := allowListFromKASRegistry(context.Background(), s.KeyAccessServerRegistry, platformEndpoint)
 			if err != nil {
 				return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
 			}

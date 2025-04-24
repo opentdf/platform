@@ -114,7 +114,7 @@ func (s *RoundtripSuite) SetupSuite() {
 
 	opts = append(opts, sdk.WithClientCredentials(s.TestConfig.ClientID, s.TestConfig.ClientSecret, nil))
 
-	sdk, err := sdk.New(s.TestConfig.PlatformEndpoint, opts...)
+	sdk, err := sdk.New(fmt.Sprintf("http://%s", s.TestConfig.PlatformEndpoint), opts...)
 	s.Require().NoError(err)
 	s.client = sdk
 

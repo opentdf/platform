@@ -231,7 +231,8 @@ jobs:
 
       - name: run tdf3 benchmark tests
         run: | 
-          OUTPUT=$(./examples/examples benchmark --count=5000 --concurrent=50)
+          CMDOUTPUT=$(./examples/examples benchmark --count=5000 --concurrent=50)
+          OUTPUT=$(echo "$CMDOUTPUT")
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
           {

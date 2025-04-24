@@ -19,6 +19,7 @@ import (
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -26,7 +27,7 @@ import (
 
 // MockKeyDetails is a test implementation of KeyDetails
 type MockKeyDetails struct {
-	id        security.KeyIdentifier
+	id        trust.KeyIdentifier
 	algorithm string
 	legacy    bool
 	certData  string
@@ -34,7 +35,7 @@ type MockKeyDetails struct {
 	jwkData   string
 }
 
-func (m *MockKeyDetails) ID() security.KeyIdentifier {
+func (m *MockKeyDetails) ID() trust.KeyIdentifier {
 	return m.id
 }
 
@@ -46,14 +47,14 @@ func (m *MockKeyDetails) IsLegacy() bool {
 	return m.legacy
 }
 
-func (m *MockKeyDetails) ExportPublicKey(_ context.Context, format security.KeyType) (string, error) {
+func (m *MockKeyDetails) ExportPublicKey(_ context.Context, format trust.KeyType) (string, error) {
 	switch format {
-	case security.KeyTypeJWK:
+	case trust.KeyTypeJWK:
 		if m.jwkData == "" {
 			return "", errors.New("JWK data not available")
 		}
 		return m.jwkData, nil
-	case security.KeyTypePKCS8:
+	case trust.KeyTypePKCS8:
 		if m.pemData == "" {
 			return "", errors.New("PEM data not available")
 		}
@@ -72,12 +73,12 @@ func (m *MockKeyDetails) ExportCertificate(_ context.Context) (string, error) {
 
 // MockSecurityProvider is a test implementation of SecurityProvider
 type MockSecurityProvider struct {
-	keys map[security.KeyIdentifier]*MockKeyDetails
+	keys map[trust.KeyIdentifier]*MockKeyDetails
 }
 
 func NewMockSecurityProvider() *MockSecurityProvider {
 	return &MockSecurityProvider{
-		keys: make(map[security.KeyIdentifier]*MockKeyDetails),
+		keys: make(map[trust.KeyIdentifier]*MockKeyDetails),
 	}
 }
 
@@ -85,7 +86,7 @@ func (m *MockSecurityProvider) AddKey(key *MockKeyDetails) {
 	m.keys[key.id] = key
 }
 
-func (m *MockSecurityProvider) FindKeyByAlgorithm(_ context.Context, algorithm string, includeLegacy bool) (security.KeyDetails, error) {
+func (m *MockSecurityProvider) FindKeyByAlgorithm(_ context.Context, algorithm string, includeLegacy bool) (trust.KeyDetails, error) {
 	for _, key := range m.keys {
 		if key.algorithm == algorithm && (!key.legacy || includeLegacy) {
 			return key, nil
@@ -94,26 +95,26 @@ func (m *MockSecurityProvider) FindKeyByAlgorithm(_ context.Context, algorithm s
 	return nil, security.ErrCertNotFound
 }
 
-func (m *MockSecurityProvider) FindKeyByID(_ context.Context, id security.KeyIdentifier) (security.KeyDetails, error) {
+func (m *MockSecurityProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
 	if key, ok := m.keys[id]; ok {
 		return key, nil
 	}
 	return nil, security.ErrCertNotFound
 }
 
-func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]security.KeyDetails, error) {
-	var keys []security.KeyDetails
+func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, error) {
+	var keys []trust.KeyDetails
 	for _, key := range m.keys {
 		keys = append(keys, key)
 	}
 	return keys, nil
 }
 
-func (m *MockSecurityProvider) Decrypt(_ context.Context, _ security.KeyIdentifier, _, _ []byte) (security.ProtectedKey, error) {
+func (m *MockSecurityProvider) Decrypt(_ context.Context, _ trust.KeyIdentifier, _, _ []byte) (trust.ProtectedKey, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ security.KeyIdentifier, _ []byte, _ elliptic.Curve) (security.ProtectedKey, error) {
+func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ trust.KeyIdentifier, _ []byte, _ elliptic.Curve) (trust.ProtectedKey, error) {
 	return nil, errors.New("not implemented for tests")
 }
 

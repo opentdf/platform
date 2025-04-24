@@ -11,6 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/service/trust"
 )
 
 // StandardUnwrappedKey implements the UnwrappedKeyData interface
@@ -104,13 +105,13 @@ type InProcessProvider struct {
 
 // KeyDetailsAdapter adapts CryptoProvider to KeyDetails
 type KeyDetailsAdapter struct {
-	id             KeyIdentifier
+	id             trust.KeyIdentifier
 	algorithm      string
 	legacy         bool
 	cryptoProvider CryptoProvider
 }
 
-func (k *KeyDetailsAdapter) ID() KeyIdentifier {
+func (k *KeyDetailsAdapter) ID() trust.KeyIdentifier {
 	return k.id
 }
 
@@ -122,10 +123,10 @@ func (k *KeyDetailsAdapter) IsLegacy() bool {
 	return k.legacy
 }
 
-func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format KeyType) (string, error) {
+func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format trust.KeyType) (string, error) {
 	kid := string(k.id)
 	switch format {
-	case KeyTypeJWK:
+	case trust.KeyTypeJWK:
 		// For JWK format (currently only supported for RSA)
 		if k.algorithm == AlgorithmRSA2048 {
 			return k.cryptoProvider.RSAPublicKeyAsJSON(kid)
@@ -141,12 +142,11 @@ func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format KeyType) (
 		}
 
 		return jwkKey, nil
-	case KeyTypePKCS8:
+	case trust.KeyTypePKCS8:
 		// Try to get the key as an RSA key first
 		if rsaKey, err := k.cryptoProvider.RSAPublicKey(kid); err == nil {
 			return rsaKey, nil
 		}
-		// If that fails, try as an EC key
 		return k.cryptoProvider.ECPublicKey(kid)
 	default:
 		return "", ErrCertNotFound
@@ -162,7 +162,7 @@ func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error)
 }
 
 // NewSecurityProviderAdapter creates a new adapter that implements SecurityProvider using a CryptoProvider
-func NewSecurityProviderAdapter(cryptoProvider CryptoProvider) KeyManager {
+func NewSecurityProviderAdapter(cryptoProvider CryptoProvider) trust.KeyManager {
 	return &InProcessProvider{
 		cryptoProvider: cryptoProvider,
 		logger:         slog.Default(),
@@ -176,21 +176,21 @@ func (a *InProcessProvider) WithLogger(logger *slog.Logger) *InProcessProvider {
 }
 
 // FindKeyByAlgorithm finds a key by algorithm using the underlying CryptoProvider
-func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm string, _ bool) (KeyDetails, error) {
+func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm string, _ bool) (trust.KeyDetails, error) {
 	// Get the key ID for this algorithm
 	kid := a.cryptoProvider.FindKID(algorithm)
 	if kid == "" {
 		return nil, ErrCertNotFound
 	}
 	return &KeyDetailsAdapter{
-		id:             KeyIdentifier(kid),
+		id:             trust.KeyIdentifier(kid),
 		algorithm:      algorithm,
 		cryptoProvider: a.cryptoProvider,
 	}, nil
 }
 
 // FindKeyByID finds a key by ID
-func (a *InProcessProvider) FindKeyByID(_ context.Context, id KeyIdentifier) (KeyDetails, error) {
+func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
 	// Try to determine the algorithm by checking if the key works with known algorithms
 	for _, alg := range []string{AlgorithmECP256R1, AlgorithmRSA2048} {
 		// This is a hack since the original provider doesn't have a way to check if a key exists
@@ -218,15 +218,15 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id KeyIdentifier) (Ke
 }
 
 // ListKeys lists all available keys
-func (a *InProcessProvider) ListKeys(_ context.Context) ([]KeyDetails, error) {
+func (a *InProcessProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, error) {
 	// This is a limited implementation as CryptoProvider doesn't expose a list of all keys
-	var keys []KeyDetails
+	var keys []trust.KeyDetails
 
 	// Try to find keys for known algorithms
 	for _, alg := range []string{AlgorithmRSA2048, AlgorithmECP256R1} {
 		if kid := a.cryptoProvider.FindKID(alg); kid != "" {
 			keys = append(keys, &KeyDetailsAdapter{
-				id:             KeyIdentifier(kid),
+				id:             trust.KeyIdentifier(kid),
 				algorithm:      alg,
 				cryptoProvider: a.cryptoProvider,
 			})
@@ -237,7 +237,7 @@ func (a *InProcessProvider) ListKeys(_ context.Context) ([]KeyDetails, error) {
 }
 
 // Decrypt implements the unified decryption method for both RSA and EC
-func (a *InProcessProvider) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error) {
+func (a *InProcessProvider) Decrypt(ctx context.Context, keyID trust.KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
 	kid := string(keyID)
 
 	// Try to determine the key type
@@ -291,7 +291,7 @@ func (a *InProcessProvider) determineKeyType(_ context.Context, kid string) (str
 }
 
 // DeriveKey generates a symmetric key for NanoTDF
-func (a *InProcessProvider) DeriveKey(_ context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error) {
+func (a *InProcessProvider) DeriveKey(_ context.Context, kasKID trust.KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
 	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(kasKID), ephemeralPublicKeyBytes, curve)
 	return NewStandardUnwrappedKey(k), err
 }

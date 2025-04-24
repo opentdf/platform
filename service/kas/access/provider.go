@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/trust"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -22,7 +23,7 @@ type Provider struct {
 	URI              url.URL `json:"uri"`
 	SDK              *otdf.SDK
 	AttributeSvc     *url.URL
-	SecurityProvider security.KeyManager
+	SecurityProvider trust.KeyManager
 	// Deprecated: Use SecurityProvider instead
 	CryptoProvider security.CryptoProvider // Kept for backward compatibility
 	Logger         *logger.Logger
@@ -32,7 +33,7 @@ type Provider struct {
 }
 
 // GetSecurityProvider returns the SecurityProvider
-func (p *Provider) GetSecurityProvider() security.KeyManager {
+func (p *Provider) GetSecurityProvider() trust.KeyManager {
 	// If SecurityProvider is explicitly set, use it
 	if p.SecurityProvider != nil {
 		return p.SecurityProvider

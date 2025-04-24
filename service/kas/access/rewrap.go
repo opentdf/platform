@@ -30,6 +30,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/trust"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -65,7 +66,7 @@ type entityInfo struct {
 
 type kaoResult struct {
 	ID       string
-	DEK      security.ProtectedKey
+	DEK      trust.ProtectedKey
 	Encapped []byte
 	Error    error
 
@@ -454,7 +455,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			continue
 		}
 
-		var unwrappedKey security.ProtectedKey
+		var unwrappedKey trust.ProtectedKey
 		var err error
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
@@ -513,7 +514,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				continue
 			}
 
-			kid := security.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
+			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
 			unwrappedKey, err = p.GetSecurityProvider().Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), compressedKey)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt EC key", "err", err)
@@ -521,15 +522,15 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				continue
 			}
 		case "wrapped":
-			var kidsToCheck []security.KeyIdentifier
+			var kidsToCheck []trust.KeyIdentifier
 			if kao.GetKeyAccessObject().GetKid() != "" {
-				kid := security.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
-				kidsToCheck = []security.KeyIdentifier{kid}
+				kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
+				kidsToCheck = []trust.KeyIdentifier{kid}
 			} else {
 				p.Logger.InfoContext(ctx, "kid free kao")
 				for _, k := range p.Keyring {
 					if k.Algorithm == security.AlgorithmRSA2048 && k.Legacy {
-						kidsToCheck = append(kidsToCheck, security.KeyIdentifier(k.KID))
+						kidsToCheck = append(kidsToCheck, trust.KeyIdentifier(k.KID))
 					}
 				}
 				if len(kidsToCheck) == 0 {
@@ -841,7 +842,7 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 			return nil, results
 		}
 
-		symmetricKey, err := p.GetSecurityProvider().DeriveKey(ctx, security.KeyIdentifier(kid), header.EphemeralKey, ecCurve)
+		symmetricKey, err := p.GetSecurityProvider().DeriveKey(ctx, trust.KeyIdentifier(kid), header.EphemeralKey, ecCurve)
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("failed to generate symmetric key: %w", err))
 			return nil, results
@@ -874,7 +875,7 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 	return nil, results
 }
 
-func extractNanoPolicy(symmetricKey security.ProtectedKey, header sdk.NanoTDFHeader) (*Policy, error) {
+func extractNanoPolicy(symmetricKey trust.ProtectedKey, header sdk.NanoTDFHeader) (*Policy, error) {
 	const (
 		kIvLen = 12
 	)

@@ -16,6 +16,7 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/service/trust"
 )
 
 const (
@@ -443,7 +444,7 @@ func versionSalt() []byte {
 
 // ECDecrypt uses hybrid ECIES to decrypt the data.
 func (s *StandardCrypto) ECDecrypt(keyID string, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
-	unwrappedKey, err := s.Decrypt(context.Background(), KeyIdentifier(keyID), ciphertext, ephemeralPublicKey)
+	unwrappedKey, err := s.Decrypt(context.Background(), trust.KeyIdentifier(keyID), ciphertext, ephemeralPublicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +452,7 @@ func (s *StandardCrypto) ECDecrypt(keyID string, ephemeralPublicKey, ciphertext 
 }
 
 // Decrypt implements the SecurityProvider Decrypt method
-func (s *StandardCrypto) Decrypt(_ context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error) {
+func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
 	kid := string(keyID)
 	ska, ok := s.keysByID[kid]
 	if !ok {

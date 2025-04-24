@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/trust"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -55,7 +56,7 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 	}
 
 	// Convert string KID to KeyIdentifier type
-	keyID := security.KeyIdentifier(kid)
+	keyID := trust.KeyIdentifier(kid)
 
 	// Find the key by ID
 	keyDetails, err := securityProvider.FindKeyByID(ctx, keyID)
@@ -76,7 +77,7 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 		fallthrough
 	case "":
 		// For RSA keys, return the public key in PKCS8 format
-		pem, err = keyDetails.ExportPublicKey(ctx, security.KeyTypePKCS8)
+		pem, err = keyDetails.ExportPublicKey(ctx, trust.KeyTypePKCS8)
 		if err != nil {
 			p.Logger.ErrorContext(ctx, "keyDetails.ExportPublicKey failed", "err", err)
 			return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
@@ -112,7 +113,7 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 	}
 
 	// Convert string KID to KeyIdentifier type
-	keyID := security.KeyIdentifier(kid)
+	keyID := trust.KeyIdentifier(kid)
 
 	r := func(value, kid string, err error) (*connect.Response[kaspb.PublicKeyResponse], error) {
 		if errors.Is(err, security.ErrCertNotFound) {
@@ -138,7 +139,7 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 	switch algorithm {
 	case security.AlgorithmECP256R1:
 		// For EC keys, export the public key
-		ecPublicKeyPem, err := keyDetails.ExportPublicKey(ctx, security.KeyTypePKCS8)
+		ecPublicKeyPem, err := keyDetails.ExportPublicKey(ctx, trust.KeyTypePKCS8)
 		return r(ecPublicKeyPem, kid, err)
 	case security.AlgorithmRSA2048:
 		fallthrough
@@ -146,13 +147,13 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 		switch fmt {
 		case "jwk":
 			// For JWK format, export the public key as JWK
-			rsaPublicKeyPem, err := keyDetails.ExportPublicKey(ctx, security.KeyTypeJWK)
+			rsaPublicKeyPem, err := keyDetails.ExportPublicKey(ctx, trust.KeyTypeJWK)
 			return r(rsaPublicKeyPem, kid, err)
 		case "pkcs8":
 			fallthrough
 		case "":
 			// For PKCS8 format, export the public key as PKCS8
-			rsaPublicKeyPem, err := keyDetails.ExportPublicKey(ctx, security.KeyTypePKCS8)
+			rsaPublicKeyPem, err := keyDetails.ExportPublicKey(ctx, trust.KeyTypePKCS8)
 			return r(rsaPublicKeyPem, kid, err)
 		}
 	}

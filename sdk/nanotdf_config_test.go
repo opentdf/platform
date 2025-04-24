@@ -72,7 +72,7 @@ func TestNewNanoTDFReaderConfig(t *testing.T) {
 
 	t.Run("Invalid KAS URL in allowlist", func(t *testing.T) {
 		config, err := newNanoTDFReaderConfig(
-			WithNanoKasAllowlist([]string{"invalid-url"}),
+			WithNanoKasAllowlist([]string{""}),
 		)
 		require.Error(t, err, "Expected an error when creating NanoTDFReaderConfig with invalid KAS URL")
 		assert.Nil(t, config, "Expected NanoTDFReaderConfig to be nil")
@@ -84,13 +84,13 @@ func TestWithNanoKasAllowlist(t *testing.T) {
 		config := &NanoTDFReaderConfig{}
 		err := WithNanoKasAllowlist([]string{"https://example.com:443", "https://another.com"})(config)
 		require.NoError(t, err, "Expected no error when adding valid KAS URLs to allowlist")
-		assert.True(t, config.kasAllowlist.IsAllowed("https://example.com:443"), "Expected KAS URL to be allowed")
+		assert.True(t, config.kasAllowlist.IsAllowed("https://example.com"), "Expected KAS URL to be allowed")
 		assert.True(t, config.kasAllowlist.IsAllowed("https://another.com"), "Expected KAS URL to be allowed")
 	})
 
 	t.Run("Invalid KAS URL", func(t *testing.T) {
 		config := &NanoTDFReaderConfig{}
-		err := WithNanoKasAllowlist([]string{"invalid-url"})(config)
+		err := WithNanoKasAllowlist([]string{""})(config)
 		require.Error(t, err, "Expected an error when adding invalid KAS URL to allowlist")
 	})
 }
@@ -113,11 +113,11 @@ func TestWithNanoIgnoreAllowlist(t *testing.T) {
 
 func TestWithNanoKasAllowlist_with(t *testing.T) {
 	t.Run("Valid AllowList", func(t *testing.T) {
-		allowlist := AllowList{"example.com:443": true}
+		allowlist := AllowList{"https://example.com:443": true}
 		config := &NanoTDFReaderConfig{}
 		err := withNanoKasAllowlist(allowlist)(config)
 		require.NoError(t, err, "Expected no error when setting valid AllowList")
-		assert.True(t, config.kasAllowlist.IsAllowed("https://example.com:443"), "Expected KAS URL to be allowed")
+		assert.True(t, config.kasAllowlist.IsAllowed("https://example.com"), "Expected KAS URL to be allowed")
 	})
 
 	t.Run("Empty AllowList", func(t *testing.T) {

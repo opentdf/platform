@@ -241,7 +241,7 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: run nanotdf benchmark tests
         run: |
-          OUTPUT=$(/examples/examples benchmark --storeCollectionHeaders=false --tdf=nanotdf --count=5000 --concurrent=50)
+          OUTPUT=$(./examples/examples benchmark --storeCollectionHeaders=false --tdf=nanotdf --count=5000 --concurrent=50)
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
           {

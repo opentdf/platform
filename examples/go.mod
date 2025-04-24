@@ -7,7 +7,7 @@ toolchain go1.24.2
 require (
 	github.com/opentdf/platform/lib/ocrypto v0.1.9
 	github.com/opentdf/platform/protocol/go v0.3.1
-	github.com/opentdf/platform/sdk v0.3.29
+	github.com/opentdf/platform/sdk v0.4.3
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/grpc v1.67.1
@@ -16,6 +16,7 @@ require (
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.34.1-20240508200655-46a4cf4ba109.1 // indirect
+	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect

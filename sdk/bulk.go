@@ -128,8 +128,12 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 
 	if !bulkReq.ignoreAllowList && len(bulkReq.kasAllowlist) == 0 {
 		if s.KeyAccessServerRegistry != nil {
+			platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
+			if err != nil {
+				return fmt.Errorf("retrieving platformEndpoint failed: %w", err)
+			}
 			// if no kasAllowlist is set, we get the allowlist from the registry
-			allowlist, err := allowListFromKASRegistry(ctx, s.KeyAccessServerRegistry, s.conn.Target())
+			allowlist, err := allowListFromKASRegistry(ctx, s.KeyAccessServerRegistry, platformEndpoint)
 			if err != nil {
 				return fmt.Errorf("failed to get allowlist from registry: %w", err)
 			}

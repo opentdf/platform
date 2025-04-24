@@ -30,6 +30,9 @@ const (
 	XMLFormat
 )
 
+const schemeHTTPS = "https"
+const schemeSeperator = "://"
+
 type IntegrityAlgorithm = int
 
 const (
@@ -286,8 +289,8 @@ type AllowList map[string]bool
 
 func getKasAddress(kasURL string) (string, error) {
 	// default to https if no scheme is provided
-	if !strings.Contains(kasURL, "://") {
-		kasURL = "https://" + kasURL
+	if !strings.Contains(kasURL, schemeSeperator) {
+		kasURL = schemeHTTPS + schemeSeperator + kasURL
 	}
 	parsedURL, err := url.Parse(kasURL)
 	if err != nil {
@@ -299,15 +302,14 @@ func getKasAddress(kasURL string) (string, error) {
 
 	// Default to "https" if no scheme is provided
 	if parsedURL.Scheme == "" {
-		parsedURL.Scheme = "https"
+		parsedURL.Scheme = schemeHTTPS
 	}
 
 	// Default to port 443 if no port is provided
 	if parsedURL.Port() != "" {
 		parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
-	} else if parsedURL.Scheme == "https" {
+	} else if parsedURL.Scheme == schemeHTTPS {
 		parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), "443")
-
 	}
 
 	// Reconstruct the URL with only the scheme, host, and port

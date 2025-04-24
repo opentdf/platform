@@ -43,7 +43,7 @@ func (k *StandardUnwrappedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int
 }
 
 // Export returns the raw key data, optionally encrypting it with the provided encryptor
-func (k *StandardUnwrappedKey) Export(encryptor ocrypto.PublicKeyEncryptor) ([]byte, error) {
+func (k *StandardUnwrappedKey) Export(encryptor trust.Encapsulator) ([]byte, error) {
 	if encryptor == nil {
 		return k.rawKey, nil
 	}
@@ -297,7 +297,7 @@ func (a *InProcessProvider) DeriveKey(_ context.Context, kasKID trust.KeyIdentif
 }
 
 // GenerateECSessionKey generates a session key for NanoTDF
-func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (ocrypto.PublicKeyEncryptor, error) {
+func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
 	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, versionSalt(), nil)
 }
 

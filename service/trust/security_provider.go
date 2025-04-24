@@ -3,9 +3,19 @@ package trust
 import (
 	"context"
 	"crypto/elliptic"
-
-	"github.com/opentdf/platform/lib/ocrypto"
 )
+
+type Encapsulator interface {
+	// Encrypt wraps a secret key with the encapsulation key
+	Encrypt(data []byte) ([]byte, error)
+
+	// PublicKeyInPemFormat Returns public key in pem format, or the empty string if not present
+	PublicKeyInPemFormat() (string, error)
+
+	// For EC schemes, this method returns the public part of the ephemeral key.
+	// Otherwise, it returns nil.
+	EphemeralKey() []byte
+}
 
 // ProtectedKey represents a decrypted key with operations that can be performed on it
 type ProtectedKey interface {
@@ -13,7 +23,7 @@ type ProtectedKey interface {
 	VerifyBinding(ctx context.Context, policy, binding []byte) error
 
 	// Export returns the raw key data, optionally encrypting it with the provided encryptor
-	Export(encryptor ocrypto.PublicKeyEncryptor) ([]byte, error)
+	Export(encryptor Encapsulator) ([]byte, error)
 
 	// Used to decrypt encrypted policies and metadata
 	DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]byte, error)
@@ -34,7 +44,7 @@ type KeyManager interface {
 	DeriveKey(ctx context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error)
 
 	// GenerateECSessionKey generates a private session key, for use with a client-provided ephemeral public key
-	GenerateECSessionKey(ctx context.Context, ephemeralPublicKey string) (ocrypto.PublicKeyEncryptor, error)
+	GenerateECSessionKey(ctx context.Context, ephemeralPublicKey string) (Encapsulator, error)
 
 	// Close releases any resources held by the provider
 	Close()

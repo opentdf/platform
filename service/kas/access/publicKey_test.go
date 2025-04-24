@@ -15,7 +15,6 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
@@ -118,7 +117,7 @@ func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ trust.KeyIdentifie
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) GenerateECSessionKey(_ context.Context, _ string) (ocrypto.PublicKeyEncryptor, error) {
+func (m *MockSecurityProvider) GenerateECSessionKey(_ context.Context, _ string) (trust.Encapsulator, error) {
 	return nil, errors.New("not implemented for tests")
 }
 

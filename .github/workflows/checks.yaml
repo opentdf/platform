@@ -230,9 +230,25 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: run tdf3 benchmark tests
-        run: ./examples/examples benchmark --count=5000 --concurrent=50
+        run: | 
+          OUTPUT=$(./examples/examples benchmark --count=5000 --concurrent=50)
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "BENCHMARK_TDF3_OUTPUT<<EOO";
+            echo "$OUTPUT";
+            echo "EOO"
+          } >> "$GITHUB_ENV"
       - name: run nanotdf benchmark tests
-        run: ./examples/examples benchmark --storeCollectionHeaders=false --tdf=nanotdf --count=5000 --concurrent=50
+        run: |
+          OUTPUT=$(/examples/examples benchmark --storeCollectionHeaders=false --tdf=nanotdf --count=5000 --concurrent=50)
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "BENCHMARK_NANO_OUTPUT<<EOO";
+            echo "$OUTPUT";
+            echo "EOO"
+          } >> "$GITHUB_ENV"
       - name: collect the metrics from the benchmark tests
         run: |
           OUTPUT=$(./examples/examples metrics)
@@ -250,9 +266,12 @@ jobs:
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
         with:
           script: |
-            const metricsOutput = process.env.BENCHMARK_METRICS_OUTPUT || '## Standard Benchmark Skipped or Failed';
+            const metricsOutput = process.env.BENCHMARK_METRICS_OUTPUT || '## Standard Benchmark Metrics Skipped or Failed';
             const bulkOutput = process.env.BENCHMARK_BULK_OUTPUT || '## Bulk Benchmark Skipped or Failed';
-            const body = `<details><summary>Benchmark results, click to expand</summary>\n${metricsOutput}\n\n${bulkOutput}</details>`;
+            const tdf3Output = process.env.BENCHMARK_TDF3_OUTPUT || '## TDF3 Benchmark Skipped or Failed';
+            const nanoOutput = process.env.BENCHMARK_NANO_OUTPUT || '## Nano Benchmark Skipped or Failed';
+
+            const body = `<details><summary>Benchmark results, click to expand</summary>\n\n${bulkOutput}\n\n${tdf3Output}\n\n${nanoOutput}\n\n${metricsOutput}</details>`;
             github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

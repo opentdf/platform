@@ -214,7 +214,7 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 	if format == "" {
 		format = TDF3
 	}
-	fmt.Printf("# %s Benchmark Results:\n", strings.ToUpper(format.String()))
+	fmt.Printf("## %s Benchmark Results:\n", strings.ToUpper(format.String()))
 	fmt.Printf("| Metric                | Value                     |\n")
 	fmt.Printf("|-----------------------|---------------------------|\n")
 	fmt.Printf("| Total Requests        | %d                        |\n", config.RequestCount)
@@ -228,7 +228,7 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 	fmt.Printf("| Throughput            | %.2f requests/second      |\n", throughput)
 
 	if errorCount > 0 {
-		fmt.Printf("\n## Error Summary:\n")
+		fmt.Printf("\n### Error Summary:\n")
 		fmt.Printf("| Error Message         | Occurrences              |\n")
 		fmt.Printf("|-----------------------|---------------------------|\n")
 		for errMsg, count := range errorMsgs {

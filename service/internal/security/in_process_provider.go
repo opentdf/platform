@@ -14,6 +14,8 @@ import (
 	"github.com/opentdf/platform/service/trust"
 )
 
+const modeInProcess = "opentdf.io/in-process"
+
 // StandardUnwrappedKey implements the UnwrappedKeyData interface
 type StandardUnwrappedKey struct {
 	rawKey []byte
@@ -111,6 +113,11 @@ type KeyDetailsAdapter struct {
 	cryptoProvider CryptoProvider
 }
 
+// Mode returns the mode of the key details
+func (k *KeyDetailsAdapter) Mode() string {
+	return modeInProcess
+}
+
 func (k *KeyDetailsAdapter) ID() trust.KeyIdentifier {
 	return k.id
 }
@@ -162,11 +169,16 @@ func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error)
 }
 
 // NewSecurityProviderAdapter creates a new adapter that implements SecurityProvider using a CryptoProvider
-func NewSecurityProviderAdapter(cryptoProvider CryptoProvider) trust.KeyManager {
+func NewSecurityProviderAdapter(cryptoProvider CryptoProvider) trust.KeyService {
 	return &InProcessProvider{
 		cryptoProvider: cryptoProvider,
 		logger:         slog.Default(),
 	}
+}
+
+// Name returns the name of the provider
+func (a *InProcessProvider) Name() string {
+	return modeInProcess
 }
 
 // WithLogger sets the logger for the adapter

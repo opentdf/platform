@@ -33,10 +33,13 @@ type KeyDetails interface {
 
 	// ExportCertificate exports the certificate associated with the key, if available
 	ExportCertificate(ctx context.Context) (string, error)
+
+	// Gets the mode indicator for the key; this is used to lookup the appropriate KeyManager.
+	Mode() string
 }
 
-// KeyLookup provides methods to locate keys by various criteria
-type KeyLookup interface {
+// KeyIndex provides methods to locate keys by various criteria
+type KeyIndex interface {
 	// FindKeyByAlgorithm returns a key for the specified algorithm
 	// If includeLegacy is true, legacy keys will be included in the search
 	FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (KeyDetails, error)

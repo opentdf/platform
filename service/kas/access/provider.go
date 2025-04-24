@@ -20,10 +20,11 @@ const (
 
 type Provider struct {
 	kaspb.AccessServiceServer
-	URI              url.URL `json:"uri"`
-	SDK              *otdf.SDK
-	AttributeSvc     *url.URL
-	SecurityProvider trust.KeyManager
+	URI          url.URL `json:"uri"`
+	SDK          *otdf.SDK
+	AttributeSvc *url.URL
+	KeyIndex     trust.KeyIndex
+	KeyManager   trust.KeyManager
 	// Deprecated: Use SecurityProvider instead
 	CryptoProvider security.CryptoProvider // Kept for backward compatibility
 	Logger         *logger.Logger
@@ -35,8 +36,8 @@ type Provider struct {
 // GetSecurityProvider returns the SecurityProvider
 func (p *Provider) GetSecurityProvider() trust.KeyManager {
 	// If SecurityProvider is explicitly set, use it
-	if p.SecurityProvider != nil {
-		return p.SecurityProvider
+	if p.KeyManager != nil {
+		return p.KeyManager
 	}
 
 	// Otherwise, create an adapter from CryptoProvider if available
@@ -46,6 +47,19 @@ func (p *Provider) GetSecurityProvider() trust.KeyManager {
 
 	// This shouldn't happen in normal operation
 	p.Logger.Error("no security provider available")
+	return nil
+}
+
+func (p *Provider) GetKeyIndex() trust.KeyIndex {
+	if p.KeyIndex != nil {
+		return p.KeyIndex
+	}
+
+	if p.CryptoProvider != nil {
+		return security.NewSecurityProviderAdapter(p.CryptoProvider)
+	}
+
+	p.Logger.Error("no key index available")
 	return nil
 }
 

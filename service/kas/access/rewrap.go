@@ -515,6 +515,13 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			}
 
 			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
+			// I don't like this, as it puts another RPC in the critical path.
+			// k, err := p.GetKeyIndex().FindKeyByID(ctx, kid)
+			// if err != nil {
+			// 	p.Logger.WarnContext(ctx, "failed to find key by ID", "err", err)
+			// 	failedKAORewrap(results, kao, err400("bad request"))
+			// 	continue
+			// }
 			unwrappedKey, err = p.GetSecurityProvider().Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), compressedKey)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt EC key", "err", err)

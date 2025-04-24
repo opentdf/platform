@@ -44,8 +44,8 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 	var err error
 
 	// Get the security provider
-	securityProvider := p.GetSecurityProvider()
-	if securityProvider == nil {
+	idx := p.GetKeyIndex()
+	if idx == nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
 	}
 
@@ -59,7 +59,7 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 	keyID := trust.KeyIdentifier(kid)
 
 	// Find the key by ID
-	keyDetails, err := securityProvider.FindKeyByID(ctx, keyID)
+	keyDetails, err := idx.FindKeyByID(ctx, keyID)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "SecurityProvider.FindKeyByID failed", "err", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
@@ -106,8 +106,8 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 	}
 
 	// Get the security provider
-	securityProvider := p.GetSecurityProvider()
-	if securityProvider == nil {
+	idx := p.GetKeyIndex()
+	if idx == nil {
 		p.Logger.ErrorContext(ctx, "no security provider available")
 		return nil, connect.NewError(connect.CodeInternal, ErrInternal)
 	}
@@ -131,7 +131,7 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 	}
 
 	// Find the key by ID
-	keyDetails, err := securityProvider.FindKeyByID(ctx, keyID)
+	keyDetails, err := idx.FindKeyByID(ctx, keyID)
 	if err != nil {
 		return r("", kid, err)
 	}

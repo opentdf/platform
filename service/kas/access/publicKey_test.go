@@ -34,6 +34,12 @@ type MockKeyDetails struct {
 	jwkData   string
 }
 
+// Mode is a mock implementation of the Mode method required by the trust.KeyDetails interface.
+func (m *MockKeyDetails) Mode() string {
+	// Return a default or mock mode value
+	return "mock-mode"
+}
+
 func (m *MockKeyDetails) ID() trust.KeyIdentifier {
 	return m.id
 }
@@ -125,6 +131,10 @@ func (m *MockSecurityProvider) Close() {
 	// Nothing to do
 }
 
+func (m *MockSecurityProvider) Name() string {
+	return "mock-mode"
+}
+
 // Tests using the new SecurityProvider interface
 func TestPublicKeyWithSecurityProvider(t *testing.T) {
 	// Create mock security provider with test keys
@@ -152,8 +162,8 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 
 	// Create Provider with the mock security provider
 	kas := Provider{
-		URI:              *kasURI,
-		SecurityProvider: mockProvider,
+		URI:        *kasURI,
+		KeyManager: mockProvider,
 		KASConfig: KASConfig{
 			Keyring: []CurrentKeyFor{
 				{
@@ -321,10 +331,10 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 	kasURI := urlHost(t)
 
 	kas := Provider{
-		URI:              *kasURI,
-		SecurityProvider: security.NewSecurityProviderAdapter(c),
-		Logger:           logger.CreateTestLogger(),
-		Tracer:           noop.NewTracerProvider().Tracer(""),
+		URI:        *kasURI,
+		KeyManager: security.NewSecurityProviderAdapter(c),
+		Logger:     logger.CreateTestLogger(),
+		Tracer:     noop.NewTracerProvider().Tracer(""),
 	}
 
 	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{Fmt: "pkcs8"}})

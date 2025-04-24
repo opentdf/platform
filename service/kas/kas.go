@@ -58,7 +58,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				}
 
 				// Set up both the legacy CryptoProvider and the new SecurityProvider
-				p.SecurityProvider = security.NewSecurityProviderAdapter(srp.OTDF.CryptoProvider)
+				p.KeyManager = security.NewSecurityProviderAdapter(srp.OTDF.CryptoProvider)
 				kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
 
 				p.URI = *kasURI

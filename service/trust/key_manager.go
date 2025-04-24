@@ -31,8 +31,10 @@ type ProtectedKey interface {
 
 // KeyManager combines key lookup functionality with cryptographic operations
 type KeyManager interface {
-	// Embed KeyLookup interface for key management capabilities
-	KeyLookup
+	// Name is a unique identifier for the key manager.
+	// This can be used by the KeyDetail.Mode() method to determine which KeyManager to use,
+	// when multiple KeyManagers are installed.
+	Name() string
 
 	// Decrypt decrypts data that was encrypted with the key identified by keyID
 	// For EC keys, ephemeralPublicKey must be non-nil
@@ -48,4 +50,10 @@ type KeyManager interface {
 
 	// Close releases any resources held by the provider
 	Close()
+}
+
+// Helper interface for unified key management objects
+type KeyService interface {
+	KeyIndex
+	KeyManager
 }

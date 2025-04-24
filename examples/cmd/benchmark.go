@@ -105,12 +105,12 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if outputName != "-" {
-			err = cat(cmd, outputName)
-			if err != nil {
-				return err
-			}
-		}
+		// if outputName != "-" {
+		// 	err = cat(cmd, outputName)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// }
 	} else {
 		tdf, err :=
 			client.CreateTDF(
@@ -235,6 +235,5 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 			fmt.Printf("| %s | %d occurrences         |\n", errMsg, count)
 		}
 	}
-
 	return nil
 }

@@ -252,7 +252,7 @@ jobs:
           script: |
             const metricsOutput = process.env.BENCHMARK_METRICS_OUTPUT || '## Standard Benchmark Skipped or Failed';
             const bulkOutput = process.env.BENCHMARK_BULK_OUTPUT || '## Bulk Benchmark Skipped or Failed';
-            const body = `${metricsOutput}\n\n${bulkOutput}`;
+            const body = `<details><summary>Benchmark results, click to expand</summary>\n${metricsOutput}\n\n${bulkOutput}</details>`;
             github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

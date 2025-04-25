@@ -542,7 +542,7 @@ func extractDPoPToken(r *http.Request, t *testing.T) jwt.Token {
 
 func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string, string) {
 	containerReq := tc.ContainerRequest{
-		Image:        "heycloak/keycloak:25",
+		Image:        "keycloak/keycloak:25.0",
 		ExposedPorts: []string{"8082/tcp", "8083/tcp"},
 		Cmd: []string{"start-dev", "--http-port=8082", "--https-port=8083", "--features=preview", "--verbose",
 			"-Djavax.net.ssl.trustStorePassword=password", "-Djavax.net.ssl.HostnameVerifier=AllowAll",

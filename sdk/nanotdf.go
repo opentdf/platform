@@ -1041,7 +1041,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 		return 0, fmt.Errorf("createNanoTDFDecryptHandler failed: %w", err)
 	}
 
-	if len(handler.config.kasAllowlist) == 0 && !handler.config.ignoreAllowList {
+	if len(handler.config.kasAllowlist) == 0 && !handler.config.ignoreAllowList { //nolint:nestif // handling the case where kasAllowlist is not provided
 		if s.KeyAccessServerRegistry != nil {
 			platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
 			if err != nil {

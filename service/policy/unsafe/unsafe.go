@@ -422,6 +422,6 @@ func (s *UnsafeService) UnsafeDeletePublicKey(ctx context.Context, req *connect.
 	}), nil
 }
 
-func (s *UnsafeService) UnsafeDeleteKasKey(context.Context, req *connect.Request[unsafe.UnsafeDeleteKasKeyRequest]) (*connect.Response[unsafe.UnsafeDeleteKasKeyResponse], error) {
+func (s *UnsafeService) UnsafeDeleteKasKey(context.Context, *connect.Request[unsafe.UnsafeDeleteKasKeyRequest]) (*connect.Response[unsafe.UnsafeDeleteKasKeyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, nil)
 }

@@ -20,7 +20,47 @@ on:
   workflow_call:
 
 jobs:
+  deltas:
+    runs-on: ubuntu-latest
+    outputs:
+      paths_changed: ${{ steps.check_paths.outputs.paths_changed }}  # Output value to other jobs
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+        with:
+          fetch-depth: 0
+
+      - name: Check if specific paths are changed
+        id: check_paths
+        # paths:
+        # - '**'
+        # - '!**/*.md'
+        # - '!LICENSE'
+        # - '!CODEOWNERS'
+        run: |
+          # Check if any non-Markdown files or 'docs/**' changed, and exclude 'LICENSE' and 'CODEOWNERS'
+
+          # Get the commit range for the diff (use HEAD^ for fallback)
+          before_commit="${{ github.event.before }}"
+          current_commit="${{ github.sha }}"
+          
+          if [ -z "$before_commit" ]; then
+            before_commit="HEAD^"
+          fi
+
+          changed_files=$(git diff --name-only $before_commit $current_commit)
+          echo "Changed files: $changed_files"
+
+          if echo "$changed_files" | grep -Ev '\.md$' | grep -vE '^(LICENSE|CODEOWNERS)$'; then
+            echo "Paths of interest were modified."
+            echo "paths_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "No matching paths were modified."
+            echo "paths_changed=false" >> $GITHUB_OUTPUT
+          fi
   go:
+    needs: deltas
+    if: ${{ needs.deltas.outputs.paths_changed == 'true' }}
     runs-on: ubuntu-22.04
     permissions:
       checks: write
@@ -93,6 +133,8 @@ jobs:
         if: env.IS_RELEASE_BRANCH == 'false'
 
   integration:
+    needs: deltas
+    if: ${{ needs.deltas.outputs.paths_changed == 'true' }}
     name: integration tests
     runs-on: ubuntu-22.04
     env:
@@ -272,6 +314,8 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryContent + '\n');
 
   image:
+    needs: deltas
+    if: ${{ needs.deltas.outputs.paths_changed == 'true' }}
     name: image build
     runs-on: ubuntu-22.04
     steps:
@@ -284,6 +328,8 @@ jobs:
           push: false
 
   platform-xtest:
+    needs: deltas
+    if: ${{ needs.deltas.outputs.paths_changed == 'true' }}
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go
@@ -292,6 +338,8 @@ jobs:
 
   # test latest otdfctl CLI 'main' against platform PR branch
   otdfctl-test:
+    needs: deltas
+    if: ${{ needs.deltas.outputs.paths_changed == 'true' }}
     name: otdfctl e2e tests
     runs-on: ubuntu-latest
     steps:
@@ -303,6 +351,8 @@ jobs:
           otdfctl-ref: "main"
 
   buflint:
+    needs: deltas
+    if: ${{ needs.deltas.outputs.paths_changed == 'true' }}
     name: Protocol Buffer Lint and Gencode Up-to-date check
     runs-on: ubuntu-22.04
     steps:
@@ -351,6 +401,7 @@ jobs:
       - license
       - platform-xtest
       - otdfctl-test
+      - deltas
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}
     steps:

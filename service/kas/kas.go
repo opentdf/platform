@@ -57,11 +57,16 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config, err))
 				}
 
-				// Set up both the legacy CryptoProvider and the new SecurityProvider
-				spa := security.NewSecurityProviderAdapter(srp.OTDF.CryptoProvider)
-				p.KeyIndex = spa
-				p.KeyManager = spa
-				kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
+				if srp.OTDF.TrustKeyIndex == nil {
+					// Set up both the legacy CryptoProvider and the new SecurityProvider
+					spa := security.NewSecurityProviderAdapter(srp.OTDF.CryptoProvider)
+					p.KeyIndex = spa
+					p.KeyManager = spa
+					kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
+				} else {
+					p.KeyIndex = srp.OTDF.TrustKeyIndex
+					p.KeyManager = srp.OTDF.TrustKeyManager
+				}
 
 				p.URI = *kasURI
 				p.SDK = srp.SDK

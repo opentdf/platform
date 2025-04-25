@@ -27,6 +27,7 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/tracing"
+	"github.com/opentdf/platform/service/trust"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
@@ -48,8 +49,9 @@ func (e Error) Error() string {
 
 // Configurations for the server
 type Config struct {
-	Auth                    auth.Config                              `mapstructure:"auth" json:"auth"`
-	GRPC                    GRPCConfig                               `mapstructure:"grpc" json:"grpc"`
+	Auth auth.Config `mapstructure:"auth" json:"auth"`
+	GRPC GRPCConfig  `mapstructure:"grpc" json:"grpc"`
+	// To Deprecate: Use the WithKey[X]Provider StartOptions to register trust providers.
 	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider" json:"cryptoProvider"`
 	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
 	CORS                    CORSConfig                               `mapstructure:"cors" json:"cors"`
@@ -64,16 +66,22 @@ type Config struct {
 }
 
 func (c Config) LogValue() slog.Value {
-	return slog.GroupValue(
+	group := []slog.Attr{
 		slog.Any("auth", c.Auth),
 		slog.Any("grpc", c.GRPC),
-		slog.Any("cryptoProvider", c.CryptoProvider),
 		slog.Any("tls", c.TLS),
 		slog.Any("cors", c.CORS),
 		slog.Int("port", c.Port),
 		slog.String("host", c.Host),
 		slog.Bool("enablePprof", c.EnablePprof),
-	)
+	}
+
+	// CryptoProvider is deprecated in favor of the trust package.
+	if !c.CryptoProvider.IsEmpty() {
+		group = append(group, slog.Any("cryptoProvider", c.CryptoProvider))
+	}
+
+	return slog.GroupValue(group...)
 }
 
 // GRPC Server specific configurations
@@ -120,7 +128,12 @@ type OpenTDFServer struct {
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
-	CryptoProvider      security.CryptoProvider
+
+	TrustKeyIndex   trust.KeyIndex
+	TrustKeyManager trust.KeyManager
+
+	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
+	CryptoProvider security.CryptoProvider
 
 	logger *logger.Logger
 }
@@ -217,11 +230,13 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		logger: logger,
 	}
 
-	// Create crypto provider
-	logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
-	o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
-	if err != nil {
-		return nil, fmt.Errorf("security.NewCryptoProvider: %w", err)
+	if !config.CryptoProvider.IsEmpty() {
+		// Create crypto provider
+		logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
+		o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
+		if err != nil {
+			return nil, fmt.Errorf("security.NewCryptoProvider: %w", err)
+		}
 	}
 
 	return &o, nil

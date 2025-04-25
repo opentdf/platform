@@ -4,6 +4,7 @@ import (
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/trust"
 )
 
 type StartOptions func(StartConfig) StartConfig
@@ -19,6 +20,9 @@ type StartConfig struct {
 	extraServices         []serviceregistry.IService
 	casbinAdapter         persist.Adapter
 	configLoaders         []config.Loader
+
+	trustKeyIndex         trust.KeyIndex
+	trustKeyManager       trust.KeyManager
 }
 
 // Deprecated: Use WithConfigKey
@@ -118,6 +122,31 @@ func WithCasbinAdapter(adapter persist.Adapter) StartOptions {
 func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.configLoaders = append(c.configLoaders, loader)
+		return c
+	}
+}
+
+// WithTrustKeyIndex option sets the trust index to be used for the server.
+func WithTrustKeyIndex(index trust.KeyIndex) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.trustKeyIndex = index
+		return c
+	}
+}
+
+// WithTrustKeyManager option sets the trust key manager to be used for the server.
+func WithTrustKeyManager(manager trust.KeyManager) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.trustKeyManager = manager
+		return c
+	}
+}
+
+// WithTrustKeyService option sets both the index and manager for the trust key service.
+func WithTrustKeyService(index trust.KeyIndex, manager trust.KeyManager) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.trustKeyIndex = index
+		c.trustKeyManager = manager
 		return c
 	}
 }

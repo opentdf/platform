@@ -31,6 +31,10 @@ type StandardConfig struct {
 	ECKeys map[string]StandardKeyInfo `mapstructure:"ec,omitempty" json:"ec,omitempty"`
 }
 
+func (sc StandardConfig) IsEmpty() bool {
+	return len(sc.Keys) == 0 && len(sc.ECKeys) == 0 && len(sc.RSAKeys) == 0
+}
+
 type KeyPairInfo struct {
 	// Valid algorithm. May be able to be derived from Private but it is better to just say it.
 	Algorithm string `mapstructure:"alg" json:"alg"`

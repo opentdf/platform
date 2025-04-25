@@ -264,3 +264,11 @@ func (ns NamespacesService) AssignKeyToNamespace(context.Context, *connect.Reque
 func (ns NamespacesService) RemoveKeyFromNamespace(context.Context, *connect.Request[namespaces.RemoveKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyFromNamespaceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, nil)
 }
+
+func (ns NamespacesService) AssignPublicKeyToNamespace(context.Context, *connect.Request[namespaces.AssignPublicKeyToNamespaceRequest]) (*connect.Response[namespaces.AssignPublicKeyToNamespaceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+}
+
+func (ns NamespacesService) RemovePublicKeyFromNamespace(context.Context, *connect.Request[namespaces.RemovePublicKeyFromNamespaceRequest]) (*connect.Response[namespaces.RemovePublicKeyFromNamespaceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+}

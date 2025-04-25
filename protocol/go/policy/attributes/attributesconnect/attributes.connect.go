@@ -90,6 +90,18 @@ const (
 	// AttributesServiceRemoveKeyFromValueProcedure is the fully-qualified name of the
 	// AttributesService's RemoveKeyFromValue RPC.
 	AttributesServiceRemoveKeyFromValueProcedure = "/policy.attributes.AttributesService/RemoveKeyFromValue"
+	// AttributesServiceAssignPublicKeyToAttributeProcedure is the fully-qualified name of the
+	// AttributesService's AssignPublicKeyToAttribute RPC.
+	AttributesServiceAssignPublicKeyToAttributeProcedure = "/policy.attributes.AttributesService/AssignPublicKeyToAttribute"
+	// AttributesServiceRemovePublicKeyFromAttributeProcedure is the fully-qualified name of the
+	// AttributesService's RemovePublicKeyFromAttribute RPC.
+	AttributesServiceRemovePublicKeyFromAttributeProcedure = "/policy.attributes.AttributesService/RemovePublicKeyFromAttribute"
+	// AttributesServiceAssignPublicKeyToValueProcedure is the fully-qualified name of the
+	// AttributesService's AssignPublicKeyToValue RPC.
+	AttributesServiceAssignPublicKeyToValueProcedure = "/policy.attributes.AttributesService/AssignPublicKeyToValue"
+	// AttributesServiceRemovePublicKeyFromValueProcedure is the fully-qualified name of the
+	// AttributesService's RemovePublicKeyFromValue RPC.
+	AttributesServiceRemovePublicKeyFromValueProcedure = "/policy.attributes.AttributesService/RemovePublicKeyFromValue"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -114,6 +126,10 @@ var (
 	attributesServiceRemoveKeyFromAttributeMethodDescriptor             = attributesServiceServiceDescriptor.Methods().ByName("RemoveKeyFromAttribute")
 	attributesServiceAssignKeyToValueMethodDescriptor                   = attributesServiceServiceDescriptor.Methods().ByName("AssignKeyToValue")
 	attributesServiceRemoveKeyFromValueMethodDescriptor                 = attributesServiceServiceDescriptor.Methods().ByName("RemoveKeyFromValue")
+	attributesServiceAssignPublicKeyToAttributeMethodDescriptor         = attributesServiceServiceDescriptor.Methods().ByName("AssignPublicKeyToAttribute")
+	attributesServiceRemovePublicKeyFromAttributeMethodDescriptor       = attributesServiceServiceDescriptor.Methods().ByName("RemovePublicKeyFromAttribute")
+	attributesServiceAssignPublicKeyToValueMethodDescriptor             = attributesServiceServiceDescriptor.Methods().ByName("AssignPublicKeyToValue")
+	attributesServiceRemovePublicKeyFromValueMethodDescriptor           = attributesServiceServiceDescriptor.Methods().ByName("RemovePublicKeyFromValue")
 )
 
 // AttributesServiceClient is a client for the policy.attributes.AttributesService service.
@@ -142,10 +158,18 @@ type AttributesServiceClient interface {
 	RemoveKeyAccessServerFromAttribute(context.Context, *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error)
 	AssignKeyAccessServerToValue(context.Context, *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error)
 	RemoveKeyAccessServerFromValue(context.Context, *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error)
+	// Deprecated
 	AssignKeyToAttribute(context.Context, *connect.Request[attributes.AssignKeyToAttributeRequest]) (*connect.Response[attributes.AssignKeyToAttributeResponse], error)
+	// Deprecated
 	RemoveKeyFromAttribute(context.Context, *connect.Request[attributes.RemoveKeyFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyFromAttributeResponse], error)
+	// Deprecated
 	AssignKeyToValue(context.Context, *connect.Request[attributes.AssignKeyToValueRequest]) (*connect.Response[attributes.AssignKeyToValueResponse], error)
+	// Deprecated
 	RemoveKeyFromValue(context.Context, *connect.Request[attributes.RemoveKeyFromValueRequest]) (*connect.Response[attributes.RemoveKeyFromValueResponse], error)
+	AssignPublicKeyToAttribute(context.Context, *connect.Request[attributes.AssignPublicKeyToAttributeRequest]) (*connect.Response[attributes.AssignPublicKeyToAttributeResponse], error)
+	RemovePublicKeyFromAttribute(context.Context, *connect.Request[attributes.RemovePublicKeyFromAttributeRequest]) (*connect.Response[attributes.RemovePublicKeyFromAttributeResponse], error)
+	AssignPublicKeyToValue(context.Context, *connect.Request[attributes.AssignPublicKeyToValueRequest]) (*connect.Response[attributes.AssignPublicKeyToValueResponse], error)
+	RemovePublicKeyFromValue(context.Context, *connect.Request[attributes.RemovePublicKeyFromValueRequest]) (*connect.Response[attributes.RemovePublicKeyFromValueResponse], error)
 }
 
 // NewAttributesServiceClient constructs a client for the policy.attributes.AttributesService
@@ -276,6 +300,30 @@ func NewAttributesServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(attributesServiceRemoveKeyFromValueMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		assignPublicKeyToAttribute: connect.NewClient[attributes.AssignPublicKeyToAttributeRequest, attributes.AssignPublicKeyToAttributeResponse](
+			httpClient,
+			baseURL+AttributesServiceAssignPublicKeyToAttributeProcedure,
+			connect.WithSchema(attributesServiceAssignPublicKeyToAttributeMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		removePublicKeyFromAttribute: connect.NewClient[attributes.RemovePublicKeyFromAttributeRequest, attributes.RemovePublicKeyFromAttributeResponse](
+			httpClient,
+			baseURL+AttributesServiceRemovePublicKeyFromAttributeProcedure,
+			connect.WithSchema(attributesServiceRemovePublicKeyFromAttributeMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		assignPublicKeyToValue: connect.NewClient[attributes.AssignPublicKeyToValueRequest, attributes.AssignPublicKeyToValueResponse](
+			httpClient,
+			baseURL+AttributesServiceAssignPublicKeyToValueProcedure,
+			connect.WithSchema(attributesServiceAssignPublicKeyToValueMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		removePublicKeyFromValue: connect.NewClient[attributes.RemovePublicKeyFromValueRequest, attributes.RemovePublicKeyFromValueResponse](
+			httpClient,
+			baseURL+AttributesServiceRemovePublicKeyFromValueProcedure,
+			connect.WithSchema(attributesServiceRemovePublicKeyFromValueMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -300,6 +348,10 @@ type attributesServiceClient struct {
 	removeKeyFromAttribute             *connect.Client[attributes.RemoveKeyFromAttributeRequest, attributes.RemoveKeyFromAttributeResponse]
 	assignKeyToValue                   *connect.Client[attributes.AssignKeyToValueRequest, attributes.AssignKeyToValueResponse]
 	removeKeyFromValue                 *connect.Client[attributes.RemoveKeyFromValueRequest, attributes.RemoveKeyFromValueResponse]
+	assignPublicKeyToAttribute         *connect.Client[attributes.AssignPublicKeyToAttributeRequest, attributes.AssignPublicKeyToAttributeResponse]
+	removePublicKeyFromAttribute       *connect.Client[attributes.RemovePublicKeyFromAttributeRequest, attributes.RemovePublicKeyFromAttributeResponse]
+	assignPublicKeyToValue             *connect.Client[attributes.AssignPublicKeyToValueRequest, attributes.AssignPublicKeyToValueResponse]
+	removePublicKeyFromValue           *connect.Client[attributes.RemovePublicKeyFromValueRequest, attributes.RemovePublicKeyFromValueResponse]
 }
 
 // ListAttributes calls policy.attributes.AttributesService.ListAttributes.
@@ -401,6 +453,27 @@ func (c *attributesServiceClient) RemoveKeyFromValue(ctx context.Context, req *c
 	return c.removeKeyFromValue.CallUnary(ctx, req)
 }
 
+// AssignPublicKeyToAttribute calls policy.attributes.AttributesService.AssignPublicKeyToAttribute.
+func (c *attributesServiceClient) AssignPublicKeyToAttribute(ctx context.Context, req *connect.Request[attributes.AssignPublicKeyToAttributeRequest]) (*connect.Response[attributes.AssignPublicKeyToAttributeResponse], error) {
+	return c.assignPublicKeyToAttribute.CallUnary(ctx, req)
+}
+
+// RemovePublicKeyFromAttribute calls
+// policy.attributes.AttributesService.RemovePublicKeyFromAttribute.
+func (c *attributesServiceClient) RemovePublicKeyFromAttribute(ctx context.Context, req *connect.Request[attributes.RemovePublicKeyFromAttributeRequest]) (*connect.Response[attributes.RemovePublicKeyFromAttributeResponse], error) {
+	return c.removePublicKeyFromAttribute.CallUnary(ctx, req)
+}
+
+// AssignPublicKeyToValue calls policy.attributes.AttributesService.AssignPublicKeyToValue.
+func (c *attributesServiceClient) AssignPublicKeyToValue(ctx context.Context, req *connect.Request[attributes.AssignPublicKeyToValueRequest]) (*connect.Response[attributes.AssignPublicKeyToValueResponse], error) {
+	return c.assignPublicKeyToValue.CallUnary(ctx, req)
+}
+
+// RemovePublicKeyFromValue calls policy.attributes.AttributesService.RemovePublicKeyFromValue.
+func (c *attributesServiceClient) RemovePublicKeyFromValue(ctx context.Context, req *connect.Request[attributes.RemovePublicKeyFromValueRequest]) (*connect.Response[attributes.RemovePublicKeyFromValueResponse], error) {
+	return c.removePublicKeyFromValue.CallUnary(ctx, req)
+}
+
 // AttributesServiceHandler is an implementation of the policy.attributes.AttributesService service.
 type AttributesServiceHandler interface {
 	// --------------------------------------*
@@ -427,10 +500,18 @@ type AttributesServiceHandler interface {
 	RemoveKeyAccessServerFromAttribute(context.Context, *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error)
 	AssignKeyAccessServerToValue(context.Context, *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error)
 	RemoveKeyAccessServerFromValue(context.Context, *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error)
+	// Deprecated
 	AssignKeyToAttribute(context.Context, *connect.Request[attributes.AssignKeyToAttributeRequest]) (*connect.Response[attributes.AssignKeyToAttributeResponse], error)
+	// Deprecated
 	RemoveKeyFromAttribute(context.Context, *connect.Request[attributes.RemoveKeyFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyFromAttributeResponse], error)
+	// Deprecated
 	AssignKeyToValue(context.Context, *connect.Request[attributes.AssignKeyToValueRequest]) (*connect.Response[attributes.AssignKeyToValueResponse], error)
+	// Deprecated
 	RemoveKeyFromValue(context.Context, *connect.Request[attributes.RemoveKeyFromValueRequest]) (*connect.Response[attributes.RemoveKeyFromValueResponse], error)
+	AssignPublicKeyToAttribute(context.Context, *connect.Request[attributes.AssignPublicKeyToAttributeRequest]) (*connect.Response[attributes.AssignPublicKeyToAttributeResponse], error)
+	RemovePublicKeyFromAttribute(context.Context, *connect.Request[attributes.RemovePublicKeyFromAttributeRequest]) (*connect.Response[attributes.RemovePublicKeyFromAttributeResponse], error)
+	AssignPublicKeyToValue(context.Context, *connect.Request[attributes.AssignPublicKeyToValueRequest]) (*connect.Response[attributes.AssignPublicKeyToValueResponse], error)
+	RemovePublicKeyFromValue(context.Context, *connect.Request[attributes.RemovePublicKeyFromValueRequest]) (*connect.Response[attributes.RemovePublicKeyFromValueResponse], error)
 }
 
 // NewAttributesServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -557,6 +638,30 @@ func NewAttributesServiceHandler(svc AttributesServiceHandler, opts ...connect.H
 		connect.WithSchema(attributesServiceRemoveKeyFromValueMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	attributesServiceAssignPublicKeyToAttributeHandler := connect.NewUnaryHandler(
+		AttributesServiceAssignPublicKeyToAttributeProcedure,
+		svc.AssignPublicKeyToAttribute,
+		connect.WithSchema(attributesServiceAssignPublicKeyToAttributeMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	attributesServiceRemovePublicKeyFromAttributeHandler := connect.NewUnaryHandler(
+		AttributesServiceRemovePublicKeyFromAttributeProcedure,
+		svc.RemovePublicKeyFromAttribute,
+		connect.WithSchema(attributesServiceRemovePublicKeyFromAttributeMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	attributesServiceAssignPublicKeyToValueHandler := connect.NewUnaryHandler(
+		AttributesServiceAssignPublicKeyToValueProcedure,
+		svc.AssignPublicKeyToValue,
+		connect.WithSchema(attributesServiceAssignPublicKeyToValueMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	attributesServiceRemovePublicKeyFromValueHandler := connect.NewUnaryHandler(
+		AttributesServiceRemovePublicKeyFromValueProcedure,
+		svc.RemovePublicKeyFromValue,
+		connect.WithSchema(attributesServiceRemovePublicKeyFromValueMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/policy.attributes.AttributesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AttributesServiceListAttributesProcedure:
@@ -597,6 +702,14 @@ func NewAttributesServiceHandler(svc AttributesServiceHandler, opts ...connect.H
 			attributesServiceAssignKeyToValueHandler.ServeHTTP(w, r)
 		case AttributesServiceRemoveKeyFromValueProcedure:
 			attributesServiceRemoveKeyFromValueHandler.ServeHTTP(w, r)
+		case AttributesServiceAssignPublicKeyToAttributeProcedure:
+			attributesServiceAssignPublicKeyToAttributeHandler.ServeHTTP(w, r)
+		case AttributesServiceRemovePublicKeyFromAttributeProcedure:
+			attributesServiceRemovePublicKeyFromAttributeHandler.ServeHTTP(w, r)
+		case AttributesServiceAssignPublicKeyToValueProcedure:
+			attributesServiceAssignPublicKeyToValueHandler.ServeHTTP(w, r)
+		case AttributesServiceRemovePublicKeyFromValueProcedure:
+			attributesServiceRemovePublicKeyFromValueHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -680,4 +793,20 @@ func (UnimplementedAttributesServiceHandler) AssignKeyToValue(context.Context, *
 
 func (UnimplementedAttributesServiceHandler) RemoveKeyFromValue(context.Context, *connect.Request[attributes.RemoveKeyFromValueRequest]) (*connect.Response[attributes.RemoveKeyFromValueResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.attributes.AttributesService.RemoveKeyFromValue is not implemented"))
+}
+
+func (UnimplementedAttributesServiceHandler) AssignPublicKeyToAttribute(context.Context, *connect.Request[attributes.AssignPublicKeyToAttributeRequest]) (*connect.Response[attributes.AssignPublicKeyToAttributeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.attributes.AttributesService.AssignPublicKeyToAttribute is not implemented"))
+}
+
+func (UnimplementedAttributesServiceHandler) RemovePublicKeyFromAttribute(context.Context, *connect.Request[attributes.RemovePublicKeyFromAttributeRequest]) (*connect.Response[attributes.RemovePublicKeyFromAttributeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.attributes.AttributesService.RemovePublicKeyFromAttribute is not implemented"))
+}
+
+func (UnimplementedAttributesServiceHandler) AssignPublicKeyToValue(context.Context, *connect.Request[attributes.AssignPublicKeyToValueRequest]) (*connect.Response[attributes.AssignPublicKeyToValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.attributes.AttributesService.AssignPublicKeyToValue is not implemented"))
+}
+
+func (UnimplementedAttributesServiceHandler) RemovePublicKeyFromValue(context.Context, *connect.Request[attributes.RemovePublicKeyFromValueRequest]) (*connect.Response[attributes.RemovePublicKeyFromValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.attributes.AttributesService.RemovePublicKeyFromValue is not implemented"))
 }

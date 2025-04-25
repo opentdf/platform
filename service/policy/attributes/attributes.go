@@ -460,3 +460,19 @@ func (s *AttributesService) AssignKeyToValue(context.Context, *connect.Request[a
 func (s *AttributesService) RemoveKeyFromValue(context.Context, *connect.Request[attributes.RemoveKeyFromValueRequest]) (*connect.Response[attributes.RemoveKeyFromValueResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, nil)
 }
+
+func (s *AttributesService) AssignPublicKeyToAttribute(context.Context, *connect.Request[attributes.AssignPublicKeyToAttributeRequest]) (*connect.Response[attributes.AssignPublicKeyToAttributeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+}
+
+func (s *AttributesService) RemovePublicKeyFromAttribute(context.Context, *connect.Request[attributes.RemovePublicKeyFromAttributeRequest]) (*connect.Response[attributes.RemovePublicKeyFromAttributeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+}
+
+func (s *AttributesService) AssignPublicKeyToValue(context.Context, *connect.Request[attributes.AssignPublicKeyToValueRequest]) (*connect.Response[attributes.AssignPublicKeyToValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+}
+
+func (s *AttributesService) RemovePublicKeyFromValue(context.Context, *connect.Request[attributes.RemovePublicKeyFromValueRequest]) (*connect.Response[attributes.RemovePublicKeyFromValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+}

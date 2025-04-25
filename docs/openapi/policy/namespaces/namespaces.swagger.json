@@ -360,6 +360,15 @@
         "namespaceKey": {
           "$ref": "#/definitions/namespacesNamespaceKey"
         }
+      },
+      "title": "Deprecated"
+    },
+    "namespacesAssignPublicKeyToNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespaceKey": {
+          "$ref": "#/definitions/namespacesNamespaceKey"
+        }
       }
     },
     "namespacesCreateNamespaceRequest": {
@@ -418,7 +427,7 @@
         },
         "keyId": {
           "type": "string",
-          "title": "Required"
+          "title": "Required (The id from the Asymmetric Key object)"
         }
       }
     },
@@ -444,6 +453,15 @@
       }
     },
     "namespacesRemoveKeyFromNamespaceResponse": {
+      "type": "object",
+      "properties": {
+        "namespaceKey": {
+          "$ref": "#/definitions/namespacesNamespaceKey"
+        }
+      },
+      "title": "Deprecated"
+    },
+    "namespacesRemovePublicKeyFromNamespaceResponse": {
       "type": "object",
       "properties": {
         "namespaceKey": {
@@ -475,7 +493,7 @@
           "description": "A known algorithm type with any additional parameters encoded.\nTo start, these may be `rsa:2048` for encrypting ZTDF files and\n`ec:secp256r1` for nanoTDF, but more formats may be added as needed."
         }
       },
-      "title": "A KAS public key and some associated metadata for further identifcation"
+      "title": "Deprecated\nA KAS public key and some associated metadata for further identifcation"
     },
     "policyKasPublicKeyAlgEnum": {
       "type": "string",
@@ -541,6 +559,18 @@
           "$ref": "#/definitions/policyPublicKey",
           "title": "Deprecated"
         },
+        "sourceType": {
+          "$ref": "#/definitions/policySourceType",
+          "title": "The source of the KAS: (INTERNAL, EXTERNAL)"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyKey"
+          },
+          "title": "Deprecated"
+        },
         "name": {
           "type": "string",
           "title": "Optional\nUnique name of the KAS instance"
@@ -587,7 +617,7 @@
             "type": "object",
             "$ref": "#/definitions/policyKey"
           },
-          "title": "Keys for the namespace"
+          "title": "Deprecated"
         }
       }
     },
@@ -639,6 +669,16 @@
         }
       },
       "title": "Deprecated"
+    },
+    "policySourceType": {
+      "type": "string",
+      "enum": [
+        "SOURCE_TYPE_UNSPECIFIED",
+        "SOURCE_TYPE_INTERNAL",
+        "SOURCE_TYPE_EXTERNAL"
+      ],
+      "default": "SOURCE_TYPE_UNSPECIFIED",
+      "description": "Describes whether this kas is managed by the organization or if they imported\nthe kas information from an external party. These two modes are necessary in order\nto encrypt a tdf dek with an external parties kas public key.\n\n - SOURCE_TYPE_INTERNAL: The kas is managed by the organization.\n - SOURCE_TYPE_EXTERNAL: The kas is managed by an external party."
     },
     "protobufAny": {
       "type": "object",

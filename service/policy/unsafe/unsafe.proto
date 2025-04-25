@@ -186,7 +186,7 @@ message UnsafeDeleteAttributeValueResponse {
   policy.Value value = 1;
 }
 
-// WARNING!!
+// Deprecated
 message UnsafeDeletePublicKeyRequest {
   // Required
   // UUID of the Key
@@ -195,7 +195,21 @@ message UnsafeDeletePublicKeyRequest {
   ];
 }
 
+// Deprecated
 message UnsafeDeletePublicKeyResponse {
+  policy.Key key = 1;
+}
+
+// WARNING!!
+message UnsafeDeleteKasKeyRequest {
+  // Required
+  // UUID of the Key
+  string id = 1 [
+    (buf.validate.field).string.uuid = true
+  ];
+}
+
+message UnsafeDeleteKasKeyResponse {
   policy.Key key = 1;
 }
 
@@ -244,7 +258,11 @@ service UnsafeService {
   }
 
   /*--------------------------------------*
-   * Key RPCs
+   * Kas Key RPCs
    *---------------------------------------*/
-   rpc UnsafeDeletePublicKey(UnsafeDeletePublicKeyRequest) returns (UnsafeDeletePublicKeyResponse) {}
+
+  // Deprecated
+  rpc UnsafeDeletePublicKey(UnsafeDeletePublicKeyRequest) returns (UnsafeDeletePublicKeyResponse) {}
+
+  rpc UnsafeDeleteKasKey(UnsafeDeleteKasKeyRequest) returns (UnsafeDeleteKasKeyResponse) {}
 }

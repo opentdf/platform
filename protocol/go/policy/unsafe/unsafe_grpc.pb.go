@@ -29,6 +29,7 @@ const (
 	UnsafeService_UnsafeReactivateAttributeValue_FullMethodName = "/policy.unsafe.UnsafeService/UnsafeReactivateAttributeValue"
 	UnsafeService_UnsafeDeleteAttributeValue_FullMethodName     = "/policy.unsafe.UnsafeService/UnsafeDeleteAttributeValue"
 	UnsafeService_UnsafeDeletePublicKey_FullMethodName          = "/policy.unsafe.UnsafeService/UnsafeDeletePublicKey"
+	UnsafeService_UnsafeDeleteKasKey_FullMethodName             = "/policy.unsafe.UnsafeService/UnsafeDeleteKasKey"
 )
 
 // UnsafeServiceClient is the client API for UnsafeService service.
@@ -53,10 +54,9 @@ type UnsafeServiceClient interface {
 	UnsafeUpdateAttributeValue(ctx context.Context, in *UnsafeUpdateAttributeValueRequest, opts ...grpc.CallOption) (*UnsafeUpdateAttributeValueResponse, error)
 	UnsafeReactivateAttributeValue(ctx context.Context, in *UnsafeReactivateAttributeValueRequest, opts ...grpc.CallOption) (*UnsafeReactivateAttributeValueResponse, error)
 	UnsafeDeleteAttributeValue(ctx context.Context, in *UnsafeDeleteAttributeValueRequest, opts ...grpc.CallOption) (*UnsafeDeleteAttributeValueResponse, error)
-	// --------------------------------------*
-	// Key RPCs
-	// ---------------------------------------
+	// Deprecated
 	UnsafeDeletePublicKey(ctx context.Context, in *UnsafeDeletePublicKeyRequest, opts ...grpc.CallOption) (*UnsafeDeletePublicKeyResponse, error)
+	UnsafeDeleteKasKey(ctx context.Context, in *UnsafeDeleteKasKeyRequest, opts ...grpc.CallOption) (*UnsafeDeleteKasKeyResponse, error)
 }
 
 type unsafeServiceClient struct {
@@ -157,6 +157,15 @@ func (c *unsafeServiceClient) UnsafeDeletePublicKey(ctx context.Context, in *Uns
 	return out, nil
 }
 
+func (c *unsafeServiceClient) UnsafeDeleteKasKey(ctx context.Context, in *UnsafeDeleteKasKeyRequest, opts ...grpc.CallOption) (*UnsafeDeleteKasKeyResponse, error) {
+	out := new(UnsafeDeleteKasKeyResponse)
+	err := c.cc.Invoke(ctx, UnsafeService_UnsafeDeleteKasKey_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UnsafeServiceServer is the server API for UnsafeService service.
 // All implementations must embed UnimplementedUnsafeServiceServer
 // for forward compatibility
@@ -179,10 +188,9 @@ type UnsafeServiceServer interface {
 	UnsafeUpdateAttributeValue(context.Context, *UnsafeUpdateAttributeValueRequest) (*UnsafeUpdateAttributeValueResponse, error)
 	UnsafeReactivateAttributeValue(context.Context, *UnsafeReactivateAttributeValueRequest) (*UnsafeReactivateAttributeValueResponse, error)
 	UnsafeDeleteAttributeValue(context.Context, *UnsafeDeleteAttributeValueRequest) (*UnsafeDeleteAttributeValueResponse, error)
-	// --------------------------------------*
-	// Key RPCs
-	// ---------------------------------------
+	// Deprecated
 	UnsafeDeletePublicKey(context.Context, *UnsafeDeletePublicKeyRequest) (*UnsafeDeletePublicKeyResponse, error)
+	UnsafeDeleteKasKey(context.Context, *UnsafeDeleteKasKeyRequest) (*UnsafeDeleteKasKeyResponse, error)
 	mustEmbedUnimplementedUnsafeServiceServer()
 }
 
@@ -219,6 +227,9 @@ func (UnimplementedUnsafeServiceServer) UnsafeDeleteAttributeValue(context.Conte
 }
 func (UnimplementedUnsafeServiceServer) UnsafeDeletePublicKey(context.Context, *UnsafeDeletePublicKeyRequest) (*UnsafeDeletePublicKeyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnsafeDeletePublicKey not implemented")
+}
+func (UnimplementedUnsafeServiceServer) UnsafeDeleteKasKey(context.Context, *UnsafeDeleteKasKeyRequest) (*UnsafeDeleteKasKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsafeDeleteKasKey not implemented")
 }
 func (UnimplementedUnsafeServiceServer) mustEmbedUnimplementedUnsafeServiceServer() {}
 
@@ -413,6 +424,24 @@ func _UnsafeService_UnsafeDeletePublicKey_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UnsafeService_UnsafeDeleteKasKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsafeDeleteKasKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UnsafeServiceServer).UnsafeDeleteKasKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UnsafeService_UnsafeDeleteKasKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UnsafeServiceServer).UnsafeDeleteKasKey(ctx, req.(*UnsafeDeleteKasKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UnsafeService_ServiceDesc is the grpc.ServiceDesc for UnsafeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -459,6 +488,10 @@ var UnsafeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnsafeDeletePublicKey",
 			Handler:    _UnsafeService_UnsafeDeletePublicKey_Handler,
+		},
+		{
+			MethodName: "UnsafeDeleteKasKey",
+			Handler:    _UnsafeService_UnsafeDeleteKasKey_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

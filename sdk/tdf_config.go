@@ -300,12 +300,7 @@ func getKasAddress(kasURL string) (string, error) {
 		return "", fmt.Errorf("no host parsed from url: %s", kasURL)
 	}
 
-	// Default to "https" if no scheme is provided
-	if parsedURL.Scheme == "" {
-		parsedURL.Scheme = schemeHTTPS
-	}
-
-	// Default to port 443 if no port is provided
+	// Default to port 443 if scheme is https and no port is provided
 	if parsedURL.Port() != "" {
 		parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
 	} else if parsedURL.Scheme == schemeHTTPS {

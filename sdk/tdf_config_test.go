@@ -240,6 +240,18 @@ func TestAllowList_Add(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name:        "Url without scheme",
+			kasURL:      "example.com:8080",
+			entry:       "https://example.com:8080",
+			expectError: false,
+		},
+		{
+			name:        "Url without scheme and port",
+			kasURL:      "example.com",
+			entry:       "https://example.com:443",
+			expectError: false,
+		},
+		{
 			name:        "Invalid URL",
 			kasURL:      "http://:8080",
 			expectError: true,

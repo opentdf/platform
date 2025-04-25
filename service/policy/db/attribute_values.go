@@ -92,15 +92,6 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		}
 	}
 
-	var keys []*policy.Key
-	if av.Keys != nil {
-		keys, err = db.KeysProtoJSON(av.Keys)
-		if err != nil {
-			c.logger.ErrorContext(ctx, "could not unmarshal keys", slog.String("error", err.Error()))
-			return nil, err
-		}
-	}
-
 	return &policy.Value{
 		Id:       av.ID,
 		Value:    av.Value,
@@ -110,8 +101,7 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		Attribute: &policy.Attribute{
 			Id: av.AttributeDefinitionID,
 		},
-		Fqn:  av.Fqn.String,
-		Keys: keys,
+		Fqn: av.Fqn.String,
 	}, nil
 }
 

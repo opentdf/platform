@@ -418,6 +418,58 @@
       },
       "title": "An action an entity can take"
     },
+    "policyAlgorithm": {
+      "type": "string",
+      "enum": [
+        "ALGORITHM_UNSPECIFIED",
+        "ALGORITHM_RSA_2048",
+        "ALGORITHM_RSA_4096",
+        "ALGORITHM_EC_P256",
+        "ALGORITHM_EC_P384",
+        "ALGORITHM_EC_P521"
+      ],
+      "default": "ALGORITHM_UNSPECIFIED",
+      "description": "Supported key algorithms."
+    },
+    "policyAsymmetricKey": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "keyId": {
+          "type": "string"
+        },
+        "keyAlgorithm": {
+          "$ref": "#/definitions/policyAlgorithm"
+        },
+        "keyStatus": {
+          "$ref": "#/definitions/policyKeyStatus"
+        },
+        "keyMode": {
+          "$ref": "#/definitions/policyKeyMode",
+          "title": "Specifies how the key is managed (local or remote)"
+        },
+        "publicKeyCtx": {
+          "type": "string",
+          "format": "byte",
+          "title": "Specific structure based on key provider implementation"
+        },
+        "privateKeyCtx": {
+          "type": "string",
+          "format": "byte",
+          "title": "Specific structure based on key provider implementation"
+        },
+        "providerConfig": {
+          "$ref": "#/definitions/policyKeyProviderConfig",
+          "title": "Configuration for the key provider"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata fields"
+        }
+      }
+    },
     "policyAttribute": {
       "type": "object",
       "properties": {
@@ -462,9 +514,8 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKey"
-          },
-          "title": "Deprecated"
+            "$ref": "#/definitions/policyAsymmetricKey"
+          }
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
@@ -619,9 +670,8 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKey"
-          },
-          "title": "Deprecated"
+            "$ref": "#/definitions/policyAsymmetricKey"
+          }
         },
         "name": {
           "type": "string",
@@ -633,6 +683,46 @@
         }
       },
       "title": "Key Access Server Registry"
+    },
+    "policyKeyMode": {
+      "type": "string",
+      "enum": [
+        "KEY_MODE_UNSPECIFIED",
+        "KEY_MODE_LOCAL",
+        "KEY_MODE_REMOTE"
+      ],
+      "default": "KEY_MODE_UNSPECIFIED",
+      "description": "Describe how the kas private key is managed.\nIf the key mode is LOCAL, then the kas private key is stored in the database.\nThis could be encrypted or unencrypted.\nRemote means that the kas private key is stored in a remote key system like KMS or HSM\nand all operations are done by the remote key system."
+    },
+    "policyKeyProviderConfig": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "configJson": {
+          "type": "string",
+          "format": "byte"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      }
+    },
+    "policyKeyStatus": {
+      "type": "string",
+      "enum": [
+        "KEY_STATUS_UNSPECIFIED",
+        "KEY_STATUS_ACTIVE",
+        "KEY_STATUS_INACTIVE",
+        "KEY_STATUS_COMPROMISED"
+      ],
+      "default": "KEY_STATUS_UNSPECIFIED",
+      "title": "The status of the key"
     },
     "policyNamespace": {
       "type": "object",
@@ -667,9 +757,8 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKey"
-          },
-          "title": "Deprecated"
+            "$ref": "#/definitions/policyAsymmetricKey"
+          }
         }
       }
     },
@@ -809,9 +898,8 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKey"
-          },
-          "title": "Deprecated"
+            "$ref": "#/definitions/policyAsymmetricKey"
+          }
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
@@ -880,15 +968,6 @@
           "$ref": "#/definitions/policyNamespace"
         }
       }
-    },
-    "unsafeUnsafeDeletePublicKeyResponse": {
-      "type": "object",
-      "properties": {
-        "key": {
-          "$ref": "#/definitions/policyKey"
-        }
-      },
-      "title": "Deprecated"
     },
     "unsafeUnsafeReactivateAttributeResponse": {
       "type": "object",

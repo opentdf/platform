@@ -32,23 +32,45 @@ func (pdp *Pdp) DetermineAccess(
 ) (map[string]*Decision, error) {
 	pdp.logger.DebugContext(ctx, "DetermineAccess")
 
-	// Group all the Data Attribute Values by their Definitions (e.g., "<namespace>/attr/<attrname>").
+	dataAttrValsByDefinition, err := pdp.groupDataAttributesByDefinition(ctx, dataAttributes)
+	if err != nil {
+		return nil, err
+	}
+
+	fqnToDefinitionMap, err := pdp.mapFqnToDefinitions(ctx, attributeDefinitions)
+	if err != nil {
+		return nil, err
+	}
+
+	return pdp.evaluateAttributes(ctx, dataAttrValsByDefinition, fqnToDefinitionMap, entityAttributeSets)
+}
+
+func (pdp *Pdp) groupDataAttributesByDefinition(ctx context.Context, dataAttributes []*policy.Value) (map[string][]*policy.Value, error) {
 	dataAttrValsByDefinition, err := GroupValuesByDefinition(dataAttributes)
 	if err != nil {
 		pdp.logger.Error(fmt.Sprintf("error grouping data attributes by definition: %s", err.Error()))
 		return nil, err
 	}
+	return dataAttrValsByDefinition, nil
+}
 
-	// Map FQN -> single Attribute Definition.
+func (pdp *Pdp) mapFqnToDefinitions(ctx context.Context, attributeDefinitions []*policy.Attribute) (map[string]*policy.Attribute, error) {
 	fqnToDefinitionMap, err := GetFqnToDefinitionMap(ctx, attributeDefinitions, pdp.logger)
 	if err != nil {
 		pdp.logger.Error(fmt.Sprintf("error grouping attribute definitions by FQN: %s", err.Error()))
 		return nil, err
 	}
+	return fqnToDefinitionMap, nil
+}
 
+func (pdp *Pdp) evaluateAttributes(
+	ctx context.Context,
+	dataAttrValsByDefinition map[string][]*policy.Value,
+	fqnToDefinitionMap map[string]*policy.Attribute,
+	entityAttributeSets map[string][]string,
+) (map[string]*Decision, error) {
 	decisions := make(map[string]*Decision)
 
-	// Evaluate each data attribute definition's values against all entities.
 	for definitionFqn, distinctValues := range dataAttrValsByDefinition {
 		pdp.logger.DebugContext(ctx, "Evaluating data attribute fqn", "fqn:", definitionFqn)
 
@@ -57,53 +79,61 @@ func (pdp *Pdp) DetermineAccess(
 			return nil, fmt.Errorf("expected an Attribute Definition under the FQN %s", definitionFqn)
 		}
 
-		var (
-			entityRuleDecision map[string]DataRuleResult
-			err                error
-		)
-
-		switch attrDefinition.GetRule() {
-		case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF:
-			pdp.logger.DebugContext(ctx, "Evaluating under allOf", "name", definitionFqn)
-			entityRuleDecision, err = pdp.allOfRule(ctx, distinctValues, entityAttributeSets)
-
-		case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF:
-			pdp.logger.DebugContext(ctx, "Evaluating under anyOf", "name", definitionFqn)
-			entityRuleDecision, err = pdp.anyOfRule(ctx, distinctValues, entityAttributeSets)
-
-		case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
-			pdp.logger.DebugContext(ctx, "Evaluating under hierarchy", "name", definitionFqn)
-			entityRuleDecision, err = pdp.hierarchyRule(ctx, distinctValues, entityAttributeSets, attrDefinition.GetValues())
-
-		case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED:
-			return nil, fmt.Errorf("unset AttributeDefinition rule: %s", attrDefinition.GetRule())
-
-		default:
-			return nil, fmt.Errorf("unrecognized AttributeDefinition rule: %s", attrDefinition.GetRule())
-		}
-
+		entityRuleDecision, err := pdp.evaluateRule(ctx, attrDefinition, distinctValues, entityAttributeSets)
 		if err != nil {
-			return nil, fmt.Errorf("error evaluating rule: %s", err.Error())
+			return nil, err
 		}
 
-		// Roll up per-rule results to overall entity decision
-		for entityID, ruleResult := range entityRuleDecision {
-			entityDecision := decisions[entityID]
-			ruleResult.RuleDefinition = attrDefinition
-
-			if entityDecision == nil {
-				decisions[entityID] = &Decision{
-					Access:  ruleResult.Passed,
-					Results: []DataRuleResult{ruleResult},
-				}
-			} else {
-				entityDecision.Access = entityDecision.Access && ruleResult.Passed
-				entityDecision.Results = append(entityDecision.Results, ruleResult)
-			}
-		}
+		pdp.rollUpDecisions(entityRuleDecision, attrDefinition, decisions)
 	}
 
 	return decisions, nil
+}
+
+func (pdp *Pdp) evaluateRule(
+	ctx context.Context,
+	attrDefinition *policy.Attribute,
+	distinctValues []*policy.Value,
+	entityAttributeSets map[string][]string,
+) (map[string]DataRuleResult, error) {
+	switch attrDefinition.GetRule() {
+	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF:
+		pdp.logger.DebugContext(ctx, "Evaluating under allOf", "name", attrDefinition.GetFqn())
+		return pdp.allOfRule(ctx, distinctValues, entityAttributeSets)
+
+	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF:
+		pdp.logger.DebugContext(ctx, "Evaluating under anyOf", "name", attrDefinition.GetFqn())
+		return pdp.anyOfRule(ctx, distinctValues, entityAttributeSets)
+
+	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
+		pdp.logger.DebugContext(ctx, "Evaluating under hierarchy", "name", attrDefinition.GetFqn())
+		return pdp.hierarchyRule(ctx, distinctValues, entityAttributeSets, attrDefinition.GetValues())
+
+
+	default:
+		return nil, fmt.Errorf("unrecognized AttributeDefinition rule: %s", attrDefinition.GetRule())
+	}
+}
+
+func (pdp *Pdp) rollUpDecisions(
+	entityRuleDecision map[string]DataRuleResult,
+	attrDefinition *policy.Attribute,
+	decisions map[string]*Decision,
+) {
+	for entityID, ruleResult := range entityRuleDecision {
+		entityDecision := decisions[entityID]
+		ruleResult.RuleDefinition = attrDefinition
+
+		if entityDecision == nil {
+			decisions[entityID] = &Decision{
+				Access:  ruleResult.Passed,
+				Results: []DataRuleResult{ruleResult},
+			}
+		} else {
+			entityDecision.Access = entityDecision.Access && ruleResult.Passed
+			entityDecision.Results = append(entityDecision.Results, ruleResult)
+		}
+	}
 }
 
 // allOfRule evaluates data attributes against entity attributes using the "all of" rule.

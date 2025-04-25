@@ -485,11 +485,11 @@ func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
 	}
 	mockEntityAttrs := map[string][]string{}
 	ns := mockAttrDefinitions[0].GetNamespace().GetName()
-	name := mockAttrDefinitions[0].GetName()
+	def := mockAttrDefinitions[0].GetName()
 
 	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(ns, name, topValue.GetValue()),
-		fqnBuilder(ns, name, midValue.GetValue()),
+		fqnBuilder(ns, def, topValue.GetValue()),
+		fqnBuilder(ns, def, midValue.GetValue()),
 		mockExtraneousValueFqn,
 	}
 
@@ -1288,4 +1288,75 @@ func Test_GetOrderOfValueByFqn_SadCases(t *testing.T) {
 		require.Error(t, err)
 		assert.Equal(t, -1, got)
 	}
+}
+
+func Test_GroupDataAttributesByDefinition_Success(t *testing.T) {
+	mockDataAttrs := []*policy.Value{
+		{
+			Value: mockAttributeValues[0],
+			Attribute: &policy.Attribute{
+				Fqn: fqnBuilder(mockNamespaces[0], mockAttributeNames[0], ""),
+			},
+		},
+		{
+			Value: mockAttributeValues[1],
+			Attribute: &policy.Attribute{
+				Fqn: fqnBuilder(mockNamespaces[0], mockAttributeNames[0], ""),
+			},
+		},
+	}
+
+	pdp := NewPdp(logger.CreateTestLogger())
+	groupedAttrs, err := pdp.groupDataAttributesByDefinition(t.Context(), mockDataAttrs)
+
+	require.NoError(t, err)
+	assert.Len(t, groupedAttrs, 1)
+	fqn := fqnBuilder(mockNamespaces[0], mockAttributeNames[0], "")
+	assert.Len(t, groupedAttrs[fqn], 2)
+	assert.Equal(t, mockDataAttrs[0], groupedAttrs[fqn][0])
+	assert.Equal(t, mockDataAttrs[1], groupedAttrs[fqn][1])
+}
+
+func Test_MapFqnToDefinitions_Success(t *testing.T) {
+	mockAttrDefinitions := []*policy.Attribute{
+		&simpleAnyOfAttribute,
+		&simpleAllOfAttribute,
+		&simpleHierarchyAttribute,
+	}
+
+	pdp := NewPdp(logger.CreateTestLogger())
+	fqnToDefMap, err := pdp.mapFqnToDefinitions(t.Context(), mockAttrDefinitions)
+
+	require.NoError(t, err)
+	assert.Len(t, fqnToDefMap, 3)
+	for _, attrDef := range mockAttrDefinitions {
+		fqn := fqnBuilder(attrDef.GetNamespace().GetName(), attrDef.GetName(), "")
+		assert.Equal(t, attrDef, fqnToDefMap[fqn])
+	}
+}
+
+func Test_RollUpDecisions_Success(t *testing.T) {
+	entityRuleDecision := map[string]DataRuleResult{
+		mockEntityID: {
+			Passed: true,
+			ValueFailures: []ValueFailure{
+				{
+					DataAttribute: &policy.Value{
+						Value: mockAttributeValues[0],
+					},
+					Message: "Test failure",
+				},
+			},
+		},
+	}
+	attrDefinition := &simpleAnyOfAttribute
+	decisions := make(map[string]*Decision)
+
+	pdp := NewPdp(logger.CreateTestLogger())
+	pdp.rollUpDecisions(entityRuleDecision, attrDefinition, decisions)
+
+	assert.Len(t, decisions, 1)
+	assert.True(t, decisions[mockEntityID].Access)
+	assert.Len(t, decisions[mockEntityID].Results, 1)
+	assert.Equal(t, attrDefinition, decisions[mockEntityID].Results[0].RuleDefinition)
 }

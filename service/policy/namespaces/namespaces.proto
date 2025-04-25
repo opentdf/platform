@@ -165,32 +165,6 @@ message RemoveKeyAccessServerFromNamespaceResponse {
 /*
   Assign Key to Namespace
 */
-
-// Deprecated
-message AssignKeyToNamespaceRequest {
-  NamespaceKey namespace_key = 1 [
-    (buf.validate.field).required = true
-  ];
-}
-
-// Deprecated
-message AssignKeyToNamespaceResponse {
-  NamespaceKey namespace_key = 1;
-}
-
-// Deprecated
-message RemoveKeyFromNamespaceRequest {
-  NamespaceKey namespace_key = 1 [
-    (buf.validate.field).required = true
-  ];
-}
-
-// Deprecated
-message RemoveKeyFromNamespaceResponse {
-  NamespaceKey namespace_key = 1;
-}
-
-
 message AssignPublicKeyToNamespaceRequest {
   NamespaceKey namespace_key = 1 [
     (buf.validate.field).required = true
@@ -257,10 +231,6 @@ service NamespaceService {
   /*--------------------------------------*
    * Namespace <> Key RPCs
    *---------------------------------------*/
-
-  // Deprecated
-  rpc AssignKeyToNamespace(AssignKeyToNamespaceRequest) returns (AssignKeyToNamespaceResponse) {}
-  rpc RemoveKeyFromNamespace(RemoveKeyFromNamespaceRequest) returns (RemoveKeyFromNamespaceResponse) {}
 
   rpc AssignPublicKeyToNamespace(AssignPublicKeyToNamespaceRequest) returns (AssignPublicKeyToNamespaceResponse) {}
   rpc RemovePublicKeyFromNamespace(RemovePublicKeyFromNamespaceRequest) returns (RemovePublicKeyFromNamespaceResponse) {}

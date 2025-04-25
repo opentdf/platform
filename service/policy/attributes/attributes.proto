@@ -378,62 +378,6 @@ message RemoveKeyAccessServerFromValueResponse {
 /*
    Assign Key to Attribute and Value
 */
-
-
-// Deprecated
-message AssignKeyToAttributeRequest {
-  // Required
-  AttributeKey attribute_key = 1 [
-    (buf.validate.field).required = true
-  ];
-}
-
-// Deprecated
-message AssignKeyToAttributeResponse {
-  // Required
-  AttributeKey attribute_key = 1;
-}
-
-// Deprecated
-message RemoveKeyFromAttributeRequest {
-  // Required
-  AttributeKey attribute_key = 1  [
-    (buf.validate.field).required = true
-  ];
-}
-
-// Deprecated
-message RemoveKeyFromAttributeResponse {
-  // Required
-  AttributeKey attribute_key = 1;
-}
-
-// Deprecated
-message AssignKeyToValueRequest {
-  // Required
-  ValueKey value_key = 1  [
-    (buf.validate.field).required = true
-  ];
-}
-
-// Deprecated
-message AssignKeyToValueResponse {
-  // Required
-  ValueKey value_key = 1;
-}
-
-// Deprecated
-message RemoveKeyFromValueRequest {
-  // Required
-  ValueKey value_key = 1;
-}
-
-// Deprecated
-message RemoveKeyFromValueResponse {
-  // Required
-  ValueKey value_key = 1;
-}
-
 message AssignPublicKeyToAttributeRequest {
   // Required
   AttributeKey attribute_key = 1 [
@@ -584,18 +528,6 @@ service AttributesService {
     /*--------------------------------------*
   * Attribute <> Key RPCs
   *---------------------------------------*/
-
-  // Deprecated
-  rpc AssignKeyToAttribute(AssignKeyToAttributeRequest) returns (AssignKeyToAttributeResponse){}
-
-  // Deprecated
-  rpc RemoveKeyFromAttribute(RemoveKeyFromAttributeRequest) returns (RemoveKeyFromAttributeResponse){}
-
-  // Deprecated
-  rpc AssignKeyToValue(AssignKeyToValueRequest) returns (AssignKeyToValueResponse){}
-
-  // Deprecated
-  rpc RemoveKeyFromValue(RemoveKeyFromValueRequest) returns (RemoveKeyFromValueResponse){}
 
 
   rpc AssignPublicKeyToAttribute(AssignPublicKeyToAttributeRequest) returns (AssignPublicKeyToAttributeResponse){}

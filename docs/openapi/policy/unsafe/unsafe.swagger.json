@@ -881,15 +881,6 @@
         }
       }
     },
-    "unsafeUnsafeDeletePublicKeyResponse": {
-      "type": "object",
-      "properties": {
-        "key": {
-          "$ref": "#/definitions/policyKey"
-        }
-      },
-      "title": "Deprecated"
-    },
     "unsafeUnsafeReactivateAttributeResponse": {
       "type": "object",
       "properties": {

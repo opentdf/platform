@@ -354,15 +354,6 @@
         }
       }
     },
-    "namespacesAssignKeyToNamespaceResponse": {
-      "type": "object",
-      "properties": {
-        "namespaceKey": {
-          "$ref": "#/definitions/namespacesNamespaceKey"
-        }
-      },
-      "title": "Deprecated"
-    },
     "namespacesAssignPublicKeyToNamespaceResponse": {
       "type": "object",
       "properties": {
@@ -451,15 +442,6 @@
           "$ref": "#/definitions/namespacesNamespaceKeyAccessServer"
         }
       }
-    },
-    "namespacesRemoveKeyFromNamespaceResponse": {
-      "type": "object",
-      "properties": {
-        "namespaceKey": {
-          "$ref": "#/definitions/namespacesNamespaceKey"
-        }
-      },
-      "title": "Deprecated"
     },
     "namespacesRemovePublicKeyFromNamespaceResponse": {
       "type": "object",

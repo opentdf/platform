@@ -697,26 +697,6 @@
         }
       }
     },
-    "attributesAssignKeyToAttributeResponse": {
-      "type": "object",
-      "properties": {
-        "attributeKey": {
-          "$ref": "#/definitions/attributesAttributeKey",
-          "title": "Required"
-        }
-      },
-      "title": "Deprecated"
-    },
-    "attributesAssignKeyToValueResponse": {
-      "type": "object",
-      "properties": {
-        "valueKey": {
-          "$ref": "#/definitions/attributesValueKey",
-          "title": "Required"
-        }
-      },
-      "title": "Deprecated"
-    },
     "attributesAssignPublicKeyToAttributeResponse": {
       "type": "object",
       "properties": {
@@ -894,26 +874,6 @@
           "$ref": "#/definitions/attributesValueKeyAccessServer"
         }
       }
-    },
-    "attributesRemoveKeyFromAttributeResponse": {
-      "type": "object",
-      "properties": {
-        "attributeKey": {
-          "$ref": "#/definitions/attributesAttributeKey",
-          "title": "Required"
-        }
-      },
-      "title": "Deprecated"
-    },
-    "attributesRemoveKeyFromValueResponse": {
-      "type": "object",
-      "properties": {
-        "valueKey": {
-          "$ref": "#/definitions/attributesValueKey",
-          "title": "Required"
-        }
-      },
-      "title": "Deprecated"
     },
     "attributesRemovePublicKeyFromAttributeResponse": {
       "type": "object",

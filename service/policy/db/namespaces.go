@@ -61,6 +61,15 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 		}
 	}
 
+	var keys []*policy.Key
+	if len(ns.Keys) > 0 {
+		keys, err = db.KeysProtoJSON(ns.Keys)
+		if err != nil {
+			c.logger.Error("could not unmarshal keys", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
+
 	return &policy.Namespace{
 		Id:       ns.ID,
 		Name:     ns.Name,
@@ -68,6 +77,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 		Grants:   grants,
 		Metadata: metadata,
 		Fqn:      ns.Fqn.String,
+		Keys:     keys,
 	}, nil
 }
 

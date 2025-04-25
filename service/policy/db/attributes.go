@@ -271,6 +271,14 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 		return nil, err
 	}
 
+	if len(attr.Keys) > 0 {
+		keys, err := db.KeysProtoJSON(attr.Keys)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
+		}
+		policyAttr.Keys = keys
+	}
+
 	return policyAttr, nil
 }
 
@@ -301,6 +309,14 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			}
 		}
 
+		var keys []*policy.Key
+		if len(attr.Keys) > 0 {
+			keys, err = db.KeysProtoJSON(attr.Keys)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
+			}
+		}
+
 		attrs[i] = &policy.Attribute{
 			Id:        attr.ID,
 			Name:      attr.Name,
@@ -310,6 +326,7 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			Grants:    grants,
 			Namespace: ns,
 			Values:    values,
+			Keys:      keys,
 		}
 	}
 

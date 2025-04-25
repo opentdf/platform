@@ -23,7 +23,8 @@ message Namespace {
   // KAS grants for the namespace
   repeated KeyAccessServer grants = 6;
 
-  repeated AsymmetricKey keys = 7;
+  // Deprecated
+  repeated Key keys = 7;
 }
 
 message Attribute {
@@ -51,8 +52,8 @@ message Attribute {
   // active by default until explicitly deactivated
   google.protobuf.BoolValue active = 8;
 
-  
-  repeated AsymmetricKey keys = 9;
+  // Deprecated
+  repeated Key keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -89,7 +90,8 @@ message Value {
   // subject mapping
   repeated SubjectMapping subject_mappings = 8;
 
-  repeated AsymmetricKey keys = 9;
+  // Deprecated
+  repeated Key keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -310,7 +312,8 @@ message KeyAccessServer {
   // The source of the KAS: (INTERNAL, EXTERNAL)
   SourceType source_type = 4;
 
-  repeated AsymmetricKey keys = 5;
+  // Deprecated
+  repeated Key keys = 5;
 
   // Optional
   // Unique name of the KAS instance

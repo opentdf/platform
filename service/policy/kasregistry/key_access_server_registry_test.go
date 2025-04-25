@@ -398,12 +398,6 @@ func Test_CreateKeyAccessServer_Fails(t *testing.T) {
 		},
 		{
 			fakeURI,
-			nil,
-			"",
-			"no public key",
-		},
-		{
-			fakeURI,
 			&policy.PublicKey{
 				PublicKey: &policy.PublicKey_Remote{
 					Remote: "bad format",

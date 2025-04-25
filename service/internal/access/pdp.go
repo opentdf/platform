@@ -32,6 +32,8 @@ func (pdp *Pdp) DetermineAccess(
 ) (map[string]*Decision, error) {
 	pdp.logger.DebugContext(ctx, "DetermineAccess")
 
+	// TODO: behavior if dataAttributes is empty?
+
 	dataAttrValsByDefinition, err := pdp.groupDataAttributesByDefinition(ctx, dataAttributes)
 	if err != nil {
 		return nil, err
@@ -108,7 +110,6 @@ func (pdp *Pdp) evaluateRule(
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
 		pdp.logger.DebugContext(ctx, "Evaluating under hierarchy", "name", attrDefinition.GetFqn())
 		return pdp.hierarchyRule(ctx, distinctValues, entityAttributeSets, attrDefinition.GetValues())
-
 
 	default:
 		return nil, fmt.Errorf("unrecognized AttributeDefinition rule: %s", attrDefinition.GetRule())

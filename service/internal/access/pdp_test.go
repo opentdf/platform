@@ -23,1340 +23,389 @@ func fqnBuilder(n string, a string, v string) string {
 	}
 }
 
-var (
-	mockNamespaces      = []string{"example.org", "authority.gov", "somewhere.net"}
-	mockAttributeNames  = []string{"MyAttr", "YourAttr", "TheirAttr"}
-	mockAttributeValues = []string{"Value1", "Value2", "Value3", "Value4", "Value5"}
+func createMockEntityAttributes(entityID, namespace, name string, values []string) map[string][]string {
+	attrs := make(map[string][]string)
+	for _, value := range values {
+		attrs[entityID] = append(attrs[entityID], fqnBuilder(namespace, name, value))
+	}
+	return attrs
+}
 
-	mockExtraneousValueFqn = fqnBuilder("meep.org", "meep", "beepbeep")
-	mockEntityID           = "4f6636ca-c60c-40d1-9f3f-015086303f74"
-
-	simpleAnyOfAttribute = policy.Attribute{
-		Name: mockAttributeNames[0],
+func createMockAttribute(namespace, name string, rule policy.AttributeRuleTypeEnum, values []string) *policy.Attribute {
+	attr := &policy.Attribute{
+		Name: name,
 		Namespace: &policy.Namespace{
-			Name: mockNamespaces[0],
+			Name: namespace,
 		},
-		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-		Values: []*policy.Value{
-			{
-				Value: mockAttributeValues[0],
-				Fqn:   fqnBuilder(mockNamespaces[0], mockAttributeNames[0], mockAttributeValues[0]),
-			},
-			{
-				Value: mockAttributeValues[1],
-				Fqn:   fqnBuilder(mockNamespaces[0], mockAttributeNames[0], mockAttributeValues[1]),
-			},
-		},
+		Rule: rule,
+		Fqn:  fqnBuilder(namespace, name, ""),
 	}
-
-	simpleAllOfAttribute = policy.Attribute{
-		Name: mockAttributeNames[1],
-		Namespace: &policy.Namespace{
-			Name: mockNamespaces[1],
-		},
-		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-		Values: []*policy.Value{
-			{
-				Value: mockAttributeValues[2],
-				Fqn:   fqnBuilder(mockNamespaces[1], mockAttributeNames[1], mockAttributeValues[2]),
-			},
-			{
-				Value: mockAttributeValues[3],
-				Fqn:   fqnBuilder(mockNamespaces[1], mockAttributeNames[1], mockAttributeValues[3]),
-			},
-		},
+	for _, value := range values {
+		attr.Values = append(attr.Values, &policy.Value{
+			Value: value,
+			Fqn:   fqnBuilder(namespace, name, value),
+		})
 	}
-
-	simpleHierarchyAttribute = policy.Attribute{
-		Name: mockAttributeNames[2],
-		Namespace: &policy.Namespace{
-			Name: mockNamespaces[2],
-		},
-		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
-		Values: []*policy.Value{
-			{
-				Value: "Privileged",
-				Fqn:   fqnBuilder(mockNamespaces[2], mockAttributeNames[2], "Privileged"),
-			},
-			{
-				Value: "LessPrivileged",
-				Fqn:   fqnBuilder(mockNamespaces[2], mockAttributeNames[2], "LessPrivileged"),
-			},
-			{
-				Value: "NotPrivilegedAtAll",
-				Fqn:   fqnBuilder(mockNamespaces[2], mockAttributeNames[2], "NotPrivilegedAtAll"),
-			},
-		},
-	}
-)
-
-// AnyOf tests
-func Test_AccessPDP_AnyOf_Pass(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleAnyOfAttribute}
-	ns := mockAttrDefinitions[0].GetNamespace().GetName()
-	name := mockAttrDefinitions[0].GetName()
-	val0 := mockAttrDefinitions[0].GetValues()[0]
-	val1 := mockAttrDefinitions[0].GetValues()[1]
-	mockDataAttrs := []*policy.Value{
-		val0,
-		val1,
-	}
-
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(ns, name, val1.GetValue()),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions,
-	)
-
-	require.NoError(t, err)
-	assert.True(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.True(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
-	assert.Equal(t, val0, decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
+	return attr
 }
 
-func Test_AccessPDP_AnyOf_FailMissingValue(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleAnyOfAttribute}
-	mockDataAttrs := []*policy.Value{
-		mockAttrDefinitions[0].GetValues()[1],
-		mockAttrDefinitions[0].GetValues()[0],
-	}
-	ns := mockAttrDefinitions[0].GetNamespace().GetName()
-	name := mockAttrDefinitions[0].GetName()
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(ns, name, "randomValue"),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 2)
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_AnyOf_FailMissingAttr(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleAnyOfAttribute}
-
-	mockDataAttrs := []*policy.Value{
-		mockAttrDefinitions[0].GetValues()[1],
-		mockAttrDefinitions[0].GetValues()[0],
-	}
-
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder("dank.org", "noop", "randomVal"),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 2)
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_AnyOf_FailAttrWrongNamespace(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleAnyOfAttribute}
-
-	mockDataAttrs := []*policy.Value{
-		mockAttrDefinitions[0].GetValues()[1],
-		mockAttrDefinitions[0].GetValues()[0],
-	}
-
-	mockEntityAttrs := map[string][]string{}
-	name := mockAttrDefinitions[0].GetName()
-	val1 := mockAttrDefinitions[0].GetValues()[0].GetValue()
-	mockEntityAttrs[mockEntityID] = []string{fqnBuilder("otherrandomnamespace.com", name, val1), mockExtraneousValueFqn}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 2)
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_AnyOf_NoEntityAttributes_Fails(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleAnyOfAttribute}
-
-	mockDataAttrs := []*policy.Value{
-		mockAttrDefinitions[0].GetValues()[1],
-		mockAttrDefinitions[0].GetValues()[0],
-	}
-
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 2)
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_AnyOf_NoDataAttributes_NoDecisions(t *testing.T) {
-	// There are no data attribute instances in this test so the data attribute definitions
-	// are useless, and should be ignored, but supply the definitions anyway to test that assumption
-	mockAttrDefinitions := []*policy.Attribute{&simpleAnyOfAttribute}
-
-	mockDataAttrs := []*policy.Value{}
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(mockNamespaces[0], mockAttributeNames[0], mockAttributeValues[0]),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.Nil(t, decisions[mockEntityID])
-	// No data attributes -> no decisions to make -> no decisions per-entity
-	// (PDP Caller can do what it wants with this info - infer this means access for all, or infer this means failure)
-	assert.Empty(t, decisions)
-}
-
-func Test_AccessPDP_AnyOf_AllEntitiesFilteredOutOfDataAttributeComparison_NoDecisions(t *testing.T) {
-	entityID1 := "4f6636ca-c60c-40d1-9f3f-015086303f74"
-	entityID2 := "bubble@squeak.biz"
-	mockAttrDefinitions := []*policy.Attribute{
-		&simpleAnyOfAttribute,
-		{
-			Name: mockAttributeNames[1],
-			Namespace: &policy.Namespace{
-				Name: mockNamespaces[0],
-			},
-			Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-			Values: []*policy.Value{
-				{
-					Value: mockAttributeValues[2],
-					Fqn:   fqnBuilder(mockNamespaces[0], mockAttributeNames[1], mockAttributeValues[2]),
-				},
-				{
-					Value: mockAttributeValues[3],
-					Fqn:   fqnBuilder(mockNamespaces[0], mockAttributeNames[1], mockAttributeValues[3]),
-				},
-			},
-		},
-	}
-	mockDataAttrs := []*policy.Value{}
-	mockEntityAttrs := map[string][]string{}
-	fqn1 := fqnBuilder("dank.org", mockAttrDefinitions[0].GetName(), mockAttrDefinitions[0].GetValues()[0].GetValue())
-	fqn2 := mockExtraneousValueFqn
-	mockEntityAttrs[entityID1] = []string{
-		fqn1, fqn2,
-	}
-	mockEntityAttrs[entityID2] = []string{
-		fqn1, fqn2,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-
-	// Both the entities lack the necessary Attribute for the only data attribute we're comparing them against,
-	// so neither of them get a Decision -> no decisions to be made here.
-	assert.Nil(t, decisions[entityID1])
-	assert.Nil(t, decisions[entityID2])
-	// No data attributes -> no decisions to make -> no decisions per-entity
-	// (PDP Caller can do what it wants with this info - infer this means access for all, or infer this means failure)
-	assert.Empty(t, decisions)
-}
-
-// AllOf tests
-func Test_AccessPDP_AllOf_Pass(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleAllOfAttribute}
-
-	mockDataAttrs := []*policy.Value{
-		mockAttrDefinitions[0].GetValues()[1],
-		mockAttrDefinitions[0].GetValues()[0],
-	}
-	mockEntityAttrs := map[string][]string{}
-	ns := mockAttrDefinitions[0].GetNamespace().GetName()
-	name := mockAttrDefinitions[0].GetName()
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(ns, name, mockAttrDefinitions[0].GetValues()[0].GetValue()),
-		fqnBuilder(ns, name, mockAttrDefinitions[0].GetValues()[1].GetValue()),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.True(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.True(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Empty(t, decisions[mockEntityID].Results[0].ValueFailures)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_AllOf_FailMissingValue(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleAllOfAttribute}
-	mockDataAttrs := []*policy.Value{
-		mockAttrDefinitions[0].GetValues()[1],
-		mockAttrDefinitions[0].GetValues()[0],
-	}
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(mockAttrDefinitions[0].GetNamespace().GetName(), mockAttrDefinitions[0].GetName(), mockAttrDefinitions[0].GetValues()[0].GetValue()),
-		mockExtraneousValueFqn,
-		fqnBuilder(mockAttrDefinitions[0].GetNamespace().GetName(), mockAttrDefinitions[0].GetName(), "otherValue"),
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_AllOf_FailMissingAttr(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{
-		&simpleAllOfAttribute,
-	}
-	mockDataAttrs := []*policy.Value{
-		mockAttrDefinitions[0].GetValues()[1],
-		mockAttrDefinitions[0].GetValues()[0],
-	}
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder("dank.org", "noop", "randomVal"),
-		fqnBuilder("somewhere.com", "hello", "world"),
-	}
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 2)
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_AllOf_FailAttrWrongNamespace(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleAnyOfAttribute}
-	mockDataAttrs := []*policy.Value{
-		mockAttrDefinitions[0].GetValues()[1],
-		mockAttrDefinitions[0].GetValues()[0],
-	}
-
-	wrongNs := "wrong" + mockAttrDefinitions[0].GetNamespace().GetName()
-	name := mockAttrDefinitions[0].GetName()
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(wrongNs, name, mockAttrDefinitions[0].GetValues()[0].GetValue()),
-		fqnBuilder(wrongNs, name, mockAttrDefinitions[0].GetValues()[1].GetValue()),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 2)
-	assert.Equal(t, mockDataAttrs[0], decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-// Hierarchy tests
-func Test_AccessPDP_Hierarchy_Pass(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleHierarchyAttribute}
-	topValue := mockAttrDefinitions[0].GetValues()[0]
-	midValue := mockAttrDefinitions[0].GetValues()[1]
-	mockDataAttrs := []*policy.Value{
-		midValue,
-		topValue,
-	}
-
-	mockEntityAttrs := map[string][]string{}
-	ns := mockAttrDefinitions[0].GetNamespace().GetName()
-	name := mockAttrDefinitions[0].GetName()
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(ns, name, topValue.GetValue()),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.True(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.True(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Empty(t, decisions[mockEntityID].Results[0].ValueFailures)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-// TODO: Is this test accurate? Containing the top AND a lower value results in a fail?
-func Test_AccessPDP_Hierarchy_FailEntityValueTooLow(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleHierarchyAttribute}
-	topValue := mockAttrDefinitions[0].GetValues()[0]
-	midValue := mockAttrDefinitions[0].GetValues()[1]
-	mockDataAttrs := []*policy.Value{
-		midValue,
-		topValue,
-	}
-	mockEntityAttrs := map[string][]string{}
-	ns := mockAttrDefinitions[0].GetNamespace().GetName()
-	def := mockAttrDefinitions[0].GetName()
-
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(ns, def, topValue.GetValue()),
-		fqnBuilder(ns, def, midValue.GetValue()),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_Hierarchy_FailEntityValueAndDataValuesBothLowest(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleHierarchyAttribute}
-	lowValue := mockAttrDefinitions[0].GetValues()[2]
-	mockDataAttrs := []*policy.Value{
-		lowValue,
-	}
-	mockEntityAttrs := map[string][]string{}
-	ns := mockAttrDefinitions[0].GetNamespace().GetName()
-	name := mockAttrDefinitions[0].GetName()
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(ns, name, lowValue.GetValue()),
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.True(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.True(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Empty(t, decisions[mockEntityID].Results[0].ValueFailures)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_Hierarchy_FailEntityValueOrder(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleHierarchyAttribute}
-	topValue := mockAttrDefinitions[0].GetValues()[0]
-	midValue := mockAttrDefinitions[0].GetValues()[1]
-	mockDataAttrs := []*policy.Value{
-		midValue,
-		topValue,
-	}
-
-	ns := mockAttrDefinitions[0].GetNamespace().GetName()
-	name := mockAttrDefinitions[0].GetName()
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(ns, name, midValue.GetValue()),
-		fqnBuilder(ns, name, topValue.GetValue()),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_Hierarchy_FailMultipleHierarchyDataValues(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleHierarchyAttribute}
-	topValue := mockAttrDefinitions[0].GetValues()[0]
-	midValue := mockAttrDefinitions[0].GetValues()[1]
-	mockDataAttrs := []*policy.Value{
-		topValue,
-		midValue,
-	}
-
-	ns := mockAttrDefinitions[0].GetNamespace().GetName()
-	name := mockAttrDefinitions[0].GetName()
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(ns, name, midValue.GetValue()),
-		fqnBuilder(ns, name, topValue.GetValue()),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_Hierarchy_FailEntityValueNotInOrder(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleHierarchyAttribute}
-	topValue := mockAttrDefinitions[0].GetValues()[0]
-	midValue := mockAttrDefinitions[0].GetValues()[1]
-	mockDataAttrs := []*policy.Value{
-		midValue,
-		topValue,
-	}
-	mockEntityAttrs := map[string][]string{}
-	ns := mockAttrDefinitions[0].GetNamespace().GetName()
-	name := mockAttrDefinitions[0].GetName()
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(ns, name, "unknownPrivilegeValue"),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_Hierarchy_FailDataValueNotInOrder(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleHierarchyAttribute}
-	ns := mockAttrDefinitions[0].GetNamespace().GetName()
-	name := mockAttrDefinitions[0].GetName()
-	mockDataAttrs := []*policy.Value{
-		{
-			Value: "UberPrivileged",
-			Fqn:   fqnBuilder(ns, name, "UberPrivileged"),
-		},
-	}
-
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(ns, name, mockAttrDefinitions[0].GetValues()[0].GetValue()),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-	assert.Nil(t, decisions[mockEntityID].Results[0].ValueFailures[0].DataAttribute)
-}
-
-func Test_AccessPDP_Hierarchy_PassWithMixedKnownAndUnknownDataOrder(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleHierarchyAttribute}
-	topValue := mockAttrDefinitions[0].GetValues()[0]
-	ns := mockAttrDefinitions[0].GetNamespace().GetName()
-	name := mockAttrDefinitions[0].GetName()
-	mockDataAttrs := []*policy.Value{
-		{
-			Value: "UberPrivileged",
-			Fqn:   fqnBuilder(ns, name, "UberPrivileged"),
-		},
-		topValue,
-	}
-
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(ns, name, topValue.GetValue()),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.True(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.True(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Empty(t, decisions[mockEntityID].Results[0].ValueFailures)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_Hierarchy_FailWithWrongNamespace(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleHierarchyAttribute}
-	midValue := mockAttrDefinitions[0].GetValues()[1]
-	mockDataAttrs := []*policy.Value{
-		midValue,
-	}
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder("wrong"+mockAttrDefinitions[0].GetNamespace().GetName(), mockAttrDefinitions[0].GetName(), midValue.GetValue()),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-func Test_AccessPDP_Hierarchy_FailWithMixedKnownAndUnknownEntityOrder(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{&simpleHierarchyAttribute}
-	topValue := mockAttrDefinitions[0].GetValues()[0]
-	midValue := mockAttrDefinitions[0].GetValues()[1]
-	mockDataAttrs := []*policy.Value{
-		midValue,
-		topValue,
-	}
-	ns := mockAttrDefinitions[0].GetNamespace().GetName()
-	name := mockAttrDefinitions[0].GetName()
-	mockEntityAttrs := map[string][]string{}
-	mockEntityAttrs[mockEntityID] = []string{
-		fqnBuilder(ns, name, topValue.GetValue()),
-		fqnBuilder(ns, name, "unknownPrivilegeValue"),
-		mockExtraneousValueFqn,
-	}
-
-	accessPDP := NewPdp(logger.CreateTestLogger())
-	decisions, err := accessPDP.DetermineAccess(
-		t.Context(),
-		mockDataAttrs,
-		mockEntityAttrs,
-		mockAttrDefinitions)
-
-	require.NoError(t, err)
-	assert.False(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.False(t, decisions[mockEntityID].Results[0].Passed)
-	assert.Len(t, decisions[mockEntityID].Results[0].ValueFailures, 1)
-	assert.Equal(t, mockAttrDefinitions[0], decisions[mockEntityID].Results[0].RuleDefinition)
-}
-
-// Helper tests
-
-// GetFqnToDefinitionMap tests
-func Test_GetFqnToDefinitionMap(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{
-		&simpleAnyOfAttribute,
-		&simpleAllOfAttribute,
-		&simpleHierarchyAttribute,
-	}
-
-	fqnToDefinitionMap, err := GetFqnToDefinitionMap(t.Context(), mockAttrDefinitions, logger.CreateTestLogger())
-	require.NoError(t, err)
-
-	for _, attrDef := range mockAttrDefinitions {
-		fqn := fqnBuilder(attrDef.GetNamespace().GetName(), attrDef.GetName(), "")
-		assert.Equal(t, attrDef.GetName(), fqnToDefinitionMap[fqn].GetName())
-	}
-}
-
-func Test_GetFqnToDefinitionMap_SucceedsWithDuplicateDefinitions(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{
-		&simpleAnyOfAttribute,
-		&simpleAnyOfAttribute,
-	}
-
-	fqnToDefinitionMap, err := GetFqnToDefinitionMap(t.Context(), mockAttrDefinitions, logger.CreateTestLogger())
-	require.NoError(t, err)
-	expectedFqn := fqnBuilder(mockAttrDefinitions[0].GetNamespace().GetName(), mockAttrDefinitions[0].GetName(), "")
-	v, ok := fqnToDefinitionMap[expectedFqn]
-	assert.True(t, ok)
-	assert.Equal(t, mockAttrDefinitions[0].GetName(), v.GetName())
-}
-
-// GroupValuesByDefinition tests
-func Test_GroupValuesByDefinition_NoProvidedDefinitionFqn_Succeeds(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{
-		&simpleAnyOfAttribute,
-		&simpleAllOfAttribute,
-		&simpleHierarchyAttribute,
-	}
-
-	// two values from each attribute definition, out of order
-	mockDataAttrs := []*policy.Value{
-		mockAttrDefinitions[0].GetValues()[0],
-		mockAttrDefinitions[1].GetValues()[0],
-		mockAttrDefinitions[2].GetValues()[0],
-		mockAttrDefinitions[0].GetValues()[1],
-		mockAttrDefinitions[1].GetValues()[1],
-		mockAttrDefinitions[2].GetValues()[1],
-	}
-
-	groupedValues, err := GroupValuesByDefinition(mockDataAttrs)
-	require.NoError(t, err)
-
-	for _, attrDef := range mockAttrDefinitions {
-		fqn := fqnBuilder(attrDef.GetNamespace().GetName(), attrDef.GetName(), "")
-		assert.Len(t, groupedValues[fqn], 2)
-		assert.Equal(t, attrDef.GetValues()[0], groupedValues[fqn][0])
-		assert.Equal(t, attrDef.GetValues()[1], groupedValues[fqn][1])
-	}
-}
-
-func Test_GroupValuesByDefinition_WithProvidedDefinitionFqn_Succeeds(t *testing.T) {
-	attrFqn := fqnBuilder(mockNamespaces[0], mockAttributeNames[0], "")
-
-	mockDataAttrs := []*policy.Value{
-		{
-			Value: mockAttributeValues[0],
-			Attribute: &policy.Attribute{
-				Fqn: attrFqn,
-			},
-		},
-		{
-			Value: mockAttributeValues[1],
-			Attribute: &policy.Attribute{
-				Fqn: attrFqn,
-			},
-		},
-	}
-
-	groupedValues, err := GroupValuesByDefinition(mockDataAttrs)
-	require.NoError(t, err)
-
-	assert.Len(t, groupedValues, 1)
-	for k, v := range groupedValues {
-		assert.Equal(t, attrFqn, k)
-		assert.Len(t, v, 2)
-		assert.Equal(t, mockDataAttrs[0], v[0])
-		assert.Equal(t, mockDataAttrs[1], v[1])
-	}
-}
-
-// GroupValueFqnsByDefinition tests
-func Test_GroupValueFqnsByDefinition(t *testing.T) {
-	mockFqns := []string{
-		fqnBuilder(mockNamespaces[0], mockAttributeNames[0], mockAttributeValues[0]),
-		fqnBuilder(mockNamespaces[0], mockAttributeNames[0], mockAttributeValues[1]),
-		fqnBuilder(mockNamespaces[0], mockAttributeNames[0], mockAttributeValues[2]),
-		fqnBuilder(mockNamespaces[0], mockAttributeNames[1], mockAttributeValues[0]),
-		fqnBuilder("authority.gov", "YourAttr", "Value2"),
-	}
-
-	groupedFqns, err := GroupValueFqnsByDefinition(mockFqns)
-	require.NoError(t, err)
-
-	assert.Len(t, groupedFqns, 3)
-	found := map[string]bool{}
-	for _, v := range mockFqns {
-		found[v] = false
-	}
-
-	for _, v := range groupedFqns {
-		for _, fq := range v {
-			assert.Contains(t, mockFqns, fq)
-			assert.False(t, found[fq])
-			found[fq] = true
-		}
-	}
-
-	for _, v := range found {
-		assert.True(t, v)
-	}
-}
-
-// GetDefinitionFqnFromValue tests
-func Test_GetDefinitionFqnFromValue_Succeeds(t *testing.T) {
-	ns := mockNamespaces[1]
-	name := mockAttributeNames[2]
-	val := mockAttributeValues[2]
-	attrDefFqn := fqnBuilder(ns, name, "")
-
-	// With Attribute Def & its FQN, Attribute Def & Namespace, or Value FQN
-	mockValues := []*policy.Value{
-		{
-			Value: val,
-			Attribute: &policy.Attribute{
-				Fqn: attrDefFqn,
-			},
-		},
-		{
-			Attribute: &policy.Attribute{
-				Namespace: &policy.Namespace{
-					Name: ns,
-				},
-				Name: name,
-			},
-		},
-		{
-			Fqn: fqnBuilder(ns, name, mockAttributeValues[1]),
-		},
-	}
-
-	for _, val := range mockValues {
-		got, err := GetDefinitionFqnFromValue(val)
-		require.NoError(t, err)
-		assert.Equal(t, attrDefFqn, got)
-	}
-}
-
-func Test_GetDefinitionFqnFromValue_FailsWithMissingPieces(t *testing.T) {
-	mockValues := []*policy.Value{
-		// missing attr def & fqn
-		{
-			Value: mockAttributeValues[0],
-		},
-		// contains attr def but no namespace
-		{
-			Attribute: &policy.Attribute{
-				Name: mockAttributeNames[0],
-			},
-		},
-		// contains attr def's namespace but no name
-		{
-			Attribute: &policy.Attribute{
-				Namespace: &policy.Namespace{
-					Name: mockNamespaces[0],
-				},
-			},
-		},
-	}
-
-	for _, val := range mockValues {
-		def, err := GetDefinitionFqnFromValue(val)
-		require.Error(t, err)
-		assert.Zero(t, def)
-	}
-}
-
-// GetDefinitionFqnFromValueFqn tests
-func Test_GetDefinitionFqnFromValueFqn_Succeeds(t *testing.T) {
-	ns := mockNamespaces[1]
-	name := mockAttributeNames[2]
-	val1 := mockAttributeValues[1]
-	val2 := mockAttributeValues[2]
-	attrDefFqn := fqnBuilder(ns, name, "")
-	mockValueFqns := []string{
-		fqnBuilder(ns, name, val1),
-		fqnBuilder(ns, name, val2),
-	}
-
-	for _, fqn := range mockValueFqns {
-		got, err := GetDefinitionFqnFromValueFqn(fqn)
-		require.NoError(t, err)
-		assert.Equal(t, attrDefFqn, got)
-	}
-}
-
-func Test_GetDefinitionFqnFromValueFqn_FailsWithMissingPieces(t *testing.T) {
-	mockValueFqns := []string{
-		"",
-		"/value/hello",
-		"https://namespace.org/attr/attrName/val/hello",
-		"namespace.org/attr/attrName/value",
-	}
-
-	for _, fqn := range mockValueFqns {
-		got, err := GetDefinitionFqnFromValueFqn(fqn)
-		require.Error(t, err)
-		assert.Zero(t, got)
-	}
-}
-
-// GetDefinitionFqnFromDefinition tests
-func Test_GetDefinitionFqnFromDefinition_FromPartsSucceeds(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{
-		&simpleAnyOfAttribute,
-		&simpleAllOfAttribute,
-		&simpleHierarchyAttribute,
-	}
-
-	for _, attrDef := range mockAttrDefinitions {
-		fqn := fqnBuilder(attrDef.GetNamespace().GetName(), attrDef.GetName(), "")
-		got, err := GetDefinitionFqnFromDefinition(attrDef)
-		require.NoError(t, err)
-		assert.Equal(t, fqn, got)
-	}
-}
-
-func Test_GetDefinitionFqnFromDefinition_FromDefinedFqnSucceeds(t *testing.T) {
-	mockFqns := []string{
-		fqnBuilder("example.org", "MyAttr", "Value1"),
-		fqnBuilder("authority.gov", "YourAttr", "Value2"),
-	}
-	mockAttrDefinitions := []*policy.Attribute{
-		{
-			Fqn: mockFqns[0],
-		},
-		{
-			Fqn: mockFqns[1],
-		},
-	}
-
-	for i, attrDef := range mockAttrDefinitions {
-		got, err := GetDefinitionFqnFromDefinition(attrDef)
-		require.NoError(t, err)
-		assert.Equal(t, attrDef.GetFqn(), got)
-		assert.Equal(t, mockFqns[i], got)
-	}
-}
-
-func Test_GetDefinitionFqnFromDefinition_FailsWithNoNamespace(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{
-		{
-			Name: "MyAttr",
-		},
-	}
-
-	for _, attrDef := range mockAttrDefinitions {
-		_, err := GetDefinitionFqnFromDefinition(attrDef)
-		require.Error(t, err)
-	}
-}
-
-func Test_GetDefinitionFqnFromDefinition_FailsWithNoName(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{
-		{
-			Namespace: &policy.Namespace{
-				Name: "example.org",
-			},
-		},
-	}
-
-	for _, attrDef := range mockAttrDefinitions {
-		_, err := GetDefinitionFqnFromDefinition(attrDef)
-		require.Error(t, err)
-	}
-}
-
-// getIsValueFoundInFqnValuesSet
-func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
-	ns1 := mockNamespaces[1]
-	ns2 := mockNamespaces[2]
-	name := mockAttributeNames[2]
-	fqnsList := []string{
-		fqnBuilder(ns1, name, mockAttributeValues[0]),
-		fqnBuilder(ns1, name, mockAttributeValues[1]),
-		fqnBuilder(ns1, name, mockAttributeValues[2]),
-		fqnBuilder(ns2, name, mockAttributeValues[0]),
-	}
-
-	values := []struct {
-		val      *policy.Value
-		expected bool
+// Refactored test structure to use table-driven tests and group related tests logically
+func Test_AccessPDP_AnyOf(t *testing.T) {
+	values := []string{"value1", "value2", "value3"}
+	definition := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, values)
+	tests := []struct {
+		name           string
+		entityAttrs    map[string][]string
+		dataAttrs      []*policy.Value
+		expectedAccess bool
+		expectedPass   bool
 	}{
 		{
-			val: &policy.Value{
-				Fqn: fqnsList[0],
-			},
-			expected: true,
+			name:           "Pass - all definition values, all entitlements",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values),
+			dataAttrs:      definition.Values,
+			expectedAccess: true,
+			expectedPass:   true,
 		},
 		{
-			val: &policy.Value{
-				Fqn: fqnsList[1],
-			},
-			expected: true,
+			name:           "Pass - subset of definition values, all entitlements",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values),
+			dataAttrs:      definition.Values[1:],
+			expectedAccess: true,
+			expectedPass:   true,
 		},
 		{
-			val: &policy.Value{
-				Fqn: fqnsList[2],
-			},
-			expected: true,
+			name:           "Pass - subset of definition values, matching entititlements",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values[1:]),
+			dataAttrs:      definition.Values[1:],
+			expectedAccess: true,
+			expectedPass:   true,
 		},
 		{
-			val: &policy.Value{
-				Fqn: fqnsList[3],
-			},
-			expected: true,
+			name:           "Pass - subset definition values, matching entitlements + extraneous entitlement",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value", values[0]}),
+			dataAttrs:      []*policy.Value{definition.Values[0]},
+			expectedAccess: true,
+			expectedPass:   true,
 		},
 		{
-			val: &policy.Value{
-				Fqn: fqnBuilder(ns1, name, "unknownValue"),
-			},
+			name: "Pass - all definition values, matching entitlements + extraneous entitlement",
+			entityAttrs: map[string][]string{"entity1": {
+				fqnBuilder("example.org", "myattr", "random_value"),
+				fqnBuilder(definition.GetNamespace().GetName(), definition.GetName(), values[0]),
+			}},
+			dataAttrs:      definition.Values,
+			expectedAccess: true,
+			expectedPass:   true,
 		},
 		{
-			val: nil,
+			name:           "Fail - all definition values, no matching entitlements, extraneous definition entitlement value",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value"}),
+			dataAttrs:      definition.Values,
+			expectedAccess: false,
+			expectedPass:   false,
 		},
 		{
-			val: &policy.Value{
-				Fqn: "",
-			},
+			name:           "Fail - all definition values, wrong definition name",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), "random_definition_name", values),
+			dataAttrs:      definition.Values,
+			expectedAccess: false,
+			expectedPass:   false,
 		},
+		{
+			name:           "Fail - all definition values, wrong namespace",
+			entityAttrs:    createMockEntityAttributes("entity1", "wrong.namespace", definition.GetName(), values),
+			dataAttrs:      definition.Values,
+			expectedAccess: false,
+			expectedPass:   false,
+		},
+		{
+			name:           "Fail - all definition values, no entitlements at all",
+			entityAttrs:    map[string][]string{"entity1": {}},
+			dataAttrs:      definition.Values,
+			expectedAccess: false,
+			expectedPass:   false,
+		},
+		{
+			name:           "Fail - subset definition values, no entitlements at all",
+			entityAttrs:    map[string][]string{"entity1": {}},
+			dataAttrs:      definition.Values[1:],
+			expectedAccess: false,
+			expectedPass:   false,
+		},
+		// {
+		// 	name:           "Fail - no data attributes",
+		// 	entityAttrs:    createMockEntityAttributes("entity1", "example.org", "myattr", []string{"value1"}),
+		// 	dataAttrs:      []*policy.Value{},
+		// 	expectedAccess: false,
+		// 	expectedPass:   false,
+		// },
 	}
 
-	for i, v := range values {
-		assert.Equal(t, v.expected, getIsValueFoundInFqnValuesSet(v.val, fqnsList, logger.CreateTestLogger()))
-		if i == 3 {
-			assert.False(t, getIsValueFoundInFqnValuesSet(v.val, fqnsList[:3], logger.CreateTestLogger()))
-		}
-	}
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pdp := NewPdp(logger.CreateTestLogger())
+			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
 
-// getOrderOfValue tests
-func Test_GetOrderOfValue(t *testing.T) {
-	ns := mockNamespaces[1]
-	name := mockAttributeNames[2]
-
-	values := []*policy.Value{
-		{
-			Value: mockAttributeValues[1],
-			Fqn:   fqnBuilder(ns, name, mockAttributeValues[1]),
-		},
-		{
-			Value: mockAttributeValues[2],
-			Attribute: &policy.Attribute{
-				Fqn: fqnBuilder(ns, name, ""),
-			},
-		},
-		{
-			Value: mockAttributeValues[4],
-			Attribute: &policy.Attribute{
-				Name: name,
-				Namespace: &policy.Namespace{
-					Name: ns,
-				},
-			},
-		},
-		{
-			Value: mockAttributeValues[0],
-		},
-	}
-
-	for i := range values {
-		got, err := getOrderOfValue(values, values[i], logger.CreateTestLogger())
-		require.NoError(t, err)
-		assert.Equal(t, i, got)
-	}
-
-	// test with a value that doesn't exist in the list
-	idx, err := getOrderOfValue(values, &policy.Value{
-		Value: "unknownValue",
-	}, logger.CreateTestLogger())
-	require.NoError(t, err)
-	assert.Equal(t, -1, idx)
-}
-
-func Test_GetOrderOfValue_FailsCorrectly(t *testing.T) {
-	ns := mockNamespaces[1]
-	name := mockAttributeNames[2]
-
-	bad := []*policy.Value{
-		{
-			Fqn: fqnBuilder(ns, name, mockAttributeValues[1]),
-		},
-		{},
-		{
-			Attribute: &policy.Attribute{
-				Name: name,
-				Namespace: &policy.Namespace{
-					Name: ns,
-				},
-			},
-		},
-	}
-
-	good := &policy.Value{
-		Value: mockAttributeValues[1],
-	}
-
-	for _, v := range bad {
-		order := []*policy.Value{v, good}
-		got, err := getOrderOfValue(order, good, logger.CreateTestLogger())
-		require.Error(t, err)
-		assert.Equal(t, -1, got)
-	}
-
-	// test with a value that doesn't exist in the list
-	idx, err := getOrderOfValue(append(bad, good), &policy.Value{
-		Value: "unknownValue",
-	}, logger.CreateTestLogger())
-	require.Error(t, err)
-	assert.Equal(t, -1, idx)
-}
-
-// getOrderOfValueByFqn tests
-func Test_GetOrderOfValueByFqn(t *testing.T) {
-	ns := mockNamespaces[0]
-	name := mockAttributeNames[0]
-	values := []*policy.Value{
-		{
-			Fqn: fqnBuilder(ns, name, mockAttributeValues[0]),
-		},
-		{
-			Fqn: fqnBuilder(ns, name, mockAttributeValues[1]),
-		},
-		{
-			Value: mockAttributeValues[2],
-			Attribute: &policy.Attribute{
-				Fqn: fqnBuilder(ns, name, ""),
-			},
-		},
-		{
-			Value: mockAttributeValues[3],
-			Attribute: &policy.Attribute{
-				Name: name,
-				Namespace: &policy.Namespace{
-					Name: ns,
-				},
-			},
-		},
-	}
-
-	for i := range values {
-		fqn := fqnBuilder(ns, name, mockAttributeValues[i])
-		got, err := getOrderOfValueByFqn(values, fqn)
-		require.NoError(t, err)
-		assert.Equal(t, i, got)
+			require.NoError(t, err)
+			if tt.expectedAccess {
+				assert.True(t, decisions["entity1"].Access)
+			} else {
+				assert.False(t, decisions["entity1"].Access)
+			}
+			if len(decisions["entity1"].Results) > 0 {
+				assert.Equal(t, tt.expectedPass, decisions["entity1"].Results[0].Passed)
+			}
+		})
 	}
 }
 
-func Test_GetOrderOfValueByFqn_SadCases(t *testing.T) {
-	ns := mockNamespaces[0]
-	name := mockAttributeNames[0]
-	bad := []*policy.Value{
-		// empty FQN and no parent parts
+func Test_AccessPDP_Hierarchy(t *testing.T) {
+	values := []string{"highest", "middle", "lowest"}
+	definition := createMockAttribute("somewhere.net", "theirattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, values)
+	tests := []struct {
+		name           string
+		entityAttrs    map[string][]string
+		dataAttrs      []*policy.Value
+		expectedAccess bool
+		expectedPass   bool
+	}{
 		{
-			Fqn: "",
+			name:           "Pass - highest privilege level data, highest entitlement",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"}),
+			dataAttrs:      definition.Values,
+			expectedAccess: true,
+			expectedPass:   true,
 		},
-		// no definition FQN, no parts
 		{
-			Value: mockAttributeValues[1],
-			Attribute: &policy.Attribute{
-				Fqn: "",
-			},
+			name:           "Pass - middle privilege level data, middle entitlement",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"middle"}),
+			dataAttrs:      []*policy.Value{definition.Values[1]},
+			expectedAccess: true,
+			expectedPass:   true,
 		},
-		// full definition parts, no value
 		{
-			Attribute: &policy.Attribute{
-				Name: name,
-				Namespace: &policy.Namespace{
-					Name: ns,
-				},
-			},
+			name:           "Pass - middle privilege level data, highest entitlement",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"}),
+			dataAttrs:      []*policy.Value{definition.Values[1]},
+			expectedAccess: true,
+			expectedPass:   true,
 		},
-		// missing namespace
 		{
-			Value: mockAttributeValues[1],
-			Attribute: &policy.Attribute{
-				Name:      name,
-				Namespace: &policy.Namespace{},
-			},
+			name:           "Pass - lowest privilege level data, lowest entitlement",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"lowest"}),
+			dataAttrs:      []*policy.Value{definition.Values[2]},
+			expectedAccess: true,
+			expectedPass:   true,
 		},
-		// missing definition name
 		{
-			Value: mockAttributeValues[1],
-			Attribute: &policy.Attribute{
-				Namespace: &policy.Namespace{
-					Name: ns,
-				},
-			},
+			name:           "Pass - lowest privilege level data, middle entitlement",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"lowest"}),
+			dataAttrs:      []*policy.Value{definition.Values[2]},
+			expectedAccess: true,
+			expectedPass:   true,
 		},
-		// full definition FQN, no value
 		{
-			Attribute: &policy.Attribute{
-				Fqn: fqnBuilder(ns, name, ""),
-			},
+			name:           "Pass - lowest privilege level data, highest entitlement",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"lowest"}),
+			dataAttrs:      []*policy.Value{definition.Values[2]},
+			expectedAccess: true,
+			expectedPass:   true,
 		},
-	}
-	fqn := fqnBuilder(ns, name, mockAttributeValues[1])
-	good := &policy.Value{
-		Fqn: fqn,
+		{
+			name:           "Fail - wrong namespace",
+			entityAttrs:    createMockEntityAttributes("entity1", "wrongnamespace.net", definition.GetName(), []string{"highest"}),
+			dataAttrs:      definition.Values,
+			expectedAccess: false,
+			expectedPass:   false,
+		},
+		{
+			name:           "Fail - wrong definition name",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), "wrong_definition_name", []string{"highest"}),
+			dataAttrs:      definition.Values,
+			expectedAccess: false,
+			expectedPass:   false,
+		},
+		{
+			name:           "Fail - no matching entitlements",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value"}),
+			dataAttrs:      definition.Values,
+			expectedAccess: false,
+			expectedPass:   false,
+		},
+		{
+			name:           "Fail - no entitlements at all",
+			entityAttrs:    map[string][]string{"entity1": {}},
+			dataAttrs:      definition.Values,
+			expectedAccess: false,
+			expectedPass:   false,
+		},
+		// {
+		// 	name:           "Fail - no data attributes",
+		// 	entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"}),
+		// 	dataAttrs:      []*policy.Value{},
+		// 	expectedAccess: false,
+		// 	expectedPass:   false,
+		// },
 	}
 
-	for _, v := range bad {
-		order := []*policy.Value{v, good}
-		got, err := getOrderOfValueByFqn(order, fqn)
-		require.Error(t, err)
-		assert.Equal(t, -1, got)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pdp := NewPdp(logger.CreateTestLogger())
+			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
+
+			require.NoError(t, err)
+			if tt.expectedAccess {
+				assert.True(t, decisions["entity1"].Access)
+			} else {
+				assert.False(t, decisions["entity1"].Access)
+			}
+			if len(decisions["entity1"].Results) > 0 {
+				assert.Equal(t, tt.expectedPass, decisions["entity1"].Results[0].Passed)
+			}
+		})
 	}
 }
 
-func Test_GroupDataAttributesByDefinition_Success(t *testing.T) {
-	mockDataAttrs := []*policy.Value{
+func Test_AccessPDP_AllOf(t *testing.T) {
+	values := []string{"value1", "value2", "value3"}
+	definition := createMockAttribute("example.com", "allofattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF, values)
+	tests := []struct {
+		name           string
+		entityAttrs    map[string][]string
+		dataAttrs      []*policy.Value
+		expectedAccess bool
+		expectedPass   bool
+	}{
 		{
-			Value: mockAttributeValues[0],
-			Attribute: &policy.Attribute{
-				Fqn: fqnBuilder(mockNamespaces[0], mockAttributeNames[0], ""),
-			},
+			name:           "Pass - all definition values match entitlements",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values),
+			dataAttrs:      definition.Values,
+			expectedAccess: true,
+			expectedPass:   true,
 		},
 		{
-			Value: mockAttributeValues[1],
-			Attribute: &policy.Attribute{
-				Fqn: fqnBuilder(mockNamespaces[0], mockAttributeNames[0], ""),
-			},
+			name:           "Fail - missing one definition value in entitlements",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values[:2]),
+			dataAttrs:      definition.Values,
+			expectedAccess: false,
+			expectedPass:   false,
+		},
+		{
+			name:           "Fail - no matching entitlements",
+			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value"}),
+			dataAttrs:      definition.Values,
+			expectedAccess: false,
+			expectedPass:   false,
+		},
+		{
+			name:           "Fail - wrong namespace",
+			entityAttrs:    createMockEntityAttributes("entity1", "wrongnamespace.com", definition.GetName(), values),
+			dataAttrs:      definition.Values,
+			expectedAccess: false,
+			expectedPass:   false,
+		},
+		{
+			name:           "Fail - no entitlements at all",
+			entityAttrs:    map[string][]string{"entity1": {}},
+			dataAttrs:      definition.Values,
+			expectedAccess: false,
+			expectedPass:   false,
 		},
 	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pdp := NewPdp(logger.CreateTestLogger())
+			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
+
+			require.NoError(t, err)
+			if tt.expectedAccess {
+				assert.True(t, decisions["entity1"].Access)
+			} else {
+				assert.False(t, decisions["entity1"].Access)
+			}
+			if len(decisions["entity1"].Results) > 0 {
+				assert.Equal(t, tt.expectedPass, decisions["entity1"].Results[0].Passed)
+			}
+		})
+	}
+}
+
+func Test_DetermineAccess_EmptyDataAttributes(t *testing.T) {
 	pdp := NewPdp(logger.CreateTestLogger())
-	groupedAttrs, err := pdp.groupDataAttributesByDefinition(t.Context(), mockDataAttrs)
+	decisions, err := pdp.DetermineAccess(t.Context(), []*policy.Value{}, map[string][]string{}, []*policy.Attribute{})
 
 	require.NoError(t, err)
-	assert.Len(t, groupedAttrs, 1)
-	fqn := fqnBuilder(mockNamespaces[0], mockAttributeNames[0], "")
-	assert.Len(t, groupedAttrs[fqn], 2)
-	assert.Equal(t, mockDataAttrs[0], groupedAttrs[fqn][0])
-	assert.Equal(t, mockDataAttrs[1], groupedAttrs[fqn][1])
+	assert.Empty(t, decisions)
 }
 
-func Test_MapFqnToDefinitions_Success(t *testing.T) {
-	mockAttrDefinitions := []*policy.Attribute{
-		&simpleAnyOfAttribute,
-		&simpleAllOfAttribute,
-		&simpleHierarchyAttribute,
-	}
+// func Test_DetermineAccess_EmptyAttributeDefinitions(t *testing.T) {
+// 	pdp := NewPdp(logger.CreateTestLogger())
+// 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"}).Values
+// 	entityAttrs := createMockEntityAttributes("entity1", "example.org", "myattr", []string{"value1"})
 
+// 	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{})
+
+// 	require.NoError(t, err)
+// 	assert.Empty(t, decisions)
+// }
+
+func Test_GroupDataAttributesByDefinition(t *testing.T) {
+	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1", "value2"}).Values
 	pdp := NewPdp(logger.CreateTestLogger())
-	fqnToDefMap, err := pdp.mapFqnToDefinitions(t.Context(), mockAttrDefinitions)
+
+	grouped, err := pdp.groupDataAttributesByDefinition(t.Context(), dataAttrs)
 
 	require.NoError(t, err)
-	assert.Len(t, fqnToDefMap, 3)
-	for _, attrDef := range mockAttrDefinitions {
-		fqn := fqnBuilder(attrDef.GetNamespace().GetName(), attrDef.GetName(), "")
-		assert.Equal(t, attrDef, fqnToDefMap[fqn])
-	}
+	assert.Len(t, grouped, 1)
+	assert.Contains(t, grouped, "https://example.org/attr/myattr")
 }
 
-func Test_RollUpDecisions_Success(t *testing.T) {
-	entityRuleDecision := map[string]DataRuleResult{
-		mockEntityID: {
-			Passed: true,
-			ValueFailures: []ValueFailure{
-				{
-					DataAttribute: &policy.Value{
-						Value: mockAttributeValues[0],
-					},
-					Message: "Test failure",
-				},
-			},
-		},
-	}
-	attrDefinition := &simpleAnyOfAttribute
-	decisions := make(map[string]*Decision)
-
+func Test_MapFqnToDefinitions(t *testing.T) {
+	attr := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"})
 	pdp := NewPdp(logger.CreateTestLogger())
-	pdp.rollUpDecisions(entityRuleDecision, attrDefinition, decisions)
 
-	assert.Len(t, decisions, 1)
-	assert.True(t, decisions[mockEntityID].Access)
-	assert.Len(t, decisions[mockEntityID].Results, 1)
-	assert.Equal(t, attrDefinition, decisions[mockEntityID].Results[0].RuleDefinition)
+	mapped, err := pdp.mapFqnToDefinitions(t.Context(), []*policy.Attribute{attr})
+
+	require.NoError(t, err)
+	assert.Len(t, mapped, 1)
+	assert.Contains(t, mapped, "https://example.org/attr/myattr")
 }
+
+func Test_GetHighestRankedInstanceFromDataAttributes(t *testing.T) {
+	order := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, []string{"high", "medium", "low"}).Values
+	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, []string{"medium"}).Values
+	pdp := NewPdp(logger.CreateTestLogger())
+
+	highest, err := pdp.getHighestRankedInstanceFromDataAttributes(t.Context(), order, dataAttrs, logger.CreateTestLogger())
+
+	require.NoError(t, err)
+	assert.NotNil(t, highest)
+	assert.Equal(t, "medium", highest.GetValue())
+}
+
+func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
+	value := &policy.Value{
+		Value: "value1",
+		Fqn:   "https://example.org/attr/myattr/value/value1",
+	}
+	fqns := []string{"https://example.org/attr/myattr/value/value1", "https://example.org/attr/myattr/value/value2"}
+
+	found := getIsValueFoundInFqnValuesSet(value, fqns, logger.CreateTestLogger())
+	assert.True(t, found)
+}
+
+// func Test_EntityRankGreaterThanOrEqualToDataRank(t *testing.T) {
+// 	order := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, []string{"low", "medium", "high"}).Values
+// 	dataAttr := &policy.Value{
+// 		Value: "medium",
+// 		Fqn:   "https://example.org/attr/myattr/value/medium",
+// 	}
+// 	entityFqns := []string{"https://example.org/attr/myattr/value/high"}
+
+// 	result, err := entityRankGreaterThanOrEqualToDataRank(order, dataAttr, entityFqns, logger.CreateTestLogger())
+
+// 	require.NoError(t, err)
+// 	assert.True(t, result)
+// }

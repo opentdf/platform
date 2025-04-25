@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -163,6 +164,19 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_WithValues_Succeed
 		}
 	}
 	s.True(found)
+}
+
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByName_Succeeds() {
+	existingRes := s.f.GetRegisteredResourceKey("res_only")
+
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+			Name: existingRes.Name,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(existingRes.ID, got.GetId())
 }
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_InvalidID_Fails() {
@@ -576,6 +590,21 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_Succeeds() {
 	metadata := got.GetMetadata()
 	s.False(metadata.GetCreatedAt().AsTime().IsZero())
 	s.False(metadata.GetUpdatedAt().AsTime().IsZero())
+}
+
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_ByFQN_Succeeds() {
+	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
+	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
+	fqn := fmt.Sprintf("https://reg_res/%s/value/%s", existingRes.Name, existingResValue1.Value)
+
+	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{
+			Fqn: fqn,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(existingRes.ID, got.GetResource().GetId())
 }
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_InvalidID_Fails() {

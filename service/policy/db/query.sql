@@ -1329,7 +1329,6 @@ VALUES ($1, $2)
 RETURNING id;
 
 -- name: getRegisteredResource :one
--- TODO add FQN support
 SELECT
     r.id,
     r.name,
@@ -1342,7 +1341,9 @@ SELECT
     ) FILTER (WHERE v.id IS NOT NULL) as values
 FROM registered_resources r
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
-WHERE r.id = $1
+WHERE
+    (NULLIF(@id, '') IS NULL OR r.id = @id::UUID) AND
+    (NULLIF(@name, '') IS NULL OR r.name = @name::VARCHAR)
 GROUP BY r.id;
 
 -- name: listRegisteredResources :many
@@ -1390,12 +1391,16 @@ RETURNING id;
 
 -- name: getRegisteredResourceValue :one
 SELECT
-    id,
-    registered_resource_id,
-    value,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM registered_resource_values
-WHERE id = $1;
+    v.id,
+    v.registered_resource_id,
+    v.value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata
+FROM registered_resource_values v
+JOIN registered_resources r ON v.registered_resource_id = r.id
+WHERE
+    (NULLIF(@id, '') IS NULL OR v.id = @id::UUID) AND
+    (NULLIF(@name, '') IS NULL OR r.name = @name::VARCHAR) AND
+    (NULLIF(@value, '') IS NULL OR v.value = @value::VARCHAR);
 
 -- name: listRegisteredResourceValues :many
 WITH counted AS (

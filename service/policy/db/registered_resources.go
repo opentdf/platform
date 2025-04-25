@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/opentdf/platform/service/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -73,20 +73,18 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 }
 
 func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registeredresources.GetRegisteredResourceRequest) (*policy.RegisteredResource, error) {
-	var id string
+	params := getRegisteredResourceParams{}
 
 	switch {
 	case r.GetResourceId() != "":
-		// TODO: refactor to pgtype.UUID once the query supports both id and fqn
-		id = r.GetResourceId()
-	case r.GetFqn() != "":
-		// TODO: implement
-		return nil, errors.New("FQN support not yet implemented")
+		params.ID = r.GetResourceId()
+	case r.GetName() != "":
+		params.Name = strings.ToLower(r.GetName())
 	default:
 		return nil, db.ErrSelectIdentifierInvalid
 	}
 
-	rr, err := c.Queries.getRegisteredResource(ctx, id)
+	rr, err := c.Queries.getRegisteredResource(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -243,21 +241,25 @@ func (c PolicyDBClient) CreateRegisteredResourceValue(ctx context.Context, r *re
 }
 
 func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *registeredresources.GetRegisteredResourceValueRequest) (*policy.RegisteredResourceValue, error) {
-	var id string
+	params := getRegisteredResourceValueParams{}
 
 	switch {
 	case r.GetValueId() != "":
-		// TODO: refactor to pgtype.UUID once the query supports both id and fqn
-		id = r.GetValueId()
+		params.ID = r.GetValueId()
 	case r.GetFqn() != "":
-		// TODO: implement
-		return nil, errors.New("FQN support not yet implemented")
+		fqn := strings.ToLower(r.GetFqn())
+		parsed, err := util.ParseRegisteredResourceValueFqn(fqn)
+		if err != nil {
+			return nil, err
+		}
+		params.Name = parsed.Name
+		params.Value = parsed.Value
 	default:
 		// unexpected type
 		return nil, db.ErrSelectIdentifierInvalid
 	}
 
-	rv, err := c.Queries.getRegisteredResourceValue(ctx, id)
+	rv, err := c.Queries.getRegisteredResourceValue(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

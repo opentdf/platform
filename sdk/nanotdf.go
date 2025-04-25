@@ -1043,8 +1043,12 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 
 	if len(handler.config.kasAllowlist) == 0 && !handler.config.ignoreAllowList {
 		if s.KeyAccessServerRegistry != nil {
+			platformEndpoint, err := s.PlatformConfiguration.platformEndpoint()
+			if err != nil {
+				return 0, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
+			}
 			// retrieve the registered kases if not provided
-			allowList, err := allowListFromKASRegistry(ctx, s.KeyAccessServerRegistry, s.conn.Target())
+			allowList, err := allowListFromKASRegistry(ctx, s.KeyAccessServerRegistry, platformEndpoint)
 			if err != nil {
 				return 0, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
 			}

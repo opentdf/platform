@@ -14,7 +14,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
-	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/proto"
@@ -1535,21 +1534,6 @@ func (s *KasRegistrySuite) Test_Activate_Public_Key_WithInvalidID_Fails() {
 	s.Require().Error(err)
 	s.Nil(r)
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
-}
-
-func (s *KasRegistrySuite) Test_UnsafeDelete_Public_Key() {
-	id := s.f.GetPublicKey("key_1").ID
-	r, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, &unsafe.UnsafeDeletePublicKeyRequest{Id: id})
-	s.Require().NoError(err)
-	s.NotNil(r)
-	s.Equal(id, r.GetId())
-
-	rr, err := s.db.PolicyClient.GetPublicKey(s.ctx, &kasregistry.GetPublicKeyRequest{
-		Identifier: &kasregistry.GetPublicKeyRequest_Id{Id: id},
-	})
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-	s.Nil(rr)
 }
 
 func (s *KasRegistrySuite) Test_Assign_and_Unassign_Public_Key() {

@@ -10,7 +10,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
-	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -565,19 +564,5 @@ func (c PolicyDBClient) ActivatePublicKey(ctx context.Context, r *kasregistry.Ac
 		Key: &policy.Key{
 			Id: keyID,
 		},
-	}, nil
-}
-
-func (c PolicyDBClient) UnsafeDeleteKey(ctx context.Context, r *unsafe.UnsafeDeletePublicKeyRequest) (*policy.Key, error) {
-	keyID := r.GetId()
-	count, err := c.Queries.deletePublicKey(ctx, keyID)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if count == 0 {
-		return nil, db.ErrNotFound
-	}
-	return &policy.Key{
-		Id: keyID,
 	}, nil
 }

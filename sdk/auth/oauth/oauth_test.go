@@ -551,7 +551,7 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string, str
 			"--spi-truststore-file-hostname-verification-policy=ANY",
 		},
 		Files: []tc.ContainerFile{
-			{HostFilePath: "testdata/ca-new.jks", ContainerFilePath: "/truststore/truststore.jks", FileMode: int64(0o777)},
+			{HostFilePath: "testdata/new-ca.jks", ContainerFilePath: "/truststore/truststore.jks", FileMode: int64(0o777)},
 			{HostFilePath: "testdata/localhost-signed.crt", ContainerFilePath: "/etc/x509/tls/localhost.crt", FileMode: int64(0o777)},
 			{HostFilePath: "testdata/localhost.key", ContainerFilePath: "/etc/x509/tls/localhost.key", FileMode: int64(0o777)},
 		},

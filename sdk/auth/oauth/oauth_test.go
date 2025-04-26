@@ -67,7 +67,7 @@ func (s *OAuthSuite) TearDownSuite() {
 	_ = s.keycloakContainer.Terminate(context.Background())
 }
 
-//go:embed testdata/keycloak-ca.pem
+//go:embed testdata/new-ca.crt
 var ca []byte
 
 func (s *OAuthSuite) TestCertExchangeFromKeycloak() {
@@ -551,7 +551,7 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string, str
 			"--spi-truststore-file-hostname-verification-policy=ANY",
 		},
 		Files: []tc.ContainerFile{
-			{HostFilePath: "testdata/ca.jks", ContainerFilePath: "/truststore/truststore.jks", FileMode: int64(0o777)},
+			{HostFilePath: "testdata/new-ca.jks", ContainerFilePath: "/truststore/truststore.jks", FileMode: int64(0o777)},
 			{HostFilePath: "testdata/localhost.crt", ContainerFilePath: "/etc/x509/tls/localhost.crt", FileMode: int64(0o777)},
 			{HostFilePath: "testdata/localhost.key", ContainerFilePath: "/etc/x509/tls/localhost.key", FileMode: int64(0o777)},
 		},

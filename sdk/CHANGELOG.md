@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.3](https://github.com/opentdf/platform/compare/sdk/v0.4.2...sdk/v0.4.3) (2025-04-23)
+
+
+### Features
+
+* **policy:** actions service RPCs should actually hit storage layer CRUD ([#2063](https://github.com/opentdf/platform/issues/2063)) ([da4faf5](https://github.com/opentdf/platform/commit/da4faf5d8410c37180205ac9bad44436c88207e4))
+* **policy:** DSPX-902 NDR service crud implementation (2/2) ([#2066](https://github.com/opentdf/platform/issues/2066)) ([030ad33](https://github.com/opentdf/platform/commit/030ad33b5f94767279181d8748f00d3515b88eaf))
+
+
+### Bug Fixes
+
+* **core:** Autobump sdk ([#2102](https://github.com/opentdf/platform/issues/2102)) ([0315635](https://github.com/opentdf/platform/commit/03156357f4cadabaf169be7cb5df07737b0af818))
+* **sdk:** Display proper error on kas rewrap failure ([#2081](https://github.com/opentdf/platform/issues/2081)) ([508cbcd](https://github.com/opentdf/platform/commit/508cbcde80310c2a35b8fe69b110600a7078301c))
+
 ## [0.4.2](https://github.com/opentdf/platform/compare/sdk/v0.4.1...sdk/v0.4.2) (2025-04-17)
 
 

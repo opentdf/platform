@@ -709,3 +709,254 @@ func BenchmarkPdp(b *testing.B) {
 		})
 	}
 }
+
+func BenchmarkDetermineAccessFailures(b *testing.B) {
+	benchmarks := []struct {
+		name        string
+		dataAttrs   []*policy.Value
+		entityAttrs map[string][]string
+		attrDefs    []*policy.Attribute
+	}{
+		// AnyOf failure benchmarks
+		{
+			name: "small_anyof_failure",
+			dataAttrs: createMockAttribute("example.org", "myattr",
+				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+				[]string{"value1", "value2"}).Values,
+			entityAttrs: createMockEntityAttributes("entity1", "example.org", "myattr",
+				[]string{"value3", "value4"}), // No match with data attributes
+			attrDefs: []*policy.Attribute{
+				createMockAttribute("example.org", "myattr",
+					policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+					[]string{"value1", "value2"}),
+			},
+		},
+		{
+			name: "medium_anyof_failure",
+			dataAttrs: createMockAttribute("example.org", "myattr",
+				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+				[]string{"value1", "value2", "value3", "value4", "value5"}).Values,
+			entityAttrs: func() map[string][]string {
+				attrs := make(map[string][]string)
+				for i := 0; i < 10; i++ {
+					entityID := fmt.Sprintf("entity%d", i)
+					attrs[entityID] = []string{
+						fqnBuilder("example.org", "myattr", "value6"),
+						fqnBuilder("example.org", "myattr", "value7"),
+					}
+				}
+				return attrs
+			}(),
+			attrDefs: []*policy.Attribute{
+				createMockAttribute("example.org", "myattr",
+					policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+					[]string{"value1", "value2", "value3", "value4", "value5"}),
+			},
+		},
+
+		// AllOf failure benchmarks
+		{
+			name: "small_allof_failure",
+			dataAttrs: createMockAttribute("authority.gov", "allofattr",
+				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				[]string{"value1", "value2"}).Values,
+			entityAttrs: createMockEntityAttributes("entity1", "authority.gov", "allofattr",
+				[]string{"value1"}), // Missing value2
+			attrDefs: []*policy.Attribute{
+				createMockAttribute("authority.gov", "allofattr",
+					policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					[]string{"value1", "value2"}),
+			},
+		},
+		{
+			name: "medium_allof_failure",
+			dataAttrs: createMockAttribute("authority.gov", "allofattr",
+				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				[]string{"value1", "value2", "value3", "value4", "value5"}).Values,
+			entityAttrs: func() map[string][]string {
+				attrs := make(map[string][]string)
+				for i := 0; i < 10; i++ {
+					entityID := fmt.Sprintf("entity%d", i)
+					attrs[entityID] = []string{
+						fqnBuilder("authority.gov", "allofattr", "value1"),
+						fqnBuilder("authority.gov", "allofattr", "value2"),
+						fqnBuilder("authority.gov", "allofattr", "value3"),
+						// Missing value4 and value5
+					}
+				}
+				return attrs
+			}(),
+			attrDefs: []*policy.Attribute{
+				createMockAttribute("authority.gov", "allofattr",
+					policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+					[]string{"value1", "value2", "value3", "value4", "value5"}),
+			},
+		},
+
+		// Hierarchy failure benchmarks
+		{
+			name: "small_hierarchy_failure",
+			dataAttrs: createMockAttribute("somewhere.net", "theirattr",
+				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+				[]string{"level1", "level2"}).Values,
+			entityAttrs: createMockEntityAttributes("entity1", "somewhere.net", "theirattr",
+				[]string{"level2"}), // Lower level than required
+			attrDefs: []*policy.Attribute{
+				createMockAttribute("somewhere.net", "theirattr",
+					policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+					[]string{"level1", "level2"}),
+			},
+		},
+		{
+			name: "medium_hierarchy_failure",
+			dataAttrs: createMockAttribute("somewhere.net", "theirattr",
+				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+				[]string{"level1", "level2", "level3", "level4", "level5"}).Values[0:1], // Just level1
+			entityAttrs: func() map[string][]string {
+				attrs := make(map[string][]string)
+				for i := 0; i < 10; i++ {
+					entityID := fmt.Sprintf("entity%d", i)
+					attrs[entityID] = []string{
+						fqnBuilder("somewhere.net", "theirattr", "level3"),
+					}
+				}
+				return attrs
+			}(),
+			attrDefs: []*policy.Attribute{
+				createMockAttribute("somewhere.net", "theirattr",
+					policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+					[]string{"level1", "level2", "level3", "level4", "level5"}),
+			},
+		},
+
+		// Wrong namespace/attribute failure
+		{
+			name: "wrong_namespace_failure",
+			dataAttrs: createMockAttribute("example.org", "myattr",
+				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+				[]string{"value1", "value2"}).Values,
+			entityAttrs: createMockEntityAttributes("entity1", "wrong.org", "myattr",
+				[]string{"value1", "value2"}),
+			attrDefs: []*policy.Attribute{
+				createMockAttribute("example.org", "myattr",
+					policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+					[]string{"value1", "value2"}),
+			},
+		},
+		{
+			name: "no_matching_attributes_failure",
+			dataAttrs: createMockAttribute("example.org", "myattr",
+				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+				[]string{"value1", "value2"}).Values,
+			entityAttrs: map[string][]string{"entity1": {}}, // No attributes at all
+			attrDefs: []*policy.Attribute{
+				createMockAttribute("example.org", "myattr",
+					policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+					[]string{"value1", "value2"}),
+			},
+		},
+	}
+
+	pdp := NewPdp(createTestLogger())
+	ctx := context.Background()
+
+	for _, bm := range benchmarks {
+		b.Run(bm.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				_, err := pdp.DetermineAccess(ctx, bm.dataAttrs, bm.entityAttrs, bm.attrDefs)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+// Add benchmarks for individual rule function failure cases
+func BenchmarkAnyOfRuleFail(b *testing.B) {
+	pdp := NewPdp(createTestLogger())
+	ctx := context.Background()
+
+	// Create test data - values that won't match
+	dataAttrs := createMockAttribute("example.org", "myattr",
+		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		[]string{"value1", "value2", "value3", "value4", "value5"}).Values
+
+	entityAttrs := make(map[string][]string)
+	for i := 0; i < 100; i++ {
+		entityID := fmt.Sprintf("entity%d", i)
+		entityAttrs[entityID] = []string{
+			fqnBuilder("example.org", "myattr", "value6"),
+			fqnBuilder("example.org", "myattr", "value7"),
+		}
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := pdp.anyOfRule(ctx, dataAttrs, entityAttrs)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkAllOfRuleFail(b *testing.B) {
+	pdp := NewPdp(createTestLogger())
+	ctx := context.Background()
+
+	// Create test data - missing some required values
+	dataAttrs := createMockAttribute("authority.gov", "allofattr",
+		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		[]string{"value1", "value2", "value3", "value4", "value5"}).Values
+
+	entityAttrs := make(map[string][]string)
+	for i := 0; i < 100; i++ {
+		entityID := fmt.Sprintf("entity%d", i)
+		values := []string{"value1", "value2"} // Missing values 3, 4, 5
+		entityAttrs[entityID] = []string{}
+		for _, v := range values {
+			entityAttrs[entityID] = append(entityAttrs[entityID], fqnBuilder("authority.gov", "allofattr", v))
+		}
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := pdp.allOfRule(ctx, dataAttrs, entityAttrs)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkHierarchyRuleFail(b *testing.B) {
+	pdp := NewPdp(createTestLogger())
+	ctx := context.Background()
+
+	// Create test data
+	attr := createMockAttribute("somewhere.net", "theirattr",
+		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		[]string{"level1", "level2", "level3", "level4", "level5"})
+
+	dataAttrs := attr.Values[:1] // Only get level1 (highest privilege)
+	order := attr.Values
+
+	entityAttrs := make(map[string][]string)
+	for i := 0; i < 100; i++ {
+		entityID := fmt.Sprintf("entity%d", i)
+		entityAttrs[entityID] = []string{
+			fqnBuilder("somewhere.net", "theirattr", "level3"), // Lower privilege than needed
+		}
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := pdp.hierarchyRule(ctx, dataAttrs, entityAttrs, order)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}

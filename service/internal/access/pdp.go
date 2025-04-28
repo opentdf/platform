@@ -159,6 +159,12 @@ func (pdp *Pdp) allOfRule(
 	// Pre-allocate the result map with the expected size
 	ruleResultsByEntity := make(map[string]DataRuleResult, len(entityAttributeValueFqns))
 
+	// Pre-process data attributes for fast lookup
+	dataAttrValsFqns := make([]string, len(dataAttrValuesOfOneDefinition))
+	for i, dataAttrVal := range dataAttrValuesOfOneDefinition {
+		dataAttrValsFqns[i] = strings.ToLower(dataAttrVal.GetFqn())
+	}
+
 	// Process each entity
 	for entityID, entityAttrValFqns := range entityAttributeValueFqns {
 		// Group entity attributes by definition only once per entity
@@ -170,23 +176,38 @@ func (pdp *Pdp) allOfRule(
 		// Get the relevant entity attributes for this definition
 		entityAttrsForDef := entityAttrGroup[attrDefFqn]
 
+		// Quick check: if entity has fewer attributes than required, fail fast
+		if len(entityAttrsForDef) < len(dataAttrValuesOfOneDefinition) {
+			valueFailures := make([]ValueFailure, len(dataAttrValuesOfOneDefinition))
+			for i, dataAttrVal := range dataAttrValuesOfOneDefinition {
+				valueFailures[i] = ValueFailure{
+					DataAttribute: dataAttrVal,
+					Message: fmt.Sprintf("AllOf not satisfied for data attr %s with value %s and entity %s - insufficient entity attributes",
+						attrDefFqn, dataAttrVal.GetValue(), entityID),
+				}
+			}
+
+			ruleResultsByEntity[entityID] = DataRuleResult{
+				Passed:        false,
+				ValueFailures: valueFailures,
+			}
+			continue
+		}
+
 		// Create a set of entity FQNs for O(1) lookups
 		entityFqnSet := make(map[string]struct{}, len(entityAttrsForDef))
 		for _, fqn := range entityAttrsForDef {
 			entityFqnSet[strings.ToLower(fqn)] = struct{}{}
 		}
 
+		// Default to success, then check each requirement
 		entityPassed := true
 		var valueFailures []ValueFailure
 
 		// Check each data attribute value
-		for _, dataAttrVal := range dataAttrValuesOfOneDefinition {
-			valFqn := strings.ToLower(dataAttrVal.GetFqn())
-
-			// O(1) lookup in the set
-			_, found := entityFqnSet[valFqn]
-
-			if !found {
+		for i, dataAttrVal := range dataAttrValuesOfOneDefinition {
+			// O(1) lookup in the set using pre-computed lowercase FQN
+			if _, found := entityFqnSet[dataAttrValsFqns[i]]; !found {
 				entityPassed = false
 				denialMsg := fmt.Sprintf("AllOf not satisfied for data attr %s with value %s and entity %s",
 					attrDefFqn, dataAttrVal.GetValue(), entityID)
@@ -197,9 +218,15 @@ func (pdp *Pdp) allOfRule(
 			}
 		}
 
+		// Only create the result object once we know the final state
 		ruleResultsByEntity[entityID] = DataRuleResult{
 			Passed:        entityPassed,
 			ValueFailures: valueFailures,
+		}
+
+		// Log success at debug level
+		if entityPassed {
+			pdp.logger.DebugContext(ctx, "allOf rule passed", "entity", entityID)
 		}
 	}
 
@@ -224,10 +251,14 @@ func (pdp *Pdp) anyOfRule(
 		return nil, fmt.Errorf("error getting definition FQN from data attribute value: %s", err.Error())
 	}
 
-	pdp.logger.DebugContext(ctx, "Evaluating anyOf decision", "attribute definition FQN", attrDefFqn)
-
 	// Pre-allocate the result map with the expected size
 	ruleResultsByEntity := make(map[string]DataRuleResult, len(entityAttributeValueFqns))
+
+	// Pre-process data attributes for fast lookup
+	dataAttrValsFqns := make([]string, len(dataAttrValuesOfOneDefinition))
+	for i, dataAttrVal := range dataAttrValuesOfOneDefinition {
+		dataAttrValsFqns[i] = strings.ToLower(dataAttrVal.GetFqn())
+	}
 
 	// Process each entity
 	for entityID, entityAttrValFqns := range entityAttributeValueFqns {
@@ -240,35 +271,60 @@ func (pdp *Pdp) anyOfRule(
 		// Get the relevant entity attributes for this definition
 		entityAttrsForDef := entityAttrGroup[attrDefFqn]
 
+		// Quick path: no attributes of this type for this entity
+		if len(entityAttrsForDef) == 0 {
+			// All data attributes fail
+			valueFailures := make([]ValueFailure, len(dataAttrValuesOfOneDefinition))
+			for i, dataAttrVal := range dataAttrValuesOfOneDefinition {
+				valueFailures[i] = ValueFailure{
+					DataAttribute: dataAttrVal,
+					Message:       fmt.Sprintf("anyOf not satisfied for data attr %s with value %s and entity %s - no matching entity attributes", attrDefFqn, dataAttrVal.GetValue(), entityID),
+				}
+			}
+
+			ruleResultsByEntity[entityID] = DataRuleResult{
+				Passed:        false,
+				ValueFailures: valueFailures,
+			}
+			continue
+		}
+
 		// Create a set of entity FQNs for O(1) lookups
 		entityFqnSet := make(map[string]struct{}, len(entityAttrsForDef))
 		for _, fqn := range entityAttrsForDef {
 			entityFqnSet[strings.ToLower(fqn)] = struct{}{}
 		}
 
+		// Check for any matches using efficient loop
 		entityPassed := false
-		var valueFailures []ValueFailure
+		var matchedDataAttr *policy.Value
+		var unmatched []*policy.Value
 
-		// Check each data attribute value
-		for _, dataAttrVal := range dataAttrValuesOfOneDefinition {
-			valFqn := strings.ToLower(dataAttrVal.GetFqn())
-
-			// O(1) lookup in the set
-			_, found := entityFqnSet[valFqn]
-
-			if found {
+		for i, dataAttrVal := range dataAttrValuesOfOneDefinition {
+			if _, found := entityFqnSet[dataAttrValsFqns[i]]; found {
 				entityPassed = true
-				// We can break early for anyOf rule - one match is enough
+				matchedDataAttr = dataAttrVal
 				break
-			} else {
-				// Only collect failures if we need them
-				denialMsg := fmt.Sprintf("anyOf not satisfied for data attr %s with value %s and entity %s",
-					attrDefFqn, dataAttrVal.GetValue(), entityID)
-				valueFailures = append(valueFailures, ValueFailure{
-					DataAttribute: dataAttrVal,
-					Message:       denialMsg,
-				})
 			}
+			unmatched = append(unmatched, dataAttrVal)
+		}
+
+		var valueFailures []ValueFailure
+		if !entityPassed && len(unmatched) > 0 {
+			valueFailures = make([]ValueFailure, len(unmatched))
+			for i, dataAttrVal := range unmatched {
+				valueFailures[i] = ValueFailure{
+					DataAttribute: dataAttrVal,
+					Message:       fmt.Sprintf("anyOf not satisfied for data attr %s with value %s and entity %s", attrDefFqn, dataAttrVal.GetValue(), entityID),
+				}
+			}
+		}
+
+		// Only log detailed diagnostic information at debug level
+		if entityPassed && matchedDataAttr != nil {
+			pdp.logger.DebugContext(ctx, "anyOf rule passed",
+				"entity", entityID,
+				"matched_value", matchedDataAttr.GetValue())
 		}
 
 		ruleResultsByEntity[entityID] = DataRuleResult{
@@ -414,35 +470,58 @@ func entityHasSufficientRank(
 }
 
 // getHighestRankedInstanceFromDataAttributes finds the data attribute with the highest rank in the hierarchy.
+// Performance optimized version that uses direct lookups and minimizes iterations.
 func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(
 	ctx context.Context,
 	order []*policy.Value,
 	dataAttributeGroup []*policy.Value,
 ) (*policy.Value, error) {
-	// Pre-build a map of values to their indices for faster lookups
-	valueToIndex := make(map[string]int, len(order))
-	for idx, val := range order {
-		valueToIndex[val.GetValue()] = idx
+	if len(dataAttributeGroup) == 0 || len(order) == 0 {
+		return nil, nil
 	}
 
+	// Special case: if there's only one data attribute, just check if it's valid
+	if len(dataAttributeGroup) == 1 {
+		dataAttr := dataAttributeGroup[0]
+		dataValue := dataAttr.GetValue()
+
+		// Simple linear scan for a single item
+		for _, orderVal := range order {
+			if orderVal.GetValue() == dataValue {
+				return dataAttr, nil
+			}
+		}
+		return nil, nil
+	}
+
+	// Create a map for O(1) lookups of value indices
+	orderMap := make(map[string]int, len(order))
+	for i, val := range order {
+		orderMap[val.GetValue()] = i
+	}
+
+	// Start with the first valid value as the highest
 	highestDVIndex := len(order)
 	var highestRankedInstance *policy.Value
 
 	for _, dataAttr := range dataAttributeGroup {
 		val := dataAttr.GetValue()
 
-		// Fast lookup using the map instead of scanning the array each time
-		foundRank, exists := valueToIndex[val]
+		// Use map lookup instead of linear scanning
+		idx, exists := orderMap[val]
 		if !exists {
-			msg := fmt.Sprintf("Data value %s is not in the order list - ignoring this invalid value", val)
-			pdp.logger.WarnContext(ctx, msg)
 			continue
 		}
 
-		pdp.logger.DebugContext(ctx, "Found data", "rank", foundRank, "value", val, "maxRank", highestDVIndex)
-		if foundRank < highestDVIndex {
-			highestDVIndex = foundRank
+		// If we found a higher rank (lower index), update our result
+		if idx < highestDVIndex {
+			highestDVIndex = idx
 			highestRankedInstance = dataAttr
+
+			// Early return if we found the highest possible rank (index 0)
+			if idx == 0 {
+				return dataAttr, nil
+			}
 		}
 	}
 
@@ -477,44 +556,71 @@ func entityRankGreaterThanOrEqualToDataRank(
 	entityAttrValueFqnsGroup []string,
 	log *logger.Logger,
 ) (bool, error) {
-	result := false
-
+	// Get data attribute index once
 	dvIndex, err := getOrderOfValue(order, dataAttribute, log)
 	if err != nil {
 		return false, err
 	}
 
-	for _, entityAttributeFqn := range entityAttrValueFqnsGroup {
-		dataAttrDefFqn, err := GetDefinitionFqnFromValue(dataAttribute)
-		if err != nil {
-			return false, fmt.Errorf("error getting definition FQN from data attribute value: %s", err.Error())
-		}
+	// Extract data attribute definition FQN once
+	dataAttrDefFqn, err := GetDefinitionFqnFromValue(dataAttribute)
+	if err != nil {
+		return false, fmt.Errorf("error getting definition FQN from data attribute value: %s", err.Error())
+	}
 
+	// Pre-compute a map for faster order lookup
+	orderMap := make(map[string]int, len(order))
+	for i, v := range order {
+		orderMap[v.GetValue()] = i
+		if v.GetFqn() != "" {
+			orderMap[v.GetFqn()] = i
+		}
+	}
+
+	// Process all entity attributes at once
+	for _, entityAttributeFqn := range entityAttrValueFqnsGroup {
 		entityAttrDefFqn, err := GetDefinitionFqnFromValueFqn(entityAttributeFqn)
 		if err != nil {
 			return false, fmt.Errorf("error getting definition FQN from entity attribute value: %s", err.Error())
 		}
 
+		// Only process relevant attributes
 		if dataAttrDefFqn == entityAttrDefFqn {
-			evIndex, err := getOrderOfValueByFqn(order, entityAttributeFqn)
-			if err != nil {
-				return false, err
+			// Extract value part directly from FQN for faster comparison
+			parts := strings.Split(entityAttributeFqn, "/value/")
+			if len(parts) != 2 {
+				continue
 			}
+			entityValue := parts[1]
 
-			if evIndex == -1 {
-				evIndex = len(order) + 1
-			}
+			// Check if entity value exists in order map
+			if idx, exists := orderMap[entityValue]; exists {
+				if idx <= dvIndex {
+					return true, nil
+				}
+			} else if idx, exists := orderMap[entityAttributeFqn]; exists {
+				if idx <= dvIndex {
+					return true, nil
+				}
+			} else {
+				// Fallback to manual lookup only when necessary
+				evIndex, err := getOrderOfValueByFqn(order, entityAttributeFqn)
+				if err != nil {
+					return false, err
+				}
 
-			if evIndex > dvIndex || dvIndex == -1 {
-				result = false
-				return result, nil
-			} else if evIndex <= dvIndex {
-				result = true
+				if evIndex == -1 {
+					continue
+				}
+
+				if evIndex <= dvIndex {
+					return true, nil
+				}
 			}
 		}
 	}
 
-	return result, nil
+	return false, nil
 }
 
 // getOrderOfValue finds the index of a value in the ordered list.
@@ -614,19 +720,44 @@ func GroupValuesByDefinition(values []*policy.Value) (map[string][]*policy.Value
 }
 
 // GroupValueFqnsByDefinition groups value FQN strings by their attribute definition FQNs.
+// Performance optimized version that minimizes allocations.
 func GroupValueFqnsByDefinition(valueFqns []string) (map[string][]string, error) {
-	groupings := make(map[string][]string)
+	// Pre-allocate with estimated capacity
+	groupings := make(map[string][]string, min(len(valueFqns), 10))
 
+	// First pass: count occurrences to pre-allocate slices
+	counts := make(map[string]int, min(len(valueFqns), 10))
 	for _, v := range valueFqns {
 		defFqn, err := GetDefinitionFqnFromValueFqn(v)
 		if err != nil {
 			return nil, err
 		}
+		counts[defFqn]++
+	}
 
+	// Pre-allocate slices with exact sizes
+	for defFqn, count := range counts {
+		groupings[defFqn] = make([]string, 0, count)
+	}
+
+	// Second pass: populate the slices
+	for _, v := range valueFqns {
+		defFqn, err := GetDefinitionFqnFromValueFqn(v)
+		if err != nil {
+			return nil, err
+		}
 		groupings[defFqn] = append(groupings[defFqn], v)
 	}
 
 	return groupings, nil
+}
+
+// Helper function to return the smaller of two integers (for Go versions < 1.21)
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // GetDefinitionFqnFromValue extracts the definition FQN from a policy value.
@@ -638,16 +769,19 @@ func GetDefinitionFqnFromValue(v *policy.Value) (string, error) {
 }
 
 // GetDefinitionFqnFromValueFqn extracts the definition FQN from a value FQN string.
+// This is a performance-critical function, optimized for minimal allocations.
 func GetDefinitionFqnFromValueFqn(valueFqn string) (string, error) {
 	if valueFqn == "" {
 		return "", fmt.Errorf("unexpected empty value FQN in GetDefinitionFqnFromValueFqn")
 	}
 
-	idx := strings.LastIndex(valueFqn, "/value/")
+	const suffix = "/value/"
+	idx := strings.LastIndex(valueFqn, suffix)
 	if idx == -1 {
 		return "", fmt.Errorf("value FQN (%s) is of unknown format with no '/value/' segment", valueFqn)
 	}
 
+	// Return substring directly without additional allocations
 	return valueFqn[:idx], nil
 }
 

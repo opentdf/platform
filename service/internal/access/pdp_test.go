@@ -366,7 +366,7 @@ func Test_MapFqnToDefinitions(t *testing.T) {
 	attr := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"})
 	pdp := NewPdp(logger.CreateTestLogger())
 
-	mapped, err := pdp.mapFqnToDefinitions(t.Context(), []*policy.Attribute{attr})
+	mapped, err := pdp.mapFqnToDefinitions([]*policy.Attribute{attr})
 
 	require.NoError(t, err)
 	assert.Len(t, mapped, 1)
@@ -409,3 +409,88 @@ func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
 // 	require.NoError(t, err)
 // 	assert.True(t, result)
 // }
+
+func Test_RollUpDecisions(t *testing.T) {
+	tests := []struct {
+		name               string
+		entityRuleDecision map[string]DataRuleResult
+		attrDefinition     *policy.Attribute
+		existingDecisions  map[string]*Decision
+		expectedDecisions  map[string]*Decision
+	}{
+		{
+			name: "New entity decision",
+			entityRuleDecision: map[string]DataRuleResult{
+				"entity1": {
+					Passed:         true,
+					RuleDefinition: createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{}),
+					ValueFailures:  nil,
+				},
+			},
+			attrDefinition:    createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{}),
+			existingDecisions: map[string]*Decision{},
+			expectedDecisions: map[string]*Decision{
+				"entity1": {
+					Access: true,
+					Results: []DataRuleResult{
+						{
+							Passed:         true,
+							RuleDefinition: createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{}),
+							ValueFailures:  nil,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Update existing entity decision",
+			entityRuleDecision: map[string]DataRuleResult{
+				"entity1": {
+					Passed:         false,
+					RuleDefinition: createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{}),
+					ValueFailures:  nil,
+				},
+			},
+			attrDefinition: createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{}),
+			existingDecisions: map[string]*Decision{
+				"entity1": {
+					Access: true,
+					Results: []DataRuleResult{
+						{
+							Passed:         true,
+							RuleDefinition: createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{}),
+							ValueFailures:  nil,
+						},
+					},
+				},
+			},
+			expectedDecisions: map[string]*Decision{
+				"entity1": {
+					Access: false,
+					Results: []DataRuleResult{
+						{
+							Passed:         true,
+							RuleDefinition: createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{}),
+							ValueFailures:  nil,
+						},
+						{
+							Passed:         false,
+							RuleDefinition: createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{}),
+							ValueFailures:  nil,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			decisions := tt.existingDecisions
+			pdp := NewPdp(logger.CreateTestLogger())
+			pdp.rollUpDecisions(tt.entityRuleDecision, tt.attrDefinition, decisions)
+
+			assert.Equal(t, tt.expectedDecisions, decisions)
+		})
+	}
+}

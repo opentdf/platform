@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -39,7 +40,7 @@ func (pdp *Pdp) DetermineAccess(
 		return nil, err
 	}
 
-	fqnToDefinitionMap, err := pdp.mapFqnToDefinitions(ctx, attributeDefinitions)
+	fqnToDefinitionMap, err := pdp.mapFqnToDefinitions(attributeDefinitions)
 	if err != nil {
 		return nil, err
 	}
@@ -50,17 +51,16 @@ func (pdp *Pdp) DetermineAccess(
 func (pdp *Pdp) groupDataAttributesByDefinition(ctx context.Context, dataAttributes []*policy.Value) (map[string][]*policy.Value, error) {
 	dataAttrValsByDefinition, err := GroupValuesByDefinition(dataAttributes)
 	if err != nil {
-		pdp.logger.Error(fmt.Sprintf("error grouping data attributes by definition: %s", err.Error()))
+		pdp.logger.ErrorContext(ctx, fmt.Sprintf("error grouping data attributes by definition: %s", err.Error()))
 		return nil, err
 	}
 	return dataAttrValsByDefinition, nil
 }
 
-func (pdp *Pdp) mapFqnToDefinitions(ctx context.Context, attributeDefinitions []*policy.Attribute) (map[string]*policy.Attribute, error) {
-	fqnToDefinitionMap, err := GetFqnToDefinitionMap(ctx, attributeDefinitions, pdp.logger)
-	if err != nil {
-		pdp.logger.Error(fmt.Sprintf("error grouping attribute definitions by FQN: %s", err.Error()))
-		return nil, err
+func (pdp *Pdp) mapFqnToDefinitions(attributeDefinitions []*policy.Attribute) (map[string]*policy.Attribute, error) {
+	fqnToDefinitionMap := make(map[string]*policy.Attribute)
+	for _, attr := range attributeDefinitions {
+		fqnToDefinitionMap[attr.Fqn] = attr
 	}
 	return fqnToDefinitionMap, nil
 }
@@ -149,8 +149,9 @@ func (pdp *Pdp) allOfRule(
 	if len(dataAttrValuesOfOneDefinition) == 0 {
 		return ruleResultsByEntity, nil
 	}
+	value := dataAttrValuesOfOneDefinition[0]
 
-	def, err := GetDefinitionFqnFromValue(dataAttrValuesOfOneDefinition[0])
+	def, err := GetDefinitionFqnFromValueFqn(value.GetFqn())
 	if err != nil {
 		return nil, fmt.Errorf("error getting definition FQN from data attribute value: %s", err.Error())
 	}
@@ -505,31 +506,6 @@ type ValueFailure struct {
 
 // === Utilities for FQN/Definitions ===
 
-// GetFqnToDefinitionMap creates a map of attribute definitions keyed by their FQNs.
-func GetFqnToDefinitionMap(
-	ctx context.Context,
-	attributeDefinitions []*policy.Attribute,
-	log *logger.Logger,
-) (map[string]*policy.Attribute, error) {
-	grouped := make(map[string]*policy.Attribute)
-
-	for _, def := range attributeDefinitions {
-		a, err := GetDefinitionFqnFromDefinition(def)
-		if err != nil {
-			return nil, err
-		}
-
-		if v, ok := grouped[a]; ok {
-			log.Warn(fmt.Sprintf("duplicate Attribute Definition FQN %s found when building FQN map which may indicate an issue", a))
-			log.TraceContext(ctx, "duplicate attribute definitions found are: ", "attr1", v, "attr2", def)
-		}
-
-		grouped[a] = def
-	}
-
-	return grouped, nil
-}
-
 // GroupValuesByDefinition groups policy values by their attribute definition FQNs.
 func GroupValuesByDefinition(values []*policy.Value) (map[string][]*policy.Value, error) {
 	groupings := make(map[string][]*policy.Value)
@@ -572,6 +548,7 @@ func GroupValueFqnsByDefinition(valueFqns []string) (map[string][]string, error)
 
 // GetDefinitionFqnFromValue extracts the definition FQN from a policy value.
 func GetDefinitionFqnFromValue(v *policy.Value) (string, error) {
+	slog.Warn("value", slog.Any("value", v.String()))
 	if v.GetAttribute() != nil {
 		return GetDefinitionFqnFromDefinition(v.GetAttribute())
 	}
@@ -599,6 +576,7 @@ func GetDefinitionFqnFromValueFqn(valueFqn string) (string, error) {
 
 // GetDefinitionFqnFromDefinition constructs the FQN for an attribute definition.
 func GetDefinitionFqnFromDefinition(def *policy.Attribute) (string, error) {
+	slog.Warn("def", slog.Any("def", def.String()))
 	fqn := def.GetFqn()
 	if fqn != "" {
 		return fqn, nil

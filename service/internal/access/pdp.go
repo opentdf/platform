@@ -3,7 +3,6 @@ package access
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -548,7 +547,6 @@ func GroupValueFqnsByDefinition(valueFqns []string) (map[string][]string, error)
 
 // GetDefinitionFqnFromValue extracts the definition FQN from a policy value.
 func GetDefinitionFqnFromValue(v *policy.Value) (string, error) {
-	slog.Warn("value", slog.Any("value", v.String()))
 	if v.GetAttribute() != nil {
 		return GetDefinitionFqnFromDefinition(v.GetAttribute())
 	}
@@ -576,7 +574,6 @@ func GetDefinitionFqnFromValueFqn(valueFqn string) (string, error) {
 
 // GetDefinitionFqnFromDefinition constructs the FQN for an attribute definition.
 func GetDefinitionFqnFromDefinition(def *policy.Attribute) (string, error) {
-	slog.Warn("def", slog.Any("def", def.String()))
 	fqn := def.GetFqn()
 	if fqn != "" {
 		return fqn, nil

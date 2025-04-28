@@ -30,12 +30,16 @@ jobs:
           #   - fix: fixes
           #   - feat: features and enhancements
           #   - chore: non-feature or enhancement (i.e. docs, ci, linting, automated, etc)
+          #   - refactor: code refactoring without behavior changes
+          #   - revert: undoes a previous commit or change
+          #   - adr: architectural decision records
           types: |
             fix
             feat
             chore
             refactor
             revert
+            adr
           # Scopes include:
           #   - main: used for automated releases
           #   - core: related to any core need such as the core service or monorepo
@@ -99,7 +103,7 @@ jobs:
       #         number: context.issue.number
       #       }
       #       const result = await github.graphql(query, variables)
-            
+
       #       core.debug(JSON.stringify(result));
 
       #       if (result.repository.pullRequest.closingIssuesReferences.edges.length === 0) {
@@ -123,7 +127,7 @@ jobs:
       #           }
       #         }
       #         const body = `
-      #         > [!WARNING] 
+      #         > [!WARNING]
       #         > This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.
       #         <!-- associated-issue-action -->`;
       #         const createCommentMutation = `mutation createComment($id: ID!, $body: String!) {
@@ -135,7 +139,7 @@ jobs:
       #             }
       #           }
       #         }`;
-              
+
       #         const createCommentVariables = {
       #           id: result.repository.pullRequest.id,
       #           body: body
@@ -143,4 +147,3 @@ jobs:
       #         await github.graphql(createCommentMutation, createCommentVariables)
       #         core.setFailed('This pull request does not reference any issues. Please add a reference to an issue in the body of the pull request description.');
       #       }
-    

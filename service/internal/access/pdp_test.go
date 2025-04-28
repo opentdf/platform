@@ -385,7 +385,8 @@ func Test_GroupDataAttributesByDefinition(t *testing.T) {
 	assert.Len(t, grouped["https://example.org/attr/myattr"], 2)
 
 	// Test case 2: Multiple attributes with same definition
-	multiAttr := append(dataAttrs,
+	multiAttr := dataAttrs
+	multiAttr = append(dataAttrs,
 		createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value3"}).GetValues()...)
 	grouped, err = pdp.groupDataAttributesByDefinition(t.Context(), multiAttr)
 	require.NoError(t, err)
@@ -394,7 +395,8 @@ func Test_GroupDataAttributesByDefinition(t *testing.T) {
 	assert.Len(t, grouped["https://example.org/attr/myattr"], 3)
 
 	// Test case 3: Multiple attributes with different definitions
-	multiDefAttrs := append(dataAttrs,
+	multiDefAttrs := dataAttrs
+	multiDefAttrs = append(multiDefAttrs,
 		createMockAttribute("example.org", "otherattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"other1"}).GetValues()...)
 	grouped, err = pdp.groupDataAttributesByDefinition(t.Context(), multiDefAttrs)
 	require.NoError(t, err)
@@ -579,13 +581,13 @@ func Test_DetermineAccess_MultipleEntities(t *testing.T) {
 
 	// Entity 1 should have access (has entitlements for both attributes)
 	assert.True(t, decisions[entityID1].Access)
-	assert.Equal(t, 2, len(decisions[entityID1].Results))
+	assert.Len(t, decisions[entityID1].Results, 2)
 	assert.True(t, decisions[entityID1].Results[0].Passed)
 	assert.True(t, decisions[entityID1].Results[1].Passed)
 
 	// Entity 2 should not have access (missing the second attribute)
 	assert.False(t, decisions[entityID2].Access)
-	assert.Equal(t, 2, len(decisions[entityID2].Results))
+	assert.Len(t, decisions[entityID2].Results, 2)
 	assert.True(t, decisions[entityID2].Results[0].Passed)  // First attribute passes
 	assert.False(t, decisions[entityID2].Results[1].Passed) // Second attribute fails
 }
@@ -700,7 +702,7 @@ func Test_DetermineAccess_ComplexScenarioWithMultipleEntities(t *testing.T) {
 
 	// Entity 1 should have access (meets all requirements)
 	assert.True(t, decisions[entityID1].Access)
-	assert.Equal(t, 3, len(decisions[entityID1].Results))
+	assert.Len(t, decisions[entityID1].Results, 3)
 	passes := 0
 	for _, result := range decisions[entityID1].Results {
 		if result.Passed {
@@ -711,7 +713,7 @@ func Test_DetermineAccess_ComplexScenarioWithMultipleEntities(t *testing.T) {
 
 	// Entity 2 should not have access (meets clearance, wrong department, missing training)
 	assert.False(t, decisions[entityID2].Access)
-	assert.Equal(t, 3, len(decisions[entityID2].Results))
+	assert.Len(t, decisions[entityID2].Results, 3)
 	passes = 0
 	for _, result := range decisions[entityID2].Results {
 		if result.Passed {
@@ -732,7 +734,7 @@ func Test_DetermineAccess_ComplexScenarioWithMultipleEntities(t *testing.T) {
 
 	// Entity 1 should have access for clearance and training, but fail department
 	assert.False(t, decisions[entityID1].Access)
-	assert.Equal(t, 3, len(decisions[entityID1].Results))
+	assert.Len(t, decisions[entityID1].Results, 3)
 	passes = 0
 	for _, result := range decisions[entityID1].Results {
 		if result.Passed {
@@ -766,7 +768,7 @@ func Test_DetermineAccess_ComplexScenarioWithMultipleEntities(t *testing.T) {
 
 	// Entity 2 should have access with matching clearance, department, and training
 	assert.True(t, decisions[entityID2].Access)
-	assert.Equal(t, 3, len(decisions[entityID2].Results))
+	assert.Len(t, decisions[entityID2].Results, 3)
 	passes = 0
 	for _, result := range decisions[entityID2].Results {
 		if result.Passed {
@@ -810,11 +812,11 @@ func Test_DetermineAccess_ComplexScenarioWithMultipleEntities(t *testing.T) {
 
 	// Entity 1 passes
 	assert.True(t, decisions[entityID1].Access)
-	assert.Equal(t, 3, len(decisions[entityID1].Results))
+	assert.Len(t, decisions[entityID1].Results, 3)
 
 	// Entity 2 passes
 	assert.True(t, decisions[entityID2].Access)
-	assert.Equal(t, 3, len(decisions[entityID2].Results))
+	assert.Len(t, decisions[entityID2].Results, 3)
 
 	// Test 4: Neither passes
 	dataAttrs = []*policy.Value{
@@ -826,10 +828,10 @@ func Test_DetermineAccess_ComplexScenarioWithMultipleEntities(t *testing.T) {
 	require.NoError(t, err)
 	// Entity 1 fails
 	assert.False(t, decisions[entityID1].Access)
-	assert.Equal(t, 3, len(decisions[entityID1].Results))
+	assert.Len(t, decisions[entityID1].Results, 3)
 	// Entity 2 fails
 	assert.False(t, decisions[entityID2].Access)
-	assert.Equal(t, 3, len(decisions[entityID2].Results))
+	assert.Len(t, decisions[entityID2].Results, 3)
 }
 
 func Test_EdgeCases_EmptyEntityAttributes(t *testing.T) {
@@ -943,7 +945,7 @@ func Test_MixedRuleTypes(t *testing.T) {
 
 	// Entity should have access, passing all rules
 	assert.True(t, decisions["entity1"].Access)
-	assert.Equal(t, 3, len(decisions["entity1"].Results))
+	assert.Len(t, decisions["entity1"].Results, 3)
 
 	// Check individual rule results
 	var anyOfResult, allOfResult, hierarchyResult *DataRuleResult
@@ -980,7 +982,7 @@ func Test_MixedRuleTypes(t *testing.T) {
 
 	// Entity should not have access (allOf failed)
 	assert.False(t, decisions["entity1"].Access)
-	assert.Equal(t, 3, len(decisions["entity1"].Results))
+	assert.Len(t, decisions["entity1"].Results, 3)
 
 	// Find the allOf result and verify it failed
 	for _, result := range decisions["entity1"].Results {
@@ -1206,6 +1208,6 @@ func Test_DetermineAccess_MultipleEntities_AcrossRuleTypes(t *testing.T) {
 		assert.True(t, decisions[entityIDs[4]].Access) // entity5: manager level
 
 		// Check rule results count
-		assert.Equal(t, 2, len(decisions[entityIDs[0]].Results)) // Only anyOf and hierarchy checks
+		assert.Len(t, decisions[entityIDs[0]].Results, 2) // Only anyOf and hierarchy checks
 	})
 }

@@ -618,6 +618,30 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_InvalidID_Fai
 	s.Nil(got)
 }
 
+// Get By Value FQN
+
+func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByValueFQN_Valid_Succeeds() {
+	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
+	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
+	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
+	fqns := []string{
+		fmt.Sprintf("https://reg_res/%s/value/%s", existingRes.Name, existingResValue1.Value),
+		fmt.Sprintf("https://reg_res/%s/value/%s", existingRes.Name, existingResValue2.Value),
+	}
+
+	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByValueFQN(s.ctx, &registeredresources.GetRegisteredResourceValuesByValueFQNRequest{
+		Fqns: fqns,
+	})
+	s.Require().NoError(err)
+	s.NotNil(got)
+
+	for _, fqn := range fqns {
+		found := got[fqn]
+		s.NotNil(found)
+		s.Equal(existingRes.ID, found.GetResource().GetId())
+	}
+}
+
 // List
 
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_NoPagination_Succeeds() {

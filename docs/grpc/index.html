@@ -1168,6 +1168,18 @@
                 </li>
               
                 <li>
+                  <a href="#policy.registeredresources.GetRegisteredResourceValuesByValueFQNRequest"><span class="badge">M</span>GetRegisteredResourceValuesByValueFQNRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.registeredresources.GetRegisteredResourceValuesByValueFQNResponse"><span class="badge">M</span>GetRegisteredResourceValuesByValueFQNResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.registeredresources.GetRegisteredResourceValuesByValueFQNResponse.FqnToValueMapEntry"><span class="badge">M</span>GetRegisteredResourceValuesByValueFQNResponse.FqnToValueMapEntry</a>
+                </li>
+              
+                <li>
                   <a href="#policy.registeredresources.ListRegisteredResourceValuesRequest"><span class="badge">M</span>ListRegisteredResourceValuesRequest</a>
                 </li>
               
@@ -9700,6 +9712,85 @@ Common metadata </p></td>
 
         
       
+        <h3 id="policy.registeredresources.GetRegisteredResourceValuesByValueFQNRequest">GetRegisteredResourceValuesByValueFQNRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.registeredresources.GetRegisteredResourceValuesByValueFQNResponse">GetRegisteredResourceValuesByValueFQNResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqnToValueMap</td>
+                  <td><a href="#policy.registeredresources.GetRegisteredResourceValuesByValueFQNResponse.FqnToValueMapEntry">GetRegisteredResourceValuesByValueFQNResponse.FqnToValueMapEntry</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.registeredresources.GetRegisteredResourceValuesByValueFQNResponse.FqnToValueMapEntry">GetRegisteredResourceValuesByValueFQNResponse.FqnToValueMapEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.RegisteredResourceValue">policy.RegisteredResourceValue</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.registeredresources.ListRegisteredResourceValuesRequest">ListRegisteredResourceValuesRequest</h3>
         <p></p>
 
@@ -10017,6 +10108,13 @@ Common metadata </p></td>
                 <td>GetRegisteredResourceValue</td>
                 <td><a href="#policy.registeredresources.GetRegisteredResourceValueRequest">GetRegisteredResourceValueRequest</a></td>
                 <td><a href="#policy.registeredresources.GetRegisteredResourceValueResponse">GetRegisteredResourceValueResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetRegisteredResourceValuesByValueFQN</td>
+                <td><a href="#policy.registeredresources.GetRegisteredResourceValuesByValueFQNRequest">GetRegisteredResourceValuesByValueFQNRequest</a></td>
+                <td><a href="#policy.registeredresources.GetRegisteredResourceValuesByValueFQNResponse">GetRegisteredResourceValuesByValueFQNResponse</a></td>
                 <td><p></p></td>
               </tr>
             

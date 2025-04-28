@@ -167,6 +167,26 @@ message GetRegisteredResourceValueResponse {
   policy.RegisteredResourceValue value = 1;
 }
 
+message GetRegisteredResourceValuesByValueFQNRequest {
+  // Required
+  repeated string fqns = 1 [
+    (buf.validate.field).repeated = {
+      min_items: 1,
+      unique: true,
+      items: {
+        string: 
+          {
+            min_len: 1,
+            uri: true
+          }
+      },
+    }
+  ];
+}
+message GetRegisteredResourceValuesByValueFQNResponse {
+  map<string, policy.RegisteredResourceValue> fqnToValueMap = 1;
+}
+
 message ListRegisteredResourceValuesRequest {
   // Optional
   string resource_id = 1 [(buf.validate.field).cel = {
@@ -249,6 +269,9 @@ service RegisteredResourcesService {
   }
 
   rpc GetRegisteredResourceValue(GetRegisteredResourceValueRequest) returns (GetRegisteredResourceValueResponse) {
+  }
+
+  rpc GetRegisteredResourceValuesByValueFQN(GetRegisteredResourceValuesByValueFQNRequest) returns (GetRegisteredResourceValuesByValueFQNResponse) {
   }
 
   rpc ListRegisteredResourceValues(ListRegisteredResourceValuesRequest) returns (ListRegisteredResourceValuesResponse) {

@@ -279,6 +279,56 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 	}, nil
 }
 
+func (c PolicyDBClient) GetRegisteredResourceValuesByValueFQN(ctx context.Context, r *registeredresources.GetRegisteredResourceValuesByValueFQNRequest) (map[string]*policy.RegisteredResourceValue, error) {
+	resp := make(map[string]*policy.RegisteredResourceValue)
+	count := 0
+
+	for _, fqn := range r.GetFqns() {
+		normalizedFQN := strings.ToLower(fqn)
+		resp[normalizedFQN] = nil
+
+		parsed, err := util.ParseRegisteredResourceValueFqn(fqn)
+		if err != nil {
+			return nil, err
+		}
+
+		rv, err := c.Queries.getRegisteredResourceValue(ctx, getRegisteredResourceValueParams{
+			Name:  parsed.Name,
+			Value: parsed.Value,
+		})
+		if err != nil {
+			if err == db.ErrNotFound {
+				// map entry will remain nil for not found FQN, so continue
+				continue
+			}
+
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+
+		count++
+
+		metadata := &common.Metadata{}
+		if err = unmarshalMetadata(rv.Metadata, metadata); err != nil {
+			return nil, err
+		}
+
+		resp[normalizedFQN] = &policy.RegisteredResourceValue{
+			Id:       rv.ID,
+			Value:    rv.Value,
+			Metadata: metadata,
+			Resource: &policy.RegisteredResource{
+				Id: rv.RegisteredResourceID,
+			},
+		}
+	}
+
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	return resp, nil
+}
+
 func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *registeredresources.ListRegisteredResourceValuesRequest) (*registeredresources.ListRegisteredResourceValuesResponse, error) {
 	resourceID := r.GetResourceId()
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())

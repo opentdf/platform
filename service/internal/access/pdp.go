@@ -39,10 +39,7 @@ func (pdp *Pdp) DetermineAccess(
 		return nil, err
 	}
 
-	fqnToDefinitionMap, err := pdp.mapFqnToDefinitions(attributeDefinitions)
-	if err != nil {
-		return nil, err
-	}
+	fqnToDefinitionMap := pdp.mapFqnToDefinitions(attributeDefinitions)
 
 	return pdp.evaluateAttributes(ctx, dataAttrValsByDefinition, fqnToDefinitionMap, entityAttributeSets)
 }
@@ -56,12 +53,12 @@ func (pdp *Pdp) groupDataAttributesByDefinition(ctx context.Context, dataAttribu
 	return dataAttrValsByDefinition, nil
 }
 
-func (pdp *Pdp) mapFqnToDefinitions(attributeDefinitions []*policy.Attribute) (map[string]*policy.Attribute, error) {
+func (pdp *Pdp) mapFqnToDefinitions(attributeDefinitions []*policy.Attribute) map[string]*policy.Attribute {
 	fqnToDefinitionMap := make(map[string]*policy.Attribute, len(attributeDefinitions))
 	for _, attr := range attributeDefinitions {
 		fqnToDefinitionMap[attr.GetFqn()] = attr
 	}
-	return fqnToDefinitionMap, nil
+	return fqnToDefinitionMap
 }
 
 func (pdp *Pdp) evaluateAttributes(
@@ -110,6 +107,8 @@ func (pdp *Pdp) evaluateRule(
 		pdp.logger.DebugContext(ctx, "Evaluating under hierarchy", "name", attrDefinition.GetFqn())
 		return pdp.hierarchyRule(ctx, distinctValues, entityAttributeSets, attrDefinition.GetValues())
 
+	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED:
+		return nil, fmt.Errorf("unrecognized AttributeDefinition rule: %s", attrDefinition.GetRule())
 	default:
 		return nil, fmt.Errorf("unrecognized AttributeDefinition rule: %s", attrDefinition.GetRule())
 	}

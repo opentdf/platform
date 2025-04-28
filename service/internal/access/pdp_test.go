@@ -1,7 +1,6 @@
 package access
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -381,9 +380,8 @@ func Test_MapFqnToDefinitions(t *testing.T) {
 	attr := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"})
 	pdp := NewPdp(createTestLogger())
 
-	mapped, err := pdp.mapFqnToDefinitions([]*policy.Attribute{attr})
+	mapped := pdp.mapFqnToDefinitions([]*policy.Attribute{attr})
 
-	require.NoError(t, err)
 	assert.Len(t, mapped, 1)
 	assert.Contains(t, mapped, "https://example.org/attr/myattr")
 }
@@ -686,7 +684,7 @@ func BenchmarkPdp(b *testing.B) {
 		},
 	}
 	pdp := NewPdp(createTestLogger())
-	ctx := context.Background()
+	ctx := b.Context()
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
@@ -849,7 +847,7 @@ func BenchmarkDetermineAccessFailures(b *testing.B) {
 	}
 
 	pdp := NewPdp(createTestLogger())
-	ctx := context.Background()
+	ctx := b.Context()
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
@@ -867,7 +865,7 @@ func BenchmarkDetermineAccessFailures(b *testing.B) {
 // Add benchmarks for individual rule function failure cases
 func BenchmarkAnyOfRuleFail(b *testing.B) {
 	pdp := NewPdp(createTestLogger())
-	ctx := context.Background()
+	ctx := b.Context()
 
 	// Create test data - values that won't match
 	dataAttrs := createMockAttribute("example.org", "myattr",
@@ -895,7 +893,7 @@ func BenchmarkAnyOfRuleFail(b *testing.B) {
 
 func BenchmarkAllOfRuleFail(b *testing.B) {
 	pdp := NewPdp(createTestLogger())
-	ctx := context.Background()
+	ctx := b.Context()
 
 	// Create test data - missing some required values
 	dataAttrs := createMockAttribute("authority.gov", "allofattr",
@@ -924,7 +922,7 @@ func BenchmarkAllOfRuleFail(b *testing.B) {
 
 func BenchmarkHierarchyRuleFail(b *testing.B) {
 	pdp := NewPdp(createTestLogger())
-	ctx := context.Background()
+	ctx := b.Context()
 
 	// Create test data
 	attr := createMockAttribute("somewhere.net", "theirattr",

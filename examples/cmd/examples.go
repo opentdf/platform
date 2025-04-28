@@ -29,7 +29,7 @@ func init() {
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	f := ExamplesCmd.PersistentFlags()
 	f.StringVarP(&clientCredentials, "creds", "", "opentdf-sdk:secret", "client id:secret credentials")
-	f.StringVarP(&platformEndpoint, "platformEndpoint", "e", "localhost:8080", "Platform Endpoint")
+	f.StringVarP(&platformEndpoint, "platformEndpoint", "e", "http://localhost:8080", "Platform Endpoint")
 	f.StringVarP(&tokenEndpoint, "tokenEndpoint", "t", "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token", "OAuth token endpoint")
 	f.BoolVar(&storeCollectionHeaders, "storeCollectionHeaders", false, "Store collection headers")
 	f.BoolVar(&insecurePlaintextConn, "insecurePlaintextConn", false, "Use insecure plaintext connection")

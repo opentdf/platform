@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/opentdf/platform/compare/protocol/go/v0.3.0...protocol/go/v0.3.1) (2025-04-23)
+
+
+### Features
+
+* **policy:** DSPX-902 NDR service crud protos only (1/2) ([#2092](https://github.com/opentdf/platform/issues/2092)) ([24b6cb5](https://github.com/opentdf/platform/commit/24b6cb5f876439dd5bb15ed95a20d18a16da3706))
+
 ## [0.3.0](https://github.com/opentdf/platform/compare/protocol/go/v0.2.29...protocol/go/v0.3.0) (2025-04-16)
 
 

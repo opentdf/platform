@@ -18,9 +18,11 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
@@ -47,6 +49,7 @@ const (
 	ErrPlatformAuthzEndpointNotFound  = Error("authorization_endpoint not found in well-known idp configuration")
 	ErrPlatformTokenEndpointNotFound  = Error("token_endpoint not found in well-known idp configuration")
 	ErrPlatformPublicClientIDNotFound = Error("public_client_id not found in well-known idp configuration")
+	ErrPlatformEndpointNotFound       = Error("platform_endpoint not found in well-known configuration")
 	ErrAccessTokenInvalid             = Error("access token is invalid")
 )
 
@@ -63,14 +66,16 @@ type SDK struct {
 	conn                    *grpc.ClientConn
 	dialOptions             []grpc.DialOption
 	tokenSource             auth.AccessTokenSource
-	Namespaces              namespaces.NamespaceServiceClient
+	Actions                 actions.ActionServiceClient
 	Attributes              attributes.AttributesServiceClient
-	ResourceMapping         resourcemapping.ResourceMappingServiceClient
-	SubjectMapping          subjectmapping.SubjectMappingServiceClient
-	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
-	Unsafe                  unsafe.UnsafeServiceClient
 	Authorization           authorization.AuthorizationServiceClient
 	EntityResoution         entityresolution.EntityResolutionServiceClient
+	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
+	Namespaces              namespaces.NamespaceServiceClient
+	RegisteredResources     registeredresources.RegisteredResourcesServiceClient
+	ResourceMapping         resourcemapping.ResourceMappingServiceClient
+	SubjectMapping          subjectmapping.SubjectMappingServiceClient
+	Unsafe                  unsafe.UnsafeServiceClient
 	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 }
 
@@ -114,6 +119,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		dialOptions = append(dialOptions, cfg.extraDialOptions...)
 	}
 
+	unsanitizedPlatformEndpoint := platformEndpoint
 	// IF IPC is disabled we build a validated healthy connection to the platform
 	if !cfg.ipc {
 		platformEndpoint, err = SanitizePlatformEndpoint(platformEndpoint)
@@ -152,6 +158,9 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 				return nil, err
 			}
 		}
+	}
+	if cfg.PlatformConfiguration != nil {
+		cfg.PlatformConfiguration["platform_endpoint"] = unsanitizedPlatformEndpoint
 	}
 
 	var uci []grpc.UnaryClientInterceptor
@@ -193,8 +202,10 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		conn:                    platformConn,
 		dialOptions:             dialOptions,
 		tokenSource:             accessTokenSource,
+		Actions:                 actions.NewActionServiceClient(platformConn),
 		Attributes:              attributes.NewAttributesServiceClient(platformConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(platformConn),
+		RegisteredResources:     registeredresources.NewRegisteredResourcesServiceClient(platformConn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(platformConn),
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(platformConn),
 		Unsafe:                  unsafe.NewUnsafeServiceClient(platformConn),

@@ -5,8 +5,9 @@ on:
     branches:
       - main
     paths:
-      - "**/*.md"
-      - "**/*.txt"
+      - '**/*.md'
+      - '!**/CHANGELOG.md'
+      - '**/*.txt'
 
 permissions: {}
 

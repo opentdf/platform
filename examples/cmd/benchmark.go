@@ -105,12 +105,12 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if outputName != "-" {
-			err = cat(cmd, outputName)
-			if err != nil {
-				return err
-			}
-		}
+		// if outputName != "-" {
+		// 	err = cat(cmd, outputName)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// }
 	} else {
 		tdf, err :=
 			client.CreateTDF(
@@ -210,8 +210,11 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 	}
 	throughput := float64(successCount) / totalTime.Seconds()
 
-	// Print results
-	fmt.Printf("# Benchmark Results:\n")
+	format := config.TDFFormat
+	if format == "" {
+		format = TDF3
+	}
+	fmt.Printf("## %s Benchmark Results:\n", strings.ToUpper(format.String()))
 	fmt.Printf("| Metric                | Value                     |\n")
 	fmt.Printf("|-----------------------|---------------------------|\n")
 	fmt.Printf("| Total Requests        | %d                        |\n", config.RequestCount)
@@ -225,13 +228,12 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 	fmt.Printf("| Throughput            | %.2f requests/second      |\n", throughput)
 
 	if errorCount > 0 {
-		fmt.Printf("\n## Error Summary:\n")
+		fmt.Printf("\n### Error Summary:\n")
 		fmt.Printf("| Error Message         | Occurrences              |\n")
 		fmt.Printf("|-----------------------|---------------------------|\n")
 		for errMsg, count := range errorMsgs {
 			fmt.Printf("| %s | %d occurrences         |\n", errMsg, count)
 		}
 	}
-
 	return nil
 }

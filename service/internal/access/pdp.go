@@ -32,7 +32,10 @@ func (pdp *Pdp) DetermineAccess(
 ) (map[string]*Decision, error) {
 	pdp.logger.DebugContext(ctx, "DetermineAccess")
 
-	// TODO: behavior if dataAttributes is empty?
+	if len(dataAttributes) == 0 {
+		pdp.logger.DebugContext(ctx, "No data attributes provided")
+		return nil, fmt.Errorf("no data attributes provided")
+	}
 
 	dataAttrValsByDefinition, err := pdp.groupDataAttributesByDefinition(ctx, dataAttributes)
 	if err != nil {

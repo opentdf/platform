@@ -63,28 +63,28 @@ func Test_AccessPDP_AnyOf(t *testing.T) {
 		{
 			name:           "Pass - all definition values, all entitlements",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values),
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - subset of definition values, all entitlements",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values),
-			dataAttrs:      definition.Values[1:],
+			dataAttrs:      definition.GetValues()[1:],
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - subset of definition values, matching entititlements",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values[1:]),
-			dataAttrs:      definition.Values[1:],
+			dataAttrs:      definition.GetValues()[1:],
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - subset definition values, matching entitlements + extraneous entitlement",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value", values[0]}),
-			dataAttrs:      []*policy.Value{definition.Values[0]},
+			dataAttrs:      []*policy.Value{definition.GetValues()[0]},
 			expectedAccess: true,
 			expectedPass:   true,
 		},
@@ -94,57 +94,50 @@ func Test_AccessPDP_AnyOf(t *testing.T) {
 				fqnBuilder("example.org", "myattr", "random_value"),
 				fqnBuilder(definition.GetNamespace().GetName(), definition.GetName(), values[0]),
 			}},
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Fail - all definition values, no matching entitlements, extraneous definition entitlement value",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value"}),
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - all definition values, wrong definition name",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), "random_definition_name", values),
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - all definition values, wrong namespace",
 			entityAttrs:    createMockEntityAttributes("entity1", "wrong.namespace", definition.GetName(), values),
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - all definition values, no entitlements at all",
 			entityAttrs:    map[string][]string{"entity1": {}},
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - subset definition values, no entitlements at all",
 			entityAttrs:    map[string][]string{"entity1": {}},
-			dataAttrs:      definition.Values[1:],
+			dataAttrs:      definition.GetValues()[1:],
 			expectedAccess: false,
 			expectedPass:   false,
 		},
-		// {
-		// 	name:           "Fail - no data attributes",
-		// 	entityAttrs:    createMockEntityAttributes("entity1", "example.org", "myattr", []string{"value1"}),
-		// 	dataAttrs:      []*policy.Value{},
-		// 	expectedAccess: false,
-		// 	expectedPass:   false,
-		// },
 	}
 
+	pdp := NewPdp(logger.CreateTestLogger())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pdp := NewPdp(logger.CreateTestLogger())
 			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
 
 			require.NoError(t, err)
@@ -158,6 +151,13 @@ func Test_AccessPDP_AnyOf(t *testing.T) {
 			}
 		})
 	}
+
+	// Test for empty data attributes
+	entityAttrs := createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"})
+	emptyDataAttrs := []*policy.Value{}
+	decisions, err := pdp.DetermineAccess(t.Context(), emptyDataAttrs, entityAttrs, []*policy.Attribute{definition})
+	require.Error(t, err)
+	assert.Empty(t, decisions)
 }
 
 func Test_AccessPDP_Hierarchy(t *testing.T) {
@@ -173,85 +173,78 @@ func Test_AccessPDP_Hierarchy(t *testing.T) {
 		{
 			name:           "Pass - highest privilege level data, highest entitlement",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"}),
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - middle privilege level data, middle entitlement",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"middle"}),
-			dataAttrs:      []*policy.Value{definition.Values[1]},
+			dataAttrs:      []*policy.Value{definition.GetValues()[1]},
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - middle privilege level data, highest entitlement",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"}),
-			dataAttrs:      []*policy.Value{definition.Values[1]},
+			dataAttrs:      []*policy.Value{definition.GetValues()[1]},
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - lowest privilege level data, lowest entitlement",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"lowest"}),
-			dataAttrs:      []*policy.Value{definition.Values[2]},
+			dataAttrs:      []*policy.Value{definition.GetValues()[2]},
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - lowest privilege level data, middle entitlement",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"lowest"}),
-			dataAttrs:      []*policy.Value{definition.Values[2]},
+			dataAttrs:      []*policy.Value{definition.GetValues()[2]},
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - lowest privilege level data, highest entitlement",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"lowest"}),
-			dataAttrs:      []*policy.Value{definition.Values[2]},
+			dataAttrs:      []*policy.Value{definition.GetValues()[2]},
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Fail - wrong namespace",
 			entityAttrs:    createMockEntityAttributes("entity1", "wrongnamespace.net", definition.GetName(), []string{"highest"}),
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - wrong definition name",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), "wrong_definition_name", []string{"highest"}),
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - no matching entitlements",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value"}),
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - no entitlements at all",
 			entityAttrs:    map[string][]string{"entity1": {}},
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
-		// {
-		// 	name:           "Fail - no data attributes",
-		// 	entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"}),
-		// 	dataAttrs:      []*policy.Value{},
-		// 	expectedAccess: false,
-		// 	expectedPass:   false,
-		// },
 	}
 
+	pdp := NewPdp(logger.CreateTestLogger())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pdp := NewPdp(logger.CreateTestLogger())
 			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
 
 			require.NoError(t, err)
@@ -265,6 +258,13 @@ func Test_AccessPDP_Hierarchy(t *testing.T) {
 			}
 		})
 	}
+
+	// Test for empty data attributes
+	entityAttrs := createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"})
+	emptyDataAttrs := []*policy.Value{}
+	decisions, err := pdp.DetermineAccess(t.Context(), emptyDataAttrs, entityAttrs, []*policy.Attribute{definition})
+	require.Error(t, err)
+	assert.Empty(t, decisions)
 }
 
 func Test_AccessPDP_AllOf(t *testing.T) {
@@ -280,43 +280,43 @@ func Test_AccessPDP_AllOf(t *testing.T) {
 		{
 			name:           "Pass - all definition values match entitlements",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values),
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Fail - missing one definition value in entitlements",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values[:2]),
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - no matching entitlements",
 			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value"}),
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - wrong namespace",
 			entityAttrs:    createMockEntityAttributes("entity1", "wrongnamespace.com", definition.GetName(), values),
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - no entitlements at all",
 			entityAttrs:    map[string][]string{"entity1": {}},
-			dataAttrs:      definition.Values,
+			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 	}
 
+	pdp := NewPdp(logger.CreateTestLogger())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pdp := NewPdp(logger.CreateTestLogger())
 			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
 
 			require.NoError(t, err)
@@ -330,6 +330,13 @@ func Test_AccessPDP_AllOf(t *testing.T) {
 			}
 		})
 	}
+
+	// Test for empty data attributes
+	entityAttrs := createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"})
+	emptyDataAttrs := []*policy.Value{}
+	decisions, err := pdp.DetermineAccess(t.Context(), emptyDataAttrs, entityAttrs, []*policy.Attribute{definition})
+	require.Error(t, err)
+	assert.Empty(t, decisions)
 }
 
 func Test_DetermineAccess_EmptyDataAttributes(t *testing.T) {
@@ -340,16 +347,16 @@ func Test_DetermineAccess_EmptyDataAttributes(t *testing.T) {
 	assert.Empty(t, decisions)
 }
 
-// func Test_DetermineAccess_EmptyAttributeDefinitions(t *testing.T) {
-// 	pdp := NewPdp(logger.CreateTestLogger())
-// 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"}).Values
-// 	entityAttrs := createMockEntityAttributes("entity1", "example.org", "myattr", []string{"value1"})
+func Test_DetermineAccess_EmptyAttributeDefinitions(t *testing.T) {
+	pdp := NewPdp(logger.CreateTestLogger())
+	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"}).Values
+	entityAttrs := createMockEntityAttributes("entity1", "example.org", "myattr", []string{"value1"})
 
-// 	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{})
+	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{})
 
-// 	require.NoError(t, err)
-// 	assert.Empty(t, decisions)
-// }
+	require.Error(t, err)
+	assert.Empty(t, decisions)
+}
 
 func Test_GroupDataAttributesByDefinition(t *testing.T) {
 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1", "value2"}).Values
@@ -395,17 +402,3 @@ func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
 	found := getIsValueFoundInFqnValuesSet(value, fqns, logger.CreateTestLogger())
 	assert.True(t, found)
 }
-
-// func Test_EntityRankGreaterThanOrEqualToDataRank(t *testing.T) {
-// 	order := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, []string{"low", "medium", "high"}).Values
-// 	dataAttr := &policy.Value{
-// 		Value: "medium",
-// 		Fqn:   "https://example.org/attr/myattr/value/medium",
-// 	}
-// 	entityFqns := []string{"https://example.org/attr/myattr/value/high"}
-
-// 	result, err := entityRankGreaterThanOrEqualToDataRank(order, dataAttr, entityFqns, logger.CreateTestLogger())
-
-// 	require.NoError(t, err)
-// 	assert.True(t, result)
-// }

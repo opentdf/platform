@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/**"
 
+
 permissions: {}
 
 jobs:
@@ -25,7 +26,7 @@ jobs:
         uses: reviewdog/action-actionlint@664c8ef5435569dd2880e62d891ab3ecdf98dc60 # v1.57.0
         with:
           reporter: "github-pr-review"
-          fail_on_error: true
+          fail_level: error
   zizmor:
     name: zizmor latest via PyPI
     runs-on: ubuntu-latest
@@ -52,3 +53,4 @@ jobs:
         with:
           sarif_file: results.sarif
           category: zizmor
+          

@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.4](https://github.com/opentdf/platform/compare/sdk/v0.4.3...sdk/v0.4.4) (2025-04-28)
+
+
+### Features
+
+* **sdk:** Add a KAS allowlist ([#2085](https://github.com/opentdf/platform/issues/2085)) ([d7cfdf3](https://github.com/opentdf/platform/commit/d7cfdf376681eab9becc0b5be863379a3182f410))
+
+
+### Bug Fixes
+
+* **ci:** Update expired ca and certs in oauth unit tests ([#2113](https://github.com/opentdf/platform/issues/2113)) ([5440fcc](https://github.com/opentdf/platform/commit/5440fccf100c5eea14927f8dbe4589ab6c3311f0))
+
 ## [0.4.3](https://github.com/opentdf/platform/compare/sdk/v0.4.2...sdk/v0.4.3) (2025-04-23)
 
 

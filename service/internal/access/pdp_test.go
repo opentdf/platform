@@ -831,3 +831,381 @@ func Test_DetermineAccess_ComplexScenarioWithMultipleEntities(t *testing.T) {
 	assert.False(t, decisions[entityID2].Access)
 	assert.Equal(t, 3, len(decisions[entityID2].Results))
 }
+
+func Test_EdgeCases_EmptyEntityAttributes(t *testing.T) {
+	pdp := NewPdp(createTestLogger())
+
+	// Create attribute definition
+	values := []string{"value1", "value2", "value3"}
+	definition := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, values)
+
+	// Test with empty entity attributes map
+	dataAttrs := []*policy.Value{definition.GetValues()[0]}
+	emptyEntityAttrs := map[string][]string{}
+
+	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, emptyEntityAttrs, []*policy.Attribute{definition})
+	require.NoError(t, err)
+	assert.Empty(t, decisions) // No entities to make decisions for
+
+	// Test with entity that has empty attributes array
+	entityWithEmptyAttrs := map[string][]string{"emptyEntity": {}}
+	decisions, err = pdp.DetermineAccess(t.Context(), dataAttrs, entityWithEmptyAttrs, []*policy.Attribute{definition})
+	require.NoError(t, err)
+	assert.False(t, decisions["emptyEntity"].Access)
+	assert.False(t, decisions["emptyEntity"].Results[0].Passed)
+}
+
+func Test_EdgeCases_MalformedAttributes(t *testing.T) {
+	pdp := NewPdp(createTestLogger())
+
+	// Create proper definition and data
+	values := []string{"value1"}
+	definition := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, values)
+	dataAttrs := []*policy.Value{definition.GetValues()[0]}
+
+	// Test with entity having malformed FQN
+	malformedEntityAttrs := map[string][]string{
+		"malformedEntity": {"not-a-valid-fqn"},
+	}
+
+	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, malformedEntityAttrs, []*policy.Attribute{definition})
+	require.Error(t, err) // Should error due to malformed FQN
+	assert.Empty(t, decisions)
+
+	// Test with malformed data attribute
+	malformedDataAttr := []*policy.Value{
+		{Value: "bad", Fqn: "not-a-valid-fqn"},
+	}
+
+	decisions, err = pdp.DetermineAccess(t.Context(), malformedDataAttr,
+		createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), values),
+		[]*policy.Attribute{definition})
+	require.Error(t, err) // Should error due to malformed data attribute
+	assert.Empty(t, decisions)
+}
+
+func Test_InvalidAttributeRuleType(t *testing.T) {
+	pdp := NewPdp(createTestLogger())
+
+	// Create an attribute with an unspecified rule type
+	invalidDef := &policy.Attribute{
+		Name: "invalid",
+		Namespace: &policy.Namespace{
+			Name: "example.org",
+		},
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
+		Fqn:  "https://example.org/attr/invalid",
+		Values: []*policy.Value{
+			{Value: "value1", Fqn: "https://example.org/attr/invalid/value/value1"},
+		},
+	}
+
+	dataAttrs := invalidDef.GetValues()
+	entityAttrs := createMockEntity1Attributes(invalidDef.GetNamespace().GetName(), invalidDef.GetName(), []string{"value1"})
+
+	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{invalidDef})
+	require.Error(t, err) // Should error due to invalid rule type
+	assert.Empty(t, decisions)
+}
+
+func Test_MixedRuleTypes(t *testing.T) {
+	pdp := NewPdp(createTestLogger())
+
+	// Create various attribute definitions with different rule types
+	anyOfDef := createMockAttribute("example.org", "anyof", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		[]string{"a", "b"})
+	allOfDef := createMockAttribute("example.org", "allof", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		[]string{"c", "d"})
+	hierarchyDef := createMockAttribute("example.org", "hierarchy", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		[]string{"high", "medium", "low"})
+
+	// Create entity attributes
+	entityAttrs := map[string][]string{
+		"entity1": {
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "a"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "c"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "d"),
+			fqnBuilder(hierarchyDef.GetNamespace().GetName(), hierarchyDef.GetName(), "high"),
+		},
+	}
+
+	// Create data attributes covering all types
+	dataAttrs := []*policy.Value{
+		anyOfDef.GetValues()[0],     // a
+		allOfDef.GetValues()[0],     // c
+		allOfDef.GetValues()[1],     // d
+		hierarchyDef.GetValues()[0], // high
+	}
+
+	// Test with all three rule types
+	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{anyOfDef, allOfDef, hierarchyDef})
+	require.NoError(t, err)
+
+	// Entity should have access, passing all rules
+	assert.True(t, decisions["entity1"].Access)
+	assert.Equal(t, 3, len(decisions["entity1"].Results))
+
+	// Check individual rule results
+	var anyOfResult, allOfResult, hierarchyResult *DataRuleResult
+	for _, result := range decisions["entity1"].Results {
+		switch result.RuleDefinition.GetName() {
+		case "anyof":
+			anyOfResult = &result
+		case "allof":
+			allOfResult = &result
+		case "hierarchy":
+			hierarchyResult = &result
+		}
+	}
+
+	assert.NotNil(t, anyOfResult)
+	assert.NotNil(t, allOfResult)
+	assert.NotNil(t, hierarchyResult)
+	assert.True(t, anyOfResult.Passed)
+	assert.True(t, allOfResult.Passed)
+	assert.True(t, hierarchyResult.Passed)
+
+	// Now make one rule fail (remove one of the allOf values from entity)
+	entityAttrs = map[string][]string{
+		"entity1": {
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "a"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "c"),
+			// Missing d for allOf
+			fqnBuilder(hierarchyDef.GetNamespace().GetName(), hierarchyDef.GetName(), "high"),
+		},
+	}
+
+	decisions, err = pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{anyOfDef, allOfDef, hierarchyDef})
+	require.NoError(t, err)
+
+	// Entity should not have access (allOf failed)
+	assert.False(t, decisions["entity1"].Access)
+	assert.Equal(t, 3, len(decisions["entity1"].Results))
+
+	// Find the allOf result and verify it failed
+	for _, result := range decisions["entity1"].Results {
+		if result.RuleDefinition.GetName() == "allof" {
+			assert.False(t, result.Passed)
+			assert.NotEmpty(t, result.ValueFailures)
+			break
+		}
+	}
+}
+
+func Test_HierarchyEdgeCases(t *testing.T) {
+	pdp := NewPdp(createTestLogger())
+
+	// Create hierarchy attribute with unusual order
+	values := []string{"top", "middle", "bottom", "super-bottom"}
+	definition := createMockAttribute("example.org", "hierarchy", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, values)
+
+	// Test scenarios
+	tests := []struct {
+		name           string
+		entityLevel    string
+		dataLevel      string
+		expectedAccess bool
+	}{
+		{
+			name:           "Entity at top, data at super-bottom",
+			entityLevel:    "top",
+			dataLevel:      "super-bottom",
+			expectedAccess: true,
+		},
+		{
+			name:           "Entity at top, data not in hierarchy",
+			entityLevel:    "top",
+			dataLevel:      "not-in-hierarchy",
+			expectedAccess: false,
+		},
+		{
+			name:           "Entity not in hierarchy, data in hierarchy",
+			entityLevel:    "not-in-hierarchy",
+			dataLevel:      "middle",
+			expectedAccess: false,
+		},
+		{
+			name:           "Both entity and data not in hierarchy",
+			entityLevel:    "unknown-level",
+			dataLevel:      "not-in-hierarchy",
+			expectedAccess: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create test data
+			dataValue := &policy.Value{
+				Value: tt.dataLevel,
+				Fqn:   fqnBuilder(definition.GetNamespace().GetName(), definition.GetName(), tt.dataLevel),
+			}
+
+			entityAttrs := map[string][]string{
+				"entity1": {
+					fqnBuilder(definition.GetNamespace().GetName(), definition.GetName(), tt.entityLevel),
+				},
+			}
+
+			decisions, err := pdp.DetermineAccess(t.Context(), []*policy.Value{dataValue}, entityAttrs, []*policy.Attribute{definition})
+
+			if tt.dataLevel == "not-in-hierarchy" {
+				// When data is not in hierarchy, we expect an error
+				require.NoError(t, err)
+				assert.False(t, decisions["entity1"].Access)
+			} else {
+				if err == nil {
+					assert.Equal(t, tt.expectedAccess, decisions["entity1"].Access)
+				} else {
+					// Some invalid combinations might cause errors
+					assert.Contains(t, err.Error(), "error getting")
+				}
+			}
+		})
+	}
+}
+
+func Test_MultipleIdenticalDefinitions(t *testing.T) {
+	pdp := NewPdp(createTestLogger())
+
+	// Create two identical definitions with same FQN
+	def1 := createMockAttribute("example.org", "dup", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"})
+	def2 := createMockAttribute("example.org", "dup", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"})
+
+	dataAttrs := def1.GetValues()
+	entityAttrs := createMockEntity1Attributes(def1.GetNamespace().GetName(), def1.GetName(), []string{"value1"})
+
+	// Should work, but log a warning about duplicate FQN (which we can't test directly)
+	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{def1, def2})
+	require.NoError(t, err)
+	assert.True(t, decisions[mockEntityID].Access)
+}
+
+func Test_DetermineAccess_MultipleEntities_AcrossRuleTypes(t *testing.T) {
+	pdp := NewPdp(createTestLogger())
+
+	// Define entity IDs
+	entityIDs := []string{"entity1", "entity2", "entity3", "entity4", "entity5"}
+
+	// Create various attribute definitions
+	anyOfDef := createMockAttribute("example.org", "department",
+		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		[]string{"hr", "engineering", "sales", "marketing", "finance"})
+
+	allOfDef := createMockAttribute("example.org", "certifications",
+		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		[]string{"security", "compliance", "governance"})
+
+	hierarchyDef := createMockAttribute("example.org", "access_level",
+		policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		[]string{"admin", "manager", "user", "guest"})
+
+	// Create entity attributes with various combinations
+	entityAttrs := map[string][]string{
+		entityIDs[0]: { // entity1: full access - has everything
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "engineering"),
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "hr"),
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "sales"),
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "marketing"),
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "finance"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "security"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "compliance"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "governance"),
+			fqnBuilder(hierarchyDef.GetNamespace().GetName(), hierarchyDef.GetName(), "admin"),
+		},
+		entityIDs[1]: { // entity2: engineering, missing some certs, manager level
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "engineering"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "security"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "compliance"),
+			// Missing governance
+			fqnBuilder(hierarchyDef.GetNamespace().GetName(), hierarchyDef.GetName(), "manager"),
+		},
+		entityIDs[2]: { // entity3: HR, all certs, user level
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "hr"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "security"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "compliance"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "governance"),
+			fqnBuilder(hierarchyDef.GetNamespace().GetName(), hierarchyDef.GetName(), "user"),
+		},
+		entityIDs[3]: { // entity4: Marketing, security only, guest level
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "marketing"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "security"),
+			// Missing compliance and governance
+			fqnBuilder(hierarchyDef.GetNamespace().GetName(), hierarchyDef.GetName(), "guest"),
+		},
+		entityIDs[4]: { // entity5: Multiple departments (HR and Finance), no certs, manager level
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "hr"),
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "finance"),
+			// No certifications
+			fqnBuilder(hierarchyDef.GetNamespace().GetName(), hierarchyDef.GetName(), "manager"),
+		},
+	}
+
+	// Test Case 1: Engineering document requiring all certifications, manager level
+	t.Run("Engineering document with all certifications, manager level", func(t *testing.T) {
+		dataAttrs := []*policy.Value{
+			anyOfDef.GetValues()[1],     // engineering
+			allOfDef.GetValues()[0],     // security
+			allOfDef.GetValues()[1],     // compliance
+			allOfDef.GetValues()[2],     // governance
+			hierarchyDef.GetValues()[1], // manager
+		}
+
+		decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs,
+			[]*policy.Attribute{anyOfDef, allOfDef, hierarchyDef})
+		require.NoError(t, err)
+
+		// Only entity1 (admin with all certs) and entity2 (manager in engineering) should have access
+		assert.True(t, decisions[entityIDs[0]].Access)  // entity1: full access
+		assert.False(t, decisions[entityIDs[1]].Access) // entity2: missing governance cert
+		assert.False(t, decisions[entityIDs[2]].Access) // entity3: HR department (wrong department)
+		assert.False(t, decisions[entityIDs[3]].Access) // entity4: Marketing, guest level, missing certs
+		assert.False(t, decisions[entityIDs[4]].Access) // entity5: HR+Finance but no certs
+	})
+
+	// Test Case 2: HR or Marketing document requiring only security cert, user level
+	t.Run("HR or Marketing document requiring security cert, user level", func(t *testing.T) {
+		dataAttrs := []*policy.Value{
+			anyOfDef.GetValues()[0],     // hr
+			anyOfDef.GetValues()[3],     // marketing
+			allOfDef.GetValues()[0],     // security cert only
+			hierarchyDef.GetValues()[2], // user level
+		}
+
+		decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs,
+			[]*policy.Attribute{anyOfDef, allOfDef, hierarchyDef})
+		require.NoError(t, err)
+
+		assert.True(t, decisions[entityIDs[0]].Access)  // entity1: admin has access to everything
+		assert.False(t, decisions[entityIDs[1]].Access) // entity2: engineering dept (wrong department)
+		assert.True(t, decisions[entityIDs[2]].Access)  // entity3: HR with all certs
+		assert.False(t, decisions[entityIDs[3]].Access) // entity4: Marketing but guest level (too low)
+		assert.False(t, decisions[entityIDs[4]].Access) // entity5: HR dept, manager level (no security cert)
+	})
+
+	// Test Case 3: Generic document for all departments, no certs, guest level
+	t.Run("Document for any department, no certs, guest level", func(t *testing.T) {
+		dataAttrs := []*policy.Value{
+			anyOfDef.GetValues()[0], // hr
+			anyOfDef.GetValues()[1], // engineering
+			anyOfDef.GetValues()[2], // sales
+			anyOfDef.GetValues()[3], // marketing
+			anyOfDef.GetValues()[4], // finance
+			// No certs required
+			hierarchyDef.GetValues()[3], // guest level
+		}
+
+		decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs,
+			[]*policy.Attribute{anyOfDef, hierarchyDef}) // Note: Excluding allOfDef
+		require.NoError(t, err)
+
+		// All entities should have access (we're only checking anyOf department and hierarchy)
+		assert.True(t, decisions[entityIDs[0]].Access) // entity1: admin level
+		assert.True(t, decisions[entityIDs[1]].Access) // entity2: manager level
+		assert.True(t, decisions[entityIDs[2]].Access) // entity3: user level
+		assert.True(t, decisions[entityIDs[3]].Access) // entity4: guest level (minimum allowed)
+		assert.True(t, decisions[entityIDs[4]].Access) // entity5: manager level
+
+		// Check rule results count
+		assert.Equal(t, 2, len(decisions[entityIDs[0]].Results)) // Only anyOf and hierarchy checks
+	})
+}

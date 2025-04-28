@@ -13,7 +13,11 @@ const mockEntityID = "entity1"
 
 func createTestLogger() *logger.Logger {
 	// use defaults - debug is too noisy
-	l, err := logger.NewLogger(logger.Config{})
+	l, err := logger.NewLogger(logger.Config{
+		Level:  "info",
+		Type:   "json",
+		Output: "stdout",
+	})
 	if err != nil {
 		panic("Failed to create logger")
 	}
@@ -370,40 +374,95 @@ func Test_DetermineAccess_EmptyAttributeDefinitions(t *testing.T) {
 }
 
 func Test_GroupDataAttributesByDefinition(t *testing.T) {
+	// Test case 1: Basic grouping
 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1", "value2"}).GetValues()
 	pdp := NewPdp(createTestLogger())
 
 	grouped, err := pdp.groupDataAttributesByDefinition(t.Context(), dataAttrs)
-
 	require.NoError(t, err)
 	assert.Len(t, grouped, 1)
 	assert.Contains(t, grouped, "https://example.org/attr/myattr")
+	assert.Len(t, grouped["https://example.org/attr/myattr"], 2)
+
+	// Test case 2: Multiple attributes with same definition
+	multiAttr := append(dataAttrs,
+		createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value3"}).GetValues()...)
+	grouped, err = pdp.groupDataAttributesByDefinition(t.Context(), multiAttr)
+	require.NoError(t, err)
+	assert.Len(t, grouped, 1)
+	assert.Contains(t, grouped, "https://example.org/attr/myattr")
+	assert.Len(t, grouped["https://example.org/attr/myattr"], 3)
+
+	// Test case 3: Multiple attributes with different definitions
+	multiDefAttrs := append(dataAttrs,
+		createMockAttribute("example.org", "otherattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"other1"}).GetValues()...)
+	grouped, err = pdp.groupDataAttributesByDefinition(t.Context(), multiDefAttrs)
+	require.NoError(t, err)
+	assert.Len(t, grouped, 2)
+	assert.Contains(t, grouped, "https://example.org/attr/myattr")
+	assert.Contains(t, grouped, "https://example.org/attr/otherattr")
+	assert.Len(t, grouped["https://example.org/attr/myattr"], 2)
+	assert.Len(t, grouped["https://example.org/attr/otherattr"], 1)
+
+	// Test case 4: Malformed FQN
+	malformedAttrs := []*policy.Value{
+		{Value: "bad", Fqn: "malformed-url"},
+	}
+	grouped, err = pdp.groupDataAttributesByDefinition(t.Context(), malformedAttrs)
+	require.Error(t, err)
+	assert.Empty(t, grouped)
 }
 
 func Test_MapFqnToDefinitions(t *testing.T) {
+	// Test case 1: Basic mapping
 	attr := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"})
 	pdp := NewPdp(createTestLogger())
 
 	mapped, err := pdp.mapFqnToDefinitions(t.Context(), []*policy.Attribute{attr})
-
 	require.NoError(t, err)
 	assert.Len(t, mapped, 1)
 	assert.Contains(t, mapped, "https://example.org/attr/myattr")
+	assert.Equal(t, attr, mapped["https://example.org/attr/myattr"])
+
+	// Test case 2: Multiple attributes
+	attr2 := createMockAttribute("example.com", "otherattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF, []string{"otherval"})
+	mapped, err = pdp.mapFqnToDefinitions(t.Context(), []*policy.Attribute{attr, attr2})
+	require.NoError(t, err)
+	assert.Len(t, mapped, 2)
+	assert.Contains(t, mapped, "https://example.org/attr/myattr")
+	assert.Contains(t, mapped, "https://example.com/attr/otherattr")
+	assert.Equal(t, attr, mapped["https://example.org/attr/myattr"])
+	assert.Equal(t, attr2, mapped["https://example.com/attr/otherattr"])
+
+	// Test case 3: Nil attribute
+	mapped, err = pdp.mapFqnToDefinitions(t.Context(), []*policy.Attribute{nil})
+	require.Error(t, err)
+	assert.Empty(t, mapped)
 }
 
 func Test_GetHighestRankedInstanceFromDataAttributes(t *testing.T) {
+	// Test case 1: Basic hierarchy with medium rank
 	order := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, []string{"high", "medium", "low"}).GetValues()
 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, []string{"medium"}).GetValues()
 	pdp := NewPdp(createTestLogger())
+	logger := createTestLogger()
 
-	highest, err := pdp.getHighestRankedInstanceFromDataAttributes(t.Context(), order, dataAttrs, createTestLogger())
-
+	highest, err := pdp.getHighestRankedInstanceFromDataAttributes(t.Context(), order, dataAttrs, logger)
 	require.NoError(t, err)
 	assert.NotNil(t, highest)
 	assert.Equal(t, "medium", highest.GetValue())
+
+	// Test case 2: Multiple data attributes, should return highest
+	dataAttrs = createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		[]string{"high", "medium", "low"}).GetValues()
+	highest, err = pdp.getHighestRankedInstanceFromDataAttributes(t.Context(), order, dataAttrs, logger)
+	require.NoError(t, err)
+	assert.NotNil(t, highest)
+	assert.Equal(t, "high", highest.GetValue())
 }
 
 func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
+	// Test case 1: Value exists in FQN set
 	value := &policy.Value{
 		Value: "value1",
 		Fqn:   "https://example.org/attr/myattr/value/value1",
@@ -412,4 +471,28 @@ func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
 
 	found := getIsValueFoundInFqnValuesSet(value, fqns, createTestLogger())
 	assert.True(t, found)
+
+	// Test case 2: Value does not exist in FQN set
+	valueNotFound := &policy.Value{
+		Value: "value3",
+		Fqn:   "https://example.org/attr/myattr/value/value3",
+	}
+	found = getIsValueFoundInFqnValuesSet(valueNotFound, fqns, createTestLogger())
+	assert.False(t, found)
+
+	// Test case 3: Empty FQN set
+	found = getIsValueFoundInFqnValuesSet(value, []string{}, createTestLogger())
+	assert.False(t, found)
+
+	// Test case 4: Different namespace but same value
+	valueDiffNamespace := &policy.Value{
+		Value: "value1",
+		Fqn:   "https://different.org/attr/myattr/value/value1",
+	}
+	found = getIsValueFoundInFqnValuesSet(valueDiffNamespace, fqns, createTestLogger())
+	assert.False(t, found)
+
+	// Test case 5: Nil value
+	found = getIsValueFoundInFqnValuesSet(nil, fqns, createTestLogger())
+	assert.False(t, found)
 }

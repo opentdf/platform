@@ -37,6 +37,11 @@ func (pdp *Pdp) DetermineAccess(
 		return nil, fmt.Errorf("no data attributes provided")
 	}
 
+	if len(attributeDefinitions) == 0 {
+		pdp.logger.DebugContext(ctx, "No attribute definitions provided")
+		return nil, fmt.Errorf("no attribute definitions provided")
+	}
+
 	dataAttrValsByDefinition, err := pdp.groupDataAttributesByDefinition(ctx, dataAttributes)
 	if err != nil {
 		return nil, err
@@ -60,12 +65,23 @@ func (pdp *Pdp) groupDataAttributesByDefinition(ctx context.Context, dataAttribu
 }
 
 func (pdp *Pdp) mapFqnToDefinitions(ctx context.Context, attributeDefinitions []*policy.Attribute) (map[string]*policy.Attribute, error) {
-	fqnToDefinitionMap, err := GetFqnToDefinitionMap(ctx, attributeDefinitions, pdp.logger)
-	if err != nil {
-		pdp.logger.ErrorContext(ctx, fmt.Sprintf("error grouping attribute definitions by FQN: %s", err.Error()))
-		return nil, err
+	grouped := make(map[string]*policy.Attribute)
+
+	for _, def := range attributeDefinitions {
+		a, err := GetDefinitionFqnFromDefinition(def)
+		if err != nil {
+			return nil, err
+		}
+
+		if v, ok := grouped[a]; ok {
+			pdp.logger.Warn(fmt.Sprintf("duplicate Attribute Definition FQN %s found when building FQN map which may indicate an issue", a))
+			pdp.logger.TraceContext(ctx, "duplicate attribute definitions found are: ", "attr1", v, "attr2", def)
+		}
+
+		grouped[a] = def
 	}
-	return fqnToDefinitionMap, nil
+
+	return grouped, nil
 }
 
 func (pdp *Pdp) evaluateAttributes(
@@ -509,31 +525,6 @@ type ValueFailure struct {
 }
 
 // === Utilities for FQN/Definitions ===
-
-// GetFqnToDefinitionMap creates a map of attribute definitions keyed by their FQNs.
-func GetFqnToDefinitionMap(
-	ctx context.Context,
-	attributeDefinitions []*policy.Attribute,
-	log *logger.Logger,
-) (map[string]*policy.Attribute, error) {
-	grouped := make(map[string]*policy.Attribute)
-
-	for _, def := range attributeDefinitions {
-		a, err := GetDefinitionFqnFromDefinition(def)
-		if err != nil {
-			return nil, err
-		}
-
-		if v, ok := grouped[a]; ok {
-			log.Warn(fmt.Sprintf("duplicate Attribute Definition FQN %s found when building FQN map which may indicate an issue", a))
-			log.TraceContext(ctx, "duplicate attribute definitions found are: ", "attr1", v, "attr2", def)
-		}
-
-		grouped[a] = def
-	}
-
-	return grouped, nil
-}
 
 // GroupValuesByDefinition groups policy values by their attribute definition FQNs.
 func GroupValuesByDefinition(values []*policy.Value) (map[string][]*policy.Value, error) {

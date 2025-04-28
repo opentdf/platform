@@ -386,7 +386,7 @@ func Test_GroupDataAttributesByDefinition(t *testing.T) {
 
 	// Test case 2: Multiple attributes with same definition
 	multiAttr := dataAttrs
-	multiAttr = append(dataAttrs,
+	multiAttr = append(multiAttr,
 		createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value3"}).GetValues()...)
 	grouped, err = pdp.groupDataAttributesByDefinition(t.Context(), multiAttr)
 	require.NoError(t, err)

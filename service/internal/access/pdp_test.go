@@ -36,10 +36,12 @@ func createTestLogger() *logger.Logger {
 	return l
 }
 
-func createMockEntityAttributes(entityID, namespace, name string, values []string) map[string][]string {
+const mockEntityID = "entity1"
+
+func createMockEntity1Attributes(namespace, name string, values []string) map[string][]string {
 	attrs := make(map[string][]string)
 	for _, value := range values {
-		attrs[entityID] = append(attrs[entityID], fqnBuilder(namespace, name, value))
+		attrs[mockEntityID] = append(attrs[mockEntityID], fqnBuilder(namespace, name, value))
 	}
 	return attrs
 }
@@ -75,35 +77,35 @@ func Test_AccessPDP_AnyOf(t *testing.T) {
 	}{
 		{
 			name:           "Pass - all definition values, all entitlements",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), values),
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - subset of definition values, all entitlements",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), values),
 			dataAttrs:      definition.GetValues()[1:],
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - subset of definition values, matching entititlements",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values[1:]),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), values[1:]),
 			dataAttrs:      definition.GetValues()[1:],
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - subset definition values, matching entitlements + extraneous entitlement",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value", values[0]}),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value", values[0]}),
 			dataAttrs:      []*policy.Value{definition.GetValues()[0]},
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name: "Pass - all definition values, matching entitlements + extraneous entitlement",
-			entityAttrs: map[string][]string{"entity1": {
+			entityAttrs: map[string][]string{mockEntityID: {
 				fqnBuilder("example.org", "myattr", "random_value"),
 				fqnBuilder(definition.GetNamespace().GetName(), definition.GetName(), values[0]),
 			}},
@@ -113,42 +115,42 @@ func Test_AccessPDP_AnyOf(t *testing.T) {
 		},
 		{
 			name:           "Fail - all definition values, no matching entitlements, extraneous definition entitlement value",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value"}),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value"}),
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - all definition values, wrong definition name",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), "random_definition_name", values),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), "random_definition_name", values),
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - all definition values, wrong namespace",
-			entityAttrs:    createMockEntityAttributes("entity1", "wrong.namespace", definition.GetName(), values),
+			entityAttrs:    createMockEntity1Attributes("wrong.namespace", definition.GetName(), values),
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - all definition values, no entitlements at all",
-			entityAttrs:    map[string][]string{"entity1": {}},
+			entityAttrs:    map[string][]string{mockEntityID: {}},
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - subset definition values, no entitlements at all",
-			entityAttrs:    map[string][]string{"entity1": {}},
+			entityAttrs:    map[string][]string{mockEntityID: {}},
 			dataAttrs:      definition.GetValues()[1:],
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		// {
 		// 	name:           "Fail - no data attributes",
-		// 	entityAttrs:    createMockEntityAttributes("entity1", "example.org", "myattr", []string{"value1"}),
+		// 	entityAttrs:    createMockEntity1Attributes("example.org", "myattr", []string{"value1"}),
 		// 	dataAttrs:      []*policy.Value{},
 		// 	expectedAccess: false,
 		// 	expectedPass:   false,
@@ -162,12 +164,12 @@ func Test_AccessPDP_AnyOf(t *testing.T) {
 
 			require.NoError(t, err)
 			if tt.expectedAccess {
-				assert.True(t, decisions["entity1"].Access)
+				assert.True(t, decisions[mockEntityID].Access)
 			} else {
-				assert.False(t, decisions["entity1"].Access)
+				assert.False(t, decisions[mockEntityID].Access)
 			}
-			if len(decisions["entity1"].Results) > 0 {
-				assert.Equal(t, tt.expectedPass, decisions["entity1"].Results[0].Passed)
+			if len(decisions[mockEntityID].Results) > 0 {
+				assert.Equal(t, tt.expectedPass, decisions[mockEntityID].Results[0].Passed)
 			}
 		})
 	}
@@ -185,77 +187,77 @@ func Test_AccessPDP_Hierarchy(t *testing.T) {
 	}{
 		{
 			name:           "Pass - highest privilege level data, highest entitlement",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"}),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"}),
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - middle privilege level data, middle entitlement",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"middle"}),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), []string{"middle"}),
 			dataAttrs:      []*policy.Value{definition.GetValues()[1]},
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - middle privilege level data, highest entitlement",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"}),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"}),
 			dataAttrs:      []*policy.Value{definition.GetValues()[1]},
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - lowest privilege level data, lowest entitlement",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"lowest"}),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), []string{"lowest"}),
 			dataAttrs:      []*policy.Value{definition.GetValues()[2]},
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - lowest privilege level data, middle entitlement",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"lowest"}),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), []string{"lowest"}),
 			dataAttrs:      []*policy.Value{definition.GetValues()[2]},
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Pass - lowest privilege level data, highest entitlement",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"lowest"}),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), []string{"lowest"}),
 			dataAttrs:      []*policy.Value{definition.GetValues()[2]},
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Fail - wrong namespace",
-			entityAttrs:    createMockEntityAttributes("entity1", "wrongnamespace.net", definition.GetName(), []string{"highest"}),
+			entityAttrs:    createMockEntity1Attributes("wrongnamespace.net", definition.GetName(), []string{"highest"}),
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - wrong definition name",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), "wrong_definition_name", []string{"highest"}),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), "wrong_definition_name", []string{"highest"}),
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - no matching entitlements",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value"}),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value"}),
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - no entitlements at all",
-			entityAttrs:    map[string][]string{"entity1": {}},
+			entityAttrs:    map[string][]string{mockEntityID: {}},
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		// {
 		// 	name:           "Fail - no data attributes",
-		// 	entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"}),
+		// 	entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"}),
 		// 	dataAttrs:      []*policy.Value{},
 		// 	expectedAccess: false,
 		// 	expectedPass:   false,
@@ -269,12 +271,12 @@ func Test_AccessPDP_Hierarchy(t *testing.T) {
 
 			require.NoError(t, err)
 			if tt.expectedAccess {
-				assert.True(t, decisions["entity1"].Access)
+				assert.True(t, decisions[mockEntityID].Access)
 			} else {
-				assert.False(t, decisions["entity1"].Access)
+				assert.False(t, decisions[mockEntityID].Access)
 			}
-			if len(decisions["entity1"].Results) > 0 {
-				assert.Equal(t, tt.expectedPass, decisions["entity1"].Results[0].Passed)
+			if len(decisions[mockEntityID].Results) > 0 {
+				assert.Equal(t, tt.expectedPass, decisions[mockEntityID].Results[0].Passed)
 			}
 		})
 	}
@@ -292,35 +294,35 @@ func Test_AccessPDP_AllOf(t *testing.T) {
 	}{
 		{
 			name:           "Pass - all definition values match entitlements",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), values),
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: true,
 			expectedPass:   true,
 		},
 		{
 			name:           "Fail - missing one definition value in entitlements",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), values[:2]),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), values[:2]),
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - no matching entitlements",
-			entityAttrs:    createMockEntityAttributes("entity1", definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value"}),
+			entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), []string{"random_value"}),
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - wrong namespace",
-			entityAttrs:    createMockEntityAttributes("entity1", "wrongnamespace.com", definition.GetName(), values),
+			entityAttrs:    createMockEntity1Attributes("wrongnamespace.com", definition.GetName(), values),
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
 		},
 		{
 			name:           "Fail - no entitlements at all",
-			entityAttrs:    map[string][]string{"entity1": {}},
+			entityAttrs:    map[string][]string{mockEntityID: {}},
 			dataAttrs:      definition.GetValues(),
 			expectedAccess: false,
 			expectedPass:   false,
@@ -334,12 +336,12 @@ func Test_AccessPDP_AllOf(t *testing.T) {
 
 			require.NoError(t, err)
 			if tt.expectedAccess {
-				assert.True(t, decisions["entity1"].Access)
+				assert.True(t, decisions[mockEntityID].Access)
 			} else {
-				assert.False(t, decisions["entity1"].Access)
+				assert.False(t, decisions[mockEntityID].Access)
 			}
-			if len(decisions["entity1"].Results) > 0 {
-				assert.Equal(t, tt.expectedPass, decisions["entity1"].Results[0].Passed)
+			if len(decisions[mockEntityID].Results) > 0 {
+				assert.Equal(t, tt.expectedPass, decisions[mockEntityID].Results[0].Passed)
 			}
 		})
 	}
@@ -356,7 +358,7 @@ func Test_DetermineAccess_EmptyDataAttributes(t *testing.T) {
 // func Test_DetermineAccess_EmptyAttributeDefinitions(t *testing.T) {
 // 	pdp := NewPdp(createTestLogger())
 // 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"}).GetValues()
-// 	entityAttrs := createMockEntityAttributes("entity1", "example.org", "myattr", []string{"value1"})
+// 	entityAttrs := createMockEntity1Attributes("example.org", "myattr", []string{"value1"})
 
 // 	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{})
 
@@ -423,7 +425,7 @@ func Test_RollUpDecisions(t *testing.T) {
 		{
 			name: "New entity decision",
 			entityRuleDecision: map[string]DataRuleResult{
-				"entity1": {
+				mockEntityID: {
 					Passed:         true,
 					RuleDefinition: createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{}),
 					ValueFailures:  nil,
@@ -432,7 +434,7 @@ func Test_RollUpDecisions(t *testing.T) {
 			attrDefinition:    createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{}),
 			existingDecisions: map[string]*Decision{},
 			expectedDecisions: map[string]*Decision{
-				"entity1": {
+				mockEntityID: {
 					Access: true,
 					Results: []DataRuleResult{
 						{
@@ -447,7 +449,7 @@ func Test_RollUpDecisions(t *testing.T) {
 		{
 			name: "Update existing entity decision",
 			entityRuleDecision: map[string]DataRuleResult{
-				"entity1": {
+				mockEntityID: {
 					Passed:         false,
 					RuleDefinition: createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{}),
 					ValueFailures:  nil,
@@ -455,7 +457,7 @@ func Test_RollUpDecisions(t *testing.T) {
 			},
 			attrDefinition: createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{}),
 			existingDecisions: map[string]*Decision{
-				"entity1": {
+				mockEntityID: {
 					Access: true,
 					Results: []DataRuleResult{
 						{
@@ -467,7 +469,7 @@ func Test_RollUpDecisions(t *testing.T) {
 				},
 			},
 			expectedDecisions: map[string]*Decision{
-				"entity1": {
+				mockEntityID: {
 					Access: false,
 					Results: []DataRuleResult{
 						{
@@ -510,7 +512,7 @@ func BenchmarkPdp(b *testing.B) {
 			dataAttrs: createMockAttribute("example.org", "myattr",
 				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 				[]string{"value1", "value2"}).GetValues(),
-			entityAttrs: createMockEntityAttributes("entity1", "example.org", "myattr",
+			entityAttrs: createMockEntity1Attributes("example.org", "myattr",
 				[]string{"value1"}),
 			attrDefs: []*policy.Attribute{
 				createMockAttribute("example.org", "myattr",
@@ -570,7 +572,7 @@ func BenchmarkPdp(b *testing.B) {
 			dataAttrs: createMockAttribute("authority.gov", "allofattr",
 				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 				[]string{"value1", "value2"}).GetValues(),
-			entityAttrs: createMockEntityAttributes("entity1", "authority.gov", "allofattr",
+			entityAttrs: createMockEntity1Attributes("authority.gov", "allofattr",
 				[]string{"value1", "value2"}),
 			attrDefs: []*policy.Attribute{
 				createMockAttribute("authority.gov", "allofattr",
@@ -632,7 +634,7 @@ func BenchmarkPdp(b *testing.B) {
 			dataAttrs: createMockAttribute("somewhere.net", "theirattr",
 				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 				[]string{"level1", "level2"}).GetValues(),
-			entityAttrs: createMockEntityAttributes("entity1", "somewhere.net", "theirattr",
+			entityAttrs: createMockEntity1Attributes("somewhere.net", "theirattr",
 				[]string{"level1"}),
 			attrDefs: []*policy.Attribute{
 				createMockAttribute("somewhere.net", "theirattr",
@@ -712,7 +714,7 @@ func BenchmarkDetermineAccessFailures(b *testing.B) {
 			dataAttrs: createMockAttribute("example.org", "myattr",
 				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 				[]string{"value1", "value2"}).GetValues(),
-			entityAttrs: createMockEntityAttributes("entity1", "example.org", "myattr",
+			entityAttrs: createMockEntity1Attributes("example.org", "myattr",
 				[]string{"value3", "value4"}), // No match with data attributes
 			attrDefs: []*policy.Attribute{
 				createMockAttribute("example.org", "myattr",
@@ -749,7 +751,7 @@ func BenchmarkDetermineAccessFailures(b *testing.B) {
 			dataAttrs: createMockAttribute("authority.gov", "allofattr",
 				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 				[]string{"value1", "value2"}).GetValues(),
-			entityAttrs: createMockEntityAttributes("entity1", "authority.gov", "allofattr",
+			entityAttrs: createMockEntity1Attributes("authority.gov", "allofattr",
 				[]string{"value1"}), // Missing value2
 			attrDefs: []*policy.Attribute{
 				createMockAttribute("authority.gov", "allofattr",
@@ -788,7 +790,7 @@ func BenchmarkDetermineAccessFailures(b *testing.B) {
 			dataAttrs: createMockAttribute("somewhere.net", "theirattr",
 				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 				[]string{"level1", "level2"}).GetValues(),
-			entityAttrs: createMockEntityAttributes("entity1", "somewhere.net", "theirattr",
+			entityAttrs: createMockEntity1Attributes("somewhere.net", "theirattr",
 				[]string{"level2"}), // Lower level than required
 			attrDefs: []*policy.Attribute{
 				createMockAttribute("somewhere.net", "theirattr",
@@ -824,7 +826,7 @@ func BenchmarkDetermineAccessFailures(b *testing.B) {
 			dataAttrs: createMockAttribute("example.org", "myattr",
 				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 				[]string{"value1", "value2"}).GetValues(),
-			entityAttrs: createMockEntityAttributes("entity1", "wrong.org", "myattr",
+			entityAttrs: createMockEntity1Attributes("wrong.org", "myattr",
 				[]string{"value1", "value2"}),
 			attrDefs: []*policy.Attribute{
 				createMockAttribute("example.org", "myattr",
@@ -837,7 +839,7 @@ func BenchmarkDetermineAccessFailures(b *testing.B) {
 			dataAttrs: createMockAttribute("example.org", "myattr",
 				policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 				[]string{"value1", "value2"}).GetValues(),
-			entityAttrs: map[string][]string{"entity1": {}}, // No attributes at all
+			entityAttrs: map[string][]string{mockEntityID: {}}, // No attributes at all
 			attrDefs: []*policy.Attribute{
 				createMockAttribute("example.org", "myattr",
 					policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,

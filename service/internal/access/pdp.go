@@ -59,7 +59,7 @@ func (pdp *Pdp) groupDataAttributesByDefinition(ctx context.Context, dataAttribu
 func (pdp *Pdp) mapFqnToDefinitions(attributeDefinitions []*policy.Attribute) (map[string]*policy.Attribute, error) {
 	fqnToDefinitionMap := make(map[string]*policy.Attribute, len(attributeDefinitions))
 	for _, attr := range attributeDefinitions {
-		fqnToDefinitionMap[attr.Fqn] = attr
+		fqnToDefinitionMap[attr.GetFqn()] = attr
 	}
 	return fqnToDefinitionMap, nil
 }
@@ -411,10 +411,7 @@ func (pdp *Pdp) hierarchyRule(
 
 		// Check if entity has sufficient rank
 		if len(relevantEntityAttrs) > 0 {
-			passed, err = entityHasSufficientRank(orderIndexMap, dvIndex, relevantEntityAttrs)
-			if err != nil {
-				return nil, err
-			}
+			passed = entityHasSufficientRank(orderIndexMap, dvIndex, relevantEntityAttrs)
 		}
 
 		if !passed {
@@ -440,7 +437,7 @@ func entityHasSufficientRank(
 	orderIndexMap map[string]int,
 	dataValueIndex int,
 	entityAttrs []string,
-) (bool, error) {
+) bool {
 	for _, entityAttr := range entityAttrs {
 		// Extract the value from the FQN (last part after /value/)
 		parts := strings.Split(entityAttr, "/value/")
@@ -454,19 +451,19 @@ func entityHasSufficientRank(
 		if idx, exists := orderIndexMap[entityValue]; exists {
 			// If entity rank is equal or higher (lower index), access is granted
 			if idx <= dataValueIndex {
-				return true, nil
+				return true
 			}
 		}
 
 		// Check by full FQN as a fallback
 		if idx, exists := orderIndexMap[entityAttr]; exists {
 			if idx <= dataValueIndex {
-				return true, nil
+				return true
 			}
 		}
 	}
 
-	return false, nil
+	return false
 }
 
 // getHighestRankedInstanceFromDataAttributes finds the data attribute with the highest rank in the hierarchy.
@@ -476,7 +473,7 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(
 	dataAttributeGroup []*policy.Value,
 ) (*policy.Value, error) {
 	if len(dataAttributeGroup) == 0 || len(order) == 0 {
-		return nil, nil
+		return nil, fmt.Errorf("no data attributes or order values provided")
 	}
 
 	// Special case: if there's only one data attribute, just check if it's valid
@@ -490,7 +487,7 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(
 				return dataAttr, nil
 			}
 		}
-		return nil, nil
+		return nil, fmt.Errorf("data attribute value %s not found in order", dataValue)
 	}
 
 	// Create a map for O(1) lookups of value indices

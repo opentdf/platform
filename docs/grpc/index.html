@@ -349,6 +349,18 @@
                 </li>
               
                 <li>
+                  <a href="#authorization.EntityEntitlementsV2"><span class="badge">M</span>EntityEntitlementsV2</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.EntityEntitlementsV2.ActionsList"><span class="badge">M</span>EntityEntitlementsV2.ActionsList</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.EntityEntitlementsV2.ActionsPerAttributeValueFqnEntry"><span class="badge">M</span>EntityEntitlementsV2.ActionsPerAttributeValueFqnEntry</a>
+                </li>
+              
+                <li>
                   <a href="#authorization.GetDecisionsByTokenRequest"><span class="badge">M</span>GetDecisionsByTokenRequest</a>
                 </li>
               
@@ -370,6 +382,14 @@
               
                 <li>
                   <a href="#authorization.GetEntitlementsResponse"><span class="badge">M</span>GetEntitlementsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.GetEntitlementsV2Request"><span class="badge">M</span>GetEntitlementsV2Request</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.GetEntitlementsV2Response"><span class="badge">M</span>GetEntitlementsV2Response</a>
                 </li>
               
                 <li>
@@ -3137,7 +3157,7 @@ string</p></td>
         
       
         <h3 id="authorization.EntityEntitlements">EntityEntitlements</h3>
-        <p></p>
+        <p>Deprecated: use EntityEntitlementsV2 instead</p>
 
         
           <table class="field-table">
@@ -3157,6 +3177,92 @@ string</p></td>
                   <td>attribute_value_fqns</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.EntityEntitlementsV2">EntityEntitlementsV2</h3>
+        <p>Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entity_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>actions_per_attribute_value_fqn</td>
+                  <td><a href="#authorization.EntityEntitlementsV2.ActionsPerAttributeValueFqnEntry">EntityEntitlementsV2.ActionsPerAttributeValueFqnEntry</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.EntityEntitlementsV2.ActionsList">EntityEntitlementsV2.ActionsList</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>actions</td>
+                  <td><a href="#policy.Action">policy.Action</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.EntityEntitlementsV2.ActionsPerAttributeValueFqnEntry">EntityEntitlementsV2.ActionsPerAttributeValueFqnEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#authorization.EntityEntitlementsV2.ActionsList">EntityEntitlementsV2.ActionsList</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -3264,7 +3370,7 @@ string</p></td>
         
       
         <h3 id="authorization.GetEntitlementsRequest">GetEntitlementsRequest</h3>
-        <p>Request to get entitlements for one or more entities for an optional attribute scope</p><p>Example: Get entitlements for bob and alice (both represented using an email address</p><p>{</p><p>"entities": [</p><p>{</p><p>"id": "e1",</p><p>"emailAddress": "bob@example.org"</p><p>},</p><p>{</p><p>"id": "e2",</p><p>"emailAddress": "alice@example.org"</p><p>}</p><p>],</p><p>"scope": {</p><p>"attributeFqns": [</p><p>"https://example.net/attr/attr1/value/value1",</p><p>"https://example.net/attr/attr1/value/value2"</p><p>]</p><p>}</p><p>}</p>
+        <p>Deprecated: use GetEntitlementsRequestV2 instead</p>
 
         
           <table class="field-table">
@@ -3302,7 +3408,7 @@ string</p></td>
         
       
         <h3 id="authorization.GetEntitlementsResponse">GetEntitlementsResponse</h3>
-        <p>Example Response for a request of : Get entitlements for bob and alice (both represented using an email address</p><p>{</p><p>"entitlements":  [</p><p>{</p><p>"entityId":  "e1",</p><p>"attributeValueReferences":  [</p><p>{</p><p>"attributeFqn":  "http://www.example.org/attr/foo/value/bar"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"entityId":  "e2",</p><p>"attributeValueReferences":  [</p><p>{</p><p>"attributeFqn":  "http://www.example.org/attr/color/value/red"</p><p>}</p><p>]</p><p>}</p><p>]</p><p>}</p>
+        <p>Deprecated: use GetEntitlementsV2Request instead</p>
 
         
           <table class="field-table">
@@ -3314,6 +3420,68 @@ string</p></td>
                 <tr>
                   <td>entitlements</td>
                   <td><a href="#authorization.EntityEntitlements">EntityEntitlements</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.GetEntitlementsV2Request">GetEntitlementsV2Request</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entities</td>
+                  <td><a href="#authorization.Entity">Entity</a></td>
+                  <td>repeated</td>
+                  <td><p>list of requested entities </p></td>
+                </tr>
+              
+                <tr>
+                  <td>scope</td>
+                  <td><a href="#authorization.ResourceAttribute">ResourceAttribute</a></td>
+                  <td>optional</td>
+                  <td><p>optional attribute fqn as a scope </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_comprehensive_hierarchy</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td>optional</td>
+                  <td><p>optional parameter to return a full list of entitlements - returns lower hierarchy attributes </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.GetEntitlementsV2Response">GetEntitlementsV2Response</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entitlements</td>
+                  <td><a href="#authorization.EntityEntitlementsV2">EntityEntitlementsV2</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -3515,6 +3683,13 @@ string</p></td>
                 <td>GetEntitlements</td>
                 <td><a href="#authorization.GetEntitlementsRequest">GetEntitlementsRequest</a></td>
                 <td><a href="#authorization.GetEntitlementsResponse">GetEntitlementsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetEntitlementsV2</td>
+                <td><a href="#authorization.GetEntitlementsV2Request">GetEntitlementsV2Request</a></td>
+                <td><a href="#authorization.GetEntitlementsV2Response">GetEntitlementsV2Response</a></td>
                 <td><p></p></td>
               </tr>
             

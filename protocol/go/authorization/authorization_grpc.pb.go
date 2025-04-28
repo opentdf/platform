@@ -22,6 +22,7 @@ const (
 	AuthorizationService_GetDecisions_FullMethodName        = "/authorization.AuthorizationService/GetDecisions"
 	AuthorizationService_GetDecisionsByToken_FullMethodName = "/authorization.AuthorizationService/GetDecisionsByToken"
 	AuthorizationService_GetEntitlements_FullMethodName     = "/authorization.AuthorizationService/GetEntitlements"
+	AuthorizationService_GetEntitlementsV2_FullMethodName   = "/authorization.AuthorizationService/GetEntitlementsV2"
 )
 
 // AuthorizationServiceClient is the client API for AuthorizationService service.
@@ -31,6 +32,7 @@ type AuthorizationServiceClient interface {
 	GetDecisions(ctx context.Context, in *GetDecisionsRequest, opts ...grpc.CallOption) (*GetDecisionsResponse, error)
 	GetDecisionsByToken(ctx context.Context, in *GetDecisionsByTokenRequest, opts ...grpc.CallOption) (*GetDecisionsByTokenResponse, error)
 	GetEntitlements(ctx context.Context, in *GetEntitlementsRequest, opts ...grpc.CallOption) (*GetEntitlementsResponse, error)
+	GetEntitlementsV2(ctx context.Context, in *GetEntitlementsV2Request, opts ...grpc.CallOption) (*GetEntitlementsV2Response, error)
 }
 
 type authorizationServiceClient struct {
@@ -68,6 +70,15 @@ func (c *authorizationServiceClient) GetEntitlements(ctx context.Context, in *Ge
 	return out, nil
 }
 
+func (c *authorizationServiceClient) GetEntitlementsV2(ctx context.Context, in *GetEntitlementsV2Request, opts ...grpc.CallOption) (*GetEntitlementsV2Response, error) {
+	out := new(GetEntitlementsV2Response)
+	err := c.cc.Invoke(ctx, AuthorizationService_GetEntitlementsV2_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthorizationServiceServer is the server API for AuthorizationService service.
 // All implementations must embed UnimplementedAuthorizationServiceServer
 // for forward compatibility
@@ -75,6 +86,7 @@ type AuthorizationServiceServer interface {
 	GetDecisions(context.Context, *GetDecisionsRequest) (*GetDecisionsResponse, error)
 	GetDecisionsByToken(context.Context, *GetDecisionsByTokenRequest) (*GetDecisionsByTokenResponse, error)
 	GetEntitlements(context.Context, *GetEntitlementsRequest) (*GetEntitlementsResponse, error)
+	GetEntitlementsV2(context.Context, *GetEntitlementsV2Request) (*GetEntitlementsV2Response, error)
 	mustEmbedUnimplementedAuthorizationServiceServer()
 }
 
@@ -90,6 +102,9 @@ func (UnimplementedAuthorizationServiceServer) GetDecisionsByToken(context.Conte
 }
 func (UnimplementedAuthorizationServiceServer) GetEntitlements(context.Context, *GetEntitlementsRequest) (*GetEntitlementsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEntitlements not implemented")
+}
+func (UnimplementedAuthorizationServiceServer) GetEntitlementsV2(context.Context, *GetEntitlementsV2Request) (*GetEntitlementsV2Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetEntitlementsV2 not implemented")
 }
 func (UnimplementedAuthorizationServiceServer) mustEmbedUnimplementedAuthorizationServiceServer() {}
 
@@ -158,6 +173,24 @@ func _AuthorizationService_GetEntitlements_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthorizationService_GetEntitlementsV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetEntitlementsV2Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthorizationServiceServer).GetEntitlementsV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthorizationService_GetEntitlementsV2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthorizationServiceServer).GetEntitlementsV2(ctx, req.(*GetEntitlementsV2Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthorizationService_ServiceDesc is the grpc.ServiceDesc for AuthorizationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -176,6 +209,10 @@ var AuthorizationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetEntitlements",
 			Handler:    _AuthorizationService_GetEntitlements_Handler,
+		},
+		{
+			MethodName: "GetEntitlementsV2",
+			Handler:    _AuthorizationService_GetEntitlementsV2_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -42,6 +42,9 @@ const (
 	// AuthorizationServiceGetEntitlementsProcedure is the fully-qualified name of the
 	// AuthorizationService's GetEntitlements RPC.
 	AuthorizationServiceGetEntitlementsProcedure = "/authorization.AuthorizationService/GetEntitlements"
+	// AuthorizationServiceGetEntitlementsV2Procedure is the fully-qualified name of the
+	// AuthorizationService's GetEntitlementsV2 RPC.
+	AuthorizationServiceGetEntitlementsV2Procedure = "/authorization.AuthorizationService/GetEntitlementsV2"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -50,6 +53,7 @@ var (
 	authorizationServiceGetDecisionsMethodDescriptor        = authorizationServiceServiceDescriptor.Methods().ByName("GetDecisions")
 	authorizationServiceGetDecisionsByTokenMethodDescriptor = authorizationServiceServiceDescriptor.Methods().ByName("GetDecisionsByToken")
 	authorizationServiceGetEntitlementsMethodDescriptor     = authorizationServiceServiceDescriptor.Methods().ByName("GetEntitlements")
+	authorizationServiceGetEntitlementsV2MethodDescriptor   = authorizationServiceServiceDescriptor.Methods().ByName("GetEntitlementsV2")
 )
 
 // AuthorizationServiceClient is a client for the authorization.AuthorizationService service.
@@ -57,6 +61,7 @@ type AuthorizationServiceClient interface {
 	GetDecisions(context.Context, *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error)
 	GetDecisionsByToken(context.Context, *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error)
 	GetEntitlements(context.Context, *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error)
+	GetEntitlementsV2(context.Context, *connect.Request[authorization.GetEntitlementsV2Request]) (*connect.Response[authorization.GetEntitlementsV2Response], error)
 }
 
 // NewAuthorizationServiceClient constructs a client for the authorization.AuthorizationService
@@ -87,6 +92,12 @@ func NewAuthorizationServiceClient(httpClient connect.HTTPClient, baseURL string
 			connect.WithSchema(authorizationServiceGetEntitlementsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		getEntitlementsV2: connect.NewClient[authorization.GetEntitlementsV2Request, authorization.GetEntitlementsV2Response](
+			httpClient,
+			baseURL+AuthorizationServiceGetEntitlementsV2Procedure,
+			connect.WithSchema(authorizationServiceGetEntitlementsV2MethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -95,6 +106,7 @@ type authorizationServiceClient struct {
 	getDecisions        *connect.Client[authorization.GetDecisionsRequest, authorization.GetDecisionsResponse]
 	getDecisionsByToken *connect.Client[authorization.GetDecisionsByTokenRequest, authorization.GetDecisionsByTokenResponse]
 	getEntitlements     *connect.Client[authorization.GetEntitlementsRequest, authorization.GetEntitlementsResponse]
+	getEntitlementsV2   *connect.Client[authorization.GetEntitlementsV2Request, authorization.GetEntitlementsV2Response]
 }
 
 // GetDecisions calls authorization.AuthorizationService.GetDecisions.
@@ -112,12 +124,18 @@ func (c *authorizationServiceClient) GetEntitlements(ctx context.Context, req *c
 	return c.getEntitlements.CallUnary(ctx, req)
 }
 
+// GetEntitlementsV2 calls authorization.AuthorizationService.GetEntitlementsV2.
+func (c *authorizationServiceClient) GetEntitlementsV2(ctx context.Context, req *connect.Request[authorization.GetEntitlementsV2Request]) (*connect.Response[authorization.GetEntitlementsV2Response], error) {
+	return c.getEntitlementsV2.CallUnary(ctx, req)
+}
+
 // AuthorizationServiceHandler is an implementation of the authorization.AuthorizationService
 // service.
 type AuthorizationServiceHandler interface {
 	GetDecisions(context.Context, *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error)
 	GetDecisionsByToken(context.Context, *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error)
 	GetEntitlements(context.Context, *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error)
+	GetEntitlementsV2(context.Context, *connect.Request[authorization.GetEntitlementsV2Request]) (*connect.Response[authorization.GetEntitlementsV2Response], error)
 }
 
 // NewAuthorizationServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -144,6 +162,12 @@ func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...con
 		connect.WithSchema(authorizationServiceGetEntitlementsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	authorizationServiceGetEntitlementsV2Handler := connect.NewUnaryHandler(
+		AuthorizationServiceGetEntitlementsV2Procedure,
+		svc.GetEntitlementsV2,
+		connect.WithSchema(authorizationServiceGetEntitlementsV2MethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/authorization.AuthorizationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthorizationServiceGetDecisionsProcedure:
@@ -152,6 +176,8 @@ func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...con
 			authorizationServiceGetDecisionsByTokenHandler.ServeHTTP(w, r)
 		case AuthorizationServiceGetEntitlementsProcedure:
 			authorizationServiceGetEntitlementsHandler.ServeHTTP(w, r)
+		case AuthorizationServiceGetEntitlementsV2Procedure:
+			authorizationServiceGetEntitlementsV2Handler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -171,4 +197,8 @@ func (UnimplementedAuthorizationServiceHandler) GetDecisionsByToken(context.Cont
 
 func (UnimplementedAuthorizationServiceHandler) GetEntitlements(context.Context, *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("authorization.AuthorizationService.GetEntitlements is not implemented"))
+}
+
+func (UnimplementedAuthorizationServiceHandler) GetEntitlementsV2(context.Context, *connect.Request[authorization.GetEntitlementsV2Request]) (*connect.Response[authorization.GetEntitlementsV2Response], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("authorization.AuthorizationService.GetEntitlementsV2 is not implemented"))
 }

@@ -4,9 +4,7 @@ package authorization;
 
 import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
-
 import "policy/objects.proto";
-
 
 message Token {
   string id = 1; // ephemeral id for tracking between request and response
@@ -47,9 +45,9 @@ message EntityChain {
 }
 
 /*
-   Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)
-   and Alice (represented by entity chain ec2) have TRANSMIT authorization for
-   2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+  Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)
+  and Alice (represented by entity chain ec2) have TRANSMIT authorization for
+  2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
 
   {
   "actions": [
@@ -158,31 +156,7 @@ message GetDecisionsResponse {
   repeated DecisionResponse decision_responses = 1;
 }
 
-/*
-   Request to get entitlements for one or more entities for an optional attribute scope
-
-   Example: Get entitlements for bob and alice (both represented using an email address
-
-   {
-     "entities": [
-       {
-         "id": "e1",
-         "emailAddress": "bob@example.org"
-       },
-       {
-         "id": "e2",
-         "emailAddress": "alice@example.org"
-       }
-     ],
-     "scope": {
-        "attributeFqns": [
-          "https://example.net/attr/attr1/value/value1",
-         "https://example.net/attr/attr1/value/value2"
-        ]
-      }
-   }
-
-*/
+// Deprecated: use GetEntitlementsRequestV2 instead
 message GetEntitlementsRequest {
   // list of requested entities
   repeated Entity entities = 1;
@@ -192,9 +166,29 @@ message GetEntitlementsRequest {
   optional bool with_comprehensive_hierarchy = 3;
 }
 
+message GetEntitlementsV2Request {
+  // list of requested entities
+  repeated Entity entities = 1;
+  // optional attribute fqn as a scope
+  optional ResourceAttribute scope = 2;
+  // optional parameter to return a full list of entitlements - returns lower hierarchy attributes
+  optional bool with_comprehensive_hierarchy = 3;
+}
+
+// Deprecated: use EntityEntitlementsV2 instead
 message EntityEntitlements {
   string entity_id = 1;
   repeated string attribute_value_fqns = 2;
+}
+
+// Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]
+message EntityEntitlementsV2 {
+  message ActionsList {
+    repeated policy.Action actions = 1;
+  }
+
+  string entity_id = 1;
+  map<string, ActionsList> actions_per_attribute_value_fqn = 2;
 }
 
 //A logical bucket of attributes belonging to a "Resource"
@@ -203,42 +197,19 @@ message ResourceAttribute {
   repeated string attribute_value_fqns = 2;
 }
 
-/*
-
-   Example Response for a request of : Get entitlements for bob and alice (both represented using an email address
-
-   {
-     "entitlements":  [
-       {
-         "entityId":  "e1",
-         "attributeValueReferences":  [
-           {
-             "attributeFqn":  "http://www.example.org/attr/foo/value/bar"
-           }
-         ]
-       },
-       {
-         "entityId":  "e2",
-         "attributeValueReferences":  [
-           {
-             "attributeFqn":  "http://www.example.org/attr/color/value/red"
-           }
-         ]
-       }
-     ]
-   }
-
-
-*/
+// Deprecated: use GetEntitlementsV2Request instead
 message GetEntitlementsResponse {
   repeated EntityEntitlements entitlements = 1;
 }
 
+message GetEntitlementsV2Response {
+  repeated EntityEntitlementsV2 entitlements = 1;
+}
 
 /*
-   Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)
-   and Alice and client2 (represented by token tok2) have TRANSMIT authorization for
-   2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+  Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)
+  and Alice and client2 (represented by token tok2) have TRANSMIT authorization for
+  2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
 
   {
   "actions": [
@@ -302,4 +273,5 @@ service AuthorizationService {
       body: "*"
     };
   }
+  rpc GetEntitlementsV2(GetEntitlementsV2Request) returns (GetEntitlementsV2Response) {}
 }

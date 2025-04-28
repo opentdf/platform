@@ -124,8 +124,8 @@ jobs:
       - name: create pull request
         run: |
           git restore .
-          git pull origin update-go-mods-for-$MATRIX_PATH
-          gh pr create -B main -H update-go-mods-for-$MATRIX_PATH --fill
+          git pull origin update-go-mods-for-"$MATRIX_PATH"
+          gh pr create -B main -H update-go-mods-for-"$MATRIX_PATH" --fill
           gh pr merge --auto --squash
         env:
           GITHUB_TOKEN: "${{ steps.generate_token.outputs.token }}"

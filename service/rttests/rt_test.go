@@ -115,7 +115,7 @@ func (s *RoundtripSuite) SetupSuite() {
 
 	opts = append(opts, sdk.WithClientCredentials(s.TestConfig.ClientID, s.TestConfig.ClientSecret, nil))
 
-	sdk, err := sdk.New(s.TestConfig.PlatformEndpoint, opts...)
+	sdk, err := sdk.New(fmt.Sprintf("http://%s", s.TestConfig.PlatformEndpoint), opts...)
 	s.Require().NoError(err)
 	s.client = sdk
 
@@ -423,6 +423,22 @@ func bulk(client *sdk.SDK, tdfSuccess []string, tdfFail []string, plaintext stri
 	for _, tdf := range failTDF {
 		if tdf.Error == nil {
 			return fmt.Errorf("no expected err")
+		}
+	}
+
+	_ = client.BulkDecrypt(
+		context.Background(),
+		sdk.WithTDFs(passTDF...),
+		sdk.WithTDFType(sdk.Standard),
+		sdk.WithBulkKasAllowlist([]string{"http://some-non-existant:8080"}),
+	)
+	for _, tdf := range passTDF {
+		if tdf.Error == nil {
+			return fmt.Errorf("no expected err")
+		}
+		slog.Error("pass tdf error", "error", tdf.Error.Error())
+		if !strings.Contains(tdf.Error.Error(), "KasAllowlist") {
+			return fmt.Errorf("did not receive kas allowlist error")
 		}
 	}
 

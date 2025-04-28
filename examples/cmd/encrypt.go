@@ -99,6 +99,11 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	baseKasUrl := platformEndpoint
+	if !strings.HasPrefix(baseKasUrl, "http://") && !strings.HasPrefix(baseKasUrl, "https://") {
+		baseKasUrl = fmt.Sprintf("http://%s", baseKasUrl)
+	}
+
 	if !nanoFormat {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
 		if !autoconfigure {
@@ -106,8 +111,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			opts = append(opts, sdk.WithWrappingKeyAlg(ocrypto.EC256Key))
 			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{
-					// examples assume insecure http
-					URL:       fmt.Sprintf("http://%s", platformEndpoint),
+					URL:       baseKasUrl,
 					PublicKey: "",
 				}))
 		}
@@ -138,7 +142,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		if collection > 0 {
 			nanoTDFConfig.EnableCollection()
 		}
-		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", platformEndpoint))
+		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("%s/kas", baseKasUrl))
 		if err != nil {
 			return err
 		}

@@ -349,7 +349,7 @@
           "title": "optional parameter to return a full list of entitlements - returns lower hierarchy attributes"
         }
       },
-      "title": "Deprecated: use GetEntitlementsRequestV2 instead"
+      "title": "Deprecated: use GetEntitlementsV2Request instead"
     },
     "authorizationGetEntitlementsResponse": {
       "type": "object",

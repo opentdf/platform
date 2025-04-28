@@ -265,6 +265,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 					decisionResp := &authorization.DecisionResponse{
 						Decision:      authorization.DecisionResponse_DECISION_DENY,
 						EntityChainId: ec.GetId(),
+						// TODO: make this real
 						Action: &policy.Action{
 							Value: &policy.Action_Standard{
 								Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
@@ -360,7 +361,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			// Entitlements for environment entites in chain
 			envEntityAttrValues := make(map[string][]string)
 			// Entitlementsfor sbuject entities in chain
-			subjectEntityAttrValues := make(map[string][]string)
+			subjectEntityAttrValues := make(access.EntityIDsToEntitlements)
 
 			// handle empty entity / attr list
 			decision := authorization.DecisionResponse_DECISION_DENY
@@ -429,6 +430,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			decisionResp := &authorization.DecisionResponse{
 				Decision:      decision,
 				EntityChainId: ec.GetId(),
+				// TODO: make this real
 				Action: &policy.Action{
 					Value: &policy.Action_Standard{
 						Standard: policy.Action_STANDARD_ACTION_TRANSMIT,

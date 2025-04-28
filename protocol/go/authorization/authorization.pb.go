@@ -764,7 +764,7 @@ func (x *GetDecisionsResponse) GetDecisionResponses() []*DecisionResponse {
 	return nil
 }
 
-// Deprecated: use GetEntitlementsRequestV2 instead
+// Deprecated: use GetEntitlementsV2Request instead
 type GetEntitlementsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

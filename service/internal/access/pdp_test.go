@@ -25,6 +25,17 @@ func fqnBuilder(n string, a string, v string) string {
 	}
 }
 
+func createTestLogger() *logger.Logger {
+	l, _ := logger.NewLogger(
+		logger.Config{
+			Level:  "info", // debug is too noisy for benchmarks
+			Output: "stdout",
+			Type:   "json",
+		},
+	)
+	return l
+}
+
 func createMockEntityAttributes(entityID, namespace, name string, values []string) map[string][]string {
 	attrs := make(map[string][]string)
 	for _, value := range values {
@@ -146,7 +157,7 @@ func Test_AccessPDP_AnyOf(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pdp := NewPdp(logger.CreateTestLogger())
+			pdp := NewPdp(createTestLogger())
 			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
 
 			require.NoError(t, err)
@@ -253,7 +264,7 @@ func Test_AccessPDP_Hierarchy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pdp := NewPdp(logger.CreateTestLogger())
+			pdp := NewPdp(createTestLogger())
 			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
 
 			require.NoError(t, err)
@@ -318,7 +329,7 @@ func Test_AccessPDP_AllOf(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pdp := NewPdp(logger.CreateTestLogger())
+			pdp := NewPdp(createTestLogger())
 			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
 
 			require.NoError(t, err)
@@ -335,7 +346,7 @@ func Test_AccessPDP_AllOf(t *testing.T) {
 }
 
 func Test_DetermineAccess_EmptyDataAttributes(t *testing.T) {
-	pdp := NewPdp(logger.CreateTestLogger())
+	pdp := NewPdp(createTestLogger())
 	decisions, err := pdp.DetermineAccess(t.Context(), []*policy.Value{}, map[string][]string{}, []*policy.Attribute{})
 
 	require.NoError(t, err)
@@ -343,7 +354,7 @@ func Test_DetermineAccess_EmptyDataAttributes(t *testing.T) {
 }
 
 // func Test_DetermineAccess_EmptyAttributeDefinitions(t *testing.T) {
-// 	pdp := NewPdp(logger.CreateTestLogger())
+// 	pdp := NewPdp(createTestLogger())
 // 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"}).Values
 // 	entityAttrs := createMockEntityAttributes("entity1", "example.org", "myattr", []string{"value1"})
 
@@ -355,7 +366,7 @@ func Test_DetermineAccess_EmptyDataAttributes(t *testing.T) {
 
 func Test_GroupDataAttributesByDefinition(t *testing.T) {
 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1", "value2"}).Values
-	pdp := NewPdp(logger.CreateTestLogger())
+	pdp := NewPdp(createTestLogger())
 
 	grouped, err := pdp.groupDataAttributesByDefinition(t.Context(), dataAttrs)
 
@@ -366,7 +377,7 @@ func Test_GroupDataAttributesByDefinition(t *testing.T) {
 
 func Test_MapFqnToDefinitions(t *testing.T) {
 	attr := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"})
-	pdp := NewPdp(logger.CreateTestLogger())
+	pdp := NewPdp(createTestLogger())
 
 	mapped, err := pdp.mapFqnToDefinitions([]*policy.Attribute{attr})
 
@@ -378,9 +389,9 @@ func Test_MapFqnToDefinitions(t *testing.T) {
 func Test_GetHighestRankedInstanceFromDataAttributes(t *testing.T) {
 	order := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, []string{"high", "medium", "low"}).Values
 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, []string{"medium"}).Values
-	pdp := NewPdp(logger.CreateTestLogger())
+	pdp := NewPdp(createTestLogger())
 
-	highest, err := pdp.getHighestRankedInstanceFromDataAttributes(t.Context(), order, dataAttrs, logger.CreateTestLogger())
+	highest, err := pdp.getHighestRankedInstanceFromDataAttributes(t.Context(), order, dataAttrs)
 
 	require.NoError(t, err)
 	assert.NotNil(t, highest)
@@ -394,7 +405,7 @@ func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
 	}
 	fqns := []string{"https://example.org/attr/myattr/value/value1", "https://example.org/attr/myattr/value/value2"}
 
-	found := getIsValueFoundInFqnValuesSet(value, fqns, logger.CreateTestLogger())
+	found := getIsValueFoundInFqnValuesSet(value, fqns, createTestLogger())
 	assert.True(t, found)
 }
 
@@ -406,7 +417,7 @@ func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
 // 	}
 // 	entityFqns := []string{"https://example.org/attr/myattr/value/high"}
 
-// 	result, err := entityRankGreaterThanOrEqualToDataRank(order, dataAttr, entityFqns, logger.CreateTestLogger())
+// 	result, err := entityRankGreaterThanOrEqualToDataRank(order, dataAttr, entityFqns, createTestLogger())
 
 // 	require.NoError(t, err)
 // 	assert.True(t, result)
@@ -489,7 +500,7 @@ func Test_RollUpDecisions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			decisions := tt.existingDecisions
-			pdp := NewPdp(logger.CreateTestLogger())
+			pdp := NewPdp(createTestLogger())
 			pdp.rollUpDecisions(tt.entityRuleDecision, tt.attrDefinition, decisions)
 
 			assert.Equal(t, tt.expectedDecisions, decisions)
@@ -683,15 +694,7 @@ func BenchmarkPdp(b *testing.B) {
 			},
 		},
 	}
-	l, _ := logger.NewLogger(
-		logger.Config{
-			// debug is too noisy for benchmarks
-			Level:  "info",
-			Output: "stdout",
-			Type:   "json",
-		},
-	)
-	pdp := NewPdp(l)
+	pdp := NewPdp(createTestLogger())
 	ctx := context.Background()
 
 	for _, bm := range benchmarks {

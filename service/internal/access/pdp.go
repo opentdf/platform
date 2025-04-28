@@ -348,7 +348,7 @@ func (pdp *Pdp) hierarchyRule(
 	ruleResultsByEntity := make(map[string]DataRuleResult, len(entityAttributeValueFqns))
 
 	// Find highest ranked data attribute value once
-	highestDataAttrVal, err := pdp.getHighestRankedInstanceFromDataAttributes(ctx, order, dataAttrValuesOfOneDefinition)
+	highestDataAttrVal, err := pdp.getHighestRankedInstanceFromDataAttributes(order, dataAttrValuesOfOneDefinition)
 	if err != nil {
 		return nil, fmt.Errorf("error getting highest ranked instance from data attributes: %s", err.Error())
 	}
@@ -472,7 +472,6 @@ func entityHasSufficientRank(
 // getHighestRankedInstanceFromDataAttributes finds the data attribute with the highest rank in the hierarchy.
 // Performance optimized version that uses direct lookups and minimizes iterations.
 func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(
-	ctx context.Context,
 	order []*policy.Value,
 	dataAttributeGroup []*policy.Value,
 ) (*policy.Value, error) {
@@ -526,101 +525,6 @@ func (pdp *Pdp) getHighestRankedInstanceFromDataAttributes(
 	}
 
 	return highestRankedInstance, nil
-}
-
-// getIsValueFoundInFqnValuesSet checks if a Value is present in a set of FQN strings.
-func getIsValueFoundInFqnValuesSet(
-	v *policy.Value,
-	fqns []string,
-	l *logger.Logger,
-) bool {
-	valFqn := v.GetFqn()
-	if valFqn == "" {
-		l.Error(fmt.Sprintf("Unexpected empty FQN for value %+v", v))
-		return false
-	}
-
-	for _, fqn := range fqns {
-		if strings.EqualFold(valFqn, fqn) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// entityRankGreaterThanOrEqualToDataRank compares entity attribute ranks against data attribute rank.
-func entityRankGreaterThanOrEqualToDataRank(
-	order []*policy.Value,
-	dataAttribute *policy.Value,
-	entityAttrValueFqnsGroup []string,
-	log *logger.Logger,
-) (bool, error) {
-	// Get data attribute index once
-	dvIndex, err := getOrderOfValue(order, dataAttribute, log)
-	if err != nil {
-		return false, err
-	}
-
-	// Extract data attribute definition FQN once
-	dataAttrDefFqn, err := GetDefinitionFqnFromValue(dataAttribute)
-	if err != nil {
-		return false, fmt.Errorf("error getting definition FQN from data attribute value: %s", err.Error())
-	}
-
-	// Pre-compute a map for faster order lookup
-	orderMap := make(map[string]int, len(order))
-	for i, v := range order {
-		orderMap[v.GetValue()] = i
-		if v.GetFqn() != "" {
-			orderMap[v.GetFqn()] = i
-		}
-	}
-
-	// Process all entity attributes at once
-	for _, entityAttributeFqn := range entityAttrValueFqnsGroup {
-		entityAttrDefFqn, err := GetDefinitionFqnFromValueFqn(entityAttributeFqn)
-		if err != nil {
-			return false, fmt.Errorf("error getting definition FQN from entity attribute value: %s", err.Error())
-		}
-
-		// Only process relevant attributes
-		if dataAttrDefFqn == entityAttrDefFqn {
-			// Extract value part directly from FQN for faster comparison
-			parts := strings.Split(entityAttributeFqn, "/value/")
-			if len(parts) != 2 {
-				continue
-			}
-			entityValue := parts[1]
-
-			// Check if entity value exists in order map
-			if idx, exists := orderMap[entityValue]; exists {
-				if idx <= dvIndex {
-					return true, nil
-				}
-			} else if idx, exists := orderMap[entityAttributeFqn]; exists {
-				if idx <= dvIndex {
-					return true, nil
-				}
-			} else {
-				// Fallback to manual lookup only when necessary
-				evIndex, err := getOrderOfValueByFqn(order, entityAttributeFqn)
-				if err != nil {
-					return false, err
-				}
-
-				if evIndex == -1 {
-					continue
-				}
-
-				if evIndex <= dvIndex {
-					return true, nil
-				}
-			}
-		}
-	}
-
-	return false, nil
 }
 
 // getOrderOfValue finds the index of a value in the ordered list.
@@ -722,11 +626,12 @@ func GroupValuesByDefinition(values []*policy.Value) (map[string][]*policy.Value
 // GroupValueFqnsByDefinition groups value FQN strings by their attribute definition FQNs.
 // Performance optimized version that minimizes allocations.
 func GroupValueFqnsByDefinition(valueFqns []string) (map[string][]string, error) {
+	const estimatedCapacity = 10
 	// Pre-allocate with estimated capacity
-	groupings := make(map[string][]string, min(len(valueFqns), 10))
+	groupings := make(map[string][]string, min(len(valueFqns), estimatedCapacity))
 
 	// First pass: count occurrences to pre-allocate slices
-	counts := make(map[string]int, min(len(valueFqns), 10))
+	counts := make(map[string]int, min(len(valueFqns), estimatedCapacity))
 	for _, v := range valueFqns {
 		defFqn, err := GetDefinitionFqnFromValueFqn(v)
 		if err != nil {
@@ -750,14 +655,6 @@ func GroupValueFqnsByDefinition(valueFqns []string) (map[string][]string, error)
 	}
 
 	return groupings, nil
-}
-
-// Helper function to return the smaller of two integers (for Go versions < 1.21)
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // GetDefinitionFqnFromValue extracts the definition FQN from a policy value.

@@ -12,7 +12,7 @@ import (
 const mockEntityID = "entity1"
 
 func createTestLogger() *logger.Logger {
-	// use defaults - debug is too noisy
+	// debug is too noisy
 	l, err := logger.NewLogger(logger.Config{
 		Level:  "info",
 		Type:   "json",

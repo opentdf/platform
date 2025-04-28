@@ -11,6 +11,15 @@ import (
 
 const mockEntityID = "entity1"
 
+func createTestLogger() *logger.Logger {
+	// use defaults - debug is too noisy
+	l, err := logger.NewLogger(logger.Config{})
+	if err != nil {
+		panic("Failed to create logger")
+	}
+	return l
+}
+
 func fqnBuilder(n string, a string, v string) string {
 	fqn := "https://"
 	switch {
@@ -137,7 +146,7 @@ func Test_AccessPDP_AnyOf(t *testing.T) {
 		},
 	}
 
-	pdp := NewPdp(logger.CreateTestLogger())
+	pdp := NewPdp(createTestLogger())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
@@ -244,7 +253,7 @@ func Test_AccessPDP_Hierarchy(t *testing.T) {
 		},
 	}
 
-	pdp := NewPdp(logger.CreateTestLogger())
+	pdp := NewPdp(createTestLogger())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
@@ -316,7 +325,7 @@ func Test_AccessPDP_AllOf(t *testing.T) {
 		},
 	}
 
-	pdp := NewPdp(logger.CreateTestLogger())
+	pdp := NewPdp(createTestLogger())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
@@ -342,15 +351,15 @@ func Test_AccessPDP_AllOf(t *testing.T) {
 }
 
 func Test_DetermineAccess_EmptyDataAttributes(t *testing.T) {
-	pdp := NewPdp(logger.CreateTestLogger())
+	pdp := NewPdp(createTestLogger())
 	decisions, err := pdp.DetermineAccess(t.Context(), []*policy.Value{}, map[string][]string{}, []*policy.Attribute{})
 
-	require.NoError(t, err)
+	require.Error(t, err)
 	assert.Empty(t, decisions)
 }
 
 func Test_DetermineAccess_EmptyAttributeDefinitions(t *testing.T) {
-	pdp := NewPdp(logger.CreateTestLogger())
+	pdp := NewPdp(createTestLogger())
 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"}).GetValues()
 	entityAttrs := createMockEntity1Attributes("example.org", "myattr", []string{"value1"})
 
@@ -362,7 +371,7 @@ func Test_DetermineAccess_EmptyAttributeDefinitions(t *testing.T) {
 
 func Test_GroupDataAttributesByDefinition(t *testing.T) {
 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1", "value2"}).GetValues()
-	pdp := NewPdp(logger.CreateTestLogger())
+	pdp := NewPdp(createTestLogger())
 
 	grouped, err := pdp.groupDataAttributesByDefinition(t.Context(), dataAttrs)
 
@@ -373,7 +382,7 @@ func Test_GroupDataAttributesByDefinition(t *testing.T) {
 
 func Test_MapFqnToDefinitions(t *testing.T) {
 	attr := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"})
-	pdp := NewPdp(logger.CreateTestLogger())
+	pdp := NewPdp(createTestLogger())
 
 	mapped, err := pdp.mapFqnToDefinitions(t.Context(), []*policy.Attribute{attr})
 
@@ -385,9 +394,9 @@ func Test_MapFqnToDefinitions(t *testing.T) {
 func Test_GetHighestRankedInstanceFromDataAttributes(t *testing.T) {
 	order := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, []string{"high", "medium", "low"}).GetValues()
 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, []string{"medium"}).GetValues()
-	pdp := NewPdp(logger.CreateTestLogger())
+	pdp := NewPdp(createTestLogger())
 
-	highest, err := pdp.getHighestRankedInstanceFromDataAttributes(t.Context(), order, dataAttrs, logger.CreateTestLogger())
+	highest, err := pdp.getHighestRankedInstanceFromDataAttributes(t.Context(), order, dataAttrs, createTestLogger())
 
 	require.NoError(t, err)
 	assert.NotNil(t, highest)
@@ -401,6 +410,6 @@ func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
 	}
 	fqns := []string{"https://example.org/attr/myattr/value/value1", "https://example.org/attr/myattr/value/value2"}
 
-	found := getIsValueFoundInFqnValuesSet(value, fqns, logger.CreateTestLogger())
+	found := getIsValueFoundInFqnValuesSet(value, fqns, createTestLogger())
 	assert.True(t, found)
 }

@@ -147,18 +147,11 @@ func Test_AccessPDP_AnyOf(t *testing.T) {
 			expectedAccess: false,
 			expectedPass:   false,
 		},
-		// {
-		// 	name:           "Fail - no data attributes",
-		// 	entityAttrs:    createMockEntity1Attributes("example.org", "myattr", []string{"value1"}),
-		// 	dataAttrs:      []*policy.Value{},
-		// 	expectedAccess: false,
-		// 	expectedPass:   false,
-		// },
 	}
 
+	pdp := NewPdp(createTestLogger())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pdp := NewPdp(createTestLogger())
 			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
 
 			require.NoError(t, err)
@@ -172,6 +165,12 @@ func Test_AccessPDP_AnyOf(t *testing.T) {
 			}
 		})
 	}
+
+	noDataAttrs := []*policy.Value{}
+	entityAttrs := createMockEntity1Attributes("example.org", "myattr", []string{"value1"})
+	decisions, err := pdp.DetermineAccess(t.Context(), noDataAttrs, entityAttrs, []*policy.Attribute{definition})
+	require.Error(t, err)
+	assert.Empty(t, decisions)
 }
 
 func Test_AccessPDP_Hierarchy(t *testing.T) {
@@ -254,18 +253,11 @@ func Test_AccessPDP_Hierarchy(t *testing.T) {
 			expectedAccess: false,
 			expectedPass:   false,
 		},
-		// {
-		// 	name:           "Fail - no data attributes",
-		// 	entityAttrs:    createMockEntity1Attributes(definition.GetNamespace().GetName(), definition.GetName(), []string{"highest"}),
-		// 	dataAttrs:      []*policy.Value{},
-		// 	expectedAccess: false,
-		// 	expectedPass:   false,
-		// },
 	}
 
+	pdp := NewPdp(createTestLogger())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pdp := NewPdp(createTestLogger())
 			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
 
 			require.NoError(t, err)
@@ -279,6 +271,12 @@ func Test_AccessPDP_Hierarchy(t *testing.T) {
 			}
 		})
 	}
+
+	noDataAttrs := []*policy.Value{}
+	entityAttrs := createMockEntity1Attributes("example.org", "myattr", []string{"value1"})
+	decisions, err := pdp.DetermineAccess(t.Context(), noDataAttrs, entityAttrs, []*policy.Attribute{definition})
+	require.Error(t, err)
+	assert.Empty(t, decisions)
 }
 
 func Test_AccessPDP_AllOf(t *testing.T) {
@@ -328,9 +326,9 @@ func Test_AccessPDP_AllOf(t *testing.T) {
 		},
 	}
 
+	pdp := NewPdp(createTestLogger())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pdp := NewPdp(createTestLogger())
 			decisions, err := pdp.DetermineAccess(t.Context(), tt.dataAttrs, tt.entityAttrs, []*policy.Attribute{definition})
 
 			require.NoError(t, err)
@@ -344,6 +342,12 @@ func Test_AccessPDP_AllOf(t *testing.T) {
 			}
 		})
 	}
+
+	noDataAttrs := []*policy.Value{}
+	entityAttrs := createMockEntity1Attributes("example.org", "myattr", []string{"value1"})
+	decisions, err := pdp.DetermineAccess(t.Context(), noDataAttrs, entityAttrs, []*policy.Attribute{definition})
+	require.Error(t, err)
+	assert.Empty(t, decisions)
 }
 
 func Test_DetermineAccess_EmptyDataAttributes(t *testing.T) {
@@ -354,16 +358,16 @@ func Test_DetermineAccess_EmptyDataAttributes(t *testing.T) {
 	assert.Empty(t, decisions)
 }
 
-// func Test_DetermineAccess_EmptyAttributeDefinitions(t *testing.T) {
-// 	pdp := NewPdp(createTestLogger())
-// 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"}).GetValues()
-// 	entityAttrs := createMockEntity1Attributes("example.org", "myattr", []string{"value1"})
+func Test_DetermineAccess_EmptyAttributeDefinitions(t *testing.T) {
+	pdp := NewPdp(createTestLogger())
+	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1"}).GetValues()
+	entityAttrs := createMockEntity1Attributes("example.org", "myattr", []string{"value1"})
 
-// 	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{})
+	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{})
 
-// 	require.NoError(t, err)
-// 	assert.Empty(t, decisions)
-// }
+	require.Error(t, err)
+	assert.Empty(t, decisions)
+}
 
 func Test_GroupDataAttributesByDefinition(t *testing.T) {
 	dataAttrs := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, []string{"value1", "value2"}).GetValues()

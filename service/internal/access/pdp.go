@@ -405,13 +405,10 @@ func (pdp *Pdp) hierarchyRule(
 		// Get only the relevant attributes for this definition
 		relevantEntityAttrs := entityAttrGroup[attrDefFqn]
 
-		passed := false
 		var valueFailures []ValueFailure
 
 		// Check if entity has sufficient rank
-		if len(relevantEntityAttrs) > 0 {
-			passed = entityHasSufficientRank(orderIndexMap, dvIndex, relevantEntityAttrs)
-		}
+		passed := entityHasSufficientRank(orderIndexMap, dvIndex, relevantEntityAttrs)
 
 		if !passed {
 			denialMsg := fmt.Sprintf("Hierarchy - Entity: %s hierarchy values rank below data value: %s",
@@ -437,10 +434,11 @@ func entityHasSufficientRank(
 	dataValueIndex int,
 	entityAttrs []string,
 ) bool {
+	const minFqnParts = 2
 	for _, entityAttr := range entityAttrs {
 		// Extract the value from the FQN (last part after /value/)
 		parts := strings.Split(entityAttr, "/value/")
-		if len(parts) != 2 {
+		if len(parts) != minFqnParts { // Should never happen, but would panic if not checked
 			continue
 		}
 

@@ -106,17 +106,17 @@ func (pdp *Pdp) mapFqnToDefinitions(ctx context.Context, attributeDefinitions []
 	grouped := make(map[string]*policy.Attribute)
 
 	for _, def := range attributeDefinitions {
-		a, err := GetDefinitionFqnFromDefinition(def)
+		defFQN, err := GetDefinitionFqnFromDefinition(def)
 		if err != nil {
 			return nil, err
 		}
 
-		if v, ok := grouped[a]; ok {
-			pdp.logger.Warn(fmt.Sprintf("duplicate Attribute Definition FQN %s found when building FQN map which may indicate an issue", a))
+		if v, ok := grouped[defFQN]; ok {
+			pdp.logger.Warn(fmt.Sprintf("duplicate Attribute Definition FQN %s found when building FQN map which may indicate an issue", defFQN))
 			pdp.logger.TraceContext(ctx, "duplicate attribute definitions found are: ", "attr1", v, "attr2", def)
 		}
 
-		grouped[a] = def
+		grouped[defFQN] = def
 	}
 
 	return grouped, nil

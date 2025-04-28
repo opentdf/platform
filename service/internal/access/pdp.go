@@ -9,6 +9,27 @@ import (
 	"github.com/opentdf/platform/service/logger"
 )
 
+// === Structures ===
+
+// Decision represents the overall access decision for an entity.
+type Decision struct {
+	Access  bool             `json:"access" example:"false"`
+	Results []DataRuleResult `json:"entity_rule_result"`
+}
+
+// DataRuleResult represents the result of evaluating one rule for an entity.
+type DataRuleResult struct {
+	Passed         bool              `json:"passed" example:"false"`
+	RuleDefinition *policy.Attribute `json:"rule_definition"`
+	ValueFailures  []ValueFailure    `json:"value_failures"`
+}
+
+// ValueFailure represents a specific failure when evaluating a data attribute.
+type ValueFailure struct {
+	DataAttribute *policy.Value `json:"data_attribute"`
+	Message       string        `json:"message" example:"Criteria NOT satisfied for entity: {entity_id} - lacked attribute value: {attribute}"`
+}
+
 // Pdp represents the Policy Decision Point component.
 type Pdp struct {
 	logger *logger.Logger
@@ -55,15 +76,32 @@ func (pdp *Pdp) DetermineAccess(
 	return pdp.evaluateAttributes(ctx, dataAttrValsByDefinition, fqnToDefinitionMap, entityAttributeSets)
 }
 
+// groups provided values
 func (pdp *Pdp) groupDataAttributesByDefinition(ctx context.Context, dataAttributes []*policy.Value) (map[string][]*policy.Value, error) {
-	dataAttrValsByDefinition, err := GroupValuesByDefinition(dataAttributes)
-	if err != nil {
-		pdp.logger.ErrorContext(ctx, fmt.Sprintf("error grouping data attributes by definition: %s", err.Error()))
-		return nil, err
+	groupings := make(map[string][]*policy.Value)
+
+	for _, v := range dataAttributes {
+		if v.GetAttribute() != nil {
+			defFqn := v.GetAttribute().GetFqn()
+			if defFqn != "" {
+				groupings[defFqn] = append(groupings[defFqn], v)
+				continue
+			}
+		}
+
+		defFqn, err := GetDefinitionFqnFromValueFqn(v.GetFqn())
+		if err != nil {
+			pdp.logger.ErrorContext(ctx, fmt.Sprintf("error getting definition FQN from value: %s", err.Error()))
+			return nil, err
+		}
+
+		groupings[defFqn] = append(groupings[defFqn], v)
 	}
-	return dataAttrValsByDefinition, nil
+
+	return groupings, nil
 }
 
+// maps defintion FQN to definition object
 func (pdp *Pdp) mapFqnToDefinitions(ctx context.Context, attributeDefinitions []*policy.Attribute) (map[string]*policy.Attribute, error) {
 	grouped := make(map[string]*policy.Attribute)
 
@@ -255,7 +293,7 @@ func (pdp *Pdp) anyOfRule(
 				entityPassed = true
 			} else {
 				denialMsg := fmt.Sprintf("anyOf not satisfied for data attr %s with value %s and entity %s - anyOf is permissive, so this doesn't mean overall failure", attrDefFqn, dataAttrVal.GetValue(), entityID)
-				pdp.logger.WarnContext(ctx, denialMsg)
+				pdp.logger.DebugContext(ctx, denialMsg)
 				valueFailures = append(valueFailures, ValueFailure{
 					DataAttribute: dataAttrVal,
 					Message:       denialMsg,
@@ -265,6 +303,8 @@ func (pdp *Pdp) anyOfRule(
 
 		if entityPassed {
 			pdp.logger.DebugContext(ctx, "anyOf satisfied", "attribute definition FQN", attrDefFqn, "entityId", entityID)
+		} else {
+			pdp.logger.WarnContext(ctx, "anyOf not satisfied", "attribute definition FQN", attrDefFqn, "entityId", entityID)
 		}
 
 		ruleResultsByEntity[entityID] = DataRuleResult{
@@ -503,52 +543,7 @@ func getOrderOfValueByFqn(order []*policy.Value, valFqn string) (int, error) {
 	return -1, nil
 }
 
-// === Structures ===
-
-// Decision represents the overall access decision for an entity.
-type Decision struct {
-	Access  bool             `json:"access" example:"false"`
-	Results []DataRuleResult `json:"entity_rule_result"`
-}
-
-// DataRuleResult represents the result of evaluating one rule for an entity.
-type DataRuleResult struct {
-	Passed         bool              `json:"passed" example:"false"`
-	RuleDefinition *policy.Attribute `json:"rule_definition"`
-	ValueFailures  []ValueFailure    `json:"value_failures"`
-}
-
-// ValueFailure represents a specific failure when evaluating a data attribute.
-type ValueFailure struct {
-	DataAttribute *policy.Value `json:"data_attribute"`
-	Message       string        `json:"message" example:"Criteria NOT satisfied for entity: {entity_id} - lacked attribute value: {attribute}"`
-}
-
 // === Utilities for FQN/Definitions ===
-
-// GroupValuesByDefinition groups policy values by their attribute definition FQNs.
-func GroupValuesByDefinition(values []*policy.Value) (map[string][]*policy.Value, error) {
-	groupings := make(map[string][]*policy.Value)
-
-	for _, v := range values {
-		if v.GetAttribute() != nil {
-			defFqn := v.GetAttribute().GetFqn()
-			if defFqn != "" {
-				groupings[defFqn] = append(groupings[defFqn], v)
-				continue
-			}
-		}
-
-		defFqn, err := GetDefinitionFqnFromValueFqn(v.GetFqn())
-		if err != nil {
-			return nil, err
-		}
-
-		groupings[defFqn] = append(groupings[defFqn], v)
-	}
-
-	return groupings, nil
-}
 
 // GroupValueFqnsByDefinition groups value FQN strings by their attribute definition FQNs.
 func GroupValueFqnsByDefinition(valueFqns []string) (map[string][]string, error) {

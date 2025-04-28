@@ -496,3 +496,338 @@ func Test_GetIsValueFoundInFqnValuesSet(t *testing.T) {
 	found = getIsValueFoundInFqnValuesSet(nil, fqns, createTestLogger())
 	assert.False(t, found)
 }
+
+func Test_DetermineAccess_MultipleEntities(t *testing.T) {
+	pdp := NewPdp(createTestLogger())
+
+	// Define two entity IDs
+	const entityID1 = "entity1"
+	const entityID2 = "entity2"
+
+	// Create attribute definition
+	values := []string{"value1", "value2", "value3"}
+	definition := createMockAttribute("example.org", "myattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, values)
+
+	// Create entity attributes
+	entityAttrs := map[string][]string{
+		entityID1: {
+			fqnBuilder(definition.GetNamespace().GetName(), definition.GetName(), values[0]),
+			fqnBuilder(definition.GetNamespace().GetName(), definition.GetName(), values[1]),
+		},
+		entityID2: {
+			fqnBuilder(definition.GetNamespace().GetName(), definition.GetName(), values[2]),
+		},
+	}
+
+	// Create data attributes
+	dataAttrs := []*policy.Value{
+		definition.GetValues()[0], // value1
+		definition.GetValues()[1], // value2
+	}
+
+	// Test 1: Basic case where one entity gets access and another doesn't
+	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{definition})
+	require.NoError(t, err)
+
+	// Entity 1 should have access (has entitlement for value1 and value2)
+	assert.True(t, decisions[entityID1].Access)
+	assert.True(t, decisions[entityID1].Results[0].Passed)
+
+	// Entity 2 should not have access (has entitlement for value3, but data has value1 and value2)
+	assert.False(t, decisions[entityID2].Access)
+	assert.False(t, decisions[entityID2].Results[0].Passed)
+
+	// Test 2: Case where both entities get access
+	dataAttrs = []*policy.Value{
+		definition.GetValues()[0], // value1
+		definition.GetValues()[1], // value2
+		definition.GetValues()[2], // value3
+	}
+
+	decisions, err = pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{definition})
+	require.NoError(t, err)
+
+	// Both entities should have access
+	assert.True(t, decisions[entityID1].Access)
+	assert.True(t, decisions[entityID1].Results[0].Passed)
+	assert.True(t, decisions[entityID2].Access)
+	assert.True(t, decisions[entityID2].Results[0].Passed)
+
+	// Test 3: Multi-attribute definitions
+	definition2 := createMockAttribute("example.com", "otherattr", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF, []string{"othervalue"})
+
+	// Update entity attributes
+	entityAttrs = map[string][]string{
+		entityID1: {
+			fqnBuilder(definition.GetNamespace().GetName(), definition.GetName(), values[0]),
+			fqnBuilder(definition2.GetNamespace().GetName(), definition2.GetName(), "othervalue"),
+		},
+		entityID2: {
+			fqnBuilder(definition.GetNamespace().GetName(), definition.GetName(), values[0]),
+			// entity2 lacks the second attribute
+		},
+	}
+
+	// Data attributes with both definitions
+	dataAttrs = []*policy.Value{
+		definition.GetValues()[0],  // value1
+		definition2.GetValues()[0], // othervalue
+	}
+
+	decisions, err = pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{definition, definition2})
+	require.NoError(t, err)
+
+	// Entity 1 should have access (has entitlements for both attributes)
+	assert.True(t, decisions[entityID1].Access)
+	assert.Equal(t, 2, len(decisions[entityID1].Results))
+	assert.True(t, decisions[entityID1].Results[0].Passed)
+	assert.True(t, decisions[entityID1].Results[1].Passed)
+
+	// Entity 2 should not have access (missing the second attribute)
+	assert.False(t, decisions[entityID2].Access)
+	assert.Equal(t, 2, len(decisions[entityID2].Results))
+	assert.True(t, decisions[entityID2].Results[0].Passed)  // First attribute passes
+	assert.False(t, decisions[entityID2].Results[1].Passed) // Second attribute fails
+}
+
+func Test_DetermineAccess_HierarchyWithMultipleEntities(t *testing.T) {
+	pdp := NewPdp(createTestLogger())
+
+	// Define entity IDs
+	const entityID1 = "entity1"
+	const entityID2 = "entity2"
+	const entityID3 = "entity3"
+
+	// Create hierarchy attribute
+	values := []string{"high", "medium", "low"}
+	definition := createMockAttribute("example.org", "hierarchy", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY, values)
+
+	// Create entity attributes with different access levels
+	entityAttrs := map[string][]string{
+		entityID1: {
+			fqnBuilder(definition.GetNamespace().GetName(), definition.GetName(), "high"),
+		},
+		entityID2: {
+			fqnBuilder(definition.GetNamespace().GetName(), definition.GetName(), "medium"),
+		},
+		entityID3: {
+			fqnBuilder(definition.GetNamespace().GetName(), definition.GetName(), "low"),
+		},
+	}
+
+	// Test 1: High privilege data - only high privilege entity gets access
+	dataAttrs := []*policy.Value{definition.GetValues()[0]} // high
+	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{definition})
+	require.NoError(t, err)
+
+	assert.True(t, decisions[entityID1].Access)  // high level entity
+	assert.False(t, decisions[entityID2].Access) // medium level entity
+	assert.False(t, decisions[entityID3].Access) // low level entity
+
+	// Test 2: Medium privilege data - high and medium get access
+	dataAttrs = []*policy.Value{definition.GetValues()[1]} // medium
+	decisions, err = pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{definition})
+	require.NoError(t, err)
+
+	assert.True(t, decisions[entityID1].Access)  // high level entity
+	assert.True(t, decisions[entityID2].Access)  // medium level entity
+	assert.False(t, decisions[entityID3].Access) // low level entity
+
+	// Test 3: Low privilege data - all get access
+	dataAttrs = []*policy.Value{definition.GetValues()[2]} // low
+	decisions, err = pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{definition})
+	require.NoError(t, err)
+
+	assert.True(t, decisions[entityID1].Access) // high level entity
+	assert.True(t, decisions[entityID2].Access) // medium level entity
+	assert.True(t, decisions[entityID3].Access) // low level entity
+
+	// Test 4: Entity with no matching attribute gets no access
+	entityAttrs["entityNoMatch"] = []string{
+		fqnBuilder(definition.GetNamespace().GetName(), "wrongattr", "high"),
+	}
+
+	decisions, err = pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{definition})
+	require.NoError(t, err)
+
+	assert.False(t, decisions["entityNoMatch"].Access)
+	assert.False(t, decisions["entityNoMatch"].Results[0].Passed)
+}
+
+func Test_DetermineAccess_ComplexScenarioWithMultipleEntities(t *testing.T) {
+	pdp := NewPdp(createTestLogger())
+
+	// Define entity IDs
+	const entityID1 = "entity1"
+	const entityID2 = "entity2"
+
+	// Create multiple attribute definitions of different types
+	hierarchyDef := createMockAttribute("example.org", "clearance", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		[]string{"highest", "medium", "lowest"})
+
+	anyOfDef := createMockAttribute("domain.net", "department", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		[]string{"engineering", "finance", "management"})
+
+	allOfDef := createMockAttribute("namespace.com", "training", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+		[]string{"security", "compliance"})
+
+	// Create complex entity attributes
+	entityAttrs := map[string][]string{
+		entityID1: {
+			fqnBuilder(hierarchyDef.GetNamespace().GetName(), hierarchyDef.GetName(), "highest"),
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "engineering"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "security"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "compliance"),
+		},
+		entityID2: {
+			fqnBuilder(hierarchyDef.GetNamespace().GetName(), hierarchyDef.GetName(), "medium"),
+			fqnBuilder(anyOfDef.GetNamespace().GetName(), anyOfDef.GetName(), "finance"),
+			fqnBuilder(allOfDef.GetNamespace().GetName(), allOfDef.GetName(), "security"),
+			// Missing "compliance" training
+		},
+	}
+
+	// Test 1: Resource requiring all three attributes types
+	dataAttrs := []*policy.Value{
+		hierarchyDef.GetValues()[1], // medium clearance
+		anyOfDef.GetValues()[0],     // engineering department
+		allOfDef.GetValues()[0],     // security training
+		allOfDef.GetValues()[1],     // compliance training
+	}
+
+	decisions, err := pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{hierarchyDef, anyOfDef, allOfDef})
+	require.NoError(t, err)
+
+	// Entity 1 should have access (meets all requirements)
+	assert.True(t, decisions[entityID1].Access)
+	assert.Equal(t, 3, len(decisions[entityID1].Results))
+	passes := 0
+	for _, result := range decisions[entityID1].Results {
+		if result.Passed {
+			passes++
+		}
+	}
+	assert.Equal(t, 3, passes) // should pass all 3
+
+	// Entity 2 should not have access (meets clearance, wrong department, missing training)
+	assert.False(t, decisions[entityID2].Access)
+	assert.Equal(t, 3, len(decisions[entityID2].Results))
+	passes = 0
+	for _, result := range decisions[entityID2].Results {
+		if result.Passed {
+			passes++
+		}
+	}
+	assert.Equal(t, 1, passes) // should pass 1 out of 3
+
+	// Test 2: Resource with different requirements
+	dataAttrs = []*policy.Value{
+		hierarchyDef.GetValues()[2], // lowest clearance
+		anyOfDef.GetValues()[1],     // finance department
+		allOfDef.GetValues()[0],     // security training only
+	}
+
+	decisions, err = pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{hierarchyDef, anyOfDef, allOfDef})
+	require.NoError(t, err)
+
+	// Entity 1 should have access for clearance and training, but fail department
+	assert.False(t, decisions[entityID1].Access)
+	assert.Equal(t, 3, len(decisions[entityID1].Results))
+	passes = 0
+	for _, result := range decisions[entityID1].Results {
+		if result.Passed {
+			passes++
+		}
+	}
+	assert.Equal(t, 2, passes) // should pass 2 out of 3
+
+	// Check individual results
+	// Note: The order of results may vary, so we check by value
+	foundClearance := false
+	foundDepartment := false
+	foundTraining := false
+	for _, result := range decisions[entityID1].Results {
+		switch result.RuleDefinition.GetName() {
+		case hierarchyDef.GetName():
+			assert.True(t, result.Passed) // clearance (topsecret > confidential)
+			foundClearance = true
+
+		case anyOfDef.GetName():
+			assert.False(t, result.Passed) // department (engineering ≠ finance)
+			foundDepartment = true
+		case allOfDef.GetName():
+			assert.True(t, result.Passed) // training (security only)
+			foundTraining = true
+		}
+	}
+	assert.True(t, foundClearance)
+	assert.True(t, foundDepartment)
+	assert.True(t, foundTraining)
+
+	// Entity 2 should have access with matching clearance, department, and training
+	assert.True(t, decisions[entityID2].Access)
+	assert.Equal(t, 3, len(decisions[entityID2].Results))
+	passes = 0
+	for _, result := range decisions[entityID2].Results {
+		if result.Passed {
+			passes++
+		}
+	}
+	assert.Equal(t, 3, passes) // should pass 3 out of 3
+
+	// Check individual results
+	// Note: The order of results may vary, so we check by value
+	foundClearance = false
+	foundDepartment = false
+	foundTraining = false
+	for _, result := range decisions[entityID2].Results {
+		switch result.RuleDefinition.GetName() {
+		case hierarchyDef.GetName():
+			assert.True(t, result.Passed) // clearance (secret > confidential)
+			foundClearance = true
+		case anyOfDef.GetName():
+			assert.True(t, result.Passed) // department (finance = finance)
+			foundDepartment = true
+		case allOfDef.GetName():
+			assert.True(t, result.Passed) // training (only security required)
+			foundTraining = true
+		}
+	}
+	assert.True(t, foundClearance)
+	assert.True(t, foundDepartment)
+	assert.True(t, foundTraining)
+
+	// Test 3: Resource entitling both entities
+	dataAttrs = []*policy.Value{
+		hierarchyDef.GetValues()[2], // lowest clearance
+		anyOfDef.GetValues()[0],     // engineering department
+		anyOfDef.GetValues()[1],     // finance department
+		allOfDef.GetValues()[0],     // security training only
+	}
+
+	decisions, err = pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{hierarchyDef, anyOfDef, allOfDef})
+	require.NoError(t, err)
+
+	// Entity 1 passes
+	assert.True(t, decisions[entityID1].Access)
+	assert.Equal(t, 3, len(decisions[entityID1].Results))
+
+	// Entity 2 passes
+	assert.True(t, decisions[entityID2].Access)
+	assert.Equal(t, 3, len(decisions[entityID2].Results))
+
+	// Test 4: Neither passes
+	dataAttrs = []*policy.Value{
+		hierarchyDef.GetValues()[2], // lowest clearance
+		anyOfDef.GetValues()[2],     // management department
+		allOfDef.GetValues()[0],     // security training only
+	}
+	decisions, err = pdp.DetermineAccess(t.Context(), dataAttrs, entityAttrs, []*policy.Attribute{hierarchyDef, anyOfDef, allOfDef})
+	require.NoError(t, err)
+	// Entity 1 fails
+	assert.False(t, decisions[entityID1].Access)
+	assert.Equal(t, 3, len(decisions[entityID1].Results))
+	// Entity 2 fails
+	assert.False(t, decisions[entityID2].Access)
+	assert.Equal(t, 3, len(decisions[entityID2].Results))
+}

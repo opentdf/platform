@@ -114,7 +114,7 @@ type KeyDetailsAdapter struct {
 }
 
 // Mode returns the mode of the key details
-func (k *KeyDetailsAdapter) Mode() string {
+func (k *KeyDetailsAdapter) System() string {
 	return modeInProcess
 }
 

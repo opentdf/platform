@@ -32,7 +32,7 @@ type ProtectedKey interface {
 // KeyManager combines key lookup functionality with cryptographic operations
 type KeyManager interface {
 	// Name is a unique identifier for the key manager.
-	// This can be used by the KeyDetail.Mode() method to determine which KeyManager to use,
+	// This can be used by the KeyDetail.System() method to determine which KeyManager to use,
 	// when multiple KeyManagers are installed.
 	Name() string
 

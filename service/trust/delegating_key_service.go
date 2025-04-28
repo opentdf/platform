@@ -101,7 +101,7 @@ func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier,
 		return nil, err
 	}
 
-	manager, err := d.getKeyManager(keyDetails.Mode())
+	manager, err := d.getKeyManager(keyDetails.System())
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (d *DelegatingKeyService) DeriveKey(ctx context.Context, kasKID KeyIdentifi
 		return nil, err
 	}
 
-	manager, err := d.getKeyManager(keyDetails.Mode())
+	manager, err := d.getKeyManager(keyDetails.System())
 	if err != nil {
 		return nil, err
 	}

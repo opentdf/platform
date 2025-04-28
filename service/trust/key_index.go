@@ -35,7 +35,7 @@ type KeyDetails interface {
 	ExportCertificate(ctx context.Context) (string, error)
 
 	// Gets the mode indicator for the key; this is used to lookup the appropriate KeyManager.
-	Mode() string
+	System() string
 }
 
 // KeyIndex provides methods to locate keys by various criteria

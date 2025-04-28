@@ -87,7 +87,7 @@ func (m *MockKeyDetails) ExportCertificate(ctx context.Context) (string, error) 
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockKeyDetails) Mode() string {
+func (m *MockKeyDetails) System() string {
 	args := m.Called()
 	return args.String(0)
 }

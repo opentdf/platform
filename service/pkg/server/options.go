@@ -21,8 +21,8 @@ type StartConfig struct {
 	casbinAdapter         persist.Adapter
 	configLoaders         []config.Loader
 
-	trustKeyIndex         trust.KeyIndex
-	trustKeyManager       trust.KeyManager
+	trustKeyIndex   trust.KeyIndex
+	trustKeyManager trust.KeyManager
 }
 
 // Deprecated: Use WithConfigKey

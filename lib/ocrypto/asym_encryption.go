@@ -56,6 +56,14 @@ type ECEncryptor struct {
 }
 
 func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
+	// TK Move salt and info out of library, into API option functions
+	digest := sha256.New()
+	digest.Write([]byte("TDF"))
+	salt := digest.Sum(nil)
+
+	return FromPublicPEMWithSalt(publicKeyInPem, salt, nil)
+}
+func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyEncryptor, error) {
 	pub, err := getPublicPart(publicKeyInPem)
 	if err != nil {
 		return nil, err
@@ -69,9 +77,9 @@ func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
 		if err != nil {
 			return nil, err
 		}
-		return newECIES(e)
+		return newECIES(e, salt, info)
 	case *ecdh.PublicKey:
-		return newECIES(pub)
+		return newECIES(pub, salt, info)
 	default:
 		break
 	}
@@ -79,13 +87,9 @@ func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
 	return nil, errors.New("not an supported type of public key")
 }
 
-func newECIES(pub *ecdh.PublicKey) (ECEncryptor, error) {
+func newECIES(pub *ecdh.PublicKey, salt, info []byte) (ECEncryptor, error) {
 	ek, err := pub.Curve().GenerateKey(rand.Reader)
-	// TK Move salt and info out of library, into API option functions
-	digest := sha256.New()
-	digest.Write([]byte("TDF"))
-	salt := digest.Sum(nil)
-	return ECEncryptor{pub, ek, salt, nil}, err
+	return ECEncryptor{pub, ek, salt, info}, err
 }
 
 // NewAsymEncryption creates and returns a new AsymEncryption.

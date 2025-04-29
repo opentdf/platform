@@ -124,7 +124,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResource_WithNonUniqueNa
 
 // Get
 
-func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_Succeeds() {
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByID_Succeeds() {
 	existingRes := s.f.GetRegisteredResourceKey("res_only")
 
 	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
@@ -135,6 +135,23 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(existingRes.Name, got.GetName())
+	metadata := got.GetMetadata()
+	s.False(metadata.GetCreatedAt().AsTime().IsZero())
+	s.False(metadata.GetUpdatedAt().AsTime().IsZero())
+	s.Empty(got.GetValues())
+}
+
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByName_Succeeds() {
+	existingRes := s.f.GetRegisteredResourceKey("res_only")
+
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+			Name: existingRes.Name,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(got)
+	s.Equal(existingRes.ID, got.GetId())
 	metadata := got.GetMetadata()
 	s.False(metadata.GetCreatedAt().AsTime().IsZero())
 	s.False(metadata.GetUpdatedAt().AsTime().IsZero())
@@ -166,23 +183,21 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_WithValues_Succeed
 	s.True(found)
 }
 
-func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByName_Succeeds() {
-	existingRes := s.f.GetRegisteredResourceKey("res_only")
-
-	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
-		Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
-			Name: existingRes.Name,
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(got)
-	s.Equal(existingRes.ID, got.GetId())
-}
-
-func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_InvalidID_Fails() {
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByInvalidID_Fails() {
 	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
 		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
 			Id: invalidID,
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(got)
+}
+
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByInvalidName_Fails() {
+	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+			Name: "invalid_name",
 		},
 	})
 	s.Require().Error(err)
@@ -574,7 +589,7 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithNonUni
 
 // Get
 
-func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_Succeeds() {
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_ByID_Succeeds() {
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 
@@ -585,8 +600,8 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(got)
-	s.Equal(existingRes.ID, got.GetResource().GetId())
 	s.Equal(existingResValue1.Value, got.GetValue())
+	s.Equal(existingRes.ID, got.GetResource().GetId())
 	metadata := got.GetMetadata()
 	s.False(metadata.GetCreatedAt().AsTime().IsZero())
 	s.False(metadata.GetUpdatedAt().AsTime().IsZero())
@@ -604,10 +619,15 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_ByFQN_Succeed
 	})
 	s.Require().NoError(err)
 	s.NotNil(got)
+	s.Equal(existingResValue1.ID, got.GetId())
+	s.Equal(existingResValue1.Value, got.GetValue())
 	s.Equal(existingRes.ID, got.GetResource().GetId())
+	metadata := got.GetMetadata()
+	s.False(metadata.GetCreatedAt().AsTime().IsZero())
+	s.False(metadata.GetUpdatedAt().AsTime().IsZero())
 }
 
-func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_InvalidID_Fails() {
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_ByInvalidID_Fails() {
 	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
 		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
 			Id: invalidID,
@@ -618,7 +638,18 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_InvalidID_Fai
 	s.Nil(got)
 }
 
-// Get By Value FQN
+func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_ByInvalidFQN_Fails() {
+	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{
+			Fqn: "https://reg_res/does_not_exist/value/does_not_exist",
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(got)
+}
+
+// Get By FQN
 
 func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_Valid_Succeeds() {
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
@@ -635,11 +666,55 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_Valid_Su
 	s.Require().NoError(err)
 	s.NotNil(got)
 
-	for _, fqn := range fqns {
-		found := got[fqn]
-		s.NotNil(found)
-		s.Equal(existingRes.ID, found.GetResource().GetId())
+	foundFQN1 := got[fqns[0]]
+	s.NotNil(foundFQN1)
+	s.Equal(existingResValue1.ID, foundFQN1.GetId())
+	s.Equal(existingResValue1.Value, foundFQN1.GetValue())
+	s.Equal(existingRes.ID, foundFQN1.GetResource().GetId())
+
+	foundFQN2 := got[fqns[1]]
+	s.NotNil(foundFQN2)
+	s.Equal(existingResValue2.ID, foundFQN2.GetId())
+	s.Equal(existingResValue2.Value, foundFQN2.GetValue())
+	s.Equal(existingRes.ID, foundFQN2.GetResource().GetId())
+}
+
+func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_SomeInvalid_Succeeds() {
+	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
+	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
+	fqns := []string{
+		fmt.Sprintf("https://reg_res/%s/value/%s", existingRes.Name, existingResValue1.Value),
+		"https://reg_res/does_not_exist/value/does_not_exist",
 	}
+
+	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByFQN(s.ctx, &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+		Fqns: fqns,
+	})
+	s.Require().NoError(err)
+	s.NotNil(got)
+
+	foundFQN1 := got[fqns[0]]
+	s.NotNil(foundFQN1)
+	s.Equal(existingResValue1.ID, foundFQN1.GetId())
+	s.Equal(existingResValue1.Value, foundFQN1.GetValue())
+	s.Equal(existingRes.ID, foundFQN1.GetResource().GetId())
+
+	foundFQN2 := got[fqns[1]]
+	s.Nil(foundFQN2)
+}
+
+func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_AllInvalid_Fails() {
+	fqns := []string{
+		"https://reg_res/does_not_exist/value/does_not_exist",
+		"https://reg_res/does_not_exist/value/does_not_exist2",
+	}
+
+	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByFQN(s.ctx, &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+		Fqns: fqns,
+	})
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(got)
 }
 
 // List

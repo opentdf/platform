@@ -129,19 +129,23 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 		return nil, err
 	}
 
+	if response.GetSessionPublicKey() == "" {
+		return nil, errors.New("nanoUnwrap: session public key is empty")
+	}
+
 	sessionKey, err := ocrypto.ComputeECDHKey([]byte(privateKeyAsPem), []byte(response.GetSessionPublicKey()))
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed :%w", err)
+		return nil, fmt.Errorf("nanoUnwrap: ocrypto.ComputeECDHKey failed :%w", err)
 	}
 
 	sessionKey, err = ocrypto.CalculateHKDF(versionSalt(), sessionKey)
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
+		return nil, fmt.Errorf("nanoUnwrap: ocrypto.CalculateHKDF failed:%w", err)
 	}
 
 	aesGcm, err := ocrypto.NewAESGcm(sessionKey)
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
+		return nil, fmt.Errorf("nanoUnwrap: ocrypto.NewAESGcm failed:%w", err)
 	}
 
 	policyResults := make(map[string][]kaoResult)

@@ -306,7 +306,7 @@ func VerifyECDSASig(digest, r, s []byte, pubKey *ecdsa.PublicKey) bool {
 func ECPubKeyFromPem(pemECPubKey []byte) (*ecdh.PublicKey, error) {
 	block, _ := pem.Decode(pemECPubKey)
 	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM formatted public key")
+		return nil, fmt.Errorf("failed to parse PEM formatted public key: %v", pemECPubKey)
 	}
 
 	var pub any

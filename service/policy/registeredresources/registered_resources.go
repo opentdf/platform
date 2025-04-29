@@ -256,7 +256,7 @@ func (s *RegisteredResourcesService) GetRegisteredResourceValuesByFQN(ctx contex
 
 	s.logger.DebugContext(ctx, "getting registered resource values by value FQNs", slog.Any("fqns", req.Msg.GetFqns()))
 
-	fqnValueMap, err := s.dbClient.GetRegisteredResourceValuesByValueFQN(ctx, req.Msg)
+	fqnValueMap, err := s.dbClient.GetRegisteredResourceValuesByFQN(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("fqns", req.Msg.GetFqns()))
 	}

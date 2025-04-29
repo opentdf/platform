@@ -620,7 +620,7 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_InvalidID_Fai
 
 // Get By Value FQN
 
-func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByValueFQN_Valid_Succeeds() {
+func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_Valid_Succeeds() {
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
@@ -629,7 +629,7 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByValueFQN_Val
 		fmt.Sprintf("https://reg_res/%s/value/%s", existingRes.Name, existingResValue2.Value),
 	}
 
-	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByValueFQN(s.ctx, &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByFQN(s.ctx, &registeredresources.GetRegisteredResourceValuesByFQNRequest{
 		Fqns: fqns,
 	})
 	s.Require().NoError(err)

@@ -464,7 +464,15 @@
                 </li>
               
                 <li>
-                  <a href="#authorization.v2.ResourceAttribute"><span class="badge">M</span>ResourceAttribute</a>
+                  <a href="#authorization.v2.Resource"><span class="badge">M</span>Resource</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.Resource.AttributeValues"><span class="badge">M</span>Resource.AttributeValues</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.Resource.RegisteredResources"><span class="badge">M</span>Resource.RegisteredResources</a>
                 </li>
               
                 <li>
@@ -3670,7 +3678,7 @@ string</p></td>
 
       
         <h3 id="authorization.v2.DecisionRequest">DecisionRequest</h3>
-        <p>Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)</p><p>and Alice (represented by entity chain ec2) have TRANSMIT authorization for</p><p>2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?</p><p>{</p><p>"actions": [</p><p>{</p><p>"standard": "STANDARD_ACTION_TRANSMIT"</p><p>}</p><p>],</p><p>"entityChains": [</p><p>{</p><p>"id": "ec1",</p><p>"entities": [</p><p>{</p><p>"emailAddress": "bob@example.org"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"id": "ec2",</p><p>"entities": [</p><p>{</p><p>"userName": "alice@example.org"</p><p>}</p><p>]</p><p>}</p><p>],</p><p>"resourceAttributes": [</p><p>{</p><p>"resourceAttributeId":  "attr-set-1",</p><p>"attributeFqns": [</p><p>"https://www.example.org/attr/foo/value/value1"</p><p>]</p><p>},</p><p>{</p><p>"resourceAttributeId":  "attr-set-2",</p><p>"attributeFqns": [</p><p>"https://example.net/attr/attr1/value/value1",</p><p>"https://example.net/attr/attr1/value/value2"</p><p>]</p><p>}</p><p>]</p><p>}</p>
+        <p>Can the entity (PE or NPE) represented by each entity chain take the provided actions on the set of resources</p>
 
         
           <table class="field-table">
@@ -3695,7 +3703,7 @@ string</p></td>
               
                 <tr>
                   <td>resource_attributes</td>
-                  <td><a href="#authorization.v2.ResourceAttribute">ResourceAttribute</a></td>
+                  <td><a href="#authorization.v2.Resource">Resource</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -3708,7 +3716,7 @@ string</p></td>
         
       
         <h3 id="authorization.v2.DecisionResponse">DecisionResponse</h3>
-        <p>Example response for a Decision Request -  Do Bob (represented by entity chain ec1)</p><p>and Alice (represented by entity chain ec2) have TRANSMIT authorization for</p><p>2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?</p><p>Results:</p><p>- bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation</p><p>- bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes</p><p>- alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes</p><p>- alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes</p><p>{</p><p>"entityChainId":  "ec1",</p><p>"resourceAttributesId":  "attr-set-1",</p><p>"decision":  "DECISION_PERMIT",</p><p>"obligations":  [</p><p>"http://www.example.org/obligation/watermark"</p><p>]</p><p>},</p><p>{</p><p>"entityChainId":  "ec1",</p><p>"resourceAttributesId":  "attr-set-2",</p><p>"decision":  "DECISION_PERMIT"</p><p>},</p><p>{</p><p>"entityChainId":  "ec2",</p><p>"resourceAttributesId":  "attr-set-1",</p><p>"decision":  "DECISION_PERMIT"</p><p>},</p><p>{</p><p>"entityChainId":  "ec2",</p><p>"resourceAttributesId":  "attr-set-2",</p><p>"decision":  "DECISION_DENY"</p><p>}</p>
+        <p></p>
 
         
           <table class="field-table">
@@ -3823,6 +3831,13 @@ string</p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>registered_resource_identifier</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>FQN or URN (when supported) </p></td>
                 </tr>
               
                 <tr>
@@ -4095,7 +4110,7 @@ string</p></td>
               
                 <tr>
                   <td>scope</td>
-                  <td><a href="#authorization.v2.ResourceAttribute">ResourceAttribute</a></td>
+                  <td><a href="#authorization.v2.Resource">Resource</a></td>
                   <td>optional</td>
                   <td><p>optional attribute fqn as a scope </p></td>
                 </tr>
@@ -4138,7 +4153,7 @@ string</p></td>
 
         
       
-        <h3 id="authorization.v2.ResourceAttribute">ResourceAttribute</h3>
+        <h3 id="authorization.v2.Resource">Resource</h3>
         <p>A logical bucket of attributes belonging to a "Resource"</p>
 
         
@@ -4149,17 +4164,72 @@ string</p></td>
             <tbody>
               
                 <tr>
-                  <td>resource_attributes_id</td>
+                  <td>ephemeral_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>attribute_value_fqns</td>
+                  <td>attribute_values</td>
+                  <td><a href="#authorization.v2.Resource.AttributeValues">Resource.AttributeValues</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>registered_resources</td>
+                  <td><a href="#authorization.v2.Resource.RegisteredResources">Resource.RegisteredResources</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.Resource.AttributeValues">Resource.AttributeValues</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqn</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.Resource.RegisteredResources">Resource.RegisteredResources</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>identifier</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p>FQN or URN (when supported) </p></td>
                 </tr>
               
             </tbody>
@@ -4226,7 +4296,7 @@ string</p></td>
               
                 <tr>
                   <td>resource_attributes</td>
-                  <td><a href="#authorization.v2.ResourceAttribute">ResourceAttribute</a></td>
+                  <td><a href="#authorization.v2.Resource">Resource</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>

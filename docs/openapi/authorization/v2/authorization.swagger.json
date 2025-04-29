@@ -94,6 +94,29 @@
         }
       }
     },
+    "ResourceAttributeValues": {
+      "type": "object",
+      "properties": {
+        "fqn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ResourceRegisteredResources": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "FQN or URN (when supported)"
+        }
+      }
+    },
     "authorizationv2DecisionRequest": {
       "type": "object",
       "properties": {
@@ -115,12 +138,11 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationv2ResourceAttribute"
+            "$ref": "#/definitions/v2Resource"
           }
         }
       },
-      "description": "{\n\"actions\": [\n{\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n}\n],\n\"entityChains\": [\n{\n\"id\": \"ec1\",\n\"entities\": [\n{\n\"emailAddress\": \"bob@example.org\"\n}\n]\n},\n{\n\"id\": \"ec2\",\n\"entities\": [\n{\n\"userName\": \"alice@example.org\"\n}\n]\n}\n],\n\"resourceAttributes\": [\n{\n\"resourceAttributeId\":  \"attr-set-1\",\n\"attributeFqns\": [\n\"https://www.example.org/attr/foo/value/value1\"\n]\n},\n{\n\"resourceAttributeId\":  \"attr-set-2\",\n\"attributeFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n]\n}",
-      "title": "Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)\nand Alice (represented by entity chain ec2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?"
+      "title": "Can the entity (PE or NPE) represented by each entity chain take the provided actions on the set of resources"
     },
     "authorizationv2DecisionResponse": {
       "type": "object",
@@ -148,9 +170,7 @@
           },
           "title": "optional list of obligations represented in URI format"
         }
-      },
-      "description": "Results:\n- bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation\n- bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n- alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes\n- alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n\n{\n\"entityChainId\":  \"ec1\",\n\"resourceAttributesId\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\",\n\"obligations\":  [\n\"http://www.example.org/obligation/watermark\"\n]\n},\n{\n\"entityChainId\":  \"ec1\",\n\"resourceAttributesId\":  \"attr-set-2\",\n\"decision\":  \"DECISION_PERMIT\"\n},\n{\n\"entityChainId\":  \"ec2\",\n\"resourceAttributesId\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\"\n},\n{\n\"entityChainId\":  \"ec2\",\n\"resourceAttributesId\":  \"attr-set-2\",\n\"decision\":  \"DECISION_DENY\"\n}",
-      "title": "Example response for a Decision Request -  Do Bob (represented by entity chain ec1)\nand Alice (represented by entity chain ec2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?"
+      }
     },
     "authorizationv2DecisionResponseDecision": {
       "type": "string",
@@ -189,6 +209,10 @@
         },
         "clientId": {
           "type": "string"
+        },
+        "registeredResourceIdentifier": {
+          "type": "string",
+          "title": "FQN or URN (when supported)"
         },
         "category": {
           "$ref": "#/definitions/authorizationv2EntityCategory"
@@ -294,21 +318,6 @@
         }
       }
     },
-    "authorizationv2ResourceAttribute": {
-      "type": "object",
-      "properties": {
-        "resourceAttributesId": {
-          "type": "string"
-        },
-        "attributeValueFqns": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "title": "A logical bucket of attributes belonging to a \"Resource\""
-    },
     "authorizationv2Token": {
       "type": "object",
       "properties": {
@@ -343,7 +352,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationv2ResourceAttribute"
+            "$ref": "#/definitions/v2Resource"
           }
         }
       }
@@ -424,6 +433,21 @@
           }
         }
       }
+    },
+    "v2Resource": {
+      "type": "object",
+      "properties": {
+        "ephemeralId": {
+          "type": "string"
+        },
+        "attributeValues": {
+          "$ref": "#/definitions/ResourceAttributeValues"
+        },
+        "registeredResources": {
+          "$ref": "#/definitions/ResourceRegisteredResources"
+        }
+      },
+      "title": "A logical bucket of attributes belonging to a \"Resource\""
     }
   }
 }

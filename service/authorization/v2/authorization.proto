@@ -24,6 +24,8 @@ message Entity {
     google.protobuf.Any claims = 6;
     EntityCustom custom = 7;
     string client_id = 8;
+    // FQN or URN (when supported)
+    string registered_resource_identifier = 10;
   }
   enum Category {
     CATEGORY_UNSPECIFIED = 0;
@@ -44,97 +46,13 @@ message EntityChain {
   repeated Entity entities = 2;
 }
 
-/*
-     Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)
-     and Alice (represented by entity chain ec2) have TRANSMIT authorization for
-     2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
-
-     {
-     "actions": [
-       {
-         "standard": "STANDARD_ACTION_TRANSMIT"
-       }
-     ],
-     "entityChains": [
-       {
-         "id": "ec1",
-         "entities": [
-           {
-             "emailAddress": "bob@example.org"
-           }
-         ]
-       },
-       {
-         "id": "ec2",
-         "entities": [
-           {
-             "userName": "alice@example.org"
-           }
-         ]
-       }
-     ],
-     "resourceAttributes": [
-       {
-         "resourceAttributeId":  "attr-set-1",
-         "attributeFqns": [
-           "https://www.example.org/attr/foo/value/value1"
-         ]
-       },
-       {
-         "resourceAttributeId":  "attr-set-2",
-         "attributeFqns": [
-           "https://example.net/attr/attr1/value/value1",
-           "https://example.net/attr/attr1/value/value2"
-         ]
-       }
-     ]
-   }
-
-*/
+// Can the entity (PE or NPE) represented by each entity chain take the provided actions on the set of resources
 message DecisionRequest {
   repeated policy.Action actions = 1;
   repeated EntityChain entity_chains = 2;
-  repeated ResourceAttribute resource_attributes = 3;
+  repeated Resource resource_attributes = 3;
 }
 
-/*
-
-   Example response for a Decision Request -  Do Bob (represented by entity chain ec1)
-   and Alice (represented by entity chain ec2) have TRANSMIT authorization for
-   2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
-
-   Results:
-   - bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation
-   - bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes
-   - alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes
-   - alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes
-
-   {
-       "entityChainId":  "ec1",
-       "resourceAttributesId":  "attr-set-1",
-       "decision":  "DECISION_PERMIT",
-       "obligations":  [
-         "http://www.example.org/obligation/watermark"
-       ]
-     },
-     {
-       "entityChainId":  "ec1",
-       "resourceAttributesId":  "attr-set-2",
-       "decision":  "DECISION_PERMIT"
-     },
-     {
-       "entityChainId":  "ec2",
-       "resourceAttributesId":  "attr-set-1",
-       "decision":  "DECISION_PERMIT"
-     },
-     {
-       "entityChainId":  "ec2",
-       "resourceAttributesId":  "attr-set-2",
-       "decision":  "DECISION_DENY"
-     }
-
-
-*/
 message DecisionResponse {
   enum Decision {
     DECISION_UNSPECIFIED = 0;
@@ -160,7 +78,7 @@ message GetEntitlementsRequest {
   // list of requested entities
   repeated Entity entities = 1;
   // optional attribute fqn as a scope
-  optional ResourceAttribute scope = 2;
+  optional Resource scope = 2;
   // optional parameter to return a full list of entitlements - returns lower hierarchy attributes
   optional bool with_comprehensive_hierarchy = 3;
 }
@@ -175,10 +93,22 @@ message EntityEntitlements {
   map<string, ActionsList> actions_per_attribute_value_fqn = 2;
 }
 
-//A logical bucket of attributes belonging to a "Resource"
-message ResourceAttribute {
-  string resource_attributes_id = 1;
-  repeated string attribute_value_fqns = 2;
+// A logical bucket of attributes belonging to a "Resource"
+message Resource {
+  string ephemeral_id = 1;
+
+  message AttributeValues {
+    repeated string fqn = 1;
+  }
+  message RegisteredResources {
+    // FQN or URN (when supported)
+    repeated string identifier = 1;
+  }
+
+  oneof resource {
+    AttributeValues attribute_values = 2;
+    RegisteredResources registered_resources = 3;
+  }
 }
 
 message GetEntitlementsResponse {
@@ -188,7 +118,7 @@ message GetEntitlementsResponse {
 message TokenDecisionRequest {
   repeated policy.Action actions = 1;
   repeated Token tokens = 2;
-  repeated ResourceAttribute resource_attributes = 3;
+  repeated Resource resource_attributes = 3;
 }
 
 message GetDecisionsByTokenRequest {

@@ -114,6 +114,16 @@ func (a Assertion) GetHash() ([]byte, error) {
 	// Remove the binding key
 	delete(jsonObject, "binding")
 
+	// Deep patch: fix "value" inside "statement" if it is a string
+	if statement, ok := jsonObject["statement"].(map[string]interface{}); ok {
+		if valueStr, ok := statement["value"].(string); ok {
+			var valueObj interface{}
+			if err := json.Unmarshal([]byte(valueStr), &valueObj); err == nil {
+				statement["value"] = valueObj // replace the string with parsed object
+			}
+		}
+	}
+
 	// Marshal the map back to JSON
 	assertionJSON, err = json.Marshal(jsonObject)
 	if err != nil {

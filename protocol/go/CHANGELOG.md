@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/opentdf/platform/compare/protocol/go/v0.3.1...protocol/go/v0.3.2) (2025-04-28)
+
+
+### Features
+
+* **policy:** Key management proto ([#2115](https://github.com/opentdf/platform/issues/2115)) ([561f853](https://github.com/opentdf/platform/commit/561f85301c73c221cf22695afb66deeac594a3d6))
+
 ## [0.3.1](https://github.com/opentdf/platform/compare/protocol/go/v0.3.0...protocol/go/v0.3.1) (2025-04-23)
 
 

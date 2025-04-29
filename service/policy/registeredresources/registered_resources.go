@@ -251,6 +251,20 @@ func (s *RegisteredResourcesService) GetRegisteredResourceValue(ctx context.Cont
 	return connect.NewResponse(rsp), nil
 }
 
+func (s *RegisteredResourcesService) GetRegisteredResourceValuesByValueFQN(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceValuesByValueFQNRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByValueFQNResponse], error) {
+	rsp := &registeredresources.GetRegisteredResourceValuesByValueFQNResponse{}
+
+	s.logger.DebugContext(ctx, "getting registered resource values by value FQNs", slog.Any("fqns", req.Msg.GetFqns()))
+
+	fqnToValueMap, err := s.dbClient.GetRegisteredResourceValuesByValueFQN(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("fqns", req.Msg.GetFqns()))
+	}
+	rsp.FqnToValueMap = fqnToValueMap
+
+	return connect.NewResponse(rsp), nil
+}
+
 func (s *RegisteredResourcesService) ListRegisteredResourceValues(ctx context.Context, req *connect.Request[registeredresources.ListRegisteredResourceValuesRequest]) (*connect.Response[registeredresources.ListRegisteredResourceValuesResponse], error) {
 	s.logger.DebugContext(ctx, "listing registered resource values")
 

@@ -32,6 +32,7 @@ const (
 	validUUID  = "00000000-0000-0000-0000-000000000000"
 	validURI   = "https://ndr-uri"
 
+	invalidName = "invalid name"
 	invalidUUID = "not-uuid"
 	invalidURI  = "not-uri"
 
@@ -188,10 +189,10 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResource_Valid_Succeeds() {
 			},
 		},
 		{
-			name: "Identifier (FQN)",
+			name: "Identifier (Name)",
 			req: &registeredresources.GetRegisteredResourceRequest{
-				Identifier: &registeredresources.GetRegisteredResourceRequest_Fqn{
-					Fqn: validURI,
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+					Name: validName,
 				},
 			},
 		},
@@ -227,13 +228,13 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResource_Invalid_Fails() {
 			errMsg: errMsgUUID,
 		},
 		{
-			name: "Invalid FQN",
+			name: "Invalid Name",
 			req: &registeredresources.GetRegisteredResourceRequest{
-				Identifier: &registeredresources.GetRegisteredResourceRequest_Fqn{
-					Fqn: invalidURI,
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Name{
+					Name: invalidName,
 				},
 			},
-			errMsg: errMsgURI,
+			errMsg: errMsgNameFormat,
 		},
 	}
 

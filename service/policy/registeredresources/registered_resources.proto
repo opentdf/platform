@@ -184,7 +184,7 @@ message GetRegisteredResourceValuesByFQNRequest {
   ];
 }
 message GetRegisteredResourceValuesByFQNResponse {
-  map<string, policy.RegisteredResourceValue> fqnToValueMap = 1;
+  map<string, policy.RegisteredResourceValue> fqn_value_map = 1;
 }
 
 message ListRegisteredResourceValuesRequest {

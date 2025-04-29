@@ -199,7 +199,7 @@
     "registeredresourcesGetRegisteredResourceValuesByFQNResponse": {
       "type": "object",
       "properties": {
-        "fqnToValueMap": {
+        "fqnValueMap": {
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/policyRegisteredResourceValue"

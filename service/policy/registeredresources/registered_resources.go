@@ -256,11 +256,11 @@ func (s *RegisteredResourcesService) GetRegisteredResourceValuesByFQN(ctx contex
 
 	s.logger.DebugContext(ctx, "getting registered resource values by value FQNs", slog.Any("fqns", req.Msg.GetFqns()))
 
-	fqnToValueMap, err := s.dbClient.GetRegisteredResourceValuesByValueFQN(ctx, req.Msg)
+	fqnValueMap, err := s.dbClient.GetRegisteredResourceValuesByValueFQN(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("fqns", req.Msg.GetFqns()))
 	}
-	rsp.FqnToValueMap = fqnToValueMap
+	rsp.FqnValueMap = fqnValueMap
 
 	return connect.NewResponse(rsp), nil
 }

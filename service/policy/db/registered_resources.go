@@ -66,8 +66,8 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 	}
 
 	return c.GetRegisteredResource(ctx, &registeredresources.GetRegisteredResourceRequest{
-		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-			ResourceId: createdID,
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+			Id: createdID,
 		},
 	})
 }
@@ -76,8 +76,8 @@ func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registered
 	params := getRegisteredResourceParams{}
 
 	switch {
-	case r.GetResourceId() != "":
-		params.ID = r.GetResourceId()
+	case r.GetId() != "":
+		params.ID = r.GetId()
 	case r.GetName() != "":
 		params.Name = strings.ToLower(r.GetName())
 	default:
@@ -166,8 +166,8 @@ func (c PolicyDBClient) UpdateRegisteredResource(ctx context.Context, r *registe
 	name := strings.ToLower(r.GetName())
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		v, err := c.GetRegisteredResource(ctx, &registeredresources.GetRegisteredResourceRequest{
-			Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-				ResourceId: id,
+			Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+				Id: id,
 			},
 		})
 		if err != nil {
@@ -234,8 +234,8 @@ func (c PolicyDBClient) CreateRegisteredResourceValue(ctx context.Context, r *re
 	}
 
 	return c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
-		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-			ValueId: createdID,
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: createdID,
 		},
 	})
 }
@@ -244,8 +244,8 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 	params := getRegisteredResourceValueParams{}
 
 	switch {
-	case r.GetValueId() != "":
-		params.ID = r.GetValueId()
+	case r.GetId() != "":
+		params.ID = r.GetId()
 	case r.GetFqn() != "":
 		fqn := strings.ToLower(r.GetFqn())
 		parsed, err := util.ParseRegisteredResourceValueFqn(fqn)
@@ -279,7 +279,7 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 	}, nil
 }
 
-func (c PolicyDBClient) GetRegisteredResourceValuesByValueFQN(ctx context.Context, r *registeredresources.GetRegisteredResourceValuesByValueFQNRequest) (map[string]*policy.RegisteredResourceValue, error) {
+func (c PolicyDBClient) GetRegisteredResourceValuesByValueFQN(ctx context.Context, r *registeredresources.GetRegisteredResourceValuesByFQNRequest) (map[string]*policy.RegisteredResourceValue, error) {
 	resp := make(map[string]*policy.RegisteredResourceValue)
 	count := 0
 
@@ -387,8 +387,8 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 	value := strings.ToLower(r.GetValue())
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		v, err := c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
-			Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-				ValueId: id,
+			Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+				Id: id,
 			},
 		})
 		if err != nil {

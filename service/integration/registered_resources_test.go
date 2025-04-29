@@ -128,8 +128,8 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_Succeeds() {
 	existingRes := s.f.GetRegisteredResourceKey("res_only")
 
 	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
-		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-			ResourceId: existingRes.ID,
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+			Id: existingRes.ID,
 		},
 	})
 	s.Require().NoError(err)
@@ -146,8 +146,8 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_WithValues_Succeed
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 
 	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
-		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-			ResourceId: existingRes.ID,
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+			Id: existingRes.ID,
 		},
 	})
 	s.Require().NoError(err)
@@ -181,8 +181,8 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_ByName_Succeeds() 
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResource_InvalidID_Fails() {
 	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
-		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-			ResourceId: invalidID,
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+			Id: invalidID,
 		},
 	})
 	s.Require().Error(err)
@@ -335,8 +335,8 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResource_Succeeds() {
 
 	// verify resource not updated
 	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
-		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-			ResourceId: created.GetId(),
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+			Id: created.GetId(),
 		},
 	})
 	s.Require().NoError(err)
@@ -358,8 +358,8 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResource_Succeeds() {
 
 	// verify resource updated
 	got, err = s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
-		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-			ResourceId: created.GetId(),
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+			Id: created.GetId(),
 		},
 	})
 	s.Require().NoError(err)
@@ -390,8 +390,8 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResource_NormalizedName_
 
 	// verify resource updated
 	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
-		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-			ResourceId: created.GetId(),
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+			Id: created.GetId(),
 		},
 	})
 	s.Require().NoError(err)
@@ -443,8 +443,8 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResource_Succeeds() {
 
 	// verify resource deleted
 	got, err := s.db.PolicyClient.GetRegisteredResource(s.ctx, &registeredresources.GetRegisteredResourceRequest{
-		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-			ResourceId: created.GetId(),
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+			Id: created.GetId(),
 		},
 	})
 	s.Require().Error(err)
@@ -455,8 +455,8 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResource_Succeeds() {
 	gotValues := created.GetValues()
 
 	gotValue1, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
-		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-			ValueId: gotValues[0].GetId(),
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: gotValues[0].GetId(),
 		},
 	})
 	s.Require().Error(err)
@@ -464,8 +464,8 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResource_Succeeds() {
 	s.Nil(gotValue1)
 
 	gotValue2, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
-		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-			ValueId: gotValues[1].GetId(),
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: gotValues[1].GetId(),
 		},
 	})
 	s.Require().Error(err)
@@ -579,8 +579,8 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_Succeeds() {
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 
 	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
-		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-			ValueId: existingResValue1.ID,
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: existingResValue1.ID,
 		},
 	})
 	s.Require().NoError(err)
@@ -609,8 +609,8 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_ByFQN_Succeed
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_InvalidID_Fails() {
 	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
-		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-			ValueId: invalidID,
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: invalidID,
 		},
 	})
 	s.Require().Error(err)
@@ -629,7 +629,7 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByValueFQN_Val
 		fmt.Sprintf("https://reg_res/%s/value/%s", existingRes.Name, existingResValue2.Value),
 	}
 
-	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByValueFQN(s.ctx, &registeredresources.GetRegisteredResourceValuesByValueFQNRequest{
+	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByValueFQN(s.ctx, &registeredresources.GetRegisteredResourceValuesByFQNRequest{
 		Fqns: fqns,
 	})
 	s.Require().NoError(err)
@@ -820,8 +820,8 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 
 	// verify resource value not updated
 	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
-		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-			ValueId: created.GetId(),
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: created.GetId(),
 		},
 	})
 	s.Require().NoError(err)
@@ -843,8 +843,8 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 
 	// verify resource updated
 	got, err = s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
-		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-			ValueId: created.GetId(),
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: created.GetId(),
 		},
 	})
 	s.Require().NoError(err)
@@ -882,8 +882,8 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Normalized
 
 	// verify resource value updated
 	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
-		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-			ValueId: created.GetId(),
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: created.GetId(),
 		},
 	})
 	s.Require().NoError(err)
@@ -953,8 +953,8 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_Succeeds()
 	// verify resource value deleted
 
 	got, err := s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
-		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-			ValueId: created.GetId(),
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: created.GetId(),
 		},
 	})
 	s.Require().Error(err)

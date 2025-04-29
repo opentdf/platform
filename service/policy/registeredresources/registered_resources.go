@@ -150,8 +150,8 @@ func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Contex
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		original, err := txClient.GetRegisteredResource(ctx, &registeredresources.GetRegisteredResourceRequest{
-			Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-				ResourceId: resourceID,
+			Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+				Id: resourceID,
 			},
 		})
 		if err != nil {
@@ -251,8 +251,8 @@ func (s *RegisteredResourcesService) GetRegisteredResourceValue(ctx context.Cont
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *RegisteredResourcesService) GetRegisteredResourceValuesByValueFQN(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceValuesByValueFQNRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByValueFQNResponse], error) {
-	rsp := &registeredresources.GetRegisteredResourceValuesByValueFQNResponse{}
+func (s *RegisteredResourcesService) GetRegisteredResourceValuesByFQN(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceValuesByFQNRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByFQNResponse], error) {
+	rsp := &registeredresources.GetRegisteredResourceValuesByFQNResponse{}
 
 	s.logger.DebugContext(ctx, "getting registered resource values by value FQNs", slog.Any("fqns", req.Msg.GetFqns()))
 
@@ -293,8 +293,8 @@ func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.C
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		original, err := txClient.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
-			Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-				ValueId: valueID,
+			Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+				Id: valueID,
 			},
 		})
 		if err != nil {

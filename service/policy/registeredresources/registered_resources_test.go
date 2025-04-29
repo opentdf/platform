@@ -183,8 +183,8 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResource_Valid_Succeeds() {
 		{
 			name: "Identifier (UUID)",
 			req: &registeredresources.GetRegisteredResourceRequest{
-				Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-					ResourceId: validUUID,
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+					Id: validUUID,
 				},
 			},
 		},
@@ -221,8 +221,8 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResource_Invalid_Fails() {
 		{
 			name: "Invalid UUID",
 			req: &registeredresources.GetRegisteredResourceRequest{
-				Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-					ResourceId: invalidUUID,
+				Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+					Id: invalidUUID,
 				},
 			},
 			errMsg: errMsgUUID,
@@ -489,8 +489,8 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValue_Valid_Succeeds
 		{
 			name: "Identifier (UUID)",
 			req: &registeredresources.GetRegisteredResourceValueRequest{
-				Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-					ValueId: validUUID,
+				Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+					Id: validUUID,
 				},
 			},
 		},
@@ -527,8 +527,8 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValue_Invalid_Fails(
 		{
 			name: "Invalid UUID",
 			req: &registeredresources.GetRegisteredResourceValueRequest{
-				Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-					ValueId: invalidUUID,
+				Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+					Id: invalidUUID,
 				},
 			},
 			errMsg: errMsgUUID,

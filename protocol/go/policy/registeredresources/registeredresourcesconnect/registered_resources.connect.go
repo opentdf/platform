@@ -55,9 +55,9 @@ const (
 	// RegisteredResourcesServiceGetRegisteredResourceValueProcedure is the fully-qualified name of the
 	// RegisteredResourcesService's GetRegisteredResourceValue RPC.
 	RegisteredResourcesServiceGetRegisteredResourceValueProcedure = "/policy.registeredresources.RegisteredResourcesService/GetRegisteredResourceValue"
-	// RegisteredResourcesServiceGetRegisteredResourceValuesByValueFQNProcedure is the fully-qualified
-	// name of the RegisteredResourcesService's GetRegisteredResourceValuesByValueFQN RPC.
-	RegisteredResourcesServiceGetRegisteredResourceValuesByValueFQNProcedure = "/policy.registeredresources.RegisteredResourcesService/GetRegisteredResourceValuesByValueFQN"
+	// RegisteredResourcesServiceGetRegisteredResourceValuesByFQNProcedure is the fully-qualified name
+	// of the RegisteredResourcesService's GetRegisteredResourceValuesByFQN RPC.
+	RegisteredResourcesServiceGetRegisteredResourceValuesByFQNProcedure = "/policy.registeredresources.RegisteredResourcesService/GetRegisteredResourceValuesByFQN"
 	// RegisteredResourcesServiceListRegisteredResourceValuesProcedure is the fully-qualified name of
 	// the RegisteredResourcesService's ListRegisteredResourceValues RPC.
 	RegisteredResourcesServiceListRegisteredResourceValuesProcedure = "/policy.registeredresources.RegisteredResourcesService/ListRegisteredResourceValues"
@@ -71,18 +71,18 @@ const (
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	registeredResourcesServiceServiceDescriptor                                     = registeredresources.File_policy_registeredresources_registered_resources_proto.Services().ByName("RegisteredResourcesService")
-	registeredResourcesServiceCreateRegisteredResourceMethodDescriptor              = registeredResourcesServiceServiceDescriptor.Methods().ByName("CreateRegisteredResource")
-	registeredResourcesServiceGetRegisteredResourceMethodDescriptor                 = registeredResourcesServiceServiceDescriptor.Methods().ByName("GetRegisteredResource")
-	registeredResourcesServiceListRegisteredResourcesMethodDescriptor               = registeredResourcesServiceServiceDescriptor.Methods().ByName("ListRegisteredResources")
-	registeredResourcesServiceUpdateRegisteredResourceMethodDescriptor              = registeredResourcesServiceServiceDescriptor.Methods().ByName("UpdateRegisteredResource")
-	registeredResourcesServiceDeleteRegisteredResourceMethodDescriptor              = registeredResourcesServiceServiceDescriptor.Methods().ByName("DeleteRegisteredResource")
-	registeredResourcesServiceCreateRegisteredResourceValueMethodDescriptor         = registeredResourcesServiceServiceDescriptor.Methods().ByName("CreateRegisteredResourceValue")
-	registeredResourcesServiceGetRegisteredResourceValueMethodDescriptor            = registeredResourcesServiceServiceDescriptor.Methods().ByName("GetRegisteredResourceValue")
-	registeredResourcesServiceGetRegisteredResourceValuesByValueFQNMethodDescriptor = registeredResourcesServiceServiceDescriptor.Methods().ByName("GetRegisteredResourceValuesByValueFQN")
-	registeredResourcesServiceListRegisteredResourceValuesMethodDescriptor          = registeredResourcesServiceServiceDescriptor.Methods().ByName("ListRegisteredResourceValues")
-	registeredResourcesServiceUpdateRegisteredResourceValueMethodDescriptor         = registeredResourcesServiceServiceDescriptor.Methods().ByName("UpdateRegisteredResourceValue")
-	registeredResourcesServiceDeleteRegisteredResourceValueMethodDescriptor         = registeredResourcesServiceServiceDescriptor.Methods().ByName("DeleteRegisteredResourceValue")
+	registeredResourcesServiceServiceDescriptor                                = registeredresources.File_policy_registeredresources_registered_resources_proto.Services().ByName("RegisteredResourcesService")
+	registeredResourcesServiceCreateRegisteredResourceMethodDescriptor         = registeredResourcesServiceServiceDescriptor.Methods().ByName("CreateRegisteredResource")
+	registeredResourcesServiceGetRegisteredResourceMethodDescriptor            = registeredResourcesServiceServiceDescriptor.Methods().ByName("GetRegisteredResource")
+	registeredResourcesServiceListRegisteredResourcesMethodDescriptor          = registeredResourcesServiceServiceDescriptor.Methods().ByName("ListRegisteredResources")
+	registeredResourcesServiceUpdateRegisteredResourceMethodDescriptor         = registeredResourcesServiceServiceDescriptor.Methods().ByName("UpdateRegisteredResource")
+	registeredResourcesServiceDeleteRegisteredResourceMethodDescriptor         = registeredResourcesServiceServiceDescriptor.Methods().ByName("DeleteRegisteredResource")
+	registeredResourcesServiceCreateRegisteredResourceValueMethodDescriptor    = registeredResourcesServiceServiceDescriptor.Methods().ByName("CreateRegisteredResourceValue")
+	registeredResourcesServiceGetRegisteredResourceValueMethodDescriptor       = registeredResourcesServiceServiceDescriptor.Methods().ByName("GetRegisteredResourceValue")
+	registeredResourcesServiceGetRegisteredResourceValuesByFQNMethodDescriptor = registeredResourcesServiceServiceDescriptor.Methods().ByName("GetRegisteredResourceValuesByFQN")
+	registeredResourcesServiceListRegisteredResourceValuesMethodDescriptor     = registeredResourcesServiceServiceDescriptor.Methods().ByName("ListRegisteredResourceValues")
+	registeredResourcesServiceUpdateRegisteredResourceValueMethodDescriptor    = registeredResourcesServiceServiceDescriptor.Methods().ByName("UpdateRegisteredResourceValue")
+	registeredResourcesServiceDeleteRegisteredResourceValueMethodDescriptor    = registeredResourcesServiceServiceDescriptor.Methods().ByName("DeleteRegisteredResourceValue")
 )
 
 // RegisteredResourcesServiceClient is a client for the
@@ -95,7 +95,7 @@ type RegisteredResourcesServiceClient interface {
 	DeleteRegisteredResource(context.Context, *connect.Request[registeredresources.DeleteRegisteredResourceRequest]) (*connect.Response[registeredresources.DeleteRegisteredResourceResponse], error)
 	CreateRegisteredResourceValue(context.Context, *connect.Request[registeredresources.CreateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.CreateRegisteredResourceValueResponse], error)
 	GetRegisteredResourceValue(context.Context, *connect.Request[registeredresources.GetRegisteredResourceValueRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValueResponse], error)
-	GetRegisteredResourceValuesByValueFQN(context.Context, *connect.Request[registeredresources.GetRegisteredResourceValuesByValueFQNRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByValueFQNResponse], error)
+	GetRegisteredResourceValuesByFQN(context.Context, *connect.Request[registeredresources.GetRegisteredResourceValuesByFQNRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByFQNResponse], error)
 	ListRegisteredResourceValues(context.Context, *connect.Request[registeredresources.ListRegisteredResourceValuesRequest]) (*connect.Response[registeredresources.ListRegisteredResourceValuesResponse], error)
 	UpdateRegisteredResourceValue(context.Context, *connect.Request[registeredresources.UpdateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceValueResponse], error)
 	DeleteRegisteredResourceValue(context.Context, *connect.Request[registeredresources.DeleteRegisteredResourceValueRequest]) (*connect.Response[registeredresources.DeleteRegisteredResourceValueResponse], error)
@@ -154,10 +154,10 @@ func NewRegisteredResourcesServiceClient(httpClient connect.HTTPClient, baseURL 
 			connect.WithSchema(registeredResourcesServiceGetRegisteredResourceValueMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		getRegisteredResourceValuesByValueFQN: connect.NewClient[registeredresources.GetRegisteredResourceValuesByValueFQNRequest, registeredresources.GetRegisteredResourceValuesByValueFQNResponse](
+		getRegisteredResourceValuesByFQN: connect.NewClient[registeredresources.GetRegisteredResourceValuesByFQNRequest, registeredresources.GetRegisteredResourceValuesByFQNResponse](
 			httpClient,
-			baseURL+RegisteredResourcesServiceGetRegisteredResourceValuesByValueFQNProcedure,
-			connect.WithSchema(registeredResourcesServiceGetRegisteredResourceValuesByValueFQNMethodDescriptor),
+			baseURL+RegisteredResourcesServiceGetRegisteredResourceValuesByFQNProcedure,
+			connect.WithSchema(registeredResourcesServiceGetRegisteredResourceValuesByFQNMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		listRegisteredResourceValues: connect.NewClient[registeredresources.ListRegisteredResourceValuesRequest, registeredresources.ListRegisteredResourceValuesResponse](
@@ -183,17 +183,17 @@ func NewRegisteredResourcesServiceClient(httpClient connect.HTTPClient, baseURL 
 
 // registeredResourcesServiceClient implements RegisteredResourcesServiceClient.
 type registeredResourcesServiceClient struct {
-	createRegisteredResource              *connect.Client[registeredresources.CreateRegisteredResourceRequest, registeredresources.CreateRegisteredResourceResponse]
-	getRegisteredResource                 *connect.Client[registeredresources.GetRegisteredResourceRequest, registeredresources.GetRegisteredResourceResponse]
-	listRegisteredResources               *connect.Client[registeredresources.ListRegisteredResourcesRequest, registeredresources.ListRegisteredResourcesResponse]
-	updateRegisteredResource              *connect.Client[registeredresources.UpdateRegisteredResourceRequest, registeredresources.UpdateRegisteredResourceResponse]
-	deleteRegisteredResource              *connect.Client[registeredresources.DeleteRegisteredResourceRequest, registeredresources.DeleteRegisteredResourceResponse]
-	createRegisteredResourceValue         *connect.Client[registeredresources.CreateRegisteredResourceValueRequest, registeredresources.CreateRegisteredResourceValueResponse]
-	getRegisteredResourceValue            *connect.Client[registeredresources.GetRegisteredResourceValueRequest, registeredresources.GetRegisteredResourceValueResponse]
-	getRegisteredResourceValuesByValueFQN *connect.Client[registeredresources.GetRegisteredResourceValuesByValueFQNRequest, registeredresources.GetRegisteredResourceValuesByValueFQNResponse]
-	listRegisteredResourceValues          *connect.Client[registeredresources.ListRegisteredResourceValuesRequest, registeredresources.ListRegisteredResourceValuesResponse]
-	updateRegisteredResourceValue         *connect.Client[registeredresources.UpdateRegisteredResourceValueRequest, registeredresources.UpdateRegisteredResourceValueResponse]
-	deleteRegisteredResourceValue         *connect.Client[registeredresources.DeleteRegisteredResourceValueRequest, registeredresources.DeleteRegisteredResourceValueResponse]
+	createRegisteredResource         *connect.Client[registeredresources.CreateRegisteredResourceRequest, registeredresources.CreateRegisteredResourceResponse]
+	getRegisteredResource            *connect.Client[registeredresources.GetRegisteredResourceRequest, registeredresources.GetRegisteredResourceResponse]
+	listRegisteredResources          *connect.Client[registeredresources.ListRegisteredResourcesRequest, registeredresources.ListRegisteredResourcesResponse]
+	updateRegisteredResource         *connect.Client[registeredresources.UpdateRegisteredResourceRequest, registeredresources.UpdateRegisteredResourceResponse]
+	deleteRegisteredResource         *connect.Client[registeredresources.DeleteRegisteredResourceRequest, registeredresources.DeleteRegisteredResourceResponse]
+	createRegisteredResourceValue    *connect.Client[registeredresources.CreateRegisteredResourceValueRequest, registeredresources.CreateRegisteredResourceValueResponse]
+	getRegisteredResourceValue       *connect.Client[registeredresources.GetRegisteredResourceValueRequest, registeredresources.GetRegisteredResourceValueResponse]
+	getRegisteredResourceValuesByFQN *connect.Client[registeredresources.GetRegisteredResourceValuesByFQNRequest, registeredresources.GetRegisteredResourceValuesByFQNResponse]
+	listRegisteredResourceValues     *connect.Client[registeredresources.ListRegisteredResourceValuesRequest, registeredresources.ListRegisteredResourceValuesResponse]
+	updateRegisteredResourceValue    *connect.Client[registeredresources.UpdateRegisteredResourceValueRequest, registeredresources.UpdateRegisteredResourceValueResponse]
+	deleteRegisteredResourceValue    *connect.Client[registeredresources.DeleteRegisteredResourceValueRequest, registeredresources.DeleteRegisteredResourceValueResponse]
 }
 
 // CreateRegisteredResource calls
@@ -238,10 +238,10 @@ func (c *registeredResourcesServiceClient) GetRegisteredResourceValue(ctx contex
 	return c.getRegisteredResourceValue.CallUnary(ctx, req)
 }
 
-// GetRegisteredResourceValuesByValueFQN calls
-// policy.registeredresources.RegisteredResourcesService.GetRegisteredResourceValuesByValueFQN.
-func (c *registeredResourcesServiceClient) GetRegisteredResourceValuesByValueFQN(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceValuesByValueFQNRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByValueFQNResponse], error) {
-	return c.getRegisteredResourceValuesByValueFQN.CallUnary(ctx, req)
+// GetRegisteredResourceValuesByFQN calls
+// policy.registeredresources.RegisteredResourcesService.GetRegisteredResourceValuesByFQN.
+func (c *registeredResourcesServiceClient) GetRegisteredResourceValuesByFQN(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceValuesByFQNRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByFQNResponse], error) {
+	return c.getRegisteredResourceValuesByFQN.CallUnary(ctx, req)
 }
 
 // ListRegisteredResourceValues calls
@@ -272,7 +272,7 @@ type RegisteredResourcesServiceHandler interface {
 	DeleteRegisteredResource(context.Context, *connect.Request[registeredresources.DeleteRegisteredResourceRequest]) (*connect.Response[registeredresources.DeleteRegisteredResourceResponse], error)
 	CreateRegisteredResourceValue(context.Context, *connect.Request[registeredresources.CreateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.CreateRegisteredResourceValueResponse], error)
 	GetRegisteredResourceValue(context.Context, *connect.Request[registeredresources.GetRegisteredResourceValueRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValueResponse], error)
-	GetRegisteredResourceValuesByValueFQN(context.Context, *connect.Request[registeredresources.GetRegisteredResourceValuesByValueFQNRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByValueFQNResponse], error)
+	GetRegisteredResourceValuesByFQN(context.Context, *connect.Request[registeredresources.GetRegisteredResourceValuesByFQNRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByFQNResponse], error)
 	ListRegisteredResourceValues(context.Context, *connect.Request[registeredresources.ListRegisteredResourceValuesRequest]) (*connect.Response[registeredresources.ListRegisteredResourceValuesResponse], error)
 	UpdateRegisteredResourceValue(context.Context, *connect.Request[registeredresources.UpdateRegisteredResourceValueRequest]) (*connect.Response[registeredresources.UpdateRegisteredResourceValueResponse], error)
 	DeleteRegisteredResourceValue(context.Context, *connect.Request[registeredresources.DeleteRegisteredResourceValueRequest]) (*connect.Response[registeredresources.DeleteRegisteredResourceValueResponse], error)
@@ -326,10 +326,10 @@ func NewRegisteredResourcesServiceHandler(svc RegisteredResourcesServiceHandler,
 		connect.WithSchema(registeredResourcesServiceGetRegisteredResourceValueMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	registeredResourcesServiceGetRegisteredResourceValuesByValueFQNHandler := connect.NewUnaryHandler(
-		RegisteredResourcesServiceGetRegisteredResourceValuesByValueFQNProcedure,
-		svc.GetRegisteredResourceValuesByValueFQN,
-		connect.WithSchema(registeredResourcesServiceGetRegisteredResourceValuesByValueFQNMethodDescriptor),
+	registeredResourcesServiceGetRegisteredResourceValuesByFQNHandler := connect.NewUnaryHandler(
+		RegisteredResourcesServiceGetRegisteredResourceValuesByFQNProcedure,
+		svc.GetRegisteredResourceValuesByFQN,
+		connect.WithSchema(registeredResourcesServiceGetRegisteredResourceValuesByFQNMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	registeredResourcesServiceListRegisteredResourceValuesHandler := connect.NewUnaryHandler(
@@ -366,8 +366,8 @@ func NewRegisteredResourcesServiceHandler(svc RegisteredResourcesServiceHandler,
 			registeredResourcesServiceCreateRegisteredResourceValueHandler.ServeHTTP(w, r)
 		case RegisteredResourcesServiceGetRegisteredResourceValueProcedure:
 			registeredResourcesServiceGetRegisteredResourceValueHandler.ServeHTTP(w, r)
-		case RegisteredResourcesServiceGetRegisteredResourceValuesByValueFQNProcedure:
-			registeredResourcesServiceGetRegisteredResourceValuesByValueFQNHandler.ServeHTTP(w, r)
+		case RegisteredResourcesServiceGetRegisteredResourceValuesByFQNProcedure:
+			registeredResourcesServiceGetRegisteredResourceValuesByFQNHandler.ServeHTTP(w, r)
 		case RegisteredResourcesServiceListRegisteredResourceValuesProcedure:
 			registeredResourcesServiceListRegisteredResourceValuesHandler.ServeHTTP(w, r)
 		case RegisteredResourcesServiceUpdateRegisteredResourceValueProcedure:
@@ -411,8 +411,8 @@ func (UnimplementedRegisteredResourcesServiceHandler) GetRegisteredResourceValue
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.registeredresources.RegisteredResourcesService.GetRegisteredResourceValue is not implemented"))
 }
 
-func (UnimplementedRegisteredResourcesServiceHandler) GetRegisteredResourceValuesByValueFQN(context.Context, *connect.Request[registeredresources.GetRegisteredResourceValuesByValueFQNRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByValueFQNResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.registeredresources.RegisteredResourcesService.GetRegisteredResourceValuesByValueFQN is not implemented"))
+func (UnimplementedRegisteredResourcesServiceHandler) GetRegisteredResourceValuesByFQN(context.Context, *connect.Request[registeredresources.GetRegisteredResourceValuesByFQNRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByFQNResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.registeredresources.RegisteredResourcesService.GetRegisteredResourceValuesByFQN is not implemented"))
 }
 
 func (UnimplementedRegisteredResourcesServiceHandler) ListRegisteredResourceValues(context.Context, *connect.Request[registeredresources.ListRegisteredResourceValuesRequest]) (*connect.Response[registeredresources.ListRegisteredResourceValuesResponse], error) {

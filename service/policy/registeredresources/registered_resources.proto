@@ -53,7 +53,7 @@ message GetRegisteredResourceRequest {
   oneof identifier {
     option (buf.validate.oneof).required = true;
 
-    string resource_id = 1 [
+    string id = 1 [
       (buf.validate.field).string.uuid = true
     ];
 
@@ -151,7 +151,7 @@ message GetRegisteredResourceValueRequest {
   oneof identifier {
     option (buf.validate.oneof).required = true;
 
-    string value_id = 1 [
+    string id = 1 [
       (buf.validate.field).string.uuid = true
     ];
 
@@ -167,7 +167,7 @@ message GetRegisteredResourceValueResponse {
   policy.RegisteredResourceValue value = 1;
 }
 
-message GetRegisteredResourceValuesByValueFQNRequest {
+message GetRegisteredResourceValuesByFQNRequest {
   // Required
   repeated string fqns = 1 [
     (buf.validate.field).repeated = {
@@ -183,7 +183,7 @@ message GetRegisteredResourceValuesByValueFQNRequest {
     }
   ];
 }
-message GetRegisteredResourceValuesByValueFQNResponse {
+message GetRegisteredResourceValuesByFQNResponse {
   map<string, policy.RegisteredResourceValue> fqnToValueMap = 1;
 }
 
@@ -271,7 +271,7 @@ service RegisteredResourcesService {
   rpc GetRegisteredResourceValue(GetRegisteredResourceValueRequest) returns (GetRegisteredResourceValueResponse) {
   }
 
-  rpc GetRegisteredResourceValuesByValueFQN(GetRegisteredResourceValuesByValueFQNRequest) returns (GetRegisteredResourceValuesByValueFQNResponse) {
+  rpc GetRegisteredResourceValuesByFQN(GetRegisteredResourceValuesByFQNRequest) returns (GetRegisteredResourceValuesByFQNResponse) {
   }
 
   rpc ListRegisteredResourceValues(ListRegisteredResourceValuesRequest) returns (ListRegisteredResourceValuesResponse) {

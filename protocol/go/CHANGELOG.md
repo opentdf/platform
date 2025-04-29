@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.4.0](https://github.com/opentdf/platform/compare/protocol/go-v0.3.2...protocol/go/v0.4.0) (2025-04-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979))
+
+### Features
+
+* add ability to retrieve policy resources by id or name ([#1901](https://github.com/opentdf/platform/issues/1901)) ([deb4455](https://github.com/opentdf/platform/commit/deb4455773cd71d3436510bbeb599f309106ce1d))
+* add generated connect-rpc code ([#1708](https://github.com/opentdf/platform/issues/1708)) ([92ac86a](https://github.com/opentdf/platform/commit/92ac86aa84d645fb5db26c17716d52457673f2de))
+* **authz:** Typed Entities ([#1249](https://github.com/opentdf/platform/issues/1249)) ([cfab3ad](https://github.com/opentdf/platform/commit/cfab3ad8a72f3a2f1a28ccca988459ddcdcbd7f6))
+* backend migration to connect-rpc ([#1733](https://github.com/opentdf/platform/issues/1733)) ([d10ba3c](https://github.com/opentdf/platform/commit/d10ba3cb22175a000ba5d156987c9f201749ae88))
+* **core:** adds bulk rewrap to sdk and service ([#1835](https://github.com/opentdf/platform/issues/1835)) ([11698ae](https://github.com/opentdf/platform/commit/11698ae18f66282980a7822dd145e3896c2b605c))
+* **core:** Adds key ids to kas registry ([#1347](https://github.com/opentdf/platform/issues/1347)) ([e6c76ee](https://github.com/opentdf/platform/commit/e6c76ee415e08ec8681ae4ff8fb9d5d04ea7d2bb))
+* **core:** EXPERIMENTAL: EC-wrapped key support ([#1902](https://github.com/opentdf/platform/issues/1902)) ([652266f](https://github.com/opentdf/platform/commit/652266f212ba10b2492a84741f68391a1d39e007))
+* **core:** further support in policy for namespace grants ([#1334](https://github.com/opentdf/platform/issues/1334)) ([d56231e](https://github.com/opentdf/platform/commit/d56231ea632c6072613c18cf1fcb9770cedf49e3))
+* **core:** policy support for LIST of kas grants (protos/db) ([#1317](https://github.com/opentdf/platform/issues/1317)) ([599fc56](https://github.com/opentdf/platform/commit/599fc56dbcc3ae8ff2f46584c9bae7c1619a590d))
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979)) ([164c922](https://github.com/opentdf/platform/commit/164c922af74b1265fe487362c356abb7f1503ada))
+* **core:** validate kas uri ([#1351](https://github.com/opentdf/platform/issues/1351)) ([2b70931](https://github.com/opentdf/platform/commit/2b7093136f6af1b6a86e613c095cefe403c9a06c))
+* **policy:** 1277 add Resource Mapping Group to objects proto ([#1309](https://github.com/opentdf/platform/issues/1309)) ([514f1b8](https://github.com/opentdf/platform/commit/514f1b8e2d6c56056a8258e144380974b1f84d1b)), closes [#1277](https://github.com/opentdf/platform/issues/1277)
+* **policy:** 1277 protos and service methods for Resource Mapping Groups operations ([#1343](https://github.com/opentdf/platform/issues/1343)) ([570f402](https://github.com/opentdf/platform/commit/570f4023183898212dcd007e5b42135ccf1d285a))
+* **policy:** 1398 add metadata support to Resource Mapping Groups ([#1412](https://github.com/opentdf/platform/issues/1412)) ([87b7b2f](https://github.com/opentdf/platform/commit/87b7b2ff6f7b39d34823ba926758fba25489c0a6))
+* **policy:** 1651 move GetAttributesByValueFqns RPC request validation to protovalidate ([#1657](https://github.com/opentdf/platform/issues/1657)) ([c7d6b15](https://github.com/opentdf/platform/commit/c7d6b1542c10d3e2a35fa00efaf7d415f63c7dca))
+* **policy:** add enhanced standard/custom actions protos ([#2020](https://github.com/opentdf/platform/issues/2020)) ([bbac53f](https://github.com/opentdf/platform/commit/bbac53fd622defefc6e8831ab041356fe7e23776))
+* **policy:** add optional name field to registered KASes in policy ([#1636](https://github.com/opentdf/platform/issues/1636)) ([f1382c1](https://github.com/opentdf/platform/commit/f1382c16893cefd40e930f4112ac7a61c9b05898))
+* **policy:** adds new public keys table ([#1836](https://github.com/opentdf/platform/issues/1836)) ([cad5048](https://github.com/opentdf/platform/commit/cad5048d09609d678d5b5ac2972605dd61f33bb5))
+* **policy:** DSP-51 - deprecate PublicKey local field ([#1590](https://github.com/opentdf/platform/issues/1590)) ([e3ed0b5](https://github.com/opentdf/platform/commit/e3ed0b5ce6039000c9e3c574d3d6ce2931781235))
+* **policy:** DSPX-893 NDR define crud protos ([#2056](https://github.com/opentdf/platform/issues/2056)) ([55a5c27](https://github.com/opentdf/platform/commit/55a5c279d0499f684bc62c53838edbcb89bec272))
+* **policy:** DSPX-902 NDR service crud protos only (1/2) ([#2092](https://github.com/opentdf/platform/issues/2092)) ([24b6cb5](https://github.com/opentdf/platform/commit/24b6cb5f876439dd5bb15ed95a20d18a16da3706))
+* **policy:** Key management proto ([#2115](https://github.com/opentdf/platform/issues/2115)) ([561f853](https://github.com/opentdf/platform/commit/561f85301c73c221cf22695afb66deeac594a3d6))
+* **policy:** limit/offset throughout LIST protos/gencode ([#1668](https://github.com/opentdf/platform/issues/1668)) ([7de6cce](https://github.com/opentdf/platform/commit/7de6cce5c9603228bc0ef5566b5b2d10c4a12ee4))
+* **policy:** subject condition sets prune protos/gencode ([#1687](https://github.com/opentdf/platform/issues/1687)) ([a627e02](https://github.com/opentdf/platform/commit/a627e021e9df2c06e1c86acfc0a4ee83c4bce932))
+* **policy:** subject condition sets prune service/db ([#1688](https://github.com/opentdf/platform/issues/1688)) ([3cdd1b2](https://github.com/opentdf/platform/commit/3cdd1b26e81cb004b02af44e914baef3422cdcde)), closes [#1178](https://github.com/opentdf/platform/issues/1178)
+* **sdk:** add collections for nanotdf  ([#1695](https://github.com/opentdf/platform/issues/1695)) ([6497bf3](https://github.com/opentdf/platform/commit/6497bf3a7cee9b6900569bc6cc2c39b2f647fb52))
+* **sdk:** Load KAS keys from policy service ([#1346](https://github.com/opentdf/platform/issues/1346)) ([fe628a0](https://github.com/opentdf/platform/commit/fe628a013e41fb87585eb53a61988f822b40a71a))
+
+
+### Bug Fixes
+
+* add pagination to list public key mappings response ([#1889](https://github.com/opentdf/platform/issues/1889)) ([9898fbd](https://github.com/opentdf/platform/commit/9898fbda305f4eface291a2aaa98d2df80f0ad05))
+* **core:** align policy kas grant assignments http gateway methods with actions ([#1299](https://github.com/opentdf/platform/issues/1299)) ([031c6ca](https://github.com/opentdf/platform/commit/031c6ca87b8e252a4254f10bfcc78b45e5111ed9))
+* **core:** Fix parsing /v1/authorization ([#1554](https://github.com/opentdf/platform/issues/1554)) ([b7d694d](https://github.com/opentdf/platform/commit/b7d694d5df3867f278007660c32acb72c868735e)), closes [#1553](https://github.com/opentdf/platform/issues/1553)
+* **core:** Fix POST /v1/entitlements body parsing ([#1574](https://github.com/opentdf/platform/issues/1574)) ([fcae7ef](https://github.com/opentdf/platform/commit/fcae7ef0eba2c43ab93f5a2815e7b3e1dec69364))
+* **core:** Fixes protoJSON parse bug on ec rewrap ([#1943](https://github.com/opentdf/platform/issues/1943)) ([9bebfd0](https://github.com/opentdf/platform/commit/9bebfd01f615f5a438e0695c03dbb1a9ad7badf3))
+* **core:** Update fixtures and flattening in sdk and service ([#1827](https://github.com/opentdf/platform/issues/1827)) ([d6d6a7a](https://github.com/opentdf/platform/commit/d6d6a7a2dffdb96cf7f7f731a4e6e66e06930e59))
+* **deps:** bump toolchain in /lib/fixtures and /examples to resolve CVE GO-2025-3563 ([#2061](https://github.com/opentdf/platform/issues/2061)) ([9c16843](https://github.com/opentdf/platform/commit/9c168437db3b138613fe629419dd6bd9f837e881))
+* **kas:** Regenerate protos and fix tests from info rpc removal ([#1291](https://github.com/opentdf/platform/issues/1291)) ([91a2fe6](https://github.com/opentdf/platform/commit/91a2fe65c63aa5ac6ca2f058dbc0c29ca2a26536))
+* **policy:** deprecates and reserves value members from value object in protos ([#1151](https://github.com/opentdf/platform/issues/1151)) ([07fcc9e](https://github.com/opentdf/platform/commit/07fcc9ec93f00beeb863e67d0ca1465c783c2a54))
+* **policy:** enhance proto validation across policy requests ([#1656](https://github.com/opentdf/platform/issues/1656)) ([df534c4](https://github.com/opentdf/platform/commit/df534c40f3f500190b200923e5157701b438431b))
+* **policy:** make MatchSubjectMappings operator agnostic ([#1658](https://github.com/opentdf/platform/issues/1658)) ([cb63819](https://github.com/opentdf/platform/commit/cb63819d107ed65cb5d467a956d713bd55214cdb))
+* **policy:** remove new public keys rpc's ([#1962](https://github.com/opentdf/platform/issues/1962)) ([5049bab](https://github.com/opentdf/platform/commit/5049baba20ddcefa40c280a18e5dd8ef754b7e22))
+* **policy:** remove predefined rules in actions protos ([#2069](https://github.com/opentdf/platform/issues/2069)) ([060f059](https://github.com/opentdf/platform/commit/060f05941f9b81b007669f51b6205723af8c1680))
+* **sdk:** Fix compatibility between bulk and non-bulk rewrap ([#1914](https://github.com/opentdf/platform/issues/1914)) ([74abbb6](https://github.com/opentdf/platform/commit/74abbb66cbb39023f56cd502a7cda294580a41c6))
+
 ## [0.3.2](https://github.com/opentdf/platform/compare/protocol/go/v0.3.1...protocol/go/v0.3.2) (2025-04-28)
 
 

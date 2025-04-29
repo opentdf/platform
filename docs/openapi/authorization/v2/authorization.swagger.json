@@ -15,62 +15,7 @@
   "produces": [
     "application/json"
   ],
-  "paths": {
-    "/v1/authorization": {
-      "post": {
-        "operationId": "AuthorizationService_GetDecisions",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/authorizationv2GetDecisionsResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/authorizationv2GetDecisionsRequest"
-            }
-          }
-        ],
-        "tags": [
-          "AuthorizationService"
-        ]
-      }
-    },
-    "/v1/token/authorization": {
-      "post": {
-        "operationId": "AuthorizationService_GetDecisionsByToken",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/authorizationv2GetDecisionsByTokenResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "tags": [
-          "AuthorizationService"
-        ]
-      }
-    }
-  },
+  "paths": {},
   "definitions": {
     "ActionStandardAction": {
       "type": "string",
@@ -97,78 +42,48 @@
     "ResourceAttributeValues": {
       "type": "object",
       "properties": {
-        "fqn": {
+        "fqns": {
           "type": "array",
           "items": {
             "type": "string"
           }
-        }
-      }
-    },
-    "ResourceRegisteredResources": {
-      "type": "object",
-      "properties": {
-        "identifier": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "FQN or URN (when supported)"
         }
       }
     },
     "authorizationv2DecisionRequest": {
       "type": "object",
       "properties": {
-        "actions": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyAction"
-          }
+        "entity": {
+          "$ref": "#/definitions/authorizationv2EntityChain"
         },
-        "entityChains": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationv2EntityChain"
-          }
+        "action": {
+          "$ref": "#/definitions/policyAction"
         },
-        "resourceAttributes": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v2Resource"
-          }
+        "resource": {
+          "$ref": "#/definitions/v2Resource"
         }
       },
-      "title": "Can the entity (PE or NPE) represented by each entity chain take the provided actions on the set of resources"
+      "title": "Can the entity (PE or NPE) represented by each entity chain take the provided action on the set of resources"
     },
     "authorizationv2DecisionResponse": {
       "type": "object",
       "properties": {
-        "entityChainId": {
+        "ephemeralEntityChainId": {
           "type": "string",
-          "title": "ephemeral entity chain id from the request"
+          "title": "ephemeral id for tracking between request and response"
         },
-        "resourceAttributesId": {
+        "ephemeralResourceId": {
           "type": "string",
-          "title": "ephemeral resource attributes id from the request"
+          "title": "ephemeral id for tracking between request and response"
         },
         "action": {
           "$ref": "#/definitions/policyAction",
-          "title": "Action of the decision response"
+          "title": "action that was requested"
         },
         "decision": {
           "$ref": "#/definitions/authorizationv2DecisionResponseDecision",
-          "title": "The decision response"
-        },
-        "obligations": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "optional list of obligations represented in URI format"
+          "description": "optional list of obligations represented in URI format\n repeated string obligations = 5;",
+          "title": "the decision response"
         }
       }
     },
@@ -179,12 +94,13 @@
         "DECISION_DENY",
         "DECISION_PERMIT"
       ],
-      "default": "DECISION_UNSPECIFIED"
+      "default": "DECISION_UNSPECIFIED",
+      "title": "- DECISION_PERMIT: DECISION_OBLIGATED = 3;"
     },
     "authorizationv2Entity": {
       "type": "object",
       "properties": {
-        "id": {
+        "ephemeralId": {
           "type": "string",
           "title": "ephemeral id for tracking between request and response"
         },
@@ -210,9 +126,8 @@
         "clientId": {
           "type": "string"
         },
-        "registeredResourceIdentifier": {
-          "type": "string",
-          "title": "FQN or URN (when supported)"
+        "registeredResourceFqn": {
+          "type": "string"
         },
         "category": {
           "$ref": "#/definitions/authorizationv2EntityCategory"
@@ -232,7 +147,7 @@
     "authorizationv2EntityChain": {
       "type": "object",
       "properties": {
-        "id": {
+        "ephemeralId": {
           "type": "string",
           "title": "ephemeral id for tracking between request and response"
         },
@@ -270,42 +185,6 @@
       },
       "title": "Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]"
     },
-    "authorizationv2GetDecisionsByTokenResponse": {
-      "type": "object",
-      "properties": {
-        "decisionResponses": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationv2DecisionResponse"
-          }
-        }
-      }
-    },
-    "authorizationv2GetDecisionsRequest": {
-      "type": "object",
-      "properties": {
-        "decisionRequests": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationv2DecisionRequest"
-          }
-        }
-      }
-    },
-    "authorizationv2GetDecisionsResponse": {
-      "type": "object",
-      "properties": {
-        "decisionResponses": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationv2DecisionResponse"
-          }
-        }
-      }
-    },
     "authorizationv2GetEntitlementsResponse": {
       "type": "object",
       "properties": {
@@ -321,41 +200,30 @@
     "authorizationv2Token": {
       "type": "object",
       "properties": {
-        "id": {
+        "ephemeralId": {
           "type": "string",
           "title": "ephemeral id for tracking between request and response"
         },
         "jwt": {
           "type": "string",
-          "title": "the token"
+          "title": "access token"
         }
       }
     },
     "authorizationv2TokenDecisionRequest": {
       "type": "object",
       "properties": {
-        "actions": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyAction"
-          }
+        "token": {
+          "$ref": "#/definitions/authorizationv2Token"
         },
-        "tokens": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationv2Token"
-          }
+        "action": {
+          "$ref": "#/definitions/policyAction"
         },
-        "resourceAttributes": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v2Resource"
-          }
+        "resource": {
+          "$ref": "#/definitions/v2Resource"
         }
-      }
+      },
+      "title": "Can the entity (PE or NPE) represented by this token take the provided action on the set of resources"
     },
     "commonMetadata": {
       "type": "object",
@@ -434,20 +302,61 @@
         }
       }
     },
+    "v2BulkGetDecisionsByTokenResponse": {
+      "type": "object",
+      "properties": {
+        "decisionResponses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationv2DecisionResponse"
+          }
+        }
+      }
+    },
+    "v2BulkGetDecisionsResponse": {
+      "type": "object",
+      "properties": {
+        "decisionResponses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationv2DecisionResponse"
+          }
+        }
+      }
+    },
+    "v2GetDecisionByTokenResponse": {
+      "type": "object",
+      "properties": {
+        "decisionResponse": {
+          "$ref": "#/definitions/authorizationv2DecisionResponse"
+        }
+      }
+    },
+    "v2GetDecisionResponse": {
+      "type": "object",
+      "properties": {
+        "decisionResponse": {
+          "$ref": "#/definitions/authorizationv2DecisionResponse"
+        }
+      }
+    },
     "v2Resource": {
       "type": "object",
       "properties": {
         "ephemeralId": {
-          "type": "string"
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
         },
         "attributeValues": {
           "$ref": "#/definitions/ResourceAttributeValues"
         },
-        "registeredResources": {
-          "$ref": "#/definitions/ResourceRegisteredResources"
+        "registeredResourceFqn": {
+          "type": "string"
         }
       },
-      "title": "A logical bucket of attributes belonging to a \"Resource\""
+      "title": "Either a registered resource or a set of attribute values"
     }
   }
 }

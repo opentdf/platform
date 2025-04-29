@@ -2,18 +2,20 @@ syntax = "proto3";
 
 package authorization.v2;
 
-import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
 import "policy/objects.proto";
 
 message Token {
-  string id = 1; // ephemeral id for tracking between request and response
-  string jwt = 2; // the token
+  // ephemeral id for tracking between request and response
+  string ephemeral_id = 1;
+  // access token
+  string jwt = 2;
 }
 
 // PE (Person Entity) or NPE (Non-Person Entity)
 message Entity {
-  string id = 1; // ephemeral id for tracking between request and response
+  // ephemeral id for tracking between request and response
+  string ephemeral_id = 1;
   // Standard entity types supported by the platform
   oneof entity_type {
     // one of the entity options must be set
@@ -24,8 +26,7 @@ message Entity {
     google.protobuf.Any claims = 6;
     EntityCustom custom = 7;
     string client_id = 8;
-    // FQN or URN (when supported)
-    string registered_resource_identifier = 10;
+    string registered_resource_fqn = 10;
   }
   enum Category {
     CATEGORY_UNSPECIFIED = 0;
@@ -42,15 +43,16 @@ message EntityCustom {
 
 // A set of related PE and NPE
 message EntityChain {
-  string id = 1; // ephemeral id for tracking between request and response
+  // ephemeral id for tracking between request and response
+  string ephemeral_id = 1;
   repeated Entity entities = 2;
 }
 
-// Can the entity (PE or NPE) represented by each entity chain take the provided actions on the set of resources
+// Can the entity (PE or NPE) represented by each entity chain take the provided action on the set of resources
 message DecisionRequest {
-  repeated policy.Action actions = 1;
-  repeated EntityChain entity_chains = 2;
-  repeated Resource resource_attributes = 3;
+  EntityChain entity = 1;
+  policy.Action action = 2;
+  Resource resource = 3;
 }
 
 message DecisionResponse {
@@ -58,26 +60,39 @@ message DecisionResponse {
     DECISION_UNSPECIFIED = 0;
     DECISION_DENY = 1;
     DECISION_PERMIT = 2;
+    // DECISION_OBLIGATED = 3;
   }
-  string entity_chain_id = 1; // ephemeral entity chain id from the request
-  string resource_attributes_id = 2; // ephemeral resource attributes id from the request
-  policy.Action action = 3; // Action of the decision response
-  Decision decision = 4; // The decision response
-  repeated string obligations = 5; //optional list of obligations represented in URI format
+  // ephemeral id for tracking between request and response
+  string ephemeral_entity_chain_id = 1;
+  // ephemeral id for tracking between request and response
+  string ephemeral_resource_id = 2;
+  // action that was requested
+  policy.Action action = 3;
+  // the decision response
+  Decision decision = 4;
+  // optional list of obligations represented in URI format
+  // repeated string obligations = 5;
 }
 
-message GetDecisionsRequest {
+message GetDecisionRequest {
+  DecisionRequest decision_request = 1;
+}
+message GetDecisionResponse {
+  DecisionResponse decision_response = 1;
+}
+
+// More performant bulk request for multiple decisions
+message BulkGetDecisionsRequest {
   repeated DecisionRequest decision_requests = 1;
 }
-
-message GetDecisionsResponse {
+message BulkGetDecisionsResponse {
   repeated DecisionResponse decision_responses = 1;
 }
 
 message GetEntitlementsRequest {
   // list of requested entities
   repeated Entity entities = 1;
-  // optional attribute fqn as a scope
+  // optional resource as a scope
   optional Resource scope = 2;
   // optional parameter to return a full list of entitlements - returns lower hierarchy attributes
   optional bool with_comprehensive_hierarchy = 3;
@@ -93,21 +108,18 @@ message EntityEntitlements {
   map<string, ActionsList> actions_per_attribute_value_fqn = 2;
 }
 
-// A logical bucket of attributes belonging to a "Resource"
+// Either a registered resource or a set of attribute values
 message Resource {
+  // ephemeral id for tracking between request and response
   string ephemeral_id = 1;
 
   message AttributeValues {
-    repeated string fqn = 1;
-  }
-  message RegisteredResources {
-    // FQN or URN (when supported)
-    repeated string identifier = 1;
+    repeated string fqns = 1;
   }
 
   oneof resource {
     AttributeValues attribute_values = 2;
-    RegisteredResources registered_resources = 3;
+    string registered_resource_fqn = 3;
   }
 }
 
@@ -115,29 +127,34 @@ message GetEntitlementsResponse {
   repeated EntityEntitlements entitlements = 1;
 }
 
+// Can the entity (PE or NPE) represented by this token take the provided action on the set of resources
 message TokenDecisionRequest {
-  repeated policy.Action actions = 1;
-  repeated Token tokens = 2;
-  repeated Resource resource_attributes = 3;
+  Token token = 1;
+  policy.Action action = 2;
+  Resource resource = 3;
 }
 
-message GetDecisionsByTokenRequest {
+message GetDecisionByTokenRequest {
+  TokenDecisionRequest decision_request = 1;
+}
+message GetDecisionByTokenResponse {
+  DecisionResponse decision_response = 1;
+}
+
+// More performant bulk request for multiple decisions
+message BulkGetDecisionsByTokenRequest {
   repeated TokenDecisionRequest decision_requests = 1;
 }
-
-message GetDecisionsByTokenResponse {
+message BulkGetDecisionsByTokenResponse {
   repeated DecisionResponse decision_responses = 1;
 }
 
 service AuthorizationService {
-  rpc GetDecisions(GetDecisionsRequest) returns (GetDecisionsResponse) {
-    option (google.api.http) = {
-      post: "/v1/authorization"
-      body: "*"
-    };
-  }
-  rpc GetDecisionsByToken(GetDecisionsByTokenRequest) returns (GetDecisionsByTokenResponse) {
-    option (google.api.http) = {post: "/v1/token/authorization"};
-  }
+  rpc GetDecision(GetDecisionRequest) returns (GetDecisionResponse) {}
+  rpc BulkGetDecisions(BulkGetDecisionsRequest) returns (BulkGetDecisionsResponse) {}
+
+  rpc BulkGetDecisionsByToken(BulkGetDecisionsByTokenRequest) returns (BulkGetDecisionsByTokenResponse) {}
+  rpc GetDecisionByToken(GetDecisionByTokenRequest) returns (GetDecisionByTokenResponse) {}
+
   rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {}
 }

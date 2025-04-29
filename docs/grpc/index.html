@@ -246,10 +246,6 @@
                 </li>
               
                 <li>
-                  <a href="#policy.KeyProviderConfig"><span class="badge">M</span>KeyProviderConfig</a>
-                </li>
-              
-                <li>
                   <a href="#policy.Namespace"><span class="badge">M</span>Namespace</a>
                 </li>
               
@@ -991,6 +987,10 @@
               
                 <li>
                   <a href="#policy.keymanagement.GetProviderConfigResponse"><span class="badge">M</span>GetProviderConfigResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.keymanagement.KeyProviderConfig"><span class="badge">M</span>KeyProviderConfig</a>
                 </li>
               
                 <li>
@@ -2146,51 +2146,6 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                   <td></td>
                   <td><p>Optional
 Unique name of the KAS instance </p></td>
-                </tr>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.Metadata">common.Metadata</a></td>
-                  <td></td>
-                  <td><p>Common metadata </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.KeyProviderConfig">KeyProviderConfig</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>name</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>config_json</td>
-                  <td><a href="#bytes">bytes</a></td>
-                  <td></td>
-                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -8302,7 +8257,7 @@ JSON configuration for the key provider. This is unique to individual key provid
               
                 <tr>
                   <td>provider_config</td>
-                  <td><a href="#policy.KeyProviderConfig">policy.KeyProviderConfig</a></td>
+                  <td><a href="#policy.keymanagement.KeyProviderConfig">KeyProviderConfig</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -8350,7 +8305,7 @@ JSON configuration for the key provider. This is unique to individual key provid
               
                 <tr>
                   <td>provider_config</td>
-                  <td><a href="#policy.KeyProviderConfig">policy.KeyProviderConfig</a></td>
+                  <td><a href="#policy.keymanagement.KeyProviderConfig">KeyProviderConfig</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -8405,9 +8360,54 @@ JSON configuration for the key provider. This is unique to individual key provid
               
                 <tr>
                   <td>provider_config</td>
-                  <td><a href="#policy.KeyProviderConfig">policy.KeyProviderConfig</a></td>
+                  <td><a href="#policy.keymanagement.KeyProviderConfig">KeyProviderConfig</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.keymanagement.KeyProviderConfig">KeyProviderConfig</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>config_json</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
                 </tr>
               
             </tbody>
@@ -8453,7 +8453,7 @@ JSON configuration for the key provider. This is unique to individual key provid
               
                 <tr>
                   <td>provider_configs</td>
-                  <td><a href="#policy.KeyProviderConfig">policy.KeyProviderConfig</a></td>
+                  <td><a href="#policy.keymanagement.KeyProviderConfig">KeyProviderConfig</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -8537,7 +8537,7 @@ Common metadata </p></td>
               
                 <tr>
                   <td>provider_config</td>
-                  <td><a href="#policy.KeyProviderConfig">policy.KeyProviderConfig</a></td>
+                  <td><a href="#policy.keymanagement.KeyProviderConfig">KeyProviderConfig</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>

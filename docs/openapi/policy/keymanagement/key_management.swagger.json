@@ -66,7 +66,7 @@
       "type": "object",
       "properties": {
         "providerConfig": {
-          "$ref": "#/definitions/policyKeyProviderConfig"
+          "$ref": "#/definitions/keymanagementKeyProviderConfig"
         }
       }
     },
@@ -74,7 +74,7 @@
       "type": "object",
       "properties": {
         "providerConfig": {
-          "$ref": "#/definitions/policyKeyProviderConfig"
+          "$ref": "#/definitions/keymanagementKeyProviderConfig"
         }
       }
     },
@@ -82,34 +82,11 @@
       "type": "object",
       "properties": {
         "providerConfig": {
-          "$ref": "#/definitions/policyKeyProviderConfig"
+          "$ref": "#/definitions/keymanagementKeyProviderConfig"
         }
       }
     },
-    "keymanagementListProviderConfigsResponse": {
-      "type": "object",
-      "properties": {
-        "providerConfigs": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/policyKeyProviderConfig"
-          }
-        },
-        "pagination": {
-          "$ref": "#/definitions/policyPageResponse"
-        }
-      }
-    },
-    "keymanagementUpdateProviderConfigResponse": {
-      "type": "object",
-      "properties": {
-        "providerConfig": {
-          "$ref": "#/definitions/policyKeyProviderConfig"
-        }
-      }
-    },
-    "policyKeyProviderConfig": {
+    "keymanagementKeyProviderConfig": {
       "type": "object",
       "properties": {
         "id": {
@@ -125,6 +102,29 @@
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata"
+        }
+      }
+    },
+    "keymanagementListProviderConfigsResponse": {
+      "type": "object",
+      "properties": {
+        "providerConfigs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/keymanagementKeyProviderConfig"
+          }
+        },
+        "pagination": {
+          "$ref": "#/definitions/policyPageResponse"
+        }
+      }
+    },
+    "keymanagementUpdateProviderConfigResponse": {
+      "type": "object",
+      "properties": {
+        "providerConfig": {
+          "$ref": "#/definitions/keymanagementKeyProviderConfig"
         }
       }
     },

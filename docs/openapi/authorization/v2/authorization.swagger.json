@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "authorization/authorization.proto",
+    "title": "authorization/v2/authorization.proto",
     "version": "version not set"
   },
   "tags": [
@@ -23,7 +23,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/authorizationGetDecisionsResponse"
+              "$ref": "#/definitions/authorizationv2GetDecisionsResponse"
             }
           },
           "default": {
@@ -39,39 +39,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/authorizationGetDecisionsRequest"
-            }
-          }
-        ],
-        "tags": [
-          "AuthorizationService"
-        ]
-      }
-    },
-    "/v1/entitlements": {
-      "post": {
-        "operationId": "AuthorizationService_GetEntitlements",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/authorizationGetEntitlementsResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/authorizationGetEntitlementsRequest"
+              "$ref": "#/definitions/authorizationv2GetDecisionsRequest"
             }
           }
         ],
@@ -87,7 +55,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/authorizationGetDecisionsByTokenResponse"
+              "$ref": "#/definitions/authorizationv2GetDecisionsByTokenResponse"
             }
           },
           "default": {
@@ -114,7 +82,19 @@
       "default": "STANDARD_ACTION_UNSPECIFIED",
       "title": "- STANDARD_ACTION_DECRYPT: Deprecated\nMigrate to 'read' action name\n - STANDARD_ACTION_TRANSMIT: Deprecated\nMigrate to 'create' action name"
     },
-    "authorizationDecisionRequest": {
+    "EntityEntitlementsActionsList": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyAction"
+          }
+        }
+      }
+    },
+    "authorizationv2DecisionRequest": {
       "type": "object",
       "properties": {
         "actions": {
@@ -128,21 +108,21 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationEntityChain"
+            "$ref": "#/definitions/authorizationv2EntityChain"
           }
         },
         "resourceAttributes": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationResourceAttribute"
+            "$ref": "#/definitions/authorizationv2ResourceAttribute"
           }
         }
       },
       "description": "{\n\"actions\": [\n{\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n}\n],\n\"entityChains\": [\n{\n\"id\": \"ec1\",\n\"entities\": [\n{\n\"emailAddress\": \"bob@example.org\"\n}\n]\n},\n{\n\"id\": \"ec2\",\n\"entities\": [\n{\n\"userName\": \"alice@example.org\"\n}\n]\n}\n],\n\"resourceAttributes\": [\n{\n\"resourceAttributeId\":  \"attr-set-1\",\n\"attributeFqns\": [\n\"https://www.example.org/attr/foo/value/value1\"\n]\n},\n{\n\"resourceAttributeId\":  \"attr-set-2\",\n\"attributeFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n]\n}",
       "title": "Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)\nand Alice (represented by entity chain ec2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?"
     },
-    "authorizationDecisionResponse": {
+    "authorizationv2DecisionResponse": {
       "type": "object",
       "properties": {
         "entityChainId": {
@@ -158,7 +138,7 @@
           "title": "Action of the decision response"
         },
         "decision": {
-          "$ref": "#/definitions/authorizationDecisionResponseDecision",
+          "$ref": "#/definitions/authorizationv2DecisionResponseDecision",
           "title": "The decision response"
         },
         "obligations": {
@@ -172,7 +152,7 @@
       "description": "Results:\n- bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation\n- bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n- alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes\n- alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n\n{\n\"entityChainId\":  \"ec1\",\n\"resourceAttributesId\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\",\n\"obligations\":  [\n\"http://www.example.org/obligation/watermark\"\n]\n},\n{\n\"entityChainId\":  \"ec1\",\n\"resourceAttributesId\":  \"attr-set-2\",\n\"decision\":  \"DECISION_PERMIT\"\n},\n{\n\"entityChainId\":  \"ec2\",\n\"resourceAttributesId\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\"\n},\n{\n\"entityChainId\":  \"ec2\",\n\"resourceAttributesId\":  \"attr-set-2\",\n\"decision\":  \"DECISION_DENY\"\n}",
       "title": "Example response for a Decision Request -  Do Bob (represented by entity chain ec1)\nand Alice (represented by entity chain ec2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?"
     },
-    "authorizationDecisionResponseDecision": {
+    "authorizationv2DecisionResponseDecision": {
       "type": "string",
       "enum": [
         "DECISION_UNSPECIFIED",
@@ -181,7 +161,7 @@
       ],
       "default": "DECISION_UNSPECIFIED"
     },
-    "authorizationEntity": {
+    "authorizationv2Entity": {
       "type": "object",
       "properties": {
         "id": {
@@ -205,18 +185,18 @@
           "$ref": "#/definitions/protobufAny"
         },
         "custom": {
-          "$ref": "#/definitions/authorizationEntityCustom"
+          "$ref": "#/definitions/authorizationv2EntityCustom"
         },
         "clientId": {
           "type": "string"
         },
         "category": {
-          "$ref": "#/definitions/authorizationEntityCategory"
+          "$ref": "#/definitions/authorizationv2EntityCategory"
         }
       },
       "title": "PE (Person Entity) or NPE (Non-Person Entity)"
     },
-    "authorizationEntityCategory": {
+    "authorizationv2EntityCategory": {
       "type": "string",
       "enum": [
         "CATEGORY_UNSPECIFIED",
@@ -225,7 +205,7 @@
       ],
       "default": "CATEGORY_UNSPECIFIED"
     },
-    "authorizationEntityChain": {
+    "authorizationv2EntityChain": {
       "type": "object",
       "properties": {
         "id": {
@@ -236,13 +216,13 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationEntity"
+            "$ref": "#/definitions/authorizationv2Entity"
           }
         }
       },
       "title": "A set of related PE and NPE"
     },
-    "authorizationEntityCustom": {
+    "authorizationv2EntityCustom": {
       "type": "object",
       "properties": {
         "extension": {
@@ -251,90 +231,70 @@
       },
       "title": "Entity type for custom entities beyond the standard types"
     },
-    "authorizationEntityEntitlements": {
+    "authorizationv2EntityEntitlements": {
       "type": "object",
       "properties": {
         "entityId": {
           "type": "string"
         },
-        "attributeValueFqns": {
-          "type": "array",
-          "items": {
-            "type": "string"
+        "actionsPerAttributeValueFqn": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/EntityEntitlementsActionsList"
           }
         }
-      }
+      },
+      "title": "Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]"
     },
-    "authorizationGetDecisionsByTokenResponse": {
+    "authorizationv2GetDecisionsByTokenResponse": {
       "type": "object",
       "properties": {
         "decisionResponses": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationDecisionResponse"
+            "$ref": "#/definitions/authorizationv2DecisionResponse"
           }
         }
       }
     },
-    "authorizationGetDecisionsRequest": {
+    "authorizationv2GetDecisionsRequest": {
       "type": "object",
       "properties": {
         "decisionRequests": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationDecisionRequest"
+            "$ref": "#/definitions/authorizationv2DecisionRequest"
           }
         }
       }
     },
-    "authorizationGetDecisionsResponse": {
+    "authorizationv2GetDecisionsResponse": {
       "type": "object",
       "properties": {
         "decisionResponses": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationDecisionResponse"
+            "$ref": "#/definitions/authorizationv2DecisionResponse"
           }
         }
       }
     },
-    "authorizationGetEntitlementsRequest": {
-      "type": "object",
-      "properties": {
-        "entities": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationEntity"
-          },
-          "title": "list of requested entities"
-        },
-        "scope": {
-          "$ref": "#/definitions/authorizationResourceAttribute",
-          "title": "optional attribute fqn as a scope"
-        },
-        "withComprehensiveHierarchy": {
-          "type": "boolean",
-          "title": "optional parameter to return a full list of entitlements - returns lower hierarchy attributes"
-        }
-      }
-    },
-    "authorizationGetEntitlementsResponse": {
+    "authorizationv2GetEntitlementsResponse": {
       "type": "object",
       "properties": {
         "entitlements": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationEntityEntitlements"
+            "$ref": "#/definitions/authorizationv2EntityEntitlements"
           }
         }
       }
     },
-    "authorizationResourceAttribute": {
+    "authorizationv2ResourceAttribute": {
       "type": "object",
       "properties": {
         "resourceAttributesId": {
@@ -349,7 +309,7 @@
       },
       "title": "A logical bucket of attributes belonging to a \"Resource\""
     },
-    "authorizationToken": {
+    "authorizationv2Token": {
       "type": "object",
       "properties": {
         "id": {
@@ -362,7 +322,7 @@
         }
       }
     },
-    "authorizationTokenDecisionRequest": {
+    "authorizationv2TokenDecisionRequest": {
       "type": "object",
       "properties": {
         "actions": {
@@ -376,19 +336,17 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationToken"
+            "$ref": "#/definitions/authorizationv2Token"
           }
         },
         "resourceAttributes": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationResourceAttribute"
+            "$ref": "#/definitions/authorizationv2ResourceAttribute"
           }
         }
-      },
-      "description": "{\n\"actions\": [\n{\n\"standard\": \"STANDARD_ACTION_TRANSMIT\"\n}\n],\n\"tokens\": [\n{\n\"id\": \"tok1\",\n\"jwt\": ....\n},\n{\n\"id\": \"tok2\",\n\"jwt\": .....\n}\n],\n\"resourceAttributes\": [\n{\n\"attributeFqns\": [\n\"https://www.example.org/attr/foo/value/value1\"\n]\n},\n{\n\"attributeFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n]\n}",
-      "title": "Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)\nand Alice and client2 (represented by token tok2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?"
+      }
     },
     "commonMetadata": {
       "type": "object",

@@ -4,7 +4,9 @@ package authorization;
 
 import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
+
 import "policy/objects.proto";
+
 
 message Token {
   string id = 1; // ephemeral id for tracking between request and response
@@ -45,50 +47,50 @@ message EntityChain {
 }
 
 /*
-     Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)
-     and Alice (represented by entity chain ec2) have TRANSMIT authorization for
-     2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+   Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)
+   and Alice (represented by entity chain ec2) have TRANSMIT authorization for
+   2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
 
-     {
-     "actions": [
-       {
-         "standard": "STANDARD_ACTION_TRANSMIT"
-       }
-     ],
-     "entityChains": [
-       {
-         "id": "ec1",
-         "entities": [
-           {
-             "emailAddress": "bob@example.org"
-           }
-         ]
-       },
-       {
-         "id": "ec2",
-         "entities": [
-           {
-             "userName": "alice@example.org"
-           }
-         ]
-       }
-     ],
-     "resourceAttributes": [
-       {
-         "resourceAttributeId":  "attr-set-1",
-         "attributeFqns": [
-           "https://www.example.org/attr/foo/value/value1"
-         ]
-       },
-       {
-         "resourceAttributeId":  "attr-set-2",
-         "attributeFqns": [
-           "https://example.net/attr/attr1/value/value1",
-           "https://example.net/attr/attr1/value/value2"
-         ]
-       }
-     ]
-   }
+  {
+  "actions": [
+    {
+      "standard": "STANDARD_ACTION_TRANSMIT"
+    }
+  ],
+  "entityChains": [
+    {
+      "id": "ec1",
+      "entities": [
+        {
+          "emailAddress": "bob@example.org"
+        }
+      ]
+    },
+    {
+      "id": "ec2",
+      "entities": [
+        {
+          "userName": "alice@example.org"
+        }
+      ]
+    }
+  ],
+  "resourceAttributes": [
+    {
+      "resourceAttributeId":  "attr-set-1",
+      "attributeFqns": [
+        "https://www.example.org/attr/foo/value/value1"
+      ]
+    },
+    {
+      "resourceAttributeId":  "attr-set-2",
+      "attributeFqns": [
+        "https://example.net/attr/attr1/value/value1",
+        "https://example.net/attr/attr1/value/value2"
+      ]
+    }
+  ]
+}
 
 */
 message DecisionRequest {
@@ -156,6 +158,31 @@ message GetDecisionsResponse {
   repeated DecisionResponse decision_responses = 1;
 }
 
+/*
+   Request to get entitlements for one or more entities for an optional attribute scope
+
+   Example: Get entitlements for bob and alice (both represented using an email address
+
+   {
+     "entities": [
+       {
+         "id": "e1",
+         "emailAddress": "bob@example.org"
+       },
+       {
+         "id": "e2",
+         "emailAddress": "alice@example.org"
+       }
+     ],
+     "scope": {
+        "attributeFqns": [
+          "https://example.net/attr/attr1/value/value1",
+         "https://example.net/attr/attr1/value/value2"
+        ]
+      }
+   }
+
+*/
 message GetEntitlementsRequest {
   // list of requested entities
   repeated Entity entities = 1;
@@ -176,45 +203,73 @@ message ResourceAttribute {
   repeated string attribute_value_fqns = 2;
 }
 
-message GetEntitlementsResponse {
-  repeated EntityEntitlements entitlements = 1;
-}
-
 /*
-     Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)
-     and Alice and client2 (represented by token tok2) have TRANSMIT authorization for
-     2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
 
-     {
-     "actions": [
+   Example Response for a request of : Get entitlements for bob and alice (both represented using an email address
+
+   {
+     "entitlements":  [
        {
-         "standard": "STANDARD_ACTION_TRANSMIT"
-       }
-     ],
-     "tokens": [
-       {
-         "id": "tok1",
-         "jwt": ....
-       },
-       {
-         "id": "tok2",
-         "jwt": .....
-       }
-     ],
-     "resourceAttributes": [
-       {
-         "attributeFqns": [
-           "https://www.example.org/attr/foo/value/value1"
+         "entityId":  "e1",
+         "attributeValueReferences":  [
+           {
+             "attributeFqn":  "http://www.example.org/attr/foo/value/bar"
+           }
          ]
        },
        {
-         "attributeFqns": [
-           "https://example.net/attr/attr1/value/value1",
-           "https://example.net/attr/attr1/value/value2"
+         "entityId":  "e2",
+         "attributeValueReferences":  [
+           {
+             "attributeFqn":  "http://www.example.org/attr/color/value/red"
+           }
          ]
        }
      ]
    }
+
+
+*/
+message GetEntitlementsResponse {
+  repeated EntityEntitlements entitlements = 1;
+}
+
+
+/*
+   Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)
+   and Alice and client2 (represented by token tok2) have TRANSMIT authorization for
+   2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
+  {
+  "actions": [
+    {
+      "standard": "STANDARD_ACTION_TRANSMIT"
+    }
+  ],
+  "tokens": [
+    {
+      "id": "tok1",
+      "jwt": ....
+    },
+    {
+      "id": "tok2",
+      "jwt": .....
+    }
+  ],
+  "resourceAttributes": [
+    {
+      "attributeFqns": [
+        "https://www.example.org/attr/foo/value/value1"
+      ]
+    },
+    {
+      "attributeFqns": [
+        "https://example.net/attr/attr1/value/value1",
+        "https://example.net/attr/attr1/value/value2"
+      ]
+    }
+  ]
+}
 
 */
 message TokenDecisionRequest {

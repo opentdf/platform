@@ -68,6 +68,7 @@
         "parameters": [
           {
             "name": "body",
+            "description": "Example: Get entitlements for bob and alice (both represented using an email address\n\n{\n\"entities\": [\n{\n\"id\": \"e1\",\n\"emailAddress\": \"bob@example.org\"\n},\n{\n\"id\": \"e2\",\n\"emailAddress\": \"alice@example.org\"\n}\n],\n\"scope\": {\n\"attributeFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n}",
             "in": "body",
             "required": true,
             "schema": {
@@ -320,7 +321,9 @@
           "type": "boolean",
           "title": "optional parameter to return a full list of entitlements - returns lower hierarchy attributes"
         }
-      }
+      },
+      "description": "Example: Get entitlements for bob and alice (both represented using an email address\n\n{\n\"entities\": [\n{\n\"id\": \"e1\",\n\"emailAddress\": \"bob@example.org\"\n},\n{\n\"id\": \"e2\",\n\"emailAddress\": \"alice@example.org\"\n}\n],\n\"scope\": {\n\"attributeFqns\": [\n\"https://example.net/attr/attr1/value/value1\",\n\"https://example.net/attr/attr1/value/value2\"\n]\n}\n}",
+      "title": "Request to get entitlements for one or more entities for an optional attribute scope"
     },
     "authorizationGetEntitlementsResponse": {
       "type": "object",
@@ -332,7 +335,9 @@
             "$ref": "#/definitions/authorizationEntityEntitlements"
           }
         }
-      }
+      },
+      "description": "{\n\"entitlements\":  [\n{\n\"entityId\":  \"e1\",\n\"attributeValueReferences\":  [\n{\n\"attributeFqn\":  \"http://www.example.org/attr/foo/value/bar\"\n}\n]\n},\n{\n\"entityId\":  \"e2\",\n\"attributeValueReferences\":  [\n{\n\"attributeFqn\":  \"http://www.example.org/attr/color/value/red\"\n}\n]\n}\n]\n}",
+      "title": "Example Response for a request of : Get entitlements for bob and alice (both represented using an email address"
     },
     "authorizationResourceAttribute": {
       "type": "object",

@@ -3375,7 +3375,7 @@ string</p></td>
         
       
         <h3 id="authorization.GetEntitlementsRequest">GetEntitlementsRequest</h3>
-        <p></p>
+        <p>Request to get entitlements for one or more entities for an optional attribute scope</p><p>Example: Get entitlements for bob and alice (both represented using an email address</p><p>{</p><p>"entities": [</p><p>{</p><p>"id": "e1",</p><p>"emailAddress": "bob@example.org"</p><p>},</p><p>{</p><p>"id": "e2",</p><p>"emailAddress": "alice@example.org"</p><p>}</p><p>],</p><p>"scope": {</p><p>"attributeFqns": [</p><p>"https://example.net/attr/attr1/value/value1",</p><p>"https://example.net/attr/attr1/value/value2"</p><p>]</p><p>}</p><p>}</p>
 
         
           <table class="field-table">
@@ -3413,7 +3413,7 @@ string</p></td>
         
       
         <h3 id="authorization.GetEntitlementsResponse">GetEntitlementsResponse</h3>
-        <p></p>
+        <p>Example Response for a request of : Get entitlements for bob and alice (both represented using an email address</p><p>{</p><p>"entitlements":  [</p><p>{</p><p>"entityId":  "e1",</p><p>"attributeValueReferences":  [</p><p>{</p><p>"attributeFqn":  "http://www.example.org/attr/foo/value/bar"</p><p>}</p><p>]</p><p>},</p><p>{</p><p>"entityId":  "e2",</p><p>"attributeValueReferences":  [</p><p>{</p><p>"attributeFqn":  "http://www.example.org/attr/color/value/red"</p><p>}</p><p>]</p><p>}</p><p>]</p><p>}</p>
 
         
           <table class="field-table">

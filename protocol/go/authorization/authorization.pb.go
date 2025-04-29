@@ -764,6 +764,28 @@ func (x *GetDecisionsResponse) GetDecisionResponses() []*DecisionResponse {
 	return nil
 }
 
+// Request to get entitlements for one or more entities for an optional attribute scope
+//
+// Example: Get entitlements for bob and alice (both represented using an email address
+//
+// {
+// "entities": [
+// {
+// "id": "e1",
+// "emailAddress": "bob@example.org"
+// },
+// {
+// "id": "e2",
+// "emailAddress": "alice@example.org"
+// }
+// ],
+// "scope": {
+// "attributeFqns": [
+// "https://example.net/attr/attr1/value/value1",
+// "https://example.net/attr/attr1/value/value2"
+// ]
+// }
+// }
 type GetEntitlementsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -941,6 +963,28 @@ func (x *ResourceAttribute) GetAttributeValueFqns() []string {
 	return nil
 }
 
+// Example Response for a request of : Get entitlements for bob and alice (both represented using an email address
+//
+// {
+// "entitlements":  [
+// {
+// "entityId":  "e1",
+// "attributeValueReferences":  [
+// {
+// "attributeFqn":  "http://www.example.org/attr/foo/value/bar"
+// }
+// ]
+// },
+// {
+// "entityId":  "e2",
+// "attributeValueReferences":  [
+// {
+// "attributeFqn":  "http://www.example.org/attr/color/value/red"
+// }
+// ]
+// }
+// ]
+// }
 type GetEntitlementsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

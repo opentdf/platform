@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -297,7 +298,7 @@ func (c PolicyDBClient) GetRegisteredResourceValuesByValueFQN(ctx context.Contex
 			Value: parsed.Value,
 		})
 		if err != nil {
-			if err == db.ErrNotFound {
+			if errors.Is(err, db.ErrNotFound) {
 				// map entry will remain nil for not found FQN, so continue
 				continue
 			}

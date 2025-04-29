@@ -1061,7 +1061,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 
 	symmetricKey, err := s.getNanoRewrapKey(ctx, handler)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("getNanoRewrapKey: %w", err)
 	}
 	return handler.Decrypt(ctx, []kaoResult{{SymmetricKey: symmetricKey}})
 }
@@ -1069,7 +1069,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 func (s SDK) getNanoRewrapKey(ctx context.Context, decryptor *NanoTDFDecryptHandler) ([]byte, error) {
 	req, err := decryptor.CreateRewrapRequest(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CreateRewrapRequest: %w", err)
 	}
 
 	if s.collectionStore != nil {
@@ -1081,7 +1081,7 @@ func (s SDK) getNanoRewrapKey(ctx context.Context, decryptor *NanoTDFDecryptHand
 	client := newKASClient(s.dialOptions, s.tokenSource, nil)
 	kasURL, err := decryptor.header.kasURL.GetURL()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("nano header kasUrl: %w", err)
 	}
 
 	policyResult, err := client.nanoUnwrap(ctx, req[kasURL])
@@ -1093,7 +1093,7 @@ func (s SDK) getNanoRewrapKey(ctx context.Context, decryptor *NanoTDFDecryptHand
 		return nil, errors.New("policy was not found in rewrap response")
 	}
 	if result[0].Error != nil {
-		return nil, result[0].Error
+		return nil, fmt.Errorf("rewrapError: %w", result[0].Error)
 	}
 
 	if s.collectionStore != nil {

@@ -154,11 +154,27 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 		return nil, err
 	}
 
-	if response.GetSessionPublicKey() == "" {
-		return nil, errors.New("nanoUnwrap: session public key is empty")
+	// If the session key is empty, all responses are errors
+	spk := response.GetSessionPublicKey()
+	if spk == "" {
+		policyResults := make(map[string][]kaoResult)
+		err = errors.New("nanoUnwrap: session public key is empty")
+		for _, results := range response.GetResponses() {
+			var kaoKeys []kaoResult
+			for _, kao := range results.GetResults() {
+				if kao.GetStatus() == statusPermit {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+				} else {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
+				}
+			}
+			policyResults[results.GetPolicyId()] = kaoKeys
+		}
+
+		return policyResults, nil
 	}
 
-	sessionKey, err := ocrypto.ComputeECDHKey([]byte(privateKeyAsPem), []byte(response.GetSessionPublicKey()))
+	sessionKey, err := ocrypto.ComputeECDHKey([]byte(privateKeyAsPem), []byte(spk))
 	if err != nil {
 		return nil, fmt.Errorf("nanoUnwrap: ocrypto.ComputeECDHKey failed :%w", err)
 	}

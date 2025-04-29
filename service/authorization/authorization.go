@@ -361,7 +361,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			// Entitlements for environment entites in chain
 			envEntityAttrValues := make(map[string][]string)
 			// Entitlementsfor sbuject entities in chain
-			subjectEntityAttrValues := make(access.EntityIDsToEntitlements)
+			subjectEntityAttrValues := make(map[string][]string)
 
 			// handle empty entity / attr list
 			decision := authorization.DecisionResponse_DECISION_DENY

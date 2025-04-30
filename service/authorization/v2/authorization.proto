@@ -82,10 +82,10 @@ message GetDecisionResponse {
 }
 
 // More performant bulk request for multiple decisions
-message BulkGetDecisionsRequest {
+message GetDecisionBulkRequest {
   repeated DecisionRequest decision_requests = 1;
 }
-message BulkGetDecisionsResponse {
+message GetDecisionBulkResponse {
   repeated DecisionResponse decision_responses = 1;
 }
 
@@ -143,19 +143,19 @@ message GetDecisionByTokenResponse {
 }
 
 // More performant bulk request for multiple decisions
-message BulkGetDecisionsByTokenRequest {
+message GetDecisionBulkByTokenRequest {
   repeated TokenDecisionRequest decision_requests = 1;
 }
-message BulkGetDecisionsByTokenResponse {
+message GetDecisionBulkByTokenResponse {
   repeated DecisionResponse decision_responses = 1;
 }
 
 service AuthorizationService {
   rpc GetDecision(GetDecisionRequest) returns (GetDecisionResponse) {}
-  rpc BulkGetDecisions(BulkGetDecisionsRequest) returns (BulkGetDecisionsResponse) {}
+  rpc GetDecisionBulk(GetDecisionBulkRequest) returns (GetDecisionBulkResponse) {}
 
-  rpc BulkGetDecisionsByToken(BulkGetDecisionsByTokenRequest) returns (BulkGetDecisionsByTokenResponse) {}
   rpc GetDecisionByToken(GetDecisionByTokenRequest) returns (GetDecisionByTokenResponse) {}
+  rpc GetDecisionBulkByToken(GetDecisionBulkByTokenRequest) returns (GetDecisionBulkByTokenResponse) {}
 
   rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {}
 }

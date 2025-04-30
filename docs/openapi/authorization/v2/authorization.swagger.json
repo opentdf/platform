@@ -302,7 +302,7 @@
         }
       }
     },
-    "v2BulkGetDecisionsByTokenResponse": {
+    "v2GetDecisionBulkByTokenResponse": {
       "type": "object",
       "properties": {
         "decisionResponses": {
@@ -314,7 +314,7 @@
         }
       }
     },
-    "v2BulkGetDecisionsResponse": {
+    "v2GetDecisionBulkResponse": {
       "type": "object",
       "properties": {
         "decisionResponses": {

@@ -802,6 +802,7 @@ type GetEntitlementsRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// list of requested entities
+	// todo: should this be an entity chain?
 	Entities []*Entity `protobuf:"bytes,1,rep,name=entities,proto3" json:"entities,omitempty"`
 	// optional resource as a scope
 	Scope *Resource `protobuf:"bytes,2,opt,name=scope,proto3,oneof" json:"scope,omitempty"`

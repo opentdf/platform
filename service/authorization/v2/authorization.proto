@@ -91,6 +91,7 @@ message BulkGetDecisionsResponse {
 
 message GetEntitlementsRequest {
   // list of requested entities
+  // todo: should this be an entity chain?
   repeated Entity entities = 1;
   // optional resource as a scope
   optional Resource scope = 2;

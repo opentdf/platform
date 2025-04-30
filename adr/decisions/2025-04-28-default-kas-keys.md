@@ -118,6 +118,9 @@ The TDF SDKs will be updated to:
 - Extract the `default_tdf_key` information.
 - Use this kas_url and public_key as the default KASInfo when creating TDFs only if no other applicable key mappings are found.
 
+> [!WARNING] 
+> If no `default_tdf_key` is defined. The SDK's will error when a `value`, `definition` or `namespace` does not have a key associated.
+
 ### Consequences
 
 - 🟩 Good: Centralizes default KAS configuration, improving manageability and visibility.

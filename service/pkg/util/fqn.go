@@ -28,8 +28,8 @@ var registeredResourceValueFqnRegex = regexp.MustCompile(
 	`^https:\/\/reg_res\/(?<name>\S+)\/value\/(?<value>\S+)$`,
 )
 
-// todo: logic could be made more generic in the future to support multiple FQN formats
-// e.g. parse FQN for '/attr', '/value', '/resm' or some other method
+// todo: is it possible to make this more generic and support all fqn formats?
+
 func ParseResourceMappingGroupFqn(fqn string) (*FullyQualifiedResourceMappingGroup, error) {
 	matches := resourceMappingGroupFqnRegex.FindStringSubmatch(fqn)
 	numMatches := len(matches)

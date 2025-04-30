@@ -21,12 +21,9 @@ message Entity {
     // one of the entity options must be set
     string email_address = 2;
     string user_name = 3;
-    string remote_claims_url = 4;
-    string uuid = 5;
-    google.protobuf.Any claims = 6;
-    EntityCustom custom = 7;
-    string client_id = 8;
-    string registered_resource_value_fqn = 10;
+    EntityCustom custom = 4;
+    string client_id = 5;
+    string registered_resource_value_fqn = 6;
   }
   enum Category {
     CATEGORY_UNSPECIFIED = 0;
@@ -48,13 +45,37 @@ message EntityChain {
   repeated Entity entities = 2;
 }
 
-// Can the entity (PE or NPE) represented by each entity chain take the provided action on the set of resources
+// Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]
+message EntityEntitlements {
+  message ActionsList {
+    repeated policy.Action actions = 1;
+  }
+
+  string ephemeral_id = 1;
+  map<string, ActionsList> actions_per_attribute_value_fqn = 2;
+}
+
+// Either a registered resource or a set of attribute values
+message Resource {
+  // ephemeral id for tracking between request and response
+  string ephemeral_id = 1;
+
+  message AttributeValues {
+    repeated string fqns = 1;
+  }
+
+  oneof resource {
+    AttributeValues attribute_values = 2;
+    string registered_resource_value_fqn = 3;
+  }
+}
+
+// Can the entity (PE or NPE) represented by each entity chain take the provided action on the each resource
 message DecisionRequest {
   EntityChain entity = 1;
   policy.Action action = 2;
-  Resource resource = 3;
+  repeated Resource resources = 3;
 }
-
 message DecisionResponse {
   enum Decision {
     DECISION_UNSPECIFIED = 0;
@@ -98,32 +119,6 @@ message GetEntitlementsRequest {
   // optional parameter to return a full list of entitlements - returns lower hierarchy attributes
   optional bool with_comprehensive_hierarchy = 3;
 }
-
-// Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]
-message EntityEntitlements {
-  message ActionsList {
-    repeated policy.Action actions = 1;
-  }
-
-  string entity_id = 1;
-  map<string, ActionsList> actions_per_attribute_value_fqn = 2;
-}
-
-// Either a registered resource or a set of attribute values
-message Resource {
-  // ephemeral id for tracking between request and response
-  string ephemeral_id = 1;
-
-  message AttributeValues {
-    repeated string fqns = 1;
-  }
-
-  oneof resource {
-    AttributeValues attribute_values = 2;
-    string registered_resource_value_fqn = 3;
-  }
-}
-
 message GetEntitlementsResponse {
   repeated EntityEntitlements entitlements = 1;
 }

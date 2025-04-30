@@ -3690,7 +3690,7 @@ string</p></td>
 
       
         <h3 id="authorization.v2.DecisionRequest">DecisionRequest</h3>
-        <p>Can the entity (PE or NPE) represented by each entity chain take the provided action on the set of resources</p>
+        <p>Can the entity (PE or NPE) represented by each entity chain take the provided action on the each resource</p>
 
         
           <table class="field-table">
@@ -3714,9 +3714,9 @@ string</p></td>
                 </tr>
               
                 <tr>
-                  <td>resource</td>
+                  <td>resources</td>
                   <td><a href="#authorization.v2.Resource">Resource</a></td>
-                  <td></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
@@ -3802,27 +3802,6 @@ repeated string obligations = 5; </p></td>
                 <tr>
                   <td>user_name</td>
                   <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>remote_claims_url</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>uuid</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>claims</td>
-                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -3928,7 +3907,7 @@ repeated string obligations = 5; </p></td>
             <tbody>
               
                 <tr>
-                  <td>entity_id</td>
+                  <td>ephemeral_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>

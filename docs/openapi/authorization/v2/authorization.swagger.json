@@ -59,11 +59,15 @@
         "action": {
           "$ref": "#/definitions/policyAction"
         },
-        "resource": {
-          "$ref": "#/definitions/v2Resource"
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2Resource"
+          }
         }
       },
-      "title": "Can the entity (PE or NPE) represented by each entity chain take the provided action on the set of resources"
+      "title": "Can the entity (PE or NPE) represented by each entity chain take the provided action on the each resource"
     },
     "authorizationv2DecisionResponse": {
       "type": "object",
@@ -110,15 +114,6 @@
         },
         "userName": {
           "type": "string"
-        },
-        "remoteClaimsUrl": {
-          "type": "string"
-        },
-        "uuid": {
-          "type": "string"
-        },
-        "claims": {
-          "$ref": "#/definitions/protobufAny"
         },
         "custom": {
           "$ref": "#/definitions/authorizationv2EntityCustom"
@@ -173,7 +168,7 @@
     "authorizationv2EntityEntitlements": {
       "type": "object",
       "properties": {
-        "entityId": {
+        "ephemeralId": {
           "type": "string"
         },
         "actionsPerAttributeValueFqn": {

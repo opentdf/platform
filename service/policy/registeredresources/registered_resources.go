@@ -254,7 +254,7 @@ func (s *RegisteredResourcesService) GetRegisteredResourceValue(ctx context.Cont
 func (s *RegisteredResourcesService) GetRegisteredResourceValuesByFQN(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceValuesByFQNRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByFQNResponse], error) {
 	rsp := &registeredresources.GetRegisteredResourceValuesByFQNResponse{}
 
-	s.logger.DebugContext(ctx, "getting registered resource values by value FQNs", slog.Any("fqns", req.Msg.GetFqns()))
+	s.logger.DebugContext(ctx, "getting registered resource values by FQN", slog.Any("fqns", req.Msg.GetFqns()))
 
 	fqnValueMap, err := s.dbClient.GetRegisteredResourceValuesByFQN(ctx, req.Msg)
 	if err != nil {

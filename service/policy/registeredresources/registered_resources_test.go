@@ -36,15 +36,18 @@ const (
 	invalidUUID = "not-uuid"
 	invalidURI  = "not-uri"
 
-	errMsgRequired      = "required"
-	errMsgOneOfRequired = "oneof [required]"
-	errMsgUUID          = "string.uuid"
-	errMsgOptionalUUID  = "optional_uuid_format"
-	errMsgURI           = "string.uri"
-	errMsgNameFormat    = "rr_name_format"
-	errMsgValueFormat   = "rr_value_format"
-	errMsgStringPattern = "string.pattern"
-	errMsgStringMaxLen  = "string.max_len"
+	errMsgRequired         = "required"
+	errMsgOneOfRequired    = "oneof [required]"
+	errMsgUUID             = "string.uuid"
+	errMsgOptionalUUID     = "optional_uuid_format"
+	errMsgURI              = "string.uri"
+	errMsgNameFormat       = "rr_name_format"
+	errMsgValueFormat      = "rr_value_format"
+	errMsgStringPattern    = "string.pattern"
+	errMsgStringMinLen     = "string.min_len"
+	errMsgStringMaxLen     = "string.max_len"
+	errMsgRepeatedMinItems = "repeated.min_items"
+	errMsgRepeatedUnique   = "repeated.unique"
 )
 
 ///
@@ -539,6 +542,69 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValue_Invalid_Fails(
 				Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{
 					Fqn: invalidURI,
 				},
+			},
+			errMsg: errMsgURI,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			err := s.v.Validate(tc.req)
+
+			s.Require().Error(err)
+			s.Require().Contains(err.Error(), tc.errMsg)
+		})
+	}
+}
+
+// Get by FQN
+func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_Valid_Succeeds() {
+	req := &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{
+			Fqn: validURI,
+		},
+	}
+
+	err := s.v.Validate(req)
+	s.Require().NoError(err)
+}
+
+func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_Invalid_Fails() {
+	testCases := []struct {
+		name   string
+		req    *registeredresources.GetRegisteredResourceValuesByFQNRequest
+		errMsg string
+	}{
+		{
+			name:   "Nil FQN list",
+			req:    &registeredresources.GetRegisteredResourceValuesByFQNRequest{},
+			errMsg: errMsgRepeatedMinItems,
+		},
+		{
+			name: "Empty FQN list",
+			req: &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+				Fqns: []string{},
+			},
+			errMsg: errMsgRepeatedMinItems,
+		},
+		{
+			name: "Empty String in FQN list",
+			req: &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+				Fqns: []string{""},
+			},
+			errMsg: errMsgStringMinLen,
+		},
+		{
+			name: "Duplicates in FQN list",
+			req: &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+				Fqns: []string{validURI, validURI},
+			},
+			errMsg: errMsgRepeatedUnique,
+		},
+		{
+			name: "Invalid FQN in FQN list",
+			req: &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+				Fqns: []string{invalidURI},
 			},
 			errMsg: errMsgURI,
 		},

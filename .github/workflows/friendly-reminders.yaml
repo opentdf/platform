@@ -4,15 +4,22 @@ on:
   pull_request:
     branches: main
 
+permissions: {}
+
 jobs:
-  job:
+  friendly-reminder:
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
-          go-version-file: 'service/go.mod'
-      
+          go-version-file: "service/go.mod"
+
       - name: Check Go Mod Tidy
         id: go-mod-tidy
         run: |
@@ -33,5 +40,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: '👋 Friendly reminder: go.mod was changed. Make sure to run `go mod tidy`!\n\n' +
-                    '```\n${{ steps.go-mod-tidy.outputs.stdout }}\n```'
+                    '```\n$GO_MOD_TIDY_OUTPUT\n```'
             })
+        env:
+          GO_MOD_TIDY_OUTPUT: ${{ steps.go-mod-tidy.outputs.stdout }}

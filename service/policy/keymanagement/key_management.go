@@ -2,13 +2,16 @@ package keymanagement
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/protocol/go/policy"
 	keyMgmtProto "github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	keyMgmtConnect "github.com/opentdf/platform/protocol/go/policy/keymanagement/keymanagementconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
+	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
@@ -19,6 +22,19 @@ type Service struct {
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 	config   *policyconfig.Config
+}
+
+func OnConfigUpdate(svc *Service) serviceregistry.OnConfigUpdateHook {
+	return func(_ context.Context, cfg config.ServiceConfig) error {
+		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to get shared policy config: %w", err)
+		}
+		svc.config = sharedCfg
+		svc.dbClient = policydb.NewClient(svc.dbClient.Client, svc.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
+		svc.logger.Info("key management service config reloaded")
+		return nil
+	}
 }
 
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[keyMgmtConnect.KeyManagementServiceHandler] {
@@ -55,17 +71,27 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 		ObjectType: audit.ObjectTypeKeyManagementProviderConfig,
 	}
 
-	pc, err := ksvc.dbClient.CreateProviderConfig(ctx, req.Msg)
+	err := ksvc.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		pc, err := txClient.CreateProviderConfig(ctx, req.Msg)
+		if err != nil {
+			ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.ObjectID = pc.GetId()
+		auditParams.Original = &policy.KeyProviderConfig{
+			Id:       pc.GetId(),
+			Name:     pc.GetName(),
+			Metadata: pc.GetMetadata(),
+		}
+		ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.ProviderConfig = pc
+		return nil
+	})
 	if err != nil {
-		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("keyManagementService", req.Msg.GetName()))
 	}
-
-	auditParams.ObjectID = pc.GetId()
-	auditParams.Original = pc
-	ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.ProviderConfig = pc
 
 	return connect.NewResponse(rsp), nil
 }
@@ -82,23 +108,12 @@ func (ksvc Service) GetProviderConfig(ctx context.Context, req *connect.Request[
 		return nil, connect.NewError(connect.CodeInvalidArgument, nil)
 	}
 
-	auditParams := audit.PolicyEventParams{
-		ActionType: audit.ActionTypeCreate,
-		ObjectType: audit.ObjectTypeKeyManagementProviderConfig,
-	}
-
 	pc, err := ksvc.dbClient.GetProviderConfig(ctx, req.Msg.GetIdentifier())
 	if err != nil {
-		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("keyManagementService", req.Msg.String()))
 	}
 
-	auditParams.ObjectID = pc.GetId()
-	auditParams.Original = pc
-	ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
 	rsp.ProviderConfig = pc
-
 	return connect.NewResponse(rsp), nil
 }
 
@@ -133,16 +148,33 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", providerConfigID))
 	}
 
-	pc, err := ksvc.dbClient.UpdateProviderConfig(ctx, req.Msg)
+	err = ksvc.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		pc, err := txClient.UpdateProviderConfig(ctx, req.Msg)
+		if err != nil {
+			ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		// Lets not log the full provider config, leave off config json
+		// in case it contains sensitive information
+		auditParams.Original = &policy.KeyProviderConfig{
+			Id:       original.GetId(),
+			Name:     original.GetName(),
+			Metadata: original.GetMetadata(),
+		}
+		auditParams.Updated = &policy.KeyProviderConfig{
+			Id:       pc.GetId(),
+			Name:     pc.GetName(),
+			Metadata: pc.GetMetadata(),
+		}
+		ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		rsp.ProviderConfig = pc
+
+		return nil
+	})
 	if err != nil {
-		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("keyManagementService", req.Msg.GetId()))
 	}
-
-	auditParams.Original = original
-	auditParams.Updated = pc
-	ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-	rsp.ProviderConfig = pc
 
 	return connect.NewResponse(rsp), nil
 }
@@ -164,7 +196,11 @@ func (ksvc Service) DeleteProviderConfig(ctx context.Context, req *connect.Reque
 	}
 
 	auditParams.ObjectID = pc.GetId()
-	auditParams.Original = pc
+	auditParams.Original = &policy.KeyProviderConfig{
+		Id:       pc.GetId(),
+		Name:     pc.GetName(),
+		Metadata: pc.GetMetadata(),
+	}
 	ksvc.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.ProviderConfig = pc

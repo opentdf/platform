@@ -216,20 +216,43 @@ func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Request[kasr.CreateKeyRequest]) (*connect.Response[kasr.CreateKeyResponse], error) {
 	s.logger.Debug("creating key", slog.String("keyAccessServer Keys", r.Msg.GetKasId()))
 
+	resp := &kasr.CreateKeyResponse{}
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKasRegistryKeys,
 	}
 
-	resp, err := s.dbClient.CreateKey(ctx, r.Msg)
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		var err error
+		resp, err = txClient.CreateKey(ctx, r.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.ObjectID = resp.GetKey().GetKeyId()
+		// Leave off private key context and configjson from provider config
+		// For security reasons
+		auditParams.Original = &policy.AsymmetricKey{
+			KeyId:        resp.GetKey().GetKeyId(),
+			KeyAlgorithm: resp.GetKey().GetKeyAlgorithm(),
+			KeyStatus:    resp.GetKey().GetKeyStatus(),
+			KeyMode:      resp.GetKey().GetKeyMode(),
+			PublicKeyCtx: resp.GetKey().GetPublicKeyCtx(),
+			ProviderConfig: &policy.KeyProviderConfig{
+				Id:       resp.GetKey().GetProviderConfig().GetId(),
+				Name:     resp.GetKey().GetProviderConfig().GetName(),
+				Metadata: resp.GetKey().GetProviderConfig().GetMetadata(),
+			},
+			Metadata: resp.GetKey().GetMetadata(),
+		}
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		return nil
+	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("keyAccessServer Keys", r.Msg.GetKasId()), slog.String("key id", r.Msg.GetKeyId()))
 	}
-
-	auditParams.ObjectID = resp.GetKey().GetKeyId()
-	auditParams.Original = resp.GetKey() // should we be logging this it will have the wrapped KEK and pub key?
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	return connect.NewResponse(resp), nil
 }
@@ -252,17 +275,32 @@ func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Req
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("keyAccessServer Keys", req.Msg.GetId()))
 	}
 
-	updated, err := s.dbClient.UpdateKey(ctx, req.Msg)
+	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		updated, err := txClient.UpdateKey(ctx, req.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		// Only key status and metadata can be updated
+		auditParams.Original = &policy.AsymmetricKey{
+			KeyId:     original.GetKeyId(),
+			KeyStatus: original.GetKeyStatus(),
+			Metadata:  original.GetMetadata(),
+		}
+		auditParams.Updated = &policy.AsymmetricKey{
+			KeyId:     updated.GetKeyId(),
+			KeyStatus: updated.GetKeyStatus(),
+			Metadata:  updated.GetMetadata(),
+		}
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Key = updated
+		return nil
+	})
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("keyAccessServer Keys", req.Msg.GetId()))
 	}
-
-	auditParams.Original = original
-	auditParams.Updated = updated
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.Key = updated
 
 	return connect.NewResponse(rsp), nil
 }
@@ -291,7 +329,6 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 	}
 
 	auditParams.ObjectID = key.GetKeyId()
-	auditParams.Original = key
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Key = key

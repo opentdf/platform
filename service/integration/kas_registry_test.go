@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -80,7 +81,11 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 	for _, key := range kasr.GetKeys() {
 		for _, f := range keysFixtureArr {
 			if key.GetId() == f.ID {
-				s.Equal(f.ProviderConfigID, key.GetProviderConfig().GetId())
+				publicKeyContext, err := base64.StdEncoding.DecodeString(f.PublicKeyCtx)
+				s.Require().NoError(err)
+				s.Equal(publicKeyContext, key.GetPublicKeyCtx())
+				s.Empty(key.GetPrivateKeyCtx())
+				s.Empty(key.GetProviderConfig())
 				matchingKeysCount++
 			}
 		}
@@ -687,7 +692,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_UpdatingSourceTypeUnspecif
 		SourceType: policy.SourceType_SOURCE_TYPE_UNSPECIFIED,
 	})
 	s.Require().Error(err)
-	s.Require().ErrorContains(err, "cannot update source type to unspecified")
+	s.Require().ErrorContains(err, db.ErrorTextUpdateToUnspecified)
 
 	// get after update to validate changes were successful
 	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, created.GetId())

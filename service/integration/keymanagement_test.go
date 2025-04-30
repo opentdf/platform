@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -77,6 +78,7 @@ func (s *KeyManagementSuite) Test_CreateProviderConfig_EmptyConfig_Fails() {
 		Name: testProvider,
 	})
 	s.Require().Error(err)
+	s.Require().ErrorContains(err, db.ErrNotNullViolation.Error())
 	s.Nil(pc)
 }
 
@@ -86,6 +88,7 @@ func (s *KeyManagementSuite) Test_CreateProviderConfig_InvalidConfig_Fails() {
 		ConfigJson: invalidProviderConfig,
 	})
 	s.Require().Error(err)
+	s.Require().ErrorContains(err, db.ErrEnumValueInvalid.Error())
 	s.Nil(pc)
 }
 
@@ -117,22 +120,6 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_WithName_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
-}
-
-func (s *KeyManagementSuite) Test_GetProviderConfig_InvalidUUID_Fails() {
-	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Id{
-		Id: invalidUUID,
-	})
-	s.Require().Error(err)
-	s.Nil(pc)
-}
-
-func (s *KeyManagementSuite) Test_GetProviderConfig_InvalidName_Fails() {
-	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
-		Name: "",
-	})
-	s.Require().Error(err)
-	s.Nil(pc)
 }
 
 func (s *KeyManagementSuite) Test_GetProviderConfig_InvalidIdentifier_Fails() {
@@ -169,7 +156,7 @@ func (s *KeyManagementSuite) Test_ListProviderConfig_PaginationLimitExceeded_Fai
 	s.createTestProviderConfig()
 
 	resp, err := s.db.PolicyClient.ListProviderConfigs(s.ctx, &policy.PageRequest{
-		Limit: 5001,
+		Limit: s.db.LimitMax + 1,
 	})
 	s.Require().Error(err)
 	s.Nil(resp)

@@ -22,7 +22,7 @@ func (c PolicyDBClient) CreateProviderConfig(ctx context.Context, r *keymanageme
 		return nil, err
 	}
 
-	providerConfig, err := c.Queries.CreateProviderConfig(ctx, CreateProviderConfigParams{
+	providerConfig, err := c.Queries.createProviderConfig(ctx, createProviderConfigParams{
 		ProviderName: name,
 		Config:       config,
 		Metadata:     metadataJSON})
@@ -44,7 +44,7 @@ func (c PolicyDBClient) CreateProviderConfig(ctx context.Context, r *keymanageme
 }
 
 func (c PolicyDBClient) GetProviderConfig(ctx context.Context, identifier any) (*policy.KeyProviderConfig, error) {
-	var params GetProviderConfigParams
+	var params getProviderConfigParams
 
 	switch i := identifier.(type) {
 	case *keymanagement.GetProviderConfigRequest_Id:
@@ -52,19 +52,19 @@ func (c PolicyDBClient) GetProviderConfig(ctx context.Context, identifier any) (
 		if !id.Valid {
 			return nil, db.ErrUUIDInvalid
 		}
-		params = GetProviderConfigParams{ID: id}
+		params = getProviderConfigParams{ID: id}
 	case *keymanagement.GetProviderConfigRequest_Name:
 		name := pgtypeText(i.Name)
 		if !name.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
-		params = GetProviderConfigParams{Name: name}
+		params = getProviderConfigParams{Name: name}
 	default:
 		// unexpected type
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
-	pcRow, err := c.Queries.GetProviderConfig(ctx, params)
+	pcRow, err := c.Queries.getProviderConfig(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -95,7 +95,7 @@ func (c PolicyDBClient) ListProviderConfigs(ctx context.Context, page *policy.Pa
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	providerConfigs, err := c.Queries.ListProviderConfigs(ctx, ListProviderConfigsParams{
+	providerConfigs, err := c.Queries.listProviderConfigs(ctx, listProviderConfigsParams{
 		Limit:  limit,
 		Offset: offset,
 	})
@@ -154,7 +154,7 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 		return nil, err
 	}
 
-	count, err := c.Queries.UpdateProviderConfig(ctx, UpdateProviderConfigParams{
+	count, err := c.Queries.updateProviderConfig(ctx, updateProviderConfigParams{
 		ID:           id,
 		ProviderName: pgtypeText(name),
 		Config:       config,
@@ -183,7 +183,7 @@ func (c PolicyDBClient) DeleteProviderConfig(ctx context.Context, id string) (*p
 		return nil, db.ErrUUIDInvalid
 	}
 
-	_, err := c.Queries.DeleteProviderConfig(ctx, id)
+	_, err := c.Queries.deleteProviderConfig(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

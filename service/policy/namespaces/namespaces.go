@@ -264,7 +264,7 @@ func (ns NamespacesService) AssignPublicKeyToNamespace(ctx context.Context, r *c
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKasAttributeNamespaceKeyAssignment,
-		ObjectID:   fmt.Sprintf("%s-%s", key.GetNamespaceId(), key.GetKeyId()),
+		ObjectID:   fmt.Sprintf("%s:%s", key.GetNamespaceId(), key.GetKeyId()),
 	}
 
 	namespaceKey, err := ns.dbClient.AssignPublicKeyToNamespace(ctx, key)
@@ -286,7 +286,7 @@ func (ns NamespacesService) RemovePublicKeyFromNamespace(ctx context.Context, r 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeDelete,
 		ObjectType: audit.ObjectTypeKasAttributeNamespaceKeyAssignment,
-		ObjectID:   fmt.Sprintf("%s-%s", key.GetNamespaceId(), key.GetKeyId()),
+		ObjectID:   fmt.Sprintf("%s:%s", key.GetNamespaceId(), key.GetKeyId()),
 	}
 
 	_, err := ns.dbClient.RemovePublicKeyFromNamespace(ctx, key)

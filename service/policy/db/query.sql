@@ -79,9 +79,26 @@ SELECT kas.id,
     kas.name AS kas_name,
     kas.source_type,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kas.metadata -> 'labels', 'created_at', kas.created_at, 'updated_at', kas.updated_at)) AS metadata,
+    kask_keys.keys,
     counted.total
 FROM key_access_servers AS kas
 CROSS JOIN counted
+LEFT JOIN (
+        SELECT
+            kask.key_access_server_id,
+            JSONB_AGG(
+                DISTINCT JSONB_BUILD_OBJECT(
+                    'id', kask.id,
+                    'key_id', kask.key_id,
+                    'key_status', kask.key_status,
+                    'key_mode', kask.key_mode,
+                    'key_algorithm', kask.key_algorithm,
+                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                )
+            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+        FROM key_access_server_keys kask
+        GROUP BY kask.key_access_server_id
+    ) kask_keys ON kas.id = kask_keys.key_access_server_id
 LIMIT @limit_ 
 OFFSET @offset_; 
 
@@ -98,8 +115,25 @@ SELECT
             'created_at', created_at, 
             'updated_at', updated_at
         )
-    ) AS metadata
+    ) AS metadata,
+    kask_keys.keys
 FROM key_access_servers AS kas
+LEFT JOIN (
+        SELECT
+            kask.key_access_server_id,
+            JSONB_AGG(
+                DISTINCT JSONB_BUILD_OBJECT(
+                    'id', kask.id,
+                    'key_id', kask.key_id,
+                    'key_status', kask.key_status,
+                    'key_mode', kask.key_mode,
+                    'key_algorithm', kask.key_algorithm,
+                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                )
+            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+        FROM key_access_server_keys kask
+        GROUP BY kask.key_access_server_id
+    ) kask_keys ON kas.id = kask_keys.key_access_server_id
 WHERE (sqlc.narg('id')::uuid IS NULL OR kas.id = sqlc.narg('id')::uuid)
   AND (sqlc.narg('name')::text IS NULL OR kas.name = sqlc.narg('name')::text)
   AND (sqlc.narg('uri')::text IS NULL OR kas.uri = sqlc.narg('uri')::text);
@@ -126,7 +160,7 @@ DELETE FROM key_access_servers WHERE id = $1;
 -----------------------------------------------------------------
 -- Key Access Server Keys
 ------------------------------------------------------------------
--- name: CreateKey :one
+-- name: createKey :one
 WITH inserted AS (
   INSERT INTO key_access_server_keys
     (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id)
@@ -151,14 +185,14 @@ SELECT
   ) AS metadata
 FROM inserted;
 
--- name: CheckIfKeyExists :one
+-- name: checkIfKeyExists :one
 SELECT EXISTS (
     SELECT 1
     FROM key_access_server_keys
     WHERE key_access_server_id = $1 AND key_status = $2 AND key_algorithm = $3
 );
 
--- name: IsUpdateKeySafe :one
+-- name: isUpdateKeySafe :one
 WITH keyToUpdate AS (
     SELECT 
         kask.key_access_server_id AS kas_id,
@@ -175,7 +209,7 @@ SELECT EXISTS (
     AND kask.key_algorithm = keyToUpdate.key_algorithm
 );
 
--- name: GetKey :one
+-- name: getKey :one
 SELECT 
   kask.id,
   kask.key_id,
@@ -201,14 +235,14 @@ LEFT JOIN
 WHERE (sqlc.narg('id')::uuid IS NULL OR kask.id = sqlc.narg('id')::uuid)
   AND (sqlc.narg('key_id')::text IS NULL OR kask.key_id = sqlc.narg('key_id')::text);
 
--- name: UpdateKey :execrows
+-- name: updateKey :execrows
 UPDATE key_access_server_keys
 SET
     key_status = COALESCE(sqlc.narg('key_status'), key_status),
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = $1;
 
--- name: ListKeys :many
+-- name: listKeys :many
 WITH listed AS (
     SELECT
         kas.id AS kas_id
@@ -247,7 +281,7 @@ WHERE
 LIMIT @limit_ 
 OFFSET @offset_;
 
--- name: DeleteKey :execrows
+-- name: deleteKey :execrows
 DELETE FROM key_access_server_keys WHERE id = $1;
 
 
@@ -484,20 +518,11 @@ WITH target_definition AS (
                     'key_status', kask.key_status,
                     'key_mode', kask.key_mode,
                     'key_algorithm', kask.key_algorithm,
-                    'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
-                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
-                    'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-                        'id', pc.id,
-                        'name', pc.provider_name,
-                        'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
-                        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
-                    ))
+                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_definition_public_key_map k
         INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-        LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
         GROUP BY k.definition_id
     ) defk ON ad.id = defk.definition_id
     WHERE fqns.fqn = ANY(@fqns::TEXT[]) 
@@ -537,20 +562,11 @@ namespaces AS (
                     'key_status', kask.key_status,
                     'key_mode', kask.key_mode,
                     'key_algorithm', kask.key_algorithm,
-                    'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
-                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
-                    'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-                        'id', pc.id,
-                        'name', pc.provider_name,
-                        'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
-                        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
-                    ))
+                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_namespace_public_key_map k
         INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-        LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
         GROUP BY k.namespace_id
     ) nmp_keys ON n.id = nmp_keys.namespace_id
 	WHERE n.active = TRUE
@@ -636,20 +652,11 @@ values AS (
                     'key_status', kask.key_status,
                     'key_mode', kask.key_mode,
                     'key_algorithm', kask.key_algorithm,
-                    'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
-                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
-                    'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-                        'id', pc.id,
-                        'name', pc.provider_name,
-                        'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
-                        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
-                    ))
+                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_value_public_key_map k
         INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-        LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
         GROUP BY k.value_id
     ) value_keys ON av.id = value_keys.value_id                        
 	WHERE av.active = TRUE
@@ -725,20 +732,11 @@ LEFT JOIN (
                 'key_status', kask.key_status,
                 'key_mode', kask.key_mode,
                 'key_algorithm', kask.key_algorithm,
-                'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
-                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
-                'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
-                'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-                    'id', pc.id,
-                    'name', pc.provider_name,
-                    'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
-                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
-                ))
+                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_definition_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-    LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
     GROUP BY k.definition_id
 ) defk ON ad.id = defk.definition_id
 WHERE (sqlc.narg('id')::uuid IS NULL OR ad.id = sqlc.narg('id')::uuid)
@@ -839,20 +837,11 @@ LEFT JOIN (
                 'key_status', kask.key_status,
                 'key_mode', kask.key_mode,
                 'key_algorithm', kask.key_algorithm,
-                'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
-                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
-                'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
-                'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-                    'id', pc.id,
-                    'name', pc.provider_name,
-                    'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
-                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
-                ))
+                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_value_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-    LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
     GROUP BY k.value_id
 ) value_keys ON av.id = value_keys.value_id   
 WHERE (sqlc.narg('id')::uuid IS NULL OR av.id = sqlc.narg('id')::uuid)
@@ -1070,20 +1059,11 @@ LEFT JOIN (
                 'key_status', kask.key_status,
                 'key_mode', kask.key_mode,
                 'key_algorithm', kask.key_algorithm,
-                'private_key_ctx', ENCODE(kask.private_key_ctx::TEXT::BYTEA, 'base64'),
-                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64'),
-                'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', kask.metadata -> 'labels', 'created_at', kask.created_at, 'updated_at', kask.updated_at)),
-                'provider_config', JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-                    'id', pc.id,
-                    'name', pc.provider_name,
-                    'config_json', ENCODE(pc.config::TEXT::BYTEA, 'base64'),
-                    'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at))
-                ))
+                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_namespace_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-    LEFT JOIN provider_config pc ON kask.provider_config_id = pc.id
     GROUP BY k.namespace_id
 ) nmp_keys ON ns.id = nmp_keys.namespace_id
 WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL 
@@ -1540,7 +1520,7 @@ DELETE FROM registered_resource_values WHERE id = $1;
 -- Provider Config
 ----------------------------------------------------------------
 
--- name: CreateProviderConfig :one
+-- name: createProviderConfig :one
 WITH inserted AS (
   INSERT INTO provider_config (provider_name, config, metadata)
   VALUES ($1, $2, $3)
@@ -1559,7 +1539,7 @@ SELECT
   ) AS metadata
 FROM inserted;
 
--- name: GetProviderConfig :one
+-- name: getProviderConfig :one
 SELECT 
     pc.id,
     pc.provider_name,
@@ -1570,7 +1550,7 @@ WHERE (sqlc.narg('id')::uuid IS NULL OR pc.id = sqlc.narg('id')::uuid)
   AND (sqlc.narg('name')::text IS NULL OR pc.provider_name = sqlc.narg('name')::text);
 
 
--- name: ListProviderConfigs :many
+-- name: listProviderConfigs :many
 WITH counted AS (
     SELECT COUNT(pc.id) AS total 
     FROM provider_config pc
@@ -1586,7 +1566,7 @@ CROSS JOIN counted
 LIMIT @limit_ 
 OFFSET @offset_;
 
--- name: UpdateProviderConfig :execrows
+-- name: updateProviderConfig :execrows
 UPDATE provider_config
 SET
     provider_name = COALESCE(sqlc.narg('provider_name'), provider_name),
@@ -1594,7 +1574,7 @@ SET
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = $1;
 
--- name: DeleteProviderConfig :execrows
+-- name: deleteProviderConfig :execrows
 DELETE FROM provider_config 
 WHERE id = $1;
 

@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -1370,7 +1371,11 @@ func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Succeeds() {
 	s.NotNil(gotAttr)
 	s.Len(gotAttr.GetKeys(), 1)
 	s.Equal(kasKey.ID, gotAttr.GetKeys()[0].GetId())
-	s.Equal(kasKey.ProviderConfigID, gotAttr.GetKeys()[0].GetProviderConfig().GetId())
+	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
+	s.Require().NoError(err)
+	s.Equal(publicKeyCtx, gotAttr.GetKeys()[0].GetPublicKeyCtx())
+	s.Empty(gotAttr.GetKeys()[0].GetPrivateKeyCtx())
+	s.Empty(gotAttr.GetKeys()[0].GetProviderConfig())
 
 	resp, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
 		AttributeId: resp.GetAttributeId(),

@@ -46,13 +46,12 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 			return nil, err
 		}
 
-		// Get Keys
-		resp, err := c.ListKeys(ctx, &kasregistry.ListKeysRequest{
-			KasFilter: &kasregistry.ListKeysRequest_KasId{
-				KasId: kas.ID},
-		})
-		if err != nil {
-			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		var keys []*policy.AsymmetricKey
+		if len(kas.Keys) > 0 {
+			keys, err = db.AsymKeysProtoJSON(kas.Keys)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal keys")
+			}
 		}
 
 		keyAccessServer.Id = kas.ID
@@ -60,8 +59,8 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 		keyAccessServer.PublicKey = publicKey
 		keyAccessServer.Name = kas.KasName.String
 		keyAccessServer.Metadata = metadata
-		keyAccessServer.Keys = resp.GetKeys()
-		keyAccessServer.SourceType = policy.SourceType(kas.SourceType.Int32)
+		keyAccessServer.Keys = keys
+		keyAccessServer.SourceType = policy.SourceType(policy.SourceType_value[kas.SourceType.String])
 
 		keyAccessServers[i] = keyAccessServer
 	}
@@ -137,12 +136,12 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 		return nil, err
 	}
 
-	resp, err := c.ListKeys(ctx, &kasregistry.ListKeysRequest{
-		KasFilter: &kasregistry.ListKeysRequest_KasId{
-			KasId: kas.ID},
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	var keys []*policy.AsymmetricKey
+	if len(kas.Keys) > 0 {
+		keys, err = db.AsymKeysProtoJSON(kas.Keys)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal keys")
+		}
 	}
 
 	return &policy.KeyAccessServer{
@@ -151,8 +150,8 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 		PublicKey:  publicKey,
 		Name:       kas.Name.String,
 		Metadata:   metadata,
-		SourceType: policy.SourceType(kas.SourceType.Int32),
-		Keys:       resp.GetKeys(),
+		SourceType: policy.SourceType(policy.SourceType_value[kas.SourceType.String]),
+		Keys:       keys,
 	}, nil
 }
 
@@ -160,7 +159,7 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 	uri := r.GetUri()
 	publicKey := r.GetPublicKey()
 	name := strings.ToLower(r.GetName())
-	sourceType := pgtypeInt4(int32(r.GetSourceType()), true) // Can we make this required and be backwards compatible? And not unspecified?
+	sourceType := pgtypeText(r.GetSourceType().String()) // Can we make this required and be backwards compatible? And not unspecified?
 
 	metadataJSON, metadata, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
@@ -189,14 +188,14 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 		PublicKey:  publicKey,
 		Name:       name,
 		Metadata:   metadata,
-		SourceType: policy.SourceType(sourceType.Int32),
+		SourceType: r.GetSourceType(),
 	}, nil
 }
 
-func (c PolicyDBClient) validateUpdateKASSourceType(r *kasregistry.UpdateKeyAccessServerRequest) error {
+func (c PolicyDBClient) isInvalidUpdateKASSourceType(r *kasregistry.UpdateKeyAccessServerRequest) error {
 	if r.GetSourceType() == policy.SourceType_SOURCE_TYPE_UNSPECIFIED && r.GetMetadata() == nil && r.GetMetadataUpdateBehavior() == common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_UNSPECIFIED &&
 		r.GetPublicKey() == nil && r.GetName() == "" && r.GetUri() == "" {
-		return fmt.Errorf("cannot update source type to unspecified")
+		return db.ErrCannotUpdateToUnspecified
 	}
 	return nil
 }
@@ -205,10 +204,13 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 	uri := r.GetUri()
 	publicKey := r.GetPublicKey()
 	name := strings.ToLower(r.GetName())
-	sourceType := pgtypeInt4(int32(r.GetSourceType()), r.GetSourceType() != policy.SourceType_SOURCE_TYPE_UNSPECIFIED)
+	sourceType := pgtypeText(r.GetSourceType().String())
+	if r.GetSourceType() == policy.SourceType_SOURCE_TYPE_UNSPECIFIED {
+		sourceType = pgtypeText("")
+	}
 
 	// Check if trying to update source type to unspecified
-	if err := c.validateUpdateKASSourceType(r); err != nil {
+	if err := c.isInvalidUpdateKASSourceType(r); err != nil {
 		return nil, err
 	}
 
@@ -349,17 +351,10 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 	pubCtx := r.GetPublicKeyCtx()
 	providerConfigID := r.GetProviderConfigId()
 	keyStatus := int32(policy.KeyStatus_KEY_STATUS_ACTIVE)
-
 	kasID := r.GetKasId()
-	_, err := c.GetKeyAccessServer(ctx, &kasregistry.GetKeyAccessServerRequest_KasId{
-		KasId: kasID,
-	})
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, kasID)
-	}
 
 	// Only allow one active key for an algo per KAS.
-	activeKeyExists, err := c.Queries.CheckIfKeyExists(ctx, CheckIfKeyExistsParams{
+	activeKeyExists, err := c.Queries.checkIfKeyExists(ctx, checkIfKeyExistsParams{
 		KeyAccessServerID: kasID,
 		KeyStatus:         keyStatus,
 		KeyAlgorithm:      algo,
@@ -385,7 +380,7 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		return nil, err
 	}
 
-	key, err := c.Queries.CreateKey(ctx, CreateKeyParams{
+	key, err := c.Queries.createKey(ctx, createKeyParams{
 		KeyAccessServerID: kasID,
 		KeyAlgorithm:      algo,
 		KeyID:             keyID,
@@ -421,7 +416,7 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 }
 
 func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.AsymmetricKey, error) {
-	var params GetKeyParams
+	var params getKeyParams
 
 	switch i := identifier.(type) {
 	case *kasregistry.GetKeyRequest_Id:
@@ -429,18 +424,18 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 		if !pgUUID.Valid {
 			return nil, db.ErrUUIDInvalid
 		}
-		params = GetKeyParams{ID: pgUUID}
+		params = getKeyParams{ID: pgUUID}
 	case *kasregistry.GetKeyRequest_KeyId:
 		keyID := pgtypeText(i.KeyId)
 		if !keyID.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
-		params = GetKeyParams{KeyID: keyID}
+		params = getKeyParams{KeyID: keyID}
 	default:
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
-	key, err := c.Queries.GetKey(ctx, params)
+	key, err := c.Queries.getKey(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -490,7 +485,7 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 	// If so, return an error.
 	keyStatus := r.GetKeyStatus()
 	if keyStatus == policy.KeyStatus_KEY_STATUS_ACTIVE {
-		activeKeyExists, err := c.Queries.IsUpdateKeySafe(ctx, IsUpdateKeySafeParams{
+		activeKeyExists, err := c.Queries.isUpdateKeySafe(ctx, isUpdateKeySafeParams{
 			ID:        r.GetId(),
 			KeyStatus: int32(keyStatus),
 		})
@@ -515,7 +510,7 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 		return nil, err
 	}
 
-	count, err := c.Queries.UpdateKey(ctx, UpdateKeyParams{
+	count, err := c.Queries.updateKey(ctx, updateKeyParams{
 		ID:        keyID,
 		KeyStatus: pgtypeInt4(int32(keyStatus), keyStatus != policy.KeyStatus_KEY_STATUS_UNSPECIFIED),
 		Metadata:  metadataJSON,
@@ -548,7 +543,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 	kasName := pgtypeText(strings.ToLower(r.GetKasName()))
 	algo := pgtypeInt4(int32(r.GetKeyAlgorithm()), r.GetKeyAlgorithm() != policy.Algorithm_ALGORITHM_UNSPECIFIED)
 
-	params := ListKeysParams{
+	params := listKeysParams{
 		KeyAlgorithm: algo,
 		KasID:        kasID,
 		KasUri:       kasURI,
@@ -557,7 +552,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		Limit:        limit,
 	}
 
-	listRows, err := c.Queries.ListKeys(ctx, params)
+	listRows, err := c.Queries.listKeys(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -616,7 +611,7 @@ func (c PolicyDBClient) DeleteKey(ctx context.Context, id string) (*policy.Asymm
 		return nil, db.ErrUUIDInvalid
 	}
 
-	count, err := c.Queries.DeleteKey(ctx, id)
+	count, err := c.Queries.deleteKey(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

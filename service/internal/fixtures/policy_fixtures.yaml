@@ -544,8 +544,8 @@ kas_registry_keys:
       key_id: kas_key_1
       key_mode: 1 # KEY_MODE_LOCAL 
       key_status: 1 # KEY_STATUS_ACTIVE
-      private_key_ctx: eyJzb21lIjogInZhbHVlIn0g
-      public_key_ctx: eyJzb21lIjogInZhbHVlIn0g
+      private_key_ctx: eyJzb21lIjogInZhbHVlIn0=
+      public_key_ctx: eyJzb21lIjogInZhbHVlIn0=
       provider_config_id: 4ab6b1c4-fa5c-4036-8921-53f8c267b728 # provider_config_1
     kas_key_2:
       id: 7b7197e4-f2de-4f74-b2f5-17c2d87ba13c
@@ -554,8 +554,8 @@ kas_registry_keys:
       key_id: kas_key_2
       key_mode: 1 # KEY_MODE_LOCAL 
       key_status: 2 # KEY_STATUS_INACTIVE
-      private_key_ctx: eyJzb21lIjogInZhbHVlIn0g
-      public_key_ctx: eyJzb21lIjogInZhbHVlIn0g
+      private_key_ctx: eyJzb21lIjogInZhbHVlIn0=
+      public_key_ctx: eyJzb21lIjogInZhbHVlIn0=
       provider_config_id: 19098106-54a1-4d33-8846-4894b5b6db3e # provider_config_2
 
 ##############
@@ -578,141 +578,6 @@ provider_configs:
       provider_name: gcp
       config: eyJzb21lIjogInZhbHVlIn0g
 
-##############
-# Public Keys
-##############
-# public_keys:
-#   metadata:
-#     table_name: public_keys
-#     columns:
-#       - id
-#       - key_access_server_id
-#       - key_id
-#       - alg
-#       - public_key
-#   data:
-#     key_1:
-#       id: f478f1cd-df6e-4a55-9603-d961b36ea392
-#       kas_id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb
-#       key:
-#         alg: KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
-#         kid: r1
-#         pem: |-
-#           -----BEGIN CERTIFICATE-----
-#           MIIBzzCCAXWgAwIBAgIUORuV3avU9AE6zsB6ZxyllHpi5d4wCgYIKoZIzj0EAwIw
-#           PTELMAkGA1UEBhMCdXMxCzAJBgNVBAgMAmN0MSEwHwYDVQQKDBhJbnRlcm5ldCBX
-#           aWRnaXRzIFB0eSBMdGQwHhcNMjQwMTAyMTY1NjU2WhcNMjUwMTAxMTY1NjU2WjA9
-#           MQswCQYDVQQGEwJ1czELMAkGA1UECAwCY3QxITAfBgNVBAoMGEludGVybmV0IFdp
-#           ZGdpdHMgUHR5IEx0ZDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABLV9fCJHD/kc
-#           rXrUHQwAZx0Mc0dPvLjsJ/ojEtMMn0ROdeOx8ygxgcQTFFAxyCtBuadhAdm/iVHt
-#           8g2EMz5dO3WjUzBRMB0GA1UdDgQWBBQYNkuk+JIuRWyn+bE8sBhRw27OVTAfBgNV
-#           HSMEGDAWgBQYNkuk+JIuRWyn+bE8sBhRw27OVTAPBgNVHRMBAf8EBTADAQH/MAoG
-#           CCqGSM49BAMCA0gAMEUCIQCAB2jiYe8AY6MJ4ADPSQGE47+a3kWFLcGsJhoZbxtg
-#           UwIgcfIIuPfh4fbcv8cTi2BlI3k7sWPuAmIFVriI2d3Ux5Q=
-#           -----END CERTIFICATE-----
-#     key_2:
-#       id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
-#       kas_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
-#       key:
-#         alg: KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
-#         kid: r2
-#         pem: |-
-#           -----BEGIN CERTIFICATE-----
-#           MIIBzzCCAXWgAwIBAgIUORuV3avU9AE6zsB6ZxyllHpi5d4wCgYIKoZIzj0EAwIw
-#           PTELMAkGA1UEBhMCdXMxCzAJBgNVBAgMAmN0MSEwHwYDVQQKDBhJbnRlcm5ldCBX
-#           aWRnaXRzIFB0eSBMdGQwHhcNMjQwMTAyMTY1NjU2WhcNMjUwMTAxMTY1NjU2WjA9
-#           MQswCQYDVQQGEwJ1czELMAkGA1UECAwCY3QxITAfBgNVBAoMGEludGVybmV0IFdp
-#           ZGdpdHMgUHR5IEx0ZDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABLV9fCJHD/kc
-#           rXrUHQwAZx0Mc0dPvLjsJ/ojEtMMn0ROdeOx8ygxgcQTFFAxyCtBuadhAdm/iVHt
-#           8g2EMz5dO3WjUzBRMB0GA1UdDgQWBBQYNkuk+JIuRWyn+bE8sBhRw27OVTAfBgNV
-#           HSMEGDAWgBQYNkuk+JIuRWyn+bE8sBhRw27OVTAPBgNVHRMBAf8EBTADAQH/MAoG
-#           CCqGSM49BAMCA0gAMEUCIQCAB2jiYe8AY6MJ4ADPSQGE47+a3kWFLcGsJhoZbxtg
-#           UwIgcfIIuPfh4fbcv8cTi2BlI3k7sWPuAmIFVriI2d3Ux5Q=
-#           -----END CERTIFICATE-----
-#     key_3:
-#       id: d433e903-e3d1-4823-9b3e-7b188e7c6060
-#       kas_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
-#       is_active: false
-#       key:
-#         alg: KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
-#         kid: r3
-#         pem: |-
-#           -----BEGIN CERTIFICATE-----
-#           MIIBzzCCAXWgAwIBAgIUORuV3avU9AE6zsB6ZxyllHpi5d4wCgYIKoZIzj0EAwIw
-#           PTELMAkGA1UEBhMCdXMxCzAJBgNVBAgMAmN0MSEwHwYDVQQKDBhJbnRlcm5ldCBX
-#           aWRnaXRzIFB0eSBMdGQwHhcNMjQwMTAyMTY1NjU2WhcNMjUwMTAxMTY1NjU2WjA9
-#           MQswCQYDVQQGEwJ1czELMAkGA1UECAwCY3QxITAfBgNVBAoMGEludGVybmV0IFdp
-#           ZGdpdHMgUHR5IEx0ZDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABLV9fCJHD/kc
-#           rXrUHQwAZx0Mc0dPvLjsJ/ojEtMMn0ROdeOx8ygxgcQTFFAxyCtBuadhAdm/iVHt
-#           8g2EMz5dO3WjUzBRMB0GA1UdDgQWBBQYNkuk+JIuRWyn+bE8sBhRw27OVTAfBgNV
-#           HSMEGDAWgBQYNkuk+JIuRWyn+bE8sBhRw27OVTAPBgNVHRMBAf8EBTADAQH/MAoG
-#           CCqGSM49BAMCA0gAMEUCIQCAB2jiYe8AY6MJ4ADPSQGE47+a3kWFLcGsJhoZbxtg
-#           UwIgcfIIuPfh4fbcv8cTi2BlI3k7sWPuAmIFVriI2d3Ux5Q=
-#           -----END CERTIFICATE-----
-#     key_4:
-#       id: 6abdb73e-89a2-4628-8c95-f40994833c66
-#       kas_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f
-#       is_active: false
-#       key:
-#         alg: KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
-#         kid: r1
-#         pem: |-
-#           -----BEGIN CERTIFICATE-----
-#           MIIBzzCCAXWgAwIBAgIUORuV3avU9AE6zsB6ZxyllHpi5d4wCgYIKoZIzj0EAwIw
-#           PTELMAkGA1UEBhMCdXMxCzAJBgNVBAgMAmN0MSEwHwYDVQQKDBhJbnRlcm5ldCBX
-#           aWRnaXRzIFB0eSBMdGQwHhcNMjQwMTAyMTY1NjU2WhcNMjUwMTAxMTY1NjU2WjA9
-#           MQswCQYDVQQGEwJ1czELMAkGA1UECAwCY3QxITAfBgNVBAoMGEludGVybmV0IFdp
-#           ZGdpdHMgUHR5IEx0ZDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABLV9fCJHD/kc
-#           rXrUHQwAZx0Mc0dPvLjsJ/ojEtMMn0ROdeOx8ygxgcQTFFAxyCtBuadhAdm/iVHt
-#           8g2EMz5dO3WjUzBRMB0GA1UdDgQWBBQYNkuk+JIuRWyn+bE8sBhRw27OVTAfBgNV
-#           HSMEGDAWgBQYNkuk+JIuRWyn+bE8sBhRw27OVTAPBgNVHRMBAf8EBTADAQH/MAoG
-#           CCqGSM49BAMCA0gAMEUCIQCAB2jiYe8AY6MJ4ADPSQGE47+a3kWFLcGsJhoZbxtg
-#           UwIgcfIIuPfh4fbcv8cTi2BlI3k7sWPuAmIFVriI2d3Ux5Q=
-#           -----END CERTIFICATE-----
-
-# value_key_map:
-#   metadata:
-#     table_name: attribute_value_public_key_map
-#     columns:
-#       - value_id
-#       - key_id
-#   data:
-#     - value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
-#       key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
-#     - value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3
-#       key_id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
-#     - value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3 # deactivated
-#       key_id: d433e903-e3d1-4823-9b3e-7b188e7c6060
-
-# definition_key_map:
-#   metadata:
-#     table_name: attribute_definition_public_key_map
-#     columns:
-#       - definition_id
-#       - key_id
-#   data:
-#     - definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c
-#       key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
-#     - definition_id: 6a261d68-0899-4e17-bb2f-124abba7c09c # deactivated
-#       key_id: d433e903-e3d1-4823-9b3e-7b188e7c6060
-
-# namespace_key_map:
-#   metadata:
-#     table_name: attribute_namespace_public_key_map
-#     columns:
-#       - namespace_id
-#       - key_id
-#   data:
-#     - namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
-#       key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
-#     - namespace_id: 8f1d8839-2851-4bf4-8bf4-5243dbfe517d
-#       key_id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
-#     - namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896
-#       key_id: f478f1cd-df6e-4a55-9603-d961b36ea392
-#     - namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896
-#       key_id: 68fb7e3e-6c7b-434d-bf38-07701ad8655a
-#     - namespace_id: 87ba60e1-da12-4889-95fd-267968bf0896 # deactivated
-#       key_id: d433e903-e3d1-4823-9b3e-7b188e7c6060
 
 ##
 # Registered Resources

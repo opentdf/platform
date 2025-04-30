@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -210,22 +211,36 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrFqn() {
 	s.Empty(attr.GetKeys())
 }
 
-func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeDefKeysAssocaited() {
-	fqnFixtureKey := "example.net/attr/attr1"
-	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
-	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
-	attrFixture := s.f.GetAttributeKey(fqnFixtureKey)
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeDefKeysAssociated() {
+	// Create a attribute
+	namespace := "associate_attribute_with_key_namespace"
+	attributeName := "associate_attribute_with_key_def"
 
-	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	// Create namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: namespace,
+	})
 	s.Require().NoError(err)
+	s.NotNil(ns)
 
-	// the number of values should match the fixture
-	s.Len(attr.GetValues(), 2)
+	// Create attribute
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(),
+		Name:        attributeName,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr)
+
+	fullFqn := fqnBuilder(namespace, attributeName, "")
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
 	s.Empty(attr.GetKeys())
 
-	// Associate key with attribute.
 	keyResp, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
-		AttributeId: attrFixture.ID,
+		AttributeId: attr.GetId(),
 		KeyId:       kasKey.ID,
 	})
 	s.Require().NoError(err)
@@ -234,19 +249,28 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeDefKeysAssocaited
 	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
 	s.Require().NoError(err)
 
-	// the number of values should match the fixture
-	s.Len(attr.GetValues(), 2)
-
 	// Key checks
 	s.Len(attr.GetKeys(), 1)
 	s.Equal(kasKey.ID, attr.GetKeys()[0].GetId())
-	s.Equal(kasKey.ProviderConfigID, attr.GetKeys()[0].GetProviderConfig().GetId())
+	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
+	s.Require().NoError(err)
+	s.Equal(publicKeyCtx, attr.GetKeys()[0].GetPublicKeyCtx())
+	s.Empty(attr.GetKeys()[0].GetProviderConfig())
+	s.Empty(attr.GetKeys()[0].GetPrivateKeyCtx())
 
 	// Remove association
 	_, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
-		AttributeId: attrFixture.ID,
+		AttributeId: attr.GetId(),
 		KeyId:       kasKey.ID,
 	})
+	s.Require().NoError(err)
+
+	// Remove the attribute
+	_, err = s.db.PolicyClient.DeleteAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+
+	// Remove the namespace
+	_, err = s.db.PolicyClient.DeleteNamespace(s.ctx, ns.GetId())
 	s.Require().NoError(err)
 }
 
@@ -292,8 +316,13 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeValueKeysAssociat
 	for _, v := range attr.GetValues() {
 		s.Len(v.GetKeys(), 1)
 		s.Equal(kasKey.ID, v.GetKeys()[0].GetId())
-		s.Equal(kasKey.ProviderConfigID, v.GetKeys()[0].GetProviderConfig().GetId())
-		_, err := s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{
+		publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
+		s.Require().NoError(err)
+		s.Equal(publicKeyCtx, v.GetKeys()[0].GetPublicKeyCtx())
+		s.Empty(v.GetKeys()[0].GetProviderConfig())
+		s.Empty(v.GetKeys()[0].GetPrivateKeyCtx())
+
+		_, err = s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{
 			ValueId: v.GetId(),
 			KeyId:   kasKey.ID,
 		})
@@ -331,7 +360,11 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedWithNamespac
 	s.Empty(attr.GetKeys())
 	s.Len(attr.GetNamespace().GetKeys(), 1)
 	s.Equal(kasKey.ID, attr.GetNamespace().GetKeys()[0].GetId())
-	s.Equal(kasKey.ProviderConfigID, attr.GetNamespace().GetKeys()[0].GetProviderConfig().GetId())
+	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
+	s.Require().NoError(err)
+	s.Equal(publicKeyCtx, attr.GetNamespace().GetKeys()[0].GetPublicKeyCtx())
+	s.Empty(attr.GetNamespace().GetKeys()[0].GetProviderConfig())
+	s.Empty(attr.GetNamespace().GetKeys()[0].GetPrivateKeyCtx())
 
 	_, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
 		NamespaceId: attr.GetNamespace().GetId(),
@@ -380,7 +413,11 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedAttributes_M
 	s.Require().NoError(err)
 	s.Len(attr.GetKeys(), 1)
 	s.Equal(kasKey.ID, attr.GetKeys()[0].GetId())
-	s.Equal(kasKey.ProviderConfigID, attr.GetKeys()[0].GetProviderConfig().GetId())
+	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
+	s.Require().NoError(err)
+	s.Equal(publicKeyCtx, attr.GetKeys()[0].GetPublicKeyCtx())
+	s.Empty(attr.GetKeys()[0].GetProviderConfig())
+	s.Empty(attr.GetKeys()[0].GetPrivateKeyCtx())
 
 	// Get attribute 2
 	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn2)
@@ -388,7 +425,11 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedAttributes_M
 	s.Require().NoError(err)
 	s.Len(attr.GetKeys(), 1)
 	s.Equal(kasKey2.ID, attr.GetKeys()[0].GetId())
-	s.Equal(kasKey2.ProviderConfigID, attr.GetKeys()[0].GetProviderConfig().GetId())
+	publicKeyCtx, err = base64.StdEncoding.DecodeString(kasKey2.PublicKeyCtx)
+	s.Require().NoError(err)
+	s.Equal(publicKeyCtx, attr.GetKeys()[0].GetPublicKeyCtx())
+	s.Empty(attr.GetKeys()[0].GetProviderConfig())
+	s.Empty(attr.GetKeys()[0].GetPrivateKeyCtx())
 
 	_, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
 		AttributeId: attrOneID,

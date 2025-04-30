@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"encoding/base64"
+
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -1205,7 +1207,11 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
 	s.NotNil(gotAttr)
 	s.Len(gotAttr.GetKeys(), 1)
 	s.Equal(kasKey.ID, gotAttr.GetKeys()[0].GetId())
-	s.Equal(kasKey.ProviderConfigID, gotAttr.GetKeys()[0].GetProviderConfig().GetId())
+	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
+	s.Require().NoError(err)
+	s.Equal(publicKeyCtx, gotAttr.GetKeys()[0].GetPublicKeyCtx())
+	s.Empty(gotAttr.GetKeys()[0].GetPrivateKeyCtx())
+	s.Empty(gotAttr.GetKeys()[0].GetProviderConfig())
 
 	resp, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
 		NamespaceId: resp.GetNamespaceId(),

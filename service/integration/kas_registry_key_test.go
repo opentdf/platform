@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/base64"
 	"log/slog"
 	"testing"
 
@@ -84,7 +85,7 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_InvalidKasId_Fail() {
 	}
 	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
 	s.Require().Error(err)
-	s.Require().ErrorContains(err, db.ErrTextNotFound)
+	s.Require().ErrorContains(err, db.ErrForeignKeyViolation.Error())
 	s.Nil(resp)
 }
 
@@ -179,6 +180,12 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyByKeyId_Success() {
 	s.Require().NoError(err)
 	s.NotNil(resp)
 	s.Equal(s.kasKeys[0].ID, resp.GetId())
+	privateKeyCtx, err := base64.StdEncoding.DecodeString(s.kasKeys[0].PrivateKeyCtx)
+	s.Require().NoError(err)
+	s.Equal(privateKeyCtx, resp.GetPrivateKeyCtx())
+	pubKeyCtx, err := base64.StdEncoding.DecodeString(s.kasKeys[0].PublicKeyCtx)
+	s.Require().NoError(err)
+	s.Equal(pubKeyCtx, resp.GetPublicKeyCtx())
 	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetProviderConfig().GetId())
 }
 
@@ -256,20 +263,28 @@ func (s *KasRegistryKeySuite) validateListKeysResponse(resp *kasregistry.ListKey
 	s.GreaterOrEqual(len(resp.GetKeys()), 2)
 	s.GreaterOrEqual(int32(2), resp.GetPagination().GetTotal())
 
-	respKeyIDs := make([]string, len(resp.GetKeys()))
-	respProviderConfigIDs := make([]string, 0)
-	for i, key := range resp.GetKeys() {
-		respKeyIDs[i] = key.GetId()
-	}
 	for _, key := range resp.GetKeys() {
-		if key.GetProviderConfig() != nil {
-			respProviderConfigIDs = append(respProviderConfigIDs, key.GetProviderConfig().GetId())
+		var fixtureKey *fixtures.FixtureDataKasRegistryKey
+
+		for _, kasKey := range s.kasKeys {
+			if kasKey.ID == key.GetId() {
+				fixtureKey = &kasKey
+				break
+			}
 		}
+
+		s.Require().NotNil(fixtureKey, "No matching KAS key found for ID: %s", key.GetId())
+		s.Equal(fixtureKey.ID, key.GetId())
+		s.Equal(fixtureKey.ProviderConfigID, key.GetProviderConfig().GetId())
+
+		privateKeyCtx, err := base64.StdEncoding.DecodeString(fixtureKey.PrivateKeyCtx)
+		s.Require().NoError(err)
+		s.Equal(privateKeyCtx, key.GetPrivateKeyCtx())
+
+		pubKeyCtx, err := base64.StdEncoding.DecodeString(fixtureKey.PublicKeyCtx)
+		s.Require().NoError(err)
+		s.Equal(pubKeyCtx, key.GetPublicKeyCtx())
 	}
-	s.Contains(respKeyIDs, s.kasKeys[0].ID)
-	s.Contains(respKeyIDs, s.kasKeys[1].ID)
-	s.Contains(respProviderConfigIDs, s.kasKeys[0].ProviderConfigID)
-	s.Contains(respProviderConfigIDs, s.kasKeys[1].ProviderConfigID)
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Success() {

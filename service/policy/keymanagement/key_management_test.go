@@ -105,6 +105,16 @@ func Test_GetProviderConfigRequest(t *testing.T) {
 			errorMessage: errMessageUUID,
 		},
 		{
+			name: "Invalid ConfigId (invalid UUID)",
+			req: &keymanagement.GetProviderConfigRequest{
+				Identifier: &keymanagement.GetProviderConfigRequest_Name{
+					Name: "",
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageName,
+		},
+		{
 			name: "Valid ConfigId",
 			req: &keymanagement.GetProviderConfigRequest{
 				Identifier: &keymanagement.GetProviderConfigRequest_Id{

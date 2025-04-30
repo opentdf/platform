@@ -67,7 +67,7 @@
           }
         }
       },
-      "title": "Can the entity (PE or NPE) represented by each entity chain take the provided action on the each resource"
+      "title": "Can the entity (PE or NPE) represented by one entity chain take the provided action on each resource"
     },
     "authorizationv2DecisionResponse": {
       "type": "object",
@@ -115,11 +115,13 @@
         "userName": {
           "type": "string"
         },
-        "custom": {
-          "$ref": "#/definitions/authorizationv2EntityCustom"
+        "claims": {
+          "$ref": "#/definitions/protobufAny",
+          "title": "used by ERS claims mode"
         },
         "clientId": {
-          "type": "string"
+          "type": "string",
+          "title": "EntityCustom custom = 5;"
         },
         "registeredResourceValueFqn": {
           "type": "string"
@@ -154,22 +156,14 @@
           }
         }
       },
-      "title": "A set of related PE and NPE"
-    },
-    "authorizationv2EntityCustom": {
-      "type": "object",
-      "properties": {
-        "extension": {
-          "$ref": "#/definitions/protobufAny"
-        }
-      },
-      "title": "Entity type for custom entities beyond the standard types"
+      "title": "A set of related PE and NPE (i.e. authenticating client and user)"
     },
     "authorizationv2EntityEntitlements": {
       "type": "object",
       "properties": {
         "ephemeralId": {
-          "type": "string"
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
         },
         "actionsPerAttributeValueFqn": {
           "type": "object",
@@ -214,8 +208,12 @@
         "action": {
           "$ref": "#/definitions/policyAction"
         },
-        "resource": {
-          "$ref": "#/definitions/v2Resource"
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2Resource"
+          }
         }
       },
       "title": "Can the entity (PE or NPE) represented by this token take the provided action on the set of resources"
@@ -351,7 +349,7 @@
           "type": "string"
         }
       },
-      "title": "Either a registered resource or a set of attribute values"
+      "title": "Either a set of attribute values (such as those on a TDF) or a registered resource value"
     }
   }
 }

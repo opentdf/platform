@@ -424,10 +424,6 @@
                 </li>
               
                 <li>
-                  <a href="#authorization.v2.EntityCustom"><span class="badge">M</span>EntityCustom</a>
-                </li>
-              
-                <li>
                   <a href="#authorization.v2.EntityEntitlements"><span class="badge">M</span>EntityEntitlements</a>
                 </li>
               
@@ -3690,7 +3686,7 @@ string</p></td>
 
       
         <h3 id="authorization.v2.DecisionRequest">DecisionRequest</h3>
-        <p>Can the entity (PE or NPE) represented by each entity chain take the provided action on the each resource</p>
+        <p>Can the entity (PE or NPE) represented by one entity chain take the provided action on each resource</p>
 
         
           <table class="field-table">
@@ -3807,17 +3803,17 @@ repeated string obligations = 5; </p></td>
                 </tr>
               
                 <tr>
-                  <td>custom</td>
-                  <td><a href="#authorization.v2.EntityCustom">EntityCustom</a></td>
+                  <td>claims</td>
+                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>used by ERS claims mode </p></td>
                 </tr>
               
                 <tr>
                   <td>client_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>EntityCustom custom = 5; </p></td>
                 </tr>
               
                 <tr>
@@ -3842,7 +3838,7 @@ repeated string obligations = 5; </p></td>
         
       
         <h3 id="authorization.v2.EntityChain">EntityChain</h3>
-        <p>A set of related PE and NPE</p>
+        <p>A set of related PE and NPE (i.e. authenticating client and user)</p>
 
         
           <table class="field-table">
@@ -3872,30 +3868,6 @@ repeated string obligations = 5; </p></td>
 
         
       
-        <h3 id="authorization.v2.EntityCustom">EntityCustom</h3>
-        <p>Entity type for custom entities beyond the standard types</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>extension</td>
-                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="authorization.v2.EntityEntitlements">EntityEntitlements</h3>
         <p>Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]</p>
 
@@ -3910,7 +3882,7 @@ repeated string obligations = 5; </p></td>
                   <td>ephemeral_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
                 </tr>
               
                 <tr>
@@ -4175,7 +4147,7 @@ repeated string obligations = 5; </p></td>
         
       
         <h3 id="authorization.v2.GetEntitlementsRequest">GetEntitlementsRequest</h3>
-        <p></p>
+        <p>What can the entity do, broken down as permitted actions on attribute value FQNs</p>
 
         
           <table class="field-table">
@@ -4238,7 +4210,7 @@ todo: should this be an entity chain? </p></td>
         
       
         <h3 id="authorization.v2.Resource">Resource</h3>
-        <p>Either a registered resource or a set of attribute values</p>
+        <p>Either a set of attribute values (such as those on a TDF) or a registered resource value</p>
 
         
           <table class="field-table">
@@ -4355,9 +4327,9 @@ todo: should this be an entity chain? </p></td>
                 </tr>
               
                 <tr>
-                  <td>resource</td>
+                  <td>resources</td>
                   <td><a href="#authorization.v2.Resource">Resource</a></td>
-                  <td></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               

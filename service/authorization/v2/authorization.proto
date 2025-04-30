@@ -21,9 +21,11 @@ message Entity {
     // one of the entity options must be set
     string email_address = 2;
     string user_name = 3;
-    EntityCustom custom = 4;
-    string client_id = 5;
-    string registered_resource_value_fqn = 6;
+    // used by ERS claims mode
+    google.protobuf.Any claims = 4;
+    // EntityCustom custom = 5;
+    string client_id = 6;
+    string registered_resource_value_fqn = 7;
   }
   enum Category {
     CATEGORY_UNSPECIFIED = 0;
@@ -34,11 +36,11 @@ message Entity {
 }
 
 // Entity type for custom entities beyond the standard types
-message EntityCustom {
-  google.protobuf.Any extension = 1;
-}
+// message EntityCustom {
+//   google.protobuf.Any extension = 1;
+// }
 
-// A set of related PE and NPE
+// A set of related PE and NPE (i.e. authenticating client and user)
 message EntityChain {
   // ephemeral id for tracking between request and response
   string ephemeral_id = 1;
@@ -51,11 +53,12 @@ message EntityEntitlements {
     repeated policy.Action actions = 1;
   }
 
+  // ephemeral id for tracking between request and response
   string ephemeral_id = 1;
   map<string, ActionsList> actions_per_attribute_value_fqn = 2;
 }
 
-// Either a registered resource or a set of attribute values
+// Either a set of attribute values (such as those on a TDF) or a registered resource value
 message Resource {
   // ephemeral id for tracking between request and response
   string ephemeral_id = 1;
@@ -70,7 +73,7 @@ message Resource {
   }
 }
 
-// Can the entity (PE or NPE) represented by each entity chain take the provided action on the each resource
+// Can the entity (PE or NPE) represented by one entity chain take the provided action on each resource
 message DecisionRequest {
   EntityChain entity = 1;
   policy.Action action = 2;
@@ -110,6 +113,7 @@ message GetDecisionBulkResponse {
   repeated DecisionResponse decision_responses = 1;
 }
 
+// What can the entity do, broken down as permitted actions on attribute value FQNs
 message GetEntitlementsRequest {
   // list of requested entities
   // todo: should this be an entity chain?
@@ -127,7 +131,7 @@ message GetEntitlementsResponse {
 message TokenDecisionRequest {
   Token token = 1;
   policy.Action action = 2;
-  Resource resource = 3;
+  repeated Resource resources = 3;
 }
 
 message GetDecisionByTokenRequest {

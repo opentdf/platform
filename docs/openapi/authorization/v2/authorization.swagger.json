@@ -126,7 +126,7 @@
         "clientId": {
           "type": "string"
         },
-        "registeredResourceFqn": {
+        "registeredResourceValueFqn": {
           "type": "string"
         },
         "category": {
@@ -352,7 +352,7 @@
         "attributeValues": {
           "$ref": "#/definitions/ResourceAttributeValues"
         },
-        "registeredResourceFqn": {
+        "registeredResourceValueFqn": {
           "type": "string"
         }
       },

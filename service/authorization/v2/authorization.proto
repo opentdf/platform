@@ -26,7 +26,7 @@ message Entity {
     google.protobuf.Any claims = 6;
     EntityCustom custom = 7;
     string client_id = 8;
-    string registered_resource_fqn = 10;
+    string registered_resource_value_fqn = 10;
   }
   enum Category {
     CATEGORY_UNSPECIFIED = 0;
@@ -119,7 +119,7 @@ message Resource {
 
   oneof resource {
     AttributeValues attribute_values = 2;
-    string registered_resource_fqn = 3;
+    string registered_resource_value_fqn = 3;
   }
 }
 

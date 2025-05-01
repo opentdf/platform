@@ -26,8 +26,8 @@ const (
 	NamespaceService_DeactivateNamespace_FullMethodName                = "/policy.namespaces.NamespaceService/DeactivateNamespace"
 	NamespaceService_AssignKeyAccessServerToNamespace_FullMethodName   = "/policy.namespaces.NamespaceService/AssignKeyAccessServerToNamespace"
 	NamespaceService_RemoveKeyAccessServerFromNamespace_FullMethodName = "/policy.namespaces.NamespaceService/RemoveKeyAccessServerFromNamespace"
-	NamespaceService_AssignKeyToNamespace_FullMethodName               = "/policy.namespaces.NamespaceService/AssignKeyToNamespace"
-	NamespaceService_RemoveKeyFromNamespace_FullMethodName             = "/policy.namespaces.NamespaceService/RemoveKeyFromNamespace"
+	NamespaceService_AssignPublicKeyToNamespace_FullMethodName         = "/policy.namespaces.NamespaceService/AssignPublicKeyToNamespace"
+	NamespaceService_RemovePublicKeyFromNamespace_FullMethodName       = "/policy.namespaces.NamespaceService/RemovePublicKeyFromNamespace"
 )
 
 // NamespaceServiceClient is the client API for NamespaceService service.
@@ -47,8 +47,8 @@ type NamespaceServiceClient interface {
 	// --------------------------------------*
 	// Namespace <> Key RPCs
 	// ---------------------------------------
-	AssignKeyToNamespace(ctx context.Context, in *AssignKeyToNamespaceRequest, opts ...grpc.CallOption) (*AssignKeyToNamespaceResponse, error)
-	RemoveKeyFromNamespace(ctx context.Context, in *RemoveKeyFromNamespaceRequest, opts ...grpc.CallOption) (*RemoveKeyFromNamespaceResponse, error)
+	AssignPublicKeyToNamespace(ctx context.Context, in *AssignPublicKeyToNamespaceRequest, opts ...grpc.CallOption) (*AssignPublicKeyToNamespaceResponse, error)
+	RemovePublicKeyFromNamespace(ctx context.Context, in *RemovePublicKeyFromNamespaceRequest, opts ...grpc.CallOption) (*RemovePublicKeyFromNamespaceResponse, error)
 }
 
 type namespaceServiceClient struct {
@@ -122,18 +122,18 @@ func (c *namespaceServiceClient) RemoveKeyAccessServerFromNamespace(ctx context.
 	return out, nil
 }
 
-func (c *namespaceServiceClient) AssignKeyToNamespace(ctx context.Context, in *AssignKeyToNamespaceRequest, opts ...grpc.CallOption) (*AssignKeyToNamespaceResponse, error) {
-	out := new(AssignKeyToNamespaceResponse)
-	err := c.cc.Invoke(ctx, NamespaceService_AssignKeyToNamespace_FullMethodName, in, out, opts...)
+func (c *namespaceServiceClient) AssignPublicKeyToNamespace(ctx context.Context, in *AssignPublicKeyToNamespaceRequest, opts ...grpc.CallOption) (*AssignPublicKeyToNamespaceResponse, error) {
+	out := new(AssignPublicKeyToNamespaceResponse)
+	err := c.cc.Invoke(ctx, NamespaceService_AssignPublicKeyToNamespace_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *namespaceServiceClient) RemoveKeyFromNamespace(ctx context.Context, in *RemoveKeyFromNamespaceRequest, opts ...grpc.CallOption) (*RemoveKeyFromNamespaceResponse, error) {
-	out := new(RemoveKeyFromNamespaceResponse)
-	err := c.cc.Invoke(ctx, NamespaceService_RemoveKeyFromNamespace_FullMethodName, in, out, opts...)
+func (c *namespaceServiceClient) RemovePublicKeyFromNamespace(ctx context.Context, in *RemovePublicKeyFromNamespaceRequest, opts ...grpc.CallOption) (*RemovePublicKeyFromNamespaceResponse, error) {
+	out := new(RemovePublicKeyFromNamespaceResponse)
+	err := c.cc.Invoke(ctx, NamespaceService_RemovePublicKeyFromNamespace_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -157,8 +157,8 @@ type NamespaceServiceServer interface {
 	// --------------------------------------*
 	// Namespace <> Key RPCs
 	// ---------------------------------------
-	AssignKeyToNamespace(context.Context, *AssignKeyToNamespaceRequest) (*AssignKeyToNamespaceResponse, error)
-	RemoveKeyFromNamespace(context.Context, *RemoveKeyFromNamespaceRequest) (*RemoveKeyFromNamespaceResponse, error)
+	AssignPublicKeyToNamespace(context.Context, *AssignPublicKeyToNamespaceRequest) (*AssignPublicKeyToNamespaceResponse, error)
+	RemovePublicKeyFromNamespace(context.Context, *RemovePublicKeyFromNamespaceRequest) (*RemovePublicKeyFromNamespaceResponse, error)
 	mustEmbedUnimplementedNamespaceServiceServer()
 }
 
@@ -187,11 +187,11 @@ func (UnimplementedNamespaceServiceServer) AssignKeyAccessServerToNamespace(cont
 func (UnimplementedNamespaceServiceServer) RemoveKeyAccessServerFromNamespace(context.Context, *RemoveKeyAccessServerFromNamespaceRequest) (*RemoveKeyAccessServerFromNamespaceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveKeyAccessServerFromNamespace not implemented")
 }
-func (UnimplementedNamespaceServiceServer) AssignKeyToNamespace(context.Context, *AssignKeyToNamespaceRequest) (*AssignKeyToNamespaceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AssignKeyToNamespace not implemented")
+func (UnimplementedNamespaceServiceServer) AssignPublicKeyToNamespace(context.Context, *AssignPublicKeyToNamespaceRequest) (*AssignPublicKeyToNamespaceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AssignPublicKeyToNamespace not implemented")
 }
-func (UnimplementedNamespaceServiceServer) RemoveKeyFromNamespace(context.Context, *RemoveKeyFromNamespaceRequest) (*RemoveKeyFromNamespaceResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RemoveKeyFromNamespace not implemented")
+func (UnimplementedNamespaceServiceServer) RemovePublicKeyFromNamespace(context.Context, *RemovePublicKeyFromNamespaceRequest) (*RemovePublicKeyFromNamespaceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemovePublicKeyFromNamespace not implemented")
 }
 func (UnimplementedNamespaceServiceServer) mustEmbedUnimplementedNamespaceServiceServer() {}
 
@@ -332,38 +332,38 @@ func _NamespaceService_RemoveKeyAccessServerFromNamespace_Handler(srv interface{
 	return interceptor(ctx, in, info, handler)
 }
 
-func _NamespaceService_AssignKeyToNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AssignKeyToNamespaceRequest)
+func _NamespaceService_AssignPublicKeyToNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AssignPublicKeyToNamespaceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NamespaceServiceServer).AssignKeyToNamespace(ctx, in)
+		return srv.(NamespaceServiceServer).AssignPublicKeyToNamespace(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: NamespaceService_AssignKeyToNamespace_FullMethodName,
+		FullMethod: NamespaceService_AssignPublicKeyToNamespace_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NamespaceServiceServer).AssignKeyToNamespace(ctx, req.(*AssignKeyToNamespaceRequest))
+		return srv.(NamespaceServiceServer).AssignPublicKeyToNamespace(ctx, req.(*AssignPublicKeyToNamespaceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _NamespaceService_RemoveKeyFromNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveKeyFromNamespaceRequest)
+func _NamespaceService_RemovePublicKeyFromNamespace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemovePublicKeyFromNamespaceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NamespaceServiceServer).RemoveKeyFromNamespace(ctx, in)
+		return srv.(NamespaceServiceServer).RemovePublicKeyFromNamespace(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: NamespaceService_RemoveKeyFromNamespace_FullMethodName,
+		FullMethod: NamespaceService_RemovePublicKeyFromNamespace_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NamespaceServiceServer).RemoveKeyFromNamespace(ctx, req.(*RemoveKeyFromNamespaceRequest))
+		return srv.(NamespaceServiceServer).RemovePublicKeyFromNamespace(ctx, req.(*RemovePublicKeyFromNamespaceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -404,12 +404,12 @@ var NamespaceService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _NamespaceService_RemoveKeyAccessServerFromNamespace_Handler,
 		},
 		{
-			MethodName: "AssignKeyToNamespace",
-			Handler:    _NamespaceService_AssignKeyToNamespace_Handler,
+			MethodName: "AssignPublicKeyToNamespace",
+			Handler:    _NamespaceService_AssignPublicKeyToNamespace_Handler,
 		},
 		{
-			MethodName: "RemoveKeyFromNamespace",
-			Handler:    _NamespaceService_RemoveKeyFromNamespace_Handler,
+			MethodName: "RemovePublicKeyFromNamespace",
+			Handler:    _NamespaceService_RemovePublicKeyFromNamespace_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

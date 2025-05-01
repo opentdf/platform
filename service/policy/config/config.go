@@ -5,7 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/creasty/defaults"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/service/pkg/config"
 )
 

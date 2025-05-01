@@ -34,7 +34,7 @@ message NamespaceKey {
     (buf.validate.field).string.uuid = true,
     (buf.validate.field).required = true
   ];
-  // Required
+  // Required (The id from the Asymmetric Key object)
   string key_id = 2 [
     (buf.validate.field).string.uuid = true,
     (buf.validate.field).required = true
@@ -165,23 +165,23 @@ message RemoveKeyAccessServerFromNamespaceResponse {
 /*
   Assign Key to Namespace
 */
-message AssignKeyToNamespaceRequest {
+message AssignPublicKeyToNamespaceRequest {
   NamespaceKey namespace_key = 1 [
     (buf.validate.field).required = true
   ];
 }
 
-message AssignKeyToNamespaceResponse {
+message AssignPublicKeyToNamespaceResponse {
   NamespaceKey namespace_key = 1;
 }
 
-message RemoveKeyFromNamespaceRequest {
+message RemovePublicKeyFromNamespaceRequest {
   NamespaceKey namespace_key = 1 [
     (buf.validate.field).required = true
   ];
 }
 
-message RemoveKeyFromNamespaceResponse {
+message RemovePublicKeyFromNamespaceResponse {
   NamespaceKey namespace_key = 1;
 }
 
@@ -231,7 +231,7 @@ service NamespaceService {
   /*--------------------------------------*
    * Namespace <> Key RPCs
    *---------------------------------------*/
-  rpc AssignKeyToNamespace(AssignKeyToNamespaceRequest) returns (AssignKeyToNamespaceResponse) {}
-  rpc RemoveKeyFromNamespace(RemoveKeyFromNamespaceRequest) returns (RemoveKeyFromNamespaceResponse) {}
+  rpc AssignPublicKeyToNamespace(AssignPublicKeyToNamespaceRequest) returns (AssignPublicKeyToNamespaceResponse) {}
+  rpc RemovePublicKeyFromNamespace(RemovePublicKeyFromNamespaceRequest) returns (RemovePublicKeyFromNamespaceResponse) {}
 }
 

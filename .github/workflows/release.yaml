@@ -82,10 +82,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - run: |
+      - id: update_mods_run
+        run: |
           git checkout -b update-go-mods-for-$MATRIX_PATH
           git push -f -u origin update-go-mods-for-$MATRIX_PATH
           cd $MATRIX_PATH || exit 1
+          UPDATES_LIST=""
+          PR_BODY_UPDATES=""
           <<<"$RELEASED_PATHS" jq -r '.[]'| while IFS= read -r x; do
             export pkg="github.com/opentdf/platform/${x}"
             if go mod edit --json | jq -e '.Replace[] | select(.Old.Path == env.pkg)'; then
@@ -96,6 +99,14 @@ jobs:
               ver="$(jq -r --arg x "$x" '.[$x]' <"${GITHUB_WORKSPACE}"/.release-please-manifest.json)"
               echo "go get ${pkg}@v${ver}"
               go get "${pkg}@v${ver}"
+              # Add to updates list for title
+              if [ -z "$UPDATES_LIST" ]; then
+                UPDATES_LIST="bump ${x} to v${ver}"
+              else
+                UPDATES_LIST="${UPDATES_LIST}, bump ${x} to v${ver}"
+              fi
+              # Add to updates list for body
+              PR_BODY_UPDATES="${PR_BODY_UPDATES}fix(${MATRIX_PATH}): bump ${x} to v${ver}\n"
             fi
             echo "go mod tidy of"
             cat<go.mod
@@ -104,6 +115,8 @@ jobs:
             cat<go.mod
           done
           git diff
+          echo "UPDATES_LIST=${UPDATES_LIST}" >> "$GITHUB_OUTPUT"
+          echo "PR_BODY_UPDATES=${PR_BODY_UPDATES}" >> "$GITHUB_OUTPUT"
         env:
           GONOSUMDB: github.com/opentdf/platform/${{join(fromJson(needs.release-please.outputs.paths_released), ',github.com/opentdf/platform/')}}
           RELEASED_PATHS: ${{ needs.release-please.outputs.paths_released }}
@@ -125,8 +138,10 @@ jobs:
         run: |
           git restore .
           git pull origin update-go-mods-for-"$MATRIX_PATH"
-          gh pr create -B main -H update-go-mods-for-"$MATRIX_PATH" --fill
+          gh pr create -B main -H update-go-mods-for-"$MATRIX_PATH" --title "fix(${MATRIX_PATH}): $UPDATES_LIST" --body "$PR_BODY" --fill
           gh pr merge --auto --squash
         env:
           GITHUB_TOKEN: "${{ steps.generate_token.outputs.token }}"
           MATRIX_PATH: "${{ matrix.path }}"
+          PR_BODY: "${{ steps.update_mods_run.outputs.PR_BODY_UPDATES }}"
+          UPDATE_LIST: "${{ steps.update_mods_run.outputs.UPDATES_LIST }}"

@@ -251,12 +251,12 @@ func (s *RegisteredResourcesService) GetRegisteredResourceValue(ctx context.Cont
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *RegisteredResourcesService) GetRegisteredResourceValuesByFQN(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceValuesByFQNRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByFQNResponse], error) {
-	rsp := &registeredresources.GetRegisteredResourceValuesByFQNResponse{}
+func (s *RegisteredResourcesService) GetRegisteredResourceValuesByFQNs(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceValuesByFQNsRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByFQNsResponse], error) {
+	rsp := &registeredresources.GetRegisteredResourceValuesByFQNsResponse{}
 
-	s.logger.DebugContext(ctx, "getting registered resource values by FQN", slog.Any("fqns", req.Msg.GetFqns()))
+	s.logger.DebugContext(ctx, "getting registered resource values by FQNs", slog.Any("fqns", req.Msg.GetFqns()))
 
-	fqnValueMap, err := s.dbClient.GetRegisteredResourceValuesByFQN(ctx, req.Msg)
+	fqnValueMap, err := s.dbClient.GetRegisteredResourceValuesByFQNs(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("fqns", req.Msg.GetFqns()))
 	}

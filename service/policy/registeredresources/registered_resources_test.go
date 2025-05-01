@@ -557,8 +557,9 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValue_Invalid_Fails(
 	}
 }
 
-// Get by FQN
-func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_Valid_Succeeds() {
+// Get by FQNs
+
+func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQNs_Valid_Succeeds() {
 	req := &registeredresources.GetRegisteredResourceValueRequest{
 		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{
 			Fqn: validURI,
@@ -569,41 +570,41 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_Valid_Su
 	s.Require().NoError(err)
 }
 
-func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_Invalid_Fails() {
+func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQNs_Invalid_Fails() {
 	testCases := []struct {
 		name   string
-		req    *registeredresources.GetRegisteredResourceValuesByFQNRequest
+		req    *registeredresources.GetRegisteredResourceValuesByFQNsRequest
 		errMsg string
 	}{
 		{
 			name:   "Nil FQN list",
-			req:    &registeredresources.GetRegisteredResourceValuesByFQNRequest{},
+			req:    &registeredresources.GetRegisteredResourceValuesByFQNsRequest{},
 			errMsg: errMsgRepeatedMinItems,
 		},
 		{
 			name: "Empty FQN list",
-			req: &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+			req: &registeredresources.GetRegisteredResourceValuesByFQNsRequest{
 				Fqns: []string{},
 			},
 			errMsg: errMsgRepeatedMinItems,
 		},
 		{
 			name: "Empty String in FQN list",
-			req: &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+			req: &registeredresources.GetRegisteredResourceValuesByFQNsRequest{
 				Fqns: []string{""},
 			},
 			errMsg: errMsgStringMinLen,
 		},
 		{
 			name: "Duplicates in FQN list",
-			req: &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+			req: &registeredresources.GetRegisteredResourceValuesByFQNsRequest{
 				Fqns: []string{validURI, validURI},
 			},
 			errMsg: errMsgRepeatedUnique,
 		},
 		{
 			name: "Invalid FQN in FQN list",
-			req: &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+			req: &registeredresources.GetRegisteredResourceValuesByFQNsRequest{
 				Fqns: []string{invalidURI},
 			},
 			errMsg: errMsgURI,

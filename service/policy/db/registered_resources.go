@@ -280,7 +280,7 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 	}, nil
 }
 
-func (c PolicyDBClient) GetRegisteredResourceValuesByFQN(ctx context.Context, r *registeredresources.GetRegisteredResourceValuesByFQNRequest) (map[string]*policy.RegisteredResourceValue, error) {
+func (c PolicyDBClient) GetRegisteredResourceValuesByFQNs(ctx context.Context, r *registeredresources.GetRegisteredResourceValuesByFQNsRequest) (map[string]*policy.RegisteredResourceValue, error) {
 	resp := make(map[string]*policy.RegisteredResourceValue)
 	count := 0
 

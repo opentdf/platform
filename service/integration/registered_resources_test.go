@@ -649,9 +649,9 @@ func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_ByInvalidFQN_
 	s.Nil(got)
 }
 
-// Get By FQN
+// Get By FQNs
 
-func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_Valid_Succeeds() {
+func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQNs_Valid_Succeeds() {
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 	existingResValue2 := s.f.GetRegisteredResourceValueKey("res_with_values__value2")
@@ -660,7 +660,7 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_Valid_Su
 		fmt.Sprintf("https://reg_res/%s/value/%s", existingRes.Name, existingResValue2.Value),
 	}
 
-	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByFQN(s.ctx, &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByFQNs(s.ctx, &registeredresources.GetRegisteredResourceValuesByFQNsRequest{
 		Fqns: fqns,
 	})
 	s.Require().NoError(err)
@@ -679,7 +679,7 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_Valid_Su
 	s.Equal(existingRes.ID, foundFQN2.GetResource().GetId())
 }
 
-func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_SomeInvalid_Fails() {
+func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQNs_SomeInvalid_Fails() {
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 	fqns := []string{
@@ -687,7 +687,7 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_SomeInva
 		"https://reg_res/does_not_exist/value/does_not_exist",
 	}
 
-	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByFQN(s.ctx, &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByFQNs(s.ctx, &registeredresources.GetRegisteredResourceValuesByFQNsRequest{
 		Fqns: fqns,
 	})
 	s.Require().Error(err)
@@ -695,13 +695,13 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_SomeInva
 	s.Nil(got)
 }
 
-func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_AllInvalid_Fails() {
+func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQNs_AllInvalid_Fails() {
 	fqns := []string{
 		"https://reg_res/does_not_exist/value/does_not_exist",
 		"https://reg_res/does_not_exist/value/does_not_exist2",
 	}
 
-	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByFQN(s.ctx, &registeredresources.GetRegisteredResourceValuesByFQNRequest{
+	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByFQNs(s.ctx, &registeredresources.GetRegisteredResourceValuesByFQNsRequest{
 		Fqns: fqns,
 	})
 	s.Require().Error(err)

@@ -167,7 +167,7 @@ message GetRegisteredResourceValueResponse {
   policy.RegisteredResourceValue value = 1;
 }
 
-message GetRegisteredResourceValuesByFQNRequest {
+message GetRegisteredResourceValuesByFQNsRequest {
   // Required
   repeated string fqns = 1 [
     (buf.validate.field).repeated = {
@@ -183,7 +183,7 @@ message GetRegisteredResourceValuesByFQNRequest {
     }
   ];
 }
-message GetRegisteredResourceValuesByFQNResponse {
+message GetRegisteredResourceValuesByFQNsResponse {
   map<string, policy.RegisteredResourceValue> fqn_value_map = 1;
 }
 
@@ -271,7 +271,7 @@ service RegisteredResourcesService {
   rpc GetRegisteredResourceValue(GetRegisteredResourceValueRequest) returns (GetRegisteredResourceValueResponse) {
   }
 
-  rpc GetRegisteredResourceValuesByFQN(GetRegisteredResourceValuesByFQNRequest) returns (GetRegisteredResourceValuesByFQNResponse) {
+  rpc GetRegisteredResourceValuesByFQNs(GetRegisteredResourceValuesByFQNsRequest) returns (GetRegisteredResourceValuesByFQNsResponse) {
   }
 
   rpc ListRegisteredResourceValues(ListRegisteredResourceValuesRequest) returns (ListRegisteredResourceValuesResponse) {

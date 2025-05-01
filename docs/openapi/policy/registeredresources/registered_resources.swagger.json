@@ -196,7 +196,7 @@
         }
       }
     },
-    "registeredresourcesGetRegisteredResourceValuesByFQNResponse": {
+    "registeredresourcesGetRegisteredResourceValuesByFQNsResponse": {
       "type": "object",
       "properties": {
         "fqnValueMap": {

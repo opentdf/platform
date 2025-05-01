@@ -19,17 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	RegisteredResourcesService_CreateRegisteredResource_FullMethodName         = "/policy.registeredresources.RegisteredResourcesService/CreateRegisteredResource"
-	RegisteredResourcesService_GetRegisteredResource_FullMethodName            = "/policy.registeredresources.RegisteredResourcesService/GetRegisteredResource"
-	RegisteredResourcesService_ListRegisteredResources_FullMethodName          = "/policy.registeredresources.RegisteredResourcesService/ListRegisteredResources"
-	RegisteredResourcesService_UpdateRegisteredResource_FullMethodName         = "/policy.registeredresources.RegisteredResourcesService/UpdateRegisteredResource"
-	RegisteredResourcesService_DeleteRegisteredResource_FullMethodName         = "/policy.registeredresources.RegisteredResourcesService/DeleteRegisteredResource"
-	RegisteredResourcesService_CreateRegisteredResourceValue_FullMethodName    = "/policy.registeredresources.RegisteredResourcesService/CreateRegisteredResourceValue"
-	RegisteredResourcesService_GetRegisteredResourceValue_FullMethodName       = "/policy.registeredresources.RegisteredResourcesService/GetRegisteredResourceValue"
-	RegisteredResourcesService_GetRegisteredResourceValuesByFQN_FullMethodName = "/policy.registeredresources.RegisteredResourcesService/GetRegisteredResourceValuesByFQN"
-	RegisteredResourcesService_ListRegisteredResourceValues_FullMethodName     = "/policy.registeredresources.RegisteredResourcesService/ListRegisteredResourceValues"
-	RegisteredResourcesService_UpdateRegisteredResourceValue_FullMethodName    = "/policy.registeredresources.RegisteredResourcesService/UpdateRegisteredResourceValue"
-	RegisteredResourcesService_DeleteRegisteredResourceValue_FullMethodName    = "/policy.registeredresources.RegisteredResourcesService/DeleteRegisteredResourceValue"
+	RegisteredResourcesService_CreateRegisteredResource_FullMethodName          = "/policy.registeredresources.RegisteredResourcesService/CreateRegisteredResource"
+	RegisteredResourcesService_GetRegisteredResource_FullMethodName             = "/policy.registeredresources.RegisteredResourcesService/GetRegisteredResource"
+	RegisteredResourcesService_ListRegisteredResources_FullMethodName           = "/policy.registeredresources.RegisteredResourcesService/ListRegisteredResources"
+	RegisteredResourcesService_UpdateRegisteredResource_FullMethodName          = "/policy.registeredresources.RegisteredResourcesService/UpdateRegisteredResource"
+	RegisteredResourcesService_DeleteRegisteredResource_FullMethodName          = "/policy.registeredresources.RegisteredResourcesService/DeleteRegisteredResource"
+	RegisteredResourcesService_CreateRegisteredResourceValue_FullMethodName     = "/policy.registeredresources.RegisteredResourcesService/CreateRegisteredResourceValue"
+	RegisteredResourcesService_GetRegisteredResourceValue_FullMethodName        = "/policy.registeredresources.RegisteredResourcesService/GetRegisteredResourceValue"
+	RegisteredResourcesService_GetRegisteredResourceValuesByFQNs_FullMethodName = "/policy.registeredresources.RegisteredResourcesService/GetRegisteredResourceValuesByFQNs"
+	RegisteredResourcesService_ListRegisteredResourceValues_FullMethodName      = "/policy.registeredresources.RegisteredResourcesService/ListRegisteredResourceValues"
+	RegisteredResourcesService_UpdateRegisteredResourceValue_FullMethodName     = "/policy.registeredresources.RegisteredResourcesService/UpdateRegisteredResourceValue"
+	RegisteredResourcesService_DeleteRegisteredResourceValue_FullMethodName     = "/policy.registeredresources.RegisteredResourcesService/DeleteRegisteredResourceValue"
 )
 
 // RegisteredResourcesServiceClient is the client API for RegisteredResourcesService service.
@@ -43,7 +43,7 @@ type RegisteredResourcesServiceClient interface {
 	DeleteRegisteredResource(ctx context.Context, in *DeleteRegisteredResourceRequest, opts ...grpc.CallOption) (*DeleteRegisteredResourceResponse, error)
 	CreateRegisteredResourceValue(ctx context.Context, in *CreateRegisteredResourceValueRequest, opts ...grpc.CallOption) (*CreateRegisteredResourceValueResponse, error)
 	GetRegisteredResourceValue(ctx context.Context, in *GetRegisteredResourceValueRequest, opts ...grpc.CallOption) (*GetRegisteredResourceValueResponse, error)
-	GetRegisteredResourceValuesByFQN(ctx context.Context, in *GetRegisteredResourceValuesByFQNRequest, opts ...grpc.CallOption) (*GetRegisteredResourceValuesByFQNResponse, error)
+	GetRegisteredResourceValuesByFQNs(ctx context.Context, in *GetRegisteredResourceValuesByFQNsRequest, opts ...grpc.CallOption) (*GetRegisteredResourceValuesByFQNsResponse, error)
 	ListRegisteredResourceValues(ctx context.Context, in *ListRegisteredResourceValuesRequest, opts ...grpc.CallOption) (*ListRegisteredResourceValuesResponse, error)
 	UpdateRegisteredResourceValue(ctx context.Context, in *UpdateRegisteredResourceValueRequest, opts ...grpc.CallOption) (*UpdateRegisteredResourceValueResponse, error)
 	DeleteRegisteredResourceValue(ctx context.Context, in *DeleteRegisteredResourceValueRequest, opts ...grpc.CallOption) (*DeleteRegisteredResourceValueResponse, error)
@@ -120,9 +120,9 @@ func (c *registeredResourcesServiceClient) GetRegisteredResourceValue(ctx contex
 	return out, nil
 }
 
-func (c *registeredResourcesServiceClient) GetRegisteredResourceValuesByFQN(ctx context.Context, in *GetRegisteredResourceValuesByFQNRequest, opts ...grpc.CallOption) (*GetRegisteredResourceValuesByFQNResponse, error) {
-	out := new(GetRegisteredResourceValuesByFQNResponse)
-	err := c.cc.Invoke(ctx, RegisteredResourcesService_GetRegisteredResourceValuesByFQN_FullMethodName, in, out, opts...)
+func (c *registeredResourcesServiceClient) GetRegisteredResourceValuesByFQNs(ctx context.Context, in *GetRegisteredResourceValuesByFQNsRequest, opts ...grpc.CallOption) (*GetRegisteredResourceValuesByFQNsResponse, error) {
+	out := new(GetRegisteredResourceValuesByFQNsResponse)
+	err := c.cc.Invoke(ctx, RegisteredResourcesService_GetRegisteredResourceValuesByFQNs_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ type RegisteredResourcesServiceServer interface {
 	DeleteRegisteredResource(context.Context, *DeleteRegisteredResourceRequest) (*DeleteRegisteredResourceResponse, error)
 	CreateRegisteredResourceValue(context.Context, *CreateRegisteredResourceValueRequest) (*CreateRegisteredResourceValueResponse, error)
 	GetRegisteredResourceValue(context.Context, *GetRegisteredResourceValueRequest) (*GetRegisteredResourceValueResponse, error)
-	GetRegisteredResourceValuesByFQN(context.Context, *GetRegisteredResourceValuesByFQNRequest) (*GetRegisteredResourceValuesByFQNResponse, error)
+	GetRegisteredResourceValuesByFQNs(context.Context, *GetRegisteredResourceValuesByFQNsRequest) (*GetRegisteredResourceValuesByFQNsResponse, error)
 	ListRegisteredResourceValues(context.Context, *ListRegisteredResourceValuesRequest) (*ListRegisteredResourceValuesResponse, error)
 	UpdateRegisteredResourceValue(context.Context, *UpdateRegisteredResourceValueRequest) (*UpdateRegisteredResourceValueResponse, error)
 	DeleteRegisteredResourceValue(context.Context, *DeleteRegisteredResourceValueRequest) (*DeleteRegisteredResourceValueResponse, error)
@@ -199,8 +199,8 @@ func (UnimplementedRegisteredResourcesServiceServer) CreateRegisteredResourceVal
 func (UnimplementedRegisteredResourcesServiceServer) GetRegisteredResourceValue(context.Context, *GetRegisteredResourceValueRequest) (*GetRegisteredResourceValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRegisteredResourceValue not implemented")
 }
-func (UnimplementedRegisteredResourcesServiceServer) GetRegisteredResourceValuesByFQN(context.Context, *GetRegisteredResourceValuesByFQNRequest) (*GetRegisteredResourceValuesByFQNResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetRegisteredResourceValuesByFQN not implemented")
+func (UnimplementedRegisteredResourcesServiceServer) GetRegisteredResourceValuesByFQNs(context.Context, *GetRegisteredResourceValuesByFQNsRequest) (*GetRegisteredResourceValuesByFQNsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRegisteredResourceValuesByFQNs not implemented")
 }
 func (UnimplementedRegisteredResourcesServiceServer) ListRegisteredResourceValues(context.Context, *ListRegisteredResourceValuesRequest) (*ListRegisteredResourceValuesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRegisteredResourceValues not implemented")
@@ -351,20 +351,20 @@ func _RegisteredResourcesService_GetRegisteredResourceValue_Handler(srv interfac
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RegisteredResourcesService_GetRegisteredResourceValuesByFQN_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetRegisteredResourceValuesByFQNRequest)
+func _RegisteredResourcesService_GetRegisteredResourceValuesByFQNs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRegisteredResourceValuesByFQNsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RegisteredResourcesServiceServer).GetRegisteredResourceValuesByFQN(ctx, in)
+		return srv.(RegisteredResourcesServiceServer).GetRegisteredResourceValuesByFQNs(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RegisteredResourcesService_GetRegisteredResourceValuesByFQN_FullMethodName,
+		FullMethod: RegisteredResourcesService_GetRegisteredResourceValuesByFQNs_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RegisteredResourcesServiceServer).GetRegisteredResourceValuesByFQN(ctx, req.(*GetRegisteredResourceValuesByFQNRequest))
+		return srv.(RegisteredResourcesServiceServer).GetRegisteredResourceValuesByFQNs(ctx, req.(*GetRegisteredResourceValuesByFQNsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -459,8 +459,8 @@ var RegisteredResourcesService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RegisteredResourcesService_GetRegisteredResourceValue_Handler,
 		},
 		{
-			MethodName: "GetRegisteredResourceValuesByFQN",
-			Handler:    _RegisteredResourcesService_GetRegisteredResourceValuesByFQN_Handler,
+			MethodName: "GetRegisteredResourceValuesByFQNs",
+			Handler:    _RegisteredResourcesService_GetRegisteredResourceValuesByFQNs_Handler,
 		},
 		{
 			MethodName: "ListRegisteredResourceValues",

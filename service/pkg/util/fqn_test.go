@@ -21,6 +21,8 @@ func TestParseResourceMappingGroupFqn_Invalid_Fails(t *testing.T) {
 		"",
 		"invalid",
 		"https://namespace.com",
+		"http://namespace.com/resm/group_name",
+		"somethinghttps://namespace.com/resm/group_name",
 		"https://namespace.com/resm",
 		"https://namespace.com/resm/",
 	}
@@ -48,6 +50,8 @@ func TestParseRegisteredResourceValueFqn_Invalid_Fails(t *testing.T) {
 		"invalid",
 		"https://reg_res",
 		"https://reg_res/invalid",
+		"http://reg_res/test/value/something",
+		"somethinghttps://reg_res/test/value/something",
 		"https://reg_res/invalid/value",
 		"https://reg_res/invalid/value/",
 	}

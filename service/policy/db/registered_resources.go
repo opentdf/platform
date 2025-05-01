@@ -286,7 +286,6 @@ func (c PolicyDBClient) GetRegisteredResourceValuesByFQNs(ctx context.Context, r
 
 	for _, fqn := range r.GetFqns() {
 		normalizedFQN := strings.ToLower(fqn)
-		resp[normalizedFQN] = nil
 
 		parsed, err := util.ParseRegisteredResourceValueFqn(fqn)
 		if err != nil {

@@ -367,7 +367,6 @@ func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKasAttributeDefinitionAssignment,
-		ObjectID:   fmt.Sprintf("%s-%s", req.Msg.GetAttributeKeyAccessServer().GetAttributeId(), req.Msg.GetAttributeKeyAccessServer().GetKeyAccessServerId()),
 	}
 
 	attributeKas, err := s.dbClient.AssignKeyAccessServerToAttribute(ctx, req.Msg.GetAttributeKeyAccessServer())
@@ -375,6 +374,9 @@ func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attributeKas", req.Msg.GetAttributeKeyAccessServer().String()))
 	}
+
+	auditParams.ObjectID = attributeKas.GetAttributeId()
+	auditParams.Original = attributeKas
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.AttributeKeyAccessServer = attributeKas
@@ -388,7 +390,6 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeDelete,
 		ObjectType: audit.ObjectTypeKasAttributeDefinitionAssignment,
-		ObjectID:   fmt.Sprintf("%s-%s", req.Msg.GetAttributeKeyAccessServer().GetAttributeId(), req.Msg.GetAttributeKeyAccessServer().GetKeyAccessServerId()),
 	}
 
 	attributeKas, err := s.dbClient.RemoveKeyAccessServerFromAttribute(ctx, req.Msg.GetAttributeKeyAccessServer())
@@ -396,6 +397,10 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("attributeKas", req.Msg.GetAttributeKeyAccessServer().String()))
 	}
+
+	auditParams.ObjectID = attributeKas.GetAttributeId()
+	auditParams.Original = req.Msg.GetAttributeKeyAccessServer()
+	auditParams.Updated = attributeKas
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.AttributeKeyAccessServer = attributeKas
@@ -409,7 +414,6 @@ func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, re
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeKasAttributeValueAssignment,
-		ObjectID:   fmt.Sprintf("%s-%s", req.Msg.GetValueKeyAccessServer().GetValueId(), req.Msg.GetValueKeyAccessServer().GetKeyAccessServerId()),
 	}
 
 	valueKas, err := s.dbClient.AssignKeyAccessServerToValue(ctx, req.Msg.GetValueKeyAccessServer())
@@ -417,6 +421,9 @@ func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, re
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attributeValueKas", req.Msg.GetValueKeyAccessServer().String()))
 	}
+
+	auditParams.ObjectID = valueKas.GetValueId()
+	auditParams.Original = valueKas
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.ValueKeyAccessServer = valueKas
@@ -430,7 +437,6 @@ func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeDelete,
 		ObjectType: audit.ObjectTypeKasAttributeValueAssignment,
-		ObjectID:   fmt.Sprintf("%s-%s", req.Msg.GetValueKeyAccessServer().GetValueId(), req.Msg.GetValueKeyAccessServer().GetKeyAccessServerId()),
 	}
 
 	valueKas, err := s.dbClient.RemoveKeyAccessServerFromValue(ctx, req.Msg.GetValueKeyAccessServer())
@@ -438,6 +444,10 @@ func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, 
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("attributeValueKas", req.Msg.GetValueKeyAccessServer().String()))
 	}
+
+	auditParams.ObjectID = valueKas.GetValueId()
+	auditParams.Original = req.Msg.GetValueKeyAccessServer()
+	auditParams.Updated = valueKas
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.ValueKeyAccessServer = valueKas
@@ -445,18 +455,88 @@ func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, 
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *AttributesService) AssignKeyToAttribute(context.Context, *connect.Request[attributes.AssignKeyToAttributeRequest]) (*connect.Response[attributes.AssignKeyToAttributeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+func (s *AttributesService) AssignPublicKeyToAttribute(ctx context.Context, r *connect.Request[attributes.AssignPublicKeyToAttributeRequest]) (*connect.Response[attributes.AssignPublicKeyToAttributeResponse], error) {
+	rsp := &attributes.AssignPublicKeyToAttributeResponse{}
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeKasAttributeDefinitionKeyAssignment,
+	}
+
+	ak, err := s.dbClient.AssignPublicKeyToAttribute(ctx, r.Msg.GetAttributeKey())
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attributeKey", r.Msg.GetAttributeKey().String()))
+	}
+
+	auditParams.ObjectID = ak.GetAttributeId()
+	auditParams.Original = ak
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.AttributeKey = ak
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s *AttributesService) RemoveKeyFromAttribute(context.Context, *connect.Request[attributes.RemoveKeyFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyFromAttributeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+func (s *AttributesService) RemovePublicKeyFromAttribute(ctx context.Context, r *connect.Request[attributes.RemovePublicKeyFromAttributeRequest]) (*connect.Response[attributes.RemovePublicKeyFromAttributeResponse], error) {
+	rsp := &attributes.RemovePublicKeyFromAttributeResponse{}
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeKasAttributeDefinitionKeyAssignment,
+	}
+
+	ak, err := s.dbClient.RemovePublicKeyFromAttribute(ctx, r.Msg.GetAttributeKey())
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("attributeKey", r.Msg.GetAttributeKey().String()))
+	}
+
+	auditParams.ObjectID = ak.GetAttributeId()
+	auditParams.Original = r.Msg.GetAttributeKey()
+	auditParams.Updated = ak
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s *AttributesService) AssignKeyToValue(context.Context, *connect.Request[attributes.AssignKeyToValueRequest]) (*connect.Response[attributes.AssignKeyToValueResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+func (s *AttributesService) AssignPublicKeyToValue(ctx context.Context, r *connect.Request[attributes.AssignPublicKeyToValueRequest]) (*connect.Response[attributes.AssignPublicKeyToValueResponse], error) {
+	rsp := &attributes.AssignPublicKeyToValueResponse{}
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeKasAttributeValueKeyAssignment,
+	}
+
+	vk, err := s.dbClient.AssignPublicKeyToValue(ctx, r.Msg.GetValueKey())
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attributeKey", r.Msg.GetValueKey().String()))
+	}
+
+	auditParams.ObjectID = vk.GetValueId()
+	auditParams.Original = vk
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.ValueKey = vk
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s *AttributesService) RemoveKeyFromValue(context.Context, *connect.Request[attributes.RemoveKeyFromValueRequest]) (*connect.Response[attributes.RemoveKeyFromValueResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, nil)
+func (s *AttributesService) RemovePublicKeyFromValue(ctx context.Context, r *connect.Request[attributes.RemovePublicKeyFromValueRequest]) (*connect.Response[attributes.RemovePublicKeyFromValueResponse], error) {
+	rsp := &attributes.RemovePublicKeyFromValueResponse{}
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeKasAttributeValueKeyAssignment,
+	}
+
+	vk, err := s.dbClient.RemovePublicKeyFromValue(ctx, r.Msg.GetValueKey())
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("attributeKey", r.Msg.GetValueKey().String()))
+	}
+
+	auditParams.ObjectID = vk.GetValueId()
+	auditParams.Original = r.Msg.GetValueKey()
+	auditParams.Updated = vk
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	return connect.NewResponse(rsp), nil
 }

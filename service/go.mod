@@ -15,7 +15,7 @@ require (
 	github.com/bufbuild/protovalidate-go v0.9.3
 	github.com/casbin/casbin/v2 v2.101.0
 	github.com/creasty/defaults v1.7.0
-	github.com/docker/docker v27.1.1+incompatible
+	github.com/docker/docker v28.0.2+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/go-chi/cors v1.2.1
 	github.com/go-playground/validator/v10 v10.22.0
@@ -29,7 +29,7 @@ require (
 	github.com/opentdf/platform/lib/fixtures v0.2.10
 	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/ocrypto v0.1.9
-	github.com/opentdf/platform/protocol/go v0.3.1
+	github.com/opentdf/platform/protocol/go v0.3.2
 	github.com/opentdf/platform/sdk v0.4.3
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.9.1
@@ -73,7 +73,6 @@ require (
 	github.com/casbin/govaluate v1.2.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/containerd/containerd v1.7.27 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect

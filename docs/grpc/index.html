@@ -218,6 +218,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.AsymmetricKey"><span class="badge">M</span>AsymmetricKey</a>
+                </li>
+              
+                <li>
                   <a href="#policy.Attribute"><span class="badge">M</span>Attribute</a>
                 </li>
               
@@ -290,12 +294,20 @@
                 </li>
               
                 <li>
+                  <a href="#policy.SymmetricKey"><span class="badge">M</span>SymmetricKey</a>
+                </li>
+              
+                <li>
                   <a href="#policy.Value"><span class="badge">M</span>Value</a>
                 </li>
               
               
                 <li>
                   <a href="#policy.Action.StandardAction"><span class="badge">E</span>Action.StandardAction</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.Algorithm"><span class="badge">E</span>Algorithm</a>
                 </li>
               
                 <li>
@@ -308,6 +320,18 @@
               
                 <li>
                   <a href="#policy.KasPublicKeyAlgEnum"><span class="badge">E</span>KasPublicKeyAlgEnum</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.KeyMode"><span class="badge">E</span>KeyMode</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.KeyStatus"><span class="badge">E</span>KeyStatus</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.SourceType"><span class="badge">E</span>SourceType</a>
                 </li>
               
                 <li>
@@ -656,19 +680,19 @@
                 </li>
               
                 <li>
-                  <a href="#policy.attributes.AssignKeyToAttributeRequest"><span class="badge">M</span>AssignKeyToAttributeRequest</a>
+                  <a href="#policy.attributes.AssignPublicKeyToAttributeRequest"><span class="badge">M</span>AssignPublicKeyToAttributeRequest</a>
                 </li>
               
                 <li>
-                  <a href="#policy.attributes.AssignKeyToAttributeResponse"><span class="badge">M</span>AssignKeyToAttributeResponse</a>
+                  <a href="#policy.attributes.AssignPublicKeyToAttributeResponse"><span class="badge">M</span>AssignPublicKeyToAttributeResponse</a>
                 </li>
               
                 <li>
-                  <a href="#policy.attributes.AssignKeyToValueRequest"><span class="badge">M</span>AssignKeyToValueRequest</a>
+                  <a href="#policy.attributes.AssignPublicKeyToValueRequest"><span class="badge">M</span>AssignPublicKeyToValueRequest</a>
                 </li>
               
                 <li>
-                  <a href="#policy.attributes.AssignKeyToValueResponse"><span class="badge">M</span>AssignKeyToValueResponse</a>
+                  <a href="#policy.attributes.AssignPublicKeyToValueResponse"><span class="badge">M</span>AssignPublicKeyToValueResponse</a>
                 </li>
               
                 <li>
@@ -776,19 +800,19 @@
                 </li>
               
                 <li>
-                  <a href="#policy.attributes.RemoveKeyFromAttributeRequest"><span class="badge">M</span>RemoveKeyFromAttributeRequest</a>
+                  <a href="#policy.attributes.RemovePublicKeyFromAttributeRequest"><span class="badge">M</span>RemovePublicKeyFromAttributeRequest</a>
                 </li>
               
                 <li>
-                  <a href="#policy.attributes.RemoveKeyFromAttributeResponse"><span class="badge">M</span>RemoveKeyFromAttributeResponse</a>
+                  <a href="#policy.attributes.RemovePublicKeyFromAttributeResponse"><span class="badge">M</span>RemovePublicKeyFromAttributeResponse</a>
                 </li>
               
                 <li>
-                  <a href="#policy.attributes.RemoveKeyFromValueRequest"><span class="badge">M</span>RemoveKeyFromValueRequest</a>
+                  <a href="#policy.attributes.RemovePublicKeyFromValueRequest"><span class="badge">M</span>RemovePublicKeyFromValueRequest</a>
                 </li>
               
                 <li>
-                  <a href="#policy.attributes.RemoveKeyFromValueResponse"><span class="badge">M</span>RemoveKeyFromValueResponse</a>
+                  <a href="#policy.attributes.RemovePublicKeyFromValueResponse"><span class="badge">M</span>RemovePublicKeyFromValueResponse</a>
                 </li>
               
                 <li>
@@ -847,6 +871,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.CreateKeyRequest"><span class="badge">M</span>CreateKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.CreateKeyResponse"><span class="badge">M</span>CreateKeyResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.CreatePublicKeyRequest"><span class="badge">M</span>CreatePublicKeyRequest</a>
                 </li>
               
@@ -876,6 +908,14 @@
               
                 <li>
                   <a href="#policy.kasregistry.GetKeyAccessServerResponse"><span class="badge">M</span>GetKeyAccessServerResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.GetKeyRequest"><span class="badge">M</span>GetKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.GetKeyResponse"><span class="badge">M</span>GetKeyResponse</a>
                 </li>
               
                 <li>
@@ -911,6 +951,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.ListKeysRequest"><span class="badge">M</span>ListKeysRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListKeysResponse"><span class="badge">M</span>ListKeysResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.ListPublicKeyMappingRequest"><span class="badge">M</span>ListPublicKeyMappingRequest</a>
                 </li>
               
@@ -939,11 +987,35 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.RotateKeyRequest"><span class="badge">M</span>RotateKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.RotateKeyRequest.ActiveKey"><span class="badge">M</span>RotateKeyRequest.ActiveKey</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.RotateKeyRequest.NewKey"><span class="badge">M</span>RotateKeyRequest.NewKey</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.RotateKeyResponse"><span class="badge">M</span>RotateKeyResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.UpdateKeyAccessServerRequest"><span class="badge">M</span>UpdateKeyAccessServerRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.kasregistry.UpdateKeyAccessServerResponse"><span class="badge">M</span>UpdateKeyAccessServerResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.UpdateKeyRequest"><span class="badge">M</span>UpdateKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.UpdateKeyResponse"><span class="badge">M</span>UpdateKeyResponse</a>
                 </li>
               
                 <li>
@@ -1033,11 +1105,11 @@
                 </li>
               
                 <li>
-                  <a href="#policy.namespaces.AssignKeyToNamespaceRequest"><span class="badge">M</span>AssignKeyToNamespaceRequest</a>
+                  <a href="#policy.namespaces.AssignPublicKeyToNamespaceRequest"><span class="badge">M</span>AssignPublicKeyToNamespaceRequest</a>
                 </li>
               
                 <li>
-                  <a href="#policy.namespaces.AssignKeyToNamespaceResponse"><span class="badge">M</span>AssignKeyToNamespaceResponse</a>
+                  <a href="#policy.namespaces.AssignPublicKeyToNamespaceResponse"><span class="badge">M</span>AssignPublicKeyToNamespaceResponse</a>
                 </li>
               
                 <li>
@@ -1089,11 +1161,11 @@
                 </li>
               
                 <li>
-                  <a href="#policy.namespaces.RemoveKeyFromNamespaceRequest"><span class="badge">M</span>RemoveKeyFromNamespaceRequest</a>
+                  <a href="#policy.namespaces.RemovePublicKeyFromNamespaceRequest"><span class="badge">M</span>RemovePublicKeyFromNamespaceRequest</a>
                 </li>
               
                 <li>
-                  <a href="#policy.namespaces.RemoveKeyFromNamespaceResponse"><span class="badge">M</span>RemoveKeyFromNamespaceResponse</a>
+                  <a href="#policy.namespaces.RemovePublicKeyFromNamespaceResponse"><span class="badge">M</span>RemovePublicKeyFromNamespaceResponse</a>
                 </li>
               
                 <li>
@@ -1457,19 +1529,19 @@
                 </li>
               
                 <li>
+                  <a href="#policy.unsafe.UnsafeDeleteKasKeyRequest"><span class="badge">M</span>UnsafeDeleteKasKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.unsafe.UnsafeDeleteKasKeyResponse"><span class="badge">M</span>UnsafeDeleteKasKeyResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.unsafe.UnsafeDeleteNamespaceRequest"><span class="badge">M</span>UnsafeDeleteNamespaceRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.unsafe.UnsafeDeleteNamespaceResponse"><span class="badge">M</span>UnsafeDeleteNamespaceResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.unsafe.UnsafeDeletePublicKeyRequest"><span class="badge">M</span>UnsafeDeletePublicKeyRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.unsafe.UnsafeDeletePublicKeyResponse"><span class="badge">M</span>UnsafeDeletePublicKeyResponse</a>
                 </li>
               
                 <li>
@@ -1827,6 +1899,86 @@
 
         
       
+        <h3 id="policy.AsymmetricKey">AsymmetricKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_algorithm</td>
+                  <td><a href="#policy.Algorithm">Algorithm</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_status</td>
+                  <td><a href="#policy.KeyStatus">KeyStatus</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_mode</td>
+                  <td><a href="#policy.KeyMode">KeyMode</a></td>
+                  <td></td>
+                  <td><p>Specifies how the key is managed (local or remote) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key_ctx</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Specific structure based on key provider implementation </p></td>
+                </tr>
+              
+                <tr>
+                  <td>private_key_ctx</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Specific structure based on key provider implementation </p></td>
+                </tr>
+              
+                <tr>
+                  <td>provider_config</td>
+                  <td><a href="#policy.KeyProviderConfig">KeyProviderConfig</a></td>
+                  <td></td>
+                  <td><p>Configuration for the key provider </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata fields </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.Attribute">Attribute</h3>
         <p></p>
 
@@ -1895,7 +2047,7 @@
               
                 <tr>
                   <td>keys</td>
-                  <td><a href="#policy.Key">Key</a></td>
+                  <td><a href="#policy.AsymmetricKey">AsymmetricKey</a></td>
                   <td>repeated</td>
                   <td><p>Keys associated with the attribute </p></td>
                 </tr>
@@ -1987,7 +2139,7 @@ subject_external_selector_value on a flattened Entity Representation
         
       
         <h3 id="policy.KasPublicKey">KasPublicKey</h3>
-        <p>A KAS public key and some associated metadata for further identifcation</p>
+        <p>Deprecated</p><p>A KAS public key and some associated metadata for further identifcation</p>
 
         
           <table class="field-table">
@@ -2141,6 +2293,20 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                 </tr>
               
                 <tr>
+                  <td>source_type</td>
+                  <td><a href="#policy.SourceType">SourceType</a></td>
+                  <td></td>
+                  <td><p>The source of the KAS: (INTERNAL, EXTERNAL) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>keys</td>
+                  <td><a href="#policy.AsymmetricKey">AsymmetricKey</a></td>
+                  <td>repeated</td>
+                  <td><p>Asymmetric keys associated with this KAS </p></td>
+                </tr>
+              
+                <tr>
                   <td>name</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
@@ -2262,7 +2428,7 @@ enable federation </p></td>
               
                 <tr>
                   <td>keys</td>
-                  <td><a href="#policy.Key">Key</a></td>
+                  <td><a href="#policy.AsymmetricKey">AsymmetricKey</a></td>
                   <td>repeated</td>
                   <td><p>Keys for the namespace </p></td>
                 </tr>
@@ -2638,6 +2804,72 @@ per namespace </p></td>
 
         
       
+        <h3 id="policy.SymmetricKey">SymmetricKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_status</td>
+                  <td><a href="#policy.KeyStatus">KeyStatus</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_mode</td>
+                  <td><a href="#policy.KeyMode">KeyMode</a></td>
+                  <td></td>
+                  <td><p>Specifies how the key is managed (local or remote) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_ctx</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Specific structure based on key provider implementation </p></td>
+                </tr>
+              
+                <tr>
+                  <td>provider_config</td>
+                  <td><a href="#policy.KeyProviderConfig">KeyProviderConfig</a></td>
+                  <td></td>
+                  <td><p>Configuration for the key provider </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata fields </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.Value">Value</h3>
         <p></p>
 
@@ -2700,7 +2932,7 @@ list of key access servers </p></td>
               
                 <tr>
                   <td>keys</td>
-                  <td><a href="#policy.Key">Key</a></td>
+                  <td><a href="#policy.AsymmetricKey">AsymmetricKey</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -2747,6 +2979,53 @@ Migrate to &#39;read&#39; action name</p></td>
                 <td>2</td>
                 <td><p>Deprecated
 Migrate to &#39;create&#39; action name</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="policy.Algorithm">Algorithm</h3>
+        <p>Supported key algorithms.</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ALGORITHM_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ALGORITHM_RSA_2048</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ALGORITHM_RSA_4096</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ALGORITHM_EC_P256</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ALGORITHM_EC_P384</td>
+                <td>4</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ALGORITHM_EC_P521</td>
+                <td>5</td>
+                <td><p></p></td>
               </tr>
             
           </tbody>
@@ -2858,6 +3137,99 @@ Migrate to &#39;create&#39; action name</p></td>
                 <td>KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1</td>
                 <td>7</td>
                 <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="policy.KeyMode">KeyMode</h3>
+        <p>Describe how the kas private key is managed.</p><p>If the key mode is LOCAL, then the kas private key is stored in the database.</p><p>This could be encrypted or unencrypted.</p><p>Remote means that the kas private key is stored in a remote key system like KMS or HSM</p><p>and all operations are done by the remote key system.</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>KEY_MODE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_MODE_LOCAL</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_MODE_REMOTE</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="policy.KeyStatus">KeyStatus</h3>
+        <p>The status of the key</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>KEY_STATUS_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_STATUS_ACTIVE</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_STATUS_INACTIVE</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_STATUS_COMPROMISED</td>
+                <td>3</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="policy.SourceType">SourceType</h3>
+        <p>Describes whether this kas is managed by the organization or if they imported</p><p>the kas information from an external party. These two modes are necessary in order</p><p>to encrypt a tdf dek with an external parties kas public key.</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>SOURCE_TYPE_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>SOURCE_TYPE_INTERNAL</td>
+                <td>1</td>
+                <td><p>The kas is managed by the organization.</p></td>
+              </tr>
+            
+              <tr>
+                <td>SOURCE_TYPE_EXTERNAL</td>
+                <td>2</td>
+                <td><p>The kas is managed by an external party.</p></td>
               </tr>
             
           </tbody>
@@ -5427,7 +5799,7 @@ Custom actions only: replaces the existing action name </p></td>
 
         
       
-        <h3 id="policy.attributes.AssignKeyToAttributeRequest">AssignKeyToAttributeRequest</h3>
+        <h3 id="policy.attributes.AssignPublicKeyToAttributeRequest">AssignPublicKeyToAttributeRequest</h3>
         <p></p>
 
         
@@ -5451,7 +5823,7 @@ Custom actions only: replaces the existing action name </p></td>
 
         
       
-        <h3 id="policy.attributes.AssignKeyToAttributeResponse">AssignKeyToAttributeResponse</h3>
+        <h3 id="policy.attributes.AssignPublicKeyToAttributeResponse">AssignPublicKeyToAttributeResponse</h3>
         <p></p>
 
         
@@ -5475,7 +5847,7 @@ Custom actions only: replaces the existing action name </p></td>
 
         
       
-        <h3 id="policy.attributes.AssignKeyToValueRequest">AssignKeyToValueRequest</h3>
+        <h3 id="policy.attributes.AssignPublicKeyToValueRequest">AssignPublicKeyToValueRequest</h3>
         <p></p>
 
         
@@ -5499,7 +5871,7 @@ Custom actions only: replaces the existing action name </p></td>
 
         
       
-        <h3 id="policy.attributes.AssignKeyToValueResponse">AssignKeyToValueResponse</h3>
+        <h3 id="policy.attributes.AssignPublicKeyToValueResponse">AssignPublicKeyToValueResponse</h3>
         <p></p>
 
         
@@ -6344,7 +6716,7 @@ Namespace ID or name </p></td>
 
         
       
-        <h3 id="policy.attributes.RemoveKeyFromAttributeRequest">RemoveKeyFromAttributeRequest</h3>
+        <h3 id="policy.attributes.RemovePublicKeyFromAttributeRequest">RemovePublicKeyFromAttributeRequest</h3>
         <p></p>
 
         
@@ -6368,7 +6740,7 @@ Namespace ID or name </p></td>
 
         
       
-        <h3 id="policy.attributes.RemoveKeyFromAttributeResponse">RemoveKeyFromAttributeResponse</h3>
+        <h3 id="policy.attributes.RemovePublicKeyFromAttributeResponse">RemovePublicKeyFromAttributeResponse</h3>
         <p></p>
 
         
@@ -6392,7 +6764,7 @@ Namespace ID or name </p></td>
 
         
       
-        <h3 id="policy.attributes.RemoveKeyFromValueRequest">RemoveKeyFromValueRequest</h3>
+        <h3 id="policy.attributes.RemovePublicKeyFromValueRequest">RemovePublicKeyFromValueRequest</h3>
         <p></p>
 
         
@@ -6416,7 +6788,7 @@ Namespace ID or name </p></td>
 
         
       
-        <h3 id="policy.attributes.RemoveKeyFromValueResponse">RemoveKeyFromValueResponse</h3>
+        <h3 id="policy.attributes.RemovePublicKeyFromValueResponse">RemovePublicKeyFromValueResponse</h3>
         <p></p>
 
         
@@ -6586,7 +6958,7 @@ Common metadata </p></td>
                   <td>key_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Required </p></td>
+                  <td><p>Required (The id listed in the AsymmetricKeys object) </p></td>
                 </tr>
               
             </tbody>
@@ -6753,30 +7125,30 @@ Attribute &lt;&gt; Key Access Server RPCs
               </tr>
             
               <tr>
-                <td>AssignKeyToAttribute</td>
-                <td><a href="#policy.attributes.AssignKeyToAttributeRequest">AssignKeyToAttributeRequest</a></td>
-                <td><a href="#policy.attributes.AssignKeyToAttributeResponse">AssignKeyToAttributeResponse</a></td>
+                <td>AssignPublicKeyToAttribute</td>
+                <td><a href="#policy.attributes.AssignPublicKeyToAttributeRequest">AssignPublicKeyToAttributeRequest</a></td>
+                <td><a href="#policy.attributes.AssignPublicKeyToAttributeResponse">AssignPublicKeyToAttributeResponse</a></td>
                 <td><p></p></td>
               </tr>
             
               <tr>
-                <td>RemoveKeyFromAttribute</td>
-                <td><a href="#policy.attributes.RemoveKeyFromAttributeRequest">RemoveKeyFromAttributeRequest</a></td>
-                <td><a href="#policy.attributes.RemoveKeyFromAttributeResponse">RemoveKeyFromAttributeResponse</a></td>
+                <td>RemovePublicKeyFromAttribute</td>
+                <td><a href="#policy.attributes.RemovePublicKeyFromAttributeRequest">RemovePublicKeyFromAttributeRequest</a></td>
+                <td><a href="#policy.attributes.RemovePublicKeyFromAttributeResponse">RemovePublicKeyFromAttributeResponse</a></td>
                 <td><p></p></td>
               </tr>
             
               <tr>
-                <td>AssignKeyToValue</td>
-                <td><a href="#policy.attributes.AssignKeyToValueRequest">AssignKeyToValueRequest</a></td>
-                <td><a href="#policy.attributes.AssignKeyToValueResponse">AssignKeyToValueResponse</a></td>
+                <td>AssignPublicKeyToValue</td>
+                <td><a href="#policy.attributes.AssignPublicKeyToValueRequest">AssignPublicKeyToValueRequest</a></td>
+                <td><a href="#policy.attributes.AssignPublicKeyToValueResponse">AssignPublicKeyToValueResponse</a></td>
                 <td><p></p></td>
               </tr>
             
               <tr>
-                <td>RemoveKeyFromValue</td>
-                <td><a href="#policy.attributes.RemoveKeyFromValueRequest">RemoveKeyFromValueRequest</a></td>
-                <td><a href="#policy.attributes.RemoveKeyFromValueResponse">RemoveKeyFromValueResponse</a></td>
+                <td>RemovePublicKeyFromValue</td>
+                <td><a href="#policy.attributes.RemovePublicKeyFromValueRequest">RemovePublicKeyFromValueRequest</a></td>
+                <td><a href="#policy.attributes.RemovePublicKeyFromValueResponse">RemovePublicKeyFromValueResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -7065,7 +7437,14 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td>public_key</td>
                   <td><a href="#policy.PublicKey">policy.PublicKey</a></td>
                   <td></td>
-                  <td><p>Required </p></td>
+                  <td><p>Deprecated </p></td>
+                </tr>
+              
+                <tr>
+                  <td>source_type</td>
+                  <td><a href="#policy.SourceType">policy.SourceType</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
@@ -7104,6 +7483,119 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.CreateKeyRequest">CreateKeyRequest</h3>
+        <p>Create a new asymmetric key for the specified Key Access Server (KAS)</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+
+The unique identifier of the Key Access Server </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+
+A user-defined identifier for the key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_algorithm</td>
+                  <td><a href="#policy.Algorithm">policy.Algorithm</a></td>
+                  <td></td>
+                  <td><p>Required
+
+The algorithm to be used for the key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_mode</td>
+                  <td><a href="#policy.KeyMode">policy.KeyMode</a></td>
+                  <td></td>
+                  <td><p>Required
+
+The mode of the key (e.g., local or external) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key_ctx</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Required
+
+Context or additional data specific to the public key, based on the key provider implementation </p></td>
+                </tr>
+              
+                <tr>
+                  <td>private_key_ctx</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Optional
+
+Context or additional data specific to the private key, based on the key provider implementation </p></td>
+                </tr>
+              
+                <tr>
+                  <td>provider_config_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+
+Configuration ID for the key provider, if applicable </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Common metadata
+
+Mutable metadata for the key </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.CreateKeyResponse">CreateKeyResponse</h3>
+        <p>Response to a CreateKeyRequest, containing the created asymmetric key</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.AsymmetricKey">policy.AsymmetricKey</a></td>
+                  <td></td>
+                  <td><p>The created asymmetric key </p></td>
                 </tr>
               
             </tbody>
@@ -7352,6 +7844,61 @@ Attribute &lt;&gt; Key Access Server RPCs
                   <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.GetKeyRequest">GetKeyRequest</h3>
+        <p>Retrieve an existing asymmetric key from the Key Management System</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The unique identifier of the key to retrieve </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>A user-defined identifier of the key to retrieve </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.GetKeyResponse">GetKeyResponse</h3>
+        <p>Response to a GetKeyRequest, containing the requested asymmetric key</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.AsymmetricKey">policy.AsymmetricKey</a></td>
+                  <td></td>
+                  <td><p>The requested asymmetric key </p></td>
                 </tr>
               
             </tbody>
@@ -7646,6 +8193,91 @@ objects are returned. </p></td>
 
         
       
+        <h3 id="policy.kasregistry.ListKeysRequest">ListKeysRequest</h3>
+        <p>List all asymmetric keys managed by a specific Key Access Server or with a given algorithm</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_algorithm</td>
+                  <td><a href="#policy.Algorithm">policy.Algorithm</a></td>
+                  <td></td>
+                  <td><p>Filter keys by algorithm </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Filter keys by the KAS ID </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Filter keys by the KAS name </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Filter keys by the KAS URI </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Optional
+
+Pagination request for the list of keys </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListKeysResponse">ListKeysResponse</h3>
+        <p>Response to a ListKeysRequest, containing the list of asymmetric keys and pagination information</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>keys</td>
+                  <td><a href="#policy.AsymmetricKey">policy.AsymmetricKey</a></td>
+                  <td>repeated</td>
+                  <td><p>The list of asymmetric keys </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p>Pagination response for the list of keys </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.ListPublicKeyMappingRequest">ListPublicKeyMappingRequest</h3>
         <p></p>
 
@@ -7926,6 +8558,167 @@ objects are returned. </p></td>
 
         
       
+        <h3 id="policy.kasregistry.RotateKeyRequest">RotateKeyRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Current Active Key UUID </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.kasregistry.RotateKeyRequest.ActiveKey">RotateKeyRequest.ActiveKey</a></td>
+                  <td></td>
+                  <td><p>Alternative way to specify the active key using KAS ID and Key ID </p></td>
+                </tr>
+              
+                <tr>
+                  <td>new_key</td>
+                  <td><a href="#policy.kasregistry.RotateKeyRequest.NewKey">RotateKeyRequest.NewKey</a></td>
+                  <td></td>
+                  <td><p>Information about the new key to be rotated in </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.RotateKeyRequest.ActiveKey">RotateKeyRequest.ActiveKey</h3>
+        <p>Nested message for specifying the active key using KAS ID and Key ID</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required UUID of the Key Access Server </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required Key ID of the key in question </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.RotateKeyRequest.NewKey">RotateKeyRequest.NewKey</h3>
+        <p>Nested message for specifying the new key details</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>algorithm</td>
+                  <td><a href="#policy.Algorithm">policy.Algorithm</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_mode</td>
+                  <td><a href="#policy.KeyMode">policy.KeyMode</a></td>
+                  <td></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>private_key_ctx</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Required
+
+Specific structure based on key provider implementation </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key_ctx</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>provider_config_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata fields </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.RotateKeyResponse">RotateKeyResponse</h3>
+        <p>Response message for the RotateKey request</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.AsymmetricKey">policy.AsymmetricKey</a></td>
+                  <td></td>
+                  <td><p>The newly rotated Asymmetric Key </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.UpdateKeyAccessServerRequest">UpdateKeyAccessServerRequest</h3>
         <p></p>
 
@@ -7954,7 +8747,19 @@ objects are returned. </p></td>
                   <td>public_key</td>
                   <td><a href="#policy.PublicKey">policy.PublicKey</a></td>
                   <td></td>
-                  <td><p>Optional </p></td>
+                  <td><p>Deprecated
+Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>source_type</td>
+                  <td><a href="#policy.SourceType">policy.SourceType</a></td>
+                  <td></td>
+                  <td><p>Optional
+Using UNSPECIFIED will result in a successful update,
+but will not actually update the underlying source.
+You should not update KAS&#39;s from INTERNAL/EXTERNAL
+to unspecified. </p></td>
                 </tr>
               
                 <tr>
@@ -8001,6 +8806,82 @@ Common metadata </p></td>
                   <td><a href="#policy.KeyAccessServer">policy.KeyAccessServer</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.UpdateKeyRequest">UpdateKeyRequest</h3>
+        <p>Update an existing asymmetric key in the Key Management System</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+
+The unique identifier of the key to update </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key_status</td>
+                  <td><a href="#policy.KeyStatus">policy.KeyStatus</a></td>
+                  <td></td>
+                  <td><p>Optional
+
+The new status of the key (e.g., active, inactive) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
+                  <td></td>
+                  <td><p>Optional
+Common metadata
+
+Mutable metadata for the key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata_update_behavior</td>
+                  <td><a href="#common.MetadataUpdateEnum">common.MetadataUpdateEnum</a></td>
+                  <td></td>
+                  <td><p>The behavior for updating the metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.UpdateKeyResponse">UpdateKeyResponse</h3>
+        <p>Response to an UpdateKeyRequest, containing the updated asymmetric key</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.AsymmetricKey">policy.AsymmetricKey</a></td>
+                  <td></td>
+                  <td><p>The updated asymmetric key </p></td>
                 </tr>
               
             </tbody>
@@ -8127,6 +9008,42 @@ Common metadata </p></td>
                 <td><a href="#policy.kasregistry.ListKeyAccessServerGrantsRequest">ListKeyAccessServerGrantsRequest</a></td>
                 <td><a href="#policy.kasregistry.ListKeyAccessServerGrantsResponse">ListKeyAccessServerGrantsResponse</a></td>
                 <td><p>Deprecated</p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateKey</td>
+                <td><a href="#policy.kasregistry.CreateKeyRequest">CreateKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.CreateKeyResponse">CreateKeyResponse</a></td>
+                <td><p>KAS Key Management
+Request to create a new key in the Key Access Service.</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetKey</td>
+                <td><a href="#policy.kasregistry.GetKeyRequest">GetKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.GetKeyResponse">GetKeyResponse</a></td>
+                <td><p>Request to retrieve a key from the Key Access Service.</p></td>
+              </tr>
+            
+              <tr>
+                <td>ListKeys</td>
+                <td><a href="#policy.kasregistry.ListKeysRequest">ListKeysRequest</a></td>
+                <td><a href="#policy.kasregistry.ListKeysResponse">ListKeysResponse</a></td>
+                <td><p>Request to list keys in the Key Access Service.</p></td>
+              </tr>
+            
+              <tr>
+                <td>UpdateKey</td>
+                <td><a href="#policy.kasregistry.UpdateKeyRequest">UpdateKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.UpdateKeyResponse">UpdateKeyResponse</a></td>
+                <td><p>Request to update a key in the Key Access Service.</p></td>
+              </tr>
+            
+              <tr>
+                <td>RotateKey</td>
+                <td><a href="#policy.kasregistry.RotateKeyRequest">RotateKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.RotateKeyResponse">RotateKeyResponse</a></td>
+                <td><p>Request to rotate a key in the Key Access Service.</p></td>
               </tr>
             
           </tbody>
@@ -8659,7 +9576,7 @@ Provider Management</p></td>
 
         
       
-        <h3 id="policy.namespaces.AssignKeyToNamespaceRequest">AssignKeyToNamespaceRequest</h3>
+        <h3 id="policy.namespaces.AssignPublicKeyToNamespaceRequest">AssignPublicKeyToNamespaceRequest</h3>
         <p>Assign Key to Namespace</p>
 
         
@@ -8683,7 +9600,7 @@ Provider Management</p></td>
 
         
       
-        <h3 id="policy.namespaces.AssignKeyToNamespaceResponse">AssignKeyToNamespaceResponse</h3>
+        <h3 id="policy.namespaces.AssignPublicKeyToNamespaceResponse">AssignPublicKeyToNamespaceResponse</h3>
         <p></p>
 
         
@@ -8960,7 +9877,7 @@ ACTIVE by default when not specified </p></td>
                   <td>key_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Required </p></td>
+                  <td><p>Required (The id from the Asymmetric Key object) </p></td>
                 </tr>
               
             </tbody>
@@ -9049,7 +9966,7 @@ ACTIVE by default when not specified </p></td>
 
         
       
-        <h3 id="policy.namespaces.RemoveKeyFromNamespaceRequest">RemoveKeyFromNamespaceRequest</h3>
+        <h3 id="policy.namespaces.RemovePublicKeyFromNamespaceRequest">RemovePublicKeyFromNamespaceRequest</h3>
         <p></p>
 
         
@@ -9073,7 +9990,7 @@ ACTIVE by default when not specified </p></td>
 
         
       
-        <h3 id="policy.namespaces.RemoveKeyFromNamespaceResponse">RemoveKeyFromNamespaceResponse</h3>
+        <h3 id="policy.namespaces.RemovePublicKeyFromNamespaceResponse">RemovePublicKeyFromNamespaceResponse</h3>
         <p></p>
 
         
@@ -9225,18 +10142,18 @@ Namespace &lt;&gt; Key Access Server RPCs
               </tr>
             
               <tr>
-                <td>AssignKeyToNamespace</td>
-                <td><a href="#policy.namespaces.AssignKeyToNamespaceRequest">AssignKeyToNamespaceRequest</a></td>
-                <td><a href="#policy.namespaces.AssignKeyToNamespaceResponse">AssignKeyToNamespaceResponse</a></td>
+                <td>AssignPublicKeyToNamespace</td>
+                <td><a href="#policy.namespaces.AssignPublicKeyToNamespaceRequest">AssignPublicKeyToNamespaceRequest</a></td>
+                <td><a href="#policy.namespaces.AssignPublicKeyToNamespaceResponse">AssignPublicKeyToNamespaceResponse</a></td>
                 <td><p>--------------------------------------*
 Namespace &lt;&gt; Key RPCs
 ---------------------------------------</p></td>
               </tr>
             
               <tr>
-                <td>RemoveKeyFromNamespace</td>
-                <td><a href="#policy.namespaces.RemoveKeyFromNamespaceRequest">RemoveKeyFromNamespaceRequest</a></td>
-                <td><a href="#policy.namespaces.RemoveKeyFromNamespaceResponse">RemoveKeyFromNamespaceResponse</a></td>
+                <td>RemovePublicKeyFromNamespace</td>
+                <td><a href="#policy.namespaces.RemovePublicKeyFromNamespaceRequest">RemovePublicKeyFromNamespaceRequest</a></td>
+                <td><a href="#policy.namespaces.RemovePublicKeyFromNamespaceResponse">RemovePublicKeyFromNamespaceResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -12136,6 +13053,55 @@ Fully Qualified Name (FQN) of Attribute Value (i.e. https://&lt;namespace&gt;/at
 
         
       
+        <h3 id="policy.unsafe.UnsafeDeleteKasKeyRequest">UnsafeDeleteKasKeyRequest</h3>
+        <p>WARNING!!</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+UUID of the Key </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.unsafe.UnsafeDeleteKasKeyResponse">UnsafeDeleteKasKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.Key">policy.Key</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.unsafe.UnsafeDeleteNamespaceRequest">UnsafeDeleteNamespaceRequest</h3>
         <p>WARNING!!</p><p>Deleting a Namespace will free up the Attribute Namespace, Definitions, and Values for reuse, which can introduce an access path to existing TDFs containing the deleted policy.</p><p>Definitions and their Values under this Namespace will be cascadingly deleted.</p>
 
@@ -12182,55 +13148,6 @@ Fully Qualified Name (FQN) of Namespace (i.e. https://&lt;namespace&gt;), normal
                 <tr>
                   <td>namespace</td>
                   <td><a href="#policy.Namespace">policy.Namespace</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.unsafe.UnsafeDeletePublicKeyRequest">UnsafeDeletePublicKeyRequest</h3>
-        <p>WARNING!!</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Required
-UUID of the Key </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.unsafe.UnsafeDeletePublicKeyResponse">UnsafeDeletePublicKeyResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key</td>
-                  <td><a href="#policy.Key">policy.Key</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -12408,7 +13325,7 @@ UUID of the Key </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional
-WARNING!! 
+WARNING!!
 Updating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name. </p></td>
                 </tr>
               
@@ -12417,7 +13334,7 @@ Updating the name of an Attribute will retroactively alter access to existing TD
                   <td><a href="#policy.AttributeRuleTypeEnum">policy.AttributeRuleTypeEnum</a></td>
                   <td></td>
                   <td><p>Optional
-WARNING!! 
+WARNING!!
 Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name. </p></td>
                 </tr>
               
@@ -12464,7 +13381,7 @@ deleted, created, and unsafely re-ordered as necessary. </p></td>
         
       
         <h3 id="policy.unsafe.UnsafeUpdateAttributeValueRequest">UnsafeUpdateAttributeValueRequest</h3>
-        <p>WARNING!! </p><p>Updating an Attribute Value will retroactively alter access to existing TDFs containing the old and new Attribute Value.</p>
+        <p>WARNING!!</p><p>Updating an Attribute Value will retroactively alter access to existing TDFs containing the old and new Attribute Value.</p>
 
         
           <table class="field-table">
@@ -12580,7 +13497,7 @@ deleted, created, and unsafely re-ordered as necessary. </p></td>
 
       
         <h3 id="policy.unsafe.UnsafeService">UnsafeService</h3>
-        <p>Unsafe Service </p><p>/ IN FLIGHT AND NOT YET IMPLEMENTED!</p><p>/</p>
+        <p>Unsafe Service</p><p>/ IN FLIGHT AND NOT YET IMPLEMENTED!</p><p>/</p>
         <table class="enum-table">
           <thead>
             <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
@@ -12657,11 +13574,11 @@ Value RPCs
               </tr>
             
               <tr>
-                <td>UnsafeDeletePublicKey</td>
-                <td><a href="#policy.unsafe.UnsafeDeletePublicKeyRequest">UnsafeDeletePublicKeyRequest</a></td>
-                <td><a href="#policy.unsafe.UnsafeDeletePublicKeyResponse">UnsafeDeletePublicKeyResponse</a></td>
+                <td>UnsafeDeleteKasKey</td>
+                <td><a href="#policy.unsafe.UnsafeDeleteKasKeyRequest">UnsafeDeleteKasKeyRequest</a></td>
+                <td><a href="#policy.unsafe.UnsafeDeleteKasKeyResponse">UnsafeDeleteKasKeyResponse</a></td>
                 <td><p>--------------------------------------*
-Key RPCs
+Kas Key RPCs
 ---------------------------------------</p></td>
               </tr>
             

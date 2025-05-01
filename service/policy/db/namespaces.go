@@ -61,9 +61,9 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 		}
 	}
 
-	var keys []*policy.Key
+	var keys []*policy.AsymmetricKey
 	if len(ns.Keys) > 0 {
-		keys, err = db.KeysProtoJSON(ns.Keys)
+		keys, err = db.AsymKeysProtoJSON(ns.Keys)
 		if err != nil {
 			c.logger.Error("could not unmarshal keys", slog.String("error", err.Error()))
 			return nil, err
@@ -364,21 +364,24 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, 
 	return k, nil
 }
 
-func (c PolicyDBClient) AssignPublicKeyToNamespace(ctx context.Context, k *namespaces.NamespaceKey) error {
-	_, err := c.Queries.assignPublicKeyToNamespace(ctx, assignPublicKeyToNamespaceParams{
-		NamespaceID: k.GetNamespaceId(),
-		KeyID:       k.GetKeyId(),
+func (c PolicyDBClient) AssignPublicKeyToNamespace(ctx context.Context, k *namespaces.NamespaceKey) (*namespaces.NamespaceKey, error) {
+	key, err := c.Queries.assignPublicKeyToNamespace(ctx, assignPublicKeyToNamespaceParams{
+		NamespaceID:          k.GetNamespaceId(),
+		KeyAccessServerKeyID: k.GetKeyId(),
 	})
 	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	return nil
+	return &namespaces.NamespaceKey{
+		NamespaceId: key.NamespaceID,
+		KeyId:       key.KeyAccessServerKeyID,
+	}, nil
 }
 
 func (c PolicyDBClient) RemovePublicKeyFromNamespace(ctx context.Context, k *namespaces.NamespaceKey) (*namespaces.NamespaceKey, error) {
 	count, err := c.Queries.removePublicKeyFromNamespace(ctx, removePublicKeyFromNamespaceParams{
-		NamespaceID: k.GetNamespaceId(),
-		KeyID:       k.GetKeyId(),
+		NamespaceID:          k.GetNamespaceId(),
+		KeyAccessServerKeyID: k.GetKeyId(),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -386,5 +389,8 @@ func (c PolicyDBClient) RemovePublicKeyFromNamespace(ctx context.Context, k *nam
 	if count == 0 {
 		return nil, db.ErrNotFound
 	}
-	return k, nil
+	return &namespaces.NamespaceKey{
+		NamespaceId: k.GetNamespaceId(),
+		KeyId:       k.GetKeyId(),
+	}, nil
 }

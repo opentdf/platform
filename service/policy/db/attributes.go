@@ -271,8 +271,9 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 		return nil, err
 	}
 
+	var keys []*policy.AsymmetricKey
 	if len(attr.Keys) > 0 {
-		keys, err := db.KeysProtoJSON(attr.Keys)
+		keys, err = db.AsymKeysProtoJSON(attr.Keys)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
 		}
@@ -309,9 +310,9 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			}
 		}
 
-		var keys []*policy.Key
+		var keys []*policy.AsymmetricKey
 		if len(attr.Keys) > 0 {
-			keys, err = db.KeysProtoJSON(attr.Keys)
+			keys, err = db.AsymKeysProtoJSON(attr.Keys)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
 			}
@@ -600,22 +601,25 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, 
 	return k, nil
 }
 
-func (c PolicyDBClient) AssignPublicKeyToAttribute(ctx context.Context, k *attributes.AttributeKey) error {
-	_, err := c.Queries.assignPublicKeyToAttributeDefinition(ctx, assignPublicKeyToAttributeDefinitionParams{
-		DefinitionID: k.GetAttributeId(),
-		KeyID:        k.GetKeyId(),
+func (c PolicyDBClient) AssignPublicKeyToAttribute(ctx context.Context, k *attributes.AttributeKey) (*attributes.AttributeKey, error) {
+	ak, err := c.Queries.assignPublicKeyToAttributeDefinition(ctx, assignPublicKeyToAttributeDefinitionParams{
+		DefinitionID:         k.GetAttributeId(),
+		KeyAccessServerKeyID: k.GetKeyId(),
 	})
 	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	return nil
+	return &attributes.AttributeKey{
+		AttributeId: ak.DefinitionID,
+		KeyId:       ak.KeyAccessServerKeyID,
+	}, nil
 }
 
 func (c PolicyDBClient) RemovePublicKeyFromAttribute(ctx context.Context, k *attributes.AttributeKey) (*attributes.AttributeKey, error) {
 	count, err := c.Queries.removePublicKeyFromAttributeDefinition(ctx, removePublicKeyFromAttributeDefinitionParams{
-		DefinitionID: k.GetAttributeId(),
-		KeyID:        k.GetKeyId(),
+		DefinitionID:         k.GetAttributeId(),
+		KeyAccessServerKeyID: k.GetKeyId(),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -624,5 +628,8 @@ func (c PolicyDBClient) RemovePublicKeyFromAttribute(ctx context.Context, k *att
 		return nil, db.ErrNotFound
 	}
 
-	return k, nil
+	return &attributes.AttributeKey{
+		AttributeId: k.GetAttributeId(),
+		KeyId:       k.GetKeyId(),
+	}, nil
 }

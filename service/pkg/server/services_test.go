@@ -26,7 +26,7 @@ type mockTestServiceOptions struct {
 	dbRegister         serviceregistry.DBRegister
 }
 
-const numExpectedPolicyServices = 8
+const numExpectedPolicyServices = 9
 
 func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.IService, *spyTestService) {
 	spy := &spyTestService{}

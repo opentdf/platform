@@ -118,3 +118,24 @@ func pgtypeBool(b bool) pgtype.Bool {
 		Valid: true,
 	}
 }
+
+func pgtypeInt4(i int32, valid bool) pgtype.Int4 {
+	return pgtype.Int4{
+		Int32: i,
+		Valid: valid,
+	}
+}
+
+func UUIDToString(uuid pgtype.UUID) string {
+	if !uuid.Valid {
+		return ""
+	}
+
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		uuid.Bytes[0:4],
+		uuid.Bytes[4:6],
+		uuid.Bytes[6:8],
+		uuid.Bytes[8:10],
+		uuid.Bytes[10:16],
+	)
+}

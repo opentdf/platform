@@ -19,12 +19,12 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/go-chi/cors v1.2.1
 	github.com/go-playground/validator/v10 v10.22.0
+	github.com/go-viper/mapstructure/v2 v2.2.1
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.1
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/lestrrat-go/jwx/v2 v2.0.21
-	github.com/mitchellh/mapstructure v1.5.0
 	github.com/open-policy-agent/opa v0.68.0
 	github.com/opentdf/platform/lib/fixtures v0.2.10
 	github.com/opentdf/platform/lib/flattening v0.1.3
@@ -50,6 +50,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+require github.com/mitchellh/mapstructure v1.5.0 // indirect
 
 require (
 	cel.dev/expr v0.19.1 // indirect

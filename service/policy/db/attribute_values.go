@@ -92,9 +92,9 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		}
 	}
 
-	var keys []*policy.Key
+	var keys []*policy.AsymmetricKey
 	if av.Keys != nil {
-		keys, err = db.KeysProtoJSON(av.Keys)
+		keys, err = db.AsymKeysProtoJSON(av.Keys)
 		if err != nil {
 			c.logger.ErrorContext(ctx, "could not unmarshal keys", slog.String("error", err.Error()))
 			return nil, err
@@ -344,25 +344,34 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *a
 	return k, nil
 }
 
-func (c PolicyDBClient) AssignPublicKeyToValue(ctx context.Context, k *attributes.ValueKey) error {
-	_, err := c.Queries.assignPublicKeyToAttributeValue(ctx, assignPublicKeyToAttributeValueParams{
-		ValueID: k.GetValueId(),
-		KeyID:   k.GetKeyId(),
-	})
-	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return nil
-}
-
-func (c PolicyDBClient) RemovePublicKeyFromValue(ctx context.Context, k *attributes.ValueKey) (*attributes.ValueKey, error) {
-	_, err := c.Queries.removePublicKeyFromAttributeValue(ctx, removePublicKeyFromAttributeValueParams{
-		ValueID: k.GetValueId(),
-		KeyID:   k.GetKeyId(),
+func (c PolicyDBClient) AssignPublicKeyToValue(ctx context.Context, k *attributes.ValueKey) (*attributes.ValueKey, error) {
+	vk, err := c.Queries.assignPublicKeyToAttributeValue(ctx, assignPublicKeyToAttributeValueParams{
+		ValueID:              k.GetValueId(),
+		KeyAccessServerKeyID: k.GetKeyId(),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	return k, nil
+	return &attributes.ValueKey{
+		ValueId: vk.ValueID,
+		KeyId:   vk.KeyAccessServerKeyID,
+	}, nil
+}
+
+func (c PolicyDBClient) RemovePublicKeyFromValue(ctx context.Context, k *attributes.ValueKey) (*attributes.ValueKey, error) {
+	count, err := c.Queries.removePublicKeyFromAttributeValue(ctx, removePublicKeyFromAttributeValueParams{
+		ValueID:              k.GetValueId(),
+		KeyAccessServerKeyID: k.GetKeyId(),
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	return &attributes.ValueKey{
+		ValueId: k.GetValueId(),
+		KeyId:   k.GetKeyId(),
+	}, nil
 }

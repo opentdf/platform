@@ -67,8 +67,16 @@ message CreateKeyAccessServerRequest {
       "characters, and slashes."
     expression: "this.isUri()"
   }];
-  // Required
-  PublicKey public_key = 2 [(buf.validate.field).required = true];
+  // Deprecated
+  PublicKey public_key = 2;
+
+  // Optional
+  SourceType source_type = 3 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).enum = {
+      defined_only: true
+    }
+  ];
 
   // Optional
   string name = 20 [
@@ -108,8 +116,22 @@ message UpdateKeyAccessServerRequest {
       "alphanumeric characters, and slashes."
     expression: "size(this) == 0 || this.isUri()"
   }];
+  // Deprecated
   // Optional
   PublicKey public_key = 3;
+
+  // Optional
+  // Using UNSPECIFIED will result in a successful update,
+  // but will not actually update the underlying source.
+  // You should not update KAS's from INTERNAL/EXTERNAL
+  // to unspecified.
+  SourceType source_type = 4 [
+    (buf.validate.field).required = false,
+    (buf.validate.field).enum = {
+      defined_only: true
+    }
+  ];
+
   // Optional
   string name = 20 [
     (buf.validate.field).required = false,
@@ -351,6 +373,133 @@ message ListKeyAccessServerGrantsResponse {
   policy.PageResponse pagination = 10;
 }
 
+/*
+   KAS Key Management Requests and Response Messages
+*/
+// Create a new asymmetric key for the specified Key Access Server (KAS)
+message CreateKeyRequest {
+  // Required
+  string kas_id = 1 [(buf.validate.field).string.uuid = true]; // The unique identifier of the Key Access Server
+  // Required
+  string key_id = 2 [(buf.validate.field).string.min_len = 1]; // A user-defined identifier for the key
+  // Required
+  Algorithm key_algorithm = 3 [(buf.validate.field).enum.defined_only = true]; // The algorithm to be used for the key
+  // Required
+  KeyMode key_mode = 4 [(buf.validate.field).enum.defined_only = true]; // The mode of the key (e.g., local or external)
+  // Required
+  bytes public_key_ctx = 5 [(buf.validate.field).required = true, (buf.validate.field).bytes = {min_len: 1}]; // Context or additional data specific to the public key, based on the key provider implementation
+  // Optional
+  bytes private_key_ctx = 6; // Context or additional data specific to the private key, based on the key provider implementation
+  
+  // Optional
+  string provider_config_id = 7; // Configuration ID for the key provider, if applicable
+  // Common metadata
+  common.MetadataMutable metadata = 100; // Mutable metadata for the key
+}
+
+// Response to a CreateKeyRequest, containing the created asymmetric key
+message CreateKeyResponse {
+  AsymmetricKey key = 1; // The created asymmetric key
+}
+
+// Retrieve an existing asymmetric key from the Key Management System
+message GetKeyRequest {
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+    string id = 2 [(buf.validate.field).string.uuid = true]; // The unique identifier of the key to retrieve
+    string key_id = 3 [(buf.validate.field).string.min_len = 1]; // A user-defined identifier of the key to retrieve
+  }
+}
+
+// Response to a GetKeyRequest, containing the requested asymmetric key
+message GetKeyResponse {
+  AsymmetricKey key = 1; // The requested asymmetric key
+}
+
+// List all asymmetric keys managed by a specific Key Access Server or with a given algorithm
+message ListKeysRequest {
+  Algorithm key_algorithm = 1 [(buf.validate.field).enum.defined_only = true]; // Filter keys by algorithm
+
+  oneof kas_filter {
+    string kas_id = 2 [(buf.validate.field).string.uuid = true]; // Filter keys by the KAS ID
+    string kas_name = 3; // Filter keys by the KAS name
+    string kas_uri = 4; // Filter keys by the KAS URI
+  }
+
+  // Optional
+  policy.PageRequest pagination = 10; // Pagination request for the list of keys
+}
+
+// Response to a ListKeysRequest, containing the list of asymmetric keys and pagination information
+message ListKeysResponse {
+  repeated AsymmetricKey keys = 1; // The list of asymmetric keys
+
+  policy.PageResponse pagination = 10; // Pagination response for the list of keys
+}
+
+// Update an existing asymmetric key in the Key Management System
+message UpdateKeyRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true]; // The unique identifier of the key to update
+  // Optional
+  KeyStatus key_status = 2 [(buf.validate.field).enum.defined_only = true]; // The new status of the key (e.g., active, inactive)
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100; // Mutable metadata for the key
+  common.MetadataUpdateEnum metadata_update_behavior = 101; // The behavior for updating the metadata
+}
+
+// Response to an UpdateKeyRequest, containing the updated asymmetric key
+message UpdateKeyResponse {
+  AsymmetricKey key = 1; // The updated asymmetric key
+}
+
+message RotateKeyRequest {
+  // Required (Current Active Key ID)
+  oneof active_key {
+    // Current Active Key UUID
+    string id = 1 [(buf.validate.field).string.uuid = true];
+    // Alternative way to specify the active key using KAS ID and Key ID
+    ActiveKey key = 2;
+  }
+
+  // Information about the new key to be rotated in
+  NewKey new_key = 3;
+
+  // Nested message for specifying the active key using KAS ID and Key ID
+  message ActiveKey {
+    // Required UUID of the Key Access Server
+    string kas_id = 1 [(buf.validate.field).string.uuid = true];
+    // Required Key ID of the key in question
+    string kid = 2 [(buf.validate.field).string.min_len = 1];
+  }
+
+  // Nested message for specifying the new key details
+  message NewKey {
+    // Required
+    string key_id = 1 [(buf.validate.field).string.min_len = 1];
+    // Required
+    Algorithm algorithm = 2 [(buf.validate.field).enum.defined_only = true];
+    // Required
+    KeyMode key_mode = 3 [(buf.validate.field).enum.defined_only = true];
+    // Required
+    bytes private_key_ctx = 4; // Specific structure based on key provider implementation
+    // Optional
+    bytes public_key_ctx = 5;
+    string provider_config_id = 6;
+
+    // Common metadata fields
+    common.Metadata metadata = 100;
+  }
+}
+
+// Response message for the RotateKey request
+message RotateKeyResponse {
+  // The newly rotated Asymmetric Key
+  AsymmetricKey key = 1;
+}
+
 service KeyAccessServerRegistryService {
   rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {
     option (google.api.http) = {get: "/key-access-servers"};
@@ -385,4 +534,20 @@ service KeyAccessServerRegistryService {
     option (google.api.http) = {get: "/key-access-servers/grants"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
+
+  // KAS Key Management
+  // Request to create a new key in the Key Access Service.
+  rpc CreateKey(CreateKeyRequest) returns (CreateKeyResponse) {}
+
+  // Request to retrieve a key from the Key Access Service.
+  rpc GetKey(GetKeyRequest) returns (GetKeyResponse) {}
+
+  // Request to list keys in the Key Access Service.
+  rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {}
+
+  // Request to update a key in the Key Access Service.
+  rpc UpdateKey(UpdateKeyRequest) returns (UpdateKeyResponse) {}
+
+  // Request to rotate a key in the Key Access Service.
+  rpc RotateKey(RotateKeyRequest) returns (RotateKeyResponse) {}
 }

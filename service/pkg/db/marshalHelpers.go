@@ -104,16 +104,16 @@ func GrantedPolicyObjectProtoJSON(grantsJSON []byte) ([]*kasregistry.GrantedPoli
 	return policyObjectGrants, nil
 }
 
-func KeysProtoJSON(keysJSON []byte) ([]*policy.Key, error) {
+func AsymKeysProtoJSON(keysJSON []byte) ([]*policy.AsymmetricKey, error) {
 	var (
-		keys []*policy.Key
+		keys []*policy.AsymmetricKey
 		raw  []json.RawMessage
 	)
 	if err := json.Unmarshal(keysJSON, &raw); err != nil {
 		return nil, err
 	}
 	for _, r := range raw {
-		k := policy.Key{}
+		k := policy.AsymmetricKey{}
 		if err := protojson.Unmarshal(r, &k); err != nil {
 			return nil, err
 		}

@@ -33,6 +33,11 @@ const (
 	errMessageURI             = "string.uri"
 	errRequiredField          = "required_fields"
 	errExclusiveFields        = "exclusive_fields"
+	errrMessageAttrKey        = "attribute_key"
+	errrMessageValueKey       = "value_key"
+	errrMessageAttrID         = "attribute_id"
+	errrMessageKeyID          = "key_id"
+	errrMessageValueID        = "value_id"
 )
 
 // Create Attributes (definitions)
@@ -713,4 +718,233 @@ func TestGetAttributeValuesByFqns_FQNsOutsideMaxItemsRange_Fails(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "fqns")
 	require.Contains(t, err.Error(), "[repeated.max_items]")
+}
+
+// Add tests for validating assigning public key
+func Test_AssignKeyToAttribute(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *attributes.AssignPublicKeyToAttributeRequest
+		expectError  bool
+		errorMessage string // Optional: expected error message substring
+	}{
+		{
+			name:         "Invalid Attribute Key (empty)",
+			req:          &attributes.AssignPublicKeyToAttributeRequest{},
+			expectError:  true,
+			errorMessage: errrMessageAttrKey,
+		},
+		{
+			name: "Invalid Attribute Key (empty definition id)",
+			req: &attributes.AssignPublicKeyToAttributeRequest{
+				AttributeKey: &attributes.AttributeKey{
+					KeyId: validUUID,
+				}},
+			expectError:  true,
+			errorMessage: errrMessageAttrID,
+		},
+		{
+			name: "Invalid Attribute Key (empty key id)",
+			req: &attributes.AssignPublicKeyToAttributeRequest{
+				AttributeKey: &attributes.AttributeKey{
+					AttributeId: validUUID,
+				}},
+			expectError:  true,
+			errorMessage: errrMessageKeyID,
+		},
+		{
+			name: "Valid AssignPublicKeyToAttributeRequest",
+			req: &attributes.AssignPublicKeyToAttributeRequest{
+				AttributeKey: &attributes.AttributeKey{
+					AttributeId: validUUID,
+					KeyId:       validUUID,
+				}},
+			expectError: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tc.name)
+				if tc.errorMessage != "" {
+					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
+				}
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
+	}
+}
+
+func Test_RemovePublicKeyFromAttribute(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *attributes.RemovePublicKeyFromAttributeRequest
+		expectError  bool
+		errorMessage string // Optional: expected error message substring
+	}{
+		{
+			name:         "Invalid Attribute Key (empty)",
+			req:          &attributes.RemovePublicKeyFromAttributeRequest{},
+			expectError:  true,
+			errorMessage: errrMessageAttrKey,
+		},
+		{
+			name: "Invalid Attribute Key (empty definition id)",
+			req: &attributes.RemovePublicKeyFromAttributeRequest{
+				AttributeKey: &attributes.AttributeKey{
+					KeyId: validUUID,
+				}},
+			expectError:  true,
+			errorMessage: errrMessageAttrID,
+		},
+		{
+			name: "Invalid Attribute Key (empty key id)",
+			req: &attributes.RemovePublicKeyFromAttributeRequest{
+				AttributeKey: &attributes.AttributeKey{
+					AttributeId: validUUID,
+				}},
+			expectError:  true,
+			errorMessage: errrMessageKeyID,
+		},
+		{
+			name: "Valid RemovePublicKeyFromAttributeRequest",
+			req: &attributes.RemovePublicKeyFromAttributeRequest{
+				AttributeKey: &attributes.AttributeKey{
+					AttributeId: validUUID,
+					KeyId:       validUUID,
+				}},
+			expectError: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tc.name)
+				if tc.errorMessage != "" {
+					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
+				}
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
+	}
+}
+
+func Test_AssignPublicKeyToValue(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *attributes.AssignPublicKeyToValueRequest
+		expectError  bool
+		errorMessage string // Optional: expected error message substring
+	}{
+		{
+			name:         "Invalid Value Key (empty)",
+			req:          &attributes.AssignPublicKeyToValueRequest{},
+			expectError:  true,
+			errorMessage: errrMessageValueKey,
+		},
+		{
+			name: "Invalid Value Key (empty value id)",
+			req: &attributes.AssignPublicKeyToValueRequest{
+				ValueKey: &attributes.ValueKey{
+					KeyId: validUUID,
+				}},
+			expectError:  true,
+			errorMessage: errrMessageValueID,
+		},
+		{
+			name: "Invalid Value Key (empty key id)",
+			req: &attributes.AssignPublicKeyToValueRequest{
+				ValueKey: &attributes.ValueKey{
+					ValueId: validUUID,
+				}},
+			expectError:  true,
+			errorMessage: errrMessageKeyID,
+		},
+		{
+			name: "Valid AssignPublicKeyToAttributeRequest",
+			req: &attributes.AssignPublicKeyToValueRequest{
+				ValueKey: &attributes.ValueKey{
+					ValueId: validUUID,
+					KeyId:   validUUID,
+				}},
+			expectError: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tc.name)
+				if tc.errorMessage != "" {
+					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
+				}
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
+	}
+}
+
+func Test_RemovePublicKeyFromValue(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *attributes.RemovePublicKeyFromValueRequest
+		expectError  bool
+		errorMessage string // Optional: expected error message substring
+	}{
+		{
+			name:         "Invalid Value Key (empty)",
+			req:          &attributes.RemovePublicKeyFromValueRequest{},
+			expectError:  true,
+			errorMessage: errrMessageValueKey,
+		},
+		{
+			name: "Invalid Value Key (empty value id)",
+			req: &attributes.RemovePublicKeyFromValueRequest{
+				ValueKey: &attributes.ValueKey{
+					KeyId: validUUID,
+				}},
+			expectError:  true,
+			errorMessage: errrMessageValueID,
+		},
+		{
+			name: "Invalid Value Key (empty key id)",
+			req: &attributes.RemovePublicKeyFromValueRequest{
+				ValueKey: &attributes.ValueKey{
+					ValueId: validUUID,
+				}},
+			expectError:  true,
+			errorMessage: errrMessageKeyID,
+		},
+		{
+			name: "Valid AssignPublicKeyToAttributeRequest",
+			req: &attributes.RemovePublicKeyFromValueRequest{
+				ValueKey: &attributes.ValueKey{
+					ValueId: validUUID,
+					KeyId:   validUUID,
+				}},
+			expectError: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tc.name)
+				if tc.errorMessage != "" {
+					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
+				}
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
+	}
 }

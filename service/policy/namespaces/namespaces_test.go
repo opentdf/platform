@@ -10,13 +10,16 @@ import (
 )
 
 const (
-	validName          = "namespace.org"
-	validUUID          = "390e0058-7ae8-48f6-821c-9db07c831276"
-	errMessageUUID     = "string.uuid"
-	errMessageMinLen   = "string.min_len"
-	errMessageURI      = "string.uri"
-	errRequiredField   = "required_fields"
-	errExclusiveFields = "exclusive_fields"
+	validName              = "namespace.org"
+	validUUID              = "390e0058-7ae8-48f6-821c-9db07c831276"
+	errMessageUUID         = "string.uuid"
+	errMessageMinLen       = "string.min_len"
+	errMessageURI          = "string.uri"
+	errRequiredField       = "required_fields"
+	errExclusiveFields     = "exclusive_fields"
+	errMessageNamespaceKey = "namespace_key"
+	errMessageNamespaceID  = "namespace_id"
+	errMessageKeyID        = "key_id"
 )
 
 func getValidator() protovalidate.Validator {
@@ -314,5 +317,119 @@ func Test_NamespaceKeyAccessServer_Fails(t *testing.T) {
 		err := getValidator().Validate(invalidNamespaceKAS)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), errMessageUUID)
+	}
+}
+
+func Test_AssignPublicKeyToNamespace(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *namespaces.AssignPublicKeyToNamespaceRequest
+		expectError  bool
+		errorMessage string // Optional: expected error message substring
+	}{
+		{
+			name:         "Invalid Namespace Key (empty)",
+			req:          &namespaces.AssignPublicKeyToNamespaceRequest{},
+			expectError:  true,
+			errorMessage: errMessageNamespaceKey,
+		},
+		{
+			name: "Invalid Namespace Key (empty value id)",
+			req: &namespaces.AssignPublicKeyToNamespaceRequest{
+				NamespaceKey: &namespaces.NamespaceKey{
+					KeyId: validUUID,
+				}},
+			expectError:  true,
+			errorMessage: errMessageNamespaceID,
+		},
+		{
+			name: "Invalid Namespace Key (empty value id)",
+			req: &namespaces.AssignPublicKeyToNamespaceRequest{
+				NamespaceKey: &namespaces.NamespaceKey{
+					NamespaceId: validUUID,
+				}},
+			expectError:  true,
+			errorMessage: errMessageKeyID,
+		},
+		{
+			name: "Valid AssignPublicKeyToNamespaceRequest",
+			req: &namespaces.AssignPublicKeyToNamespaceRequest{
+				NamespaceKey: &namespaces.NamespaceKey{
+					NamespaceId: validUUID,
+					KeyId:       validUUID,
+				}},
+			expectError: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tc.name)
+				if tc.errorMessage != "" {
+					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
+				}
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
+	}
+}
+
+func Test_RemovePublicKeyFromNamespace(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *namespaces.RemovePublicKeyFromNamespaceRequest
+		expectError  bool
+		errorMessage string // Optional: expected error message substring
+	}{
+		{
+			name:         "Invalid Namespace Key (empty)",
+			req:          &namespaces.RemovePublicKeyFromNamespaceRequest{},
+			expectError:  true,
+			errorMessage: errMessageNamespaceKey,
+		},
+		{
+			name: "Invalid Namespace Key (empty value id)",
+			req: &namespaces.RemovePublicKeyFromNamespaceRequest{
+				NamespaceKey: &namespaces.NamespaceKey{
+					KeyId: validUUID,
+				}},
+			expectError:  true,
+			errorMessage: errMessageNamespaceID,
+		},
+		{
+			name: "Invalid Namespace Key (empty value id)",
+			req: &namespaces.RemovePublicKeyFromNamespaceRequest{
+				NamespaceKey: &namespaces.NamespaceKey{
+					NamespaceId: validUUID,
+				}},
+			expectError:  true,
+			errorMessage: errMessageKeyID,
+		},
+		{
+			name: "Valid RemovePublicKeyFromNamespaceRequest",
+			req: &namespaces.RemovePublicKeyFromNamespaceRequest{
+				NamespaceKey: &namespaces.NamespaceKey{
+					NamespaceId: validUUID,
+					KeyId:       validUUID,
+				}},
+			expectError: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := getValidator().Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tc.name)
+				if tc.errorMessage != "" {
+					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
+				}
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
 	}
 }

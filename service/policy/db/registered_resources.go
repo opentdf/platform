@@ -3,11 +3,10 @@ package db
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
@@ -299,11 +298,7 @@ func (c PolicyDBClient) GetRegisteredResourceValuesByFQN(ctx context.Context, r 
 			Value: parsed.Value,
 		})
 		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				// map entry will remain nil for not found FQN, so continue
-				continue
-			}
-
+			c.logger.Error("registered resource value for FQN not found", slog.String("fqn", fqn), slog.Any("err", err))
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}
 

@@ -679,7 +679,7 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_Valid_Su
 	s.Equal(existingRes.ID, foundFQN2.GetResource().GetId())
 }
 
-func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_SomeInvalid_Succeeds() {
+func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_SomeInvalid_Fails() {
 	existingRes := s.f.GetRegisteredResourceKey("res_with_values")
 	existingResValue1 := s.f.GetRegisteredResourceValueKey("res_with_values__value1")
 	fqns := []string{
@@ -690,17 +690,9 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_SomeInva
 	got, err := s.db.PolicyClient.GetRegisteredResourceValuesByFQN(s.ctx, &registeredresources.GetRegisteredResourceValuesByFQNRequest{
 		Fqns: fqns,
 	})
-	s.Require().NoError(err)
-	s.NotNil(got)
-
-	foundFQN1 := got[fqns[0]]
-	s.NotNil(foundFQN1)
-	s.Equal(existingResValue1.ID, foundFQN1.GetId())
-	s.Equal(existingResValue1.Value, foundFQN1.GetValue())
-	s.Equal(existingRes.ID, foundFQN1.GetResource().GetId())
-
-	foundFQN2 := got[fqns[1]]
-	s.Nil(foundFQN2)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(got)
 }
 
 func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQN_AllInvalid_Fails() {

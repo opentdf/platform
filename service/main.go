@@ -1,7 +1,12 @@
 package main
 
-import "github.com/opentdf/platform/service/cmd"
+import (
+	"fmt"
+
+	"github.com/opentdf/platform/service/cmd"
+)
 
 func main() {
+	fmt.Println("fail")
 	cmd.Execute()
 }

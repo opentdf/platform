@@ -407,6 +407,8 @@ jobs:
         with:
           script: |
             const needs = context.needs;
+            core.info('Checking dependent jobs')
+            core.info(`Dependent jobs: ${Object.keys(needs).join(', ')}`);
             const failedJobs = [];
             for (const jobName in needs) {
               if (needs[jobName].result === 'failure') {

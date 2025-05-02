@@ -118,7 +118,6 @@ func (p *PDP) GetEntitlements(entities []*authz.Entity, scope *authz.Resource, w
 }
 
 func (p *PDP) checkAccess(ctx context.Context, entitlements *authz.EntityEntitlements, action *policy.Action, resource *authz.Resource) (bool, error) {
-
 	switch r := resource.GetResource().(type) {
 	case *authz.Resource_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "checking access for registered resource value FQN", slog.String("fqn", r.RegisteredResourceValueFqn))
@@ -126,13 +125,14 @@ func (p *PDP) checkAccess(ctx context.Context, entitlements *authz.EntityEntitle
 		return false, nil
 	case *authz.Resource_AttributeValues_:
 		p.logger.DebugContext(ctx, "checking access for resource attribute values", slog.Any("attribute_values", r.AttributeValues.GetFqns()))
-		
+		// TODO: check each definition within the rules for access
+
+
 	default:
 		p.logger.ErrorContext(ctx, "unknown resource type", slog.Any("resource", r))
 		return false, ErrInvalidResourceType
 	}
-
-
+	return false, nil
 }
 
 func (p *PDP) fetchAllDefinitions(ctx context.Context) ([]*policy.Attribute, error) {

@@ -81,6 +81,8 @@ type MockSecurityProvider struct {
 	keys map[trust.KeyIdentifier]*MockKeyDetails
 }
 
+var _ trust.KeyService = (*MockSecurityProvider)(nil)
+
 func NewMockSecurityProvider() *MockSecurityProvider {
 	return &MockSecurityProvider{
 		keys: make(map[trust.KeyIdentifier]*MockKeyDetails),
@@ -163,6 +165,7 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 	// Create Provider with the mock security provider
 	kas := Provider{
 		URI:        *kasURI,
+		KeyIndex:   mockProvider,
 		KeyManager: mockProvider,
 		KASConfig: KASConfig{
 			Keyring: []CurrentKeyFor{

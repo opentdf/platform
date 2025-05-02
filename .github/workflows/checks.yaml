@@ -38,9 +38,6 @@ jobs:
           - lib/fixtures
           - lib/flattening
     steps:
-      - if: matrix.directory == 'examples'
-        name: fail examples to validate our fix for ci job
-        run: exit 1
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
         with:
           fetch-depth: 0

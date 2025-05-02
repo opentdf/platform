@@ -3,14 +3,15 @@ package db
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/opentdf/platform/service/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -66,27 +67,25 @@ func (c PolicyDBClient) CreateRegisteredResource(ctx context.Context, r *registe
 	}
 
 	return c.GetRegisteredResource(ctx, &registeredresources.GetRegisteredResourceRequest{
-		Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-			ResourceId: createdID,
+		Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+			Id: createdID,
 		},
 	})
 }
 
 func (c PolicyDBClient) GetRegisteredResource(ctx context.Context, r *registeredresources.GetRegisteredResourceRequest) (*policy.RegisteredResource, error) {
-	var id string
+	params := getRegisteredResourceParams{}
 
 	switch {
-	case r.GetResourceId() != "":
-		// TODO: refactor to pgtype.UUID once the query supports both id and fqn
-		id = r.GetResourceId()
-	case r.GetFqn() != "":
-		// TODO: implement
-		return nil, errors.New("FQN support not yet implemented")
+	case r.GetId() != "":
+		params.ID = r.GetId()
+	case r.GetName() != "":
+		params.Name = strings.ToLower(r.GetName())
 	default:
 		return nil, db.ErrSelectIdentifierInvalid
 	}
 
-	rr, err := c.Queries.getRegisteredResource(ctx, id)
+	rr, err := c.Queries.getRegisteredResource(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -168,8 +167,8 @@ func (c PolicyDBClient) UpdateRegisteredResource(ctx context.Context, r *registe
 	name := strings.ToLower(r.GetName())
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		v, err := c.GetRegisteredResource(ctx, &registeredresources.GetRegisteredResourceRequest{
-			Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-				ResourceId: id,
+			Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+				Id: id,
 			},
 		})
 		if err != nil {
@@ -236,28 +235,32 @@ func (c PolicyDBClient) CreateRegisteredResourceValue(ctx context.Context, r *re
 	}
 
 	return c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
-		Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-			ValueId: createdID,
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: createdID,
 		},
 	})
 }
 
 func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *registeredresources.GetRegisteredResourceValueRequest) (*policy.RegisteredResourceValue, error) {
-	var id string
+	params := getRegisteredResourceValueParams{}
 
 	switch {
-	case r.GetValueId() != "":
-		// TODO: refactor to pgtype.UUID once the query supports both id and fqn
-		id = r.GetValueId()
+	case r.GetId() != "":
+		params.ID = r.GetId()
 	case r.GetFqn() != "":
-		// TODO: implement
-		return nil, errors.New("FQN support not yet implemented")
+		fqn := strings.ToLower(r.GetFqn())
+		parsed, err := util.ParseRegisteredResourceValueFqn(fqn)
+		if err != nil {
+			return nil, err
+		}
+		params.Name = parsed.Name
+		params.Value = parsed.Value
 	default:
 		// unexpected type
 		return nil, db.ErrSelectIdentifierInvalid
 	}
 
-	rv, err := c.Queries.getRegisteredResourceValue(ctx, id)
+	rv, err := c.Queries.getRegisteredResourceValue(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -275,6 +278,51 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 			Id: rv.RegisteredResourceID,
 		},
 	}, nil
+}
+
+func (c PolicyDBClient) GetRegisteredResourceValuesByFQNs(ctx context.Context, r *registeredresources.GetRegisteredResourceValuesByFQNsRequest) (map[string]*policy.RegisteredResourceValue, error) {
+	resp := make(map[string]*policy.RegisteredResourceValue)
+	count := 0
+
+	for _, fqn := range r.GetFqns() {
+		normalizedFQN := strings.ToLower(fqn)
+
+		parsed, err := util.ParseRegisteredResourceValueFqn(fqn)
+		if err != nil {
+			return nil, err
+		}
+
+		rv, err := c.Queries.getRegisteredResourceValue(ctx, getRegisteredResourceValueParams{
+			Name:  parsed.Name,
+			Value: parsed.Value,
+		})
+		if err != nil {
+			c.logger.Error("registered resource value for FQN not found", slog.String("fqn", fqn), slog.Any("err", err))
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+
+		count++
+
+		metadata := &common.Metadata{}
+		if err = unmarshalMetadata(rv.Metadata, metadata); err != nil {
+			return nil, err
+		}
+
+		resp[normalizedFQN] = &policy.RegisteredResourceValue{
+			Id:       rv.ID,
+			Value:    rv.Value,
+			Metadata: metadata,
+			Resource: &policy.RegisteredResource{
+				Id: rv.RegisteredResourceID,
+			},
+		}
+	}
+
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	return resp, nil
 }
 
 func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *registeredresources.ListRegisteredResourceValuesRequest) (*registeredresources.ListRegisteredResourceValuesResponse, error) {
@@ -335,8 +383,8 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 	value := strings.ToLower(r.GetValue())
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		v, err := c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
-			Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-				ValueId: id,
+			Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+				Id: id,
 			},
 		})
 		if err != nil {

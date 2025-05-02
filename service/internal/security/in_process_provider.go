@@ -14,23 +14,25 @@ import (
 	"github.com/opentdf/platform/service/trust"
 )
 
-const modeInProcess = "opentdf.io/in-process"
+const inProcessSystemName = "opentdf.io/in-process"
 
-// StandardUnwrappedKey implements the UnwrappedKeyData interface
-type StandardUnwrappedKey struct {
+// InProcessAESKey implements the trust.ProtectedKey interface with an in-memory secret key
+type InProcessAESKey struct {
 	rawKey []byte
 	logger *slog.Logger
 }
 
-// NewStandardUnwrappedKey creates a new instance of StandardUnwrappedKey
-func NewStandardUnwrappedKey(rawKey []byte) *StandardUnwrappedKey {
-	return &StandardUnwrappedKey{
+var _ trust.ProtectedKey = (*InProcessAESKey)(nil)
+
+// NewInProcessAESKey creates a new instance of StandardUnwrappedKey
+func NewInProcessAESKey(rawKey []byte) *InProcessAESKey {
+	return &InProcessAESKey{
 		rawKey: rawKey,
 		logger: slog.Default(),
 	}
 }
 
-func (k *StandardUnwrappedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]byte, error) {
+func (k *InProcessAESKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]byte, error) {
 	aesGcm, err := ocrypto.NewAESGcm(k.rawKey)
 	if err != nil {
 		return nil, err
@@ -44,14 +46,17 @@ func (k *StandardUnwrappedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int
 	return decryptedData, nil
 }
 
-// Export returns the raw key data, optionally encrypting it with the provided encryptor
-func (k *StandardUnwrappedKey) Export(encryptor trust.Encapsulator) ([]byte, error) {
-	if encryptor == nil {
+// Export returns the raw key data, optionally encrypting it with the provided trust.Encapsulator
+func (k *InProcessAESKey) Export(encapsulator trust.Encapsulator) ([]byte, error) {
+	if encapsulator == nil {
+		if k.logger != nil {
+			k.logger.Warn("exporting raw key data without encryption")
+		}
 		return k.rawKey, nil
 	}
 
 	// If an encryptor is provided, encrypt the key data before returning
-	encryptedKey, err := encryptor.Encrypt(k.rawKey)
+	encryptedKey, err := encapsulator.Encrypt(k.rawKey)
 	if err != nil {
 		if k.logger != nil {
 			k.logger.Warn("failed to encrypt key data for export", "err", err)
@@ -63,7 +68,7 @@ func (k *StandardUnwrappedKey) Export(encryptor trust.Encapsulator) ([]byte, err
 }
 
 // VerifyBinding checks if the policy binding matches the given policy data
-func (k *StandardUnwrappedKey) VerifyBinding(ctx context.Context, policy, policyBinding []byte) error {
+func (k *InProcessAESKey) VerifyBinding(ctx context.Context, policy, policyBinding []byte) error {
 	if len(k.rawKey) == 0 {
 		return errors.New("key data is empty")
 	}
@@ -81,7 +86,7 @@ func (k *StandardUnwrappedKey) VerifyBinding(ctx context.Context, policy, policy
 }
 
 // generateHMACDigest is a helper to generate an HMAC digest from a message using the key
-func (k *StandardUnwrappedKey) generateHMACDigest(ctx context.Context, msg []byte) ([]byte, error) {
+func (k *InProcessAESKey) generateHMACDigest(ctx context.Context, msg []byte) ([]byte, error) {
 	mac := hmac.New(sha256.New, k.rawKey)
 	_, err := mac.Write(msg)
 	if err != nil {
@@ -115,7 +120,7 @@ type KeyDetailsAdapter struct {
 
 // Mode returns the mode of the key details
 func (k *KeyDetailsAdapter) System() string {
-	return modeInProcess
+	return inProcessSystemName
 }
 
 func (k *KeyDetailsAdapter) ID() trust.KeyIdentifier {
@@ -178,7 +183,7 @@ func NewSecurityProviderAdapter(cryptoProvider CryptoProvider) trust.KeyService 
 
 // Name returns the name of the provider
 func (a *InProcessProvider) Name() string {
-	return modeInProcess
+	return inProcessSystemName
 }
 
 // WithLogger sets the logger for the adapter
@@ -280,7 +285,7 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyID trust.KeyIdentifi
 		return nil, err
 	}
 
-	return &StandardUnwrappedKey{
+	return &InProcessAESKey{
 		rawKey: rawKey,
 		logger: a.logger,
 	}, nil
@@ -305,7 +310,7 @@ func (a *InProcessProvider) determineKeyType(_ context.Context, kid string) (str
 // DeriveKey generates a symmetric key for NanoTDF
 func (a *InProcessProvider) DeriveKey(_ context.Context, kasKID trust.KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
 	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(kasKID), ephemeralPublicKeyBytes, curve)
-	return NewStandardUnwrappedKey(k), err
+	return NewInProcessAESKey(k), err
 }
 
 // GenerateECSessionKey generates a session key for NanoTDF

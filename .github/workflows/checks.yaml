@@ -403,7 +403,7 @@ jobs:
     steps:
       - if: contains(needs.*.result, 'failure')
         name: Check for failed jobs
-        run: echo "One or more needed tasks failed" && exit 1
+        run: echo "One or more jobs failed. Please look at the failed jobs for details." && exit 1
 
   license:
     permissions:

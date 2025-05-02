@@ -455,7 +455,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			continue
 		}
 
-		var unwrappedKey trust.ProtectedKey
+		var dek trust.ProtectedKey
 		var err error
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
@@ -515,14 +515,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			}
 
 			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
-			// I don't like this, as it puts another RPC in the critical path.
-			// k, err := p.GetKeyIndex().FindKeyByID(ctx, kid)
-			// if err != nil {
-			// 	p.Logger.WarnContext(ctx, "failed to find key by ID", "err", err)
-			// 	failedKAORewrap(results, kao, err400("bad request"))
-			// 	continue
-			// }
-			unwrappedKey, err = p.GetSecurityProvider().Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), compressedKey)
+			dek, err = p.GetSecurityProvider().Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), compressedKey)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt EC key", "err", err)
 				failedKAORewrap(results, kao, err400("bad request"))
@@ -547,13 +540,13 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				}
 			}
 
-			unwrappedKey, err = p.GetSecurityProvider().Decrypt(ctx, kidsToCheck[0], kao.GetKeyAccessObject().GetWrappedKey(), nil)
+			dek, err = p.GetSecurityProvider().Decrypt(ctx, kidsToCheck[0], kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			for _, kid := range kidsToCheck[1:] {
 				p.Logger.WarnContext(ctx, "continue paging through legacy KIDs for kid free kao", "err", err)
 				if err == nil {
 					break
 				}
-				unwrappedKey, err = p.GetSecurityProvider().Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
+				dek, err = p.GetSecurityProvider().Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			}
 		}
 		if err != nil {
@@ -582,7 +575,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		}
 
 		// Verify policy binding using the UnwrappedKeyData interface
-		if err := unwrappedKey.VerifyBinding(ctx, []byte(req.GetPolicy().GetBody()), policyBinding); err != nil {
+		if err := dek.VerifyBinding(ctx, []byte(req.GetPolicy().GetBody()), policyBinding); err != nil {
 			p.Logger.WarnContext(ctx, "failure to verify policy binding", "err", err)
 			failedKAORewrap(results, kao, err400("bad request"))
 			continue
@@ -590,7 +583,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 		results[kao.GetKeyAccessObjectId()] = kaoResult{
 			ID:  kao.GetKeyAccessObjectId(),
-			DEK: unwrappedKey,
+			DEK: dek,
 		}
 
 		anyValidKAOs = true

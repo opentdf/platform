@@ -1102,13 +1102,6 @@ func (s SDK) getNanoRewrapKey(ctx context.Context, decryptor *NanoTDFDecryptHand
 	return result[0].SymmetricKey, nil
 }
 
-func tdfSalt() []byte {
-	digest := sha256.New()
-	digest.Write([]byte("TDF"))
-	salt := digest.Sum(nil)
-	return salt
-}
-
 func versionSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte(kNanoTDFMagicStringAndVersion))

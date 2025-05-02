@@ -413,13 +413,7 @@ jobs:
                 failedJobs.push(jobName);
               }
             }
-            if (failedJobs.length > 0) {
-              core.setFailed(`One or more dependent jobs failed: ${failedJobs.join(', ')}`);
-            } else {
-              // This else block might not be strictly necessary due to the outer 'if' condition,
-              // but it's good practice if you were to remove the outer 'if'.
-              console.log('No dependent jobs failed.');
-            }
+            core.setFailed(`One or more dependent jobs failed: [${failedJobs.join(', ')}]`);
 
   license:
     permissions:

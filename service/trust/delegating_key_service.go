@@ -64,9 +64,7 @@ func (d *DelegatingKeyService) getKeyManager(name string) (KeyManager, error) {
 	return manager, nil
 }
 
-func (d *DelegatingKeyService) getDefaultKeyManager() (KeyManager, error) {
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
+func (d *DelegatingKeyService) _defKM() (KeyManager, error) {
 	if d.defaultKeyManager == nil {
 		manager, err := d.getKeyManager(d.defaultMode)
 		if err != nil {
@@ -125,7 +123,7 @@ func (d *DelegatingKeyService) DeriveKey(ctx context.Context, kasKID KeyIdentifi
 
 func (d *DelegatingKeyService) GenerateECSessionKey(ctx context.Context, ephemeralPublicKey string) (Encapsulator, error) {
 	// Assuming a default manager for session key generation
-	manager, err := d.getDefaultKeyManager()
+	manager, err := d._defKM()
 	if err != nil {
 		return nil, err
 	}

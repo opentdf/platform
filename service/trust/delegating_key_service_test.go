@@ -141,6 +141,33 @@ func (m *MockProtectedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([
 	return nil, args.Error(1)
 }
 
+type MockEncapsulator struct {
+	mock.Mock
+}
+
+func (m *MockEncapsulator) Encrypt(data []byte) ([]byte, error) {
+	args := m.Called(data)
+	if a0, ok := args.Get(0).([]byte); ok {
+		return a0, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *MockEncapsulator) PublicKeyInPemFormat() (string, error) {
+	args := m.Called()
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockEncapsulator) EphemeralKey() []byte {
+	args := m.Called()
+	if a0, ok := args.Get(0).([]byte); ok {
+		return a0
+	}
+	return nil
+}
+
+var _ Encapsulator = (*MockEncapsulator)(nil)
+
 type DelegatingKeyServiceTestSuite struct {
 	suite.Suite
 	service      *DelegatingKeyService
@@ -221,11 +248,11 @@ func (suite *DelegatingKeyServiceTestSuite) TestGenerateECSessionKey() {
 		return suite.mockManagerA, nil
 	})
 	suite.service.defaultMode = "default"
-	suite.mockManagerA.On("GenerateECSessionKey", mock.Anything, "ephemeralPublicKey").Return(&MockKeyManager{}, nil)
+	suite.mockManagerA.On("GenerateECSessionKey", mock.Anything, "ephemeralPublicKey").Return(&MockEncapsulator{}, nil)
 
 	encapsulator, err := suite.service.GenerateECSessionKey(context.Background(), "ephemeralPublicKey")
 	suite.Require().NoError(err)
-	suite.NotNil(encapsulator)
+	suite.IsType(&MockEncapsulator{}, encapsulator)
 }
 
 func TestDelegatingKeyServiceTestSuite(t *testing.T) {

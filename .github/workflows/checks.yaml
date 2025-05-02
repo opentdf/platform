@@ -38,6 +38,10 @@ jobs:
           - lib/fixtures
           - lib/flattening
     steps:
+      - if: ${{ matrix.directory == 'examples' }}
+        name: fail examples for testing purposes
+        run: |
+          exit 1
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
         with:
           fetch-depth: 0
@@ -401,12 +405,21 @@ jobs:
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}
     steps:
+      - name: Echo entire needs context
+        run: |
+          echo "Needs context:"
+          echo "${{ toJson(needs) }}"
       - if: ${{ failure() }}
         name: Check for failed jobs and report
         run: |
           echo "One or more jobs failed."
           exit 1
-
+      - if: ${{ ! success() }}
+        name: Check for failed jobs and report
+        run: |
+          echo "One or more jobs didn't succeed."
+          exit 1
+  
   license:
     permissions:
       contents: read

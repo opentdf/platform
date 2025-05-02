@@ -54,6 +54,7 @@ require (
 require (
 	cel.dev/expr v0.19.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 )
 
 require (

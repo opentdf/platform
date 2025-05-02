@@ -123,9 +123,7 @@ func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
 
 	return ECDecryptor{sk, salt, nil}, nil
 }
-func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, error) {
-	return ECDecryptor{sk, salt, info}, nil
-}
+
 func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, error) {
 	return ECDecryptor{sk, salt, info}, nil
 }

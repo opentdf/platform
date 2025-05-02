@@ -35,7 +35,7 @@ type MockKeyDetails struct {
 }
 
 // Mode is a mock implementation of the Mode method required by the trust.KeyDetails interface.
-func (m *MockKeyDetails) Mode() string {
+func (m *MockKeyDetails) System() string {
 	// Return a default or mock mode value
 	return "mock-mode"
 }

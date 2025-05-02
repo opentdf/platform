@@ -451,3 +451,49 @@ jobs:
           "$(go env GOROOT)"/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
           check --disallowed_types=forbidden --include_tests
           ./examples
+
+
+  just-needs-go:
+    permissions: {}
+    needs:
+      - go
+    runs-on: ubuntu-22.04
+    if: ${{ !cancelled() }}
+    steps:
+      - name: Echo entire needs context
+        run: |
+          echo "Needs context:"
+          echo "${{ toJson(needs) }}"
+      - if: ${{ failure() }}
+        name: Check for failed jobs and report
+        run: |
+          echo "One or more jobs failed."
+          exit 1
+      - if: ${{ ! success() }}
+        name: Check for failed jobs and report
+        run: |
+          echo "One or more jobs didn't succeed."
+          exit 1
+
+  just-needs-go-and-buflint:
+    permissions: {}
+    needs:
+      - buflint
+      - go
+    runs-on: ubuntu-22.04
+    if: ${{ !cancelled() }}
+    steps:
+      - name: Echo entire needs context
+        run: |
+          echo "Needs context:"
+          echo "${{ toJson(needs) }}"
+      - if: ${{ failure() }}
+        name: Check for failed jobs and report
+        run: |
+          echo "One or more jobs failed."
+          exit 1
+      - if: ${{ ! success() }}
+        name: Check for failed jobs and report
+        run: |
+          echo "One or more jobs didn't succeed."
+          exit 1

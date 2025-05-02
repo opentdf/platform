@@ -41,6 +41,7 @@ jobs:
       - if: ${{ matrix.directory == 'examples' }}
         name: fail examples for testing purposes
         run: |
+          sleep 60
           exit 1
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
         with:

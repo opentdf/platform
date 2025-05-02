@@ -401,7 +401,7 @@ jobs:
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}
     steps:
-      - if: ${{ !success() }}
+      - if: ${{ failure() }}
         name: Check for failed jobs and report
         run: |
           echo "One or more jobs failed."

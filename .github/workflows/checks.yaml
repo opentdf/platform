@@ -401,25 +401,11 @@ jobs:
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}
     steps:
-      - if: contains(needs.*.result, 'failure')
+      - if: ${{ !success() }}
         name: Check for failed jobs and report
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          script: |
-            const needs = context.needs;
-            const failedJobs = [];
-            for (const jobName in needs) {
-              if (needs[jobName].result === 'failure') {
-                failedJobs.push(jobName);
-              }
-            }
-            if (failedJobs.length > 0) {
-              core.setFailed(`One or more dependent jobs failed: ${failedJobs.join(', ')}`);
-            } else {
-              // This else block might not be strictly necessary due to the outer 'if' condition,
-              // but it's good practice if you were to remove the outer 'if'.
-              console.log('No dependent jobs failed.');
-            }
+        run: |
+          echo "One or more jobs failed."
+          exit 1
 
   license:
     permissions:

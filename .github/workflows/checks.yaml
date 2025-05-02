@@ -29,6 +29,7 @@ jobs:
       contents: read
       pull-requests: read
     strategy:
+      fail-fast: false
       matrix:
         directory:
           - examples
@@ -404,7 +405,7 @@ jobs:
       - platform-xtest
       - otdfctl-test
     runs-on: ubuntu-22.04
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && !failure() }}
     steps:
       - name: Echo entire needs context
         run: |

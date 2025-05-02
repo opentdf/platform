@@ -798,7 +798,6 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
 }
 
 func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithChildKeys_Fails() {
-
 	pubKey := &policy.PublicKey{
 		PublicKey: &policy.PublicKey_Remote{
 			Remote: "https://remote.com/key",
@@ -813,10 +812,10 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithChildKeys_Fails() {
 	s.NotNil(createdKas)
 
 	// create a child key
-	keyId := "a-random-key-id"
+	keyID := "a-random-key-id"
 	createdKey, err := s.db.PolicyClient.CreateKey(s.ctx, &kasregistry.CreateKeyRequest{
 		KasId:        createdKas.GetId(),
-		KeyId:        keyId,
+		KeyId:        keyID,
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P521,
 		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
 		PublicKeyCtx: []byte(`{}`),

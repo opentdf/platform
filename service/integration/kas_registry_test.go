@@ -797,6 +797,52 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
 	s.Nil(resp)
 }
 
+func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithChildKeys_Fails() {
+	pubKey := &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Remote{
+			Remote: "https://remote.com/key",
+		},
+	}
+	testKas := &kasregistry.CreateKeyAccessServerRequest{
+		Uri:       "trying-to-delete.net",
+		PublicKey: pubKey,
+	}
+	createdKas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, testKas)
+	s.Require().NoError(err)
+	s.NotNil(createdKas)
+
+	// create a child key
+	keyID := "a-random-key-id"
+	createdKey, err := s.db.PolicyClient.CreateKey(s.ctx, &kasregistry.CreateKeyRequest{
+		KasId:        createdKas.GetId(),
+		KeyId:        keyID,
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P521,
+		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
+		PublicKeyCtx: []byte(`{}`),
+	})
+
+	s.Require().NoError(err)
+	s.NotNil(createdKey)
+
+	resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, createdKas.GetId())
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.Len(resp.GetKeys(), 1)
+
+	deleted, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, createdKas.GetId())
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, db.ErrForeignKeyViolation.Error())
+	s.Nil(deleted)
+
+	// Remove key to clean up
+	_, err = s.db.PolicyClient.DeleteKey(s.ctx, createdKey.GetKey().GetId())
+	s.Require().NoError(err)
+
+	// Delete the KAS
+	_, err = s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, createdKas.GetId())
+	s.Require().NoError(err)
+}
+
 func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithNonExistentId_Fails() {
 	resp, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, nonExistentKasRegistryID)
 	s.Require().Error(err)

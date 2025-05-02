@@ -136,7 +136,7 @@ jobs:
         run: |
           git restore .
           git pull origin update-go-mods-for-"$MATRIX_PATH"
-          gh pr create -B main -H update-go-mods-for-"$MATRIX_PATH" --title "fix(${MATRIX_PATH}): $PR_TITLE" --body "$PR_BODY" --fill
+          gh pr create -B main -H update-go-mods-for-"$MATRIX_PATH" --title "fix(dep): $PR_TITLE" --body "$PR_BODY" --fill
           gh pr merge --auto --squash
         env:
           GITHUB_TOKEN: "${{ steps.generate_token.outputs.token }}"

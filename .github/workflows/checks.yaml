@@ -29,7 +29,6 @@ jobs:
       contents: read
       pull-requests: read
     strategy:
-      fail-fast: false
       matrix:
         directory:
           - examples
@@ -39,11 +38,6 @@ jobs:
           - lib/fixtures
           - lib/flattening
     steps:
-      - if: ${{ matrix.directory == 'examples' }}
-        name: fail examples for testing purposes
-        run: |
-          sleep 60
-          exit 1
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
         with:
           fetch-depth: 0
@@ -405,23 +399,28 @@ jobs:
       - platform-xtest
       - otdfctl-test
     runs-on: ubuntu-22.04
-    if: ${{ !cancelled() && !failure() }}
+    if: ${{ !cancelled() }}
     steps:
-      - name: Echo entire needs context
-        run: |
-          echo "Needs context:"
-          echo "${{ toJson(needs) }}"
-      - if: ${{ failure() }}
+      - if: contains(needs.*.result, 'failure')
         name: Check for failed jobs and report
-        run: |
-          echo "One or more jobs failed."
-          exit 1
-      - if: ${{ ! success() }}
-        name: Check for failed jobs and report
-        run: |
-          echo "One or more jobs didn't succeed."
-          exit 1
-  
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const needs = context.needs;
+            const failedJobs = [];
+            for (const jobName of needs) {
+              if (needs[jobName].result === 'failure') {
+                failedJobs.push(jobName);
+              }
+            }
+            if (failedJobs.length > 0) {
+              core.setFailed(`One or more dependent jobs failed: ${failedJobs.join(', ')}`);
+            } else {
+              // This else block might not be strictly necessary due to the outer 'if' condition,
+              // but it's good practice if you were to remove the outer 'if'.
+              console.log('No dependent jobs failed.');
+            }
+
   license:
     permissions:
       contents: read
@@ -451,49 +450,3 @@ jobs:
           "$(go env GOROOT)"/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
           check --disallowed_types=forbidden --include_tests
           ./examples
-
-
-  just-needs-go:
-    permissions: {}
-    needs:
-      - go
-    runs-on: ubuntu-22.04
-    if: ${{ !cancelled() }}
-    steps:
-      - name: Echo entire needs context
-        run: |
-          echo "Needs context:"
-          echo "${{ toJson(needs) }}"
-      - if: ${{ failure() }}
-        name: Check for failed jobs and report
-        run: |
-          echo "One or more jobs failed."
-          exit 1
-      - if: ${{ ! success() }}
-        name: Check for failed jobs and report
-        run: |
-          echo "One or more jobs didn't succeed."
-          exit 1
-
-  just-needs-go-and-buflint:
-    permissions: {}
-    needs:
-      - buflint
-      - go
-    runs-on: ubuntu-22.04
-    if: ${{ !cancelled() }}
-    steps:
-      - name: Echo entire needs context
-        run: |
-          echo "Needs context:"
-          echo "${{ toJson(needs) }}"
-      - if: ${{ failure() }}
-        name: Check for failed jobs and report
-        run: |
-          echo "One or more jobs failed."
-          exit 1
-      - if: ${{ ! success() }}
-        name: Check for failed jobs and report
-        run: |
-          echo "One or more jobs didn't succeed."
-          exit 1

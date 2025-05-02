@@ -150,8 +150,8 @@ func (s *RegisteredResourcesService) UpdateRegisteredResource(ctx context.Contex
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		original, err := txClient.GetRegisteredResource(ctx, &registeredresources.GetRegisteredResourceRequest{
-			Identifier: &registeredresources.GetRegisteredResourceRequest_ResourceId{
-				ResourceId: resourceID,
+			Identifier: &registeredresources.GetRegisteredResourceRequest_Id{
+				Id: resourceID,
 			},
 		})
 		if err != nil {
@@ -251,6 +251,20 @@ func (s *RegisteredResourcesService) GetRegisteredResourceValue(ctx context.Cont
 	return connect.NewResponse(rsp), nil
 }
 
+func (s *RegisteredResourcesService) GetRegisteredResourceValuesByFQNs(ctx context.Context, req *connect.Request[registeredresources.GetRegisteredResourceValuesByFQNsRequest]) (*connect.Response[registeredresources.GetRegisteredResourceValuesByFQNsResponse], error) {
+	rsp := &registeredresources.GetRegisteredResourceValuesByFQNsResponse{}
+
+	s.logger.DebugContext(ctx, "getting registered resource values by FQNs", slog.Any("fqns", req.Msg.GetFqns()))
+
+	fqnValueMap, err := s.dbClient.GetRegisteredResourceValuesByFQNs(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("fqns", req.Msg.GetFqns()))
+	}
+	rsp.FqnValueMap = fqnValueMap
+
+	return connect.NewResponse(rsp), nil
+}
+
 func (s *RegisteredResourcesService) ListRegisteredResourceValues(ctx context.Context, req *connect.Request[registeredresources.ListRegisteredResourceValuesRequest]) (*connect.Response[registeredresources.ListRegisteredResourceValuesResponse], error) {
 	s.logger.DebugContext(ctx, "listing registered resource values")
 
@@ -279,8 +293,8 @@ func (s *RegisteredResourcesService) UpdateRegisteredResourceValue(ctx context.C
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		original, err := txClient.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
-			Identifier: &registeredresources.GetRegisteredResourceValueRequest_ValueId{
-				ValueId: valueID,
+			Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+				Id: valueID,
 			},
 		})
 		if err != nil {

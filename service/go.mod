@@ -51,12 +51,9 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require github.com/mitchellh/mapstructure v1.5.0 // indirect
-
 require (
 	cel.dev/expr v0.19.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
-	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 )
 
 require (

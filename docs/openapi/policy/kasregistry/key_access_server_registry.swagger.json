@@ -453,7 +453,7 @@
       },
       "title": "Can be namespace, attribute definition, or value"
     },
-    "kasregistryKasKey": {
+    "kasregistryKasAsymKey": {
       "type": "object",
       "properties": {
         "kasId": {

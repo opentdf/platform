@@ -60,7 +60,7 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			name: "Invalid Key - Key ID (empty)",
 			req: &kasregistry.GetKeyRequest{
 				Identifier: &kasregistry.GetKeyRequest_Key{
-					Key: &kasregistry.KasKey{
+					Key: &kasregistry.KasAsymKey{
 						KasId: validUUID,
 					},
 				},
@@ -72,7 +72,7 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			name: "Invalid Key - Kas ID (empty)",
 			req: &kasregistry.GetKeyRequest{
 				Identifier: &kasregistry.GetKeyRequest_Key{
-					Key: &kasregistry.KasKey{
+					Key: &kasregistry.KasAsymKey{
 						Kid: validUUID,
 					},
 				},
@@ -93,7 +93,7 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			name: "Valid Key Req",
 			req: &kasregistry.GetKeyRequest{
 				Identifier: &kasregistry.GetKeyRequest_Key{
-					Key: &kasregistry.KasKey{
+					Key: &kasregistry.KasAsymKey{
 						KasId: validUUID,
 						Kid:   validKeyID,
 					},

@@ -147,7 +147,7 @@ func (s *KasRegistryKeySuite) Test_GetKasKey_InvalidId_Fail() {
 
 func (s *KasRegistryKeySuite) Test_GetKasKey_InvalidKey_Fail() {
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
-		Key: &kasregistry.KasKey{
+		Key: &kasregistry.KasAsymKey{
 			KasId: "invalid-uuid",
 			Kid:   "",
 		},
@@ -184,7 +184,7 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_WrongKas_Fail() {
 	s.Require().NoError(err)
 	s.NotNil(kas)
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
-		Key: &kasregistry.KasKey{
+		Key: &kasregistry.KasAsymKey{
 			KasId: kas.GetId(),
 			Kid:   s.kasKeys[0].KeyID,
 		},
@@ -198,7 +198,7 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_WrongKas_Fail() {
 
 func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_NoKeyIdInKas_Fail() {
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
-		Key: &kasregistry.KasKey{
+		Key: &kasregistry.KasAsymKey{
 			KasId: s.kasKeys[0].KeyAccessServerID,
 			Kid:   "a-random-key-id",
 		},
@@ -209,7 +209,7 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_NoKeyIdInKas_Fail() {
 
 func (s *KasRegistryKeySuite) Test_GetKasKeyByKeyId_Success() {
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
-		Key: &kasregistry.KasKey{
+		Key: &kasregistry.KasAsymKey{
 			KasId: s.kasKeys[0].KeyAccessServerID,
 			Kid:   s.kasKeys[0].KeyID,
 		},

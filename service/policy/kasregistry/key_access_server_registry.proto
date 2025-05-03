@@ -407,7 +407,7 @@ message GetKeyRequest {
   oneof identifier {
     option (buf.validate.oneof).required = true;
     string id = 2 [(buf.validate.field).string.uuid = true]; // The unique identifier of the key to retrieve
-    KasKey key = 3;
+    KasAsymKey key = 3;
   }
 }
 
@@ -457,7 +457,7 @@ message UpdateKeyResponse {
 
 
   // Nested message for specifying the active key using KAS ID and Key ID
-  message KasKey {
+  message KasAsymKey {
     // Required UUID of the Key Access Server
     string kas_id = 1 [(buf.validate.field).string.uuid = true];
     // Required Key ID of the key in question
@@ -470,7 +470,7 @@ message RotateKeyRequest {
     // Current Active Key UUID
     string id = 1 [(buf.validate.field).string.uuid = true];
     // Alternative way to specify the active key using KAS ID and Key ID
-    KasKey key = 2;
+    KasAsymKey key = 2;
   }
 
   // Information about the new key to be rotated in

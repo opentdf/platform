@@ -426,8 +426,8 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 		}
 		params = getKeyParams{ID: pgUUID}
 	case *kasregistry.GetKeyRequest_Key:
-		keyID := pgtypeText(i.Key.Kid)
-		kasID := pgtypeUUID(i.Key.KasId)
+		keyID := pgtypeText(i.Key.GetKid())
+		kasID := pgtypeUUID(i.Key.GetKasId())
 		if !keyID.Valid || !kasID.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}

@@ -425,12 +425,16 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 			return nil, db.ErrUUIDInvalid
 		}
 		params = getKeyParams{ID: pgUUID}
-	case *kasregistry.GetKeyRequest_KeyId:
-		keyID := pgtypeText(i.KeyId)
-		if !keyID.Valid {
+	case *kasregistry.GetKeyRequest_Key:
+		keyID := pgtypeText(i.Key.Kid)
+		kasID := pgtypeUUID(i.Key.KasId)
+		if !keyID.Valid || !kasID.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
-		params = getKeyParams{KeyID: keyID}
+		params = getKeyParams{
+			KeyID: keyID,
+			KasID: kasID,
+		}
 	default:
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}

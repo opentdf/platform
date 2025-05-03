@@ -931,6 +931,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.KasKey"><span class="badge">M</span>KasKey</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.KeyAccessServerGrants"><span class="badge">M</span>KeyAccessServerGrants</a>
                 </li>
               
@@ -988,10 +992,6 @@
               
                 <li>
                   <a href="#policy.kasregistry.RotateKeyRequest"><span class="badge">M</span>RotateKeyRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.kasregistry.RotateKeyRequest.ActiveKey"><span class="badge">M</span>RotateKeyRequest.ActiveKey</a>
                 </li>
               
                 <li>
@@ -7883,10 +7883,10 @@ Mutable metadata for the key </p></td>
                 </tr>
               
                 <tr>
-                  <td>key_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>key</td>
+                  <td><a href="#policy.kasregistry.KasKey">KasKey</a></td>
                   <td></td>
-                  <td><p>A user-defined identifier of the key to retrieve </p></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -7990,6 +7990,37 @@ Mutable metadata for the key </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.KasKey">KasKey</h3>
+        <p>Nested message for specifying the active key using KAS ID and Key ID</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required UUID of the Key Access Server </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required Key ID of the key in question </p></td>
                 </tr>
               
             </tbody>
@@ -8589,7 +8620,7 @@ Pagination request for the list of keys </p></td>
               
                 <tr>
                   <td>key</td>
-                  <td><a href="#policy.kasregistry.RotateKeyRequest.ActiveKey">RotateKeyRequest.ActiveKey</a></td>
+                  <td><a href="#policy.kasregistry.KasKey">KasKey</a></td>
                   <td></td>
                   <td><p>Alternative way to specify the active key using KAS ID and Key ID </p></td>
                 </tr>
@@ -8599,37 +8630,6 @@ Pagination request for the list of keys </p></td>
                   <td><a href="#policy.kasregistry.RotateKeyRequest.NewKey">RotateKeyRequest.NewKey</a></td>
                   <td></td>
                   <td><p>Information about the new key to be rotated in </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.kasregistry.RotateKeyRequest.ActiveKey">RotateKeyRequest.ActiveKey</h3>
-        <p>Nested message for specifying the active key using KAS ID and Key ID</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>kas_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Required UUID of the Key Access Server </p></td>
-                </tr>
-              
-                <tr>
-                  <td>kid</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Required Key ID of the key in question </p></td>
                 </tr>
               
             </tbody>

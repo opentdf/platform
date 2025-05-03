@@ -18,6 +18,7 @@ const (
 	errMessageKeyID      = "key_id"
 	errMessageKasID      = "kas_id"
 	errMessageKeyStatus  = "key_status"
+	errMessageKeyKid     = "key.kid"
 	errMessageKeyAlgo    = "key_algorithm"
 	errMessageKeyMode    = "key_mode"
 	errMessagePubKeyCtx  = "public_key_ctx"
@@ -56,14 +57,28 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			errorMessage: errMessageUUID,
 		},
 		{
-			name: "Invalid Key ID (empty string)",
+			name: "Invalid Key - Key ID (empty)",
 			req: &kasregistry.GetKeyRequest{
-				Identifier: &kasregistry.GetKeyRequest_KeyId{
-					KeyId: "",
+				Identifier: &kasregistry.GetKeyRequest_Key{
+					Key: &kasregistry.KasKey{
+						KasId: validUUID,
+					},
 				},
 			},
 			expectError:  true,
-			errorMessage: errMessageKeyID,
+			errorMessage: errMessageKeyKid,
+		},
+		{
+			name: "Invalid Key - Kas ID (empty)",
+			req: &kasregistry.GetKeyRequest{
+				Identifier: &kasregistry.GetKeyRequest_Key{
+					Key: &kasregistry.KasKey{
+						Kid: validUUID,
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageKasID,
 		},
 		{
 			name: "Valid ID (valid uuid)",
@@ -75,10 +90,13 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "Valid Key ID",
+			name: "Valid Key Req",
 			req: &kasregistry.GetKeyRequest{
-				Identifier: &kasregistry.GetKeyRequest_KeyId{
-					KeyId: validKeyID,
+				Identifier: &kasregistry.GetKeyRequest_Key{
+					Key: &kasregistry.KasKey{
+						KasId: validUUID,
+						Kid:   validKeyID,
+					},
 				},
 			},
 			expectError: false,

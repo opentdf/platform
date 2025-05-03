@@ -3444,11 +3444,13 @@ LEFT JOIN
     provider_config as pc ON kask.provider_config_id = pc.id
 WHERE ($1::uuid IS NULL OR kask.id = $1::uuid)
   AND ($2::text IS NULL OR kask.key_id = $2::text)
+  AND ($3::uuid IS NULL OR kask.key_access_server_id = $3::uuid)
 `
 
 type getKeyParams struct {
 	ID    pgtype.UUID `json:"id"`
 	KeyID pgtype.Text `json:"key_id"`
+	KasID pgtype.UUID `json:"kas_id"`
 }
 
 type getKeyRow struct {
@@ -3492,8 +3494,9 @@ type getKeyRow struct {
 //	    provider_config as pc ON kask.provider_config_id = pc.id
 //	WHERE ($1::uuid IS NULL OR kask.id = $1::uuid)
 //	  AND ($2::text IS NULL OR kask.key_id = $2::text)
+//	  AND ($3::uuid IS NULL OR kask.key_access_server_id = $3::uuid)
 func (q *Queries) getKey(ctx context.Context, arg getKeyParams) (getKeyRow, error) {
-	row := q.db.QueryRow(ctx, getKey, arg.ID, arg.KeyID)
+	row := q.db.QueryRow(ctx, getKey, arg.ID, arg.KeyID, arg.KasID)
 	var i getKeyRow
 	err := row.Scan(
 		&i.ID,

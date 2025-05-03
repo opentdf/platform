@@ -145,9 +145,12 @@ func (s *KasRegistryKeySuite) Test_GetKasKey_InvalidId_Fail() {
 	s.Require().ErrorContains(err, db.ErrUUIDInvalid.Error())
 }
 
-func (s *KasRegistryKeySuite) Test_GetKasKey_InvalidKeyId_Fail() {
-	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_KeyId{
-		KeyId: "",
+func (s *KasRegistryKeySuite) Test_GetKasKey_InvalidKey_Fail() {
+	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
+		Key: &kasregistry.KasKey{
+			KasId: "invalid-uuid",
+			Kid:   "",
+		},
 	})
 	s.Require().Error(err)
 	s.Nil(resp)
@@ -173,9 +176,43 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyById_Success() {
 	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetProviderConfig().GetId())
 }
 
+func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_WrongKas_Fail() {
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
+		Key: &kasregistry.KasKey{
+			KasId: kas.GetId(),
+			Kid:   s.kasKeys[0].KeyID,
+		},
+	})
+	s.Require().ErrorContains(err, db.ErrNotFound.Error())
+	s.Nil(resp)
+
+	_, err = s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, kas.GetId())
+	s.Require().NoError(err)
+}
+
+func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_NoKeyIdInKas_Fail() {
+	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
+		Key: &kasregistry.KasKey{
+			KasId: s.kasKeys[0].KeyAccessServerID,
+			Kid:   "a-random-key-id",
+		},
+	})
+	s.Require().ErrorContains(err, db.ErrNotFound.Error())
+	s.Nil(resp)
+}
+
 func (s *KasRegistryKeySuite) Test_GetKasKeyByKeyId_Success() {
-	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_KeyId{
-		KeyId: s.kasKeys[0].KeyID,
+	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
+		Key: &kasregistry.KasKey{
+			KasId: s.kasKeys[0].KeyAccessServerID,
+			Kid:   s.kasKeys[0].KeyID,
+		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)

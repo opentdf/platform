@@ -311,8 +311,8 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 	switch i := r.Msg.GetIdentifier().(type) {
 	case *kasr.GetKeyRequest_Id:
 		s.logger.Debug("Getting keyAccessServer key by ID", slog.String("ID", i.Id))
-	case *kasr.GetKeyRequest_KeyId:
-		s.logger.Debug("Getting keyAccessServer by KeyId", slog.String("Name", i.KeyId))
+	case *kasr.GetKeyRequest_Key:
+		s.logger.Debug("Getting keyAccessServer by KeyId and KasId", slog.String("Key Id", i.Key.Kid), slog.String("KAS Id", i.Key.KasId))
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, nil)
 	}

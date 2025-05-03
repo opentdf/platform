@@ -291,20 +291,6 @@
     }
   },
   "definitions": {
-    "RotateKeyRequestActiveKey": {
-      "type": "object",
-      "properties": {
-        "kasId": {
-          "type": "string",
-          "title": "Required UUID of the Key Access Server"
-        },
-        "kid": {
-          "type": "string",
-          "title": "Required Key ID of the key in question"
-        }
-      },
-      "title": "Nested message for specifying the active key using KAS ID and Key ID"
-    },
     "RotateKeyRequestNewKey": {
       "type": "object",
       "properties": {
@@ -466,6 +452,20 @@
         }
       },
       "title": "Can be namespace, attribute definition, or value"
+    },
+    "kasregistryKasKey": {
+      "type": "object",
+      "properties": {
+        "kasId": {
+          "type": "string",
+          "title": "Required UUID of the Key Access Server"
+        },
+        "kid": {
+          "type": "string",
+          "title": "Required Key ID of the key in question"
+        }
+      },
+      "title": "Nested message for specifying the active key using KAS ID and Key ID"
     },
     "kasregistryKeyAccessServerGrants": {
       "type": "object",

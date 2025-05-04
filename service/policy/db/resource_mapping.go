@@ -5,11 +5,11 @@ import (
 	"log/slog"
 	"strings"
 
+	fqnLib "github.com/opentdf/platform/lib/fqn"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/service/pkg/db"
-	"github.com/opentdf/platform/service/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -235,7 +235,7 @@ func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqn
 	resultCount := 0
 
 	for _, fqn := range fqns {
-		fullyQualifiedGroup, err := util.ParseResourceMappingGroupFqn(fqn)
+		fullyQualifiedGroup, err := fqnLib.ParseResourceMappingGroupFqn(fqn)
 		if err != nil {
 			// invalid FQNs not included in the response - ignore and continue, but log for investigation
 			slog.DebugContext(ctx, "error parsing Resource Mapping Group FQN", slog.String("rmg_fqn", fqn))

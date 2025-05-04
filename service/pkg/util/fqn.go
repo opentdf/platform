@@ -25,33 +25,35 @@ type FullyQualifiedAttribute struct {
 	Value     string
 }
 
-// Regex for attribute value FQN format: https://<namespace>/attr/<n>/value/<value>
-// The $ at the end ensures no extra segments after value
-var attributeValueFQNRegex = regexp.MustCompile(
-	`^https:\/\/(?<namespace>[^\/]+)\/attr\/(?<n>[^\/]+)\/value\/(?<value>[^\/]+)$`,
-)
+var (
+	// Regex for attribute value FQN format: https://<namespace>/attr/<name>/value/<value>
+	// The $ at the end ensures no extra segments after value
+	attributeValueFQNRegex = regexp.MustCompile(
+		`^https:\/\/(?<namespace>[^\/]+)\/attr\/(?<name>[^\/]+)\/value\/(?<value>[^\/]+)$`,
+	)
 
-// Regex for attribute definition FQN format: https://<namespace>/attr/<n>
-// The $ at the end ensures no extra segments after name
-var attributeDefinitionFQNRegex = regexp.MustCompile(
-	`^https:\/\/(?<namespace>[^\/]+)\/attr\/(?<n>[^\/]+)$`,
-)
+	// Regex for attribute definition FQN format: https://<namespace>/attr/<name>
+	// The $ at the end ensures no extra segments after name
+	attributeDefinitionFQNRegex = regexp.MustCompile(
+		`^https:\/\/(?<namespace>[^\/]+)\/attr\/(?<name>[^\/]+)$`,
+	)
 
-// Regex for just namespace: https://<namespace>
-// Only match exactly https:// followed by a namespace with no forward slashes
-var namespaceOnlyRegex = regexp.MustCompile(
-	`^https:\/\/(?<namespace>[^\/]+)$`,
-)
+	// Regex for just namespace: https://<namespace>
+	// Only match exactly https:// followed by a namespace with no forward slashes
+	namespaceOnlyRegex = regexp.MustCompile(
+		`^https:\/\/(?<namespace>[^\/]+)$`,
+	)
 
-// protovalidate already validates the FQN format in the service request
-// for parsing purposes, we can just look for any non-whitespace characters
-// e.g. should be in format of "https://<namespace>/resm/<group name>"
-var resourceMappingGroupFqnRegex = regexp.MustCompile(
-	`^https:\/\/(?<namespace>\S+)\/resm\/(?<groupName>\S+)$`,
-)
+	// protovalidate already validates the FQN format in the service request
+	// for parsing purposes, we can just look for any non-whitespace characters
+	// e.g. should be in format of "https://<namespace>/resm/<group name>"
+	resourceMappingGroupFqnRegex = regexp.MustCompile(
+		`^https:\/\/(?<namespace>\S+)\/resm\/(?<groupName>\S+)$`,
+	)
 
-var registeredResourceValueFqnRegex = regexp.MustCompile(
-	`^https:\/\/reg_res\/(?<name>\S+)\/value\/(?<value>\S+)$`,
+	registeredResourceValueFqnRegex = regexp.MustCompile(
+		`^https:\/\/reg_res\/(?<name>\S+)\/value\/(?<value>\S+)$`,
+	)
 )
 
 // todo: is it possible to make this more generic and support all fqn formats?
@@ -95,18 +97,18 @@ func ParseRegisteredResourceValueFqn(fqn string) (*FullyQualifiedRegisteredResou
 // ParseAttributeFqn parses an attribute FQN string into a FullyQualifiedAttribute struct.
 // The FQN can be:
 // - a namespace only FQN (https://<namespace>)
-// - a definition FQN (https://<namespace>/attr/<n>)
-// - a value FQN (https://<namespace>/attr/<n>/value/<value>)
+// - a definition FQN (https://<namespace>/attr/<name>)
+// - a value FQN (https://<namespace>/attr/<name>/value/<value>)
 func ParseAttributeFqn(fqn string) (*FullyQualifiedAttribute, error) {
 	// First try to match against the attribute value pattern
 	valueMatches := attributeValueFQNRegex.FindStringSubmatch(fqn)
 	if len(valueMatches) > 0 {
 		namespaceIdx := attributeValueFQNRegex.SubexpIndex("namespace")
-		nameIdx := attributeValueFQNRegex.SubexpIndex("n")
+		nameIdx := attributeValueFQNRegex.SubexpIndex("name")
 		valueIdx := attributeValueFQNRegex.SubexpIndex("value")
 
 		if len(valueMatches) <= namespaceIdx || len(valueMatches) <= nameIdx || len(valueMatches) <= valueIdx {
-			return nil, errors.New("error: valid attribute value FQN format https://<namespace>/attr/<n>/value/<value> must be provided")
+			return nil, errors.New("error: valid attribute value FQN format https://<namespace>/attr/<name>/value/<value> must be provided")
 		}
 
 		// Ensure the value isn't empty
@@ -126,10 +128,10 @@ func ParseAttributeFqn(fqn string) (*FullyQualifiedAttribute, error) {
 	defMatches := attributeDefinitionFQNRegex.FindStringSubmatch(fqn)
 	if len(defMatches) > 0 {
 		namespaceIdx := attributeDefinitionFQNRegex.SubexpIndex("namespace")
-		nameIdx := attributeDefinitionFQNRegex.SubexpIndex("n")
+		nameIdx := attributeDefinitionFQNRegex.SubexpIndex("name")
 
 		if len(defMatches) <= namespaceIdx || len(defMatches) <= nameIdx {
-			return nil, errors.New("error: valid attribute definition FQN format https://<namespace>/attr/<n> must be provided")
+			return nil, errors.New("error: valid attribute definition FQN format https://<namespace>/attr/<name> must be provided")
 		}
 
 		// Ensure the name isn't empty
@@ -167,5 +169,5 @@ func ParseAttributeFqn(fqn string) (*FullyQualifiedAttribute, error) {
 		}, nil
 	}
 
-	return nil, errors.New("error: invalid attribute FQN format, must be https://<namespace>, https://<namespace>/attr/<n>, or https://<namespace>/attr/<n>/value/<value>")
+	return nil, errors.New("error: invalid attribute FQN format, must be https://<namespace>, https://<namespace>/attr/<name>, or https://<namespace>/attr/<name>/value/<value>")
 }

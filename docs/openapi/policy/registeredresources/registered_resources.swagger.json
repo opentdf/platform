@@ -196,6 +196,17 @@
         }
       }
     },
+    "registeredresourcesGetRegisteredResourceValuesByFQNsResponse": {
+      "type": "object",
+      "properties": {
+        "fqnValueMap": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/policyRegisteredResourceValue"
+          }
+        }
+      }
+    },
     "registeredresourcesListRegisteredResourceValuesResponse": {
       "type": "object",
       "properties": {

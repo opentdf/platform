@@ -3570,9 +3570,16 @@ SELECT
     ) FILTER (WHERE v.id IS NOT NULL) as values
 FROM registered_resources r
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
-WHERE r.id = $1
+WHERE
+    (NULLIF($1, '') IS NULL OR r.id = $1::UUID) AND
+    (NULLIF($2, '') IS NULL OR r.name = $2::VARCHAR)
 GROUP BY r.id
 `
+
+type getRegisteredResourceParams struct {
+	ID   interface{} `json:"id"`
+	Name interface{} `json:"name"`
+}
 
 type getRegisteredResourceRow struct {
 	ID       string `json:"id"`
@@ -3581,7 +3588,7 @@ type getRegisteredResourceRow struct {
 	Values   []byte `json:"values"`
 }
 
-// TODO add FQN support
+// getRegisteredResource
 //
 //	SELECT
 //	    r.id,
@@ -3595,10 +3602,12 @@ type getRegisteredResourceRow struct {
 //	    ) FILTER (WHERE v.id IS NOT NULL) as values
 //	FROM registered_resources r
 //	LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
-//	WHERE r.id = $1
+//	WHERE
+//	    (NULLIF($1, '') IS NULL OR r.id = $1::UUID) AND
+//	    (NULLIF($2, '') IS NULL OR r.name = $2::VARCHAR)
 //	GROUP BY r.id
-func (q *Queries) getRegisteredResource(ctx context.Context, id string) (getRegisteredResourceRow, error) {
-	row := q.db.QueryRow(ctx, getRegisteredResource, id)
+func (q *Queries) getRegisteredResource(ctx context.Context, arg getRegisteredResourceParams) (getRegisteredResourceRow, error) {
+	row := q.db.QueryRow(ctx, getRegisteredResource, arg.ID, arg.Name)
 	var i getRegisteredResourceRow
 	err := row.Scan(
 		&i.ID,
@@ -3611,13 +3620,23 @@ func (q *Queries) getRegisteredResource(ctx context.Context, id string) (getRegi
 
 const getRegisteredResourceValue = `-- name: getRegisteredResourceValue :one
 SELECT
-    id,
-    registered_resource_id,
-    value,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-FROM registered_resource_values
-WHERE id = $1
+    v.id,
+    v.registered_resource_id,
+    v.value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata
+FROM registered_resource_values v
+JOIN registered_resources r ON v.registered_resource_id = r.id
+WHERE
+    (NULLIF($1, '') IS NULL OR v.id = $1::UUID) AND
+    (NULLIF($2, '') IS NULL OR r.name = $2::VARCHAR) AND
+    (NULLIF($3, '') IS NULL OR v.value = $3::VARCHAR)
 `
+
+type getRegisteredResourceValueParams struct {
+	ID    interface{} `json:"id"`
+	Name  interface{} `json:"name"`
+	Value interface{} `json:"value"`
+}
 
 type getRegisteredResourceValueRow struct {
 	ID                   string `json:"id"`
@@ -3629,14 +3648,18 @@ type getRegisteredResourceValueRow struct {
 // getRegisteredResourceValue
 //
 //	SELECT
-//	    id,
-//	    registered_resource_id,
-//	    value,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata
-//	FROM registered_resource_values
-//	WHERE id = $1
-func (q *Queries) getRegisteredResourceValue(ctx context.Context, id string) (getRegisteredResourceValueRow, error) {
-	row := q.db.QueryRow(ctx, getRegisteredResourceValue, id)
+//	    v.id,
+//	    v.registered_resource_id,
+//	    v.value,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata
+//	FROM registered_resource_values v
+//	JOIN registered_resources r ON v.registered_resource_id = r.id
+//	WHERE
+//	    (NULLIF($1, '') IS NULL OR v.id = $1::UUID) AND
+//	    (NULLIF($2, '') IS NULL OR r.name = $2::VARCHAR) AND
+//	    (NULLIF($3, '') IS NULL OR v.value = $3::VARCHAR)
+func (q *Queries) getRegisteredResourceValue(ctx context.Context, arg getRegisteredResourceValueParams) (getRegisteredResourceValueRow, error) {
+	row := q.db.QueryRow(ctx, getRegisteredResourceValue, arg.ID, arg.Name, arg.Value)
 	var i getRegisteredResourceValueRow
 	err := row.Scan(
 		&i.ID,

@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: Generate a token
         id: generate_token
-        uses: actions/create-github-app-token@0d564482f06ca65fa9e77e2510873638c82206f2 # v1.11.5
+        uses: actions/create-github-app-token@30bf6253fa41bdc8d1501d202ad15287582246b4 # v2.0.3
         with:
           app-id: "${{ secrets.APP_ID }}"
           private-key: "${{ secrets.AUTOMATION_KEY }}"
@@ -117,7 +117,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Generate a token
         id: generate_token
-        uses: actions/create-github-app-token@0d564482f06ca65fa9e77e2510873638c82206f2 # v1.11.5
+        uses: actions/create-github-app-token@30bf6253fa41bdc8d1501d202ad15287582246b4 # v2.0.3
         with:
           app-id: "${{ secrets.APP_ID }}"
           private-key: "${{ secrets.AUTOMATION_KEY }}"

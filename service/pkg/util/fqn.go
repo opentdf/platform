@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 )
 
@@ -26,6 +27,8 @@ type FullyQualifiedAttribute struct {
 }
 
 var (
+	ErrInvalidFQNFormat = errors.New("error: invalid FQN format")
+
 	// Regex for attribute value FQN format: https://<namespace>/attr/<name>/value/<value>
 	// The $ at the end ensures no extra segments after value
 	attributeValueFQNRegex = regexp.MustCompile(
@@ -54,10 +57,33 @@ var (
 	registeredResourceValueFqnRegex = regexp.MustCompile(
 		`^https:\/\/reg_res\/(?<name>\S+)\/value\/(?<value>\S+)$`,
 	)
+
+	// Regex rules for valid object names:
+	// - alphanumeric
+	// - underscores (not beginning or end)
+	// - hyphens (not beginning or end)
+	// - 1-253 characters in total, starting and ending with an alphanumeric character
+	validObjectNameRegex = regexp.MustCompile(
+		`^[a-zA-Z0-9]([a-zA-Z0-9_-]{0,251}[a-zA-Z0-9])?$`,
+	)
+
+	// Regex rules for valid namespaces:
+	// - alphanumeric
+	// - hyphens
+	// - periods
+	// - 1-253 characters in total, starting and ending with an alphanumeric character
+	// - at least one period
+	// - at least one alphanumeric character
+	// - no consecutive periods or hyphens
+	validNamespaceRegex = regexp.MustCompile(
+		`^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`,
+	)
 )
 
 // todo: is it possible to make this more generic and support all fqn formats?
 
+// ParseResourceMappingGroupFqn parses a resource mapping group FQN string into a FullyQualifiedResourceMappingGroup struct.
+// The FQN must be in the format: https://<namespace>/resm/<group name>
 func ParseResourceMappingGroupFqn(fqn string) (*FullyQualifiedResourceMappingGroup, error) {
 	matches := resourceMappingGroupFqnRegex.FindStringSubmatch(fqn)
 	numMatches := len(matches)
@@ -69,13 +95,23 @@ func ParseResourceMappingGroupFqn(fqn string) (*FullyQualifiedResourceMappingGro
 		return nil, errors.New("error: valid FQN format of https://<namespace>/resm/<group name> must be provided")
 	}
 
+	ns := matches[namespaceIdx]
+	groupName := matches[groupNameIdx]
+
+	isValid := validNamespaceRegex.MatchString(ns) && validObjectNameRegex.MatchString(groupName)
+	if !isValid {
+		return nil, fmt.Errorf("%w: found namespace %s with group name %s", ErrInvalidFQNFormat, ns, groupName)
+	}
+
 	return &FullyQualifiedResourceMappingGroup{
 		Fqn:       fqn,
-		Namespace: matches[namespaceIdx],
-		GroupName: matches[groupNameIdx],
+		Namespace: ns,
+		GroupName: groupName,
 	}, nil
 }
 
+// ParseRegisteredResourceValueFqn parses a registered resource value FQN string into a FullyQualifiedRegisteredResourceValue struct.
+// The FQN must be in the format: https://reg_res/<name>/value/<value>
 func ParseRegisteredResourceValueFqn(fqn string) (*FullyQualifiedRegisteredResourceValue, error) {
 	matches := registeredResourceValueFqnRegex.FindStringSubmatch(fqn)
 	numMatches := len(matches)
@@ -84,13 +120,20 @@ func ParseRegisteredResourceValueFqn(fqn string) (*FullyQualifiedRegisteredResou
 	valueIdx := registeredResourceValueFqnRegex.SubexpIndex("value")
 
 	if numMatches < nameIdx || numMatches < valueIdx {
-		return nil, errors.New("error: valid FQN format of https://reg_res/<name>/value/<value> must be provided")
+		return nil, fmt.Errorf("%w: valid FQN format of https://reg_res/<name>/value/<value> must be provided", ErrInvalidFQNFormat)
+	}
+
+	name := matches[nameIdx]
+	value := matches[valueIdx]
+	isValid := validObjectNameRegex.MatchString(name) && validObjectNameRegex.MatchString(value)
+	if !isValid {
+		return nil, fmt.Errorf("%w: found name %s with value %s", ErrInvalidFQNFormat, name, value)
 	}
 
 	return &FullyQualifiedRegisteredResourceValue{
 		Fqn:   fqn,
-		Name:  matches[nameIdx],
-		Value: matches[valueIdx],
+		Name:  name,
+		Value: value,
 	}, nil
 }
 
@@ -100,6 +143,10 @@ func ParseRegisteredResourceValueFqn(fqn string) (*FullyQualifiedRegisteredResou
 // - a definition FQN (https://<namespace>/attr/<name>)
 // - a value FQN (https://<namespace>/attr/<name>/value/<value>)
 func ParseAttributeFqn(fqn string) (*FullyQualifiedAttribute, error) {
+	parsed := &FullyQualifiedAttribute{
+		Fqn: fqn,
+	}
+
 	// First try to match against the attribute value pattern
 	valueMatches := attributeValueFQNRegex.FindStringSubmatch(fqn)
 	if len(valueMatches) > 0 {
@@ -108,20 +155,23 @@ func ParseAttributeFqn(fqn string) (*FullyQualifiedAttribute, error) {
 		valueIdx := attributeValueFQNRegex.SubexpIndex("value")
 
 		if len(valueMatches) <= namespaceIdx || len(valueMatches) <= nameIdx || len(valueMatches) <= valueIdx {
-			return nil, errors.New("error: valid attribute value FQN format https://<namespace>/attr/<name>/value/<value> must be provided")
+			return nil, fmt.Errorf("%w: valid attribute value FQN format https://<namespace>/attr/<name>/value/<value> must be provided", ErrInvalidFQNFormat)
 		}
 
-		// Ensure the value isn't empty
-		if valueMatches[valueIdx] == "" {
-			return nil, errors.New("error: attribute value cannot be empty in FQN")
+		ns := valueMatches[namespaceIdx]
+		name := valueMatches[nameIdx]
+		value := valueMatches[valueIdx]
+
+		isValid := validNamespaceRegex.MatchString(ns) && validObjectNameRegex.MatchString(name) && validObjectNameRegex.MatchString(value)
+		if !isValid {
+			return nil, fmt.Errorf("%w: found namespace %s with attribute name %s and value %s", ErrInvalidFQNFormat, ns, name, value)
 		}
 
-		return &FullyQualifiedAttribute{
-			Fqn:       fqn,
-			Namespace: valueMatches[namespaceIdx],
-			Name:      valueMatches[nameIdx],
-			Value:     valueMatches[valueIdx],
-		}, nil
+		parsed.Namespace = ns
+		parsed.Name = name
+		parsed.Value = value
+
+		return parsed, nil
 	}
 
 	// If not a value FQN, try to match against the attribute definition pattern
@@ -134,17 +184,17 @@ func ParseAttributeFqn(fqn string) (*FullyQualifiedAttribute, error) {
 			return nil, errors.New("error: valid attribute definition FQN format https://<namespace>/attr/<name> must be provided")
 		}
 
-		// Ensure the name isn't empty
-		if defMatches[nameIdx] == "" {
-			return nil, errors.New("error: attribute name cannot be empty in FQN")
-		}
+		ns := defMatches[namespaceIdx]
+		name := defMatches[nameIdx]
 
-		return &FullyQualifiedAttribute{
-			Fqn:       fqn,
-			Namespace: defMatches[namespaceIdx],
-			Name:      defMatches[nameIdx],
-			Value:     "",
-		}, nil
+		isValid := validNamespaceRegex.MatchString(ns) && validObjectNameRegex.MatchString(name)
+		if !isValid {
+			return nil, fmt.Errorf("%w: found namespace %s with attribute name %s", ErrInvalidFQNFormat, ns, name)
+		}
+		parsed.Namespace = ns
+		parsed.Name = name
+
+		return parsed, nil
 	}
 
 	// If not a definition FQN, try to match against just the namespace
@@ -156,17 +206,14 @@ func ParseAttributeFqn(fqn string) (*FullyQualifiedAttribute, error) {
 			return nil, errors.New("error: valid namespace FQN format https://<namespace> must be provided")
 		}
 
-		// Ensure the namespace isn't empty
-		if nsMatches[namespaceIdx] == "" {
-			return nil, errors.New("error: namespace cannot be empty in FQN")
+		ns := nsMatches[namespaceIdx]
+		isValid := validNamespaceRegex.MatchString(ns)
+		if !isValid {
+			return nil, fmt.Errorf("%w: found namespace %s", ErrInvalidFQNFormat, ns)
 		}
 
-		return &FullyQualifiedAttribute{
-			Fqn:       fqn,
-			Namespace: nsMatches[namespaceIdx],
-			Name:      "",
-			Value:     "",
-		}, nil
+		parsed.Namespace = ns
+		return parsed, nil
 	}
 
 	return nil, errors.New("error: invalid attribute FQN format, must be https://<namespace>, https://<namespace>/attr/<name>, or https://<namespace>/attr/<name>/value/<value>")

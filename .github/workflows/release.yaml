@@ -108,7 +108,7 @@ jobs:
           GONOSUMDB: github.com/opentdf/platform/${{join(fromJson(needs.release-please.outputs.paths_released), ',github.com/opentdf/platform/')}}
           RELEASED_PATHS: ${{ needs.release-please.outputs.paths_released }}
           MATRIX_PATH: ${{ matrix.path }}
-      - uses: planetscale/ghcommit-action@d4176bfacef926cc2db351eab20398dfc2f593b5
+      - uses: planetscale/ghcommit-action@5b20c92facae8dbf8a3836dc65b8503dda378573
         with:
           commit_message: "fix(core): Autobump ${{ matrix.path }}"
           repo: ${{ github.repository }}

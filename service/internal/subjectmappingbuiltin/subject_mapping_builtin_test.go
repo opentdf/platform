@@ -57,6 +57,7 @@ var (
 		},
 	}
 )
+
 var (
 	flattenedEntity2, _ = flattening.Flatten(entity2)
 	entity3             = map[string]any{

@@ -1,4 +1,4 @@
-module github.com/opentdf/platform/lib/fqn
+module github.com/opentdf/platform/lib/identifier
 
 go 1.23
 

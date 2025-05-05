@@ -96,8 +96,8 @@ contain any special characters. It should be the same as the directory name for 
 
 ### Registration
 
-Services are registered with the platform using the `serviceregistry.RegisterService` function. This function expects to be
-be given a `serviceregistry.IService` object.
+Services are registered with the platform using the `serviceregistry.RegisterService` function. This function expects to be 
+given a `serviceregistry.IService` object.
 
 <!-- markdownlint-disable MD034 github embedded sourcecode -->
 https://github.com/opentdf/platform/blob/459e82aa3c1d278f5ac5f4835f94d9f3fe90727e/service/pkg/serviceregistry/serviceregistry.go#L48-L55

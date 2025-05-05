@@ -88,7 +88,7 @@ func WithBuiltinAuthZPolicy(policy string) StartOptions {
 }
 
 // WithCoreServices option adds additional core services to the platform
-// It takes a variadic parameter of type serviceregistry.Registration, which represents the core services to be added.
+// It takes a variadic parameter of type serviceregistry.IService, which represents the core services to be added.
 func WithCoreServices(services ...serviceregistry.IService) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.extraCoreServices = append(c.extraCoreServices, services...)
@@ -98,7 +98,7 @@ func WithCoreServices(services ...serviceregistry.IService) StartOptions {
 
 // WithServices option adds additional services to the platform.
 // This will set the mode for these services to the namespace name.
-// It takes a variadic parameter of type serviceregistry.Registration, which represents the services to be added.
+// It takes a variadic parameter of type serviceregistry.IService, which represents the services to be added.
 func WithServices(services ...serviceregistry.IService) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.extraServices = append(c.extraServices, services...)

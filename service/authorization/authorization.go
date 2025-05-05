@@ -598,11 +598,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	subMapsByVal := makeSubMapsByValLookup(subjectMappingsList)
 	// create a lookup map of attribute values by FQN (for rego query)
 	fqnAttrVals := makeValsByFqnsLookup(attrsList, subMapsByVal, scopeMap)
-	avf := &attr.GetAttributeValuesByFqnsResponse{
-		FqnAttributeValues: fqnAttrVals,
-	}
-	subjectMappings := avf.GetFqnAttributeValues()
-	as.logger.DebugContext(ctx, fmt.Sprintf("retrieved %d subject mappings", len(subjectMappings)))
+	as.logger.DebugContext(ctx, fmt.Sprintf("retrieved %d attribute values to test subject mappings", len(fqnAttrVals)))
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Msg.Entities == nil {
 		as.logger.ErrorContext(ctx, "requires entities")
@@ -620,7 +616,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	}
 
 	// call rego on all entities
-	in, err := entitlements.OpaInput(subjectMappings, ersResp)
+	in, err := entitlements.OpaInput(fqnAttrVals, ersResp)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to build rego input", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to build rego input"))

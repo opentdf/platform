@@ -6,19 +6,23 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/open-policy-agent/opa/rego"
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 )
 
 var (
-	ErrMissingRequiredSDK         = errors.New("access: missing required SDK")
-	ErrMissingRequiredLogger      = errors.New("access: missing required logger")
-	ErrInvalidAttributeDefinition = errors.New("access: invalid attribute definition")
-	ErrInvalidResourceType        = errors.New("access: invalid resource type")
+	ErrMissingRequiredSDK                          = errors.New("access: missing required SDK")
+	ErrMissingRequiredLogger                       = errors.New("access: missing required logger")
+	ErrMissingEntityResolutionServiceSDKConnection = errors.New("access: missing required entity resolution SDK connection, cannot be nil")
+	ErrInvalidAttributeDefinition                  = errors.New("access: invalid attribute definition")
+	ErrInvalidResourceType                         = errors.New("access: invalid resource type")
 
 	defaultFallbackLoggerConfig = logger.Config{
 		Level:  "info",
@@ -53,11 +57,18 @@ type PDP struct {
 	sdk                       *otdfSDK.SDK
 	logger                    *logger.Logger
 	attributesByDefinitionFQN map[string]*policy.Attribute
+	regoEval                  rego.PreparedEvalQuery
 }
 
 // NewPDP creates a new Policy Decision Point instance.
 // If the definitions are not provided, it will attempt to retrieve all attributes in policy.
-func NewPDP(ctx context.Context, sdk *otdfSDK.SDK, l *logger.Logger, attributeDefinitions []*policy.Attribute) (*PDP, error) {
+func NewPDP(
+	ctx context.Context,
+	sdk *otdfSDK.SDK,
+	l *logger.Logger,
+	attributeDefinitions []*policy.Attribute,
+	regoEval rego.PreparedEvalQuery,
+) (*PDP, error) {
 	var err error
 
 	if sdk == nil {
@@ -100,20 +111,39 @@ func NewPDP(ctx context.Context, sdk *otdfSDK.SDK, l *logger.Logger, attributeDe
 		sdk:                       sdk,
 		attributesByDefinitionFQN: definitionsMap,
 		logger:                    l,
+		regoEval:                  regoEval,
 	}, nil
 }
 
-func (p *PDP) GetDecision(entityChain *authz.EntityChain, action *policy.Action, resources []*authz.Resource) (*Decision, error) {
-}
+// func (p *PDP) GetDecision(entityChain *authz.EntityChain, action *policy.Action, resources []*authz.Resource) (*Decision, error) {
+// }
 
-func (p *PDP) GetEntitlements(entities []*authz.Entity, scope *authz.Resource, withComprehensiveHierarchy bool) (*authz.EntityEntitlements, error) {
+func (p *PDP) GetEntitlements(
+	ctx context.Context,
+	entities []*authz.Entity,
+	scope *authz.Resource,
+	withComprehensiveHierarchy bool,
+) (*authz.EntityEntitlements, error) {
+	if p.sdk.EntityResoution == nil {
+		return nil, ErrMissingEntityResolutionServiceSDKConnection
+	}
 	entitlements := make(map[string]*authz.EntityEntitlements_ActionsList)
+
+	// call ERS on all entities
+	ersResp, err := p.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: entities})
+	if err != nil {
+		p.logger.ErrorContext(ctx, "error calling ERS to resolve entities", "entities", req.Msg.GetEntities())
+		return nil, err
+	}
+
 	for _, entity := range entities {
 		entitledActions := make([]*policy.Action, 0)
 
-		entitlements[entity.EphemeralId] = &authz.EntityEntitlements_ActionsList{
-			Actions: entitledActions,
-		}
+		// check subject mappings and actions associated with each of them
+
+		// entitlements[] = &authz.EntityEntitlements_ActionsList{
+		// 	Actions: entitledActions,
+		// }
 	}
 }
 
@@ -127,7 +157,6 @@ func (p *PDP) checkAccess(ctx context.Context, entitlements *authz.EntityEntitle
 		p.logger.DebugContext(ctx, "checking access for resource attribute values", slog.Any("attribute_values", r.AttributeValues.GetFqns()))
 		// TODO: check each definition within the rules for access
 
-
 	default:
 		p.logger.ErrorContext(ctx, "unknown resource type", slog.Any("resource", r))
 		return false, ErrInvalidResourceType
@@ -135,6 +164,7 @@ func (p *PDP) checkAccess(ctx context.Context, entitlements *authz.EntityEntitle
 	return false, nil
 }
 
+// fetchAllDefinitions retrieves all attribute definitions within policy
 func (p *PDP) fetchAllDefinitions(ctx context.Context) ([]*policy.Attribute, error) {
 	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
 	var nextOffset int32
@@ -161,4 +191,65 @@ func (p *PDP) fetchAllDefinitions(ctx context.Context) ([]*policy.Attribute, err
 		}
 	}
 	return attrsList, nil
+}
+
+func (p *PDP) fetchEntitleableAttributes(ctx context.Context, scope *authz.Resource) error {
+	var (
+		subjectMappings = make([]*policy.SubjectMapping, 0)
+		err             error
+	)
+	if scope != nil {
+		subjectMappings, err = p.fetchScopedSubjectMappings(ctx, scope)
+	} else {
+		subjectMappings, err = p.fetchAllSubjectMappings(ctx)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch scoped subject mappings: %w", err)
+	}
+	for _, mapping := range subjectMappings {
+	}
+}
+
+// fetchScopedSubjectMappings retrieves subject mappings based on the provided scope
+func (p *PDP) fetchScopedSubjectMappings(ctx context.Context, scope *authz.Resource) ([]*policy.SubjectMapping, error) {
+	switch r := scope.GetResource().(type) {
+	case *authz.Resource_RegisteredResourceValueFqn:
+		p.logger.DebugContext(ctx, "fetching scoped subject mappings for registered resource value FQN", slog.String("fqn", r.RegisteredResourceValueFqn))
+		// TODO: fully implement this resolution
+		return nil, nil
+	case *authz.Resource_AttributeValues_:
+		p.logger.DebugContext(ctx, "fetching scoped subject mappings for resource attribute values", slog.Any("attribute_values", r.AttributeValues.GetFqns()))
+
+	default:
+		p.logger.ErrorContext(ctx, "unknown resource type", slog.Any("resource", r))
+		return nil, ErrInvalidResourceType
+	}
+}
+
+// fetchAllSubjectMappings retrieves all subject mappings within policy
+func (p *PDP) fetchAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
+	p.logger.DebugContext(ctx, "fetching all subject mappings")
+	// If quantity of subject mappings exceeds maximum list pagination, all are needed to determine entitlements
+	var nextOffset int32
+	subjectMappings := make([]*policy.SubjectMapping, 0)
+
+	for {
+		listed, err := p.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
+			Pagination: &policy.PageRequest{
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			p.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
+			return nil, fmt.Errorf("failed to list subject mappings: %w", err)
+		}
+
+		nextOffset = listed.GetPagination().GetNextOffset()
+		subjectMappings = append(subjectMappings, listed.GetSubjectMappings()...)
+
+		if nextOffset <= 0 {
+			break
+		}
+	}
+	return subjectMappings, nil
 }

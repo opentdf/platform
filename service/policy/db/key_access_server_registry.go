@@ -432,19 +432,19 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 		}
 
 		switch i.Key.GetIdentifier().(type) {
-		case *kasregistry.KasAsymKey_KasId:
+		case *kasregistry.KasKeyIdentifier_KasId:
 			kasID := pgtypeUUID(i.Key.GetKasId())
 			if !kasID.Valid {
 				return nil, db.ErrSelectIdentifierInvalid
 			}
 			params = getKeyParams{KasID: kasID, KeyID: keyID}
-		case *kasregistry.KasAsymKey_Uri:
+		case *kasregistry.KasKeyIdentifier_Uri:
 			kasURI := pgtypeText(i.Key.GetUri())
 			if !kasURI.Valid {
 				return nil, db.ErrSelectIdentifierInvalid
 			}
 			params = getKeyParams{KasUri: kasURI, KeyID: keyID}
-		case *kasregistry.KasAsymKey_Name:
+		case *kasregistry.KasKeyIdentifier_Name:
 			kasName := pgtypeText(i.Key.GetName())
 			if !kasName.Valid {
 				return nil, db.ErrSelectIdentifierInvalid

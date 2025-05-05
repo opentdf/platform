@@ -172,8 +172,8 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_WrongKas_Fail() {
 	s.Require().NoError(err)
 	s.NotNil(kas)
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
-		Key: &kasregistry.KasAsymKey{
-			Identifier: &kasregistry.KasAsymKey_KasId{
+		Key: &kasregistry.KasKeyIdentifier{
+			Identifier: &kasregistry.KasKeyIdentifier_KasId{
 				KasId: kas.GetId(),
 			},
 			Kid: s.kasKeys[0].KeyID,
@@ -188,8 +188,8 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_WrongKas_Fail() {
 
 func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_NoKeyIdInKas_Fail() {
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
-		Key: &kasregistry.KasAsymKey{
-			Identifier: &kasregistry.KasAsymKey_KasId{
+		Key: &kasregistry.KasKeyIdentifier{
+			Identifier: &kasregistry.KasKeyIdentifier_KasId{
 				KasId: s.kasKeys[0].KeyAccessServerID,
 			},
 			Kid: "a-random-key-id",
@@ -201,8 +201,8 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_NoKeyIdInKas_Fail() {
 
 func (s *KasRegistryKeySuite) Test_GetKasKeyByKeyId_Success() {
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
-		Key: &kasregistry.KasAsymKey{
-			Identifier: &kasregistry.KasAsymKey_KasId{
+		Key: &kasregistry.KasKeyIdentifier{
+			Identifier: &kasregistry.KasKeyIdentifier_KasId{
 				KasId: s.kasKeys[0].KeyAccessServerID,
 			},
 			Kid: s.kasKeys[0].KeyID,
@@ -228,8 +228,8 @@ func (s *KasRegistryKeySuite) Test_GetKasKey_WithKasName_Success() {
 	s.Require().NotNil(kasServer)
 
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
-		Key: &kasregistry.KasAsymKey{
-			Identifier: &kasregistry.KasAsymKey_Name{
+		Key: &kasregistry.KasKeyIdentifier{
+			Identifier: &kasregistry.KasKeyIdentifier_Name{
 				Name: kasServer.GetName(),
 			},
 			Kid: s.kasKeys[0].KeyID,
@@ -255,8 +255,8 @@ func (s *KasRegistryKeySuite) Test_GetKasKey_WithKasUri_Success() {
 	s.Require().NotNil(kasServer)
 
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
-		Key: &kasregistry.KasAsymKey{
-			Identifier: &kasregistry.KasAsymKey_Uri{
+		Key: &kasregistry.KasKeyIdentifier{
+			Identifier: &kasregistry.KasKeyIdentifier_Uri{
 				Uri: kasServer.GetUri(),
 			},
 			Kid: s.kasKeys[0].KeyID,

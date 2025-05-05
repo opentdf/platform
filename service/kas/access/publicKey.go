@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/trust"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -20,12 +21,12 @@ const (
 )
 
 func (p *Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
-	if len(p.KASConfig.Keyring) == 0 {
+	if len(p.Keyring) == 0 {
 		p.Logger.WarnContext(ctx, "no default keys found", "algorithm", algorithm)
 		return "", connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("no default keys configured")))
 	}
 
-	for _, k := range p.KASConfig.Keyring {
+	for _, k := range p.Keyring {
 		if k.Algorithm == algorithm && !k.Legacy {
 			return k.KID, nil
 		}
@@ -41,37 +42,55 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 	}
 	var pem string
 	var err error
-	if p.CryptoProvider == nil {
+
+	// Get the security provider
+	idx := p.GetKeyIndex()
+	if idx == nil {
 		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
 	}
+
+	// Find the key ID
 	kid, err := p.lookupKid(ctx, algorithm)
 	if err != nil {
 		return nil, err
 	}
 
+	// Convert string KID to KeyIdentifier type
+	keyID := trust.KeyIdentifier(kid)
+
+	// Find the key by ID
+	keyDetails, err := idx.FindKeyByID(ctx, keyID)
+	if err != nil {
+		p.Logger.ErrorContext(ctx, "SecurityProvider.FindKeyByID failed", "err", err)
+		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
+	}
+
 	switch algorithm {
 	case security.AlgorithmECP256R1:
-		pem, err = p.CryptoProvider.ECCertificate(kid)
+		// For EC keys, return the certificate
+		pem, err = keyDetails.ExportCertificate(ctx)
 		if err != nil {
-			p.Logger.ErrorContext(ctx, "CryptoProvider.ECPublicKey failed", "err", err)
+			p.Logger.ErrorContext(ctx, "keyDetails.ExportCertificate failed", "err", err)
 			return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
 		}
 	case security.AlgorithmRSA2048:
 		fallthrough
 	case "":
-		pem, err = p.CryptoProvider.RSAPublicKey(kid)
+		// For RSA keys, return the public key in PKCS8 format
+		pem, err = keyDetails.ExportPublicKey(ctx, trust.KeyTypePKCS8)
 		if err != nil {
-			p.Logger.ErrorContext(ctx, "CryptoProvider.RSAPublicKey failed", "err", err)
+			p.Logger.ErrorContext(ctx, "keyDetails.ExportPublicKey failed", "err", err)
 			return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
 		}
 	default:
 		return nil, connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("invalid algorithm")))
 	}
+
 	return connect.NewResponse(&wrapperspb.StringValue{Value: pem}), nil
 }
 
 func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.PublicKeyRequest]) (*connect.Response[kaspb.PublicKeyResponse], error) {
-	ctx, span := p.Tracer.Start(ctx, "PublicKey")
+	ctx, span := p.Start(ctx, "PublicKey")
 	defer span.End()
 
 	algorithm := req.Msg.GetAlgorithm()
@@ -79,10 +98,22 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 		algorithm = security.AlgorithmRSA2048
 	}
 	fmt := req.Msg.GetFmt()
+
+	// Find the key ID
 	kid, err := p.lookupKid(ctx, algorithm)
 	if err != nil {
 		return nil, err
 	}
+
+	// Get the security provider
+	idx := p.GetKeyIndex()
+	if idx == nil {
+		p.Logger.ErrorContext(ctx, "no security provider available")
+		return nil, connect.NewError(connect.CodeInternal, ErrInternal)
+	}
+
+	// Convert string KID to KeyIdentifier type
+	keyID := trust.KeyIdentifier(kid)
 
 	r := func(value, kid string, err error) (*connect.Response[kaspb.PublicKeyResponse], error) {
 		if errors.Is(err, security.ErrCertNotFound) {
@@ -99,21 +130,30 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 		return connect.NewResponse(&kaspb.PublicKeyResponse{PublicKey: value, Kid: kid}), nil
 	}
 
+	// Find the key by ID
+	keyDetails, err := idx.FindKeyByID(ctx, keyID)
+	if err != nil {
+		return r("", kid, err)
+	}
+
 	switch algorithm {
 	case security.AlgorithmECP256R1:
-		ecPublicKeyPem, err := p.CryptoProvider.ECPublicKey(kid)
+		// For EC keys, export the public key
+		ecPublicKeyPem, err := keyDetails.ExportPublicKey(ctx, trust.KeyTypePKCS8)
 		return r(ecPublicKeyPem, kid, err)
 	case security.AlgorithmRSA2048:
 		fallthrough
 	case "":
 		switch fmt {
 		case "jwk":
-			rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKeyAsJSON(kid)
+			// For JWK format, export the public key as JWK
+			rsaPublicKeyPem, err := keyDetails.ExportPublicKey(ctx, trust.KeyTypeJWK)
 			return r(rsaPublicKeyPem, kid, err)
 		case "pkcs8":
 			fallthrough
 		case "":
-			rsaPublicKeyPem, err := p.CryptoProvider.RSAPublicKey(kid)
+			// For PKCS8 format, export the public key as PKCS8
+			rsaPublicKeyPem, err := keyDetails.ExportPublicKey(ctx, trust.KeyTypePKCS8)
 			return r(rsaPublicKeyPem, kid, err)
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/open-policy-agent/opa/rego"
+	"github.com/opentdf/platform/lib/flattening"
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
@@ -133,11 +134,15 @@ func (p *PDP) GetEntitlements(
 		p.logger.ErrorContext(ctx, "error calling ERS to resolve entities", slog.String("error", err.Error()), slog.Any("entities", entities))
 		return nil, err
 	}
+	entityRepresentations := ersResp.GetEntityRepresentations()
 
-	// TODO: get this populated with the attribute values for the entities
-	var attributeMappings map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
+	attributeMappings, err := p.fetchEntitleableAttributes(ctx, entityRepresentations, scope)
+	if err != nil {
+		p.logger.ErrorContext(ctx, "error fetching entitleable attributes", slog.String("error", err.Error()), slog.Any("scope", scope))
+		return nil, err
+	}
 
-	entityIDsToFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings, ersResp.GetEntityRepresentations())
+	entityIDsToFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings, entityRepresentations)
 	if err != nil {
 		p.logger.ErrorContext(ctx, "error evaluating subject mappings for entitlement", slog.String("error", err.Error()), slog.Any("entities", entities))
 		return nil, err
@@ -205,37 +210,94 @@ func (p *PDP) fetchAllDefinitions(ctx context.Context) ([]*policy.Attribute, err
 	return attrsList, nil
 }
 
-func (p *PDP) fetchEntitleableAttributes(ctx context.Context, scope *authz.Resource) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+func (p *PDP) fetchEntitleableAttributes(ctx context.Context, entityRepresentations []*entityresolution.EntityRepresentation, scope *authz.Resource) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	if scope != nil {
-		attributeValuesByFQN, err := p.fetchAttributesByScope(ctx, scope)
+		return p.fetchAttributesByScope(ctx, scope)
 	}
-	// TODO: matchsubjectmappings here?
-	subjectMappings, err = p.fetchAllSubjectMappings(ctx)
+	subjectProperties := make([]*policy.SubjectProperty, 0)
+	for _, entityRep := range entityRepresentations {
+		for _, entity := range entityRep.GetAdditionalProps() {
+			flattened, err := flattening.Flatten(entity.AsMap())
+			if err != nil {
+				p.logger.ErrorContext(ctx, "failed to flatten entity representation", slog.String("error", err.Error()))
+				return nil, fmt.Errorf("failed to flatten entity representation: %w", err)
+			}
+			for _, item := range flattened.Items {
+				val, ok := item.Value.(string)
+				if !ok {
+					p.logger.ErrorContext(ctx, "failed to convert value to string", slog.String("value", fmt.Sprintf("%v", item.Value)))
+					return nil, fmt.Errorf("failed to convert value to string: %w", err)
+				}
+				subjectProperties = append(subjectProperties, &policy.SubjectProperty{
+					ExternalSelectorValue: item.Key,
+					ExternalValue:         val,
+				})
+			}
+		}
+	}
 
+	req := &subjectmapping.MatchSubjectMappingsRequest{
+		SubjectProperties: subjectProperties,
+	}
+	subjectMappings, err := p.sdk.SubjectMapping.MatchSubjectMappings(ctx, req)
+	if err != nil {
+		p.logger.ErrorContext(ctx, "failed to match subject mappings", slog.String("error", err.Error()))
+		return nil, fmt.Errorf("failed to match subject mappings: %w", err)
+	}
+	if subjectMappings == nil {
+		p.logger.ErrorContext(ctx, "subject mappings are nil")
+		return nil, fmt.Errorf("subject mappings are nil: %w", err)
+	}
+	result := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+	for _, mapping := range subjectMappings.GetSubjectMappings() {
+		if mapping == nil {
+			p.logger.ErrorContext(ctx, "subject mapping is nil")
+			return nil, fmt.Errorf("subject mapping is nil: %w", err)
+		}
+		if mapping.GetAttributeValue() == nil {
+			p.logger.ErrorContext(ctx, "aubject mapping's attribute value is nil")
+			return nil, fmt.Errorf("aubject mapping's attribute value is nil: %w", err)
+		}
+		if mapping.GetActions() == nil {
+			p.logger.ErrorContext(ctx, "subject mapping's actions are nil")
+			return nil, fmt.Errorf("subject mapping's actions are nil: %w", err)
+		}
+		mapped := &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+			Value: mapping.GetAttributeValue(),
+		}
+		mapped.Value.SubjectMappings = make([]*policy.SubjectMapping, 0)
+		mapped.Value.SubjectMappings = append(mapped.Value.SubjectMappings, mapping)
+		// TODO: make sure the FQN is present here
+		result[mapping.GetAttributeValue().GetFqn()] = mapped
+	}
+	return result, nil
 }
 
 // fetchAttributesByScope retrieves subject mappings based on the provided scope
 func (p *PDP) fetchAttributesByScope(ctx context.Context, scope *authz.Resource) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	var (
-		subjectMappings []*policy.SubjectMapping
-		err             error
+		attrFqns []string
+		err      error
 	)
 	switch r := scope.GetResource().(type) {
 	case *authz.Resource_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "fetching scoped subject mappings for registered resource value FQN", slog.String("fqn", r.RegisteredResourceValueFqn))
-		// TODO: fully implement this resolution
+		// TODO: fully implement this registered resource resolution
 	case *authz.Resource_AttributeValues_:
 		p.logger.DebugContext(ctx, "fetching scoped subject mappings for resource attribute values", slog.Any("attribute_values", r.AttributeValues.GetFqns()))
-
+		attrFqns = r.AttributeValues.GetFqns()
 	default:
 		p.logger.ErrorContext(ctx, "unknown resource type", slog.Any("resource", r))
 		return nil, ErrInvalidResourceType
 	}
-	return subjectMappings, err
-}
-
-func (p *PDP) fetchAttributeValuesByFqn(ctx context.Context, fqns []string) ([]*policy.Value, error) {
-	p
+	resp, err := p.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attrs.GetAttributeValuesByFqnsRequest{
+		Fqns: attrFqns,
+	})
+	if err != nil {
+		p.logger.ErrorContext(ctx, "failed to get attribute values by FQNs", slog.String("error", err.Error()))
+		return nil, fmt.Errorf("failed to get attribute values by FQNs: %w", err)
+	}
+	return resp.GetFqnAttributeValues(), nil
 }
 
 // fetchAllSubjectMappings retrieves all subject mappings within policy

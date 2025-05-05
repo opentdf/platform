@@ -19,15 +19,4 @@ updates:
       - /sdk
       - /service
     schedule:
-      interval: weekly
-  - package-ecosystem: gomod
-    directories:
-      - /examples
-      - /lib/*
-      - /protocol/go
-      - /sdk
-      - /service
-    allow:
-      - dependency-name: "github.com/opentdf/platform/*"
-    schedule:
       interval: daily

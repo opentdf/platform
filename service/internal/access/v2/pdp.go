@@ -274,6 +274,7 @@ func (p *PDP) fetchAttributesByScope(ctx context.Context, scope *authz.Resource)
 		attrFqns []string
 		err      error
 	)
+
 	switch r := scope.GetResource().(type) {
 	case *authz.Resource_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "fetching scoped subject mappings for registered resource value FQN", slog.String("fqn", r.RegisteredResourceValueFqn))
@@ -285,6 +286,7 @@ func (p *PDP) fetchAttributesByScope(ctx context.Context, scope *authz.Resource)
 		p.logger.ErrorContext(ctx, "unknown resource type", slog.Any("resource", r))
 		return nil, ErrInvalidResourceType
 	}
+
 	resp, err := p.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attrs.GetAttributeValuesByFqnsRequest{
 		Fqns: attrFqns,
 	})

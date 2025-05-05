@@ -145,18 +145,6 @@ func (s *KasRegistryKeySuite) Test_GetKasKey_InvalidId_Fail() {
 	s.Require().ErrorContains(err, db.ErrUUIDInvalid.Error())
 }
 
-func (s *KasRegistryKeySuite) Test_GetKasKey_InvalidKey_Fail() {
-	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
-		Key: &kasregistry.KasAsymKey{
-			KasId: "invalid-uuid",
-			Kid:   "",
-		},
-	})
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorContains(err, db.ErrSelectIdentifierInvalid.Error())
-}
-
 func (s *KasRegistryKeySuite) Test_GetKasKey_InvalidIdentifier_Fail() {
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &keymanagement.GetProviderConfigRequest_Id{
 		Id: "",
@@ -185,8 +173,10 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_WrongKas_Fail() {
 	s.NotNil(kas)
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
 		Key: &kasregistry.KasAsymKey{
-			KasId: kas.GetId(),
-			Kid:   s.kasKeys[0].KeyID,
+			Identifier: &kasregistry.KasAsymKey_KasId{
+				KasId: kas.GetId(),
+			},
+			Kid: s.kasKeys[0].KeyID,
 		},
 	})
 	s.Require().ErrorContains(err, db.ErrNotFound.Error())
@@ -199,8 +189,10 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_WrongKas_Fail() {
 func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_NoKeyIdInKas_Fail() {
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
 		Key: &kasregistry.KasAsymKey{
-			KasId: s.kasKeys[0].KeyAccessServerID,
-			Kid:   "a-random-key-id",
+			Identifier: &kasregistry.KasAsymKey_KasId{
+				KasId: s.kasKeys[0].KeyAccessServerID,
+			},
+			Kid: "a-random-key-id",
 		},
 	})
 	s.Require().ErrorContains(err, db.ErrNotFound.Error())
@@ -210,8 +202,64 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_NoKeyIdInKas_Fail() {
 func (s *KasRegistryKeySuite) Test_GetKasKeyByKeyId_Success() {
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
 		Key: &kasregistry.KasAsymKey{
-			KasId: s.kasKeys[0].KeyAccessServerID,
-			Kid:   s.kasKeys[0].KeyID,
+			Identifier: &kasregistry.KasAsymKey_KasId{
+				KasId: s.kasKeys[0].KeyAccessServerID,
+			},
+			Kid: s.kasKeys[0].KeyID,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.Equal(s.kasKeys[0].ID, resp.GetId())
+	privateKeyCtx, err := base64.StdEncoding.DecodeString(s.kasKeys[0].PrivateKeyCtx)
+	s.Require().NoError(err)
+	s.Equal(privateKeyCtx, resp.GetPrivateKeyCtx())
+	pubKeyCtx, err := base64.StdEncoding.DecodeString(s.kasKeys[0].PublicKeyCtx)
+	s.Require().NoError(err)
+	s.Equal(pubKeyCtx, resp.GetPublicKeyCtx())
+	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetProviderConfig().GetId())
+}
+
+func (s *KasRegistryKeySuite) Test_GetKasKey_WithKasName_Success() {
+	kasServer, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, &kasregistry.GetKeyAccessServerRequest_KasId{
+		KasId: s.kasKeys[0].KeyAccessServerID,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(kasServer)
+
+	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
+		Key: &kasregistry.KasAsymKey{
+			Identifier: &kasregistry.KasAsymKey_Name{
+				Name: kasServer.GetName(),
+			},
+			Kid: s.kasKeys[0].KeyID,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.Equal(s.kasKeys[0].ID, resp.GetId())
+	privateKeyCtx, err := base64.StdEncoding.DecodeString(s.kasKeys[0].PrivateKeyCtx)
+	s.Require().NoError(err)
+	s.Equal(privateKeyCtx, resp.GetPrivateKeyCtx())
+	pubKeyCtx, err := base64.StdEncoding.DecodeString(s.kasKeys[0].PublicKeyCtx)
+	s.Require().NoError(err)
+	s.Equal(pubKeyCtx, resp.GetPublicKeyCtx())
+	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetProviderConfig().GetId())
+}
+
+func (s *KasRegistryKeySuite) Test_GetKasKey_WithKasUri_Success() {
+	kasServer, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, &kasregistry.GetKeyAccessServerRequest_KasId{
+		KasId: s.kasKeys[0].KeyAccessServerID,
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(kasServer)
+
+	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
+		Key: &kasregistry.KasAsymKey{
+			Identifier: &kasregistry.KasAsymKey_Uri{
+				Uri: kasServer.GetUri(),
+			},
+			Kid: s.kasKeys[0].KeyID,
 		},
 	})
 	s.Require().NoError(err)

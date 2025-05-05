@@ -459,9 +459,17 @@ message UpdateKeyResponse {
   // Nested message for specifying the active key using KAS ID and Key ID
   message KasAsymKey {
     // Required UUID of the Key Access Server
-    string kas_id = 1 [(buf.validate.field).string.uuid = true];
+    oneof identifier {
+      // option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field
+      string kas_id = 2 [(buf.validate.field).string.uuid = true];
+      string name = 3 [(buf.validate.field).string.min_len = 1];
+      string uri = 4 [(buf.validate.field).string = {
+        min_len: 1
+        uri: true
+      }];
+    }
     // Required Key ID of the key in question
-    string kid = 2 [(buf.validate.field).string.min_len = 1];
+    string kid = 5 [(buf.validate.field).string.min_len = 1];
   }
 
 message RotateKeyRequest {

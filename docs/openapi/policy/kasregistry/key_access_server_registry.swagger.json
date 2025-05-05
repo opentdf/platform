@@ -458,7 +458,13 @@
       "properties": {
         "kasId": {
           "type": "string",
-          "title": "Required UUID of the Key Access Server"
+          "title": "option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field"
+        },
+        "name": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
         },
         "kid": {
           "type": "string",

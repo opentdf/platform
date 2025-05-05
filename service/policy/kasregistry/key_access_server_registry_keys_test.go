@@ -61,7 +61,9 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			req: &kasregistry.GetKeyRequest{
 				Identifier: &kasregistry.GetKeyRequest_Key{
 					Key: &kasregistry.KasAsymKey{
-						KasId: validUUID,
+						Identifier: &kasregistry.KasAsymKey_KasId{
+							KasId: validUUID,
+						},
 					},
 				},
 			},
@@ -73,6 +75,36 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			req: &kasregistry.GetKeyRequest{
 				Identifier: &kasregistry.GetKeyRequest_Key{
 					Key: &kasregistry.KasAsymKey{
+						Kid: validUUID,
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageKasID,
+		},
+		{
+			name: "Invalid Key - Kas Name (empty)",
+			req: &kasregistry.GetKeyRequest{
+				Identifier: &kasregistry.GetKeyRequest_Key{
+					Key: &kasregistry.KasAsymKey{
+						Identifier: &kasregistry.KasAsymKey_Name{
+							Name: "",
+						},
+						Kid: validUUID,
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageKasID,
+		},
+		{
+			name: "Invalid Key - Kas Uri (non-uri)",
+			req: &kasregistry.GetKeyRequest{
+				Identifier: &kasregistry.GetKeyRequest_Key{
+					Key: &kasregistry.KasAsymKey{
+						Identifier: &kasregistry.KasAsymKey_Uri{
+							Uri: "not-a-uri",
+						},
 						Kid: validUUID,
 					},
 				},
@@ -94,8 +126,10 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			req: &kasregistry.GetKeyRequest{
 				Identifier: &kasregistry.GetKeyRequest_Key{
 					Key: &kasregistry.KasAsymKey{
-						KasId: validUUID,
-						Kid:   validKeyID,
+						Identifier: &kasregistry.KasAsymKey_KasId{
+							KasId: validUUID,
+						},
+						Kid: validKeyID,
 					},
 				},
 			},

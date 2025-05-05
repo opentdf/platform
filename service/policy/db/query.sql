@@ -232,9 +232,13 @@ SELECT
 FROM key_access_server_keys AS kask
 LEFT JOIN 
     provider_config as pc ON kask.provider_config_id = pc.id
+INNER JOIN 
+    key_access_servers AS kas ON kask.key_access_server_id = kas.id
 WHERE (sqlc.narg('id')::uuid IS NULL OR kask.id = sqlc.narg('id')::uuid)
   AND (sqlc.narg('key_id')::text IS NULL OR kask.key_id = sqlc.narg('key_id')::text)
-  AND (sqlc.narg('kas_id')::uuid IS NULL OR kask.key_access_server_id = sqlc.narg('kas_id')::uuid);
+  AND (sqlc.narg('kas_id')::uuid IS NULL OR kask.key_access_server_id = sqlc.narg('kas_id')::uuid)
+  AND (sqlc.narg('kas_uri')::text IS NULL OR kas.uri = sqlc.narg('kas_uri')::text)
+  AND (sqlc.narg('kas_name')::text IS NULL OR kas.name = sqlc.narg('kas_name')::text);
 
 -- name: updateKey :execrows
 UPDATE key_access_server_keys

@@ -3442,15 +3442,21 @@ SELECT
 FROM key_access_server_keys AS kask
 LEFT JOIN 
     provider_config as pc ON kask.provider_config_id = pc.id
+INNER JOIN 
+    key_access_servers AS kas ON kask.key_access_server_id = kas.id
 WHERE ($1::uuid IS NULL OR kask.id = $1::uuid)
   AND ($2::text IS NULL OR kask.key_id = $2::text)
   AND ($3::uuid IS NULL OR kask.key_access_server_id = $3::uuid)
+  AND ($4::text IS NULL OR kas.uri = $4::text)
+  AND ($5::text IS NULL OR kas.name = $5::text)
 `
 
 type getKeyParams struct {
-	ID    pgtype.UUID `json:"id"`
-	KeyID pgtype.Text `json:"key_id"`
-	KasID pgtype.UUID `json:"kas_id"`
+	ID      pgtype.UUID `json:"id"`
+	KeyID   pgtype.Text `json:"key_id"`
+	KasID   pgtype.UUID `json:"kas_id"`
+	KasUri  pgtype.Text `json:"kas_uri"`
+	KasName pgtype.Text `json:"kas_name"`
 }
 
 type getKeyRow struct {
@@ -3492,11 +3498,21 @@ type getKeyRow struct {
 //	FROM key_access_server_keys AS kask
 //	LEFT JOIN
 //	    provider_config as pc ON kask.provider_config_id = pc.id
+//	INNER JOIN
+//	    key_access_servers AS kas ON kask.key_access_server_id = kas.id
 //	WHERE ($1::uuid IS NULL OR kask.id = $1::uuid)
 //	  AND ($2::text IS NULL OR kask.key_id = $2::text)
 //	  AND ($3::uuid IS NULL OR kask.key_access_server_id = $3::uuid)
+//	  AND ($4::text IS NULL OR kas.uri = $4::text)
+//	  AND ($5::text IS NULL OR kas.name = $5::text)
 func (q *Queries) getKey(ctx context.Context, arg getKeyParams) (getKeyRow, error) {
-	row := q.db.QueryRow(ctx, getKey, arg.ID, arg.KeyID, arg.KasID)
+	row := q.db.QueryRow(ctx, getKey,
+		arg.ID,
+		arg.KeyID,
+		arg.KasID,
+		arg.KasUri,
+		arg.KasName,
+	)
 	var i getKeyRow
 	err := row.Scan(
 		&i.ID,

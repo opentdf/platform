@@ -25,12 +25,11 @@ var (
 // The FQN must be in the format: https://<namespace>/resm/<group name>
 func parseResourceMappingGroupFqn(fqn string) (*FullyQualifiedResourceMappingGroup, error) {
 	matches := resourceMappingGroupFqnRegex.FindStringSubmatch(fqn)
-	numMatches := len(matches)
 
 	namespaceIdx := resourceMappingGroupFqnRegex.SubexpIndex("namespace")
 	groupNameIdx := resourceMappingGroupFqnRegex.SubexpIndex("groupName")
 
-	if numMatches < namespaceIdx || numMatches < groupNameIdx {
+	if namespaceIdx == -1 || groupNameIdx == -1 {
 		return nil, errors.New("error: valid FQN format of https://<namespace>/resm/<group name> must be provided")
 	}
 

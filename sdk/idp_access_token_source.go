@@ -60,7 +60,8 @@ type IDPAccessTokenSource struct {
 }
 
 func NewIDPAccessTokenSource(
-	credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair) (*IDPAccessTokenSource, error) {
+	credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair,
+) (*IDPAccessTokenSource, error) {
 	endpoint, err := url.Parse(idpTokenEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)

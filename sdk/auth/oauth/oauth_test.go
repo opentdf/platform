@@ -544,7 +544,8 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string, str
 	containerReq := tc.ContainerRequest{
 		Image:        "ghcr.io/opentdf/keycloak:sha-8a6d35a",
 		ExposedPorts: []string{"8082/tcp", "8083/tcp"},
-		Cmd: []string{"start-dev", "--http-port=8082", "--https-port=8083", "--features=preview", "--verbose",
+		Cmd: []string{
+			"start-dev", "--http-port=8082", "--https-port=8083", "--features=preview", "--verbose",
 			"-Djavax.net.ssl.trustStorePassword=password", "-Djavax.net.ssl.HostnameVerifier=AllowAll",
 			"-Djavax.net.debug=ssl",
 			"-Djavax.net.ssl.trustStore=/truststore/truststore.jks",

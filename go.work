@@ -7,7 +7,6 @@ use (
 	./lib/fixtures
 	./lib/flattening
 	./lib/ocrypto
-	./lib/identifier
 	./protocol/go
 	./sdk
 	./service

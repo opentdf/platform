@@ -683,7 +683,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 			}
 			// if comprehensive and a hierarchy attribute is entitled then add the lower entitlements
 			if req.Msg.GetWithComprehensiveHierarchy() {
-				entitlements = getComprehensiveHierarchy(attributesMap, avf, entitlement, as, entitlements)
+				entitlements = getComprehensiveHierarchy(attributesMap, fqnAttrVals, entitlement, as, entitlements)
 			}
 			// Add entitlement to entitlements array
 			entitlements[valueIDX] = entitlement
@@ -735,11 +735,10 @@ func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *o
 	return resp.GetFqnAttributeValues(), nil
 }
 
-func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *attr.GetAttributeValuesByFqnsResponse, entitlement string, as *AuthorizationService, entitlements []string) []string {
+func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, attrDefs map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, entitlement string, as *AuthorizationService, entitlements []string) []string {
 	// load attributesMap
 	if len(attributesMap) == 0 {
 		// Go through all attribute definitions
-		attrDefs := avf.GetFqnAttributeValues()
 		for _, attrDef := range attrDefs {
 			for _, attrVal := range attrDef.GetAttribute().GetValues() {
 				attributesMap[attrVal.GetFqn()] = attrDef.GetAttribute()

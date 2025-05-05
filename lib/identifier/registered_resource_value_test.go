@@ -37,6 +37,12 @@ func TestRegisteredResourceValueFQN(t *testing.T) {
 			value:   "value456",
 			want:    "https://reg_res/resource123/value/value456",
 		},
+		{
+			name:    "lower case",
+			resName: "RESOURCE",
+			value:   "VALUE",
+			want:    "https://reg_res/resource/value/value",
+		},
 	}
 
 	for _, tt := range tests {
@@ -177,6 +183,13 @@ func TestParseRegisteredResourceValueFqn(t *testing.T) {
 			wantErr:   false,
 		},
 		{
+			name:      "valid lower case",
+			fqn:       "https://reg_res/RESOURce/value/valUE",
+			wantName:  "resource",
+			wantValue: "value",
+			wantErr:   false,
+		},
+		{
 			name:    "empty string",
 			fqn:     "",
 			wantErr: true,
@@ -223,7 +236,6 @@ func TestParseRegisteredResourceValueFqn(t *testing.T) {
 			if tt.wantErr {
 				return
 			}
-			require.Equal(t, tt.fqn, got.FQN())
 			require.Equal(t, tt.wantName, got.Name)
 			require.Equal(t, tt.wantValue, got.Value)
 		})

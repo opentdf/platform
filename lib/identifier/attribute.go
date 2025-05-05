@@ -89,9 +89,9 @@ func parseAttributeFqn(fqn string) (*FullyQualifiedAttribute, error) {
 			return nil, fmt.Errorf("%w: valid attribute value FQN format https://<namespace>/attr/<name>/value/<value> must be provided", ErrInvalidFQNFormat)
 		}
 
-		ns := valueMatches[namespaceIdx]
-		name := valueMatches[nameIdx]
-		value := valueMatches[valueIdx]
+		ns := strings.ToLower(valueMatches[namespaceIdx])
+		name := strings.ToLower(valueMatches[nameIdx])
+		value := strings.ToLower(valueMatches[valueIdx])
 
 		isValid := validNamespaceRegex.MatchString(ns) && validObjectNameRegex.MatchString(name) && validObjectNameRegex.MatchString(value)
 		if !isValid {
@@ -115,8 +115,8 @@ func parseAttributeFqn(fqn string) (*FullyQualifiedAttribute, error) {
 			return nil, errors.New("error: valid attribute definition FQN format https://<namespace>/attr/<name> must be provided")
 		}
 
-		ns := defMatches[namespaceIdx]
-		name := defMatches[nameIdx]
+		ns := strings.ToLower(defMatches[namespaceIdx])
+		name := strings.ToLower(defMatches[nameIdx])
 
 		isValid := validNamespaceRegex.MatchString(ns) && validObjectNameRegex.MatchString(name)
 		if !isValid {
@@ -137,7 +137,7 @@ func parseAttributeFqn(fqn string) (*FullyQualifiedAttribute, error) {
 			return nil, errors.New("error: valid namespace FQN format https://<namespace> must be provided")
 		}
 
-		ns := nsMatches[namespaceIdx]
+		ns := strings.ToLower(nsMatches[namespaceIdx])
 		isValid := validNamespaceRegex.MatchString(ns)
 		if !isValid {
 			return nil, fmt.Errorf("%w: found namespace %s", ErrInvalidFQNFormat, ns)

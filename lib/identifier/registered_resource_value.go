@@ -33,8 +33,8 @@ func parseRegisteredResourceValueFqn(fqn string) (*FullyQualifiedRegisteredResou
 		return nil, fmt.Errorf("%w: valid FQN format of https://reg_res/<name>/value/<value> must be provided", ErrInvalidFQNFormat)
 	}
 
-	name := matches[nameIdx]
-	value := matches[valueIdx]
+	name := strings.ToLower(matches[nameIdx])
+	value := strings.ToLower(matches[valueIdx])
 	isValid := validObjectNameRegex.MatchString(name) && validObjectNameRegex.MatchString(value)
 	if !isValid {
 		return nil, fmt.Errorf("%w: found name %s with value %s", ErrInvalidFQNFormat, name, value)

@@ -18,16 +18,17 @@ func TestAttributeFQN(t *testing.T) {
 		{
 			name:      "namespace only",
 			namespace: "example.com",
-			attrName:  "",
-			value:     "",
 			want:      "https://example.com",
 		},
 		{
 			name:      "namespace with subdomain only",
 			namespace: "sub.example.com",
-			attrName:  "",
-			value:     "",
 			want:      "https://sub.example.com",
+		},
+		{
+			name:      "namespace lower cased",
+			namespace: "EXAMPLE.com",
+			want:      "https://example.com",
 		},
 
 		// Definition FQNs
@@ -35,29 +36,32 @@ func TestAttributeFQN(t *testing.T) {
 			name:      "definition",
 			namespace: "example.com",
 			attrName:  "classification",
-			value:     "",
 			want:      "https://example.com/attr/classification",
 		},
 		{
 			name:      "definition with hyphen",
 			namespace: "example.com",
 			attrName:  "security-level",
-			value:     "",
 			want:      "https://example.com/attr/security-level",
 		},
 		{
 			name:      "definition with underscore",
 			namespace: "example.com",
 			attrName:  "security_level",
-			value:     "",
 			want:      "https://example.com/attr/security_level",
 		},
 		{
 			name:      "definition with numbers",
 			namespace: "example.com",
 			attrName:  "level123",
-			value:     "",
 			want:      "https://example.com/attr/level123",
+		},
+		{
+
+			name:      "definition lower cased",
+			namespace: "EXAMPLE.com",
+			attrName:  "TEst",
+			want:      "https://example.com/attr/test",
 		},
 
 		// Value FQNs
@@ -74,6 +78,13 @@ func TestAttributeFQN(t *testing.T) {
 			attrName:  "security-level",
 			value:     "top_secret123",
 			want:      "https://sub.example.com/attr/security-level/value/top_secret123",
+		},
+		{
+			name:      "value lower cased",
+			namespace: "EXAMPLE.com",
+			attrName:  "TEst",
+			value:     "VALUE",
+			want:      "https://example.com/attr/test/value/value",
 		},
 	}
 
@@ -173,7 +184,7 @@ func TestAttributeValidate(t *testing.T) {
 				Name:      tt.attrName,
 				Value:     tt.value,
 			}
-			
+
 			err := attr.Validate()
 			if tt.wantErr {
 				require.Error(t, err)
@@ -240,6 +251,14 @@ func TestParseAttributeFqn(t *testing.T) {
 			wantNamespace: "example.org",
 			wantName:      "classification",
 			wantValue:     "top-secret_123",
+			wantErr:       false,
+		},
+		{
+			name:          "Valid attribute value FQN gets lower cased",
+			fqn:           "https://example.org/attr/hello/value/WORLD",
+			wantNamespace: "example.org",
+			wantName:      "hello",
+			wantValue:     "world",
 			wantErr:       false,
 		},
 		{
@@ -339,19 +358,19 @@ func TestAttributeRoundTrip(t *testing.T) {
 				Name:      tt.attrName,
 				Value:     tt.value,
 			}
-			
+
 			// Get FQN
 			fqn := original.FQN()
-			
+
 			// Parse the FQN
 			parsed, err := parseAttributeFqn(fqn)
 			require.NoError(t, err)
-			
+
 			// Check the parsed values match original
 			require.Equal(t, original.Namespace, parsed.Namespace)
 			require.Equal(t, original.Name, parsed.Name)
 			require.Equal(t, original.Value, parsed.Value)
-			
+
 			// Ensure the re-generated FQN matches the original
 			require.Equal(t, fqn, parsed.FQN())
 		})

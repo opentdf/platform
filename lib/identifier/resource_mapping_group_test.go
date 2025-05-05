@@ -43,6 +43,12 @@ func TestResourceMappingGroupFQN(t *testing.T) {
 			groupName: "test123",
 			want:      "https://example.com/resm/test123",
 		},
+		{
+			name:      "lower case",
+			namespace: "EXAMPle.com",
+			groupName: "TEST123",
+			want:      "https://example.com/resm/test123",
+		},
 	}
 
 	for _, tt := range tests {
@@ -164,6 +170,13 @@ func TestParseResourceMappingGroupFqn(t *testing.T) {
 			wantErr:       false,
 		},
 		{
+			name:          "lower cases",
+			fqn:           "https://NAMEspace.com/resm/GROUP-xyz",
+			wantNamespace: "namespace.com",
+			wantGroupName: "group-xyz",
+			wantErr:       false,
+		},
+		{
 			name:    "empty string",
 			fqn:     "",
 			wantErr: true,
@@ -210,7 +223,6 @@ func TestParseResourceMappingGroupFqn(t *testing.T) {
 			if tt.wantErr {
 				return
 			}
-			require.Equal(t, tt.fqn, got.FQN())
 			require.Equal(t, tt.wantNamespace, got.Namespace)
 			require.Equal(t, tt.wantGroupName, got.GroupName)
 		})

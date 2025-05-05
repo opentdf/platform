@@ -439,11 +439,11 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 			}
 			params = getKeyParams{KasID: kasID, KeyID: keyID}
 		case *kasregistry.KasAsymKey_Uri:
-			kasUri := pgtypeText(i.Key.GetUri())
-			if !kasUri.Valid {
+			kasURI := pgtypeText(i.Key.GetUri())
+			if !kasURI.Valid {
 				return nil, db.ErrSelectIdentifierInvalid
 			}
-			params = getKeyParams{KasUri: kasUri, KeyID: keyID}
+			params = getKeyParams{KasUri: kasURI, KeyID: keyID}
 		case *kasregistry.KasAsymKey_Name:
 			kasName := pgtypeText(i.Key.GetName())
 			if !kasName.Valid {

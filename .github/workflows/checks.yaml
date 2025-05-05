@@ -244,7 +244,7 @@ jobs:
       - name: run decision benchmark tests
         run: |
           # Run the benchmark with a specific count (adjust as needed)
-          OUTPUT=$(./examples/examples benchmark-decision --count 1000)
+          OUTPUT=$(./examples/examples benchmark-decision --count 5000)
           echo "--- Decision Benchmark Output ---"
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY" # Add to job summary page
@@ -291,6 +291,7 @@ jobs:
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
         with:
           script: |
+            const decisionOutput = process.env.BENCHMARK_DECISION_OUTPUT || '## Decision Benchmark Skipped or Failed';
             const metricsOutput = process.env.BENCHMARK_METRICS_OUTPUT || '## Standard Benchmark Metrics Skipped or Failed';
             const bulkOutput = process.env.BENCHMARK_BULK_OUTPUT || '## Bulk Benchmark Skipped or Failed';
             const tdf3Output = process.env.BENCHMARK_TDF3_OUTPUT || '## TDF3 Benchmark Skipped or Failed';

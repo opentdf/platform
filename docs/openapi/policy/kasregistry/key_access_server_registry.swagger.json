@@ -457,8 +457,7 @@
       "type": "object",
       "properties": {
         "kasId": {
-          "type": "string",
-          "title": "option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field"
+          "type": "string"
         },
         "name": {
           "type": "string"

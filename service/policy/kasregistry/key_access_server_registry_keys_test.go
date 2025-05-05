@@ -10,22 +10,25 @@ import (
 )
 
 const (
-	invalidUUID          = "invalid-uuid"
-	validKeyID           = "a-key"
-	errMessageID         = "id"
-	errInvalidUUID       = "invalid uuid"
-	errMessageIdentifier = "identifier"
-	errMessageKeyID      = "key_id"
-	errMessageKasID      = "kas_id"
-	errMessageKeyStatus  = "key_status"
-	errMessageKeyKid     = "key.kid"
-	errMessageKeyAlgo    = "key_algorithm"
-	errMessageKeyMode    = "key_mode"
-	errMessagePubKeyCtx  = "public_key_ctx"
-	invalidKeyMode       = -1
-	invalidAlgo          = -1
-	invalidKeyStatus     = -1
-	invalidPageLimit     = 5001
+	invalidUUID             = "invalid-uuid"
+	validKeyID              = "a-key"
+	errMessageID            = "id"
+	errInvalidUUID          = "invalid uuid"
+	errMessageIdentifier    = "identifier"
+	errMessageKeyID         = "key_id"
+	errMessageKasID         = "kas_id"
+	errMessageKeyStatus     = "key_status"
+	errMessageKeyKid        = "key.kid"
+	errMessageKeyName       = "key.name"
+	errMessageKeyUri        = "key.uri"
+	errMessageKeyAlgo       = "key_algorithm"
+	errMessageKeyMode       = "key_mode"
+	errMessagePubKeyCtx     = "public_key_ctx"
+	errMessageKeyIdentifier = "identifier"
+	invalidKeyMode          = -1
+	invalidAlgo             = -1
+	invalidKeyStatus        = -1
+	invalidPageLimit        = 5001
 )
 
 var (
@@ -80,7 +83,7 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: errMessageKasID,
+			errorMessage: errMessageIdentifier,
 		},
 		{
 			name: "Invalid Key - Kas Name (empty)",
@@ -95,7 +98,7 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: errMessageKasID,
+			errorMessage: errMessageKeyName,
 		},
 		{
 			name: "Invalid Key - Kas Uri (non-uri)",
@@ -110,7 +113,7 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: errMessageKasID,
+			errorMessage: errMessageKeyUri,
 		},
 		{
 			name: "Valid ID (valid uuid)",

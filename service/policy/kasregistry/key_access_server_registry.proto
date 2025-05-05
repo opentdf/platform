@@ -460,7 +460,7 @@ message UpdateKeyResponse {
   message KasAsymKey {
     // Required UUID of the Key Access Server
     oneof identifier {
-      // option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field
+      option (buf.validate.oneof).required = true;
       string kas_id = 2 [(buf.validate.field).string.uuid = true];
       string name = 3 [(buf.validate.field).string.min_len = 1];
       string uri = 4 [(buf.validate.field).string = {

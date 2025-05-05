@@ -59,7 +59,8 @@ type PDP struct {
 	sdk                       *otdfSDK.SDK
 	logger                    *logger.Logger
 	attributesByDefinitionFQN map[string]*policy.Attribute
-	regoEval                  rego.PreparedEvalQuery
+	// TODO: document removal of rego as an extension point in v2
+	// regoEval                  rego.PreparedEvalQuery
 }
 
 // NewPDP creates a new Policy Decision Point instance.
@@ -113,7 +114,7 @@ func NewPDP(
 		sdk:                       sdk,
 		attributesByDefinitionFQN: definitionsMap,
 		logger:                    l,
-		regoEval:                  regoEval,
+		// regoEval:                  regoEval,
 	}, nil
 }
 
@@ -223,14 +224,9 @@ func (p *PDP) fetchEntitleableAttributes(ctx context.Context, entityRepresentati
 				return nil, fmt.Errorf("failed to flatten entity representation: %w", err)
 			}
 			for _, item := range flattened.Items {
-				val, ok := item.Value.(string)
-				if !ok {
-					p.logger.ErrorContext(ctx, "failed to convert value to string", slog.String("value", fmt.Sprintf("%v", item.Value)))
-					return nil, fmt.Errorf("failed to convert value to string: %w", err)
-				}
+				// The value in this proto is not considered by the API
 				subjectProperties = append(subjectProperties, &policy.SubjectProperty{
 					ExternalSelectorValue: item.Key,
-					ExternalValue:         val,
 				})
 			}
 		}

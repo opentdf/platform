@@ -1225,7 +1225,7 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_NonExistentId_Fails
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_SingleMatch() {
 	externalSelector := ".testing_matched_sm"
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID
+	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
 	newScs := &subjectmapping.SubjectConditionSetCreate{
 		SubjectSets: []*policy.SubjectSet{
 			{
@@ -1246,7 +1246,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_SingleMatch() {
 	}
 
 	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId:       fixtureAttrValID,
+		AttributeValueId:       fixtureAttrVal.ID,
 		Actions:                []*policy.Action{s.f.GetStandardAction("create")},
 		NewSubjectConditionSet: newScs,
 	}
@@ -1265,14 +1265,15 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_SingleMatch() {
 	s.NotZero(smList)
 	matched := smList[0]
 	s.Equal(created.GetId(), matched.GetId())
-	s.NotZero(matched.GetAttributeValue().GetId())
+	s.Equal(matched.GetAttributeValue().GetId(), fixtureAttrVal.ID)
+	s.True(strings.HasSuffix(matched.GetAttributeValue().GetFqn(), fixtureAttrVal.Value))
 	s.NotZero(matched.GetId())
 	s.NotNil(matched.GetActions())
 }
 
 func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_IgnoresExternalValueInCondition() {
 	externalSelector := ".testing_unmatched_condition"
-	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2").ID
+	fixtureAttrVal := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
 	newScs := &subjectmapping.SubjectConditionSetCreate{
 		SubjectSets: []*policy.SubjectSet{
 			{
@@ -1293,7 +1294,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_IgnoresExternalValu
 	}
 
 	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId:       fixtureAttrValID,
+		AttributeValueId:       fixtureAttrVal.ID,
 		Actions:                []*policy.Action{s.f.GetStandardAction("delete")},
 		NewSubjectConditionSet: newScs,
 	}
@@ -1313,7 +1314,9 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_IgnoresExternalValu
 	s.NotZero(smList)
 	matched := smList[0]
 	s.Equal(created.GetId(), matched.GetId())
-	s.NotZero(matched.GetAttributeValue().GetId())
+	s.Equal(matched.GetAttributeValue().GetId(), fixtureAttrVal.ID)
+	s.True(strings.HasSuffix(matched.GetAttributeValue().GetFqn(), fixtureAttrVal.Value))
+	s.True(strings.HasPrefix(matched.GetAttributeValue().GetFqn(), "https://"))
 	s.NotZero(matched.GetId())
 	s.NotNil(matched.GetActions())
 }

@@ -267,7 +267,6 @@ func (p *PDP) fetchEntitleableAttributes(ctx context.Context, entityRepresentati
 		}
 		mapped.Value.SubjectMappings = make([]*policy.SubjectMapping, 0)
 		mapped.Value.SubjectMappings = append(mapped.Value.SubjectMappings, mapping)
-		// TODO: make sure the FQN is present here
 		result[mapping.GetAttributeValue().GetFqn()] = mapped
 	}
 	return result, nil

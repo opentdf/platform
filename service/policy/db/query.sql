@@ -1244,7 +1244,6 @@ SELECT
         'id', scs.id,
         'subject_sets', scs.condition
     ) AS subject_condition_set,
-    -- TODO: make sure value fqn is queried here
     JSON_BUILD_OBJECT('id', av.id,'value', av.value,'active', av.active) AS attribute_value
 FROM subject_mappings sm
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id

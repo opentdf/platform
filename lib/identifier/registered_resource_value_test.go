@@ -129,7 +129,7 @@ func TestRegisteredResourceValueValidate(t *testing.T) {
 				Name:  tt.resName,
 				Value: tt.value,
 			}
-			
+
 			err := rrv.Validate()
 			if tt.wantErr {
 				require.Error(t, err)
@@ -142,11 +142,11 @@ func TestRegisteredResourceValueValidate(t *testing.T) {
 
 func TestParseRegisteredResourceValueFqn(t *testing.T) {
 	tests := []struct {
-		name       string
-		fqn        string
-		wantName   string
-		wantValue  string
-		wantErr    bool
+		name      string
+		fqn       string
+		wantName  string
+		wantValue string
+		wantErr   bool
 	}{
 		{
 			name:      "valid basic",
@@ -266,18 +266,18 @@ func TestRegisteredResourceValueRoundTrip(t *testing.T) {
 				Name:  tt.resName,
 				Value: tt.value,
 			}
-			
+
 			// Get FQN
 			fqn := original.FQN()
-			
+
 			// Parse the FQN
 			parsed, err := parseRegisteredResourceValueFqn(fqn)
 			require.NoError(t, err)
-			
+
 			// Check the parsed values match original
 			require.Equal(t, original.Name, parsed.Name)
 			require.Equal(t, original.Value, parsed.Value)
-			
+
 			// Ensure the re-generated FQN matches the original
 			require.Equal(t, fqn, parsed.FQN())
 		})

@@ -7,7 +7,8 @@ import (
 )
 
 var (
-	ErrInvalidFQNFormat = errors.New("error: invalid FQN format")
+	ErrInvalidFQNFormat   = errors.New("error: invalid FQN format")
+	ErrUnsupportedFQNType = errors.New("error: unsupported FQN type")
 
 	// Regex rules for valid object names:
 	// - alphanumeric
@@ -45,6 +46,8 @@ func Parse[T FullyQualified](identifier string) (T, error) {
 	var result T
 	var err error
 
+	// TODO: when URNs are supported, check for URN vs FQN and drive accordingly
+
 	// Check which type T is and call the appropriate parsing function
 	switch any(result).(type) {
 	case *FullyQualifiedAttribute:
@@ -70,7 +73,7 @@ func Parse[T FullyQualified](identifier string) (T, error) {
 		result = any(parsedRrv).(T)
 
 	default:
-		return result, fmt.Errorf("unsupported FQN type: %T", result)
+		return result, fmt.Errorf("%w: %T", ErrUnsupportedFQNType, result)
 	}
 
 	return result, err

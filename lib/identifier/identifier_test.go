@@ -151,5 +151,6 @@ func TestParse_UnsupportedType(t *testing.T) {
 	// Test the generic Parse function with an unsupported type
 	_, err := Parse[*mockType]("https://example.org")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "unsupported FQN type")
+	// TODO: named error
+	require.ErrorIs(t, err, ErrUnsupportedFQNType)
 }

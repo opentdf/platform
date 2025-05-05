@@ -20,7 +20,7 @@ const (
 	errMessageKeyStatus     = "key_status"
 	errMessageKeyKid        = "key.kid"
 	errMessageKeyName       = "key.name"
-	errMessageKeyUri        = "key.uri"
+	errMessageKeyURI        = "key.uri"
 	errMessageKeyAlgo       = "key_algorithm"
 	errMessageKeyMode       = "key_mode"
 	errMessagePubKeyCtx     = "public_key_ctx"
@@ -113,7 +113,7 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: errMessageKeyUri,
+			errorMessage: errMessageKeyURI,
 		},
 		{
 			name: "Valid ID (valid uuid)",

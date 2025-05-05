@@ -18,6 +18,9 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+type AttributeValueFQNsToActions map[string][]*policy.Action
+type EntityIDsToEntitlements map[string]AttributeValueFQNsToActions
+
 func SubjectMappingBuiltin() {
 	rego.RegisterBuiltin2(&rego.Function{
 		Name:             "subjectmapping.resolve",
@@ -138,8 +141,8 @@ func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttribu
 	return entitlements, nil
 }
 
-func EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entityRepresentations []*entityresolution.EntityRepresentation) (map[string]map[string][]*policy.Action, error) {
-	results := make(map[string]map[string][]*policy.Action)
+func EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entityRepresentations []*entityresolution.EntityRepresentation) (EntityIDsToEntitlements, error) {
+	results := make(map[string]AttributeValueFQNsToActions)
 	for _, er := range entityRepresentations {
 		entitlements, err := EvaluateSubjectMappingsWithActions(attributeMappings, er)
 		if err != nil {
@@ -152,7 +155,7 @@ func EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings map[str
 }
 
 // Returns a map of attribute value FQNs to each entitled action on the value
-func EvaluateSubjectMappingsWithActions(attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entityRepresentation *entityresolution.EntityRepresentation) (map[string][]*policy.Action, error) {
+func EvaluateSubjectMappingsWithActions(attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entityRepresentation *entityresolution.EntityRepresentation) (AttributeValueFQNsToActions, error) {
 	// for now just look at first entity
 	// We only provide one input to ERS to resolve
 	jsonEntities := entityRepresentation.GetAdditionalProps()

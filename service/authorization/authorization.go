@@ -516,11 +516,11 @@ func updateValsByFqnLookup(attribute *policy.Attribute, scopeMap map[string]bool
 // makeValsByFqnsLookup creates a lookup map of attribute values by FQN.
 func makeValsByFqnsLookup(attrs []*policy.Attribute, subMapsByVal map[string][]*policy.SubjectMapping, scopeMap map[string]bool) map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue {
 	fqnAttrVals := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue)
-	for i := range attrs {
+	for _, attr := range attrs {
 		// add subject mappings to attribute values
-		attrs[i].Values = updateValsWithSubMaps(attrs[i].GetValues(), subMapsByVal)
+		attr.Values = updateValsWithSubMaps(attr.GetValues(), subMapsByVal)
 		// update the lookup map with attribute values by FQN
-		fqnAttrVals = updateValsByFqnLookup(attrs[i], scopeMap, fqnAttrVals)
+		fqnAttrVals = updateValsByFqnLookup(attr, scopeMap, fqnAttrVals)
 	}
 	return fqnAttrVals
 }

@@ -14,6 +14,7 @@ import (
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
 )
 
@@ -123,28 +124,39 @@ func (p *PDP) GetEntitlements(
 	entities []*authz.Entity,
 	scope *authz.Resource,
 	withComprehensiveHierarchy bool,
-) (*authz.EntityEntitlements, error) {
-	if p.sdk.EntityResoution == nil {
-		return nil, ErrMissingEntityResolutionServiceSDKConnection
-	}
-	entitlements := make(map[string]*authz.EntityEntitlements_ActionsList)
+) ([]*authz.EntityEntitlements, error) {
+	result := make([]*authz.EntityEntitlements, len(entities))
 
 	// call ERS on all entities
-	ersResp, err := p.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: entities})
+	ersResp, err := p.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{EntitiesV2: entities})
 	if err != nil {
-		p.logger.ErrorContext(ctx, "error calling ERS to resolve entities", "entities", req.Msg.GetEntities())
+		p.logger.ErrorContext(ctx, "error calling ERS to resolve entities", slog.String("error", err.Error()), slog.Any("entities", entities))
 		return nil, err
 	}
 
-	for _, entity := range entities {
-		entitledActions := make([]*policy.Action, 0)
+	// TODO: get this populated with the attribute values for the entities
+	var attributeMappings map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
 
-		// check subject mappings and actions associated with each of them
-
-		// entitlements[] = &authz.EntityEntitlements_ActionsList{
-		// 	Actions: entitledActions,
-		// }
+	entityIDsToFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings, ersResp.GetEntityRepresentations())
+	if err != nil {
+		p.logger.ErrorContext(ctx, "error evaluating subject mappings for entitlement", slog.String("error", err.Error()), slog.Any("entities", entities))
+		return nil, err
 	}
+
+	for entityID, fqnsToActions := range entityIDsToFQNsToActions {
+		actionsPerAttributeValueFqn := make(map[string]*authz.EntityEntitlements_ActionsList)
+		for fqn, actions := range fqnsToActions {
+			actionsPerAttributeValueFqn[fqn] = &authz.EntityEntitlements_ActionsList{
+				Actions: actions,
+			}
+		}
+		// TODO: withComprehensiveHierarchy needs to be considered here
+		result = append(result, &authz.EntityEntitlements{
+			EphemeralId:                 entityID,
+			ActionsPerAttributeValueFqn: actionsPerAttributeValueFqn,
+		})
+	}
+	return result, nil
 }
 
 func (p *PDP) checkAccess(ctx context.Context, entitlements *authz.EntityEntitlements, action *policy.Action, resource *authz.Resource) (bool, error) {
@@ -193,30 +205,25 @@ func (p *PDP) fetchAllDefinitions(ctx context.Context) ([]*policy.Attribute, err
 	return attrsList, nil
 }
 
-func (p *PDP) fetchEntitleableAttributes(ctx context.Context, scope *authz.Resource) error {
-	var (
-		subjectMappings = make([]*policy.SubjectMapping, 0)
-		err             error
-	)
+func (p *PDP) fetchEntitleableAttributes(ctx context.Context, scope *authz.Resource) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	if scope != nil {
-		subjectMappings, err = p.fetchScopedSubjectMappings(ctx, scope)
-	} else {
-		subjectMappings, err = p.fetchAllSubjectMappings(ctx)
+		attributeValuesByFQN, err := p.fetchAttributesByScope(ctx, scope)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch scoped subject mappings: %w", err)
-	}
-	for _, mapping := range subjectMappings {
-	}
+	// TODO: matchsubjectmappings here?
+	subjectMappings, err = p.fetchAllSubjectMappings(ctx)
+
 }
 
-// fetchScopedSubjectMappings retrieves subject mappings based on the provided scope
-func (p *PDP) fetchScopedSubjectMappings(ctx context.Context, scope *authz.Resource) ([]*policy.SubjectMapping, error) {
+// fetchAttributesByScope retrieves subject mappings based on the provided scope
+func (p *PDP) fetchAttributesByScope(ctx context.Context, scope *authz.Resource) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+	var (
+		subjectMappings []*policy.SubjectMapping
+		err             error
+	)
 	switch r := scope.GetResource().(type) {
 	case *authz.Resource_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "fetching scoped subject mappings for registered resource value FQN", slog.String("fqn", r.RegisteredResourceValueFqn))
 		// TODO: fully implement this resolution
-		return nil, nil
 	case *authz.Resource_AttributeValues_:
 		p.logger.DebugContext(ctx, "fetching scoped subject mappings for resource attribute values", slog.Any("attribute_values", r.AttributeValues.GetFqns()))
 
@@ -224,6 +231,11 @@ func (p *PDP) fetchScopedSubjectMappings(ctx context.Context, scope *authz.Resou
 		p.logger.ErrorContext(ctx, "unknown resource type", slog.Any("resource", r))
 		return nil, ErrInvalidResourceType
 	}
+	return subjectMappings, err
+}
+
+func (p *PDP) fetchAttributeValuesByFqn(ctx context.Context, fqns []string) ([]*policy.Value, error) {
+	p
 }
 
 // fetchAllSubjectMappings retrieves all subject mappings within policy

@@ -9,7 +9,7 @@ require (
 	github.com/opentdf/platform/protocol/go v0.3.2
 	github.com/opentdf/platform/sdk v0.4.3
 	github.com/spf13/cobra v1.8.1
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.67.1
 	google.golang.org/protobuf v1.36.6
 )

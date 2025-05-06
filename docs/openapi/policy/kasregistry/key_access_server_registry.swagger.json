@@ -557,9 +557,41 @@
         "kasKey": {
           "$ref": "#/definitions/policyKasKey",
           "title": "The newly rotated Kas Key"
+        },
+        "rotatedResources": {
+          "$ref": "#/definitions/kasregistryRotatedResources",
+          "title": "All resources that were rotated as part of the key rotation process"
         }
       },
       "title": "Response message for the RotateKey request"
+    },
+    "kasregistryRotatedResources": {
+      "type": "object",
+      "properties": {
+        "rotatedOutKey": {
+          "$ref": "#/definitions/policyKasKey",
+          "title": "The old key that was rotated out"
+        },
+        "attributeDefinitionIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "namespaceIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "valueIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "All resources that were rotated as part of the key rotation process"
     },
     "kasregistryUpdateKeyAccessServerResponse": {
       "type": "object",

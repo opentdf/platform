@@ -504,10 +504,22 @@ message RotateKeyRequest {
   }
 }
 
+/*
+* All resources that were rotated as part of the key rotation process
+*/
+message RotatedResources {
+  KasKey rotated_out_key = 1; // The old key that was rotated out
+  repeated string attribute_definition_ids = 2;
+  repeated string namespace_ids = 3;
+  repeated string value_ids = 4;
+}
+
 // Response message for the RotateKey request
 message RotateKeyResponse {
   // The newly rotated Kas Key
   KasKey kas_key = 1;
+  // All resources that were rotated as part of the key rotation process
+  RotatedResources rotated_resources = 2;
 }
 
 service KeyAccessServerRegistryService {

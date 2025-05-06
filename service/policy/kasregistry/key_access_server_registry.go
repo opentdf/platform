@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 	"github.com/opentdf/platform/service/logger"
@@ -350,7 +351,7 @@ func (s KeyAccessServerRegistry) ListKeys(ctx context.Context, r *connect.Reques
 }
 
 func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Request[kasr.RotateKeyRequest]) (*connect.Response[kasr.RotateKeyResponse], error) {
-	resp := &kasr.RotateKeyResponse{}
+	var resp *kasr.RotateKeyResponse
 	var objectID string
 
 	switch i := r.Msg.ActiveKey.(type) {
@@ -385,17 +386,31 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 	}
 
 	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
-		resp.KasKey, err = txClient.RotateKey(ctx, original, r.Msg.GetNewKey())
+		resp, err = txClient.RotateKey(ctx, original, r.Msg.GetNewKey())
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
-		auditParams.Updated = &policy.KasKey{
-			KasId: resp.GetKasKey().GetKasId(),
-			Key: &policy.AsymmetricKey{
-				KeyId:     resp.GetKasKey().GetKey().GetKeyId(),
-				KeyStatus: resp.GetKasKey().GetKey().GetKeyStatus(),
+		auditParams.Updated = &kasregistry.RotateKeyResponse{
+			RotatedResources: &kasr.RotatedResources{
+				RotatedOutKey: &policy.KasKey{
+					KasId: resp.GetRotatedResources().GetRotatedOutKey().GetKasId(),
+					Key: &policy.AsymmetricKey{
+						KeyId:     resp.GetRotatedResources().GetRotatedOutKey().GetKey().GetKeyId(),
+						KeyStatus: resp.GetRotatedResources().GetRotatedOutKey().GetKey().GetKeyStatus(),
+					},
+				},
+				AttributeDefinitionIds: resp.GetRotatedResources().GetAttributeDefinitionIds(),
+				NamespaceIds:           resp.GetRotatedResources().GetNamespaceIds(),
+				ValueIds:               resp.GetRotatedResources().GetValueIds(),
+			},
+			KasKey: &policy.KasKey{
+				KasId: resp.GetKasKey().GetKasId(),
+				Key: &policy.AsymmetricKey{
+					KeyId:     resp.GetKasKey().GetKey().GetKeyId(),
+					KeyStatus: resp.GetKasKey().GetKey().GetKeyStatus(),
+				},
 			},
 		}
 		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
@@ -407,5 +422,5 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 	}
 
 	// Implementation for RotateKey
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	return connect.NewResponse(resp), nil
 }

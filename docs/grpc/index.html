@@ -1007,6 +1007,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.RotatedResources"><span class="badge">M</span>RotatedResources</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.UpdateKeyAccessServerRequest"><span class="badge">M</span>UpdateKeyAccessServerRequest</a>
                 </li>
               
@@ -8769,6 +8773,58 @@ Pagination request for the list of keys </p></td>
                   <td><a href="#policy.KasKey">policy.KasKey</a></td>
                   <td></td>
                   <td><p>The newly rotated Kas Key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>rotated_resources</td>
+                  <td><a href="#policy.kasregistry.RotatedResources">RotatedResources</a></td>
+                  <td></td>
+                  <td><p>All resources that were rotated as part of the key rotation process </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.RotatedResources">RotatedResources</h3>
+        <p>All resources that were rotated as part of the key rotation process</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>rotated_out_key</td>
+                  <td><a href="#policy.KasKey">policy.KasKey</a></td>
+                  <td></td>
+                  <td><p>The old key that was rotated out </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_definition_ids</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_ids</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value_ids</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>

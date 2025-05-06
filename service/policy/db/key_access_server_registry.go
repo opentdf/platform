@@ -655,9 +655,13 @@ func (c PolicyDBClient) DeleteKey(ctx context.Context, id string) (*policy.Asymm
 	}, nil
 }
 
-func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey, newKey *kasregistry.RotateKeyRequest_NewKey) (*policy.KasKey, error) {
+func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey, newKey *kasregistry.RotateKeyRequest_NewKey) (*kasregistry.RotateKeyResponse, error) {
+	rotateKeyResp := &kasregistry.RotateKeyResponse{
+		RotatedResources: &kasregistry.RotatedResources{},
+	}
+
 	//Step 1: Update old key to inactive.
-	_, err := c.UpdateKey(ctx, &kasregistry.UpdateKeyRequest{
+	rotatedOutKey, err := c.UpdateKey(ctx, &kasregistry.UpdateKeyRequest{
 		Id:        activeKey.GetKey().GetId(),
 		KeyStatus: policy.KeyStatus_KEY_STATUS_INACTIVE,
 	})
@@ -681,17 +685,23 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 	}
 
 	// Step 3: Update Namespace/Attribute/Value tables to use the new key.
-	err = c.rotatePublicKeyTables(ctx, activeKey.GetKey().GetId(), newKasKey.GetKasKey().GetKey().GetId())
+	err = c.rotatePublicKeyTables(ctx, activeKey.GetKey().GetId(), newKasKey.GetKasKey().GetKey().GetId(), rotateKeyResp.RotatedResources)
 	if err != nil {
 		return nil, err
 	}
 
-	return newKasKey.GetKasKey(), nil
+	rotateKeyResp.KasKey = newKasKey.GetKasKey()
+	rotateKeyResp.RotatedResources.RotatedOutKey = rotatedOutKey
+	return rotateKeyResp, nil
 }
 
-func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID string, newKeyID string) error {
+/**
+* Rotate the public key in the Namespace, AttributeDefinition, and AttributeValue tables.
+ */
+func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID, newKeyID string, rotatedResources *kasregistry.RotatedResources) error {
+	var err error
 
-	_, err := c.rotatePublicKeyForNamespace(ctx, rotatePublicKeyForNamespaceParams{
+	rotatedResources.NamespaceIds, err = c.rotatePublicKeyForNamespace(ctx, rotatePublicKeyForNamespaceParams{
 		OldKeyID: oldKeyID,
 		NewKeyID: newKeyID,
 	})
@@ -699,7 +709,7 @@ func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID stri
 		return db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	_, err = c.rotatePublicKeyForAttributeDefinition(ctx, rotatePublicKeyForAttributeDefinitionParams{
+	rotatedResources.AttributeDefinitionIds, err = c.rotatePublicKeyForAttributeDefinition(ctx, rotatePublicKeyForAttributeDefinitionParams{
 		OldKeyID: oldKeyID,
 		NewKeyID: newKeyID,
 	})
@@ -707,7 +717,7 @@ func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID stri
 		return db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	_, err = c.rotatePublicKeyForAttributeValue(ctx, rotatePublicKeyForAttributeValueParams{
+	rotatedResources.ValueIds, err = c.rotatePublicKeyForAttributeValue(ctx, rotatePublicKeyForAttributeValueParams{
 		OldKeyID: oldKeyID,
 		NewKeyID: newKeyID,
 	})

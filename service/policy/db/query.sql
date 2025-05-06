@@ -806,10 +806,11 @@ RETURNING *;
 DELETE FROM attribute_definition_public_key_map
 WHERE definition_id = $1 AND key_access_server_key_id = $2;
 
--- name: rotatePublicKeyForAttributeDefinition :execrows
+-- name: rotatePublicKeyForAttributeDefinition :many
 UPDATE attribute_definition_public_key_map
 SET key_access_server_key_id = sqlc.arg('new_key_id')::uuid
-WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid);
+WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid)
+RETURNING definition_id;
 
 ---------------------------------------------------------------- 
 -- ATTRIBUTE VALUES
@@ -917,10 +918,11 @@ RETURNING *;
 DELETE FROM attribute_value_public_key_map
 WHERE value_id = $1 AND key_access_server_key_id = $2;
 
--- name: rotatePublicKeyForAttributeValue :execrows
+-- name: rotatePublicKeyForAttributeValue :many
 UPDATE attribute_value_public_key_map
 SET key_access_server_key_id = sqlc.arg('new_key_id')::uuid
-WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid);
+WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid)
+RETURNING value_id;
 
 ---------------------------------------------------------------- 
 -- RESOURCE MAPPING GROUPS
@@ -1148,10 +1150,11 @@ RETURNING *;
 DELETE FROM attribute_namespace_public_key_map
 WHERE namespace_id = $1 AND key_access_server_key_id = $2;
 
--- name: rotatePublicKeyForNamespace :execrows
+-- name: rotatePublicKeyForNamespace :many
 UPDATE attribute_namespace_public_key_map
 SET key_access_server_key_id = sqlc.arg('new_key_id')::uuid
-WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid);
+WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid)
+RETURNING namespace_id;
 
 ---------------------------------------------------------------- 
 -- SUBJECT CONDITION SETS

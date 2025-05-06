@@ -638,11 +638,20 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	s.NotNil(rotatedInKey)
 
 	// Validate the rotated key
-	s.Equal(newKey.GetKeyId(), rotatedInKey.GetKey().GetKeyId())
-	s.Equal(newKey.GetAlgorithm(), rotatedInKey.GetKey().GetKeyAlgorithm())
-	s.Equal(newKey.GetKeyMode(), rotatedInKey.GetKey().GetKeyMode())
-	s.Equal(newKey.GetPublicKeyCtx(), rotatedInKey.GetKey().GetPublicKeyCtx())
-	s.Equal(policy.KeyStatus_KEY_STATUS_ACTIVE, rotatedInKey.GetKey().GetKeyStatus())
+	s.Equal(newKey.GetKeyId(), rotatedInKey.GetKasKey().GetKey().GetKeyId())
+	s.Equal(newKey.GetAlgorithm(), rotatedInKey.GetKasKey().GetKey().GetKeyAlgorithm())
+	s.Equal(newKey.GetKeyMode(), rotatedInKey.GetKasKey().GetKey().GetKeyMode())
+	s.Equal(newKey.GetPublicKeyCtx(), rotatedInKey.GetKasKey().GetKey().GetPublicKeyCtx())
+	s.Equal(policy.KeyStatus_KEY_STATUS_ACTIVE, rotatedInKey.GetKasKey().GetKey().GetKeyStatus())
+
+	// Validate the rotated resoureces in the response.
+	s.Equal(rotatedInKey.GetRotatedResources().GetRotatedOutKey().GetKey().GetId(), keyMap[rotateKey].GetKey().GetId())
+	s.Len(rotatedInKey.GetRotatedResources().GetAttributeDefinitionIds(), 1)
+	s.Len(rotatedInKey.GetRotatedResources().GetNamespaceIds(), 1)
+	s.Len(rotatedInKey.GetRotatedResources().GetValueIds(), 1)
+	s.Contains(rotatedInKey.GetRotatedResources().GetAttributeDefinitionIds(), attributeMap[rotateKey].GetId())
+	s.Contains(rotatedInKey.GetRotatedResources().GetNamespaceIds(), namespaceMap[rotateKey].GetId())
+	s.Contains(rotatedInKey.GetRotatedResources().GetValueIds(), attributeMap[rotateKey].GetValues()[0].GetId())
 
 	// Verify that the old key is now inactive
 	oldKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
@@ -655,7 +664,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	updatedNs, err := s.db.PolicyClient.GetNamespace(s.ctx, namespaceMap[rotateKey].GetId())
 	s.Require().NoError(err)
 	s.Len(updatedNs.GetKasKeys(), 1)
-	s.Equal(rotatedInKey.GetKey().GetId(), updatedNs.GetKasKeys()[0].GetKey().GetId())
+	s.Equal(rotatedInKey.GetKasKey().GetKey().GetId(), updatedNs.GetKasKeys()[0].GetKey().GetId())
 
 	// Verify that namespace which was assigned a key that was not rotated is still intact
 	nonUpdatedNs, err := s.db.PolicyClient.GetNamespace(s.ctx, namespaceMap[nonRotateKey].GetId())
@@ -669,7 +678,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	})
 	s.Require().NoError(err)
 	s.Len(updatedAttr.GetKasKeys(), 1)
-	s.Equal(rotatedInKey.GetKey().GetId(), updatedAttr.GetKasKeys()[0].GetKey().GetId())
+	s.Equal(rotatedInKey.GetKasKey().GetKey().GetId(), updatedAttr.GetKasKeys()[0].GetKey().GetId())
 
 	// Verify that attribute definition which was assigned a key that was not rotated is still intact
 	nonUpdatedAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, &attributes.GetAttributeRequest_AttributeId{
@@ -685,7 +694,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	})
 	s.Require().NoError(err)
 	s.Len(attrValue.GetKasKeys(), 1)
-	s.Equal(rotatedInKey.GetKey().GetId(), attrValue.GetKasKeys()[0].GetKey().GetId())
+	s.Equal(rotatedInKey.GetKasKey().GetKey().GetId(), attrValue.GetKasKeys()[0].GetKey().GetId())
 
 	nonUpdatedAttrValue, err := s.db.PolicyClient.GetAttributeValue(s.ctx, &attributes.GetAttributeValueRequest_ValueId{
 		ValueId: attributeMap[nonRotateKey].GetValues()[0].GetId(),
@@ -699,7 +708,60 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 		[]string{attrValue.GetId(), nonUpdatedAttrValue.GetId()},
 		[]string{namespaceMap[rotateKey].GetId(), namespaceMap[nonRotateKey].GetId()},
 		[]string{attributeMap[rotateKey].GetId(), attributeMap[nonRotateKey].GetId()},
-		[]string{keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId(), rotatedInKey.GetKey().GetId()},
+		[]string{keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId(), rotatedInKey.GetKasKey().GetKey().GetId()},
 		[]string{kas.GetId()},
 	)
+}
+
+func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_rotate_key_kas",
+		Uri:  "https://test-rotate-key.opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+
+	keyMap := s.setupKeysForRotate(kas.GetId())
+	newKey := kasregistry.RotateKeyRequest_NewKey{
+		KeyId:        "new_key_id",
+		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		PublicKeyCtx: []byte(`{"key": "new"}`),
+	}
+	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
+	s.Require().NoError(err)
+	s.NotNil(rotatedInKey)
+	s.Equal(newKey.GetKeyId(), rotatedInKey.GetKasKey().GetKey().GetKeyId())
+	s.Equal(newKey.GetAlgorithm(), rotatedInKey.GetKasKey().GetKey().GetKeyAlgorithm())
+	s.Equal(newKey.GetKeyMode(), rotatedInKey.GetKasKey().GetKey().GetKeyMode())
+	s.Equal(newKey.GetPublicKeyCtx(), rotatedInKey.GetKasKey().GetKey().GetPublicKeyCtx())
+	s.Equal(policy.KeyStatus_KEY_STATUS_ACTIVE, rotatedInKey.GetKasKey().GetKey().GetKeyStatus())
+
+	// Validate the rotated resoureces in the response.
+	s.Equal(rotatedInKey.GetRotatedResources().GetRotatedOutKey().GetKey().GetId(), keyMap[rotateKey].GetKey().GetId())
+	s.Len(rotatedInKey.GetRotatedResources().GetAttributeDefinitionIds(), 0)
+	s.Len(rotatedInKey.GetRotatedResources().GetNamespaceIds(), 0)
+	s.Len(rotatedInKey.GetRotatedResources().GetValueIds(), 0)
+
+	// Verify that the old key is now inactive
+	oldKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
+		Id: keyMap[rotateKey].GetKey().GetId(),
+	})
+	s.Require().NoError(err)
+	s.Equal(policy.KeyStatus_KEY_STATUS_INACTIVE, oldKey.GetKey().GetKeyStatus())
+
+	// Clean up
+	s.cleanupRotate(
+		[]string{},
+		[]string{},
+		[]string{},
+		[]string{
+			keyMap[rotateKey].GetKey().GetId(),
+			keyMap[nonRotateKey].GetKey().GetId(),
+			rotatedInKey.GetKasKey().GetKey().GetId(),
+		},
+		[]string{kas.GetId()},
+	)
+
 }

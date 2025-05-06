@@ -23,6 +23,7 @@ var (
 	dataAttributes []string
 	collection     int
 	alg            string
+	plaintext      bool
 )
 
 func init() {
@@ -40,6 +41,7 @@ func init() {
 	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
 	encryptCmd.Flags().StringVarP(&alg, "key-encapsulation-algorithm", "A", "rsa:2048", "Key wrap algorithm algorithm:parameters")
 	encryptCmd.Flags().IntVarP(&collection, "collection", "c", 0, "number of nano's to create for collection. If collection >0 (default) then output will be <iteration>_<output>")
+	encryptCmd.Flags().BoolVar(&plaintext, "plaintext-policy", false, "Store policy in plaintext instead of encrypted (nanoTDF only)")
 
 	ExamplesCmd.AddCommand(&encryptCmd)
 }
@@ -145,6 +147,9 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("%s/kas", baseKasUrl))
 		if err != nil {
 			return err
+		}
+		if plaintext {
+			nanoTDFConfig.EnablePlaintextPolicy()
 		}
 		for i, writer := range writer {
 			input := plainText

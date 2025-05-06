@@ -386,3 +386,53 @@ func TestDataSet(t *testing.T) {
 		t.Fatal("header did not reset")
 	}
 }
+
+func TestCreateEmbeddedPolicy(t *testing.T) {
+	// Test data
+	policyData := []byte(`{"attributes":["https://example.com/attr/Classification/value/S"]}`)
+
+	t.Run("plaintext policy", func(t *testing.T) {
+		config, err := new(SDK).NewNanoTDFConfig()
+		require.NoError(t, err)
+		config.EnablePlaintextPolicy()
+
+		policy, err := createEmbeddedPolicy(policyData, *config)
+		require.NoError(t, err)
+		assert.Equal(t, uint16(len(policyData)), policy.lengthBody)
+		assert.Equal(t, policyData, policy.body)
+	})
+
+	t.Run("encrypted policy", func(t *testing.T) {
+		config, err := new(SDK).NewNanoTDFConfig()
+		require.NoError(t, err)
+
+		// Setup KAS public key
+		key, err := ecdh.P256().GenerateKey(rand.Reader)
+		require.NoError(t, err)
+		config.kasPublicKey = key.PublicKey()
+
+		// Enable encryption
+		err = config.SetPolicyMode(policyTypeEmbeddedPolicyEncrypted)
+		require.NoError(t, err)
+
+		policy, err := createEmbeddedPolicy(policyData, *config)
+		require.NoError(t, err)
+
+		// Verify the encrypted policy is different from input and has expected length
+		assert.NotEqual(t, policyData, policy.body)
+		assert.Greater(t, len(policy.body), 0)
+		assert.Equal(t, uint16(len(policy.body)), policy.lengthBody)
+	})
+
+	t.Run("encrypted policy with invalid KAS key", func(t *testing.T) {
+		config, err := new(SDK).NewNanoTDFConfig()
+		require.NoError(t, err)
+
+		err = config.SetPolicyMode(policyTypeEmbeddedPolicyEncrypted)
+		require.NoError(t, err)
+
+		// Don't set KAS public key
+		_, err = createEmbeddedPolicy(policyData, *config)
+		assert.Error(t, err)
+	})
+}

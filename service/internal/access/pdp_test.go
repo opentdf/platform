@@ -588,8 +588,19 @@ func Test_DetermineAccess_MultipleEntities(t *testing.T) {
 	// Entity 2 should not have access (missing the second attribute)
 	assert.False(t, decisions[entityID2].Access)
 	assert.Len(t, decisions[entityID2].Results, 2)
-	assert.True(t, decisions[entityID2].Results[0].Passed)  // First attribute passes
-	assert.False(t, decisions[entityID2].Results[1].Passed) // Second attribute fails
+	foundDef1 := false
+	foundDef2 := false
+	for _, result := range decisions[entityID2].Results {
+		if result.RuleDefinition == definition {
+			foundDef1 = true
+			assert.True(t, result.Passed) // First attribute passes
+		} else if result.RuleDefinition == definition2 {
+			foundDef2 = true
+			assert.False(t, result.Passed) // Second attribute fails
+		}
+	}
+	assert.True(t, foundDef1)
+	assert.True(t, foundDef2)
 }
 
 func Test_DetermineAccess_HierarchyWithMultipleEntities(t *testing.T) {

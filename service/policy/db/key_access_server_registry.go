@@ -425,12 +425,35 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 			return nil, db.ErrUUIDInvalid
 		}
 		params = getKeyParams{ID: pgUUID}
-	case *kasregistry.GetKeyRequest_KeyId:
-		keyID := pgtypeText(i.KeyId)
+	case *kasregistry.GetKeyRequest_Key:
+		keyID := pgtypeText(i.Key.GetKid())
 		if !keyID.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
-		params = getKeyParams{KeyID: keyID}
+
+		switch i.Key.GetIdentifier().(type) {
+		case *kasregistry.KasKeyIdentifier_KasId:
+			kasID := pgtypeUUID(i.Key.GetKasId())
+			if !kasID.Valid {
+				return nil, db.ErrSelectIdentifierInvalid
+			}
+			params = getKeyParams{KasID: kasID, KeyID: keyID}
+		case *kasregistry.KasKeyIdentifier_Uri:
+			kasURI := pgtypeText(i.Key.GetUri())
+			if !kasURI.Valid {
+				return nil, db.ErrSelectIdentifierInvalid
+			}
+			params = getKeyParams{KasUri: kasURI, KeyID: keyID}
+		case *kasregistry.KasKeyIdentifier_Name:
+			kasName := pgtypeText(i.Key.GetName())
+			if !kasName.Valid {
+				return nil, db.ErrSelectIdentifierInvalid
+			}
+			params = getKeyParams{KasName: kasName, KeyID: keyID}
+		default:
+			return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
+		}
+
 	default:
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}

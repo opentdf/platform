@@ -15,7 +15,7 @@ type FullyQualifiedRegisteredResourceValue struct {
 // for parsing purposes, we can just look for any non-whitespace characters
 // e.g. should be in format of "https://reg_res/<name>/value/<value>"
 var registeredResourceValueFqnRegex = regexp.MustCompile(
-	`^https:\/\/reg_res\/(?<name>\S+)\/value\/(?<value>\S+)$`,
+	`^https:\/\/reg_res\/(?<name>[^\/]+)\/value\/(?<value>[^\/]+)$`,
 )
 
 // parseRegisteredResourceValueFqn parses a registered resource value FQN string into a FullyQualifiedRegisteredResourceValue struct.

@@ -15,7 +15,7 @@ type FullyQualifiedResourceMappingGroup struct {
 // for parsing purposes, we can just look for any non-whitespace characters
 // e.g. should be in format of "https://<namespace>/resm/<group name>"
 var resourceMappingGroupFqnRegex = regexp.MustCompile(
-	`^https:\/\/(?<namespace>\S+)\/resm\/(?<groupName>\S+)$`,
+	`^https:\/\/(?<namespace>[^\/]+)\/resm\/(?<groupName>[^\/]+)$`,
 )
 
 // parseResourceMappingGroupFqn parses a resource mapping group FQN string into a FullyQualifiedResourceMappingGroup struct.

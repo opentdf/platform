@@ -70,7 +70,7 @@ type SDK struct {
 	tokenSource auth.AccessTokenSource
 	Actions     actions.ActionServiceClient
 	Attributes  attributes.AttributesServiceClient
-	// Deprecated: Migrate to AuthorizationV2 methods
+	// Deprecated: Use AuthorizationV2 methods instead
 	Authorization           authorization.AuthorizationServiceClient
 	AuthorizationV2         authorizationv2.AuthorizationServiceClient
 	EntityResoution         entityresolution.EntityResolutionServiceClient

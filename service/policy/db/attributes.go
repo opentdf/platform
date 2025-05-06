@@ -271,13 +271,13 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 		return nil, err
 	}
 
-	var keys []*policy.AsymmetricKey
+	var keys []*policy.KasKey
 	if len(attr.Keys) > 0 {
-		keys, err = db.AsymKeysProtoJSON(attr.Keys)
+		keys, err = db.KasKeysProtoJSON(attr.Keys)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
 		}
-		policyAttr.Keys = keys
+		policyAttr.KasKeys = keys
 	}
 
 	return policyAttr, nil
@@ -310,9 +310,9 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			}
 		}
 
-		var keys []*policy.AsymmetricKey
+		var keys []*policy.KasKey
 		if len(attr.Keys) > 0 {
-			keys, err = db.AsymKeysProtoJSON(attr.Keys)
+			keys, err = db.KasKeysProtoJSON(attr.Keys)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
 			}
@@ -327,7 +327,7 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			Grants:    grants,
 			Namespace: ns,
 			Values:    values,
-			Keys:      keys,
+			KasKeys:   keys,
 		}
 	}
 

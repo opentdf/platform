@@ -613,11 +613,11 @@
           "type": "boolean",
           "title": "active by default until explicitly deactivated"
         },
-        "keys": {
+        "kasKeys": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyAsymmetricKey"
+            "$ref": "#/definitions/policyKasKey"
           },
           "title": "Keys associated with the attribute"
         },
@@ -684,6 +684,17 @@
       },
       "title": "A collection of Conditions evaluated by the boolean_operator provided"
     },
+    "policyKasKey": {
+      "type": "object",
+      "properties": {
+        "kasId": {
+          "type": "string"
+        },
+        "key": {
+          "$ref": "#/definitions/policyAsymmetricKey"
+        }
+      }
+    },
     "policyKasPublicKey": {
       "type": "object",
       "properties": {
@@ -745,13 +756,13 @@
           "$ref": "#/definitions/policySourceType",
           "title": "The source of the KAS: (INTERNAL, EXTERNAL)"
         },
-        "keys": {
+        "kasKeys": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyAsymmetricKey"
+            "$ref": "#/definitions/policyKasKey"
           },
-          "title": "Asymmetric keys associated with this KAS"
+          "title": "Kas keys associated with this KAS"
         },
         "name": {
           "type": "string",
@@ -833,11 +844,11 @@
           },
           "title": "KAS grants for the namespace"
         },
-        "keys": {
+        "kasKeys": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyAsymmetricKey"
+            "$ref": "#/definitions/policyKasKey"
           },
           "title": "Keys for the namespace"
         }
@@ -1055,11 +1066,11 @@
           },
           "title": "subject mapping"
         },
-        "keys": {
+        "kasKeys": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyAsymmetricKey"
+            "$ref": "#/definitions/policyKasKey"
           }
         },
         "metadata": {

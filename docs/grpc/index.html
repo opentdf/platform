@@ -234,6 +234,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.KasKey"><span class="badge">M</span>KasKey</a>
+                </li>
+              
+                <li>
                   <a href="#policy.KasPublicKey"><span class="badge">M</span>KasPublicKey</a>
                 </li>
               
@@ -2058,8 +2062,8 @@
                 </tr>
               
                 <tr>
-                  <td>keys</td>
-                  <td><a href="#policy.AsymmetricKey">AsymmetricKey</a></td>
+                  <td>kas_keys</td>
+                  <td><a href="#policy.KasKey">KasKey</a></td>
                   <td>repeated</td>
                   <td><p>Keys associated with the attribute </p></td>
                 </tr>
@@ -2141,6 +2145,37 @@ subject_external_selector_value on a flattened Entity Representation
                   <td><a href="#policy.ConditionBooleanTypeEnum">ConditionBooleanTypeEnum</a></td>
                   <td></td>
                   <td><p>the boolean evaluation type across the conditions </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.KasKey">KasKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.AsymmetricKey">AsymmetricKey</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -2312,10 +2347,10 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
                 </tr>
               
                 <tr>
-                  <td>keys</td>
-                  <td><a href="#policy.AsymmetricKey">AsymmetricKey</a></td>
+                  <td>kas_keys</td>
+                  <td><a href="#policy.KasKey">KasKey</a></td>
                   <td>repeated</td>
-                  <td><p>Asymmetric keys associated with this KAS </p></td>
+                  <td><p>Kas keys associated with this KAS </p></td>
                 </tr>
               
                 <tr>
@@ -2439,8 +2474,8 @@ enable federation </p></td>
                 </tr>
               
                 <tr>
-                  <td>keys</td>
-                  <td><a href="#policy.AsymmetricKey">AsymmetricKey</a></td>
+                  <td>kas_keys</td>
+                  <td><a href="#policy.KasKey">KasKey</a></td>
                   <td>repeated</td>
                   <td><p>Keys for the namespace </p></td>
                 </tr>
@@ -2943,8 +2978,8 @@ list of key access servers </p></td>
                 </tr>
               
                 <tr>
-                  <td>keys</td>
-                  <td><a href="#policy.AsymmetricKey">AsymmetricKey</a></td>
+                  <td>kas_keys</td>
+                  <td><a href="#policy.KasKey">KasKey</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -7604,10 +7639,10 @@ Mutable metadata for the key </p></td>
             <tbody>
               
                 <tr>
-                  <td>key</td>
-                  <td><a href="#policy.AsymmetricKey">policy.AsymmetricKey</a></td>
+                  <td>kas_key</td>
+                  <td><a href="#policy.KasKey">policy.KasKey</a></td>
                   <td></td>
-                  <td><p>The created asymmetric key </p></td>
+                  <td><p>The created asymmetric key for a KAS. </p></td>
                 </tr>
               
             </tbody>
@@ -7907,10 +7942,10 @@ Mutable metadata for the key </p></td>
             <tbody>
               
                 <tr>
-                  <td>key</td>
-                  <td><a href="#policy.AsymmetricKey">policy.AsymmetricKey</a></td>
+                  <td>kas_key</td>
+                  <td><a href="#policy.KasKey">policy.KasKey</a></td>
                   <td></td>
-                  <td><p>The requested asymmetric key </p></td>
+                  <td><p>The requested asymmetric key for a KAS. </p></td>
                 </tr>
               
             </tbody>
@@ -8315,10 +8350,10 @@ Pagination request for the list of keys </p></td>
             <tbody>
               
                 <tr>
-                  <td>keys</td>
-                  <td><a href="#policy.AsymmetricKey">policy.AsymmetricKey</a></td>
+                  <td>kas_keys</td>
+                  <td><a href="#policy.KasKey">policy.KasKey</a></td>
                   <td>repeated</td>
-                  <td><p>The list of asymmetric keys </p></td>
+                  <td><p>The list of kas keys </p></td>
                 </tr>
               
                 <tr>
@@ -8732,10 +8767,10 @@ Specific structure based on key provider implementation </p></td>
             <tbody>
               
                 <tr>
-                  <td>key</td>
-                  <td><a href="#policy.AsymmetricKey">policy.AsymmetricKey</a></td>
+                  <td>kas_key</td>
+                  <td><a href="#policy.KasKey">policy.KasKey</a></td>
                   <td></td>
-                  <td><p>The newly rotated Asymmetric Key </p></td>
+                  <td><p>The newly rotated Kas Key </p></td>
                 </tr>
               
             </tbody>
@@ -8904,10 +8939,10 @@ Mutable metadata for the key </p></td>
             <tbody>
               
                 <tr>
-                  <td>key</td>
-                  <td><a href="#policy.AsymmetricKey">policy.AsymmetricKey</a></td>
+                  <td>kas_key</td>
+                  <td><a href="#policy.KasKey">policy.KasKey</a></td>
                   <td></td>
-                  <td><p>The updated asymmetric key </p></td>
+                  <td><p>The updated kas key </p></td>
                 </tr>
               
             </tbody>

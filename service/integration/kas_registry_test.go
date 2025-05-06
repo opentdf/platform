@@ -75,17 +75,18 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 	kasToKeysFixtures := s.getKasToKeysFixtureMap()
 	// Check that key is present.
 	keysFixtureArr := kasToKeysFixtures[kasr.GetId()]
-	s.GreaterOrEqual(len(kasr.GetKeys()), len(keysFixtureArr))
+	s.GreaterOrEqual(len(kasr.GetKasKeys()), len(keysFixtureArr))
 	// Check for expected key ids.
 	matchingKeysCount := 0
-	for _, key := range kasr.GetKeys() {
+	for _, kasKey := range kasr.GetKasKeys() {
 		for _, f := range keysFixtureArr {
-			if key.GetId() == f.ID {
+			if kasKey.GetKey().GetId() == f.ID {
 				publicKeyContext, err := base64.StdEncoding.DecodeString(f.PublicKeyCtx)
 				s.Require().NoError(err)
-				s.Equal(publicKeyContext, key.GetPublicKeyCtx())
-				s.Empty(key.GetPrivateKeyCtx())
-				s.Empty(key.GetProviderConfig())
+				s.Equal(f.KeyAccessServerID, kasKey.GetKasId())
+				s.Equal(publicKeyContext, kasKey.GetKey().GetPublicKeyCtx())
+				s.Empty(kasKey.GetKey().GetPrivateKeyCtx())
+				s.Empty(kasKey.GetKey().GetProviderConfig())
 				matchingKeysCount++
 			}
 		}
@@ -827,7 +828,7 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithChildKeys_Fails() {
 	resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, createdKas.GetId())
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Len(resp.GetKeys(), 1)
+	s.Len(resp.GetKasKeys(), 1)
 
 	deleted, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, createdKas.GetId())
 	s.Require().Error(err)
@@ -835,7 +836,7 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithChildKeys_Fails() {
 	s.Nil(deleted)
 
 	// Remove key to clean up
-	_, err = s.db.PolicyClient.DeleteKey(s.ctx, createdKey.GetKey().GetId())
+	_, err = s.db.PolicyClient.DeleteKey(s.ctx, createdKey.GetKasKey().GetKey().GetId())
 	s.Require().NoError(err)
 
 	// Delete the KAS

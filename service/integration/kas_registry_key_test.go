@@ -130,9 +130,10 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_Success() {
 	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Nil(resp.GetKey().GetProviderConfig())
+	s.Equal(s.kasKeys[0].KeyAccessServerID, resp.GetKasKey().GetKasId())
+	s.Nil(resp.GetKasKey().GetKey().GetProviderConfig())
 
-	_, err = s.db.PolicyClient.DeleteKey(s.ctx, resp.GetKey().GetId())
+	_, err = s.db.PolicyClient.DeleteKey(s.ctx, resp.GetKasKey().GetKey().GetId())
 	s.Require().NoError(err)
 }
 
@@ -160,8 +161,9 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyById_Success() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Equal(s.kasKeys[0].ID, resp.GetId())
-	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetProviderConfig().GetId())
+	s.Equal(s.kasKeys[0].KeyAccessServerID, resp.GetKasId())
+	s.Equal(s.kasKeys[0].ID, resp.GetKey().GetId())
+	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetKey().GetProviderConfig().GetId())
 }
 
 func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_WrongKas_Fail() {
@@ -210,14 +212,15 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyByKeyId_Success() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Equal(s.kasKeys[0].ID, resp.GetId())
+	s.Equal(s.kasKeys[0].KeyAccessServerID, resp.GetKasId())
+	s.Equal(s.kasKeys[0].ID, resp.GetKey().GetId())
 	privateKeyCtx, err := base64.StdEncoding.DecodeString(s.kasKeys[0].PrivateKeyCtx)
 	s.Require().NoError(err)
-	s.Equal(privateKeyCtx, resp.GetPrivateKeyCtx())
+	s.Equal(privateKeyCtx, resp.GetKey().GetPrivateKeyCtx())
 	pubKeyCtx, err := base64.StdEncoding.DecodeString(s.kasKeys[0].PublicKeyCtx)
 	s.Require().NoError(err)
-	s.Equal(pubKeyCtx, resp.GetPublicKeyCtx())
-	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetProviderConfig().GetId())
+	s.Equal(pubKeyCtx, resp.GetKey().GetPublicKeyCtx())
+	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetKey().GetProviderConfig().GetId())
 }
 
 func (s *KasRegistryKeySuite) Test_GetKasKey_WithKasName_Success() {
@@ -237,14 +240,14 @@ func (s *KasRegistryKeySuite) Test_GetKasKey_WithKasName_Success() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Equal(s.kasKeys[0].ID, resp.GetId())
+	s.Equal(s.kasKeys[0].ID, resp.GetKey().GetId())
 	privateKeyCtx, err := base64.StdEncoding.DecodeString(s.kasKeys[0].PrivateKeyCtx)
 	s.Require().NoError(err)
-	s.Equal(privateKeyCtx, resp.GetPrivateKeyCtx())
+	s.Equal(privateKeyCtx, resp.GetKey().GetPrivateKeyCtx())
 	pubKeyCtx, err := base64.StdEncoding.DecodeString(s.kasKeys[0].PublicKeyCtx)
 	s.Require().NoError(err)
-	s.Equal(pubKeyCtx, resp.GetPublicKeyCtx())
-	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetProviderConfig().GetId())
+	s.Equal(pubKeyCtx, resp.GetKey().GetPublicKeyCtx())
+	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetKey().GetProviderConfig().GetId())
 }
 
 func (s *KasRegistryKeySuite) Test_GetKasKey_WithKasUri_Success() {
@@ -264,14 +267,15 @@ func (s *KasRegistryKeySuite) Test_GetKasKey_WithKasUri_Success() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Equal(s.kasKeys[0].ID, resp.GetId())
+	s.Equal(s.kasKeys[0].KeyAccessServerID, resp.GetKasId())
+	s.Equal(s.kasKeys[0].ID, resp.GetKey().GetId())
 	privateKeyCtx, err := base64.StdEncoding.DecodeString(s.kasKeys[0].PrivateKeyCtx)
 	s.Require().NoError(err)
-	s.Equal(privateKeyCtx, resp.GetPrivateKeyCtx())
+	s.Equal(privateKeyCtx, resp.GetKey().GetPrivateKeyCtx())
 	pubKeyCtx, err := base64.StdEncoding.DecodeString(s.kasKeys[0].PublicKeyCtx)
 	s.Require().NoError(err)
-	s.Equal(pubKeyCtx, resp.GetPublicKeyCtx())
-	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetProviderConfig().GetId())
+	s.Equal(pubKeyCtx, resp.GetKey().GetPublicKeyCtx())
+	s.Equal(s.kasKeys[0].ProviderConfigID, resp.GetKey().GetProviderConfig().GetId())
 }
 
 func (s *KasRegistryKeySuite) Test_UpdateKey_InvalidKeyId_Fails() {
@@ -313,7 +317,7 @@ func (s *KasRegistryKeySuite) Test_UpdateKeyStatus_Success() {
 	resp, err := s.db.PolicyClient.UpdateKey(s.ctx, &req)
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Equal(s.kasKeys[1].ID, resp.GetId())
+	s.Equal(s.kasKeys[1].ID, resp.GetKey().GetId())
 }
 
 func (s *KasRegistryKeySuite) Test_UpdateKeyMetadata_Success() {
@@ -327,7 +331,7 @@ func (s *KasRegistryKeySuite) Test_UpdateKeyMetadata_Success() {
 	resp, err := s.db.PolicyClient.UpdateKey(s.ctx, &req)
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Equal(s.kasKeys[1].ID, resp.GetId())
+	s.Equal(s.kasKeys[1].ID, resp.GetKey().GetId())
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_InvalidLimit_Fail() {
@@ -345,30 +349,31 @@ func (s *KasRegistryKeySuite) Test_ListKeys_InvalidLimit_Fail() {
 func (s *KasRegistryKeySuite) validateListKeysResponse(resp *kasregistry.ListKeysResponse, err error) {
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.GreaterOrEqual(len(resp.GetKeys()), 2)
+	s.GreaterOrEqual(len(resp.GetKasKeys()), 2)
 	s.GreaterOrEqual(int32(2), resp.GetPagination().GetTotal())
 
-	for _, key := range resp.GetKeys() {
+	for _, key := range resp.GetKasKeys() {
 		var fixtureKey *fixtures.FixtureDataKasRegistryKey
 
 		for _, kasKey := range s.kasKeys {
-			if kasKey.ID == key.GetId() {
+			if kasKey.ID == key.GetKey().GetId() {
 				fixtureKey = &kasKey
 				break
 			}
 		}
 
-		s.Require().NotNil(fixtureKey, "No matching KAS key found for ID: %s", key.GetId())
-		s.Equal(fixtureKey.ID, key.GetId())
-		s.Equal(fixtureKey.ProviderConfigID, key.GetProviderConfig().GetId())
+		s.Require().NotNil(fixtureKey, "No matching KAS key found for ID: %s", key.GetKey().GetId())
+		s.Equal(fixtureKey.KeyAccessServerID, key.GetKasId())
+		s.Equal(fixtureKey.ID, key.GetKey().GetId())
+		s.Equal(fixtureKey.ProviderConfigID, key.GetKey().GetProviderConfig().GetId())
 
 		privateKeyCtx, err := base64.StdEncoding.DecodeString(fixtureKey.PrivateKeyCtx)
 		s.Require().NoError(err)
-		s.Equal(privateKeyCtx, key.GetPrivateKeyCtx())
+		s.Equal(privateKeyCtx, key.GetKey().GetPrivateKeyCtx())
 
 		pubKeyCtx, err := base64.StdEncoding.DecodeString(fixtureKey.PublicKeyCtx)
 		s.Require().NoError(err)
-		s.Equal(pubKeyCtx, key.GetPublicKeyCtx())
+		s.Equal(pubKeyCtx, key.GetKey().GetPublicKeyCtx())
 	}
 }
 
@@ -409,7 +414,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_FilterAlgo_NoKeysWithAlgo_Success() 
 	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Empty(resp.GetKeys())
+	s.Empty(resp.GetKasKeys())
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_FilterAlgo_TwoKeys_Success() {
@@ -436,7 +441,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Limit_Success() {
 	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Len(resp.GetKeys(), 1)
+	s.Len(resp.GetKasKeys(), 1)
 	s.GreaterOrEqual(int32(2), resp.GetPagination().GetTotal())
 	s.Equal(int32(1), resp.GetPagination().GetNextOffset())
 	s.Equal(int32(0), resp.GetPagination().GetCurrentOffset())

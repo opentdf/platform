@@ -495,10 +495,10 @@ func (s *KasRegistryKeySuite) setupNamespaceForRotate(keyToRotate, secondKey *po
 	}
 }
 
-func (s *KasRegistryKeySuite) setupKeysForRotate(kasId string) map[string]*policy.KasKey {
+func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*policy.KasKey {
 	// Create a key for the KAS
 	keyReq := kasregistry.CreateKeyRequest{
-		KasId:        kasId,
+		KasId:        kasID,
 		KeyId:        "original_key_id_to_rotate",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
@@ -509,7 +509,7 @@ func (s *KasRegistryKeySuite) setupKeysForRotate(kasId string) map[string]*polic
 	s.NotNil(rotateKey)
 
 	keyReq2 := kasregistry.CreateKeyRequest{
-		KasId:        kasId,
+		KasId:        kasID,
 		KeyId:        "second_original_key_id",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
@@ -588,25 +588,24 @@ func (s *KasRegistryKeySuite) setupAttributesForRotate(namespaceMap map[string]*
 	}
 }
 
-func (s *KasRegistryKeySuite) cleanupRotate(attrValueIds []string, namespaceIds []string, attributeIds []string, keyIds []string, keyAccessServerIds []string) {
-
-	for _, id := range attrValueIds {
+func (s *KasRegistryKeySuite) cleanupRotate(attrValueIDs []string, namespaceIDs []string, attributeIDs []string, keyIDs []string, keyAccessServerIDs []string) {
+	for _, id := range attrValueIDs {
 		_, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, id)
 		s.Require().NoError(err)
 	}
-	for _, id := range namespaceIds {
+	for _, id := range namespaceIDs {
 		_, err := s.db.PolicyClient.DeleteNamespace(s.ctx, id)
 		s.Require().NoError(err)
 	}
-	for _, id := range attributeIds {
+	for _, id := range attributeIDs {
 		_, err := s.db.PolicyClient.DeleteAttribute(s.ctx, id)
 		s.Require().NoError(err)
 	}
-	for _, id := range keyIds {
+	for _, id := range keyIDs {
 		_, err := s.db.PolicyClient.DeleteKey(s.ctx, id)
 		s.Require().NoError(err)
 	}
-	for _, id := range keyAccessServerIds {
+	for _, id := range keyAccessServerIDs {
 		_, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, id)
 		s.Require().NoError(err)
 	}
@@ -740,9 +739,9 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 
 	// Validate the rotated resoureces in the response.
 	s.Equal(rotatedInKey.GetRotatedResources().GetRotatedOutKey().GetKey().GetId(), keyMap[rotateKey].GetKey().GetId())
-	s.Len(rotatedInKey.GetRotatedResources().GetAttributeDefinitionIds(), 0)
-	s.Len(rotatedInKey.GetRotatedResources().GetNamespaceIds(), 0)
-	s.Len(rotatedInKey.GetRotatedResources().GetValueIds(), 0)
+	s.Empty(rotatedInKey.GetRotatedResources().GetAttributeDefinitionIds())
+	s.Empty(rotatedInKey.GetRotatedResources().GetNamespaceIds())
+	s.Empty(rotatedInKey.GetRotatedResources().GetValueIds())
 
 	// Verify that the old key is now inactive
 	oldKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{

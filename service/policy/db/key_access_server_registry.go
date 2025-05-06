@@ -660,7 +660,7 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 		RotatedResources: &kasregistry.RotatedResources{},
 	}
 
-	//Step 1: Update old key to inactive.
+	// Step 1: Update old key to inactive.
 	rotatedOutKey, err := c.UpdateKey(ctx, &kasregistry.UpdateKeyRequest{
 		Id:        activeKey.GetKey().GetId(),
 		KeyStatus: policy.KeyStatus_KEY_STATUS_INACTIVE,
@@ -669,7 +669,7 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 		return nil, err
 	}
 
-	//Step 2: Create new key.
+	// Step 2: Create new key.
 	newKasKey, err := c.CreateKey(ctx, &kasregistry.CreateKeyRequest{
 		KasId:            activeKey.GetKasId(),
 		KeyId:            newKey.GetKeyId(),

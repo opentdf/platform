@@ -354,7 +354,7 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 	var resp *kasr.RotateKeyResponse
 	var objectID string
 
-	switch i := r.Msg.ActiveKey.(type) {
+	switch i := r.Msg.GetActiveKey().(type) {
 	case *kasr.RotateKeyRequest_Id:
 		s.logger.Debug("Rotating key by ID", slog.String("ID", i.Id))
 		objectID = i.Id

@@ -16,6 +16,9 @@
     "lib/flattening": {
       "component": "lib/flattening"
     },
+    "lib/identifier": {
+      "component": "lib/identifier"
+    },
     "protocol/go": {
       "component": "protocol/go"
     },

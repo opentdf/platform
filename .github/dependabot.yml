@@ -12,6 +12,11 @@ updates:
     commit-message:
       prefix: "chore(ci)"
   - package-ecosystem: gomod
-    directory: /
+    directories:
+      - /examples
+      - /lib/*
+      - /protocol/go
+      - /sdk
+      - /service
     schedule:
-      interval: weekly
+      interval: daily

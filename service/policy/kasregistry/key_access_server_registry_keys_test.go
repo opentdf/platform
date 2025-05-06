@@ -63,8 +63,8 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			name: "Invalid Key - Key ID (empty)",
 			req: &kasregistry.GetKeyRequest{
 				Identifier: &kasregistry.GetKeyRequest_Key{
-					Key: &kasregistry.KasAsymKey{
-						Identifier: &kasregistry.KasAsymKey_KasId{
+					Key: &kasregistry.KasKeyIdentifier{
+						Identifier: &kasregistry.KasKeyIdentifier_KasId{
 							KasId: validUUID,
 						},
 					},
@@ -77,7 +77,7 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			name: "Invalid Key - Kas ID (empty)",
 			req: &kasregistry.GetKeyRequest{
 				Identifier: &kasregistry.GetKeyRequest_Key{
-					Key: &kasregistry.KasAsymKey{
+					Key: &kasregistry.KasKeyIdentifier{
 						Kid: validUUID,
 					},
 				},
@@ -89,8 +89,8 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			name: "Invalid Key - Kas Name (empty)",
 			req: &kasregistry.GetKeyRequest{
 				Identifier: &kasregistry.GetKeyRequest_Key{
-					Key: &kasregistry.KasAsymKey{
-						Identifier: &kasregistry.KasAsymKey_Name{
+					Key: &kasregistry.KasKeyIdentifier{
+						Identifier: &kasregistry.KasKeyIdentifier_Name{
 							Name: "",
 						},
 						Kid: validUUID,
@@ -104,8 +104,8 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			name: "Invalid Key - Kas Uri (non-uri)",
 			req: &kasregistry.GetKeyRequest{
 				Identifier: &kasregistry.GetKeyRequest_Key{
-					Key: &kasregistry.KasAsymKey{
-						Identifier: &kasregistry.KasAsymKey_Uri{
+					Key: &kasregistry.KasKeyIdentifier{
+						Identifier: &kasregistry.KasKeyIdentifier_Uri{
 							Uri: "not-a-uri",
 						},
 						Kid: validUUID,
@@ -128,8 +128,8 @@ func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 			name: "Valid Key Req",
 			req: &kasregistry.GetKeyRequest{
 				Identifier: &kasregistry.GetKeyRequest_Key{
-					Key: &kasregistry.KasAsymKey{
-						Identifier: &kasregistry.KasAsymKey_KasId{
+					Key: &kasregistry.KasKeyIdentifier{
+						Identifier: &kasregistry.KasKeyIdentifier_KasId{
 							KasId: validUUID,
 						},
 						Kid: validKeyID,
@@ -348,7 +348,8 @@ func Test_ListKeyAccessServer_Keys(t *testing.T) {
 			req: &kasregistry.ListKeysRequest{
 				KasFilter: &kasregistry.ListKeysRequest_KasId{
 					KasId: invalidUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errMessageKasID,
 		},

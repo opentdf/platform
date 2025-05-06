@@ -106,7 +106,7 @@ func (s *PolicyDBClientSuite) Test_RunInTx_RollsBackOnFailure() {
 			Rule:        db.AttributeDefinitionRuleALLOF,
 		})
 		s.Require().Error(err)
-		s.Require().Zero(attrID)
+		s.Require().Empty(attrID)
 		return err
 	})
 	s.Require().Error(txErr)

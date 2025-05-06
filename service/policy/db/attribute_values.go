@@ -92,9 +92,9 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		}
 	}
 
-	var keys []*policy.AsymmetricKey
+	var keys []*policy.KasKey
 	if av.Keys != nil {
-		keys, err = db.AsymKeysProtoJSON(av.Keys)
+		keys, err = db.KasKeysProtoJSON(av.Keys)
 		if err != nil {
 			c.logger.ErrorContext(ctx, "could not unmarshal keys", slog.String("error", err.Error()))
 			return nil, err
@@ -110,8 +110,8 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		Attribute: &policy.Attribute{
 			Id: av.AttributeDefinitionID,
 		},
-		Fqn:  av.Fqn.String,
-		Keys: keys,
+		Fqn:     av.Fqn.String,
+		KasKeys: keys,
 	}, nil
 }
 

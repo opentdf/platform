@@ -30,8 +30,10 @@ const (
 	XMLFormat
 )
 
-const schemeHTTPS = "https"
-const schemeSeperator = "://"
+const (
+	schemeHTTPS     = "https"
+	schemeSeperator = "://"
+)
 
 type IntegrityAlgorithm = int
 

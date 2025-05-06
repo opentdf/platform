@@ -2,12 +2,11 @@ package integration
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
-
-	"encoding/base64"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -313,13 +312,13 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 	s.Require().NoError(err)
 	s.NotNil(updatedWithChange)
 	s.Equal(created.GetId(), updatedWithChange.GetId())
-	s.EqualValues(expectedLabels, updatedWithChange.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, updatedWithChange.GetMetadata().GetLabels())
 
 	got, err := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
-	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, got.GetMetadata().GetLabels())
 	updatedMetadata := got.GetMetadata()
 	createdTime := metadata.GetCreatedAt().AsTime()
 	updatedTime := updatedMetadata.GetUpdatedAt().AsTime()
@@ -341,7 +340,7 @@ func (s *NamespacesSuite) Test_UpdateNamespace_DoesNotExist_ShouldFail() {
 func (s *NamespacesSuite) Test_DeactivateNamespace() {
 	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deactivating-namespace.com"})
 	s.Require().NoError(err)
-	s.NotEqual("", n)
+	s.NotEmpty(n)
 
 	inactive, err := s.db.PolicyClient.DeactivateNamespace(s.ctx, n.GetId())
 	s.Require().NoError(err)
@@ -372,7 +371,7 @@ func setupCascadeDeactivateNamespace(s *NamespacesSuite) (string, string, string
 	// create a namespace
 	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "cascading-deactivate-namespace"})
 	s.Require().NoError(err)
-	s.NotEqual("", n)
+	s.NotEmpty(n)
 
 	// add an attribute under that namespaces
 	attr := &attributes.CreateAttributeRequest{
@@ -664,7 +663,7 @@ func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_DoesNotExist_ShouldFail() {
 	s.NotNil(created)
 	got, _ := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
 	s.NotNil(got)
-	s.NotEqual("", got.GetFqn())
+	s.NotEmpty(got.GetFqn())
 
 	ns, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, got, "https://bad.fqn")
 	s.Require().Error(err)
@@ -1190,7 +1189,7 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
-	s.Empty(gotAttr.GetKeys())
+	s.Empty(gotAttr.GetKasKeys())
 
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
 	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
@@ -1205,13 +1204,14 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
-	s.Len(gotAttr.GetKeys(), 1)
-	s.Equal(kasKey.ID, gotAttr.GetKeys()[0].GetId())
+	s.Len(gotAttr.GetKasKeys(), 1)
+	s.Equal(kasKey.KeyAccessServerID, gotAttr.GetKasKeys()[0].GetKasId())
+	s.Equal(kasKey.ID, gotAttr.GetKasKeys()[0].GetKey().GetId())
 	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
 	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, gotAttr.GetKeys()[0].GetPublicKeyCtx())
-	s.Empty(gotAttr.GetKeys()[0].GetPrivateKeyCtx())
-	s.Empty(gotAttr.GetKeys()[0].GetProviderConfig())
+	s.Equal(publicKeyCtx, gotAttr.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	s.Empty(gotAttr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
+	s.Empty(gotAttr.GetKasKeys()[0].GetKey().GetProviderConfig())
 
 	resp, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
 		NamespaceId: resp.GetNamespaceId(),
@@ -1225,7 +1225,7 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
-	s.Empty(gotAttr.GetKeys())
+	s.Empty(gotAttr.GetKasKeys())
 }
 
 func (s *NamespacesSuite) Test_RemovePublicKeyFromNamespace_Not_Found_Fails() {
@@ -1235,7 +1235,7 @@ func (s *NamespacesSuite) Test_RemovePublicKeyFromNamespace_Not_Found_Fails() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
-	s.Empty(gotAttr.GetKeys())
+	s.Empty(gotAttr.GetKasKeys())
 
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
 	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{

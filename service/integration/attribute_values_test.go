@@ -363,7 +363,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_Succeeds() {
 	s.NotNil(got)
 	s.Equal(createdValue.GetId(), got.GetId())
 	s.Equal(createdValue.GetValue(), got.GetValue())
-	s.EqualValues(createdValue.GetMetadata().GetLabels(), got.GetMetadata().GetLabels())
+	s.Equal(createdValue.GetMetadata().GetLabels(), got.GetMetadata().GetLabels())
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_Fails() {
@@ -432,7 +432,7 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
-	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, got.GetMetadata().GetLabels())
 	metadata := got.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()
@@ -635,7 +635,7 @@ func setupDeactivateAttributeValue(s *AttributeValuesSuite) (string, string, str
 		Name: "cascading-deactivate-attribute-value.com",
 	})
 	s.Require().NoError(err)
-	s.NotZero(n.GetId())
+	s.NotEmpty(n.GetId())
 
 	// add an attribute under that namespaces
 	attr := &attributes.CreateAttributeRequest{
@@ -1001,7 +1001,7 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(gotAttrValue)
-	s.Empty(gotAttrValue.GetKeys())
+	s.Empty(gotAttrValue.GetKasKeys())
 
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
 	resp, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
@@ -1016,17 +1016,18 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(gotAttrValue)
-	s.Len(gotAttrValue.GetKeys(), 1)
-	s.Equal(kasKey.ID, gotAttrValue.GetKeys()[0].GetId())
+	s.Len(gotAttrValue.GetKasKeys(), 1)
+	s.Equal(kasKey.KeyAccessServerID, gotAttrValue.GetKasKeys()[0].GetKasId())
+	s.Equal(kasKey.ID, gotAttrValue.GetKasKeys()[0].GetKey().GetId())
 	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
 	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, gotAttrValue.GetKeys()[0].GetPublicKeyCtx())
-	s.Empty(gotAttrValue.GetKeys()[0].GetProviderConfig())
-	s.Empty(gotAttrValue.GetKeys()[0].GetPrivateKeyCtx())
+	s.Equal(publicKeyCtx, gotAttrValue.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	s.Empty(gotAttrValue.GetKasKeys()[0].GetKey().GetProviderConfig())
+	s.Empty(gotAttrValue.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 
 	resp, err = s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{
 		ValueId: gotAttrValue.GetId(),
-		KeyId:   gotAttrValue.GetKeys()[0].GetId(),
+		KeyId:   gotAttrValue.GetKasKeys()[0].GetKey().GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
@@ -1036,7 +1037,7 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(gotAttrValue)
-	s.Empty(gotAttrValue.GetKeys())
+	s.Empty(gotAttrValue.GetKasKeys())
 }
 
 func (s *AttributeValuesSuite) Test_RemovePublicKeyFromAttributeValue_Not_Found_Fails() {
@@ -1044,7 +1045,7 @@ func (s *AttributeValuesSuite) Test_RemovePublicKeyFromAttributeValue_Not_Found_
 	gotAttr, err := s.db.PolicyClient.GetAttributeValue(s.ctx, f.ID)
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
-	s.Empty(gotAttr.GetKeys())
+	s.Empty(gotAttr.GetKasKeys())
 
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
 	resp, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{

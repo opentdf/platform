@@ -408,9 +408,9 @@
     "kasregistryCreateKeyResponse": {
       "type": "object",
       "properties": {
-        "key": {
-          "$ref": "#/definitions/policyAsymmetricKey",
-          "title": "The created asymmetric key"
+        "kasKey": {
+          "$ref": "#/definitions/policyKasKey",
+          "description": "The created asymmetric key for a KAS."
         }
       },
       "title": "Response to a CreateKeyRequest, containing the created asymmetric key"
@@ -434,9 +434,9 @@
     "kasregistryGetKeyResponse": {
       "type": "object",
       "properties": {
-        "key": {
-          "$ref": "#/definitions/policyAsymmetricKey",
-          "title": "The requested asymmetric key"
+        "kasKey": {
+          "$ref": "#/definitions/policyKasKey",
+          "description": "The requested asymmetric key for a KAS."
         }
       },
       "title": "Response to a GetKeyRequest, containing the requested asymmetric key"
@@ -453,7 +453,7 @@
       },
       "title": "Can be namespace, attribute definition, or value"
     },
-    "kasregistryKasAsymKey": {
+    "kasregistryKasKeyIdentifier": {
       "type": "object",
       "properties": {
         "kasId": {
@@ -536,13 +536,13 @@
     "kasregistryListKeysResponse": {
       "type": "object",
       "properties": {
-        "keys": {
+        "kasKeys": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyAsymmetricKey"
+            "$ref": "#/definitions/policyKasKey"
           },
-          "title": "The list of asymmetric keys"
+          "title": "The list of kas keys"
         },
         "pagination": {
           "$ref": "#/definitions/policyPageResponse",
@@ -554,9 +554,9 @@
     "kasregistryRotateKeyResponse": {
       "type": "object",
       "properties": {
-        "key": {
-          "$ref": "#/definitions/policyAsymmetricKey",
-          "title": "The newly rotated Asymmetric Key"
+        "kasKey": {
+          "$ref": "#/definitions/policyKasKey",
+          "title": "The newly rotated Kas Key"
         }
       },
       "title": "Response message for the RotateKey request"
@@ -572,9 +572,9 @@
     "kasregistryUpdateKeyResponse": {
       "type": "object",
       "properties": {
-        "key": {
-          "$ref": "#/definitions/policyAsymmetricKey",
-          "title": "The updated asymmetric key"
+        "kasKey": {
+          "$ref": "#/definitions/policyKasKey",
+          "title": "The updated kas key"
         }
       },
       "title": "Response to an UpdateKeyRequest, containing the updated asymmetric key"
@@ -628,6 +628,17 @@
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata fields"
+        }
+      }
+    },
+    "policyKasKey": {
+      "type": "object",
+      "properties": {
+        "kasId": {
+          "type": "string"
+        },
+        "key": {
+          "$ref": "#/definitions/policyAsymmetricKey"
         }
       }
     },
@@ -692,13 +703,13 @@
           "$ref": "#/definitions/policySourceType",
           "title": "The source of the KAS: (INTERNAL, EXTERNAL)"
         },
-        "keys": {
+        "kasKeys": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyAsymmetricKey"
+            "$ref": "#/definitions/policyKasKey"
           },
-          "title": "Asymmetric keys associated with this KAS"
+          "title": "Kas keys associated with this KAS"
         },
         "name": {
           "type": "string",

@@ -16,6 +16,7 @@ import (
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
+	authorizationv2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
@@ -64,12 +65,14 @@ type SDK struct {
 	config
 	*kasKeyCache
 	*collectionStore
-	conn                    *grpc.ClientConn
-	dialOptions             []grpc.DialOption
-	tokenSource             auth.AccessTokenSource
-	Actions                 actions.ActionServiceClient
-	Attributes              attributes.AttributesServiceClient
+	conn        *grpc.ClientConn
+	dialOptions []grpc.DialOption
+	tokenSource auth.AccessTokenSource
+	Actions     actions.ActionServiceClient
+	Attributes  attributes.AttributesServiceClient
+	// Deprecated: Migrate to AuthorizationV2 methods
 	Authorization           authorization.AuthorizationServiceClient
+	AuthorizationV2         authorizationv2.AuthorizationServiceClient
 	EntityResoution         entityresolution.EntityResolutionServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Namespaces              namespaces.NamespaceServiceClient
@@ -213,6 +216,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		Unsafe:                  unsafe.NewUnsafeServiceClient(platformConn),
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(platformConn),
 		Authorization:           authorization.NewAuthorizationServiceClient(platformConn),
+		AuthorizationV2:         authorizationv2.NewAuthorizationServiceClient(platformConn),
 		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(ersConn),
 		KeyManagement:           keymanagement.NewKeyManagementServiceClient(platformConn),
 		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(platformConn),

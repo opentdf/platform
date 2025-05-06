@@ -11,6 +11,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/authorization"
+	authorizationv2 "github.com/opentdf/platform/service/authorization/v2"
 	"github.com/opentdf/platform/service/entityresolution"
 	"github.com/opentdf/platform/service/health"
 	"github.com/opentdf/platform/service/internal/server"
@@ -69,6 +70,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceKAS, serviceWellKnown, serviceEntityResolution}...)
 			services = append(services, []serviceregistry.IService{
 				authorization.NewRegistration(),
+				authorizationv2.NewRegistration(),
 				kas.NewRegistration(),
 				wellknown.NewRegistration(),
 				entityresolution.NewRegistration(),
@@ -78,6 +80,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceWellKnown}...)
 			services = append(services, []serviceregistry.IService{
 				authorization.NewRegistration(),
+				authorizationv2.NewRegistration(),
 				wellknown.NewRegistration(),
 			}...)
 			services = append(services, policy.NewRegistrations()...)

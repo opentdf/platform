@@ -25,10 +25,15 @@ var (
 func parseRegisteredResourceValueFqn(fqn string) (*FullyQualifiedRegisteredResourceValue, error) {
 	matches := registeredResourceValueFqnRegex.FindStringSubmatch(fqn)
 
+	// Check if we have matches first
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("%w: FQN must be in format https://reg_res/<name>/value/<value>", ErrInvalidFQNFormat)
+	}
+
 	nameIdx := registeredResourceValueFqnRegex.SubexpIndex("name")
 	valueIdx := registeredResourceValueFqnRegex.SubexpIndex("value")
 
-	if nameIdx == -1 || valueIdx == -1 {
+	if nameIdx == -1 || valueIdx == -1 || len(matches) <= nameIdx || len(matches) <= valueIdx {
 		return nil, fmt.Errorf("%w: valid FQN format of https://reg_res/<name>/value/<value> must be provided", ErrInvalidFQNFormat)
 	}
 

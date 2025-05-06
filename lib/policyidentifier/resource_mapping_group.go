@@ -1,7 +1,6 @@
 package policyidentifier
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -25,12 +24,17 @@ var (
 // The FQN must be in the format: https://<namespace>/resm/<group name>
 func parseResourceMappingGroupFqn(fqn string) (*FullyQualifiedResourceMappingGroup, error) {
 	matches := resourceMappingGroupFqnRegex.FindStringSubmatch(fqn)
+	
+	// Check if we have matches first
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("%w: FQN must be in format https://<namespace>/resm/<group name>", ErrInvalidFQNFormat)
+	}
 
 	namespaceIdx := resourceMappingGroupFqnRegex.SubexpIndex("namespace")
 	groupNameIdx := resourceMappingGroupFqnRegex.SubexpIndex("groupName")
 
-	if namespaceIdx == -1 || groupNameIdx == -1 {
-		return nil, errors.New("error: valid FQN format of https://<namespace>/resm/<group name> must be provided")
+	if namespaceIdx == -1 || groupNameIdx == -1 || len(matches) <= namespaceIdx || len(matches) <= groupNameIdx {
+		return nil, fmt.Errorf("%w: valid FQN format of https://<namespace>/resm/<group name> must be provided", ErrInvalidFQNFormat)
 	}
 
 	ns := strings.ToLower(matches[namespaceIdx])

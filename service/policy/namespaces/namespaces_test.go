@@ -338,7 +338,8 @@ func Test_AssignPublicKeyToNamespace(t *testing.T) {
 			req: &namespaces.AssignPublicKeyToNamespaceRequest{
 				NamespaceKey: &namespaces.NamespaceKey{
 					KeyId: validUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errMessageNamespaceID,
 		},
@@ -347,7 +348,8 @@ func Test_AssignPublicKeyToNamespace(t *testing.T) {
 			req: &namespaces.AssignPublicKeyToNamespaceRequest{
 				NamespaceKey: &namespaces.NamespaceKey{
 					NamespaceId: validUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errMessageKeyID,
 		},
@@ -357,7 +359,8 @@ func Test_AssignPublicKeyToNamespace(t *testing.T) {
 				NamespaceKey: &namespaces.NamespaceKey{
 					NamespaceId: validUUID,
 					KeyId:       validUUID,
-				}},
+				},
+			},
 			expectError: false,
 		},
 	}
@@ -395,7 +398,8 @@ func Test_RemovePublicKeyFromNamespace(t *testing.T) {
 			req: &namespaces.RemovePublicKeyFromNamespaceRequest{
 				NamespaceKey: &namespaces.NamespaceKey{
 					KeyId: validUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errMessageNamespaceID,
 		},
@@ -404,7 +408,8 @@ func Test_RemovePublicKeyFromNamespace(t *testing.T) {
 			req: &namespaces.RemovePublicKeyFromNamespaceRequest{
 				NamespaceKey: &namespaces.NamespaceKey{
 					NamespaceId: validUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errMessageKeyID,
 		},
@@ -414,7 +419,8 @@ func Test_RemovePublicKeyFromNamespace(t *testing.T) {
 				NamespaceKey: &namespaces.NamespaceKey{
 					NamespaceId: validUUID,
 					KeyId:       validUUID,
-				}},
+				},
+			},
 			expectError: false,
 		},
 	}

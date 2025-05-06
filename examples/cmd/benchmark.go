@@ -21,6 +21,13 @@ const (
 	NanoTDF TDFFormat = "nanotdf"
 )
 
+func gfmCellEscape(s string) string {
+	// Escape pipe characters for GitHub Flavored Markdown tables
+	pipes := strings.ReplaceAll(s, "|", "\\|")
+	brs := strings.ReplaceAll(pipes, "\n", "<br>")
+	return brs
+}
+
 func (f *TDFFormat) String() string {
 	return string(*f)
 }
@@ -232,7 +239,7 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		fmt.Printf("| Error Message         | Occurrences              |\n")
 		fmt.Printf("|-----------------------|---------------------------|\n")
 		for errMsg, count := range errorMsgs {
-			fmt.Printf("| %s | %d occurrences         |\n", errMsg, count)
+			fmt.Printf("| %s | %d occurrences         |\n", gfmCellEscape(errMsg), count)
 		}
 	}
 	return nil

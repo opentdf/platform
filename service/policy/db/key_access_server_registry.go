@@ -46,9 +46,9 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 			return nil, err
 		}
 
-		var keys []*policy.AsymmetricKey
+		var keys []*policy.KasKey
 		if len(kas.Keys) > 0 {
-			keys, err = db.AsymKeysProtoJSON(kas.Keys)
+			keys, err = db.KasKeysProtoJSON(kas.Keys)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal keys")
 			}
@@ -59,7 +59,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 		keyAccessServer.PublicKey = publicKey
 		keyAccessServer.Name = kas.KasName.String
 		keyAccessServer.Metadata = metadata
-		keyAccessServer.Keys = keys
+		keyAccessServer.KasKeys = keys
 		keyAccessServer.SourceType = policy.SourceType(policy.SourceType_value[kas.SourceType.String])
 
 		keyAccessServers[i] = keyAccessServer
@@ -136,9 +136,9 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 		return nil, err
 	}
 
-	var keys []*policy.AsymmetricKey
+	var keys []*policy.KasKey
 	if len(kas.Keys) > 0 {
-		keys, err = db.AsymKeysProtoJSON(kas.Keys)
+		keys, err = db.KasKeysProtoJSON(kas.Keys)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal keys")
 		}
@@ -151,7 +151,7 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 		Name:       kas.Name.String,
 		Metadata:   metadata,
 		SourceType: policy.SourceType(policy.SourceType_value[kas.SourceType.String]),
-		Keys:       keys,
+		KasKeys:    keys,
 	}, nil
 }
 
@@ -401,21 +401,24 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 	}
 
 	return &kasregistry.CreateKeyResponse{
-		Key: &policy.AsymmetricKey{
-			Id:             key.ID,
-			KeyId:          key.KeyID,
-			KeyStatus:      policy.KeyStatus(key.KeyStatus),
-			KeyAlgorithm:   policy.Algorithm(key.KeyAlgorithm),
-			KeyMode:        policy.KeyMode(key.KeyMode),
-			PrivateKeyCtx:  key.PrivateKeyCtx,
-			PublicKeyCtx:   key.PublicKeyCtx,
-			ProviderConfig: pc,
-			Metadata:       metadata,
+		KasKey: &policy.KasKey{
+			KasId: key.KeyAccessServerID,
+			Key: &policy.AsymmetricKey{
+				Id:             key.ID,
+				KeyId:          key.KeyID,
+				KeyStatus:      policy.KeyStatus(key.KeyStatus),
+				KeyAlgorithm:   policy.Algorithm(key.KeyAlgorithm),
+				KeyMode:        policy.KeyMode(key.KeyMode),
+				PrivateKeyCtx:  key.PrivateKeyCtx,
+				PublicKeyCtx:   key.PublicKeyCtx,
+				ProviderConfig: pc,
+				Metadata:       metadata,
+			},
 		},
 	}, nil
 }
 
-func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.AsymmetricKey, error) {
+func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.KasKey, error) {
 	var params getKeyParams
 
 	switch i := identifier.(type) {
@@ -425,12 +428,35 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 			return nil, db.ErrUUIDInvalid
 		}
 		params = getKeyParams{ID: pgUUID}
-	case *kasregistry.GetKeyRequest_KeyId:
-		keyID := pgtypeText(i.KeyId)
+	case *kasregistry.GetKeyRequest_Key:
+		keyID := pgtypeText(i.Key.GetKid())
 		if !keyID.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
-		params = getKeyParams{KeyID: keyID}
+
+		switch i.Key.GetIdentifier().(type) {
+		case *kasregistry.KasKeyIdentifier_KasId:
+			kasID := pgtypeUUID(i.Key.GetKasId())
+			if !kasID.Valid {
+				return nil, db.ErrSelectIdentifierInvalid
+			}
+			params = getKeyParams{KasID: kasID, KeyID: keyID}
+		case *kasregistry.KasKeyIdentifier_Uri:
+			kasURI := pgtypeText(i.Key.GetUri())
+			if !kasURI.Valid {
+				return nil, db.ErrSelectIdentifierInvalid
+			}
+			params = getKeyParams{KasUri: kasURI, KeyID: keyID}
+		case *kasregistry.KasKeyIdentifier_Name:
+			kasName := pgtypeText(i.Key.GetName())
+			if !kasName.Valid {
+				return nil, db.ErrSelectIdentifierInvalid
+			}
+			params = getKeyParams{KasName: kasName, KeyID: keyID}
+		default:
+			return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
+		}
+
 	default:
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
@@ -457,22 +483,25 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Asy
 		}
 	}
 
-	return &policy.AsymmetricKey{
-		Id:             key.ID,
-		KeyId:          key.KeyID,
-		KeyStatus:      policy.KeyStatus(key.KeyStatus),
-		KeyAlgorithm:   policy.Algorithm(key.KeyAlgorithm),
-		KeyMode:        policy.KeyMode(key.KeyMode),
-		PrivateKeyCtx:  key.PrivateKeyCtx,
-		PublicKeyCtx:   key.PublicKeyCtx,
-		ProviderConfig: providerConfig,
-		Metadata:       metadata,
+	return &policy.KasKey{
+		KasId: key.KeyAccessServerID,
+		Key: &policy.AsymmetricKey{
+			Id:             key.ID,
+			KeyId:          key.KeyID,
+			KeyStatus:      policy.KeyStatus(key.KeyStatus),
+			KeyAlgorithm:   policy.Algorithm(key.KeyAlgorithm),
+			KeyMode:        policy.KeyMode(key.KeyMode),
+			PrivateKeyCtx:  key.PrivateKeyCtx,
+			PublicKeyCtx:   key.PublicKeyCtx,
+			ProviderConfig: providerConfig,
+			Metadata:       metadata,
+		},
 	}, nil
 }
 
-func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyRequest) (*policy.AsymmetricKey, error) {
-	keyID := r.GetId()
-	if !pgtypeUUID(keyID).Valid {
+func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyRequest) (*policy.KasKey, error) {
+	id := r.GetId()
+	if !pgtypeUUID(id).Valid {
 		return nil, db.ErrUUIDInvalid
 	}
 
@@ -497,21 +526,21 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 	}
 
 	// if extend we need to merge the metadata
-	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		a, err := c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
 			Id: r.GetId(),
 		})
 		if err != nil {
 			return nil, err
 		}
-		return a.GetMetadata(), nil
+		return a.GetKey().GetMetadata(), nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	count, err := c.Queries.updateKey(ctx, updateKeyParams{
-		ID:        keyID,
+		ID:        id,
 		KeyStatus: pgtypeInt4(int32(keyStatus), keyStatus != policy.KeyStatus_KEY_STATUS_UNSPECIFIED),
 		Metadata:  metadataJSON,
 	})
@@ -524,11 +553,9 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 		c.logger.Warn("UpdateKey updated more than one row", "count", count)
 	}
 
-	return &policy.AsymmetricKey{
-		Id:        keyID,
-		KeyStatus: r.GetKeyStatus(),
-		Metadata:  metadata,
-	}, nil
+	return c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
+		Id: id,
+	})
 }
 
 func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysRequest) (*kasregistry.ListKeysResponse, error) {
@@ -557,7 +584,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	keys := make([]*policy.AsymmetricKey, len(listRows))
+	keys := make([]*policy.KasKey, len(listRows))
 	for i, key := range listRows {
 		var providerConfig *policy.KeyProviderConfig
 		if key.ProviderConfigID.Valid {
@@ -576,16 +603,19 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 			return nil, err
 		}
 
-		keys[i] = &policy.AsymmetricKey{
-			Id:             key.ID,
-			KeyId:          key.KeyID,
-			KeyStatus:      policy.KeyStatus(key.KeyStatus),
-			KeyAlgorithm:   policy.Algorithm(key.KeyAlgorithm),
-			KeyMode:        policy.KeyMode(key.KeyMode),
-			PublicKeyCtx:   key.PublicKeyCtx,
-			PrivateKeyCtx:  key.PrivateKeyCtx,
-			ProviderConfig: providerConfig,
-			Metadata:       metadata,
+		keys[i] = &policy.KasKey{
+			KasId: key.KeyAccessServerID,
+			Key: &policy.AsymmetricKey{
+				Id:             key.ID,
+				KeyId:          key.KeyID,
+				KeyStatus:      policy.KeyStatus(key.KeyStatus),
+				KeyAlgorithm:   policy.Algorithm(key.KeyAlgorithm),
+				KeyMode:        policy.KeyMode(key.KeyMode),
+				PublicKeyCtx:   key.PublicKeyCtx,
+				PrivateKeyCtx:  key.PrivateKeyCtx,
+				ProviderConfig: providerConfig,
+				Metadata:       metadata,
+			},
 		}
 	}
 	var total int32
@@ -596,7 +626,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 	}
 
 	return &kasregistry.ListKeysResponse{
-		Keys: keys,
+		KasKeys: keys,
 		Pagination: &policy.PageResponse{
 			CurrentOffset: params.Offset,
 			Total:         total,

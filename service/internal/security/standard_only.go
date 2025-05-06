@@ -8,6 +8,10 @@ type Config struct {
 	StandardConfig StandardConfig `mapstructure:"standard" json:"standard"`
 }
 
+func (c Config) IsEmpty() bool {
+	return c.Type == "" && c.StandardConfig.IsEmpty()
+}
+
 func NewCryptoProvider(cfg Config) (CryptoProvider, error) {
 	switch cfg.Type {
 	case "hsm":

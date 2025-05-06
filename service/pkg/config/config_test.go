@@ -51,6 +51,7 @@ func (l *MockLoader) Close() error {
 	}
 	return nil
 }
+
 func (l *MockLoader) Name() string {
 	l.getNameCalled = true
 	if l.getNameFn != nil {

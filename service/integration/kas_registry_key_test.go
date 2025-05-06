@@ -201,41 +201,6 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_NoKeyIdInKas_Fail() {
 	s.Nil(resp)
 }
 
-func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_WrongKas_Fail() {
-	kasReq := kasregistry.CreateKeyAccessServerRequest{
-		Name: "test",
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
-	s.Require().NoError(err)
-	s.NotNil(kas)
-	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
-		Key: &kasregistry.KasAsymKey{
-			Identifier: &kasregistry.KasAsymKey_KasId{
-				KasId: kas.GetId(),
-			},
-			Kid: s.kasKeys[0].KeyID,
-		},
-	})
-	s.Require().ErrorContains(err, db.ErrNotFound.Error())
-	s.Nil(resp)
-
-	_, err = s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, kas.GetId())
-	s.Require().NoError(err)
-}
-
-func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_NoKeyIdInKas_Fail() {
-	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
-		Key: &kasregistry.KasAsymKey{
-			Identifier: &kasregistry.KasAsymKey_KasId{
-				KasId: s.kasKeys[0].KeyAccessServerID,
-			},
-			Kid: "a-random-key-id",
-		},
-	})
-	s.Require().ErrorContains(err, db.ErrNotFound.Error())
-	s.Nil(resp)
-}
-
 func (s *KasRegistryKeySuite) Test_GetKasKeyByKeyId_Success() {
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
 		Key: &kasregistry.KasKeyIdentifier{

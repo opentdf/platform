@@ -407,7 +407,7 @@ message GetKeyRequest {
   oneof identifier {
     option (buf.validate.oneof).required = true;
     string id = 2 [(buf.validate.field).string.uuid = true]; // The unique identifier of the key to retrieve
-    string key_id = 3 [(buf.validate.field).string.min_len = 1]; // A user-defined identifier of the key to retrieve
+    KasKeyIdentifier key = 3;
   }
 }
 
@@ -455,25 +455,34 @@ message UpdateKeyResponse {
   AsymmetricKey key = 1; // The updated asymmetric key
 }
 
+
+  // Nested message for specifying the active key using KAS ID and Key ID
+  message KasKeyIdentifier {
+    // Required UUID of the Key Access Server
+    oneof identifier {
+      option (buf.validate.oneof).required = true;
+      string kas_id = 2 [(buf.validate.field).string.uuid = true];
+      string name = 3 [(buf.validate.field).string.min_len = 1];
+      string uri = 4 [(buf.validate.field).string = {
+        min_len: 1
+        uri: true
+      }];
+    }
+    // Required Key ID of the key in question
+    string kid = 5 [(buf.validate.field).string.min_len = 1];
+  }
+
 message RotateKeyRequest {
   // Required (Current Active Key ID)
   oneof active_key {
     // Current Active Key UUID
     string id = 1 [(buf.validate.field).string.uuid = true];
     // Alternative way to specify the active key using KAS ID and Key ID
-    ActiveKey key = 2;
+    KasKeyIdentifier key = 2;
   }
 
   // Information about the new key to be rotated in
   NewKey new_key = 3;
-
-  // Nested message for specifying the active key using KAS ID and Key ID
-  message ActiveKey {
-    // Required UUID of the Key Access Server
-    string kas_id = 1 [(buf.validate.field).string.uuid = true];
-    // Required Key ID of the key in question
-    string kid = 2 [(buf.validate.field).string.min_len = 1];
-  }
 
   // Nested message for specifying the new key details
   message NewKey {

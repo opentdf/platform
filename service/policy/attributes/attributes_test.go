@@ -739,7 +739,8 @@ func Test_AssignKeyToAttribute(t *testing.T) {
 			req: &attributes.AssignPublicKeyToAttributeRequest{
 				AttributeKey: &attributes.AttributeKey{
 					KeyId: validUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errrMessageAttrID,
 		},
@@ -748,7 +749,8 @@ func Test_AssignKeyToAttribute(t *testing.T) {
 			req: &attributes.AssignPublicKeyToAttributeRequest{
 				AttributeKey: &attributes.AttributeKey{
 					AttributeId: validUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errrMessageKeyID,
 		},
@@ -758,7 +760,8 @@ func Test_AssignKeyToAttribute(t *testing.T) {
 				AttributeKey: &attributes.AttributeKey{
 					AttributeId: validUUID,
 					KeyId:       validUUID,
-				}},
+				},
+			},
 			expectError: false,
 		},
 	}
@@ -796,7 +799,8 @@ func Test_RemovePublicKeyFromAttribute(t *testing.T) {
 			req: &attributes.RemovePublicKeyFromAttributeRequest{
 				AttributeKey: &attributes.AttributeKey{
 					KeyId: validUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errrMessageAttrID,
 		},
@@ -805,7 +809,8 @@ func Test_RemovePublicKeyFromAttribute(t *testing.T) {
 			req: &attributes.RemovePublicKeyFromAttributeRequest{
 				AttributeKey: &attributes.AttributeKey{
 					AttributeId: validUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errrMessageKeyID,
 		},
@@ -815,7 +820,8 @@ func Test_RemovePublicKeyFromAttribute(t *testing.T) {
 				AttributeKey: &attributes.AttributeKey{
 					AttributeId: validUUID,
 					KeyId:       validUUID,
-				}},
+				},
+			},
 			expectError: false,
 		},
 	}
@@ -853,7 +859,8 @@ func Test_AssignPublicKeyToValue(t *testing.T) {
 			req: &attributes.AssignPublicKeyToValueRequest{
 				ValueKey: &attributes.ValueKey{
 					KeyId: validUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errrMessageValueID,
 		},
@@ -862,7 +869,8 @@ func Test_AssignPublicKeyToValue(t *testing.T) {
 			req: &attributes.AssignPublicKeyToValueRequest{
 				ValueKey: &attributes.ValueKey{
 					ValueId: validUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errrMessageKeyID,
 		},
@@ -872,7 +880,8 @@ func Test_AssignPublicKeyToValue(t *testing.T) {
 				ValueKey: &attributes.ValueKey{
 					ValueId: validUUID,
 					KeyId:   validUUID,
-				}},
+				},
+			},
 			expectError: false,
 		},
 	}
@@ -910,7 +919,8 @@ func Test_RemovePublicKeyFromValue(t *testing.T) {
 			req: &attributes.RemovePublicKeyFromValueRequest{
 				ValueKey: &attributes.ValueKey{
 					KeyId: validUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errrMessageValueID,
 		},
@@ -919,7 +929,8 @@ func Test_RemovePublicKeyFromValue(t *testing.T) {
 			req: &attributes.RemovePublicKeyFromValueRequest{
 				ValueKey: &attributes.ValueKey{
 					ValueId: validUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errrMessageKeyID,
 		},
@@ -929,7 +940,8 @@ func Test_RemovePublicKeyFromValue(t *testing.T) {
 				ValueKey: &attributes.ValueKey{
 					ValueId: validUUID,
 					KeyId:   validUUID,
-				}},
+				},
+			},
 			expectError: false,
 		},
 	}

@@ -399,7 +399,7 @@ message CreateKeyRequest {
 
 // Response to a CreateKeyRequest, containing the created asymmetric key
 message CreateKeyResponse {
-  AsymmetricKey key = 1; // The created asymmetric key
+  KasKey kas_key = 1; // The created asymmetric key for a KAS.
 }
 
 // Retrieve an existing asymmetric key from the Key Management System
@@ -407,13 +407,13 @@ message GetKeyRequest {
   oneof identifier {
     option (buf.validate.oneof).required = true;
     string id = 2 [(buf.validate.field).string.uuid = true]; // The unique identifier of the key to retrieve
-    string key_id = 3 [(buf.validate.field).string.min_len = 1]; // A user-defined identifier of the key to retrieve
+    KasKeyIdentifier key = 3;
   }
 }
 
 // Response to a GetKeyRequest, containing the requested asymmetric key
 message GetKeyResponse {
-  AsymmetricKey key = 1; // The requested asymmetric key
+  KasKey kas_key = 1; // The requested asymmetric key for a KAS.
 }
 
 // List all asymmetric keys managed by a specific Key Access Server or with a given algorithm
@@ -432,7 +432,7 @@ message ListKeysRequest {
 
 // Response to a ListKeysRequest, containing the list of asymmetric keys and pagination information
 message ListKeysResponse {
-  repeated AsymmetricKey keys = 1; // The list of asymmetric keys
+  repeated KasKey kas_keys = 1; // The list of kas keys
 
   policy.PageResponse pagination = 10; // Pagination response for the list of keys
 }
@@ -452,8 +452,25 @@ message UpdateKeyRequest {
 
 // Response to an UpdateKeyRequest, containing the updated asymmetric key
 message UpdateKeyResponse {
-  AsymmetricKey key = 1; // The updated asymmetric key
+  KasKey kas_key = 1; // The updated kas key
 }
+
+
+  // Nested message for specifying the active key using KAS ID and Key ID
+  message KasKeyIdentifier {
+    // Required UUID of the Key Access Server
+    oneof identifier {
+      option (buf.validate.oneof).required = true;
+      string kas_id = 2 [(buf.validate.field).string.uuid = true];
+      string name = 3 [(buf.validate.field).string.min_len = 1];
+      string uri = 4 [(buf.validate.field).string = {
+        min_len: 1
+        uri: true
+      }];
+    }
+    // Required Key ID of the key in question
+    string kid = 5 [(buf.validate.field).string.min_len = 1];
+  }
 
 message RotateKeyRequest {
   // Required (Current Active Key ID)
@@ -461,19 +478,11 @@ message RotateKeyRequest {
     // Current Active Key UUID
     string id = 1 [(buf.validate.field).string.uuid = true];
     // Alternative way to specify the active key using KAS ID and Key ID
-    ActiveKey key = 2;
+    KasKeyIdentifier key = 2;
   }
 
   // Information about the new key to be rotated in
   NewKey new_key = 3;
-
-  // Nested message for specifying the active key using KAS ID and Key ID
-  message ActiveKey {
-    // Required UUID of the Key Access Server
-    string kas_id = 1 [(buf.validate.field).string.uuid = true];
-    // Required Key ID of the key in question
-    string kid = 2 [(buf.validate.field).string.min_len = 1];
-  }
 
   // Nested message for specifying the new key details
   message NewKey {
@@ -496,8 +505,8 @@ message RotateKeyRequest {
 
 // Response message for the RotateKey request
 message RotateKeyResponse {
-  // The newly rotated Asymmetric Key
-  AsymmetricKey key = 1;
+  // The newly rotated Kas Key
+  KasKey kas_key = 1;
 }
 
 service KeyAccessServerRegistryService {

@@ -287,15 +287,18 @@ message GetDecisionsByTokenResponse {
 }
 
 service AuthorizationService {
+  // Deprecated: Use AuthorizationV2.GetDecisionBulk method instead
   rpc GetDecisions(GetDecisionsRequest) returns (GetDecisionsResponse) {
     option (google.api.http) = {
       post: "/v1/authorization"
       body: "*"
     };
   }
+  // Deprecated: Use AuthorizationV2.GetDecisionBulkByToken method instead
   rpc GetDecisionsByToken(GetDecisionsByTokenRequest) returns (GetDecisionsByTokenResponse) {
     option (google.api.http) = {post: "/v1/token/authorization"};
   }
+  // Deprecated: Use AuthorizationV2.GetEntitlements method instead
   rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {
     option (google.api.http) = {
       post: "/v1/entitlements"

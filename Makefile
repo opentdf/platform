@@ -3,8 +3,8 @@
 
 .PHONY: all build clean docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
 
-MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening sdk service examples
-HAND_MODS=lib/ocrypto lib/fixtures lib/flattening sdk service examples
+MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
+HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -17,7 +17,7 @@ all: toolcheck clean build lint license test
 toolcheck:
 	@echo "Checking for required tools..."
 	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
-	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5'" && exit 1)
+	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.1.6'" && exit 1)
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
 	@golangci-lint --version | grep "version v\?1.6[456]" > /dev/null || (echo "golangci-lint version must be v1.64 or later [$$(golangci-lint --version)]" && exit 1)
 	@which goimports >/dev/null || (echo "goimports not found, run 'go install golang.org/x/tools/cmd/goimports@latest'")
@@ -26,7 +26,7 @@ toolcheck:
 fix: tidy fmt
 
 fmt:
-	for m in $(HAND_MODS); do (cd $$m && find ./ -name \*.go | xargs goimports -w) || exit 1; done
+	for m in $(HAND_MODS); do  golangci-lint fmt $$m || exit 1; done
 
 tidy:
 	for m in $(MODS); do (cd $$m && go mod tidy) || exit 1; done

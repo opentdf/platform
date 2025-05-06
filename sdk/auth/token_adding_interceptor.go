@@ -120,7 +120,6 @@ func (i TokenAddingInterceptor) GetDPoPToken(path, method, accessToken string) (
 			Claim("jti", base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(jtiBytes)).
 			IssuedAt(time.Now()).
 			Build()
-
 		if err != nil {
 			return nil, fmt.Errorf("error creating dpop jwt: %w", err)
 		}
@@ -132,7 +131,6 @@ func (i TokenAddingInterceptor) GetDPoPToken(path, method, accessToken string) (
 
 		return signedToken, nil
 	})
-
 	if err != nil {
 		return "", fmt.Errorf("error creating DPoP token in interceptor: %w", err)
 	}

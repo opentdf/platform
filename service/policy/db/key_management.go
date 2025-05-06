@@ -25,7 +25,8 @@ func (c PolicyDBClient) CreateProviderConfig(ctx context.Context, r *keymanageme
 	providerConfig, err := c.Queries.createProviderConfig(ctx, createProviderConfigParams{
 		ProviderName: name,
 		Config:       config,
-		Metadata:     metadataJSON})
+		Metadata:     metadataJSON,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -158,7 +159,8 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 		ID:           id,
 		ProviderName: pgtypeText(name),
 		Config:       config,
-		Metadata:     metadataJSON})
+		Metadata:     metadataJSON,
+	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

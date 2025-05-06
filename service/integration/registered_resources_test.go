@@ -357,7 +357,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResource_Succeeds() {
 	s.Require().NoError(err)
 	s.Require().NotNil(got)
 	s.Equal(created.GetName(), got.GetName())
-	s.EqualValues(labels, got.GetMetadata().GetLabels())
+	s.Equal(labels, got.GetMetadata().GetLabels())
 
 	// update with changes
 	updated, err = s.db.PolicyClient.UpdateRegisteredResource(s.ctx, &registeredresources.UpdateRegisteredResourceRequest{
@@ -380,7 +380,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResource_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal("test_update_res__new_name", got.GetName())
-	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, got.GetMetadata().GetLabels())
 	metadata := got.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()
@@ -894,7 +894,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.Require().NoError(err)
 	s.Require().NotNil(got)
 	s.Equal(created.GetValue(), got.GetValue())
-	s.EqualValues(labels, got.GetMetadata().GetLabels())
+	s.Equal(labels, got.GetMetadata().GetLabels())
 
 	// update with changes
 	updated, err = s.db.PolicyClient.UpdateRegisteredResourceValue(s.ctx, &registeredresources.UpdateRegisteredResourceValueRequest{
@@ -917,7 +917,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal("updated_value", got.GetValue())
-	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, got.GetMetadata().GetLabels())
 	metadata := got.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()

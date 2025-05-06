@@ -225,19 +225,28 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
 		newConfigFile    string
 		expErrorContains string
 	}{
-		{"core without sdk_config",
-			map[string]interface{}{
-				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL},
-			"err-core-no-config-*.yaml", "no sdk config provided"},
-		{"kas without sdk_config",
-			map[string]interface{}{
-				"mode": "kas", "server.auth.issuer": discoveryEndpoint.URL},
-			"err-kas-no-config-*.yaml", "no sdk config provided"},
-		{"core with sdk_config without ers endpoint",
+		{
+			"core without sdk_config",
 			map[string]interface{}{
 				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL,
-				"sdk_config.client_id": "opentdf", "sdk_config.client_secret": "opentdf"},
-			"err-core-w-config-no-ers-*.yaml", "entityresolution endpoint must be provided in core mode"},
+			},
+			"err-core-no-config-*.yaml", "no sdk config provided",
+		},
+		{
+			"kas without sdk_config",
+			map[string]interface{}{
+				"mode": "kas", "server.auth.issuer": discoveryEndpoint.URL,
+			},
+			"err-kas-no-config-*.yaml", "no sdk config provided",
+		},
+		{
+			"core with sdk_config without ers endpoint",
+			map[string]interface{}{
+				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL,
+				"sdk_config.client_id": "opentdf", "sdk_config.client_secret": "opentdf",
+			},
+			"err-core-w-config-no-ers-*.yaml", "entityresolution endpoint must be provided in core mode",
+		},
 	}
 	var tempFiles []string
 	defer func() {
@@ -275,24 +284,36 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
 		changes       map[string]interface{}
 		newConfigFile string
 	}{
-		{"all without sdk_config",
+		{
+			"all without sdk_config",
 			map[string]interface{}{
-				"server.auth.issuer": discoveryEndpoint.URL},
-			"all-no-config-*.yaml"},
-		{"core,entityresolution without sdk_config",
+				"server.auth.issuer": discoveryEndpoint.URL,
+			},
+			"all-no-config-*.yaml",
+		},
+		{
+			"core,entityresolution without sdk_config",
 			map[string]interface{}{
-				"mode": "core,entityresolution", "server.auth.issuer": discoveryEndpoint.URL},
-			"all-no-config-*.yaml"},
-		{"core,entityresolution,kas without sdk_config",
+				"mode": "core,entityresolution", "server.auth.issuer": discoveryEndpoint.URL,
+			},
+			"all-no-config-*.yaml",
+		},
+		{
+			"core,entityresolution,kas without sdk_config",
 			map[string]interface{}{
-				"mode": "core,entityresolution,kas", "server.auth.issuer": discoveryEndpoint.URL},
-			"all-no-config-*.yaml"},
-		{"core with correct sdk_config",
+				"mode": "core,entityresolution,kas", "server.auth.issuer": discoveryEndpoint.URL,
+			},
+			"all-no-config-*.yaml",
+		},
+		{
+			"core with correct sdk_config",
 			map[string]interface{}{
 				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL,
 				"sdk_config.client_id": "opentdf", "sdk_config.client_secret": "opentdf",
-				"sdk_config.entityresolution.endpoint": "http://localhost:8181", "sdk_config.entityresolution.plaintext": "true"},
-			"core-w-config-correct-*.yaml"},
+				"sdk_config.entityresolution.endpoint": "http://localhost:8181", "sdk_config.entityresolution.plaintext": "true",
+			},
+			"core-w-config-correct-*.yaml",
+		},
 	}
 	var tempFiles []string
 	defer func() {

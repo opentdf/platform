@@ -18,6 +18,7 @@
   "paths": {
     "/v1/authorization": {
       "post": {
+        "summary": "Deprecated: Use AuthorizationV2.GetDecisionBulk method instead",
         "operationId": "AuthorizationService_GetDecisions",
         "responses": {
           "200": {
@@ -50,6 +51,7 @@
     },
     "/v1/entitlements": {
       "post": {
+        "summary": "Deprecated: Use AuthorizationV2.GetEntitlements method instead",
         "operationId": "AuthorizationService_GetEntitlements",
         "responses": {
           "200": {
@@ -83,6 +85,7 @@
     },
     "/v1/token/authorization": {
       "post": {
+        "summary": "Deprecated: Use AuthorizationV2.GetDecisionBulkByToken method instead",
         "operationId": "AuthorizationService_GetDecisionsByToken",
         "responses": {
           "200": {

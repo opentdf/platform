@@ -63,6 +63,7 @@ func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
 
 	return FromPublicPEMWithSalt(publicKeyInPem, salt, nil)
 }
+
 func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyEncryptor, error) {
 	pub, err := getPublicPart(publicKeyInPem)
 	if err != nil {

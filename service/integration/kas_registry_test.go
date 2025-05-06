@@ -249,7 +249,7 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 			case localFixture:
 				s.Equal(tc.expected.PubKey.Cached, resp.GetPublicKey().GetCached(), "PublicKey.Cached mismatch for %s: %v", tc.identifierType, tc.input)
 			default:
-				s.Fail("Unexpected fixture in test case: %s", tc.name) // Should not happen, but good to have for safety
+				s.Fail(fmt.Sprintf("Unexpected fixture in test case: %s", tc.name)) // Should not happen, but good to have for safety
 			}
 		})
 	}
@@ -340,7 +340,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
 	r, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
 	s.NotNil(r)
-	s.NotEqual("", r.GetId())
+	s.NotEmpty(r.GetId())
 	s.Equal(sourceType, r.GetSourceType())
 }
 
@@ -359,7 +359,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_UriConflict_Fails() {
 	k, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
 	s.NotNil(k)
-	s.NotEqual("", k.GetId())
+	s.NotEmpty(k.GetId())
 
 	// try to create another KAS with the same URI
 	k, err = s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
@@ -385,7 +385,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_NameConflict_Fails() {
 	k, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
 	s.NotNil(k)
-	s.NotEqual("", k.GetId())
+	s.NotEmpty(k.GetId())
 
 	// try to create another KAS with the same Name
 	kasRegistry.Uri = "acmecorp2.com"
@@ -412,7 +412,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Name_LowerCased() {
 	k, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
 	s.NotNil(k)
-	s.NotEqual("", k.GetId())
+	s.NotEmpty(k.GetId())
 
 	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, k.GetId())
 	s.NotNil(got)
@@ -448,7 +448,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Cached() {
 	r, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
 	s.NotNil(r)
-	s.NotZero(r.GetId())
+	s.NotEmpty(r.GetId())
 	s.Equal(r.GetPublicKey().GetCached().GetKeys()[0].GetPem(), cachedKeyPem)
 }
 
@@ -666,7 +666,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 	s.Equal(uri, got.GetUri())
 	s.Empty(got.GetName()) // name not given to KAS in create or update
 	s.Equal(updatedKeySet, got.GetPublicKey().GetCached())
-	s.Zero(got.GetPublicKey().GetRemote())
+	s.Empty(got.GetPublicKey().GetRemote())
 	s.Equal("unchanged label", got.GetMetadata().GetLabels()["unchanged"])
 }
 
@@ -702,7 +702,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_UpdatingSourceTypeUnspecif
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(uri, got.GetUri())
 	s.Empty(got.GetName())
-	s.Zero(got.GetPublicKey().GetRemote())
+	s.Empty(got.GetPublicKey().GetRemote())
 	s.Equal("unchanged label", got.GetMetadata().GetLabels()["unchanged"])
 	s.Equal(sourceType, got.GetSourceType())
 }

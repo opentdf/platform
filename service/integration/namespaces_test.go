@@ -2,12 +2,11 @@ package integration
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
-
-	"encoding/base64"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -313,13 +312,13 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 	s.Require().NoError(err)
 	s.NotNil(updatedWithChange)
 	s.Equal(created.GetId(), updatedWithChange.GetId())
-	s.EqualValues(expectedLabels, updatedWithChange.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, updatedWithChange.GetMetadata().GetLabels())
 
 	got, err := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
-	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, got.GetMetadata().GetLabels())
 	updatedMetadata := got.GetMetadata()
 	createdTime := metadata.GetCreatedAt().AsTime()
 	updatedTime := updatedMetadata.GetUpdatedAt().AsTime()
@@ -341,7 +340,7 @@ func (s *NamespacesSuite) Test_UpdateNamespace_DoesNotExist_ShouldFail() {
 func (s *NamespacesSuite) Test_DeactivateNamespace() {
 	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deactivating-namespace.com"})
 	s.Require().NoError(err)
-	s.NotEqual("", n)
+	s.NotEmpty(n)
 
 	inactive, err := s.db.PolicyClient.DeactivateNamespace(s.ctx, n.GetId())
 	s.Require().NoError(err)
@@ -372,7 +371,7 @@ func setupCascadeDeactivateNamespace(s *NamespacesSuite) (string, string, string
 	// create a namespace
 	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "cascading-deactivate-namespace"})
 	s.Require().NoError(err)
-	s.NotEqual("", n)
+	s.NotEmpty(n)
 
 	// add an attribute under that namespaces
 	attr := &attributes.CreateAttributeRequest{
@@ -664,7 +663,7 @@ func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_DoesNotExist_ShouldFail() {
 	s.NotNil(created)
 	got, _ := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
 	s.NotNil(got)
-	s.NotEqual("", got.GetFqn())
+	s.NotEmpty(got.GetFqn())
 
 	ns, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, got, "https://bad.fqn")
 	s.Require().Error(err)

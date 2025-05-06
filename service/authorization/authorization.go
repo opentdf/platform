@@ -124,7 +124,7 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 			GRPCGatewayFunc: authorization.RegisterAuthorizationServiceHandler,
 			OnConfigUpdate:  onUpdateConfig,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authorizationconnect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
-				var authZCfg = new(Config)
+				authZCfg := new(Config)
 
 				logger := srp.Logger
 

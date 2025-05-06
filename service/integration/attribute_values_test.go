@@ -363,7 +363,7 @@ func (s *AttributeValuesSuite) Test_CreateAttributeValue_Succeeds() {
 	s.NotNil(got)
 	s.Equal(createdValue.GetId(), got.GetId())
 	s.Equal(createdValue.GetValue(), got.GetValue())
-	s.EqualValues(createdValue.GetMetadata().GetLabels(), got.GetMetadata().GetLabels())
+	s.Equal(createdValue.GetMetadata().GetLabels(), got.GetMetadata().GetLabels())
 }
 
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_WithInvalidAttributeId_Fails() {
@@ -432,7 +432,7 @@ func (s *AttributeValuesSuite) Test_UpdateAttributeValue() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
-	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, got.GetMetadata().GetLabels())
 	metadata := got.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()
@@ -635,7 +635,7 @@ func setupDeactivateAttributeValue(s *AttributeValuesSuite) (string, string, str
 		Name: "cascading-deactivate-attribute-value.com",
 	})
 	s.Require().NoError(err)
-	s.NotZero(n.GetId())
+	s.NotEmpty(n.GetId())
 
 	// add an attribute under that namespaces
 	attr := &attributes.CreateAttributeRequest{

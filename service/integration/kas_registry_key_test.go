@@ -387,6 +387,7 @@ func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Success() {
 	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
 	s.validateListKeysResponse(resp, err)
 }
+
 func (s *KasRegistryKeySuite) Test_ListKeys_KasName_Success() {
 	req := kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasName{
@@ -396,10 +397,12 @@ func (s *KasRegistryKeySuite) Test_ListKeys_KasName_Success() {
 	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
 	s.validateListKeysResponse(resp, err)
 }
+
 func (s *KasRegistryKeySuite) Test_ListKeys_KasURI_Success() {
 	req := kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
-			KasUri: s.kasFixtures[0].URI},
+			KasUri: s.kasFixtures[0].URI,
+		},
 	}
 	resp, err := s.db.PolicyClient.ListKeys(s.ctx, &req)
 	s.validateListKeysResponse(resp, err)

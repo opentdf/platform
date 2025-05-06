@@ -75,17 +75,18 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 	kasToKeysFixtures := s.getKasToKeysFixtureMap()
 	// Check that key is present.
 	keysFixtureArr := kasToKeysFixtures[kasr.GetId()]
-	s.GreaterOrEqual(len(kasr.GetKeys()), len(keysFixtureArr))
+	s.GreaterOrEqual(len(kasr.GetKasKeys()), len(keysFixtureArr))
 	// Check for expected key ids.
 	matchingKeysCount := 0
-	for _, key := range kasr.GetKeys() {
+	for _, kasKey := range kasr.GetKasKeys() {
 		for _, f := range keysFixtureArr {
-			if key.GetId() == f.ID {
+			if kasKey.GetKey().GetId() == f.ID {
 				publicKeyContext, err := base64.StdEncoding.DecodeString(f.PublicKeyCtx)
 				s.Require().NoError(err)
-				s.Equal(publicKeyContext, key.GetPublicKeyCtx())
-				s.Empty(key.GetPrivateKeyCtx())
-				s.Empty(key.GetProviderConfig())
+				s.Equal(f.KeyAccessServerID, kasKey.GetKasId())
+				s.Equal(publicKeyContext, kasKey.GetKey().GetPublicKeyCtx())
+				s.Empty(kasKey.GetKey().GetPrivateKeyCtx())
+				s.Empty(kasKey.GetKey().GetProviderConfig())
 				matchingKeysCount++
 			}
 		}
@@ -248,7 +249,7 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 			case localFixture:
 				s.Equal(tc.expected.PubKey.Cached, resp.GetPublicKey().GetCached(), "PublicKey.Cached mismatch for %s: %v", tc.identifierType, tc.input)
 			default:
-				s.Fail("Unexpected fixture in test case: %s", tc.name) // Should not happen, but good to have for safety
+				s.Fail(fmt.Sprintf("Unexpected fixture in test case: %s", tc.name)) // Should not happen, but good to have for safety
 			}
 		})
 	}
@@ -339,7 +340,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
 	r, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
 	s.NotNil(r)
-	s.NotEqual("", r.GetId())
+	s.NotEmpty(r.GetId())
 	s.Equal(sourceType, r.GetSourceType())
 }
 
@@ -358,7 +359,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_UriConflict_Fails() {
 	k, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
 	s.NotNil(k)
-	s.NotEqual("", k.GetId())
+	s.NotEmpty(k.GetId())
 
 	// try to create another KAS with the same URI
 	k, err = s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
@@ -384,7 +385,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_NameConflict_Fails() {
 	k, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
 	s.NotNil(k)
-	s.NotEqual("", k.GetId())
+	s.NotEmpty(k.GetId())
 
 	// try to create another KAS with the same Name
 	kasRegistry.Uri = "acmecorp2.com"
@@ -411,7 +412,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Name_LowerCased() {
 	k, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
 	s.NotNil(k)
-	s.NotEqual("", k.GetId())
+	s.NotEmpty(k.GetId())
 
 	got, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, k.GetId())
 	s.NotNil(got)
@@ -447,7 +448,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Cached() {
 	r, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
 	s.NotNil(r)
-	s.NotZero(r.GetId())
+	s.NotEmpty(r.GetId())
 	s.Equal(r.GetPublicKey().GetCached().GetKeys()[0].GetPem(), cachedKeyPem)
 }
 
@@ -665,7 +666,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 	s.Equal(uri, got.GetUri())
 	s.Empty(got.GetName()) // name not given to KAS in create or update
 	s.Equal(updatedKeySet, got.GetPublicKey().GetCached())
-	s.Zero(got.GetPublicKey().GetRemote())
+	s.Empty(got.GetPublicKey().GetRemote())
 	s.Equal("unchanged label", got.GetMetadata().GetLabels()["unchanged"])
 }
 
@@ -701,7 +702,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_UpdatingSourceTypeUnspecif
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(uri, got.GetUri())
 	s.Empty(got.GetName())
-	s.Zero(got.GetPublicKey().GetRemote())
+	s.Empty(got.GetPublicKey().GetRemote())
 	s.Equal("unchanged label", got.GetMetadata().GetLabels()["unchanged"])
 	s.Equal(sourceType, got.GetSourceType())
 }
@@ -827,7 +828,7 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithChildKeys_Fails() {
 	resp, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, createdKas.GetId())
 	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Len(resp.GetKeys(), 1)
+	s.Len(resp.GetKasKeys(), 1)
 
 	deleted, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, createdKas.GetId())
 	s.Require().Error(err)
@@ -835,7 +836,7 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithChildKeys_Fails() {
 	s.Nil(deleted)
 
 	// Remove key to clean up
-	_, err = s.db.PolicyClient.DeleteKey(s.ctx, createdKey.GetKey().GetId())
+	_, err = s.db.PolicyClient.DeleteKey(s.ctx, createdKey.GetKasKey().GetKey().GetId())
 	s.Require().NoError(err)
 
 	// Delete the KAS

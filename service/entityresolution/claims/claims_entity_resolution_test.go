@@ -19,20 +19,20 @@ func Test_ClientResolveEntity(t *testing.T) {
 	var validBody []*authorization.Entity
 	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_ClientId{ClientId: "random"}})
 
-	var req = entityresolution.ResolveEntitiesRequest{}
+	req := entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
+	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
-	var entityRepresentations = resp.GetEntityRepresentations()
+	entityRepresentations := resp.GetEntityRepresentations()
 	assert.NotNil(t, entityRepresentations)
 	assert.Len(t, entityRepresentations, 1)
 
 	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
 	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
-	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
+	propMap := entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "random", propMap["clientId"])
 	assert.Equal(t, "1234", propMap["id"])
 }
@@ -41,20 +41,20 @@ func Test_EmailResolveEntity(t *testing.T) {
 	var validBody []*authorization.Entity
 	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "random"}})
 
-	var req = entityresolution.ResolveEntitiesRequest{}
+	req := entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
+	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
-	var entityRepresentations = resp.GetEntityRepresentations()
+	entityRepresentations := resp.GetEntityRepresentations()
 	assert.NotNil(t, entityRepresentations)
 	assert.Len(t, entityRepresentations, 1)
 
 	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
 	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
-	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
+	propMap := entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "random", propMap["emailAddress"])
 	assert.Equal(t, "1234", propMap["id"])
 }
@@ -75,20 +75,20 @@ func Test_ClaimsResolveEntity(t *testing.T) {
 	var validBody []*authorization.Entity
 	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_Claims{Claims: anyClaims}})
 
-	var req = entityresolution.ResolveEntitiesRequest{}
+	req := entityresolution.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
+	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
-	var entityRepresentations = resp.GetEntityRepresentations()
+	entityRepresentations := resp.GetEntityRepresentations()
 	assert.NotNil(t, entityRepresentations)
 	assert.Len(t, entityRepresentations, 1)
 
 	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
 	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
-	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
+	propMap := entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "bar", propMap["foo"])
 	assert.EqualValues(t, 42, propMap["baz"])
 }
@@ -96,7 +96,7 @@ func Test_ClaimsResolveEntity(t *testing.T) {
 func Test_JWTToEntityChainClaims(t *testing.T) {
 	validBody := []*authorization.Token{{Jwt: samplejwt}}
 
-	var resp, reserr = claims.CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, logger.CreateTestLogger())
+	resp, reserr := claims.CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 

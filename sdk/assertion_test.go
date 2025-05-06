@@ -135,7 +135,7 @@ func TestDeserializingAssertionWithJSONInStatementValue(t *testing.T) {
 	err := json.Unmarshal([]byte(assertionVal), &assertion)
 	require.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
 
-	var expectedAssertionValue, _ = jcs.Transform([]byte(`{
+	expectedAssertionValue, _ := jcs.Transform([]byte(`{
           "ocl": {
             "pol": "2ccf11cb-6c9a-4e49-9746-a7f0a295945d",
             "cls": "SECRET",

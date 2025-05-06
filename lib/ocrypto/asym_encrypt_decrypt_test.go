@@ -12,7 +12,7 @@ func salty(s string) []byte {
 }
 
 func TestAsymEncryptionAndDecryption(t *testing.T) {
-	var keypairs = []struct {
+	keypairs := []struct {
 		privateKey string
 		publicKey  string
 		salt       []byte
@@ -232,7 +232,8 @@ wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 			salty("L1L"),
 			nil,
 		},
-		{`-----BEGIN PRIVATE KEY-----
+		{
+			`-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgwQlQvwfqC0sEaPVi
 l1CdHNqAndukGsrqMsfiIefXHQChRANCAAQSZSoVakwpWhKBZIR9dmmTkKv7GK6n
 6d0yFeGzOyqB7l9LOzOwlCDdm9k0jBQBw597Dyy7KQzW73zi+pSpgfYr

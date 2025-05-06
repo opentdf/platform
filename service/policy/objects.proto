@@ -33,7 +33,7 @@ message Namespace {
   repeated KeyAccessServer grants = 6;
 
   // Keys for the namespace
-  repeated AsymmetricKey keys = 7;
+  repeated KasKey kas_keys = 7;
 }
 
 message Attribute {
@@ -62,7 +62,7 @@ message Attribute {
   google.protobuf.BoolValue active = 8;
 
   //Keys associated with the attribute
-  repeated AsymmetricKey keys = 9;
+  repeated KasKey kas_keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -99,7 +99,7 @@ message Value {
   // subject mapping
   repeated SubjectMapping subject_mappings = 8;
 
-  repeated AsymmetricKey keys = 9;
+  repeated KasKey kas_keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -319,8 +319,8 @@ message KeyAccessServer {
 
   // The source of the KAS: (INTERNAL, EXTERNAL)
   SourceType source_type = 4;
-  // Asymmetric keys associated with this KAS
-  repeated AsymmetricKey keys = 5;
+  // Kas keys associated with this KAS
+  repeated KasKey kas_keys = 5;
 
 
   // Optional
@@ -463,6 +463,11 @@ enum KeyMode {
   KEY_MODE_UNSPECIFIED = 0;
   KEY_MODE_LOCAL = 1;
   KEY_MODE_REMOTE = 2;
+}
+
+message KasKey {
+  string kas_id = 1;
+  AsymmetricKey key = 2;
 }
 
 message AsymmetricKey {

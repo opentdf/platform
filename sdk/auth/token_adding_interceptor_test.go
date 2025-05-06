@@ -132,6 +132,7 @@ func (f *FakeAccessServiceServer) PublicKey(ctx context.Context, _ *kas.PublicKe
 func (f *FakeAccessServiceServer) LegacyPublicKey(context.Context, *kas.LegacyPublicKeyRequest) (*wrapperspb.StringValue, error) {
 	return &wrapperspb.StringValue{}, nil
 }
+
 func (f *FakeAccessServiceServer) Rewrap(context.Context, *kas.RewrapRequest) (*kas.RewrapResponse, error) {
 	return &kas.RewrapResponse{}, nil
 }
@@ -147,6 +148,7 @@ func (fts *FakeTokenSource) AccessToken(context.Context, *http.Client) (AccessTo
 	}
 	return AccessToken(fts.accessToken), nil
 }
+
 func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, error) {
 	if fts.key == nil {
 		return nil, errors.New("no such key")
@@ -155,7 +157,8 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 }
 
 func runServer( //nolint:ireturn // this is pretty concrete
-	f *FakeAccessServiceServer, oo TokenAddingInterceptor) (kas.AccessServiceClient, func()) {
+	f *FakeAccessServiceServer, oo TokenAddingInterceptor,
+) (kas.AccessServiceClient, func()) {
 	buffer := 1024 * 1024
 	listener := bufconn.Listen(buffer)
 

@@ -8,9 +8,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 )
 
-var (
-	authnContextKey = authContextKey{}
-)
+var authnContextKey = authContextKey{}
 
 type authContextKey struct{}
 

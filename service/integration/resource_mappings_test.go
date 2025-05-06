@@ -803,7 +803,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	s.Equal(createdMapping.GetId(), updateWithChange.GetId())
 	s.Equal(createdMapping.GetAttributeValue().GetId(), updateWithChange.GetAttributeValue().GetId())
 	s.Equal(updateTerms, updateWithChange.GetTerms())
-	s.EqualValues(expectedLabels, updateWithChange.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, updateWithChange.GetMetadata().GetLabels())
 	s.Equal(createdMapping.GetGroup().GetId(), updateWithChange.GetGroup().GetId())
 
 	// get after update to verify db reflects changes made
@@ -813,7 +813,7 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMapping() {
 	s.Equal(createdMapping.GetId(), got.GetId())
 	s.Equal(createdMapping.GetAttributeValue().GetId(), got.GetAttributeValue().GetId())
 	s.Equal(updateTerms, got.GetTerms())
-	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, got.GetMetadata().GetLabels())
 	metadata := got.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()

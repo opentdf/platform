@@ -240,6 +240,7 @@ func (s *KasRegistryKeySuite) Test_GetKasKey_WithKasName_Success() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
+	s.Equal(s.kasKeys[0].KeyAccessServerID, resp.GetKasId())
 	s.Equal(s.kasKeys[0].ID, resp.GetKey().GetId())
 	privateKeyCtx, err := base64.StdEncoding.DecodeString(s.kasKeys[0].PrivateKeyCtx)
 	s.Require().NoError(err)

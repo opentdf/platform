@@ -1,4 +1,4 @@
-package identifier
+package policyidentifier
 
 import (
 	"fmt"

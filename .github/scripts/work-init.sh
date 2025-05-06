@@ -11,6 +11,8 @@
 #  examples -> protocol/go, sdk
 #  lib/crypto -> ∅
 #  lib/fixtures -> ∅
+#  lib/flattening -> ∅
+#  lib/policyidentifier -> ∅
 #  protocol/go -> ∅
 #  sdk -> lib/fixtures, lib/ocrypto, protocol/go
 #  services -> lib/fixtures, lib/ocrypto, protocol/go, sdk, lib/flattening
@@ -32,7 +34,7 @@ fi
 
 echo "[INFO] Rebuilding partial go.work for [${component}]"
 case $component in
-  lib/ocrypto | lib/fixtures | lib/flattening | protocol/go )
+  lib/ocrypto | lib/fixtures | lib/flattening | lib/policyidentifier | protocol/go )
     echo "[INFO] skipping for leaf package"
     ;;
   sdk)

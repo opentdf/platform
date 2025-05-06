@@ -349,7 +349,63 @@ func (s KeyAccessServerRegistry) ListKeys(ctx context.Context, r *connect.Reques
 	return connect.NewResponse(resp), nil
 }
 
-func (s KeyAccessServerRegistry) RotateKey(context.Context, *connect.Request[kasr.RotateKeyRequest]) (*connect.Response[kasr.RotateKeyResponse], error) {
+func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Request[kasr.RotateKeyRequest]) (*connect.Response[kasr.RotateKeyResponse], error) {
+	resp := &kasr.RotateKeyResponse{}
+	var objectID string
+
+	switch i := r.Msg.ActiveKey.(type) {
+	case *kasr.RotateKeyRequest_Id:
+		s.logger.Debug("Rotating key by ID", slog.String("ID", i.Id))
+		objectID = i.Id
+	case *kasr.RotateKeyRequest_Key:
+		s.logger.Debug("Rotating key by Kas Key", slog.String("Active Key ID", i.Key.GetKid()), slog.String("New Key ID", r.Msg.GetNewKey().GetKeyId()))
+		objectID = i.Key.GetKid()
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, nil)
+	}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeRotate,
+		ObjectType: audit.ObjectTypeKasRegistryKeys,
+		ObjectID:   objectID,
+	}
+
+	original, err := s.dbClient.GetKey(ctx, r.Msg.GetActiveKey())
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("keyAccessServer Keys", objectID))
+	}
+
+	auditParams.Original = &policy.KasKey{
+		KasId: original.GetKasId(),
+		Key: &policy.AsymmetricKey{
+			KeyId:     original.GetKey().GetKeyId(),
+			KeyStatus: original.GetKey().GetKeyStatus(),
+		},
+	}
+
+	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		resp.KasKey, err = txClient.RotateKey(ctx, original, r.Msg.GetNewKey())
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.Updated = &policy.KasKey{
+			KasId: resp.GetKasKey().GetKasId(),
+			Key: &policy.AsymmetricKey{
+				KeyId:     resp.GetKasKey().GetKey().GetKeyId(),
+				KeyStatus: resp.GetKasKey().GetKey().GetKeyStatus(),
+			},
+		}
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		return nil
+	})
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextKeyRotationFailed, slog.String("Active Key ID", objectID), slog.String("New Key ID", r.Msg.GetNewKey().GetKeyId()))
+	}
+
 	// Implementation for RotateKey
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
 }

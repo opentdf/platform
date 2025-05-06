@@ -654,3 +654,66 @@ func (c PolicyDBClient) DeleteKey(ctx context.Context, id string) (*policy.Asymm
 		Id: id,
 	}, nil
 }
+
+func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey, newKey *kasregistry.RotateKeyRequest_NewKey) (*policy.KasKey, error) {
+	//Step 1: Update old key to inactive.
+	_, err := c.UpdateKey(ctx, &kasregistry.UpdateKeyRequest{
+		Id:        activeKey.GetKey().GetId(),
+		KeyStatus: policy.KeyStatus_KEY_STATUS_INACTIVE,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	//Step 2: Create new key.
+	newKasKey, err := c.CreateKey(ctx, &kasregistry.CreateKeyRequest{
+		KasId:            activeKey.GetKasId(),
+		KeyId:            newKey.GetKeyId(),
+		KeyAlgorithm:     newKey.GetAlgorithm(),
+		KeyMode:          newKey.GetKeyMode(),
+		PublicKeyCtx:     newKey.GetPublicKeyCtx(),
+		PrivateKeyCtx:    newKey.GetPrivateKeyCtx(),
+		ProviderConfigId: newKey.GetProviderConfigId(),
+		Metadata:         newKey.GetMetadata(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 3: Update Namespace/Attribute/Value tables to use the new key.
+	err = c.rotatePublicKeyTables(ctx, activeKey.GetKey().GetId(), newKasKey.GetKasKey().GetKey().GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	return newKasKey.GetKasKey(), nil
+}
+
+func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID string, newKeyID string) error {
+
+	_, err := c.rotatePublicKeyForNamespace(ctx, rotatePublicKeyForNamespaceParams{
+		OldKeyID: oldKeyID,
+		NewKeyID: newKeyID,
+	})
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	_, err = c.rotatePublicKeyForAttributeDefinition(ctx, rotatePublicKeyForAttributeDefinitionParams{
+		OldKeyID: oldKeyID,
+		NewKeyID: newKeyID,
+	})
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	_, err = c.rotatePublicKeyForAttributeValue(ctx, rotatePublicKeyForAttributeValueParams{
+		OldKeyID: oldKeyID,
+		NewKeyID: newKeyID,
+	})
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return nil
+}

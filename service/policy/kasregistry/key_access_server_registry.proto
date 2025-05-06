@@ -475,6 +475,7 @@ message UpdateKeyResponse {
 message RotateKeyRequest {
   // Required (Current Active Key ID)
   oneof active_key {
+    option (buf.validate.oneof).required = true;
     // Current Active Key UUID
     string id = 1 [(buf.validate.field).string.uuid = true];
     // Alternative way to specify the active key using KAS ID and Key ID
@@ -493,13 +494,13 @@ message RotateKeyRequest {
     // Required
     KeyMode key_mode = 3 [(buf.validate.field).enum.defined_only = true];
     // Required
-    bytes private_key_ctx = 4; // Specific structure based on key provider implementation
+    bytes public_key_ctx = 4 [(buf.validate.field).bytes = {min_len: 1}];
+    bytes private_key_ctx = 5; // Specific structure based on key provider implementation
     // Optional
-    bytes public_key_ctx = 5;
     string provider_config_id = 6;
 
     // Common metadata fields
-    common.Metadata metadata = 100;
+    common.MetadataMutable metadata = 100;
   }
 }
 

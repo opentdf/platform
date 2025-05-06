@@ -306,22 +306,22 @@
           "$ref": "#/definitions/policyKeyMode",
           "title": "Required"
         },
-        "privateKeyCtx": {
-          "type": "string",
-          "format": "byte",
-          "description": "Specific structure based on key provider implementation",
-          "title": "Required"
-        },
         "publicKeyCtx": {
           "type": "string",
           "format": "byte",
-          "title": "Optional"
+          "title": "Required"
+        },
+        "privateKeyCtx": {
+          "type": "string",
+          "format": "byte",
+          "title": "Specific structure based on key provider implementation"
         },
         "providerConfigId": {
-          "type": "string"
+          "type": "string",
+          "title": "Optional"
         },
         "metadata": {
-          "$ref": "#/definitions/commonMetadata",
+          "$ref": "#/definitions/commonMetadataMutable",
           "title": "Common metadata fields"
         }
       },

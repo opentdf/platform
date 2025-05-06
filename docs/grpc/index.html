@@ -8720,31 +8720,29 @@ Pagination request for the list of keys </p></td>
                 </tr>
               
                 <tr>
-                  <td>private_key_ctx</td>
-                  <td><a href="#bytes">bytes</a></td>
-                  <td></td>
-                  <td><p>Required
-
-Specific structure based on key provider implementation </p></td>
-                </tr>
-              
-                <tr>
                   <td>public_key_ctx</td>
                   <td><a href="#bytes">bytes</a></td>
                   <td></td>
-                  <td><p>Optional </p></td>
+                  <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>private_key_ctx</td>
+                  <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Specific structure based on key provider implementation </p></td>
                 </tr>
               
                 <tr>
                   <td>provider_config_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>
                   <td>metadata</td>
-                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
                   <td><p>Common metadata fields </p></td>
                 </tr>

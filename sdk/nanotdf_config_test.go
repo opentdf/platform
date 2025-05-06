@@ -128,3 +128,35 @@ func TestWithNanoKasAllowlist_with(t *testing.T) {
 		assert.False(t, config.kasAllowlist.IsAllowed("https://example.com:443"), "Expected KAS URL to not be allowed")
 	})
 }
+
+func TestSetPolicyMode(t *testing.T) {
+	t.Run("Set to plaintext", func(t *testing.T) {
+		var s SDK
+		conf, err := s.NewNanoTDFConfig()
+		require.NoError(t, err)
+
+		err = conf.SetPolicyMode(policyTypeEmbeddedPolicyPlainText)
+		require.NoError(t, err)
+		assert.Equal(t, policyTypeEmbeddedPolicyPlainText, conf.policyMode)
+	})
+
+	t.Run("Set to encrypted", func(t *testing.T) {
+		var s SDK
+		conf, err := s.NewNanoTDFConfig()
+		require.NoError(t, err)
+
+		err = conf.SetPolicyMode(policyTypeEmbeddedPolicyEncrypted)
+		require.NoError(t, err)
+		assert.Equal(t, policyTypeEmbeddedPolicyEncrypted, conf.policyMode)
+	})
+
+	t.Run("Set to invalid mode", func(t *testing.T) {
+		var s SDK
+		conf, err := s.NewNanoTDFConfig()
+		require.NoError(t, err)
+
+		err = conf.SetPolicyMode(policyType(3)) // Assuming 3 is an invalid policyType
+		require.Error(t, err)
+		assert.NotEqual(t, policyType(3), conf.policyMode)
+	})
+}

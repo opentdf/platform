@@ -394,7 +394,6 @@ func TestCreateEmbeddedPolicy(t *testing.T) {
 	t.Run("plaintext policy", func(t *testing.T) {
 		config, err := new(SDK).NewNanoTDFConfig()
 		require.NoError(t, err)
-		config.EnablePlaintextPolicy()
 
 		policy, err := createEmbeddedPolicy(policyData, *config)
 		require.NoError(t, err)
@@ -404,6 +403,8 @@ func TestCreateEmbeddedPolicy(t *testing.T) {
 
 	t.Run("encrypted policy", func(t *testing.T) {
 		config, err := new(SDK).NewNanoTDFConfig()
+		require.NoError(t, err)
+		err = config.SetPolicyMode(policyTypeEmbeddedPolicyEncrypted)
 		require.NoError(t, err)
 
 		// Setup KAS public key
@@ -422,6 +423,8 @@ func TestCreateEmbeddedPolicy(t *testing.T) {
 		assert.NotEqual(t, policyData, policy.body)
 		assert.Greater(t, len(policy.body), 0)
 		assert.Equal(t, uint16(len(policy.body)), policy.lengthBody)
+
+		assert.NotEqual(t, policyData, policy.body, "Policy body should be encrypted and different from original data")
 	})
 
 	t.Run("encrypted policy with invalid KAS key", func(t *testing.T) {

@@ -55,6 +55,7 @@ require (
 	cel.dev/expr v0.19.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/containerd/continuity v0.4.4 // indirect
+	github.com/opentdf/platform/lib/identifier v0.0.0-20250506204946-8822c4516627 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 )
 

@@ -7,7 +7,7 @@ import (
 )
 
 func TestCreateAesGcm_DecryptWithDefaults(t *testing.T) {
-	var gcmDecryptionTests = []struct {
+	gcmDecryptionTests := []struct {
 		symmetricKey string
 		iv           string
 		cipherText   string
@@ -60,7 +60,7 @@ widely adopted for its performance`,
 }
 
 func TestCreateAesGcm_EncryptWithDefaults(t *testing.T) {
-	var gcmEncryptionTests = []struct {
+	gcmEncryptionTests := []struct {
 		symmetricKey string
 		iv           string
 		plainText    string
@@ -127,7 +127,7 @@ func TestCreateAESGcm_WithDifferentAuthTags(t *testing.T) {
 		t.Fatalf("Fail to grenerate nonce %v", err)
 	}
 
-	var authTagsForNanoTDF = []int{12, 13, 14, 15, 16}
+	authTagsForNanoTDF := []int{12, 13, 14, 15, 16}
 	for _, authTag := range authTagsForNanoTDF {
 		cipherText, err := aesGcm.EncryptWithIVAndTagSize(nonce, []byte(plainText), authTag)
 		if err != nil {

@@ -367,8 +367,10 @@ func SizeOfAuthTagForCipher(cipherType CipherMode) (int, error) {
 // NanoTDF Collection Header Store
 // ============================================================================================================
 
-const kDefaultExpirationTime = 5 * time.Minute
-const kDefaultCleaningInterval = 10 * time.Minute
+const (
+	kDefaultExpirationTime   = 5 * time.Minute
+	kDefaultCleaningInterval = 10 * time.Minute
+)
 
 type collectionStore struct {
 	cache          sync.Map
@@ -986,7 +988,6 @@ func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []kaoResult) (
 	)
 	payloadLengthBuf := make([]byte, kPayloadLoadLengthBufLength)
 	_, err = n.reader.Read(payloadLengthBuf[1:])
-
 	if err != nil {
 		return 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
 	}

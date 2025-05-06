@@ -136,7 +136,6 @@ func Test_UnmarshalAllActionsProto(t *testing.T) {
 			actions := []*policy.Action{}
 
 			err := unmarshalAllActionsProto(tt.stdActionsJSON, tt.customActionsJSON, &actions)
-
 			if err != nil {
 				t.Errorf("unmarshalAllActionsProto() unexpected error = %v", err)
 			}

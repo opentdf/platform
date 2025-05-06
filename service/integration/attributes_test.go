@@ -556,16 +556,16 @@ func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 
 	for _, a := range list.GetAttributes() {
 		// attr fqn
-		s.NotEqual("", a.GetFqn())
+		s.NotEmpty(a.GetFqn())
 		s.Equal(fmt.Sprintf("https://%s/attr/%s", a.GetNamespace().GetName(), a.GetName()), a.GetFqn())
 
 		// namespace fqn
-		s.NotEqual("", a.GetNamespace().GetFqn())
+		s.NotEmpty(a.GetNamespace().GetFqn())
 		s.Equal(fmt.Sprintf("https://%s", a.GetNamespace().GetName()), a.GetNamespace().GetFqn())
 
 		// value fqns
 		for _, v := range a.GetValues() {
-			s.NotEqual("", v.GetFqn())
+			s.NotEmpty(v.GetFqn())
 			s.Equal(fmt.Sprintf("https://%s/attr/%s/value/%s", a.GetNamespace().GetName(), a.GetName(), v.GetValue()), v.GetFqn())
 		}
 	}
@@ -676,7 +676,7 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
-	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, got.GetMetadata().GetLabels())
 	metadata := got.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()
@@ -813,7 +813,7 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
 	s.NotNil(got)
 
 	originalFqn := got.GetFqn()
-	s.NotEqual("", originalFqn)
+	s.NotEmpty(originalFqn)
 
 	// update with a new name
 	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
@@ -968,7 +968,7 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 	ns, err := s.db.PolicyClient.GetNamespace(s.ctx, fixtureNamespaceID)
 	s.Require().NoError(err)
 	s.NotNil(ns)
-	s.NotEqual("", ns.GetId())
+	s.NotEmpty(ns.GetId())
 
 	// attribute should not be listed anymore
 	rsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
@@ -1018,7 +1018,7 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute_WithBadFqnFails() {
 	})
 	got, _ := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
 	s.NotNil(got)
-	s.NotEqual("", got.GetFqn())
+	s.NotEmpty(got.GetFqn())
 
 	deleted, err := s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, got, "bad_fqn")
 	s.Require().Error(err)
@@ -1040,7 +1040,7 @@ func setupCascadeDeactivateAttribute(s *AttributesSuite) (string, string, string
 		Name: "test__cascading-deactivate-ns",
 	})
 	s.Require().NoError(err)
-	s.NotZero(n.GetId())
+	s.NotEmpty(n.GetId())
 
 	// add an attribute under that namespaces
 	attr := &attributes.CreateAttributeRequest{

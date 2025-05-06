@@ -837,8 +837,10 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				s.Require().NoError(err)
 			}(fileWriter)
 
-			createOptions := []TDFOption{WithKasInformation(kasURLs...),
-				WithAssertions(test.assertions...)}
+			createOptions := []TDFOption{
+				WithKasInformation(kasURLs...),
+				WithAssertions(test.assertions...),
+			}
 			if test.useHex {
 				createOptions = append(createOptions, WithTargetMode("0.0.0"))
 			}

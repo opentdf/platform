@@ -21,6 +21,7 @@ import (
 
 const (
 	secondsPerMinute = 60
+	statusFail       = "fail"
 	statusPermit     = "permit"
 )
 
@@ -74,7 +75,7 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 
 	response, err := serviceClient.Rewrap(ctx, rewrapRequest)
 	if err != nil {
-		return nil, fmt.Errorf("error making rewrap request: %w", err)
+		return upgradeRewrapErrorV1(err, requests)
 	}
 
 	upgradeRewrapResponseV1(response, requests)
@@ -109,6 +110,30 @@ func upgradeRewrapResponseV1(response *kas.RewrapResponse, requests []*kas.Unsig
 	}
 }
 
+// convert v1 errors to v2 responses
+func upgradeRewrapErrorV1(err error, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest) (*kas.RewrapResponse, error) {
+	if len(requests) != 1 {
+		return nil, fmt.Errorf("error making rewrap request: %w", err)
+	}
+
+	return &kas.RewrapResponse{
+		Responses: []*kas.PolicyRewrapResult{
+			{
+				PolicyId: requests[0].GetPolicy().GetId(),
+				Results: []*kas.KeyAccessRewrapResult{
+					{
+						KeyAccessObjectId: requests[0].GetKeyAccessObjects()[0].GetKeyAccessObjectId(),
+						Status:            statusFail,
+						Result: &kas.KeyAccessRewrapResult_Error{
+							Error: err.Error(),
+						},
+					},
+				},
+			},
+		},
+	}, nil
+}
+
 func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
 	keypair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
 	if err != nil {
@@ -129,19 +154,39 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 		return nil, err
 	}
 
-	sessionKey, err := ocrypto.ComputeECDHKey([]byte(privateKeyAsPem), []byte(response.GetSessionPublicKey()))
+	// If the session key is empty, all responses are errors
+	spk := response.GetSessionPublicKey()
+	if spk == "" {
+		policyResults := make(map[string][]kaoResult)
+		err = errors.New("nanoUnwrap: session public key is empty")
+		for _, results := range response.GetResponses() {
+			var kaoKeys []kaoResult
+			for _, kao := range results.GetResults() {
+				if kao.GetStatus() == statusPermit {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
+				} else {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError())})
+				}
+			}
+			policyResults[results.GetPolicyId()] = kaoKeys
+		}
+
+		return policyResults, nil
+	}
+
+	sessionKey, err := ocrypto.ComputeECDHKey([]byte(privateKeyAsPem), []byte(spk))
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed :%w", err)
+		return nil, fmt.Errorf("nanoUnwrap: ocrypto.ComputeECDHKey failed :%w", err)
 	}
 
 	sessionKey, err = ocrypto.CalculateHKDF(versionSalt(), sessionKey)
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
+		return nil, fmt.Errorf("nanoUnwrap: ocrypto.CalculateHKDF failed:%w", err)
 	}
 
 	aesGcm, err := ocrypto.NewAESGcm(sessionKey)
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
+		return nil, fmt.Errorf("nanoUnwrap: ocrypto.NewAESGcm failed:%w", err)
 	}
 
 	policyResults := make(map[string][]kaoResult)

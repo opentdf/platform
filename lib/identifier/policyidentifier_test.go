@@ -1,4 +1,4 @@
-package policyidentifier
+package identifier
 
 import (
 	"testing"

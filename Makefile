@@ -3,8 +3,8 @@
 
 .PHONY: all build clean docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
 
-MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/policyidentifier sdk service examples
-HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/policyidentifier sdk service examples
+MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
+HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 

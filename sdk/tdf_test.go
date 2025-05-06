@@ -2280,15 +2280,17 @@ func TestIsLessThanSemver(t *testing.T) {
 func TestCreatePolicyObjectDeduplication(t *testing.T) {
 	attributes := []AttributeValueFQN{}
 
-	attr1, err := NewAttributeValueFQN("https://example.com/attr/Classification/value/S")
+	fqn1 := "https://example.com/attr/Classification/value/S"
+	fqn2 := "https://example.com/attr/Classification/value/X"
+	attr1, err := NewAttributeValueFQN(fqn1)
 	require.NoError(t, err)
 	attributes = append(attributes, attr1)
 
-	attr2, err := NewAttributeValueFQN("https://example.com/attr/Classification/value/S")
+	attr2, err := NewAttributeValueFQN(fqn1)
 	require.NoError(t, err)
 	attributes = append(attributes, attr2)
 
-	attr3, err := NewAttributeValueFQN("https://example.com/attr/Classification/value/X")
+	attr3, err := NewAttributeValueFQN(fqn2)
 	require.NoError(t, err)
 	attributes = append(attributes, attr3)
 
@@ -2297,6 +2299,6 @@ func TestCreatePolicyObjectDeduplication(t *testing.T) {
 
 	// Ensure deduplication occurred
 	assert.Len(t, policyObj.Body.DataAttributes, 2)
-	assert.Contains(t, policyObj.Body.DataAttributes, attributeObject{Attribute: "https://example.com/attr/Classification/value/S"})
-	assert.Contains(t, policyObj.Body.DataAttributes, attributeObject{Attribute: "https://example.com/attr/Classification/value/X"})
+	assert.Contains(t, policyObj.Body.DataAttributes, attributeObject{Attribute: fqn1})
+	assert.Contains(t, policyObj.Body.DataAttributes, attributeObject{Attribute: fqn2})
 }

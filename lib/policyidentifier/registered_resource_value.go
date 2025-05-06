@@ -11,13 +11,11 @@ type FullyQualifiedRegisteredResourceValue struct {
 	Value string
 }
 
-var (
-	// protovalidate already validates the FQN format in the service request
-	// for parsing purposes, we can just look for any non-whitespace characters
-	// e.g. should be in format of "https://reg_res/<name>/value/<value>"
-	registeredResourceValueFqnRegex = regexp.MustCompile(
-		`^https:\/\/reg_res\/(?<name>\S+)\/value\/(?<value>\S+)$`,
-	)
+// protovalidate already validates the FQN format in the service request
+// for parsing purposes, we can just look for any non-whitespace characters
+// e.g. should be in format of "https://reg_res/<name>/value/<value>"
+var registeredResourceValueFqnRegex = regexp.MustCompile(
+	`^https:\/\/reg_res\/(?<name>\S+)\/value\/(?<value>\S+)$`,
 )
 
 // parseRegisteredResourceValueFqn parses a registered resource value FQN string into a FullyQualifiedRegisteredResourceValue struct.

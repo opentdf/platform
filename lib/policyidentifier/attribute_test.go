@@ -57,7 +57,6 @@ func TestAttributeFQN(t *testing.T) {
 			want:      "https://example.com/attr/level123",
 		},
 		{
-
 			name:      "definition lower cased",
 			namespace: "EXAMPLE.com",
 			attrName:  "TEst",

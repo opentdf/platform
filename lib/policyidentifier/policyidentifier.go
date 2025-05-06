@@ -42,37 +42,41 @@ type FullyQualified interface {
 
 // Parse parses an identifier (FQN) string into a specific type of FullyQualified object
 // and validates the overall structure along with each name/value of the object fields.
-func Parse[T *FullyQualified](identifier string) (*T, error) {
-	// TODO: when URNs are supported, check for URN vs FQN and drive accordingly
-	var result *T
+func Parse[T FullyQualified](identifier string) (T, error) {
+	var (
+		result T
+		ok     bool
+		parsed any
+		err    error
+	)
 
-	// Check which type T is and call the appropriate parsing function
+	// Use type assertion to determine the concrete type and call the appropriate parser
 	switch any(result).(type) {
 	case *FullyQualifiedAttribute:
-		parsed, err := parseAttributeFqn(identifier)
+		parsed, err = parseAttributeFqn(identifier)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
-		// Type assertion to convert back to generic type T
-		result = any(parsed).(*T)
 
 	case *FullyQualifiedResourceMappingGroup:
-		parsed, err := parseResourceMappingGroupFqn(identifier)
+		parsed, err = parseResourceMappingGroupFqn(identifier)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
-		result = any(parsed).(*T)
 
 	case *FullyQualifiedRegisteredResourceValue:
-		parsed, err := parseRegisteredResourceValueFqn(identifier)
+		parsed, err = parseRegisteredResourceValueFqn(identifier)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
-		result = any(parsed).(*T)
 
 	default:
-		return nil, fmt.Errorf("%w: %T", ErrUnsupportedFQNType, result)
+		return result, fmt.Errorf("%w: %T", ErrUnsupportedFQNType, result)
 	}
 
+	result, ok = parsed.(T)
+	if !ok {
+		return result, fmt.Errorf("%w: %T", ErrUnsupportedFQNType, result)
+	}
 	return result, nil
 }

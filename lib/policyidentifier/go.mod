@@ -1,4 +1,4 @@
-module github.com/opentdf/platform/lib/identifier
+module github.com/opentdf/platform/lib/policyidentifier
 
 go 1.23
 

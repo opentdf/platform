@@ -20,8 +20,8 @@ func TestParse_AttributeFqn(t *testing.T) {
 			wantErr: false,
 			checkFqn: func(t *testing.T, fqa *FullyQualifiedAttribute) {
 				require.Equal(t, "example.org", fqa.Namespace)
-				require.Equal(t, "", fqa.Name)
-				require.Equal(t, "", fqa.Value)
+				require.Empty(t, fqa.Name)
+				require.Empty(t, fqa.Value)
 			},
 		},
 		{
@@ -31,7 +31,7 @@ func TestParse_AttributeFqn(t *testing.T) {
 			checkFqn: func(t *testing.T, fqa *FullyQualifiedAttribute) {
 				require.Equal(t, "example.org", fqa.Namespace)
 				require.Equal(t, "classification", fqa.Name)
-				require.Equal(t, "", fqa.Value)
+				require.Empty(t, fqa.Value)
 			},
 		},
 		{
@@ -143,6 +143,7 @@ type mockType struct{}
 func (m *mockType) FQN() string {
 	return "https://example.org/mock"
 }
+
 func (m *mockType) Validate() error {
 	return nil
 }

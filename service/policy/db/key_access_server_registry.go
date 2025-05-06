@@ -685,7 +685,7 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 	}
 
 	// Step 3: Update Namespace/Attribute/Value tables to use the new key.
-	err = c.rotatePublicKeyTables(ctx, activeKey.GetKey().GetId(), newKasKey.GetKasKey().GetKey().GetId(), rotateKeyResp.RotatedResources)
+	err = c.rotatePublicKeyTables(ctx, activeKey.GetKey().GetId(), newKasKey.GetKasKey().GetKey().GetId(), rotateKeyResp.GetRotatedResources())
 	if err != nil {
 		return nil, err
 	}

@@ -762,5 +762,4 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 		},
 		[]string{kas.GetId()},
 	)
-
 }

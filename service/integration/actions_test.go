@@ -209,7 +209,7 @@ func (s *ActionsSuite) Test_CreateAction_Succeeds() {
 	})
 	s.NotNil(action)
 	s.Require().NoError(err)
-	s.NotEqual("", action.GetId())
+	s.NotEmpty(action.GetId())
 	s.Equal(newName, action.GetName())
 	s.NotNil(action.GetMetadata())
 	s.Equal("value1", action.GetMetadata().GetLabels()["label1"])
@@ -249,7 +249,7 @@ func (s *ActionsSuite) Test_UpdateAction_Succeeds() {
 	})
 	s.NotNil(newAction)
 	s.Require().NoError(err)
-	s.NotEqual("", newAction.GetId())
+	s.NotEmpty(newAction.GetId())
 	s.Equal("new_custom_action_updateaction", newAction.GetName())
 
 	differentName := "new_custom_action_updateaction_renamed"
@@ -283,7 +283,7 @@ func (s *ActionsSuite) Test_UpdateAction_NormalizesToLowerCase() {
 	})
 	s.NotNil(newAction)
 	s.Require().NoError(err)
-	s.NotEqual("", newAction.GetId())
+	s.NotEmpty(newAction.GetId())
 	s.Equal("testing_update_action_casing", newAction.GetName())
 
 	differentName := "UppER_CasE_Change"
@@ -332,7 +332,7 @@ func (s *ActionsSuite) Test_DeleteAction_Succeeds() {
 	})
 	s.NotNil(created)
 	s.Require().NoError(err)
-	s.NotEqual("", created.GetId())
+	s.NotEmpty(created.GetId())
 
 	deleted, err := s.db.PolicyClient.DeleteAction(s.ctx, &actions.DeleteActionRequest{
 		Id: created.GetId(),

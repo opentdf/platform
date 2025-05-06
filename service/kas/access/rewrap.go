@@ -630,7 +630,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies)
 	if accessErr != nil {
 		p.Logger.DebugContext(ctx, "tdf3rewrap: cannot access policy", "err", accessErr, "policies", policies)
-		failAllKaos(requests, results, err403("could not perform access"))
+		failAllKaos(requests, results, err500("could not perform access"))
 		return "", results
 	}
 
@@ -741,7 +741,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 
 	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies)
 	if accessErr != nil {
-		failAllKaos(requests, results, err403("could not perform access"))
+		failAllKaos(requests, results, err500("could not perform access"))
 		return "", results
 	}
 

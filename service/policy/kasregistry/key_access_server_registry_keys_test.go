@@ -348,7 +348,8 @@ func Test_ListKeyAccessServer_Keys(t *testing.T) {
 			req: &kasregistry.ListKeysRequest{
 				KasFilter: &kasregistry.ListKeysRequest_KasId{
 					KasId: invalidUUID,
-				}},
+				},
+			},
 			expectError:  true,
 			errorMessage: errMessageKasID,
 		},

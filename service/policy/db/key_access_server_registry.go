@@ -500,8 +500,8 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Kas
 }
 
 func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyRequest) (*policy.KasKey, error) {
-	ID := r.GetId()
-	if !pgtypeUUID(ID).Valid {
+	id := r.GetId()
+	if !pgtypeUUID(id).Valid {
 		return nil, db.ErrUUIDInvalid
 	}
 
@@ -540,7 +540,7 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 	}
 
 	count, err := c.Queries.updateKey(ctx, updateKeyParams{
-		ID:        ID,
+		ID:        id,
 		KeyStatus: pgtypeInt4(int32(keyStatus), keyStatus != policy.KeyStatus_KEY_STATUS_UNSPECIFIED),
 		Metadata:  metadataJSON,
 	})
@@ -554,7 +554,7 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 	}
 
 	return c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
-		Id: ID,
+		Id: id,
 	})
 }
 

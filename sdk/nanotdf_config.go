@@ -100,11 +100,6 @@ func (config *NanoTDFConfig) SetPolicyMode(mode policyType) error {
 	return nil
 }
 
-// EnablePlaintextPolicy sets the policy mode to plaintext instead of encrypted
-func (config *NanoTDFConfig) EnablePlaintextPolicy() {
-	config.policyMode = policyTypeEmbeddedPolicyPlainText
-}
-
 // WithNanoDataAttributes appends the given data attributes to the bound policy
 func WithNanoDataAttributes(attributes ...string) NanoTDFOption {
 	return func(c *NanoTDFConfig) error {

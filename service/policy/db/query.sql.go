@@ -448,12 +448,15 @@ LEFT JOIN (
         k.definition_id,
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
-                'id', kask.id,
-                'key_id', kask.key_id,
-                'key_status', kask.key_status,
-                'key_mode', kask.key_mode,
-                'key_algorithm', kask.key_algorithm,
-                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                'key', JSONB_BUILD_OBJECT(
+                    'id', kask.id,
+                    'key_id', kask.key_id,
+                    'key_status', kask.key_status,
+                    'key_mode', kask.key_mode,
+                    'key_algorithm', kask.key_algorithm,
+                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                ),
+                'kas_id', kask.key_access_server_id
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_definition_public_key_map k
@@ -534,12 +537,15 @@ type GetAttributeRow struct {
 //	        k.definition_id,
 //	        JSONB_AGG(
 //	            DISTINCT JSONB_BUILD_OBJECT(
-//	                'id', kask.id,
-//	                'key_id', kask.key_id,
-//	                'key_status', kask.key_status,
-//	                'key_mode', kask.key_mode,
-//	                'key_algorithm', kask.key_algorithm,
-//	                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                'key', JSONB_BUILD_OBJECT(
+//	                    'id', kask.id,
+//	                    'key_id', kask.key_id,
+//	                    'key_status', kask.key_status,
+//	                    'key_mode', kask.key_mode,
+//	                    'key_algorithm', kask.key_algorithm,
+//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                ),
+//	                'kas_id', kask.key_access_server_id
 //	            )
 //	        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	    FROM attribute_definition_public_key_map k
@@ -594,12 +600,15 @@ LEFT JOIN (
         k.value_id,
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
-                'id', kask.id,
-                'key_id', kask.key_id,
-                'key_status', kask.key_status,
-                'key_mode', kask.key_mode,
-                'key_algorithm', kask.key_algorithm,
-                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                'kas_id', kask.key_access_server_id,
+                'key', JSONB_BUILD_OBJECT(
+                    'id', kask.id,
+                    'key_id', kask.key_id,
+                    'key_status', kask.key_status,
+                    'key_mode', kask.key_mode,
+                    'key_algorithm', kask.key_algorithm,
+                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                )
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_value_public_key_map k
@@ -654,12 +663,15 @@ type GetAttributeValueRow struct {
 //	        k.value_id,
 //	        JSONB_AGG(
 //	            DISTINCT JSONB_BUILD_OBJECT(
-//	                'id', kask.id,
-//	                'key_id', kask.key_id,
-//	                'key_status', kask.key_status,
-//	                'key_mode', kask.key_mode,
-//	                'key_algorithm', kask.key_algorithm,
-//	                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                'kas_id', kask.key_access_server_id,
+//	                'key', JSONB_BUILD_OBJECT(
+//	                    'id', kask.id,
+//	                    'key_id', kask.key_id,
+//	                    'key_status', kask.key_status,
+//	                    'key_mode', kask.key_mode,
+//	                    'key_algorithm', kask.key_algorithm,
+//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                )
 //	            )
 //	        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	    FROM attribute_value_public_key_map k
@@ -706,12 +718,15 @@ LEFT JOIN (
             kask.key_access_server_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'id', kask.id,
-                    'key_id', kask.key_id,
-                    'key_status', kask.key_status,
-                    'key_mode', kask.key_mode,
-                    'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    'kas_id', kask.key_access_server_id,
+                    'key', JSONB_BUILD_OBJECT(
+                        'id', kask.id,
+                        'key_id', kask.key_id,
+                        'key_status', kask.key_status,
+                        'key_mode', kask.key_mode,
+                        'key_algorithm', kask.key_algorithm,
+                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM key_access_server_keys kask
@@ -760,12 +775,15 @@ type GetKeyAccessServerRow struct {
 //	            kask.key_access_server_id,
 //	            JSONB_AGG(
 //	                DISTINCT JSONB_BUILD_OBJECT(
-//	                    'id', kask.id,
-//	                    'key_id', kask.key_id,
-//	                    'key_status', kask.key_status,
-//	                    'key_mode', kask.key_mode,
-//	                    'key_algorithm', kask.key_algorithm,
-//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                    'kas_id', kask.key_access_server_id,
+//	                    'key', JSONB_BUILD_OBJECT(
+//	                        'id', kask.id,
+//	                        'key_id', kask.key_id,
+//	                        'key_status', kask.key_status,
+//	                        'key_mode', kask.key_mode,
+//	                        'key_algorithm', kask.key_algorithm,
+//	                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                    )
 //	                )
 //	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	        FROM key_access_server_keys kask
@@ -812,12 +830,15 @@ LEFT JOIN (
         k.namespace_id,
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
-                'id', kask.id,
-                'key_id', kask.key_id,
-                'key_status', kask.key_status,
-                'key_mode', kask.key_mode,
-                'key_algorithm', kask.key_algorithm,
-                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                'kas_id', kask.key_access_server_id,
+                'key', JSONB_BUILD_OBJECT(
+                    'id', kask.id,
+                    'key_id', kask.key_id,
+                    'key_status', kask.key_status,
+                    'key_mode', kask.key_mode,
+                    'key_algorithm', kask.key_algorithm,
+                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                )
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_namespace_public_key_map k
@@ -869,12 +890,15 @@ type GetNamespaceRow struct {
 //	        k.namespace_id,
 //	        JSONB_AGG(
 //	            DISTINCT JSONB_BUILD_OBJECT(
-//	                'id', kask.id,
-//	                'key_id', kask.key_id,
-//	                'key_status', kask.key_status,
-//	                'key_mode', kask.key_mode,
-//	                'key_algorithm', kask.key_algorithm,
-//	                'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                'kas_id', kask.key_access_server_id,
+//	                'key', JSONB_BUILD_OBJECT(
+//	                    'id', kask.id,
+//	                    'key_id', kask.key_id,
+//	                    'key_status', kask.key_status,
+//	                    'key_mode', kask.key_mode,
+//	                    'key_algorithm', kask.key_algorithm,
+//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                )
 //	            )
 //	        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	    FROM attribute_namespace_public_key_map k
@@ -1581,12 +1605,15 @@ LEFT JOIN (
             kask.key_access_server_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'id', kask.id,
-                    'key_id', kask.key_id,
-                    'key_status', kask.key_status,
-                    'key_mode', kask.key_mode,
-                    'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    'kas_id', kask.key_access_server_id,
+                    'key', JSONB_BUILD_OBJECT(
+                        'id', kask.id,
+                        'key_id', kask.key_id,
+                        'key_status', kask.key_status,
+                        'key_mode', kask.key_mode,
+                        'key_algorithm', kask.key_algorithm,
+                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM key_access_server_keys kask
@@ -1633,12 +1660,15 @@ type ListKeyAccessServersRow struct {
 //	            kask.key_access_server_id,
 //	            JSONB_AGG(
 //	                DISTINCT JSONB_BUILD_OBJECT(
-//	                    'id', kask.id,
-//	                    'key_id', kask.key_id,
-//	                    'key_status', kask.key_status,
-//	                    'key_mode', kask.key_mode,
-//	                    'key_algorithm', kask.key_algorithm,
-//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                    'kas_id', kask.key_access_server_id,
+//	                    'key', JSONB_BUILD_OBJECT(
+//	                        'id', kask.id,
+//	                        'key_id', kask.key_id,
+//	                        'key_status', kask.key_status,
+//	                        'key_mode', kask.key_mode,
+//	                        'key_algorithm', kask.key_algorithm,
+//	                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                    )
 //	                )
 //	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	        FROM key_access_server_keys kask
@@ -2899,6 +2929,7 @@ SELECT
   private_key_ctx,
   public_key_ctx,
   provider_config_id,
+  key_access_server_id,
   JSON_STRIP_NULLS(
     JSON_BUILD_OBJECT(
       'labels', metadata -> 'labels',         
@@ -2922,15 +2953,16 @@ type createKeyParams struct {
 }
 
 type createKeyRow struct {
-	ID               string      `json:"id"`
-	KeyID            string      `json:"key_id"`
-	KeyStatus        int32       `json:"key_status"`
-	KeyMode          int32       `json:"key_mode"`
-	KeyAlgorithm     int32       `json:"key_algorithm"`
-	PrivateKeyCtx    []byte      `json:"private_key_ctx"`
-	PublicKeyCtx     []byte      `json:"public_key_ctx"`
-	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
-	Metadata         []byte      `json:"metadata"`
+	ID                string      `json:"id"`
+	KeyID             string      `json:"key_id"`
+	KeyStatus         int32       `json:"key_status"`
+	KeyMode           int32       `json:"key_mode"`
+	KeyAlgorithm      int32       `json:"key_algorithm"`
+	PrivateKeyCtx     []byte      `json:"private_key_ctx"`
+	PublicKeyCtx      []byte      `json:"public_key_ctx"`
+	ProviderConfigID  pgtype.UUID `json:"provider_config_id"`
+	KeyAccessServerID string      `json:"key_access_server_id"`
+	Metadata          []byte      `json:"metadata"`
 }
 
 // ---------------------------------------------------------------
@@ -2952,6 +2984,7 @@ type createKeyRow struct {
 //	  private_key_ctx,
 //	  public_key_ctx,
 //	  provider_config_id,
+//	  key_access_server_id,
 //	  JSON_STRIP_NULLS(
 //	    JSON_BUILD_OBJECT(
 //	      'labels', metadata -> 'labels',
@@ -2982,6 +3015,7 @@ func (q *Queries) createKey(ctx context.Context, arg createKeyParams) (createKey
 		&i.PrivateKeyCtx,
 		&i.PublicKeyCtx,
 		&i.ProviderConfigID,
+		&i.KeyAccessServerID,
 		&i.Metadata,
 	)
 	return i, err
@@ -3429,6 +3463,7 @@ SELECT
   kask.private_key_ctx,
   kask.public_key_ctx,
   kask.provider_config_id,
+  kask.key_access_server_id,
   JSON_STRIP_NULLS(
     JSON_BUILD_OBJECT(
       'labels', kask.metadata -> 'labels',         
@@ -3460,18 +3495,19 @@ type getKeyParams struct {
 }
 
 type getKeyRow struct {
-	ID               string      `json:"id"`
-	KeyID            string      `json:"key_id"`
-	KeyStatus        int32       `json:"key_status"`
-	KeyMode          int32       `json:"key_mode"`
-	KeyAlgorithm     int32       `json:"key_algorithm"`
-	PrivateKeyCtx    []byte      `json:"private_key_ctx"`
-	PublicKeyCtx     []byte      `json:"public_key_ctx"`
-	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
-	Metadata         []byte      `json:"metadata"`
-	ProviderName     pgtype.Text `json:"provider_name"`
-	PcConfig         []byte      `json:"pc_config"`
-	PcMetadata       []byte      `json:"pc_metadata"`
+	ID                string      `json:"id"`
+	KeyID             string      `json:"key_id"`
+	KeyStatus         int32       `json:"key_status"`
+	KeyMode           int32       `json:"key_mode"`
+	KeyAlgorithm      int32       `json:"key_algorithm"`
+	PrivateKeyCtx     []byte      `json:"private_key_ctx"`
+	PublicKeyCtx      []byte      `json:"public_key_ctx"`
+	ProviderConfigID  pgtype.UUID `json:"provider_config_id"`
+	KeyAccessServerID string      `json:"key_access_server_id"`
+	Metadata          []byte      `json:"metadata"`
+	ProviderName      pgtype.Text `json:"provider_name"`
+	PcConfig          []byte      `json:"pc_config"`
+	PcMetadata        []byte      `json:"pc_metadata"`
 }
 
 // getKey
@@ -3485,6 +3521,7 @@ type getKeyRow struct {
 //	  kask.private_key_ctx,
 //	  kask.public_key_ctx,
 //	  kask.provider_config_id,
+//	  kask.key_access_server_id,
 //	  JSON_STRIP_NULLS(
 //	    JSON_BUILD_OBJECT(
 //	      'labels', kask.metadata -> 'labels',
@@ -3523,6 +3560,7 @@ func (q *Queries) getKey(ctx context.Context, arg getKeyParams) (getKeyRow, erro
 		&i.PrivateKeyCtx,
 		&i.PublicKeyCtx,
 		&i.ProviderConfigID,
+		&i.KeyAccessServerID,
 		&i.Metadata,
 		&i.ProviderName,
 		&i.PcConfig,
@@ -3922,12 +3960,15 @@ WITH target_definition AS (
             k.definition_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'id', kask.id,
-                    'key_id', kask.key_id,
-                    'key_status', kask.key_status,
-                    'key_mode', kask.key_mode,
-                    'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    'kas_id', kask.key_access_server_id,
+                    'key', JSONB_BUILD_OBJECT(
+                        'id', kask.id,
+                        'key_id', kask.key_id,
+                        'key_status', kask.key_status,
+                        'key_mode', kask.key_mode,
+                        'key_algorithm', kask.key_algorithm,
+                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_definition_public_key_map k
@@ -3954,7 +3995,7 @@ namespaces AS (
 	                'public_key', kas.public_key
 	            )
 	        ) FILTER (WHERE kas.id IS NOT NULL),
-            'keys', nmp_keys.keys
+            'kas_keys', nmp_keys.keys
     	) AS namespace
 	FROM target_definition td
 	INNER JOIN attribute_namespaces n ON td.namespace_id = n.id
@@ -3966,12 +4007,15 @@ namespaces AS (
             k.namespace_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'id', kask.id,
-                    'key_id', kask.key_id,
-                    'key_status', kask.key_status,
-                    'key_mode', kask.key_mode,
-                    'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    'kas_id', kask.key_access_server_id,
+                    'key', JSONB_BUILD_OBJECT(
+                        'id', kask.id,
+                        'key_id', kask.key_id,
+                        'key_status', kask.key_status,
+                        'key_mode', kask.key_mode,
+                        'key_algorithm', kask.key_algorithm,
+                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_namespace_public_key_map k
@@ -4042,7 +4086,7 @@ values AS (
 	            'fqn', fqns.fqn,
 	            'grants', avg.grants,
 	            'subject_mappings', avsm.sub_maps,
-                'keys', value_keys.keys
+                'kas_keys', value_keys.keys
 	        -- enforce order of values in response
 	        ) ORDER BY ARRAY_POSITION(td.values_order, av.id)
 	    ) AS values
@@ -4056,12 +4100,15 @@ values AS (
             k.value_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'id', kask.id,
-                    'key_id', kask.key_id,
-                    'key_status', kask.key_status,
-                    'key_mode', kask.key_mode,
-                    'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    'kas_id', kask.key_access_server_id,
+                    'key', JSONB_BUILD_OBJECT(
+                        'id', kask.id,
+                        'key_id', kask.key_id,
+                        'key_status', kask.key_status,
+                        'key_mode', kask.key_mode,
+                        'key_algorithm', kask.key_algorithm,
+                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_value_public_key_map k
@@ -4128,12 +4175,15 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	            k.definition_id,
 //	            JSONB_AGG(
 //	                DISTINCT JSONB_BUILD_OBJECT(
-//	                    'id', kask.id,
-//	                    'key_id', kask.key_id,
-//	                    'key_status', kask.key_status,
-//	                    'key_mode', kask.key_mode,
-//	                    'key_algorithm', kask.key_algorithm,
-//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                    'kas_id', kask.key_access_server_id,
+//	                    'key', JSONB_BUILD_OBJECT(
+//	                        'id', kask.id,
+//	                        'key_id', kask.key_id,
+//	                        'key_status', kask.key_status,
+//	                        'key_mode', kask.key_mode,
+//	                        'key_algorithm', kask.key_algorithm,
+//	                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                    )
 //	                )
 //	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	        FROM attribute_definition_public_key_map k
@@ -4160,7 +4210,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //		                'public_key', kas.public_key
 //		            )
 //		        ) FILTER (WHERE kas.id IS NOT NULL),
-//	            'keys', nmp_keys.keys
+//	            'kas_keys', nmp_keys.keys
 //	    	) AS namespace
 //		FROM target_definition td
 //		INNER JOIN attribute_namespaces n ON td.namespace_id = n.id
@@ -4172,12 +4222,15 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	            k.namespace_id,
 //	            JSONB_AGG(
 //	                DISTINCT JSONB_BUILD_OBJECT(
-//	                    'id', kask.id,
-//	                    'key_id', kask.key_id,
-//	                    'key_status', kask.key_status,
-//	                    'key_mode', kask.key_mode,
-//	                    'key_algorithm', kask.key_algorithm,
-//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                    'kas_id', kask.key_access_server_id,
+//	                    'key', JSONB_BUILD_OBJECT(
+//	                        'id', kask.id,
+//	                        'key_id', kask.key_id,
+//	                        'key_status', kask.key_status,
+//	                        'key_mode', kask.key_mode,
+//	                        'key_algorithm', kask.key_algorithm,
+//	                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                    )
 //	                )
 //	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	        FROM attribute_namespace_public_key_map k
@@ -4248,7 +4301,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //		            'fqn', fqns.fqn,
 //		            'grants', avg.grants,
 //		            'subject_mappings', avsm.sub_maps,
-//	                'keys', value_keys.keys
+//	                'kas_keys', value_keys.keys
 //		        -- enforce order of values in response
 //		        ) ORDER BY ARRAY_POSITION(td.values_order, av.id)
 //		    ) AS values
@@ -4262,12 +4315,15 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	            k.value_id,
 //	            JSONB_AGG(
 //	                DISTINCT JSONB_BUILD_OBJECT(
-//	                    'id', kask.id,
-//	                    'key_id', kask.key_id,
-//	                    'key_status', kask.key_status,
-//	                    'key_mode', kask.key_mode,
-//	                    'key_algorithm', kask.key_algorithm,
-//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                    'kas_id', kask.key_access_server_id,
+//	                    'key', JSONB_BUILD_OBJECT(
+//	                        'id', kask.id,
+//	                        'key_id', kask.key_id,
+//	                        'key_status', kask.key_status,
+//	                        'key_mode', kask.key_mode,
+//	                        'key_algorithm', kask.key_algorithm,
+//	                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                    )
 //	                )
 //	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	        FROM attribute_value_public_key_map k
@@ -4341,6 +4397,7 @@ SELECT
   kask.private_key_ctx,
   kask.public_key_ctx,
   kask.provider_config_id,
+  kask.key_access_server_id,
   JSON_STRIP_NULLS(
     JSON_BUILD_OBJECT(
       'labels', kask.metadata -> 'labels',         
@@ -4372,19 +4429,20 @@ type listKeysParams struct {
 }
 
 type listKeysRow struct {
-	Total            int64       `json:"total"`
-	ID               string      `json:"id"`
-	KeyID            string      `json:"key_id"`
-	KeyStatus        int32       `json:"key_status"`
-	KeyMode          int32       `json:"key_mode"`
-	KeyAlgorithm     int32       `json:"key_algorithm"`
-	PrivateKeyCtx    []byte      `json:"private_key_ctx"`
-	PublicKeyCtx     []byte      `json:"public_key_ctx"`
-	ProviderConfigID pgtype.UUID `json:"provider_config_id"`
-	Metadata         []byte      `json:"metadata"`
-	ProviderName     pgtype.Text `json:"provider_name"`
-	ProviderConfig   []byte      `json:"provider_config"`
-	PcMetadata       []byte      `json:"pc_metadata"`
+	Total             int64       `json:"total"`
+	ID                string      `json:"id"`
+	KeyID             string      `json:"key_id"`
+	KeyStatus         int32       `json:"key_status"`
+	KeyMode           int32       `json:"key_mode"`
+	KeyAlgorithm      int32       `json:"key_algorithm"`
+	PrivateKeyCtx     []byte      `json:"private_key_ctx"`
+	PublicKeyCtx      []byte      `json:"public_key_ctx"`
+	ProviderConfigID  pgtype.UUID `json:"provider_config_id"`
+	KeyAccessServerID string      `json:"key_access_server_id"`
+	Metadata          []byte      `json:"metadata"`
+	ProviderName      pgtype.Text `json:"provider_name"`
+	ProviderConfig    []byte      `json:"provider_config"`
+	PcMetadata        []byte      `json:"pc_metadata"`
 }
 
 // listKeys
@@ -4407,6 +4465,7 @@ type listKeysRow struct {
 //	  kask.private_key_ctx,
 //	  kask.public_key_ctx,
 //	  kask.provider_config_id,
+//	  kask.key_access_server_id,
 //	  JSON_STRIP_NULLS(
 //	    JSON_BUILD_OBJECT(
 //	      'labels', kask.metadata -> 'labels',
@@ -4452,6 +4511,7 @@ func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysR
 			&i.PrivateKeyCtx,
 			&i.PublicKeyCtx,
 			&i.ProviderConfigID,
+			&i.KeyAccessServerID,
 			&i.Metadata,
 			&i.ProviderName,
 			&i.ProviderConfig,

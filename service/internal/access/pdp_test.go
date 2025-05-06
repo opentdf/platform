@@ -597,6 +597,8 @@ func Test_DetermineAccess_MultipleEntities(t *testing.T) {
 		} else if result.RuleDefinition == definition2 {
 			foundDef2 = true
 			assert.False(t, result.Passed) // Second attribute fails
+		} else {
+			t.Errorf("Unexpected rule definition: %s", result.RuleDefinition.GetName())
 		}
 	}
 	assert.True(t, foundDef1)
@@ -771,6 +773,8 @@ func Test_DetermineAccess_ComplexScenarioWithMultipleEntities(t *testing.T) {
 		case allOfDef.GetName():
 			assert.True(t, result.Passed) // training (security only)
 			foundTraining = true
+		default:
+			t.Errorf("Unexpected rule definition: %s", result.RuleDefinition.GetName())
 		}
 	}
 	assert.True(t, foundClearance)
@@ -804,6 +808,8 @@ func Test_DetermineAccess_ComplexScenarioWithMultipleEntities(t *testing.T) {
 		case allOfDef.GetName():
 			assert.True(t, result.Passed) // training (only security required)
 			foundTraining = true
+		default:
+			t.Errorf("Unexpected rule definition: %s", result.RuleDefinition.GetName())
 		}
 	}
 	assert.True(t, foundClearance)

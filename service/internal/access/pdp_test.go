@@ -591,13 +591,14 @@ func Test_DetermineAccess_MultipleEntities(t *testing.T) {
 	foundDef1 := false
 	foundDef2 := false
 	for _, result := range decisions[entityID2].Results {
-		if result.RuleDefinition == definition {
+		switch result.RuleDefinition {
+		case definition:
 			foundDef1 = true
 			assert.True(t, result.Passed) // First attribute passes
-		} else if result.RuleDefinition == definition2 {
+		case definition2:
 			foundDef2 = true
 			assert.False(t, result.Passed) // Second attribute fails
-		} else {
+		default:
 			t.Errorf("Unexpected rule definition: %s", result.RuleDefinition.GetName())
 		}
 	}

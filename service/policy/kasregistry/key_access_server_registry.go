@@ -236,7 +236,6 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Reque
 		auditParams.Original = &policy.KasKey{
 			KasId: resp.GetKasKey().GetKasId(),
 			Key: &policy.AsymmetricKey{
-
 				KeyId:        resp.GetKasKey().GetKey().GetKeyId(),
 				KeyAlgorithm: resp.GetKasKey().GetKey().GetKeyAlgorithm(),
 				KeyStatus:    resp.GetKasKey().GetKey().GetKeyStatus(),

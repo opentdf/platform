@@ -1,7 +1,6 @@
 package policyidentifier
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -112,7 +111,7 @@ func parseAttributeFqn(fqn string) (*FullyQualifiedAttribute, error) {
 		nameIdx := attributeDefinitionFQNRegex.SubexpIndex("name")
 
 		if len(defMatches) <= namespaceIdx || len(defMatches) <= nameIdx {
-			return nil, errors.New("error: valid attribute definition FQN format https://<namespace>/attr/<name> must be provided")
+			return nil, fmt.Errorf("%w: valid attribute definition FQN format https://<namespace>/attr/<name> must be provided [%s]", ErrInvalidFQNFormat, fqn)
 		}
 
 		ns := strings.ToLower(defMatches[namespaceIdx])
@@ -134,7 +133,7 @@ func parseAttributeFqn(fqn string) (*FullyQualifiedAttribute, error) {
 		namespaceIdx := namespaceOnlyRegex.SubexpIndex("namespace")
 
 		if len(nsMatches) <= namespaceIdx {
-			return nil, errors.New("error: valid namespace FQN format https://<namespace> must be provided")
+			return nil, fmt.Errorf("%w: valid namespace FQN format https://<namespace> must be provided [%s]", ErrInvalidFQNFormat, fqn)
 		}
 
 		ns := strings.ToLower(nsMatches[namespaceIdx])
@@ -147,5 +146,5 @@ func parseAttributeFqn(fqn string) (*FullyQualifiedAttribute, error) {
 		return parsed, nil
 	}
 
-	return nil, errors.New("error: invalid attribute FQN format, must be https://<namespace>, https://<namespace>/attr/<name>, or https://<namespace>/attr/<name>/value/<value>")
+	return nil, fmt.Errorf("%w, must be https://<namespace>, https://<namespace>/attr/<name>, or https://<namespace>/attr/<name>/value/<value>", ErrInvalidFQNFormat)
 }

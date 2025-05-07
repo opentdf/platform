@@ -393,6 +393,8 @@ jobs:
         id: compare_benchmarks
         run: |
           echo "Comparing benchmark results..."
+          ls -l .github
+          ls -l .github/scripts 
           # Use a script for cleaner comparison logic
           .github/scripts/compare_benchmarks.sh benchmark_results/pr benchmark_results/main $DEGRADATION_THRESHOLD > benchmark_comparison.md
           echo "Comparison Results:"

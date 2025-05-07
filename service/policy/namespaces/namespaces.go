@@ -2,6 +2,7 @@ package namespaces
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -222,47 +223,11 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connec
 }
 
 func (ns NamespacesService) AssignKeyAccessServerToNamespace(ctx context.Context, req *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error) {
-	rsp := &namespaces.AssignKeyAccessServerToNamespaceResponse{}
-
-	grant := req.Msg.GetNamespaceKeyAccessServer()
-	auditParams := audit.PolicyEventParams{
-		ActionType: audit.ActionTypeCreate,
-		ObjectType: audit.ObjectTypeKasAttributeNamespaceAssignment,
-		ObjectID:   fmt.Sprintf("%s-%s", grant.GetNamespaceId(), grant.GetKeyAccessServerId()),
-	}
-
-	namespaceKas, err := ns.dbClient.AssignKeyAccessServerToNamespace(ctx, grant)
-	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextCreationFailed, slog.String("namespaceKas", grant.String()))
-	}
-	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.NamespaceKeyAccessServer = namespaceKas
-
-	return connect.NewResponse(rsp), nil
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("method AssignKeyAccessServerToNamespace is deprecated"))
 }
 
 func (ns NamespacesService) RemoveKeyAccessServerFromNamespace(ctx context.Context, req *connect.Request[namespaces.RemoveKeyAccessServerFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyAccessServerFromNamespaceResponse], error) {
-	rsp := &namespaces.RemoveKeyAccessServerFromNamespaceResponse{}
-
-	grant := req.Msg.GetNamespaceKeyAccessServer()
-	auditParams := audit.PolicyEventParams{
-		ActionType: audit.ActionTypeDelete,
-		ObjectType: audit.ObjectTypeKasAttributeNamespaceAssignment,
-		ObjectID:   fmt.Sprintf("%s-%s", grant.GetNamespaceId(), grant.GetKeyAccessServerId()),
-	}
-
-	namespaceKas, err := ns.dbClient.RemoveKeyAccessServerFromNamespace(ctx, grant)
-	if err != nil {
-		ns.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, ns.logger, err, db.ErrTextDeletionFailed, slog.String("namespaceKas", grant.String()))
-	}
-	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.NamespaceKeyAccessServer = namespaceKas
-
-	return connect.NewResponse(rsp), nil
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("method RemoveKeyAccessServerFromNamespace is deprecated"))
 }
 
 func (ns NamespacesService) AssignPublicKeyToNamespace(ctx context.Context, r *connect.Request[namespaces.AssignPublicKeyToNamespaceRequest]) (*connect.Response[namespaces.AssignPublicKeyToNamespaceResponse], error) {

@@ -105,7 +105,6 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		Id:       av.ID,
 		Value:    av.Value,
 		Active:   &wrapperspb.BoolValue{Value: av.Active},
-		Grants:   grants,
 		Metadata: metadata,
 		Attribute: &policy.Attribute{
 			Id: av.AttributeDefinitionID,
@@ -315,33 +314,6 @@ func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete
 	return &policy.Value{
 		Id: id,
 	}, nil
-}
-
-func (c PolicyDBClient) AssignKeyAccessServerToValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
-	_, err := c.Queries.AssignKeyAccessServerToAttributeValue(ctx, AssignKeyAccessServerToAttributeValueParams{
-		AttributeValueID:  k.GetValueId(),
-		KeyAccessServerID: k.GetKeyAccessServerId(),
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return k, nil
-}
-
-func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
-	count, err := c.Queries.RemoveKeyAccessServerFromAttributeValue(ctx, RemoveKeyAccessServerFromAttributeValueParams{
-		AttributeValueID:  k.GetValueId(),
-		KeyAccessServerID: k.GetKeyAccessServerId(),
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if count == 0 {
-		return nil, db.ErrNotFound
-	}
-
-	return k, nil
 }
 
 func (c PolicyDBClient) AssignPublicKeyToValue(ctx context.Context, k *attributes.ValueKey) (*attributes.ValueKey, error) {

@@ -42,9 +42,6 @@ func init() {
 	encryptCmd.Flags().StringVarP(&alg, "key-encapsulation-algorithm", "A", "rsa:2048", "Key wrap algorithm algorithm:parameters")
 	encryptCmd.Flags().IntVarP(&collection, "collection", "c", 0, "number of nano's to create for collection. If collection >0 (default) then output will be <iteration>_<output>")
 	encryptCmd.Flags().StringVar(&policyMode, "policy-mode", "plaintext", "Store policy as encrypted instead of plaintext (nanoTDF only) [plaintext|encrypted|encrypted-policy-key-access]")
-	encryptCmd.RegisterFlagCompletionFunc("policy-mode", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"plaintext", "encrypted", "encrypted-policy-key-access"}, cobra.ShellCompDirectiveDefault
-	})
 
 	ExamplesCmd.AddCommand(&encryptCmd)
 }
@@ -155,11 +152,20 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		// Handle policy mode if nanoTDF
 		switch policyMode {
 		case "plaintext":
-			nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModePlainText)
+			err := nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModePlainText)
+			if err != nil {
+				return err
+			}
 		case "encrypted":
-			nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModeEncrypted)
+			err := nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModeEncrypted)
+			if err != nil {
+				return err
+			}
 		case "encrypted-policy-key-access":
-			nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModeEncryptedPolicyKeyAccess)
+			err := nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModeEncryptedPolicyKeyAccess)
+			if err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("unsupported policy mode: %s", policyMode)
 		}

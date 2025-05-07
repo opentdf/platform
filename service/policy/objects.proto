@@ -33,7 +33,7 @@ message Namespace {
   repeated KeyAccessServer grants = 6;
 
   // Keys for the namespace
-  repeated Key keys = 7;
+  repeated KasKey kas_keys = 7;
 }
 
 message Attribute {
@@ -62,7 +62,7 @@ message Attribute {
   google.protobuf.BoolValue active = 8;
 
   //Keys associated with the attribute
-  repeated Key keys = 9;
+  repeated KasKey kas_keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -99,7 +99,7 @@ message Value {
   // subject mapping
   repeated SubjectMapping subject_mappings = 8;
 
-  repeated Key keys = 9;
+  repeated KasKey kas_keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -283,6 +283,17 @@ message ResourceMapping {
   ResourceMappingGroup group = 5;
 }
 
+// Describes whether this kas is managed by the organization or if they imported
+// the kas information from an external party. These two modes are necessary in order
+// to encrypt a tdf dek with an external parties kas public key.
+enum SourceType {
+  SOURCE_TYPE_UNSPECIFIED = 0;
+  // The kas is managed by the organization.
+  SOURCE_TYPE_INTERNAL = 1;
+  // The kas is managed by an external party.
+  SOURCE_TYPE_EXTERNAL = 2;
+}
+
 /*
    Key Access Server Registry
 */
@@ -305,6 +316,12 @@ message KeyAccessServer {
 
   // Deprecated
   PublicKey public_key = 3;
+
+  // The source of the KAS: (INTERNAL, EXTERNAL)
+  SourceType source_type = 4;
+  // Kas keys associated with this KAS
+  repeated KasKey kas_keys = 5;
+
 
   // Optional
   // Unique name of the KAS instance
@@ -340,6 +357,7 @@ enum KasPublicKeyAlgEnum {
   KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1 = 7;
 }
 
+// Deprecated
 // A KAS public key and some associated metadata for further identifcation
 message KasPublicKey {
   // x509 ASN.1 content in PEM envelope, usually
@@ -414,5 +432,66 @@ message RegisteredResourceValue {
   RegisteredResource resource = 3;
 
   // Common metadata
+  common.Metadata metadata = 100;
+}
+
+
+// Supported key algorithms.
+enum Algorithm {
+  ALGORITHM_UNSPECIFIED = 0;
+  ALGORITHM_RSA_2048 = 1;
+  ALGORITHM_RSA_4096 = 2;
+  ALGORITHM_EC_P256 = 3;
+  ALGORITHM_EC_P384 = 4;
+  ALGORITHM_EC_P521 = 5;
+}
+
+// The status of the key
+enum KeyStatus {
+  KEY_STATUS_UNSPECIFIED = 0;
+  KEY_STATUS_ACTIVE = 1;
+  KEY_STATUS_INACTIVE = 2;
+  KEY_STATUS_COMPROMISED = 3;
+}
+
+// Describe how the kas private key is managed.
+// If the key mode is LOCAL, then the kas private key is stored in the database.
+// This could be encrypted or unencrypted.
+// Remote means that the kas private key is stored in a remote key system like KMS or HSM
+// and all operations are done by the remote key system.
+enum KeyMode {
+  KEY_MODE_UNSPECIFIED = 0;
+  KEY_MODE_LOCAL = 1;
+  KEY_MODE_REMOTE = 2;
+}
+
+message KasKey {
+  string kas_id = 1;
+  AsymmetricKey key = 2;
+}
+
+message AsymmetricKey {
+  string id = 1;
+  string key_id = 2;
+  Algorithm key_algorithm = 3;
+  KeyStatus key_status = 4;
+  KeyMode key_mode = 5; // Specifies how the key is managed (local or remote)
+  bytes public_key_ctx = 6; // Specific structure based on key provider implementation
+  bytes private_key_ctx = 7; // Specific structure based on key provider implementation
+  KeyProviderConfig provider_config = 8; // Configuration for the key provider
+
+  // Common metadata fields
+  common.Metadata metadata = 100;
+}
+
+message SymmetricKey {
+  string id = 1;
+  string key_id = 2;
+  KeyStatus key_status = 3;
+  KeyMode key_mode = 4; // Specifies how the key is managed (local or remote)
+  bytes key_ctx = 5; // Specific structure based on key provider implementation
+  KeyProviderConfig provider_config = 6; // Configuration for the key provider
+
+  // Common metadata fields
   common.Metadata metadata = 100;
 }

@@ -42,23 +42,30 @@ var inCondition1 policy.Condition = policy.Condition{
 	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
 	SubjectExternalValues:        []string{"option1", "option2"},
 }
+
 var entity1 = map[string]interface{}{
 	"attributes": map[string]interface{}{
 		"testing": []any{"option1", "option3"},
 	},
 }
-var flattenedEntity1, _ = flattening.Flatten(entity1)
-var entity2 = map[string]any{
-	"attributes": map[string]interface{}{
-		"testing": []any{"option4", "option3"},
-	},
-}
-var flattenedEntity2, _ = flattening.Flatten(entity2)
-var entity3 = map[string]any{
-	"attributes": map[string]interface{}{
-		"testing": []any{"option1", "option4"},
-	},
-}
+
+var (
+	flattenedEntity1, _ = flattening.Flatten(entity1)
+	entity2             = map[string]any{
+		"attributes": map[string]interface{}{
+			"testing": []any{"option4", "option3"},
+		},
+	}
+)
+
+var (
+	flattenedEntity2, _ = flattening.Flatten(entity2)
+	entity3             = map[string]any{
+		"attributes": map[string]interface{}{
+			"testing": []any{"option1", "option4"},
+		},
+	}
+)
 var flattenedEntity3, _ = flattening.Flatten(entity3)
 
 func Test_EvaluateConditionINTrue(t *testing.T) {
@@ -66,6 +73,7 @@ func Test_EvaluateConditionINTrue(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, res)
 }
+
 func Test_EvaluateConditionINFalse(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateCondition(&inCondition1, flattenedEntity2)
 	require.NoError(t, err)
@@ -84,6 +92,7 @@ func Test_EvaluateConditionNOTINTrue(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, res)
 }
+
 func Test_EvaluateConditionNOTINFalse(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateCondition(&notInCondition2, flattenedEntity1)
 	require.NoError(t, err)
@@ -116,11 +125,13 @@ func Test_EvaluateConditionCONTAINSAllTrue(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, res)
 }
+
 func Test_EvaluateConditionCONTAINSAnyTrue(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateCondition(&containsCondition4, flattenedEntity3)
 	require.NoError(t, err)
 	assert.True(t, res)
 }
+
 func Test_EvaluateConditionCONTAINSFalse(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateCondition(&containsCondition2, flattenedEntity1)
 	require.NoError(t, err)
@@ -146,6 +157,7 @@ func Test_EvaluateConditionGroupANDTrue(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, res)
 }
+
 func Test_EvaluateConditionGroupANDFalse(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&andConditionGroup1, flattenedEntity2)
 	require.NoError(t, err)
@@ -165,6 +177,7 @@ func Test_EvaluateConditionGroupORTrueBoth(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, res)
 }
+
 func Test_EvaluateConditionGroupORTrueOne(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateConditionGroup(&orConditionGroup1, flattenedEntity3)
 	require.NoError(t, err)

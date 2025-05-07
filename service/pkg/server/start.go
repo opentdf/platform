@@ -124,6 +124,19 @@ func Start(f ...StartOptions) error {
 	}
 	defer otdf.Stop()
 
+	otdf.TrustKeyIndex = startConfig.trustKeyIndex
+	otdf.TrustKeyManager = startConfig.trustKeyManager
+	if otdf.TrustKeyIndex != nil || otdf.TrustKeyManager != nil {
+		if otdf.CryptoProvider != nil {
+			logger.Error("cannot set trust key index or manager when crypto provider is set")
+			return errors.New("cannot set trust key index or manager when crypto provider is set")
+		}
+		if otdf.TrustKeyIndex == nil || otdf.TrustKeyManager == nil {
+			logger.Error("must set both trust key index and manager, or use a crypto provider or key service")
+			return errors.New("must set both trust key index and manager")
+		}
+	}
+
 	// Initialize the service registry
 	logger.Debug("initializing service registry")
 	svcRegistry := serviceregistry.NewServiceRegistry()

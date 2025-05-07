@@ -47,7 +47,6 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 
 	// sign the hash and signature
 	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
-
 	if err != nil {
 		return fmt.Errorf("signing assertion failed: %w", err)
 	}

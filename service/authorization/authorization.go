@@ -11,7 +11,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
@@ -124,7 +124,7 @@ func NewRegistration() *serviceregistry.Service[authorizationconnect.Authorizati
 			GRPCGatewayFunc: authorization.RegisterAuthorizationServiceHandler,
 			OnConfigUpdate:  onUpdateConfig,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authorizationconnect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
-				var authZCfg = new(Config)
+				authZCfg := new(Config)
 
 				logger := srp.Logger
 

@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -31,6 +32,7 @@ type AttributesSuite struct {
 var (
 	fixtureNamespaceID       string
 	nonExistentAttrID        = "00000000-6789-4321-9876-123456765436"
+	nonExistentKeyID         = "00000000-6789-4321-9876-123456765437"
 	fixtureKeyAccessServerID string
 )
 
@@ -322,8 +324,9 @@ func (s *AttributesSuite) Test_GetAttribute() {
 				s.Equal(f.ID, gotAttr.GetId(), "ID mismatch for %s: %v", tc.identifierType, tc.input)
 				s.Equal(f.Name, gotAttr.GetName(), "Name mismatch for %s: %v", tc.identifierType, tc.input)
 				s.Equal(fmt.Sprintf("%s%s", policydb.AttributeRuleTypeEnumPrefix, f.Rule), gotAttr.GetRule().Enum().String(), "Rule mismatch for %s: %v", tc.identifierType, tc.input)
-				s.Equal(f.NamespaceID, gotAttr.GetNamespace().GetId(), "NamespaceID mismatch for %s: %v", tc.identifierType, tc.input)
+				s.Empty(gotAttr.GetKasKeys())
 
+				s.Equal(f.NamespaceID, gotAttr.GetNamespace().GetId(), "NamespaceID mismatch for %s: %v", tc.identifierType, tc.input)
 				metadata := gotAttr.GetMetadata()
 				s.Require().NotNil(metadata, "Metadata should not be nil for %s: %v", tc.identifierType, tc.input)
 				createdAt := metadata.GetCreatedAt()
@@ -553,16 +556,16 @@ func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 
 	for _, a := range list.GetAttributes() {
 		// attr fqn
-		s.NotEqual("", a.GetFqn())
+		s.NotEmpty(a.GetFqn())
 		s.Equal(fmt.Sprintf("https://%s/attr/%s", a.GetNamespace().GetName(), a.GetName()), a.GetFqn())
 
 		// namespace fqn
-		s.NotEqual("", a.GetNamespace().GetFqn())
+		s.NotEmpty(a.GetNamespace().GetFqn())
 		s.Equal(fmt.Sprintf("https://%s", a.GetNamespace().GetName()), a.GetNamespace().GetFqn())
 
 		// value fqns
 		for _, v := range a.GetValues() {
-			s.NotEqual("", v.GetFqn())
+			s.NotEmpty(v.GetFqn())
 			s.Equal(fmt.Sprintf("https://%s/attr/%s/value/%s", a.GetNamespace().GetName(), a.GetName(), v.GetValue()), v.GetFqn())
 		}
 	}
@@ -571,12 +574,14 @@ func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 func (s *AttributesSuite) Test_ListAttributes_ByNamespaceIdOrName() {
 	// get all unique namespace_ids
 	namespaces := map[string]string{}
-	for _, f := range s.getAttributeFixtures() {
+	attrFixtures := s.getAttributeFixtures()
+	for _, f := range attrFixtures {
 		namespaces[f.NamespaceID] = ""
 	}
 	r := &attributes.ListAttributesRequest{
 		State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 	}
+
 	// list attributes by namespace id
 	for nsID := range namespaces {
 		r.Namespace = nsID
@@ -671,7 +676,7 @@ func (s *AttributesSuite) Test_UpdateAttribute() {
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
-	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, got.GetMetadata().GetLabels())
 	metadata := got.GetMetadata()
 	createdAt := metadata.GetCreatedAt()
 	updatedAt := metadata.GetUpdatedAt()
@@ -808,7 +813,7 @@ func (s *AttributesSuite) Test_UnsafeUpdateAttribute_WithNewName() {
 	s.NotNil(got)
 
 	originalFqn := got.GetFqn()
-	s.NotEqual("", originalFqn)
+	s.NotEmpty(originalFqn)
 
 	// update with a new name
 	updated, err := s.db.PolicyClient.UnsafeUpdateAttribute(s.ctx, &unsafe.UnsafeUpdateAttributeRequest{
@@ -963,7 +968,7 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute() {
 	ns, err := s.db.PolicyClient.GetNamespace(s.ctx, fixtureNamespaceID)
 	s.Require().NoError(err)
 	s.NotNil(ns)
-	s.NotEqual("", ns.GetId())
+	s.NotEmpty(ns.GetId())
 
 	// attribute should not be listed anymore
 	rsp, err := s.db.PolicyClient.ListAttributes(s.ctx, &attributes.ListAttributesRequest{
@@ -1013,7 +1018,7 @@ func (s *AttributesSuite) Test_UnsafeDeleteAttribute_WithBadFqnFails() {
 	})
 	got, _ := s.db.PolicyClient.GetAttribute(s.ctx, created.GetId())
 	s.NotNil(got)
-	s.NotEqual("", got.GetFqn())
+	s.NotEmpty(got.GetFqn())
 
 	deleted, err := s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, got, "bad_fqn")
 	s.Require().Error(err)
@@ -1035,7 +1040,7 @@ func setupCascadeDeactivateAttribute(s *AttributesSuite) (string, string, string
 		Name: "test__cascading-deactivate-ns",
 	})
 	s.Require().NoError(err)
-	s.NotZero(n.GetId())
+	s.NotEmpty(n.GetId())
 
 	// add an attribute under that namespaces
 	attr := &attributes.CreateAttributeRequest{
@@ -1324,17 +1329,107 @@ func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Succes
 	s.Equal(aKas, resp)
 }
 
-func (s *AttributesSuite) Test_GetAttribute_Returns_Only_Active_PublicKeys() {
-	a, err := s.db.PolicyClient.GetAttribute(s.ctx, s.f.GetAttributeKey("example.com/attr/attr1").ID)
-	s.Require().NoError(err)
-	s.NotNil(a)
+func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Returns_Error_When_Attribute_Not_Found() {
+	kasKeys := s.f.GetKasRegistryServerKeys("kas_key_1")
+	resp, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: nonExistentAttrID,
+		KeyId:       kasKeys.ID,
+	})
 
-	// ensure only active public keys are returned
-	s.NotEmpty(a.GetValues())
-	for _, k := range a.GetKeys() {
-		s.True(k.GetIsActive().GetValue())
-	}
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
 }
+
+func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Returns_Error_When_Key_Not_Found() {
+	resp, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: s.f.GetAttributeKey("example.com/attr/attr1").ID,
+		KeyId:       nonExistentAttrID,
+	})
+
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+}
+
+func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Succeeds() {
+	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, s.f.GetAttributeKey("example.com/attr/attr1").ID)
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
+	s.Empty(gotAttr.GetKasKeys())
+
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	resp, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: s.f.GetAttributeKey("example.com/attr/attr1").ID,
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	gotAttr, err = s.db.PolicyClient.GetAttribute(s.ctx, s.f.GetAttributeKey("example.com/attr/attr1").ID)
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
+	s.Len(gotAttr.GetKasKeys(), 1)
+	s.Equal(kasKey.KeyAccessServerID, gotAttr.GetKasKeys()[0].GetKasId())
+	s.Equal(kasKey.ID, gotAttr.GetKasKeys()[0].GetKey().GetId())
+	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
+	s.Require().NoError(err)
+	s.Equal(publicKeyCtx, gotAttr.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	s.Empty(gotAttr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
+	s.Empty(gotAttr.GetKasKeys()[0].GetKey().GetProviderConfig())
+
+	resp, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: resp.GetAttributeId(),
+		KeyId:       resp.GetKeyId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	gotAttr, err = s.db.PolicyClient.GetAttribute(s.ctx, s.f.GetAttributeKey("example.com/attr/attr1").ID)
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
+	s.Empty(gotAttr.GetKasKeys())
+}
+
+func (s *AttributesSuite) Test_RemovePublicKeyFromAttribute_Not_Found_Fails() {
+	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, s.f.GetAttributeKey("example.com/attr/attr1").ID)
+	s.Require().NoError(err)
+	s.NotNil(gotAttr)
+	s.Empty(gotAttr.GetKasKeys())
+
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	resp, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: s.f.GetAttributeKey("example.com/attr/attr1").ID,
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	invalidResp, err := s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: nonExistentAttrID,
+		KeyId:       resp.GetKeyId(),
+	})
+	s.Require().Error(err)
+	s.Nil(invalidResp)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	invalidResp, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: resp.GetAttributeId(),
+		KeyId:       nonExistentKeyID,
+	})
+	s.Require().Error(err)
+	s.Nil(invalidResp)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	resp, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: resp.GetAttributeId(),
+		KeyId:       resp.GetKeyId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+}
+
+// - Test that a Get/List attribute returns the Asymmetric Keys with the provider configs / add a key with no provider config
 
 func TestAttributesSuite(t *testing.T) {
 	if testing.Short() {

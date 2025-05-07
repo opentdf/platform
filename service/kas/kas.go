@@ -7,9 +7,10 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
+	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/access"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -55,10 +56,19 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				if err := mapstructure.Decode(srp.Config, &kasCfg); err != nil {
 					panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config, err))
 				}
-				kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
+
+				if srp.OTDF.TrustKeyIndex == nil {
+					// Set up both the legacy CryptoProvider and the new SecurityProvider
+					spa := security.NewSecurityProviderAdapter(srp.OTDF.CryptoProvider)
+					p.KeyIndex = spa
+					p.KeyManager = spa
+					kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
+				} else {
+					p.KeyIndex = srp.OTDF.TrustKeyIndex
+					p.KeyManager = srp.OTDF.TrustKeyManager
+				}
 
 				p.URI = *kasURI
-				p.CryptoProvider = srp.OTDF.CryptoProvider
 				p.SDK = srp.SDK
 				p.Logger = srp.Logger
 				p.KASConfig = kasCfg

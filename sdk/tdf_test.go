@@ -837,8 +837,10 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				s.Require().NoError(err)
 			}(fileWriter)
 
-			createOptions := []TDFOption{WithKasInformation(kasURLs...),
-				WithAssertions(test.assertions...)}
+			createOptions := []TDFOption{
+				WithKasInformation(kasURLs...),
+				WithAssertions(test.assertions...),
+			}
 			if test.useHex {
 				createOptions = append(createOptions, WithTargetMode("0.0.0"))
 			}
@@ -2103,14 +2105,14 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 				privateKey, err := ocrypto.ECPrivateKeyFromPem([]byte(kasPrivateKey))
 				f.s.Require().NoError(err, "failed to extract private key from PEM")
 
-				ed, err := ocrypto.NewECDecryptor(privateKey)
+				ed, err := ocrypto.NewSaltedECDecryptor(privateKey, tdfSalt(), nil)
 				f.s.Require().NoError(err, "failed to create EC decryptor")
 
 				symmetricKey, err := ed.DecryptWithEphemeralKey(wrappedKey, compressedKey)
 				f.s.Require().NoError(err, "failed to decrypt")
 
-				asymEncrypt, err := ocrypto.FromPublicPEM(bodyData.GetClientPublicKey())
-				f.s.Require().NoError(err, "ocrypto.FromPublicPEM failed")
+				asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(bodyData.GetClientPublicKey(), tdfSalt(), nil)
+				f.s.Require().NoError(err, "ocrypto.FromPublicPEMWithSalt failed")
 
 				var sessionKey string
 				if e, found := asymEncrypt.(ocrypto.ECEncryptor); found {

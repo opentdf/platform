@@ -253,6 +253,7 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	s.Require().Error(err)
 	s.Contains(err.Error(), "unauthenticated")
 }
+
 func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)))
@@ -752,8 +753,10 @@ func (s *AuthSuite) Test_LookupGatewayPaths() {
 				"Grpcgateway-Origin": []string{s.server.URL, "https://origin.1.com"},
 				"Origin":             []string{"https://origin.com"},
 			},
-			expected: []string{s.server.URL + "/kas/v2/rewrap",
-				"https://origin.1.com/kas/v2/rewrap", "https://origin.com/kas/v2/rewrap"},
+			expected: []string{
+				s.server.URL + "/kas/v2/rewrap",
+				"https://origin.1.com/kas/v2/rewrap", "https://origin.com/kas/v2/rewrap",
+			},
 		},
 		{
 			name: "Unknown Path with Pattern",

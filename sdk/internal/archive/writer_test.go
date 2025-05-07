@@ -125,8 +125,11 @@ var ArchiveTests = []struct { //nolint:gochecknoglobals // This global is used a
 
 // create a buffer of 2mb and fill it with 0xFF, and
 // it used to fill with the contents of the files
-var stepSize int64 = 2 * oneMB           //nolint:gochecknoglobals // This global is used in other tests
-var writeBuffer = make([]byte, stepSize) //nolint:gochecknoglobals // This is used as reuse buffer
+var (
+	stepSize    int64 = 2 * oneMB              //nolint:gochecknoglobals // This global is used in other tests
+	writeBuffer       = make([]byte, stepSize) //nolint:gochecknoglobals // This is used as reuse buffer
+)
+
 // in other tests
 
 func TestCreateArchiveWriter(t *testing.T) { // use custom implementation of zip

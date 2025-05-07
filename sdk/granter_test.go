@@ -500,9 +500,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 	}
 }
 
-var (
-	listAttributeResp attributes.ListAttributesResponse
-)
+var listAttributeResp attributes.ListAttributesResponse
 
 type mockAttributesClient struct {
 	attributes.AttributesServiceClient

@@ -5,9 +5,7 @@ WORKDIR /app
 # dependencies, add local,dependant package here
 COPY protocol/ protocol/
 COPY sdk/ sdk/
-COPY lib/ocrypto lib/ocrypto
-COPY lib/flattening lib/flattening
-COPY lib/fixtures lib/fixtures
+COPY lib/ lib/
 COPY service/ service/
 COPY examples/ examples/
 COPY go.work ./

@@ -29,7 +29,7 @@ func SubjectMappingBuiltin() {
 
 		// input handling
 		var attributeMappingsMap map[string]string
-		var attributeMappings = map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{}
+		attributeMappings := map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{}
 		var entityRepresentationsString string
 		var entityRepresentations entityresolution.ResolveEntitiesResponse
 
@@ -47,7 +47,7 @@ func SubjectMappingBuiltin() {
 
 		// need to do extra conversion for pbjson within map
 		for k, v := range attributeMappingsMap {
-			var tempAttributeMappings = attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{}
+			tempAttributeMappings := attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{}
 			attributeMappings[k] = &tempAttributeMappings
 			err := protojson.Unmarshal([]byte(v), &tempAttributeMappings)
 			if err != nil {
@@ -96,7 +96,7 @@ func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttribu
 	// for now just look at first entity
 	// We only provide one input to ERS to resolve
 	jsonEntities := entityRepresentation.GetAdditionalProps()
-	var entitlementsSet = make(map[string]bool)
+	entitlementsSet := make(map[string]bool)
 	entitlements := []string{}
 	for _, entity := range jsonEntities {
 		flattenedEntity, err := flattening.Flatten(entity.AsMap())
@@ -225,7 +225,7 @@ func EvaluateCondition(condition *policy.Condition, entity flattening.Flattened)
 			}
 		}
 	case policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN:
-		var notInResult = true
+		notInResult := true
 		for _, possibleValue := range condition.GetSubjectExternalValues() {
 			for _, mappedValue := range mappedValues {
 				// slog.Debug("comparing values: ", "possible=", possibleValue, "mapped=", mappedValue)

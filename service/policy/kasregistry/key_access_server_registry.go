@@ -212,3 +212,144 @@ func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 
 	return connect.NewResponse(rsp), nil
 }
+
+func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Request[kasr.CreateKeyRequest]) (*connect.Response[kasr.CreateKeyResponse], error) {
+	s.logger.Debug("creating key", slog.String("keyAccessServer Keys", r.Msg.GetKasId()))
+
+	resp := &kasr.CreateKeyResponse{}
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeKasRegistryKeys,
+	}
+
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		var err error
+		resp, err = txClient.CreateKey(ctx, r.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.ObjectID = resp.GetKasKey().GetKey().GetId()
+		// Leave off private key context and configjson from provider config
+		// For security reasons
+		auditParams.Original = &policy.KasKey{
+			KasId: resp.GetKasKey().GetKasId(),
+			Key: &policy.AsymmetricKey{
+				KeyId:        resp.GetKasKey().GetKey().GetKeyId(),
+				KeyAlgorithm: resp.GetKasKey().GetKey().GetKeyAlgorithm(),
+				KeyStatus:    resp.GetKasKey().GetKey().GetKeyStatus(),
+				KeyMode:      resp.GetKasKey().GetKey().GetKeyMode(),
+				PublicKeyCtx: resp.GetKasKey().GetKey().GetPublicKeyCtx(),
+				ProviderConfig: &policy.KeyProviderConfig{
+					Id:       resp.GetKasKey().GetKey().GetProviderConfig().GetId(),
+					Name:     resp.GetKasKey().GetKey().GetProviderConfig().GetName(),
+					Metadata: resp.GetKasKey().GetKey().GetProviderConfig().GetMetadata(),
+				},
+				Metadata: resp.GetKasKey().GetKey().GetMetadata(),
+			},
+		}
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		return nil
+	})
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("keyAccessServer Keys", r.Msg.GetKasId()), slog.String("key id", r.Msg.GetKeyId()))
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
+func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Request[kasr.UpdateKeyRequest]) (*connect.Response[kasr.UpdateKeyResponse], error) {
+	rsp := &kasr.UpdateKeyResponse{}
+	s.logger.Debug("updating key", slog.String("keyAccessServer Keys", req.Msg.GetId()))
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeKasRegistryKeys,
+		ObjectID:   req.Msg.GetId(),
+	}
+
+	original, err := s.dbClient.GetKey(ctx, &kasr.GetKeyRequest_Id{
+		Id: req.Msg.GetId(),
+	})
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("keyAccessServer Keys", req.Msg.GetId()))
+	}
+
+	err = s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		updated, err := txClient.UpdateKey(ctx, req.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		// Only key status and metadata can be updated
+		auditParams.Original = &policy.AsymmetricKey{
+			KeyId:     original.GetKey().GetKeyId(),
+			KeyStatus: original.GetKey().GetKeyStatus(),
+			Metadata:  original.GetKey().GetMetadata(),
+		}
+		auditParams.Updated = &policy.AsymmetricKey{
+			KeyId:     updated.GetKey().GetKeyId(),
+			KeyStatus: updated.GetKey().GetKeyStatus(),
+			Metadata:  updated.GetKey().GetMetadata(),
+		}
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.KasKey = updated
+		return nil
+	})
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("keyAccessServer Keys", req.Msg.GetId()))
+	}
+
+	return connect.NewResponse(rsp), nil
+}
+
+func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[kasr.GetKeyRequest]) (*connect.Response[kasr.GetKeyResponse], error) {
+	rsp := &kasr.GetKeyResponse{}
+
+	switch i := r.Msg.GetIdentifier().(type) {
+	case *kasr.GetKeyRequest_Id:
+		s.logger.Debug("Getting keyAccessServer key by ID", slog.String("ID", i.Id))
+	case *kasr.GetKeyRequest_Key:
+		s.logger.Debug("Getting keyAccessServer by Key", slog.String("Key Id", i.Key.GetKid()))
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, nil)
+	}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeRead,
+		ObjectType: audit.ObjectTypeKasRegistryKeys,
+	}
+
+	key, err := s.dbClient.GetKey(ctx, r.Msg.GetIdentifier())
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("keyAccessServer Keys", r.Msg.String()))
+	}
+
+	auditParams.ObjectID = key.GetKey().GetKeyId()
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.KasKey = key
+
+	return connect.NewResponse(rsp), nil
+}
+
+func (s KeyAccessServerRegistry) ListKeys(ctx context.Context, r *connect.Request[kasr.ListKeysRequest]) (*connect.Response[kasr.ListKeysResponse], error) {
+	s.logger.Debug("Listing KAS Keys")
+	resp, err := s.dbClient.ListKeys(ctx, r.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.String("keyAccessServer Keys", r.Msg.String()))
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
+func (s KeyAccessServerRegistry) RotateKey(context.Context, *connect.Request[kasr.RotateKeyRequest]) (*connect.Response[kasr.RotateKeyResponse], error) {
+	// Implementation for RotateKey
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+}

@@ -256,7 +256,7 @@ func createFileExporter(cfg *FileConfig) (sdktrace.SpanExporter, io.Closer, erro
 	}
 
 	dir := getDir(cfg.Path)
-	if err := os.MkdirAll(dir, 0750); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, nil, fmt.Errorf("failed to create dir %s for trace file: %w", dir, err)
 	}
 

@@ -1,8 +1,19 @@
 #!/bin/bash
-
-set -e # Exit on error
-
 # Script to compare benchmark results from PR and Main branches
+set -e # Exit on error
+trap 'echo "Error occurred in benchmark comparison"' ERR
+
+# Validate inputs
+if [ -z "$PR_RESULTS_DIR" ] || [ -z "$MAIN_RESULTS_DIR" ] || [ -z "$THRESHOLD_RAW" ]; then
+  echo "Error: Missing required parameters"
+  exit 1
+fi
+
+# Ensure directories exist
+if [ ! -d "$PR_RESULTS_DIR" ] || [ ! -d "$MAIN_RESULTS_DIR" ]; then
+  echo "Error: One or both results directories do not exist"
+  exit 1
+fi
 
 PR_RESULTS_DIR="$1"
 MAIN_RESULTS_DIR="$2"

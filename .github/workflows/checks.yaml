@@ -198,7 +198,7 @@ jobs:
 
       - name: Get PR SHA
         id: pr_sha
-        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
         with:
@@ -242,10 +242,21 @@ jobs:
         run: |
           echo "Building service..."
           go build -o opentdf-pr -v service/main.go
-          echo "Building examples..."
+          # Sanitize and validate the output values
+          PR_SERVICE_BIN="opentdf-pr" # Fixed value instead of dynamic
+          if [[ ! -f "$PR_SERVICE_BIN" ]]; then
+          echo "Error: Built binary not found"
+          exit 1
+          fi
+          echo "service_bin=${PR_SERVICE_BIN}" >> $GITHUB_OUTPUT
+          # Similar validation for examples binary
           cd examples && go build -o examples-pr . && cd ..
-          echo "::set-output name=service_bin::opentdf-pr"
-          echo "::set-output name=examples_bin::examples/examples-pr"
+          EXAMPLES_BIN="examples/examples-pr" # Fixed value
+          if [[ ! -f "$EXAMPLES_BIN" ]]; then
+          echo "Error: Built examples binary not found"
+          exit 1
+          fi
+          echo "examples_bin=${EXAMPLES_BIN}" >> $GITHUB_OUTPUT
 
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: Start Server (PR) in Background
@@ -297,7 +308,7 @@ jobs:
           # Find and kill the specific background process if background-action doesn't handle it well on failure/cancellation
           # This might require more sophisticated process management depending on how background-action works internally.
           # A simpler approach for CI might be to kill all 'opentdf-pr' processes.
-          pkill -f ${{ steps.build_pr.outputs.service_bin }} || echo "PR Server process not found or already stopped."
+          pkill -f "${{ steps.build_pr.outputs.service_bin }}" || echo "PR Server process not found or already stopped."
           sleep 5 # Give time for ports to free up
 
       - name: Clean Workspace and Checkout Main

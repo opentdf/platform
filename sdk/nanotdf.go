@@ -520,7 +520,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 
 	var embeddedP embeddedPolicy
 
-	embeddedP, err = createEmbeddedPolicy(policyObjectAsStr, config)
+	embeddedP, err = createNanoTDFEmbeddedPolicy(policyObjectAsStr, config)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to create embedded policy: %w", err)
 	}
@@ -536,7 +536,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 
 	digest := ocrypto.CalculateSHA256(embeddedP.body)
 
-	if config.bindCfg.useEcdsaBinding {
+	if config.bindCfg.useEcdsaBinding { //nolint:nestif // TODO: refactor
 		rBytes, sBytes, err := ocrypto.ComputeECDSASig(digest, config.keyPair.PrivateKey)
 		if err != nil {
 			return nil, 0, 0, fmt.Errorf("ComputeECDSASig failed:%w", err)
@@ -655,7 +655,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	size += uint32(l)
 
 	policyMode := policyType(oneBytes[0])
-	if policyMode != policyTypeEmbeddedPolicyPlainText && policyMode != policyTypeEmbeddedPolicyEncrypted {
+	if !validNanoTDFPolicyMode(policyMode) {
 		return header, 0, fmt.Errorf("unsupported policy mode: %v", policyMode)
 	}
 
@@ -679,7 +679,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	size += uint32(l)
 
 	// Read policy binding
-	if header.bindCfg.useEcdsaBinding {
+	if header.bindCfg.useEcdsaBinding { //nolint:nestif // TODO: refactor
 		// Read rBytes len and its contents
 		l, err = reader.Read(oneBytes)
 		if err != nil {
@@ -1078,56 +1078,4 @@ func versionSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte(kNanoTDFMagicStringAndVersion))
 	return digest.Sum(nil)
-}
-
-// createEmbeddedPolicy creates an embedded policy object, encrypting it if required by the policy mode
-func createEmbeddedPolicy(policyObjectAsStr []byte, config NanoTDFConfig) (embeddedPolicy, error) {
-	if config.policyMode == policyTypeEmbeddedPolicyEncrypted {
-		if config.kasPublicKey == nil {
-			return embeddedPolicy{}, fmt.Errorf("KAS public key is required for encrypted policy mode")
-		}
-
-		ecdhKey, err := ocrypto.ConvertToECDHPrivateKey(config.keyPair.PrivateKey)
-		if err != nil {
-			return embeddedPolicy{}, fmt.Errorf("ocrypto.ConvertToECDHPrivateKey failed:%w", err)
-		}
-
-		symKey, err := ocrypto.ComputeECDHKeyFromECDHKeys(config.kasPublicKey, ecdhKey)
-		if err != nil {
-			return embeddedPolicy{}, fmt.Errorf("ocrypto.ComputeECDHKeyFromEC failed:%w", err)
-		}
-
-		salt := versionSalt()
-		symmetricKey, err := ocrypto.CalculateHKDF(salt, symKey)
-		if err != nil {
-			return embeddedPolicy{}, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
-		}
-
-		aesGcm, err := ocrypto.NewAESGcm(symmetricKey)
-		if err != nil {
-			return embeddedPolicy{}, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
-		}
-
-		tagSize, err := SizeOfAuthTagForCipher(config.sigCfg.cipher)
-		if err != nil {
-			return embeddedPolicy{}, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
-		}
-
-		const kIvLength = 12
-		iv := make([]byte, kIvLength)
-		cipherText, err := aesGcm.EncryptWithIVAndTagSize(iv, policyObjectAsStr, tagSize)
-		if err != nil {
-			return embeddedPolicy{}, fmt.Errorf("AesGcm.EncryptWithIVAndTagSize failed:%w", err)
-		}
-
-		return embeddedPolicy{
-			lengthBody: uint16(len(cipherText) - len(iv)),
-			body:       cipherText[len(iv):],
-		}, nil
-	}
-
-	return embeddedPolicy{
-		lengthBody: uint16(len(policyObjectAsStr)),
-		body:       policyObjectAsStr,
-	}, nil
 }

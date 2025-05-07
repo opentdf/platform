@@ -56,7 +56,7 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 			useCollection: false,
 			header:        []byte{},
 		},
-		policyMode: policyTypeEmbeddedPolicyPlainText,
+		policyMode: NanoTDFPolicyModePlainText,
 	}
 
 	return c, nil
@@ -93,8 +93,8 @@ func (config *NanoTDFConfig) EnableCollection() {
 
 // SetPolicyMode sets whether the policy should be encrypted or plaintext
 func (config *NanoTDFConfig) SetPolicyMode(mode policyType) error {
-	if mode != policyTypeEmbeddedPolicyPlainText && mode != policyTypeEmbeddedPolicyEncrypted {
-		return fmt.Errorf("unsupported policy mode: only plaintext and encrypted policies are supported")
+	if !validNanoTDFPolicyMode(mode) {
+		return fmt.Errorf("invalid policy mode")
 	}
 	config.policyMode = mode
 	return nil

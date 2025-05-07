@@ -135,9 +135,9 @@ func TestSetPolicyMode(t *testing.T) {
 		conf, err := s.NewNanoTDFConfig()
 		require.NoError(t, err)
 
-		err = conf.SetPolicyMode(policyTypeEmbeddedPolicyPlainText)
+		err = conf.SetPolicyMode(NanoTDFPolicyModePlainText)
 		require.NoError(t, err)
-		assert.Equal(t, policyTypeEmbeddedPolicyPlainText, conf.policyMode)
+		assert.Equal(t, NanoTDFPolicyModePlainText, conf.policyMode)
 	})
 
 	t.Run("Set to encrypted", func(t *testing.T) {
@@ -145,9 +145,9 @@ func TestSetPolicyMode(t *testing.T) {
 		conf, err := s.NewNanoTDFConfig()
 		require.NoError(t, err)
 
-		err = conf.SetPolicyMode(policyTypeEmbeddedPolicyEncrypted)
+		err = conf.SetPolicyMode(NanoTDFPolicyModeEncrypted)
 		require.NoError(t, err)
-		assert.Equal(t, policyTypeEmbeddedPolicyEncrypted, conf.policyMode)
+		assert.Equal(t, NanoTDFPolicyModeEncrypted, conf.policyMode)
 	})
 
 	t.Run("Set to invalid mode", func(t *testing.T) {
@@ -155,8 +155,8 @@ func TestSetPolicyMode(t *testing.T) {
 		conf, err := s.NewNanoTDFConfig()
 		require.NoError(t, err)
 
-		err = conf.SetPolicyMode(policyType(3)) // Assuming 3 is an invalid policyType
+		err = conf.SetPolicyMode(policyType(99)) // Assuming 99 is an invalid policyType
 		require.Error(t, err)
-		assert.NotEqual(t, policyType(3), conf.policyMode)
+		assert.NotEqual(t, policyType(99), conf.policyMode)
 	})
 }

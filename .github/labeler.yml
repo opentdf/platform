@@ -1,0 +1,27 @@
+docs:
+- changed-files:
+  - any-glob-to-any-file:
+    - 'docs/**/*'
+comp:sdk:
+- changed-files:
+  - any-glob-to-any-file:
+    - 'sdk/**/*'
+comp:ci:
+- changed-files:
+  - any-glob-to-any-file:
+    - '.github/**/*'
+comp:db:
+- changed-files:
+  - any-glob-to-any-file:
+    - 'service/policy/db/**/*'
+comp:kas:
+- changed-files:
+  - any-glob-to-any-file:
+    - 'service/kas/**'
+comp:policy:
+- all:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'service/policy/**/*'
+    - all-globs-to-all-files:
+      - '!service/policy/db/**/*'

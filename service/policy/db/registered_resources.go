@@ -7,11 +7,11 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/service/pkg/db"
-	"github.com/opentdf/platform/service/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -299,7 +299,7 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 		params.ID = r.GetId()
 	case r.GetFqn() != "":
 		fqn := strings.ToLower(r.GetFqn())
-		parsed, err := util.ParseRegisteredResourceValueFqn(fqn)
+		parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](fqn)
 		if err != nil {
 			return nil, err
 		}
@@ -337,7 +337,7 @@ func (c PolicyDBClient) GetRegisteredResourceValuesByFQNs(ctx context.Context, r
 	for _, fqn := range r.GetFqns() {
 		normalizedFQN := strings.ToLower(fqn)
 
-		parsed, err := util.ParseRegisteredResourceValueFqn(fqn)
+		parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](fqn)
 		if err != nil {
 			return nil, err
 		}

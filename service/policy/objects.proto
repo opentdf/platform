@@ -431,6 +431,19 @@ message RegisteredResourceValue {
 
   RegisteredResource resource = 3;
 
+  repeated RegisteredResourceActionAttributeValue action_attribute_values = 4;
+
+  // Common metadata
+  common.Metadata metadata = 100;
+}
+
+message RegisteredResourceActionAttributeValue {
+  string id = 1;
+
+  Action action = 2;
+
+  Value attribute_value = 3;
+
   // Common metadata
   common.Metadata metadata = 100;
 }

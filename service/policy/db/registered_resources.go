@@ -234,6 +234,56 @@ func (c PolicyDBClient) CreateRegisteredResourceValue(ctx context.Context, r *re
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	actionAttrValues := r.GetActionAttributeValues()
+	createActionAttributeValueParams := make([]createRegisteredResourceActionAttributeValueParams, len(actionAttrValues))
+	var actionID, attributeValueID string
+	for i, aav := range actionAttrValues {
+		switch identifier := aav.GetActionIdentifier().(type) {
+		case *registeredresources.ActionAttributeValue_ActionId:
+			actionID = identifier.ActionId
+		case *registeredresources.ActionAttributeValue_Name:
+			a, err := c.Queries.getAction(ctx, getActionParams{
+				Name: pgtypeText(strings.ToLower(identifier.Name)),
+			})
+			if err != nil {
+				return nil, db.WrapIfKnownInvalidQueryErr(err)
+			}
+			actionID = a.ID
+		default:
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+
+		switch identifier := aav.GetAttributeValueIdentifier().(type) {
+		case *registeredresources.ActionAttributeValue_AttributeValueId:
+			attributeValueID = identifier.AttributeValueId
+		case *registeredresources.ActionAttributeValue_Fqn:
+			av, err := c.Queries.GetAttributeValue(ctx, GetAttributeValueParams{
+				Fqn: pgtypeText(strings.ToLower(identifier.Fqn)),
+			})
+			if err != nil {
+				return nil, db.WrapIfKnownInvalidQueryErr(err)
+			}
+			attributeValueID = av.ID
+		default:
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+
+		createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValueParams{
+			RegisteredResourceValueID: createdID,
+			ActionID:                  actionID,
+			AttributeValueID:          attributeValueID,
+		}
+	}
+
+	count, err := c.Queries.createRegisteredResourceActionAttributeValue(ctx, createActionAttributeValueParams)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count != int64(len(createActionAttributeValueParams)) {
+		// todo: more accurate error message?
+		return nil, db.ErrNotFound
+	}
+
 	return c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
 		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
 			Id: createdID,

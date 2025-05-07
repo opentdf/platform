@@ -270,6 +270,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.RegisteredResourceActionAttributeValue"><span class="badge">M</span>RegisteredResourceActionAttributeValue</a>
+                </li>
+              
+                <li>
                   <a href="#policy.RegisteredResourceValue"><span class="badge">M</span>RegisteredResourceValue</a>
                 </li>
               
@@ -1194,6 +1198,10 @@
           <li>
             <a href="#policy%2fregisteredresources%2fregistered_resources.proto">policy/registeredresources/registered_resources.proto</a>
             <ul>
+              
+                <li>
+                  <a href="#policy.registeredresources.ActionAttributeValue"><span class="badge">M</span>ActionAttributeValue</a>
+                </li>
               
                 <li>
                   <a href="#policy.registeredresources.CreateRegisteredResourceRequest"><span class="badge">M</span>CreateRegisteredResourceRequest</a>
@@ -2563,6 +2571,51 @@ enable federation </p></td>
 
         
       
+        <h3 id="policy.RegisteredResourceActionAttributeValue">RegisteredResourceActionAttributeValue</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#policy.Action">Action</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value</td>
+                  <td><a href="#policy.Value">Value</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.RegisteredResourceValue">RegisteredResourceValue</h3>
         <p></p>
 
@@ -2591,6 +2644,13 @@ enable federation </p></td>
                   <td>resource</td>
                   <td><a href="#policy.RegisteredResource">RegisteredResource</a></td>
                   <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action_attribute_values</td>
+                  <td><a href="#policy.RegisteredResourceActionAttributeValue">RegisteredResourceActionAttributeValue</a></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
@@ -10344,6 +10404,51 @@ Namespace &lt;&gt; Key RPCs
       <p></p>
 
       
+        <h3 id="policy.registeredresources.ActionAttributeValue">ActionAttributeValue</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>action_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.registeredresources.CreateRegisteredResourceRequest">CreateRegisteredResourceRequest</h3>
         <p></p>
 
@@ -10431,6 +10536,13 @@ Common metadata </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action_attribute_values</td>
+                  <td><a href="#policy.registeredresources.ActionAttributeValue">ActionAttributeValue</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional </p></td>
                 </tr>
               
                 <tr>

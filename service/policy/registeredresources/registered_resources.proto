@@ -122,6 +122,40 @@ message DeleteRegisteredResourceResponse {
 /// Registered Resource Values
 ///
 
+message ActionAttributeValue {
+  // Required
+  oneof action_identifier {
+    option (buf.validate.oneof).required = true;
+  
+    string action_id = 1 [
+      (buf.validate.field).string.uuid = true
+    ];
+
+    string name = 2 [
+      (buf.validate.field).string.max_len = 253,
+      (buf.validate.field).cel = {
+        id: "action_name_format"
+        message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
+        expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+      }
+    ];
+  }
+
+  // Required
+  oneof attribute_value_identifier {
+    string attribute_value_id = 3 [
+      (buf.validate.field).string.uuid = true
+    ];
+
+    string fqn = 4 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
+  }
+}
+
 message CreateRegisteredResourceValueRequest {
   // Required
   string resource_id = 1 [
@@ -136,6 +170,14 @@ message CreateRegisteredResourceValueRequest {
       id: "rr_value_format",
       message: "Registered Resource Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored value will be normalized to lower case.",
       expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+    }
+  ];
+
+  // Optional
+  repeated ActionAttributeValue action_attribute_values = 3 [
+    (buf.validate.field).repeated = {
+      min_items: 0,
+      unique: true,
     }
   ];
   

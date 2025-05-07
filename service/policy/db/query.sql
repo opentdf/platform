@@ -1516,18 +1516,40 @@ INSERT INTO registered_resource_values (registered_resource_id, value, metadata)
 VALUES ($1, $2, $3)
 RETURNING id;
 
+-- name: createRegisteredResourceActionAttributeValue :copyfrom
+INSERT INTO registered_resource_action_attribute_values (registered_resource_value_id, action_id, attribute_value_id)
+VALUES ($1, $2, $3);
+
 -- name: getRegisteredResourceValue :one
 SELECT
     v.id,
     v.registered_resource_id,
     v.value,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+    JSON_AGG(
+    	JSON_BUILD_OBJECT(
+    		'action', JSON_BUILD_OBJECT(
+    			'id', a.id,
+    			'name', a.name
+    		),
+    		'attribute_value', JSON_BUILD_OBJECT(
+    			'id', av.id,
+    			'value', av.value,
+    			'fqn', fqns.fqn
+    		)
+    	)
+    ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values
 FROM registered_resource_values v
 JOIN registered_resources r ON v.registered_resource_id = r.id
+LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
+LEFT JOIN actions a on rav.action_id = a.id
+LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE
     (NULLIF(@id, '') IS NULL OR v.id = @id::UUID) AND
     (NULLIF(@name, '') IS NULL OR r.name = @name::VARCHAR) AND
-    (NULLIF(@value, '') IS NULL OR v.value = @value::VARCHAR);
+    (NULLIF(@value, '') IS NULL OR v.value = @value::VARCHAR)
+GROUP BY v.id;
 
 -- name: listRegisteredResourceValues :many
 WITH counted AS (

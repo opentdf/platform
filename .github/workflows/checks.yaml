@@ -336,8 +336,8 @@ jobs:
           go build -o opentdf-main -v service/main.go
           echo "Building examples (main)..."
           cd examples && go build -o examples-main . && cd ..
-          echo "::set-output name=service_bin::opentdf-main"
-          echo "::set-output name=examples_bin::examples/examples-main"
+          echo "service_bin=opentdf-main"
+          echo "examples_bin=examples/examples-main"
 
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: Start Server (Main) in Background

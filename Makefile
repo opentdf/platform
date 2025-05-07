@@ -1,7 +1,7 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
+.PHONY: all build clean docker-build fix fmt go-lint license lint proto-lint sdk/sdk test tidy toolcheck action-lint
 
 MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
@@ -22,6 +22,7 @@ toolcheck:
 	@golangci-lint --version | grep "version v\?1.6[456]" > /dev/null || (echo "golangci-lint version must be v1.64 or later [$$(golangci-lint --version)]" && exit 1)
 	@which goimports >/dev/null || (echo "goimports not found, run 'go install golang.org/x/tools/cmd/goimports@latest'")
 	@govulncheck -version >/dev/null || (echo "govulncheck not found, run 'go install golang.org/x/vuln/cmd/govulncheck@latest'")
+	@which actionlint >/dev/null || (echo "actionlint not found, run 'go install github.com/rhysd/actionlint/cmd/actionlint@latest'")
 
 fix: tidy fmt
 
@@ -34,7 +35,7 @@ tidy:
 license:
 	for m in $(MODS); do (cd $$m && go run github.com/google/go-licenses@v1.6.0 check --disallowed_types=forbidden --include_tests ./) || exit 1; done
 
-lint: proto-lint go-lint govulncheck
+lint: proto-lint go-lint govulncheck action-lint
 
 proto-lint:
 	buf lint service || (exit_code=$$?; \
@@ -60,6 +61,10 @@ govulncheck:
 		(cd "$$m" && govulncheck ./...) || status=1; \
 	done; \
 	exit $$status
+
+action-lint:
+	@echo "Linting GitHub Action workflows..."
+	@actionlint -color || exit 1
 
 proto-generate:
 	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi

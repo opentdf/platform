@@ -61,7 +61,8 @@ type NanoTDFHeader struct {
 	bindCfg             bindingConfig
 	sigCfg              signatureConfig
 	EphemeralKey        []byte
-	EncryptedPolicyBody []byte
+	PolicyMode          policyType
+	PolicyBody          []byte
 	gmacPolicyBinding   []byte
 	ecdsaPolicyBindingR []byte
 	ecdsaPolicyBindingS []byte
@@ -90,7 +91,7 @@ func (header *NanoTDFHeader) VerifyPolicyBinding() (bool, error) {
 		return false, err
 	}
 
-	digest := ocrypto.CalculateSHA256(header.EncryptedPolicyBody)
+	digest := ocrypto.CalculateSHA256(header.PolicyBody)
 	if header.IsEcdsaBindingEnabled() {
 		ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, header.EphemeralKey)
 		if err != nil {
@@ -671,8 +672,9 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	slog.Debug("NewNanoTDFHeaderFromReader", slog.Uint64("policyLength", uint64(policyLength)))
 
 	// Read policy body
-	header.EncryptedPolicyBody = make([]byte, policyLength)
-	l, err = reader.Read(header.EncryptedPolicyBody)
+	header.PolicyMode = policyMode
+	header.PolicyBody = make([]byte, policyLength)
+	l, err = reader.Read(header.PolicyBody)
 	if err != nil {
 		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
 	}

@@ -879,22 +879,33 @@ func extractNanoPolicy(symmetricKey trust.ProtectedKey, header sdk.NanoTDFHeader
 	const (
 		kIvLen = 12
 	)
-	// The IV is always an empty 12 bytes for the policy.
+
+	// Check if policy is plaintext
+	if header.PolicyMode == sdk.NanoTDFPolicyModePlainText {
+		var policy Policy
+		err := json.Unmarshal(header.PolicyBody, &policy)
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshalling plaintext policy: %w", err)
+		}
+		return &policy, nil
+	}
+
+	// Handle encrypted policy
 	iv := make([]byte, kIvLen)
 	tagSize, err := sdk.SizeOfAuthTagForCipher(header.GetCipher())
 	if err != nil {
-		return nil, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
+		return nil, fmt.Errorf("SizeOfAuthTagForCipher failed: %w", err)
 	}
 
-	policyData, err := symmetricKey.DecryptAESGCM(iv, header.EncryptedPolicyBody, tagSize)
+	policyData, err := symmetricKey.DecryptAESGCM(iv, header.PolicyBody, tagSize)
 	if err != nil {
-		return nil, fmt.Errorf("Error decrypting policy body:%w", err)
+		return nil, fmt.Errorf("error decrypting policy body: %w", err)
 	}
 
 	var policy Policy
 	err = json.Unmarshal(policyData, &policy)
 	if err != nil {
-		return nil, fmt.Errorf("Error unmarshalling policy:%w", err)
+		return nil, fmt.Errorf("error unmarshalling encrypted policy: %w", err)
 	}
 	return &policy, nil
 }

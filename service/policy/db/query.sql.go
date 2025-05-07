@@ -462,7 +462,7 @@ LEFT JOIN (
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_definition_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-    LEFT JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+    INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
     GROUP BY k.definition_id
 ) defk ON ad.id = defk.definition_id
 WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
@@ -553,7 +553,7 @@ type GetAttributeRow struct {
 //	        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	    FROM attribute_definition_public_key_map k
 //	    INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-//	    LEFT JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+//	    INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	    GROUP BY k.definition_id
 //	) defk ON ad.id = defk.definition_id
 //	WHERE ($1::uuid IS NULL OR ad.id = $1::uuid)
@@ -618,7 +618,7 @@ LEFT JOIN (
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_value_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-    LEFT JOIN key_access_servers kas ON kas.id = kask.id
+    INNER JOIN key_access_servers kas ON kas.id = kask.id
     GROUP BY k.value_id
 ) value_keys ON av.id = value_keys.value_id   
 WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
@@ -683,7 +683,7 @@ type GetAttributeValueRow struct {
 //	        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	    FROM attribute_value_public_key_map k
 //	    INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-//	    LEFT JOIN key_access_servers kas ON kas.id = kask.id
+//	    INNER JOIN key_access_servers kas ON kas.id = kask.id
 //	    GROUP BY k.value_id
 //	) value_keys ON av.id = value_keys.value_id
 //	WHERE ($1::uuid IS NULL OR av.id = $1::uuid)
@@ -852,7 +852,7 @@ LEFT JOIN (
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_namespace_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-    LEFT JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+    INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
     GROUP BY k.namespace_id
 ) nmp_keys ON ns.id = nmp_keys.namespace_id
 WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL 
@@ -914,7 +914,7 @@ type GetNamespaceRow struct {
 //	        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	    FROM attribute_namespace_public_key_map k
 //	    INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-//	    LEFT JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+//	    INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	    GROUP BY k.namespace_id
 //	) nmp_keys ON ns.id = nmp_keys.namespace_id
 //	WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
@@ -3986,7 +3986,7 @@ WITH target_definition AS (
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_definition_public_key_map k
         INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-        LEFT JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.definition_id
     ) defk ON ad.id = defk.definition_id
     WHERE fqns.fqn = ANY($1::TEXT[]) 
@@ -4035,7 +4035,7 @@ namespaces AS (
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_namespace_public_key_map k
         INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-        LEFT JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.namespace_id
     ) nmp_keys ON n.id = nmp_keys.namespace_id
 	WHERE n.active = TRUE
@@ -4130,7 +4130,7 @@ values AS (
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_value_public_key_map k
         INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-        LEFT JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.value_id
     ) value_keys ON av.id = value_keys.value_id                        
 	WHERE av.active = TRUE
@@ -4207,7 +4207,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	        FROM attribute_definition_public_key_map k
 //	        INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-//	        LEFT JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+//	        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	        GROUP BY k.definition_id
 //	    ) defk ON ad.id = defk.definition_id
 //	    WHERE fqns.fqn = ANY($1::TEXT[])
@@ -4256,7 +4256,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	        FROM attribute_namespace_public_key_map k
 //	        INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-//	        LEFT JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+//	        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	        GROUP BY k.namespace_id
 //	    ) nmp_keys ON n.id = nmp_keys.namespace_id
 //		WHERE n.active = TRUE
@@ -4351,7 +4351,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
 //	        FROM attribute_value_public_key_map k
 //	        INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-//	        LEFT JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+//	        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 //	        GROUP BY k.value_id
 //	    ) value_keys ON av.id = value_keys.value_id
 //		WHERE av.active = TRUE

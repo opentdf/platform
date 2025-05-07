@@ -245,18 +245,18 @@ jobs:
           # Sanitize and validate the output values
           PR_SERVICE_BIN="opentdf-pr" # Fixed value instead of dynamic
           if [[ ! -f "$PR_SERVICE_BIN" ]]; then
-          echo "Error: Built binary not found"
-          exit 1
+            echo "Error: Built binary not found"
+            exit 1
           fi
-          echo "service_bin=${PR_SERVICE_BIN}" >> $GITHUB_OUTPUT
+          echo "service_bin=${PR_SERVICE_BIN}" >> "$GITHUB_OUTPUT"
           # Similar validation for examples binary
           cd examples && go build -o examples-pr . && cd ..
           EXAMPLES_BIN="examples/examples-pr" # Fixed value
           if [[ ! -f "$EXAMPLES_BIN" ]]; then
-          echo "Error: Built examples binary not found"
-          exit 1
+            echo "Error: Built examples binary not found"
+            exit 1
           fi
-          echo "examples_bin=${EXAMPLES_BIN}" >> $GITHUB_OUTPUT
+          echo "examples_bin=${EXAMPLES_BIN}" >> "$GITHUB_OUTPUT"
 
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: Start Server (PR) in Background
@@ -280,24 +280,24 @@ jobs:
           mkdir -p benchmark_results/pr
 
           echo "Running Decision Benchmark (PR)..."
-          $EXAMPLES_BIN benchmark-decision --count 1000 > benchmark_results/pr/decision.txt 2>&1 || echo "Decision benchmark (PR) failed, continuing..."
+          "$EXAMPLES_BIN" benchmark-decision --count 1000 > benchmark_results/pr/decision.txt 2>&1 || echo "Decision benchmark (PR) failed, continuing..."
           cat benchmark_results/pr/decision.txt # Log output
 
           # Add other benchmarks similarly:
           echo "Running Bulk Benchmark (PR)..."
-          $EXAMPLES_BIN benchmark-bulk --tdf tdf3 --count 100 > benchmark_results/pr/bulk.txt 2>&1 || echo "Bulk benchmark (PR) failed, continuing..."
+          "$EXAMPLES_BIN" benchmark-bulk --tdf tdf3 --count 100 > benchmark_results/pr/bulk.txt 2>&1 || echo "Bulk benchmark (PR) failed, continuing..."
           cat benchmark_results/pr/bulk.txt
 
           echo "Running TDF3 Benchmark (PR)..."
-          $EXAMPLES_BIN benchmark --count=1000 --concurrent=10 > benchmark_results/pr/tdf3.txt 2>&1 || echo "TDF3 benchmark (PR) failed, continuing..." # Reduced count for faster CI
+          "$EXAMPLES_BIN" benchmark --count=1000 --concurrent=10 > benchmark_results/pr/tdf3.txt 2>&1 || echo "TDF3 benchmark (PR) failed, continuing..." # Reduced count for faster CI
           cat benchmark_results/pr/tdf3.txt
 
           echo "Running NanoTDF Benchmark (PR)..."
-          $EXAMPLES_BIN benchmark --storeCollectionHeaders=false --tdf=nanotdf --count=1000 --concurrent=10 > benchmark_results/pr/nano.txt 2>&1 || echo "Nano benchmark (PR) failed, continuing..." # Reduced count
+          "$EXAMPLES_BIN" benchmark --storeCollectionHeaders=false --tdf=nanotdf --count=1000 --concurrent=10 > benchmark_results/pr/nano.txt 2>&1 || echo "Nano benchmark (PR) failed, continuing..." # Reduced count
           cat benchmark_results/pr/nano.txt
 
           echo "Collecting Metrics (PR)..."
-          $EXAMPLES_BIN metrics > benchmark_results/pr/metrics.txt 2>&1 || echo "Metrics collection (PR) failed, continuing..."
+          "$EXAMPLES_BIN" metrics > benchmark_results/pr/metrics.txt 2>&1 || echo "Metrics collection (PR) failed, continuing..."
           cat benchmark_results/pr/metrics.txt
 
       - name: Stop Server (PR)
@@ -314,7 +314,7 @@ jobs:
         run: |
           echo "Cleaning workspace..."
           # Remove binaries built from PR to avoid confusion
-          rm -f ${{ steps.build_pr.outputs.service_bin }} examples/${{ steps.build_pr.outputs.examples_bin }}
+          rm -f "${{ steps.build_pr.outputs.service_bin }}" "examples/${{ steps.build_pr.outputs.examples_bin }}"
           # Add other specific files to clean if necessary
           # git clean -fdx # Use with caution - removes ALL untracked files/dirs
 
@@ -324,7 +324,7 @@ jobs:
 
       - name: Get Main SHA
         id: main_sha
-        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       # --- Rebuild and Start Server (Main Version) ---
       # Dependencies (Docker, Keycloak) should still be running
@@ -335,8 +335,10 @@ jobs:
           go build -o opentdf-main -v service/main.go
           echo "Building examples (main)..."
           cd examples && go build -o examples-main . && cd ..
-          echo "service_bin=opentdf-main"
-          echo "examples_bin=examples/examples-main"
+          {
+            echo "service_bin=opentdf-main"
+            echo "examples_bin=examples/examples-main"
+          } >> "$GITHUB_OUTPUT"
 
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: Start Server (Main) in Background
@@ -360,31 +362,31 @@ jobs:
           mkdir -p benchmark_results/main
 
           echo "Running Decision Benchmark (Main)..."
-          $EXAMPLES_BIN benchmark-decision --count 1000 > benchmark_results/main/decision.txt 2>&1 || echo "Decision benchmark (Main) failed, continuing..."
+          "$EXAMPLES_BIN" benchmark-decision --count 1000 > benchmark_results/main/decision.txt 2>&1 || echo "Decision benchmark (Main) failed, continuing..."
           cat benchmark_results/main/decision.txt
 
           # Add other benchmarks similarly:
           echo "Running Bulk Benchmark (Main)..."
-          $EXAMPLES_BIN benchmark-bulk --tdf tdf3 --count 100 > benchmark_results/main/bulk.txt 2>&1 || echo "Bulk benchmark (Main) failed, continuing..."
+          "$EXAMPLES_BIN" benchmark-bulk --tdf tdf3 --count 100 > benchmark_results/main/bulk.txt 2>&1 || echo "Bulk benchmark (Main) failed, continuing..."
           cat benchmark_results/main/bulk.txt
 
           echo "Running TDF3 Benchmark (Main)..."
-          $EXAMPLES_BIN benchmark --count=1000 --concurrent=10 > benchmark_results/main/tdf3.txt 2>&1 || echo "TDF3 benchmark (Main) failed, continuing..."
+          "$EXAMPLES_BIN" benchmark --count=1000 --concurrent=10 > benchmark_results/main/tdf3.txt 2>&1 || echo "TDF3 benchmark (Main) failed, continuing..."
           cat benchmark_results/main/tdf3.txt
 
           echo "Running NanoTDF Benchmark (Main)..."
-          $EXAMPLES_BIN benchmark --storeCollectionHeaders=false --tdf=nanotdf --count=1000 --concurrent=10 > benchmark_results/main/nano.txt 2>&1 || echo "Nano benchmark (Main) failed, continuing..."
+          "$EXAMPLES_BIN" benchmark --storeCollectionHeaders=false --tdf=nanotdf --count=1000 --concurrent=10 > benchmark_results/main/nano.txt 2>&1 || echo "Nano benchmark (Main) failed, continuing..."
           cat benchmark_results/main/nano.txt
 
           echo "Collecting Metrics (Main)..."
-          $EXAMPLES_BIN metrics > benchmark_results/main/metrics.txt 2>&1 || echo "Metrics collection (Main) failed, continuing..."
+          "$EXAMPLES_BIN" metrics > benchmark_results/main/metrics.txt 2>&1 || echo "Metrics collection (Main) failed, continuing..."
           cat benchmark_results/main/metrics.txt
 
       - name: Stop Server (Main)
         if: always()
         run: |
           echo "Stopping Main server process..."
-          pkill -f ${{ steps.build_main.outputs.service_bin }} || echo "Main Server process not found or already stopped."
+          pkill -f "${{ steps.build_main.outputs.service_bin }}" || echo "Main Server process not found or already stopped."
           sleep 5
 
       - name: Compare Benchmarks
@@ -394,19 +396,23 @@ jobs:
           ls -l .github
           ls -l .github/scripts 
           # Use a script for cleaner comparison logic
-          .github/scripts/compare_benchmarks.sh benchmark_results/pr benchmark_results/main $DEGRADATION_THRESHOLD > benchmark_comparison.md
+          "./.github/scripts/compare_benchmarks.sh" "benchmark_results/pr" "benchmark_results/main" "$DEGRADATION_THRESHOLD" > benchmark_comparison.md
           echo "Comparison Results:"
           cat benchmark_comparison.md
 
           # Save comparison summary to output and environment for comment step
           COMPARISON_SUMMARY=$(cat benchmark_comparison.md)
-          echo "comparison_summary<<EOF_COMP" >> $GITHUB_OUTPUT
-          echo "$COMPARISON_SUMMARY" >> $GITHUB_OUTPUT
-          echo "EOF_COMP" >> $GITHUB_OUTPUT
+          {
+            echo "comparison_summary<<EOF_COMP"
+            echo "$COMPARISON_SUMMARY"
+            echo "EOF_COMP"
+          } >> "$GITHUB_OUTPUT"
 
-          echo "BENCHMARK_COMPARISON_OUTPUT<<EOF_COMP_ENV" >> $GITHUB_ENV
-          echo "$COMPARISON_SUMMARY" >> $GITHUB_ENV
-          echo "EOF_COMP_ENV" >> $GITHUB_ENV
+          {
+            echo "BENCHMARK_COMPARISON_OUTPUT<<EOF_COMP_ENV"
+            echo "$COMPARISON_SUMMARY"
+            echo "EOF_COMP_ENV"
+          } >> "$GITHUB_ENV"
 
           # Also save individual PR results for the comment fallback/fork case
           # (Could parse the PR files here or just use the raw files if needed)
@@ -416,15 +422,15 @@ jobs:
         id: check_degradation
         # Use the exit code of the comparison script or parse its output
         run: |
-          if ! .github/scripts/compare_benchmarks.sh benchmark_results/pr benchmark_results/main $DEGRADATION_THRESHOLD --check-only; then
+          if ! "./.github/scripts/compare_benchmarks.sh" "benchmark_results/pr" "benchmark_results/main" "$DEGRADATION_THRESHOLD" --check-only; then
             echo "::error::Benchmark degradation detected!"
-            echo "degraded=true" >> $GITHUB_OUTPUT
+            echo "degraded=true" >> "$GITHUB_OUTPUT"
             # Optionally exit 1 here if you want the *step* to fail visibly,
             # but the github-script step below handles the job failure logic.
             # exit 1 # Uncomment to make this step fail
           else
             echo "No significant benchmark degradation detected."
-            echo "degraded=false" >> $GITHUB_OUTPUT
+            echo "degraded=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Save Benchmark Results and Comparison to Comment/Summary
@@ -479,7 +485,7 @@ jobs:
         if: always() && github.event_name == 'pull_request' # Only relevant for PRs
         run: |
           echo "Checking back out to PR commit: ${{ steps.pr_sha.outputs.sha }}"
-          git checkout ${{ steps.pr_sha.outputs.sha }}
+          git checkout "${{ steps.pr_sha.outputs.sha }}"
 
       - name: Final Docker Cleanup (Optional)
         if: always()

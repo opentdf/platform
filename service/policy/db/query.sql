@@ -887,7 +887,7 @@ LEFT JOIN (
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_value_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
-    INNER JOIN key_access_servers kas ON kas.id = kask.id
+    INNER JOIN key_access_servers kas ON kas.id = kask.key_access_server_id
     GROUP BY k.value_id
 ) value_keys ON av.id = value_keys.value_id   
 WHERE (sqlc.narg('id')::uuid IS NULL OR av.id = sqlc.narg('id')::uuid)

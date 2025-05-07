@@ -178,7 +178,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write # Needed to comment on PRs
-    name: benchmark tests & comparison
+    name: benchmark tests
     runs-on: ubuntu-22.04
     env:
       TLS_ENABLED: "true"
@@ -394,7 +394,7 @@ jobs:
         run: |
           echo "Comparing benchmark results..."
           # Use a script for cleaner comparison logic
-          ./.github/scripts/compare_benchmarks.sh benchmark_results/pr benchmark_results/main $DEGRADATION_THRESHOLD > benchmark_comparison.md
+          .github/scripts/compare_benchmarks.sh benchmark_results/pr benchmark_results/main $DEGRADATION_THRESHOLD > benchmark_comparison.md
           echo "Comparison Results:"
           cat benchmark_comparison.md
 
@@ -416,8 +416,7 @@ jobs:
         id: check_degradation
         # Use the exit code of the comparison script or parse its output
         run: |
-          # Example: Assume compare_benchmarks.sh exits non-zero on degradation
-          if ! ./.github/scripts/compare_benchmarks.sh benchmark_results/pr benchmark_results/main $DEGRADATION_THRESHOLD --check-only; then
+          if ! .github/scripts/compare_benchmarks.sh benchmark_results/pr benchmark_results/main $DEGRADATION_THRESHOLD --check-only; then
             echo "::error::Benchmark degradation detected!"
             echo "degraded=true" >> $GITHUB_OUTPUT
             # Optionally exit 1 here if you want the *step* to fail visibly,

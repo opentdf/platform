@@ -267,7 +267,6 @@ jobs:
             .github/scripts/watch.sh opentdf.yaml ./${{ steps.build_pr.outputs.service_bin }} start
           wait-on: tcp:localhost:8080
           log-output-if: true
-          log-name: server-pr-log # Unique log name
           wait-for: 120s
 
       # --- Run Benchmarks (PR Version) ---
@@ -349,7 +348,6 @@ jobs:
             .github/scripts/watch.sh opentdf.yaml ./${{ steps.build_main.outputs.service_bin }} start
           wait-on: tcp:localhost:8080
           log-output-if: true
-          log-name: server-main-log # Unique log name
           wait-for: 120s
 
       # --- Run Benchmarks (Main Version) ---

@@ -23,6 +23,7 @@ toolcheck:
 	@which goimports >/dev/null || (echo "goimports not found, run 'go install golang.org/x/tools/cmd/goimports@latest'")
 	@govulncheck -version >/dev/null || (echo "govulncheck not found, run 'go install golang.org/x/vuln/cmd/govulncheck@latest'")
 	@which actionlint >/dev/null || (echo "actionlint not found, run 'go install github.com/rhysd/actionlint/cmd/actionlint@latest'")
+	@which shellcheck >/dev/null || (echo "shellcheck not found, install it with your package manager (apt/brew/etc) or from https://github.com/koalaman/shellcheck#installing" && exit 1)
 
 fix: tidy fmt
 
@@ -64,7 +65,7 @@ govulncheck:
 
 action-lint:
 	@echo "Linting GitHub Action workflows..."
-	@actionlint -color || exit 1
+	@actionlint -shellcheck shellcheck || exit 1
 
 proto-generate:
 	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi

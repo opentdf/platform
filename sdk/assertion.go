@@ -107,6 +107,16 @@ func (a Assertion) GetHash() ([]byte, error) {
 	// Remove the binding key
 	delete(jsonObject, "binding")
 
+	// Deep patch: fix "value" inside "statement" if it is a string
+	if statement, ok := jsonObject["statement"].(map[string]interface{}); ok {
+		if valueStr, ok := statement["value"].(string); ok {
+			var valueObj interface{}
+			if err := json.Unmarshal([]byte(valueStr), &valueObj); err == nil {
+				statement["value"] = valueObj // replace the string with parsed object
+			}
+		}
+	}
+
 	// Marshal the map back to JSON
 	assertionJSON, err = json.Marshal(jsonObject)
 	if err != nil {
@@ -120,6 +130,32 @@ func (a Assertion) GetHash() ([]byte, error) {
 	}
 
 	return ocrypto.SHA256AsHex(transformedJSON), nil
+}
+
+func (s *Statement) MarshalJSON() ([]byte, error) {
+	// Define a custom struct for serialization
+	type Alias Statement
+	aux := &struct {
+		Value interface{} `json:"value,omitempty"`
+		*Alias
+	}{
+		Alias: (*Alias)(s),
+	}
+
+	if s.Format == "json-structured" {
+		raw := json.RawMessage(s.Value)
+		var tmp interface{}
+		// Attempt to decode Value to validate it's actual json
+		if err := json.Unmarshal(raw, &tmp); err == nil {
+			aux.Value = raw
+		} else {
+			aux.Value = s.Value
+		}
+	} else {
+		aux.Value = s.Value
+	}
+
+	return json.Marshal(aux)
 }
 
 func (s *Statement) UnmarshalJSON(data []byte) error {

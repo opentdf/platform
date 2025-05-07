@@ -27,7 +27,7 @@ jobs:
     permissions:
       checks: write
       contents: read
-      pull-requests: write
+      pull-requests: read
     strategy:
       matrix:
         directory:
@@ -176,7 +176,7 @@ jobs:
   benchmark:
     permissions:
       contents: read
-      pull-requests: write # Needed to comment on PRs
+      pull-requests: write
     name: benchmark tests
     runs-on: ubuntu-22.04
     env:

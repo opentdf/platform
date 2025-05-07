@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/open-policy-agent/opa/rego"
 	"github.com/opentdf/platform/lib/flattening"
+	"github.com/opentdf/platform/lib/identifier"
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
@@ -24,7 +24,10 @@ var (
 	ErrMissingRequiredLogger                       = errors.New("access: missing required logger")
 	ErrMissingEntityResolutionServiceSDKConnection = errors.New("access: missing required entity resolution SDK connection, cannot be nil")
 	ErrInvalidAttributeDefinition                  = errors.New("access: invalid attribute definition")
+	ErrInvalidSubjectMapping                       = errors.New("access: invalid subject mapping")
 	ErrInvalidResourceType                         = errors.New("access: invalid resource type")
+	ErrInvalidEntityChain                          = errors.New("access: invalid entity chain")
+	ErrInvalidAction                               = errors.New("access: invalid action")
 
 	defaultFallbackLoggerConfig = logger.Config{
 		Level:  "info",
@@ -70,7 +73,7 @@ func NewPDP(
 	sdk *otdfSDK.SDK,
 	l *logger.Logger,
 	attributeDefinitions []*policy.Attribute,
-	regoEval rego.PreparedEvalQuery,
+	// regoEval rego.PreparedEvalQuery,
 ) (*PDP, error) {
 	var err error
 
@@ -98,14 +101,9 @@ func NewPDP(
 
 	definitionsMap := make(map[string]*policy.Attribute)
 	for _, attr := range attributeDefinitions {
-		if attr == nil {
-			return nil, fmt.Errorf("attribute definition is nil: %w", ErrInvalidAttributeDefinition)
-		}
-		if attr.GetFqn() == "" {
-			return nil, fmt.Errorf("attribute definition has no FQN: %w", ErrInvalidAttributeDefinition)
-		}
-		if len(attr.GetValues()) == 0 {
-			return nil, fmt.Errorf("attribute definition has no values: %w", ErrInvalidAttributeDefinition)
+		if err := validateAttribute(attr); err != nil {
+			l.Error("invalid attribute definition", slog.String("error", err.Error()))
+			return nil, fmt.Errorf("invalid attribute definition: %w", err)
 		}
 		definitionsMap[attr.GetFqn()] = attr
 	}
@@ -118,8 +116,24 @@ func NewPDP(
 	}, nil
 }
 
-// func (p *PDP) GetDecision(entityChain *authz.EntityChain, action *policy.Action, resources []*authz.Resource) (*Decision, error) {
-// }
+func (p *PDP) GetDecision(entityChain *authz.EntityChain, action *policy.Action, resources []*authz.Resource) (*Decision, error) {
+	if err := validateGetDecision(entityChain, action, resources); err != nil {
+		p.logger.Error("invalid input parameters", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	// Retrieve the attributes for the resources being decisioned
+	scopedAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+	for _, resourceScope := range resources {
+		err := p.setAttributesByScope(context.Background(), resourceScope, scopedAttributes)
+		if err != nil {
+			p.logger.Error("failed to retrieve attributes by scope", slog.String("error", err.Error()))
+			return nil, fmt.Errorf("failed to set attributes by scope: %w", err)
+		}
+	}
+	// TODO: FINISH THESE
+	return nil, nil
+}
 
 func (p *PDP) GetEntitlements(
 	ctx context.Context,
@@ -129,26 +143,40 @@ func (p *PDP) GetEntitlements(
 ) ([]*authz.EntityEntitlements, error) {
 	result := make([]*authz.EntityEntitlements, len(entities))
 
-	// call ERS on all entities
+	// Resolve all entities
 	ersResp, err := p.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{EntitiesV2: entities})
 	if err != nil {
 		p.logger.ErrorContext(ctx, "error calling ERS to resolve entities", slog.String("error", err.Error()), slog.Any("entities", entities))
 		return nil, err
 	}
-	entityRepresentations := ersResp.GetEntityRepresentations()
 
-	attributeMappings, err := p.fetchEntitleableAttributes(ctx, entityRepresentations, scope)
-	if err != nil {
-		p.logger.ErrorContext(ctx, "error fetching entitleable attributes", slog.String("error", err.Error()), slog.Any("scope", scope))
-		return nil, err
+	// Retrieve all relevant attribute values, definitions, and subject mappings to resolve
+	entityRepresentations := ersResp.GetEntityRepresentations()
+	attributesWithResolvableSubjectMappings := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+
+	if scope != nil {
+		err = p.setAttributesByScope(ctx, scope, attributesWithResolvableSubjectMappings)
+		if err != nil {
+			p.logger.ErrorContext(ctx, "error setting attributes by scope", slog.String("error", err.Error()), slog.Any("scope", scope))
+			return nil, err
+		}
+	} else {
+		err = p.setEntitleableAttributesFromEntityRepresentations(ctx, entityRepresentations, attributesWithResolvableSubjectMappings)
+		if err != nil {
+			// TODO: is it safe to log entities/entity representations?
+			p.logger.ErrorContext(ctx, "error setting entitleable attributes from entity representations", slog.String("error", err.Error()), slog.Any("entities", entities))
+			return nil, err
+		}
 	}
 
-	entityIDsToFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings, entityRepresentations)
+	// Resolve them to their entitled FQNs and the actions available on each
+	entityIDsToFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(attributesWithResolvableSubjectMappings, entityRepresentations)
 	if err != nil {
 		p.logger.ErrorContext(ctx, "error evaluating subject mappings for entitlement", slog.String("error", err.Error()), slog.Any("entities", entities))
 		return nil, err
 	}
 
+	// Build the response
 	for entityID, fqnsToActions := range entityIDsToFQNsToActions {
 		actionsPerAttributeValueFqn := make(map[string]*authz.EntityEntitlements_ActionsList)
 		for fqn, actions := range fqnsToActions {
@@ -211,17 +239,23 @@ func (p *PDP) fetchAllDefinitions(ctx context.Context) ([]*policy.Attribute, err
 	return attrsList, nil
 }
 
-func (p *PDP) fetchEntitleableAttributes(ctx context.Context, entityRepresentations []*entityresolution.EntityRepresentation, scope *authz.Resource) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	if scope != nil {
-		return p.fetchAttributesByScope(ctx, scope)
-	}
+// setEntitleableAttributesFromEntityRepresentations retrieves and populates the entitleable attributes per
+// the provided entity reresentations, setting them on the provided entitleableAttributes map, merging any
+// subject mappings with existing found under the attribute value FQN key.
+func (p *PDP) setEntitleableAttributesFromEntityRepresentations(
+	ctx context.Context,
+	entityRepresentations []*entityresolution.EntityRepresentation,
+	// updated with the results, attrValue FQN to attribute and value with subject mappings
+	entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+) error {
+	// Break the entity down the entities into their properties/selectors and retrieve only those subject mappings
 	subjectProperties := make([]*policy.SubjectProperty, 0)
 	for _, entityRep := range entityRepresentations {
 		for _, entity := range entityRep.GetAdditionalProps() {
 			flattened, err := flattening.Flatten(entity.AsMap())
 			if err != nil {
 				p.logger.ErrorContext(ctx, "failed to flatten entity representation", slog.String("error", err.Error()))
-				return nil, fmt.Errorf("failed to flatten entity representation: %w", err)
+				return fmt.Errorf("failed to flatten entity representation: %w", err)
 			}
 			for _, item := range flattened.Items {
 				// The value in this proto is not considered by the API
@@ -232,44 +266,75 @@ func (p *PDP) fetchEntitleableAttributes(ctx context.Context, entityRepresentati
 		}
 	}
 
+	// Retrieve the filtered subject mappings that match an entity property in the SM's SubjectConditionSet selectors
 	req := &subjectmapping.MatchSubjectMappingsRequest{
 		SubjectProperties: subjectProperties,
 	}
 	subjectMappings, err := p.sdk.SubjectMapping.MatchSubjectMappings(ctx, req)
 	if err != nil {
 		p.logger.ErrorContext(ctx, "failed to match subject mappings", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("failed to match subject mappings: %w", err)
+		return fmt.Errorf("failed to match subject mappings: %w", err)
 	}
 	if subjectMappings == nil {
 		p.logger.ErrorContext(ctx, "subject mappings are nil")
-		return nil, fmt.Errorf("subject mappings are nil: %w", err)
+		return fmt.Errorf("subject mappings are nil: %w", err)
 	}
-	result := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
-	for _, mapping := range subjectMappings.GetSubjectMappings() {
-		if mapping == nil {
-			p.logger.ErrorContext(ctx, "subject mapping is nil")
-			return nil, fmt.Errorf("subject mapping is nil: %w", err)
+
+	for _, sm := range subjectMappings.GetSubjectMappings() {
+		if err := validateSubjectMapping(sm); err != nil {
+			p.logger.ErrorContext(ctx, "subject mapping is invalid", slog.String("error", err.Error()))
+			return fmt.Errorf("subject mapping is invalid: %w", err)
 		}
-		if mapping.GetAttributeValue() == nil {
-			p.logger.ErrorContext(ctx, "aubject mapping's attribute value is nil")
-			return nil, fmt.Errorf("aubject mapping's attribute value is nil: %w", err)
+
+		mappedValue := sm.GetAttributeValue()
+		mappedValueFQN := mappedValue.GetFqn()
+
+		// If more than one relevant subject mapping for a value, merge existing with new
+		if _, ok := entitleableAttributes[mappedValueFQN]; ok {
+			entitleableAttributes[mappedValueFQN].Value.SubjectMappings = append(entitleableAttributes[mappedValueFQN].Value.SubjectMappings, sm)
+			continue
 		}
-		if mapping.GetActions() == nil {
-			p.logger.ErrorContext(ctx, "subject mapping's actions are nil")
-			return nil, fmt.Errorf("subject mapping's actions are nil: %w", err)
+
+		// Take subject mapping's attribute value and its definition from memory
+		parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](mappedValueFQN)
+		if err != nil {
+			p.logger.ErrorContext(ctx, "failed to parse attribute FQN", slog.String("error", err.Error()))
+			return fmt.Errorf("failed to parse attribute FQN: %w", err)
 		}
+		definition := &identifier.FullyQualifiedAttribute{
+			Name:      parsed.Name,
+			Namespace: parsed.Namespace,
+		}
+		defFQN := definition.FQN()
+		if _, ok := p.attributesByDefinitionFQN[defFQN]; !ok {
+			p.logger.ErrorContext(ctx,
+				"subject mapping's attribute value contained a definition not found",
+				slog.String("definition", defFQN),
+				slog.Any("attribute_value", mappedValue),
+			)
+			return fmt.Errorf("subject mapping's attribute value contained a definition not found: %w", err)
+		}
+
+		// Build the value, definition, and subject mapping combination to map under the attribute value FQN
+		mappedValue.SubjectMappings = []*policy.SubjectMapping{sm}
 		mapped := &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-			Value: mapping.GetAttributeValue(),
+			Value:     mappedValue,
+			Attribute: p.attributesByDefinitionFQN[defFQN],
 		}
-		mapped.Value.SubjectMappings = make([]*policy.SubjectMapping, 0)
-		mapped.Value.SubjectMappings = append(mapped.Value.SubjectMappings, mapping)
-		result[mapping.GetAttributeValue().GetFqn()] = mapped
+
+		entitleableAttributes[mappedValueFQN] = mapped
 	}
-	return result, nil
+	return nil
 }
 
-// fetchAttributesByScope retrieves subject mappings based on the provided scope
-func (p *PDP) fetchAttributesByScope(ctx context.Context, scope *authz.Resource) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
+// setAttributesByScope retrieves attributes definitions, values, and their subject mappings for the provided scope
+// and sets them on the provided entitleableAttributes map, appending the subject mappings to any existing found
+// under the attribute value FQN key.
+func (p *PDP) setAttributesByScope(
+	ctx context.Context,
+	scope *authz.Resource,
+	entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+) error {
 	var (
 		attrFqns []string
 		err      error
@@ -279,12 +344,13 @@ func (p *PDP) fetchAttributesByScope(ctx context.Context, scope *authz.Resource)
 	case *authz.Resource_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "fetching scoped subject mappings for registered resource value FQN", slog.String("fqn", r.RegisteredResourceValueFqn))
 		// TODO: fully implement this registered resource resolution
+
 	case *authz.Resource_AttributeValues_:
 		p.logger.DebugContext(ctx, "fetching scoped subject mappings for resource attribute values", slog.Any("attribute_values", r.AttributeValues.GetFqns()))
 		attrFqns = r.AttributeValues.GetFqns()
 	default:
 		p.logger.ErrorContext(ctx, "unknown resource type", slog.Any("resource", r))
-		return nil, ErrInvalidResourceType
+		return ErrInvalidResourceType
 	}
 
 	resp, err := p.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attrs.GetAttributeValuesByFqnsRequest{
@@ -292,9 +358,18 @@ func (p *PDP) fetchAttributesByScope(ctx context.Context, scope *authz.Resource)
 	})
 	if err != nil {
 		p.logger.ErrorContext(ctx, "failed to get attribute values by FQNs", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("failed to get attribute values by FQNs: %w", err)
+		return fmt.Errorf("failed to get attribute values by FQNs: %w", err)
 	}
-	return resp.GetFqnAttributeValues(), nil
+
+	for valFQN, fullyQualified := range resp.GetFqnAttributeValues() {
+		if _, ok := entitleableAttributes[valFQN]; !ok {
+			entitleableAttributes[valFQN] = fullyQualified
+			continue
+		}
+		// Already have the attribute value and definition, so merge the subject mappings
+		entitleableAttributes[valFQN].Value.SubjectMappings = append(entitleableAttributes[valFQN].Value.SubjectMappings, fullyQualified.Value.SubjectMappings...)
+	}
+	return nil
 }
 
 // fetchAllSubjectMappings retrieves all subject mappings within policy

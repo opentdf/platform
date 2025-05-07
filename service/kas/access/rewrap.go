@@ -910,8 +910,9 @@ func extractNanoPolicy(symmetricKey trust.ProtectedKey, header sdk.NanoTDFHeader
 		return &policy, nil
 	case sdk.NanoTDFPolicyModeRemote, sdk.NanoTDFPolicyModeEncryptedPolicyKeyAccess:
 	default:
-		return nil, errors.Join(fmt.Errorf("unsupported policy mode: %d", header.PolicyMode), ErrNanoTDFPolicyModeUnsupported)
+		// noop
 	}
+	return nil, errors.Join(fmt.Errorf("unsupported policy mode: %d", header.PolicyMode), ErrNanoTDFPolicyModeUnsupported)
 }
 
 func failAllKaos(reqs []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, results policyKAOResults, err error) {

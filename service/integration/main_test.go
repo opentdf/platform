@@ -12,6 +12,7 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
+	"github.com/oklog/ulid/v2"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -73,14 +74,14 @@ func TestMain(m *testing.M) {
 		ProviderType: providerType,
 		ContainerRequest: tc.ContainerRequest{
 			Image:        "postgres:15-alpine",
-			Name:         "testcontainer-postgres",
+			Name:         "testcontainer-postgres-" + ulid.Make().String(),
 			ExposedPorts: []string{"5432/tcp"},
 			HostConfigModifier: func(config *container.HostConfig) {
 				config.PortBindings = nat.PortMap{
 					"5432/tcp": []nat.PortBinding{
 						{
 							HostIP:   "0.0.0.0",
-							HostPort: "54322",
+							HostPort: "",
 						},
 					},
 				}

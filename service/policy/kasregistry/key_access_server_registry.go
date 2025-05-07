@@ -205,12 +205,7 @@ func (s KeyAccessServerRegistry) DeleteKeyAccessServer(ctx context.Context,
 func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 	req *connect.Request[kasr.ListKeyAccessServerGrantsRequest],
 ) (*connect.Response[kasr.ListKeyAccessServerGrantsResponse], error) {
-	rsp, err := s.dbClient.ListKeyAccessServerGrants(ctx, req.Msg)
-	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
-	}
-
-	return connect.NewResponse(rsp), nil
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListKeyAccessServerGrants method is deprecated"))
 }
 
 func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Request[kasr.CreateKeyRequest]) (*connect.Response[kasr.CreateKeyResponse], error) {

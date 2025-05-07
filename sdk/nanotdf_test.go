@@ -412,10 +412,6 @@ func TestCreateEmbeddedPolicy(t *testing.T) {
 		require.NoError(t, err)
 		config.kasPublicKey = key.PublicKey()
 
-		// Enable encryption
-		err = config.SetPolicyMode(policyTypeEmbeddedPolicyEncrypted)
-		require.NoError(t, err)
-
 		policy, err := createEmbeddedPolicy(policyData, *config)
 		require.NoError(t, err)
 

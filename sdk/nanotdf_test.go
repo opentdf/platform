@@ -404,8 +404,6 @@ func TestCreateEmbeddedPolicy(t *testing.T) {
 	t.Run("encrypted policy", func(t *testing.T) {
 		config, err := new(SDK).NewNanoTDFConfig()
 		require.NoError(t, err)
-		err = config.SetPolicyMode(policyTypeEmbeddedPolicyEncrypted)
-		require.NoError(t, err)
 
 		// Setup KAS public key
 		key, err := ecdh.P256().GenerateKey(rand.Reader)

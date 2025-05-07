@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/opentdf/platform/lib/flattening"
 	"github.com/opentdf/platform/lib/identifier"
@@ -116,7 +117,7 @@ func NewPDP(
 	}, nil
 }
 
-func (p *PDP) GetDecision(entityChain *authz.EntityChain, action *policy.Action, resources []*authz.Resource) (*Decision, error) {
+func (p *PDP) GetDecision(ctx context.Context, entityChain *authz.EntityChain, action *policy.Action, resources []*authz.Resource) (*Decision, error) {
 	if err := validateGetDecision(entityChain, action, resources); err != nil {
 		p.logger.Error("invalid input parameters", slog.String("error", err.Error()))
 		return nil, err
@@ -125,12 +126,13 @@ func (p *PDP) GetDecision(entityChain *authz.EntityChain, action *policy.Action,
 	// Retrieve the attributes for the resources being decisioned
 	scopedAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	for _, resourceScope := range resources {
-		err := p.setAttributesByScope(context.Background(), resourceScope, scopedAttributes)
+		err := p.setAttributesByScope(ctx, resourceScope, scopedAttributes)
 		if err != nil {
 			p.logger.Error("failed to retrieve attributes by scope", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("failed to set attributes by scope: %w", err)
 		}
 	}
+	// find hierarchical attributes and query the values above the current
 	// TODO: FINISH THESE
 	return nil, nil
 }
@@ -179,12 +181,21 @@ func (p *PDP) GetEntitlements(
 	// Build the response
 	for entityID, fqnsToActions := range entityIDsToFQNsToActions {
 		actionsPerAttributeValueFqn := make(map[string]*authz.EntityEntitlements_ActionsList)
-		for fqn, actions := range fqnsToActions {
-			actionsPerAttributeValueFqn[fqn] = &authz.EntityEntitlements_ActionsList{
+		for valueFQN, actions := range fqnsToActions {
+			entitledActions := &authz.EntityEntitlements_ActionsList{
 				Actions: actions,
 			}
+			actionsPerAttributeValueFqn[valueFQN] = entitledActions
+
+			if withComprehensiveHierarchy {
+				err = p.populateLowerHierarchyValues(valueFQN, entitledActions, actionsPerAttributeValueFqn)
+				if err != nil {
+					p.logger.ErrorContext(ctx, "error populating comprehensive lower hierarchy values", slog.String("error", err.Error()), slog.String("value", valueFQN))
+					return nil, err
+				}
+			}
+
 		}
-		// TODO: withComprehensiveHierarchy needs to be considered here
 		result = append(result, &authz.EntityEntitlements{
 			EphemeralId:                 entityID,
 			ActionsPerAttributeValueFqn: actionsPerAttributeValueFqn,
@@ -242,6 +253,8 @@ func (p *PDP) fetchAllDefinitions(ctx context.Context) ([]*policy.Attribute, err
 // setEntitleableAttributesFromEntityRepresentations retrieves and populates the entitleable attributes per
 // the provided entity reresentations, setting them on the provided entitleableAttributes map, merging any
 // subject mappings with existing found under the attribute value FQN key.
+//
+// No special handling is done for hierarchical attributes in this function.
 func (p *PDP) setEntitleableAttributesFromEntityRepresentations(
 	ctx context.Context,
 	entityRepresentations []*entityresolution.EntityRepresentation,
@@ -258,7 +271,6 @@ func (p *PDP) setEntitleableAttributesFromEntityRepresentations(
 				return fmt.Errorf("failed to flatten entity representation: %w", err)
 			}
 			for _, item := range flattened.Items {
-				// The value in this proto is not considered by the API
 				subjectProperties = append(subjectProperties, &policy.SubjectProperty{
 					ExternalSelectorValue: item.Key,
 				})
@@ -266,7 +278,7 @@ func (p *PDP) setEntitleableAttributesFromEntityRepresentations(
 		}
 	}
 
-	// Retrieve the filtered subject mappings that match an entity property in the SM's SubjectConditionSet selectors
+	// Greedily retrieve the filtered subject mappings that match one of the subject properties
 	req := &subjectmapping.MatchSubjectMappingsRequest{
 		SubjectProperties: subjectProperties,
 	}
@@ -280,6 +292,7 @@ func (p *PDP) setEntitleableAttributesFromEntityRepresentations(
 		return fmt.Errorf("subject mappings are nil: %w", err)
 	}
 
+	// Build the value, definition, and subject mapping combination to map under each mapped attribute value FQN
 	for _, sm := range subjectMappings.GetSubjectMappings() {
 		if err := validateSubjectMapping(sm); err != nil {
 			p.logger.ErrorContext(ctx, "subject mapping is invalid", slog.String("error", err.Error()))
@@ -296,30 +309,16 @@ func (p *PDP) setEntitleableAttributesFromEntityRepresentations(
 		}
 
 		// Take subject mapping's attribute value and its definition from memory
-		parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](mappedValueFQN)
+		parentDefinition, err := p.getDefinition(mappedValueFQN)
 		if err != nil {
-			p.logger.ErrorContext(ctx, "failed to parse attribute FQN", slog.String("error", err.Error()))
-			return fmt.Errorf("failed to parse attribute FQN: %w", err)
-		}
-		definition := &identifier.FullyQualifiedAttribute{
-			Name:      parsed.Name,
-			Namespace: parsed.Namespace,
-		}
-		defFQN := definition.FQN()
-		if _, ok := p.attributesByDefinitionFQN[defFQN]; !ok {
-			p.logger.ErrorContext(ctx,
-				"subject mapping's attribute value contained a definition not found",
-				slog.String("definition", defFQN),
-				slog.Any("attribute_value", mappedValue),
-			)
-			return fmt.Errorf("subject mapping's attribute value contained a definition not found: %w", err)
+			p.logger.ErrorContext(ctx, "failed to get attribute definition", slog.String("error", err.Error()))
+			return fmt.Errorf("failed to get attribute definition: %w", err)
 		}
 
-		// Build the value, definition, and subject mapping combination to map under the attribute value FQN
 		mappedValue.SubjectMappings = []*policy.SubjectMapping{sm}
 		mapped := &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 			Value:     mappedValue,
-			Attribute: p.attributesByDefinitionFQN[defFQN],
+			Attribute: parentDefinition,
 		}
 
 		entitleableAttributes[mappedValueFQN] = mapped
@@ -330,14 +329,17 @@ func (p *PDP) setEntitleableAttributesFromEntityRepresentations(
 // setAttributesByScope retrieves attributes definitions, values, and their subject mappings for the provided scope
 // and sets them on the provided entitleableAttributes map, appending the subject mappings to any existing found
 // under the attribute value FQN key.
+//
+// It also populates values higher than the scoped value if the definition rule is hierarchical, which helps
+// determine entitlement without an additional roundtrip to the policy services.
 func (p *PDP) setAttributesByScope(
 	ctx context.Context,
 	scope *authz.Resource,
 	entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 ) error {
 	var (
-		attrFqns []string
-		err      error
+		attrValueFqns []string
+		err           error
 	)
 
 	switch r := scope.GetResource().(type) {
@@ -347,14 +349,34 @@ func (p *PDP) setAttributesByScope(
 
 	case *authz.Resource_AttributeValues_:
 		p.logger.DebugContext(ctx, "fetching scoped subject mappings for resource attribute values", slog.Any("attribute_values", r.AttributeValues.GetFqns()))
-		attrFqns = r.AttributeValues.GetFqns()
+		attrValueFqns = r.AttributeValues.GetFqns()
 	default:
 		p.logger.ErrorContext(ctx, "unknown resource type", slog.Any("resource", r))
 		return ErrInvalidResourceType
 	}
 
+	// Gather higher values from hierarchical attribute definitions
+	for _, valFQN := range attrValueFqns {
+		definition, err := p.getDefinition(valFQN)
+		if err != nil {
+			p.logger.ErrorContext(ctx, "failed to get attribute definition", slog.String("error", err.Error()))
+			return fmt.Errorf("failed to get attribute definition: %w", err)
+		}
+		if definition.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+			// When the valueFQN matches, all remaining values are hierarchically lower
+			for _, value := range definition.GetValues() {
+				if value.GetFqn() == valFQN {
+					break
+				}
+				if !slices.Contains(attrValueFqns, value.GetFqn()) {
+					attrValueFqns = append(attrValueFqns, value.GetFqn())
+				}
+			}
+		}
+	}
+
 	resp, err := p.sdk.Attributes.GetAttributeValuesByFqns(ctx, &attrs.GetAttributeValuesByFqnsRequest{
-		Fqns: attrFqns,
+		Fqns: attrValueFqns,
 	})
 	if err != nil {
 		p.logger.ErrorContext(ctx, "failed to get attribute values by FQNs", slog.String("error", err.Error()))
@@ -373,29 +395,69 @@ func (p *PDP) setAttributesByScope(
 }
 
 // fetchAllSubjectMappings retrieves all subject mappings within policy
-func (p *PDP) fetchAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
-	p.logger.DebugContext(ctx, "fetching all subject mappings")
-	// If quantity of subject mappings exceeds maximum list pagination, all are needed to determine entitlements
-	var nextOffset int32
-	subjectMappings := make([]*policy.SubjectMapping, 0)
+// func (p *PDP) fetchAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
+// 	p.logger.DebugContext(ctx, "fetching all subject mappings")
+// 	// If quantity of subject mappings exceeds maximum list pagination, all are needed to determine entitlements
+// 	var nextOffset int32
+// 	subjectMappings := make([]*policy.SubjectMapping, 0)
 
-	for {
-		listed, err := p.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
-			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
-			},
-		})
-		if err != nil {
-			p.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
-			return nil, fmt.Errorf("failed to list subject mappings: %w", err)
-		}
+// 	for {
+// 		listed, err := p.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
+// 			Pagination: &policy.PageRequest{
+// 				Offset: nextOffset,
+// 			},
+// 		})
+// 		if err != nil {
+// 			p.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
+// 			return nil, fmt.Errorf("failed to list subject mappings: %w", err)
+// 		}
 
-		nextOffset = listed.GetPagination().GetNextOffset()
-		subjectMappings = append(subjectMappings, listed.GetSubjectMappings()...)
+// 		nextOffset = listed.GetPagination().GetNextOffset()
+// 		subjectMappings = append(subjectMappings, listed.GetSubjectMappings()...)
 
-		if nextOffset <= 0 {
-			break
+// 		if nextOffset <= 0 {
+// 			break
+// 		}
+// 	}
+// 	return subjectMappings, nil
+// }
+
+// getDefinition parses the provided value FQN and retrieves the attribute definition from memory.
+func (p *PDP) getDefinition(valueFQN string) (*policy.Attribute, error) {
+	parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](valueFQN)
+	if err != nil {
+		p.logger.Error("failed to parse attribute value FQN", slog.String("error", err.Error()))
+		return nil, fmt.Errorf("failed to parse attribute value FQN: %w", err)
+	}
+	def := &identifier.FullyQualifiedAttribute{
+		Namespace: parsed.Namespace,
+		Name:      parsed.Name,
+	}
+
+	definition, ok := p.attributesByDefinitionFQN[def.FQN()]
+	if !ok {
+		return nil, fmt.Errorf("definition not found: %w", err)
+	}
+	return definition, nil
+}
+
+// populateLowerHierarchyValues consideres the provided value FQN and entitled actions, pulling the attribute definition from memory, checking
+// if it is hierarchical, and if so, populating the actions for all values lower in the hierarchy into the provided actionsPerAttributeValueFqn map.
+func (p *PDP) populateLowerHierarchyValues(valueFQN string, entitledActions *authz.EntityEntitlements_ActionsList, actionsPerAttributeValueFqn map[string]*authz.EntityEntitlements_ActionsList) error {
+	definition, err := p.getDefinition(valueFQN)
+	if err != nil {
+		return fmt.Errorf("failed to get attribute definition: %w", err)
+	}
+	if definition.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+		lower := false
+		for _, value := range definition.GetValues() {
+			if lower {
+				actionsPerAttributeValueFqn[value.GetFqn()] = entitledActions
+			}
+			if value.GetFqn() == valueFQN {
+				lower = true
+			}
 		}
 	}
-	return subjectMappings, nil
+	return nil
 }

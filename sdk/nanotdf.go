@@ -61,7 +61,7 @@ type NanoTDFHeader struct {
 	bindCfg             bindingConfig
 	sigCfg              signatureConfig
 	EphemeralKey        []byte
-	PolicyMode          policyType
+	PolicyMode          PolicyType
 	PolicyBody          []byte
 	gmacPolicyBinding   []byte
 	ecdsaPolicyBindingR []byte
@@ -655,9 +655,9 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	}
 	size += uint32(l)
 
-	policyMode := policyType(oneBytes[0])
-	if !validNanoTDFPolicyMode(policyMode) {
-		return header, 0, fmt.Errorf("unsupported policy mode: %v", policyMode)
+	policyMode := PolicyType(oneBytes[0])
+	if err := validNanoTDFPolicyMode(policyMode); err != nil {
+		return header, 0, errors.Join(fmt.Errorf("unsupported policy mode: %v", policyMode), err)
 	}
 
 	// Read policy length

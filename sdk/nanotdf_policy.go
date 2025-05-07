@@ -14,17 +14,22 @@ import (
 //
 // ============================================================================================================
 
-type policyType uint8
+type PolicyType uint8
 
 const (
-	NanoTDFPolicyModeRemote                   policyType = 0
-	NanoTDFPolicyModePlainText                policyType = 1
-	NanoTDFPolicyModeEncrypted                policyType = 2
-	NanoTDFPolicyModeEncryptedPolicyKeyAccess policyType = 3
+	NanoTDFPolicyModeRemote PolicyType = iota
+	NanoTDFPolicyModePlainText
+	NanoTDFPolicyModeEncrypted
+	NanoTDFPolicyModeEncryptedPolicyKeyAccess
+)
+
+var (
+	ErrNanoTDFUnsupportedPolicyMode = errors.New("unsupported policy mode")
+	ErrNanoTDFInvalidPolicyMode     = errors.New("invalid policy mode")
 )
 
 type PolicyBody struct {
-	mode policyType
+	mode PolicyType
 	rp   remotePolicy
 	ep   embeddedPolicy
 }
@@ -47,7 +52,7 @@ type PolicyBody struct {
 
 // readPolicyBody - helper function to decode input data into a PolicyBody object
 func (pb *PolicyBody) readPolicyBody(reader io.Reader) error {
-	var mode policyType
+	var mode PolicyType
 	if err := binary.Read(reader, binary.BigEndian, &mode); err != nil {
 		return err
 	}
@@ -101,12 +106,14 @@ func (pb *PolicyBody) writePolicyBody(writer io.Writer) error {
 	return nil
 }
 
-func validNanoTDFPolicyMode(mode policyType) bool {
+func validNanoTDFPolicyMode(mode PolicyType) error {
 	switch mode {
-	case NanoTDFPolicyModeRemote, NanoTDFPolicyModePlainText, NanoTDFPolicyModeEncrypted, NanoTDFPolicyModeEncryptedPolicyKeyAccess:
-		return true
+	case NanoTDFPolicyModePlainText, NanoTDFPolicyModeEncrypted:
+		return nil
+	case NanoTDFPolicyModeRemote, NanoTDFPolicyModeEncryptedPolicyKeyAccess:
+		return ErrNanoTDFUnsupportedPolicyMode
 	default:
-		return false
+		return ErrNanoTDFInvalidPolicyMode
 	}
 }
 

@@ -26,7 +26,7 @@ type NanoTDFConfig struct {
 	policy        policyInfo
 	bindCfg       bindingConfig
 	collectionCfg *collectionConfig
-	policyMode    policyType // Added field for policy mode
+	policyMode    PolicyType // Added field for policy mode
 }
 
 type NanoTDFOption func(*NanoTDFConfig) error
@@ -92,9 +92,9 @@ func (config *NanoTDFConfig) EnableCollection() {
 }
 
 // SetPolicyMode sets whether the policy should be encrypted or plaintext
-func (config *NanoTDFConfig) SetPolicyMode(mode policyType) error {
-	if !validNanoTDFPolicyMode(mode) {
-		return fmt.Errorf("invalid policy mode")
+func (config *NanoTDFConfig) SetPolicyMode(mode PolicyType) error {
+	if err := validNanoTDFPolicyMode(mode); err != nil {
+		return err
 	}
 	config.policyMode = mode
 	return nil

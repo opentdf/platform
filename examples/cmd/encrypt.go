@@ -152,22 +152,14 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		// Handle policy mode if nanoTDF
 		switch policyMode {
 		case "plaintext":
-			err := nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModePlainText)
-			if err != nil {
-				return err
-			}
+			err = nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModePlainText)
 		case "encrypted":
-			err := nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModeEncrypted)
-			if err != nil {
-				return err
-			}
-		case "encrypted-policy-key-access":
-			err := nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModeEncryptedPolicyKeyAccess)
-			if err != nil {
-				return err
-			}
+			err = nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModeEncrypted)
 		default:
-			return fmt.Errorf("unsupported policy mode: %s", policyMode)
+			err = fmt.Errorf("unsupported policy mode: %s", policyMode)
+		}
+		if err != nil {
+			return err
 		}
 
 		for i, writer := range writer {

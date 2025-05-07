@@ -155,8 +155,8 @@ func TestSetPolicyMode(t *testing.T) {
 		conf, err := s.NewNanoTDFConfig()
 		require.NoError(t, err)
 
-		err = conf.SetPolicyMode(policyType(99)) // Assuming 99 is an invalid policyType
+		err = conf.SetPolicyMode(PolicyType(99)) // Assuming 99 is an invalid policyType
 		require.Error(t, err)
-		assert.NotEqual(t, policyType(99), conf.policyMode)
+		assert.NotEqual(t, PolicyType(99), conf.policyMode)
 	})
 }

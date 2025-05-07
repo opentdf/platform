@@ -81,6 +81,8 @@ const (
 	kNanoTDFGMACLength = 8
 	ErrUser            = Error("request error")
 	ErrInternal        = Error("internal error")
+
+	ErrNanoTDFPolicyModeUnsupported = Error("unsupported policy mode")
 )
 
 func err400(s string) error {
@@ -880,34 +882,34 @@ func extractNanoPolicy(symmetricKey trust.ProtectedKey, header sdk.NanoTDFHeader
 		kIvLen = 12
 	)
 
-	// Check if policy is plaintext
-	if header.PolicyMode == sdk.NanoTDFPolicyModePlainText {
-		var policy Policy
+	var policy Policy
+	switch header.PolicyMode {
+	case sdk.NanoTDFPolicyModePlainText:
 		err := json.Unmarshal(header.PolicyBody, &policy)
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshalling plaintext policy: %w", err)
 		}
 		return &policy, nil
-	}
 
-	// Handle encrypted policy
-	iv := make([]byte, kIvLen)
-	tagSize, err := sdk.SizeOfAuthTagForCipher(header.GetCipher())
-	if err != nil {
-		return nil, fmt.Errorf("SizeOfAuthTagForCipher failed: %w", err)
-	}
+	case sdk.NanoTDFPolicyModeEncrypted:
+		iv := make([]byte, kIvLen)
+		tagSize, err := sdk.SizeOfAuthTagForCipher(header.GetCipher())
+		if err != nil {
+			return nil, fmt.Errorf("SizeOfAuthTagForCipher failed: %w", err)
+		}
 
-	policyData, err := symmetricKey.DecryptAESGCM(iv, header.PolicyBody, tagSize)
-	if err != nil {
-		return nil, fmt.Errorf("error decrypting policy body: %w", err)
-	}
+		policyData, err := symmetricKey.DecryptAESGCM(iv, header.PolicyBody, tagSize)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting policy body: %w", err)
+		}
 
-	var policy Policy
-	err = json.Unmarshal(policyData, &policy)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling encrypted policy: %w", err)
+		err = json.Unmarshal(policyData, &policy)
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshalling encrypted policy: %w", err)
+		}
+		return &policy, nil
 	}
-	return &policy, nil
+	return nil, errors.Join(fmt.Errorf("unsupported policy mode: %d", header.PolicyMode), ErrNanoTDFPolicyModeUnsupported)
 }
 
 func failAllKaos(reqs []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, results policyKAOResults, err error) {

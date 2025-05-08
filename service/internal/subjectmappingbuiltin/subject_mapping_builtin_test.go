@@ -36,37 +36,35 @@ func BenchmarkEvaluateSubjectMappings(b *testing.B) {
 	}
 }
 
-// evaluate condition IN
-var inCondition1 policy.Condition = policy.Condition{
-	SubjectExternalSelectorValue: ".attributes.testing[]",
-	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-	SubjectExternalValues:        []string{"option1", "option2"},
-}
-
-var entity1 = map[string]interface{}{
-	"attributes": map[string]interface{}{
-		"testing": []any{"option1", "option3"},
-	},
-}
-
 var (
+	// evaluate condition IN
+	inCondition1 policy.Condition = policy.Condition{
+		SubjectExternalSelectorValue: ".attributes.testing[]",
+		Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+		SubjectExternalValues:        []string{"option1", "option2"},
+	}
+
+	entity1 = map[string]interface{}{
+		"attributes": map[string]interface{}{
+			"testing": []any{"option1", "option3"},
+		},
+	}
+
 	flattenedEntity1, _ = flattening.Flatten(entity1)
 	entity2             = map[string]any{
 		"attributes": map[string]interface{}{
 			"testing": []any{"option4", "option3"},
 		},
 	}
-)
 
-var (
 	flattenedEntity2, _ = flattening.Flatten(entity2)
 	entity3             = map[string]any{
 		"attributes": map[string]interface{}{
 			"testing": []any{"option1", "option4"},
 		},
 	}
+	flattenedEntity3, _ = flattening.Flatten(entity3)
 )
-var flattenedEntity3, _ = flattening.Flatten(entity3)
 
 func Test_EvaluateConditionINTrue(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateCondition(&inCondition1, flattenedEntity1)
@@ -100,25 +98,27 @@ func Test_EvaluateConditionNOTINFalse(t *testing.T) {
 }
 
 // evaluate condition CONTAINS both in list
-var containsCondition1 = policy.Condition{
-	SubjectExternalSelectorValue: ".attributes.testing[]",
-	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
-	SubjectExternalValues:        []string{"option"},
-}
+var (
+	containsCondition1 = policy.Condition{
+		SubjectExternalSelectorValue: ".attributes.testing[]",
+		Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
+		SubjectExternalValues:        []string{"option"},
+	}
 
-// evaluate condition CONTAINS one in list which is 4
-var containsCondition4 = policy.Condition{
-	SubjectExternalSelectorValue: ".attributes.testing[]",
-	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
-	SubjectExternalValues:        []string{"4"},
-}
+	// evaluate condition CONTAINS one in list which is 4
+	containsCondition4 = policy.Condition{
+		SubjectExternalSelectorValue: ".attributes.testing[]",
+		Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
+		SubjectExternalValues:        []string{"4"},
+	}
 
-// evaluate condition CONTAINS
-var containsCondition2 = policy.Condition{
-	SubjectExternalSelectorValue: ".attributes.testing[]",
-	Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
-	SubjectExternalValues:        []string{"not-an-option"},
-}
+	// evaluate condition CONTAINS
+	containsCondition2 = policy.Condition{
+		SubjectExternalSelectorValue: ".attributes.testing[]",
+		Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS,
+		SubjectExternalValues:        []string{"not-an-option"},
+	}
+)
 
 func Test_EvaluateConditionCONTAINSAllTrue(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateCondition(&containsCondition1, flattenedEntity2)
@@ -191,29 +191,31 @@ func Test_EvaluateConditionGroupORFalse(t *testing.T) {
 }
 
 // evaluate subject sets
-var subjectSet1 policy.SubjectSet = policy.SubjectSet{
-	ConditionGroups: []*policy.ConditionGroup{
-		&andConditionGroup1, &orConditionGroup1,
-	},
-}
+var (
+	subjectSet1 policy.SubjectSet = policy.SubjectSet{
+		ConditionGroups: []*policy.ConditionGroup{
+			&andConditionGroup1, &orConditionGroup1,
+		},
+	}
+
+	andConditionGroup2 policy.ConditionGroup = policy.ConditionGroup{
+		BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+		Conditions: []*policy.Condition{
+			&inCondition1, &notInCondition2,
+		},
+	}
+
+	subjectSet2 policy.SubjectSet = policy.SubjectSet{
+		ConditionGroups: []*policy.ConditionGroup{
+			&andConditionGroup1, &andConditionGroup2,
+		},
+	}
+)
 
 func Test_EvaluateSubjectSetTrue(t *testing.T) {
 	res, err := subjectmappingbuiltin.EvaluateSubjectSet(&subjectSet1, flattenedEntity1)
 	require.NoError(t, err)
 	assert.True(t, res)
-}
-
-var andConditionGroup2 policy.ConditionGroup = policy.ConditionGroup{
-	BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
-	Conditions: []*policy.Condition{
-		&inCondition1, &notInCondition2,
-	},
-}
-
-var subjectSet2 policy.SubjectSet = policy.SubjectSet{
-	ConditionGroups: []*policy.ConditionGroup{
-		&andConditionGroup1, &andConditionGroup2,
-	},
 }
 
 func Test_EvaluateSubjectSetFalse(t *testing.T) {

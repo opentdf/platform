@@ -337,14 +337,10 @@ func (c PolicyDBClient) GetRegisteredResourceValuesByFQNs(ctx context.Context, r
 	for _, fqn := range r.GetFqns() {
 		normalizedFQN := strings.ToLower(fqn)
 
-		parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](fqn)
-		if err != nil {
-			return nil, err
-		}
-
-		rv, err := c.Queries.getRegisteredResourceValue(ctx, getRegisteredResourceValueParams{
-			Name:  parsed.Name,
-			Value: parsed.Value,
+		rv, err := c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
+			Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{
+				Fqn: normalizedFQN,
+			},
 		})
 		if err != nil {
 			c.logger.Error("registered resource value for FQN not found", slog.String("fqn", fqn), slog.Any("err", err))
@@ -353,19 +349,7 @@ func (c PolicyDBClient) GetRegisteredResourceValuesByFQNs(ctx context.Context, r
 
 		count++
 
-		metadata := &common.Metadata{}
-		if err = unmarshalMetadata(rv.Metadata, metadata); err != nil {
-			return nil, err
-		}
-
-		resp[normalizedFQN] = &policy.RegisteredResourceValue{
-			Id:       rv.ID,
-			Value:    rv.Value,
-			Metadata: metadata,
-			Resource: &policy.RegisteredResource{
-				Id: rv.RegisteredResourceID,
-			},
-		}
+		resp[normalizedFQN] = rv
 	}
 
 	if count == 0 {

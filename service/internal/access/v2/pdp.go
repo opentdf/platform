@@ -96,27 +96,31 @@ func getFilteredEntitleableAttributes(
 // populateLowerValuesIfHierarchy populates the lower values if the attribute is of type hierarchy
 func populateLowerValuesIfHierarchy(
 	valueFQN string,
-	attributeAndValue *attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+	entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 	entitledActions *authz.EntityEntitlements_ActionsList,
-	actionsPerAttributeValueFqn map[string]*authz.EntityEntitlements_ActionsList,
+	entitledActionsPerAttributeValueFqn map[string]*authz.EntityEntitlements_ActionsList,
 ) error {
-	if attributeAndValue == nil {
-		return fmt.Errorf("attribute and value is nil: %w", ErrInvalidAttributeDefinition)
-	}
-	if attributeAndValue.GetAttribute().GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
-		return fmt.Errorf("attribute rule is not hierarchy: %w", ErrInvalidAttributeDefinition)
+	attributeAndValue, ok := entitleableAttributes[valueFQN]
+	if !ok {
+		return fmt.Errorf("attribute value not found in memory: %s", valueFQN)
 	}
 	definition := attributeAndValue.GetAttribute()
-	if definition.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
-		lower := false
-		for _, value := range definition.GetValues() {
-			if lower {
-				actionsPerAttributeValueFqn[value.GetFqn()] = entitledActions
-			}
-			if value.GetFqn() == valueFQN {
-				lower = true
-			}
+	if definition == nil {
+		return fmt.Errorf("attribute is nil: %w", ErrInvalidAttributeDefinition)
+	}
+	if definition.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+		return nil
+	}
+
+	lower := false
+	for _, value := range definition.GetValues() {
+		if lower {
+			entitledActionsPerAttributeValueFqn[value.GetFqn()] = entitledActions
+		}
+		if value.GetFqn() == valueFQN {
+			lower = true
 		}
 	}
+
 	return nil
 }

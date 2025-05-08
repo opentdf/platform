@@ -3,31 +3,32 @@ package access
 import (
 	"fmt"
 
-	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
-	"github.com/opentdf/platform/protocol/go/entityresolution"
+	ers "github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
 // validateGetDecision validates the input parameters for GetDecision:
 //
-//   - entityChain: must not be nil and must contain at least one entity
+//   - entityRepresentation: must not be nil
 //   - action: must not be nil
 //   - resources: must not be nil and must contain at least one resource
-func validateGetDecision(entityChain *authz.EntityChain, action *policy.Action, resources []*authz.Resource) error {
-	if entityChain == nil {
-		return fmt.Errorf("entity chain is nil: %w", ErrInvalidEntityChain)
-	}
-	if len(entityChain.GetEntities()) == 0 {
-		return fmt.Errorf("entity chain is empty: %w", ErrInvalidEntityChain)
-	}
-	if action == nil {
-		return fmt.Errorf("action is nil: %w", ErrInvalidAction)
-	}
-	if len(resources) == 0 {
-		return fmt.Errorf("resources are empty: %w", ErrInvalidResourceType)
-	}
-	return nil
-}
+// func validateGetDecision(entityRepresentation *ers.EntityRepresentation, action *policy.Action, resources []*authz.Resource) error {
+// 	if entityRepresentation == nil {
+// 		return fmt.Errorf("entity chain is nil: %w", ErrInvalidEntityChain)
+// 	}
+// 	if action == nil {
+// 		return fmt.Errorf("action is nil: %w", ErrInvalidAction)
+// 	}
+// 	if len(resources) == 0 {
+// 		return fmt.Errorf("resources are empty: %w", ErrInvalidResource)
+// 	}
+// 	for _, resource := range resources {
+// 		if resource == nil {
+// 			return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
+// 		}
+// 	}
+// 	return nil
+// }
 
 // validateSubjectMapping validates the subject mapping is valid for an entitlement decision
 //
@@ -79,14 +80,17 @@ func validateAttribute(attribute *policy.Attribute) error {
 			return fmt.Errorf("attribute value FQN is empty: %w", ErrInvalidAttributeDefinition)
 		}
 	}
+	if attribute.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED {
+		return fmt.Errorf("attribute rule is unspecified: %w", ErrInvalidAttributeDefinition)
+	}
 	return nil
 }
 
 // validateEntityRepresentations validates the entity representations are valid for an entitlement decision
 //
 //   - entityRepresentations: must have at least one non-nil entity representation
-func validateEntityRepresentations(entityRepresentations []*entityresolution.EntityRepresentation) error {
-	if entityRepresentations == nil || len(entityRepresentations) == 0 {
+func validateEntityRepresentations(entityRepresentations []*ers.EntityRepresentation) error {
+	if len(entityRepresentations) == 0 {
 		return fmt.Errorf("empty entity chain: %w", ErrInvalidEntityChain)
 	}
 	for _, entity := range entityRepresentations {

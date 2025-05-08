@@ -4,98 +4,97 @@ import (
 	"errors"
 	"testing"
 
-	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestValidateGetDecision(t *testing.T) {
-	validEntityChain := &authz.EntityChain{
-		Entities: []*authz.Entity{
-			{
-				EphemeralId: "entity-1",
-			},
-		},
-	}
+// func TestValidateGetDecision(t *testing.T) {
+// 	validEntityChain := &authz.EntityChain{
+// 		Entities: []*authz.Entity{
+// 			{
+// 				EphemeralId: "entity-1",
+// 			},
+// 		},
+// 	}
 
-	validAction := &policy.Action{
-		Name: "read",
-	}
+// 	validAction := &policy.Action{
+// 		Name: "read",
+// 	}
 
-	validResources := []*authz.Resource{
-		{
-			Resource: &authz.Resource_AttributeValues_{
-				AttributeValues: &authz.Resource_AttributeValues{
-					Fqns: []string{"https://example.org/attr/classification/value/public"},
-				},
-			},
-		},
-	}
+// 	validResources := []*authz.Resource{
+// 		{
+// 			Resource: &authz.Resource_AttributeValues_{
+// 				AttributeValues: &authz.Resource_AttributeValues{
+// 					Fqns: []string{"https://example.org/attr/classification/value/public"},
+// 				},
+// 			},
+// 		},
+// 	}
 
-	tests := []struct {
-		name      string
-		chain     *authz.EntityChain
-		action    *policy.Action
-		resources []*authz.Resource
-		wantErr   error
-	}{
-		{
-			name:      "Valid inputs",
-			chain:     validEntityChain,
-			action:    validAction,
-			resources: validResources,
-			wantErr:   nil,
-		},
-		{
-			name:      "Nil entity chain",
-			chain:     nil,
-			action:    validAction,
-			resources: validResources,
-			wantErr:   ErrInvalidEntityChain,
-		},
-		{
-			name:      "Empty entity chain",
-			chain:     &authz.EntityChain{},
-			action:    validAction,
-			resources: validResources,
-			wantErr:   ErrInvalidEntityChain,
-		},
-		{
-			name:      "Nil action",
-			chain:     validEntityChain,
-			action:    nil,
-			resources: validResources,
-			wantErr:   ErrInvalidAction,
-		},
-		{
-			name:      "Empty resources",
-			chain:     validEntityChain,
-			action:    validAction,
-			resources: []*authz.Resource{},
-			wantErr:   ErrInvalidResourceType,
-		},
-		{
-			name:      "Nil resources",
-			chain:     validEntityChain,
-			action:    validAction,
-			resources: nil,
-			wantErr:   ErrInvalidResourceType,
-		},
-	}
+// 	tests := []struct {
+// 		name      string
+// 		chain     *authz.EntityChain
+// 		action    *policy.Action
+// 		resources []*authz.Resource
+// 		wantErr   error
+// 	}{
+// 		{
+// 			name:      "Valid inputs",
+// 			chain:     validEntityChain,
+// 			action:    validAction,
+// 			resources: validResources,
+// 			wantErr:   nil,
+// 		},
+// 		{
+// 			name:      "Nil entity chain",
+// 			chain:     nil,
+// 			action:    validAction,
+// 			resources: validResources,
+// 			wantErr:   ErrInvalidEntityChain,
+// 		},
+// 		{
+// 			name:      "Empty entity chain",
+// 			chain:     &authz.EntityChain{},
+// 			action:    validAction,
+// 			resources: validResources,
+// 			wantErr:   ErrInvalidEntityChain,
+// 		},
+// 		{
+// 			name:      "Nil action",
+// 			chain:     validEntityChain,
+// 			action:    nil,
+// 			resources: validResources,
+// 			wantErr:   ErrInvalidAction,
+// 		},
+// 		{
+// 			name:      "Empty resources",
+// 			chain:     validEntityChain,
+// 			action:    validAction,
+// 			resources: []*authz.Resource{},
+// 			wantErr:   ErrInvalidResourceType,
+// 		},
+// 		{
+// 			name:      "Nil resources",
+// 			chain:     validEntityChain,
+// 			action:    validAction,
+// 			resources: nil,
+// 			wantErr:   ErrInvalidResourceType,
+// 		},
+// 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateGetDecision(tt.chain, tt.action, tt.resources)
-			if tt.wantErr != nil {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v", tt.wantErr, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
-}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			err := validateGetDecision(tt.chain, tt.action, tt.resources)
+// 			if tt.wantErr != nil {
+// 				assert.Error(t, err)
+// 				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v", tt.wantErr, err)
+// 			} else {
+// 				assert.NoError(t, err)
+// 			}
+// 		})
+// 	}
+// }
 
 func TestValidateSubjectMapping(t *testing.T) {
 	validFQN := "https://example.org/attr/classification/value/public"
@@ -183,10 +182,28 @@ func TestValidateAttribute(t *testing.T) {
 		{
 			name: "Valid attribute",
 			attribute: &policy.Attribute{
+				Rule:   policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 				Fqn:    "https://example.org/attr/name",
 				Values: validValues,
 			},
 			wantErr: nil,
+		},
+		{
+			name: "Unspecified attribute rule",
+			attribute: &policy.Attribute{
+				Rule:   policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
+				Fqn:    "https://example.org/attr/name",
+				Values: validValues,
+			},
+			wantErr: ErrInvalidAttributeDefinition,
+		},
+		{
+			name: "Missing attribute rule",
+			attribute: &policy.Attribute{
+				Fqn:    "https://example.org/attr/name",
+				Values: validValues,
+			},
+			wantErr: ErrInvalidAttributeDefinition,
 		},
 		{
 			name:      "Nil attribute",
@@ -197,6 +214,7 @@ func TestValidateAttribute(t *testing.T) {
 			name: "Empty attribute FQN",
 			attribute: &policy.Attribute{
 				Fqn:    "",
+				Rule:   policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 				Values: validValues,
 			},
 			wantErr: ErrInvalidAttributeDefinition,
@@ -205,6 +223,7 @@ func TestValidateAttribute(t *testing.T) {
 			name: "Empty attribute values",
 			attribute: &policy.Attribute{
 				Fqn:    "https://example.org/attr/name",
+				Rule:   policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 				Values: []*policy.Value{},
 			},
 			wantErr: ErrInvalidAttributeDefinition,
@@ -213,6 +232,7 @@ func TestValidateAttribute(t *testing.T) {
 			name: "Nil attribute values",
 			attribute: &policy.Attribute{
 				Fqn:    "https://example.org/attr/name",
+				Rule:   policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 				Values: nil,
 			},
 			wantErr: ErrInvalidAttributeDefinition,
@@ -221,6 +241,7 @@ func TestValidateAttribute(t *testing.T) {
 			name: "Nil value in attribute values",
 			attribute: &policy.Attribute{
 				Fqn:    "https://example.org/attr/name",
+				Rule:   policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 				Values: []*policy.Value{nil},
 			},
 			wantErr: ErrInvalidAttributeDefinition,
@@ -228,7 +249,8 @@ func TestValidateAttribute(t *testing.T) {
 		{
 			name: "Empty FQN in attribute value",
 			attribute: &policy.Attribute{
-				Fqn: "https://example.org/attr/name",
+				Fqn:  "https://example.org/attr/name",
+				Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 				Values: []*policy.Value{
 					{
 						Fqn: "",

@@ -174,12 +174,7 @@ message CreateRegisteredResourceValueRequest {
   ];
 
   // Optional
-  repeated ActionAttributeValue action_attribute_values = 3 [
-    (buf.validate.field).repeated = {
-      min_items: 0,
-      unique: true,
-    }
-  ];
+  repeated ActionAttributeValue action_attribute_values = 3;
   
   // Optional
   // Common metadata

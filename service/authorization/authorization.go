@@ -265,6 +265,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 					decisionResp := &authorization.DecisionResponse{
 						Decision:      authorization.DecisionResponse_DECISION_DENY,
 						EntityChainId: ec.GetId(),
+						// TODO: make this real
 						Action: &policy.Action{
 							Value: &policy.Action_Standard{
 								Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
@@ -429,6 +430,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			decisionResp := &authorization.DecisionResponse{
 				Decision:      decision,
 				EntityChainId: ec.GetId(),
+				// TODO: make this real
 				Action: &policy.Action{
 					Value: &policy.Action_Standard{
 						Standard: policy.Action_STANDARD_ACTION_TRANSMIT,

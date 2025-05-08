@@ -1,12 +1,12 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "entityresolution/entity_resolution.proto",
+    "title": "authorization/v2/authorization.proto",
     "version": "version not set"
   },
   "tags": [
     {
-      "name": "EntityResolutionService"
+      "name": "AuthorizationService"
     }
   ],
   "consumes": [
@@ -15,155 +15,91 @@
   "produces": [
     "application/json"
   ],
-  "paths": {
-    "/entityresolution/entitychain": {
-      "post": {
-        "operationId": "EntityResolutionService_CreateEntityChainFromJwt",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/entityresolutionCreateEntityChainFromJwtResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/entityresolutionCreateEntityChainFromJwtRequest"
-            }
-          }
-        ],
-        "tags": [
-          "EntityResolutionService"
-        ]
-      }
-    },
-    "/entityresolution/resolve": {
-      "post": {
-        "operationId": "EntityResolutionService_ResolveEntities",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/entityresolutionResolveEntitiesResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/entityresolutionResolveEntitiesRequest"
-            }
-          }
-        ],
-        "tags": [
-          "EntityResolutionService"
-        ]
-      }
-    }
-  },
+  "paths": {},
   "definitions": {
-    "authorizationEntity": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
-        "emailAddress": {
-          "type": "string",
-          "title": "one of the entity options must be set"
-        },
-        "userName": {
-          "type": "string"
-        },
-        "remoteClaimsUrl": {
-          "type": "string"
-        },
-        "uuid": {
-          "type": "string"
-        },
-        "claims": {
-          "$ref": "#/definitions/protobufAny"
-        },
-        "custom": {
-          "$ref": "#/definitions/authorizationEntityCustom"
-        },
-        "clientId": {
-          "type": "string"
-        },
-        "category": {
-          "$ref": "#/definitions/authorizationEntityCategory"
-        }
-      },
-      "title": "PE (Person Entity) or NPE (Non-Person Entity)"
-    },
-    "authorizationEntityCategory": {
+    "ActionStandardAction": {
       "type": "string",
       "enum": [
-        "CATEGORY_UNSPECIFIED",
-        "CATEGORY_SUBJECT",
-        "CATEGORY_ENVIRONMENT"
+        "STANDARD_ACTION_UNSPECIFIED",
+        "STANDARD_ACTION_DECRYPT",
+        "STANDARD_ACTION_TRANSMIT"
       ],
-      "default": "CATEGORY_UNSPECIFIED"
+      "default": "STANDARD_ACTION_UNSPECIFIED",
+      "title": "- STANDARD_ACTION_DECRYPT: Deprecated\nMigrate to 'read' action name\n - STANDARD_ACTION_TRANSMIT: Deprecated\nMigrate to 'create' action name"
     },
-    "authorizationEntityChain": {
+    "EntityEntitlementsActionsList": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
-        "entities": {
+        "actions": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationEntity"
+            "$ref": "#/definitions/policyAction"
+          }
+        }
+      }
+    },
+    "ResourceAttributeValues": {
+      "type": "object",
+      "properties": {
+        "fqns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "authorizationv2DecisionRequest": {
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/definitions/authorizationv2EntityChain"
+        },
+        "action": {
+          "$ref": "#/definitions/policyAction"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2Resource"
           }
         }
       },
-      "title": "A set of related PE and NPE"
+      "title": "Can the entity (PE or NPE) represented by one entity chain take the provided action on each resource"
     },
-    "authorizationEntityCustom": {
+    "authorizationv2DecisionResponse": {
       "type": "object",
       "properties": {
-        "extension": {
-          "$ref": "#/definitions/protobufAny"
-        }
-      },
-      "title": "Entity type for custom entities beyond the standard types"
-    },
-    "authorizationToken": {
-      "type": "object",
-      "properties": {
-        "id": {
+        "ephemeralEntityChainId": {
           "type": "string",
           "title": "ephemeral id for tracking between request and response"
         },
-        "jwt": {
+        "ephemeralResourceId": {
           "type": "string",
-          "title": "the token"
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "action": {
+          "$ref": "#/definitions/policyAction",
+          "title": "action that was requested"
+        },
+        "decision": {
+          "$ref": "#/definitions/authorizationv2DecisionResponseDecision",
+          "description": "optional list of obligations represented in URI format\n repeated string obligations = 5;",
+          "title": "the decision response"
         }
       }
+    },
+    "authorizationv2DecisionResponseDecision": {
+      "type": "string",
+      "enum": [
+        "DECISION_UNSPECIFIED",
+        "DECISION_DENY",
+        "DECISION_PERMIT"
+      ],
+      "default": "DECISION_UNSPECIFIED",
+      "title": "- DECISION_PERMIT: DECISION_OBLIGATED = 3;"
     },
     "authorizationv2Entity": {
       "type": "object",
@@ -205,59 +141,14 @@
       ],
       "default": "CATEGORY_UNSPECIFIED"
     },
-    "entityresolutionCreateEntityChainFromJwtRequest": {
+    "authorizationv2EntityChain": {
       "type": "object",
       "properties": {
-        "tokens": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationToken"
-          }
-        }
-      },
-      "title": "Example: Get Entity chains for tokens aaaaaa and bbbbbb\n{\n\"tokens\": [\n\"aaaaaaa\",\n\"bbbbbbbb\"\n]\n}"
-    },
-    "entityresolutionCreateEntityChainFromJwtResponse": {
-      "type": "object",
-      "properties": {
-        "entityChains": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationEntityChain"
-          }
-        }
-      },
-      "title": "Example: Return the entity chains from the provided tokens\n{\n\"entity_chains\": [\n{\n\"id\": \"tok1\",\n\"entities\": [\n{\n\"clientId\": \"client1\"\n}\n]\n},\n{\n\"id\": \"tok2\",\n\"entities\": [\n{\n\"userName\": \"alice\",\n\"clientId\": \"client2\"\n}\n]\n}\n]\n}"
-    },
-    "entityresolutionEntityRepresentation": {
-      "type": "object",
-      "properties": {
-        "additionalProps": {
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
-        },
-        "originalId": {
+        "ephemeralId": {
           "type": "string",
-          "title": "ephemeral entity id from the request"
-        }
-      }
-    },
-    "entityresolutionResolveEntitiesRequest": {
-      "type": "object",
-      "properties": {
-        "entities": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationEntity"
-          },
-          "title": "either v1 or v2 authorization entities are permitted, but not both"
+          "title": "ephemeral id for tracking between request and response"
         },
-        "entitiesV2": {
+        "entities": {
           "type": "array",
           "items": {
             "type": "object",
@@ -265,20 +156,114 @@
           }
         }
       },
-      "title": "Example: Get idp attributes for bob and alice (both represented using an email address\n{\n\"entities\": [\n{\n\"id\": \"e1\",\n\"emailAddress\": \"bob@example.org\"\n},\n{\n\"id\": \"e2\",\n\"emailAddress\": \"alice@example.org\"\n}\n]\n}"
+      "title": "A set of related PE and NPE (i.e. authenticating client and user)"
     },
-    "entityresolutionResolveEntitiesResponse": {
+    "authorizationv2EntityEntitlements": {
       "type": "object",
       "properties": {
-        "entityRepresentations": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/entityresolutionEntityRepresentation"
+        "ephemeralId": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "actionsPerAttributeValueFqn": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/EntityEntitlementsActionsList"
           }
         }
       },
-      "title": "Example: Get idp attributes for bob and alice\n{\n\"entity_representations\": [\n{\n\"idp_entity_id\": \"e1\",\n\"additional_props\": {\"someAttr1\":\"someValue1\"}\n},\n{\n\"idp_entity_id\": \"e2\",\n\"additional_props\": {\"someAttr2\":\"someValue2\"}\n}\n]\n}"
+      "title": "Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]"
+    },
+    "authorizationv2GetEntitlementsResponse": {
+      "type": "object",
+      "properties": {
+        "entitlements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationv2EntityEntitlements"
+          }
+        }
+      }
+    },
+    "authorizationv2Token": {
+      "type": "object",
+      "properties": {
+        "ephemeralId": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "jwt": {
+          "type": "string",
+          "title": "access token"
+        }
+      }
+    },
+    "authorizationv2TokenDecisionRequest": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "$ref": "#/definitions/authorizationv2Token"
+        },
+        "action": {
+          "$ref": "#/definitions/policyAction"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2Resource"
+          }
+        }
+      },
+      "title": "Can the entity (PE or NPE) represented by this token take the provided action on the set of resources"
+    },
+    "commonMetadata": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "created_at set by server (entity who created will recorded in an audit event)"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "updated_at set by server (entity who updated will recorded in an audit event)"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "optional short description"
+        }
+      },
+      "title": "Struct to uniquely identify a resource with optional additional metadata"
+    },
+    "policyAction": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Generated uuid in database"
+        },
+        "standard": {
+          "$ref": "#/definitions/ActionStandardAction",
+          "title": "Deprecated"
+        },
+        "custom": {
+          "type": "string",
+          "title": "Deprecated"
+        },
+        "name": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        }
+      },
+      "title": "An action an entity can take"
     },
     "protobufAny": {
       "type": "object",
@@ -290,14 +275,6 @@
       },
       "additionalProperties": {},
       "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
-    },
-    "protobufNullValue": {
-      "type": "string",
-      "enum": [
-        "NULL_VALUE"
-      ],
-      "default": "NULL_VALUE",
-      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\nThe JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
     },
     "rpcStatus": {
       "type": "object",
@@ -317,6 +294,62 @@
           }
         }
       }
+    },
+    "v2GetDecisionBulkByTokenResponse": {
+      "type": "object",
+      "properties": {
+        "decisionResponses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationv2DecisionResponse"
+          }
+        }
+      }
+    },
+    "v2GetDecisionBulkResponse": {
+      "type": "object",
+      "properties": {
+        "decisionResponses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationv2DecisionResponse"
+          }
+        }
+      }
+    },
+    "v2GetDecisionByTokenResponse": {
+      "type": "object",
+      "properties": {
+        "decisionResponse": {
+          "$ref": "#/definitions/authorizationv2DecisionResponse"
+        }
+      }
+    },
+    "v2GetDecisionResponse": {
+      "type": "object",
+      "properties": {
+        "decisionResponse": {
+          "$ref": "#/definitions/authorizationv2DecisionResponse"
+        }
+      }
+    },
+    "v2Resource": {
+      "type": "object",
+      "properties": {
+        "ephemeralId": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "attributeValues": {
+          "$ref": "#/definitions/ResourceAttributeValues"
+        },
+        "registeredResourceValueFqn": {
+          "type": "string"
+        }
+      },
+      "title": "Either a set of attribute values (such as those on a TDF) or a registered resource value"
     }
   }
 }

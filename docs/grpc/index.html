@@ -867,6 +867,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.ChangeMappings"><span class="badge">M</span>ChangeMappings</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.CreateKeyAccessServerRequest"><span class="badge">M</span>CreateKeyAccessServerRequest</a>
                 </li>
               
@@ -7467,6 +7471,37 @@ Attribute &lt;&gt; Key Access Server RPCs
 
         
       
+        <h3 id="policy.kasregistry.ChangeMappings">ChangeMappings</h3>
+        <p>Simplified information about the resources that were rotated as part of the key rotation process.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.CreateKeyAccessServerRequest">CreateKeyAccessServerRequest</h3>
         <p></p>
 
@@ -8807,22 +8842,22 @@ Pagination request for the list of keys </p></td>
                 </tr>
               
                 <tr>
-                  <td>attribute_definition_ids</td>
-                  <td><a href="#string">string</a></td>
+                  <td>attribute_definition_mappings</td>
+                  <td><a href="#policy.kasregistry.ChangeMappings">ChangeMappings</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>namespace_ids</td>
-                  <td><a href="#string">string</a></td>
+                  <td>attribute_value_mappings</td>
+                  <td><a href="#policy.kasregistry.ChangeMappings">ChangeMappings</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
                 <tr>
-                  <td>value_ids</td>
-                  <td><a href="#string">string</a></td>
+                  <td>namespace_mappings</td>
+                  <td><a href="#policy.kasregistry.ChangeMappings">ChangeMappings</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>

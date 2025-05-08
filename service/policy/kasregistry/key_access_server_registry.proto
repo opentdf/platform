@@ -504,14 +504,23 @@ message RotateKeyRequest {
   }
 }
 
+
+  /**
+  * Simplified information about the resources that were rotated as part of the key rotation process.
+  */
+  message ChangeMappings {
+    string id = 1;
+    string fqn = 2;
+  }
+
 /*
 * All resources that were rotated as part of the key rotation process
 */
 message RotatedResources {
   KasKey rotated_out_key = 1; // The old key that was rotated out
-  repeated string attribute_definition_ids = 2;
-  repeated string namespace_ids = 3;
-  repeated string value_ids = 4;
+  repeated ChangeMappings attribute_definition_mappings = 2;
+  repeated ChangeMappings attribute_value_mappings = 3;
+  repeated ChangeMappings namespace_mappings = 4;
 }
 
 // Response message for the RotateKey request

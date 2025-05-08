@@ -8,7 +8,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	kasr "github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 	"github.com/opentdf/platform/service/logger"
@@ -392,7 +391,7 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 			return err
 		}
 
-		auditParams.Updated = &kasregistry.RotateKeyResponse{
+		auditParams.Updated = &kasr.RotateKeyResponse{
 			RotatedResources: &kasr.RotatedResources{
 				RotatedOutKey: &policy.KasKey{
 					KasId: resp.GetRotatedResources().GetRotatedOutKey().GetKasId(),
@@ -401,9 +400,9 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 						KeyStatus: resp.GetRotatedResources().GetRotatedOutKey().GetKey().GetKeyStatus(),
 					},
 				},
-				AttributeDefinitionIds: resp.GetRotatedResources().GetAttributeDefinitionIds(),
-				NamespaceIds:           resp.GetRotatedResources().GetNamespaceIds(),
-				ValueIds:               resp.GetRotatedResources().GetValueIds(),
+				AttributeDefinitionMappings: resp.GetRotatedResources().GetAttributeDefinitionMappings(),
+				NamespaceMappings:           resp.GetRotatedResources().GetNamespaceMappings(),
+				AttributeValueMappings:      resp.GetRotatedResources().GetAttributeValueMappings(),
 			},
 			KasKey: &policy.KasKey{
 				KasId: resp.GetKasKey().GetKasId(),

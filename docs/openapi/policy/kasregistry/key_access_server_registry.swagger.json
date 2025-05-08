@@ -372,6 +372,18 @@
       "default": "METADATA_UPDATE_ENUM_UNSPECIFIED",
       "title": "- METADATA_UPDATE_ENUM_UNSPECIFIED: unspecified update type\n - METADATA_UPDATE_ENUM_EXTEND: only update the fields that are provided\n - METADATA_UPDATE_ENUM_REPLACE: replace the entire metadata with the provided metadata"
     },
+    "kasregistryChangeMappings": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "fqn": {
+          "type": "string"
+        }
+      },
+      "description": "*\nSimplified information about the resources that were rotated as part of the key rotation process."
+    },
     "kasregistryCreateKeyAccessServerRequest": {
       "type": "object",
       "properties": {
@@ -572,22 +584,25 @@
           "$ref": "#/definitions/policyKasKey",
           "title": "The old key that was rotated out"
         },
-        "attributeDefinitionIds": {
+        "attributeDefinitionMappings": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "object",
+            "$ref": "#/definitions/kasregistryChangeMappings"
           }
         },
-        "namespaceIds": {
+        "attributeValueMappings": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "object",
+            "$ref": "#/definitions/kasregistryChangeMappings"
           }
         },
-        "valueIds": {
+        "namespaceMappings": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "object",
+            "$ref": "#/definitions/kasregistryChangeMappings"
           }
         }
       },

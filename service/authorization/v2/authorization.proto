@@ -121,7 +121,8 @@ message GetEntitlementsRequest {
   // list of requested entities
   // todo: should this be an entity chain?
   repeated Entity entities = 1;
-  // optional parameter to return all entitled values for attribute definitions with hierarchy rules
+  // optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
+  // down the hierarchical values instead of returning solely the value that is directly entitled
   optional bool with_comprehensive_hierarchy = 3;
 }
 message GetEntitlementsResponse {

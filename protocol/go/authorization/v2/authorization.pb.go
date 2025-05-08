@@ -868,7 +868,8 @@ type GetEntitlementsRequest struct {
 	// list of requested entities
 	// todo: should this be an entity chain?
 	Entities []*Entity `protobuf:"bytes,1,rep,name=entities,proto3" json:"entities,omitempty"`
-	// optional parameter to return all entitled values for attribute definitions with hierarchy rules
+	// optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
+	// down the hierarchical values instead of returning solely the value that is directly entitled
 	WithComprehensiveHierarchy *bool `protobuf:"varint,3,opt,name=with_comprehensive_hierarchy,json=withComprehensiveHierarchy,proto3,oneof" json:"with_comprehensive_hierarchy,omitempty"`
 }
 

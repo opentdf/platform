@@ -114,13 +114,14 @@ message GetDecisionBulkResponse {
 }
 
 // What can the entity do, broken down as permitted actions on attribute value FQNs
+//
+// Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use
+// GetDecision if the resource is known
 message GetEntitlementsRequest {
   // list of requested entities
   // todo: should this be an entity chain?
   repeated Entity entities = 1;
-  // optional resource as a scope
-  optional Resource scope = 2;
-  // optional parameter to return a full list of entitlements - returns lower hierarchy attributes
+  // optional parameter to return all entitled values for attribute definitions with hierarchy rules
   optional bool with_comprehensive_hierarchy = 3;
 }
 message GetEntitlementsResponse {

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
+	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,7 +20,6 @@ func TestValidateGetDecision(t *testing.T) {
 	}
 
 	validAction := &policy.Action{
-		Id:   "action-1",
 		Name: "read",
 	}
 
@@ -217,11 +217,72 @@ func TestValidateAttribute(t *testing.T) {
 			},
 			wantErr: ErrInvalidAttributeDefinition,
 		},
+		{
+			name: "Nil value in attribute values",
+			attribute: &policy.Attribute{
+				Fqn:    "https://example.org/attr/name",
+				Values: []*policy.Value{nil},
+			},
+			wantErr: ErrInvalidAttributeDefinition,
+		},
+		{
+			name: "Empty FQN in attribute value",
+			attribute: &policy.Attribute{
+				Fqn: "https://example.org/attr/name",
+				Values: []*policy.Value{
+					{
+						Fqn: "",
+					},
+				},
+			},
+			wantErr: ErrInvalidAttributeDefinition,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateAttribute(tt.attribute)
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v", tt.wantErr, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateEntityRepresentations(t *testing.T) {
+	tests := []struct {
+		name                  string
+		entityRepresentations []*entityresolution.EntityRepresentation
+		wantErr               error
+	}{
+		{
+			name:                  "Valid entity representations",
+			entityRepresentations: []*entityresolution.EntityRepresentation{{}},
+			wantErr:               nil,
+		},
+		{
+			name:                  "Nil entity representations",
+			entityRepresentations: nil,
+			wantErr:               ErrInvalidEntityChain,
+		},
+		{
+			name:                  "Empty entity representations",
+			entityRepresentations: []*entityresolution.EntityRepresentation{},
+			wantErr:               ErrInvalidEntityChain,
+		},
+		{
+			name:                  "Entity representation is nil",
+			entityRepresentations: []*entityresolution.EntityRepresentation{nil},
+			wantErr:               ErrInvalidEntityChain,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateEntityRepresentations(tt.entityRepresentations)
 			if tt.wantErr != nil {
 				assert.Error(t, err)
 				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v", tt.wantErr, err)

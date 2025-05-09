@@ -24,14 +24,13 @@ type ConnectRpcConnection struct {
 // Internal config struct for building SDK options.
 type config struct {
 	// Platform configuration structure is subject to change. Consume via accessor methods.
-	PlatformConfiguration PlatformConfiguration
-	extraClientOptions    []connect.ClientOption
-	httpClient            *http.Client
-	clientCredentials     *oauth.ClientCredentials
-	tokenExchange         *oauth.TokenExchangeInfo
-	tokenEndpoint         string
-	scopes                []string
-	// extraDialOptions                   []grpc.DialOption
+	PlatformConfiguration              PlatformConfiguration
+	extraClientOptions                 []connect.ClientOption
+	httpClient                         *http.Client
+	clientCredentials                  *oauth.ClientCredentials
+	tokenExchange                      *oauth.TokenExchangeInfo
+	tokenEndpoint                      string
+	scopes                             []string
 	certExchange                       *oauth.CertExchangeInfo
 	kasSessionKey                      *ocrypto.RsaKeyPair
 	dpopKey                            *ocrypto.RsaKeyPair
@@ -59,10 +58,6 @@ type nanoFeatures struct {
 }
 
 type PlatformConfiguration map[string]interface{}
-
-// func (c *config) build() []grpc.DialOption {
-// 	return []grpc.DialOption{c.dialOption}
-// }
 
 // WithInsecureSkipVerifyConn returns an Option that sets up HTTPS connection without verification.
 func WithInsecureSkipVerifyConn() Option {
@@ -157,12 +152,6 @@ func WithTokenExchange(subjectToken string, audience []string) Option {
 	}
 }
 
-// func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
-// 	return func(c *config) {
-// 		c.extraDialOptions = dialOptions
-// 	}
-// }
-
 // The session key pair is used to encrypt responses from KAS for a given session
 // and can be reused across an entire session.
 // Please use with caution.
@@ -227,6 +216,7 @@ func WithCustomCoreConnection(conn *ConnectRpcConnection) Option {
 	}
 }
 
+// WithExtraClientOptions returns an Option that adds extra connect rpc client options to the conect rpc clients
 func WithExtraClientOptions(opts ...connect.ClientOption) Option {
 	return func(c *config) {
 		c.extraClientOptions = opts

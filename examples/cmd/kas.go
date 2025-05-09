@@ -138,7 +138,7 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 		slog.Error("CreateKeyAccessServer", "uri", uri, "publicKey", uri+"/v2/kas_public_key")
 		return "", err
 	}
-	return ur.Msg.KeyAccessServer.GetId(), nil
+	return ur.Msg.GetKeyAccessServer().GetId(), nil
 }
 
 func algString2Proto(a string) policy.KasPublicKeyAlgEnum {

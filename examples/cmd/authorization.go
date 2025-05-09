@@ -70,7 +70,7 @@ func authorizationExamples() error {
 
 	// map response back to entity chain id
 	decisionsByEntityChain := make(map[string]*authorization.DecisionResponse)
-	for _, dr := range decisionResponse.Msg.DecisionResponses {
+	for _, dr := range decisionResponse.Msg.GetDecisionResponses() {
 		decisionsByEntityChain[dr.EntityChainId] = dr
 	}
 

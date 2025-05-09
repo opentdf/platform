@@ -116,7 +116,7 @@ func listAttributes(cmd *cobra.Command) error {
 		if err != nil {
 			return err
 		}
-		slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.Msg.Namespaces)))
+		slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.Msg.GetNamespaces())))
 		for _, n := range listResp.Msg.GetNamespaces() {
 			nsuris = append(nsuris, n.GetFqn())
 		}
@@ -215,7 +215,7 @@ func addNamespace(ctx context.Context, s *sdk.SDK, u string) (string, error) {
 		slog.Error("CreateNamespace", "err", err)
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
-	return resp.Msg.Namespace.GetId(), nil
+	return resp.Msg.GetNamespace().GetId(), nil
 }
 
 func addAttribute(cmd *cobra.Command) error {
@@ -373,7 +373,7 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 		if err != nil {
 			return err
 		}
-		for _, b := range ar.Msg.Attribute.GetGrants() {
+		for _, b := range ar.Msg.GetAttribute().GetGrants() {
 			kasids = append(kasids, b.GetId())
 			kasById[b.GetId()] = b.GetUri()
 		}
@@ -480,5 +480,5 @@ func upsertAttr(ctx context.Context, s *sdk.SDK, auth, name string, values []str
 		slog.Error("CreateAttribute", "err", err, "auth", auth, "name", name, "values", values, "rule", ruler())
 		return "", err
 	}
-	return av.Msg.Attribute.GetId(), nil
+	return av.Msg.GetAttribute().GetId(), nil
 }

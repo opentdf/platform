@@ -15,10 +15,6 @@ jobs:
       contents: write
       pull-requests: write
     runs-on: ubuntu-latest
-    outputs:
-      paths_released: ${{ steps.release-please.outputs.paths_released }}
-      releases_created: ${{ steps.release-please.outputs.releases_created }}
-      to_update: ${{ steps.todo.outputs.TO_UPDATE }}
     steps:
       - name: Generate a token
         id: generate_token

@@ -322,7 +322,6 @@ message KeyAccessServer {
   // Kas keys associated with this KAS
   repeated KasKey kas_keys = 5;
 
-
   // Optional
   // Unique name of the KAS instance
   string name = 20;
@@ -435,7 +434,6 @@ message RegisteredResourceValue {
   common.Metadata metadata = 100;
 }
 
-
 // Supported key algorithms.
 enum Algorithm {
   ALGORITHM_UNSPECIFIED = 0;
@@ -468,6 +466,7 @@ enum KeyMode {
 message KasKey {
   string kas_id = 1;
   AsymmetricKey key = 2;
+  string kas_uri = 3;
 }
 
 message AsymmetricKey {

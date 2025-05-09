@@ -529,6 +529,7 @@ WITH target_definition AS (
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
                     'kas_id', kask.key_access_server_id,
+                    'kas_uri', kas.uri,
                     'key', JSONB_BUILD_OBJECT(
                         'id', kask.id,
                         'key_id', kask.key_id,
@@ -541,6 +542,7 @@ WITH target_definition AS (
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_definition_public_key_map k
         INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.definition_id
     ) defk ON ad.id = defk.definition_id
     WHERE fqns.fqn = ANY(@fqns::TEXT[]) 
@@ -576,6 +578,7 @@ namespaces AS (
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
                     'kas_id', kask.key_access_server_id,
+                    'kas_uri', kas.uri,
                     'key', JSONB_BUILD_OBJECT(
                         'id', kask.id,
                         'key_id', kask.key_id,
@@ -588,6 +591,7 @@ namespaces AS (
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_namespace_public_key_map k
         INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.namespace_id
     ) nmp_keys ON n.id = nmp_keys.namespace_id
 	WHERE n.active = TRUE
@@ -669,6 +673,7 @@ values AS (
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
                     'kas_id', kask.key_access_server_id,
+                    'kas_uri', kas.uri,
                     'key', JSONB_BUILD_OBJECT(
                         'id', kask.id,
                         'key_id', kask.key_id,
@@ -681,6 +686,7 @@ values AS (
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_value_public_key_map k
         INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.value_id
     ) value_keys ON av.id = value_keys.value_id                        
 	WHERE av.active = TRUE
@@ -759,11 +765,13 @@ LEFT JOIN (
                     'key_algorithm', kask.key_algorithm,
                     'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
                 ),
-                'kas_id', kask.key_access_server_id
+                'kas_id', kask.key_access_server_id,
+                'kas_uri', kas.uri
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_definition_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+    INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
     GROUP BY k.definition_id
 ) defk ON ad.id = defk.definition_id
 WHERE (sqlc.narg('id')::uuid IS NULL OR ad.id = sqlc.narg('id')::uuid)
@@ -866,6 +874,7 @@ LEFT JOIN (
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
                 'kas_id', kask.key_access_server_id,
+                'kas_uri', kas.uri,
                 'key', JSONB_BUILD_OBJECT(
                     'id', kask.id,
                     'key_id', kask.key_id,
@@ -878,6 +887,7 @@ LEFT JOIN (
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_value_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+    INNER JOIN key_access_servers kas ON kas.id = kask.key_access_server_id
     GROUP BY k.value_id
 ) value_keys ON av.id = value_keys.value_id   
 WHERE (sqlc.narg('id')::uuid IS NULL OR av.id = sqlc.narg('id')::uuid)
@@ -1097,6 +1107,7 @@ LEFT JOIN (
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
                 'kas_id', kask.key_access_server_id,
+                'kas_uri', kas.uri,
                 'key', JSONB_BUILD_OBJECT(
                     'id', kask.id,
                     'key_id', kask.key_id,
@@ -1109,6 +1120,7 @@ LEFT JOIN (
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_namespace_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+    INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
     GROUP BY k.namespace_id
 ) nmp_keys ON ns.id = nmp_keys.namespace_id
 WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL 

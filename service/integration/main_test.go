@@ -61,7 +61,6 @@ func TestMain(m *testing.M) {
 		export TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED=true; # needed to run Reaper (alternative disable it TESTCONTAINERS_RYUK_DISABLED=true)
 		export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock; # needed to apply the bind with statfs
 	*/
-
 	var providerType tc.ProviderType
 
 	if os.Getenv("TESTCONTAINERS_PODMAN") == "true" {

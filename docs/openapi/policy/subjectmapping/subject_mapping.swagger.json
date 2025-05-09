@@ -699,6 +699,9 @@
         },
         "key": {
           "$ref": "#/definitions/policyAsymmetricKey"
+        },
+        "kasUri": {
+          "type": "string"
         }
       }
     },

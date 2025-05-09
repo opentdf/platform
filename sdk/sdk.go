@@ -395,7 +395,6 @@ func IsValidNanoTdf(reader io.ReadSeeker) (bool, error) {
 
 // Test connectability to the platform and validate a healthy status
 func ValidateHealthyPlatformConnection(platformEndpoint string, httpClient *http.Client) error {
-
 	healthClient := connect.NewClient[healthpb.HealthCheckRequest, healthpb.HealthCheckResponse](
 		httpClient,
 		platformEndpoint+"/grpc.health.v1.Health/Check",

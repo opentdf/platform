@@ -298,11 +298,12 @@ func Start(f ...StartOptions) error {
 	}
 
 	logger.Info("starting services")
-	err = startServices(ctx, cfg, otdf, client, logger, svcRegistry)
+	gatewayCleanup, err := startServices(ctx, cfg, otdf, client, logger, svcRegistry)
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
 	}
+	defer gatewayCleanup()
 
 	// Start watching the configuration for changes with registered config change service hooks
 	if err := cfg.Watch(ctx); err != nil {

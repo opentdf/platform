@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
-	"github.com/opentdf/platform/protocol/go/entityresolution"
 	ers "github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -278,12 +277,12 @@ func TestValidateAttribute(t *testing.T) {
 func TestValidateEntityRepresentations(t *testing.T) {
 	tests := []struct {
 		name                  string
-		entityRepresentations []*entityresolution.EntityRepresentation
+		entityRepresentations []*ers.EntityRepresentation
 		wantErr               error
 	}{
 		{
 			name:                  "Valid entity representations",
-			entityRepresentations: []*entityresolution.EntityRepresentation{{}},
+			entityRepresentations: []*ers.EntityRepresentation{{}},
 			wantErr:               nil,
 		},
 		{
@@ -293,12 +292,12 @@ func TestValidateEntityRepresentations(t *testing.T) {
 		},
 		{
 			name:                  "Empty entity representations",
-			entityRepresentations: []*entityresolution.EntityRepresentation{},
+			entityRepresentations: []*ers.EntityRepresentation{},
 			wantErr:               ErrInvalidEntityChain,
 		},
 		{
 			name:                  "Entity representation is nil",
-			entityRepresentations: []*entityresolution.EntityRepresentation{nil},
+			entityRepresentations: []*ers.EntityRepresentation{nil},
 			wantErr:               ErrInvalidEntityChain,
 		},
 	}

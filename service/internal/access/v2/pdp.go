@@ -148,9 +148,9 @@ func populateHigherValuesIfHierarchy(
 	return nil
 }
 
-// getDecisionOnOneResource evaluates the access decision for a single resource, driving the flows
+// getResourceDecision evaluates the access decision for a single resource, driving the flows
 // between entitlement checks for the different types of resources
-func getDecisionOnOneResource(
+func getResourceDecision(
 	ctx context.Context,
 	logger *logger.Logger,
 	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
@@ -158,7 +158,7 @@ func getDecisionOnOneResource(
 	action *policy.Action,
 	resource *authz.Resource,
 ) (*Decision, error) {
-	if err := validateAccess(accessibleAttributeValues, entitlements, action, resource); err != nil {
+	if err := validateGetResourceDecision(accessibleAttributeValues, entitlements, action, resource); err != nil {
 		return nil, err
 	}
 

@@ -137,7 +137,7 @@ func (p *InMemoryPDP) GetDecision(ctx context.Context, entityRepresentation *ers
 		Results: make([]DataRuleResult, 0),
 	}
 	for _, resource := range resources {
-		d, err := getDecisionOnOneResource(ctx, p.logger, decisionableAttributes, entitledFQNsToActions, action, resource)
+		d, err := getResourceDecision(ctx, p.logger, decisionableAttributes, entitledFQNsToActions, action, resource)
 		if err != nil || d == nil {
 			p.logger.ErrorContext(ctx, "error evaluating decision", slog.String("error", err.Error()), slog.Any("resource", resource))
 			return nil, err

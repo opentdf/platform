@@ -4,97 +4,98 @@ import (
 	"errors"
 	"testing"
 
+	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
+	ers "github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
+	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// func TestValidateGetDecision(t *testing.T) {
-// 	validEntityChain := &authz.EntityChain{
-// 		Entities: []*authz.Entity{
-// 			{
-// 				EphemeralId: "entity-1",
-// 			},
-// 		},
-// 	}
+func TestValidateGetDecision(t *testing.T) {
+	validEntityRepresentation := &ers.EntityRepresentation{
+		OriginalId: "entity-id",
+		AdditionalProps: []*structpb.Struct{
+			{
+				Fields: map[string]*structpb.Value{
+					"key": structpb.NewStringValue("value"),
+				},
+			},
+		},
+	}
 
-// 	validAction := &policy.Action{
-// 		Name: "read",
-// 	}
+	validAction := &policy.Action{
+		Name: "read",
+	}
 
-// 	validResources := []*authz.Resource{
-// 		{
-// 			Resource: &authz.Resource_AttributeValues_{
-// 				AttributeValues: &authz.Resource_AttributeValues{
-// 					Fqns: []string{"https://example.org/attr/classification/value/public"},
-// 				},
-// 			},
-// 		},
-// 	}
+	validResources := []*authz.Resource{
+		{
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{"https://example.org/attr/classification/value/public"},
+				},
+			},
+		},
+	}
 
-// 	tests := []struct {
-// 		name      string
-// 		chain     *authz.EntityChain
-// 		action    *policy.Action
-// 		resources []*authz.Resource
-// 		wantErr   error
-// 	}{
-// 		{
-// 			name:      "Valid inputs",
-// 			chain:     validEntityChain,
-// 			action:    validAction,
-// 			resources: validResources,
-// 			wantErr:   nil,
-// 		},
-// 		{
-// 			name:      "Nil entity chain",
-// 			chain:     nil,
-// 			action:    validAction,
-// 			resources: validResources,
-// 			wantErr:   ErrInvalidEntityChain,
-// 		},
-// 		{
-// 			name:      "Empty entity chain",
-// 			chain:     &authz.EntityChain{},
-// 			action:    validAction,
-// 			resources: validResources,
-// 			wantErr:   ErrInvalidEntityChain,
-// 		},
-// 		{
-// 			name:      "Nil action",
-// 			chain:     validEntityChain,
-// 			action:    nil,
-// 			resources: validResources,
-// 			wantErr:   ErrInvalidAction,
-// 		},
-// 		{
-// 			name:      "Empty resources",
-// 			chain:     validEntityChain,
-// 			action:    validAction,
-// 			resources: []*authz.Resource{},
-// 			wantErr:   ErrInvalidResourceType,
-// 		},
-// 		{
-// 			name:      "Nil resources",
-// 			chain:     validEntityChain,
-// 			action:    validAction,
-// 			resources: nil,
-// 			wantErr:   ErrInvalidResourceType,
-// 		},
-// 	}
+	tests := []struct {
+		name      string
+		entityRep *ers.EntityRepresentation
+		action    *policy.Action
+		resources []*authz.Resource
+		wantErr   error
+	}{
+		{
+			name:      "Valid inputs",
+			entityRep: validEntityRepresentation,
+			action:    validAction,
+			resources: validResources,
+			wantErr:   nil,
+		},
+		{
+			name:      "Nil entity representation",
+			entityRep: nil,
+			action:    validAction,
+			resources: validResources,
+			wantErr:   ErrInvalidEntityChain,
+		},
+		{
+			name:      "Nil action",
+			entityRep: validEntityRepresentation,
+			action:    nil,
+			resources: validResources,
+			wantErr:   ErrInvalidAction,
+		},
+		{
+			name:      "Empty resources",
+			entityRep: validEntityRepresentation,
+			action:    validAction,
+			resources: []*authz.Resource{},
+			wantErr:   ErrInvalidResource,
+		},
+		{
+			name:      "Nil resources",
+			entityRep: validEntityRepresentation,
+			action:    validAction,
+			resources: nil,
+			wantErr:   ErrInvalidResource,
+		},
+	}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			err := validateGetDecision(tt.chain, tt.action, tt.resources)
-// 			if tt.wantErr != nil {
-// 				assert.Error(t, err)
-// 				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v", tt.wantErr, err)
-// 			} else {
-// 				assert.NoError(t, err)
-// 			}
-// 		})
-// 	}
-// }
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateGetDecision(tt.entityRep, tt.action, tt.resources)
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v", tt.wantErr, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
 
 func TestValidateSubjectMapping(t *testing.T) {
 	validFQN := "https://example.org/attr/classification/value/public"
@@ -308,6 +309,118 @@ func TestValidateEntityRepresentations(t *testing.T) {
 			if tt.wantErr != nil {
 				assert.Error(t, err)
 				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v", tt.wantErr, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateGetResourceDecision(t *testing.T) {
+	// non-nil policy map
+	validDecisionableAttributes := map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		"https://example.org/attr/classification/value/public": {},
+	}
+
+	// non-nil entitlements mapmap
+	validEntitledFQNsToActions := map[string][]*policy.Action{
+		"https://example.org/attr/name/value/public": {},
+	}
+
+	// non-nil action
+	validAction := &policy.Action{
+		Name: actions.ActionNameRead,
+	}
+
+	// non-nil resource
+	validResource := &authz.Resource{
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{
+				Fqns: []string{"https://example.org/attr/classification/value/public"},
+			},
+		},
+	}
+
+	tests := []struct {
+		name                      string
+		accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
+		entitlements              map[string][]*policy.Action
+		action                    *policy.Action
+		resource                  *authz.Resource
+		wantErr                   error
+	}{
+		{
+			name:                      "Valid inputs",
+			accessibleAttributeValues: validDecisionableAttributes,
+			entitlements:              validEntitledFQNsToActions,
+			action:                    validAction,
+			resource:                  validResource,
+			wantErr:                   nil,
+		},
+		{
+			name:                      "Nil accessible attribute values",
+			accessibleAttributeValues: nil,
+			entitlements:              validEntitledFQNsToActions,
+			action:                    validAction,
+			resource:                  validResource,
+			wantErr:                   ErrMissingRequiredPolicy,
+		},
+		{
+			name:                      "Nil entitlements",
+			accessibleAttributeValues: validDecisionableAttributes,
+			entitlements:              nil,
+			action:                    validAction,
+			resource:                  validResource,
+			wantErr:                   ErrInvalidEntitledFQNsToActions,
+		},
+		{
+			name:                      "Nil action",
+			accessibleAttributeValues: validDecisionableAttributes,
+			entitlements:              validEntitledFQNsToActions,
+			action:                    nil,
+			resource:                  validResource,
+			wantErr:                   ErrInvalidAction,
+		},
+		{
+			name:                      "Nil resource",
+			accessibleAttributeValues: validDecisionableAttributes,
+			entitlements:              validEntitledFQNsToActions,
+			action:                    validAction,
+			resource:                  nil,
+			wantErr:                   ErrInvalidResource,
+		},
+		{
+			name:                      "Empty accessible attribute values",
+			accessibleAttributeValues: map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{},
+			entitlements:              validEntitledFQNsToActions,
+			action:                    validAction,
+			resource:                  validResource,
+			wantErr:                   ErrMissingRequiredPolicy,
+		},
+		{
+			name:                      "Empty action",
+			accessibleAttributeValues: validDecisionableAttributes,
+			entitlements:              validEntitledFQNsToActions,
+			action:                    &policy.Action{},
+			resource:                  validResource,
+			wantErr:                   ErrInvalidAction,
+		},
+		{
+			name:                      "Empty resource",
+			accessibleAttributeValues: validDecisionableAttributes,
+			entitlements:              validEntitledFQNsToActions,
+			action:                    validAction,
+			resource:                  &authz.Resource{},
+			wantErr:                   ErrInvalidResource,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateGetResourceDecision(tt.accessibleAttributeValues, tt.entitlements, tt.action, tt.resource)
+			if tt.wantErr != nil {
+				assert.Error(t, err)
+				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v in %s", tt.wantErr, err, tt.name)
 			} else {
 				assert.NoError(t, err)
 			}

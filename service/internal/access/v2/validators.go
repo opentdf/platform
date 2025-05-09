@@ -16,8 +16,8 @@ import (
 //   - action: must not be nil
 //   - resources: must not be nil and must contain at least one resource
 func validateGetDecision(entityRepresentation *ers.EntityRepresentation, action *policy.Action, resources []*authz.Resource) error {
-	if entityRepresentation == nil {
-		return fmt.Errorf("entity chain is nil: %w", ErrInvalidEntityChain)
+	if err := validateEntityRepresentations([]*ers.EntityRepresentation{entityRepresentation}); err != nil {
+		return fmt.Errorf("invalid entity representation: %w", err)
 	}
 	if action == nil {
 		return fmt.Errorf("action is nil: %w", ErrInvalidAction)
@@ -105,20 +105,20 @@ func validateEntityRepresentations(entityRepresentations []*ers.EntityRepresenta
 	return nil
 }
 
-// validateAccess validates the parameters for an access decision on a resource
+// validateOneResourceDecision validates the parameters for an access decision on a resource
 //
 //   - accessibleAttributeValues: must not be nil
 //   - entitlements: must not be nil
 //   - action: must not be nil
 //   - resource: must not be nil
-func validateAccess(accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, entitlements subjectmappingbuiltin.AttributeValueFQNsToActions, action *policy.Action, resource *authz.Resource) error {
+func validateGetResourceDecision(accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, entitlements subjectmappingbuiltin.AttributeValueFQNsToActions, action *policy.Action, resource *authz.Resource) error {
 	if entitlements == nil {
 		return fmt.Errorf("entitled FQNs to actions are nil: %w", ErrInvalidEntitledFQNsToActions)
 	}
-	if action == nil {
-		return fmt.Errorf("action is nil: %w", ErrInvalidAction)
+	if action.GetName() == "" {
+		return fmt.Errorf("action name required: %w", ErrInvalidAction)
 	}
-	if resource == nil {
+	if resource.GetResource() == nil {
 		return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
 	}
 	if len(accessibleAttributeValues) == 0 {

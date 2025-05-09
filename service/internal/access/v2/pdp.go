@@ -5,21 +5,13 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/opentdf/platform/lib/identifier"
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
+	ers "github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
 )
-
-var defaultFallbackLoggerConfig = logger.Config{
-	Level:  "info",
-	Type:   "json",
-	Output: "stdout",
-}
-
-// === Structures ===
 
 // Decision represents the overall access decision for an entity.
 type Decision struct {
@@ -40,377 +32,241 @@ type EntitlementFailure struct {
 	ActionName        string `json:"action"`
 }
 
-// getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions canmap
-func getDefinition(valueFQN string, allDefinitionsByDefFQN map[string]*policy.Attribute) (*policy.Attribute, error) {
-	parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](valueFQN)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse attribute value FQN: %w", err)
-	}
-	def := &identifier.FullyQualifiedAttribute{
-		Namespace: parsed.Namespace,
-		Name:      parsed.Name,
-	}
-
-	definition, ok := allDefinitionsByDefFQN[def.FQN()]
-	if !ok {
-		return nil, fmt.Errorf("definition not found: %w", err)
-	}
-	return definition, nil
+// PolicyDecisionPoint represents the Policy Decision Point component with all of policy passed in by the caller.
+// All decisions and entitlements are evaluated against the in-memory policy.
+type PolicyDecisionPoint struct {
+	logger                             *logger.Logger
+	allEntitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
+	// allRegisteredResourcesByValueFQN map[string]*policy.RegisteredResourceValue
 }
 
-// getFilteredEntitleableAttributes filters the entitleable attributes to only those that are in the optional matched subject mappings
-func getFilteredEntitleableAttributes(
-	matchedSubjectMappings []*policy.SubjectMapping,
-	allEntitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
-) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	filtered := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+var defaultFallbackLoggerConfig = logger.Config{
+	Level:  "info",
+	Type:   "json",
+	Output: "stdout",
+}
 
-	for _, sm := range matchedSubjectMappings {
+// PolicyDecisionPoint creates a new Policy Decision Point instance.
+// It is presumed that all Attribute Definitions and Subject Mappings are valid and contain the entirety of entitlement policy.
+func NewPolicyDecisionPoint(
+	ctx context.Context,
+	l *logger.Logger,
+	allAttributeDefinitions []*policy.Attribute,
+	allSubjectMappings []*policy.SubjectMapping,
+	// TODO: take in all registered resources and store them in memory by value FQN
+	// allRegisteredResources []*policy.RegisteredResource,
+) (*PolicyDecisionPoint, error) {
+	var err error
+
+	if l == nil {
+		l, err = logger.NewLogger(defaultFallbackLoggerConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize new PDP logger and none was provided: %w", err)
+		}
+	}
+
+	if (allAttributeDefinitions != nil && allSubjectMappings == nil) ||
+		(allAttributeDefinitions == nil && allSubjectMappings != nil) ||
+		(allAttributeDefinitions == nil && allSubjectMappings == nil) {
+		l.ErrorContext(ctx, "invalid arguments", slog.String("error", ErrMissingRequiredPolicy.Error()))
+		return nil, ErrMissingRequiredPolicy
+	}
+
+	// Build lookup maps to in-memory policy
+	allAttributesByDefinitionFQN := make(map[string]*policy.Attribute)
+	allEntitleableAttributesByValueFQN := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+	for _, attr := range allAttributeDefinitions {
+		if err := validateAttribute(attr); err != nil {
+			l.Error("invalid attribute definition", slog.String("error", err.Error()))
+			return nil, fmt.Errorf("invalid attribute definition: %w", err)
+		}
+		allAttributesByDefinitionFQN[attr.GetFqn()] = attr
+	}
+	for _, sm := range allSubjectMappings {
+		if err := validateSubjectMapping(sm); err != nil {
+			l.Error("invalid subject mapping", slog.String("error", err.Error()))
+			return nil, fmt.Errorf("invalid subject mapping: %w", err)
+		}
 		mappedValue := sm.GetAttributeValue()
 		mappedValueFQN := mappedValue.GetFqn()
-
-		if _, ok := allEntitleableAttributesByValueFQN[mappedValueFQN]; !ok {
-			return nil, fmt.Errorf("invalid attribute value FQN in optional matched subject mappings: %w", ErrInvalidSubjectMapping)
+		if _, ok := allEntitleableAttributesByValueFQN[mappedValueFQN]; ok {
+			allEntitleableAttributesByValueFQN[mappedValueFQN].Value.SubjectMappings = append(allEntitleableAttributesByValueFQN[mappedValueFQN].Value.SubjectMappings, sm)
+			continue
 		}
 		// Take subject mapping's attribute value and its definition from memory
-		attributeAndValue, ok := allEntitleableAttributesByValueFQN[mappedValueFQN]
-		if !ok {
-			return nil, fmt.Errorf("attribute value not found in memory: %s", mappedValueFQN)
+		parentDefinition, err := getDefinition(mappedValueFQN, allAttributesByDefinitionFQN)
+		if err != nil {
+			l.Error("failed to get attribute definition", slog.String("error", err.Error()))
+			return nil, fmt.Errorf("failed to get attribute definition: %w", err)
 		}
-		parentDefinition := attributeAndValue.GetAttribute()
-
+		mappedValue.SubjectMappings = []*policy.SubjectMapping{sm}
 		mapped := &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 			Value:     mappedValue,
 			Attribute: parentDefinition,
 		}
-		filtered[mappedValueFQN] = mapped
+		allEntitleableAttributesByValueFQN[mappedValueFQN] = mapped
+
 	}
 
-	return filtered, nil
+	pdp := &PolicyDecisionPoint{
+		l,
+		allEntitleableAttributesByValueFQN,
+	}
+	return pdp, nil
 }
 
-// populateLowerValuesIfHierarchy populates the lower values if the attribute is of type hierarchy
-func populateLowerValuesIfHierarchy(
-	valueFQN string,
-	entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
-	entitledActions *authz.EntityEntitlements_ActionsList,
-	entitledActionsPerAttributeValueFqn map[string]*authz.EntityEntitlements_ActionsList,
-) error {
-	attributeAndValue, ok := entitleableAttributes[valueFQN]
-	if !ok {
-		return fmt.Errorf("attribute value not found in memory: %s", valueFQN)
+func (p *PolicyDecisionPoint) GetDecision(ctx context.Context, entityRepresentation *ers.EntityRepresentation, action *policy.Action, resources []*authz.Resource) (*Decision, error) {
+	loggable := []any{
+		slog.String("entity ID", entityRepresentation.GetOriginalId()),
+		slog.String("action", action.GetName()),
+		slog.Int("resources total", len(resources)),
 	}
-	definition := attributeAndValue.GetAttribute()
-	if definition == nil {
-		return fmt.Errorf("attribute is nil: %w", ErrInvalidAttributeDefinition)
-	}
-	if definition.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
-		return nil
-	}
+	p.logger.DebugContext(ctx, "getting decision", loggable...)
 
-	lower := false
-	for _, value := range definition.GetValues() {
-		if lower {
-			entitledActionsPerAttributeValueFqn[value.GetFqn()] = entitledActions
-		}
-		if value.GetFqn() == valueFQN {
-			lower = true
-		}
-	}
-
-	return nil
-}
-
-// populateHigherValuesIfHierarchy sets the higher values if the attribute is of type hierarchy to
-// the decisionable attributes map
-func populateHigherValuesIfHierarchy(
-	valueFQN string,
-	definition *policy.Attribute,
-	decisionableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
-) error {
-	if definition == nil {
-		return fmt.Errorf("attribute is nil: %w", ErrInvalidAttributeDefinition)
-	}
-	if definition.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
-		return nil
-	}
-
-	for _, value := range definition.GetValues() {
-		if value.GetFqn() == valueFQN {
-			break
-		}
-		decisionableAttributes[value.GetFqn()] = &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-			Value:     value,
-			Attribute: definition,
-		}
-	}
-
-	return nil
-}
-
-// getResourceDecision evaluates the access decision for a single resource, driving the flows
-// between entitlement checks for the different types of resources
-func getResourceDecision(
-	ctx context.Context,
-	logger *logger.Logger,
-	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
-	action *policy.Action,
-	resource *authz.Resource,
-) (*Decision, error) {
-	if err := validateGetResourceDecision(accessibleAttributeValues, entitlements, action, resource); err != nil {
+	if err := validateGetDecision(entityRepresentation, action, resources); err != nil {
+		p.logger.ErrorContext(ctx, "invalid input parameters", append(loggable, slog.String("error", err.Error()))...)
 		return nil, err
 	}
 
-	logger.DebugContext(
+	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
+	decisionableAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+	p.logger.DebugContext(ctx, "filtering to only entitlements relevant to decisioning")
+
+	for _, resource := range resources {
+		switch resource.GetResource().(type) {
+		case *authz.Resource_RegisteredResourceValueFqn:
+			// TODO: handle gathering decisionable attributes of registered resources
+
+		case *authz.Resource_AttributeValues_:
+			for _, valueFQN := range resource.GetAttributeValues().GetFqns() {
+				// If same value FQN more than once, skip
+				if _, ok := decisionableAttributes[valueFQN]; ok {
+					continue
+				}
+
+				attributeAndValue, ok := p.allEntitleableAttributesByValueFQN[valueFQN]
+				if !ok {
+					loggable = append(loggable, slog.String("error", ErrInvalidResource.Error()), slog.String("value", valueFQN), slog.Any("resource", resource))
+					p.logger.ErrorContext(ctx, "resource value FQN not found in memory", loggable...)
+					return nil, ErrInvalidResource
+				}
+
+				decisionableAttributes[valueFQN] = attributeAndValue
+				err := populateHigherValuesIfHierarchy(valueFQN, attributeAndValue.GetAttribute(), decisionableAttributes)
+				if err != nil {
+					loggable = append(loggable, slog.String("error", err.Error()), slog.String("value", valueFQN), slog.Any("resource", resource))
+					p.logger.ErrorContext(ctx, "error populating higher hierarchy attribute values", loggable...)
+					return nil, err
+				}
+			}
+
+		default:
+			// default should never happen as we validate above
+			p.logger.ErrorContext(ctx, "invalid resource type", append(loggable, slog.String("error", ErrInvalidResource.Error()), slog.Any("resource", resource))...)
+			return nil, ErrInvalidResource
+		}
+	}
+
+	// Resolve them to their entitled FQNs and the actions available on each
+	entitledFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRepresentation)
+	if err != nil {
+		// TODO: is it safe to log entities/entity representations?
+		p.logger.ErrorContext(ctx, "error evaluating subject mappings for entitlement", append(loggable, slog.String("error", err.Error()), slog.Any("entity", entityRepresentation))...)
+		return nil, err
+	}
+
+	decision := &Decision{
+		Access:  true,
+		Results: make([]DataRuleResult, 0),
+	}
+	for _, resource := range resources {
+		d, err := getResourceDecision(ctx, p.logger, decisionableAttributes, entitledFQNsToActions, action, resource)
+		if err != nil || d == nil {
+			p.logger.ErrorContext(ctx, "error evaluating decision", append(loggable, slog.String("error", err.Error()), slog.Any("resource", resource))...)
+			return nil, err
+		}
+		if !d.Access {
+			decision.Access = false
+		}
+		decision.Results = append(decision.Results, d.Results...)
+	}
+	p.logger.DebugContext(
 		ctx,
-		"getting decision on one resource",
-		slog.Any("resource", resource.GetResource()),
+		"decision results",
+		append(loggable, slog.Any("decision", decision))...,
 	)
 
-	switch resource.GetResource().(type) {
-	case *authz.Resource_RegisteredResourceValueFqn:
-		// TODO: handle registered resources
-		// return evaluateRegisteredResourceValue(ctx, resource.GetRegisteredResourceValueFqn(), action, entitlements, accessibleAttributeValues)
-	case *authz.Resource_AttributeValues_:
-		return evaluateResourceAttributeValues(ctx, logger, resource.GetAttributeValues(), action, entitlements, accessibleAttributeValues)
-
-	default:
-		return nil, fmt.Errorf("unsupported resource type: %w", ErrInvalidResource)
-	}
-	return nil, nil
+	return decision, nil
 }
 
-// evaluateResourceAttributeValues evaluates a list of attribute values against the action and entitlements
-func evaluateResourceAttributeValues(
+func (p *PolicyDecisionPoint) GetEntitlements(
 	ctx context.Context,
-	logger *logger.Logger,
-	resourceAttributeValues *authz.Resource_AttributeValues,
-	action *policy.Action,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
-	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
-) (*Decision, error) {
-	// Group value FQNs by parent definition
-	groupedByDefinition := make(map[string][]string)
-	for _, valueFQN := range resourceAttributeValues.GetFqns() {
-		attributeAndValue, okvalueFQN := accessibleAttributeValues[valueFQN]
-		if !okvalueFQN {
-			return nil, fmt.Errorf("attribute value FQN not found in memory: %s", valueFQN)
-		}
-		definition := attributeAndValue.GetAttribute()
-		groupedByDefinition[definition.GetFqn()] = append(groupedByDefinition[definition.GetFqn()], valueFQN)
+	entityRepresentations []*ers.EntityRepresentation,
+	optionalMatchedSubjectMappings []*policy.SubjectMapping,
+	withComprehensiveHierarchy bool,
+) ([]*authz.EntityEntitlements, error) {
+	loggable := []any{
+		slog.Int("entities total", len(entityRepresentations)),
+		slog.Int("matched subject mappings total", len(optionalMatchedSubjectMappings)),
+		slog.Bool("with comprehensive hierarchy", withComprehensiveHierarchy),
 	}
 
-	// Evaluate each definition by rule, resource attributes, action, and entitlements
-	passed := true
-	results := make([]DataRuleResult, 0)
-	for defFQN, valueFQNs := range groupedByDefinition {
-		definition := accessibleAttributeValues[defFQN].GetAttribute()
-		if definition == nil {
-			return nil, fmt.Errorf("definition not found for FQN: %s", defFQN)
-		}
+	p.logger.DebugContext(ctx, "getting entitlements",
+		loggable...,
+	)
+	err := validateEntityRepresentations(entityRepresentations)
+	if err != nil {
+		p.logger.Error("invalid input parameters", append(loggable, slog.String("error", err.Error()))...)
+		return nil, err
+	}
 
-		dataRuleResult, err := evaluateDefinition(ctx, logger, entitlements, action, valueFQNs, definition)
+	var entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
+
+	// Check entitlement only against the filtered matched subject mappings if provided
+	if optionalMatchedSubjectMappings != nil {
+		entitleableAttributes, err = getFilteredEntitleableAttributes(optionalMatchedSubjectMappings, p.allEntitleableAttributesByValueFQN)
 		if err != nil {
-			return nil, fmt.Errorf("failed to evaluate definition: %w", err)
+			p.logger.ErrorContext(ctx, "error filtering entitleable attributes from matched subject mappings", append(loggable, slog.String("error", err.Error()))...)
+			return nil, err
 		}
-		if !dataRuleResult.Passed {
-			passed = false
+	} else {
+		// Otherwise, use all entitleable attributes
+		entitleableAttributes = p.allEntitleableAttributesByValueFQN
+	}
+
+	// Resolve them to their entitled FQNs and the actions available on each
+	entityIDsToFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(entitleableAttributes, entityRepresentations)
+	if err != nil {
+		// TODO: is it safe to log entities/entity representations?
+		p.logger.ErrorContext(ctx, "error evaluating subject mappings for entitlement", append(loggable, slog.String("error", err.Error()), slog.Any("entities", entityRepresentations))...)
+		return nil, err
+	}
+
+	result := make([]*authz.EntityEntitlements, len(entityRepresentations))
+	for entityID, fqnsToActions := range entityIDsToFQNsToActions {
+		actionsPerAttributeValueFqn := make(map[string]*authz.EntityEntitlements_ActionsList)
+		for valueFQN, actions := range fqnsToActions {
+			entitledActions := &authz.EntityEntitlements_ActionsList{
+				Actions: actions,
+			}
+			actionsPerAttributeValueFqn[valueFQN] = entitledActions
+
+			// If comprehensive, populate the lower hierarchy values
+			if withComprehensiveHierarchy {
+				err = populateLowerValuesIfHierarchy(valueFQN, entitleableAttributes, entitledActions, actionsPerAttributeValueFqn)
+				if err != nil {
+					p.logger.ErrorContext(ctx, "error populating comprehensive lower hierarchy values",
+						append(loggable, slog.String("error", err.Error()), slog.String("value", valueFQN), slog.String("entityID", entityID))...,
+					)
+					return nil, err
+				}
+			}
+
 		}
-		results = append(results, *dataRuleResult)
-	}
-	return &Decision{
-		Access:  passed,
-		Results: results,
-	}, nil
-}
-
-func evaluateDefinition(
-	ctx context.Context,
-	logger *logger.Logger,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
-	action *policy.Action,
-	resourceValueFQNs []string,
-	attrDefinition *policy.Attribute,
-) (*DataRuleResult, error) {
-	var entitlementFailures []EntitlementFailure
-
-	logger.DebugContext(
-		ctx,
-		"evaluating definition",
-		slog.String("definition rule", attrDefinition.GetRule().String()),
-		slog.String("definition FQN", attrDefinition.GetFqn()),
-		slog.Any("entitlements", entitlements),
-		slog.String("action", action.GetName()),
-		slog.Any("resource value FQNs", resourceValueFQNs),
-	)
-
-	switch attrDefinition.GetRule() {
-	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF:
-		entitlementFailures = allOfRule(ctx, logger, entitlements, action, resourceValueFQNs)
-
-	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF:
-		entitlementFailures = anyOfRule(ctx, logger, entitlements, action, resourceValueFQNs)
-
-	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
-		entitlementFailures = hierarchyRule(ctx, logger, entitlements, action, resourceValueFQNs, attrDefinition)
-
-	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED:
-		return nil, fmt.Errorf("AttributeDefinition rule cannot be unspecified: %s, rule: %v", attrDefinition.GetFqn(), attrDefinition.GetRule())
-	default:
-		return nil, fmt.Errorf("unrecognized AttributeDefinition rule: %s", attrDefinition.GetRule())
-	}
-
-	result := &DataRuleResult{
-		Passed:         len(entitlementFailures) == 0,
-		RuleDefinition: attrDefinition,
-	}
-	if len(entitlementFailures) > 0 {
-		result.EntitlementFailures = entitlementFailures
+		result = append(result, &authz.EntityEntitlements{
+			EphemeralId:                 entityID,
+			ActionsPerAttributeValueFqn: actionsPerAttributeValueFqn,
+		})
 	}
 	return result, nil
-}
-
-// Must be entitled to the specified action on every resource attribute value FQN
-func allOfRule(
-	ctx context.Context,
-	logger *logger.Logger,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
-	action *policy.Action,
-	resourceValueFQNs []string,
-) []EntitlementFailure {
-	actionName := action.GetName()
-	failures := make([]EntitlementFailure, 0, len(resourceValueFQNs)) // Pre-allocate for efficiency
-
-	// Single loop through all resource value FQNs
-	for _, valueFQN := range resourceValueFQNs {
-		hasEntitlement := false
-
-		// Check if this FQN has the entitled action
-		if entitledActions, ok := entitlements[valueFQN]; ok {
-			for _, entitledAction := range entitledActions {
-				if entitledAction.GetName() == actionName {
-					hasEntitlement = true
-					break
-				}
-			}
-		}
-
-		// If no entitlement found for this FQN, add to failures immediately
-		if !hasEntitlement {
-			failures = append(failures, EntitlementFailure{
-				AttributeValueFQN: valueFQN,
-				ActionName:        actionName,
-			})
-		}
-	}
-
-	return failures
-}
-
-// Must be entitled to the specified action on at least one resource attribute value FQN
-func anyOfRule(
-	ctx context.Context,
-	logger *logger.Logger,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
-	action *policy.Action,
-	resourceValueFQNs []string,
-) []EntitlementFailure {
-	actionName := action.GetName()
-	anyEntitlementFound := false
-	entitlementFailures := make([]EntitlementFailure, 0, len(resourceValueFQNs))
-
-	// Single loop through all resource value FQNs
-	for _, valueFQN := range resourceValueFQNs {
-		foundEntitlementForThisFQN := false
-
-		entitledActions, ok := entitlements[valueFQN]
-		if ok {
-			for _, entitledAction := range entitledActions {
-				if entitledAction.GetName() == actionName {
-					foundEntitlementForThisFQN = true
-					anyEntitlementFound = true
-					break
-				}
-			}
-		}
-
-		if !foundEntitlementForThisFQN {
-			entitlementFailures = append(entitlementFailures, EntitlementFailure{
-				AttributeValueFQN: valueFQN,
-				ActionName:        actionName,
-			})
-		}
-	}
-
-	// Rule is satisfied if at least one FQN has the entitled action
-	if anyEntitlementFound {
-		return nil
-	}
-	return entitlementFailures
-
-}
-
-// Must be entitled to the specified action on the highest value FQN in the hierarchy
-// where highest equates to the resource attribute FQN for the value at the lowest index
-// in the hierarchical definition
-func hierarchyRule(
-	ctx context.Context,
-	logger *logger.Logger,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
-	action *policy.Action,
-	resourceValueFQNs []string,
-	attrDefinition *policy.Attribute,
-) []EntitlementFailure {
-	actionName := action.GetName()
-
-	// Constant lookup time
-	valueFQNToIndex := make(map[string]int, len(attrDefinition.GetValues()))
-	for idx, value := range attrDefinition.GetValues() {
-		valueFQNToIndex[value.GetFqn()] = idx
-	}
-
-	// Find the lowest indexed value FQN (highest in hierarchy)
-	lowestValueFQNIndex := len(attrDefinition.GetValues())
-	var highestHierarchyValueFQN string
-
-	for _, valueFQN := range resourceValueFQNs {
-		if idx, exists := valueFQNToIndex[valueFQN]; exists && idx < lowestValueFQNIndex {
-			lowestValueFQNIndex = idx
-			highestHierarchyValueFQN = valueFQN
-		}
-	}
-
-	// Check if the action is entitled to the highest value FQN
-	if entitledActions, ok := entitlements[highestHierarchyValueFQN]; ok {
-		for _, entitledAction := range entitledActions {
-			if entitledAction.GetName() == actionName {
-				return nil // Found it, so no failures
-			}
-		}
-	}
-
-	// The rule was not satisfied - collect failures
-	entitlementFailures := make([]EntitlementFailure, 0, len(resourceValueFQNs))
-
-	for _, valueFQN := range resourceValueFQNs {
-		foundValue := false
-		if entitledActions, ok := entitlements[valueFQN]; ok {
-			for _, entitledAction := range entitledActions {
-				if entitledAction.GetName() == actionName {
-					foundValue = true
-					break
-				}
-			}
-		}
-
-		if !foundValue {
-			entitlementFailures = append(entitlementFailures, EntitlementFailure{
-				AttributeValueFQN: valueFQN,
-				ActionName:        actionName,
-			})
-		}
-	}
-
-	return entitlementFailures
 }

@@ -471,13 +471,13 @@ func (s OpenTDFServer) Stop() {
 	s.logger.Info("shutdown complete")
 }
 
-func (s inProcessServer) Conn() *sdk.ConnectRpcConnection {
+func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 	var clientInterceptors []connect.Interceptor
 
 	// Add audit interceptor
 	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())
 
-	conn := sdk.ConnectRpcConnection{
+	conn := sdk.ConnectRPCConnection{
 		Client:   s.srv.Client(),
 		Endpoint: s.srv.Listener.Addr().String(),
 		Options: []connect.ClientOption{

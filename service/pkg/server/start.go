@@ -227,7 +227,7 @@ func Start(f ...StartOptions) error {
 				return errors.New("entityresolution endpoint must be provided in core mode")
 			}
 
-			ersConnectRpcConn := sdk.ConnectRpcConnection{}
+			ersConnectRpcConn := sdk.ConnectRPCConnection{}
 
 			var tlsConfig *tls.Config
 			if cfg.SDKConfig.EntityResolutionConnection.Insecure {

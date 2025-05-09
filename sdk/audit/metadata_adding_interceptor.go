@@ -64,12 +64,12 @@ func MetadataAddingConnectInterceptor() connect.UnaryInterceptorFunc {
 			req.Header().Set(string(RequestIDHeaderKey), requestID.String())
 
 			// Add the request IP to a custom header so it is preserved
-			if requestIP, ok := ctx.Value(RequestIPContextKey).(string); ok {
+			if requestIP, okIP := ctx.Value(RequestIPContextKey).(string); okIP {
 				req.Header().Set(string(RequestIPHeaderKey), requestIP)
 			}
 
 			// Add the actor ID from the request so it is preserved if we need it
-			if actorID, ok := ctx.Value(ActorIDContextKey).(string); ok {
+			if actorID, okAct := ctx.Value(ActorIDContextKey).(string); okAct {
 				req.Header().Set(string(ActorIDHeaderKey), actorID)
 			}
 

@@ -15,7 +15,7 @@ import (
 
 type Option func(*config)
 
-type ConnectRpcConnection struct {
+type ConnectRPCConnection struct {
 	Client   *http.Client
 	Endpoint string
 	Options  []connect.ClientOption
@@ -39,8 +39,8 @@ type config struct {
 	nanoFeatures                       nanoFeatures
 	customAccessTokenSource            auth.AccessTokenSource
 	oauthAccessTokenSource             oauth2.TokenSource
-	coreConn                           *ConnectRpcConnection
-	entityResolutionConn               *ConnectRpcConnection
+	coreConn                           *ConnectRPCConnection
+	entityResolutionConn               *ConnectRPCConnection
 	collectionStore                    *collectionStore
 	shouldValidatePlatformConnectivity bool
 }
@@ -122,20 +122,20 @@ func WithOAuthAccessTokenSource(t oauth2.TokenSource) Option {
 }
 
 // Deprecated: Use WithCustomCoreConnection instead
-func WithCustomPolicyConnection(conn *ConnectRpcConnection) Option {
+func WithCustomPolicyConnection(conn *ConnectRPCConnection) Option {
 	return func(c *config) {
 		c.coreConn = conn
 	}
 }
 
 // Deprecated: Use WithCustomCoreConnection instead
-func WithCustomAuthorizationConnection(conn *ConnectRpcConnection) Option {
+func WithCustomAuthorizationConnection(conn *ConnectRPCConnection) Option {
 	return func(c *config) {
 		c.coreConn = conn
 	}
 }
 
-func WithCustomEntityResolutionConnection(conn *ConnectRpcConnection) Option {
+func WithCustomEntityResolutionConnection(conn *ConnectRPCConnection) Option {
 	return func(c *config) {
 		c.entityResolutionConn = conn
 	}
@@ -172,7 +172,7 @@ func WithSessionSignerRSA(key *rsa.PrivateKey) Option {
 	}
 }
 
-func WithCustomWellknownConnection(conn *ConnectRpcConnection) Option {
+func WithCustomWellknownConnection(conn *ConnectRPCConnection) Option {
 	return func(c *config) {
 		c.coreConn = conn
 	}
@@ -210,7 +210,7 @@ func WithNoKIDInKAO() Option {
 }
 
 // WithCoreConnection returns an Option that sets up a connection to the core platform
-func WithCustomCoreConnection(conn *ConnectRpcConnection) Option {
+func WithCustomCoreConnection(conn *ConnectRPCConnection) Option {
 	return func(c *config) {
 		c.coreConn = conn
 	}

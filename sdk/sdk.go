@@ -63,7 +63,7 @@ type SDK struct {
 	config
 	*kasKeyCache
 	*collectionStore
-	conn                    *ConnectRpcConnection
+	conn                    *ConnectRPCConnection
 	tokenSource             auth.AccessTokenSource
 	Actions                 actionsconnect.ActionServiceClient
 	Attributes              attributesconnect.AttributesServiceClient
@@ -81,8 +81,8 @@ type SDK struct {
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	var (
-		platformConn *ConnectRpcConnection // Connection to the platform
-		ersConn      *ConnectRpcConnection // Connection to ERS (possibly remote)
+		platformConn *ConnectRPCConnection // Connection to the platform
+		ersConn      *ConnectRPCConnection // Connection to ERS (possibly remote)
 		err          error
 	)
 
@@ -144,7 +144,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 				return nil, errors.Join(ErrPlatformConfigFailed, err)
 			}
 		} else {
-			pcfg, err = getPlatformConfiguration(&ConnectRpcConnection{Endpoint: platformEndpoint, Client: cfg.httpClient})
+			pcfg, err = getPlatformConfiguration(&ConnectRPCConnection{Endpoint: platformEndpoint, Client: cfg.httpClient})
 			if err != nil {
 				return nil, errors.Join(ErrPlatformConfigFailed, err)
 			}
@@ -179,7 +179,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	if cfg.coreConn != nil {
 		platformConn = cfg.coreConn
 	} else {
-		platformConn = &ConnectRpcConnection{Endpoint: platformEndpoint, Client: cfg.httpClient, Options: append(cfg.extraClientOptions, connect.WithInterceptors(uci...))}
+		platformConn = &ConnectRPCConnection{Endpoint: platformEndpoint, Client: cfg.httpClient, Options: append(cfg.extraClientOptions, connect.WithInterceptors(uci...))}
 	}
 
 	if cfg.entityResolutionConn != nil {
@@ -192,7 +192,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		config:                  *cfg,
 		collectionStore:         cfg.collectionStore,
 		kasKeyCache:             newKasKeyCache(),
-		conn:                    &ConnectRpcConnection{Client: platformConn.Client, Endpoint: platformConn.Endpoint, Options: platformConn.Options},
+		conn:                    &ConnectRPCConnection{Client: platformConn.Client, Endpoint: platformConn.Endpoint, Options: platformConn.Options},
 		tokenSource:             accessTokenSource,
 		Actions:                 actionsconnect.NewActionServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Attributes:              attributesconnect.NewAttributesServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
@@ -268,7 +268,7 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 }
 
 // Conn returns the underlying http connection
-func (s SDK) Conn() *ConnectRpcConnection {
+func (s SDK) Conn() *ConnectRPCConnection {
 	return s.conn
 }
 
@@ -411,7 +411,7 @@ func ValidateHealthyPlatformConnection(platformEndpoint string, httpClient *http
 	return nil
 }
 
-func getPlatformConfiguration(conn *ConnectRpcConnection) (PlatformConfiguration, error) {
+func getPlatformConfiguration(conn *ConnectRPCConnection) (PlatformConfiguration, error) {
 	req := wellknownconfiguration.GetWellKnownConfigurationRequest{}
 	wellKnownConfig := wellknownconfigurationconnect.NewWellKnownServiceClient(conn.Client, conn.Endpoint)
 

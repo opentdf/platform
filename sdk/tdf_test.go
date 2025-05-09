@@ -288,7 +288,7 @@ type TDFSuite struct {
 	suite.Suite
 	sdk              *SDK
 	kases            []FakeKas
-	kasTestUrlLookup map[string]string
+	kasTestURLLookup map[string]string
 }
 
 func (s *TDFSuite) SetupSuite() {
@@ -327,20 +327,20 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       s.kasTestUrlLookup["https://a.kas/"],
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
 				WithDataAttributes(attributes...),
 			},
 			tdfReadOptions: []TDFReaderOption{
-				WithKasAllowlist([]string{s.kasTestUrlLookup["https://a.kas/"]}),
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}),
 			},
 		},
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       s.kasTestUrlLookup["https://a.kas/"],
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
@@ -348,14 +348,14 @@ func (s *TDFSuite) Test_SimpleTDF() {
 				WithTargetMode("0.0.0"),
 			},
 			tdfReadOptions: []TDFReaderOption{
-				WithKasAllowlist([]string{s.kasTestUrlLookup["https://a.kas/"]}),
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}),
 			},
 			useHex: true,
 		},
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       s.kasTestUrlLookup["https://d.kas/"],
+					URL:       s.kasTestURLLookup["https://d.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
@@ -364,13 +364,13 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			},
 			tdfReadOptions: []TDFReaderOption{
 				WithSessionKeyType(ocrypto.EC256Key),
-				WithKasAllowlist([]string{s.kasTestUrlLookup["https://d.kas/"]}),
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://d.kas/"]}),
 			},
 		},
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       s.kasTestUrlLookup["https://d.kas/"],
+					URL:       s.kasTestURLLookup["https://d.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
@@ -380,7 +380,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			},
 			tdfReadOptions: []TDFReaderOption{
 				WithSessionKeyType(ocrypto.EC256Key),
-				WithKasAllowlist([]string{s.kasTestUrlLookup["https://d.kas/"]}),
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://d.kas/"]}),
 			},
 			useHex: true,
 		},
@@ -500,20 +500,20 @@ func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       s.kasTestUrlLookup["https://a.kas/"],
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
 				WithDataAttributes(attributes...),
 			},
 			tdfReadOptions: []TDFReaderOption{
-				WithKasAllowlist([]string{s.kasTestUrlLookup["https://a.kas/"]}),
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}),
 			},
 		},
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       s.kasTestUrlLookup["https://a.kas/"],
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
@@ -522,12 +522,12 @@ func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
 			tdfReadOptions: []TDFReaderOption{
 				WithKasAllowlist([]string{"https://nope-not-a-kas.com/kas"}),
 			},
-			expectedError: "KasAllowlist: kas url " + s.kasTestUrlLookup["https://a.kas/"] + " is not allowed",
+			expectedError: "KasAllowlist: kas url " + s.kasTestURLLookup["https://a.kas/"] + " is not allowed",
 		},
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       s.kasTestUrlLookup["https://a.kas/"],
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
@@ -536,12 +536,12 @@ func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
 			tdfReadOptions: []TDFReaderOption{
 				withKasAllowlist(AllowList{"nope-not-a-kas.com": true}),
 			},
-			expectedError: "KasAllowlist: kas url " + s.kasTestUrlLookup["https://a.kas/"] + " is not allowed",
+			expectedError: "KasAllowlist: kas url " + s.kasTestURLLookup["https://a.kas/"] + " is not allowed",
 		},
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       s.kasTestUrlLookup["https://a.kas/"],
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
@@ -555,7 +555,7 @@ func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       s.kasTestUrlLookup["https://a.kas/"],
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
@@ -831,7 +831,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 		{
 			kasURLs := []KASInfo{
 				{
-					URL:       s.kasTestUrlLookup["https://a.kas/"],
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				},
 			}
@@ -875,12 +875,12 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 
 			var r *Reader
 			if test.verifiers == nil {
-				r, err = s.sdk.LoadTDF(readSeeker, WithDisableAssertionVerification(test.disableAssertionVerification), WithKasAllowlist([]string{s.kasTestUrlLookup["https://a.kas/"]}))
+				r, err = s.sdk.LoadTDF(readSeeker, WithDisableAssertionVerification(test.disableAssertionVerification), WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}))
 			} else {
 				r, err = s.sdk.LoadTDF(readSeeker,
 					WithAssertionVerificationKeys(*test.verifiers),
 					WithDisableAssertionVerification(test.disableAssertionVerification),
-					WithKasAllowlist([]string{s.kasTestUrlLookup["https://a.kas/"]}))
+					WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}))
 			}
 			s.Require().NoError(err)
 
@@ -1150,7 +1150,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 		{
 			kasURLs := []KASInfo{
 				{
-					URL:       s.kasTestUrlLookup["https://a.kas/"],
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				},
 			}
@@ -1209,11 +1209,11 @@ func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing 
 			payload: payload, // len: 62
 			kasInfoList: []KASInfo{
 				{
-					URL:       s.kasTestUrlLookup["http://localhost:65432/"],
+					URL:       s.kasTestURLLookup["http://localhost:65432/"],
 					PublicKey: mockRSAPublicKey1,
 				},
 				{
-					URL:       s.kasTestUrlLookup["http://localhost:65432/"],
+					URL:       s.kasTestURLLookup["http://localhost:65432/"],
 					PublicKey: mockRSAPublicKey1,
 				},
 			},
@@ -1309,11 +1309,11 @@ func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing 
 func (s *TDFSuite) Test_TDFReaderFail() {
 	kasInfoList := []KASInfo{
 		{
-			URL:       s.kasTestUrlLookup["http://localhost:65432/api/kas"],
+			URL:       s.kasTestURLLookup["http://localhost:65432/api/kas"],
 			PublicKey: mockRSAPublicKey1,
 		},
 		{
-			URL:       s.kasTestUrlLookup["http://localhost:65432/api/kas"],
+			URL:       s.kasTestURLLookup["http://localhost:65432/api/kas"],
 			PublicKey: mockRSAPublicKey1,
 		},
 	}
@@ -1642,9 +1642,9 @@ func (s *TDFSuite) Test_KeySplits() {
 			tdfFileSize: 2759,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
-				{KAS: s.kasTestUrlLookup["https://a.kas/"], SplitID: "a"},
-				{KAS: s.kasTestUrlLookup["https://b.kas/"], SplitID: "a"},
-				{KAS: s.kasTestUrlLookup[`https://c.kas/`], SplitID: "a"},
+				{KAS: s.kasTestURLLookup["https://a.kas/"], SplitID: "a"},
+				{KAS: s.kasTestURLLookup["https://b.kas/"], SplitID: "a"},
+				{KAS: s.kasTestURLLookup[`https://c.kas/`], SplitID: "a"},
 			},
 		},
 		{
@@ -1653,9 +1653,9 @@ func (s *TDFSuite) Test_KeySplits() {
 			tdfFileSize: 2759,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
-				{KAS: s.kasTestUrlLookup["https://a.kas/"], SplitID: "a"},
-				{KAS: s.kasTestUrlLookup["https://b.kas/"], SplitID: "b"},
-				{KAS: s.kasTestUrlLookup["https://c.kas/"], SplitID: "c"},
+				{KAS: s.kasTestURLLookup["https://a.kas/"], SplitID: "a"},
+				{KAS: s.kasTestURLLookup["https://b.kas/"], SplitID: "b"},
+				{KAS: s.kasTestURLLookup["https://c.kas/"], SplitID: "c"},
 			},
 		},
 		{
@@ -1664,10 +1664,10 @@ func (s *TDFSuite) Test_KeySplits() {
 			tdfFileSize: 3351,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
-				{KAS: s.kasTestUrlLookup["https://a.kas/"], SplitID: "a"},
-				{KAS: s.kasTestUrlLookup["https://b.kas/"], SplitID: "a"},
-				{KAS: s.kasTestUrlLookup["https://b.kas/"], SplitID: "b"},
-				{KAS: s.kasTestUrlLookup["https://c.kas/"], SplitID: "b"},
+				{KAS: s.kasTestURLLookup["https://a.kas/"], SplitID: "a"},
+				{KAS: s.kasTestURLLookup["https://b.kas/"], SplitID: "a"},
+				{KAS: s.kasTestURLLookup["https://b.kas/"], SplitID: "b"},
+				{KAS: s.kasTestURLLookup["https://c.kas/"], SplitID: "b"},
 			},
 		},
 	} {
@@ -1912,9 +1912,9 @@ func (s *TDFSuite) startBackend() {
 
 	s.kases = make([]FakeKas, 12)
 
-	s.kasTestUrlLookup = make(map[string]string, 12)
+	s.kasTestURLLookup = make(map[string]string, 12)
 
-	var sdkPlatformUrl string
+	var sdkPlatformURL string
 
 	for i, ki := range kasesToMake {
 
@@ -1938,18 +1938,18 @@ func (s *TDFSuite) startBackend() {
 		server := httptest.NewServer(mux)
 
 		// add to lookup reg
-		s.kasTestUrlLookup[s.kases[i].KASInfo.URL] = server.URL
+		s.kasTestURLLookup[s.kases[i].KASInfo.URL] = server.URL
 		// replace kasinfo url with httptest server url
 		s.kases[i].KASInfo.URL = server.URL
 
 		if i == 0 {
-			sdkPlatformUrl = server.URL
+			sdkPlatformURL = server.URL
 		}
 	}
 
 	ats := getTokenSource(s.T())
 
-	sdk, err := New(sdkPlatformUrl,
+	sdk, err := New(sdkPlatformURL,
 		WithClientCredentials("test", "test", nil),
 		withCustomAccessTokenSource(&ats),
 		WithTokenEndpoint("http://localhost:65432/auth/token"),
@@ -1989,7 +1989,7 @@ func (f *FakeAttributes) GetAttributeValuesByFqns(_ context.Context, in *connect
 		}
 		v := mockValueFor(av)
 		for i := range v.GetGrants() {
-			v.Grants[i].Uri = f.s.kasTestUrlLookup[v.Grants[i].Uri]
+			v.Grants[i].Uri = f.s.kasTestURLLookup[v.GetGrants()[i].GetUri()]
 		}
 		r[fqn] = &attributespb.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 			Attribute: v.GetAttribute(),
@@ -2014,7 +2014,7 @@ func (f *FakeKASRegistry) ListKeyAccessServers(_ context.Context, _ *connect.Req
 
 	for _, k := range f.kases {
 		kas := &policy.KeyAccessServer{
-			Uri: f.s.kasTestUrlLookup[k.url],
+			Uri: f.s.kasTestURLLookup[k.url],
 		}
 		resp.KeyAccessServers = append(resp.KeyAccessServers, kas)
 	}

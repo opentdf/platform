@@ -802,7 +802,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					PublicKeyCtx: validPubCtx,
 					PrivateKeyCtx: &policy.KasPrivateKeyCtx{
 						KeyId:      validKeyID,
-						WrappedKey: validPrivCtx.WrappedKey,
+						WrappedKey: validPrivCtx.GetWrappedKey(),
 					},
 					Metadata: validMetadata,
 				},

@@ -69,48 +69,131 @@ func TestGetDefinition(t *testing.T) {
 	}
 }
 
-// TODO: this test isn't very good
 func TestGetFilteredEntitleableAttributes(t *testing.T) {
-	validFQN := "https://example.org/attr/classification/value/public"
-	validAttributeAndValue := &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-		Value: &policy.Value{
-			Fqn: validFQN,
-		},
-		Attribute: &policy.Attribute{
-			Fqn: "https://example.org/attr/classification",
-		},
+	// Set up multiple attributes and values to thoroughly test filtering
+	classificationFQN := "https://example.org/attr/classification"
+	publicFQN := "https://example.org/attr/classification/value/public"
+	confidentialFQN := "https://example.org/attr/classification/value/confidential"
+	secretFQN := "https://example.org/attr/classification/value/secret"
+
+	departmentFQN := "https://example.org/attr/department"
+	hrFQN := "https://example.org/attr/department/value/hr"
+	financeFQN := "https://example.org/attr/department/value/finance"
+	itFQN := "https://example.org/attr/department/value/it"
+
+	invalidFQN := "invalid-fqn"
+
+	// Create attribute definitions
+	classificationAttr := &policy.Attribute{
+		Fqn:  classificationFQN,
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 	}
 
-	validSubjectMapping := &policy.SubjectMapping{
-		AttributeValue: &policy.Value{
-			Fqn: validFQN,
-		},
+	departmentAttr := &policy.Attribute{
+		Fqn:  departmentFQN,
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	}
 
+	// Create attribute values with mappings to their respective definitions
+	publicValue := &policy.Value{Fqn: publicFQN}
+	confidentialValue := &policy.Value{Fqn: confidentialFQN}
+	secretValue := &policy.Value{Fqn: secretFQN}
+
+	hrValue := &policy.Value{Fqn: hrFQN}
+	financeValue := &policy.Value{Fqn: financeFQN}
+	itValue := &policy.Value{Fqn: itFQN}
+
+	// Create subject mappings for some of the values
+	publicMapping := &policy.SubjectMapping{
+		AttributeValue: publicValue,
+	}
+
+	confidentialMapping := &policy.SubjectMapping{
+		AttributeValue: confidentialValue,
+	}
+
+	hrMapping := &policy.SubjectMapping{
+		AttributeValue: hrValue,
+	}
+
+	invalidMapping := &policy.SubjectMapping{
+		AttributeValue: &policy.Value{Fqn: invalidFQN},
+	}
+
+	// Create the complete map of all entitleable attributes
 	allEntitleableAttributes := map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-		validFQN: validAttributeAndValue,
+		publicFQN: {
+			Value:     publicValue,
+			Attribute: classificationAttr,
+		},
+		confidentialFQN: {
+			Value:     confidentialValue,
+			Attribute: classificationAttr,
+		},
+		secretFQN: {
+			Value:     secretValue,
+			Attribute: classificationAttr,
+		},
+		hrFQN: {
+			Value:     hrValue,
+			Attribute: departmentAttr,
+		},
+		financeFQN: {
+			Value:     financeValue,
+			Attribute: departmentAttr,
+		},
+		itFQN: {
+			Value:     itValue,
+			Attribute: departmentAttr,
+		},
 	}
 
 	tests := []struct {
 		name                     string
 		matchedSubjectMappings   []*policy.SubjectMapping
 		allEntitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
+		expectedFilteredFQNs     []string
+		unexpectedFilteredFQNs   []string
 		wantErr                  bool
 	}{
 		{
-			name:                     "Valid subject mapping",
-			matchedSubjectMappings:   []*policy.SubjectMapping{validSubjectMapping},
+			name:                     "Filter to single value",
+			matchedSubjectMappings:   []*policy.SubjectMapping{publicMapping},
 			allEntitleableAttributes: allEntitleableAttributes,
+			expectedFilteredFQNs:     []string{publicFQN},
+			unexpectedFilteredFQNs:   []string{confidentialFQN, secretFQN, hrFQN, financeFQN, itFQN},
 			wantErr:                  false,
 		},
 		{
-			name: "Invalid subject mapping",
-			matchedSubjectMappings: []*policy.SubjectMapping{{
-				AttributeValue: &policy.Value{
-					Fqn: "invalid-fqn",
-				},
-			}},
+			name:                     "Filter to multiple values from same attribute",
+			matchedSubjectMappings:   []*policy.SubjectMapping{publicMapping, confidentialMapping},
 			allEntitleableAttributes: allEntitleableAttributes,
+			expectedFilteredFQNs:     []string{publicFQN, confidentialFQN},
+			unexpectedFilteredFQNs:   []string{secretFQN, hrFQN, financeFQN, itFQN},
+			wantErr:                  false,
+		},
+		{
+			name:                     "Filter to values from different attributes",
+			matchedSubjectMappings:   []*policy.SubjectMapping{publicMapping, hrMapping},
+			allEntitleableAttributes: allEntitleableAttributes,
+			expectedFilteredFQNs:     []string{publicFQN, hrFQN},
+			unexpectedFilteredFQNs:   []string{confidentialFQN, secretFQN, financeFQN, itFQN},
+			wantErr:                  false,
+		},
+		{
+			name:                     "Empty subject mappings result in empty filtered map",
+			matchedSubjectMappings:   []*policy.SubjectMapping{},
+			allEntitleableAttributes: allEntitleableAttributes,
+			expectedFilteredFQNs:     []string{},
+			unexpectedFilteredFQNs:   []string{publicFQN, confidentialFQN, secretFQN, hrFQN, financeFQN, itFQN},
+			wantErr:                  false,
+		},
+		{
+			name:                     "Invalid FQN in subject mapping causes error",
+			matchedSubjectMappings:   []*policy.SubjectMapping{publicMapping, invalidMapping},
+			allEntitleableAttributes: allEntitleableAttributes,
+			expectedFilteredFQNs:     []string{},
+			unexpectedFilteredFQNs:   []string{},
 			wantErr:                  true,
 		},
 	}
@@ -118,11 +201,38 @@ func TestGetFilteredEntitleableAttributes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			filtered, err := getFilteredEntitleableAttributes(tt.matchedSubjectMappings, tt.allEntitleableAttributes)
+
+			// Check error handling
 			if tt.wantErr {
 				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Contains(t, filtered, validFQN, "Expected filtered results to contain valid FQN")
+				return
+			}
+			assert.NoError(t, err)
+
+			// Verify size matches expected number of filtered elements
+			assert.Equal(t, len(tt.expectedFilteredFQNs), len(filtered),
+				"Expected filtered map to have %d elements, got %d",
+				len(tt.expectedFilteredFQNs), len(filtered))
+
+			// Verify expected FQNs are present
+			for _, expectedFQN := range tt.expectedFilteredFQNs {
+				attributeAndValue, exists := filtered[expectedFQN]
+				assert.True(t, exists, "Expected filtered results to contain FQN: %s", expectedFQN)
+
+				// Verify attribute definitions are preserved from the original map
+				originalAttributeAndValue := tt.allEntitleableAttributes[expectedFQN]
+				assert.Equal(t, originalAttributeAndValue.Attribute, attributeAndValue.Attribute,
+					"Expected attribute definition to be preserved for FQN: %s", expectedFQN)
+
+				// Verify value FQN is correct
+				assert.Equal(t, expectedFQN, attributeAndValue.Value.GetFqn(),
+					"Expected value FQN to match for FQN: %s", expectedFQN)
+			}
+
+			// Verify unexpected FQNs are not present
+			for _, unexpectedFQN := range tt.unexpectedFilteredFQNs {
+				_, exists := filtered[unexpectedFQN]
+				assert.False(t, exists, "Unexpected FQN found in filtered results: %s", unexpectedFQN)
 			}
 		})
 	}

@@ -9,6 +9,7 @@ var (
 	ErrMissingRequiredPolicy                       = errors.New("access: both attribute definitions and subject mappings must be provided or neither")
 	ErrInvalidAttributeDefinition                  = errors.New("access: invalid attribute definition")
 	ErrInvalidSubjectMapping                       = errors.New("access: invalid subject mapping")
+	ErrInvalidEntitledFQNsToActions                = errors.New("access: invalid entitled FQNs to actions")
 	ErrInvalidResource                             = errors.New("access: invalid resource")
 	ErrInvalidEntityChain                          = errors.New("access: invalid entity chain")
 	ErrInvalidAction                               = errors.New("access: invalid action")

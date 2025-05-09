@@ -3,8 +3,11 @@ package access
 import (
 	"fmt"
 
+	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	ers "github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
+	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 )
 
 // validateGetDecision validates the input parameters for GetDecision:
@@ -12,23 +15,23 @@ import (
 //   - entityRepresentation: must not be nil
 //   - action: must not be nil
 //   - resources: must not be nil and must contain at least one resource
-// func validateGetDecision(entityRepresentation *ers.EntityRepresentation, action *policy.Action, resources []*authz.Resource) error {
-// 	if entityRepresentation == nil {
-// 		return fmt.Errorf("entity chain is nil: %w", ErrInvalidEntityChain)
-// 	}
-// 	if action == nil {
-// 		return fmt.Errorf("action is nil: %w", ErrInvalidAction)
-// 	}
-// 	if len(resources) == 0 {
-// 		return fmt.Errorf("resources are empty: %w", ErrInvalidResource)
-// 	}
-// 	for _, resource := range resources {
-// 		if resource == nil {
-// 			return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
-// 		}
-// 	}
-// 	return nil
-// }
+func validateGetDecision(entityRepresentation *ers.EntityRepresentation, action *policy.Action, resources []*authz.Resource) error {
+	if entityRepresentation == nil {
+		return fmt.Errorf("entity chain is nil: %w", ErrInvalidEntityChain)
+	}
+	if action == nil {
+		return fmt.Errorf("action is nil: %w", ErrInvalidAction)
+	}
+	if len(resources) == 0 {
+		return fmt.Errorf("resources are empty: %w", ErrInvalidResource)
+	}
+	for _, resource := range resources {
+		if resource == nil {
+			return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
+		}
+	}
+	return nil
+}
 
 // validateSubjectMapping validates the subject mapping is valid for an entitlement decision
 //
@@ -99,5 +102,27 @@ func validateEntityRepresentations(entityRepresentations []*ers.EntityRepresenta
 		}
 	}
 
+	return nil
+}
+
+// validateAccess validates the parameters for an access decision on a resource
+//
+//   - accessibleAttributeValues: must not be nil
+//   - entitlements: must not be nil
+//   - action: must not be nil
+//   - resource: must not be nil
+func validateAccess(accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, entitlements subjectmappingbuiltin.AttributeValueFQNsToActions, action *policy.Action, resource *authz.Resource) error {
+	if entitlements == nil {
+		return fmt.Errorf("entitled FQNs to actions are nil: %w", ErrInvalidEntitledFQNsToActions)
+	}
+	if action == nil {
+		return fmt.Errorf("action is nil: %w", ErrInvalidAction)
+	}
+	if resource == nil {
+		return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
+	}
+	if len(accessibleAttributeValues) == 0 {
+		return fmt.Errorf("accessible attribute values are empty: %w", ErrMissingRequiredPolicy)
+	}
 	return nil
 }

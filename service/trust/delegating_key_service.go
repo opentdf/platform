@@ -42,39 +42,6 @@ func (d *DelegatingKeyService) RegisterKeyManager(name string, factory KeyManage
 	d.managerFactories[name] = factory
 }
 
-func (d *DelegatingKeyService) getKeyManager(name string) (KeyManager, error) {
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
-
-	if manager, exists := d.managers[name]; exists {
-		return manager, nil
-	}
-
-	factory, exists := d.managerFactories[name]
-	if !exists {
-		return nil, fmt.Errorf("no key manager registered with name: %s", name)
-	}
-
-	manager, err := factory()
-	if err != nil {
-		return nil, err
-	}
-
-	d.managers[name] = manager
-	return manager, nil
-}
-
-func (d *DelegatingKeyService) _defKM() (KeyManager, error) {
-	if d.defaultKeyManager == nil {
-		manager, err := d.getKeyManager(d.defaultMode)
-		if err != nil {
-			return nil, err
-		}
-		d.defaultKeyManager = manager
-	}
-	return d.defaultKeyManager, nil
-}
-
 // Implementing KeyIndex methods
 func (d *DelegatingKeyService) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (KeyDetails, error) {
 	return d.index.FindKeyByAlgorithm(ctx, algorithm, includeLegacy)
@@ -138,4 +105,37 @@ func (d *DelegatingKeyService) Close() {
 	for _, manager := range d.managers {
 		manager.Close()
 	}
+}
+
+func (d *DelegatingKeyService) _defKM() (KeyManager, error) {
+	if d.defaultKeyManager == nil {
+		manager, err := d.getKeyManager(d.defaultMode)
+		if err != nil {
+			return nil, err
+		}
+		d.defaultKeyManager = manager
+	}
+	return d.defaultKeyManager, nil
+}
+
+func (d *DelegatingKeyService) getKeyManager(name string) (KeyManager, error) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	if manager, exists := d.managers[name]; exists {
+		return manager, nil
+	}
+
+	factory, exists := d.managerFactories[name]
+	if !exists {
+		return nil, fmt.Errorf("no key manager registered with name: %s", name)
+	}
+
+	manager, err := factory()
+	if err != nil {
+		return nil, err
+	}
+
+	d.managers[name] = manager
+	return manager, nil
 }

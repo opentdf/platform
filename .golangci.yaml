@@ -23,7 +23,7 @@ linters:
     - fatcontext
     - forbidigo
     - forcetypeassert
-    # - funcorder
+    - funcorder
     - gocheckcompilerdirectives
     # - gochecknoinits
     - goconst

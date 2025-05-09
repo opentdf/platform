@@ -3,9 +3,10 @@ syntax = "proto3";
 package entityresolution;
 
 import "authorization/authorization.proto";
-import "google/protobuf/struct.proto";
-import "google/protobuf/any.proto";
+import "authorization/v2/authorization.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/struct.proto";
 
 /*
    Example: Get idp attributes for bob and alice (both represented using an email address
@@ -24,9 +25,10 @@ import "google/api/annotations.proto";
 
 */
 message ResolveEntitiesRequest {
-    repeated authorization.Entity entities = 1;
+  // either v1 or v2 authorization entities are permitted, but not both
+  repeated authorization.Entity entities = 1;
+  repeated authorization.v2.Entity entities_v2 = 2;
 }
-
 
 message EntityRepresentation {
   repeated google.protobuf.Struct additional_props = 1;

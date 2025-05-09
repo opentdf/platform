@@ -432,6 +432,113 @@
         
           
           <li>
+            <a href="#authorization%2fv2%2fauthorization.proto">authorization/v2/authorization.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#authorization.v2.DecisionRequest"><span class="badge">M</span>DecisionRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.DecisionResponse"><span class="badge">M</span>DecisionResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.Entity"><span class="badge">M</span>Entity</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.EntityChain"><span class="badge">M</span>EntityChain</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.EntityEntitlements"><span class="badge">M</span>EntityEntitlements</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.EntityEntitlements.ActionsList"><span class="badge">M</span>EntityEntitlements.ActionsList</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.EntityEntitlements.ActionsPerAttributeValueFqnEntry"><span class="badge">M</span>EntityEntitlements.ActionsPerAttributeValueFqnEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.GetDecisionBulkByTokenRequest"><span class="badge">M</span>GetDecisionBulkByTokenRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.GetDecisionBulkByTokenResponse"><span class="badge">M</span>GetDecisionBulkByTokenResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.GetDecisionBulkRequest"><span class="badge">M</span>GetDecisionBulkRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.GetDecisionBulkResponse"><span class="badge">M</span>GetDecisionBulkResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.GetDecisionByTokenRequest"><span class="badge">M</span>GetDecisionByTokenRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.GetDecisionByTokenResponse"><span class="badge">M</span>GetDecisionByTokenResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.GetDecisionRequest"><span class="badge">M</span>GetDecisionRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.GetDecisionResponse"><span class="badge">M</span>GetDecisionResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.GetEntitlementsRequest"><span class="badge">M</span>GetEntitlementsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.GetEntitlementsResponse"><span class="badge">M</span>GetEntitlementsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.Resource"><span class="badge">M</span>Resource</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.Resource.AttributeValues"><span class="badge">M</span>Resource.AttributeValues</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.Token"><span class="badge">M</span>Token</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.TokenDecisionRequest"><span class="badge">M</span>TokenDecisionRequest</a>
+                </li>
+              
+              
+                <li>
+                  <a href="#authorization.v2.DecisionResponse.Decision"><span class="badge">E</span>DecisionResponse.Decision</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.Entity.Category"><span class="badge">E</span>Entity.Category</a>
+                </li>
+              
+              
+              
+                <li>
+                  <a href="#authorization.v2.AuthorizationService"><span class="badge">S</span>AuthorizationService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
             <a href="#entityresolution%2fentity_resolution.proto">entityresolution/entity_resolution.proto</a>
             <ul>
               
@@ -3928,21 +4035,21 @@ string</p></td>
                 <td>GetDecisions</td>
                 <td><a href="#authorization.GetDecisionsRequest">GetDecisionsRequest</a></td>
                 <td><a href="#authorization.GetDecisionsResponse">GetDecisionsResponse</a></td>
-                <td><p></p></td>
+                <td><p>Deprecated: Use AuthorizationV2.GetDecisionBulk method instead</p></td>
               </tr>
             
               <tr>
                 <td>GetDecisionsByToken</td>
                 <td><a href="#authorization.GetDecisionsByTokenRequest">GetDecisionsByTokenRequest</a></td>
                 <td><a href="#authorization.GetDecisionsByTokenResponse">GetDecisionsByTokenResponse</a></td>
-                <td><p></p></td>
+                <td><p>Deprecated: Use AuthorizationV2.GetDecisionBulkByToken method instead</p></td>
               </tr>
             
               <tr>
                 <td>GetEntitlements</td>
                 <td><a href="#authorization.GetEntitlementsRequest">GetEntitlementsRequest</a></td>
                 <td><a href="#authorization.GetEntitlementsResponse">GetEntitlementsResponse</a></td>
-                <td><p></p></td>
+                <td><p>Deprecated: Use AuthorizationV2.GetEntitlements method instead</p></td>
               </tr>
             
           </tbody>
@@ -3996,6 +4103,774 @@ string</p></td>
             </tbody>
           </table>
           
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="authorization/v2/authorization.proto">authorization/v2/authorization.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="authorization.v2.DecisionRequest">DecisionRequest</h3>
+        <p>Can the entity (PE or NPE) represented by one entity chain take the provided action on each resource</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entity</td>
+                  <td><a href="#authorization.v2.EntityChain">EntityChain</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#policy.Action">policy.Action</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>resources</td>
+                  <td><a href="#authorization.v2.Resource">Resource</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.DecisionResponse">DecisionResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>ephemeral_entity_chain_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>ephemeral_resource_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#policy.Action">policy.Action</a></td>
+                  <td></td>
+                  <td><p>action that was requested </p></td>
+                </tr>
+              
+                <tr>
+                  <td>decision</td>
+                  <td><a href="#authorization.v2.DecisionResponse.Decision">DecisionResponse.Decision</a></td>
+                  <td></td>
+                  <td><p>the decision response
+
+optional list of obligations represented in URI format
+repeated string obligations = 5; </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.Entity">Entity</h3>
+        <p>PE (Person Entity) or NPE (Non-Person Entity)</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>ephemeral_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>email_address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>one of the entity options must be set </p></td>
+                </tr>
+              
+                <tr>
+                  <td>user_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>claims</td>
+                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
+                  <td></td>
+                  <td><p>used by ERS claims mode </p></td>
+                </tr>
+              
+                <tr>
+                  <td>client_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>EntityCustom custom = 5; </p></td>
+                </tr>
+              
+                <tr>
+                  <td>registered_resource_value_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>category</td>
+                  <td><a href="#authorization.v2.Entity.Category">Entity.Category</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.EntityChain">EntityChain</h3>
+        <p>A set of related PE and NPE (i.e. authenticating client and user)</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>ephemeral_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>entities</td>
+                  <td><a href="#authorization.v2.Entity">Entity</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.EntityEntitlements">EntityEntitlements</h3>
+        <p>Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>ephemeral_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>actions_per_attribute_value_fqn</td>
+                  <td><a href="#authorization.v2.EntityEntitlements.ActionsPerAttributeValueFqnEntry">EntityEntitlements.ActionsPerAttributeValueFqnEntry</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.EntityEntitlements.ActionsList">EntityEntitlements.ActionsList</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>actions</td>
+                  <td><a href="#policy.Action">policy.Action</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.EntityEntitlements.ActionsPerAttributeValueFqnEntry">EntityEntitlements.ActionsPerAttributeValueFqnEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#authorization.v2.EntityEntitlements.ActionsList">EntityEntitlements.ActionsList</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetDecisionBulkByTokenRequest">GetDecisionBulkByTokenRequest</h3>
+        <p>More performant bulk request for multiple decisions</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>decision_requests</td>
+                  <td><a href="#authorization.v2.TokenDecisionRequest">TokenDecisionRequest</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetDecisionBulkByTokenResponse">GetDecisionBulkByTokenResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>decision_responses</td>
+                  <td><a href="#authorization.v2.DecisionResponse">DecisionResponse</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetDecisionBulkRequest">GetDecisionBulkRequest</h3>
+        <p>More performant bulk request for multiple decisions</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>decision_requests</td>
+                  <td><a href="#authorization.v2.DecisionRequest">DecisionRequest</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetDecisionBulkResponse">GetDecisionBulkResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>decision_responses</td>
+                  <td><a href="#authorization.v2.DecisionResponse">DecisionResponse</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetDecisionByTokenRequest">GetDecisionByTokenRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>decision_request</td>
+                  <td><a href="#authorization.v2.TokenDecisionRequest">TokenDecisionRequest</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetDecisionByTokenResponse">GetDecisionByTokenResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>decision_response</td>
+                  <td><a href="#authorization.v2.DecisionResponse">DecisionResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetDecisionRequest">GetDecisionRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>decision_request</td>
+                  <td><a href="#authorization.v2.DecisionRequest">DecisionRequest</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetDecisionResponse">GetDecisionResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>decision_response</td>
+                  <td><a href="#authorization.v2.DecisionResponse">DecisionResponse</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetEntitlementsRequest">GetEntitlementsRequest</h3>
+        <p>What can the entity do, broken down as permitted actions on attribute value FQNs</p><p>Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use</p><p>GetDecision if the resource is known</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entities</td>
+                  <td><a href="#authorization.v2.Entity">Entity</a></td>
+                  <td>repeated</td>
+                  <td><p>list of requested entities
+todo: should this be an entity chain? </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_comprehensive_hierarchy</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td>optional</td>
+                  <td><p>optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
+down the hierarchical values instead of returning solely the value that is directly entitled </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetEntitlementsResponse">GetEntitlementsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entitlements</td>
+                  <td><a href="#authorization.v2.EntityEntitlements">EntityEntitlements</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.Resource">Resource</h3>
+        <p>Either a set of attribute values (such as those on a TDF) or a registered resource value</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>ephemeral_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_values</td>
+                  <td><a href="#authorization.v2.Resource.AttributeValues">Resource.AttributeValues</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>registered_resource_value_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.Resource.AttributeValues">Resource.AttributeValues</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.Token">Token</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>ephemeral_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>jwt</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>access token </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.TokenDecisionRequest">TokenDecisionRequest</h3>
+        <p>Can the entity (PE or NPE) represented by this token take the provided action on the set of resources</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>token</td>
+                  <td><a href="#authorization.v2.Token">Token</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#policy.Action">policy.Action</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>resources</td>
+                  <td><a href="#authorization.v2.Resource">Resource</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+        <h3 id="authorization.v2.DecisionResponse.Decision">DecisionResponse.Decision</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>DECISION_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DECISION_DENY</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>DECISION_PERMIT</td>
+                <td>2</td>
+                <td><p>DECISION_OBLIGATED = 3;</p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+        <h3 id="authorization.v2.Entity.Category">Entity.Category</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>CATEGORY_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CATEGORY_SUBJECT</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CATEGORY_ENVIRONMENT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      
+
+      
+        <h3 id="authorization.v2.AuthorizationService">AuthorizationService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>GetDecision</td>
+                <td><a href="#authorization.v2.GetDecisionRequest">GetDecisionRequest</a></td>
+                <td><a href="#authorization.v2.GetDecisionResponse">GetDecisionResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetDecisionBulk</td>
+                <td><a href="#authorization.v2.GetDecisionBulkRequest">GetDecisionBulkRequest</a></td>
+                <td><a href="#authorization.v2.GetDecisionBulkResponse">GetDecisionBulkResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetDecisionByToken</td>
+                <td><a href="#authorization.v2.GetDecisionByTokenRequest">GetDecisionByTokenRequest</a></td>
+                <td><a href="#authorization.v2.GetDecisionByTokenResponse">GetDecisionByTokenResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetDecisionBulkByToken</td>
+                <td><a href="#authorization.v2.GetDecisionBulkByTokenRequest">GetDecisionBulkByTokenRequest</a></td>
+                <td><a href="#authorization.v2.GetDecisionBulkByTokenResponse">GetDecisionBulkByTokenResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetEntitlements</td>
+                <td><a href="#authorization.v2.GetEntitlementsRequest">GetEntitlementsRequest</a></td>
+                <td><a href="#authorization.v2.GetEntitlementsResponse">GetEntitlementsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
         
     
       
@@ -4142,6 +5017,13 @@ string</p></td>
                 <tr>
                   <td>entities</td>
                   <td><a href="#authorization.Entity">authorization.Entity</a></td>
+                  <td>repeated</td>
+                  <td><p>either v1 or v2 authorization entities are permitted, but not both </p></td>
+                </tr>
+              
+                <tr>
+                  <td>entities_v2</td>
+                  <td><a href="#authorization.v2.Entity">authorization.v2.Entity</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>

@@ -164,70 +164,70 @@ func TestStartTestSuite(t *testing.T) {
 }
 func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 	testCases := []struct {
-		name          string
-		mode          []string
-		status        int
-		response_body string
+		name         string
+		mode         []string
+		status       int
+		responseBody string
 	}{
 		{
-			name:          "All_Mode",
-			mode:          []string{"all"},
-			status:        http.StatusOK,
-			response_body: "hello from test service!",
+			name:         "All_Mode",
+			mode:         []string{"all"},
+			status:       http.StatusOK,
+			responseBody: "hello from test service!",
 		},
 		{
-			name:          "And_Mode_Core",
-			mode:          []string{"core"},
-			status:        http.StatusNotFound,
-			response_body: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			name:         "And_Mode_Core",
+			mode:         []string{"core"},
+			status:       http.StatusNotFound,
+			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
 		},
 		{
-			name:          "And_Mode_Core_Plus_Test",
-			mode:          []string{"core", "test"},
-			status:        http.StatusOK,
-			response_body: "hello from test service!",
+			name:         "And_Mode_Core_Plus_Test",
+			mode:         []string{"core", "test"},
+			status:       http.StatusOK,
+			responseBody: "hello from test service!",
 		},
 		{
-			name:          "And_Mode_All_Plus_Test",
-			mode:          []string{"all", "test"},
-			status:        http.StatusOK,
-			response_body: "hello from test service!",
+			name:         "And_Mode_All_Plus_Test",
+			mode:         []string{"all", "test"},
+			status:       http.StatusOK,
+			responseBody: "hello from test service!",
 		},
 		{
-			name:          "And_Mode_Kas",
-			mode:          []string{"kas"},
-			status:        http.StatusNotFound,
-			response_body: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			name:         "And_Mode_Kas",
+			mode:         []string{"kas"},
+			status:       http.StatusNotFound,
+			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
 		},
 		{
-			name:          "And_Mode_Kas_Plus_Test",
-			mode:          []string{"kas", "test"},
-			status:        http.StatusOK,
-			response_body: "hello from test service!",
+			name:         "And_Mode_Kas_Plus_Test",
+			mode:         []string{"kas", "test"},
+			status:       http.StatusOK,
+			responseBody: "hello from test service!",
 		},
 		{
-			name:          "And_Mode_EntityResolution",
-			mode:          []string{"entityresolution"},
-			status:        http.StatusNotFound,
-			response_body: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			name:         "And_Mode_EntityResolution",
+			mode:         []string{"entityresolution"},
+			status:       http.StatusNotFound,
+			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
 		},
 		{
-			name:          "And_Mode_EntityResolution_Plus_Test",
-			mode:          []string{"entityresolution", "test"},
-			status:        http.StatusOK,
-			response_body: "hello from test service!",
+			name:         "And_Mode_EntityResolution_Plus_Test",
+			mode:         []string{"entityresolution", "test"},
+			status:       http.StatusOK,
+			responseBody: "hello from test service!",
 		},
 		{
-			name:          "And_Mode_Unknown",
-			mode:          []string{"unknown"},
-			status:        http.StatusNotFound,
-			response_body: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+			name:         "And_Mode_Unknown",
+			mode:         []string{"unknown"},
+			status:       http.StatusNotFound,
+			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
 		},
 		{
-			name:          "And_Mode_Unknown_Plus_Test",
-			mode:          []string{"unknown", "test"},
-			status:        http.StatusOK,
-			response_body: "hello from test service!",
+			name:         "And_Mode_Unknown_Plus_Test",
+			mode:         []string{"unknown", "test"},
+			status:       http.StatusOK,
+			responseBody: "hello from test service!",
 		},
 	}
 
@@ -286,13 +286,13 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 
 			// Here we compare values as JSON, otherwise the test can be flaky
 			var expectedJSON, actualJSON map[string]interface{}
-			err = json.Unmarshal([]byte(tc.response_body), &expectedJSON)
+			err = json.Unmarshal([]byte(tc.responseBody), &expectedJSON)
 			if err == nil {
 				err = json.Unmarshal(respBody, &actualJSON)
 				require.NoError(t, err)
 				assert.Equal(t, expectedJSON, actualJSON)
 			} else {
-				assert.Equal(t, tc.response_body, string(respBody))
+				assert.Equal(t, tc.responseBody, string(respBody))
 			}
 		})
 	}

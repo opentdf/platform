@@ -8,11 +8,19 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
+
+type rotatedMappingIDs struct {
+	NamespaceIDs      []string
+	AttributeDefIDs   []string
+	AttributeValueIDs []string
+}
 
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
@@ -653,4 +661,137 @@ func (c PolicyDBClient) DeleteKey(ctx context.Context, id string) (*policy.Asymm
 	return &policy.AsymmetricKey{
 		Id: id,
 	}, nil
+}
+
+func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey, newKey *kasregistry.RotateKeyRequest_NewKey) (*kasregistry.RotateKeyResponse, error) {
+	rotateKeyResp := &kasregistry.RotateKeyResponse{
+		RotatedResources: &kasregistry.RotatedResources{
+			AttributeDefinitionMappings: make([]*kasregistry.ChangeMappings, 0),
+			AttributeValueMappings:      make([]*kasregistry.ChangeMappings, 0),
+			NamespaceMappings:           make([]*kasregistry.ChangeMappings, 0),
+		},
+	}
+
+	// Step 1: Update old key to inactive.
+	rotatedOutKey, err := c.UpdateKey(ctx, &kasregistry.UpdateKeyRequest{
+		Id:        activeKey.GetKey().GetId(),
+		KeyStatus: policy.KeyStatus_KEY_STATUS_INACTIVE,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 2: Create new key.
+	newKasKey, err := c.CreateKey(ctx, &kasregistry.CreateKeyRequest{
+		KasId:            activeKey.GetKasId(),
+		KeyId:            newKey.GetKeyId(),
+		KeyAlgorithm:     newKey.GetAlgorithm(),
+		KeyMode:          newKey.GetKeyMode(),
+		PublicKeyCtx:     newKey.GetPublicKeyCtx(),
+		PrivateKeyCtx:    newKey.GetPrivateKeyCtx(),
+		ProviderConfigId: newKey.GetProviderConfigId(),
+		Metadata:         newKey.GetMetadata(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 3: Update Namespace/Attribute/Value tables to use the new key.
+	rotatedIDs, err := c.rotatePublicKeyTables(ctx, activeKey.GetKey().GetId(), newKasKey.GetKasKey().GetKey().GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 4: Populate the rotated resources.
+	if err := c.populateChangeMappings(ctx, rotatedIDs, rotateKeyResp.GetRotatedResources()); err != nil {
+		return nil, err
+	}
+	rotateKeyResp.RotatedResources.RotatedOutKey = rotatedOutKey
+
+	// Step 5: Populate the new key
+	rotateKeyResp.KasKey = newKasKey.GetKasKey()
+
+	return rotateKeyResp, nil
+}
+
+func (c PolicyDBClient) populateChangeMappings(ctx context.Context, rotatedIDs rotatedMappingIDs, rotatedResources *kasregistry.RotatedResources) error {
+	for _, id := range rotatedIDs.NamespaceIDs {
+		mapping := &kasregistry.ChangeMappings{
+			Id: id,
+		}
+		ns, err := c.GetNamespace(ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+			NamespaceId: id,
+		})
+		if err != nil {
+			return err
+		}
+		mapping.Fqn = ns.GetFqn()
+		rotatedResources.NamespaceMappings = append(rotatedResources.GetNamespaceMappings(), mapping)
+	}
+	for _, id := range rotatedIDs.AttributeDefIDs {
+		mapping := &kasregistry.ChangeMappings{
+			Id: id,
+		}
+		attrDef, err := c.GetAttribute(ctx, &attributes.GetAttributeRequest_AttributeId{
+			AttributeId: id,
+		})
+		if err != nil {
+			return err
+		}
+		mapping.Fqn = attrDef.GetFqn()
+		rotatedResources.AttributeDefinitionMappings = append(rotatedResources.GetAttributeDefinitionMappings(), mapping)
+	}
+	for _, id := range rotatedIDs.AttributeValueIDs {
+		mapping := &kasregistry.ChangeMappings{
+			Id: id,
+		}
+		attrVal, err := c.GetAttributeValue(ctx, &attributes.GetAttributeValueRequest_ValueId{
+			ValueId: id,
+		})
+		if err != nil {
+			return err
+		}
+		mapping.Fqn = attrVal.GetFqn()
+		rotatedResources.AttributeValueMappings = append(rotatedResources.GetAttributeValueMappings(), mapping)
+	}
+
+	return nil
+}
+
+/**
+* Rotate the public key in the Namespace, AttributeDefinition, and AttributeValue tables.
+ */
+func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID, newKeyID string) (rotatedMappingIDs, error) {
+	var err error
+	rotatedIDs := rotatedMappingIDs{
+		NamespaceIDs:      make([]string, 0),
+		AttributeDefIDs:   make([]string, 0),
+		AttributeValueIDs: make([]string, 0),
+	}
+
+	rotatedIDs.NamespaceIDs, err = c.rotatePublicKeyForNamespace(ctx, rotatePublicKeyForNamespaceParams{
+		OldKeyID: oldKeyID,
+		NewKeyID: newKeyID,
+	})
+	if err != nil {
+		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	rotatedIDs.AttributeDefIDs, err = c.rotatePublicKeyForAttributeDefinition(ctx, rotatePublicKeyForAttributeDefinitionParams{
+		OldKeyID: oldKeyID,
+		NewKeyID: newKeyID,
+	})
+	if err != nil {
+		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	rotatedIDs.AttributeValueIDs, err = c.rotatePublicKeyForAttributeValue(ctx, rotatePublicKeyForAttributeValueParams{
+		OldKeyID: oldKeyID,
+		NewKeyID: newKeyID,
+	})
+	if err != nil {
+		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return rotatedIDs, nil
 }

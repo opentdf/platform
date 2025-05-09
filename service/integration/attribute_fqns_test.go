@@ -881,126 +881,6 @@ type bigSetup struct {
 	kasAssociations map[string]string
 }
 
-func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
-	// create a new namespace
-	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
-		Name: namespaceName,
-	})
-	s.Require().NoError(err)
-	s.NotNil(ns)
-
-	// give it attributes and values
-	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		NamespaceId: ns.GetId(),
-		Name:        "test_attr",
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-		Values:      []string{"value1", "value2"},
-	})
-	s.Require().NoError(err)
-	s.NotNil(attr)
-	val1 := attr.GetValues()[0]
-	val2 := attr.GetValues()[1]
-
-	nsKasURI := fmt.Sprintf("https://testing_granted_ns.com/%s/kas", namespaceName)
-	attrKasURI := fmt.Sprintf("https://testing_granted_attr.com/%s/kas", namespaceName)
-	val1KasURI := fmt.Sprintf("https://testing_granted_val.com/%s/kas", namespaceName)
-	val2KasURI := fmt.Sprintf("https://testing_granted_val2.com/%s/kas", namespaceName)
-
-	kasAssociations := map[string]string{}
-	// create new KASes
-	for _, toAssociate := range []struct {
-		id  string
-		uri string
-	}{
-		{ns.GetId(), nsKasURI},
-		{attr.GetId(), attrKasURI},
-		{val1.GetId(), val1KasURI},
-		{val2.GetId(), val2KasURI},
-	} {
-		kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
-			Uri: toAssociate.uri,
-			PublicKey: &policy.PublicKey{
-				PublicKey: &policy.PublicKey_Remote{
-					Remote: toAssociate.uri + "/public_key",
-				},
-			},
-		})
-		s.Require().NoError(err)
-		s.NotNil(kas)
-		kasAssociations[toAssociate.id] = kas.GetId()
-	}
-
-	// make a grant association to the namespace
-	nsGrant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
-		KeyAccessServerId: kasAssociations[ns.GetId()],
-		NamespaceId:       ns.GetId(),
-	})
-	s.Require().NoError(err)
-	s.NotNil(nsGrant)
-
-	// make a grant association to the attribute definition
-	attrGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, &attributes.AttributeKeyAccessServer{
-		KeyAccessServerId: kasAssociations[attr.GetId()],
-		AttributeId:       attr.GetId(),
-	})
-	s.Require().NoError(err)
-	s.NotNil(attrGrant)
-
-	// make a grant association to the first value
-	val1Grant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, &attributes.ValueKeyAccessServer{
-		KeyAccessServerId: kasAssociations[val1.GetId()],
-		ValueId:           val1.GetId(),
-	})
-	s.Require().NoError(err)
-	s.NotNil(val1Grant)
-
-	// make a grant association to the second value
-	val2Grant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, &attributes.ValueKeyAccessServer{
-		KeyAccessServerId: kasAssociations[val2.GetId()],
-		ValueId:           val2.GetId(),
-	})
-	s.Require().NoError(err)
-	s.NotNil(val2Grant)
-
-	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
-	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
-	// give a subject mapping to the first value
-	val1SM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId:              val1.GetId(),
-		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set1").ID,
-		Actions:                       []*policy.Action{actionRead, fixtureActionCustomUpload},
-	})
-	s.Require().NoError(err)
-	s.NotNil(val1SM)
-
-	// give a subject mapping to the second value
-	val2SM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId:              val2.GetId(),
-		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set2").ID,
-		Actions:                       []*policy.Action{actionCreate},
-	})
-	s.Require().NoError(err)
-	s.NotNil(val2SM)
-
-	// give a second subject mapping to the second value
-	val2SM2, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId:              val2.GetId(),
-		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set3").ID,
-		Actions:                       []*policy.Action{actionRead, actionCreate},
-	})
-	s.Require().NoError(err)
-	s.NotNil(val2SM2)
-
-	return bigSetup{
-		attrFqn:         fmt.Sprintf("https://%s/attr/test_attr", namespaceName),
-		nsID:            ns.GetId(),
-		attrID:          attr.GetId(),
-		val1ID:          val1.GetId(),
-		val2ID:          val2.GetId(),
-		kasAssociations: kasAssociations,
-	}
-}
-
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_SameResultsWhetherAttrOrValueFqnUsed() {
 	ns := "test_fqn_all_consistent.gov"
 	setup := s.bigTestSetup(ns)
@@ -1765,4 +1645,124 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns(
 	s.Require().Error(err)
 	s.Nil(v)
 	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
+	// create a new namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: namespaceName,
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+
+	// give it attributes and values
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "test_attr",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"value1", "value2"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr)
+	val1 := attr.GetValues()[0]
+	val2 := attr.GetValues()[1]
+
+	nsKasURI := fmt.Sprintf("https://testing_granted_ns.com/%s/kas", namespaceName)
+	attrKasURI := fmt.Sprintf("https://testing_granted_attr.com/%s/kas", namespaceName)
+	val1KasURI := fmt.Sprintf("https://testing_granted_val.com/%s/kas", namespaceName)
+	val2KasURI := fmt.Sprintf("https://testing_granted_val2.com/%s/kas", namespaceName)
+
+	kasAssociations := map[string]string{}
+	// create new KASes
+	for _, toAssociate := range []struct {
+		id  string
+		uri string
+	}{
+		{ns.GetId(), nsKasURI},
+		{attr.GetId(), attrKasURI},
+		{val1.GetId(), val1KasURI},
+		{val2.GetId(), val2KasURI},
+	} {
+		kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+			Uri: toAssociate.uri,
+			PublicKey: &policy.PublicKey{
+				PublicKey: &policy.PublicKey_Remote{
+					Remote: toAssociate.uri + "/public_key",
+				},
+			},
+		})
+		s.Require().NoError(err)
+		s.NotNil(kas)
+		kasAssociations[toAssociate.id] = kas.GetId()
+	}
+
+	// make a grant association to the namespace
+	nsGrant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
+		KeyAccessServerId: kasAssociations[ns.GetId()],
+		NamespaceId:       ns.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(nsGrant)
+
+	// make a grant association to the attribute definition
+	attrGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, &attributes.AttributeKeyAccessServer{
+		KeyAccessServerId: kasAssociations[attr.GetId()],
+		AttributeId:       attr.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrGrant)
+
+	// make a grant association to the first value
+	val1Grant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, &attributes.ValueKeyAccessServer{
+		KeyAccessServerId: kasAssociations[val1.GetId()],
+		ValueId:           val1.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(val1Grant)
+
+	// make a grant association to the second value
+	val2Grant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, &attributes.ValueKeyAccessServer{
+		KeyAccessServerId: kasAssociations[val2.GetId()],
+		ValueId:           val2.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(val2Grant)
+
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
+	// give a subject mapping to the first value
+	val1SM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              val1.GetId(),
+		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set1").ID,
+		Actions:                       []*policy.Action{actionRead, fixtureActionCustomUpload},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val1SM)
+
+	// give a subject mapping to the second value
+	val2SM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              val2.GetId(),
+		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set2").ID,
+		Actions:                       []*policy.Action{actionCreate},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val2SM)
+
+	// give a second subject mapping to the second value
+	val2SM2, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              val2.GetId(),
+		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set3").ID,
+		Actions:                       []*policy.Action{actionRead, actionCreate},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val2SM2)
+
+	return bigSetup{
+		attrFqn:         fmt.Sprintf("https://%s/attr/test_attr", namespaceName),
+		nsID:            ns.GetId(),
+		attrID:          attr.GetId(),
+		val1ID:          val1.GetId(),
+		val2ID:          val2.GetId(),
+		kasAssociations: kasAssociations,
+	}
 }

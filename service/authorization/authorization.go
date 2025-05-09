@@ -61,39 +61,6 @@ type CustomRego struct {
 	Query string `mapstructure:"query" json:"query" default:"data.opentdf.entitlements.attributes"`
 }
 
-func (as *AuthorizationService) loadRegoAndBuiltins(cfg *Config) error {
-	var (
-		entitlementRego []byte
-		err             error
-	)
-	// Build Rego PreparedEvalQuery
-	// Load rego from embedded file or custom path
-	if cfg.Rego.Path != "" {
-		entitlementRego, err = os.ReadFile(cfg.Rego.Path)
-		if err != nil {
-			return fmt.Errorf("failed to read custom entitlements.rego file: %w", err)
-		}
-	} else {
-		entitlementRego, err = policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
-		if err != nil {
-			return fmt.Errorf("failed to read entitlements.rego file: %w", err)
-		}
-	}
-
-	// Register builtin
-	subjectmappingbuiltin.SubjectMappingBuiltin()
-
-	as.eval, err = rego.New(
-		rego.Query(cfg.Rego.Query),
-		rego.Module("entitlements.rego", string(entitlementRego)),
-		rego.StrictBuiltinErrors(true),
-	).PrepareForEval(context.Background())
-	if err != nil {
-		return fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err)
-	}
-	return nil
-}
-
 func OnConfigUpdate(as *AuthorizationService) serviceregistry.OnConfigUpdateHook {
 	return func(_ context.Context, cfg config.ServiceConfig) error {
 		err := mapstructure.Decode(cfg, as.config)
@@ -716,6 +683,39 @@ func getAttributesFromRas(ras []*authorization.ResourceAttribute) ([]string, err
 		return nil, ErrEmptyStringAttribute
 	}
 	return attrFqns, nil
+}
+
+func (as *AuthorizationService) loadRegoAndBuiltins(cfg *Config) error {
+	var (
+		entitlementRego []byte
+		err             error
+	)
+	// Build Rego PreparedEvalQuery
+	// Load rego from embedded file or custom path
+	if cfg.Rego.Path != "" {
+		entitlementRego, err = os.ReadFile(cfg.Rego.Path)
+		if err != nil {
+			return fmt.Errorf("failed to read custom entitlements.rego file: %w", err)
+		}
+	} else {
+		entitlementRego, err = policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
+		if err != nil {
+			return fmt.Errorf("failed to read entitlements.rego file: %w", err)
+		}
+	}
+
+	// Register builtin
+	subjectmappingbuiltin.SubjectMappingBuiltin()
+
+	as.eval, err = rego.New(
+		rego.Query(cfg.Rego.Query),
+		rego.Module("entitlements.rego", string(entitlementRego)),
+		rego.StrictBuiltinErrors(true),
+	).PrepareForEval(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err)
+	}
+	return nil
 }
 
 func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {

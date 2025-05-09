@@ -19,9 +19,13 @@ const (
 	errMessageKasID         = "kas_id"
 	errMessageKeyStatus     = "key_status"
 	errMessageKeyKid        = "key.kid"
+	errMessageNewKeyKid     = "new_key.key_id"
 	errMessageKeyName       = "key.name"
 	errMessageKeyURI        = "key.uri"
 	errMessageKeyAlgo       = "key_algorithm"
+	errMessageNewKeyAlgo    = "new_key.algorithm"
+	errMessageNewKeyMode    = "new_key.key_mode"
+	errMessageNewKeyPubCtx  = "new_key.public_key_ctx"
 	errMessageKeyMode       = "key_mode"
 	errMessagePubKeyCtx     = "public_key_ctx"
 	errMessageKeyIdentifier = "identifier"
@@ -34,9 +38,17 @@ const (
 var (
 	validKeyCtx   = []byte(`{"key": "value"}`)
 	validMetadata = &common.MetadataMutable{}
+	validNewKey   = &kasregistry.RotateKeyRequest_NewKey{
+		KeyId:         validKeyID,
+		Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
+		PublicKeyCtx:  validKeyCtx,
+		PrivateKeyCtx: validKeyCtx,
+		Metadata:      validMetadata,
+	}
 )
 
-func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
+func Test_GetKeyAccessServer_Keys(t *testing.T) {
 	testCases := []struct {
 		name         string
 		req          *kasregistry.GetKeyRequest
@@ -352,6 +364,194 @@ func Test_ListKeyAccessServer_Keys(t *testing.T) {
 			},
 			expectError:  true,
 			errorMessage: errMessageKasID,
+		},
+	}
+
+	v := getValidator() // Get the validator instance (assuming this is defined elsewhere)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tc.name)
+				if tc.errorMessage != "" {
+					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
+				}
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
+	}
+}
+
+func Test_RotateKeyAccessServer_Keys(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *kasregistry.RotateKeyRequest
+		expectError  bool
+		errorMessage string
+	}{
+		{
+			name: "Invalid Request (empty identifier)",
+			req: &kasregistry.RotateKeyRequest{
+				NewKey: &kasregistry.RotateKeyRequest_NewKey{
+					KeyId:         validKeyID,
+					Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
+					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
+					PublicKeyCtx:  validKeyCtx,
+					PrivateKeyCtx: validKeyCtx,
+					Metadata:      validMetadata,
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageRequired,
+		},
+		{
+			name: "Invalid Active Key ID (invalid uuid)",
+			req: &kasregistry.RotateKeyRequest{
+				ActiveKey: &kasregistry.RotateKeyRequest_Id{
+					Id: invalidUUID,
+				},
+				NewKey: &kasregistry.RotateKeyRequest_NewKey{
+					KeyId:         validKeyID,
+					Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
+					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
+					PublicKeyCtx:  validKeyCtx,
+					PrivateKeyCtx: validKeyCtx,
+					Metadata:      validMetadata,
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageUUID,
+		},
+		{
+			name: "Invalid Active Key - Missing identifier",
+			req: &kasregistry.RotateKeyRequest{
+				ActiveKey: &kasregistry.RotateKeyRequest_Key{
+					Key: &kasregistry.KasKeyIdentifier{},
+				},
+				NewKey: validNewKey,
+			},
+			expectError:  true,
+			errorMessage: errMessageKeyIdentifier,
+		},
+		{
+			name: "Invalid Active KasId",
+			req: &kasregistry.RotateKeyRequest{
+				ActiveKey: &kasregistry.RotateKeyRequest_Key{
+					Key: &kasregistry.KasKeyIdentifier{
+						Identifier: &kasregistry.KasKeyIdentifier_KasId{
+							KasId: invalidUUID,
+						},
+						Kid: validKeyID,
+					},
+				},
+				NewKey: validNewKey,
+			},
+			expectError:  true,
+			errorMessage: errMessageKasID,
+		},
+		{
+			name: "Invalid Active KeyID - Missing",
+			req: &kasregistry.RotateKeyRequest{
+				ActiveKey: &kasregistry.RotateKeyRequest_Key{
+					Key: &kasregistry.KasKeyIdentifier{
+						Identifier: &kasregistry.KasKeyIdentifier_KasId{
+							KasId: validUUID,
+						},
+					},
+				},
+				NewKey: validNewKey,
+			},
+			expectError:  true,
+			errorMessage: errMessageKeyKid,
+		},
+		{
+			name: "Invalid New Key - KeyID",
+			req: &kasregistry.RotateKeyRequest{
+				ActiveKey: &kasregistry.RotateKeyRequest_Id{
+					Id: validUUID,
+				},
+				NewKey: &kasregistry.RotateKeyRequest_NewKey{
+					Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
+					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
+					PublicKeyCtx:  validKeyCtx,
+					PrivateKeyCtx: validKeyCtx,
+					Metadata:      validMetadata,
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageNewKeyKid,
+		},
+		{
+			name: "Invalid New Key - Algorithm",
+			req: &kasregistry.RotateKeyRequest{
+				ActiveKey: &kasregistry.RotateKeyRequest_Id{
+					Id: validUUID,
+				},
+				NewKey: &kasregistry.RotateKeyRequest_NewKey{
+					KeyId:         validKeyID,
+					Algorithm:     -1,
+					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
+					PublicKeyCtx:  validKeyCtx,
+					PrivateKeyCtx: validKeyCtx,
+					Metadata:      validMetadata,
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageNewKeyAlgo,
+		},
+		{
+			name: "Invalid New Key - KeyMode",
+			req: &kasregistry.RotateKeyRequest{
+				ActiveKey: &kasregistry.RotateKeyRequest_Id{
+					Id: validUUID,
+				},
+				NewKey: &kasregistry.RotateKeyRequest_NewKey{
+					KeyId:         validKeyID,
+					Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
+					KeyMode:       -1,
+					PublicKeyCtx:  validKeyCtx,
+					PrivateKeyCtx: validKeyCtx,
+					Metadata:      validMetadata,
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageNewKeyMode,
+		},
+		{
+			name: "Invalid New Key - PublicKeyCtx",
+			req: &kasregistry.RotateKeyRequest{
+				ActiveKey: &kasregistry.RotateKeyRequest_Id{
+					Id: validUUID,
+				},
+				NewKey: &kasregistry.RotateKeyRequest_NewKey{
+					KeyId:         validKeyID,
+					Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
+					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
+					PrivateKeyCtx: validKeyCtx,
+					Metadata:      validMetadata,
+				},
+			},
+			expectError:  true,
+			errorMessage: errMessageNewKeyPubCtx,
+		},
+		{
+			name: "Valid Rotate Request",
+			req: &kasregistry.RotateKeyRequest{
+				ActiveKey: &kasregistry.RotateKeyRequest_Id{
+					Id: validUUID,
+				},
+				NewKey: &kasregistry.RotateKeyRequest_NewKey{
+					KeyId:         validKeyID,
+					Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
+					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
+					PublicKeyCtx:  validKeyCtx,
+					PrivateKeyCtx: validKeyCtx,
+					Metadata:      validMetadata,
+				},
+			},
+			expectError: false,
 		},
 	}
 

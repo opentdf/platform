@@ -41,7 +41,7 @@ func init() {
 	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
 	encryptCmd.Flags().StringVarP(&alg, "key-encapsulation-algorithm", "A", "rsa:2048", "Key wrap algorithm algorithm:parameters")
 	encryptCmd.Flags().IntVarP(&collection, "collection", "c", 0, "number of nano's to create for collection. If collection >0 (default) then output will be <iteration>_<output>")
-	encryptCmd.Flags().StringVar(&policyMode, "policy-mode", "plaintext", "Store policy as encrypted instead of plaintext (nanoTDF only) [plaintext|encrypted|encrypted-policy-key-access]")
+	encryptCmd.Flags().StringVar(&policyMode, "policy-mode", "", "Store policy as encrypted instead of plaintext (nanoTDF only) [plaintext|encrypted]")
 
 	ExamplesCmd.AddCommand(&encryptCmd)
 }
@@ -151,10 +151,11 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 		// Handle policy mode if nanoTDF
 		switch policyMode {
-		case "plaintext":
-			err = nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModePlainText)
+		case "": // default to encrypted
 		case "encrypted":
 			err = nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModeEncrypted)
+		case "plaintext":
+			err = nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModePlainText)
 		default:
 			err = fmt.Errorf("unsupported policy mode: %s", policyMode)
 		}

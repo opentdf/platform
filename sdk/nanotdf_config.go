@@ -56,7 +56,7 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 			useCollection: false,
 			header:        []byte{},
 		},
-		policyMode: NanoTDFPolicyModePlainText,
+		policyMode: NanoTDFPolicyModeDefault,
 	}
 
 	return c, nil

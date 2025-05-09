@@ -21,6 +21,8 @@ const (
 	NanoTDFPolicyModePlainText
 	NanoTDFPolicyModeEncrypted
 	NanoTDFPolicyModeEncryptedPolicyKeyAccess
+
+	NanoTDFPolicyModeDefault = NanoTDFPolicyModeEncrypted
 )
 
 var (

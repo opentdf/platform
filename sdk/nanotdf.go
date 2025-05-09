@@ -519,11 +519,20 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 		return nil, 0, 0, fmt.Errorf("json.Marshal failed:%w", err)
 	}
 
-	var embeddedP embeddedPolicy
-
-	embeddedP, err = createNanoTDFEmbeddedPolicy(policyObjectAsStr, config)
+	// Create the symmetric key
+	symmetricKey, err := createNanoTDFSymmetricKey(config)
 	if err != nil {
-		return nil, 0, 0, fmt.Errorf("failed to create embedded policy: %w", err)
+		return nil, 0, 0, err
+	}
+
+	// Set the symmetric key in the collection config
+	if config.collectionCfg.useCollection {
+		config.collectionCfg.symKey = symmetricKey
+	}
+
+	embeddedP, err := createNanoTDFEmbeddedPolicy(symmetricKey, policyObjectAsStr, config)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to create embedded policy:%w", err)
 	}
 
 	err = embeddedP.writeEmbeddedPolicy(writer)
@@ -585,16 +594,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	}
 	totalBytes += uint32(l)
 
-	symKey, err := ocrypto.RandomBytes(kKeySize)
-	if err != nil {
-		return nil, 0, 0, fmt.Errorf("ocrypto.RandomBytes failed:%w", err)
-	}
-
-	if config.collectionCfg.useCollection {
-		config.collectionCfg.symKey = symKey
-	}
-
-	return symKey, totalBytes, 0, nil
+	return symmetricKey, totalBytes, 0, nil
 }
 
 func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error) {
@@ -968,8 +968,8 @@ func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []kaoResult) (
 	payloadLength := binary.BigEndian.Uint32(payloadLengthBuf)
 	slog.Debug("ReadNanoTDF", slog.Uint64("payloadLength", uint64(payloadLength)))
 
-	cipherDate := make([]byte, payloadLength)
-	_, err = n.reader.Read(cipherDate)
+	cipherData := make([]byte, payloadLength)
+	_, err = n.reader.Read(cipherData)
 	if err != nil {
 		return 0, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
@@ -982,7 +982,7 @@ func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []kaoResult) (
 	ivPadded := make([]byte, 0, ocrypto.GcmStandardNonceSize)
 	noncePadding := make([]byte, kIvPadding)
 	ivPadded = append(ivPadded, noncePadding...)
-	iv := cipherDate[:kNanoTDFIvSize]
+	iv := cipherData[:kNanoTDFIvSize]
 	ivPadded = append(ivPadded, iv...)
 
 	tagSize, err := SizeOfAuthTagForCipher(n.header.sigCfg.cipher)
@@ -990,7 +990,7 @@ func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []kaoResult) (
 		return 0, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
 	}
 
-	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(ivPadded, cipherDate[kNanoTDFIvSize:], tagSize)
+	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(ivPadded, cipherData[kNanoTDFIvSize:], tagSize)
 	if err != nil {
 		return 0, err
 	}
@@ -1080,4 +1080,29 @@ func versionSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte(kNanoTDFMagicStringAndVersion))
 	return digest.Sum(nil)
+}
+
+// createNanoTDFSymmetricKey creates the symmetric key for nanoTDF header
+func createNanoTDFSymmetricKey(config NanoTDFConfig) ([]byte, error) {
+	if config.kasPublicKey == nil {
+		return nil, fmt.Errorf("KAS public key is required for encrypted policy mode")
+	}
+
+	ecdhKey, err := ocrypto.ConvertToECDHPrivateKey(config.keyPair.PrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.ConvertToECDHPrivateKey failed:%w", err)
+	}
+
+	symKey, err := ocrypto.ComputeECDHKeyFromECDHKeys(config.kasPublicKey, ecdhKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.ComputeECDHKeyFromEC failed:%w", err)
+	}
+
+	salt := versionSalt()
+	symmetricKey, err := ocrypto.CalculateHKDF(salt, symKey)
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
+	}
+
+	return symmetricKey, nil
 }

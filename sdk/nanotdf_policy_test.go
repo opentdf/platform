@@ -58,7 +58,7 @@ func TestCreateEmbeddedPolicy(t *testing.T) {
 		config, err := new(SDK).NewNanoTDFConfig()
 		require.NoError(t, err)
 
-		policy, err := createNanoTDFEmbeddedPolicy(policyData, *config)
+		policy, err := createNanoTDFEmbeddedPolicy(make([]byte, 32), policyData, *config)
 		require.NoError(t, err)
 		assert.Equal(t, uint16(len(policyData)), policy.lengthBody)
 		assert.Equal(t, policyData, policy.body)
@@ -77,7 +77,7 @@ func TestCreateEmbeddedPolicy(t *testing.T) {
 		require.NoError(t, err)
 		config.kasPublicKey = key.PublicKey()
 
-		policy, err := createNanoTDFEmbeddedPolicy(policyData, *config)
+		policy, err := createNanoTDFEmbeddedPolicy(make([]byte, 32), policyData, *config)
 		require.NoError(t, err)
 
 		// Verify the encrypted policy is different from input and has expected length
@@ -87,17 +87,5 @@ func TestCreateEmbeddedPolicy(t *testing.T) {
 
 		assert.NotEqual(t, policyData, policy.body, "Policy body should be encrypted and different from original data")
 		assert.NotEmpty(t, policy.body, "Policy body should not be empty after encryption")
-	})
-
-	t.Run("encrypted policy with invalid KAS key", func(t *testing.T) {
-		config, err := new(SDK).NewNanoTDFConfig()
-		require.NoError(t, err)
-
-		err = config.SetPolicyMode(NanoTDFPolicyModeEncrypted)
-		require.NoError(t, err)
-
-		// Don't set KAS public key
-		_, err = createNanoTDFEmbeddedPolicy(policyData, *config)
-		assert.Error(t, err)
 	})
 }

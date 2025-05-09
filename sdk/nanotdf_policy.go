@@ -118,28 +118,8 @@ func validNanoTDFPolicyMode(mode PolicyType) error {
 }
 
 // createEmbeddedPolicy creates an embedded policy object, encrypting it if required by the policy mode
-func createNanoTDFEmbeddedPolicy(policyObjectAsStr []byte, config NanoTDFConfig) (embeddedPolicy, error) {
-	if config.policyMode == NanoTDFPolicyModeEncrypted { //nolint:nestif // TODO: refactor
-		if config.kasPublicKey == nil {
-			return embeddedPolicy{}, fmt.Errorf("KAS public key is required for encrypted policy mode")
-		}
-
-		ecdhKey, err := ocrypto.ConvertToECDHPrivateKey(config.keyPair.PrivateKey)
-		if err != nil {
-			return embeddedPolicy{}, fmt.Errorf("ocrypto.ConvertToECDHPrivateKey failed:%w", err)
-		}
-
-		symKey, err := ocrypto.ComputeECDHKeyFromECDHKeys(config.kasPublicKey, ecdhKey)
-		if err != nil {
-			return embeddedPolicy{}, fmt.Errorf("ocrypto.ComputeECDHKeyFromEC failed:%w", err)
-		}
-
-		salt := versionSalt()
-		symmetricKey, err := ocrypto.CalculateHKDF(salt, symKey)
-		if err != nil {
-			return embeddedPolicy{}, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
-		}
-
+func createNanoTDFEmbeddedPolicy(symmetricKey []byte, policyObjectAsStr []byte, config NanoTDFConfig) (embeddedPolicy, error) {
+	if config.policyMode == NanoTDFPolicyModeEncrypted {
 		aesGcm, err := ocrypto.NewAESGcm(symmetricKey)
 		if err != nil {
 			return embeddedPolicy{}, fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -80,6 +81,38 @@ func (i TokenAddingInterceptor) AddCredentials(
 	// this is the error from the RPC service. we can determine when the current token is no longer valid
 	// by inspecting this error
 	return err
+}
+
+func (i TokenAddingInterceptor) AddCredentialsConnect() connect.UnaryInterceptorFunc {
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			accessToken, err := i.tokenSource.AccessToken(ctx, i.httpClient)
+			if err != nil {
+				slog.ErrorContext(ctx, "error getting access token", "error", err)
+				return nil, connect.NewError(connect.CodeUnauthenticated, err)
+			}
+
+			// Add Authorization header
+			req.Header().Set("Authorization", fmt.Sprintf("DPoP %s", accessToken))
+
+			// Add DPoP header if possible
+			dpopTok, err := i.GetDPoPToken(req.Spec().Procedure, http.MethodPost, string(accessToken))
+			if err == nil {
+				req.Header().Set("DPoP", dpopTok)
+			} else {
+				// since we don't have a setting about whether DPoP is in use on the client and this request _could_ succeed if
+				// they are talking to a server where DPoP is not required we will just let this through. this method is extremely
+				// unlikely to fail so hopefully this isn't confusing
+				slog.ErrorContext(ctx, "error getting DPoP token for outgoing request. Request will not have DPoP token", "error", err)
+			}
+
+			// Proceed with the RPC
+			return next(ctx, req)
+		}
+	})
 }
 
 func (i TokenAddingInterceptor) GetDPoPToken(path, method, accessToken string) (string, error) {

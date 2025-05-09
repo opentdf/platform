@@ -5,29 +5,33 @@ import (
 	"crypto/tls"
 	"net/http"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/auth/oauth"
 	"github.com/opentdf/platform/sdk/httputil"
 	"golang.org/x/oauth2"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Option func(*config)
 
+type ConnectRpcConnection struct {
+	Client   *http.Client
+	Endpoint string
+	Options  []connect.ClientOption
+}
+
 // Internal config struct for building SDK options.
 type config struct {
 	// Platform configuration structure is subject to change. Consume via accessor methods.
-	PlatformConfiguration              PlatformConfiguration
-	dialOption                         grpc.DialOption
-	httpClient                         *http.Client
-	clientCredentials                  *oauth.ClientCredentials
-	tokenExchange                      *oauth.TokenExchangeInfo
-	tokenEndpoint                      string
-	scopes                             []string
-	extraDialOptions                   []grpc.DialOption
+	PlatformConfiguration PlatformConfiguration
+	extraClientOptions    []connect.ClientOption
+	httpClient            *http.Client
+	clientCredentials     *oauth.ClientCredentials
+	tokenExchange         *oauth.TokenExchangeInfo
+	tokenEndpoint         string
+	scopes                []string
+	// extraDialOptions                   []grpc.DialOption
 	certExchange                       *oauth.CertExchangeInfo
 	kasSessionKey                      *ocrypto.RsaKeyPair
 	dpopKey                            *ocrypto.RsaKeyPair
@@ -36,8 +40,8 @@ type config struct {
 	nanoFeatures                       nanoFeatures
 	customAccessTokenSource            auth.AccessTokenSource
 	oauthAccessTokenSource             oauth2.TokenSource
-	coreConn                           *grpc.ClientConn
-	entityResolutionConn               *grpc.ClientConn
+	coreConn                           *ConnectRpcConnection
+	entityResolutionConn               *ConnectRpcConnection
 	collectionStore                    *collectionStore
 	shouldValidatePlatformConnectivity bool
 }
@@ -56,9 +60,9 @@ type nanoFeatures struct {
 
 type PlatformConfiguration map[string]interface{}
 
-func (c *config) build() []grpc.DialOption {
-	return []grpc.DialOption{c.dialOption}
-}
+// func (c *config) build() []grpc.DialOption {
+// 	return []grpc.DialOption{c.dialOption}
+// }
 
 // WithInsecureSkipVerifyConn returns an Option that sets up HTTPS connection without verification.
 func WithInsecureSkipVerifyConn() Option {
@@ -66,9 +70,7 @@ func WithInsecureSkipVerifyConn() Option {
 		tlsConfig := &tls.Config{
 			MinVersion:         tls.VersionTLS12,
 			InsecureSkipVerify: true, // #nosec G402
-		}
-		c.dialOption = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
-		// used by http client
+		} // used by http client
 		c.httpClient = httputil.SafeHTTPClientWithTLSConfig(tlsConfig)
 	}
 }
@@ -83,7 +85,6 @@ func WithStoreCollectionHeaders() Option {
 // WithInsecurePlaintextConn returns an Option that sets up HTTP connection sent in the clear.
 func WithInsecurePlaintextConn() Option {
 	return func(c *config) {
-		c.dialOption = grpc.WithTransportCredentials(insecure.NewCredentials())
 		// used by http client
 		// FIXME anything to do here
 		c.httpClient = httputil.SafeHTTPClient()
@@ -126,20 +127,20 @@ func WithOAuthAccessTokenSource(t oauth2.TokenSource) Option {
 }
 
 // Deprecated: Use WithCustomCoreConnection instead
-func WithCustomPolicyConnection(conn *grpc.ClientConn) Option {
+func WithCustomPolicyConnection(conn *ConnectRpcConnection) Option {
 	return func(c *config) {
 		c.coreConn = conn
 	}
 }
 
 // Deprecated: Use WithCustomCoreConnection instead
-func WithCustomAuthorizationConnection(conn *grpc.ClientConn) Option {
+func WithCustomAuthorizationConnection(conn *ConnectRpcConnection) Option {
 	return func(c *config) {
 		c.coreConn = conn
 	}
 }
 
-func WithCustomEntityResolutionConnection(conn *grpc.ClientConn) Option {
+func WithCustomEntityResolutionConnection(conn *ConnectRpcConnection) Option {
 	return func(c *config) {
 		c.entityResolutionConn = conn
 	}
@@ -156,11 +157,11 @@ func WithTokenExchange(subjectToken string, audience []string) Option {
 	}
 }
 
-func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
-	return func(c *config) {
-		c.extraDialOptions = dialOptions
-	}
-}
+// func WithExtraDialOptions(dialOptions ...grpc.DialOption) Option {
+// 	return func(c *config) {
+// 		c.extraDialOptions = dialOptions
+// 	}
+// }
 
 // The session key pair is used to encrypt responses from KAS for a given session
 // and can be reused across an entire session.
@@ -182,7 +183,7 @@ func WithSessionSignerRSA(key *rsa.PrivateKey) Option {
 	}
 }
 
-func WithCustomWellknownConnection(conn *grpc.ClientConn) Option {
+func WithCustomWellknownConnection(conn *ConnectRpcConnection) Option {
 	return func(c *config) {
 		c.coreConn = conn
 	}
@@ -220,9 +221,15 @@ func WithNoKIDInKAO() Option {
 }
 
 // WithCoreConnection returns an Option that sets up a connection to the core platform
-func WithCustomCoreConnection(conn *grpc.ClientConn) Option {
+func WithCustomCoreConnection(conn *ConnectRpcConnection) Option {
 	return func(c *config) {
 		c.coreConn = conn
+	}
+}
+
+func WithExtraClientOptions(opts ...connect.ClientOption) Option {
+	return func(c *config) {
+		c.extraClientOptions = opts
 	}
 }
 

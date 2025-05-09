@@ -6,13 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
-	"net/url"
 	"os"
 	"os/signal"
 	"slices"
 	"syscall"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
@@ -25,9 +24,6 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 const devModeMessage = `
@@ -89,6 +85,17 @@ func Start(f ...StartOptions) error {
 	defer shutdown()
 
 	logger.Debug("config loaded", slog.Any("config", cfg.LogValue()))
+
+	// If the mode is not all, does not include both core and entityresolution, or is not entityresolution on its own, we need to have a valid SDK config
+	// entityresolution does not connect to other services and can run on its own
+	// core only connects to entityresolution
+	if !(slices.Contains(cfg.Mode, "all") || // no config required for all mode
+		(slices.Contains(cfg.Mode, "core") && slices.Contains(cfg.Mode, "entityresolution")) || // or core and entityresolution modes togethor
+		(slices.Contains(cfg.Mode, "entityresolution") && len(cfg.Mode) == 1)) && // or entityresolution on its own
+		cfg.SDKConfig == (config.SDKConfig{}) {
+		logger.Error("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
+		return errors.New("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
+	}
 
 	logger.Info("starting opentdf services")
 
@@ -191,17 +198,6 @@ func Start(f ...StartOptions) error {
 		oidcconfig *auth.OIDCConfiguration
 	)
 
-	// If the mode is not all, does not include both core and entityresolution, or is not entityresolution on its own, we need to have a valid SDK config
-	// entityresolution does not connect to other services and can run on its own
-	// core only connects to entityresolution
-	if !(slices.Contains(cfg.Mode, "all") || // no config required for all mode
-		(slices.Contains(cfg.Mode, "core") && slices.Contains(cfg.Mode, "entityresolution")) || // or core and entityresolution modes togethor
-		(slices.Contains(cfg.Mode, "entityresolution") && len(cfg.Mode) == 1)) && // or entityresolution on its own
-		cfg.SDKConfig == (config.SDKConfig{}) {
-		logger.Error("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
-		return errors.New("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
-	}
-
 	// If client credentials are provided, use them
 	if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
 		sdkOptions = append(sdkOptions, sdk.WithClientCredentials(cfg.SDKConfig.ClientID, cfg.SDKConfig.ClientSecret, nil))
@@ -231,18 +227,19 @@ func Start(f ...StartOptions) error {
 				return errors.New("entityresolution endpoint must be provided in core mode")
 			}
 
-			ersDialOptions := []grpc.DialOption{}
+			ersConnectRpcConn := sdk.ConnectRpcConnection{}
+
 			var tlsConfig *tls.Config
 			if cfg.SDKConfig.EntityResolutionConnection.Insecure {
 				tlsConfig = &tls.Config{
 					MinVersion:         tls.VersionTLS12,
 					InsecureSkipVerify: true, // #nosec G402
 				}
-				ersDialOptions = append(ersDialOptions, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+				ersConnectRpcConn.Client = httputil.SafeHTTPClientWithTLSConfig(tlsConfig)
 			}
 			if cfg.SDKConfig.EntityResolutionConnection.Plaintext {
 				tlsConfig = &tls.Config{}
-				ersDialOptions = append(ersDialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
+				ersConnectRpcConn.Client = httputil.SafeHTTPClient()
 			}
 
 			if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
@@ -268,30 +265,16 @@ func Start(f ...StartOptions) error {
 				interceptor := sdkauth.NewTokenAddingInterceptorWithClient(ts,
 					httputil.SafeHTTPClientWithTLSConfig(tlsConfig))
 
-				ersDialOptions = append(ersDialOptions, grpc.WithChainUnaryInterceptor(interceptor.AddCredentials))
+				ersConnectRpcConn.Options = append(ersConnectRpcConn.Options, connect.WithInterceptors(interceptor.AddCredentialsConnect()))
 			}
 
-			parsedURL, err := url.Parse(cfg.SDKConfig.EntityResolutionConnection.Endpoint)
-			if err != nil {
-				return fmt.Errorf("cannot parse ers url(%s): %w", cfg.SDKConfig.EntityResolutionConnection.Endpoint, err)
+			if sdk.IsPlatformEndpointMalformed(cfg.SDKConfig.EntityResolutionConnection.Endpoint) {
+				return fmt.Errorf("entityresolution endpoint is malformed: %s", cfg.SDKConfig.EntityResolutionConnection.Endpoint)
 			}
-			// Needed to support buffconn for testing
-			if parsedURL.Host == "" {
-				return errors.New("ERS host is empty when parsing")
-			}
-			port := parsedURL.Port()
-			// if port is empty, default to 443.
-			if port == "" {
-				port = "443"
-			}
-			ersGRPCEndpoint := net.JoinHostPort(parsedURL.Hostname(), port)
+			ersConnectRpcConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
 
-			conn, err := grpc.NewClient(ersGRPCEndpoint, ersDialOptions...)
-			if err != nil {
-				return fmt.Errorf("could not connect to ERS: %w", err)
-			}
-			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(conn))
-			logger.Info("added with custom ers connection for ", "", ersGRPCEndpoint)
+			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(&ersConnectRpcConn))
+			logger.Info("added with custom ers connection for ", "", ersConnectRpcConn.Endpoint)
 		}
 
 		client, err = sdk.New("", sdkOptions...)
@@ -313,8 +296,6 @@ func Start(f ...StartOptions) error {
 			return fmt.Errorf("issue creating sdk client: %w", err)
 		}
 	}
-
-	defer client.Close()
 
 	logger.Info("starting services")
 	err = startServices(ctx, cfg, otdf, client, logger, svcRegistry)

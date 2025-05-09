@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk"
@@ -26,7 +27,6 @@ func authorizationExamples() error {
 		slog.Error("could not connect", slog.Any("error", err))
 		return err
 	}
-	defer s.Close()
 
 	// request decision on "TRANSMIT" Action
 	actions := []*policy.Action{{
@@ -62,15 +62,15 @@ func authorizationExamples() error {
 
 	decisionRequest := &authorization.GetDecisionsRequest{DecisionRequests: drs}
 	slog.Info(fmt.Sprintf("Submitting decision request: %s", protojson.Format(decisionRequest)))
-	decisionResponse, err := s.Authorization.GetDecisions(context.Background(), decisionRequest)
+	decisionResponse, err := s.Authorization.GetDecisions(context.Background(), connect.NewRequest(decisionRequest))
 	if err != nil {
 		return err
 	}
-	slog.Info(fmt.Sprintf("Received decision response: %s", protojson.Format(decisionResponse)))
+	slog.Info(fmt.Sprintf("Received decision response: %s", protojson.Format(decisionResponse.Msg)))
 
 	// map response back to entity chain id
 	decisionsByEntityChain := make(map[string]*authorization.DecisionResponse)
-	for _, dr := range decisionResponse.DecisionResponses {
+	for _, dr := range decisionResponse.Msg.DecisionResponses {
 		decisionsByEntityChain[dr.EntityChainId] = dr
 	}
 

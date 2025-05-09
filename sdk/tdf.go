@@ -11,18 +11,20 @@ import (
 	"io"
 	"log/slog"
 	"math"
+	"net/http"
 	"strconv"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/Masterminds/semver/v3"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
@@ -63,7 +65,8 @@ const (
 // Loads and reads ZTDF files
 type Reader struct {
 	tokenSource         auth.AccessTokenSource
-	dialOptions         []grpc.DialOption
+	httpClient          *http.Client
+	connectOptions      []connect.ClientOption
 	manifest            Manifest
 	unencryptedMetadata []byte
 	tdfReader           archive.TDFReader
@@ -654,13 +657,13 @@ func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
 	return policyObj, nil
 }
 
-func allowListFromKASRegistry(ctx context.Context, kasRegistryClient kasregistry.KeyAccessServerRegistryServiceClient, platformURL string) (AllowList, error) {
-	kases, err := kasRegistryClient.ListKeyAccessServers(ctx, &kasregistry.ListKeyAccessServersRequest{})
+func allowListFromKASRegistry(ctx context.Context, kasRegistryClient kasregistryconnect.KeyAccessServerRegistryServiceClient, platformURL string) (AllowList, error) {
+	kases, err := kasRegistryClient.ListKeyAccessServers(ctx, connect.NewRequest(&kasregistry.ListKeyAccessServersRequest{}))
 	if err != nil {
 		return nil, fmt.Errorf("kasregistry.ListKeyAccessServers failed: %w", err)
 	}
 	kasAllowlist := AllowList{}
-	for _, kas := range kases.GetKeyAccessServers() {
+	for _, kas := range kases.Msg.GetKeyAccessServers() {
 		err = kasAllowlist.Add(kas.GetUri())
 		if err != nil {
 			return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
@@ -732,12 +735,13 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	}
 
 	return &Reader{
-		tokenSource:   s.tokenSource,
-		dialOptions:   s.dialOptions,
-		tdfReader:     tdfReader,
-		manifest:      *manifestObj,
-		kasSessionKey: config.kasSessionKey,
-		config:        *config,
+		tokenSource:    s.tokenSource,
+		httpClient:     s.conn.Client,
+		connectOptions: s.conn.Options,
+		tdfReader:      tdfReader,
+		manifest:       *manifestObj,
+		kasSessionKey:  config.kasSessionKey,
+		config:         *config,
 	}, nil
 }
 
@@ -1248,7 +1252,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 
 // Unwraps the payload key, if possible, using the access service
 func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocognit // Better readability keeping it as is
-	kasClient := newKASClient(r.dialOptions, r.tokenSource, r.kasSessionKey)
+	kasClient := newKASClient(r.httpClient, r.connectOptions, r.tokenSource, r.kasSessionKey)
 
 	var kaoResults []kaoResult
 	reqFail := func(err error, req *kas.UnsignedRewrapRequest_WithPolicyRequest) {

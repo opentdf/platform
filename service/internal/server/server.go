@@ -19,6 +19,7 @@ import (
 	"connectrpc.com/validate"
 	"github.com/go-chi/cors"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/sdk"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
@@ -134,6 +135,7 @@ type OpenTDFServer struct {
 
 	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
 	CryptoProvider security.CryptoProvider
+	Listener       net.Listener
 
 	logger *logger.Logger
 }
@@ -229,6 +231,12 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		},
 		logger: logger,
 	}
+
+	listener, err := o.openHTTPServerPort()
+	if err != nil {
+		return nil, err
+	}
+	o.Listener = listener
 
 	if !config.CryptoProvider.IsEmpty() {
 		// Create crypto provider
@@ -440,12 +448,7 @@ func (s OpenTDFServer) Start() error {
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 
-	// Start Http Server
-	ln, err := s.openHTTPServerPort()
-	if err != nil {
-		return err
-	}
-	go s.startHTTPServer(ln)
+	go s.startHTTPServer(s.Listener)
 
 	return nil
 }
@@ -468,7 +471,24 @@ func (s OpenTDFServer) Stop() {
 	s.logger.Info("shutdown complete")
 }
 
-func (s inProcessServer) Conn() *grpc.ClientConn {
+func (s inProcessServer) Conn() *sdk.ConnectRpcConnection {
+	var clientInterceptors []connect.Interceptor
+
+	// Add audit interceptor
+	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())
+
+	conn := sdk.ConnectRpcConnection{
+		Client:   s.srv.Client(),
+		Endpoint: s.srv.Listener.Addr().String(),
+		Options: []connect.ClientOption{
+			connect.WithInterceptors(clientInterceptors...),
+			connect.WithReadMaxBytes(s.maxCallRecvMsgSize),
+			connect.WithSendMaxBytes(s.maxCallSendMsgSize)},
+	}
+	return &conn
+}
+
+func (s inProcessServer) GrpcConn() *grpc.ClientConn {
 	var clientInterceptors []grpc.UnaryClientInterceptor
 
 	// Add audit interceptor

@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -105,19 +106,18 @@ func listAttributes(cmd *cobra.Command) error {
 		slog.Error("could not connect", slog.Any("error", err))
 		return err
 	}
-	defer s.Close()
 
 	ctx := cmd.Context()
 
 	var nsuris []string
 	if ns == "" {
 		slog.Info("listing namespaces")
-		listResp, err := s.Namespaces.ListNamespaces(ctx, &namespaces.ListNamespacesRequest{})
+		listResp, err := s.Namespaces.ListNamespaces(ctx, connect.NewRequest(&namespaces.ListNamespacesRequest{}))
 		if err != nil {
 			return err
 		}
-		slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.Namespaces)))
-		for _, n := range listResp.GetNamespaces() {
+		slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.Msg.Namespaces)))
+		for _, n := range listResp.Msg.GetNamespaces() {
 			nsuris = append(nsuris, n.GetFqn())
 		}
 	} else {
@@ -128,15 +128,15 @@ func listAttributes(cmd *cobra.Command) error {
 		if err != nil {
 			return err
 		}
-		lsr, err := s.Attributes.ListAttributes(ctx, &attributes.ListAttributesRequest{
+		lsr, err := s.Attributes.ListAttributes(ctx, connect.NewRequest(&attributes.ListAttributesRequest{
 			// namespace here must be the namespace name
 			Namespace: u.Host,
-		})
+		}))
 		if err != nil {
 			return err
 		}
-		slog.Info(fmt.Sprintf("found %d attributes in namespace", len(lsr.GetAttributes())), "ns", n)
-		for _, a := range lsr.GetAttributes() {
+		slog.Info(fmt.Sprintf("found %d attributes in namespace", len(lsr.Msg.GetAttributes())), "ns", n)
+		for _, a := range lsr.Msg.GetAttributes() {
 			if longformat {
 				fmt.Printf("%s\t%s\n", a.GetFqn(), a.GetId())
 			} else {
@@ -160,12 +160,12 @@ func nsuuid(ctx context.Context, s *sdk.SDK, u string) (string, error) {
 		slog.Error("namespace url.Parse", "err", err, "url", u)
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
-	listResp, err := s.Namespaces.ListNamespaces(ctx, &namespaces.ListNamespacesRequest{})
+	listResp, err := s.Namespaces.ListNamespaces(ctx, connect.NewRequest(&namespaces.ListNamespacesRequest{}))
 	if err != nil {
 		slog.Error("ListNamespaces", "err", err)
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
-	for _, n := range listResp.GetNamespaces() {
+	for _, n := range listResp.Msg.GetNamespaces() {
 		if n.GetName() == url.Hostname() {
 			return n.GetId(), nil
 		}
@@ -174,15 +174,15 @@ func nsuuid(ctx context.Context, s *sdk.SDK, u string) (string, error) {
 }
 
 func attruuid(ctx context.Context, s *sdk.SDK, nsu, fqn string) (string, error) {
-	resp, err := s.Attributes.ListAttributes(ctx, &attributes.ListAttributesRequest{
+	resp, err := s.Attributes.ListAttributes(ctx, connect.NewRequest(&attributes.ListAttributesRequest{
 		Namespace: nsu,
 		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
-	})
+	}))
 	if err != nil {
 		slog.Error("ListAttributes", "err", err)
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
-	for _, a := range resp.GetAttributes() {
+	for _, a := range resp.Msg.GetAttributes() {
 		if strings.ToLower(a.GetFqn()) == strings.ToLower(fqn) {
 			return a.GetId(), nil
 		}
@@ -191,12 +191,12 @@ func attruuid(ctx context.Context, s *sdk.SDK, nsu, fqn string) (string, error) 
 }
 
 func avuuid(ctx context.Context, s *sdk.SDK, auuid, vs string) (string, error) {
-	resp, err := s.Attributes.GetAttribute(ctx, &attributes.GetAttributeRequest{Id: auuid})
+	resp, err := s.Attributes.GetAttribute(ctx, connect.NewRequest(&attributes.GetAttributeRequest{Id: auuid}))
 	if err != nil {
 		slog.Error("GetAttribute", "err", err)
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
-	for _, v := range resp.GetAttribute().GetValues() {
+	for _, v := range resp.Msg.GetAttribute().GetValues() {
 		if strings.ToLower(v.GetValue()) == strings.ToLower(vs) {
 			return v.GetId(), nil
 		}
@@ -210,12 +210,12 @@ func addNamespace(ctx context.Context, s *sdk.SDK, u string) (string, error) {
 		slog.Error("url.Parse", "err", err)
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
-	resp, err := s.Namespaces.CreateNamespace(ctx, &namespaces.CreateNamespaceRequest{Name: url.Hostname()})
+	resp, err := s.Namespaces.CreateNamespace(ctx, connect.NewRequest(&namespaces.CreateNamespaceRequest{Name: url.Hostname()}))
 	if err != nil {
 		slog.Error("CreateNamespace", "err", err)
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
-	return resp.Namespace.GetId(), nil
+	return resp.Msg.Namespace.GetId(), nil
 }
 
 func addAttribute(cmd *cobra.Command) error {
@@ -224,7 +224,6 @@ func addAttribute(cmd *cobra.Command) error {
 		slog.Error("newSDK", slog.Any("error", err))
 		return err
 	}
-	defer s.Close()
 
 	are := regexp.MustCompile(`^(https?://[\w./]+)/attr/([^/\s]*)$`)
 	m := are.FindStringSubmatch(attr)
@@ -259,7 +258,6 @@ func removeAttribute(cmd *cobra.Command) error {
 		slog.Error("could not connect", "err", err)
 		return err
 	}
-	defer s.Close()
 
 	are := regexp.MustCompile(`^(https?://[\w./]+)/attr/([^/\s]*)$`)
 	m := are.FindStringSubmatch(attr)
@@ -277,10 +275,10 @@ func removeAttribute(cmd *cobra.Command) error {
 	}
 	if len(values) == 0 {
 		if unsafeBool {
-			resp, err := s.Unsafe.UnsafeDeleteAttribute(cmd.Context(), &unsafe.UnsafeDeleteAttributeRequest{
+			resp, err := s.Unsafe.UnsafeDeleteAttribute(cmd.Context(), connect.NewRequest(&unsafe.UnsafeDeleteAttributeRequest{
 				Id:  auuid,
 				Fqn: strings.ToLower(attr),
-			})
+			}))
 			if err != nil {
 				slog.Error("UnsafeDeleteAttribute", "err", err, "id", auuid)
 				return err
@@ -288,9 +286,9 @@ func removeAttribute(cmd *cobra.Command) error {
 			slog.Info("deleted attribute", "attr", attr, "resp", resp)
 			return nil
 		}
-		resp, err := s.Attributes.DeactivateAttribute(cmd.Context(), &attributes.DeactivateAttributeRequest{
+		resp, err := s.Attributes.DeactivateAttribute(cmd.Context(), connect.NewRequest(&attributes.DeactivateAttributeRequest{
 			Id: auuid,
-		})
+		}))
 		if err != nil {
 			slog.Error("DeactivateAttribute", "err", err, "id", auuid)
 			return err
@@ -304,19 +302,19 @@ func removeAttribute(cmd *cobra.Command) error {
 				return err
 			}
 			if unsafeBool {
-				r, err := s.Unsafe.UnsafeDeleteAttributeValue(cmd.Context(), &unsafe.UnsafeDeleteAttributeValueRequest{
+				r, err := s.Unsafe.UnsafeDeleteAttributeValue(cmd.Context(), connect.NewRequest(&unsafe.UnsafeDeleteAttributeValueRequest{
 					Id:  avu,
 					Fqn: strings.ToLower(attr + "/value/" + url.PathEscape(v)),
-				})
+				}))
 				if err != nil {
 					slog.Error("UnsafeDeleteAttributeValue", "err", err, "id", avu)
 					return err
 				}
 				slog.Info("deactivated attribute value", "attr", attr, "value", v, "resp", r)
 			} else {
-				r, err := s.Attributes.DeactivateAttributeValue(cmd.Context(), &attributes.DeactivateAttributeValueRequest{
+				r, err := s.Attributes.DeactivateAttributeValue(cmd.Context(), connect.NewRequest(&attributes.DeactivateAttributeValueRequest{
 					Id: avu,
-				})
+				}))
 				if err != nil {
 					slog.Error("DeactivateAttributeValue", "err", err, "id", avu)
 					return err
@@ -334,7 +332,6 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 		slog.Error("could not connect", "err", err)
 		return err
 	}
-	defer s.Close()
 
 	are := regexp.MustCompile(`^(https?://[\w./]+)/attr/([^/\s]*)$`)
 	m := are.FindStringSubmatch(attr)
@@ -372,11 +369,11 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 		return fmt.Errorf("assign must take a `--kas` parameter")
 	case len(values) == 0:
 		// look up all kasids associated with the attribute
-		ar, err := s.Attributes.GetAttribute(cmd.Context(), &attributes.GetAttributeRequest{Id: auuid})
+		ar, err := s.Attributes.GetAttribute(cmd.Context(), connect.NewRequest(&attributes.GetAttributeRequest{Id: auuid}))
 		if err != nil {
 			return err
 		}
-		for _, b := range ar.Attribute.GetGrants() {
+		for _, b := range ar.Msg.Attribute.GetGrants() {
 			kasids = append(kasids, b.GetId())
 			kasById[b.GetId()] = b.GetUri()
 		}
@@ -388,11 +385,11 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 		if err != nil {
 			return err
 		}
-		ar, err := s.Attributes.GetAttributeValue(cmd.Context(), &attributes.GetAttributeValueRequest{Id: avu})
+		ar, err := s.Attributes.GetAttributeValue(cmd.Context(), connect.NewRequest(&attributes.GetAttributeValueRequest{Id: avu}))
 		if err != nil {
 			return err
 		}
-		for _, b := range ar.GetValue().GetGrants() {
+		for _, b := range ar.Msg.GetValue().GetGrants() {
 			kasids = append(kasids, b.GetId())
 			kasById[b.GetId()] = b.GetUri()
 		}
@@ -401,27 +398,27 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 	for _, kasid := range kasids {
 		if len(values) == 0 {
 			if assign {
-				r, err := s.Attributes.AssignKeyAccessServerToAttribute(cmd.Context(), &attributes.AssignKeyAccessServerToAttributeRequest{
+				r, err := s.Attributes.AssignKeyAccessServerToAttribute(cmd.Context(), connect.NewRequest(&attributes.AssignKeyAccessServerToAttributeRequest{
 					AttributeKeyAccessServer: &attributes.AttributeKeyAccessServer{
 						AttributeId:       auuid,
 						KeyAccessServerId: kasid,
 					},
-				})
+				}))
 				if err != nil {
 					return err
 				}
-				cmd.Printf("successfully assigned all of [%s] to [%s] (binding [%v])\n", attr, kasById[kasid], *r.GetAttributeKeyAccessServer())
+				cmd.Printf("successfully assigned all of [%s] to [%s] (binding [%v])\n", attr, kasById[kasid], *r.Msg.GetAttributeKeyAccessServer())
 			} else {
-				r, err := s.Attributes.RemoveKeyAccessServerFromAttribute(cmd.Context(), &attributes.RemoveKeyAccessServerFromAttributeRequest{
+				r, err := s.Attributes.RemoveKeyAccessServerFromAttribute(cmd.Context(), connect.NewRequest(&attributes.RemoveKeyAccessServerFromAttributeRequest{
 					AttributeKeyAccessServer: &attributes.AttributeKeyAccessServer{
 						AttributeId:       auuid,
 						KeyAccessServerId: kasid,
 					},
-				})
+				}))
 				if err != nil {
 					return err
 				}
-				cmd.Printf("successfully unassigned [%s] from [%s] (binding %v)\n", attr, kasById[kasid], *r.GetAttributeKeyAccessServer())
+				cmd.Printf("successfully unassigned [%s] from [%s] (binding %v)\n", attr, kasById[kasid], *r.Msg.GetAttributeKeyAccessServer())
 			}
 		} else {
 			for _, v := range values {
@@ -430,27 +427,27 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 					return err
 				}
 				if assign {
-					r, err := s.Attributes.AssignKeyAccessServerToValue(cmd.Context(), &attributes.AssignKeyAccessServerToValueRequest{
+					r, err := s.Attributes.AssignKeyAccessServerToValue(cmd.Context(), connect.NewRequest(&attributes.AssignKeyAccessServerToValueRequest{
 						ValueKeyAccessServer: &attributes.ValueKeyAccessServer{
 							ValueId:           avu,
 							KeyAccessServerId: kasid,
 						},
-					})
+					}))
 					if err != nil {
 						return err
 					}
-					cmd.Printf("successfully assigned [%s] to [%s] (binding [%v])\n", attr, kasById[kasid], *r.GetValueKeyAccessServer())
+					cmd.Printf("successfully assigned [%s] to [%s] (binding [%v])\n", attr, kasById[kasid], *r.Msg.GetValueKeyAccessServer())
 				} else {
-					r, err := s.Attributes.RemoveKeyAccessServerFromValue(cmd.Context(), &attributes.RemoveKeyAccessServerFromValueRequest{
+					r, err := s.Attributes.RemoveKeyAccessServerFromValue(cmd.Context(), connect.NewRequest(&attributes.RemoveKeyAccessServerFromValueRequest{
 						ValueKeyAccessServer: &attributes.ValueKeyAccessServer{
 							ValueId:           avu,
 							KeyAccessServerId: kasid,
 						},
-					})
+					}))
 					if err != nil {
 						return err
 					}
-					cmd.Printf("successfully unassigned [%s] from [%s] (binding [%v])\n", attr, kasById[kasid], *r.GetValueKeyAccessServer())
+					cmd.Printf("successfully unassigned [%s] from [%s] (binding [%v])\n", attr, kasById[kasid], *r.Msg.GetValueKeyAccessServer())
 				}
 			}
 		}
@@ -473,15 +470,15 @@ func ruler() policy.AttributeRuleTypeEnum {
 
 func upsertAttr(ctx context.Context, s *sdk.SDK, auth, name string, values []string) (string, error) {
 	av, err :=
-		s.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
+		s.Attributes.CreateAttribute(ctx, connect.NewRequest(&attributes.CreateAttributeRequest{
 			NamespaceId: auth,
 			Name:        name,
 			Rule:        ruler(),
 			Values:      values,
-		})
+		}))
 	if err != nil {
 		slog.Error("CreateAttribute", "err", err, "auth", auth, "name", name, "values", values, "rule", ruler())
 		return "", err
 	}
-	return av.Attribute.GetId(), nil
+	return av.Msg.Attribute.GetId(), nil
 }

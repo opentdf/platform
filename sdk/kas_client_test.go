@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -15,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -58,12 +58,12 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 }
 
 func TestCreatingRequest(t *testing.T) {
-	var dialOption []grpc.DialOption
+	var options []connect.ClientOption
 	tokenSource := getTokenSource(t)
 	kasKey, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 	require.NoError(t, err, "error creating RSA Key")
 
-	client := newKASClient(dialOption, tokenSource, &kasKey)
+	client := newKASClient(nil, options, tokenSource, &kasKey)
 	require.NoError(t, err)
 
 	keyAccess := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
@@ -125,7 +125,7 @@ func TestCreatingRequest(t *testing.T) {
 }
 
 func Test_StoreKASKeys(t *testing.T) {
-	s, err := New("localhost:8080",
+	s, err := New("http://localhost:8080",
 		WithPlatformConfiguration(PlatformConfiguration{
 			"idp": map[string]interface{}{
 				"issuer":                 "https://example.org",

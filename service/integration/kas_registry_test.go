@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -81,10 +80,8 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 	for _, kasKey := range kasr.GetKasKeys() {
 		for _, f := range keysFixtureArr {
 			if kasKey.GetKey().GetId() == f.ID {
-				publicKeyContext, err := base64.StdEncoding.DecodeString(f.PublicKeyCtx)
-				s.Require().NoError(err)
 				s.Equal(f.KeyAccessServerID, kasKey.GetKasId())
-				s.Equal(publicKeyContext, kasKey.GetKey().GetPublicKeyCtx())
+				validatePublicKeyCtx(&s.Suite, []byte(f.PublicKeyCtx), kasKey)
 				s.Empty(kasKey.GetKey().GetPrivateKeyCtx())
 				s.Empty(kasKey.GetKey().GetProviderConfig())
 				matchingKeysCount++
@@ -818,8 +815,14 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithChildKeys_Fails() {
 		KasId:        createdKas.GetId(),
 		KeyId:        keyID,
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P521,
-		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
-		PublicKeyCtx: []byte(`{}`),
+		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		PublicKeyCtx: &policy.KasPublicKeyCtx{
+			Pem: keyCtx,
+		},
+		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+			KeyId:      keyID,
+			WrappedKey: keyCtx,
+		},
 	})
 
 	s.Require().NoError(err)

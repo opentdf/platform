@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -1372,9 +1371,7 @@ func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Succeeds() {
 	s.Len(gotAttr.GetKasKeys(), 1)
 	s.Equal(kasKey.KeyAccessServerID, gotAttr.GetKasKeys()[0].GetKasId())
 	s.Equal(kasKey.ID, gotAttr.GetKasKeys()[0].GetKey().GetId())
-	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
-	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, gotAttr.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), gotAttr.GetKasKeys()[0])
 	s.Empty(gotAttr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 	s.Empty(gotAttr.GetKasKeys()[0].GetKey().GetProviderConfig())
 

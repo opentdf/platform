@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/tracing"
@@ -77,10 +78,10 @@ func (p *Provider) checkAttributes(ctx context.Context, ras []*authorization.Res
 	}
 
 	ctx = tracing.InjectTraceContext(ctx)
-	dr, err := p.SDK.Authorization.GetDecisionsByToken(ctx, &in)
+	dr, err := p.SDK.Authorization.GetDecisionsByToken(ctx, connect.NewRequest(&in))
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "Error received from GetDecisionsByToken", "err", err)
 		return nil, errors.Join(ErrDecisionUnexpected, err)
 	}
-	return dr, nil
+	return dr.Msg, nil
 }

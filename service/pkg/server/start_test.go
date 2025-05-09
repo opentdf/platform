@@ -183,12 +183,13 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Res
 	err = registry.RegisterService(registerTestService, "test")
 	suite.Require().NoError(err)
 	// Start services with test service
-	err = startServices(context.Background(), &config.Config{
+	cleanup, err := startServices(context.Background(), &config.Config{
 		Mode: []string{"all"},
 		Services: map[string]config.ServiceConfig{
 			"test": {},
 		},
 	}, s, nil, logger, registry)
+	defer cleanup()
 	require.NoError(t, err)
 
 	require.NoError(t, s.Start())

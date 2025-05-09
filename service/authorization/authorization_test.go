@@ -16,13 +16,14 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
+	attrconnect "github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	smconnect "github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -47,15 +48,15 @@ var (
 )
 
 type myAttributesClient struct {
-	attr.AttributesServiceClient
+	attrconnect.AttributesServiceClient
 }
 
-func (*myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
-	return &listAttributeResp, errListAttributes
+func (*myAttributesClient) ListAttributes(_ context.Context, _ *connect.Request[attr.ListAttributesRequest]) (*connect.Response[attr.ListAttributesResponse], error) {
+	return connect.NewResponse(&listAttributeResp), errListAttributes
 }
 
-func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attr.GetAttributeValuesByFqnsResponse, error) {
-	return &getAttributesByValueFqnsResponse, errGetAttributesByValueFqns
+func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *connect.Request[attr.GetAttributeValuesByFqnsRequest]) (*connect.Response[attr.GetAttributeValuesByFqnsResponse], error) {
+	return connect.NewResponse(&getAttributesByValueFqnsResponse), errGetAttributesByValueFqns
 }
 
 type myERSClient struct {
@@ -63,23 +64,23 @@ type myERSClient struct {
 }
 
 type mySubjectMappingClient struct {
-	sm.SubjectMappingServiceClient
+	smconnect.SubjectMappingServiceClient
 }
 
 type paginatedMockSubjectMappingClient struct {
-	sm.SubjectMappingServiceClient
+	smconnect.SubjectMappingServiceClient
 }
 
-func (*mySubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest, _ ...grpc.CallOption) (*sm.ListSubjectMappingsResponse, error) {
-	return &listSubjectMappings, nil
+func (*mySubjectMappingClient) ListSubjectMappings(_ context.Context, _ *connect.Request[sm.ListSubjectMappingsRequest]) (*connect.Response[sm.ListSubjectMappingsResponse], error) {
+	return connect.NewResponse(&listSubjectMappings), nil
 }
 
-func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *entityresolution.CreateEntityChainFromJwtRequest, _ ...grpc.CallOption) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
-	return &createEntityChainResp, nil
+func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
+	return connect.NewResponse(&createEntityChainResp), nil
 }
 
-func (*myERSClient) ResolveEntities(_ context.Context, _ *entityresolution.ResolveEntitiesRequest, _ ...grpc.CallOption) (*entityresolution.ResolveEntitiesResponse, error) {
-	return &resolveEntitiesResp, nil
+func (*myERSClient) ResolveEntities(_ context.Context, _ *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
+	return connect.NewResponse(&resolveEntitiesResp), nil
 }
 
 var (
@@ -87,7 +88,7 @@ var (
 	smListCallCount    = 0
 )
 
-func (*paginatedMockSubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest, _ ...grpc.CallOption) (*sm.ListSubjectMappingsResponse, error) {
+func (*paginatedMockSubjectMappingClient) ListSubjectMappings(_ context.Context, _ *connect.Request[sm.ListSubjectMappingsRequest]) (*connect.Response[sm.ListSubjectMappingsResponse], error) {
 	smListCallCount++
 	// simulate paginated list and policy LIST behavior
 	if smPaginationOffset > 0 {
@@ -98,13 +99,13 @@ func (*paginatedMockSubjectMappingClient) ListSubjectMappings(_ context.Context,
 			},
 		}
 		smPaginationOffset = 0
-		return rsp, nil
+		return connect.NewResponse(rsp), nil
 	}
-	return &listSubjectMappings, nil
+	return connect.NewResponse(&listSubjectMappings), nil
 }
 
 type paginatedMockAttributesClient struct {
-	attr.AttributesServiceClient
+	attrconnect.AttributesServiceClient
 }
 
 var (
@@ -112,7 +113,7 @@ var (
 	attrListCallCount    = 0
 )
 
-func (*paginatedMockAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
+func (*paginatedMockAttributesClient) ListAttributes(_ context.Context, _ *connect.Request[attr.ListAttributesRequest]) (*connect.Response[attr.ListAttributesResponse], error) {
 	attrListCallCount++
 	// simulate paginated list and policy LIST behavior
 	if attrPaginationOffset > 0 {
@@ -123,9 +124,9 @@ func (*paginatedMockAttributesClient) ListAttributes(_ context.Context, _ *attr.
 			},
 		}
 		attrPaginationOffset = 0
-		return rsp, nil
+		return connect.NewResponse(rsp), nil
 	}
-	return &listAttributeResp, nil
+	return connect.NewResponse(&listAttributeResp), nil
 }
 
 func TestGetComprehensiveHierarchy(t *testing.T) {

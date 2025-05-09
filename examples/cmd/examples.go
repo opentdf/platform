@@ -29,8 +29,8 @@ func init() {
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	f := ExamplesCmd.PersistentFlags()
 	f.StringVarP(&clientCredentials, "creds", "", "opentdf-sdk:secret", "client id:secret credentials")
-	f.StringVarP(&platformEndpoint, "platformEndpoint", "e", "http://localhost:8080", "Platform Endpoint")
-	f.StringVarP(&tokenEndpoint, "tokenEndpoint", "t", "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token", "OAuth token endpoint")
+	f.StringVarP(&platformEndpoint, "platformEndpoint", "e", "https://localhost:8080", "Platform Endpoint")
+	f.StringVarP(&tokenEndpoint, "tokenEndpoint", "t", "https://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token", "OAuth token endpoint")
 	f.BoolVar(&storeCollectionHeaders, "storeCollectionHeaders", false, "Store collection headers")
 	f.BoolVar(&insecurePlaintextConn, "insecurePlaintextConn", false, "Use insecure plaintext connection")
 	f.BoolVar(&insecureSkipVerify, "insecureSkipVerify", false, "Skip server certificate verification")
@@ -40,6 +40,7 @@ func newSDK() (*sdk.SDK, error) {
 	resolver.SetDefaultScheme("passthrough")
 	opts := []sdk.Option{}
 	if insecurePlaintextConn {
+		platformEndpoint = strings.Replace(platformEndpoint, "https://", "http://", 1)
 		opts = append(opts, sdk.WithInsecurePlaintextConn())
 	}
 	if insecureSkipVerify {

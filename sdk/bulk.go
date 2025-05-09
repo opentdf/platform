@@ -167,7 +167,7 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 		}
 	}
 
-	kasClient := newKASClient(s.dialOptions, s.tokenSource, s.kasSessionKey)
+	kasClient := newKASClient(s.conn.Client, s.conn.Options, s.tokenSource, s.kasSessionKey)
 	allRewrapResp := make(map[string][]kaoResult)
 	var err error
 	for kasurl, rewrapRequests := range kasRewrapRequests {

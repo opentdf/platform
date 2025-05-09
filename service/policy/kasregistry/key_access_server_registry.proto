@@ -506,8 +506,25 @@ message UpdateKeyResponse {
   }
 
 message RotateKeyRequest {
+  option (buf.validate.message).cel = {
+    id: "private_key_ctx_optionally_required"
+    message:
+      "The wrapped_key is required if the key_mode is KEY_MODE_LOCAL. "
+      "If the key_mode is KEY_MODE_REMOTE, the wrapped_key should not be "
+      "present."
+    expression: "(this.new_key.key_mode == 1 && this.new_key.private_key_ctx.wrapped_key != '') || (this.new_key.key_mode == 2 && this.new_key.private_key_ctx.wrapped_key == '')";
+  };
+  option (buf.validate.message).cel = {
+    id: "providfer_config_id_optionally_required"
+    message:
+      "Provider config id is required if the key_mode is REMOTE. "
+    expression: "((this.new_key.key_mode == 1) || (this.new_key.key_mode == 2 && this.new_key.provider_config_id != ''))";
+  };
+
+
   // Required (Current Active Key ID)
   oneof active_key {
+    option (buf.validate.oneof).required = true;
     // Current Active Key UUID
     string id = 1 [(buf.validate.field).string.uuid = true];
     // Alternative way to specify the active key using KAS ID and Key ID
@@ -526,20 +543,42 @@ message RotateKeyRequest {
     // Required
     KeyMode key_mode = 3 [(buf.validate.field).enum.defined_only = true];
     // Required
-    bytes private_key_ctx = 4; // Specific structure based on key provider implementation
-    // Optional
-    bytes public_key_ctx = 5;
+    KasPublicKeyCtx public_key_ctx = 4 [(buf.validate.field).required = true];
+    // Required
+    KasPrivateKeyCtx private_key_ctx = 5 [(buf.validate.field).required = true];
+    // Conditionally Required. If the key_mode is REMOTE, this field is required.
     string provider_config_id = 6;
 
     // Common metadata fields
-    common.Metadata metadata = 100;
+    common.MetadataMutable metadata = 100;
   }
+}
+
+
+  /**
+  * Simplified information about the resources that were rotated as part of the key rotation process.
+  */
+  message ChangeMappings {
+    string id = 1;
+    string fqn = 2;
+  }
+
+/*
+* All resources that were rotated as part of the key rotation process
+*/
+message RotatedResources {
+  KasKey rotated_out_key = 1; // The old key that was rotated out
+  repeated ChangeMappings attribute_definition_mappings = 2;
+  repeated ChangeMappings attribute_value_mappings = 3;
+  repeated ChangeMappings namespace_mappings = 4;
 }
 
 // Response message for the RotateKey request
 message RotateKeyResponse {
   // The newly rotated Kas Key
   KasKey kas_key = 1;
+  // All resources that were rotated as part of the key rotation process
+  RotatedResources rotated_resources = 2;
 }
 
 service KeyAccessServerRegistryService {

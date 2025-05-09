@@ -248,6 +248,7 @@ WHERE (sqlc.narg('id')::uuid IS NULL OR kask.id = sqlc.narg('id')::uuid)
   AND (sqlc.narg('kas_uri')::text IS NULL OR kas.uri = sqlc.narg('kas_uri')::text)
   AND (sqlc.narg('kas_name')::text IS NULL OR kas.name = sqlc.narg('kas_name')::text);
 
+
 -- name: updateKey :execrows
 UPDATE key_access_server_keys
 SET
@@ -805,6 +806,12 @@ RETURNING *;
 DELETE FROM attribute_definition_public_key_map
 WHERE definition_id = $1 AND key_access_server_key_id = $2;
 
+-- name: rotatePublicKeyForAttributeDefinition :many
+UPDATE attribute_definition_public_key_map
+SET key_access_server_key_id = sqlc.arg('new_key_id')::uuid
+WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid)
+RETURNING definition_id;
+
 ---------------------------------------------------------------- 
 -- ATTRIBUTE VALUES
 ----------------------------------------------------------------
@@ -910,6 +917,12 @@ RETURNING *;
 -- name: removePublicKeyFromAttributeValue :execrows
 DELETE FROM attribute_value_public_key_map
 WHERE value_id = $1 AND key_access_server_key_id = $2;
+
+-- name: rotatePublicKeyForAttributeValue :many
+UPDATE attribute_value_public_key_map
+SET key_access_server_key_id = sqlc.arg('new_key_id')::uuid
+WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid)
+RETURNING value_id;
 
 ---------------------------------------------------------------- 
 -- RESOURCE MAPPING GROUPS
@@ -1136,6 +1149,12 @@ RETURNING *;
 -- name: removePublicKeyFromNamespace :execrows
 DELETE FROM attribute_namespace_public_key_map
 WHERE namespace_id = $1 AND key_access_server_key_id = $2;
+
+-- name: rotatePublicKeyForNamespace :many
+UPDATE attribute_namespace_public_key_map
+SET key_access_server_key_id = sqlc.arg('new_key_id')::uuid
+WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid)
+RETURNING namespace_id;
 
 ---------------------------------------------------------------- 
 -- SUBJECT CONDITION SETS

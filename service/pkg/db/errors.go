@@ -28,6 +28,7 @@ var (
 	ErrSelectIdentifierInvalid    = errors.New("ErrSelectIdentifierInvalid: invalid identifier value for select query")
 	ErrUnknownSelectIdentifier    = errors.New("ErrUnknownSelectIdentifier: unknown identifier type for select query")
 	ErrCannotUpdateToUnspecified  = errors.New("ErrCannotUpdateToUnspecified: cannot update to unspecified value")
+	ErrKeyRotationFailed          = errors.New("ErrTextKeyRotationFailed: key rotation failed")
 	ErrExpectedBase64EncodedValue = errors.New("ErrExpectedBase64EncodedValue: expected base64 encoded value")
 	ErrMashalValueFailed          = errors.New("ErrMashalValueFailed: failed to marshal value")
 	ErrUnmarshalValueFailed       = errors.New("ErrUnmarshalValueFailed: failed to unmarshal value")
@@ -111,6 +112,7 @@ const (
 	ErrTextInvalidIdentifier            = "value sepcified as the identifier is invalid"
 	ErrorTextUnknownIdentifier          = "could not match identifier to known type"
 	ErrorTextUpdateToUnspecified        = "cannot update to unspecified value"
+	ErrTextKeyRotationFailed            = "key rotation failed"
 	ErrorTextExpectedBase64EncodedValue = "expected base64 encoded value"
 	ErrorTextMarshalFailed              = "failed to marshal value"
 	ErrorTextUnmarsalFailed             = "failed to unmarshal value"
@@ -157,6 +159,10 @@ func StatusifyError(err error, fallbackErr string, log ...any) error {
 	if errors.Is(err, ErrCannotUpdateToUnspecified) {
 		slog.Error(ErrorTextUpdateToUnspecified, l...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUpdateToUnspecified))
+	}
+	if errors.Is(err, ErrKeyRotationFailed) {
+		slog.Error(ErrTextKeyRotationFailed, l...)
+		return connect.NewError(connect.CodeInternal, errors.New(ErrTextKeyRotationFailed))
 	}
 	if errors.Is(err, ErrExpectedBase64EncodedValue) {
 		slog.Error(ErrorTextExpectedBase64EncodedValue, l...)

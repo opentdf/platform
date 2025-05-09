@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
+	authorizationv2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	auth "github.com/opentdf/platform/service/authorization"
 	"github.com/opentdf/platform/service/logger"
@@ -32,7 +33,7 @@ func RegisterClaimsERS(_ config.ServiceConfig, logger *logger.Logger) (ClaimsEnt
 
 func (s ClaimsEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
 	resp, err := EntityResolution(ctx, req.Msg, s.logger)
-	return connect.NewResponse(&resp), err
+	return connect.NewResponse(resp), err
 }
 
 func (s ClaimsEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
@@ -63,43 +64,98 @@ func CreateEntityChainFromJwt(
 
 func EntityResolution(_ context.Context,
 	req *entityresolution.ResolveEntitiesRequest, logger *logger.Logger,
-) (entityresolution.ResolveEntitiesResponse, error) {
-	payload := req.GetEntities()
+) (*entityresolution.ResolveEntitiesResponse, error) {
 	var resolvedEntities []*entityresolution.EntityRepresentation
 
-	for idx, ident := range payload {
-		entityStruct := &structpb.Struct{}
-		switch ident.GetEntityType().(type) {
-		case *authorization.Entity_Claims:
-			claims := ident.GetClaims()
-			if claims != nil {
-				err := claims.UnmarshalTo(entityStruct)
-				if err != nil {
-					return entityresolution.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err))
-				}
-			}
-		default:
-			retrievedStruct, err := entityToStructPb(ident)
-			if err != nil {
-				logger.Error("unable to make entity struct", slog.String("error", err.Error()))
-				return entityresolution.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, fmt.Errorf("unable to make entity struct: %w", err))
-			}
-			entityStruct = retrievedStruct
+	// Process v1 entities
+	for idx, entity := range req.GetEntities() {
+		representation, err := processV1Entity(entity, idx, logger)
+		if err != nil {
+			return nil, err
 		}
-		// make sure the id field is populated
-		originialID := ident.GetId()
-		if originialID == "" {
-			originialID = auth.EntityIDPrefix + fmt.Sprint(idx)
-		}
-		resolvedEntities = append(
-			resolvedEntities,
-			&entityresolution.EntityRepresentation{
-				OriginalId:      originialID,
-				AdditionalProps: []*structpb.Struct{entityStruct},
-			},
-		)
+		resolvedEntities = append(resolvedEntities, representation)
 	}
-	return entityresolution.ResolveEntitiesResponse{EntityRepresentations: resolvedEntities}, nil
+
+	// Process v2 entities
+	for idx, entity := range req.GetEntitiesV2() {
+		representation, err := processV2Entity(entity, idx, logger)
+		if err != nil {
+			return nil, err
+		}
+		resolvedEntities = append(resolvedEntities, representation)
+	}
+
+	return &entityresolution.ResolveEntitiesResponse{EntityRepresentations: resolvedEntities}, nil
+}
+
+// processV1Entity handles converting a v1 entity into an EntityRepresentation
+func processV1Entity(entity *authorization.Entity, idx int, logger *logger.Logger) (*entityresolution.EntityRepresentation, error) {
+	entityStruct := &structpb.Struct{}
+
+	switch entity.GetEntityType().(type) {
+	case *authorization.Entity_Claims:
+		claims := entity.GetClaims()
+		if claims != nil {
+			if err := claims.UnmarshalTo(entityStruct); err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument,
+					fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err))
+			}
+		}
+	default:
+		retrievedStruct, err := entityToStructPb(entity, nil)
+		if err != nil {
+			logger.Error("unable to make entity struct", slog.String("error", err.Error()))
+			return nil, connect.NewError(connect.CodeInternal,
+				fmt.Errorf("unable to make entity struct: %w", err))
+		}
+		entityStruct = retrievedStruct
+	}
+
+	// Ensure ID is populated
+	originalID := entity.GetId()
+	if originalID == "" {
+		originalID = auth.EntityIDPrefix + fmt.Sprint(idx)
+	}
+
+	return &entityresolution.EntityRepresentation{
+		OriginalId:      originalID,
+		AdditionalProps: []*structpb.Struct{entityStruct},
+	}, nil
+}
+
+// processV2Entity handles converting a v2 entity into an EntityRepresentation
+func processV2Entity(entity *authorizationv2.Entity, idx int, logger *logger.Logger) (*entityresolution.EntityRepresentation, error) {
+	entityStruct := &structpb.Struct{}
+
+	switch entity.GetEntityType().(type) {
+	case *authorizationv2.Entity_Claims:
+		claims := entity.GetClaims()
+		if claims != nil {
+			if err := claims.UnmarshalTo(entityStruct); err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument,
+					fmt.Errorf("error unpacking anypb.Any to structpb.Struct: %w", err))
+			}
+		}
+	default:
+		retrievedStruct, err := entityToStructPb(nil, entity)
+		if err != nil {
+			logger.Error("unable to make entity struct", slog.String("error", err.Error()))
+			return nil, connect.NewError(connect.CodeInternal,
+				fmt.Errorf("unable to make entity struct: %w", err))
+		}
+		entityStruct = retrievedStruct
+	}
+
+	// Ensure ID is populated
+	originalID := entity.GetEphemeralId()
+	if originalID == "" {
+		originalID = auth.EntityIDPrefix + fmt.Sprint(idx)
+	}
+
+	return &entityresolution.EntityRepresentation{
+		OriginalId:      originalID,
+		AdditionalProps: []*structpb.Struct{entityStruct},
+	}, nil
 }
 
 func getEntitiesFromToken(jwtString string) ([]*authorization.Entity, error) {
@@ -131,15 +187,32 @@ func getEntitiesFromToken(jwtString string) ([]*authorization.Entity, error) {
 	return entities, nil
 }
 
-func entityToStructPb(ident *authorization.Entity) (*structpb.Struct, error) {
-	entityBytes, err := protojson.Marshal(ident)
-	if err != nil {
-		return nil, err
-	}
-	var entityStruct structpb.Struct
-	err = entityStruct.UnmarshalJSON(entityBytes)
-	if err != nil {
-		return nil, err
+func entityToStructPb(ident *authorization.Entity, ident2 *authorizationv2.Entity) (*structpb.Struct, error) {
+	var (
+		entityStruct structpb.Struct
+		err          error
+		entityBytes  []byte
+	)
+	if ident != nil {
+		entityBytes, err = protojson.Marshal(ident)
+		if err != nil {
+			return nil, err
+		}
+		err = entityStruct.UnmarshalJSON(entityBytes)
+		if err != nil {
+			return nil, err
+		}
+	} else if ident2 != nil {
+		entityBytes, err = protojson.Marshal(ident2)
+		if err != nil {
+			return nil, err
+		}
+		err = entityStruct.UnmarshalJSON(entityBytes)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("error: entity is nil")
 	}
 	return &entityStruct, nil
 }

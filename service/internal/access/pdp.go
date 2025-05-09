@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -155,17 +156,21 @@ func (pdp *Pdp) evaluateRule(
 	distinctValues []*policy.Value,
 	entityAttributeSets map[string][]string,
 ) (map[string]DataRuleResult, error) {
+	pdp.logger.DebugContext(ctx,
+		"Evaluating attribute definition",
+		slog.String("name", attrDefinition.GetFqn()),
+		slog.String("rule", attrDefinition.GetRule().String()),
+		slog.Any("values", distinctValues),
+	)
+
 	switch attrDefinition.GetRule() {
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF:
-		pdp.logger.DebugContext(ctx, "Evaluating under allOf", "name", attrDefinition.GetFqn())
 		return pdp.allOfRule(ctx, distinctValues, entityAttributeSets)
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF:
-		pdp.logger.DebugContext(ctx, "Evaluating under anyOf", "name", attrDefinition.GetFqn())
 		return pdp.anyOfRule(ctx, distinctValues, entityAttributeSets)
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
-		pdp.logger.DebugContext(ctx, "Evaluating under hierarchy", "name", attrDefinition.GetFqn())
 		return pdp.hierarchyRule(ctx, distinctValues, entityAttributeSets, attrDefinition.GetValues())
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED:

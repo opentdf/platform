@@ -18,6 +18,9 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+type AttributeValueFQNsToActions map[string][]*policy.Action
+type EntityIDsToEntitlements map[string]AttributeValueFQNsToActions
+
 func SubjectMappingBuiltin() {
 	rego.RegisterBuiltin2(&rego.Function{
 		Name:             "subjectmapping.resolve",

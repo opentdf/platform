@@ -271,6 +271,85 @@ func (writer *Writer) Finish() (int64, error) {
 	return writer.totalBytes, nil
 }
 
+// WriteZip64EndOfCentralDirectory write the zip64 end of central directory record struct to the archive.
+func (writer *Writer) WriteZip64EndOfCentralDirectory() error {
+	zip64EndOfCDRecord := Zip64EndOfCDRecord{}
+	zip64EndOfCDRecord.Signature = zip64EndOfCDSignature
+	zip64EndOfCDRecord.RecordSize = zip64EndOfCDRecordSize - 12
+	zip64EndOfCDRecord.VersionMadeBy = zipVersion
+	zip64EndOfCDRecord.VersionToExtract = zipVersion
+	zip64EndOfCDRecord.DiskNumber = 0
+	zip64EndOfCDRecord.StartDiskNumber = 0
+	zip64EndOfCDRecord.NumberOfCDRecordEntries = uint64(len(writer.fileInfoEntries))
+	zip64EndOfCDRecord.TotalCDRecordEntries = uint64(len(writer.fileInfoEntries))
+	zip64EndOfCDRecord.CentralDirectorySize = writer.lastOffsetCDFileHeader - writer.currentOffset
+	zip64EndOfCDRecord.StartingDiskCentralDirectoryOffset = writer.currentOffset
+
+	// write the zip64 end of central directory record struct
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.LittleEndian, zip64EndOfCDRecord)
+	if err != nil {
+		return fmt.Errorf("binary.Write failed: %w", err)
+	}
+
+	err = writer.writeData(buf.Bytes())
+	if err != nil {
+		return fmt.Errorf("io.Writer.Write failed: %w", err)
+	}
+
+	return nil
+}
+
+// WriteZip64EndOfCentralDirectoryLocator write the zip64 end of central directory locator struct
+// to the archive.
+func (writer *Writer) WriteZip64EndOfCentralDirectoryLocator() error {
+	zip64EndOfCDRecordLocator := Zip64EndOfCDRecordLocator{}
+	zip64EndOfCDRecordLocator.Signature = zip64EndOfCDLocatorSignature
+	zip64EndOfCDRecordLocator.CDStartDiskNumber = 0
+	zip64EndOfCDRecordLocator.CDOffset = writer.lastOffsetCDFileHeader
+	zip64EndOfCDRecordLocator.NumberOfDisks = 1
+
+	// write the zip64 end of central directory locator struct
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.LittleEndian, zip64EndOfCDRecordLocator)
+	if err != nil {
+		return fmt.Errorf("binary.Write failed: %w", err)
+	}
+
+	err = writer.writeData(buf.Bytes())
+	if err != nil {
+		return fmt.Errorf("io.Writer.Write failed: %w", err)
+	}
+
+	return nil
+}
+
+// GetTimeDateUnMSDosFormat Get the time and date in MSDOS format.
+const defaultSecondValue = 29
+
+const monthShift = 5
+
+const baseYear = 80
+
+const halfSecond = 2
+
+func (writer *Writer) getTimeDateUnMSDosFormat() (uint16, uint16) {
+	t := time.Now().UTC()
+	timeInDos := t.Hour()<<11 | t.Minute()<<5 | int(math.Max(float64(t.Second()/halfSecond), float64(defaultSecondValue)))
+	dateInDos := (t.Year()-baseYear)<<9 | int((t.Month()+1)<<monthShift) | t.Day()
+	return uint16(timeInDos), uint16(dateInDos)
+}
+
+func (writer *Writer) writeData(data []byte) error {
+	n, err := writer.writer.Write(data)
+	if err != nil {
+		return err
+	}
+
+	writer.totalBytes += int64(n)
+	return nil
+}
+
 // WriteCentralDirectory write central directory struct into archive.
 func (writer *Writer) writeCentralDirectory() error {
 	writer.lastOffsetCDFileHeader = writer.currentOffset
@@ -395,84 +474,5 @@ func (writer *Writer) writeEndOfCentralDirectory() error {
 		return fmt.Errorf("io.Writer.Write failed: %w", err)
 	}
 
-	return nil
-}
-
-// WriteZip64EndOfCentralDirectory write the zip64 end of central directory record struct to the archive.
-func (writer *Writer) WriteZip64EndOfCentralDirectory() error {
-	zip64EndOfCDRecord := Zip64EndOfCDRecord{}
-	zip64EndOfCDRecord.Signature = zip64EndOfCDSignature
-	zip64EndOfCDRecord.RecordSize = zip64EndOfCDRecordSize - 12
-	zip64EndOfCDRecord.VersionMadeBy = zipVersion
-	zip64EndOfCDRecord.VersionToExtract = zipVersion
-	zip64EndOfCDRecord.DiskNumber = 0
-	zip64EndOfCDRecord.StartDiskNumber = 0
-	zip64EndOfCDRecord.NumberOfCDRecordEntries = uint64(len(writer.fileInfoEntries))
-	zip64EndOfCDRecord.TotalCDRecordEntries = uint64(len(writer.fileInfoEntries))
-	zip64EndOfCDRecord.CentralDirectorySize = writer.lastOffsetCDFileHeader - writer.currentOffset
-	zip64EndOfCDRecord.StartingDiskCentralDirectoryOffset = writer.currentOffset
-
-	// write the zip64 end of central directory record struct
-	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, zip64EndOfCDRecord)
-	if err != nil {
-		return fmt.Errorf("binary.Write failed: %w", err)
-	}
-
-	err = writer.writeData(buf.Bytes())
-	if err != nil {
-		return fmt.Errorf("io.Writer.Write failed: %w", err)
-	}
-
-	return nil
-}
-
-// WriteZip64EndOfCentralDirectoryLocator write the zip64 end of central directory locator struct
-// to the archive.
-func (writer *Writer) WriteZip64EndOfCentralDirectoryLocator() error {
-	zip64EndOfCDRecordLocator := Zip64EndOfCDRecordLocator{}
-	zip64EndOfCDRecordLocator.Signature = zip64EndOfCDLocatorSignature
-	zip64EndOfCDRecordLocator.CDStartDiskNumber = 0
-	zip64EndOfCDRecordLocator.CDOffset = writer.lastOffsetCDFileHeader
-	zip64EndOfCDRecordLocator.NumberOfDisks = 1
-
-	// write the zip64 end of central directory locator struct
-	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, zip64EndOfCDRecordLocator)
-	if err != nil {
-		return fmt.Errorf("binary.Write failed: %w", err)
-	}
-
-	err = writer.writeData(buf.Bytes())
-	if err != nil {
-		return fmt.Errorf("io.Writer.Write failed: %w", err)
-	}
-
-	return nil
-}
-
-// GetTimeDateUnMSDosFormat Get the time and date in MSDOS format.
-const defaultSecondValue = 29
-
-const monthShift = 5
-
-const baseYear = 80
-
-const halfSecond = 2
-
-func (writer *Writer) getTimeDateUnMSDosFormat() (uint16, uint16) {
-	t := time.Now().UTC()
-	timeInDos := t.Hour()<<11 | t.Minute()<<5 | int(math.Max(float64(t.Second()/halfSecond), float64(defaultSecondValue)))
-	dateInDos := (t.Year()-baseYear)<<9 | int((t.Month()+1)<<monthShift) | t.Day()
-	return uint16(timeInDos), uint16(dateInDos)
-}
-
-func (writer *Writer) writeData(data []byte) error {
-	n, err := writer.writer.Write(data)
-	if err != nil {
-		return err
-	}
-
-	writer.totalBytes += int64(n)
 	return nil
 }

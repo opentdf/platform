@@ -411,7 +411,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 
 		unencryptedMetaData, err := r.UnencryptedMetadata()
 		s.Require().NoError(err)
-		s.EqualValues(metaData, unencryptedMetaData)
+		s.Equal(metaData, unencryptedMetaData)
 
 		dataAttributes, err := r.DataAttributes()
 		s.Require().NoError(err)
@@ -438,7 +438,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 
 		// check version is present if usehex is false
 		if config.useHex {
-			s.Equal("", r.Manifest().TDFVersion)
+			s.Empty(r.Manifest().TDFVersion)
 		} else {
 			s.Equal(TDFSpecVersion, r.Manifest().TDFVersion)
 		}

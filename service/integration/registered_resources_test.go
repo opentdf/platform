@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
 )
@@ -585,6 +586,34 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithNonUni
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 	s.Nil(created)
+}
+
+func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_With_ActionAttrValues_Succeeds() {
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "ashkashashkashk",
+	})
+	s.Require().NoError(err)
+	s.NotNil(res)
+
+	req := &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: res.GetId(),
+		Value:      "test_create_res_value__action_attr_values",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_Name{
+					Name: actions.ActionNameCreate,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_Fqn{
+					Fqn: "https://example.com/attr/attr1/value/value1",
+				},
+			},
+		},
+	}
+
+	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, req)
+	s.Require().NoError(err)
+	s.NotNil(created)
+	slog.Info(">>>>> CREATED RESOURCE VALUE", "created", created)
 }
 
 // Get

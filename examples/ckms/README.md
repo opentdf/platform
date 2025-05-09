@@ -9,8 +9,20 @@ provided via a `trust.KeyService` plugin.
 Start up vault, configured to run in dev mode with local storage.
 
 ```sh
-vault server -dev -dev-root-token-id root -dev-tls
+LOCAL_HOSTNAME=$(hostname)
+mkcert -cert-file ./vault-tls.crt -key-file ./vault-tls.key "${LOCAL_HOSTNAME}"
+sudo tee ./vault.hcl << EOF
+listener "tcp" {
+  address     = "${LOCAL_HOSTNAME}:8200"
+  tls_cert_file = "${PWD}/vault-tls.crt"
+  tls_key_file  = "${PWD}/vault-tls.key"
+  tls_client_ca_file = "$(mkcert -CAROOT)/rootCA.pem"
+}
+api_addr = "https://${LOCAL_HOSTNAME}$:8200"
+EOF
+vault server -dev -dev-root-token-id root -config=./vault.hcl
 ```
+
 
 Copy the configuration details somewhere.
 Copy and paste the environment variable configuration into a new shell.

@@ -9,13 +9,13 @@ import (
 	"context"
 )
 
-// iteratorForcreateRegisteredResourceActionAttributeValue implements pgx.CopyFromSource.
-type iteratorForcreateRegisteredResourceActionAttributeValue struct {
-	rows                 []createRegisteredResourceActionAttributeValueParams
+// iteratorForcreateRegisteredResourceActionAttributeValues implements pgx.CopyFromSource.
+type iteratorForcreateRegisteredResourceActionAttributeValues struct {
+	rows                 []createRegisteredResourceActionAttributeValuesParams
 	skippedFirstNextCall bool
 }
 
-func (r *iteratorForcreateRegisteredResourceActionAttributeValue) Next() bool {
+func (r *iteratorForcreateRegisteredResourceActionAttributeValues) Next() bool {
 	if len(r.rows) == 0 {
 		return false
 	}
@@ -27,7 +27,7 @@ func (r *iteratorForcreateRegisteredResourceActionAttributeValue) Next() bool {
 	return len(r.rows) > 0
 }
 
-func (r iteratorForcreateRegisteredResourceActionAttributeValue) Values() ([]interface{}, error) {
+func (r iteratorForcreateRegisteredResourceActionAttributeValues) Values() ([]interface{}, error) {
 	return []interface{}{
 		r.rows[0].RegisteredResourceValueID,
 		r.rows[0].ActionID,
@@ -35,14 +35,16 @@ func (r iteratorForcreateRegisteredResourceActionAttributeValue) Values() ([]int
 	}, nil
 }
 
-func (r iteratorForcreateRegisteredResourceActionAttributeValue) Err() error {
+func (r iteratorForcreateRegisteredResourceActionAttributeValues) Err() error {
 	return nil
 }
 
-// createRegisteredResourceActionAttributeValue
+// --------------------------------------------------------------
+// Registered Resource Action Attribute Values
+// --------------------------------------------------------------
 //
 //	INSERT INTO registered_resource_action_attribute_values (registered_resource_value_id, action_id, attribute_value_id)
 //	VALUES ($1, $2, $3)
-func (q *Queries) createRegisteredResourceActionAttributeValue(ctx context.Context, arg []createRegisteredResourceActionAttributeValueParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"registered_resource_action_attribute_values"}, []string{"registered_resource_value_id", "action_id", "attribute_value_id"}, &iteratorForcreateRegisteredResourceActionAttributeValue{rows: arg})
+func (q *Queries) createRegisteredResourceActionAttributeValues(ctx context.Context, arg []createRegisteredResourceActionAttributeValuesParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"registered_resource_action_attribute_values"}, []string{"registered_resource_value_id", "action_id", "attribute_value_id"}, &iteratorForcreateRegisteredResourceActionAttributeValues{rows: arg})
 }

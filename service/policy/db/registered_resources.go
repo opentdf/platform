@@ -36,6 +36,27 @@ func unmarshalRegisteredResourceValuesProto(valuesJSON []byte, values *[]*policy
 	return nil
 }
 
+func unmarshalRegisteredResourceActionAttributeValuesProto(actionAttrValuesJSON []byte, values *[]*policy.RegisteredResourceActionAttributeValue) error {
+	if actionAttrValuesJSON == nil {
+		return nil
+	}
+
+	raw := []json.RawMessage{}
+	if err := json.Unmarshal(actionAttrValuesJSON, &raw); err != nil {
+		return fmt.Errorf("failed to unmarshal action attribute values array [%s]: %w", string(actionAttrValuesJSON), err)
+	}
+
+	for _, r := range raw {
+		v := &policy.RegisteredResourceActionAttributeValue{}
+		if err := protojson.Unmarshal(r, v); err != nil {
+			return fmt.Errorf("failed to unmarshal action attribute value [%s]: %w", string(r), err)
+		}
+		*values = append(*values, v)
+	}
+
+	return nil
+}
+
 ///
 /// Registered Resources
 ///
@@ -234,54 +255,9 @@ func (c PolicyDBClient) CreateRegisteredResourceValue(ctx context.Context, r *re
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	actionAttrValues := r.GetActionAttributeValues()
-	createActionAttributeValueParams := make([]createRegisteredResourceActionAttributeValueParams, len(actionAttrValues))
-	var actionID, attributeValueID string
-	for i, aav := range actionAttrValues {
-		switch identifier := aav.GetActionIdentifier().(type) {
-		case *registeredresources.ActionAttributeValue_ActionId:
-			actionID = identifier.ActionId
-		case *registeredresources.ActionAttributeValue_Name:
-			a, err := c.Queries.getAction(ctx, getActionParams{
-				Name: pgtypeText(strings.ToLower(identifier.Name)),
-			})
-			if err != nil {
-				return nil, db.WrapIfKnownInvalidQueryErr(err)
-			}
-			actionID = a.ID
-		default:
-			return nil, db.ErrSelectIdentifierInvalid
-		}
-
-		switch identifier := aav.GetAttributeValueIdentifier().(type) {
-		case *registeredresources.ActionAttributeValue_AttributeValueId:
-			attributeValueID = identifier.AttributeValueId
-		case *registeredresources.ActionAttributeValue_Fqn:
-			av, err := c.Queries.GetAttributeValue(ctx, GetAttributeValueParams{
-				Fqn: pgtypeText(strings.ToLower(identifier.Fqn)),
-			})
-			if err != nil {
-				return nil, db.WrapIfKnownInvalidQueryErr(err)
-			}
-			attributeValueID = av.ID
-		default:
-			return nil, db.ErrSelectIdentifierInvalid
-		}
-
-		createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValueParams{
-			RegisteredResourceValueID: createdID,
-			ActionID:                  actionID,
-			AttributeValueID:          attributeValueID,
-		}
-	}
-
-	count, err := c.Queries.createRegisteredResourceActionAttributeValue(ctx, createActionAttributeValueParams)
+	_, err = c.createRegisteredResourceActionAttributeValues(ctx, createdID, r.GetActionAttributeValues())
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if count != int64(len(createActionAttributeValueParams)) {
-		// todo: more accurate error message?
-		return nil, db.ErrNotFound
 	}
 
 	return c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
@@ -320,6 +296,11 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 		return nil, err
 	}
 
+	actionAttrValues := []*policy.RegisteredResourceActionAttributeValue{}
+	if err = unmarshalRegisteredResourceActionAttributeValuesProto(rv.ActionAttributeValues, &actionAttrValues); err != nil {
+		return nil, err
+	}
+
 	return &policy.RegisteredResourceValue{
 		Id:       rv.ID,
 		Value:    rv.Value,
@@ -327,6 +308,7 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 		Resource: &policy.RegisteredResource{
 			Id: rv.RegisteredResourceID,
 		},
+		ActionAttributeValues: actionAttrValues,
 	}, nil
 }
 
@@ -385,6 +367,11 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 			return nil, err
 		}
 
+		actionAttrValues := []*policy.RegisteredResourceActionAttributeValue{}
+		if err = unmarshalRegisteredResourceActionAttributeValuesProto(r.ActionAttributeValues, &actionAttrValues); err != nil {
+			return nil, err
+		}
+
 		rvList[i] = &policy.RegisteredResourceValue{
 			Id:       r.ID,
 			Value:    r.Value,
@@ -392,6 +379,7 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 			Resource: &policy.RegisteredResource{
 				Id: r.RegisteredResourceID,
 			},
+			ActionAttributeValues: actionAttrValues,
 		}
 	}
 
@@ -415,7 +403,7 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *registeredresources.UpdateRegisteredResourceValueRequest) (*policy.RegisteredResourceValue, error) {
 	id := r.GetId()
 	value := strings.ToLower(r.GetValue())
-	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		v, err := c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
 			Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
 				Id: id,
@@ -442,11 +430,21 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 		return nil, db.ErrNotFound
 	}
 
-	return &policy.RegisteredResourceValue{
-		Id:       id,
-		Value:    value,
-		Metadata: metadata,
-	}, nil
+	_, err = c.Queries.deleteRegisteredResourceActionAttributeValues(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	_, err = c.createRegisteredResourceActionAttributeValues(ctx, id, r.GetActionAttributeValues())
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: id,
+		},
+	})
 }
 
 func (c PolicyDBClient) DeleteRegisteredResourceValue(ctx context.Context, id string) (*policy.RegisteredResourceValue, error) {
@@ -461,4 +459,56 @@ func (c PolicyDBClient) DeleteRegisteredResourceValue(ctx context.Context, id st
 	return &policy.RegisteredResourceValue{
 		Id: id,
 	}, nil
+}
+
+///
+/// Registered Resource Action Attribute Values
+///
+
+func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx context.Context, registeredResourceValueID string, actionAttrValues []*registeredresources.ActionAttributeValue) (int64, error) {
+	if len(actionAttrValues) == 0 {
+		return 0, nil
+	}
+
+	createActionAttributeValueParams := make([]createRegisteredResourceActionAttributeValuesParams, len(actionAttrValues))
+	var actionID, attributeValueID string
+	for i, aav := range actionAttrValues {
+		switch identifier := aav.GetActionIdentifier().(type) {
+		case *registeredresources.ActionAttributeValue_ActionId:
+			actionID = identifier.ActionId
+		case *registeredresources.ActionAttributeValue_Name:
+			a, err := c.Queries.getAction(ctx, getActionParams{
+				Name: pgtypeText(strings.ToLower(identifier.Name)),
+			})
+			if err != nil {
+				return 0, db.WrapIfKnownInvalidQueryErr(err)
+			}
+			actionID = a.ID
+		default:
+			return 0, db.ErrSelectIdentifierInvalid
+		}
+
+		switch identifier := aav.GetAttributeValueIdentifier().(type) {
+		case *registeredresources.ActionAttributeValue_AttributeValueId:
+			attributeValueID = identifier.AttributeValueId
+		case *registeredresources.ActionAttributeValue_Fqn:
+			av, err := c.Queries.GetAttributeValue(ctx, GetAttributeValueParams{
+				Fqn: pgtypeText(strings.ToLower(identifier.Fqn)),
+			})
+			if err != nil {
+				return 0, db.WrapIfKnownInvalidQueryErr(err)
+			}
+			attributeValueID = av.ID
+		default:
+			return 0, db.ErrSelectIdentifierInvalid
+		}
+
+		createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValuesParams{
+			RegisteredResourceValueID: registeredResourceValueID,
+			ActionID:                  actionID,
+			AttributeValueID:          attributeValueID,
+		}
+	}
+
+	return c.Queries.createRegisteredResourceActionAttributeValues(ctx, createActionAttributeValueParams)
 }

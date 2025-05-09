@@ -300,36 +300,6 @@ func (f *Fixtures) GetSubjectConditionSetKey(key string) SubjectConditionSet {
 	return scs
 }
 
-// Migration adds standard actions [create, read, update, delete] to the database
-func (f *Fixtures) loadMigratedStandardActions() {
-	actions := make(map[string]string)
-	rows, err := f.db.Client.Query(context.Background(), "SELECT id, name FROM actions WHERE is_standard = TRUE", nil)
-	if err != nil {
-		slog.Error("could not get standard actions", slog.String("error", err.Error()))
-		panic("could not get standard actions")
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id, name string
-		if err := rows.Scan(&id, &name); err != nil {
-			slog.Error("could not scan standard actions", slog.String("error", err.Error()))
-			panic("could not scan standard actions")
-		}
-		actions[name] = id
-	}
-	if err := rows.Err(); err != nil {
-		slog.Error("could not get standard actions", slog.String("error", err.Error()))
-		panic("could not get standard actions")
-	}
-	if len(actions) == 0 {
-		slog.Error("could not find standard actions")
-		panic("could not find standard actions")
-	}
-	slog.Info("found standard actions", slog.Any("actions", actions))
-	// add standard actions to fixtureData
-	f.MigratedData.StandardActions = actions
-}
-
 func (f *Fixtures) GetStandardAction(name string) *policypb.Action {
 	id, ok := f.MigratedData.StandardActions[name]
 	if !ok {
@@ -763,4 +733,34 @@ func (f *Fixtures) provision(t string, c []string, v [][]string) int64 {
 		panic("incorrect number of rows provisioned")
 	}
 	return rows
+}
+
+// Migration adds standard actions [create, read, update, delete] to the database
+func (f *Fixtures) loadMigratedStandardActions() {
+	actions := make(map[string]string)
+	rows, err := f.db.Client.Query(context.Background(), "SELECT id, name FROM actions WHERE is_standard = TRUE", nil)
+	if err != nil {
+		slog.Error("could not get standard actions", slog.String("error", err.Error()))
+		panic("could not get standard actions")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			slog.Error("could not scan standard actions", slog.String("error", err.Error()))
+			panic("could not scan standard actions")
+		}
+		actions[name] = id
+	}
+	if err := rows.Err(); err != nil {
+		slog.Error("could not get standard actions", slog.String("error", err.Error()))
+		panic("could not get standard actions")
+	}
+	if len(actions) == 0 {
+		slog.Error("could not find standard actions")
+		panic("could not find standard actions")
+	}
+	slog.Info("found standard actions", slog.Any("actions", actions))
+	// add standard actions to fixtureData
+	f.MigratedData.StandardActions = actions
 }

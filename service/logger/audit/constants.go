@@ -70,6 +70,7 @@ const (
 	ActionTypeUpdate
 	ActionTypeDelete
 	ActionTypeRewrap
+	ActionTypeRotate
 )
 
 func (at ActionType) String() string {
@@ -79,6 +80,7 @@ func (at ActionType) String() string {
 		"update",
 		"delete",
 		"rewrap",
+		"rotate",
 	}[at]
 }
 

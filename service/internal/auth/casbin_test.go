@@ -26,77 +26,6 @@ type AuthnCasbinSuite struct {
 	suite.Suite
 }
 
-func (s *AuthnCasbinSuite) buildTokenRoles(admin bool, standard bool, roleMaps []string) []interface{} {
-	adminRole := "opentdf-admin"
-	if len(roleMaps) > 0 {
-		adminRole = roleMaps[0]
-	}
-	standardRole := "opentdf-standard"
-	if len(roleMaps) > 1 {
-		standardRole = roleMaps[1]
-	}
-
-	i := 0
-	roles := make([]interface{}, 2)
-
-	if admin {
-		roles[i] = adminRole
-		i++
-	}
-	if standard {
-		roles[i] = standardRole
-	}
-
-	return roles
-}
-
-func (s *AuthnCasbinSuite) newTokWithDefaultClaim(admin bool, standard bool, usernameClaimName, groupClaimName string) jwt.Token {
-	tok := jwt.New()
-
-	if groupClaimName == "" {
-		groupClaimName = "roles"
-	}
-
-	tokenRoles := s.buildTokenRoles(admin, standard, nil)
-	if err := tok.Set("realm_access", map[string]interface{}{groupClaimName: tokenRoles}); err != nil {
-		s.T().Fatal(err)
-	}
-
-	if usernameClaimName != "" {
-		if err := tok.Set(usernameClaimName, "casbin-user"); err != nil {
-			s.T().Fatal(err)
-		}
-	}
-
-	return tok
-}
-
-func (s *AuthnCasbinSuite) newTokenWithCustomClaim(admin bool, standard bool) (string, jwt.Token) {
-	tok := jwt.New()
-	tokenRoles := s.buildTokenRoles(admin, standard, nil)
-	if err := tok.Set("test", map[string]interface{}{"test_roles": map[string]interface{}{"roles": tokenRoles}}); err != nil {
-		s.T().Fatal(err)
-	}
-	return "test.test_roles.roles", tok
-}
-
-func (s *AuthnCasbinSuite) newTokenWithCustomRoleMap(admin bool, standard bool) (string, jwt.Token) {
-	tok := jwt.New()
-	tokenRoles := s.buildTokenRoles(admin, standard, []string{"test-admin", "test-standard"})
-	if err := tok.Set("realm_access", map[string]interface{}{"roles": tokenRoles}); err != nil {
-		s.T().Fatal(err)
-	}
-	return "", tok
-}
-
-func (s *AuthnCasbinSuite) newTokenWithCilentID() (string, jwt.Token) {
-	tok := jwt.New()
-	if err := tok.Set("client_id", "test"); err != nil {
-		s.T().Fatal(err)
-	}
-	return "", tok
-}
-
 func (s *AuthnCasbinSuite) SetupSuite() {
 }
 
@@ -616,4 +545,75 @@ func (s *AuthnCasbinSuite) Test_Override_Of_Groups_Claim() {
 	allowed, err = enforcer.Enforce(tok, "policy.attributes.List", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
+}
+
+func (s *AuthnCasbinSuite) buildTokenRoles(admin bool, standard bool, roleMaps []string) []interface{} {
+	adminRole := "opentdf-admin"
+	if len(roleMaps) > 0 {
+		adminRole = roleMaps[0]
+	}
+	standardRole := "opentdf-standard"
+	if len(roleMaps) > 1 {
+		standardRole = roleMaps[1]
+	}
+
+	i := 0
+	roles := make([]interface{}, 2)
+
+	if admin {
+		roles[i] = adminRole
+		i++
+	}
+	if standard {
+		roles[i] = standardRole
+	}
+
+	return roles
+}
+
+func (s *AuthnCasbinSuite) newTokWithDefaultClaim(admin bool, standard bool, usernameClaimName, groupClaimName string) jwt.Token {
+	tok := jwt.New()
+
+	if groupClaimName == "" {
+		groupClaimName = "roles"
+	}
+
+	tokenRoles := s.buildTokenRoles(admin, standard, nil)
+	if err := tok.Set("realm_access", map[string]interface{}{groupClaimName: tokenRoles}); err != nil {
+		s.T().Fatal(err)
+	}
+
+	if usernameClaimName != "" {
+		if err := tok.Set(usernameClaimName, "casbin-user"); err != nil {
+			s.T().Fatal(err)
+		}
+	}
+
+	return tok
+}
+
+func (s *AuthnCasbinSuite) newTokenWithCustomClaim(admin bool, standard bool) (string, jwt.Token) {
+	tok := jwt.New()
+	tokenRoles := s.buildTokenRoles(admin, standard, nil)
+	if err := tok.Set("test", map[string]interface{}{"test_roles": map[string]interface{}{"roles": tokenRoles}}); err != nil {
+		s.T().Fatal(err)
+	}
+	return "test.test_roles.roles", tok
+}
+
+func (s *AuthnCasbinSuite) newTokenWithCustomRoleMap(admin bool, standard bool) (string, jwt.Token) {
+	tok := jwt.New()
+	tokenRoles := s.buildTokenRoles(admin, standard, []string{"test-admin", "test-standard"})
+	if err := tok.Set("realm_access", map[string]interface{}{"roles": tokenRoles}); err != nil {
+		s.T().Fatal(err)
+	}
+	return "", tok
+}
+
+func (s *AuthnCasbinSuite) newTokenWithCilentID() (string, jwt.Token) {
+	tok := jwt.New()
+	if err := tok.Set("client_id", "test"); err != nil {
+		s.T().Fatal(err)
+	}
+	return "", tok
 }

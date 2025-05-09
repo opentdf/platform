@@ -56,20 +56,6 @@ func (s *KasRegistryKeySuite) SetupSuite() {
 	s.kasKeys = s.getKasRegistryServerKeysFixtures()
 }
 
-func (s *KasRegistryKeySuite) getKasRegistryServerKeysFixtures() []fixtures.FixtureDataKasRegistryKey {
-	return []fixtures.FixtureDataKasRegistryKey{
-		s.f.GetKasRegistryServerKeys("kas_key_1"),
-		s.f.GetKasRegistryServerKeys("kas_key_2"),
-	}
-}
-
-func (s *KasRegistryKeySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasRegistry {
-	return []fixtures.FixtureDataKasRegistry{
-		s.f.GetKasRegistryKey("key_access_server_1"),
-		s.f.GetKasRegistryKey("key_access_server_2"),
-	}
-}
-
 func (s *KasRegistryKeySuite) TearDownSuite() {
 	slog.Info("tearing down db.KasKeys test suite")
 	s.f.TearDown()
@@ -352,37 +338,6 @@ func (s *KasRegistryKeySuite) Test_ListKeys_InvalidLimit_Fail() {
 	s.Require().Error(err)
 	s.Nil(resp)
 	s.Require().ErrorContains(err, db.ErrListLimitTooLarge.Error())
-}
-
-func (s *KasRegistryKeySuite) validateListKeysResponse(resp *kasregistry.ListKeysResponse, err error) {
-	s.Require().NoError(err)
-	s.NotNil(resp)
-	s.GreaterOrEqual(len(resp.GetKasKeys()), 2)
-	s.GreaterOrEqual(int32(2), resp.GetPagination().GetTotal())
-
-	for _, key := range resp.GetKasKeys() {
-		var fixtureKey *fixtures.FixtureDataKasRegistryKey
-
-		for _, kasKey := range s.kasKeys {
-			if kasKey.ID == key.GetKey().GetId() {
-				fixtureKey = &kasKey
-				break
-			}
-		}
-
-		s.Require().NotNil(fixtureKey, "No matching KAS key found for ID: %s", key.GetKey().GetId())
-		s.Equal(fixtureKey.KeyAccessServerID, key.GetKasId())
-		s.Equal(fixtureKey.ID, key.GetKey().GetId())
-		s.Equal(fixtureKey.ProviderConfigID, key.GetKey().GetProviderConfig().GetId())
-
-		privateKeyCtx, err := base64.StdEncoding.DecodeString(fixtureKey.PrivateKeyCtx)
-		s.Require().NoError(err)
-		s.Equal(privateKeyCtx, key.GetKey().GetPrivateKeyCtx())
-
-		pubKeyCtx, err := base64.StdEncoding.DecodeString(fixtureKey.PublicKeyCtx)
-		s.Require().NoError(err)
-		s.Equal(pubKeyCtx, key.GetKey().GetPublicKeyCtx())
-	}
 }
 
 func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Success() {

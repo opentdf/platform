@@ -141,69 +141,6 @@ func EvaluateSubjectMappings(attributeMappings map[string]*attributes.GetAttribu
 	return entitlements, nil
 }
 
-func EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entityRepresentations []*entityresolution.EntityRepresentation) (EntityIDsToEntitlements, error) {
-	results := make(map[string]AttributeValueFQNsToActions)
-	for _, er := range entityRepresentations {
-		entitlements, err := EvaluateSubjectMappingsWithActions(attributeMappings, er)
-		if err != nil {
-			return nil, err
-		}
-		results[er.GetOriginalId()] = entitlements
-	}
-
-	return results, nil
-}
-
-// Returns a map of attribute value FQNs to each entitled action on the value
-func EvaluateSubjectMappingsWithActions(attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entityRepresentation *entityresolution.EntityRepresentation) (AttributeValueFQNsToActions, error) {
-	// for now just look at first entity
-	// We only provide one input to ERS to resolve
-	jsonEntities := entityRepresentation.GetAdditionalProps()
-	var entitlementsSet = make(map[string][]*policy.Action)
-	for _, entity := range jsonEntities {
-		flattenedEntity, err := flattening.Flatten(entity.AsMap())
-		if err != nil {
-			return nil, fmt.Errorf("failure to flatten entity in subject mapping builtin: %w", err)
-		}
-		for attr, mapping := range attributeMappings {
-			actionNameSet := make(map[string]bool)
-			// subject mapping results or-ed togethor
-			for _, subjectMapping := range mapping.GetValue().GetSubjectMappings() {
-				subjectMappingResult := true
-				for _, subjectSet := range subjectMapping.GetSubjectConditionSet().GetSubjectSets() {
-					subjectSetConditionResult, err := EvaluateSubjectSet(subjectSet, flattenedEntity)
-					if err != nil {
-						return nil, err
-					}
-					// update the result for the subject mapping
-					subjectMappingResult = subjectMappingResult && subjectSetConditionResult
-					// if one subject condition set fails, subject mapping fails
-					if !subjectSetConditionResult {
-						break
-					}
-				}
-
-				// each subject mapping that is true should permit the actions on the mapped value
-				if subjectMappingResult {
-					actions := subjectMapping.GetActions()
-					if _, ok := entitlementsSet[attr]; !ok {
-						entitlementsSet[attr] = make([]*policy.Action, len(actions))
-					}
-					// deduplicate actions in multiple subject mappings to the same attribute value
-					for _, action := range actions {
-						if _, ok := actionNameSet[action.GetName()]; !ok {
-							actionNameSet[action.GetName()] = true
-						}
-						entitlementsSet[attr] = append(entitlementsSet[attr], action)
-					}
-				}
-			}
-
-		}
-	}
-	return entitlementsSet, nil
-}
-
 func EvaluateSubjectSet(subjectSet *policy.SubjectSet, entity flattening.Flattened) (bool, error) {
 	// condition groups anded together
 	subjectSetConditionResult := true

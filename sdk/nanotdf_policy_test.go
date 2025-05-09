@@ -57,6 +57,8 @@ func TestCreateEmbeddedPolicy(t *testing.T) {
 	t.Run("plaintext policy", func(t *testing.T) {
 		config, err := new(SDK).NewNanoTDFConfig()
 		require.NoError(t, err)
+		err = config.SetPolicyMode(NanoTDFPolicyModePlainText)
+		require.NoError(t, err)
 
 		policy, err := createNanoTDFEmbeddedPolicy(make([]byte, 32), policyData, *config)
 		require.NoError(t, err)
@@ -68,9 +70,7 @@ func TestCreateEmbeddedPolicy(t *testing.T) {
 		config, err := new(SDK).NewNanoTDFConfig()
 		require.NoError(t, err)
 
-		// Set policy mode to encrypted
-		err = config.SetPolicyMode(NanoTDFPolicyModeEncrypted)
-		require.NoError(t, err)
+		// Defaults to encrypted policy
 
 		// Setup KAS public key
 		key, err := ecdh.P256().GenerateKey(rand.Reader)

@@ -490,7 +490,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					Id: validUUID,
 				},
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
-					KeyId:         invalidUUID,
+					KeyId:         validKeyID,
 					Algorithm:     -1,
 					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
 					PublicKeyCtx:  validKeyCtx,
@@ -508,7 +508,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					Id: validUUID,
 				},
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
-					KeyId:         invalidUUID,
+					KeyId:         validKeyID,
 					Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
 					KeyMode:       -1,
 					PublicKeyCtx:  validKeyCtx,
@@ -526,7 +526,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					Id: validUUID,
 				},
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
-					KeyId:         invalidUUID,
+					KeyId:         validKeyID,
 					Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
 					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
 					PrivateKeyCtx: validKeyCtx,
@@ -543,7 +543,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					Id: validUUID,
 				},
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
-					KeyId:         invalidUUID,
+					KeyId:         validKeyID,
 					Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
 					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
 					PublicKeyCtx:  validKeyCtx,

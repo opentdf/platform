@@ -93,7 +93,7 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 
 func updateNestedKey(data map[string]interface{}, path []string, value interface{}) error {
 	if len(path) == 0 {
-		return fmt.Errorf("path cannot be empty")
+		return errors.New("path cannot be empty")
 	}
 
 	current := data

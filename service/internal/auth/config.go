@@ -50,11 +50,11 @@ type PolicyConfig struct {
 
 func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 	if c.Issuer == "" {
-		return fmt.Errorf("config Auth.Issuer is required")
+		return errors.New("config Auth.Issuer is required")
 	}
 
 	if c.Audience == "" {
-		return fmt.Errorf("config Auth.Audience is required")
+		return errors.New("config Auth.Audience is required")
 	}
 
 	if c.PublicClientID == "" {

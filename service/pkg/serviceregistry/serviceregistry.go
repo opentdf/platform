@@ -146,7 +146,7 @@ func (s Service[S]) DBMigrations() *embed.FS {
 // It returns an error if the service is already started or if there is an issue running database migrations.
 func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error {
 	if s.Started {
-		return fmt.Errorf("service already started")
+		return errors.New("service already started")
 	}
 
 	if s.DB.Required && !params.DBClient.RanMigrations() && params.DBClient.MigrationsEnabled() {
@@ -183,7 +183,7 @@ func (s Service[S]) RegisterConfigUpdateHook(ctx context.Context, hookAppender f
 
 func (s Service[S]) RegisterConnectRPCServiceHandler(_ context.Context, connectRPC *server.ConnectRPC) error {
 	if s.ConnectRPCFunc == nil {
-		return fmt.Errorf("service did not register a handler")
+		return errors.New("service did not register a handler")
 	}
 	connectRPC.ServiceReflection = append(connectRPC.ServiceReflection, s.GetServiceDesc().ServiceName)
 	path, handler := s.ConnectRPCFunc(s.impl, connectRPC.Interceptors...)
@@ -198,7 +198,7 @@ func (s Service[S]) RegisterConnectRPCServiceHandler(_ context.Context, connectR
 // If the service did not register a handler, it returns an error.
 func (s *Service[S]) RegisterHTTPHandlers(ctx context.Context, mux *runtime.ServeMux) error {
 	if s.httpHandlerFunc == nil {
-		return fmt.Errorf("service did not register any handlers")
+		return errors.New("service did not register any handlers")
 	}
 	return s.httpHandlerFunc(ctx, mux)
 }
@@ -210,7 +210,7 @@ func (s *Service[S]) RegisterHTTPHandlers(ctx context.Context, mux *runtime.Serv
 // If the service did not register a handler, it returns an error.
 func (s Service[S]) RegisterGRPCGatewayHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
 	if s.GRPCGatewayFunc == nil {
-		return fmt.Errorf("service did not register a handler")
+		return errors.New("service did not register a handler")
 	}
 	return s.GRPCGatewayFunc(ctx, mux, conn)
 }

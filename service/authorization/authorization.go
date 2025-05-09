@@ -414,7 +414,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 		// Ensure the entity has an ID
 		entityID := entity.GetId()
 		if entityID == "" {
-			entityID = EntityIDPrefix + fmt.Sprint(idx)
+			entityID = EntityIDPrefix + strconv.Itoa(idx)
 		}
 		// Check to maksure if the value is a list. Good validation if someone customizes the rego policy
 		entityEntitlements, valueListOk := resultsEntitlements[entityID].([]interface{})
@@ -636,7 +636,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 				for entIdx, e := range ecEntitlements.Msg.GetEntitlements() {
 					entityID := e.GetEntityId()
 					if entityID == "" {
-						entityID = EntityIDPrefix + fmt.Sprint(entIdx)
+						entityID = EntityIDPrefix + strconv.Itoa(entIdx)
 					}
 					entityCategory := entities[entIdx].GetCategory()
 					auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{

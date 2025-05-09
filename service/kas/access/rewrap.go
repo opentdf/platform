@@ -293,19 +293,19 @@ func extractPolicyBinding(policyBinding interface{}) (string, error) {
 	switch v := policyBinding.(type) {
 	case string:
 		if v == "" {
-			return "", fmt.Errorf("empty policy binding")
+			return "", errors.New("empty policy binding")
 		}
 		return v, nil
 	case map[string]interface{}:
 		if hash, ok := v["hash"].(string); ok {
 			if hash == "" {
-				return "", fmt.Errorf("empty policy binding hash field")
+				return "", errors.New("empty policy binding hash field")
 			}
 			return hash, nil
 		}
-		return "", fmt.Errorf("invalid policy binding object, missing 'hash' field")
+		return "", errors.New("invalid policy binding object, missing 'hash' field")
 	default:
-		return "", fmt.Errorf("unsupported policy binding type")
+		return "", errors.New("unsupported policy binding type")
 	}
 }
 
@@ -595,7 +595,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 	if !anyValidKAOs {
 		p.Logger.WarnContext(ctx, "no valid KAOs found")
-		return policy, results, fmt.Errorf("no valid KAOs")
+		return policy, results, errors.New("no valid KAOs")
 	}
 
 	return policy, results, nil
@@ -863,7 +863,7 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 		}
 
 		if !verify {
-			failedKAORewrap(results, kao, fmt.Errorf("policy binding verification failed"))
+			failedKAORewrap(results, kao, errors.New("policy binding verification failed"))
 			return nil, results
 		}
 		results[kao.GetKeyAccessObjectId()] = kaoResult{

@@ -183,7 +183,7 @@ func EntityResolution(ctx context.Context,
 			// make sure the id field is populated
 			originialID := ident.GetId()
 			if originialID == "" {
-				originialID = auth.EntityIDPrefix + fmt.Sprint(idx)
+				originialID = auth.EntityIDPrefix + strconv.Itoa(idx)
 			}
 			resolvedEntities = append(
 				resolvedEntities,
@@ -298,7 +298,7 @@ func EntityResolution(ctx context.Context,
 		// make sure the id field is populated
 		originialID := ident.GetId()
 		if originialID == "" {
-			originialID = auth.EntityIDPrefix + fmt.Sprint(idx)
+			originialID = auth.EntityIDPrefix + strconv.Itoa(idx)
 		}
 		resolvedEntities = append(
 			resolvedEntities,

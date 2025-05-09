@@ -38,7 +38,7 @@ func MarshalUpdateMetadata(m *common.MetadataMutable, b common.MetadataUpdateEnu
 
 	if b == *common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND.Enum() {
 		if getExtendableMetadata == nil {
-			return nil, nil, fmt.Errorf("getExtendableMetadata is required for extend metadata update")
+			return nil, nil, errors.New("getExtendableMetadata is required for extend metadata update")
 		}
 
 		existing, err := getExtendableMetadata()

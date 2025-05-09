@@ -227,7 +227,7 @@ func Start(f ...StartOptions) error {
 				return errors.New("entityresolution endpoint must be provided in core mode")
 			}
 
-			ersConnectRpcConn := sdk.ConnectRPCConnection{}
+			ersConnectRPCConn := sdk.ConnectRPCConnection{}
 
 			var tlsConfig *tls.Config
 			if cfg.SDKConfig.EntityResolutionConnection.Insecure {
@@ -235,11 +235,11 @@ func Start(f ...StartOptions) error {
 					MinVersion:         tls.VersionTLS12,
 					InsecureSkipVerify: true, // #nosec G402
 				}
-				ersConnectRpcConn.Client = httputil.SafeHTTPClientWithTLSConfig(tlsConfig)
+				ersConnectRPCConn.Client = httputil.SafeHTTPClientWithTLSConfig(tlsConfig)
 			}
 			if cfg.SDKConfig.EntityResolutionConnection.Plaintext {
 				tlsConfig = &tls.Config{}
-				ersConnectRpcConn.Client = httputil.SafeHTTPClient()
+				ersConnectRPCConn.Client = httputil.SafeHTTPClient()
 			}
 
 			if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
@@ -265,16 +265,16 @@ func Start(f ...StartOptions) error {
 				interceptor := sdkauth.NewTokenAddingInterceptorWithClient(ts,
 					httputil.SafeHTTPClientWithTLSConfig(tlsConfig))
 
-				ersConnectRpcConn.Options = append(ersConnectRpcConn.Options, connect.WithInterceptors(interceptor.AddCredentialsConnect()))
+				ersConnectRPCConn.Options = append(ersConnectRPCConn.Options, connect.WithInterceptors(interceptor.AddCredentialsConnect()))
 			}
 
 			if sdk.IsPlatformEndpointMalformed(cfg.SDKConfig.EntityResolutionConnection.Endpoint) {
 				return fmt.Errorf("entityresolution endpoint is malformed: %s", cfg.SDKConfig.EntityResolutionConnection.Endpoint)
 			}
-			ersConnectRpcConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
+			ersConnectRPCConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
 
-			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(&ersConnectRpcConn))
-			logger.Info("added with custom ers connection for ", "", ersConnectRpcConn.Endpoint)
+			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(&ersConnectRPCConn))
+			logger.Info("added with custom ers connection for ", "", ersConnectRPCConn.Endpoint)
 		}
 
 		client, err = sdk.New("", sdkOptions...)

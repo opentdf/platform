@@ -483,7 +483,8 @@ func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
 		Options: []connect.ClientOption{
 			connect.WithInterceptors(clientInterceptors...),
 			connect.WithReadMaxBytes(s.maxCallRecvMsgSize),
-			connect.WithSendMaxBytes(s.maxCallSendMsgSize)},
+			connect.WithSendMaxBytes(s.maxCallSendMsgSize),
+		},
 	}
 	return &conn
 }

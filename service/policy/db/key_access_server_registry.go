@@ -398,11 +398,11 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 	// Marshal private key and public key context
 	pubCtx, err := json.Marshal(r.GetPublicKeyCtx())
 	if err != nil {
-		return nil, db.ErrMashalValueFailed
+		return nil, db.ErrMarshalValueFailed
 	}
 	privateCtx, err := json.Marshal(r.GetPrivateKeyCtx())
 	if err != nil {
-		return nil, db.ErrMashalValueFailed
+		return nil, db.ErrMarshalValueFailed
 	}
 
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())

@@ -30,7 +30,7 @@ var (
 	ErrCannotUpdateToUnspecified  = errors.New("ErrCannotUpdateToUnspecified: cannot update to unspecified value")
 	ErrKeyRotationFailed          = errors.New("ErrTextKeyRotationFailed: key rotation failed")
 	ErrExpectedBase64EncodedValue = errors.New("ErrExpectedBase64EncodedValue: expected base64 encoded value")
-	ErrMashalValueFailed          = errors.New("ErrMashalValueFailed: failed to marshal value")
+	ErrMarshalValueFailed         = errors.New("ErrMashalValueFailed: failed to marshal value")
 	ErrUnmarshalValueFailed       = errors.New("ErrUnmarshalValueFailed: failed to unmarshal value")
 )
 
@@ -168,7 +168,7 @@ func StatusifyError(err error, fallbackErr string, log ...any) error {
 		slog.Error(ErrorTextExpectedBase64EncodedValue, l...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextExpectedBase64EncodedValue))
 	}
-	if errors.Is(err, ErrMashalValueFailed) {
+	if errors.Is(err, ErrMarshalValueFailed) {
 		slog.Error(ErrorTextMarshalFailed, l...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextMarshalFailed))
 	}

@@ -3,6 +3,7 @@ package serviceregistry
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"

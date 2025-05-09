@@ -5072,6 +5072,120 @@ func (q *Queries) removePublicKeyFromNamespace(ctx context.Context, arg removePu
 	return result.RowsAffected(), nil
 }
 
+const rotatePublicKeyForAttributeDefinition = `-- name: rotatePublicKeyForAttributeDefinition :many
+UPDATE attribute_definition_public_key_map
+SET key_access_server_key_id = $1::uuid
+WHERE (key_access_server_key_id = $2::uuid)
+RETURNING definition_id
+`
+
+type rotatePublicKeyForAttributeDefinitionParams struct {
+	NewKeyID string `json:"new_key_id"`
+	OldKeyID string `json:"old_key_id"`
+}
+
+// rotatePublicKeyForAttributeDefinition
+//
+//	UPDATE attribute_definition_public_key_map
+//	SET key_access_server_key_id = $1::uuid
+//	WHERE (key_access_server_key_id = $2::uuid)
+//	RETURNING definition_id
+func (q *Queries) rotatePublicKeyForAttributeDefinition(ctx context.Context, arg rotatePublicKeyForAttributeDefinitionParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, rotatePublicKeyForAttributeDefinition, arg.NewKeyID, arg.OldKeyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var definition_id string
+		if err := rows.Scan(&definition_id); err != nil {
+			return nil, err
+		}
+		items = append(items, definition_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const rotatePublicKeyForAttributeValue = `-- name: rotatePublicKeyForAttributeValue :many
+UPDATE attribute_value_public_key_map
+SET key_access_server_key_id = $1::uuid
+WHERE (key_access_server_key_id = $2::uuid)
+RETURNING value_id
+`
+
+type rotatePublicKeyForAttributeValueParams struct {
+	NewKeyID string `json:"new_key_id"`
+	OldKeyID string `json:"old_key_id"`
+}
+
+// rotatePublicKeyForAttributeValue
+//
+//	UPDATE attribute_value_public_key_map
+//	SET key_access_server_key_id = $1::uuid
+//	WHERE (key_access_server_key_id = $2::uuid)
+//	RETURNING value_id
+func (q *Queries) rotatePublicKeyForAttributeValue(ctx context.Context, arg rotatePublicKeyForAttributeValueParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, rotatePublicKeyForAttributeValue, arg.NewKeyID, arg.OldKeyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var value_id string
+		if err := rows.Scan(&value_id); err != nil {
+			return nil, err
+		}
+		items = append(items, value_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const rotatePublicKeyForNamespace = `-- name: rotatePublicKeyForNamespace :many
+UPDATE attribute_namespace_public_key_map
+SET key_access_server_key_id = $1::uuid
+WHERE (key_access_server_key_id = $2::uuid)
+RETURNING namespace_id
+`
+
+type rotatePublicKeyForNamespaceParams struct {
+	NewKeyID string `json:"new_key_id"`
+	OldKeyID string `json:"old_key_id"`
+}
+
+// rotatePublicKeyForNamespace
+//
+//	UPDATE attribute_namespace_public_key_map
+//	SET key_access_server_key_id = $1::uuid
+//	WHERE (key_access_server_key_id = $2::uuid)
+//	RETURNING namespace_id
+func (q *Queries) rotatePublicKeyForNamespace(ctx context.Context, arg rotatePublicKeyForNamespaceParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, rotatePublicKeyForNamespace, arg.NewKeyID, arg.OldKeyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var namespace_id string
+		if err := rows.Scan(&namespace_id); err != nil {
+			return nil, err
+		}
+		items = append(items, namespace_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateCustomAction = `-- name: updateCustomAction :execrows
 UPDATE actions
 SET

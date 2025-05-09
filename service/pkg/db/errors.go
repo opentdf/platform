@@ -28,6 +28,7 @@ var (
 	ErrSelectIdentifierInvalid   = errors.New("ErrSelectIdentifierInvalid: invalid identifier value for select query")
 	ErrUnknownSelectIdentifier   = errors.New("ErrUnknownSelectIdentifier: unknown identifier type for select query")
 	ErrCannotUpdateToUnspecified = errors.New("ErrCannotUpdateToUnspecified: cannot update to unspecified value")
+	ErrKeyRotationFailed         = errors.New("ErrTextKeyRotationFailed: key rotation failed")
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -108,6 +109,7 @@ const (
 	ErrTextInvalidIdentifier     = "value sepcified as the identifier is invalid"
 	ErrorTextUnknownIdentifier   = "could not match identifier to known type"
 	ErrorTextUpdateToUnspecified = "cannot update to unspecified value"
+	ErrTextKeyRotationFailed     = "key rotation failed"
 )
 
 func StatusifyError(err error, fallbackErr string, log ...any) error {
@@ -151,6 +153,10 @@ func StatusifyError(err error, fallbackErr string, log ...any) error {
 	if errors.Is(err, ErrCannotUpdateToUnspecified) {
 		slog.Error(ErrorTextUpdateToUnspecified, l...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUpdateToUnspecified))
+	}
+	if errors.Is(err, ErrKeyRotationFailed) {
+		slog.Error(ErrTextKeyRotationFailed, l...)
+		return connect.NewError(connect.CodeInternal, errors.New(ErrTextKeyRotationFailed))
 	}
 	slog.Error(err.Error(), l...)
 	return connect.NewError(connect.CodeInternal, errors.New(fallbackErr))

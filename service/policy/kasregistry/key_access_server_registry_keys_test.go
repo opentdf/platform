@@ -25,8 +25,8 @@ const (
 	errMessageKeyMode                  = "key_mode"
 	errMessagePubKeyCtx                = "public_key_ctx"
 	errMessagePrivateKeyCtx            = "The wrapped_key is required"
-	errMessageProviderConfigId         = "Provider config id is required"
-	errMessagePrivateKeyCtxKeyId       = "private_key_ctx.key_id"
+	errMessageProviderConfigID         = "Provider config id is required"
+	errMessagePrivateKeyCtxKeyID       = "private_key_ctx.key_id"
 	errMessagePrivateKeyCtxWrappedKey  = "private_key_ctx.wrapped_key"
 	errMessageKeyIdentifier            = "identifier"
 	invalidKeyMode                     = -1
@@ -34,14 +34,12 @@ const (
 	invalidKeyStatus                   = -1
 	invalidPageLimit                   = 5001
 	validKeyCtx                        = "eyJrZXkiOiJ2YWx1ZSJ9Cg=="
-	errPrivateKeyCtxMessageId          = "private_key_ctx_optionally_required"
-	errKeystatusUpdateMessageId        = "key_status_cannot_update_to_unspecified"
-	errMetadataUpdateBehaviorMessageId = "metadata_update_behavior"
+	errPrivateKeyCtxMessageID          = "private_key_ctx_optionally_required"
+	errKeystatusUpdateMessageID        = "key_status_cannot_update_to_unspecified"
+	errMetadataUpdateBehaviorMessageID = "metadata_update_behavior"
 )
 
-var (
-	validMetadata = &common.MetadataMutable{}
-)
+var validMetadata = &common.MetadataMutable{}
 
 func Test_GetKeyAccessServer_Keys_Request(t *testing.T) {
 	testCases := []struct {
@@ -288,7 +286,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: errMessagePrivateKeyCtxKeyId,
+			errorMessage: errMessagePrivateKeyCtxKeyID,
 		},
 		{
 			name: "Invalid - Private Key Ctx Wrapped Key required",
@@ -323,7 +321,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: errPrivateKeyCtxMessageId,
+			errorMessage: errPrivateKeyCtxMessageID,
 		},
 		{
 			name: "Invalid - Provider Config Id should be set when KeyMode is remote",
@@ -340,7 +338,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: errMessageProviderConfigId,
+			errorMessage: errMessageProviderConfigID,
 		},
 		{
 			name: "Valid request required fields only - local key",
@@ -450,7 +448,7 @@ func Test_UpdateKeyAccessServer_Keys(t *testing.T) {
 				Id: validUUID,
 			},
 			expectError:  true,
-			errorMessage: errKeystatusUpdateMessageId,
+			errorMessage: errKeystatusUpdateMessageID,
 		},
 		{
 			name: "Invalid Request - metadata update behavior is 0 when updating metadata",
@@ -459,7 +457,7 @@ func Test_UpdateKeyAccessServer_Keys(t *testing.T) {
 				Metadata: &common.MetadataMutable{},
 			},
 			expectError:  true,
-			errorMessage: errMetadataUpdateBehaviorMessageId,
+			errorMessage: errMetadataUpdateBehaviorMessageID,
 		},
 		{
 			name: "Valid Request",

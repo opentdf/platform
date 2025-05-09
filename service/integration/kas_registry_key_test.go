@@ -83,7 +83,7 @@ func validatePublicKeyCtx(s *suite.Suite, expectedPubCtx []byte, actual *policy.
 	var expectedPub policy.KasPublicKeyCtx
 	err = protojson.Unmarshal(decodedExpectedPubCtx, &expectedPub)
 	s.Require().NoError(err)
-	s.Equal(expectedPub.Pem, actual.GetKey().GetPublicKeyCtx().GetPem())
+	s.Equal(expectedPub.GetPem(), actual.GetKey().GetPublicKeyCtx().GetPem())
 }
 
 func validatePrivatePublicCtx(s *suite.Suite, expectedPrivCtx, expectedPubCtx []byte, actual *policy.KasKey) {
@@ -94,8 +94,8 @@ func validatePrivatePublicCtx(s *suite.Suite, expectedPrivCtx, expectedPubCtx []
 	err = protojson.Unmarshal(decodedExpectedPrivCtx, &expectedPriv)
 	s.Require().NoError(err)
 
-	s.Equal(expectedPriv.KeyId, actual.GetKey().GetPrivateKeyCtx().GetKeyId())
-	s.Equal(expectedPriv.WrappedKey, actual.GetKey().GetPrivateKeyCtx().GetWrappedKey())
+	s.Equal(expectedPriv.GetKeyId(), actual.GetKey().GetPrivateKeyCtx().GetKeyId())
+	s.Equal(expectedPriv.GetWrappedKey(), actual.GetKey().GetPrivateKeyCtx().GetWrappedKey())
 	validatePublicKeyCtx(s, expectedPubCtx, actual)
 }
 
@@ -170,7 +170,6 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_NonBase64Ctx_Fail() {
 	s.Require().Error(err)
 	s.Require().ErrorContains(err, db.ErrExpectedBase64EncodedValue.Error())
 	s.Nil(resp)
-
 }
 
 func (s *KasRegistryKeySuite) Test_CreateKasKey_Success() {

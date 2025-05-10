@@ -472,7 +472,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds(
 		testValue, ok := testValues[value.GetId()]
 		s.True(ok, "expected value %s", value.GetId())
 		s.Equal(testValue.Value, value.GetValue())
-		s.Equal(fmt.Sprintf("https://example.com/attr/attr1/value/%s", value.GetValue()), value.GetFqn())
+		s.Equal("https://example.com/attr/attr1/value/"+value.GetValue(), value.GetFqn())
 	}
 
 	s.Equal(testMappingCount, foundCount)

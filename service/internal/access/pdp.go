@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -55,12 +56,12 @@ func (pdp *Pdp) DetermineAccess(
 
 	if len(dataAttributes) == 0 {
 		pdp.logger.DebugContext(ctx, "No data attributes provided")
-		return nil, fmt.Errorf("no data attributes provided")
+		return nil, errors.New("no data attributes provided")
 	}
 
 	if len(attributeDefinitions) == 0 {
 		pdp.logger.DebugContext(ctx, "No attribute definitions provided")
-		return nil, fmt.Errorf("no attribute definitions provided")
+		return nil, errors.New("no attribute definitions provided")
 	}
 
 	dataAttrValsByDefinition, err := pdp.groupDataAttributesByDefinition(ctx, dataAttributes)
@@ -91,7 +92,7 @@ func (pdp *Pdp) groupDataAttributesByDefinition(ctx context.Context, dataAttribu
 
 		defFqn, err := GetDefinitionFqnFromValueFqn(v.GetFqn())
 		if err != nil {
-			pdp.logger.ErrorContext(ctx, fmt.Sprintf("error getting definition FQN from value: %s", err.Error()))
+			pdp.logger.ErrorContext(ctx, "error getting definition FQN from value: "+err.Error())
 			return nil, err
 		}
 
@@ -572,7 +573,7 @@ func GetDefinitionFqnFromValue(v *policy.Value) (string, error) {
 // GetDefinitionFqnFromValueFqn extracts the definition FQN from a value FQN string.
 func GetDefinitionFqnFromValueFqn(valueFqn string) (string, error) {
 	if valueFqn == "" {
-		return "", fmt.Errorf("unexpected empty value FQN in GetDefinitionFqnFromValueFqn")
+		return "", errors.New("unexpected empty value FQN in GetDefinitionFqnFromValueFqn")
 	}
 
 	idx := strings.LastIndex(valueFqn, "/value/")
@@ -597,18 +598,18 @@ func GetDefinitionFqnFromDefinition(def *policy.Attribute) (string, error) {
 
 	ns := def.GetNamespace()
 	if ns == nil {
-		return "", fmt.Errorf("attribute definition has unexpectedly nil namespace")
+		return "", errors.New("attribute definition has unexpectedly nil namespace")
 	}
 
 	nsName := ns.GetName()
 	if nsName == "" {
-		return "", fmt.Errorf("attribute definition's Namespace has unexpectedly empty name")
+		return "", errors.New("attribute definition's Namespace has unexpectedly empty name")
 	}
 
 	nsFqn := ns.GetFqn()
 	attr := def.GetName()
 	if attr == "" {
-		return "", fmt.Errorf("attribute definition has unexpectedly empty name")
+		return "", errors.New("attribute definition has unexpectedly empty name")
 	}
 
 	if nsFqn != "" {

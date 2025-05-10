@@ -113,7 +113,7 @@ func (s *AttributeFqnSuite) TestCreateAttributeValue() {
 // Test Get one attribute by the FQN of one of its values
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 	fqnFixtureKey := "example.com/attr/attr1/value/value1"
-	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+	fullFqn := "https://" + fqnFixtureKey
 	valueFixture := s.f.GetAttributeValueKey(fqnFixtureKey)
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
@@ -139,7 +139,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 // Test Get one attribute by the FQN of one of its values
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithCasingNormalized() {
 	fqnFixtureKey := "example.com/attr/attr1/value/value1"
-	fullFqn := strings.ToUpper(fmt.Sprintf("https://%s", fqnFixtureKey))
+	fullFqn := strings.ToUpper("https://" + fqnFixtureKey)
 	valueFixture := s.f.GetAttributeValueKey(fqnFixtureKey)
 
 	// assign a KAS grant to the value
@@ -194,7 +194,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithCasingNormalized() {
 // Test Get one attribute by the FQN of the attribute definition
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrFqn() {
 	fqnFixtureKey := "example.net/attr/attr1"
-	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+	fullFqn := "https://" + fqnFixtureKey
 	attrFixture := s.f.GetAttributeKey(fqnFixtureKey)
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
@@ -206,7 +206,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrFqn() {
 	// the attribute should match the fixture
 	s.Equal(attr.GetId(), attrFixture.ID)
 	s.Equal(attr.GetName(), attrFixture.Name)
-	s.Equal(attr.GetRule().String(), fmt.Sprintf("ATTRIBUTE_RULE_TYPE_ENUM_%s", attrFixture.Rule))
+	s.Equal(attr.GetRule().String(), "ATTRIBUTE_RULE_TYPE_ENUM_"+attrFixture.Rule)
 	s.Equal(attr.GetActive().GetValue(), attrFixture.Active)
 	s.Empty(attr.GetKasKeys())
 }
@@ -278,7 +278,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeDefKeysAssociated
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeValueKeysAssociated() {
 	fqnFixtureKey := "example.net/attr/attr1"
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
-	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+	fullFqn := "https://" + fqnFixtureKey
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
 	s.Require().NoError(err)
@@ -335,7 +335,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeValueKeysAssociat
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedWithNamespace() {
 	fqnFixtureKey := "example.net/attr/attr1"
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
-	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+	fullFqn := "https://" + fqnFixtureKey
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
 	s.Require().NoError(err)
@@ -381,8 +381,8 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedAttributes_M
 	fqnFixtureKeyTwo := "example.net/attr/attr2"
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
 	kasKey2 := s.f.GetKasRegistryServerKeys("kas_key_2")
-	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
-	fullFqn2 := fmt.Sprintf("https://%s", fqnFixtureKeyTwo)
+	fullFqn := "https://" + fqnFixtureKey
+	fullFqn2 := "https://" + fqnFixtureKeyTwo
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
 	s.Require().NoError(err)
@@ -887,8 +887,8 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_SameResultsWhetherAttrOrValueF
 
 	fqns := []string{
 		setup.attrFqn,
-		fmt.Sprintf("%s/value/value1", setup.attrFqn),
-		fmt.Sprintf("%s/value/value2", setup.attrFqn),
+		setup.attrFqn + "/value/value1",
+		setup.attrFqn + "/value/value2",
 	}
 
 	retrieved := make([]*policy.Attribute, len(fqns))
@@ -918,9 +918,9 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_AllIndividualFqnsSetOnResults(
 	s.True(strings.HasPrefix(got.GetFqn(), "https://"))
 	s.Contains(got.GetFqn(), ns)
 	s.Contains(got.GetFqn(), "attr/test_attr")
-	s.Equal(got.GetNamespace().GetFqn(), fmt.Sprintf("https://%s", ns))
-	s.Equal(got.GetValues()[0].GetFqn(), fmt.Sprintf("%s/value/value1", setup.attrFqn))
-	s.Equal(got.GetValues()[1].GetFqn(), fmt.Sprintf("%s/value/value2", setup.attrFqn))
+	s.Equal(got.GetNamespace().GetFqn(), "https://"+ns)
+	s.Equal(got.GetValues()[0].GetFqn(), setup.attrFqn+"/value/value1")
+	s.Equal(got.GetValues()[1].GetFqn(), setup.attrFqn+"/value/value2")
 }
 
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_ProperOnAllObjects() {

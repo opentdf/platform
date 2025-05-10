@@ -115,7 +115,7 @@ func (s *RoundtripSuite) SetupSuite() {
 
 	opts = append(opts, sdk.WithClientCredentials(s.TestConfig.ClientID, s.TestConfig.ClientSecret, nil))
 
-	sdk, err := sdk.New(fmt.Sprintf("http://%s", s.TestConfig.PlatformEndpoint), opts...)
+	sdk, err := sdk.New("http://"+s.TestConfig.PlatformEndpoint, opts...)
 	s.Require().NoError(err)
 	s.client = sdk
 
@@ -265,7 +265,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 		slog.Error("could not list attributes", slog.String("error", err.Error()))
 		return err
 	}
-	slog.Info(fmt.Sprintf("list attributes response: %s", protojson.Format(allAttr)))
+	slog.Info("list attributes response: " + protojson.Format(allAttr))
 
 	slog.Info("##################################\n#######################################")
 
@@ -324,7 +324,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 		slog.Error("could not list subject mappings", slog.String("error", err.Error()))
 		return err
 	}
-	slog.Info(fmt.Sprintf("list subject mappings response: %s", protojson.Format(allSubMaps)))
+	slog.Info("list subject mappings response: " + protojson.Format(allSubMaps))
 
 	return nil
 }
@@ -343,7 +343,7 @@ func encrypt(client *sdk.SDK, testConfig TestConfig, plaintext string, attribute
 		sdk.WithKasInformation(
 			sdk.KASInfo{
 				// examples assume insecure http
-				URL:       fmt.Sprintf("http://%s", testConfig.PlatformEndpoint),
+				URL:       "http://" + testConfig.PlatformEndpoint,
 				PublicKey: "",
 			}))
 	if err != nil {
@@ -410,19 +410,19 @@ func bulk(client *sdk.SDK, tdfSuccess []string, tdfFail []string, plaintext stri
 	for _, tdf := range passTDF {
 		builder, ok := tdf.Writer.(*strings.Builder)
 		if !ok {
-			return fmt.Errorf("bad writer")
+			return errors.New("bad writer")
 		}
 
 		if tdf.Error != nil {
 			return tdf.Error
 		}
 		if builder.String() != plaintext {
-			return fmt.Errorf("bulk did not equal plaintext")
+			return errors.New("bulk did not equal plaintext")
 		}
 	}
 	for _, tdf := range failTDF {
 		if tdf.Error == nil {
-			return fmt.Errorf("no expected err")
+			return errors.New("no expected err")
 		}
 	}
 
@@ -434,11 +434,11 @@ func bulk(client *sdk.SDK, tdfSuccess []string, tdfFail []string, plaintext stri
 	)
 	for _, tdf := range passTDF {
 		if tdf.Error == nil {
-			return fmt.Errorf("no expected err")
+			return errors.New("no expected err")
 		}
 		slog.Error("pass tdf error", "error", tdf.Error.Error())
 		if !strings.Contains(tdf.Error.Error(), "KasAllowlist") {
-			return fmt.Errorf("did not receive kas allowlist error")
+			return errors.New("did not receive kas allowlist error")
 		}
 	}
 

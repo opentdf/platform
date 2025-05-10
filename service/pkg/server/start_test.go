@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -93,7 +94,7 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 
 func updateNestedKey(data map[string]interface{}, path []string, value interface{}) error {
 	if len(path) == 0 {
-		return fmt.Errorf("path cannot be empty")
+		return errors.New("path cannot be empty")
 	}
 
 	current := data
@@ -162,6 +163,7 @@ type StartTestSuite struct {
 func TestStartTestSuite(t *testing.T) {
 	suite.Run(t, new(StartTestSuite))
 }
+
 func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 	testCases := []struct {
 		name         string

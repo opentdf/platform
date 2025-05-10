@@ -454,7 +454,7 @@ LEFT JOIN (
                     'key_status', kask.key_status,
                     'key_mode', kask.key_mode,
                     'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    'public_key_ctx', kask.public_key_ctx
                 ),
                 'kas_id', kask.key_access_server_id
             )
@@ -543,7 +543,7 @@ type GetAttributeRow struct {
 //	                    'key_status', kask.key_status,
 //	                    'key_mode', kask.key_mode,
 //	                    'key_algorithm', kask.key_algorithm,
-//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                    'public_key_ctx', kask.public_key_ctx
 //	                ),
 //	                'kas_id', kask.key_access_server_id
 //	            )
@@ -607,7 +607,7 @@ LEFT JOIN (
                     'key_status', kask.key_status,
                     'key_mode', kask.key_mode,
                     'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    'public_key_ctx', kask.public_key_ctx
                 )
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -670,7 +670,7 @@ type GetAttributeValueRow struct {
 //	                    'key_status', kask.key_status,
 //	                    'key_mode', kask.key_mode,
 //	                    'key_algorithm', kask.key_algorithm,
-//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                    'public_key_ctx', kask.public_key_ctx
 //	                )
 //	            )
 //	        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -725,7 +725,7 @@ LEFT JOIN (
                         'key_status', kask.key_status,
                         'key_mode', kask.key_mode,
                         'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                        'public_key_ctx', kask.public_key_ctx
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -782,7 +782,7 @@ type GetKeyAccessServerRow struct {
 //	                        'key_status', kask.key_status,
 //	                        'key_mode', kask.key_mode,
 //	                        'key_algorithm', kask.key_algorithm,
-//	                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                        'public_key_ctx', kask.public_key_ctx
 //	                    )
 //	                )
 //	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -837,7 +837,7 @@ LEFT JOIN (
                     'key_status', kask.key_status,
                     'key_mode', kask.key_mode,
                     'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    'public_key_ctx', kask.public_key_ctx
                 )
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -897,7 +897,7 @@ type GetNamespaceRow struct {
 //	                    'key_status', kask.key_status,
 //	                    'key_mode', kask.key_mode,
 //	                    'key_algorithm', kask.key_algorithm,
-//	                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                    'public_key_ctx', kask.public_key_ctx
 //	                )
 //	            )
 //	        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -1612,7 +1612,7 @@ LEFT JOIN (
                         'key_status', kask.key_status,
                         'key_mode', kask.key_mode,
                         'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                        'public_key_ctx', kask.public_key_ctx
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -1667,7 +1667,7 @@ type ListKeyAccessServersRow struct {
 //	                        'key_status', kask.key_status,
 //	                        'key_mode', kask.key_mode,
 //	                        'key_algorithm', kask.key_algorithm,
-//	                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                        'public_key_ctx', kask.public_key_ctx
 //	                    )
 //	                )
 //	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -3967,7 +3967,7 @@ WITH target_definition AS (
                         'key_status', kask.key_status,
                         'key_mode', kask.key_mode,
                         'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                        'public_key_ctx', kask.public_key_ctx
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -4014,7 +4014,7 @@ namespaces AS (
                         'key_status', kask.key_status,
                         'key_mode', kask.key_mode,
                         'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                        'public_key_ctx', kask.public_key_ctx
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -4107,7 +4107,7 @@ values AS (
                         'key_status', kask.key_status,
                         'key_mode', kask.key_mode,
                         'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                        'public_key_ctx', kask.public_key_ctx
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -4182,7 +4182,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	                        'key_status', kask.key_status,
 //	                        'key_mode', kask.key_mode,
 //	                        'key_algorithm', kask.key_algorithm,
-//	                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                        'public_key_ctx', kask.public_key_ctx
 //	                    )
 //	                )
 //	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -4229,7 +4229,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	                        'key_status', kask.key_status,
 //	                        'key_mode', kask.key_mode,
 //	                        'key_algorithm', kask.key_algorithm,
-//	                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                        'public_key_ctx', kask.public_key_ctx
 //	                    )
 //	                )
 //	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -4322,7 +4322,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	                        'key_status', kask.key_status,
 //	                        'key_mode', kask.key_mode,
 //	                        'key_algorithm', kask.key_algorithm,
-//	                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+//	                        'public_key_ctx', kask.public_key_ctx
 //	                    )
 //	                )
 //	            ) FILTER (WHERE kask.id IS NOT NULL) AS keys

@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"encoding/base64"
 	"log/slog"
 	"strings"
 	"testing"
@@ -1019,9 +1018,7 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_Succeeds() {
 	s.Len(gotAttrValue.GetKasKeys(), 1)
 	s.Equal(kasKey.KeyAccessServerID, gotAttrValue.GetKasKeys()[0].GetKasId())
 	s.Equal(kasKey.ID, gotAttrValue.GetKasKeys()[0].GetKey().GetId())
-	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
-	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, gotAttrValue.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), gotAttrValue.GetKasKeys()[0])
 	s.Empty(gotAttrValue.GetKasKeys()[0].GetKey().GetProviderConfig())
 	s.Empty(gotAttrValue.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 

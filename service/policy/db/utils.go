@@ -2,12 +2,14 @@ package db
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -93,6 +95,20 @@ func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error 
 		}
 	}
 
+	return nil
+}
+
+func unmarshalPrivatePublicKeyContext(pubCtx, privCtx []byte, pubKey *policy.KasPublicKeyCtx, privKey *policy.KasPrivateKeyCtx) error {
+	if pubCtx != nil {
+		if err := protojson.Unmarshal(pubCtx, pubKey); err != nil {
+			return errors.Join(fmt.Errorf("failed to unmarshal public key context [%s]: %w", string(pubCtx), err), db.ErrUnmarshalValueFailed)
+		}
+	}
+	if privCtx != nil {
+		if err := protojson.Unmarshal(privCtx, privKey); err != nil {
+			return errors.Join(errors.New("failed to unmarshal private key context"), db.ErrUnmarshalValueFailed)
+		}
+	}
 	return nil
 }
 

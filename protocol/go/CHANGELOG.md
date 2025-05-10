@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.3](https://github.com/opentdf/platform/compare/protocol/go/v0.3.2...protocol/go/v0.3.3) (2025-05-10)
+
+
+### Features
+
+* **policy:** DSPX-1018 NDR retrieval by FQN support ([#2131](https://github.com/opentdf/platform/issues/2131)) ([0001041](https://github.com/opentdf/platform/commit/00010419d372c358f8885953bcc33a27c2db4607))
+* **policy:** key management crud ([#2110](https://github.com/opentdf/platform/issues/2110)) ([4c3d53d](https://github.com/opentdf/platform/commit/4c3d53d5fbb6f4659155ac60d289d92ac20180f1))
+* **policy:** Modify get request to search for keys by kasid with keyid. ([#2147](https://github.com/opentdf/platform/issues/2147)) ([780d2e4](https://github.com/opentdf/platform/commit/780d2e476f48678c7e384a9ef83df0b8e8b9428a))
+* **policy:** Return KAS Key structure ([#2172](https://github.com/opentdf/platform/issues/2172)) ([7f97b99](https://github.com/opentdf/platform/commit/7f97b99f7f08fbd53cdb3592206f974040c270f3))
+* **policy:** rotate keys rpc ([#2180](https://github.com/opentdf/platform/issues/2180)) ([0d00743](https://github.com/opentdf/platform/commit/0d00743d08c3e80fd1b5f9f37adc66d218b8c13b))
+
 ## [0.3.2](https://github.com/opentdf/platform/compare/protocol/go/v0.3.1...protocol/go/v0.3.2) (2025-04-28)
 
 

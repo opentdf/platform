@@ -61,39 +61,6 @@ type CustomRego struct {
 	Query string `mapstructure:"query" json:"query" default:"data.opentdf.entitlements.attributes"`
 }
 
-func (as *AuthorizationService) loadRegoAndBuiltins(cfg *Config) error {
-	var (
-		entitlementRego []byte
-		err             error
-	)
-	// Build Rego PreparedEvalQuery
-	// Load rego from embedded file or custom path
-	if cfg.Rego.Path != "" {
-		entitlementRego, err = os.ReadFile(cfg.Rego.Path)
-		if err != nil {
-			return fmt.Errorf("failed to read custom entitlements.rego file: %w", err)
-		}
-	} else {
-		entitlementRego, err = policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
-		if err != nil {
-			return fmt.Errorf("failed to read entitlements.rego file: %w", err)
-		}
-	}
-
-	// Register builtin
-	subjectmappingbuiltin.SubjectMappingBuiltin()
-
-	as.eval, err = rego.New(
-		rego.Query(cfg.Rego.Query),
-		rego.Module("entitlements.rego", string(entitlementRego)),
-		rego.StrictBuiltinErrors(true),
-	).PrepareForEval(context.Background())
-	if err != nil {
-		return fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err)
-	}
-	return nil
-}
-
 func OnConfigUpdate(as *AuthorizationService) serviceregistry.OnConfigUpdateHook {
 	return func(_ context.Context, cfg config.ServiceConfig) error {
 		err := mapstructure.Decode(cfg, as.config)
@@ -243,220 +210,6 @@ func (as *AuthorizationService) GetDecisions(ctx context.Context, req *connect.R
 	}
 
 	return connect.NewResponse(rsp), nil
-}
-
-func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorization.DecisionRequest) ([]*authorization.DecisionResponse, error) {
-	allPertinentFQNS := &authorization.ResourceAttribute{AttributeValueFqns: make([]string, 0)}
-	response := make([]*authorization.DecisionResponse, len(dr.GetResourceAttributes())*len(dr.GetEntityChains()))
-
-	// TODO: fetching missing FQNs should not lead into a complete failure, rather a list of unknown FQNs would be preferred
-	var err error
-	var dataAttrDefsAndVals map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue
-	allPertinentFQNS.AttributeValueFqns, err = getAttributesFromRas(dr.GetResourceAttributes())
-	if err == nil {
-		dataAttrDefsAndVals, err = retrieveAttributeDefinitions(ctx, allPertinentFQNS.GetAttributeValueFqns(), as.sdk)
-	}
-	if err != nil {
-		// if attribute an FQN does not exist
-		// return deny for all entity chains aginst this RAs
-		if errors.Is(err, status.Error(codes.NotFound, db.ErrTextNotFound)) || errors.Is(err, ErrEmptyStringAttribute) {
-			for raIdx, ra := range dr.GetResourceAttributes() {
-				for ecIdx, ec := range dr.GetEntityChains() {
-					decisionResp := &authorization.DecisionResponse{
-						Decision:      authorization.DecisionResponse_DECISION_DENY,
-						EntityChainId: ec.GetId(),
-						Action: &policy.Action{
-							Value: &policy.Action_Standard{
-								Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
-							},
-						},
-					}
-					if ra.GetResourceAttributesId() != "" {
-						decisionResp.ResourceAttributesId = ra.GetResourceAttributesId()
-					} else if len(ra.GetAttributeValueFqns()) > 0 {
-						decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
-					}
-					responseIdx := (raIdx * len(dr.GetEntityChains())) + ecIdx
-					response[responseIdx] = decisionResp
-				}
-			}
-			return response, nil
-		}
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("fqns", strings.Join(allPertinentFQNS.GetAttributeValueFqns(), ", ")))
-	}
-
-	var allAttrDefs []*policy.Attribute
-	for _, v := range dataAttrDefsAndVals {
-		allAttrDefs = append(allAttrDefs, v.GetAttribute())
-	}
-	allAttrDefs, err = populateAttrDefValueFqns(allAttrDefs)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	// get the relevant resource attribute fqns
-	for _, attrDef := range allAttrDefs {
-		if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
-			for _, value := range attrDef.GetValues() {
-				allPertinentFQNS.AttributeValueFqns = append(allPertinentFQNS.AttributeValueFqns, value.GetFqn())
-			}
-		}
-	}
-
-	var ecChainEntitlementsResponse []*connect.Response[authorization.GetEntitlementsResponse]
-	for _, ec := range dr.GetEntityChains() {
-		entities := ec.GetEntities()
-		if len(entities) == 0 {
-			ecChainEntitlementsResponse = append(ecChainEntitlementsResponse, nil)
-			continue
-		}
-		req := connect.Request[authorization.GetEntitlementsRequest]{
-			Msg: &authorization.GetEntitlementsRequest{
-				Entities: entities,
-				Scope:    allPertinentFQNS,
-			},
-		}
-		ecEntitlements, err := as.GetEntitlements(ctx, &req)
-		if err != nil {
-			// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-			return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
-		}
-		ecChainEntitlementsResponse = append(ecChainEntitlementsResponse, ecEntitlements)
-	}
-
-	for raIdx, ra := range dr.GetResourceAttributes() {
-		var attrDefs []*policy.Attribute
-		var attrVals []*policy.Value
-		var fqns []string
-
-		for _, fqn := range ra.GetAttributeValueFqns() {
-			fqn = strings.ToLower(fqn)
-			fqns = append(fqns, fqn)
-			v := dataAttrDefsAndVals[fqn]
-			attrDefs = append(attrDefs, v.GetAttribute())
-			attrVal := v.GetValue()
-			attrVal.Fqn = fqn
-			attrVals = append(attrVals, attrVal)
-		}
-
-		attrDefs, err = populateAttrDefValueFqns(attrDefs)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
-
-		for ecIdx, ec := range dr.GetEntityChains() {
-			// check if we already have a decision for this entity chain
-			responseIdx := (raIdx * len(dr.GetEntityChains())) + ecIdx
-			if response[responseIdx] != nil {
-				continue
-			}
-
-			//
-			// TODO: we should already have the subject mappings here and be able to just use OPA to trim down the known data attr values to the ones matched up with the entities
-			//
-			entities := ec.GetEntities()
-			auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
-			auditEntityDecisions := make([]audit.EntityDecision, 0)
-
-			// Entitlements for environment entites in chain
-			envEntityAttrValues := make(map[string][]string)
-			// Entitlementsfor sbuject entities in chain
-			subjectEntityAttrValues := make(map[string][]string)
-
-			// handle empty entity / attr list
-			decision := authorization.DecisionResponse_DECISION_DENY
-			switch {
-			case len(entities) == 0:
-				as.logger.WarnContext(ctx, "empty entity list")
-			case len(ra.GetAttributeValueFqns()) == 0:
-				as.logger.WarnContext(ctx, "empty entity data attribute list")
-				decision = authorization.DecisionResponse_DECISION_PERMIT
-			default:
-				ecEntitlements := ecChainEntitlementsResponse[ecIdx]
-				for entIdx, e := range ecEntitlements.Msg.GetEntitlements() {
-					entityID := e.GetEntityId()
-					if entityID == "" {
-						entityID = EntityIDPrefix + fmt.Sprint(entIdx)
-					}
-					entityCategory := entities[entIdx].GetCategory()
-					auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{
-						EntityID:                 entityID,
-						EntityCatagory:           entityCategory.String(),
-						AttributeValueReferences: e.GetAttributeValueFqns(),
-					})
-
-					// If entity type unspecified, include in access decision to err on the side of caution
-					if entityCategory == authorization.Entity_CATEGORY_SUBJECT || entityCategory == authorization.Entity_CATEGORY_UNSPECIFIED {
-						subjectEntityAttrValues[entityID] = e.GetAttributeValueFqns()
-					} else {
-						envEntityAttrValues[entityID] = e.GetAttributeValueFqns()
-					}
-				}
-				// call access-pdp
-				accessPDP := access.NewPdp(as.logger)
-				decisions, err := accessPDP.DetermineAccess(
-					ctx,
-					attrVals,
-					subjectEntityAttrValues,
-					attrDefs,
-				)
-				if err != nil {
-					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-					return nil, db.StatusifyError(errors.New("could not determine access"), "could not determine access", slog.String("error", err.Error()))
-				}
-				// check the decisions
-				decision = authorization.DecisionResponse_DECISION_PERMIT
-				for entityID, d := range decisions {
-					// Set overall decision as well as individual entity decision
-					entityDecision := authorization.DecisionResponse_DECISION_PERMIT
-					if !d.Access {
-						entityDecision = authorization.DecisionResponse_DECISION_DENY
-						decision = authorization.DecisionResponse_DECISION_DENY
-					}
-
-					// Add entity decision to audit list
-					entityEntitlementFqns := subjectEntityAttrValues[entityID]
-					if entityEntitlementFqns == nil {
-						entityEntitlementFqns = []string{}
-					}
-					auditEntityDecisions = append(auditEntityDecisions, audit.EntityDecision{
-						EntityID:     entityID,
-						Decision:     entityDecision.String(),
-						Entitlements: entityEntitlementFqns,
-					})
-				}
-			}
-
-			decisionResp := &authorization.DecisionResponse{
-				Decision:      decision,
-				EntityChainId: ec.GetId(),
-				Action: &policy.Action{
-					Value: &policy.Action_Standard{
-						Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
-					},
-				},
-			}
-			if ra.GetResourceAttributesId() != "" {
-				decisionResp.ResourceAttributesId = ra.GetResourceAttributesId()
-			} else if len(ra.GetAttributeValueFqns()) > 0 {
-				decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
-			}
-
-			auditDecision := audit.GetDecisionResultDeny
-			if decision == authorization.DecisionResponse_DECISION_PERMIT {
-				auditDecision = audit.GetDecisionResultPermit
-			}
-			as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
-				Decision:                auditDecision,
-				EntityChainEntitlements: auditECEntitlements,
-				EntityChainID:           decisionResp.GetEntityChainId(),
-				EntityDecisions:         auditEntityDecisions,
-				FQNs:                    fqns,
-				ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
-			})
-			response[responseIdx] = decisionResp
-		}
-	}
-	return response, nil
 }
 
 // makeSubMapsByValLookup creates a lookup map of subject mappings by attribute value ID.
@@ -718,6 +471,253 @@ func getAttributesFromRas(ras []*authorization.ResourceAttribute) ([]string, err
 		return nil, ErrEmptyStringAttribute
 	}
 	return attrFqns, nil
+}
+
+func (as *AuthorizationService) loadRegoAndBuiltins(cfg *Config) error {
+	var (
+		entitlementRego []byte
+		err             error
+	)
+	// Build Rego PreparedEvalQuery
+	// Load rego from embedded file or custom path
+	if cfg.Rego.Path != "" {
+		entitlementRego, err = os.ReadFile(cfg.Rego.Path)
+		if err != nil {
+			return fmt.Errorf("failed to read custom entitlements.rego file: %w", err)
+		}
+	} else {
+		entitlementRego, err = policies.EntitlementsRego.ReadFile("entitlements/entitlements.rego")
+		if err != nil {
+			return fmt.Errorf("failed to read entitlements.rego file: %w", err)
+		}
+	}
+
+	// Register builtin
+	subjectmappingbuiltin.SubjectMappingBuiltin()
+
+	as.eval, err = rego.New(
+		rego.Query(cfg.Rego.Query),
+		rego.Module("entitlements.rego", string(entitlementRego)),
+		rego.StrictBuiltinErrors(true),
+	).PrepareForEval(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to prepare entitlements.rego for eval: %w", err)
+	}
+	return nil
+}
+
+func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorization.DecisionRequest) ([]*authorization.DecisionResponse, error) {
+	allPertinentFQNS := &authorization.ResourceAttribute{AttributeValueFqns: make([]string, 0)}
+	response := make([]*authorization.DecisionResponse, len(dr.GetResourceAttributes())*len(dr.GetEntityChains()))
+
+	// TODO: fetching missing FQNs should not lead into a complete failure, rather a list of unknown FQNs would be preferred
+	var err error
+	var dataAttrDefsAndVals map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue
+	allPertinentFQNS.AttributeValueFqns, err = getAttributesFromRas(dr.GetResourceAttributes())
+	if err == nil {
+		dataAttrDefsAndVals, err = retrieveAttributeDefinitions(ctx, allPertinentFQNS.GetAttributeValueFqns(), as.sdk)
+	}
+	if err != nil {
+		// if attribute an FQN does not exist
+		// return deny for all entity chains aginst this RAs
+		if errors.Is(err, status.Error(codes.NotFound, db.ErrTextNotFound)) || errors.Is(err, ErrEmptyStringAttribute) {
+			for raIdx, ra := range dr.GetResourceAttributes() {
+				for ecIdx, ec := range dr.GetEntityChains() {
+					decisionResp := &authorization.DecisionResponse{
+						Decision:      authorization.DecisionResponse_DECISION_DENY,
+						EntityChainId: ec.GetId(),
+						Action: &policy.Action{
+							Value: &policy.Action_Standard{
+								Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
+							},
+						},
+					}
+					if ra.GetResourceAttributesId() != "" {
+						decisionResp.ResourceAttributesId = ra.GetResourceAttributesId()
+					} else if len(ra.GetAttributeValueFqns()) > 0 {
+						decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
+					}
+					responseIdx := (raIdx * len(dr.GetEntityChains())) + ecIdx
+					response[responseIdx] = decisionResp
+				}
+			}
+			return response, nil
+		}
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("fqns", strings.Join(allPertinentFQNS.GetAttributeValueFqns(), ", ")))
+	}
+
+	var allAttrDefs []*policy.Attribute
+	for _, v := range dataAttrDefsAndVals {
+		allAttrDefs = append(allAttrDefs, v.GetAttribute())
+	}
+	allAttrDefs, err = populateAttrDefValueFqns(allAttrDefs)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	// get the relevant resource attribute fqns
+	for _, attrDef := range allAttrDefs {
+		if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
+			for _, value := range attrDef.GetValues() {
+				allPertinentFQNS.AttributeValueFqns = append(allPertinentFQNS.AttributeValueFqns, value.GetFqn())
+			}
+		}
+	}
+
+	var ecChainEntitlementsResponse []*connect.Response[authorization.GetEntitlementsResponse]
+	for _, ec := range dr.GetEntityChains() {
+		entities := ec.GetEntities()
+		if len(entities) == 0 {
+			ecChainEntitlementsResponse = append(ecChainEntitlementsResponse, nil)
+			continue
+		}
+		req := connect.Request[authorization.GetEntitlementsRequest]{
+			Msg: &authorization.GetEntitlementsRequest{
+				Entities: entities,
+				Scope:    allPertinentFQNS,
+			},
+		}
+		ecEntitlements, err := as.GetEntitlements(ctx, &req)
+		if err != nil {
+			// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
+			return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
+		}
+		ecChainEntitlementsResponse = append(ecChainEntitlementsResponse, ecEntitlements)
+	}
+
+	for raIdx, ra := range dr.GetResourceAttributes() {
+		var attrDefs []*policy.Attribute
+		var attrVals []*policy.Value
+		var fqns []string
+
+		for _, fqn := range ra.GetAttributeValueFqns() {
+			fqn = strings.ToLower(fqn)
+			fqns = append(fqns, fqn)
+			v := dataAttrDefsAndVals[fqn]
+			attrDefs = append(attrDefs, v.GetAttribute())
+			attrVal := v.GetValue()
+			attrVal.Fqn = fqn
+			attrVals = append(attrVals, attrVal)
+		}
+
+		attrDefs, err = populateAttrDefValueFqns(attrDefs)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+
+		for ecIdx, ec := range dr.GetEntityChains() {
+			// check if we already have a decision for this entity chain
+			responseIdx := (raIdx * len(dr.GetEntityChains())) + ecIdx
+			if response[responseIdx] != nil {
+				continue
+			}
+
+			//
+			// TODO: we should already have the subject mappings here and be able to just use OPA to trim down the known data attr values to the ones matched up with the entities
+			//
+			entities := ec.GetEntities()
+			auditECEntitlements := make([]audit.EntityChainEntitlement, 0)
+			auditEntityDecisions := make([]audit.EntityDecision, 0)
+
+			// Entitlements for environment entites in chain
+			envEntityAttrValues := make(map[string][]string)
+			// Entitlementsfor sbuject entities in chain
+			subjectEntityAttrValues := make(map[string][]string)
+
+			// handle empty entity / attr list
+			decision := authorization.DecisionResponse_DECISION_DENY
+			switch {
+			case len(entities) == 0:
+				as.logger.WarnContext(ctx, "empty entity list")
+			case len(ra.GetAttributeValueFqns()) == 0:
+				as.logger.WarnContext(ctx, "empty entity data attribute list")
+				decision = authorization.DecisionResponse_DECISION_PERMIT
+			default:
+				ecEntitlements := ecChainEntitlementsResponse[ecIdx]
+				for entIdx, e := range ecEntitlements.Msg.GetEntitlements() {
+					entityID := e.GetEntityId()
+					if entityID == "" {
+						entityID = EntityIDPrefix + fmt.Sprint(entIdx)
+					}
+					entityCategory := entities[entIdx].GetCategory()
+					auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{
+						EntityID:                 entityID,
+						EntityCatagory:           entityCategory.String(),
+						AttributeValueReferences: e.GetAttributeValueFqns(),
+					})
+
+					// If entity type unspecified, include in access decision to err on the side of caution
+					if entityCategory == authorization.Entity_CATEGORY_SUBJECT || entityCategory == authorization.Entity_CATEGORY_UNSPECIFIED {
+						subjectEntityAttrValues[entityID] = e.GetAttributeValueFqns()
+					} else {
+						envEntityAttrValues[entityID] = e.GetAttributeValueFqns()
+					}
+				}
+				// call access-pdp
+				accessPDP := access.NewPdp(as.logger)
+				decisions, err := accessPDP.DetermineAccess(
+					ctx,
+					attrVals,
+					subjectEntityAttrValues,
+					attrDefs,
+				)
+				if err != nil {
+					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
+					return nil, db.StatusifyError(errors.New("could not determine access"), "could not determine access", slog.String("error", err.Error()))
+				}
+				// check the decisions
+				decision = authorization.DecisionResponse_DECISION_PERMIT
+				for entityID, d := range decisions {
+					// Set overall decision as well as individual entity decision
+					entityDecision := authorization.DecisionResponse_DECISION_PERMIT
+					if !d.Access {
+						entityDecision = authorization.DecisionResponse_DECISION_DENY
+						decision = authorization.DecisionResponse_DECISION_DENY
+					}
+
+					// Add entity decision to audit list
+					entityEntitlementFqns := subjectEntityAttrValues[entityID]
+					if entityEntitlementFqns == nil {
+						entityEntitlementFqns = []string{}
+					}
+					auditEntityDecisions = append(auditEntityDecisions, audit.EntityDecision{
+						EntityID:     entityID,
+						Decision:     entityDecision.String(),
+						Entitlements: entityEntitlementFqns,
+					})
+				}
+			}
+
+			decisionResp := &authorization.DecisionResponse{
+				Decision:      decision,
+				EntityChainId: ec.GetId(),
+				Action: &policy.Action{
+					Value: &policy.Action_Standard{
+						Standard: policy.Action_STANDARD_ACTION_TRANSMIT,
+					},
+				},
+			}
+			if ra.GetResourceAttributesId() != "" {
+				decisionResp.ResourceAttributesId = ra.GetResourceAttributesId()
+			} else if len(ra.GetAttributeValueFqns()) > 0 {
+				decisionResp.ResourceAttributesId = ra.GetAttributeValueFqns()[0]
+			}
+
+			auditDecision := audit.GetDecisionResultDeny
+			if decision == authorization.DecisionResponse_DECISION_PERMIT {
+				auditDecision = audit.GetDecisionResultPermit
+			}
+			as.logger.Audit.GetDecision(ctx, audit.GetDecisionEventParams{
+				Decision:                auditDecision,
+				EntityChainEntitlements: auditECEntitlements,
+				EntityChainID:           decisionResp.GetEntityChainId(),
+				EntityDecisions:         auditEntityDecisions,
+				FQNs:                    fqns,
+				ResourceAttributeID:     decisionResp.GetResourceAttributesId(),
+			})
+			response[responseIdx] = decisionResp
+		}
+	}
+	return response, nil
 }
 
 func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *otdf.SDK) (map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {

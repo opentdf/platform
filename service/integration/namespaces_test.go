@@ -51,14 +51,6 @@ func (s *NamespacesSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
-func (s *NamespacesSuite) getActiveNamespaceFixtures() []fixtures.FixtureDataNamespace {
-	return []fixtures.FixtureDataNamespace{
-		s.f.GetNamespaceKey("example.com"),
-		s.f.GetNamespaceKey("example.net"),
-		s.f.GetNamespaceKey("example.org"),
-	}
-}
-
 func (s *NamespacesSuite) Test_CreateNamespace() {
 	testData := s.getActiveNamespaceFixtures()
 
@@ -1264,6 +1256,14 @@ func (s *NamespacesSuite) Test_RemovePublicKeyFromNamespace_Not_Found_Fails() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
+}
+
+func (s *NamespacesSuite) getActiveNamespaceFixtures() []fixtures.FixtureDataNamespace {
+	return []fixtures.FixtureDataNamespace{
+		s.f.GetNamespaceKey("example.com"),
+		s.f.GetNamespaceKey("example.net"),
+		s.f.GetNamespaceKey("example.org"),
+	}
 }
 
 func TestNamespacesSuite(t *testing.T) {

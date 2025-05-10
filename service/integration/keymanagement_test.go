@@ -47,16 +47,6 @@ func (s *KeyManagementSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
-func (s *KeyManagementSuite) createTestProviderConfig() *policy.KeyProviderConfig {
-	pc, err := s.db.PolicyClient.CreateProviderConfig(s.ctx, &keymanagement.CreateProviderConfigRequest{
-		Name:       testProvider,
-		ConfigJson: validProviderConfig,
-	})
-	s.Require().NoError(err)
-	s.NotNil(pc)
-	return pc
-}
-
 func (s *KeyManagementSuite) Test_CreateProviderConfig_NoMetada_Succeeds() {
 	s.createTestProviderConfig()
 }
@@ -281,6 +271,16 @@ func (s *KeyManagementSuite) Test_DeleteProviderConfig_InvalidUUID_Fails() {
 	pc, err := s.db.PolicyClient.DeleteProviderConfig(s.ctx, invalidUUID)
 	s.Require().Error(err)
 	s.Nil(pc)
+}
+
+func (s *KeyManagementSuite) createTestProviderConfig() *policy.KeyProviderConfig {
+	pc, err := s.db.PolicyClient.CreateProviderConfig(s.ctx, &keymanagement.CreateProviderConfigRequest{
+		Name:       testProvider,
+		ConfigJson: validProviderConfig,
+	})
+	s.Require().NoError(err)
+	s.NotNil(pc)
+	return pc
 }
 
 func TestKeyManagementSuite(t *testing.T) {

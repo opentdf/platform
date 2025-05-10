@@ -57,20 +57,6 @@ func (s *KasRegistryKeySuite) SetupSuite() {
 	s.kasKeys = s.getKasRegistryServerKeysFixtures()
 }
 
-func (s *KasRegistryKeySuite) getKasRegistryServerKeysFixtures() []fixtures.FixtureDataKasRegistryKey {
-	return []fixtures.FixtureDataKasRegistryKey{
-		s.f.GetKasRegistryServerKeys("kas_key_1"),
-		s.f.GetKasRegistryServerKeys("kas_key_2"),
-	}
-}
-
-func (s *KasRegistryKeySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasRegistry {
-	return []fixtures.FixtureDataKasRegistry{
-		s.f.GetKasRegistryKey("key_access_server_1"),
-		s.f.GetKasRegistryKey("key_access_server_2"),
-	}
-}
-
 func (s *KasRegistryKeySuite) TearDownSuite() {
 	slog.Info("tearing down db.KasKeys test suite")
 	s.f.TearDown()
@@ -1004,4 +990,249 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 		},
 		[]string{kas.GetId()},
 	)
+}
+
+func (s *KasRegistryKeySuite) getKasRegistryServerKeysFixtures() []fixtures.FixtureDataKasRegistryKey {
+	return []fixtures.FixtureDataKasRegistryKey{
+		s.f.GetKasRegistryServerKeys("kas_key_1"),
+		s.f.GetKasRegistryServerKeys("kas_key_2"),
+	}
+}
+
+func (s *KasRegistryKeySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasRegistry {
+	return []fixtures.FixtureDataKasRegistry{
+		s.f.GetKasRegistryKey("key_access_server_1"),
+		s.f.GetKasRegistryKey("key_access_server_2"),
+	}
+}
+
+func (s *KasRegistryKeySuite) setupNamespaceForRotate(numNSToRotate, numNSToNotRotate int, keyToRotate, secondKey *policy.AsymmetricKey) map[string][]*policy.Namespace {
+	namespacesToRotate := make([]*policy.Namespace, numNSToRotate)
+	namespacesToNotRotate := make([]*policy.Namespace, numNSToNotRotate)
+
+	for i := 0; i < numNSToRotate+numNSToNotRotate; i++ {
+		if i < numNSToRotate {
+			// Create a namespace
+			nsReq := namespaces.CreateNamespaceRequest{
+				Name: rotatePrefix + uuid.New().String(),
+			}
+			namespaceWithKeyToRotate, err := s.db.PolicyClient.CreateNamespace(s.ctx, &nsReq)
+			s.Require().NoError(err)
+			s.NotNil(namespaceWithKeyToRotate)
+
+			assignKeyReq := namespaces.NamespaceKey{
+				NamespaceId: namespaceWithKeyToRotate.GetId(),
+				KeyId:       keyToRotate.GetId(),
+			}
+			namespace, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &assignKeyReq)
+			s.Require().NoError(err)
+			s.NotNil(namespace)
+
+			namespacesToRotate[i] = namespaceWithKeyToRotate
+		} else {
+			nsReq2 := namespaces.CreateNamespaceRequest{
+				Name: nonRotatePrefix + uuid.New().String(),
+			}
+			namespaceWithoutKeyToRotate, err := s.db.PolicyClient.CreateNamespace(s.ctx, &nsReq2)
+			s.Require().NoError(err)
+			s.NotNil(namespaceWithoutKeyToRotate)
+
+			assignKeyReq2 := namespaces.NamespaceKey{
+				NamespaceId: namespaceWithoutKeyToRotate.GetId(),
+				KeyId:       secondKey.GetId(),
+			}
+			namespace2, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &assignKeyReq2)
+			s.Require().NoError(err)
+			s.NotNil(namespace2)
+			namespacesToNotRotate[i-numNSToRotate] = namespaceWithoutKeyToRotate
+		}
+	}
+	return map[string][]*policy.Namespace{
+		rotateKey:    namespacesToRotate,
+		nonRotateKey: namespacesToNotRotate,
+	}
+}
+
+func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*policy.KasKey {
+	// Create a key for the KAS
+	keyReq := kasregistry.CreateKeyRequest{
+		KasId:        kasID,
+		KeyId:        "original_key_id_to_rotate",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
+		PublicKeyCtx: []byte(`{"key":"original"}`),
+	}
+	keyToRotate, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+	s.Require().NoError(err)
+	s.NotNil(rotateKey)
+
+	keyReq2 := kasregistry.CreateKeyRequest{
+		KasId:        kasID,
+		KeyId:        "second_original_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
+		PublicKeyCtx: []byte(`{"key":"original"}`),
+	}
+	secondKey, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq2)
+	s.Require().NoError(err)
+	s.NotNil(secondKey)
+
+	return map[string]*policy.KasKey{
+		rotateKey:    keyToRotate.GetKasKey(),
+		nonRotateKey: secondKey.GetKasKey(),
+	}
+}
+
+func (s *KasRegistryKeySuite) setupAttributesForRotate(numAttrsToRotate, numAttrsToNotRotate, numAttrValuesToRotate, numAttrsValuesToNotRotate int, namespaceMap map[string][]*policy.Namespace, keyToRotate, keyNotRotated *policy.AsymmetricKey) map[string][]*policy.Attribute {
+	attributesToRotate := make([]*policy.Attribute, numAttrsToRotate)
+	attributesToNotRotate := make([]*policy.Attribute, numAttrsToNotRotate)
+
+	if (numAttrValuesToRotate > 1 && numAttrsToRotate == 0) || (numAttrsValuesToNotRotate > 1 && numAttrsToNotRotate == 0) {
+		s.Fail("Invalid test setup: if there are multiple attribute values, there must be at least on attribute")
+	}
+
+	if len(namespaceMap[rotateKey]) == 0 || len(namespaceMap[nonRotateKey]) == 0 {
+		s.Fail("Should at least have one namespace for rotating and non-rotating")
+	}
+
+	for i := 0; i < numAttrsToRotate+numAttrsToNotRotate; i++ {
+		if i < numAttrsToRotate {
+			attrValueNames := make([]string, 0)
+			if i == 0 {
+				// Create all the attribute values for the first attribute
+				for j := 0; j < numAttrValuesToRotate; j++ {
+					attrValueNames = append(attrValueNames, rotatePrefix+uuid.NewString())
+				}
+			}
+
+			// Create a namespace
+			attrReq := attributes.CreateAttributeRequest{
+				NamespaceId: namespaceMap[rotateKey][0].GetId(),
+				Name:        rotatePrefix + uuid.NewString(),
+				Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				Values:      attrValueNames,
+			}
+			rotateAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attrReq)
+			s.Require().NoError(err)
+			s.NotNil(rotateAttr)
+
+			assignKeyToAttrReq := attributes.AttributeKey{
+				AttributeId: rotateAttr.GetId(),
+				KeyId:       keyToRotate.GetId(),
+			}
+			attribute, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &assignKeyToAttrReq)
+			s.Require().NoError(err)
+			s.NotNil(attribute)
+
+			attributesToRotate[i] = rotateAttr
+		} else {
+			attrValueNames := make([]string, 0)
+			if i-numAttrValuesToRotate == 0 {
+				// Create all the attribute values for the first attribute
+				for j := 0; j < numAttrValuesToRotate; j++ {
+					attrValueNames = append(attrValueNames, nonRotatePrefix+uuid.NewString())
+				}
+			}
+			attrReq := attributes.CreateAttributeRequest{
+				NamespaceId: namespaceMap[nonRotateKey][0].GetId(),
+				Name:        nonRotatePrefix + uuid.NewString(),
+				Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				Values:      attrValueNames,
+			}
+			noRotateAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attrReq)
+			s.Require().NoError(err)
+			s.NotNil(noRotateAttr)
+
+			assignKeyToAttrReq := attributes.AttributeKey{
+				AttributeId: noRotateAttr.GetId(),
+				KeyId:       keyNotRotated.GetId(),
+			}
+			attribute, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &assignKeyToAttrReq)
+			s.Require().NoError(err)
+			s.NotNil(attribute)
+			attributesToNotRotate[i-numAttrsToNotRotate] = noRotateAttr
+		}
+	}
+	// Go through and assing the values to public keys
+	for _, value := range attributesToRotate[0].GetValues() {
+		if value.GetId() == "" {
+			continue
+		}
+		assignKeyToAttrValueReq := attributes.ValueKey{
+			ValueId: value.GetId(),
+			KeyId:   keyToRotate.GetId(),
+		}
+		_, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &assignKeyToAttrValueReq)
+		s.Require().NoError(err)
+	}
+	for _, value := range attributesToNotRotate[0].GetValues() {
+		if value.GetId() == "" {
+			continue
+		}
+		assignKeyToAttrValueReq := attributes.ValueKey{
+			ValueId: value.GetId(),
+			KeyId:   keyNotRotated.GetId(),
+		}
+		_, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &assignKeyToAttrValueReq)
+		s.Require().NoError(err)
+	}
+
+	return map[string][]*policy.Attribute{
+		rotateKey:    attributesToRotate,
+		nonRotateKey: attributesToNotRotate,
+	}
+}
+
+func (s *KasRegistryKeySuite) cleanupRotate(attrValueIDs []string, namespaceIDs []string, attributeIDs []string, keyIDs []string, keyAccessServerIDs []string) {
+	for _, id := range attrValueIDs {
+		_, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, id)
+		s.Require().NoError(err)
+	}
+	for _, id := range namespaceIDs {
+		_, err := s.db.PolicyClient.DeleteNamespace(s.ctx, id)
+		s.Require().NoError(err)
+	}
+	for _, id := range attributeIDs {
+		_, err := s.db.PolicyClient.DeleteAttribute(s.ctx, id)
+		s.Require().NoError(err)
+	}
+	for _, id := range keyIDs {
+		_, err := s.db.PolicyClient.DeleteKey(s.ctx, id)
+		s.Require().NoError(err)
+	}
+	for _, id := range keyAccessServerIDs {
+		_, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, id)
+		s.Require().NoError(err)
+	}
+}
+
+func (s *KasRegistryKeySuite) validateListKeysResponse(resp *kasregistry.ListKeysResponse, err error) {
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.GreaterOrEqual(len(resp.GetKasKeys()), 2)
+	s.GreaterOrEqual(int32(2), resp.GetPagination().GetTotal())
+
+	for _, key := range resp.GetKasKeys() {
+		var fixtureKey *fixtures.FixtureDataKasRegistryKey
+
+		for _, kasKey := range s.kasKeys {
+			if kasKey.ID == key.GetKey().GetId() {
+				fixtureKey = &kasKey
+				break
+			}
+		}
+
+		s.Require().NotNil(fixtureKey, "No matching KAS key found for ID: %s", key.GetKey().GetId())
+		s.Equal(fixtureKey.KeyAccessServerID, key.GetKasId())
+		s.Equal(fixtureKey.ID, key.GetKey().GetId())
+		s.Equal(fixtureKey.ProviderConfigID, key.GetKey().GetProviderConfig().GetId())
+
+		privateKeyCtx, err := base64.StdEncoding.DecodeString(fixtureKey.PrivateKeyCtx)
+		s.Require().NoError(err)
+		s.Equal(privateKeyCtx, key.GetKey().GetPrivateKeyCtx())
+
+		pubKeyCtx, err := base64.StdEncoding.DecodeString(fixtureKey.PublicKeyCtx)
+		s.Require().NoError(err)
+		s.Equal(pubKeyCtx, key.GetKey().GetPublicKeyCtx())
+	}
 }

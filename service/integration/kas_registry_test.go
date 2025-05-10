@@ -44,6 +44,7 @@ func (s *KasRegistrySuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
+<<<<<<< HEAD
 func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasRegistry {
 	return []fixtures.FixtureDataKasRegistry{
 		s.f.GetKasRegistryKey("key_access_server_1"),
@@ -91,6 +92,8 @@ func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer)
 	s.Len(keysFixtureArr, matchingKeysCount)
 }
 
+=======
+>>>>>>> main
 func (s *KasRegistrySuite) Test_ListKeyAccessServers_NoPagination_Succeeds() {
 	fixtures := s.getKasRegistryFixtures()
 	listRsp, err := s.db.PolicyClient.ListKeyAccessServers(s.ctx, &kasregistry.ListKeyAccessServersRequest{})
@@ -1288,6 +1291,55 @@ func (s *KasRegistrySuite) Test_ListKeyAccessServerGrants_Offset_Succeeds() {
 	for i, val := range offsetListed {
 		s.True(proto.Equal(val, listed[i+offset]))
 	}
+}
+
+func (s *KasRegistrySuite) getKasRegistryFixtures() []fixtures.FixtureDataKasRegistry {
+	return []fixtures.FixtureDataKasRegistry{
+		s.f.GetKasRegistryKey("key_access_server_1"),
+		s.f.GetKasRegistryKey("key_access_server_2"),
+	}
+}
+
+func (s *KasRegistrySuite) getKasRegistryServerKeysFixtures() []fixtures.FixtureDataKasRegistryKey {
+	return []fixtures.FixtureDataKasRegistryKey{
+		s.f.GetKasRegistryServerKeys("kas_key_1"),
+		s.f.GetKasRegistryServerKeys("kas_key_2"),
+	}
+}
+
+func (s *KasRegistrySuite) getKasToKeysFixtureMap() map[string][]fixtures.FixtureDataKasRegistryKey {
+	// map kas id to keys
+	kasToKeys := make(map[string][]fixtures.FixtureDataKasRegistryKey)
+	for _, k := range s.getKasRegistryServerKeysFixtures() {
+		if kasToKeys[k.KeyAccessServerID] == nil {
+			kasToKeys[k.KeyAccessServerID] = make([]fixtures.FixtureDataKasRegistryKey, 0)
+		}
+		kasToKeys[k.KeyAccessServerID] = append(kasToKeys[k.KeyAccessServerID], k)
+	}
+	return kasToKeys
+}
+
+func (s *KasRegistrySuite) validateKasRegistryKeys(kasr *policy.KeyAccessServer) {
+	kasToKeysFixtures := s.getKasToKeysFixtureMap()
+	// Check that key is present.
+	keysFixtureArr := kasToKeysFixtures[kasr.GetId()]
+	s.GreaterOrEqual(len(kasr.GetKasKeys()), len(keysFixtureArr))
+	// Check for expected key ids.
+	matchingKeysCount := 0
+	for _, kasKey := range kasr.GetKasKeys() {
+		for _, f := range keysFixtureArr {
+			if kasKey.GetKey().GetId() == f.ID {
+				publicKeyContext, err := base64.StdEncoding.DecodeString(f.PublicKeyCtx)
+				s.Require().NoError(err)
+				s.Equal(f.KeyAccessServerID, kasKey.GetKasId())
+				s.Equal(publicKeyContext, kasKey.GetKey().GetPublicKeyCtx())
+				s.Empty(kasKey.GetKey().GetPrivateKeyCtx())
+				s.Empty(kasKey.GetKey().GetProviderConfig())
+				matchingKeysCount++
+			}
+		}
+	}
+	s.Len(keysFixtureArr, matchingKeysCount)
 }
 
 func TestKasRegistrySuite(t *testing.T) {

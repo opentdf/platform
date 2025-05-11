@@ -22,11 +22,11 @@ const (
 	testClassificationFQN = testBaseNamespace + "/attr/classification"
 	testDepartmentFQN     = testBaseNamespace + "/attr/department"
 	testCountryFQN        = testBaseNamespace + "/attr/country"
-	
+
 	// Additional namespace for cross-namespace testing
-	testSecondaryNamespace  = "https://secondary.example.org"
-	testProjectFQN          = testSecondaryNamespace + "/attr/project"
-	testPlatformFQN         = testSecondaryNamespace + "/attr/platform"
+	testSecondaryNamespace = "https://secondary.example.org"
+	testProjectFQN         = testSecondaryNamespace + "/attr/project"
+	testPlatformFQN        = testSecondaryNamespace + "/attr/platform"
 
 	// Classification values
 	testClassTopSecretFQN    = testClassificationFQN + "/value/topsecret"
@@ -43,16 +43,16 @@ const (
 	// Country values
 	testCountryUSAFQN = testCountryFQN + "/value/usa"
 	testCountryUKFQN  = testCountryFQN + "/value/uk"
-	
+
 	// Project values in secondary namespace
 	testProjectAlphaFQN = testProjectFQN + "/value/alpha"
 	testProjectBetaFQN  = testProjectFQN + "/value/beta"
 	testProjectGammaFQN = testProjectFQN + "/value/gamma"
-	
+
 	// Platform values in secondary namespace
-	testPlatformCloudFQN    = testPlatformFQN + "/value/cloud"
-	testPlatformOnPremFQN   = testPlatformFQN + "/value/onprem"
-	testPlatformHybridFQN   = testPlatformFQN + "/value/hybrid"
+	testPlatformCloudFQN  = testPlatformFQN + "/value/cloud"
+	testPlatformOnPremFQN = testPlatformFQN + "/value/onprem"
+	testPlatformHybridFQN = testPlatformFQN + "/value/hybrid"
 )
 
 var (
@@ -492,7 +492,7 @@ func TestGetDecision(t *testing.T) {
 						Fqns: []string{testClassSecretFQN},
 					},
 				},
-				},
+			},
 		}
 
 		// Get decision
@@ -533,7 +533,7 @@ func TestGetDecision(t *testing.T) {
 						Fqns: []string{testClassSecretFQN},
 					},
 				},
-				},
+			},
 		}
 
 		// Get decision
@@ -720,7 +720,7 @@ func TestCrossNamespaceDecision(t *testing.T) {
 	}
 
 	// Create subject mappings from different namespaces
-	
+
 	// Primary namespace mappings
 	secretMapping := &policy.SubjectMapping{
 		AttributeValue: &policy.Value{
@@ -844,7 +844,7 @@ func TestCrossNamespaceDecision(t *testing.T) {
 			AdditionalProps: []*structpb.Struct{
 				{
 					Fields: map[string]*structpb.Value{
-							"properties": structpb.NewStructValue(&structpb.Struct{
+						"properties": structpb.NewStructValue(&structpb.Struct{
 							Fields: map[string]*structpb.Value{
 								"clearance": structpb.NewStringValue("secret"),
 								"project":   structpb.NewStringValue("alpha"),
@@ -893,7 +893,7 @@ func TestCrossNamespaceDecision(t *testing.T) {
 			AdditionalProps: []*structpb.Struct{
 				{
 					Fields: map[string]*structpb.Value{
-							"properties": structpb.NewStructValue(&structpb.Struct{
+						"properties": structpb.NewStructValue(&structpb.Struct{
 							Fields: map[string]*structpb.Value{
 								"clearance": structpb.NewStringValue("secret"),
 								"project":   structpb.NewStringValue("beta"), // Not alpha
@@ -942,7 +942,7 @@ func TestCrossNamespaceDecision(t *testing.T) {
 			AdditionalProps: []*structpb.Struct{
 				{
 					Fields: map[string]*structpb.Value{
-							"properties": structpb.NewStructValue(&structpb.Struct{
+						"properties": structpb.NewStructValue(&structpb.Struct{
 							Fields: map[string]*structpb.Value{
 								"clearance": structpb.NewStringValue("secret"),
 								"project":   structpb.NewStringValue("alpha"),
@@ -991,7 +991,7 @@ func TestCrossNamespaceDecision(t *testing.T) {
 			AdditionalProps: []*structpb.Struct{
 				{
 					Fields: map[string]*structpb.Value{
-							"properties": structpb.NewStructValue(&structpb.Struct{
+						"properties": structpb.NewStructValue(&structpb.Struct{
 							Fields: map[string]*structpb.Value{
 								"clearance": structpb.NewStringValue("secret"),
 								"project":   structpb.NewStringValue("alpha"),
@@ -1056,7 +1056,7 @@ func TestCrossNamespaceDecision(t *testing.T) {
 			AdditionalProps: []*structpb.Struct{
 				{
 					Fields: map[string]*structpb.Value{
-							"properties": structpb.NewStructValue(&structpb.Struct{
+						"properties": structpb.NewStructValue(&structpb.Struct{
 							Fields: map[string]*structpb.Value{
 								"clearance": structpb.NewStringValue("secret"),
 								"project":   structpb.NewStringValue("alpha"),

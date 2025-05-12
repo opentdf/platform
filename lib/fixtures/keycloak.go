@@ -408,10 +408,10 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 				if err != nil {
 					return err
 				}
-				numDigits := 1
-				if customClient.Count > 1 {
-					numDigits = int(math.Log10(float64(customClient.Count-1))) + 1
+				if customClient.Count < 1 {
+					return nil
 				}
+				numDigits := int(math.Log10(float64(customClient.Count-1))) + 1
 				padFormat := fmt.Sprintf("%%s-%%%dd", numDigits)
 				for i := 0; i < customClient.Count; i++ {
 					customClient.Client.ClientID = gocloak.StringP(fmt.Sprintf(padFormat, customClient.Client.ClientID, i))
@@ -441,6 +441,19 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 				_, err = createUser(ctx, client, token, &kcConnectParams, customUser.User)
 				if err != nil {
 					return err
+				}
+				if customUser.Count < 1 {
+					return nil
+				}
+				numDigits := int(math.Log10(float64(customUser.Count-1))) + 1
+				padFormat := fmt.Sprintf("%%s-%%%dd", numDigits)
+				for i := 0; i < customUser.Count; i++ {
+					customUser.User.ID = gocloak.StringP(fmt.Sprintf(padFormat, customUser.User.ID, i))
+					customUser.User.Username = gocloak.StringP(fmt.Sprintf(padFormat, customUser.User.Username, i))
+					_, err = createUser(ctx, client, token, &kcConnectParams, customUser.User)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}

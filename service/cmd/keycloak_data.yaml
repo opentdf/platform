@@ -107,6 +107,7 @@ realms:
             - query-users
           tdf-entity-resolution:
             - entity-resolution-test-role
+        count: 10
     token_exchanges:
       - start_client: opentdf
         target_client: opentdf-sdk

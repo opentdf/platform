@@ -193,11 +193,17 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 
 			// Register GRPC Gateway Handler using the in-process connect rpc
 			grpcConn := otdf.ConnectRPCInProcess.GrpcConn()
-			if err := svc.RegisterGRPCGatewayHandler(ctx, otdf.GRPCGatewayMux, grpcConn); err != nil {
+			err := svc.RegisterGRPCGatewayHandler(ctx, otdf.GRPCGatewayMux, otdf.ConnectRPCInProcess.GrpcConn())
+			if err != nil {
 				logger.Info("service did not register a grpc gateway handler", slog.String("namespace", ns))
-			}
-			gatewayCleanup = func() {
-				grpcConn.Close()
+			} else if gatewayCleanup == nil {
+				gatewayCleanup = func() {
+					slog.Info("executing cleanup")
+					if grpcConn != nil {
+						grpcConn.Close()
+					}
+					slog.Info("cleanup complete")
+				}
 			}
 
 			// Register Extra Handlers

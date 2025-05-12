@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
@@ -61,12 +60,12 @@ func authorizationExamples() error {
 	})
 
 	decisionRequest := &authorization.GetDecisionsRequest{DecisionRequests: drs}
-	slog.Info(fmt.Sprintf("Submitting decision request: %s", protojson.Format(decisionRequest)))
+	slog.Info("Submitting decision request: " + protojson.Format(decisionRequest))
 	decisionResponse, err := s.Authorization.GetDecisions(context.Background(), connect.NewRequest(decisionRequest))
 	if err != nil {
 		return err
 	}
-	slog.Info(fmt.Sprintf("Received decision response: %s", protojson.Format(decisionResponse.Msg)))
+	slog.Info("Received decision response: " + protojson.Format(decisionResponse.Msg))
 
 	// map response back to entity chain id
 	decisionsByEntityChain := make(map[string]*authorization.DecisionResponse)
@@ -74,8 +73,8 @@ func authorizationExamples() error {
 		decisionsByEntityChain[dr.EntityChainId] = dr
 	}
 
-	slog.Info(fmt.Sprintf("decision for bob: %s", protojson.Format(decisionsByEntityChain["ec1"])))
-	slog.Info(fmt.Sprintf("decision for alice: %s", protojson.Format(decisionsByEntityChain["ec2"])))
+	slog.Info("decision for bob: " + protojson.Format(decisionsByEntityChain["ec1"]))
+	slog.Info("decision for alice: " + protojson.Format(decisionsByEntityChain["ec2"]))
 	return nil
 }
 

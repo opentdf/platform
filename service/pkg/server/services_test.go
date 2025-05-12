@@ -270,7 +270,10 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 			"foobar":       {},
 		},
 	}, otdf, nil, newLogger, registry)
-	defer cleanup()
+	if cleanup != nil {
+		// call cleanup function
+		defer cleanup()
+	}
 
 	suite.Require().NoError(err)
 	// require.NotNil(t, cF)

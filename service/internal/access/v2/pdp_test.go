@@ -437,19 +437,16 @@ func (s *PDPTestSuite) SetupTest() {
 		"clearance":  "secret",
 		"department": "engineering",
 		"country":    []any{"us"},
-		"role":       "admin",
 	})
 	s.fixtures.developerEntity = s.createEntityWithProps("developer-entity", map[string]interface{}{
 		"clearance":  "confidential",
 		"department": "engineering",
 		"country":    []any{"us"},
-		"role":       "developer",
 	})
 	s.fixtures.analystEntity = s.createEntityWithProps("analyst-entity", map[string]interface{}{
 		"clearance":  "confidential",
 		"department": "finance",
 		"country":    []any{"uk"},
-		"role":       "analyst",
 	})
 }
 

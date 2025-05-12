@@ -300,7 +300,7 @@ func TestAttributeFromMalformedURL(t *testing.T) {
 		t.Run(tc.n, func(t *testing.T) {
 			a, err := NewAttributeNameFQN(tc.u)
 			require.ErrorIs(t, err, ErrInvalid)
-			assert.Equal(t, "", a.String())
+			assert.Empty(t, a.String())
 		})
 	}
 }
@@ -343,7 +343,7 @@ func TestAttributeValueFromMalformedURL(t *testing.T) {
 		t.Run(tc.n, func(t *testing.T) {
 			a, err := NewAttributeValueFQN(tc.u)
 			require.ErrorIs(t, err, ErrInvalid)
-			assert.Equal(t, "", a.String())
+			assert.Empty(t, a.String())
 		})
 	}
 }

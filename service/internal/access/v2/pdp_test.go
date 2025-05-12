@@ -373,7 +373,7 @@ func (s *PDPTestSuite) SetupTest() {
 		"confidential",
 		[]*policy.Action{testActionRead},
 		".properties.clearance",
-		[]string{"confidential", "secret"},
+		[]string{"confidential"},
 	)
 
 	s.fixtures.publicMapping = createSimpleSubjectMapping(
@@ -987,5 +987,234 @@ func (s *PDPTestSuite) TestCrossNamespaceDecision() {
 		// Expect 3 passes (Secret, Project Beta, Platform OnPrem) and 1 failure (Country USA)
 		s.Equal(3, passCount, "Should have 3 passing data rules for update action")
 		s.Equal(1, failCount, "Should have 1 failing data rule for update action")
+	})
+}
+
+// TestGetEntitlements tests the functionality of retrieving entitlements for entities
+func (s *PDPTestSuite) TestGetEntitlements() {
+	f := s.fixtures
+
+	// Create a PDP with attributes and mappings
+	pdp, err := NewPolicyDecisionPoint(
+		s.ctx,
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr, f.departmentAttr, f.countryAttr},
+		[]*policy.SubjectMapping{
+			f.secretMapping, f.confidentialMapping, f.publicMapping,
+			f.engineeringMapping, f.financeMapping, f.rndMapping,
+			f.usaMapping,
+		},
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	s.Run("Entity with multiple entitlements", func() {
+		// Entity with entitlements for secret clearance, engineering department, and USA country
+		entity := s.createEntityWithProps("test-entity-1", map[string]interface{}{
+			"clearance":  "secret",
+			"department": "engineering",
+			"country":    []any{"us"},
+		})
+
+		// Get entitlements for this entity
+		entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entity}, nil, false)
+
+		// Assertions
+		s.Require().NoError(err)
+		s.Require().NotNil(entitlements)
+
+		// Find the entity's entitlements
+		entityEntitlement := findEntityEntitlements(entitlements, "test-entity-1")
+		s.Require().NotNil(entityEntitlement, "Entity entitlements should be found")
+
+		// Verify entitlements for classification
+		secretActions := entityEntitlement.ActionsPerAttributeValueFqn[testClassSecretFQN]
+		s.Require().NotNil(secretActions, "Secret classification entitlements should exist")
+		s.Contains(actionNames(secretActions.Actions), actions.ActionNameRead)
+		s.Contains(actionNames(secretActions.Actions), actions.ActionNameUpdate)
+
+		// Verify entitlements for department
+		engineeringActions := entityEntitlement.ActionsPerAttributeValueFqn[testDeptEngineeringFQN]
+		s.Require().NotNil(engineeringActions, "Engineering department entitlements should exist")
+		s.Contains(actionNames(engineeringActions.Actions), actions.ActionNameRead)
+		s.Contains(actionNames(engineeringActions.Actions), actions.ActionNameCreate)
+
+		// Verify entitlements for country
+		usaActions := entityEntitlement.ActionsPerAttributeValueFqn[testCountryUSAFQN]
+		s.Require().NotNil(usaActions, "USA country entitlements should exist")
+		s.Contains(actionNames(usaActions.Actions), actions.ActionNameRead)
+	})
+
+	s.Run("Entity with no matching entitlements", func() {
+		// Entity with no entitlements based on properties
+		entity := s.createEntityWithProps("test-entity-2", map[string]interface{}{
+			"clearance":  "unknown",
+			"department": "unknown",
+			"country":    []any{"unknown"},
+		})
+
+		// Get entitlements for this entity
+		entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entity}, nil, false)
+
+		// Assertions
+		s.Require().NoError(err)
+
+		// Find the entity's entitlements
+		entityEntitlement := findEntityEntitlements(entitlements, "test-entity-2")
+		s.Require().NotNil(entityEntitlement, "Entity should be included in results even with no entitlements")
+		s.Empty(entityEntitlement.ActionsPerAttributeValueFqn, "No attribute value FQNs should be mapped for this entity")
+	})
+
+	s.Run("Entity with partial entitlements", func() {
+		// Entity with some entitlements
+		entity := s.createEntityWithProps("test-entity-3", map[string]interface{}{
+			"clearance":  "public",
+			"department": "sales", // No mapping for sales
+		})
+
+		// Get entitlements for this entity
+		entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entity}, nil, false)
+
+		// Assertions
+		s.Require().NoError(err)
+
+		// Find the entity's entitlements
+		entityEntitlement := findEntityEntitlements(entitlements, "test-entity-3")
+		s.Require().NotNil(entityEntitlement, "Entity entitlements should be found")
+
+		// Verify public classification entitlements exist
+		s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, testClassPublicFQN, "Public classification entitlements should exist")
+		publicActions := entityEntitlement.ActionsPerAttributeValueFqn[testClassPublicFQN]
+		s.Contains(actionNames(publicActions.Actions), actions.ActionNameRead)
+
+		// Verify sales department entitlements do not exist
+		s.NotContains(entityEntitlement.ActionsPerAttributeValueFqn, testDeptSalesFQN, "Sales department should not have entitlements")
+	})
+
+	s.Run("Multiple entities with various entitlements", func() {
+		entityCases := []struct {
+			name                 string
+			entityRepresentation *ers.EntityRepresentation
+			expectedEntitlements []string
+		}{
+			{
+				name:                 "admin-entity",
+				entityRepresentation: f.adminEntity,
+				expectedEntitlements: []string{testClassSecretFQN, testDeptEngineeringFQN, testCountryUSAFQN},
+			},
+			{
+				name:                 "developer-entity",
+				entityRepresentation: f.developerEntity,
+				expectedEntitlements: []string{testClassConfidentialFQN, testDeptEngineeringFQN, testCountryUSAFQN},
+			},
+			{
+				name:                 "analyst-entity",
+				entityRepresentation: f.analystEntity,
+				expectedEntitlements: []string{testClassConfidentialFQN, testDeptFinanceFQN},
+			},
+		}
+
+		for _, entityCase := range entityCases {
+			s.Run(entityCase.name, func() {
+				// Get entitlements for this entity
+				entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entityCase.entityRepresentation}, nil, false)
+
+				// Assertions
+				s.Require().NoError(err)
+
+				// Find the entity's entitlements
+				entityEntitlement := findEntityEntitlements(entitlements, entityCase.name)
+				s.Require().NotNil(entityEntitlement, "Entity entitlements should be found")
+				s.Require().Len(entityEntitlement.ActionsPerAttributeValueFqn, len(entityCase.expectedEntitlements), "Number of entitlements should match expected")
+
+				// Verify expected entitlements exist
+				for _, expectedFQN := range entityCase.expectedEntitlements {
+					s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, expectedFQN)
+				}
+			})
+		}
+	})
+
+	s.Run("With comprehensive hierarchy", func() {
+		// Entity with secret clearance
+		entity := s.createEntityWithProps("hierarchy-test-entity", map[string]interface{}{
+			"clearance": "secret",
+		})
+
+		// Get entitlements with comprehensive hierarchy
+		entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entity}, nil, true)
+
+		// Assertions
+		s.Require().NoError(err)
+
+		// Find the entity's entitlements
+		entityEntitlement := findEntityEntitlements(entitlements, "hierarchy-test-entity")
+		s.Require().NotNil(entityEntitlement)
+
+		// With comprehensive hierarchy, the entity should have access to secret and all lower classifications
+		s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, testClassSecretFQN)
+
+		// The function populateLowerValuesIfHierarchy assumes the values in the hierarchy are arranged
+		// in order from highest to lowest. In our test fixture, that means:
+		// topsecret > secret > confidential > public
+
+		// Secret clearance should give access to confidential and public (the items lower in the list)
+		s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, testClassConfidentialFQN)
+		s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, testClassPublicFQN)
+
+		// But not to higher classifications
+		s.NotContains(entityEntitlement.ActionsPerAttributeValueFqn, testClassTopSecretFQN)
+
+		// Verify the actions for the lower levels match those granted to the secret level
+		secretActions := entityEntitlement.ActionsPerAttributeValueFqn[testClassSecretFQN]
+		s.Require().NotNil(secretActions)
+
+		confidentialActions := entityEntitlement.ActionsPerAttributeValueFqn[testClassConfidentialFQN]
+		s.Require().NotNil(confidentialActions)
+
+		publicActions := entityEntitlement.ActionsPerAttributeValueFqn[testClassPublicFQN]
+		s.Require().NotNil(publicActions)
+
+		s.Len(secretActions.Actions, len(f.secretMapping.GetActions()))
+
+		// The actions should be the same for all levels
+		s.ElementsMatch(
+			actionNames(secretActions.Actions),
+			actionNames(confidentialActions.Actions),
+			"Secret and confidential should have the same actions")
+
+		s.ElementsMatch(
+			actionNames(secretActions.Actions),
+			actionNames(publicActions.Actions),
+			"Secret and public should have the same actions")
+	})
+
+	s.Run("With filtered subject mappings", func() {
+		// Entity with multiple entitlements
+		entity := s.createEntityWithProps("filtered-test-entity", map[string]interface{}{
+			"clearance":  "secret",
+			"department": "engineering",
+			"country":    []any{"us"},
+		})
+
+		// Filter to only classification mappings
+		filteredMappings := []*policy.SubjectMapping{f.secretMapping, f.confidentialMapping, f.publicMapping}
+
+		// Get entitlements with filtered mappings
+		entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entity}, filteredMappings, false)
+
+		// Assertions
+		s.Require().NoError(err)
+
+		// Find the entity's entitlements
+		entityEntitlement := findEntityEntitlements(entitlements, "filtered-test-entity")
+		s.Require().NotNil(entityEntitlement)
+
+		// Should only have classification entitlements
+		s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, testClassSecretFQN)
+
+		// Should not have department or country entitlements
+		s.NotContains(entityEntitlement.ActionsPerAttributeValueFqn, testDeptEngineeringFQN)
+		s.NotContains(entityEntitlement.ActionsPerAttributeValueFqn, testCountryUSAFQN)
 	})
 }

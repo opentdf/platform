@@ -80,7 +80,29 @@ func populateLowerValuesIfHierarchy(
 	lower := false
 	for _, value := range definition.GetValues() {
 		if lower {
-			entitledActionsPerAttributeValueFqn[value.GetFqn()] = entitledActions
+			alreadyEntitledActions, ok := entitledActionsPerAttributeValueFqn[value.GetFqn()]
+			if !ok {
+				entitledActionsPerAttributeValueFqn[value.GetFqn()] = entitledActions
+			} else {
+				// Ensure the actions are unique
+				actionSet := make(map[string]*policy.Action)
+				for _, action := range entitledActions.GetActions() {
+					actionSet[action.GetName()] = action
+				}
+				for _, action := range alreadyEntitledActions.GetActions() {
+					actionSet[action.GetName()] = action
+				}
+
+				merged := &authz.EntityEntitlements_ActionsList{
+					Actions: make([]*policy.Action, 0, len(actionSet)),
+				}
+				for _, action := range actionSet {
+					merged.Actions = append(merged.Actions, action)
+				}
+
+				entitledActionsPerAttributeValueFqn[value.GetFqn()] = merged
+
+			}
 		}
 		if value.GetFqn() == valueFQN {
 			lower = true

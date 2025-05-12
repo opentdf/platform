@@ -263,10 +263,27 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 	result := make([]*authz.EntityEntitlements, len(entityRepresentations))
 	for entityID, fqnsToActions := range entityIDsToFQNsToActions {
 		actionsPerAttributeValueFqn := make(map[string]*authz.EntityEntitlements_ActionsList)
+
 		for valueFQN, actions := range fqnsToActions {
+			// If already entitled (such as via a higher entitled comprehensive hierarchy attr value), merge with existing
+			if alreadyEntitled, ok := actionsPerAttributeValueFqn[valueFQN]; ok {
+				actionSet := make(map[string]*policy.Action)
+				for _, action := range actions {
+					actionSet[action.GetName()] = action
+				}
+				for _, action := range alreadyEntitled.GetActions() {
+					actionSet[action.GetName()] = action
+				}
+				merged := make([]*policy.Action, 0, len(actionSet))
+				for _, action := range actionSet {
+					merged = append(merged, action)
+				}
+				actions = merged
+			}
 			entitledActions := &authz.EntityEntitlements_ActionsList{
 				Actions: actions,
 			}
+			// If hierarchy and already entitled, merge with existing
 			actionsPerAttributeValueFqn[valueFQN] = entitledActions
 
 			// If comprehensive, populate the lower hierarchy values

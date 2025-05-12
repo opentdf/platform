@@ -461,6 +461,10 @@ func (s OpenTDFServer) Stop() {
 		s.logger.Error("failed to shutdown http server", slog.String("error", err.Error()))
 		return
 	}
+	// Close the listener
+	if s.Listener != nil {
+		s.Listener.Close()
+	}
 
 	s.logger.Info("shutting down in process grpc server")
 	if err := s.ConnectRPCInProcess.srv.Shutdown(ctx); err != nil {

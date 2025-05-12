@@ -225,13 +225,9 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 ) ([]*authz.EntityEntitlements, error) {
 	loggable := []any{
 		slog.Int("entities total", len(entityRepresentations)),
-		slog.Int("matched subject mappings total", len(optionalMatchedSubjectMappings)),
 		slog.Bool("with comprehensive hierarchy", withComprehensiveHierarchy),
 	}
 
-	p.logger.DebugContext(ctx, "getting entitlements",
-		loggable...,
-	)
 	err := validateEntityRepresentations(entityRepresentations)
 	if err != nil {
 		p.logger.Error("invalid input parameters", append(loggable, slog.String("error", err.Error()))...)
@@ -242,6 +238,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 
 	// Check entitlement only against the filtered matched subject mappings if provided
 	if optionalMatchedSubjectMappings != nil {
+		p.logger.DebugContext(ctx, "getting entitlements with matched subject mappings", loggable...)
 		entitleableAttributes, err = getFilteredEntitleableAttributes(optionalMatchedSubjectMappings, p.allEntitleableAttributesByValueFQN)
 		if err != nil {
 			p.logger.ErrorContext(ctx, "error filtering entitleable attributes from matched subject mappings", append(loggable, slog.String("error", err.Error()))...)
@@ -249,6 +246,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 		}
 	} else {
 		// Otherwise, use all entitleable attributes
+		p.logger.DebugContext(ctx, "getting entitlements with all subject mappings (unmatched)", loggable...)
 		entitleableAttributes = p.allEntitleableAttributesByValueFQN
 	}
 
@@ -303,5 +301,10 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 			ActionsPerAttributeValueFqn: actionsPerAttributeValueFqn,
 		})
 	}
+	p.logger.DebugContext(
+		ctx,
+		"entitlement results",
+		append(loggable, slog.Any("entitlements", result))...,
+	)
 	return result, nil
 }

@@ -506,8 +506,8 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint() {
 	}
 }
 
-// TestGetDecision tests the GetDecision method with some generalized scenarios
-func (s *PDPTestSuite) TestGetDecision() {
+// Test_GetDecision tests the GetDecision method with some generalized scenarios
+func (s *PDPTestSuite) Test_GetDecision() {
 	f := s.fixtures
 
 	// Create a PDP with relevant attributes and mappings
@@ -647,8 +647,8 @@ func (s *PDPTestSuite) TestGetDecision() {
 	})
 }
 
-// TestCrossNamespaceDecision tests cross-namespace decisions with various scenarios
-func (s *PDPTestSuite) TestCrossNamespaceDecision() {
+// Test_GetDecision_AcrossNamespaces tests cross-namespace decisions with various scenarios
+func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 	f := s.fixtures
 
 	// Create mappings for additional secondary namespace values
@@ -988,7 +988,7 @@ func (s *PDPTestSuite) TestCrossNamespaceDecision() {
 }
 
 // TestGetEntitlements tests the functionality of retrieving entitlements for entities
-func (s *PDPTestSuite) TestGetEntitlements() {
+func (s *PDPTestSuite) Test_GetEntitlements() {
 	f := s.fixtures
 
 	// Create a PDP with attributes and mappings
@@ -1214,4 +1214,161 @@ func (s *PDPTestSuite) TestGetEntitlements() {
 		s.NotContains(entityEntitlement.ActionsPerAttributeValueFqn, testDeptEngineeringFQN)
 		s.NotContains(entityEntitlement.ActionsPerAttributeValueFqn, testCountryUSAFQN)
 	})
+}
+
+func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
+	testAdvancedHierarchyNs := "advanced.hier"
+	hierarchyAttrName := "hierarchy_attr"
+	actionNameTransmit := "custom_transmit"
+	customActionGather := "gather"
+
+	hierarchyTestAttrName := createAttrFQN(testAdvancedHierarchyNs, hierarchyAttrName)
+
+	topValueFQN := createAttrValueFQN(testAdvancedHierarchyNs, hierarchyAttrName, "top")
+	upperMiddleValueFQN := createAttrValueFQN(testAdvancedHierarchyNs, hierarchyAttrName, "upper-middle")
+	middleValueFQN := createAttrValueFQN(testAdvancedHierarchyNs, hierarchyAttrName, "middle")
+	lowerMiddleValueFQN := createAttrValueFQN(testAdvancedHierarchyNs, hierarchyAttrName, "lower-middle")
+	bottomValueFQN := createAttrValueFQN(testAdvancedHierarchyNs, hierarchyAttrName, "bottom")
+
+	hierarchyAttribute := &policy.Attribute{
+		Fqn:  hierarchyTestAttrName,
+		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
+		Values: []*policy.Value{
+			{
+				Fqn:   topValueFQN,
+				Value: "top",
+			},
+			{
+				Fqn:   upperMiddleValueFQN,
+				Value: "upper-middle",
+			},
+			{
+				Fqn:   middleValueFQN,
+				Value: "middle",
+			},
+			{
+				Fqn:   lowerMiddleValueFQN,
+				Value: "lower-middle",
+			},
+			{
+				Fqn:   bottomValueFQN,
+				Value: "bottom",
+			},
+		},
+	}
+
+	topMapping := createSimpleSubjectMapping(
+		topValueFQN,
+		"top",
+		[]*policy.Action{testActionRead},
+		".properties.levels[]",
+		[]string{"top"},
+	)
+	upperMiddleMapping := createSimpleSubjectMapping(
+		upperMiddleValueFQN,
+		"upper-middle",
+		[]*policy.Action{testActionCreate},
+		".properties.levels[]",
+		[]string{"upper-middle"},
+	)
+	middleMapping := createSimpleSubjectMapping(
+		middleValueFQN,
+		"middle",
+		[]*policy.Action{testActionUpdate, {Name: actionNameTransmit}},
+		".properties.levels[]",
+		[]string{"middle"},
+	)
+	lowerMiddleMapping := createSimpleSubjectMapping(
+		lowerMiddleValueFQN,
+		"lower-middle",
+		[]*policy.Action{testActionDelete},
+		".properties.levels[]",
+		[]string{"lower-middle"},
+	)
+	bottomMapping := createSimpleSubjectMapping(
+		bottomValueFQN,
+		"bottom",
+		[]*policy.Action{{Name: customActionGather}},
+		".properties.levels[]",
+		[]string{"bottom"},
+	)
+
+	// Create a PDP with the hierarchy attribute and mappings
+	pdp, err := NewPolicyDecisionPoint(
+		s.ctx,
+		s.logger,
+		[]*policy.Attribute{hierarchyAttribute},
+		[]*policy.SubjectMapping{
+			topMapping,
+			upperMiddleMapping,
+			middleMapping,
+			lowerMiddleMapping,
+			bottomMapping,
+		},
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	// Create an entity with every level in the hierarchy
+	entity := s.createEntityWithProps("hierarchy-test-entity", map[string]interface{}{
+		"levels": []any{"top", "upper-middle", "middle", "lower-middle", "bottom"},
+	})
+
+	// Get entitlements for this entity
+	withComprehensiveHierarchy := true
+	entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entity}, nil, withComprehensiveHierarchy)
+	s.Require().NoError(err)
+	s.Require().NotNil(entitlements)
+
+	// Find the entity's entitlements
+	entityEntitlement := findEntityEntitlements(entitlements, "hierarchy-test-entity")
+	s.Require().NotNil(entityEntitlement, "Entity entitlements should be found")
+	s.Require().Len(entityEntitlement.ActionsPerAttributeValueFqn, 5, "Number of entitlements should match expected")
+	s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, topValueFQN, "Top level should be present")
+	s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, upperMiddleValueFQN, "Upper-middle level should be present")
+	s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, middleValueFQN, "Middle level should be present")
+	s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, lowerMiddleValueFQN, "Lower-middle level should be present")
+	s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, bottomValueFQN, "Bottom level should be present")
+
+	// Verify actions for each level
+	topActions := entityEntitlement.ActionsPerAttributeValueFqn[topValueFQN]
+	s.Require().NotNil(topActions, "Top level actions should exist")
+	s.Len(topActions.Actions, 1)
+	s.Contains(actionNames(topActions.Actions), actions.ActionNameRead, "Top level should have read action")
+
+	upperMiddleActions := entityEntitlement.ActionsPerAttributeValueFqn[upperMiddleValueFQN]
+	s.Require().NotNil(upperMiddleActions, "Upper-middle level actions should exist")
+	s.Len(upperMiddleActions.Actions, 2)
+	upperMiddleActionNames := actionNames(upperMiddleActions.Actions)
+	s.Contains(upperMiddleActionNames, actions.ActionNameCreate, "Upper-middle level should have create action")
+	s.Contains(upperMiddleActionNames, actions.ActionNameRead, "Upper-middle level should have read action")
+
+	middleActions := entityEntitlement.ActionsPerAttributeValueFqn[middleValueFQN]
+	s.Require().NotNil(middleActions, "Middle level actions should exist")
+	s.Len(middleActions.Actions, 4)
+	middleActionNames := actionNames(middleActions.Actions)
+	s.Contains(middleActionNames, actions.ActionNameUpdate, "Middle level should have update action")
+	s.Contains(middleActionNames, actionNameTransmit, "Middle level should have transmit action")
+	s.Contains(middleActionNames, actions.ActionNameCreate, "Middle level should have create action")
+	s.Contains(middleActionNames, actions.ActionNameRead, "Middle level should have read action")
+
+	lowerMiddleActions := entityEntitlement.ActionsPerAttributeValueFqn[lowerMiddleValueFQN]
+	s.Require().NotNil(lowerMiddleActions, "Lower-middle level actions should exist")
+	s.Len(lowerMiddleActions.Actions, 5)
+	lowerMiddleActionNames := actionNames(lowerMiddleActions.Actions)
+	s.Contains(lowerMiddleActionNames, actions.ActionNameDelete, "Lower-middle level should have delete action")
+	s.Contains(lowerMiddleActionNames, actions.ActionNameUpdate, "Lower-middle level should have update action")
+	s.Contains(lowerMiddleActionNames, actions.ActionNameCreate, "Lower-middle level should have create action")
+	s.Contains(lowerMiddleActionNames, actionNameTransmit, "Lower-middle level should have read action")
+	s.Contains(lowerMiddleActionNames, actions.ActionNameRead, "Lower-middle level should have read action")
+
+	bottomActions := entityEntitlement.ActionsPerAttributeValueFqn[bottomValueFQN]
+	s.Require().NotNil(bottomActions, "Bottom level actions should exist")
+	s.Len(bottomActions.Actions, 6)
+	s.Contains(actionNames(bottomActions.Actions), actions.ActionNameRead, "Bottom level should have read action")
+	s.Contains(actionNames(bottomActions.Actions), actions.ActionNameUpdate, "Bottom level should have update action")
+	s.Contains(actionNames(bottomActions.Actions), actions.ActionNameCreate, "Bottom level should have create action")
+	s.Contains(actionNames(bottomActions.Actions), actions.ActionNameDelete, "Bottom level should have delete action")
+	s.Contains(actionNames(bottomActions.Actions), actionNameTransmit, "Bottom level should have transmit action")
+	s.Contains(actionNames(bottomActions.Actions), customActionGather, "Bottom level should have gather action")
 }

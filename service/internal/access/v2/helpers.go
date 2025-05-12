@@ -13,7 +13,7 @@ import (
 func getDefinition(valueFQN string, allDefinitionsByDefFQN map[string]*policy.Attribute) (*policy.Attribute, error) {
 	parsed, err := identifier.Parse[*identifier.FullyQualifiedAttribute](valueFQN)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse attribute value FQN: %w", err)
+		return nil, fmt.Errorf("failed to parse attribute value FQN [%s]: %w", valueFQN, err)
 	}
 	def := &identifier.FullyQualifiedAttribute{
 		Namespace: parsed.Namespace,

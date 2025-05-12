@@ -65,12 +65,12 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 		return nil, err
 	}
 	kasURL := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().GetKasUrl()
-	parsedUrl, err := parseBaseUrl(kasURL)
+	parsedURL, err := parseBaseURL(kasURL)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse kas url(%s): %w", kasURL, err)
 	}
 
-	serviceClient := kasconnect.NewAccessServiceClient(k.httpClient, parsedUrl, k.connectOptions...)
+	serviceClient := kasconnect.NewAccessServiceClient(k.httpClient, parsedURL, k.connectOptions...)
 
 	response, err := serviceClient.Rewrap(ctx, connect.NewRequest(rewrapRequest))
 	if err != nil {
@@ -312,7 +312,7 @@ func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecrypt
 	return policyResults, nil
 }
 
-func parseBaseUrl(rawURL string) (string, error) {
+func parseBaseURL(rawURL string) (string, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return "", err
@@ -425,12 +425,12 @@ func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm string) (*KASIn
 			return cachedValue, nil
 		}
 	}
-	parsedUrl, err := parseBaseUrl(kasurl)
+	parsedURL, err := parseBaseURL(kasurl)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse kas url(%s): %w", kasurl, err)
 	}
 
-	serviceClient := kasconnect.NewAccessServiceClient(s.conn.Client, parsedUrl, s.conn.Options...)
+	serviceClient := kasconnect.NewAccessServiceClient(s.conn.Client, parsedURL, s.conn.Options...)
 
 	req := kas.PublicKeyRequest{
 		Algorithm: algorithm,

@@ -250,11 +250,11 @@ func TestParseBaseUrl(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseBaseUrl(tt.input)
+			result, err := parseBaseURL(tt.input)
 			if tt.expectError {
-				assert.Error(t, err, "Expected an error for test case: %s", tt.name)
+				require.Error(t, err, "Expected an error for test case: %s", tt.name)
 			} else {
-				assert.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
+				require.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
 				assert.Equal(t, tt.expected, result, "Unexpected result for test case: %s", tt.name)
 			}
 		})

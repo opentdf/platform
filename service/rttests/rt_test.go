@@ -29,10 +29,11 @@ import (
 // then those will need to be updated.
 
 type TestConfig struct {
-	PlatformEndpoint string
-	TokenEndpoint    string
-	ClientID         string
-	ClientSecret     string
+	PlatformEndpoint           string
+	PlatformEndpointWithScheme string
+	TokenEndpoint              string
+	ClientID                   string
+	ClientSecret               string
 }
 
 var attributesToMap = []string{
@@ -112,11 +113,14 @@ func (s *RoundtripSuite) SetupSuite() {
 	opts := []sdk.Option{}
 	if os.Getenv("TLS_ENABLED") == "" {
 		opts = append(opts, sdk.WithInsecurePlaintextConn())
+		s.TestConfig.PlatformEndpointWithScheme = "http://" + s.TestConfig.PlatformEndpoint
+	} else {
+		s.TestConfig.PlatformEndpointWithScheme = "https://" + s.TestConfig.PlatformEndpoint
 	}
 
 	opts = append(opts, sdk.WithClientCredentials(s.TestConfig.ClientID, s.TestConfig.ClientSecret, nil))
 
-	sdk, err := sdk.New("http://"+s.TestConfig.PlatformEndpoint, opts...)
+	sdk, err := sdk.New(s.TestConfig.PlatformEndpointWithScheme, opts...)
 	s.Require().NoError(err)
 	s.client = sdk
 
@@ -343,8 +347,7 @@ func encrypt(client *sdk.SDK, testConfig TestConfig, plaintext string, attribute
 		sdk.WithDataAttributes(attributes...),
 		sdk.WithKasInformation(
 			sdk.KASInfo{
-				// examples assume insecure http
-				URL:       "http://" + testConfig.PlatformEndpoint,
+				URL:       testConfig.PlatformEndpointWithScheme,
 				PublicKey: "",
 			}))
 	if err != nil {

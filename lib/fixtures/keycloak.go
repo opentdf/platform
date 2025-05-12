@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"strings"
 
@@ -24,17 +25,23 @@ type KeycloakData struct {
 type RealmToCreate struct {
 	RealmRepresentation gocloak.RealmRepresentation `yaml:"realm_repepresentation" json:"realm_repepresentation"`
 	Clients             []Client                    `yaml:"clients,omitempty" json:"clients,omitempty"`
-	Users               []gocloak.User              `yaml:"users,omitempty" json:"users,omitempty"`
+	Users               []User                      `yaml:"users,omitempty" json:"users,omitempty"`
 	CustomRealmRoles    []gocloak.Role              `yaml:"custom_realm_roles,omitempty" json:"custom_realm_roles,omitempty"`
 	CustomClientRoles   map[string][]gocloak.Role   `yaml:"custom_client_roles,omitempty" json:"custom_client_roles,omitempty"`
 	CustomGroups        []gocloak.Group             `yaml:"custom_groups,omitempty" json:"custom_groups,omitempty"`
 	TokenExchanges      []TokenExchange             `yaml:"token_exchanges,omitempty" json:"token_exchanges,omitempty"`
 }
 
+type User struct {
+	gocloak.User
+	Count int `yaml:"count,omitempty" json:"count,omitempty"`
+}
+
 type Client struct {
 	Client        gocloak.Client      `yaml:"client" json:"client"`
 	SaRealmRoles  []string            `yaml:"sa_realm_roles,omitempty" json:"sa_realm_roles,omitempty"`
 	SaClientRoles map[string][]string `yaml:"sa_client_roles,omitempty" json:"sa_client_roles,omitempty"`
+	Count         int                 `yaml:"count,omitempty" json:"count,omitempty"`
 }
 
 type TokenExchange struct {
@@ -379,7 +386,7 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 		}
 
 		// create the clients
-		if realmToCreate.Clients != nil {
+		if realmToCreate.Clients != nil { //nolint:nestif // need to create clients in order
 			for _, customClient := range realmToCreate.Clients {
 				realmRoles, err := getRealmRolesByList(ctx, kcConnectParams.Realm, client, token, customClient.SaRealmRoles)
 				if err != nil {
@@ -401,6 +408,18 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 				if err != nil {
 					return err
 				}
+				numDigits := 1
+				if customClient.Count > 1 {
+					numDigits = int(math.Log10(float64(customClient.Count-1))) + 1
+				}
+				padFormat := fmt.Sprintf("%%s-%%%dd", numDigits)
+				for i := 0; i < customClient.Count; i++ {
+					customClient.Client.ClientID = gocloak.StringP(fmt.Sprintf(padFormat, customClient.Client.ClientID, i))
+					_, err = createClient(ctx, client, token, &kcConnectParams, customClient.Client, realmRoles, clientRoleMap)
+					if err != nil {
+						return err
+					}
+				}
 			}
 		}
 
@@ -419,7 +438,7 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 		// create the users
 		if realmToCreate.Users != nil {
 			for _, customUser := range realmToCreate.Users {
-				_, err = createUser(ctx, client, token, &kcConnectParams, customUser)
+				_, err = createUser(ctx, client, token, &kcConnectParams, customUser.User)
 				if err != nil {
 					return err
 				}

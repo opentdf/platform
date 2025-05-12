@@ -48,7 +48,7 @@ linters:
     - nolintlint
     - nonamedreturns
     - nosprintfhostport
-    # - perfsprint
+    - perfsprint
     - predeclared
     - promlinter
     - protogetter

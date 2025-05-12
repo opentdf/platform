@@ -387,7 +387,7 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
 	default:
 		a.logger.Warn("failed to validate authentication header: not of type bearer or dpop", slog.String("header", authHeader[0]))
-		return nil, nil, fmt.Errorf("not of type bearer or dpop")
+		return nil, nil, errors.New("not of type bearer or dpop")
 	}
 
 	// Now we verify the token signature
@@ -435,17 +435,17 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 
 	cnf, ok := accessToken.Get("cnf")
 	if !ok {
-		return nil, fmt.Errorf("missing `cnf` claim in access token")
+		return nil, errors.New("missing `cnf` claim in access token")
 	}
 
 	cnfDict, ok := cnf.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("got `cnf` in an invalid format")
+		return nil, errors.New("got `cnf` in an invalid format")
 	}
 
 	jktI, ok := cnfDict["jkt"]
 	if !ok {
-		return nil, fmt.Errorf("missing `jkt` field in `cnf` claim. only thumbprint JWK confirmation is supported")
+		return nil, errors.New("missing `jkt` field in `cnf` claim. only thumbprint JWK confirmation is supported")
 	}
 
 	jkt, ok := jktI.(string)
@@ -455,7 +455,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 
 	dpop, err := jws.Parse([]byte(dpopHeader))
 	if err != nil {
-		return nil, fmt.Errorf("invalid DPoP JWT")
+		return nil, errors.New("invalid DPoP JWT")
 	}
 	if len(dpop.Signatures()) != 1 {
 		return nil, fmt.Errorf("expected one signature on DPoP JWT, got %d", len(dpop.Signatures()))
@@ -472,7 +472,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 
 	dpopKey := protectedHeaders.JWK()
 	if dpopKey == nil {
-		return nil, fmt.Errorf("JWK missing in DPoP JWT")
+		return nil, errors.New("JWK missing in DPoP JWT")
 	}
 
 	isPrivate, err := jwk.IsPrivateKey(dpopKey)
@@ -481,7 +481,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	}
 
 	if isPrivate {
-		return nil, fmt.Errorf("cannot use a private key for DPoP")
+		return nil, errors.New("cannot use a private key for DPoP")
 	}
 
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
@@ -503,20 +503,20 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 
 	issuedAt := dpopToken.IssuedAt()
 	if issuedAt.IsZero() {
-		return nil, fmt.Errorf("missing `iat` claim in the DPoP JWT")
+		return nil, errors.New("missing `iat` claim in the DPoP JWT")
 	}
 
 	if issuedAt.Add(a.oidcConfiguration.DPoPSkew).Before(time.Now()) {
-		return nil, fmt.Errorf("the DPoP JWT has expired")
+		return nil, errors.New("the DPoP JWT has expired")
 	}
 
 	htma, ok := dpopToken.Get("htm")
 	if !ok {
-		return nil, fmt.Errorf("`htm` claim missing in DPoP JWT")
+		return nil, errors.New("`htm` claim missing in DPoP JWT")
 	}
 	htm, ok := htma.(string)
 	if !ok {
-		return nil, fmt.Errorf("`htm` claim invalid format in DPoP JWT")
+		return nil, errors.New("`htm` claim invalid format in DPoP JWT")
 	}
 
 	if !slices.Contains(dpopInfo.m, htm) {
@@ -525,11 +525,11 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 
 	htua, ok := dpopToken.Get("htu")
 	if !ok {
-		return nil, fmt.Errorf("`htu` claim missing in DPoP JWT")
+		return nil, errors.New("`htu` claim missing in DPoP JWT")
 	}
 	htu, ok := htua.(string)
 	if !ok {
-		return nil, fmt.Errorf("`htu` claim invalid format in DPoP JWT")
+		return nil, errors.New("`htu` claim invalid format in DPoP JWT")
 	}
 
 	if !slices.Contains(dpopInfo.u, htu) {
@@ -538,13 +538,13 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 
 	ath, ok := dpopToken.Get("ath")
 	if !ok {
-		return nil, fmt.Errorf("missing `ath` claim in DPoP JWT")
+		return nil, errors.New("missing `ath` claim in DPoP JWT")
 	}
 
 	h := sha256.New()
 	h.Write([]byte(acessTokenRaw))
 	if ath != base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil)) {
-		return nil, fmt.Errorf("incorrect `ath` claim in DPoP JWT")
+		return nil, errors.New("incorrect `ath` claim in DPoP JWT")
 	}
 	return dpopKey, nil
 }

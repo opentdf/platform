@@ -548,7 +548,7 @@ func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 
 		// namespace fqn
 		s.NotEmpty(a.GetNamespace().GetFqn())
-		s.Equal(fmt.Sprintf("https://%s", a.GetNamespace().GetName()), a.GetNamespace().GetFqn())
+		s.Equal("https://"+a.GetNamespace().GetName(), a.GetNamespace().GetFqn())
 
 		// value fqns
 		for _, v := range a.GetValues() {

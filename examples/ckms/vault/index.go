@@ -3,6 +3,7 @@ package vault
 import (
 	"context"
 	"fmt"
+	"os"
 
 	vault "github.com/hashicorp/vault/api"
 	auth "github.com/hashicorp/vault/api/auth/approle"
@@ -20,24 +21,27 @@ func GetSecretWithAppRole() (string, error) {
 	// A combination of a Role ID and Secret ID is required to log in to Vault
 	// with an AppRole.
 	// First, let's get the role ID given to us by our Vault administrator.
-	// roleID := os.Getenv("APPROLE_ROLE_ID")
-	// if roleID == "" {
-	// 	return "", fmt.Errorf("no role ID was provided in APPROLE_ROLE_ID env var")
-	// }
+	roleID := os.Getenv("KAS_APPROLE_ROLEID")
+	if roleID == "" {
+		return "", fmt.Errorf("no role ID was provided in KAS_APPROLE_ROLEID env var")
+	}
 
+	// FIXME: The Secret ID is a value that needs to be protected, so do this!!
 	// // The Secret ID is a value that needs to be protected, so instead of the
 	// // app having knowledge of the secret ID directly, we have a trusted orchestrator (https://learn.hashicorp.com/tutorials/vault/secure-introduction?in=vault/app-integration#trusted-orchestrator)
 	// // give the app access to a short-lived response-wrapping token (https://developer.hashicorp.com/vault/docs/concepts/response-wrapping).
 	// // Read more at: https://learn.hashicorp.com/tutorials/vault/approle-best-practices?in=vault/auth-methods#secretid-delivery-best-practices
 	// secretID := &auth.SecretID{FromFile: "path/to/wrapping-token"}
 
-	roleID := "aa034a00-04c3-edd4-a9e2-e5f28ae420b5"
-	secretID := &auth.SecretID{FromString: "e2ea9f69-5e08-b381-d186-9a24e07e2e56"}
+	secretID := &auth.SecretID{FromString: os.Getenv("KAS_APPROLE_SECRETID")}
+	if secretID.FromString == "" {
+		return "", fmt.Errorf("no role secret ID was provided in KAS_APPROLE_SECRETID env var")
+	}
 
 	appRoleAuth, err := auth.NewAppRoleAuth(
 		roleID,
 		secretID,
-		auth.WithWrappingToken(), // Only required if the secret ID is response-wrapped.
+		// auth.WithWrappingToken(), // Only required if the secret ID is response-wrapped.
 	)
 	if err != nil {
 		return "", fmt.Errorf("unable to initialize AppRole auth method: %w", err)
@@ -52,9 +56,20 @@ func GetSecretWithAppRole() (string, error) {
 	}
 
 	// get secret from the default mount path for KV v2 in dev mode, "secret"
-	secret, err := client.KVv2("secret").Get(context.Background(), "creds")
+	secret, err := client.KVv2("secrets").Get(context.Background(), "rsa_kays/r1")
 	if err != nil {
 		return "", fmt.Errorf("unable to read secret: %w", err)
+	}
+	fmt.Printf("Secret: %v\n", secret)
+
+	secrets_path := "secrets/rsa_keys/data"
+	lra, err := client.Logical().ListWithContext(context.Background(), secrets_path)
+	if err != nil {
+		return "", fmt.Errorf("unable to list secrets at %s: %w", secrets_path, err)
+	}
+
+	for k, secret := range lra.Data {
+		fmt.Printf("Key [%s]: %v\n", k, secret)
 	}
 
 	// data map can contain more than one key-value pair,

@@ -714,10 +714,11 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			decision, err := evaluateResourceAttributeValues(
+			resourceDecision, err := evaluateResourceAttributeValues(
 				s.ctx,
 				s.logger,
 				tc.resourceAttrs,
+				"test-resource-id",
 				s.action,
 				tc.entitlements,
 				s.accessibleAttrValues,
@@ -727,8 +728,8 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 				s.Error(err)
 			} else {
 				s.NoError(err)
-				s.NotNil(decision)
-				s.Equal(tc.expectAccessible, decision.Access)
+				s.NotNil(resourceDecision)
+				s.Equal(tc.expectAccessible, resourceDecision.Passed)
 
 				// Check results array has the correct length based on grouping by definition
 				definitions := make(map[string]bool)
@@ -737,7 +738,7 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 						definitions[attrAndValue.Attribute.GetFqn()] = true
 					}
 				}
-				s.Len(decision.Results, len(definitions))
+				s.Len(resourceDecision.DataRuleResults, len(definitions))
 			}
 		})
 	}

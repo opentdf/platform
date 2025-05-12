@@ -15,8 +15,15 @@ import (
 
 // Decision represents the overall access decision for an entity.
 type Decision struct {
-	Access  bool             `json:"access" example:"false"`
-	Results []DataRuleResult `json:"entity_rule_result"`
+	Access  bool               `json:"access" example:"false"`
+	Results []ResourceDecision `json:"entity_rule_result"`
+}
+
+// ResourceDecision represents the result of evaluating the action on one resource for an entity.
+type ResourceDecision struct {
+	Passed          bool             `json:"passed" example:"false"`
+	ResourceID      string           `json:"resource_id,omitempty"`
+	DataRuleResults []DataRuleResult `json:"data_rule_results"`
 }
 
 // DataRuleResult represents the result of evaluating one rule for an entity.
@@ -128,6 +135,13 @@ func (p *PolicyDecisionPoint) GetDecision(ctx context.Context, entityRepresentat
 		return nil, err
 	}
 
+	// Generate ephemeral IDs for resources if not already set
+	for i, resource := range resources {
+		if resource.GetEphemeralId() == "" {
+			resources[i].EphemeralId = fmt.Sprintf("resource-%d", i)
+		}
+	}
+
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
 	decisionableAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	p.logger.DebugContext(ctx, "filtering to only entitlements relevant to decisioning")
@@ -177,19 +191,23 @@ func (p *PolicyDecisionPoint) GetDecision(ctx context.Context, entityRepresentat
 
 	decision := &Decision{
 		Access:  true,
-		Results: make([]DataRuleResult, 0),
+		Results: make([]ResourceDecision, 0, len(resources)),
 	}
+
 	for _, resource := range resources {
-		d, err := getResourceDecision(ctx, p.logger, decisionableAttributes, entitledFQNsToActions, action, resource)
-		if err != nil || d == nil {
+		resourceDecision, err := getResourceDecision(ctx, p.logger, decisionableAttributes, entitledFQNsToActions, action, resource)
+		if err != nil || resourceDecision == nil {
 			p.logger.ErrorContext(ctx, "error evaluating decision", append(loggable, slog.String("error", err.Error()), slog.Any("resource", resource))...)
 			return nil, err
 		}
-		if !d.Access {
+
+		if !resourceDecision.Passed {
 			decision.Access = false
 		}
-		decision.Results = append(decision.Results, d.Results...)
+
+		decision.Results = append(decision.Results, *resourceDecision)
 	}
+
 	p.logger.DebugContext(
 		ctx,
 		"decision results",

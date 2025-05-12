@@ -21,7 +21,7 @@ func getResourceDecision(
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resource *authz.Resource,
-) (*Decision, error) {
+) (*ResourceDecision, error) {
 	if err := validateGetResourceDecision(accessibleAttributeValues, entitlements, action, resource); err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func getResourceDecision(
 		// TODO: handle registered resources
 		// return evaluateRegisteredResourceValue(ctx, resource.GetRegisteredResourceValueFqn(), action, entitlements, accessibleAttributeValues)
 	case *authz.Resource_AttributeValues_:
-		return evaluateResourceAttributeValues(ctx, logger, resource.GetAttributeValues(), action, entitlements, accessibleAttributeValues)
+		return evaluateResourceAttributeValues(ctx, logger, resource.GetAttributeValues(), resource.GetEphemeralId(), action, entitlements, accessibleAttributeValues)
 
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %w", ErrInvalidResource)
@@ -50,10 +50,11 @@ func evaluateResourceAttributeValues(
 	ctx context.Context,
 	logger *logger.Logger,
 	resourceAttributeValues *authz.Resource_AttributeValues,
+	resourceID string,
 	action *policy.Action,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
-) (*Decision, error) {
+) (*ResourceDecision, error) {
 	// Group value FQNs by parent definition
 	groupedByDefinition := make(map[string][]string)
 	definitionsLookup := make(map[string]*policy.Attribute)
@@ -69,7 +70,8 @@ func evaluateResourceAttributeValues(
 
 	// Evaluate each definition by rule, resource attributes, action, and entitlements
 	passed := true
-	results := make([]DataRuleResult, 0)
+	dataRuleResults := make([]DataRuleResult, 0)
+
 	for defFQN, valueFQNs := range groupedByDefinition {
 		definition := definitionsLookup[defFQN]
 		if definition == nil {
@@ -83,11 +85,15 @@ func evaluateResourceAttributeValues(
 		if !dataRuleResult.Passed {
 			passed = false
 		}
-		results = append(results, *dataRuleResult)
+
+		dataRuleResults = append(dataRuleResults, *dataRuleResult)
 	}
-	return &Decision{
-		Access:  passed,
-		Results: results,
+
+	// Return results in the appropriate structure
+	return &ResourceDecision{
+		Passed:          passed,
+		ResourceID:      resourceID,
+		DataRuleResults: dataRuleResults,
 	}, nil
 }
 

@@ -37,17 +37,17 @@ echo root | vault login -
 Let's create some roles, policies, and tokens that apply them:
 
 ```sh
-vault secrets enable -path=secrets kv-v2
+vault secrets enable -path=secret kv-v2
 
-vault policy write kas-admin ./examples/ckms/vault/policy-admin.hcl
-vault policy write kas-service ./examples/ckms/vault/policy-service.hcl
-vault policy write kas-viewer ./examples/ckms/vault/policy-viewer.hcl
+vault policy write kas-admin ./vault/policy-admin.hcl
+vault policy write kas-service ./vault/policy-service.hcl
+vault policy write kas-viewer ./vault/policy-viewer.hcl
 
 vault token create -policy="kas-admin" -policy="kas-viewer"
 # Use this token to create and delete KAS keys
-# expor KAS_ADMIN_TOKEN=<TOKEN>
+# export KAS_ADMIN_TOKEN=<TOKEN>
 echo ${KAS_ADMIN_TOKEN} | vault login -
-vault kv put secrets/rsa_keys/r1 private="$(<./kas-private.pem | base64)" public="$(<./kas-cert.pem)" algorithm="rsa:2048""
+vault kv put secret/kas_keypair/r1 private="$(<../../kas-private.pem | base64)" public="$(<../../kas-cert.pem)" algorithm="rsa:2048""
 ```
 
 ```sh
@@ -68,7 +68,7 @@ Set KAS_SERVICE_TOKEN to the token returned from the above command.
 
 ```sh
 echo ${KAS_SERVICE_TOKEN} | vault login -
-vault kv list -mount=secrets rsa_keys
+vault kv list -mount=secret kas_keypair
 ```
 
 

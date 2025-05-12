@@ -1,13 +1,13 @@
 # policy-service.hcl
 
-path "secrets/data/rsa_keys/*" {
+path "secret/data/kas_keypair/*" {
   capabilities = ["list", "read"]
 }
 
-path "secrets/metadata/rsa_keys/*" {
+path "secret/metadata/kas_keypair/*" {
   capabilities = ["list"]
 }
 
-path "secrets/data/rsa_keys/+/private" {
+path "secret/data/kas_keypair/+/private" {
   capabilities = ["read"]
 }

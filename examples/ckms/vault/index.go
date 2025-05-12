@@ -55,29 +55,27 @@ func GetSecretWithAppRole() (string, error) {
 		return "", fmt.Errorf("no auth info was returned after login")
 	}
 
-	// get secret from the default mount path for KV v2 in dev mode, "secret"
-	secret, err := client.KVv2("secrets").Get(context.Background(), "rsa_kays/r1")
-	if err != nil {
-		return "", fmt.Errorf("unable to read secret: %w", err)
-	}
-	fmt.Printf("Secret: %v\n", secret)
-
-	secrets_path := "secrets/rsa_keys/data"
+	secrets_path := "secret/metadata/kas_keypair"
 	lra, err := client.Logical().ListWithContext(context.Background(), secrets_path)
 	if err != nil {
 		return "", fmt.Errorf("unable to list secrets at %s: %w", secrets_path, err)
 	}
 
-	for k, secret := range lra.Data {
-		fmt.Printf("Key [%s]: %v\n", k, secret)
+	var kids []string
+	for _, keys := range lra.Data["keys"].([]interface{}) {
+		kids = append(kids, keys.(string))
 	}
 
-	// data map can contain more than one key-value pair,
-	// in this case we're just grabbing one of them
-	value, ok := secret.Data["password"].(string)
+	// get secret from the default mount path for KV v2 in dev mode, "secret"
+	s0, err := client.KVv2("secret").Get(context.Background(), "kas_keypair/"+kids[0])
+	if err != nil {
+		return "", fmt.Errorf("unable to read secret: %w", err)
+	}
+	fmt.Printf("Secret: %v\n", s0)
+
+	privateKey, ok := s0.Data["private"].(string)
 	if !ok {
-		return "", fmt.Errorf("value type assertion failed: %T %#v", secret.Data["password"], secret.Data["password"])
+		return "", fmt.Errorf("unable to assert type of private key to string")
 	}
-
-	return value, nil
+	return privateKey, nil
 }

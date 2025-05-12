@@ -72,8 +72,8 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	header := NanoTDFHeader{}
 	var size uint32
 
+	// Read and validate magic number
 	magicNumber := make([]byte, len(kNanoTDFMagicStringAndVersion))
-
 	l, err := reader.Read(magicNumber)
 	if err != nil {
 		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
@@ -87,7 +87,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 		return header, 0, errors.New("not a valid nano tdf")
 	}
 
-	// read resource locator
+	// Read resource locator
 	resource, err := NewResourceLocatorFromReader(reader)
 	if err != nil {
 		return header, 0, fmt.Errorf("call to NewResourceLocatorFromReader failed :%w", err)
@@ -97,7 +97,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 
 	slog.Debug("NewNanoTDFHeaderFromReader", slog.Uint64("resource locator", uint64(resource.getLength())))
 
-	// read ECC and Binding Mode
+	// Read ECC and Binding Mode
 	oneBytes := make([]byte, 1)
 	l, err = reader.Read(oneBytes)
 	if err != nil {
@@ -106,12 +106,12 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	size += uint32(l)
 	header.bindCfg = deserializeBindingCfg(oneBytes[0])
 
-	// check  ephemeral ECC Params Enum
+	// Check ephemeral ECC Params Enum
 	if header.bindCfg.eccMode != ocrypto.ECCModeSecp256r1 {
 		return header, 0, errors.New("current implementation of nano tdf only support secp256r1 curve")
 	}
 
-	// read  Payload and Sig Mode
+	// Read Payload and Sig Mode
 	l, err = reader.Read(oneBytes)
 	if err != nil {
 		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
@@ -126,14 +126,13 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	}
 	size += uint32(l)
 
-	if oneBytes[0] != uint8(policyTypeEmbeddedPolicyEncrypted) {
-		return header, 0, errors.New(" current implementation only support embedded policy type")
+	policyMode := PolicyType(oneBytes[0])
+	if err := validNanoTDFPolicyMode(policyMode); err != nil {
+		return header, 0, errors.Join(fmt.Errorf("unsupported policy mode: %v", policyMode), err)
 	}
 
-	// read policy length
-	const (
-		kSizeOfUint16 = 2
-	)
+	// Read policy length
+	const kSizeOfUint16 = 2
 	twoBytes := make([]byte, kSizeOfUint16)
 	l, err = reader.Read(twoBytes)
 	if err != nil {
@@ -143,17 +142,18 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	policyLength := binary.BigEndian.Uint16(twoBytes)
 	slog.Debug("NewNanoTDFHeaderFromReader", slog.Uint64("policyLength", uint64(policyLength)))
 
-	// read policy body
-	header.EncryptedPolicyBody = make([]byte, policyLength)
-	l, err = reader.Read(header.EncryptedPolicyBody)
+	// Read policy body
+	header.PolicyMode = policyMode
+	header.PolicyBody = make([]byte, policyLength)
+	l, err = reader.Read(header.PolicyBody)
 	if err != nil {
 		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
 	}
 	size += uint32(l)
 
-	// read policy binding
-	if header.bindCfg.useEcdsaBinding { //nolint:nestif // todo: subfunction
-		// read rBytes len and its contents
+	// Read policy binding
+	if header.bindCfg.useEcdsaBinding { //nolint:nestif // TODO: refactor
+		// Read rBytes len and its contents
 		l, err = reader.Read(oneBytes)
 		if err != nil {
 			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
@@ -167,7 +167,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 		}
 		size += uint32(l)
 
-		// read sBytes len and its contents
+		// Read sBytes len and its contents
 		l, err = reader.Read(oneBytes)
 		if err != nil {
 			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
@@ -194,7 +194,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 		return header, 0, fmt.Errorf("getECCKeyLength :%w", err)
 	}
 
-	// read ephemeral Key
+	// Read ephemeral Key
 	ephemeralKey := make([]byte, ephemeralKeySize)
 	l, err = reader.Read(ephemeralKey)
 	if err != nil {
@@ -737,149 +737,6 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	return symmetricKey, totalBytes, 0, nil
 }
 
-<<<<<<< HEAD
-func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error) {
-	header := NanoTDFHeader{}
-	var size uint32
-
-	// Read and validate magic number
-	magicNumber := make([]byte, len(kNanoTDFMagicStringAndVersion))
-	l, err := reader.Read(magicNumber)
-	if err != nil {
-		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
-	}
-	if magicNumber[0] != kNanoTDFMagicStringAndVersion[0] || magicNumber[1] != kNanoTDFMagicStringAndVersion[1] || magicNumber[2] != kNanoTDFMagicStringAndVersion[2] {
-		return header, 0, fmt.Errorf(" io.Reader.Read magic number failed : %w", err)
-	}
-	size += uint32(l)
-
-	if string(magicNumber) != kNanoTDFMagicStringAndVersion {
-		return header, 0, errors.New("not a valid nano tdf")
-	}
-
-	// Read resource locator
-	resource, err := NewResourceLocatorFromReader(reader)
-	if err != nil {
-		return header, 0, fmt.Errorf("call to NewResourceLocatorFromReader failed :%w", err)
-	}
-	size += uint32(resource.getLength())
-	header.kasURL = *resource
-
-	slog.Debug("NewNanoTDFHeaderFromReader", slog.Uint64("resource locator", uint64(resource.getLength())))
-
-	// Read ECC and Binding Mode
-	oneBytes := make([]byte, 1)
-	l, err = reader.Read(oneBytes)
-	if err != nil {
-		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
-	}
-	size += uint32(l)
-	header.bindCfg = deserializeBindingCfg(oneBytes[0])
-
-	// Check ephemeral ECC Params Enum
-	if header.bindCfg.eccMode != ocrypto.ECCModeSecp256r1 {
-		return header, 0, errors.New("current implementation of nano tdf only support secp256r1 curve")
-	}
-
-	// Read Payload and Sig Mode
-	l, err = reader.Read(oneBytes)
-	if err != nil {
-		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
-	}
-	size += uint32(l)
-	header.sigCfg = deserializeSignatureCfg(oneBytes[0])
-
-	// Read policy type
-	l, err = reader.Read(oneBytes)
-	if err != nil {
-		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
-	}
-	size += uint32(l)
-
-	policyMode := PolicyType(oneBytes[0])
-	if err := validNanoTDFPolicyMode(policyMode); err != nil {
-		return header, 0, errors.Join(fmt.Errorf("unsupported policy mode: %v", policyMode), err)
-	}
-
-	// Read policy length
-	const kSizeOfUint16 = 2
-	twoBytes := make([]byte, kSizeOfUint16)
-	l, err = reader.Read(twoBytes)
-	if err != nil {
-		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
-	}
-	size += uint32(l)
-	policyLength := binary.BigEndian.Uint16(twoBytes)
-	slog.Debug("NewNanoTDFHeaderFromReader", slog.Uint64("policyLength", uint64(policyLength)))
-
-	// Read policy body
-	header.PolicyMode = policyMode
-	header.PolicyBody = make([]byte, policyLength)
-	l, err = reader.Read(header.PolicyBody)
-	if err != nil {
-		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
-	}
-	size += uint32(l)
-
-	// Read policy binding
-	if header.bindCfg.useEcdsaBinding { //nolint:nestif // TODO: refactor
-		// Read rBytes len and its contents
-		l, err = reader.Read(oneBytes)
-		if err != nil {
-			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
-		}
-		size += uint32(l)
-
-		header.ecdsaPolicyBindingR = make([]byte, oneBytes[0])
-		l, err = reader.Read(header.ecdsaPolicyBindingR)
-		if err != nil {
-			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
-		}
-		size += uint32(l)
-
-		// Read sBytes len and its contents
-		l, err = reader.Read(oneBytes)
-		if err != nil {
-			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
-		}
-		size += uint32(l)
-
-		header.ecdsaPolicyBindingS = make([]byte, oneBytes[0])
-		l, err = reader.Read(header.ecdsaPolicyBindingS)
-		if err != nil {
-			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
-		}
-		size += uint32(l)
-	} else {
-		header.gmacPolicyBinding = make([]byte, kNanoTDFGMACLength)
-		l, err = reader.Read(header.gmacPolicyBinding)
-		if err != nil {
-			return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
-		}
-		size += uint32(l)
-	}
-
-	ephemeralKeySize, err := getECCKeyLength(header.bindCfg.eccMode)
-	if err != nil {
-		return header, 0, fmt.Errorf("getECCKeyLength :%w", err)
-	}
-
-	// Read ephemeral Key
-	ephemeralKey := make([]byte, ephemeralKeySize)
-	l, err = reader.Read(ephemeralKey)
-	if err != nil {
-		return header, 0, fmt.Errorf(" io.Reader.Read failed :%w", err)
-	}
-	size += uint32(l)
-	header.EphemeralKey = ephemeralKey
-
-	slog.Debug("NewNanoTDFHeaderFromReader", slog.Uint64("header size", uint64(size)))
-
-	return header, size, nil
-}
-
-=======
->>>>>>> bee651cd (chore(sdk): fix funcorder lint issues)
 func nonZeroRandomPaddedIV() ([]byte, error) {
 	const (
 		loopCountLimit = 10

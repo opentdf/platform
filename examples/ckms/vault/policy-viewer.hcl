@@ -1,9 +1,9 @@
 # policy-viewer.hcl
 
-path "secrets/data/rsa_keys/*/public" {
+path "secret/data/kas_keypair/*/public" {
   capabilities = ["read"]
 }
 
-path "secrets/metadata/rsa_keys" {
+path "secret/metadata/kas_keypair" {
   capabilities = ["list"]
 }

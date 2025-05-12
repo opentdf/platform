@@ -19,7 +19,6 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
-	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -657,13 +656,13 @@ func createPolicyObject(attributes []AttributeValueFQN) (PolicyObject, error) {
 	return policyObj, nil
 }
 
-func allowListFromKASRegistry(ctx context.Context, kasRegistryClient kasregistryconnect.KeyAccessServerRegistryServiceClient, platformURL string) (AllowList, error) {
-	kases, err := kasRegistryClient.ListKeyAccessServers(ctx, connect.NewRequest(&kasregistry.ListKeyAccessServersRequest{}))
+func allowListFromKASRegistry(ctx context.Context, kasRegistryClient kasregistry.KeyAccessServerRegistryServiceClient, platformURL string) (AllowList, error) {
+	kases, err := kasRegistryClient.ListKeyAccessServers(ctx, &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("kasregistry.ListKeyAccessServers failed: %w", err)
 	}
 	kasAllowlist := AllowList{}
-	for _, kas := range kases.Msg.GetKeyAccessServers() {
+	for _, kas := range kases.GetKeyAccessServers() {
 		err = kasAllowlist.Add(kas.GetUri())
 		if err != nil {
 			return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)

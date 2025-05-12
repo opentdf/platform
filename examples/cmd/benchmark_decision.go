@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/spf13/cobra"
@@ -35,7 +34,7 @@ func runDecisionBenchmark(cmd *cobra.Command, args []string) error {
 	}
 
 	start := time.Now()
-	res, err := client.Authorization.GetDecisions(context.Background(), connect.NewRequest(&authorization.GetDecisionsRequest{
+	res, err := client.Authorization.GetDecisions(context.Background(), &authorization.GetDecisionsRequest{
 		DecisionRequests: []*authorization.DecisionRequest{
 			{
 				Actions: []*policy.Action{{Value: &policy.Action_Standard{
@@ -49,14 +48,14 @@ func runDecisionBenchmark(cmd *cobra.Command, args []string) error {
 				ResourceAttributes: ras,
 			},
 		},
-	}))
+	})
 	end := time.Now()
 	totalTime := end.Sub(start)
 
 	numberApproved := 0
 	numberDenied := 0
 	if err == nil {
-		for _, dr := range res.Msg.GetDecisionResponses() {
+		for _, dr := range res.GetDecisionResponses() {
 			if dr.Decision == authorization.DecisionResponse_DECISION_PERMIT {
 				numberApproved += 1
 			} else {

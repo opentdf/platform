@@ -165,7 +165,7 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *co
 
 	// for each token decision request
 	for _, tdr := range req.Msg.GetDecisionRequests() {
-		ecResp, err := as.sdk.EntityResoution.CreateEntityChainFromJwt(ctx, connect.NewRequest(&entityresolution.CreateEntityChainFromJwtRequest{Tokens: tdr.GetTokens()}))
+		ecResp, err := as.sdk.EntityResoution.CreateEntityChainFromJwt(ctx, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: tdr.GetTokens()})
 		if err != nil {
 			as.logger.Error("Error calling ERS to get entity chains from jwts")
 			return nil, err
@@ -174,7 +174,7 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *co
 		// form a decision request for the token decision request
 		decisionsRequests = append(decisionsRequests, &authorization.DecisionRequest{
 			Actions:            tdr.GetActions(),
-			EntityChains:       ecResp.Msg.GetEntityChains(),
+			EntityChains:       ecResp.GetEntityChains(),
 			ResourceAttributes: tdr.GetResourceAttributes(),
 		})
 	}
@@ -303,19 +303,19 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 
 	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
 	for {
-		listed, err := as.sdk.Attributes.ListAttributes(ctx, connect.NewRequest(&attr.ListAttributesRequest{
+		listed, err := as.sdk.Attributes.ListAttributes(ctx, &attr.ListAttributesRequest{
 			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			Pagination: &policy.PageRequest{
 				Offset: nextOffset,
 			},
-		}))
+		})
 		if err != nil {
 			as.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
 			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list attributes"))
 		}
 
-		nextOffset = listed.Msg.GetPagination().GetNextOffset()
-		attrsList = append(attrsList, listed.Msg.GetAttributes()...)
+		nextOffset = listed.GetPagination().GetNextOffset()
+		attrsList = append(attrsList, listed.GetAttributes()...)
 
 		// offset becomes zero when list is exhausted
 		if nextOffset <= 0 {
@@ -326,18 +326,18 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	// If quantity of subject mappings exceeds maximum list pagination, all are needed to determine entitlements
 	nextOffset = 0
 	for {
-		listed, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, connect.NewRequest(&subjectmapping.ListSubjectMappingsRequest{
+		listed, err := as.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
 			Pagination: &policy.PageRequest{
 				Offset: nextOffset,
 			},
-		}))
+		})
 		if err != nil {
 			as.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
 			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list subject mappings"))
 		}
 
-		nextOffset = listed.Msg.GetPagination().GetNextOffset()
-		subjectMappingsList = append(subjectMappingsList, listed.Msg.GetSubjectMappings()...)
+		nextOffset = listed.GetPagination().GetNextOffset()
+		subjectMappingsList = append(subjectMappingsList, listed.GetSubjectMappings()...)
 
 		// offset becomes zero when list is exhausted
 		if nextOffset <= 0 {
@@ -365,14 +365,14 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	}
 
 	// call ERS on all entities
-	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, connect.NewRequest(&entityresolution.ResolveEntitiesRequest{Entities: req.Msg.GetEntities()}))
+	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: req.Msg.GetEntities()})
 	if err != nil {
 		as.logger.ErrorContext(ctx, "error calling ERS to resolve entities", "entities", req.Msg.GetEntities())
 		return nil, err
 	}
 
 	// call rego on all entities
-	in, err := entitlements.OpaInput(subjectMappings, ersResp.Msg)
+	in, err := entitlements.OpaInput(subjectMappings, ersResp)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to build rego input", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to build rego input"))
@@ -726,16 +726,16 @@ func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *o
 		return make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue), nil
 	}
 
-	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, connect.NewRequest(&attr.GetAttributeValuesByFqnsRequest{
+	resp, err := sdk.Attributes.GetAttributeValuesByFqns(ctx, &attr.GetAttributeValuesByFqnsRequest{
 		WithValue: &policy.AttributeValueSelector{
 			WithSubjectMaps: false,
 		},
 		Fqns: attrFqns,
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
-	return resp.Msg.GetFqnAttributeValues(), nil
+	return resp.GetFqnAttributeValues(), nil
 }
 
 func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *attr.GetAttributeValuesByFqnsResponse, entitlement string, as *AuthorizationService, entitlements []string) []string {

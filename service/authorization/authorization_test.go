@@ -20,6 +20,7 @@ import (
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	smconnect "github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
 	otdf "github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/assert"
@@ -285,9 +286,9 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	as := AuthorizationService{
 		logger: logger,
 		sdk: &otdf.SDK{
-			SubjectMapping:  &mySubjectMappingClient{},
-			Attributes:      &myAttributesClient{},
-			EntityResoution: &myERSClient{},
+			SubjectMapping:  sdkconnect.SubjectMappingConnectClient{SubjectMappingServiceClient: &mySubjectMappingClient{}},
+			Attributes:      sdkconnect.AttributesConnectClient{AttributesServiceClient: &myAttributesClient{}},
+			EntityResoution: sdkconnect.EntityResolutionConnectClient{EntityResolutionServiceClient: &myERSClient{}},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -449,9 +450,11 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	require.NoError(t, err)
 
 	as := AuthorizationService{
-		logger: logger, sdk: &otdf.SDK{
-			SubjectMapping: &mySubjectMappingClient{},
-			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		logger: logger,
+		sdk: &otdf.SDK{
+			SubjectMapping:  sdkconnect.SubjectMappingConnectClient{SubjectMappingServiceClient: &mySubjectMappingClient{}},
+			Attributes:      sdkconnect.AttributesConnectClient{AttributesServiceClient: &myAttributesClient{}},
+			EntityResoution: sdkconnect.EntityResolutionConnectClient{EntityResolutionServiceClient: &myERSClient{}},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -547,9 +550,11 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 	}
 
 	as := AuthorizationService{
-		logger: logger, sdk: &otdf.SDK{
-			SubjectMapping: &mySubjectMappingClient{},
-			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		logger: logger,
+		sdk: &otdf.SDK{
+			SubjectMapping:  sdkconnect.SubjectMappingConnectClient{SubjectMappingServiceClient: &mySubjectMappingClient{}},
+			Attributes:      sdkconnect.AttributesConnectClient{AttributesServiceClient: &myAttributesClient{}},
+			EntityResoution: sdkconnect.EntityResolutionConnectClient{EntityResolutionServiceClient: &myERSClient{}},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -642,9 +647,11 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 	}
 
 	as := AuthorizationService{
-		logger: logger, sdk: &otdf.SDK{
-			SubjectMapping: &mySubjectMappingClient{},
-			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		logger: logger,
+		sdk: &otdf.SDK{
+			SubjectMapping:  sdkconnect.SubjectMappingConnectClient{SubjectMappingServiceClient: &mySubjectMappingClient{}},
+			Attributes:      sdkconnect.AttributesConnectClient{AttributesServiceClient: &myAttributesClient{}},
+			EntityResoution: sdkconnect.EntityResolutionConnectClient{EntityResolutionServiceClient: &myERSClient{}},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -715,9 +722,11 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 	require.NoError(t, err)
 
 	as := AuthorizationService{
-		logger: logger, sdk: &otdf.SDK{
-			SubjectMapping: &mySubjectMappingClient{},
-			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		logger: logger,
+		sdk: &otdf.SDK{
+			SubjectMapping:  sdkconnect.SubjectMappingConnectClient{SubjectMappingServiceClient: &mySubjectMappingClient{}},
+			Attributes:      sdkconnect.AttributesConnectClient{AttributesServiceClient: &myAttributesClient{}},
+			EntityResoution: sdkconnect.EntityResolutionConnectClient{EntityResolutionServiceClient: &myERSClient{}},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -787,9 +796,11 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 	require.NoError(t, err)
 
 	as := AuthorizationService{
-		logger: logger, sdk: &otdf.SDK{
-			SubjectMapping: &mySubjectMappingClient{},
-			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		logger: logger,
+		sdk: &otdf.SDK{
+			SubjectMapping:  sdkconnect.SubjectMappingConnectClient{SubjectMappingServiceClient: &mySubjectMappingClient{}},
+			Attributes:      sdkconnect.AttributesConnectClient{AttributesServiceClient: &myAttributesClient{}},
+			EntityResoution: sdkconnect.EntityResolutionConnectClient{EntityResolutionServiceClient: &myERSClient{}},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -864,10 +875,11 @@ func Test_GetEntitlements_HandlesPagination(t *testing.T) {
 	require.NoError(t, err)
 
 	as := AuthorizationService{
-		logger: logger, sdk: &otdf.SDK{
-			SubjectMapping:  &paginatedMockSubjectMappingClient{},
-			Attributes:      &paginatedMockAttributesClient{},
-			EntityResoution: &myERSClient{},
+		logger: logger,
+		sdk: &otdf.SDK{
+			SubjectMapping:  sdkconnect.SubjectMappingConnectClient{SubjectMappingServiceClient: &mySubjectMappingClient{}},
+			Attributes:      sdkconnect.AttributesConnectClient{AttributesServiceClient: &myAttributesClient{}},
+			EntityResoution: sdkconnect.EntityResolutionConnectClient{EntityResolutionServiceClient: &myERSClient{}},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -955,9 +967,11 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 	prepared, err := rego.PrepareForEval(t.Context())
 	require.NoError(t, err)
 	as := AuthorizationService{
-		logger: logger, sdk: &otdf.SDK{
-			SubjectMapping: &mySubjectMappingClient{},
-			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		logger: logger,
+		sdk: &otdf.SDK{
+			SubjectMapping:  sdkconnect.SubjectMappingConnectClient{SubjectMappingServiceClient: &mySubjectMappingClient{}},
+			Attributes:      sdkconnect.AttributesConnectClient{AttributesServiceClient: &myAttributesClient{}},
+			EntityResoution: sdkconnect.EntityResolutionConnectClient{EntityResolutionServiceClient: &myERSClient{}},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -1195,9 +1209,11 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 	require.NoError(t, err)
 
 	as := AuthorizationService{
-		logger: logger, sdk: &otdf.SDK{
-			SubjectMapping: &mySubjectMappingClient{},
-			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		logger: logger,
+		sdk: &otdf.SDK{
+			SubjectMapping:  sdkconnect.SubjectMappingConnectClient{SubjectMappingServiceClient: &mySubjectMappingClient{}},
+			Attributes:      sdkconnect.AttributesConnectClient{AttributesServiceClient: &myAttributesClient{}},
+			EntityResoution: sdkconnect.EntityResolutionConnectClient{EntityResolutionServiceClient: &myERSClient{}},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -1401,9 +1417,11 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 	}
 
 	as := AuthorizationService{
-		logger: logger, sdk: &otdf.SDK{
-			SubjectMapping: &mySubjectMappingClient{},
-			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		logger: logger,
+		sdk: &otdf.SDK{
+			SubjectMapping:  sdkconnect.SubjectMappingConnectClient{SubjectMappingServiceClient: &mySubjectMappingClient{}},
+			Attributes:      sdkconnect.AttributesConnectClient{AttributesServiceClient: &myAttributesClient{}},
+			EntityResoution: sdkconnect.EntityResolutionConnectClient{EntityResolutionServiceClient: &myERSClient{}},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -1678,9 +1696,11 @@ func Test_GetDecisions_Empty_EC_RA(t *testing.T) {
 	require.NoError(t, err)
 
 	as := AuthorizationService{
-		logger: logger, sdk: &otdf.SDK{
-			SubjectMapping: &mySubjectMappingClient{},
-			Attributes:     &myAttributesClient{}, EntityResoution: &myERSClient{},
+		logger: logger,
+		sdk: &otdf.SDK{
+			SubjectMapping:  sdkconnect.SubjectMappingConnectClient{SubjectMappingServiceClient: &mySubjectMappingClient{}},
+			Attributes:      sdkconnect.AttributesConnectClient{AttributesServiceClient: &myAttributesClient{}},
+			EntityResoution: sdkconnect.EntityResolutionConnectClient{EntityResolutionServiceClient: &myERSClient{}},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),

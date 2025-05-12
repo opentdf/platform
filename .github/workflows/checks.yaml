@@ -346,6 +346,7 @@ jobs:
       focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts
+      otdfctl-ref: 25349a022e76e6fa2eae7afcbd75fc30336ba220
 
   # test latest otdfctl CLI 'main' against platform PR branch
   otdfctl-test:

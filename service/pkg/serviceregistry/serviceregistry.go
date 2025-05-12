@@ -85,7 +85,7 @@ type IService interface {
 // Service is a struct that holds the registration information for a service as well as the state
 // of the service within the instance of the platform.
 type Service[S any] struct {
-	// Registration
+	// IService (registration)
 	impl S
 	// Started is a flag that indicates whether the service has been started
 	Started bool
@@ -238,8 +238,8 @@ func (reg Registry) RegisterCoreService(svc IService) error {
 }
 
 // RegisterService registers a service in the service registry.
-// It takes a Registration object and a mode string as parameters.
-// The Registration object contains information about the service to be registered,
+// It takes an serviceregistry.IService and a mode string as parameters.
+// The IService implementation contains information about the service to be registered,
 // such as the namespace and service description.
 // The mode string specifies the mode in which the service should be registered.
 // It returns an error if the service is already registered in the specified namespace.

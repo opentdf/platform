@@ -60,7 +60,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 		if len(kas.Keys) > 0 {
 			keys, err = db.KasKeysProtoJSON(kas.Keys)
 			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal keys")
+				return nil, errors.New("failed to unmarshal keys")
 			}
 		}
 
@@ -150,7 +150,7 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 	if len(kas.Keys) > 0 {
 		keys, err = db.KasKeysProtoJSON(kas.Keys)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal keys")
+			return nil, errors.New("failed to unmarshal keys")
 		}
 	}
 
@@ -558,7 +558,7 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		} else if activeKeyExists {
-			return nil, fmt.Errorf("key cannot be updated to active when another key with the same algorithm is already active for a KAS")
+			return nil, errors.New("key cannot be updated to active when another key with the same algorithm is already active for a KAS")
 		}
 	}
 

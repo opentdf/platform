@@ -199,7 +199,7 @@ func (s *KasRegistrySuite) Test_GetKeyAccessServer() {
 			case localFixture:
 				s.Equal(tc.expected.PubKey.Cached, resp.GetPublicKey().GetCached(), "PublicKey.Cached mismatch for %s: %v", tc.identifierType, tc.input)
 			default:
-				s.Fail(fmt.Sprintf("Unexpected fixture in test case: %s", tc.name)) // Should not happen, but good to have for safety
+				s.Fail("Unexpected fixture in test case: " + tc.name) // Should not happen, but good to have for safety
 			}
 		})
 	}
@@ -1084,7 +1084,7 @@ func (s *KasRegistrySuite) Test_ListAllKeyAccessServerGrants() {
 	createdNs, err := s.db.PolicyClient.CreateNamespace(s.ctx, ns)
 	s.Require().NoError(err)
 	s.NotNil(createdNs)
-	nsFQN := fmt.Sprintf("https://%s", ns.GetName())
+	nsFQN := "https://" + ns.GetName()
 
 	// create an attribute
 	attr := &attributes.CreateAttributeRequest{

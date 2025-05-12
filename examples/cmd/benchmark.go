@@ -102,7 +102,11 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		}
 		nanoTDFConfig.SetAttributes(dataAttributes)
 		nanoTDFConfig.EnableECDSAPolicyBinding()
-		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", "localhost:8080"))
+		if insecurePlaintextConn || strings.Contains(platformEndpoint, "http://") {
+			err = nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", "localhost:8080"))
+		} else {
+			err = nanoTDFConfig.SetKasURL(fmt.Sprintf("https://%s/kas", "localhost:8080"))
+		}
 		if err != nil {
 			return err
 		}
@@ -119,16 +123,27 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		// 	}
 		// }
 	} else {
+		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...), sdk.WithAutoconfigure(false)}
+		if insecurePlaintextConn || strings.Contains(platformEndpoint, "http://") {
+			opts = append(opts, sdk.WithKasInformation(
+				sdk.KASInfo{
+					URL:       fmt.Sprintf("http://%s", "localhost:8080"),
+					PublicKey: "",
+				}),
+			)
+		} else {
+			opts = append(opts, sdk.WithKasInformation(
+				sdk.KASInfo{
+					URL:       fmt.Sprintf("https://%s", "localhost:8080"),
+					PublicKey: "",
+				}),
+			)
+		}
 		tdf, err :=
 			client.CreateTDF(
 				out, in,
-				sdk.WithDataAttributes(dataAttributes...),
-				sdk.WithKasInformation(
-					sdk.KASInfo{
-						URL:       fmt.Sprintf("http://%s", "localhost:8080"),
-						PublicKey: "",
-					}),
-				sdk.WithAutoconfigure(false))
+				opts...,
+			)
 		if err != nil {
 			return err
 		}

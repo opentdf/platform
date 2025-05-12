@@ -100,7 +100,7 @@ calling the `serviceregistry.RegisterService` function.
 <!-- markdownlint-disable MD034 github embedded sourcecode -->
 https://github.com/opentdf/platform/blob/service/v0.5.2/service/pkg/serviceregistry/serviceregistry.go#L69-L80
 
-Notice that `serviceregistry.RegisterService` is called called in `server.Start`.
+Notice that `serviceregistry.RegisterService` is called in `server.Start`.
 
 <!-- markdownlint-disable MD034 github embedded sourcecode -->
 https://github.com/opentdf/platform/blob/service/v0.5.2/service/pkg/server/start.go#L147-L157

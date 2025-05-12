@@ -136,6 +136,13 @@ type FixtureDataRegisteredResourceValue struct {
 	Value                string `yaml:"value"`
 }
 
+type FixtureDataRegisteredResourceActionAttributeValue struct {
+	ID                        string `yaml:"id"`
+	RegisteredResourceValueID string `yaml:"registered_resource_value_id"`
+	ActionName                string `yaml:"action_name"`
+	AttributeValueID          string `yaml:"attribute_value_id"`
+}
+
 type FixtureDataKasRegistryKey struct {
 	ID                string `yaml:"id"`
 	KeyAccessServerID string `yaml:"key_access_server_id"`
@@ -217,6 +224,10 @@ type FixtureData struct {
 		Metadata FixtureMetadata                               `yaml:"metadata"`
 		Data     map[string]FixtureDataRegisteredResourceValue `yaml:"data"`
 	} `yaml:"registered_resource_values"`
+	RegisteredResourceActionAttributeValues struct {
+		Metadata FixtureMetadata                                              `yaml:"metadata"`
+		Data     map[string]FixtureDataRegisteredResourceActionAttributeValue `yaml:"data"`
+	} `yaml:"registered_resource_action_attribute_values"`
 	KasRegistryKeys struct {
 		Metadata FixtureMetadata                      `yaml:"metadata"`
 		Data     map[string]FixtureDataKasRegistryKey `yaml:"data"`
@@ -472,6 +483,8 @@ func (f *Fixtures) Provision() {
 	rr := f.provisionRegisteredResources()
 	slog.Info("📦 provisioning registered resource values")
 	rrv := f.provisionRegisteredResourceValues()
+	slog.Info("📦 provisioning registered resource action attribute values")
+	rraav := f.provisionRegisteredResourceActionAttributeValues()
 	slog.Info("📦 provisioning provider configs")
 	pcs := f.provisionProviderConfigs()
 	slog.Info("📦 provisioning keys for kas registry")
@@ -492,6 +505,7 @@ func (f *Fixtures) Provision() {
 		slog.Int64("attribute_value_key_access_server", avkas),
 		slog.Int64("registered_resources", rr),
 		slog.Int64("registered_resource_values", rrv),
+		slog.Int64("registered_resource_action_attribute_values", rraav),
 		slog.Int64("provider_configs", pcs),
 		slog.Int64("kas_registry_keys", kasKeys),
 	)
@@ -746,6 +760,25 @@ func (f *Fixtures) provisionRegisteredResourceValues() int64 {
 		})
 	}
 	return f.provision(fixtureData.RegisteredResourceValues.Metadata.TableName, fixtureData.RegisteredResourceValues.Metadata.Columns, values)
+}
+
+func (f *Fixtures) provisionRegisteredResourceActionAttributeValues() int64 {
+	values := make([][]string, 0, len(fixtureData.RegisteredResourceActionAttributeValues.Data))
+	for _, d := range fixtureData.RegisteredResourceActionAttributeValues.Data {
+		var actionID string
+		if id, ok := f.MigratedData.StandardActions[d.ActionName]; ok {
+			actionID = id
+		} else {
+			actionID = f.GetCustomActionKey(d.ActionName).ID
+		}
+		values = append(values, []string{
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.RegisteredResourceValueID),
+			f.db.StringWrap(actionID),
+			f.db.StringWrap(d.AttributeValueID),
+		})
+	}
+	return f.provision(fixtureData.RegisteredResourceActionAttributeValues.Metadata.TableName, fixtureData.RegisteredResourceActionAttributeValues.Metadata.Columns, values)
 }
 
 func (f *Fixtures) provision(t string, c []string, v [][]string) int64 {

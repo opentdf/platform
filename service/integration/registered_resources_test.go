@@ -621,6 +621,92 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithNonUni
 	s.Nil(created)
 }
 
+func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvalidActionAttributeValues_Fails() {
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_create_res_value_invalid_action_attr_values",
+	})
+	s.Require().NoError(err)
+	s.NotNil(res)
+
+	testCases := []struct {
+		name             string
+		actionAttrValues []*registeredresources.ActionAttributeValue
+		err              error
+	}{
+		{
+			name: "Invalid Action ID",
+			actionAttrValues: []*registeredresources.ActionAttributeValue{
+				{
+					ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
+						ActionId: invalidID,
+					},
+					AttributeValueIdentifier: &registeredresources.ActionAttributeValue_Fqn{
+						Fqn: "https://example.com/attr/attr1/value/value1",
+					},
+				},
+			},
+			err: db.ErrForeignKeyViolation,
+		},
+		{
+			name: "Invalid Action Name",
+			actionAttrValues: []*registeredresources.ActionAttributeValue{
+				{
+					ActionIdentifier: &registeredresources.ActionAttributeValue_Name{
+						Name: "invalid_action_name",
+					},
+					AttributeValueIdentifier: &registeredresources.ActionAttributeValue_Fqn{
+						Fqn: "https://example.com/attr/attr1/value/value1",
+					},
+				},
+			},
+			err: db.ErrNotFound,
+		},
+		{
+			name: "Invalid Attribute Value ID",
+			actionAttrValues: []*registeredresources.ActionAttributeValue{
+				{
+					ActionIdentifier: &registeredresources.ActionAttributeValue_Name{
+						Name: actions.ActionNameCreate,
+					},
+					AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+						AttributeValueId: invalidID,
+					},
+				},
+			},
+			err: db.ErrForeignKeyViolation,
+		},
+		{
+			name: "Invalid Attribute Value FQN",
+			actionAttrValues: []*registeredresources.ActionAttributeValue{
+				{
+					ActionIdentifier: &registeredresources.ActionAttributeValue_Name{
+						Name: actions.ActionNameCreate,
+					},
+					AttributeValueIdentifier: &registeredresources.ActionAttributeValue_Fqn{
+						Fqn: "https://example.com/attr/does_not_exist/value/invalid",
+					},
+				},
+			},
+			err: db.ErrNotFound,
+		},
+	}
+
+	for i, tc := range testCases {
+		s.Run(tc.name, func() {
+			req := &registeredresources.CreateRegisteredResourceValueRequest{
+				ResourceId:            res.GetId(),
+				Value:                 fmt.Sprintf("test_create_res_value_invalid_action_attr_values_%d", i),
+				ActionAttributeValues: tc.actionAttrValues,
+			}
+
+			created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, req)
+			s.Require().Error(err)
+			s.Require().ErrorIs(err, tc.err)
+			s.Nil(created)
+		})
+	}
+}
+
 // Get
 
 func (s *RegisteredResourcesSuite) Test_GetRegisteredResourceValue_Valid_Succeeds() {
@@ -801,6 +887,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_NoPaginatio
 			metadata := r.GetMetadata()
 			s.False(metadata.GetCreatedAt().AsTime().IsZero())
 			s.False(metadata.GetUpdatedAt().AsTime().IsZero())
+			s.Len(r.GetActionAttributeValues(), 2)
 		}
 
 		if r.GetId() == existingResValue2.ID {
@@ -810,6 +897,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_NoPaginatio
 			metadata := r.GetMetadata()
 			s.False(metadata.GetCreatedAt().AsTime().IsZero())
 			s.False(metadata.GetUpdatedAt().AsTime().IsZero())
+			s.Len(r.GetActionAttributeValues(), 0)
 		}
 	}
 
@@ -964,6 +1052,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.Require().NotNil(got)
 	s.Equal(created.GetValue(), got.GetValue())
 	s.Equal(labels, got.GetMetadata().GetLabels())
+	s.Len(got.GetActionAttributeValues(), 0)
 
 	// update with changes
 	updated, err = s.db.PolicyClient.UpdateRegisteredResourceValue(s.ctx, &registeredresources.UpdateRegisteredResourceValueRequest{
@@ -973,6 +1062,16 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 			Labels: updateLabels,
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_Name{
+					Name: actions.ActionNameCreate,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_Fqn{
+					Fqn: "https://example.com/attr/attr1/value/value1",
+				},
+			},
+		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(updated)
@@ -993,6 +1092,12 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.False(createdAt.AsTime().IsZero())
 	s.False(updatedAt.AsTime().IsZero())
 	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
+	actionAttrValues := got.GetActionAttributeValues()
+	s.Require().Len(actionAttrValues, 1)
+	s.Equal(actions.ActionNameCreate, actionAttrValues[0].GetAction().GetName())
+	attrValue := actionAttrValues[0].GetAttributeValue()
+	s.Equal("https://example.com/attr/attr1/value/value1", attrValue.GetFqn())
+	s.Equal("value1", attrValue.GetValue())
 }
 
 func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_NormalizedName_Succeeds() {
@@ -1079,8 +1184,19 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_Succeeds()
 	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
 		ResourceId: res.GetId(),
 		Value:      "value",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_Name{
+					Name: actions.ActionNameCreate,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_Fqn{
+					Fqn: "https://example.com/attr/attr1/value/value1",
+				},
+			},
+		},
 	})
 	s.Require().NoError(err)
+	s.NotNil(created)
 
 	deleted, err := s.db.PolicyClient.DeleteRegisteredResourceValue(s.ctx, created.GetId())
 	s.Require().NoError(err)
@@ -1096,6 +1212,17 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_Succeeds()
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(got)
+
+	// verify resource value action attribute values deleted
+	// NOTE: special case using QueryRow directly since we intentionally don't have a Get query for action attribute values
+	row, err := s.db.PolicyClient.QueryRow(s.ctx,
+		"SELECT COUNT(*) FROM registered_resource_action_attribute_values WHERE registered_resource_value_id = $1",
+		[]any{created.GetId()})
+	s.Require().NoError(err)
+	var count int
+	err = row.Scan(&count)
+	s.Require().NoError(err)
+	s.Equal(0, count)
 }
 
 func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_WithInvalidID_Fails() {

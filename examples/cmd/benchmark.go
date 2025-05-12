@@ -127,14 +127,14 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		if insecurePlaintextConn || strings.Contains(platformEndpoint, "http://") {
 			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{
-					URL:       fmt.Sprintf("http://%s", "localhost:8080"),
+					URL:       "http://localhost:8080",
 					PublicKey: "",
 				}),
 			)
 		} else {
 			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{
-					URL:       fmt.Sprintf("https://%s", "localhost:8080"),
+					URL:       "https://localhost:8080",
 					PublicKey: "",
 				}),
 			)

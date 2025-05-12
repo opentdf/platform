@@ -214,3 +214,49 @@ func (suite *TestUpgradeRewrapRequestV1Suite) TestUpgradeRewrapRequestV1_Empty()
 func TestUpgradeRewrapRequestV1(t *testing.T) {
 	suite.Run(t, new(TestUpgradeRewrapRequestV1Suite))
 }
+
+func TestParseBaseUrl(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		expected    string
+		expectError bool
+	}{
+		{
+			name:        "Valid URL with scheme and port",
+			input:       "https://example.com:8080/path",
+			expected:    "https://example.com:8080",
+			expectError: false,
+		},
+		{
+			name:        "Valid URL with scheme and no port",
+			input:       "https://example.com/path",
+			expected:    "https://example.com",
+			expectError: false,
+		},
+		{
+			name:        "Valid URL with default port",
+			input:       "http://example.com",
+			expected:    "http://example.com",
+			expectError: false,
+		},
+		{
+			name:        "Invalid URL with invalid characters",
+			input:       "https://exa mple.com",
+			expected:    "",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parseBaseUrl(tt.input)
+			if tt.expectError {
+				assert.Error(t, err, "Expected an error for test case: %s", tt.name)
+			} else {
+				assert.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
+				assert.Equal(t, tt.expected, result, "Unexpected result for test case: %s", tt.name)
+			}
+		})
+	}
+}

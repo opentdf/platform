@@ -65,12 +65,12 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 		return nil, err
 	}
 	kasURL := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().GetKasUrl()
-	_, err = url.Parse(kasURL)
+	parsedUrl, err := parseBaseUrl(kasURL)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse kas url(%s): %w", kasURL, err)
 	}
 
-	serviceClient := kasconnect.NewAccessServiceClient(k.httpClient, kasURL, k.connectOptions...)
+	serviceClient := kasconnect.NewAccessServiceClient(k.httpClient, parsedUrl, k.connectOptions...)
 
 	response, err := serviceClient.Rewrap(ctx, connect.NewRequest(rewrapRequest))
 	if err != nil {
@@ -312,24 +312,22 @@ func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecrypt
 	return policyResults, nil
 }
 
-func getGRPCAddress(kasURL string) (string, error) {
-	parsedURL, err := url.Parse(kasURL)
+func parseBaseUrl(rawURL string) (string, error) {
+	u, err := url.Parse(rawURL)
 	if err != nil {
-		return "", fmt.Errorf("cannot parse kas url(%s): %w", kasURL, err)
+		return "", err
 	}
 
-	// Needed to support buffconn for testing
-	if parsedURL.Host == "" && parsedURL.Port() == "" {
-		return "", nil
+	host := u.Hostname()
+	port := u.Port()
+
+	// Add port only if it's present
+	addr := host
+	if port != "" {
+		addr = net.JoinHostPort(host, port)
 	}
 
-	port := parsedURL.Port()
-	// if port is empty, default to 443.
-	if port == "" {
-		port = "443"
-	}
-
-	return net.JoinHostPort(parsedURL.Hostname(), port), nil
+	return fmt.Sprintf("%s://%s", u.Scheme, addr), nil
 }
 
 func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapRequest, error) {
@@ -427,12 +425,12 @@ func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm string) (*KASIn
 			return cachedValue, nil
 		}
 	}
-	_, err := url.Parse(kasurl)
+	parsedUrl, err := parseBaseUrl(kasurl)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse kas url(%s): %w", kasurl, err)
 	}
 
-	serviceClient := kasconnect.NewAccessServiceClient(s.conn.Client, kasurl, s.conn.Options...)
+	serviceClient := kasconnect.NewAccessServiceClient(s.conn.Client, parsedUrl, s.conn.Options...)
 
 	req := kas.PublicKeyRequest{
 		Algorithm: algorithm,

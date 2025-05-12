@@ -1372,3 +1372,207 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 	s.Contains(actionNames(bottomActions.Actions), actionNameTransmit, "Bottom level should have transmit action")
 	s.Contains(actionNames(bottomActions.Actions), customActionGather, "Bottom level should have gather action")
 }
+
+// Test_GetDecision_PartialActionEntitlement tests scenarios where actions only partially align with entitlements
+func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
+	f := s.fixtures
+
+	// Define a custom print action for testing
+	testActionPrint := &policy.Action{Name: "print"}
+
+	// Define a custom view action that is a parent of read and list
+	testActionView := &policy.Action{Name: "view"}
+	testActionList := &policy.Action{Name: "list"}
+	testActionSearch := &policy.Action{Name: "search"}
+
+	// Create additional mappings for testing partial action scenarios
+	printConfidentialMapping := createSimpleSubjectMapping(
+		testClassConfidentialFQN,
+		"confidential",
+		[]*policy.Action{testActionRead, testActionPrint},
+		".properties.clearance",
+		[]string{"confidential"},
+	)
+
+	// Create a mapping with a comprehensive set of actions instead of using a wildcard
+	allActionsPublicMapping := createSimpleSubjectMapping(
+		testClassPublicFQN,
+		"public",
+		[]*policy.Action{
+			testActionRead, testActionCreate, testActionUpdate, testActionDelete,
+			testActionPrint, testActionView, testActionList, testActionSearch,
+		},
+		".properties.clearance",
+		[]string{"public"},
+	)
+
+	// Create a view mapping for Project Alpha with view being a parent action of read and list
+	viewProjectAlphaMapping := createSimpleSubjectMapping(
+		testProjectAlphaFQN,
+		"alpha",
+		[]*policy.Action{testActionView},
+		".properties.project",
+		[]string{"alpha"},
+	)
+
+	// Create a PDP with relevant attributes and mappings
+	pdp, err := NewPolicyDecisionPoint(
+		s.ctx,
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr, f.departmentAttr, f.projectAttr},
+		[]*policy.SubjectMapping{
+			f.secretMapping, printConfidentialMapping, allActionsPublicMapping,
+			f.engineeringMapping, f.financeMapping, viewProjectAlphaMapping,
+		},
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	s.Run("Scenario 1: User has subset of requested actions", func() {
+		// Entity with secret clearance - only entitled to read and update on secret
+		entity := s.createEntityWithProps("user123", map[string]interface{}{
+			"clearance": "secret",
+		})
+
+		// Resource to evaluate
+		resources := createResources(testClassSecretFQN)
+
+		decision, err := pdp.GetDecision(s.ctx, entity, actionRead, resources)
+
+		// Read shuld pass
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access) // Should be true because read is allowed
+		s.Len(decision.Results, 1)
+
+		// Create should fail
+		decision, err = pdp.GetDecision(s.ctx, entity, actionCreate, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access) // Should be false because create is not allowed
+		s.Len(decision.Results, 1)
+	})
+
+	s.Run("Scenario 2: User has overlapping action sets", func() {
+		// Entity with both confidential clearance and finance department
+		entity := s.createEntityWithProps("user456", map[string]interface{}{
+			"clearance":  "confidential",
+			"department": "finance",
+		})
+
+		// Create a resource with both confidential and finance attributes
+		combinedResource := &authz.Resource{
+			EphemeralId: "combined-attr-resource",
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{testClassConfidentialFQN, testDeptFinanceFQN},
+				},
+			},
+		}
+
+		// Test read access - should be allowed by both attributes
+		decision, err := pdp.GetDecision(s.ctx, entity, actionRead, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+		s.Len(decision.Results, 1)
+
+		// Test create access - should be denied (confidential doesn't allow it)
+		decision, err = pdp.GetDecision(s.ctx, entity, actionCreate, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access) // Overall access is denied
+
+		// Test print access - allowed by confidential but not by finance
+		decision, err = pdp.GetDecision(s.ctx, entity, testActionPrint, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access) // Overall access is denied because one rule fails
+
+		// Test update access - allowed by finance but not by confidential
+		decision, err = pdp.GetDecision(s.ctx, entity, testActionUpdate, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access) // Overall access is denied because one rule fails
+
+		// Test delete access - denied by both
+		decision, err = pdp.GetDecision(s.ctx, entity, testActionDelete, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+	})
+
+	s.Run("Scenario 3: Action inheritance with partial permissions", func() {
+		// Entity with project alpha access
+		entity := s.createEntityWithProps("user789", map[string]interface{}{
+			"project": "alpha",
+		})
+
+		// Resource with project alpha attribute
+		resources := createResources(testProjectAlphaFQN)
+
+		// Test view access - should be allowed
+		decision, err := pdp.GetDecision(s.ctx, entity, testActionView, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+
+		// Test list access - should be denied
+		decision, err = pdp.GetDecision(s.ctx, entity, testActionList, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+
+		// Test search access - should be denied
+		decision, err = pdp.GetDecision(s.ctx, entity, testActionSearch, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+	})
+
+	s.Run("Scenario 4: Conflicting action policies across multiple attributes", func() {
+		// Set up a PDP with the comprehensive actions public mapping and restricted mapping
+		restrictedMapping := createSimpleSubjectMapping(
+			testClassConfidentialFQN,
+			"confidential",
+			[]*policy.Action{testActionRead}, // Only read is allowed
+			".properties.clearance",
+			[]string{"restricted"},
+		)
+
+		classificationPDP, err := NewPolicyDecisionPoint(
+			s.ctx,
+			s.logger,
+			[]*policy.Attribute{f.classificationAttr},
+			[]*policy.SubjectMapping{allActionsPublicMapping, restrictedMapping},
+		)
+		s.Require().NoError(err)
+		s.Require().NotNil(classificationPDP)
+
+		// Entity with both public and restricted clearance
+		entity := s.createEntityWithProps("admin001", map[string]interface{}{
+			"clearance": "restricted",
+		})
+
+		// Resource with restricted classification
+		restrictedResources := createResources(testClassConfidentialFQN)
+
+		// Test read access - should be allowed for restricted
+		decision, err := classificationPDP.GetDecision(s.ctx, entity, actionRead, restrictedResources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+
+		// Test create access - should be denied for restricted despite comprehensive actions on public
+		decision, err = classificationPDP.GetDecision(s.ctx, entity, actionCreate, restrictedResources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+
+		// Test delete access - should be denied for restricted despite comprehensive actions on public
+		decision, err = classificationPDP.GetDecision(s.ctx, entity, testActionDelete, restrictedResources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+	})
+}

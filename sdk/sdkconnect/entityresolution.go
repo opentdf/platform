@@ -27,6 +27,7 @@ func (c EntityResolutionConnectClient) ResolveEntities(ctx context.Context, req 
 	}
 	return res.Msg, err
 }
+
 func (c EntityResolutionConnectClient) CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest, _ ...grpc.CallOption) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
 	res, err := c.EntityResolutionServiceClient.CreateEntityChainFromJwt(ctx, connect.NewRequest(req))
 	if res == nil {

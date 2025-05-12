@@ -18,6 +18,7 @@ func NewAuthorizationConnectClient(httpClient connect.HTTPClient, baseURL string
 		AuthorizationServiceClient: authorizationconnect.NewAuthorizationServiceClient(httpClient, baseURL, opts...),
 	}
 }
+
 func (c AuthorizationConnectClient) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest, _ ...grpc.CallOption) (*authorization.GetDecisionsResponse, error) {
 	res, err := c.AuthorizationServiceClient.GetDecisions(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -25,6 +26,7 @@ func (c AuthorizationConnectClient) GetDecisions(ctx context.Context, req *autho
 	}
 	return res.Msg, err
 }
+
 func (c AuthorizationConnectClient) GetDecisionsByToken(ctx context.Context, req *authorization.GetDecisionsByTokenRequest, _ ...grpc.CallOption) (*authorization.GetDecisionsByTokenResponse, error) {
 	res, err := c.AuthorizationServiceClient.GetDecisionsByToken(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -32,6 +34,7 @@ func (c AuthorizationConnectClient) GetDecisionsByToken(ctx context.Context, req
 	}
 	return res.Msg, err
 }
+
 func (c AuthorizationConnectClient) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest, _ ...grpc.CallOption) (*authorization.GetEntitlementsResponse, error) {
 	res, err := c.AuthorizationServiceClient.GetEntitlements(ctx, connect.NewRequest(req))
 	if res == nil {

@@ -18,6 +18,7 @@ func NewActionsConnectClient(httpClient connect.HTTPClient, baseURL string, opts
 		ActionServiceClient: actionsconnect.NewActionServiceClient(httpClient, baseURL, opts...),
 	}
 }
+
 func (c ActionsConnectClient) GetAction(ctx context.Context, req *actions.GetActionRequest, _ ...grpc.CallOption) (*actions.GetActionResponse, error) {
 	res, err := c.ActionServiceClient.GetAction(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -25,6 +26,7 @@ func (c ActionsConnectClient) GetAction(ctx context.Context, req *actions.GetAct
 	}
 	return res.Msg, err
 }
+
 func (c ActionsConnectClient) ListActions(ctx context.Context, req *actions.ListActionsRequest, _ ...grpc.CallOption) (*actions.ListActionsResponse, error) {
 	res, err := c.ActionServiceClient.ListActions(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -32,6 +34,7 @@ func (c ActionsConnectClient) ListActions(ctx context.Context, req *actions.List
 	}
 	return res.Msg, err
 }
+
 func (c ActionsConnectClient) CreateAction(ctx context.Context, req *actions.CreateActionRequest, _ ...grpc.CallOption) (*actions.CreateActionResponse, error) {
 	res, err := c.ActionServiceClient.CreateAction(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -39,6 +42,7 @@ func (c ActionsConnectClient) CreateAction(ctx context.Context, req *actions.Cre
 	}
 	return res.Msg, err
 }
+
 func (c ActionsConnectClient) UpdateAction(ctx context.Context, req *actions.UpdateActionRequest, _ ...grpc.CallOption) (*actions.UpdateActionResponse, error) {
 	res, err := c.ActionServiceClient.UpdateAction(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -46,6 +50,7 @@ func (c ActionsConnectClient) UpdateAction(ctx context.Context, req *actions.Upd
 	}
 	return res.Msg, err
 }
+
 func (c ActionsConnectClient) DeleteAction(ctx context.Context, req *actions.DeleteActionRequest, _ ...grpc.CallOption) (*actions.DeleteActionResponse, error) {
 	res, err := c.ActionServiceClient.DeleteAction(ctx, connect.NewRequest(req))
 	if res == nil {

@@ -1344,7 +1344,6 @@ func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
 	s.Empty(gotAttr.GetKasKeys())
-
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
 	resp, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
 		AttributeId: s.f.GetAttributeKey("example.com/attr/attr1").ID,
@@ -1356,6 +1355,7 @@ func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Succeeds() {
 	gotAttr, err = s.db.PolicyClient.GetAttribute(s.ctx, s.f.GetAttributeKey("example.com/attr/attr1").ID)
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
+
 	s.Len(gotAttr.GetKasKeys(), 1)
 	s.Equal(kasKey.KeyAccessServerID, gotAttr.GetKasKeys()[0].GetKasId())
 	s.Equal(kasKey.ID, gotAttr.GetKasKeys()[0].GetKey().GetId())
@@ -1364,6 +1364,13 @@ func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Succeeds() {
 	s.Equal(publicKeyCtx, gotAttr.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
 	s.Empty(gotAttr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 	s.Empty(gotAttr.GetKasKeys()[0].GetKey().GetProviderConfig())
+
+	// Get the kas server information associated with the key
+	kasReg, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, kasKey.KeyAccessServerID)
+	s.Require().NoError(err)
+	s.NotNil(kasReg)
+
+	s.Equal(kasReg.GetUri(), gotAttr.GetKasKeys()[0].GetKasUri())
 
 	resp, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
 		AttributeId: resp.GetAttributeId(),

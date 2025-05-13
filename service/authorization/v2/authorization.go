@@ -16,6 +16,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const EntityIDPrefix string = "entity_idx_"
@@ -130,6 +131,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	return connect.NewResponse(rsp), nil
 }
 
+// GetDecision for an entity chain and action on a single resource
 func (as *AuthorizationService) GetDecision(ctx context.Context, req *connect.Request[authzV2.GetDecisionRequest]) (*connect.Response[authzV2.GetDecisionResponse], error) {
 	as.logger.DebugContext(ctx, "getting decision")
 
@@ -141,43 +143,101 @@ func (as *AuthorizationService) GetDecision(ctx context.Context, req *connect.Re
 		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	request := req.Msg.GetDecisionRequest()
+	request := req.Msg
+	ec := request.GetEntity()
+	action := request.GetAction()
+	resource := request.GetResource()
+
+	decisions, permitted, err := pdp.GetDecision(ctx, ec, action, []*authzV2.Resource{resource})
+	if err != nil {
+		// TODO: any bad request errors that aren't 500s?
+		as.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if len(decisions) == 0 {
+		as.logger.ErrorContext(ctx, "no decisions returned")
+		return nil, connect.NewError(connect.CodeInternal, errors.New("no decisions returned"))
+	}
+	decision := decisions[0]
+	if len(decision.Results) == 0 {
+		as.logger.ErrorContext(ctx, "no decision results returned")
+		return nil, connect.NewError(connect.CodeInternal, errors.New("no decision results returned"))
+	}
+	result := decision.Results[0]
+	access := authzV2.Decision_DECISION_DENY
+	if permitted {
+		access = authzV2.Decision_DECISION_PERMIT
+	}
+
+	resp := &authzV2.GetDecisionResponse{
+		EphemeralEntityChainId: ec.GetEphemeralId(),
+		Action:                 action,
+		Decision: &authzV2.ResourceDecision{
+			Decision:            access,
+			EphemeralResourceId: result.ResourceID,
+		},
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
+func (as *AuthorizationService) GetDecisionMultiResource(ctx context.Context, req *connect.Request[authzV2.GetDecisionMultiResourceRequest]) (*connect.Response[authzV2.GetDecisionMultiResourceResponse], error) {
+	as.logger.DebugContext(ctx, "getting decision multi resource")
+
+	ctx, span := as.Tracer.Start(ctx, "GetDecisionMultiResource")
+	defer span.End()
+
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
+	if err != nil {
+		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.String("error", err.Error()))
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	request := req.Msg
 	ec := request.GetEntity()
 	action := request.GetAction()
 	resources := request.GetResources()
 
-	decision, err := pdp.GetDecision(ctx, ec, action, resources)
+	decisions, allPermitted, err := pdp.GetDecision(ctx, ec, action, resources)
 	if err != nil {
 		// TODO: any bad request errors that aren't 500s?
 		as.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	// TODO: GetDecision should return multiple decisions, one per resource, not a global
-	access := authzV2.DecisionResponse_DECISION_DENY
-	if decision[0].Access {
-		access = authzV2.DecisionResponse_DECISION_PERMIT
+	resourceDecisions := make([]*authzV2.ResourceDecision, 0, len(decisions))
+	for idx, decision := range decisions {
+		if len(decision.Results) == 0 {
+			as.logger.ErrorContext(ctx, "no decision results returned")
+			return nil, connect.NewError(connect.CodeInternal, errors.New("no decision results returned"))
+		}
+		result := decision.Results[0]
+		access := authzV2.Decision_DECISION_DENY
+		if decision.Access {
+			access = authzV2.Decision_DECISION_PERMIT
+		}
+		resourceDecision := &authzV2.ResourceDecision{
+			Decision:            access,
+			EphemeralResourceId: result.ResourceID,
+		}
+		resourceDecisions[idx] = resourceDecision
 	}
 
-	resp := &authzV2.GetDecisionResponse{
-		DecisionResponse: &authzV2.DecisionResponse{
-			EphemeralEntityChainId: ec.GetEphemeralId(),
-			Action:                 action,
-			Decision:               access,
+	resp := &authzV2.GetDecisionMultiResourceResponse{
+		EphemeralEntityChainId: ec.GetEphemeralId(),
+		Action:                 action,
+		AllPermitted: &wrapperspb.BoolValue{
+			Value: allPermitted,
 		},
+		ResourceDecisions: resourceDecisions,
 	}
+
 	return connect.NewResponse(resp), nil
 }
 
 func (as *AuthorizationService) GetDecisionBulk(ctx context.Context, req *connect.Request[authzV2.GetDecisionBulkRequest]) (*connect.Response[authzV2.GetDecisionBulkResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionBulk not implemented"))
 }
-func (as *AuthorizationService) GetDecisionBulkByToken(ctx context.Context, req *connect.Request[authzV2.GetDecisionBulkByTokenRequest]) (*connect.Response[authzV2.GetDecisionBulkByTokenResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionBulkByToken not implemented"))
-}
 func (as *AuthorizationService) GetDecisionByToken(ctx context.Context, req *connect.Request[authzV2.GetDecisionByTokenRequest]) (*connect.Response[authzV2.GetDecisionByTokenResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionByToken not implemented"))
 }
-func (as *AuthorizationService) GetDecisionBulkByTokenV2(ctx context.Context, req *connect.Request[authzV2.GetDecisionBulkByTokenRequest]) (*connect.Response[authzV2.GetDecisionBulkByTokenResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionBulkByTokenV2 not implemented"))
-}
+

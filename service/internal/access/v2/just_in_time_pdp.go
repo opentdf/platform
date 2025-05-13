@@ -68,39 +68,49 @@ func NewJustInTimePDP(
 	return p, nil
 }
 
+// GetDecision retrieves the decision for the provided entity chain, action, and resources.
+// It resolves the entity chain to get the entity representations and then calls the embedded PDP to get the decision.
+// The decision is returned as a slice of Decision objects, along with a global boolean indicating whether or not all
+// decisions are allowed.
 func (p *JustInTimePDP) GetDecision(
 	ctx context.Context,
 	entityChain *authz.EntityChain,
 	action *policy.Action,
 	resources []*authz.Resource,
-) ([]*Decision, error) {
+) ([]*Decision, bool, error) {
 	p.logger.DebugContext(ctx, "getting decision - resolving entity chain")
 	entityRepresentations, err := p.resolveEntities(ctx, entityChain)
 	if err != nil {
 		p.logger.ErrorContext(ctx, "failed to resolve entity chain", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("failed to resolve entity chain: %w", err)
+		return nil, false, fmt.Errorf("failed to resolve entity chain: %w", err)
 	}
 
 	// TODO: get bulk decision (multiple entity representations) within PDP?
 	// Maybe only one of the entity representations is needed... stripping off environment entities?
 	decisions := make([]*Decision, len(entityRepresentations))
+	allPermitted := true
 	for idx, entityRep := range entityRepresentations {
 		d, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
 		if err != nil {
 			p.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))
-			return nil, fmt.Errorf("failed to get decision: %w", err)
+			return nil, false, fmt.Errorf("failed to get decision: %w", err)
 		}
 		if d == nil {
 			p.logger.ErrorContext(ctx, "decision is nil")
-			return nil, fmt.Errorf("decision is nil: %w", err)
+			return nil, false, fmt.Errorf("decision is nil: %w", err)
+		}
+		if !d.Access {
+			allPermitted = false
 		}
 		// Decisions should be granular, so do not globally pass or fail
 		decisions[idx] = d
 	}
 
-	return decisions, nil
+	return decisions, allPermitted, nil
 }
 
+// GetEntitlements retrieves the entitlements for the provided entity chain.
+// It resolves the entity chain to get the entity representations and then calls the embedded PDP to get the entitlements.
 func (p *JustInTimePDP) GetEntitlements(
 	ctx context.Context,
 	entities []*authz.Entity,

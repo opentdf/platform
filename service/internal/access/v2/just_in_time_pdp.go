@@ -113,14 +113,11 @@ func (p *JustInTimePDP) GetDecision(
 // It resolves the entity chain to get the entity representations and then calls the embedded PDP to get the entitlements.
 func (p *JustInTimePDP) GetEntitlements(
 	ctx context.Context,
-	entities []*authz.Entity,
+	entityChain *authz.EntityChain,
 	withComprehensiveHierarchy bool,
 ) ([]*authz.EntityEntitlements, error) {
 	p.logger.DebugContext(ctx, "getting entitlements - resolving entity chain")
 
-	entityChain := &authz.EntityChain{
-		Entities: entities,
-	}
 	entityRepresentations, err := p.resolveEntities(ctx, entityChain)
 	if err != nil {
 		p.logger.ErrorContext(ctx, "failed to resolve entity chain", slog.String("error", err.Error()))

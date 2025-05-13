@@ -100,19 +100,24 @@ func (as AuthorizationService) IsReady(ctx context.Context) error {
 	return nil
 }
 
+// GetEntitlements for an entity chain
 func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connect.Request[authzV2.GetEntitlementsRequest]) (*connect.Response[authzV2.GetEntitlementsResponse], error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
 
 	ctx, span := as.Tracer.Start(ctx, "GetEntitlements")
 	defer span.End()
 
-	entities := req.Msg.GetEntities()
+	// Extract trace context from the incoming request
+	propagator := otel.GetTextMapPropagator()
+	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
+
+	entityChain := req.Msg.GetEntityChain()
 	withComprehensiveHierarchy := req.Msg.GetWithComprehensiveHierarchy()
 
 	// TODO: this should be moved to proto validation https://github.com/opentdf/platform/issues/1057
-	if entities == nil {
-		as.logger.ErrorContext(ctx, "requires entities")
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("requires entities"))
+	if entityChain == nil {
+		as.logger.ErrorContext(ctx, "requires an entity chain but was nil")
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("requires an entity chain"))
 	}
 
 	// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
@@ -122,7 +127,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	entitlements, err := pdp.GetEntitlements(ctx, entities, withComprehensiveHierarchy)
+	entitlements, err := pdp.GetEntitlements(ctx, entityChain, withComprehensiveHierarchy)
 	if err != nil {
 		// TODO: any bad request errors that aren't 500s?
 		as.logger.ErrorContext(ctx, "failed to get entitlements", slog.String("error", err.Error()))
@@ -136,12 +141,55 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	return connect.NewResponse(rsp), nil
 }
 
-// GetDecision for an entity chain and action on a single resource
+// GetEntitlementsByToken for an entity represented by an access token
+func (as *AuthorizationService) GetEntitlementsByToken(ctx context.Context, req *connect.Request[authzV2.GetEntitlementsByTokenRequest]) (*connect.Response[authzV2.GetEntitlementsByTokenResponse], error) {
+	as.logger.DebugContext(ctx, "getting entitlements by token")
+
+	ctx, span := as.Tracer.Start(ctx, "GetEntitlementsByToken")
+	defer span.End()
+
+	// Extract trace context from the incoming request
+	propagator := otel.GetTextMapPropagator()
+	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
+
+	token := req.Msg.GetToken()
+	entityChain, err := as.getOneEntityChainFromToken(ctx, token)
+	if err != nil {
+		as.logger.ErrorContext(ctx, "failed to get an entity chain from JWT", slog.String("error", err.Error()))
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	withComprehensiveHierarchy := req.Msg.GetWithComprehensiveHierarchy()
+
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
+	if err != nil {
+		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.String("error", err.Error()))
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	entitlements, err := pdp.GetEntitlements(ctx, entityChain, withComprehensiveHierarchy)
+	if err != nil {
+		as.logger.ErrorContext(ctx, "failed to get entitlements", slog.String("error", err.Error()))
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	rsp := &authzV2.GetEntitlementsByTokenResponse{
+		Entitlements: entitlements,
+	}
+
+	return connect.NewResponse(rsp), nil
+}
+
+// GetDecision for an entity chain and an action on a single resource
 func (as *AuthorizationService) GetDecision(ctx context.Context, req *connect.Request[authzV2.GetDecisionRequest]) (*connect.Response[authzV2.GetDecisionResponse], error) {
 	as.logger.DebugContext(ctx, "getting decision")
 
 	ctx, span := as.Tracer.Start(ctx, "GetDecision")
 	defer span.End()
+
+	// Extract trace context from the incoming request
+	propagator := otel.GetTextMapPropagator()
+	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
 	if err != nil {
@@ -175,8 +223,6 @@ func (as *AuthorizationService) GetDecision(ctx context.Context, req *connect.Re
 	}
 
 	resp := &authzV2.GetDecisionResponse{
-		EphemeralEntityChainId: entityChain.GetId(),
-		Action:                 action,
 		Decision: &authzV2.ResourceDecision{
 			Decision:            access,
 			EphemeralResourceId: result.ResourceID,
@@ -186,11 +232,16 @@ func (as *AuthorizationService) GetDecision(ctx context.Context, req *connect.Re
 	return connect.NewResponse(resp), nil
 }
 
+// GetDecisionMultiResource for an entity chain and action on multiple resources
 func (as *AuthorizationService) GetDecisionMultiResource(ctx context.Context, req *connect.Request[authzV2.GetDecisionMultiResourceRequest]) (*connect.Response[authzV2.GetDecisionMultiResourceResponse], error) {
 	as.logger.DebugContext(ctx, "getting decision multi resource")
 
 	ctx, span := as.Tracer.Start(ctx, "GetDecisionMultiResource")
 	defer span.End()
+
+	// Extract trace context from the incoming request
+	propagator := otel.GetTextMapPropagator()
+	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
 	if err != nil {
@@ -216,8 +267,6 @@ func (as *AuthorizationService) GetDecisionMultiResource(ctx context.Context, re
 	}
 
 	resp := &authzV2.GetDecisionMultiResourceResponse{
-		EphemeralEntityChainId: ec.GetId(),
-		Action:                 action,
 		AllPermitted: &wrapperspb.BoolValue{
 			Value: allPermitted,
 		},
@@ -227,16 +276,13 @@ func (as *AuthorizationService) GetDecisionMultiResource(ctx context.Context, re
 	return connect.NewResponse(resp), nil
 }
 
-func (as *AuthorizationService) GetDecisionBulk(ctx context.Context, req *connect.Request[authzV2.GetDecisionBulkRequest]) (*connect.Response[authzV2.GetDecisionBulkResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionBulk not implemented"))
-}
-
+// GetDecisionBulk for an entity represented by an access token and an action on a single resource
 func (as *AuthorizationService) GetDecisionByToken(ctx context.Context, req *connect.Request[authzV2.GetDecisionByTokenRequest]) (*connect.Response[authzV2.GetDecisionByTokenResponse], error) {
 	// Extract trace context from the incoming request
 	propagator := otel.GetTextMapPropagator()
 	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
-	ctx, span := as.Tracer.Start(ctx, "GetDecisionsByToken")
+	ctx, span := as.Tracer.Start(ctx, "GetDecisionByToken")
 	defer span.End()
 
 	tok := req.Msg.GetToken()
@@ -276,8 +322,6 @@ func (as *AuthorizationService) GetDecisionByToken(ctx context.Context, req *con
 	}
 	resp := &authzV2.GetDecisionByTokenResponse{
 		DecisionResponse: &authzV2.GetDecisionResponse{
-			EphemeralEntityChainId: tok.GetId(),
-			Action:                 action,
 			Decision: &authzV2.ResourceDecision{
 				Decision:            access,
 				EphemeralResourceId: result.ResourceID,
@@ -287,6 +331,7 @@ func (as *AuthorizationService) GetDecisionByToken(ctx context.Context, req *con
 	return connect.NewResponse(resp), nil
 }
 
+// GetDecisionByTokenMultiResource for an entity represented by an access token and an action on multiple resources
 func (as *AuthorizationService) GetDecisionByTokenMultiResource(ctx context.Context, req *connect.Request[authzV2.GetDecisionByTokenMultiResourceRequest]) (*connect.Response[authzV2.GetDecisionByTokenMultiResourceResponse], error) {
 	// Extract trace context from the incoming request
 	propagator := otel.GetTextMapPropagator()
@@ -329,7 +374,6 @@ func (as *AuthorizationService) GetDecisionByTokenMultiResource(ctx context.Cont
 
 	// Construct and return response
 	resp := &authzV2.GetDecisionByTokenMultiResourceResponse{
-		Action: action,
 		AllPermitted: &wrapperspb.BoolValue{
 			Value: allPermitted,
 		},
@@ -339,8 +383,13 @@ func (as *AuthorizationService) GetDecisionByTokenMultiResource(ctx context.Cont
 	return connect.NewResponse(resp), nil
 }
 
+// GetDecisionBulk for multiple requests, each comprising a combination of entity chain, action, and one or more resources
+func (as *AuthorizationService) GetDecisionBulk(ctx context.Context, req *connect.Request[authzV2.GetDecisionBulkRequest]) (*connect.Response[authzV2.GetDecisionBulkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionBulk not implemented"))
+}
+
 // getOneEntityChainFromToken extracts the entity chain from the token
-func (as *AuthorizationService) getOneEntityChainFromToken(ctx context.Context, token *authorization.Token) (*authorization.EntityChain, error) {
+func (as *AuthorizationService) getOneEntityChainFromToken(ctx context.Context, token *authorization.Token) (*authzV2.EntityChain, error) {
 	convertTokenRequest := &ers.CreateEntityChainFromJwtRequest{Tokens: []*authorization.Token{
 		token,
 	}}
@@ -360,8 +409,21 @@ func (as *AuthorizationService) getOneEntityChainFromToken(ctx context.Context, 
 	if chain == nil {
 		return nil, errors.New("failed to create entity chain from JWT, nil entity chain")
 	}
+	
+	chainV2 := &authzV2.EntityChain{
+		EphemeralChainId: chain.GetId(),
+		Entities:         make([]*authzV2.Entity, 0, len(chain.GetEntities())),
+	}
+	for idx, entity := range chain.GetEntities() {
+		entityV2 := &authzV2.Entity{
+			EphemeralId: entity.GetId(),
+			EntityType:  entity.GetEntityType(),
+			Category:    entity.GetCategory(),
+		}
+		chainV2.Entities[idx] = entityV2
+	}
 
-	return chain, nil
+	return chainV2, nil
 }
 
 // rollupMultiResourceDecision creates a standardized response for multi-resource decisions
@@ -418,8 +480,6 @@ func rollupSingleResourceDecision(
 		EphemeralResourceId: result.ResourceID,
 	}
 	return &authzV2.GetDecisionResponse{
-		EphemeralEntityChainId: entityID,
-		Action:                 action,
-		Decision:               resourceDecision,
+		Decision: resourceDecision,
 	}, nil
 }

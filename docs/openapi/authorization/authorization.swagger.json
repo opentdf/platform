@@ -437,7 +437,8 @@
           "title": "Deprecated"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "title": "Name is required to be set whenever an action is passed in an RPC"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata"

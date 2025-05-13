@@ -2,14 +2,23 @@ syntax = "proto3";
 
 package authorization.v2;
 
+import "buf/validate/validate.proto";
 import "google/protobuf/any.proto";
+import "google/protobuf/wrappers.proto";
 import "policy/objects.proto";
+
+enum Decision {
+  DECISION_UNSPECIFIED = 0;
+  DECISION_DENY = 1;
+  DECISION_PERMIT = 2;
+  // DECISION_OBLIGATED = 3;
+}
 
 message Token {
   // ephemeral id for tracking between request and response
   string ephemeral_id = 1;
   // access token
-  string jwt = 2;
+  string jwt = 2 [(buf.validate.field).required = true];
 }
 
 // PE (Person Entity) or NPE (Non-Person Entity)
@@ -44,7 +53,10 @@ message Entity {
 message EntityChain {
   // ephemeral id for tracking between request and response
   string ephemeral_id = 1;
-  repeated Entity entities = 2;
+  repeated Entity entities = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {min_items: 1}
+  ];
 }
 
 // Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]
@@ -73,44 +85,71 @@ message Resource {
   }
 }
 
-// Can the entity (PE or NPE) represented by one entity chain take the provided action on each resource
-message DecisionRequest {
-  EntityChain entity = 1;
-  policy.Action action = 2;
-  repeated Resource resources = 3;
+message ResourceDecision {
+  // ephemeral id for tracking between request and response
+  string ephemeral_resource_id = 1;
+  // the decision result
+  Decision decision = 3;
 }
-message DecisionResponse {
-  enum Decision {
-    DECISION_UNSPECIFIED = 0;
-    DECISION_DENY = 1;
-    DECISION_PERMIT = 2;
-    // DECISION_OBLIGATED = 3;
-  }
+
+// Can the entity (PE or NPE) access?
+// 1. one entity chain
+// 2. one action
+// 3. one resource
+message GetDecisionRequest {
+  EntityChain entity = 1 [(buf.validate.field).required = true];
+  // name on action is required
+  policy.Action action = 2 [(buf.validate.field).required = true];
+  Resource resource = 3 [(buf.validate.field).required = true];
+}
+message GetDecisionResponse {
   // ephemeral id for tracking between request and response
   string ephemeral_entity_chain_id = 1;
   // ephemeral id for tracking between request and response
   string ephemeral_resource_id = 2;
-  // action that was requested
+  // name on action is required
   policy.Action action = 3;
-  // the decision response
-  Decision decision = 4;
+  // the decision on the resource
+  ResourceDecision decision = 4;
   // optional list of obligations represented in URI format
   // repeated string obligations = 5;
 }
 
-message GetDecisionRequest {
-  DecisionRequest decision_request = 1;
+// Can the entity (PE or NPE) access?
+// 1. one entity chain
+// 2. one action
+// 3. multiple resources
+// Note: this is a more performant bulk request for multiple resource decisions
+message GetDecisionMultiResourceRequest {
+  // The entity chain must be defined
+  EntityChain entity = 1 [(buf.validate.field).required = true];
+  // name on action is required
+  policy.Action action = 2 [(buf.validate.field).required = true];
+  repeated Resource resources = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {min_items: 1}
+  ];
 }
-message GetDecisionResponse {
-  DecisionResponse decision_response = 1;
+message GetDecisionMultiResourceResponse {
+  // ephemeral id for tracking between request and response
+  string ephemeral_entity_chain_id = 1;
+  // name on action is required
+  policy.Action action = 3;
+  // convenience flag indicating global resource decisions result (permit/deny)
+  google.protobuf.BoolValue all_permitted = 2;
+  // individual resource decisions
+  repeated ResourceDecision resource_decisions = 4;
 }
 
-// More performant bulk request for multiple decisions
+// Can the entities (PE or NPE) access?
+// 1. Multiplexing of a Decision<entityChain, Action, repeated Resource> request
+// This is a more performant bulk request for complex decisioning (multiple entity chains or actions on
+// multiple resource decisions)
 message GetDecisionBulkRequest {
-  repeated DecisionRequest decision_requests = 1;
+  repeated GetDecisionMultiResourceRequest decision_requests = 1;
 }
 message GetDecisionBulkResponse {
-  repeated DecisionResponse decision_responses = 1;
+  repeated GetDecisionMultiResourceResponse decision_responses = 1;
 }
 
 // What can the entity do, broken down as permitted actions on attribute value FQNs
@@ -120,7 +159,10 @@ message GetDecisionBulkResponse {
 message GetEntitlementsRequest {
   // list of requested entities
   // todo: should this be an entity chain?
-  repeated Entity entities = 1;
+  repeated Entity entities = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {min_items: 1}
+  ];
   // optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
   // down the hierarchical values instead of returning solely the value that is directly entitled
   optional bool with_comprehensive_hierarchy = 3;
@@ -129,34 +171,27 @@ message GetEntitlementsResponse {
   repeated EntityEntitlements entitlements = 1;
 }
 
-// Can the entity (PE or NPE) represented by this token take the provided action on the set of resources
+// Can the entity (PE or NPE) represented by this token take the provided action on the single resource
 message TokenDecisionRequest {
-  Token token = 1;
-  policy.Action action = 2;
-  repeated Resource resources = 3;
+  Token token = 1 [(buf.validate.field).required = true];
+  // name on action is required
+  policy.Action action = 2 [(buf.validate.field).required = true];
+  Resource resource = 3 [(buf.validate.field).required = true];
 }
 
 message GetDecisionByTokenRequest {
   TokenDecisionRequest decision_request = 1;
 }
 message GetDecisionByTokenResponse {
-  DecisionResponse decision_response = 1;
-}
-
-// More performant bulk request for multiple decisions
-message GetDecisionBulkByTokenRequest {
-  repeated TokenDecisionRequest decision_requests = 1;
-}
-message GetDecisionBulkByTokenResponse {
-  repeated DecisionResponse decision_responses = 1;
+  GetDecisionResponse decision_response = 1;
 }
 
 service AuthorizationService {
   rpc GetDecision(GetDecisionRequest) returns (GetDecisionResponse) {}
+  rpc GetDecisionMultiResource(GetDecisionMultiResourceRequest) returns (GetDecisionMultiResourceResponse) {}
   rpc GetDecisionBulk(GetDecisionBulkRequest) returns (GetDecisionBulkResponse) {}
 
   rpc GetDecisionByToken(GetDecisionByTokenRequest) returns (GetDecisionByTokenResponse) {}
-  rpc GetDecisionBulkByToken(GetDecisionBulkByTokenRequest) returns (GetDecisionBulkByTokenResponse) {}
 
   rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {}
 }

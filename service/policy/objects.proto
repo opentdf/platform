@@ -129,7 +129,11 @@ message Action {
     string custom = 2;
   }
 
-  string name = 4;
+  // Name is required to be set whenever an action is passed in an RPC
+  string name = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
 
   common.Metadata metadata = 100;
 }

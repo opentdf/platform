@@ -409,7 +409,7 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 					return err
 				}
 				if customClient.Count < 1 {
-					break
+					continue
 				}
 				baseClientID := *customClient.Client.ClientID
 				baseClientName := *customClient.Client.Name
@@ -446,7 +446,7 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 					return err
 				}
 				if customUser.Count < 1 {
-					break
+					continue
 				}
 				baseUserName := *customUser.User.Username
 				baseEmail := *customUser.User.Email

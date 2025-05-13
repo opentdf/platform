@@ -101,6 +101,12 @@ message GetDecisionRequest {
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   Resource resource = 3 [(buf.validate.field).required = true];
+
+  option (buf.validate.message).cel = {
+    id: "get_decision_request.action_name_required"
+    message: "action.name must be provided"
+    expression: "has(this.action.name)"
+  };
 }
 message GetDecisionResponse {
   // ephemeral id for tracking between request and response
@@ -129,6 +135,12 @@ message GetDecisionMultiResourceRequest {
     (buf.validate.field).required = true,
     (buf.validate.field).repeated = {min_items: 1}
   ];
+
+  option (buf.validate.message).cel = {
+    id: "get_decision_multi_request.action_name_required"
+    message: "action.name must be provided"
+    expression: "has(this.action.name)"
+  };
 }
 message GetDecisionMultiResourceResponse {
   // ephemeral id for tracking between request and response
@@ -177,6 +189,13 @@ message TokenDecisionRequest {
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   Resource resource = 3 [(buf.validate.field).required = true];
+
+  // Add CEL validation for the nested field
+  option (buf.validate.message).cel = {
+    id: "token_decision_request.action_name_required"
+    message: "action.name must be provided"
+    expression: "has(this.action.name)"
+  };
 }
 
 message GetDecisionByTokenRequest {

@@ -469,7 +469,7 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 	switch key := ska.(type) {
 	case StandardECCrypto:
 		if len(ephemeralPublicKey) == 0 {
-			return nil, fmt.Errorf("ephemeral public key is required for EC decryption")
+			return nil, errors.New("ephemeral public key is required for EC decryption")
 		}
 
 		if key.sk == nil {
@@ -493,7 +493,7 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 
 	case StandardRSACrypto:
 		if len(ephemeralPublicKey) > 0 {
-			return nil, fmt.Errorf("ephemeral public key should not be provided for RSA decryption")
+			return nil, errors.New("ephemeral public key should not be provided for RSA decryption")
 		}
 
 		rawKey, err = key.asymDecryption.Decrypt(ciphertext)

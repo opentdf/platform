@@ -50,48 +50,7 @@
         }
       }
     },
-    "authorizationv2DecisionRequest": {
-      "type": "object",
-      "properties": {
-        "entity": {
-          "$ref": "#/definitions/authorizationv2EntityChain"
-        },
-        "action": {
-          "$ref": "#/definitions/policyAction"
-        },
-        "resources": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v2Resource"
-          }
-        }
-      },
-      "title": "Can the entity (PE or NPE) represented by one entity chain take the provided action on each resource"
-    },
-    "authorizationv2DecisionResponse": {
-      "type": "object",
-      "properties": {
-        "ephemeralEntityChainId": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
-        "ephemeralResourceId": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
-        "action": {
-          "$ref": "#/definitions/policyAction",
-          "title": "action that was requested"
-        },
-        "decision": {
-          "$ref": "#/definitions/authorizationv2DecisionResponseDecision",
-          "description": "optional list of obligations represented in URI format\n repeated string obligations = 5;",
-          "title": "the decision response"
-        }
-      }
-    },
-    "authorizationv2DecisionResponseDecision": {
+    "authorizationv2Decision": {
       "type": "string",
       "enum": [
         "DECISION_UNSPECIFIED",
@@ -206,17 +165,14 @@
           "$ref": "#/definitions/authorizationv2Token"
         },
         "action": {
-          "$ref": "#/definitions/policyAction"
+          "$ref": "#/definitions/policyAction",
+          "title": "name on action is required"
         },
-        "resources": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v2Resource"
-          }
+        "resource": {
+          "$ref": "#/definitions/v2Resource"
         }
       },
-      "title": "Can the entity (PE or NPE) represented by this token take the provided action on the set of resources"
+      "title": "Can the entity (PE or NPE) represented by this token take the provided action on the single resource"
     },
     "commonMetadata": {
       "type": "object",
@@ -295,18 +251,6 @@
         }
       }
     },
-    "v2GetDecisionBulkByTokenResponse": {
-      "type": "object",
-      "properties": {
-        "decisionResponses": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationv2DecisionResponse"
-          }
-        }
-      }
-    },
     "v2GetDecisionBulkResponse": {
       "type": "object",
       "properties": {
@@ -314,7 +258,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationv2DecisionResponse"
+            "$ref": "#/definitions/v2GetDecisionMultiResourceResponse"
           }
         }
       }
@@ -323,15 +267,75 @@
       "type": "object",
       "properties": {
         "decisionResponse": {
-          "$ref": "#/definitions/authorizationv2DecisionResponse"
+          "$ref": "#/definitions/v2GetDecisionResponse"
+        }
+      }
+    },
+    "v2GetDecisionMultiResourceRequest": {
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/definitions/authorizationv2EntityChain",
+          "title": "The entity chain must be defined"
+        },
+        "action": {
+          "$ref": "#/definitions/policyAction",
+          "title": "name on action is required"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2Resource"
+          }
+        }
+      },
+      "title": "Can the entity (PE or NPE) access?\n1. one entity chain\n2. one action\n3. multiple resources\nNote: this is a more performant bulk request for multiple resource decisions"
+    },
+    "v2GetDecisionMultiResourceResponse": {
+      "type": "object",
+      "properties": {
+        "ephemeralEntityChainId": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "action": {
+          "$ref": "#/definitions/policyAction",
+          "title": "name on action is required"
+        },
+        "allPermitted": {
+          "type": "boolean",
+          "title": "convenience flag indicating global resource decisions result (permit/deny)"
+        },
+        "resourceDecisions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2ResourceDecision"
+          },
+          "title": "individual resource decisions"
         }
       }
     },
     "v2GetDecisionResponse": {
       "type": "object",
       "properties": {
-        "decisionResponse": {
-          "$ref": "#/definitions/authorizationv2DecisionResponse"
+        "ephemeralEntityChainId": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "ephemeralResourceId": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "action": {
+          "$ref": "#/definitions/policyAction",
+          "title": "name on action is required"
+        },
+        "decision": {
+          "$ref": "#/definitions/v2ResourceDecision",
+          "description": "optional list of obligations represented in URI format\n repeated string obligations = 5;",
+          "title": "the decision on the resource"
         }
       }
     },
@@ -350,6 +354,19 @@
         }
       },
       "title": "Either a set of attribute values (such as those on a TDF) or a registered resource value"
+    },
+    "v2ResourceDecision": {
+      "type": "object",
+      "properties": {
+        "ephemeralResourceId": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "decision": {
+          "$ref": "#/definitions/authorizationv2Decision",
+          "title": "the decision result"
+        }
+      }
     }
   }
 }

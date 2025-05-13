@@ -19,11 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AuthorizationService_GetDecision_FullMethodName            = "/authorization.v2.AuthorizationService/GetDecision"
-	AuthorizationService_GetDecisionBulk_FullMethodName        = "/authorization.v2.AuthorizationService/GetDecisionBulk"
-	AuthorizationService_GetDecisionByToken_FullMethodName     = "/authorization.v2.AuthorizationService/GetDecisionByToken"
-	AuthorizationService_GetDecisionBulkByToken_FullMethodName = "/authorization.v2.AuthorizationService/GetDecisionBulkByToken"
-	AuthorizationService_GetEntitlements_FullMethodName        = "/authorization.v2.AuthorizationService/GetEntitlements"
+	AuthorizationService_GetDecision_FullMethodName              = "/authorization.v2.AuthorizationService/GetDecision"
+	AuthorizationService_GetDecisionMultiResource_FullMethodName = "/authorization.v2.AuthorizationService/GetDecisionMultiResource"
+	AuthorizationService_GetDecisionBulk_FullMethodName          = "/authorization.v2.AuthorizationService/GetDecisionBulk"
+	AuthorizationService_GetDecisionByToken_FullMethodName       = "/authorization.v2.AuthorizationService/GetDecisionByToken"
+	AuthorizationService_GetEntitlements_FullMethodName          = "/authorization.v2.AuthorizationService/GetEntitlements"
 )
 
 // AuthorizationServiceClient is the client API for AuthorizationService service.
@@ -31,9 +31,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthorizationServiceClient interface {
 	GetDecision(ctx context.Context, in *GetDecisionRequest, opts ...grpc.CallOption) (*GetDecisionResponse, error)
+	GetDecisionMultiResource(ctx context.Context, in *GetDecisionMultiResourceRequest, opts ...grpc.CallOption) (*GetDecisionMultiResourceResponse, error)
 	GetDecisionBulk(ctx context.Context, in *GetDecisionBulkRequest, opts ...grpc.CallOption) (*GetDecisionBulkResponse, error)
 	GetDecisionByToken(ctx context.Context, in *GetDecisionByTokenRequest, opts ...grpc.CallOption) (*GetDecisionByTokenResponse, error)
-	GetDecisionBulkByToken(ctx context.Context, in *GetDecisionBulkByTokenRequest, opts ...grpc.CallOption) (*GetDecisionBulkByTokenResponse, error)
 	GetEntitlements(ctx context.Context, in *GetEntitlementsRequest, opts ...grpc.CallOption) (*GetEntitlementsResponse, error)
 }
 
@@ -48,6 +48,15 @@ func NewAuthorizationServiceClient(cc grpc.ClientConnInterface) AuthorizationSer
 func (c *authorizationServiceClient) GetDecision(ctx context.Context, in *GetDecisionRequest, opts ...grpc.CallOption) (*GetDecisionResponse, error) {
 	out := new(GetDecisionResponse)
 	err := c.cc.Invoke(ctx, AuthorizationService_GetDecision_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authorizationServiceClient) GetDecisionMultiResource(ctx context.Context, in *GetDecisionMultiResourceRequest, opts ...grpc.CallOption) (*GetDecisionMultiResourceResponse, error) {
+	out := new(GetDecisionMultiResourceResponse)
+	err := c.cc.Invoke(ctx, AuthorizationService_GetDecisionMultiResource_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -72,15 +81,6 @@ func (c *authorizationServiceClient) GetDecisionByToken(ctx context.Context, in 
 	return out, nil
 }
 
-func (c *authorizationServiceClient) GetDecisionBulkByToken(ctx context.Context, in *GetDecisionBulkByTokenRequest, opts ...grpc.CallOption) (*GetDecisionBulkByTokenResponse, error) {
-	out := new(GetDecisionBulkByTokenResponse)
-	err := c.cc.Invoke(ctx, AuthorizationService_GetDecisionBulkByToken_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *authorizationServiceClient) GetEntitlements(ctx context.Context, in *GetEntitlementsRequest, opts ...grpc.CallOption) (*GetEntitlementsResponse, error) {
 	out := new(GetEntitlementsResponse)
 	err := c.cc.Invoke(ctx, AuthorizationService_GetEntitlements_FullMethodName, in, out, opts...)
@@ -95,9 +95,9 @@ func (c *authorizationServiceClient) GetEntitlements(ctx context.Context, in *Ge
 // for forward compatibility
 type AuthorizationServiceServer interface {
 	GetDecision(context.Context, *GetDecisionRequest) (*GetDecisionResponse, error)
+	GetDecisionMultiResource(context.Context, *GetDecisionMultiResourceRequest) (*GetDecisionMultiResourceResponse, error)
 	GetDecisionBulk(context.Context, *GetDecisionBulkRequest) (*GetDecisionBulkResponse, error)
 	GetDecisionByToken(context.Context, *GetDecisionByTokenRequest) (*GetDecisionByTokenResponse, error)
-	GetDecisionBulkByToken(context.Context, *GetDecisionBulkByTokenRequest) (*GetDecisionBulkByTokenResponse, error)
 	GetEntitlements(context.Context, *GetEntitlementsRequest) (*GetEntitlementsResponse, error)
 	mustEmbedUnimplementedAuthorizationServiceServer()
 }
@@ -109,14 +109,14 @@ type UnimplementedAuthorizationServiceServer struct {
 func (UnimplementedAuthorizationServiceServer) GetDecision(context.Context, *GetDecisionRequest) (*GetDecisionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDecision not implemented")
 }
+func (UnimplementedAuthorizationServiceServer) GetDecisionMultiResource(context.Context, *GetDecisionMultiResourceRequest) (*GetDecisionMultiResourceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDecisionMultiResource not implemented")
+}
 func (UnimplementedAuthorizationServiceServer) GetDecisionBulk(context.Context, *GetDecisionBulkRequest) (*GetDecisionBulkResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDecisionBulk not implemented")
 }
 func (UnimplementedAuthorizationServiceServer) GetDecisionByToken(context.Context, *GetDecisionByTokenRequest) (*GetDecisionByTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDecisionByToken not implemented")
-}
-func (UnimplementedAuthorizationServiceServer) GetDecisionBulkByToken(context.Context, *GetDecisionBulkByTokenRequest) (*GetDecisionBulkByTokenResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetDecisionBulkByToken not implemented")
 }
 func (UnimplementedAuthorizationServiceServer) GetEntitlements(context.Context, *GetEntitlementsRequest) (*GetEntitlementsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEntitlements not implemented")
@@ -148,6 +148,24 @@ func _AuthorizationService_GetDecision_Handler(srv interface{}, ctx context.Cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AuthorizationServiceServer).GetDecision(ctx, req.(*GetDecisionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthorizationService_GetDecisionMultiResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDecisionMultiResourceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthorizationServiceServer).GetDecisionMultiResource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthorizationService_GetDecisionMultiResource_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthorizationServiceServer).GetDecisionMultiResource(ctx, req.(*GetDecisionMultiResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -188,24 +206,6 @@ func _AuthorizationService_GetDecisionByToken_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthorizationService_GetDecisionBulkByToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetDecisionBulkByTokenRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthorizationServiceServer).GetDecisionBulkByToken(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuthorizationService_GetDecisionBulkByToken_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthorizationServiceServer).GetDecisionBulkByToken(ctx, req.(*GetDecisionBulkByTokenRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _AuthorizationService_GetEntitlements_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetEntitlementsRequest)
 	if err := dec(in); err != nil {
@@ -236,16 +236,16 @@ var AuthorizationService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AuthorizationService_GetDecision_Handler,
 		},
 		{
+			MethodName: "GetDecisionMultiResource",
+			Handler:    _AuthorizationService_GetDecisionMultiResource_Handler,
+		},
+		{
 			MethodName: "GetDecisionBulk",
 			Handler:    _AuthorizationService_GetDecisionBulk_Handler,
 		},
 		{
 			MethodName: "GetDecisionByToken",
 			Handler:    _AuthorizationService_GetDecisionByToken_Handler,
-		},
-		{
-			MethodName: "GetDecisionBulkByToken",
-			Handler:    _AuthorizationService_GetDecisionBulkByToken_Handler,
 		},
 		{
 			MethodName: "GetEntitlements",

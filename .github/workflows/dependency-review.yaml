@@ -1,0 +1,92 @@
+# Config documentation: https://github.com/actions/dependency-review-action?tab=readme-ov-file#configuration
+name: 'Dependency Review'
+on:
+  pull_request: {}
+  merge_group:
+  workflow_call:
+    inputs:
+      fail-on-severity:
+        description: "Minimum severity to fail job."
+        default: "low"
+        required: false
+        type: string
+      base-ref:
+        description: "Base ref for building diff."
+        default: ""
+        required: false
+        type: string
+      head-ref:
+        description: "Head ref for building diff."
+        default: ""
+        required: false
+        type: string
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: "Skipping on merge queue event"
+        if: ${{ github.event_name == 'merge_group' }}
+        run: |
+          echo "Skipping on merge queue event"
+
+      - name: Checkout
+        if: ${{ github.event_name != 'merge_group' }}
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: 'Dependency Review'
+        if: ${{ github.event_name != 'merge_group' }}
+        uses: actions/dependency-review-action@3b139cfc5fae8b618d3eae3675e383bb1769c019 # v4.5.0
+        with:
+          fail-on-severity: ${{ inputs.fail-on-severity }}
+          deny-licenses: >
+            GPL-2.0,
+            AGPL-1.0,
+            AGPL-1.0-or-later,
+            AGPL-1.0-only,
+            AGPL-3.0,
+            AGPL-3.0-only,
+            AGPL-3.0-or-later,
+            GPL-1.0,
+            GPL-1.0+,
+            GPL-1.0-only,
+            GPL-1.0-or-later,
+            CNRI-Python-GPL-Compatible,
+            GPL-2.0+,
+            GPL-2.0-only,
+            GPL-2.0-or-later,
+            GPL-2.0-with-GCC-exception,
+            GPL-2.0-with-autoconf-exception,
+            GPL-2.0-with-bison-exception,
+            GPL-2.0-with-classpath-exception,
+            GPL-2.0-with-font-exception,
+            GPL-3.0,
+            GPL-3.0+,
+            GPL-3.0-only,
+            GPL-3.0-or-later,
+            GPL-3.0-with-GCC-exception,
+            GPL-3.0-with-autoconf-exception,
+            LGPL-2.0,
+            LGPL-2.0+,
+            LGPL-2.0-only,
+            LGPL-2.0-or-later,
+            LGPL-2.1,
+            LGPL-2.1+,
+            LGPL-2.1-only,
+            LGPL-2.1-or-later,
+            LGPL-3.0,
+            LGPL-3.0+,
+            LGPL-3.0-only,
+            LGPL-3.0-or-later,
+            LGPLLR,
+            NGPL
+          comment-summary-in-pr: on-failure
+          base-ref: ${{ inputs.base-ref || github.event.pull_request.base.sha || github.event.repository.default_branch }}
+          head-ref: ${{ inputs.head-ref || github.event.pull_request.head.sha || github.ref }}

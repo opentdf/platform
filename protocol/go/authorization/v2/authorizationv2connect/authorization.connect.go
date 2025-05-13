@@ -36,15 +36,15 @@ const (
 	// AuthorizationServiceGetDecisionProcedure is the fully-qualified name of the
 	// AuthorizationService's GetDecision RPC.
 	AuthorizationServiceGetDecisionProcedure = "/authorization.v2.AuthorizationService/GetDecision"
+	// AuthorizationServiceGetDecisionMultiResourceProcedure is the fully-qualified name of the
+	// AuthorizationService's GetDecisionMultiResource RPC.
+	AuthorizationServiceGetDecisionMultiResourceProcedure = "/authorization.v2.AuthorizationService/GetDecisionMultiResource"
 	// AuthorizationServiceGetDecisionBulkProcedure is the fully-qualified name of the
 	// AuthorizationService's GetDecisionBulk RPC.
 	AuthorizationServiceGetDecisionBulkProcedure = "/authorization.v2.AuthorizationService/GetDecisionBulk"
 	// AuthorizationServiceGetDecisionByTokenProcedure is the fully-qualified name of the
 	// AuthorizationService's GetDecisionByToken RPC.
 	AuthorizationServiceGetDecisionByTokenProcedure = "/authorization.v2.AuthorizationService/GetDecisionByToken"
-	// AuthorizationServiceGetDecisionBulkByTokenProcedure is the fully-qualified name of the
-	// AuthorizationService's GetDecisionBulkByToken RPC.
-	AuthorizationServiceGetDecisionBulkByTokenProcedure = "/authorization.v2.AuthorizationService/GetDecisionBulkByToken"
 	// AuthorizationServiceGetEntitlementsProcedure is the fully-qualified name of the
 	// AuthorizationService's GetEntitlements RPC.
 	AuthorizationServiceGetEntitlementsProcedure = "/authorization.v2.AuthorizationService/GetEntitlements"
@@ -52,20 +52,20 @@ const (
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	authorizationServiceServiceDescriptor                      = v2.File_authorization_v2_authorization_proto.Services().ByName("AuthorizationService")
-	authorizationServiceGetDecisionMethodDescriptor            = authorizationServiceServiceDescriptor.Methods().ByName("GetDecision")
-	authorizationServiceGetDecisionBulkMethodDescriptor        = authorizationServiceServiceDescriptor.Methods().ByName("GetDecisionBulk")
-	authorizationServiceGetDecisionByTokenMethodDescriptor     = authorizationServiceServiceDescriptor.Methods().ByName("GetDecisionByToken")
-	authorizationServiceGetDecisionBulkByTokenMethodDescriptor = authorizationServiceServiceDescriptor.Methods().ByName("GetDecisionBulkByToken")
-	authorizationServiceGetEntitlementsMethodDescriptor        = authorizationServiceServiceDescriptor.Methods().ByName("GetEntitlements")
+	authorizationServiceServiceDescriptor                        = v2.File_authorization_v2_authorization_proto.Services().ByName("AuthorizationService")
+	authorizationServiceGetDecisionMethodDescriptor              = authorizationServiceServiceDescriptor.Methods().ByName("GetDecision")
+	authorizationServiceGetDecisionMultiResourceMethodDescriptor = authorizationServiceServiceDescriptor.Methods().ByName("GetDecisionMultiResource")
+	authorizationServiceGetDecisionBulkMethodDescriptor          = authorizationServiceServiceDescriptor.Methods().ByName("GetDecisionBulk")
+	authorizationServiceGetDecisionByTokenMethodDescriptor       = authorizationServiceServiceDescriptor.Methods().ByName("GetDecisionByToken")
+	authorizationServiceGetEntitlementsMethodDescriptor          = authorizationServiceServiceDescriptor.Methods().ByName("GetEntitlements")
 )
 
 // AuthorizationServiceClient is a client for the authorization.v2.AuthorizationService service.
 type AuthorizationServiceClient interface {
 	GetDecision(context.Context, *connect.Request[v2.GetDecisionRequest]) (*connect.Response[v2.GetDecisionResponse], error)
+	GetDecisionMultiResource(context.Context, *connect.Request[v2.GetDecisionMultiResourceRequest]) (*connect.Response[v2.GetDecisionMultiResourceResponse], error)
 	GetDecisionBulk(context.Context, *connect.Request[v2.GetDecisionBulkRequest]) (*connect.Response[v2.GetDecisionBulkResponse], error)
 	GetDecisionByToken(context.Context, *connect.Request[v2.GetDecisionByTokenRequest]) (*connect.Response[v2.GetDecisionByTokenResponse], error)
-	GetDecisionBulkByToken(context.Context, *connect.Request[v2.GetDecisionBulkByTokenRequest]) (*connect.Response[v2.GetDecisionBulkByTokenResponse], error)
 	GetEntitlements(context.Context, *connect.Request[v2.GetEntitlementsRequest]) (*connect.Response[v2.GetEntitlementsResponse], error)
 }
 
@@ -85,6 +85,12 @@ func NewAuthorizationServiceClient(httpClient connect.HTTPClient, baseURL string
 			connect.WithSchema(authorizationServiceGetDecisionMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		getDecisionMultiResource: connect.NewClient[v2.GetDecisionMultiResourceRequest, v2.GetDecisionMultiResourceResponse](
+			httpClient,
+			baseURL+AuthorizationServiceGetDecisionMultiResourceProcedure,
+			connect.WithSchema(authorizationServiceGetDecisionMultiResourceMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 		getDecisionBulk: connect.NewClient[v2.GetDecisionBulkRequest, v2.GetDecisionBulkResponse](
 			httpClient,
 			baseURL+AuthorizationServiceGetDecisionBulkProcedure,
@@ -95,12 +101,6 @@ func NewAuthorizationServiceClient(httpClient connect.HTTPClient, baseURL string
 			httpClient,
 			baseURL+AuthorizationServiceGetDecisionByTokenProcedure,
 			connect.WithSchema(authorizationServiceGetDecisionByTokenMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
-		getDecisionBulkByToken: connect.NewClient[v2.GetDecisionBulkByTokenRequest, v2.GetDecisionBulkByTokenResponse](
-			httpClient,
-			baseURL+AuthorizationServiceGetDecisionBulkByTokenProcedure,
-			connect.WithSchema(authorizationServiceGetDecisionBulkByTokenMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getEntitlements: connect.NewClient[v2.GetEntitlementsRequest, v2.GetEntitlementsResponse](
@@ -114,16 +114,21 @@ func NewAuthorizationServiceClient(httpClient connect.HTTPClient, baseURL string
 
 // authorizationServiceClient implements AuthorizationServiceClient.
 type authorizationServiceClient struct {
-	getDecision            *connect.Client[v2.GetDecisionRequest, v2.GetDecisionResponse]
-	getDecisionBulk        *connect.Client[v2.GetDecisionBulkRequest, v2.GetDecisionBulkResponse]
-	getDecisionByToken     *connect.Client[v2.GetDecisionByTokenRequest, v2.GetDecisionByTokenResponse]
-	getDecisionBulkByToken *connect.Client[v2.GetDecisionBulkByTokenRequest, v2.GetDecisionBulkByTokenResponse]
-	getEntitlements        *connect.Client[v2.GetEntitlementsRequest, v2.GetEntitlementsResponse]
+	getDecision              *connect.Client[v2.GetDecisionRequest, v2.GetDecisionResponse]
+	getDecisionMultiResource *connect.Client[v2.GetDecisionMultiResourceRequest, v2.GetDecisionMultiResourceResponse]
+	getDecisionBulk          *connect.Client[v2.GetDecisionBulkRequest, v2.GetDecisionBulkResponse]
+	getDecisionByToken       *connect.Client[v2.GetDecisionByTokenRequest, v2.GetDecisionByTokenResponse]
+	getEntitlements          *connect.Client[v2.GetEntitlementsRequest, v2.GetEntitlementsResponse]
 }
 
 // GetDecision calls authorization.v2.AuthorizationService.GetDecision.
 func (c *authorizationServiceClient) GetDecision(ctx context.Context, req *connect.Request[v2.GetDecisionRequest]) (*connect.Response[v2.GetDecisionResponse], error) {
 	return c.getDecision.CallUnary(ctx, req)
+}
+
+// GetDecisionMultiResource calls authorization.v2.AuthorizationService.GetDecisionMultiResource.
+func (c *authorizationServiceClient) GetDecisionMultiResource(ctx context.Context, req *connect.Request[v2.GetDecisionMultiResourceRequest]) (*connect.Response[v2.GetDecisionMultiResourceResponse], error) {
+	return c.getDecisionMultiResource.CallUnary(ctx, req)
 }
 
 // GetDecisionBulk calls authorization.v2.AuthorizationService.GetDecisionBulk.
@@ -136,11 +141,6 @@ func (c *authorizationServiceClient) GetDecisionByToken(ctx context.Context, req
 	return c.getDecisionByToken.CallUnary(ctx, req)
 }
 
-// GetDecisionBulkByToken calls authorization.v2.AuthorizationService.GetDecisionBulkByToken.
-func (c *authorizationServiceClient) GetDecisionBulkByToken(ctx context.Context, req *connect.Request[v2.GetDecisionBulkByTokenRequest]) (*connect.Response[v2.GetDecisionBulkByTokenResponse], error) {
-	return c.getDecisionBulkByToken.CallUnary(ctx, req)
-}
-
 // GetEntitlements calls authorization.v2.AuthorizationService.GetEntitlements.
 func (c *authorizationServiceClient) GetEntitlements(ctx context.Context, req *connect.Request[v2.GetEntitlementsRequest]) (*connect.Response[v2.GetEntitlementsResponse], error) {
 	return c.getEntitlements.CallUnary(ctx, req)
@@ -150,9 +150,9 @@ func (c *authorizationServiceClient) GetEntitlements(ctx context.Context, req *c
 // service.
 type AuthorizationServiceHandler interface {
 	GetDecision(context.Context, *connect.Request[v2.GetDecisionRequest]) (*connect.Response[v2.GetDecisionResponse], error)
+	GetDecisionMultiResource(context.Context, *connect.Request[v2.GetDecisionMultiResourceRequest]) (*connect.Response[v2.GetDecisionMultiResourceResponse], error)
 	GetDecisionBulk(context.Context, *connect.Request[v2.GetDecisionBulkRequest]) (*connect.Response[v2.GetDecisionBulkResponse], error)
 	GetDecisionByToken(context.Context, *connect.Request[v2.GetDecisionByTokenRequest]) (*connect.Response[v2.GetDecisionByTokenResponse], error)
-	GetDecisionBulkByToken(context.Context, *connect.Request[v2.GetDecisionBulkByTokenRequest]) (*connect.Response[v2.GetDecisionBulkByTokenResponse], error)
 	GetEntitlements(context.Context, *connect.Request[v2.GetEntitlementsRequest]) (*connect.Response[v2.GetEntitlementsResponse], error)
 }
 
@@ -168,6 +168,12 @@ func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...con
 		connect.WithSchema(authorizationServiceGetDecisionMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	authorizationServiceGetDecisionMultiResourceHandler := connect.NewUnaryHandler(
+		AuthorizationServiceGetDecisionMultiResourceProcedure,
+		svc.GetDecisionMultiResource,
+		connect.WithSchema(authorizationServiceGetDecisionMultiResourceMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	authorizationServiceGetDecisionBulkHandler := connect.NewUnaryHandler(
 		AuthorizationServiceGetDecisionBulkProcedure,
 		svc.GetDecisionBulk,
@@ -180,12 +186,6 @@ func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...con
 		connect.WithSchema(authorizationServiceGetDecisionByTokenMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	authorizationServiceGetDecisionBulkByTokenHandler := connect.NewUnaryHandler(
-		AuthorizationServiceGetDecisionBulkByTokenProcedure,
-		svc.GetDecisionBulkByToken,
-		connect.WithSchema(authorizationServiceGetDecisionBulkByTokenMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
 	authorizationServiceGetEntitlementsHandler := connect.NewUnaryHandler(
 		AuthorizationServiceGetEntitlementsProcedure,
 		svc.GetEntitlements,
@@ -196,12 +196,12 @@ func NewAuthorizationServiceHandler(svc AuthorizationServiceHandler, opts ...con
 		switch r.URL.Path {
 		case AuthorizationServiceGetDecisionProcedure:
 			authorizationServiceGetDecisionHandler.ServeHTTP(w, r)
+		case AuthorizationServiceGetDecisionMultiResourceProcedure:
+			authorizationServiceGetDecisionMultiResourceHandler.ServeHTTP(w, r)
 		case AuthorizationServiceGetDecisionBulkProcedure:
 			authorizationServiceGetDecisionBulkHandler.ServeHTTP(w, r)
 		case AuthorizationServiceGetDecisionByTokenProcedure:
 			authorizationServiceGetDecisionByTokenHandler.ServeHTTP(w, r)
-		case AuthorizationServiceGetDecisionBulkByTokenProcedure:
-			authorizationServiceGetDecisionBulkByTokenHandler.ServeHTTP(w, r)
 		case AuthorizationServiceGetEntitlementsProcedure:
 			authorizationServiceGetEntitlementsHandler.ServeHTTP(w, r)
 		default:
@@ -217,16 +217,16 @@ func (UnimplementedAuthorizationServiceHandler) GetDecision(context.Context, *co
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("authorization.v2.AuthorizationService.GetDecision is not implemented"))
 }
 
+func (UnimplementedAuthorizationServiceHandler) GetDecisionMultiResource(context.Context, *connect.Request[v2.GetDecisionMultiResourceRequest]) (*connect.Response[v2.GetDecisionMultiResourceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("authorization.v2.AuthorizationService.GetDecisionMultiResource is not implemented"))
+}
+
 func (UnimplementedAuthorizationServiceHandler) GetDecisionBulk(context.Context, *connect.Request[v2.GetDecisionBulkRequest]) (*connect.Response[v2.GetDecisionBulkResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("authorization.v2.AuthorizationService.GetDecisionBulk is not implemented"))
 }
 
 func (UnimplementedAuthorizationServiceHandler) GetDecisionByToken(context.Context, *connect.Request[v2.GetDecisionByTokenRequest]) (*connect.Response[v2.GetDecisionByTokenResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("authorization.v2.AuthorizationService.GetDecisionByToken is not implemented"))
-}
-
-func (UnimplementedAuthorizationServiceHandler) GetDecisionBulkByToken(context.Context, *connect.Request[v2.GetDecisionBulkByTokenRequest]) (*connect.Response[v2.GetDecisionBulkByTokenResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("authorization.v2.AuthorizationService.GetDecisionBulkByToken is not implemented"))
 }
 
 func (UnimplementedAuthorizationServiceHandler) GetEntitlements(context.Context, *connect.Request[v2.GetEntitlementsRequest]) (*connect.Response[v2.GetEntitlementsResponse], error) {

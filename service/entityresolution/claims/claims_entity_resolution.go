@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -114,7 +115,7 @@ func processV1Entity(entity *authorization.Entity, idx int, logger *logger.Logge
 	// Ensure ID is populated
 	originalID := entity.GetId()
 	if originalID == "" {
-		originalID = auth.EntityIDPrefix + fmt.Sprint(idx)
+		originalID = auth.EntityIDPrefix + strconv.Itoa(idx)
 	}
 
 	return &entityresolution.EntityRepresentation{

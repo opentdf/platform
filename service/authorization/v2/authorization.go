@@ -10,11 +10,14 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	authzConnect "github.com/opentdf/platform/protocol/go/authorization/v2/authorizationv2connect"
+	ers "github.com/opentdf/platform/protocol/go/entityresolution"
 	otdf "github.com/opentdf/platform/sdk"
 	access "github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -238,6 +241,17 @@ func (as *AuthorizationService) GetDecisionBulk(ctx context.Context, req *connec
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionBulk not implemented"))
 }
 func (as *AuthorizationService) GetDecisionByToken(ctx context.Context, req *connect.Request[authzV2.GetDecisionByTokenRequest]) (*connect.Response[authzV2.GetDecisionByTokenResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionByToken not implemented"))
-}
+	// Extract trace context from the incoming request
+	propagator := otel.GetTextMapPropagator()
+	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
+	ctx, span := as.Tracer.Start(ctx, "GetDecisionsByToken")
+	defer span.End()
+
+	convertTokenRequest := &ers.CreateEntityChainFromJwtRequest{Tokens: []*authzV2.Token{req.Msg.GetToken()}}
+
+	entityChainFromJWT, err := as.sdk.EntityResoution.CreateEntityChainFromJwt(ctx, convertTokenRequest)
+}
+func (as *AuthorizationService) GetDecisionByTokenMultiResource(ctx context.Context, req *connect.Request[authzV2.GetDecisionByTokenMultiResourceRequest]) (*connect.Response[authzV2.GetDecisionByTokenMultiResourceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionByTokenMultiResource not implemented"))
+}

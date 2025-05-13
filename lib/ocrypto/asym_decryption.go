@@ -26,6 +26,9 @@ type AsymDecryption struct {
 type PrivateKeyDecryptor interface {
 	// Decrypt decrypts ciphertext with private key.
 	Decrypt(data []byte) ([]byte, error)
+
+	// Gets the public key
+	PublicKey() PublicKeyEncryptor
 }
 
 // FromPrivatePEM creates and returns a new AsymDecryption.
@@ -93,6 +96,14 @@ func NewAsymDecryption(privateKeyInPem string) (AsymDecryption, error) {
 	}
 }
 
+func (asymDecryption AsymDecryption) PublicKey() PublicKeyEncryptor {
+	publicKey, ok := asymDecryption.PrivateKey.Public().(*rsa.PublicKey)
+	if !ok {
+		return nil
+	}
+	return AsymEncryption{publicKey}
+}
+
 // Decrypt decrypts ciphertext with private key.
 func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 	if asymDecryption.PrivateKey == nil {
@@ -126,6 +137,18 @@ func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
 
 func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, error) {
 	return ECDecryptor{sk, salt, info}, nil
+}
+
+func (e ECDecryptor) PublicKey() PublicKeyEncryptor {
+	publicKey, ok := e.sk.Public().(*ecdh.PublicKey)
+	if !ok {
+		return nil
+	}
+	ecEncryptor, err := NewECIES(publicKey, e.salt, e.info)
+	if err != nil {
+		return nil
+	}
+	return ecEncryptor
 }
 
 func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {

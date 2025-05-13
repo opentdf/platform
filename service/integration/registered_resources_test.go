@@ -573,11 +573,11 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_With_Actio
 		Value:      "test_create_res_value_action_attr_values",
 		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
 			{
-				ActionIdentifier: &registeredresources.ActionAttributeValue_Name{
-					Name: actions.ActionNameCreate,
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameCreate,
 				},
-				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_Fqn{
-					Fqn: "https://example.com/attr/attr1/value/value1",
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
 				},
 			},
 		},
@@ -640,8 +640,8 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvali
 					ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
 						ActionId: invalidID,
 					},
-					AttributeValueIdentifier: &registeredresources.ActionAttributeValue_Fqn{
-						Fqn: "https://example.com/attr/attr1/value/value1",
+					AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+						AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
 					},
 				},
 			},
@@ -651,11 +651,11 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvali
 			name: "Invalid Action Name",
 			actionAttrValues: []*registeredresources.ActionAttributeValue{
 				{
-					ActionIdentifier: &registeredresources.ActionAttributeValue_Name{
-						Name: "invalid_action_name",
+					ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+						ActionName: "invalid_action_name",
 					},
-					AttributeValueIdentifier: &registeredresources.ActionAttributeValue_Fqn{
-						Fqn: "https://example.com/attr/attr1/value/value1",
+					AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+						AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
 					},
 				},
 			},
@@ -665,8 +665,8 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvali
 			name: "Invalid Attribute Value ID",
 			actionAttrValues: []*registeredresources.ActionAttributeValue{
 				{
-					ActionIdentifier: &registeredresources.ActionAttributeValue_Name{
-						Name: actions.ActionNameCreate,
+					ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+						ActionName: actions.ActionNameCreate,
 					},
 					AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
 						AttributeValueId: invalidID,
@@ -679,11 +679,11 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvali
 			name: "Invalid Attribute Value FQN",
 			actionAttrValues: []*registeredresources.ActionAttributeValue{
 				{
-					ActionIdentifier: &registeredresources.ActionAttributeValue_Name{
-						Name: actions.ActionNameCreate,
+					ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+						ActionName: actions.ActionNameCreate,
 					},
-					AttributeValueIdentifier: &registeredresources.ActionAttributeValue_Fqn{
-						Fqn: "https://example.com/attr/does_not_exist/value/invalid",
+					AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+						AttributeValueFqn: "https://example.com/attr/does_not_exist/value/invalid",
 					},
 				},
 			},
@@ -1064,11 +1064,11 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
 			{
-				ActionIdentifier: &registeredresources.ActionAttributeValue_Name{
-					Name: actions.ActionNameCreate,
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameCreate,
 				},
-				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_Fqn{
-					Fqn: "https://example.com/attr/attr1/value/value1",
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
 				},
 			},
 		},
@@ -1186,11 +1186,11 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_Succeeds()
 		Value:      "value",
 		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
 			{
-				ActionIdentifier: &registeredresources.ActionAttributeValue_Name{
-					Name: actions.ActionNameCreate,
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameCreate,
 				},
-				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_Fqn{
-					Fqn: "https://example.com/attr/attr1/value/value1",
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
 				},
 			},
 		},

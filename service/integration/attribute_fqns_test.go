@@ -1636,6 +1636,108 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns(
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
+func (s *AttributeFqnSuite) TestGetAttributeByValueFqns_KAS_Keys_Returned() {
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	fqn := "https://keys.com/attr/kas-key/value/key1"
+
+	kasReg, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, kasKey.KeyAccessServerID)
+	s.Require().NoError(err)
+	s.NotNil(kasReg)
+
+	// Create New Namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "keys.com"})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+
+	// Create Attribute
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "kas-key",
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"key1"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr)
+
+	// Assign Kas Key to namespace
+	nsKey, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: ns.GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(nsKey)
+
+	// Get Attribute By Value Fqns. Check NS for key
+	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn},
+	})
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.Len(v, 1)
+
+	for _, attr := range v {
+		s.Len(attr.GetAttribute().GetNamespace().GetKasKeys(), 1)
+		s.Empty(attr.GetAttribute().GetKasKeys())
+		s.Empty(attr.GetValue().GetKasKeys())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasUri())
+	}
+
+	// Assign Kas Key to Attribute
+	attrKey, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attr.GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrKey)
+
+	// Get Attribute By Value Fqns. Check NS and Attribute for Key
+	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn},
+	})
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.Len(v, 1)
+
+	for _, attr := range v {
+		s.Len(attr.GetAttribute().GetNamespace().GetKasKeys(), 1)
+		s.Len(attr.GetAttribute().GetKasKeys(), 1)
+		s.Empty(attr.GetValue().GetKasKeys())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasUri())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetKasKeys()[0].GetKasUri())
+	}
+
+	// Assign Kas Key to Value
+	valueKey, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
+		ValueId: attr.GetValues()[0].GetId(),
+		KeyId:   kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(valueKey)
+
+	// Get Attribute By Value Fqns. Check NS ,Attribute and Value for Key
+	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn},
+	})
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.Len(v, 1)
+
+	for _, attr := range v {
+		s.Len(attr.GetAttribute().GetNamespace().GetKasKeys(), 1)
+		s.Len(attr.GetAttribute().GetKasKeys(), 1)
+		s.Len(attr.GetValue().GetKasKeys(), 1)
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasUri())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetKasKeys()[0].GetKasUri())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetValue().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetValue().GetKasKeys()[0].GetKasUri())
+	}
+}
+
 func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 	// create a new namespace
 	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{

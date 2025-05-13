@@ -1022,6 +1022,13 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_Succeeds() {
 	s.Empty(gotAttrValue.GetKasKeys()[0].GetKey().GetProviderConfig())
 	s.Empty(gotAttrValue.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 
+	// Get the kas server information associated with the key
+	kasReg, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, kasKey.KeyAccessServerID)
+	s.Require().NoError(err)
+	s.NotNil(kasReg)
+
+	s.Equal(kasReg.GetUri(), gotAttrValue.GetKasKeys()[0].GetKasUri())
+
 	resp, err = s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{
 		ValueId: gotAttrValue.GetId(),
 		KeyId:   gotAttrValue.GetKasKeys()[0].GetKey().GetId(),

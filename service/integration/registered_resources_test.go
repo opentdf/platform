@@ -831,7 +831,7 @@ func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQNs_Valid_S
 	s.Equal(existingResValue2.ID, foundFQN2.GetId())
 	s.Equal(existingResValue2.Value, foundFQN2.GetValue())
 	s.Equal(existingRes.ID, foundFQN2.GetResource().GetId())
-	s.Len(foundFQN2.GetActionAttributeValues(), 0)
+	s.Empty(foundFQN2.GetActionAttributeValues())
 }
 
 func (s *RegisteredResourcesSuite) TestGetRegisteredResourceValuesByFQNs_SomeInvalid_Fails() {
@@ -897,7 +897,7 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResourceValues_NoPaginatio
 			metadata := r.GetMetadata()
 			s.False(metadata.GetCreatedAt().AsTime().IsZero())
 			s.False(metadata.GetUpdatedAt().AsTime().IsZero())
-			s.Len(r.GetActionAttributeValues(), 0)
+			s.Empty(r.GetActionAttributeValues())
 		}
 	}
 
@@ -1052,7 +1052,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.Require().NotNil(got)
 	s.Equal(created.GetValue(), got.GetValue())
 	s.Equal(labels, got.GetMetadata().GetLabels())
-	s.Len(got.GetActionAttributeValues(), 0)
+	s.Empty(got.GetActionAttributeValues())
 
 	// update with changes
 	updated, err = s.db.PolicyClient.UpdateRegisteredResourceValue(s.ctx, &registeredresources.UpdateRegisteredResourceValueRequest{

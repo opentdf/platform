@@ -936,7 +936,7 @@ func (s *RegisteredResourcesSuite) TestUpdateRegisteredResourceValue_Invalid_Fai
 		{
 			name: "Invalid Action Attribute Values (invalid Action Name)",
 			req: &registeredresources.UpdateRegisteredResourceValueRequest{
-				Id: validUUID,				
+				Id: validUUID,
 				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
 					{
 						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{

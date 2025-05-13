@@ -255,7 +255,7 @@ func (c PolicyDBClient) CreateRegisteredResourceValue(ctx context.Context, r *re
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	_, err = c.createRegisteredResourceActionAttributeValues(ctx, createdID, r.GetActionAttributeValues())
+	err = c.createRegisteredResourceActionAttributeValues(ctx, createdID, r.GetActionAttributeValues())
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -435,7 +435,7 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	_, err = c.createRegisteredResourceActionAttributeValues(ctx, id, r.GetActionAttributeValues())
+	err = c.createRegisteredResourceActionAttributeValues(ctx, id, r.GetActionAttributeValues())
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -465,9 +465,9 @@ func (c PolicyDBClient) DeleteRegisteredResourceValue(ctx context.Context, id st
 /// Registered Resource Action Attribute Values
 ///
 
-func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx context.Context, registeredResourceValueID string, actionAttrValues []*registeredresources.ActionAttributeValue) (int64, error) {
+func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx context.Context, registeredResourceValueID string, actionAttrValues []*registeredresources.ActionAttributeValue) error {
 	if len(actionAttrValues) == 0 {
-		return 0, nil
+		return nil
 	}
 
 	createActionAttributeValueParams := make([]createRegisteredResourceActionAttributeValuesParams, len(actionAttrValues))
@@ -481,11 +481,11 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 				Name: pgtypeText(strings.ToLower(identifier.ActionName)),
 			})
 			if err != nil {
-				return 0, db.WrapIfKnownInvalidQueryErr(err)
+				return db.WrapIfKnownInvalidQueryErr(err)
 			}
 			actionID = a.ID
 		default:
-			return 0, db.ErrSelectIdentifierInvalid
+			return db.ErrSelectIdentifierInvalid
 		}
 
 		switch identifier := aav.GetAttributeValueIdentifier().(type) {
@@ -496,11 +496,11 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 				Fqn: pgtypeText(strings.ToLower(identifier.AttributeValueFqn)),
 			})
 			if err != nil {
-				return 0, db.WrapIfKnownInvalidQueryErr(err)
+				return db.WrapIfKnownInvalidQueryErr(err)
 			}
 			attributeValueID = av.ID
 		default:
-			return 0, db.ErrSelectIdentifierInvalid
+			return db.ErrSelectIdentifierInvalid
 		}
 
 		createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValuesParams{
@@ -510,5 +510,13 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		}
 	}
 
-	return c.Queries.createRegisteredResourceActionAttributeValues(ctx, createActionAttributeValueParams)
+	count, err := c.Queries.createRegisteredResourceActionAttributeValues(ctx, createActionAttributeValueParams)
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == int64(len(actionAttrValues)) {
+		return fmt.Errorf("failed to create all action attribute values, expected %d, got %d", len(actionAttrValues), count)
+	}
+
+	return nil
 }

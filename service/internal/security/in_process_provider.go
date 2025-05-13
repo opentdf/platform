@@ -170,7 +170,7 @@ func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error)
 	if k.algorithm == AlgorithmECP256R1 {
 		return k.cryptoProvider.ECCertificate(kid)
 	}
-	return "", fmt.Errorf("certificates only available for EC keys")
+	return "", errors.New("certificates only available for EC keys")
 }
 
 // NewSecurityProviderAdapter creates a new adapter that implements SecurityProvider using a CryptoProvider

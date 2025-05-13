@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -113,7 +112,7 @@ func (s *AttributeFqnSuite) TestCreateAttributeValue() {
 // Test Get one attribute by the FQN of one of its values
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 	fqnFixtureKey := "example.com/attr/attr1/value/value1"
-	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+	fullFqn := "https://" + fqnFixtureKey
 	valueFixture := s.f.GetAttributeValueKey(fqnFixtureKey)
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
@@ -139,7 +138,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 // Test Get one attribute by the FQN of one of its values
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithCasingNormalized() {
 	fqnFixtureKey := "example.com/attr/attr1/value/value1"
-	fullFqn := strings.ToUpper(fmt.Sprintf("https://%s", fqnFixtureKey))
+	fullFqn := strings.ToUpper("https://" + fqnFixtureKey)
 	valueFixture := s.f.GetAttributeValueKey(fqnFixtureKey)
 
 	// assign a KAS grant to the value
@@ -194,7 +193,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithCasingNormalized() {
 // Test Get one attribute by the FQN of the attribute definition
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrFqn() {
 	fqnFixtureKey := "example.net/attr/attr1"
-	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+	fullFqn := "https://" + fqnFixtureKey
 	attrFixture := s.f.GetAttributeKey(fqnFixtureKey)
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
@@ -206,7 +205,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrFqn() {
 	// the attribute should match the fixture
 	s.Equal(attr.GetId(), attrFixture.ID)
 	s.Equal(attr.GetName(), attrFixture.Name)
-	s.Equal(attr.GetRule().String(), fmt.Sprintf("ATTRIBUTE_RULE_TYPE_ENUM_%s", attrFixture.Rule))
+	s.Equal(attr.GetRule().String(), "ATTRIBUTE_RULE_TYPE_ENUM_"+attrFixture.Rule)
 	s.Equal(attr.GetActive().GetValue(), attrFixture.Active)
 	s.Empty(attr.GetKasKeys())
 }
@@ -253,9 +252,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeDefKeysAssociated
 	s.Len(attr.GetKasKeys(), 1)
 	s.Equal(kasKey.KeyAccessServerID, attr.GetKasKeys()[0].GetKasId())
 	s.Equal(kasKey.ID, attr.GetKasKeys()[0].GetKey().GetId())
-	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
-	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, attr.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), attr.GetKasKeys()[0])
 	s.Empty(attr.GetKasKeys()[0].GetKey().GetProviderConfig())
 	s.Empty(attr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 
@@ -278,7 +275,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeDefKeysAssociated
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeValueKeysAssociated() {
 	fqnFixtureKey := "example.net/attr/attr1"
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
-	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+	fullFqn := "https://" + fqnFixtureKey
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
 	s.Require().NoError(err)
@@ -318,9 +315,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeValueKeysAssociat
 		s.Len(v.GetKasKeys(), 1)
 		s.Equal(kasKey.KeyAccessServerID, v.GetKasKeys()[0].GetKasId())
 		s.Equal(kasKey.ID, v.GetKasKeys()[0].GetKey().GetId())
-		publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
-		s.Require().NoError(err)
-		s.Equal(publicKeyCtx, v.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+		validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), v.GetKasKeys()[0])
 		s.Empty(v.GetKasKeys()[0].GetKey().GetProviderConfig())
 		s.Empty(v.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 
@@ -335,7 +330,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeValueKeysAssociat
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedWithNamespace() {
 	fqnFixtureKey := "example.net/attr/attr1"
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
-	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+	fullFqn := "https://" + fqnFixtureKey
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
 	s.Require().NoError(err)
@@ -363,9 +358,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedWithNamespac
 	s.Len(attr.GetNamespace().GetKasKeys(), 1)
 	s.Equal(kasKey.KeyAccessServerID, attr.GetNamespace().GetKasKeys()[0].GetKasId())
 	s.Equal(kasKey.ID, attr.GetNamespace().GetKasKeys()[0].GetKey().GetId())
-	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
-	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, attr.GetNamespace().GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), attr.GetNamespace().GetKasKeys()[0])
 	s.Empty(attr.GetNamespace().GetKasKeys()[0].GetKey().GetProviderConfig())
 	s.Empty(attr.GetNamespace().GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 
@@ -381,8 +374,8 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedAttributes_M
 	fqnFixtureKeyTwo := "example.net/attr/attr2"
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
 	kasKey2 := s.f.GetKasRegistryServerKeys("kas_key_2")
-	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
-	fullFqn2 := fmt.Sprintf("https://%s", fqnFixtureKeyTwo)
+	fullFqn := "https://" + fqnFixtureKey
+	fullFqn2 := "https://" + fqnFixtureKeyTwo
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
 	s.Require().NoError(err)
@@ -417,9 +410,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedAttributes_M
 	s.Len(attr.GetKasKeys(), 1)
 	s.Equal(kasKey.KeyAccessServerID, attr.GetKasKeys()[0].GetKasId())
 	s.Equal(kasKey.ID, attr.GetKasKeys()[0].GetKey().GetId())
-	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
-	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, attr.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), attr.GetKasKeys()[0])
 	s.Empty(attr.GetKasKeys()[0].GetKey().GetProviderConfig())
 	s.Empty(attr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 
@@ -430,9 +421,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedAttributes_M
 	s.Len(attr.GetKasKeys(), 1)
 	s.Equal(kasKey2.KeyAccessServerID, attr.GetKasKeys()[0].GetKasId())
 	s.Equal(kasKey2.ID, attr.GetKasKeys()[0].GetKey().GetId())
-	publicKeyCtx, err = base64.StdEncoding.DecodeString(kasKey2.PublicKeyCtx)
-	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, attr.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey2.PublicKeyCtx), attr.GetKasKeys()[0])
 	s.Empty(attr.GetKasKeys()[0].GetKey().GetProviderConfig())
 	s.Empty(attr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 
@@ -887,8 +876,8 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_SameResultsWhetherAttrOrValueF
 
 	fqns := []string{
 		setup.attrFqn,
-		fmt.Sprintf("%s/value/value1", setup.attrFqn),
-		fmt.Sprintf("%s/value/value2", setup.attrFqn),
+		setup.attrFqn + "/value/value1",
+		setup.attrFqn + "/value/value2",
 	}
 
 	retrieved := make([]*policy.Attribute, len(fqns))
@@ -918,9 +907,9 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_AllIndividualFqnsSetOnResults(
 	s.True(strings.HasPrefix(got.GetFqn(), "https://"))
 	s.Contains(got.GetFqn(), ns)
 	s.Contains(got.GetFqn(), "attr/test_attr")
-	s.Equal(got.GetNamespace().GetFqn(), fmt.Sprintf("https://%s", ns))
-	s.Equal(got.GetValues()[0].GetFqn(), fmt.Sprintf("%s/value/value1", setup.attrFqn))
-	s.Equal(got.GetValues()[1].GetFqn(), fmt.Sprintf("%s/value/value2", setup.attrFqn))
+	s.Equal(got.GetNamespace().GetFqn(), "https://"+ns)
+	s.Equal(got.GetValues()[0].GetFqn(), setup.attrFqn+"/value/value1")
+	s.Equal(got.GetValues()[1].GetFqn(), setup.attrFqn+"/value/value2")
 }
 
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_ProperOnAllObjects() {
@@ -1645,6 +1634,108 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns(
 	s.Require().Error(err)
 	s.Nil(v)
 	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributeFqnSuite) TestGetAttributeByValueFqns_KAS_Keys_Returned() {
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	fqn := "https://keys.com/attr/kas-key/value/key1"
+
+	kasReg, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, kasKey.KeyAccessServerID)
+	s.Require().NoError(err)
+	s.NotNil(kasReg)
+
+	// Create New Namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "keys.com"})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+
+	// Create Attribute
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "kas-key",
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"key1"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr)
+
+	// Assign Kas Key to namespace
+	nsKey, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: ns.GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(nsKey)
+
+	// Get Attribute By Value Fqns. Check NS for key
+	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn},
+	})
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.Len(v, 1)
+
+	for _, attr := range v {
+		s.Len(attr.GetAttribute().GetNamespace().GetKasKeys(), 1)
+		s.Empty(attr.GetAttribute().GetKasKeys())
+		s.Empty(attr.GetValue().GetKasKeys())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasUri())
+	}
+
+	// Assign Kas Key to Attribute
+	attrKey, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attr.GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrKey)
+
+	// Get Attribute By Value Fqns. Check NS and Attribute for Key
+	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn},
+	})
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.Len(v, 1)
+
+	for _, attr := range v {
+		s.Len(attr.GetAttribute().GetNamespace().GetKasKeys(), 1)
+		s.Len(attr.GetAttribute().GetKasKeys(), 1)
+		s.Empty(attr.GetValue().GetKasKeys())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasUri())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetKasKeys()[0].GetKasUri())
+	}
+
+	// Assign Kas Key to Value
+	valueKey, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
+		ValueId: attr.GetValues()[0].GetId(),
+		KeyId:   kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(valueKey)
+
+	// Get Attribute By Value Fqns. Check NS ,Attribute and Value for Key
+	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn},
+	})
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.Len(v, 1)
+
+	for _, attr := range v {
+		s.Len(attr.GetAttribute().GetNamespace().GetKasKeys(), 1)
+		s.Len(attr.GetAttribute().GetKasKeys(), 1)
+		s.Len(attr.GetValue().GetKasKeys(), 1)
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasUri())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetKasKeys()[0].GetKasUri())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetValue().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetValue().GetKasKeys()[0].GetKasUri())
+	}
 }
 
 func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {

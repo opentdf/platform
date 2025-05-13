@@ -691,13 +691,13 @@
         "actionId": {
           "type": "string"
         },
-        "name": {
+        "actionName": {
           "type": "string"
         },
         "attributeValueId": {
           "type": "string"
         },
-        "fqn": {
+        "attributeValueFqn": {
           "type": "string"
         }
       }

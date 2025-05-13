@@ -131,7 +131,7 @@ message ActionAttributeValue {
       (buf.validate.field).string.uuid = true
     ];
 
-    string name = 2 [
+    string action_name = 2 [
       (buf.validate.field).string.max_len = 253,
       (buf.validate.field).cel = {
         id: "action_name_format"
@@ -143,11 +143,13 @@ message ActionAttributeValue {
 
   // Required
   oneof attribute_value_identifier {
+    option (buf.validate.oneof).required = true;
+
     string attribute_value_id = 3 [
       (buf.validate.field).string.uuid = true
     ];
 
-    string fqn = 4 [
+    string attribute_value_fqn = 4 [
       (buf.validate.field).string = {
         min_len : 1
         uri : true

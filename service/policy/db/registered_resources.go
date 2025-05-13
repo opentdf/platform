@@ -476,9 +476,9 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		switch identifier := aav.GetActionIdentifier().(type) {
 		case *registeredresources.ActionAttributeValue_ActionId:
 			actionID = identifier.ActionId
-		case *registeredresources.ActionAttributeValue_Name:
+		case *registeredresources.ActionAttributeValue_ActionName:
 			a, err := c.Queries.getAction(ctx, getActionParams{
-				Name: pgtypeText(strings.ToLower(identifier.Name)),
+				Name: pgtypeText(strings.ToLower(identifier.ActionName)),
 			})
 			if err != nil {
 				return 0, db.WrapIfKnownInvalidQueryErr(err)
@@ -491,9 +491,9 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		switch identifier := aav.GetAttributeValueIdentifier().(type) {
 		case *registeredresources.ActionAttributeValue_AttributeValueId:
 			attributeValueID = identifier.AttributeValueId
-		case *registeredresources.ActionAttributeValue_Fqn:
+		case *registeredresources.ActionAttributeValue_AttributeValueFqn:
 			av, err := c.Queries.GetAttributeValue(ctx, GetAttributeValueParams{
-				Fqn: pgtypeText(strings.ToLower(identifier.Fqn)),
+				Fqn: pgtypeText(strings.ToLower(identifier.AttributeValueFqn)),
 			})
 			if err != nil {
 				return 0, db.WrapIfKnownInvalidQueryErr(err)

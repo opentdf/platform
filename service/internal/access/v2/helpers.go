@@ -1,12 +1,15 @@
 package access
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/opentdf/platform/lib/identifier"
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/service/logger"
 )
 
 // getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions canmap
@@ -85,19 +88,10 @@ func populateLowerValuesIfHierarchy(
 				entitledActionsPerAttributeValueFqn[value.GetFqn()] = entitledActions
 			} else {
 				// Ensure the actions are unique
-				actionSet := make(map[string]*policy.Action)
-				for _, action := range entitledActions.GetActions() {
-					actionSet[action.GetName()] = action
-				}
-				for _, action := range alreadyEntitledActions.GetActions() {
-					actionSet[action.GetName()] = action
-				}
+				mergedActions := mergeDeduplicatedActions(entitledActions.GetActions(), alreadyEntitledActions.GetActions())
 
 				merged := &authz.EntityEntitlements_ActionsList{
-					Actions: make([]*policy.Action, 0, len(actionSet)),
-				}
-				for _, action := range actionSet {
-					merged.Actions = append(merged.Actions, action)
+					Actions: mergedActions,
 				}
 
 				entitledActionsPerAttributeValueFqn[value.GetFqn()] = merged
@@ -115,8 +109,11 @@ func populateLowerValuesIfHierarchy(
 // populateHigherValuesIfHierarchy sets the higher values if the attribute is of type hierarchy to
 // the decisionable attributes map
 func populateHigherValuesIfHierarchy(
+	ctx context.Context,
+	l *logger.Logger,
 	valueFQN string,
 	definition *policy.Attribute,
+	allEntitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 	decisionableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 ) error {
 	if definition == nil {
@@ -130,11 +127,40 @@ func populateHigherValuesIfHierarchy(
 		if value.GetFqn() == valueFQN {
 			break
 		}
+		// Pull the value from the lookup store where it is expected to hold its subject mappings
+		fullValue, ok := allEntitleableAttributesByValueFQN[value.GetFqn()]
+		if !ok {
+			l.WarnContext(ctx, "value FQN of hierarchy attribute not found available for lookup, may not have had subject mappings associated or provided", slog.String("value FQN", value.GetFqn()))
+			continue
+		}
 		decisionableAttributes[value.GetFqn()] = &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-			Value:     value,
+			Value:     fullValue.GetValue(),
 			Attribute: definition,
 		}
 	}
 
 	return nil
+}
+
+// Deduplicate and merge two lists of actions
+func mergeDeduplicatedActions(existingActions []*policy.Action, actionsToMerge []*policy.Action) []*policy.Action {
+	actionMap := make(map[string]*policy.Action)
+
+	// Add existing actions to the map
+	for _, action := range existingActions {
+		actionMap[action.GetName()] = action
+	}
+
+	// Add or override with actions to merge
+	for _, action := range actionsToMerge {
+		actionMap[action.GetName()] = action
+	}
+
+	// Convert map back to slice
+	merged := make([]*policy.Action, 0, len(actionMap))
+	for _, action := range actionMap {
+		merged = append(merged, action)
+	}
+
+	return merged
 }

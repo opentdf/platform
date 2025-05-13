@@ -248,6 +248,7 @@ type PDPTestSuite struct {
 		financeMapping       *policy.SubjectMapping
 		rndMapping           *policy.SubjectMapping
 		usaMapping           *policy.SubjectMapping
+		ukMapping            *policy.SubjectMapping
 		projectAlphaMapping  *policy.SubjectMapping
 		platformCloudMapping *policy.SubjectMapping
 
@@ -414,6 +415,14 @@ func (s *PDPTestSuite) SetupTest() {
 		[]*policy.Action{testActionRead},
 		".properties.country[]",
 		[]string{"us"},
+	)
+
+	s.fixtures.ukMapping = createSimpleSubjectMapping(
+		testCountryUKFQN,
+		"uk",
+		[]*policy.Action{testActionRead},
+		".properties.country[]",
+		[]string{"uk"},
 	)
 
 	s.fixtures.projectAlphaMapping = createSimpleSubjectMapping(
@@ -1574,5 +1583,382 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)
+	})
+}
+
+// Test_GetDecision_CombinedAttributeRules tests scenarios with combinations of different attribute rules on a single resource
+func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() {
+	f := s.fixtures
+
+	// Create a PDP with all attribute types (HIERARCHY, ANY_OF, ALL_OF)
+	pdp, err := NewPolicyDecisionPoint(
+		s.ctx,
+		s.logger,
+		[]*policy.Attribute{f.classificationAttr, f.departmentAttr, f.countryAttr, f.projectAttr, f.platformAttr},
+		[]*policy.SubjectMapping{
+			f.secretMapping, f.confidentialMapping, f.publicMapping,
+			f.engineeringMapping, f.financeMapping, f.rndMapping,
+			f.usaMapping, f.ukMapping, f.projectAlphaMapping, f.platformCloudMapping,
+		},
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	s.Run("HIERARCHY + ANY_OF combined: Secret classification and Engineering department", func() {
+		// Entity with proper entitlements for both attributes
+		entity := s.createEntityWithProps("hier-any-user-1", map[string]interface{}{
+			"clearance":  "secret",
+			"department": "engineering",
+		})
+
+		// Single resource with both HIERARCHY (classification) and ANY_OF (department) attributes
+		combinedResource := &authz.Resource{
+			EphemeralId: "secret-engineering-resource",
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{testClassSecretFQN, testDeptEngineeringFQN},
+				},
+			},
+		}
+
+		// Test read access (both allow)
+		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+
+		// Test create access (only engineering allows)
+		decision, err = pdp.GetDecision(s.ctx, entity, testActionCreate, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access) // False because both attributes need to pass
+
+		// Test update access (only secret allows)
+		decision, err = pdp.GetDecision(s.ctx, entity, testActionUpdate, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access) // False because both attributes need to pass
+	})
+
+	s.Run("HIERARCHY + ALL_OF combined: Secret classification and USA country", func() {
+		// Entity with proper entitlements for both attributes
+		entity := s.createEntityWithProps("hier-all-user-1", map[string]interface{}{
+			"clearance": "secret",
+			"country":   []any{"us", "uk"},
+		})
+
+		// Single resource with both HIERARCHY and ALL_OF attributes
+		combinedResource := &authz.Resource{
+			EphemeralId: "secret-usa-resource",
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{testClassSecretFQN, testCountryUSAFQN},
+				},
+			},
+		}
+
+		// Test read access (both allow)
+		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+
+		// Test update access (only secret allows, usa doesn't)
+		decision, err = pdp.GetDecision(s.ctx, entity, testActionUpdate, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access) // False because both attributes need to pass
+	})
+
+	s.Run("ANY_OF + ALL_OF combined: Engineering department and USA AND UK country", func() {
+		// Entity with proper entitlements for both attributes
+		entity := s.createEntityWithProps("any-all-user-1", map[string]interface{}{
+			"department": "engineering",
+			"country":    []any{"us", "uk"},
+		})
+
+		// Single resource with both ANY_OF and ALL_OF attributes
+		combinedResource := &authz.Resource{
+			EphemeralId: "engineering-usa-resource",
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{testDeptEngineeringFQN, testCountryUSAFQN, testCountryUKFQN},
+				},
+			},
+		}
+
+		// Test read access (both allow)
+		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+
+		// Test create access (only engineering allows)
+		decision, err = pdp.GetDecision(s.ctx, entity, testActionCreate, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access) // False because both attributes need to pass
+	})
+
+	s.Run("HIERARCHY + ANY_OF + ALL_OF combined - ALL_OF FAILURE", func() {
+		// Entity with proper entitlements for all three attributes
+		entity := s.createEntityWithProps("all-rules-user-1", map[string]interface{}{
+			"clearance":  "secret",
+			"department": "engineering",
+			"country":    []any{"us"}, // does not have UK
+		})
+
+		// Single resource with all three attribute rule types, but missing one ALL_OF value FQN
+		combinedResource := &authz.Resource{
+			EphemeralId: "secret-engineering-usa-resource",
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{testClassSecretFQN, testDeptEngineeringFQN, testCountryUSAFQN, testCountryUKFQN},
+				},
+			},
+		}
+
+		// Test read access (all three allow)
+		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+		s.Len(decision.Results, 1)
+
+		// Drill down proper structure of denial
+		resourceDecision := decision.Results[0]
+		s.Require().False(resourceDecision.Passed)
+		s.Equal(resourceDecision.ResourceID, "secret-engineering-usa-resource")
+		s.Len(resourceDecision.DataRuleResults, 3)
+		for _, ruleResult := range resourceDecision.DataRuleResults {
+			switch ruleResult.RuleDefinition.GetFqn() {
+			case testClassificationFQN:
+				s.True(ruleResult.Passed)
+			case testDepartmentFQN:
+				s.True(ruleResult.Passed)
+			case testCountryFQN:
+				s.False(ruleResult.Passed)
+			}
+		}
+	})
+
+	s.Run("HIERARCHY + ANY_OF + ALL_OF combined - SUCCESS", func() {
+		// Entity with proper entitlements for all three attributes
+		entity := s.createEntityWithProps("all-rules-user-1", map[string]interface{}{
+			"clearance":  "secret",
+			"department": "engineering",
+			"country":    []any{"us"},
+		})
+
+		// Single resource with all three attribute rule types
+		combinedResource := &authz.Resource{
+			EphemeralId: "secret-engineering-usa-resource",
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{testClassSecretFQN, testDeptEngineeringFQN, testCountryUSAFQN},
+				},
+			},
+		}
+
+		// Test read access (all three allow)
+		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+
+		// No other action is permitted by all three attributes
+		for _, action := range []string{actions.ActionNameCreate, actions.ActionNameUpdate, actions.ActionNameDelete} {
+			decision, err := pdp.GetDecision(s.ctx, entity, &policy.Action{Name: action}, []*authz.Resource{combinedResource})
+			s.Require().NoError(err)
+			s.Require().NotNil(decision)
+			s.False(decision.Access, "Action %s should not be allowed", action)
+		}
+	})
+
+	s.Run("HIERARCHY + ANY_OF + ALL_OF combined - ANY_OF FAILURE", func() {
+		// Entity with only partial entitlements
+		entity := s.createEntityWithProps("partial-entitlement-user", map[string]interface{}{
+			"clearance":  "secret",
+			"department": "finance", // not matching engineering
+			"country":    []any{"us"},
+		})
+
+		// Resource with all three attribute types
+		combinedResource := &authz.Resource{
+			EphemeralId: "three-attr-resource",
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{testClassSecretFQN, testDeptEngineeringFQN, testCountryUSAFQN},
+				},
+			},
+		}
+
+		// Test read access - should fail because department doesn't match
+		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+
+		// Examine which attribute rule failed
+		s.Len(decision.Results, 1)
+		s.Equal("three-attr-resource", decision.Results[0].ResourceID)
+
+		// Count passes and failures among data rules
+		passCount := 0
+		failCount := 0
+		for _, dataRule := range decision.Results[0].DataRuleResults {
+			if dataRule.Passed {
+				passCount++
+			} else {
+				failCount++
+				// Check that failure is for country attribute
+				s.Contains(dataRule.RuleDefinition.GetFqn(), "department")
+			}
+		}
+		s.Equal(2, passCount, "Two attributes should pass")
+		s.Equal(1, failCount, "One attribute should fail")
+	})
+
+	s.Run("Multiple attributes from different namespaces with different rules", func() {
+		// Entity with cross-namespace entitlements
+		entity := s.createEntityWithProps("cross-ns-rules-user", map[string]interface{}{
+			"clearance": "secret",    // HIERARCHY rule
+			"project":   "alpha",     // ANY_OF rule from secondary namespace
+			"platform":  "cloud",     // ANY_OF rule from secondary namespace
+			"country":   []any{"us"}, // ALL_OF rule
+		})
+
+		// Resource with attributes from different namespaces and with different rules
+		complexResource := &authz.Resource{
+			EphemeralId: "complex-multi-ns-resource",
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{
+						testClassSecretFQN,   // HIERARCHY rule, primary namespace
+						testCountryUSAFQN,    // ALL_OF rule, primary namespace
+						testProjectAlphaFQN,  // ANY_OF rule, secondary namespace
+						testPlatformCloudFQN, // ANY_OF rule, secondary namespace
+					},
+				},
+			},
+		}
+
+		// Test read access (all four allow)
+		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{complexResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+
+		// Test delete access (only platform:cloud allows)
+		decision, err = pdp.GetDecision(s.ctx, entity, testActionDelete, []*authz.Resource{complexResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access) // Overall fails because other attributes don't allow delete
+
+		// Count how many attributes passed/failed for delete action
+		s.Len(decision.Results, 1)
+		passCount := 0
+		failCount := 0
+		for _, dataRule := range decision.Results[0].DataRuleResults {
+			if dataRule.Passed {
+				passCount++
+				// Only the platform attribute should pass for delete
+				s.Contains(dataRule.RuleDefinition.GetFqn(), "platform")
+			} else {
+				failCount++
+			}
+		}
+		s.Equal(1, passCount, "One attribute should pass (platform:cloud)")
+		s.Equal(3, failCount, "Three attributes should fail")
+	})
+
+	s.Run("Multiple HIERARCHY of duplicate same attribute value", func() {
+		// Create a resource with multiple classifications (hierarchy rule)
+		cascadingResource := &authz.Resource{
+			EphemeralId: "classification-cascade-resource",
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{
+						testClassSecretFQN,       // Secret classification
+						testClassSecretFQN,       // duplicate
+						testClassConfidentialFQN, // Confidential classification (lower than Secret)
+						testClassConfidentialFQN, // second duplicate
+					},
+				},
+			},
+		}
+
+		// Entity with secret clearance (which should also give access to confidential)
+		entity := s.createEntityWithProps("secret-entity", map[string]interface{}{
+			"clearance": "secret",
+		})
+
+		// Test read access
+		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{cascadingResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access, "Entity with Secret clearance should have access to both Secret and Confidential")
+
+		// Entity with confidential clearance (which should NOT give access to secret)
+		entity = s.createEntityWithProps("confidential-entity", map[string]interface{}{
+			"clearance": "confidential",
+		})
+
+		// Test read access
+		decision, err = pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{cascadingResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access, "Entity with Confidential clearance should NOT have access to both classifications")
+
+		// Verify which rule failed
+		s.Len(decision.Results, 1)
+		s.Len(decision.Results[0].DataRuleResults, 1)
+		ruleResult := decision.Results[0].DataRuleResults[0]
+		s.NotEmpty(ruleResult.EntitlementFailures)
+		s.Equal(ruleResult.EntitlementFailures[0].AttributeValueFQN, testClassSecretFQN)
+	})
+
+	s.Run("Multiple HIERARCHY of different levels", func() {
+		// Create a resource with multiple classifications (hierarchy rule)
+		cascadingResource := &authz.Resource{
+			EphemeralId: "classification-cascade-resource",
+			Resource: &authz.Resource_AttributeValues_{
+				AttributeValues: &authz.Resource_AttributeValues{
+					Fqns: []string{
+						testClassSecretFQN,       // Secret classification
+						testClassConfidentialFQN, // Confidential classification (lower than Secret)
+					},
+				},
+			},
+		}
+
+		// Entity with secret clearance (which should also give access to confidential)
+		entity := s.createEntityWithProps("secret-entity", map[string]interface{}{
+			"clearance": "secret",
+		})
+
+		// Test read access
+		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{cascadingResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access, "Entity with Secret clearance should have access to both Secret and Confidential")
+
+		// Entity with confidential clearance (which should NOT give access to secret)
+		entity = s.createEntityWithProps("confidential-entity", map[string]interface{}{
+			"clearance": "confidential",
+		})
+
+		// Test read access
+		decision, err = pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{cascadingResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access, "Entity with Confidential clearance should NOT have access to both classifications")
+
+		// Verify which rule failed
+		s.Len(decision.Results, 1)
+		s.Len(decision.Results[0].DataRuleResults, 1)
+		ruleResult := decision.Results[0].DataRuleResults[0]
+		s.Len(ruleResult.EntitlementFailures, 1)
+		s.Equal(ruleResult.EntitlementFailures[0].AttributeValueFQN, testClassSecretFQN)
 	})
 }

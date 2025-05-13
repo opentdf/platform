@@ -55,6 +55,7 @@ var defaultFallbackLoggerConfig = logger.Config{
 
 // PolicyDecisionPoint creates a new Policy Decision Point instance.
 // It is presumed that all Attribute Definitions and Subject Mappings are valid and contain the entirety of entitlement policy.
+// Attribute Values without Subject Mappings will be ignored in decisioning.
 func NewPolicyDecisionPoint(
 	ctx context.Context,
 	l *logger.Logger,
@@ -89,6 +90,7 @@ func NewPolicyDecisionPoint(
 		}
 		allAttributesByDefinitionFQN[attr.GetFqn()] = attr
 	}
+
 	for _, sm := range allSubjectMappings {
 		if err := validateSubjectMapping(sm); err != nil {
 			l.Error("invalid subject mapping", slog.String("error", err.Error()))
@@ -144,7 +146,6 @@ func (p *PolicyDecisionPoint) GetDecision(ctx context.Context, entityRepresentat
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
 	decisionableAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
-	p.logger.DebugContext(ctx, "filtering to only entitlements relevant to decisioning")
 
 	for _, resource := range resources {
 		switch resource.GetResource().(type) {
@@ -166,7 +167,7 @@ func (p *PolicyDecisionPoint) GetDecision(ctx context.Context, entityRepresentat
 				}
 
 				decisionableAttributes[valueFQN] = attributeAndValue
-				err := populateHigherValuesIfHierarchy(valueFQN, attributeAndValue.GetAttribute(), decisionableAttributes)
+				err := populateHigherValuesIfHierarchy(ctx, p.logger, valueFQN, attributeAndValue.GetAttribute(), p.allEntitleableAttributesByValueFQN, decisionableAttributes)
 				if err != nil {
 					loggable = append(loggable, slog.String("error", err.Error()), slog.String("value", valueFQN), slog.Any("resource", resource))
 					p.logger.ErrorContext(ctx, "error populating higher hierarchy attribute values", loggable...)
@@ -180,7 +181,7 @@ func (p *PolicyDecisionPoint) GetDecision(ctx context.Context, entityRepresentat
 			return nil, ErrInvalidResource
 		}
 	}
-
+	p.logger.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionable attribute values count", len(decisionableAttributes)))
 	// Resolve them to their entitled FQNs and the actions available on each
 	entitledFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRepresentation)
 	if err != nil {
@@ -188,6 +189,7 @@ func (p *PolicyDecisionPoint) GetDecision(ctx context.Context, entityRepresentat
 		p.logger.ErrorContext(ctx, "error evaluating subject mappings for entitlement", append(loggable, slog.String("error", err.Error()), slog.Any("entity", entityRepresentation))...)
 		return nil, err
 	}
+	p.logger.DebugContext(ctx, "evaluated subject mappings", slog.String("entity originalId", entityRepresentation.GetOriginalId()), slog.Any("entitled FQNs to actions", entitledFQNsToActions))
 
 	decision := &Decision{
 		Access:  true,
@@ -265,18 +267,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 		for valueFQN, actions := range fqnsToActions {
 			// If already entitled (such as via a higher entitled comprehensive hierarchy attr value), merge with existing
 			if alreadyEntitled, ok := actionsPerAttributeValueFqn[valueFQN]; ok {
-				actionSet := make(map[string]*policy.Action)
-				for _, action := range actions {
-					actionSet[action.GetName()] = action
-				}
-				for _, action := range alreadyEntitled.GetActions() {
-					actionSet[action.GetName()] = action
-				}
-				merged := make([]*policy.Action, 0, len(actionSet))
-				for _, action := range actionSet {
-					merged = append(merged, action)
-				}
-				actions = merged
+				actions = mergeDeduplicatedActions(alreadyEntitled.GetActions(), actions)
 			}
 			entitledActions := &authz.EntityEntitlements_ActionsList{
 				Actions: actions,

@@ -7,6 +7,7 @@ import (
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/stretchr/testify/assert"
 )
@@ -382,12 +383,30 @@ func TestPopulateLowerValuesIfHierarchy(t *testing.T) {
 }
 
 func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
-	values := []*policy.Value{
-		{Fqn: "https://example.org/attr/classification/value/secret"},
-		{Fqn: "https://example.org/attr/classification/value/restricted"},
-		{Fqn: "https://example.org/attr/classification/value/confidential"},
-		{Fqn: "https://example.org/attr/classification/value/public"},
+	exampleSecretFQN := "https://example.org/attr/classification/value/secret"
+	exampleRestrictedFQN := "https://example.org/attr/classification/value/restricted"
+	exampleConfidentialFQN := "https://example.org/attr/classification/value/confidential"
+	examplePublicFQN := "https://example.org/attr/classification/value/public"
+
+	valueSecret := &policy.Value{
+		Fqn:             exampleSecretFQN,
+		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(exampleSecretFQN, "secret", []*policy.Action{actionRead}, ".test", []string{"value"})},
 	}
+	valueRestricted := &policy.Value{
+		Fqn:             exampleRestrictedFQN,
+		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(exampleSecretFQN, "restricted", []*policy.Action{actionRead}, ".test", []string{"somethingelse"})},
+	}
+	valueConf := &policy.Value{
+		Fqn:             exampleConfidentialFQN,
+		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(exampleConfidentialFQN, "confidential", []*policy.Action{actionRead}, ".hello", []string{"world"})},
+	}
+	valuePublic := &policy.Value{
+		Fqn:             examplePublicFQN,
+		SubjectMappings: []*policy.SubjectMapping{createSimpleSubjectMapping(examplePublicFQN, "public", []*policy.Action{actionRead}, ".goodnight", []string{"moon"})},
+	}
+
+	values := []*policy.Value{valueSecret, valueRestricted, valueConf, valuePublic}
+
 	hierarchyAttribute := &policy.Attribute{
 		Rule:   policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 		Values: values,
@@ -401,6 +420,25 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 		Values: []*policy.Value{},
 	}
 
+	allValueFQNsToAttributeValues := map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+		exampleSecretFQN: {
+			Value:     valueSecret,
+			Attribute: hierarchyAttribute,
+		},
+		exampleRestrictedFQN: {
+			Value:     valueRestricted,
+			Attribute: hierarchyAttribute,
+		},
+		exampleConfidentialFQN: {
+			Value:     valueConf,
+			Attribute: hierarchyAttribute,
+		},
+		examplePublicFQN: {
+			Value:     valuePublic,
+			Attribute: hierarchyAttribute,
+		},
+	}
+
 	tests := []struct {
 		name                 string
 		valueFQN             string
@@ -411,7 +449,7 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 	}{
 		{
 			name:                 "Top level hierarchy value",
-			valueFQN:             values[0].GetFqn(),
+			valueFQN:             exampleSecretFQN,
 			definition:           hierarchyAttribute,
 			initialAttributes:    make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue),
 			wantErr:              nil,
@@ -419,31 +457,31 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 		},
 		{
 			name:                 "Second level hierarchy value",
-			valueFQN:             values[1].GetFqn(),
+			valueFQN:             exampleRestrictedFQN,
 			definition:           hierarchyAttribute,
 			initialAttributes:    make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue),
 			wantErr:              nil,
-			expectedMapAdditions: []string{values[0].GetFqn()}, // Should add the top level
+			expectedMapAdditions: []string{exampleSecretFQN}, // Should add the top level
 		},
 		{
 			name:                 "Third level hierarchy value",
-			valueFQN:             values[2].GetFqn(),
+			valueFQN:             exampleConfidentialFQN,
 			definition:           hierarchyAttribute,
 			initialAttributes:    make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue),
 			wantErr:              nil,
-			expectedMapAdditions: []string{values[0].GetFqn(), values[1].GetFqn()}, // Should add the top two levels
+			expectedMapAdditions: []string{exampleRestrictedFQN, exampleSecretFQN}, // Should add the top two levels
 		},
 		{
 			name:                 "Bottom level hierarchy value",
-			valueFQN:             values[3].GetFqn(),
+			valueFQN:             examplePublicFQN,
 			definition:           hierarchyAttribute,
 			initialAttributes:    make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue),
 			wantErr:              nil,
-			expectedMapAdditions: []string{values[0].GetFqn(), values[1].GetFqn(), values[2].GetFqn()}, // Should add all higher levels
+			expectedMapAdditions: []string{exampleConfidentialFQN, exampleSecretFQN, exampleRestrictedFQN}, // Should add all higher levels
 		},
 		{
 			name:                 "Non-hierarchy attribute",
-			valueFQN:             values[0].GetFqn(),
+			valueFQN:             "irrelevant-to-this-test",
 			definition:           anyOfAttribute,
 			initialAttributes:    make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue),
 			wantErr:              nil,
@@ -451,7 +489,7 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 		},
 		{
 			name:                 "All-of attribute",
-			valueFQN:             values[0].GetFqn(),
+			valueFQN:             "irrelevant-to-this-test",
 			definition:           allOfAttribute,
 			initialAttributes:    make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue),
 			wantErr:              nil,
@@ -459,7 +497,7 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 		},
 		{
 			name:                 "Nil attribute",
-			valueFQN:             values[0].GetFqn(),
+			valueFQN:             exampleRestrictedFQN,
 			definition:           nil,
 			initialAttributes:    make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue),
 			wantErr:              ErrInvalidAttributeDefinition,
@@ -471,7 +509,7 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			decisionableAttributes := tt.initialAttributes
 
-			err := populateHigherValuesIfHierarchy(tt.valueFQN, tt.definition, decisionableAttributes)
+			err := populateHigherValuesIfHierarchy(t.Context(), logger.CreateTestLogger(), tt.valueFQN, tt.definition, allValueFQNsToAttributeValues, decisionableAttributes)
 
 			if tt.wantErr != nil {
 				assert.Error(t, err)
@@ -485,12 +523,48 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 			for _, expectedAddition := range tt.expectedMapAdditions {
 				attributeAndValue, exists := decisionableAttributes[expectedAddition]
 				assert.True(t, exists, "Expected map to contain key %s", expectedAddition)
-				assert.Equal(t, tt.definition, attributeAndValue.Attribute, "Expected attribute to match definition")
-				assert.Equal(t, expectedAddition, attributeAndValue.Value.GetFqn(), "Expected value FQN to match")
+				assert.Equal(t, tt.definition, attributeAndValue.GetAttribute(), "Expected attribute to match definition")
+				assert.Equal(t, expectedAddition, attributeAndValue.GetValue().GetFqn(), "Expected value FQN to match")
+				assert.NotEmpty(t, attributeAndValue.GetValue().GetSubjectMappings(), "Bubbled up higher hierarchy values should contain subject mappings to check entitlement")
 			}
 
 			// Verify only the expected keys were added
 			assert.Equal(t, len(tt.expectedMapAdditions), len(decisionableAttributes), "Expected %d additions to map, got %d", len(tt.expectedMapAdditions), len(decisionableAttributes))
 		})
+	}
+
+	decisionableAttributes := map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{}
+
+	// Populate up from second highest
+	err := populateHigherValuesIfHierarchy(t.Context(), logger.CreateTestLogger(), exampleRestrictedFQN, hierarchyAttribute, allValueFQNsToAttributeValues, decisionableAttributes)
+	assert.NoError(t, err)
+	assert.NotNil(t, decisionableAttributes)
+	assert.Len(t, decisionableAttributes, 1)
+
+	// Secret should have been added, as it's higher than restriected
+	decisionableSecret := decisionableAttributes[exampleSecretFQN]
+	assert.NotNil(t, decisionableSecret)
+	assert.NotEmpty(t, decisionableSecret.GetValue().GetSubjectMappings())
+
+	// Call it with lowest
+	err = populateHigherValuesIfHierarchy(t.Context(), logger.CreateTestLogger(), examplePublicFQN, hierarchyAttribute, allValueFQNsToAttributeValues, decisionableAttributes)
+	assert.NoError(t, err)
+	assert.NotNil(t, decisionableAttributes)
+
+	// Every value above public should be present
+	assert.Len(t, decisionableAttributes, 3)
+	found := map[string]bool{
+		exampleSecretFQN:       false,
+		exampleRestrictedFQN:   false,
+		exampleConfidentialFQN: false,
+	}
+	for fqn, attrAndVal := range decisionableAttributes {
+		_, exists := found[fqn]
+		assert.True(t, exists)
+		found[fqn] = true
+		assert.NotEmpty(t, attrAndVal.GetValue().GetSubjectMappings())
+	}
+	for _, state := range found {
+		assert.True(t, state)
 	}
 }

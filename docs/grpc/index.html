@@ -448,10 +448,6 @@
                 </li>
               
                 <li>
-                  <a href="#authorization.v2.EntityChain"><span class="badge">M</span>EntityChain</a>
-                </li>
-              
-                <li>
                   <a href="#authorization.v2.EntityEntitlements"><span class="badge">M</span>EntityEntitlements</a>
                 </li>
               
@@ -521,10 +517,6 @@
               
                 <li>
                   <a href="#authorization.v2.ResourceDecision"><span class="badge">M</span>ResourceDecision</a>
-                </li>
-              
-                <li>
-                  <a href="#authorization.v2.Token"><span class="badge">M</span>Token</a>
                 </li>
               
               
@@ -4262,37 +4254,6 @@ string</p></td>
 
         
       
-        <h3 id="authorization.v2.EntityChain">EntityChain</h3>
-        <p>A set of related PE and NPE (i.e. authenticating client and user)</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>ephemeral_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>ephemeral id for tracking between request and response </p></td>
-                </tr>
-              
-                <tr>
-                  <td>entities</td>
-                  <td><a href="#authorization.v2.Entity">Entity</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="authorization.v2.EntityEntitlements">EntityEntitlements</h3>
         <p>Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]</p>
 
@@ -4439,7 +4400,7 @@ string</p></td>
               
                 <tr>
                   <td>token</td>
-                  <td><a href="#authorization.v2.Token">Token</a></td>
+                  <td><a href="#authorization.Token">authorization.Token</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -4515,7 +4476,7 @@ string</p></td>
               
                 <tr>
                   <td>token</td>
-                  <td><a href="#authorization.v2.Token">Token</a></td>
+                  <td><a href="#authorization.Token">authorization.Token</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -4577,7 +4538,7 @@ string</p></td>
               
                 <tr>
                   <td>entity</td>
-                  <td><a href="#authorization.v2.EntityChain">EntityChain</a></td>
+                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
                   <td></td>
                   <td><p>The entity chain must be defined </p></td>
                 </tr>
@@ -4660,7 +4621,7 @@ string</p></td>
               
                 <tr>
                   <td>entity</td>
-                  <td><a href="#authorization.v2.EntityChain">EntityChain</a></td>
+                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -4875,37 +4836,6 @@ down the hierarchical values instead of returning solely the value that is direc
                   <td><a href="#authorization.v2.Decision">Decision</a></td>
                   <td></td>
                   <td><p>the decision result </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="authorization.v2.Token">Token</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>ephemeral_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>ephemeral id for tracking between request and response </p></td>
-                </tr>
-              
-                <tr>
-                  <td>jwt</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>access token </p></td>
                 </tr>
               
             </tbody>

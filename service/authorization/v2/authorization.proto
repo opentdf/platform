@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package authorization.v2;
 
+import "authorization/authorization.proto";
 import "buf/validate/validate.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/wrappers.proto";
@@ -12,13 +13,6 @@ enum Decision {
   DECISION_DENY = 1;
   DECISION_PERMIT = 2;
   // DECISION_OBLIGATED = 3;
-}
-
-message Token {
-  // ephemeral id for tracking between request and response
-  string ephemeral_id = 1;
-  // access token
-  string jwt = 2 [(buf.validate.field).required = true];
 }
 
 // PE (Person Entity) or NPE (Non-Person Entity)
@@ -48,16 +42,6 @@ message Entity {
 // message EntityCustom {
 //   google.protobuf.Any extension = 1;
 // }
-
-// A set of related PE and NPE (i.e. authenticating client and user)
-message EntityChain {
-  // ephemeral id for tracking between request and response
-  string ephemeral_id = 1;
-  repeated Entity entities = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).repeated = {min_items: 1}
-  ];
-}
 
 // Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]
 message EntityEntitlements {
@@ -97,7 +81,7 @@ message ResourceDecision {
 // 2. one action
 // 3. one resource
 message GetDecisionRequest {
-  EntityChain entity = 1 [(buf.validate.field).required = true];
+  authorization.EntityChain entity = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   Resource resource = 3 [(buf.validate.field).required = true];
@@ -128,7 +112,7 @@ message GetDecisionResponse {
 // Note: this is a more performant bulk request for multiple resource decisions
 message GetDecisionMultiResourceRequest {
   // The entity chain must be defined
-  EntityChain entity = 1 [(buf.validate.field).required = true];
+  authorization.EntityChain entity = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   repeated Resource resources = 3 [
@@ -188,7 +172,7 @@ message GetEntitlementsResponse {
 // 2. one action
 // 3. one resource
 message GetDecisionByTokenRequest {
-  Token token = 1 [(buf.validate.field).required = true];
+  authorization.Token token = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   Resource resource = 3 [(buf.validate.field).required = true];
@@ -208,7 +192,7 @@ message GetDecisionByTokenResponse {
 // 2. one action
 // 3. multiple resource
 message GetDecisionByTokenMultiResourceRequest {
-  Token token = 1 [(buf.validate.field).required = true];
+  authorization.Token token = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   repeated Resource resources = 3 [

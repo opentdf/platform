@@ -381,17 +381,13 @@
           "type": "string",
           "title": "ephemeral id for tracking between request and response"
         },
-        "ephemeralResourceId": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
         "action": {
           "$ref": "#/definitions/policyAction",
           "title": "name on action is required"
         },
         "decision": {
           "$ref": "#/definitions/v2ResourceDecision",
-          "description": "optional list of obligations represented in URI format\n repeated string obligations = 5;",
+          "description": "optional list of obligations represented in URI format\n repeated string obligations = 4;",
           "title": "the decision on the resource"
         }
       }

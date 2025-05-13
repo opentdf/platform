@@ -95,14 +95,12 @@ message GetDecisionRequest {
 message GetDecisionResponse {
   // ephemeral id for tracking between request and response
   string ephemeral_entity_chain_id = 1;
-  // ephemeral id for tracking between request and response
-  string ephemeral_resource_id = 2;
   // name on action is required
-  policy.Action action = 3;
+  policy.Action action = 2;
   // the decision on the resource
-  ResourceDecision decision = 4;
+  ResourceDecision decision = 3;
   // optional list of obligations represented in URI format
-  // repeated string obligations = 5;
+  // repeated string obligations = 4;
 }
 
 // Can the entity (PE or NPE) access?

@@ -586,10 +586,10 @@ func setupKeycloak(ctx context.Context, t *testing.T) (tc.Container, string, str
 		t.Fatalf("error starting keycloak container: %v", err)
 	}
 	port, _ := keycloak.MappedPort(ctx, "8082")
-	keycloakBase := fmt.Sprintf("http://localhost:%s", port.Port())
+	keycloakBase := "http://localhost:" + port.Port()
 
 	httpPort, _ := keycloak.MappedPort(ctx, "8083")
-	keycloakHTTPSBase := fmt.Sprintf("https://localhost:%s", httpPort.Port())
+	keycloakHTTPSBase := "https://localhost:" + httpPort.Port()
 
 	realm := "test"
 

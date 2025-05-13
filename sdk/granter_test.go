@@ -492,7 +492,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
 				i++
-				return fmt.Sprintf("%d", i)
+				return strconv.Itoa(i)
 			})
 			require.NoError(t, err)
 			assert.Equal(t, tc.plan, plan)
@@ -616,7 +616,7 @@ func TestReasonerSpecificity(t *testing.T) {
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
 				i++
-				return fmt.Sprintf("%d", i)
+				return strconv.Itoa(i)
 			})
 			require.NoError(t, err)
 			assert.ElementsMatch(t, tc.plan, plan)
@@ -767,7 +767,7 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
 				i++
-				return fmt.Sprintf("%d", i)
+				return strconv.Itoa(i)
 			})
 			require.NoError(t, err)
 			assert.ElementsMatch(t, tc.plan, plan)

@@ -145,10 +145,10 @@ message GetDecisionMultiResourceRequest {
 message GetDecisionMultiResourceResponse {
   // ephemeral id for tracking between request and response
   string ephemeral_entity_chain_id = 1;
-  // name on action is required
-  policy.Action action = 3;
+  // name on action is to be relied upon
+  policy.Action action = 2;
   // convenience flag indicating global resource decisions result (permit/deny)
-  google.protobuf.BoolValue all_permitted = 2;
+  google.protobuf.BoolValue all_permitted = 3;
   // individual resource decisions
   repeated ResourceDecision resource_decisions = 4;
 }
@@ -177,32 +177,57 @@ message GetEntitlementsRequest {
   ];
   // optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
   // down the hierarchical values instead of returning solely the value that is directly entitled
-  optional bool with_comprehensive_hierarchy = 3;
+  optional bool with_comprehensive_hierarchy = 2;
 }
 message GetEntitlementsResponse {
   repeated EntityEntitlements entitlements = 1;
 }
 
-// Can the entity (PE or NPE) represented by this token take the provided action on the single resource
-message TokenDecisionRequest {
+// Can the entity (PE or NPE) represented by this token access?
+// 1. one token
+// 2. one action
+// 3. one resource
+message GetDecisionByTokenRequest {
   Token token = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   Resource resource = 3 [(buf.validate.field).required = true];
 
-  // Add CEL validation for the nested field
   option (buf.validate.message).cel = {
     id: "token_decision_request.action_name_required"
     message: "action.name must be provided"
     expression: "has(this.action.name)"
   };
 }
-
-message GetDecisionByTokenRequest {
-  TokenDecisionRequest decision_request = 1;
-}
 message GetDecisionByTokenResponse {
   GetDecisionResponse decision_response = 1;
+}
+
+// Can the entity (PE or NPE) represented by this token access?
+// 1. one token
+// 2. one action
+// 3. multiple resource
+message GetDecisionByTokenMultiResourceRequest {
+  Token token = 1 [(buf.validate.field).required = true];
+  // name on action is required
+  policy.Action action = 2 [(buf.validate.field).required = true];
+  repeated Resource resources = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {min_items: 1}
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "token_decision_multi_resource_request.action_name_required"
+    message: "action.name must be provided"
+    expression: "has(this.action.name)"
+  };
+}
+message GetDecisionByTokenMultiResourceResponse {
+  policy.Action action = 1;
+  // convenience flag indicating global resource decisions result (permit/deny)
+  google.protobuf.BoolValue all_permitted = 2;
+  // individual resource decisions
+  repeated ResourceDecision resource_decisions = 4;
 }
 
 service AuthorizationService {
@@ -211,6 +236,7 @@ service AuthorizationService {
   rpc GetDecisionBulk(GetDecisionBulkRequest) returns (GetDecisionBulkResponse) {}
 
   rpc GetDecisionByToken(GetDecisionByTokenRequest) returns (GetDecisionByTokenResponse) {}
+  rpc GetDecisionByTokenMultiResource(GetDecisionByTokenMultiResourceRequest) returns (GetDecisionByTokenMultiResourceResponse) {}
 
   rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {}
 }

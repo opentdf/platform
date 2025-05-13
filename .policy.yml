@@ -161,9 +161,15 @@ approval_rules:
   description: "If the PR is large, require 2 approvals"
   if:
     modified_lines:
-      additions: "> 100"
-      deletions: "> 100"
-      total: "> 200"
+      additions: "> 200"
+      deletions: "> 200"
+      total: ">400"
+    changed_files:
+      paths:
+        - ".*"  # This will match any file
+      ignore:
+        - "^protocol/.*" # Ignore files in the protocol directory
+        - "^docs/.*"     # Ignore files in the docs directory
   options:
     invalidate_on_push: true
     ignore_edited_comments: true

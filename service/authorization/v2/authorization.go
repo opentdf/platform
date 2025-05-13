@@ -109,6 +109,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("requires entities"))
 	}
 
+	// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
 	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.String("error", err.Error()))

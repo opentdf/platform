@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	ers "github.com/opentdf/platform/protocol/go/entityresolution"
@@ -73,9 +74,10 @@ func NewPolicyDecisionPoint(
 		}
 	}
 
-	if (allAttributeDefinitions != nil && allSubjectMappings == nil) ||
-		(allAttributeDefinitions == nil && allSubjectMappings != nil) ||
-		(allAttributeDefinitions == nil && allSubjectMappings == nil) {
+	if allAttributeDefinitions == nil || allSubjectMappings == nil {
+		// if (allAttributeDefinitions != nil && allSubjectMappings == nil) ||
+		// 	(allAttributeDefinitions == nil && allSubjectMappings != nil) ||
+		// 	(allAttributeDefinitions == nil && allSubjectMappings == nil) {
 		l.ErrorContext(ctx, "invalid arguments", slog.String("error", ErrMissingRequiredPolicy.Error()))
 		return nil, ErrMissingRequiredPolicy
 	}
@@ -124,6 +126,7 @@ func NewPolicyDecisionPoint(
 	return pdp, nil
 }
 
+// GetDecision evaluates the action on the resources for the entity and returns a decision.
 func (p *PolicyDecisionPoint) GetDecision(ctx context.Context, entityRepresentation *ers.EntityRepresentation, action *policy.Action, resources []*authz.Resource) (*Decision, error) {
 	loggable := []any{
 		slog.String("entity ID", entityRepresentation.GetOriginalId()),
@@ -137,17 +140,15 @@ func (p *PolicyDecisionPoint) GetDecision(ctx context.Context, entityRepresentat
 		return nil, err
 	}
 
-	// Generate ephemeral IDs for resources if not already set
-	for i, resource := range resources {
-		if resource.GetEphemeralId() == "" {
-			resources[i].EphemeralId = fmt.Sprintf("resource-%d", i)
-		}
-	}
-
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
 	decisionableAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 
-	for _, resource := range resources {
+	for idx, resource := range resources {
+		// Assign indexed ephemeral ID for resource if not already set
+		if resource.GetEphemeralId() == "" {
+			resource.EphemeralId = "resource-" + strconv.Itoa(idx)
+		}
+
 		switch resource.GetResource().(type) {
 		case *authz.Resource_RegisteredResourceValueFqn:
 			// TODO: handle gathering decisionable attributes of registered resources

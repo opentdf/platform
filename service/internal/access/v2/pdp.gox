@@ -174,18 +174,6 @@ func (p *PDP) GetEntitlements(
 	return result, nil
 }
 
-// resolveEntities roundtrips to ERS to resolve the provided entity chain.
-func (p *PDP) resolveEntities(ctx context.Context, entityChain *authz.EntityChain) ([]*entityresolution.EntityRepresentation, error) {
-	ersResp, err := p.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{EntitiesV2: entityChain.GetEntities()})
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve entities: %w", err)
-	}
-	entityRepresentations := ersResp.GetEntityRepresentations()
-	if entityRepresentations == nil {
-		return nil, fmt.Errorf("failed to get entity representations: %w", err)
-	}
-	return entityRepresentations, nil
-}
 
 func (p *PDP) checkAccess(ctx context.Context, entitlements *authz.EntityEntitlements, action *policy.Action, resource *authz.Resource) (bool, error) {
 	switch r := resource.GetResource().(type) {
@@ -204,34 +192,6 @@ func (p *PDP) checkAccess(ctx context.Context, entitlements *authz.EntityEntitle
 	return false, nil
 }
 
-// fetchAllDefinitions retrieves all attribute definitions within policy
-func (p *PDP) fetchAllDefinitions(ctx context.Context) ([]*policy.Attribute, error) {
-	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
-	var nextOffset int32
-	attrsList := make([]*policy.Attribute, 0)
-
-	for {
-		listed, err := p.sdk.Attributes.ListAttributes(ctx, &attrs.ListAttributesRequest{
-			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
-			// defer to service default for limit pagination
-			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
-			},
-		})
-		if err != nil {
-			p.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
-			return nil, fmt.Errorf("failed to list attributes: %w", err)
-		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
-		attrsList = append(attrsList, listed.GetAttributes()...)
-
-		if nextOffset <= 0 {
-			break
-		}
-	}
-	return attrsList, nil
-}
 
 // setEntitleableAttributesFromEntityRepresentations retrieves and populates the entitleable attributes per
 // the provided entity reresentations, setting them on the provided entitleableAttributes map, merging any
@@ -380,27 +340,6 @@ func (p *PDP) setEntitleableAttributesByScope(
 	return nil
 }
 
-
-// populateLowerValuesIfHierarchy consideres the provided value FQN and entitled actions, pulling the attribute definition from memory, checking
-// if it is hierarchical, and if so, populating the actions for all values lower in the hierarchy into the provided actionsPerAttributeValueFqn map.
-func (p *PDP) populateLowerValuesIfHierarchy(valueFQN string, entitledActions *authz.EntityEntitlements_ActionsList, actionsPerAttributeValueFqn map[string]*authz.EntityEntitlements_ActionsList) error {
-	definition, err := p.getDefinition(valueFQN)
-	if err != nil {
-		return fmt.Errorf("failed to get attribute definition: %w", err)
-	}
-	if definition.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {
-		lower := false
-		for _, value := range definition.GetValues() {
-			if lower {
-				actionsPerAttributeValueFqn[value.GetFqn()] = entitledActions
-			}
-			if value.GetFqn() == valueFQN {
-				lower = true
-			}
-		}
-	}
-	return nil
-}
 
 // TODO: trace fetch of hierarchy values up from req
 // GetEntitlements

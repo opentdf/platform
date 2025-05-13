@@ -26,6 +26,7 @@ type NanoTDFConfig struct {
 	policy        policyInfo
 	bindCfg       bindingConfig
 	collectionCfg *collectionConfig
+	policyMode    PolicyType // Added field for policy mode
 }
 
 type NanoTDFOption func(*NanoTDFConfig) error
@@ -55,6 +56,7 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 			useCollection: false,
 			header:        []byte{},
 		},
+		policyMode: NanoTDFPolicyModeDefault,
 	}
 
 	return c, nil
@@ -87,6 +89,15 @@ func (config *NanoTDFConfig) EnableECDSAPolicyBinding() {
 // Reuse NanoTDFConfig to add nTDFs to a Collection.
 func (config *NanoTDFConfig) EnableCollection() {
 	config.collectionCfg.useCollection = true
+}
+
+// SetPolicyMode sets whether the policy should be encrypted or plaintext
+func (config *NanoTDFConfig) SetPolicyMode(mode PolicyType) error {
+	if err := validNanoTDFPolicyMode(mode); err != nil {
+		return err
+	}
+	config.policyMode = mode
+	return nil
 }
 
 // WithNanoDataAttributes appends the given data attributes to the bound policy

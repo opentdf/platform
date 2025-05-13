@@ -170,7 +170,7 @@ func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error)
 	if k.algorithm == AlgorithmECP256R1 {
 		return k.cryptoProvider.ECCertificate(kid)
 	}
-	return "", fmt.Errorf("certificates only available for EC keys")
+	return "", errors.New("certificates only available for EC keys")
 }
 
 // NewSecurityProviderAdapter creates a new adapter that implements SecurityProvider using a CryptoProvider
@@ -291,22 +291,6 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyID trust.KeyIdentifi
 	}, nil
 }
 
-// determineKeyType tries to determine the algorithm of a key based on its ID
-// This is a helper method for the Decrypt method
-func (a *InProcessProvider) determineKeyType(_ context.Context, kid string) (string, error) {
-	// First try RSA
-	if _, err := a.cryptoProvider.RSAPublicKey(kid); err == nil {
-		return AlgorithmRSA2048, nil
-	}
-
-	// Then try EC
-	if _, err := a.cryptoProvider.ECPublicKey(kid); err == nil {
-		return AlgorithmECP256R1, nil
-	}
-
-	return "", errors.New("could not determine key type")
-}
-
 // DeriveKey generates a symmetric key for NanoTDF
 func (a *InProcessProvider) DeriveKey(_ context.Context, kasKID trust.KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
 	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(kasKID), ephemeralPublicKeyBytes, curve)
@@ -321,4 +305,20 @@ func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPub
 // Close releases any resources held by the provider
 func (a *InProcessProvider) Close() {
 	a.cryptoProvider.Close()
+}
+
+// determineKeyType tries to determine the algorithm of a key based on its ID
+// This is a helper method for the Decrypt method
+func (a *InProcessProvider) determineKeyType(_ context.Context, kid string) (string, error) {
+	// First try RSA
+	if _, err := a.cryptoProvider.RSAPublicKey(kid); err == nil {
+		return AlgorithmRSA2048, nil
+	}
+
+	// Then try EC
+	if _, err := a.cryptoProvider.ECPublicKey(kid); err == nil {
+		return AlgorithmECP256R1, nil
+	}
+
+	return "", errors.New("could not determine key type")
 }

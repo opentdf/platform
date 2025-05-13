@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -66,7 +67,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		for k, v := range c.RoleMap {
 			c.Csv = strings.Join([]string{
 				c.Csv,
-				strings.Join([]string{"g", v, fmt.Sprintf("role:%s", k)}, ", "),
+				strings.Join([]string{"g", v, "role:" + k}, ", "),
 			}, "\n")
 		}
 	}
@@ -140,7 +141,7 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 		}
 	}
 	e.logger.Debug("permission denied by policy", slog.Any("subject.info", s), slog.String("resource", resource), slog.String("action", action))
-	return false, fmt.Errorf("permission denied")
+	return false, errors.New("permission denied")
 }
 
 func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {

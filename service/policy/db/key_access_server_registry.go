@@ -2,17 +2,27 @@ package db
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
+
+type rotatedMappingIDs struct {
+	NamespaceIDs      []string
+	AttributeDefIDs   []string
+	AttributeValueIDs []string
+}
 
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
@@ -50,7 +60,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 		if len(kas.Keys) > 0 {
 			keys, err = db.KasKeysProtoJSON(kas.Keys)
 			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal keys")
+				return nil, errors.New("failed to unmarshal keys")
 			}
 		}
 
@@ -140,7 +150,7 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 	if len(kas.Keys) > 0 {
 		keys, err = db.KasKeysProtoJSON(kas.Keys)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal keys")
+			return nil, errors.New("failed to unmarshal keys")
 		}
 	}
 
@@ -340,6 +350,11 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 	}, nil
 }
 
+func isValidBase64(s string) bool {
+	_, err := base64.StdEncoding.DecodeString(s)
+	return err == nil
+}
+
 /*
 * Key Access Server Keys
  */
@@ -347,11 +362,16 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 	keyID := r.GetKeyId()
 	algo := int32(r.GetKeyAlgorithm())
 	mode := int32(r.GetKeyMode())
-	privateCtx := r.GetPrivateKeyCtx()
-	pubCtx := r.GetPublicKeyCtx()
 	providerConfigID := r.GetProviderConfigId()
 	keyStatus := int32(policy.KeyStatus_KEY_STATUS_ACTIVE)
 	kasID := r.GetKasId()
+
+	if !isValidBase64(r.GetPublicKeyCtx().GetPem()) {
+		return nil, errors.Join(errors.New("public key ctx"), db.ErrExpectedBase64EncodedValue)
+	}
+	if mode == int32(policy.KeyMode_KEY_MODE_LOCAL) && !isValidBase64(r.GetPrivateKeyCtx().GetWrappedKey()) {
+		return nil, errors.Join(errors.New("private key ctx"), db.ErrExpectedBase64EncodedValue)
+	}
 
 	// Only allow one active key for an algo per KAS.
 	activeKeyExists, err := c.Queries.checkIfKeyExists(ctx, checkIfKeyExistsParams{
@@ -373,6 +393,16 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		if err != nil {
 			return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, kasID)
 		}
+	}
+
+	// Marshal private key and public key context
+	pubCtx, err := json.Marshal(r.GetPublicKeyCtx())
+	if err != nil {
+		return nil, db.ErrMarshalValueFailed
+	}
+	privateCtx, err := json.Marshal(r.GetPrivateKeyCtx())
+	if err != nil {
+		return nil, db.ErrMarshalValueFailed
 	}
 
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
@@ -400,6 +430,12 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		return nil, err
 	}
 
+	privateKeyCtx := &policy.KasPrivateKeyCtx{}
+	publicKeyCtx := &policy.KasPublicKeyCtx{}
+	if err := unmarshalPrivatePublicKeyContext(key.PublicKeyCtx, key.PrivateKeyCtx, publicKeyCtx, privateKeyCtx); err != nil {
+		return nil, err
+	}
+
 	return &kasregistry.CreateKeyResponse{
 		KasKey: &policy.KasKey{
 			KasId: key.KeyAccessServerID,
@@ -409,8 +445,8 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 				KeyStatus:      policy.KeyStatus(key.KeyStatus),
 				KeyAlgorithm:   policy.Algorithm(key.KeyAlgorithm),
 				KeyMode:        policy.KeyMode(key.KeyMode),
-				PrivateKeyCtx:  key.PrivateKeyCtx,
-				PublicKeyCtx:   key.PublicKeyCtx,
+				PrivateKeyCtx:  privateKeyCtx,
+				PublicKeyCtx:   publicKeyCtx,
 				ProviderConfig: pc,
 				Metadata:       metadata,
 			},
@@ -483,6 +519,12 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Kas
 		}
 	}
 
+	privateKeyCtx := &policy.KasPrivateKeyCtx{}
+	publicKeyCtx := &policy.KasPublicKeyCtx{}
+	if err := unmarshalPrivatePublicKeyContext(key.PublicKeyCtx, key.PrivateKeyCtx, publicKeyCtx, privateKeyCtx); err != nil {
+		return nil, err
+	}
+
 	return &policy.KasKey{
 		KasId: key.KeyAccessServerID,
 		Key: &policy.AsymmetricKey{
@@ -491,8 +533,8 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Kas
 			KeyStatus:      policy.KeyStatus(key.KeyStatus),
 			KeyAlgorithm:   policy.Algorithm(key.KeyAlgorithm),
 			KeyMode:        policy.KeyMode(key.KeyMode),
-			PrivateKeyCtx:  key.PrivateKeyCtx,
-			PublicKeyCtx:   key.PublicKeyCtx,
+			PrivateKeyCtx:  privateKeyCtx,
+			PublicKeyCtx:   publicKeyCtx,
 			ProviderConfig: providerConfig,
 			Metadata:       metadata,
 		},
@@ -503,11 +545,6 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 	id := r.GetId()
 	if !pgtypeUUID(id).Valid {
 		return nil, db.ErrUUIDInvalid
-	}
-
-	// Check if trying to update to unspecified key status
-	if r.GetKeyStatus() == policy.KeyStatus_KEY_STATUS_UNSPECIFIED && r.GetMetadata() == nil && r.GetMetadataUpdateBehavior() == common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_UNSPECIFIED {
-		return nil, fmt.Errorf("cannot update key status to unspecified")
 	}
 
 	// Add check to see if a key exists with the updated keys given algo and if that key is active.
@@ -521,7 +558,7 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		} else if activeKeyExists {
-			return nil, fmt.Errorf("key cannot be updated to active when another key with the same algorithm is already active for a KAS")
+			return nil, errors.New("key cannot be updated to active when another key with the same algorithm is already active for a KAS")
 		}
 	}
 
@@ -603,6 +640,12 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 			return nil, err
 		}
 
+		publicKeyCtx := &policy.KasPublicKeyCtx{}
+		privateKeyCtx := &policy.KasPrivateKeyCtx{}
+		if err := unmarshalPrivatePublicKeyContext(key.PublicKeyCtx, key.PrivateKeyCtx, publicKeyCtx, privateKeyCtx); err != nil {
+			return nil, err
+		}
+
 		keys[i] = &policy.KasKey{
 			KasId: key.KeyAccessServerID,
 			Key: &policy.AsymmetricKey{
@@ -611,8 +654,8 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 				KeyStatus:      policy.KeyStatus(key.KeyStatus),
 				KeyAlgorithm:   policy.Algorithm(key.KeyAlgorithm),
 				KeyMode:        policy.KeyMode(key.KeyMode),
-				PublicKeyCtx:   key.PublicKeyCtx,
-				PrivateKeyCtx:  key.PrivateKeyCtx,
+				PublicKeyCtx:   publicKeyCtx,
+				PrivateKeyCtx:  privateKeyCtx,
 				ProviderConfig: providerConfig,
 				Metadata:       metadata,
 			},
@@ -653,4 +696,137 @@ func (c PolicyDBClient) DeleteKey(ctx context.Context, id string) (*policy.Asymm
 	return &policy.AsymmetricKey{
 		Id: id,
 	}, nil
+}
+
+func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey, newKey *kasregistry.RotateKeyRequest_NewKey) (*kasregistry.RotateKeyResponse, error) {
+	rotateKeyResp := &kasregistry.RotateKeyResponse{
+		RotatedResources: &kasregistry.RotatedResources{
+			AttributeDefinitionMappings: make([]*kasregistry.ChangeMappings, 0),
+			AttributeValueMappings:      make([]*kasregistry.ChangeMappings, 0),
+			NamespaceMappings:           make([]*kasregistry.ChangeMappings, 0),
+		},
+	}
+
+	// Step 1: Update old key to inactive.
+	rotatedOutKey, err := c.UpdateKey(ctx, &kasregistry.UpdateKeyRequest{
+		Id:        activeKey.GetKey().GetId(),
+		KeyStatus: policy.KeyStatus_KEY_STATUS_INACTIVE,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 2: Create new key.
+	newKasKey, err := c.CreateKey(ctx, &kasregistry.CreateKeyRequest{
+		KasId:            activeKey.GetKasId(),
+		KeyId:            newKey.GetKeyId(),
+		KeyAlgorithm:     newKey.GetAlgorithm(),
+		KeyMode:          newKey.GetKeyMode(),
+		PublicKeyCtx:     newKey.GetPublicKeyCtx(),
+		PrivateKeyCtx:    newKey.GetPrivateKeyCtx(),
+		ProviderConfigId: newKey.GetProviderConfigId(),
+		Metadata:         newKey.GetMetadata(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 3: Update Namespace/Attribute/Value tables to use the new key.
+	rotatedIDs, err := c.rotatePublicKeyTables(ctx, activeKey.GetKey().GetId(), newKasKey.GetKasKey().GetKey().GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 4: Populate the rotated resources.
+	if err := c.populateChangeMappings(ctx, rotatedIDs, rotateKeyResp.GetRotatedResources()); err != nil {
+		return nil, err
+	}
+	rotateKeyResp.RotatedResources.RotatedOutKey = rotatedOutKey
+
+	// Step 5: Populate the new key
+	rotateKeyResp.KasKey = newKasKey.GetKasKey()
+
+	return rotateKeyResp, nil
+}
+
+func (c PolicyDBClient) populateChangeMappings(ctx context.Context, rotatedIDs rotatedMappingIDs, rotatedResources *kasregistry.RotatedResources) error {
+	for _, id := range rotatedIDs.NamespaceIDs {
+		mapping := &kasregistry.ChangeMappings{
+			Id: id,
+		}
+		ns, err := c.GetNamespace(ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+			NamespaceId: id,
+		})
+		if err != nil {
+			return err
+		}
+		mapping.Fqn = ns.GetFqn()
+		rotatedResources.NamespaceMappings = append(rotatedResources.GetNamespaceMappings(), mapping)
+	}
+	for _, id := range rotatedIDs.AttributeDefIDs {
+		mapping := &kasregistry.ChangeMappings{
+			Id: id,
+		}
+		attrDef, err := c.GetAttribute(ctx, &attributes.GetAttributeRequest_AttributeId{
+			AttributeId: id,
+		})
+		if err != nil {
+			return err
+		}
+		mapping.Fqn = attrDef.GetFqn()
+		rotatedResources.AttributeDefinitionMappings = append(rotatedResources.GetAttributeDefinitionMappings(), mapping)
+	}
+	for _, id := range rotatedIDs.AttributeValueIDs {
+		mapping := &kasregistry.ChangeMappings{
+			Id: id,
+		}
+		attrVal, err := c.GetAttributeValue(ctx, &attributes.GetAttributeValueRequest_ValueId{
+			ValueId: id,
+		})
+		if err != nil {
+			return err
+		}
+		mapping.Fqn = attrVal.GetFqn()
+		rotatedResources.AttributeValueMappings = append(rotatedResources.GetAttributeValueMappings(), mapping)
+	}
+
+	return nil
+}
+
+/**
+* Rotate the public key in the Namespace, AttributeDefinition, and AttributeValue tables.
+ */
+func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID, newKeyID string) (rotatedMappingIDs, error) {
+	var err error
+	rotatedIDs := rotatedMappingIDs{
+		NamespaceIDs:      make([]string, 0),
+		AttributeDefIDs:   make([]string, 0),
+		AttributeValueIDs: make([]string, 0),
+	}
+
+	rotatedIDs.NamespaceIDs, err = c.rotatePublicKeyForNamespace(ctx, rotatePublicKeyForNamespaceParams{
+		OldKeyID: oldKeyID,
+		NewKeyID: newKeyID,
+	})
+	if err != nil {
+		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	rotatedIDs.AttributeDefIDs, err = c.rotatePublicKeyForAttributeDefinition(ctx, rotatePublicKeyForAttributeDefinitionParams{
+		OldKeyID: oldKeyID,
+		NewKeyID: newKeyID,
+	})
+	if err != nil {
+		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	rotatedIDs.AttributeValueIDs, err = c.rotatePublicKeyForAttributeValue(ctx, rotatePublicKeyForAttributeValueParams{
+		OldKeyID: oldKeyID,
+		NewKeyID: newKeyID,
+	})
+	if err != nil {
+		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return rotatedIDs, nil
 }

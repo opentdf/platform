@@ -25,6 +25,11 @@ const (
 	JTILength = 14
 )
 
+type TokenAddingInterceptor struct {
+	tokenSource AccessTokenSource
+	httpClient  *http.Client
+}
+
 // Deprecated: NewTokenAddingInterceptor is deprecated, use NewTokenAddingInterceptorWithClient instead. A http client
 // can be constructed using httputil.SafeHTTPClientWithTLSConfig, but should be reused as much as possible.
 func NewTokenAddingInterceptor(t AccessTokenSource, c *tls.Config) TokenAddingInterceptor {
@@ -39,11 +44,6 @@ func NewTokenAddingInterceptorWithClient(t AccessTokenSource, c *http.Client) To
 		tokenSource: t,
 		httpClient:  c,
 	}
-}
-
-type TokenAddingInterceptor struct {
-	tokenSource AccessTokenSource
-	httpClient  *http.Client
 }
 
 func (i TokenAddingInterceptor) AddCredentials(

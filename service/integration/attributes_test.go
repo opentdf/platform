@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -52,19 +51,6 @@ func (s *AttributesSuite) SetupSuite() {
 func (s *AttributesSuite) TearDownSuite() {
 	slog.Info("tearing down db.Attributes test suite")
 	s.f.TearDown()
-}
-
-func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {
-	return map[string]fixtures.FixtureDataAttribute{
-		"example.com/attr/attr1": s.f.GetAttributeKey("example.com/attr/attr1"),
-		"example.com/attr/attr2": s.f.GetAttributeKey("example.com/attr/attr2"),
-		"example.net/attr/attr1": s.f.GetAttributeKey("example.net/attr/attr1"),
-		"example.net/attr/attr2": s.f.GetAttributeKey("example.net/attr/attr2"),
-		"example.net/attr/attr3": s.f.GetAttributeKey("example.net/attr/attr3"),
-		"example.org/attr/attr1": s.f.GetAttributeKey("example.org/attr/attr1"),
-		"example.org/attr/attr2": s.f.GetAttributeKey("example.org/attr/attr2"),
-		"example.org/attr/attr3": s.f.GetAttributeKey("example.org/attr/attr3"),
-	}
 }
 
 func (s *AttributesSuite) Test_CreateAttribute_NoMetadataSucceeds() {
@@ -561,7 +547,7 @@ func (s *AttributesSuite) Test_ListAttributes_FqnsIncluded() {
 
 		// namespace fqn
 		s.NotEmpty(a.GetNamespace().GetFqn())
-		s.Equal(fmt.Sprintf("https://%s", a.GetNamespace().GetName()), a.GetNamespace().GetFqn())
+		s.Equal("https://"+a.GetNamespace().GetName(), a.GetNamespace().GetFqn())
 
 		// value fqns
 		for _, v := range a.GetValues() {
@@ -1357,7 +1343,6 @@ func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
 	s.Empty(gotAttr.GetKasKeys())
-
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
 	resp, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
 		AttributeId: s.f.GetAttributeKey("example.com/attr/attr1").ID,
@@ -1369,14 +1354,20 @@ func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Succeeds() {
 	gotAttr, err = s.db.PolicyClient.GetAttribute(s.ctx, s.f.GetAttributeKey("example.com/attr/attr1").ID)
 	s.Require().NoError(err)
 	s.NotNil(gotAttr)
+
 	s.Len(gotAttr.GetKasKeys(), 1)
 	s.Equal(kasKey.KeyAccessServerID, gotAttr.GetKasKeys()[0].GetKasId())
 	s.Equal(kasKey.ID, gotAttr.GetKasKeys()[0].GetKey().GetId())
-	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
-	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, gotAttr.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), gotAttr.GetKasKeys()[0])
 	s.Empty(gotAttr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 	s.Empty(gotAttr.GetKasKeys()[0].GetKey().GetProviderConfig())
+
+	// Get the kas server information associated with the key
+	kasReg, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, kasKey.KeyAccessServerID)
+	s.Require().NoError(err)
+	s.NotNil(kasReg)
+
+	s.Equal(kasReg.GetUri(), gotAttr.GetKasKeys()[0].GetKasUri())
 
 	resp, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
 		AttributeId: resp.GetAttributeId(),
@@ -1427,6 +1418,19 @@ func (s *AttributesSuite) Test_RemovePublicKeyFromAttribute_Not_Found_Fails() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
+}
+
+func (s *AttributesSuite) getAttributeFixtures() map[string]fixtures.FixtureDataAttribute {
+	return map[string]fixtures.FixtureDataAttribute{
+		"example.com/attr/attr1": s.f.GetAttributeKey("example.com/attr/attr1"),
+		"example.com/attr/attr2": s.f.GetAttributeKey("example.com/attr/attr2"),
+		"example.net/attr/attr1": s.f.GetAttributeKey("example.net/attr/attr1"),
+		"example.net/attr/attr2": s.f.GetAttributeKey("example.net/attr/attr2"),
+		"example.net/attr/attr3": s.f.GetAttributeKey("example.net/attr/attr3"),
+		"example.org/attr/attr1": s.f.GetAttributeKey("example.org/attr/attr1"),
+		"example.org/attr/attr2": s.f.GetAttributeKey("example.org/attr/attr2"),
+		"example.org/attr/attr3": s.f.GetAttributeKey("example.org/attr/attr3"),
+	}
 }
 
 // - Test that a Get/List attribute returns the Asymmetric Keys with the provider configs / add a key with no provider config

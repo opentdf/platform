@@ -514,7 +514,7 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 	if err != nil {
 		return db.WrapIfKnownInvalidQueryErr(err)
 	}
-	if count == int64(len(actionAttrValues)) {
+	if count != int64(len(actionAttrValues)) {
 		return fmt.Errorf("failed to create all action attribute values, expected %d, got %d", len(actionAttrValues), count)
 	}
 

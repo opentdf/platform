@@ -73,7 +73,7 @@ func (vm *VaultKeyService) LoadKeys(ctx context.Context) error {
 		if k, err := vm.loadKey(ctx, key); err != nil {
 			slog.ErrorContext(ctx, "failed to load key", "key", key, "err", err)
 		} else {
-			slog.DebugContext(ctx, "loaded key", "key", key, "err", err)
+			slog.DebugContext(ctx, "loaded key", "key", key)
 			vm.items[k.ID()] = k
 		}
 	}
@@ -86,10 +86,10 @@ func (vm *VaultKeyService) LoadKeys(ctx context.Context) error {
 
 func (vm *VaultKeyService) loadKey(ctx context.Context, key interface{}) (*VaultItem, error) {
 	kid := trust.KeyIdentifier(key.(string))
-	secretPath := fmt.Sprintf("secret/data/kas_keypair/%s", kid)
+	secretPath := fmt.Sprintf("kas_keypair/%s", kid)
 	secret, err := vm.client.KVv2("secret").Get(ctx, secretPath)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read secret at %s: %v", secretPath, err)
+		return nil, fmt.Errorf("unable to read secret in kv store secret with path [%s]: %v", secretPath, err)
 	}
 
 	privateKeyPEM, ok := secret.Data["private"].(string)

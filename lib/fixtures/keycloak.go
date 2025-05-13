@@ -34,14 +34,14 @@ type RealmToCreate struct {
 
 type User struct {
 	gocloak.User
-	Count int `yaml:"count,omitempty" json:"count,omitempty"`
+	Copies int `yaml:"copies,omitempty" json:"copies,omitempty"`
 }
 
 type Client struct {
 	Client        gocloak.Client      `yaml:"client" json:"client"`
 	SaRealmRoles  []string            `yaml:"sa_realm_roles,omitempty" json:"sa_realm_roles,omitempty"`
 	SaClientRoles map[string][]string `yaml:"sa_client_roles,omitempty" json:"sa_client_roles,omitempty"`
-	Count         int                 `yaml:"count,omitempty" json:"count,omitempty"`
+	Copies        int                 `yaml:"copies,omitempty" json:"copies,omitempty"`
 }
 
 type TokenExchange struct {
@@ -408,14 +408,14 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 				if err != nil {
 					return err
 				}
-				if customClient.Count < 1 {
+				if customClient.Copies < 1 {
 					continue
 				}
 				baseClientID := *customClient.Client.ClientID
 				baseClientName := *customClient.Client.Name
-				numDigits := int(math.Log10(float64(customClient.Count-1))) + 1
+				numDigits := int(math.Log10(float64(customClient.Copies-1))) + 1
 				padFormat := fmt.Sprintf("%%s-%%%dd", numDigits)
-				for i := 0; i < customClient.Count; i++ {
+				for i := 0; i < customClient.Copies; i++ {
 					customClient.Client.ClientID = gocloak.StringP(fmt.Sprintf(padFormat, baseClientID, i))
 					customClient.Client.Name = gocloak.StringP(fmt.Sprintf(padFormat, baseClientName, i))
 					_, err = createClient(ctx, client, token, &kcConnectParams, customClient.Client, realmRoles, clientRoleMap)
@@ -445,14 +445,14 @@ func SetupCustomKeycloak(ctx context.Context, kcParams KeycloakConnectParams, ke
 				if err != nil {
 					return err
 				}
-				if customUser.Count < 1 {
+				if customUser.Copies < 1 {
 					continue
 				}
 				baseUserName := *customUser.User.Username
 				baseEmail := *customUser.User.Email
-				numDigits := int(math.Log10(float64(customUser.Count-1))) + 1
+				numDigits := int(math.Log10(float64(customUser.Copies-1))) + 1
 				padFormat := fmt.Sprintf("%%s-%%%dd", numDigits)
-				for i := 0; i < customUser.Count; i++ {
+				for i := 0; i < customUser.Copies; i++ {
 					customUser.User.Username = gocloak.StringP(fmt.Sprintf(padFormat, baseUserName, i))
 					customUser.User.Email = gocloak.StringP(fmt.Sprintf("%d-%s", i, baseEmail))
 					_, err = createUser(ctx, client, token, &kcConnectParams, customUser.User)

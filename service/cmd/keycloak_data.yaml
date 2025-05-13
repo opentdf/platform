@@ -35,7 +35,7 @@ realms:
             - *customAudMapper
         sa_realm_roles:
           - opentdf-admin
-        count: 10
+        copies: 10
       - client:
           clientID: opentdf-sdk
           enabled: true
@@ -107,7 +107,7 @@ realms:
             - query-users
           tdf-entity-resolution:
             - entity-resolution-test-role
-        count: 10
+        copies: 10
     token_exchanges:
       - start_client: opentdf
         target_client: opentdf-sdk

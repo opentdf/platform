@@ -530,11 +530,11 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 		"level":      "senior",
 	})
 
-	// Setup test data - matching senior engineer with admin attribute
-	seniorEngWithAdminEntity := createEntityRepresentation("engineer-with-admin", map[string]interface{}{
+	// Setup test data - matching principal engineer with admin attribute
+	principalEngWithAdmin := createEntityRepresentation("engineer-with-admin", map[string]interface{}{
 		"roles":      []any{"admin"},
 		"department": "engineering",
-		"level":      "senior",
+		"level":      "principal",
 	})
 
 	// Setup test data - matching senior engineer with admin attribute in index other than selected
@@ -564,8 +564,8 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 	assert.False(t, exists)
 	assert.Empty(t, seniorActions)
 
-	// Test senior engineer with admin
-	adminEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, seniorEngWithAdminEntity)
+	// Test principal engineer with admin
+	adminEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, principalEngWithAdmin)
 	assert.NoError(t, err)
 	assert.Len(t, adminEntitlements, 1)
 	seniorWithAdminActions, exists := adminEntitlements[classRestrictedFQN]

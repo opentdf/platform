@@ -127,7 +127,7 @@ func populateHigherValuesIfHierarchy(
 		if value.GetFqn() == valueFQN {
 			break
 		}
-		// Pull the value from the lookup store where it is expected to hold its subject mappings
+		// Pull the value from the lookup store holding subject mappings
 		fullValue, ok := allEntitleableAttributesByValueFQN[value.GetFqn()]
 		if !ok {
 			l.WarnContext(ctx, "value FQN of hierarchy attribute not found available for lookup, may not have had subject mappings associated or provided", slog.String("value FQN", value.GetFqn()))

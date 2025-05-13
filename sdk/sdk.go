@@ -18,7 +18,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
 	"github.com/opentdf/platform/protocol/go/entityresolution/entityresolutionconnect"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/actions/actionsconnect"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement/keymanagementconnect"
@@ -65,7 +64,6 @@ type SDK struct {
 	*collectionStore
 	conn                    *ConnectRPCConnection
 	tokenSource             auth.AccessTokenSource
-	Actions                 actionsconnect.ActionServiceClient
 	Attributes              attributesconnect.AttributesServiceClient
 	Authorization           authorizationconnect.AuthorizationServiceClient
 	EntityResoution         entityresolutionconnect.EntityResolutionServiceClient
@@ -87,15 +85,16 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	)
 
 	// Set default options
-	cfg := &config{
+	cfg := config{
 		httpClient: httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 			MinVersion: tls.VersionTLS12,
 		}),
+		platformEndpoint: platformEndpoint,
 	}
 
 	// Apply options
 	for _, opt := range opts {
-		opt(cfg)
+		opt(&cfg)
 	}
 
 	// If IPC is enabled, we need to have a core connection
@@ -151,7 +150,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		}
 		cfg.PlatformConfiguration = pcfg
 		if cfg.tokenEndpoint == "" {
-			cfg.tokenEndpoint, err = getTokenEndpoint(*cfg)
+			cfg.tokenEndpoint, err = getTokenEndpoint(cfg)
 			if err != nil {
 				return nil, err
 			}
@@ -189,12 +188,11 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	return &SDK{
-		config:                  *cfg,
+		config:                  cfg,
 		collectionStore:         cfg.collectionStore,
 		kasKeyCache:             newKasKeyCache(),
 		conn:                    &ConnectRPCConnection{Client: platformConn.Client, Endpoint: platformConn.Endpoint, Options: platformConn.Options},
 		tokenSource:             accessTokenSource,
-		Actions:                 actionsconnect.NewActionServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Attributes:              attributesconnect.NewAttributesServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Namespaces:              namespacesconnect.NewNamespaceServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		RegisteredResources:     registeredresourcesconnect.NewRegisteredResourcesServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
@@ -209,6 +207,32 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}, nil
 }
 
+func ConnectTo[T interface{}](sdk *SDK, newT func(connect.HTTPClient, string, ...connect.ClientOption) T, extraOpts ...Option) T {
+	cfg := sdk.config
+	for _, opt := range extraOpts {
+		opt(&cfg)
+	}
+
+	var conn *ConnectRPCConnection
+	if _, ok := any(newT).(func(connect.HTTPClient, string, ...connect.ClientOption) entityresolutionconnect.EntityResolutionServiceClient); ok && cfg.entityResolutionConn != nil {
+		conn = cfg.entityResolutionConn
+	} else if cfg.coreConn != nil {
+		conn = cfg.coreConn
+	} else {
+		var uci []connect.Interceptor
+
+		// Add request ID interceptor
+		uci = append(uci, audit.MetadataAddingConnectInterceptor())
+
+		if accessTokenSource, err := buildIDPTokenSource(cfg); err == nil {
+			interceptor := auth.NewTokenAddingInterceptorWithClient(accessTokenSource, sdk.httpClient)
+			uci = append(uci, interceptor.AddCredentialsConnect())
+		}
+		conn = &ConnectRPCConnection{Endpoint: cfg.platformEndpoint, Client: sdk.httpClient, Options: append(cfg.extraClientOptions, connect.WithInterceptors(uci...))}
+	}
+	return newT(conn.Client, conn.Endpoint, append(conn.Options, cfg.extraClientOptions...)...)
+}
+
 func IsPlatformEndpointMalformed(e string) bool {
 	u, err := url.ParseRequestURI(e)
 	if err != nil || u.Hostname() == "" || strings.Contains(u.Hostname(), ":") {
@@ -217,7 +241,7 @@ func IsPlatformEndpointMalformed(e string) bool {
 	return false
 }
 
-func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
+func buildIDPTokenSource(c config) (auth.AccessTokenSource, error) {
 	if c.customAccessTokenSource != nil {
 		return c.customAccessTokenSource, nil
 	}

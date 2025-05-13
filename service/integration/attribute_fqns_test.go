@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -253,9 +252,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeDefKeysAssociated
 	s.Len(attr.GetKasKeys(), 1)
 	s.Equal(kasKey.KeyAccessServerID, attr.GetKasKeys()[0].GetKasId())
 	s.Equal(kasKey.ID, attr.GetKasKeys()[0].GetKey().GetId())
-	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
-	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, attr.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), attr.GetKasKeys()[0])
 	s.Empty(attr.GetKasKeys()[0].GetKey().GetProviderConfig())
 	s.Empty(attr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 
@@ -318,9 +315,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeValueKeysAssociat
 		s.Len(v.GetKasKeys(), 1)
 		s.Equal(kasKey.KeyAccessServerID, v.GetKasKeys()[0].GetKasId())
 		s.Equal(kasKey.ID, v.GetKasKeys()[0].GetKey().GetId())
-		publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
-		s.Require().NoError(err)
-		s.Equal(publicKeyCtx, v.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+		validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), v.GetKasKeys()[0])
 		s.Empty(v.GetKasKeys()[0].GetKey().GetProviderConfig())
 		s.Empty(v.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 
@@ -363,9 +358,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedWithNamespac
 	s.Len(attr.GetNamespace().GetKasKeys(), 1)
 	s.Equal(kasKey.KeyAccessServerID, attr.GetNamespace().GetKasKeys()[0].GetKasId())
 	s.Equal(kasKey.ID, attr.GetNamespace().GetKasKeys()[0].GetKey().GetId())
-	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
-	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, attr.GetNamespace().GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), attr.GetNamespace().GetKasKeys()[0])
 	s.Empty(attr.GetNamespace().GetKasKeys()[0].GetKey().GetProviderConfig())
 	s.Empty(attr.GetNamespace().GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 
@@ -417,9 +410,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedAttributes_M
 	s.Len(attr.GetKasKeys(), 1)
 	s.Equal(kasKey.KeyAccessServerID, attr.GetKasKeys()[0].GetKasId())
 	s.Equal(kasKey.ID, attr.GetKasKeys()[0].GetKey().GetId())
-	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
-	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, attr.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), attr.GetKasKeys()[0])
 	s.Empty(attr.GetKasKeys()[0].GetKey().GetProviderConfig())
 	s.Empty(attr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 
@@ -430,9 +421,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedAttributes_M
 	s.Len(attr.GetKasKeys(), 1)
 	s.Equal(kasKey2.KeyAccessServerID, attr.GetKasKeys()[0].GetKasId())
 	s.Equal(kasKey2.ID, attr.GetKasKeys()[0].GetKey().GetId())
-	publicKeyCtx, err = base64.StdEncoding.DecodeString(kasKey2.PublicKeyCtx)
-	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, attr.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey2.PublicKeyCtx), attr.GetKasKeys()[0])
 	s.Empty(attr.GetKasKeys()[0].GetKey().GetProviderConfig())
 	s.Empty(attr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 

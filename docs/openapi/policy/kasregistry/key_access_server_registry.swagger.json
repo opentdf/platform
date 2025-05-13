@@ -307,18 +307,16 @@
           "title": "Required"
         },
         "publicKeyCtx": {
-          "type": "string",
-          "format": "byte",
+          "$ref": "#/definitions/policyKasPublicKeyCtx",
           "title": "Required"
         },
         "privateKeyCtx": {
-          "type": "string",
-          "format": "byte",
-          "title": "Specific structure based on key provider implementation"
+          "$ref": "#/definitions/policyKasPrivateKeyCtx",
+          "title": "Required"
         },
         "providerConfigId": {
           "type": "string",
-          "title": "Optional"
+          "description": "Conditionally Required. If the key_mode is REMOTE, this field is required."
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadataMutable",
@@ -643,34 +641,40 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "keyId": {
-          "type": "string"
+          "type": "string",
+          "title": "Required"
         },
         "keyAlgorithm": {
-          "$ref": "#/definitions/policyAlgorithm"
+          "$ref": "#/definitions/policyAlgorithm",
+          "title": "Required"
         },
         "keyStatus": {
-          "$ref": "#/definitions/policyKeyStatus"
+          "$ref": "#/definitions/policyKeyStatus",
+          "title": "Required"
         },
         "keyMode": {
           "$ref": "#/definitions/policyKeyMode",
-          "title": "Specifies how the key is managed (local or remote)"
+          "description": "Specifies how the key is managed (local or remote)",
+          "title": "Required"
         },
         "publicKeyCtx": {
-          "type": "string",
-          "format": "byte",
-          "title": "Specific structure based on key provider implementation"
+          "$ref": "#/definitions/policyKasPublicKeyCtx",
+          "description": "Specific structure based on key provider implementation",
+          "title": "Required"
         },
         "privateKeyCtx": {
-          "type": "string",
-          "format": "byte",
-          "title": "Specific structure based on key provider implementation"
+          "$ref": "#/definitions/policyKasPrivateKeyCtx",
+          "description": "Specific structure based on key provider implementation",
+          "title": "Optional"
         },
         "providerConfig": {
           "$ref": "#/definitions/policyKeyProviderConfig",
-          "title": "Configuration for the key provider"
+          "description": "Configuration for the key provider",
+          "title": "Optional"
         },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
@@ -689,6 +693,21 @@
         },
         "kasUri": {
           "type": "string"
+        }
+      }
+    },
+    "policyKasPrivateKeyCtx": {
+      "type": "object",
+      "properties": {
+        "keyId": {
+          "type": "string",
+          "description": "Key ID for the symmetric key wrapping this key.",
+          "title": "Required"
+        },
+        "wrappedKey": {
+          "type": "string",
+          "description": "Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.",
+          "title": "Optional"
         }
       }
     },
@@ -721,6 +740,16 @@
         "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1"
       ],
       "default": "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED"
+    },
+    "policyKasPublicKeyCtx": {
+      "type": "object",
+      "properties": {
+        "pem": {
+          "type": "string",
+          "description": "Base64 encoded public key in PEM format",
+          "title": "Required"
+        }
+      }
     },
     "policyKasPublicKeySet": {
       "type": "object",

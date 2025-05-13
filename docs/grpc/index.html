@@ -238,7 +238,15 @@
                 </li>
               
                 <li>
+                  <a href="#policy.KasPrivateKeyCtx"><span class="badge">M</span>KasPrivateKeyCtx</a>
+                </li>
+              
+                <li>
                   <a href="#policy.KasPublicKey"><span class="badge">M</span>KasPublicKey</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.KasPublicKeyCtx"><span class="badge">M</span>KasPublicKeyCtx</a>
                 </li>
               
                 <li>
@@ -1937,56 +1945,64 @@
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>key_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>key_algorithm</td>
                   <td><a href="#policy.Algorithm">Algorithm</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>key_status</td>
                   <td><a href="#policy.KeyStatus">KeyStatus</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>key_mode</td>
                   <td><a href="#policy.KeyMode">KeyMode</a></td>
                   <td></td>
-                  <td><p>Specifies how the key is managed (local or remote) </p></td>
+                  <td><p>Required
+
+Specifies how the key is managed (local or remote) </p></td>
                 </tr>
               
                 <tr>
                   <td>public_key_ctx</td>
-                  <td><a href="#bytes">bytes</a></td>
+                  <td><a href="#policy.KasPublicKeyCtx">KasPublicKeyCtx</a></td>
                   <td></td>
-                  <td><p>Specific structure based on key provider implementation </p></td>
+                  <td><p>Required
+
+Specific structure based on key provider implementation </p></td>
                 </tr>
               
                 <tr>
                   <td>private_key_ctx</td>
-                  <td><a href="#bytes">bytes</a></td>
+                  <td><a href="#policy.KasPrivateKeyCtx">KasPrivateKeyCtx</a></td>
                   <td></td>
-                  <td><p>Specific structure based on key provider implementation </p></td>
+                  <td><p>Optional
+
+Specific structure based on key provider implementation </p></td>
                 </tr>
               
                 <tr>
                   <td>provider_config</td>
                   <td><a href="#policy.KeyProviderConfig">KeyProviderConfig</a></td>
                   <td></td>
-                  <td><p>Configuration for the key provider </p></td>
+                  <td><p>Optional
+
+Configuration for the key provider </p></td>
                 </tr>
               
                 <tr>
@@ -2200,6 +2216,41 @@ subject_external_selector_value on a flattened Entity Representation
 
         
       
+        <h3 id="policy.KasPrivateKeyCtx">KasPrivateKeyCtx</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+
+Key ID for the symmetric key wrapping this key. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>wrapped_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+
+Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.KasPublicKey">KasPublicKey</h3>
         <p>Deprecated</p><p>A KAS public key and some associated metadata for further identifcation</p>
 
@@ -2231,6 +2282,32 @@ subject_external_selector_value on a flattened Entity Representation
                   <td><p>A known algorithm type with any additional parameters encoded.
 To start, these may be `rsa:2048` for encrypting ZTDF files and
 `ec:secp256r1` for nanoTDF, but more formats may be added as needed. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.KasPublicKeyCtx">KasPublicKeyCtx</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>pem</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+
+Base64 encoded public key in PEM format </p></td>
                 </tr>
               
             </tbody>
@@ -7633,7 +7710,7 @@ The mode of the key (e.g., local or external) </p></td>
               
                 <tr>
                   <td>public_key_ctx</td>
-                  <td><a href="#bytes">bytes</a></td>
+                  <td><a href="#policy.KasPublicKeyCtx">policy.KasPublicKeyCtx</a></td>
                   <td></td>
                   <td><p>Required
 
@@ -7642,9 +7719,9 @@ Context or additional data specific to the public key, based on the key provider
               
                 <tr>
                   <td>private_key_ctx</td>
-                  <td><a href="#bytes">bytes</a></td>
+                  <td><a href="#policy.KasPrivateKeyCtx">policy.KasPrivateKeyCtx</a></td>
                   <td></td>
-                  <td><p>Optional
+                  <td><p>Required
 
 Context or additional data specific to the private key, based on the key provider implementation </p></td>
                 </tr>
@@ -8767,23 +8844,23 @@ Pagination request for the list of keys </p></td>
               
                 <tr>
                   <td>public_key_ctx</td>
-                  <td><a href="#bytes">bytes</a></td>
+                  <td><a href="#policy.KasPublicKeyCtx">policy.KasPublicKeyCtx</a></td>
                   <td></td>
                   <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>private_key_ctx</td>
-                  <td><a href="#bytes">bytes</a></td>
+                  <td><a href="#policy.KasPrivateKeyCtx">policy.KasPrivateKeyCtx</a></td>
                   <td></td>
-                  <td><p>Specific structure based on key provider implementation </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>provider_config_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Optional </p></td>
+                  <td><p>Conditionally Required. If the key_mode is REMOTE, this field is required. </p></td>
                 </tr>
               
                 <tr>

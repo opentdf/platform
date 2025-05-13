@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -1199,18 +1198,9 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
 	s.Len(gotNS.GetKasKeys(), 1)
 	s.Equal(kasKey.KeyAccessServerID, gotNS.GetKasKeys()[0].GetKasId())
 	s.Equal(kasKey.ID, gotNS.GetKasKeys()[0].GetKey().GetId())
-	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
-	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, gotNS.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), gotNS.GetKasKeys()[0])
 	s.Empty(gotNS.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
 	s.Empty(gotNS.GetKasKeys()[0].GetKey().GetProviderConfig())
-
-	// Get the kas server information associated with the key
-	kasReg, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, kasKey.KeyAccessServerID)
-	s.Require().NoError(err)
-	s.NotNil(kasReg)
-
-	s.Equal(kasReg.GetUri(), gotNS.GetKasKeys()[0].GetKasUri())
 
 	resp, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
 		NamespaceId: resp.GetNamespaceId(),

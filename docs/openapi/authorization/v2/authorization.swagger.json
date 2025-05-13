@@ -50,6 +50,89 @@
         }
       }
     },
+    "authorizationEntity": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "emailAddress": {
+          "type": "string",
+          "title": "one of the entity options must be set"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "remoteClaimsUrl": {
+          "type": "string"
+        },
+        "uuid": {
+          "type": "string"
+        },
+        "claims": {
+          "$ref": "#/definitions/protobufAny"
+        },
+        "custom": {
+          "$ref": "#/definitions/authorizationEntityCustom"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/definitions/authorizationEntityCategory"
+        }
+      },
+      "title": "PE (Person Entity) or NPE (Non-Person Entity)"
+    },
+    "authorizationEntityCategory": {
+      "type": "string",
+      "enum": [
+        "CATEGORY_UNSPECIFIED",
+        "CATEGORY_SUBJECT",
+        "CATEGORY_ENVIRONMENT"
+      ],
+      "default": "CATEGORY_UNSPECIFIED"
+    },
+    "authorizationEntityChain": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationEntity"
+          }
+        }
+      },
+      "title": "A set of related PE and NPE"
+    },
+    "authorizationEntityCustom": {
+      "type": "object",
+      "properties": {
+        "extension": {
+          "$ref": "#/definitions/protobufAny"
+        }
+      },
+      "title": "Entity type for custom entities beyond the standard types"
+    },
+    "authorizationToken": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "jwt": {
+          "type": "string",
+          "title": "the token"
+        }
+      }
+    },
     "authorizationv2Decision": {
       "type": "string",
       "enum": [
@@ -100,23 +183,6 @@
       ],
       "default": "CATEGORY_UNSPECIFIED"
     },
-    "authorizationv2EntityChain": {
-      "type": "object",
-      "properties": {
-        "ephemeralId": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
-        "entities": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationv2Entity"
-          }
-        }
-      },
-      "title": "A set of related PE and NPE (i.e. authenticating client and user)"
-    },
     "authorizationv2EntityEntitlements": {
       "type": "object",
       "properties": {
@@ -142,19 +208,6 @@
             "type": "object",
             "$ref": "#/definitions/authorizationv2EntityEntitlements"
           }
-        }
-      }
-    },
-    "authorizationv2Token": {
-      "type": "object",
-      "properties": {
-        "ephemeralId": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
-        "jwt": {
-          "type": "string",
-          "title": "access token"
         }
       }
     },
@@ -279,7 +332,7 @@
       "type": "object",
       "properties": {
         "entity": {
-          "$ref": "#/definitions/authorizationv2EntityChain",
+          "$ref": "#/definitions/authorizationEntityChain",
           "title": "The entity chain must be defined"
         },
         "action": {

@@ -1,7 +1,7 @@
 # Sample Key Management System Integration with OpenBao
 
 This folder includes an example Cryptographic Key Management System (CKMS) extension for OpenTDF.
-It uses OpenBao to store KAS asymmetric key data,
+It uses Vault or OpenBao to store KAS asymmetric key data,
 provided via a `trust.KeyService` plugin.
 
 ## Starting Vault

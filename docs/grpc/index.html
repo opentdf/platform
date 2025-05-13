@@ -472,6 +472,14 @@
                 </li>
               
                 <li>
+                  <a href="#authorization.v2.GetDecisionByTokenMultiResourceRequest"><span class="badge">M</span>GetDecisionByTokenMultiResourceRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.GetDecisionByTokenMultiResourceResponse"><span class="badge">M</span>GetDecisionByTokenMultiResourceResponse</a>
+                </li>
+              
+                <li>
                   <a href="#authorization.v2.GetDecisionByTokenRequest"><span class="badge">M</span>GetDecisionByTokenRequest</a>
                 </li>
               
@@ -517,10 +525,6 @@
               
                 <li>
                   <a href="#authorization.v2.Token"><span class="badge">M</span>Token</a>
-                </li>
-              
-                <li>
-                  <a href="#authorization.v2.TokenDecisionRequest"><span class="badge">M</span>TokenDecisionRequest</a>
                 </li>
               
               
@@ -4115,21 +4119,21 @@ string</p></td>
                 <td>GetDecisions</td>
                 <td><a href="#authorization.GetDecisionsRequest">GetDecisionsRequest</a></td>
                 <td><a href="#authorization.GetDecisionsResponse">GetDecisionsResponse</a></td>
-                <td><p>Deprecated: Use AuthorizationV2.GetDecisionBulk method instead</p></td>
+                <td><p>Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetMultiResourceDecision, GetBulkDecision)</p></td>
               </tr>
             
               <tr>
                 <td>GetDecisionsByToken</td>
                 <td><a href="#authorization.GetDecisionsByTokenRequest">GetDecisionsByTokenRequest</a></td>
                 <td><a href="#authorization.GetDecisionsByTokenResponse">GetDecisionsByTokenResponse</a></td>
-                <td><p>Deprecated: Use AuthorizationV2.GetDecisionBulkByToken method instead</p></td>
+                <td><p>Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetMultiResourceDecision)</p></td>
               </tr>
             
               <tr>
                 <td>GetEntitlements</td>
                 <td><a href="#authorization.GetEntitlementsRequest">GetEntitlementsRequest</a></td>
                 <td><a href="#authorization.GetEntitlementsResponse">GetEntitlementsResponse</a></td>
-                <td><p>Deprecated: Use AuthorizationV2.GetEntitlements method instead</p></td>
+                <td><p>Deprecated: Use AuthorizationV2 method instead (GetEntitlements)</p></td>
               </tr>
             
           </tbody>
@@ -4423,7 +4427,45 @@ string</p></td>
 
         
       
-        <h3 id="authorization.v2.GetDecisionByTokenRequest">GetDecisionByTokenRequest</h3>
+        <h3 id="authorization.v2.GetDecisionByTokenMultiResourceRequest">GetDecisionByTokenMultiResourceRequest</h3>
+        <p>Can the entity (PE or NPE) represented by this token access?</p><p>1. one token</p><p>2. one action</p><p>3. multiple resource</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>token</td>
+                  <td><a href="#authorization.v2.Token">Token</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#policy.Action">policy.Action</a></td>
+                  <td></td>
+                  <td><p>name on action is required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>resources</td>
+                  <td><a href="#authorization.v2.Resource">Resource</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetDecisionByTokenMultiResourceResponse">GetDecisionByTokenMultiResourceResponse</h3>
         <p></p>
 
         
@@ -4434,8 +4476,60 @@ string</p></td>
             <tbody>
               
                 <tr>
-                  <td>decision_request</td>
-                  <td><a href="#authorization.v2.TokenDecisionRequest">TokenDecisionRequest</a></td>
+                  <td>action</td>
+                  <td><a href="#policy.Action">policy.Action</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>all_permitted</td>
+                  <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
+                  <td></td>
+                  <td><p>convenience flag indicating global resource decisions result (permit/deny) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>resource_decisions</td>
+                  <td><a href="#authorization.v2.ResourceDecision">ResourceDecision</a></td>
+                  <td>repeated</td>
+                  <td><p>individual resource decisions </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetDecisionByTokenRequest">GetDecisionByTokenRequest</h3>
+        <p>Can the entity (PE or NPE) represented by this token access?</p><p>1. one token</p><p>2. one action</p><p>3. one resource</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>token</td>
+                  <td><a href="#authorization.v2.Token">Token</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#policy.Action">policy.Action</a></td>
+                  <td></td>
+                  <td><p>name on action is required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>resource</td>
+                  <td><a href="#authorization.v2.Resource">Resource</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -4530,7 +4624,7 @@ string</p></td>
                   <td>action</td>
                   <td><a href="#policy.Action">policy.Action</a></td>
                   <td></td>
-                  <td><p>name on action is required </p></td>
+                  <td><p>name on action is to be relied upon </p></td>
                 </tr>
               
                 <tr>
@@ -4821,44 +4915,6 @@ down the hierarchical values instead of returning solely the value that is direc
 
         
       
-        <h3 id="authorization.v2.TokenDecisionRequest">TokenDecisionRequest</h3>
-        <p>Can the entity (PE or NPE) represented by this token take the provided action on the single resource</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>token</td>
-                  <td><a href="#authorization.v2.Token">Token</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>action</td>
-                  <td><a href="#policy.Action">policy.Action</a></td>
-                  <td></td>
-                  <td><p>name on action is required </p></td>
-                </tr>
-              
-                <tr>
-                  <td>resource</td>
-                  <td><a href="#authorization.v2.Resource">Resource</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
 
       
         <h3 id="authorization.v2.Decision">Decision</h3>
@@ -4956,6 +5012,13 @@ down the hierarchical values instead of returning solely the value that is direc
                 <td>GetDecisionByToken</td>
                 <td><a href="#authorization.v2.GetDecisionByTokenRequest">GetDecisionByTokenRequest</a></td>
                 <td><a href="#authorization.v2.GetDecisionByTokenResponse">GetDecisionByTokenResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetDecisionByTokenMultiResource</td>
+                <td><a href="#authorization.v2.GetDecisionByTokenMultiResourceRequest">GetDecisionByTokenMultiResourceRequest</a></td>
+                <td><a href="#authorization.v2.GetDecisionByTokenMultiResourceResponse">GetDecisionByTokenMultiResourceResponse</a></td>
                 <td><p></p></td>
               </tr>
             

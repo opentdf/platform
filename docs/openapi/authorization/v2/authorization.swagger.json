@@ -158,22 +158,6 @@
         }
       }
     },
-    "authorizationv2TokenDecisionRequest": {
-      "type": "object",
-      "properties": {
-        "token": {
-          "$ref": "#/definitions/authorizationv2Token"
-        },
-        "action": {
-          "$ref": "#/definitions/policyAction",
-          "title": "name on action is required"
-        },
-        "resource": {
-          "$ref": "#/definitions/v2Resource"
-        }
-      },
-      "title": "Can the entity (PE or NPE) represented by this token take the provided action on the single resource"
-    },
     "commonMetadata": {
       "type": "object",
       "properties": {
@@ -263,6 +247,26 @@
         }
       }
     },
+    "v2GetDecisionByTokenMultiResourceResponse": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/policyAction"
+        },
+        "allPermitted": {
+          "type": "boolean",
+          "title": "convenience flag indicating global resource decisions result (permit/deny)"
+        },
+        "resourceDecisions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v2ResourceDecision"
+          },
+          "title": "individual resource decisions"
+        }
+      }
+    },
     "v2GetDecisionByTokenResponse": {
       "type": "object",
       "properties": {
@@ -301,7 +305,7 @@
         },
         "action": {
           "$ref": "#/definitions/policyAction",
-          "title": "name on action is required"
+          "title": "name on action is to be relied upon"
         },
         "allPermitted": {
           "type": "boolean",

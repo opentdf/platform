@@ -32,6 +32,9 @@ else
   vault server -dev -dev-root-token-id root -dev-tls -dev-tls-cert-dir="${SCRIPT_DIR}/" &>>vault_startup.log &
   VAULT_PID=$!
 
+  echo "Vault started with PID $VAULT_PID. Waiting for it to be ready..." >&2
+  echo "To install cert on macOS, run: sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./vault-ca.pem" >&2
+
   # Clean up Vault process on exit
   trap 'echo "Trapped signal: EXIT at $(date)"; kill $VAULT_PID' EXIT
 fi
@@ -148,10 +151,10 @@ setup_vault_approle() {
 
   # Create a role for KAS
   if ! vault write auth/approle/role/kas policies="kas-service,kas-viewer" \
-    secret_id_ttl=1h \
-    token_ttl=1h \
-    token_max_ttl=2h \
-    secret_id_num_uses=10; then
+    secret_id_ttl=10h \
+    token_ttl=10h \
+    token_max_ttl=20h \
+    secret_id_num_uses=100; then
     echo "Failed to create role for KAS. Exiting." >&2
     return 1
   fi
@@ -174,7 +177,7 @@ setup_vault_approle() {
   export KAS_APPROLE_SECRETID="$SECRET_ID"
 }
 
-# Call the function
+setup_vault_adminrole
 setup_vault_approle
 export KAS_APPROLE_ROLEID="$ROLE_ID"
 export KAS_APPROLE_SECRETID="$SECRET_ID"

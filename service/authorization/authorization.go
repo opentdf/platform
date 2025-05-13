@@ -20,7 +20,9 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/sdk"
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/access"
 	"github.com/opentdf/platform/service/internal/entitlements"
@@ -303,7 +305,8 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 
 	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
 	for {
-		listed, err := as.sdk.Attributes.ListAttributes(ctx, connect.NewRequest(&attr.ListAttributesRequest{
+		attrs := sdk.ConnectTo(as.sdk, attributesconnect.NewAttributesServiceClient)
+		listed, err := attrs.ListAttributes(ctx, connect.NewRequest(&attr.ListAttributesRequest{
 			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			Pagination: &policy.PageRequest{
 				Offset: nextOffset,

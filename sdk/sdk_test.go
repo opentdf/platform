@@ -8,8 +8,6 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
-	"github.com/opentdf/platform/protocol/go/policy/resourcemapping/resourcemappingconnect"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
 	"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,10 +64,11 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	require.NoError(t, err)
 
 	// check if the clients are available
-	assert.NotNil(t, s.Attributes)
-	assert.NotNil(t, s.ResourceMapping)
-	assert.NotNil(t, s.SubjectMapping)
-	assert.NotNil(t, s.KeyAccessServerRegistry)
+	ac := sdk.ConnectTo(s, attributesconnect.NewAttributesServiceClient)
+	assert.NotNil(t, ac)
+
+	kasClient := sdk.ConnectTo(s, kasregistryconnect.NewKeyAccessServerRegistryServiceClient)
+	assert.NotNil(t, kasClient)
 }
 
 func Test_PlatformConfiguration_BadCases(t *testing.T) {
@@ -199,7 +198,7 @@ func TestIsInvalid_MissingRequiredManifestPayloadField(t *testing.T) {
 	require.ErrorIs(t, err, sdk.ErrInvalidPerSchema)
 }
 
-func TestNew_ShouldHaveSameMethods(t *testing.T) {
+func TestNew_IsSuccessful(t *testing.T) {
 	s, err := sdk.New(goodPlatformEndpoint,
 		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
 			"platform_issuer": "https://example.org",
@@ -208,39 +207,7 @@ func TestNew_ShouldHaveSameMethods(t *testing.T) {
 		sdk.WithTokenEndpoint("https://example.org/token"),
 	)
 	require.NoError(t, err)
-
-	tests := []struct {
-		name     string
-		expected []string
-		actual   []string
-	}{
-		{
-			name:     "Attributes",
-			expected: GetMethods(reflect.TypeOf(attributesconnect.NewAttributesServiceClient(s.Conn().Client, s.Conn().Endpoint))),
-			actual:   GetMethods(reflect.TypeOf(s.Attributes)),
-		},
-		{
-			name:     "ResourceEncoding",
-			expected: GetMethods(reflect.TypeOf(resourcemappingconnect.NewResourceMappingServiceClient(s.Conn().Client, s.Conn().Endpoint))),
-			actual:   GetMethods(reflect.TypeOf(s.ResourceMapping)),
-		},
-		{
-			name:     "SubjectEncoding",
-			expected: GetMethods(reflect.TypeOf(subjectmappingconnect.NewSubjectMappingServiceClient(s.Conn().Client, s.Conn().Endpoint))),
-			actual:   GetMethods(reflect.TypeOf(s.SubjectMapping)),
-		},
-		{
-			name:     "KeyAccessGrants",
-			expected: GetMethods(reflect.TypeOf(kasregistryconnect.NewKeyAccessServerRegistryServiceClient(s.Conn().Client, s.Conn().Endpoint))),
-			actual:   GetMethods(reflect.TypeOf(s.KeyAccessServerRegistry)),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, tt.actual)
-		})
-	}
+	require.NotNil(t, s)
 }
 
 func Test_New_ShouldFailWithDisconnectedPlatform(t *testing.T) {

@@ -28,6 +28,7 @@ type config struct {
 	extraClientOptions                 []connect.ClientOption
 	httpClient                         *http.Client
 	clientCredentials                  *oauth.ClientCredentials
+	platformEndpoint                   string
 	tokenExchange                      *oauth.TokenExchangeInfo
 	tokenEndpoint                      string
 	scopes                             []string

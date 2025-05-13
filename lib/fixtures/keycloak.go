@@ -167,7 +167,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 				return err
 			}
 		} else {
-			slog.Info(fmt.Sprintf("✅ Role created: role = %s", role))
+			slog.Info("✅ Role created: role = " + role)
 		}
 	}
 
@@ -524,7 +524,7 @@ func createGroup(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JW
 			return err
 		}
 	} else {
-		slog.Info(fmt.Sprintf("✅ Group created: group = %s", *group.Name))
+		slog.Info("✅ Group created: group = " + *group.Name)
 	}
 	return nil
 }
@@ -542,7 +542,7 @@ func createRealmRole(ctx context.Context, client *gocloak.GoCloak, token *gocloa
 			return err
 		}
 	} else {
-		slog.Info(fmt.Sprintf("✅ Role created: role = %s", *role.Name))
+		slog.Info("✅ Role created: role = " + *role.Name)
 	}
 	return nil
 }
@@ -613,7 +613,7 @@ func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.J
 			slog.Info(fmt.Sprintf("Adding realm roles to client %s via service account %s", longClientID, *user.Username))
 			if err := client.AddRealmRoleToUser(ctx, token.AccessToken, connectParams.Realm, *user.ID, realmRoles); err != nil {
 				for _, role := range realmRoles {
-					slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+					slog.Warn("Error adding role " + *role.Name)
 				}
 				return "", err
 			}
@@ -626,7 +626,7 @@ func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.J
 			for clientIDRole, roles := range clientRoles {
 				if err := client.AddClientRolesToUser(ctx, token.AccessToken, connectParams.Realm, clientIDRole, *user.ID, roles); err != nil {
 					for _, role := range roles {
-						slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+						slog.Warn("Error adding role " + *role.Name)
 					}
 					return "", err
 				}
@@ -694,7 +694,7 @@ func createUser(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT
 
 			if err := client.AddClientRolesToUser(ctx, token.AccessToken, connectParams.Realm, *idOfClient, longUserID, clientRoles); err != nil {
 				for _, role := range clientRoles {
-					slog.Warn(fmt.Sprintf("Error adding role %s", *role.Name))
+					slog.Warn("Error adding role " + *role.Name)
 				}
 				return nil, err
 			}
@@ -816,7 +816,7 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 		}
 	}
 	tokenExchangePolicyID := realmMgmtPolicy.ID
-	slog.Info(fmt.Sprintf("✅ Created Token Exchange Policy %s", *tokenExchangePolicyID))
+	slog.Info("✅ Created Token Exchange Policy " + *tokenExchangePolicyID)
 
 	slog.Debug("Step 4 - Get Token Exchange Scope Identifier")
 	resourceRep, err := client.GetResource(ctx, token.AccessToken, connectParams.Realm, *realmManagementClientID, *tokenExchangePolicyPermissionResourceID)
@@ -832,11 +832,11 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 		}
 	}
 	if tokenExchangeScopeID == nil {
-		return fmt.Errorf("no token exchange scope found")
+		return errors.New("no token exchange scope found")
 	}
-	slog.Debug(fmt.Sprintf("Token exchange scope id =%s", *tokenExchangeScopeID))
+	slog.Debug("Token exchange scope id =" + *tokenExchangeScopeID)
 
-	clientPermissionName := fmt.Sprintf("token-exchange.permission.client.%s", *idForTargetClientID)
+	clientPermissionName := "token-exchange.permission.client." + *idForTargetClientID
 	clientType := "Scope"
 	clientPermissionResources := []string{*tokenExchangePolicyPermissionResourceID}
 	clientPermissionPolicies := []string{*tokenExchangePolicyID}
@@ -911,7 +911,7 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 	requiredRequirement := "REQUIRED"
 	execution := authExecutions[0]
 	executionConfig := make(map[string]any)
-	executionConfig["alias"] = fmt.Sprintf("%s X509 Validate Username", topLevelFlowName)
+	executionConfig["alias"] = topLevelFlowName + " X509 Validate Username"
 	config := make(map[string]any)
 	config["x509-cert-auth.mapping-source-selection"] = "Subject's Common Name"
 	config["x509-cert-auth.canonical-dn-enabled"] = false
@@ -963,7 +963,7 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 		return err
 	}
 	if len(clients) != 1 {
-		return fmt.Errorf("could not find client")
+		return errors.New("could not find client")
 	}
 	updatedClient := clients[0]
 
@@ -975,7 +975,7 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 		return err
 	}
 
-	slog.Info(fmt.Sprintf("✅ Created Cert Exchange Authentication %s", *flowID))
+	slog.Info("✅ Created Cert Exchange Authentication " + *flowID)
 
 	return nil
 }

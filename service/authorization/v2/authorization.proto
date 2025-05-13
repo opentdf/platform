@@ -15,6 +15,16 @@ enum Decision {
   // DECISION_OBLIGATED = 3;
 }
 
+// A set of related PE and NPE
+message EntityChain {
+  // ephemeral id for tracking between request and response
+  string ephemeral_chain_id = 1;
+  repeated Entity entities = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {min_items: 1}
+  ];
+}
+
 // PE (Person Entity) or NPE (Non-Person Entity)
 message Entity {
   // ephemeral id for tracking between request and response
@@ -37,11 +47,6 @@ message Entity {
   }
   Category category = 9;
 }
-
-// Entity type for custom entities beyond the standard types
-// message EntityCustom {
-//   google.protobuf.Any extension = 1;
-// }
 
 // Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]
 message EntityEntitlements {
@@ -72,7 +77,7 @@ message Resource {
 message ResourceDecision {
   // ephemeral id for tracking between request and response
   string ephemeral_resource_id = 1;
-  // the decision result
+  // decision result
   Decision decision = 3;
 }
 
@@ -81,7 +86,7 @@ message ResourceDecision {
 // 2. one action
 // 3. one resource
 message GetDecisionRequest {
-  authorization.EntityChain entity = 1 [(buf.validate.field).required = true];
+  EntityChain entity = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   Resource resource = 3 [(buf.validate.field).required = true];
@@ -93,14 +98,10 @@ message GetDecisionRequest {
   };
 }
 message GetDecisionResponse {
-  // ephemeral id for tracking between request and response
-  string ephemeral_entity_chain_id = 1;
-  // name on action is required
-  policy.Action action = 2;
-  // the decision on the resource
-  ResourceDecision decision = 3;
+  // decision on the resource
+  ResourceDecision decision = 1;
   // optional list of obligations represented in URI format
-  // repeated string obligations = 4;
+  // repeated string obligations = 2;
 }
 
 // Can the entity (PE or NPE) access?
@@ -109,8 +110,8 @@ message GetDecisionResponse {
 // 3. multiple resources
 // Note: this is a more performant bulk request for multiple resource decisions
 message GetDecisionMultiResourceRequest {
-  // The entity chain must be defined
-  authorization.EntityChain entity = 1 [(buf.validate.field).required = true];
+  // entity chain must be defined
+  EntityChain entity = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   repeated Resource resources = 3 [
@@ -125,14 +126,10 @@ message GetDecisionMultiResourceRequest {
   };
 }
 message GetDecisionMultiResourceResponse {
-  // ephemeral id for tracking between request and response
-  string ephemeral_entity_chain_id = 1;
-  // name on action is to be relied upon
-  policy.Action action = 2;
   // convenience flag indicating global resource decisions result (permit/deny)
-  google.protobuf.BoolValue all_permitted = 3;
+  google.protobuf.BoolValue all_permitted = 1;
   // individual resource decisions
-  repeated ResourceDecision resource_decisions = 4;
+  repeated ResourceDecision resource_decisions = 2;
 }
 
 // Can the entities (PE or NPE) access?
@@ -146,22 +143,28 @@ message GetDecisionBulkResponse {
   repeated GetDecisionMultiResourceResponse decision_responses = 1;
 }
 
-// What can the entity do, broken down as permitted actions on attribute value FQNs
+// What can the entity (PE or NPE, represented by the entity chain) do, broken down as permitted actions on attribute value FQNs?
 //
 // Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use
 // GetDecision if the resource is known
 message GetEntitlementsRequest {
-  // list of requested entities
-  // todo: should this be an entity chain?
-  repeated Entity entities = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).repeated = {min_items: 1}
-  ];
+  EntityChain entity_chain = 1 [(buf.validate.field).required = true];
   // optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
   // down the hierarchical values instead of returning solely the value that is directly entitled
   optional bool with_comprehensive_hierarchy = 2;
 }
 message GetEntitlementsResponse {
+  repeated EntityEntitlements entitlements = 1;
+}
+
+// What can the entity (PE or NPE, represented by the token) do, broken down as permitted actions on attribute value FQNs?
+message GetEntitlementsByTokenRequest {
+  authorization.Token token = 1 [(buf.validate.field).required = true];
+  // optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
+  // down the hierarchical values instead of returning solely the value that is directly entitled
+  optional bool with_comprehensive_hierarchy = 2;
+}
+message GetEntitlementsByTokenResponse {
   repeated EntityEntitlements entitlements = 1;
 }
 
@@ -205,11 +208,10 @@ message GetDecisionByTokenMultiResourceRequest {
   };
 }
 message GetDecisionByTokenMultiResourceResponse {
-  policy.Action action = 1;
   // convenience flag indicating global resource decisions result (permit/deny)
-  google.protobuf.BoolValue all_permitted = 2;
+  google.protobuf.BoolValue all_permitted = 1;
   // individual resource decisions
-  repeated ResourceDecision resource_decisions = 4;
+  repeated ResourceDecision resource_decisions = 2;
 }
 
 service AuthorizationService {
@@ -221,4 +223,5 @@ service AuthorizationService {
   rpc GetDecisionByTokenMultiResource(GetDecisionByTokenMultiResourceRequest) returns (GetDecisionByTokenMultiResourceResponse) {}
 
   rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {}
+  rpc GetEntitlementsByToken(GetEntitlementsByTokenRequest) returns (GetEntitlementsByTokenResponse) {}
 }

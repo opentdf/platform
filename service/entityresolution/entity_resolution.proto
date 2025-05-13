@@ -4,6 +4,7 @@ package entityresolution;
 
 import "authorization/authorization.proto";
 import "authorization/v2/authorization.proto";
+import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/struct.proto";
@@ -28,13 +29,18 @@ message ResolveEntitiesRequest {
   // either v1 or v2 authorization entities are permitted, but not both
   repeated authorization.Entity entities = 1;
   repeated authorization.v2.Entity entities_v2 = 2;
+
+  option (buf.validate.message).cel = {
+    id: "resolve_entities_request.at_least_one_entity"
+    message: "either"
+    expression: "(has(this.entities) && !has(this.entities_v2) || !has(this.entities) && has(this.entities_v2))"
+  };
 }
 
 message EntityRepresentation {
   repeated google.protobuf.Struct additional_props = 1;
   string original_id = 2; // ephemeral entity id from the request
 }
-
 
 /*
    Example: Get idp attributes for bob and alice
@@ -63,7 +69,6 @@ message EntityNotFoundError {
   string entity = 4;
 }
 
-
 /*
    Example: Get Entity chains for tokens aaaaaa and bbbbbb
    {
@@ -75,50 +80,49 @@ message EntityNotFoundError {
 
 */
 message CreateEntityChainFromJwtRequest {
-    repeated authorization.Token tokens = 1;
+  repeated authorization.Token tokens = 1;
 }
 
 /*
-   Example: Return the entity chains from the provided tokens
-   {
-     "entity_chains": [
+    Example: Return the entity chains from the provided tokens
     {
-      "id": "tok1",
-      "entities": [
-        {
-          "clientId": "client1"
-        }
-      ]
-    },
-    {
-      "id": "tok2",
-      "entities": [
-        {
-          "userName": "alice",
-          "clientId": "client2"
-        }
-      ]
+      "entity_chains": [
+     {
+       "id": "tok1",
+       "entities": [
+         {
+           "clientId": "client1"
+         }
+       ]
+     },
+     {
+       "id": "tok2",
+       "entities": [
+         {
+           "userName": "alice",
+           "clientId": "client2"
+         }
+       ]
+     }
+   ]
     }
-  ]
-   }
 
 */
 message CreateEntityChainFromJwtResponse {
   repeated authorization.EntityChain entity_chains = 1;
 }
 
-
 service EntityResolutionService {
   rpc ResolveEntities(ResolveEntitiesRequest) returns (ResolveEntitiesResponse) {
     option (google.api.http) = {
-        post: "/entityresolution/resolve"
-        body: "*";
+      post: "/entityresolution/resolve"
+      body: "*"
     };
   }
   rpc CreateEntityChainFromJwt(CreateEntityChainFromJwtRequest) returns (CreateEntityChainFromJwtResponse) {
     option (google.api.http) = {
-        post: "/entityresolution/entitychain"
-        body: "*";
+      post: "/entityresolution/entitychain"
+      body: "*"
     };
   }
 }

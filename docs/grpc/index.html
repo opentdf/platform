@@ -448,6 +448,10 @@
                 </li>
               
                 <li>
+                  <a href="#authorization.v2.EntityChain"><span class="badge">M</span>EntityChain</a>
+                </li>
+              
+                <li>
                   <a href="#authorization.v2.EntityEntitlements"><span class="badge">M</span>EntityEntitlements</a>
                 </li>
               
@@ -497,6 +501,14 @@
               
                 <li>
                   <a href="#authorization.v2.GetDecisionResponse"><span class="badge">M</span>GetDecisionResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.GetEntitlementsByTokenRequest"><span class="badge">M</span>GetEntitlementsByTokenRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#authorization.v2.GetEntitlementsByTokenResponse"><span class="badge">M</span>GetEntitlementsByTokenResponse</a>
                 </li>
               
                 <li>
@@ -4111,21 +4123,21 @@ string</p></td>
                 <td>GetDecisions</td>
                 <td><a href="#authorization.GetDecisionsRequest">GetDecisionsRequest</a></td>
                 <td><a href="#authorization.GetDecisionsResponse">GetDecisionsResponse</a></td>
-                <td><p>Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetMultiResourceDecision, GetBulkDecision)</p></td>
+                <td><p>Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource, GetDecisionBulk)</p></td>
               </tr>
             
               <tr>
                 <td>GetDecisionsByToken</td>
                 <td><a href="#authorization.GetDecisionsByTokenRequest">GetDecisionsByTokenRequest</a></td>
                 <td><a href="#authorization.GetDecisionsByTokenResponse">GetDecisionsByTokenResponse</a></td>
-                <td><p>Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetMultiResourceDecision)</p></td>
+                <td><p>Deprecated: Use AuthorizationV2 methods instead (GetDecisionByToken, GetDecisionByTokenMultiResource)</p></td>
               </tr>
             
               <tr>
                 <td>GetEntitlements</td>
                 <td><a href="#authorization.GetEntitlementsRequest">GetEntitlementsRequest</a></td>
                 <td><a href="#authorization.GetEntitlementsResponse">GetEntitlementsResponse</a></td>
-                <td><p>Deprecated: Use AuthorizationV2 method instead (GetEntitlements)</p></td>
+                <td><p>Deprecated: Use AuthorizationV2 method instead (GetEntitlements, GetEntitlementsByToken)</p></td>
               </tr>
             
           </tbody>
@@ -4244,6 +4256,37 @@ string</p></td>
                   <td>category</td>
                   <td><a href="#authorization.v2.Entity.Category">Entity.Category</a></td>
                   <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.EntityChain">EntityChain</h3>
+        <p>A set of related PE and NPE</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>ephemeral_chain_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>entities</td>
+                  <td><a href="#authorization.v2.Entity">Entity</a></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
@@ -4437,13 +4480,6 @@ string</p></td>
             <tbody>
               
                 <tr>
-                  <td>action</td>
-                  <td><a href="#policy.Action">policy.Action</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
                   <td>all_permitted</td>
                   <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
                   <td></td>
@@ -4538,9 +4574,9 @@ string</p></td>
               
                 <tr>
                   <td>entity</td>
-                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
+                  <td><a href="#authorization.v2.EntityChain">EntityChain</a></td>
                   <td></td>
-                  <td><p>The entity chain must be defined </p></td>
+                  <td><p>entity chain must be defined </p></td>
                 </tr>
               
                 <tr>
@@ -4575,20 +4611,6 @@ string</p></td>
             <tbody>
               
                 <tr>
-                  <td>ephemeral_entity_chain_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>ephemeral id for tracking between request and response </p></td>
-                </tr>
-              
-                <tr>
-                  <td>action</td>
-                  <td><a href="#policy.Action">policy.Action</a></td>
-                  <td></td>
-                  <td><p>name on action is to be relied upon </p></td>
-                </tr>
-              
-                <tr>
                   <td>all_permitted</td>
                   <td><a href="#google.protobuf.BoolValue">google.protobuf.BoolValue</a></td>
                   <td></td>
@@ -4621,7 +4643,7 @@ string</p></td>
               
                 <tr>
                   <td>entity</td>
-                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
+                  <td><a href="#authorization.v2.EntityChain">EntityChain</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -4658,27 +4680,69 @@ string</p></td>
             <tbody>
               
                 <tr>
-                  <td>ephemeral_entity_chain_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>ephemeral id for tracking between request and response </p></td>
-                </tr>
-              
-                <tr>
-                  <td>action</td>
-                  <td><a href="#policy.Action">policy.Action</a></td>
-                  <td></td>
-                  <td><p>name on action is required </p></td>
-                </tr>
-              
-                <tr>
                   <td>decision</td>
                   <td><a href="#authorization.v2.ResourceDecision">ResourceDecision</a></td>
                   <td></td>
-                  <td><p>the decision on the resource
+                  <td><p>decision on the resource
 
 optional list of obligations represented in URI format
-repeated string obligations = 4; </p></td>
+repeated string obligations = 2; </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetEntitlementsByTokenRequest">GetEntitlementsByTokenRequest</h3>
+        <p>What can the entity (PE or NPE, represented by the token) do, broken down as permitted actions on attribute value FQNs?</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>token</td>
+                  <td><a href="#authorization.Token">authorization.Token</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>with_comprehensive_hierarchy</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td>optional</td>
+                  <td><p>optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
+down the hierarchical values instead of returning solely the value that is directly entitled </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="authorization.v2.GetEntitlementsByTokenResponse">GetEntitlementsByTokenResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entitlements</td>
+                  <td><a href="#authorization.v2.EntityEntitlements">EntityEntitlements</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -4689,7 +4753,7 @@ repeated string obligations = 4; </p></td>
         
       
         <h3 id="authorization.v2.GetEntitlementsRequest">GetEntitlementsRequest</h3>
-        <p>What can the entity do, broken down as permitted actions on attribute value FQNs</p><p>Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use</p><p>GetDecision if the resource is known</p>
+        <p>What can the entity (PE or NPE, represented by the entity chain) do, broken down as permitted actions on attribute value FQNs?</p><p>Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use</p><p>GetDecision if the resource is known</p>
 
         
           <table class="field-table">
@@ -4699,11 +4763,10 @@ repeated string obligations = 4; </p></td>
             <tbody>
               
                 <tr>
-                  <td>entities</td>
-                  <td><a href="#authorization.v2.Entity">Entity</a></td>
-                  <td>repeated</td>
-                  <td><p>list of requested entities
-todo: should this be an entity chain? </p></td>
+                  <td>entity_chain</td>
+                  <td><a href="#authorization.v2.EntityChain">EntityChain</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -4828,7 +4891,7 @@ down the hierarchical values instead of returning solely the value that is direc
                   <td>decision</td>
                   <td><a href="#authorization.v2.Decision">Decision</a></td>
                   <td></td>
-                  <td><p>the decision result </p></td>
+                  <td><p>decision result </p></td>
                 </tr>
               
             </tbody>
@@ -4949,6 +5012,13 @@ down the hierarchical values instead of returning solely the value that is direc
                 <td>GetEntitlements</td>
                 <td><a href="#authorization.v2.GetEntitlementsRequest">GetEntitlementsRequest</a></td>
                 <td><a href="#authorization.v2.GetEntitlementsResponse">GetEntitlementsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetEntitlementsByToken</td>
+                <td><a href="#authorization.v2.GetEntitlementsByTokenRequest">GetEntitlementsByTokenRequest</a></td>
+                <td><a href="#authorization.v2.GetEntitlementsByTokenResponse">GetEntitlementsByTokenResponse</a></td>
                 <td><p></p></td>
               </tr>
             

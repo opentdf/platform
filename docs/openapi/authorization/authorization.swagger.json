@@ -18,7 +18,7 @@
   "paths": {
     "/v1/authorization": {
       "post": {
-        "summary": "Deprecated: Use AuthorizationV2.GetDecisionBulk method instead",
+        "summary": "Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetMultiResourceDecision, GetBulkDecision)",
         "operationId": "AuthorizationService_GetDecisions",
         "responses": {
           "200": {
@@ -51,7 +51,7 @@
     },
     "/v1/entitlements": {
       "post": {
-        "summary": "Deprecated: Use AuthorizationV2.GetEntitlements method instead",
+        "summary": "Deprecated: Use AuthorizationV2 method instead (GetEntitlements)",
         "operationId": "AuthorizationService_GetEntitlements",
         "responses": {
           "200": {
@@ -85,7 +85,7 @@
     },
     "/v1/token/authorization": {
       "post": {
-        "summary": "Deprecated: Use AuthorizationV2.GetDecisionBulkByToken method instead",
+        "summary": "Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetMultiResourceDecision)",
         "operationId": "AuthorizationService_GetDecisionsByToken",
         "responses": {
           "200": {

@@ -1,4 +1,4 @@
-package entityresolution
+package keycloak
 
 import (
 	"context"

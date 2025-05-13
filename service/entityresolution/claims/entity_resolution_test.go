@@ -1,4 +1,4 @@
-package entityresolution_test
+package claims_test
 
 import (
 	"testing"

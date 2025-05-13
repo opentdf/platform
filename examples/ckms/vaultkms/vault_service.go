@@ -1,9 +1,13 @@
-package vault
+package vaultkms
 
 import (
 	"context"
 	"crypto/elliptic"
+	"crypto/hmac"
+	"crypto/sha256"
+	"errors"
 	"fmt"
+	"log/slog"
 
 	vault "github.com/hashicorp/vault/api"
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -15,6 +19,7 @@ type VaultItem struct {
 	alg     string
 	public  ocrypto.PublicKeyEncryptor
 	private ocrypto.PrivateKeyDecryptor
+	nano    *ocrypto.ECDecryptor
 }
 
 func (v *VaultItem) ID() trust.KeyIdentifier {
@@ -37,8 +42,8 @@ func (v *VaultItem) ExportCertificate(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("certificate export not supported")
 }
 
-func (v *VaultItem) System() string {
-	return "io.opentdf.examples/vault"
+func (v VaultItem) System() string {
+	return "examples.opentdf.io/vault"
 }
 
 type VaultKeyService struct {
@@ -46,7 +51,11 @@ type VaultKeyService struct {
 	items  map[trust.KeyIdentifier]*VaultItem
 }
 
-func NewVaultManager(client *vault.Client) *VaultKeyService {
+func (v VaultKeyService) Name() string {
+	return "examples.opentdf.io/vault"
+}
+
+func NewVaultKeyService(client *vault.Client) *VaultKeyService {
 	return &VaultKeyService{
 		client: client,
 		items:  make(map[trust.KeyIdentifier]*VaultItem),
@@ -62,8 +71,9 @@ func (vm *VaultKeyService) LoadKeys(ctx context.Context) error {
 
 	for _, key := range lra.Data["keys"].([]interface{}) {
 		if k, err := vm.loadKey(ctx, key); err != nil {
-			return err
+			slog.ErrorContext(ctx, "failed to load key", "key", key, "err", err)
 		} else {
+			slog.DebugContext(ctx, "loaded key", "key", key, "err", err)
 			vm.items[k.ID()] = k
 		}
 	}
@@ -91,6 +101,19 @@ func (vm *VaultKeyService) loadKey(ctx context.Context, key interface{}) (*Vault
 	if err != nil {
 		return nil, fmt.Errorf("failed to create private key from PEM: %w", err)
 	}
+	var nanoKey *ocrypto.ECDecryptor
+	if _, ok := privateKey.(*ocrypto.ECDecryptor); ok {
+		salt := nanoSalt()
+		nk, err := ocrypto.FromPrivatePEMWithSalt(privateKeyPEM, salt, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create EC decryptor from PEM: %w", err)
+		}
+		if ec2, ok := nk.(ocrypto.ECDecryptor); ok {
+			nanoKey = &ec2
+		} else {
+			return nil, fmt.Errorf("failed to assert type of EC decryptor for key %s", kid)
+		}
+	}
 
 	var publicKey ocrypto.PublicKeyEncryptor
 	if publicKeyPEM, ok := secret.Data["public"].(string); ok {
@@ -112,19 +135,40 @@ func (vm *VaultKeyService) loadKey(ctx context.Context, key interface{}) (*Vault
 		alg:     algorithm,
 		public:  publicKey,
 		private: privateKey,
+		nano:    nanoKey,
 	}, nil
 }
 
+func nanoSalt() []byte {
+	digest := sha256.New()
+	digest.Write([]byte("L1L"))
+	salt := digest.Sum(nil)
+	return salt
+}
+
+func (vm *VaultKeyService) refreshKeys(ctx context.Context) error {
+	if len(vm.items) > 0 {
+		return nil
+	}
+	return vm.LoadKeys(ctx)
+}
+
 func (vm *VaultKeyService) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (trust.KeyDetails, error) {
+	if err := vm.refreshKeys(ctx); err != nil {
+		return nil, fmt.Errorf("failed to refresh keys: %w", err)
+	}
 	for _, item := range vm.items {
 		if item.Algorithm() == algorithm {
 			return item, nil
 		}
 	}
-	return nil, fmt.Errorf("no key found for algorithm: %s", algorithm)
+	return nil, nil
 }
 
 func (vm *VaultKeyService) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
+	if err := vm.refreshKeys(ctx); err != nil {
+		return nil, fmt.Errorf("failed to refresh keys: %w", err)
+	}
 	item, exists := vm.items[id]
 	if !exists {
 		return nil, fmt.Errorf("no key found for ID: %s", id)
@@ -133,6 +177,9 @@ func (vm *VaultKeyService) FindKeyByID(ctx context.Context, id trust.KeyIdentifi
 }
 
 func (vm *VaultKeyService) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
+	if err := vm.refreshKeys(ctx); err != nil {
+		return nil, fmt.Errorf("failed to refresh keys: %w", err)
+	}
 	keys := make([]trust.KeyDetails, 0, len(vm.items))
 	for _, item := range vm.items {
 		keys = append(keys, item)
@@ -141,24 +188,59 @@ func (vm *VaultKeyService) ListKeys(ctx context.Context) ([]trust.KeyDetails, er
 }
 
 type InProcessWrappedKey struct {
-	keyData []byte
+	rawKey []byte
+	cipher ocrypto.AesGcm
+}
+
+func NewInProcessAESKey(key []byte) (*InProcessWrappedKey, error) {
+	if len(key) == 0 {
+		return nil, fmt.Errorf("key cannot be empty")
+	}
+
+	cipher, err := ocrypto.NewAESGcm(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AES-GCM cipher: %w", err)
+	}
+
+	return &InProcessWrappedKey{
+		rawKey: key,
+		cipher: cipher,
+	}, nil
+}
+
+func (k *InProcessWrappedKey) generateHMACDigest(ctx context.Context, msg []byte) ([]byte, error) {
+	mac := hmac.New(sha256.New, k.rawKey)
+	_, err := mac.Write(msg)
+	if err != nil {
+		panic("failed to compute hmac")
+	}
+	return mac.Sum(nil), nil
 }
 
 func (k *InProcessWrappedKey) VerifyBinding(ctx context.Context, policy, binding []byte) error {
-	// Implement HMAC or other binding verification logic here
+	actualHMAC, err := k.generateHMACDigest(ctx, policy)
+	if err != nil {
+		return fmt.Errorf("unable to generate policy hmac: %w", err)
+	}
+
+	if !hmac.Equal(actualHMAC, binding) {
+		return errors.New("policy hmac mismatch")
+	}
+
 	return nil
 }
 
 func (k *InProcessWrappedKey) Export(encapsulator trust.Encapsulator) ([]byte, error) {
-	if encapsulator == nil {
-		return k.keyData, nil
-	}
-	return encapsulator.Encrypt(k.keyData)
+	return encapsulator.Encrypt(k.rawKey)
 }
 
 func (k *InProcessWrappedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]byte, error) {
-	// Implement AES-GCM decryption logic here
-	return nil, fmt.Errorf("DecryptAESGCM not implemented")
+	decryptedData, err := k.cipher.DecryptWithIVAndTagSize(iv, body, tagSize)
+	if err != nil {
+		return nil, err
+	}
+
+	return decryptedData, nil
 }
 
 func (vm *VaultKeyService) Decrypt(ctx context.Context, keyID trust.KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
@@ -172,17 +254,26 @@ func (vm *VaultKeyService) Decrypt(ctx context.Context, keyID trust.KeyIdentifie
 		return nil, fmt.Errorf("decryption failed: %w", err)
 	}
 
-	return &InProcessWrappedKey{keyData: decryptedData}, nil
+	return NewInProcessAESKey(decryptedData)
 }
 
 func (vm *VaultKeyService) DeriveKey(ctx context.Context, kasKID trust.KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
-	// Implement key derivation logic here
-	return nil, fmt.Errorf("DeriveKey not implemented")
+	vi := vm.items[kasKID]
+	if vi == nil {
+		return nil, fmt.Errorf("key not found: %s", kasKID)
+	}
+	if vi.nano == nil {
+		return nil, fmt.Errorf("key %s is not a nano key", kasKID)
+	}
+	key, err := vi.nano.DeriveNanoTDFSymmetricKey(curve, ephemeralPublicKeyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to derive key: %w", err)
+	}
+	return NewInProcessAESKey(key)
 }
 
 func (vm *VaultKeyService) GenerateECSessionKey(ctx context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
-	// Implement EC session key generation logic here
-	return nil, fmt.Errorf("GenerateECSessionKey not implemented")
+	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, nanoSalt(), nil)
 }
 
 func (vm *VaultKeyService) Close() {

@@ -219,6 +219,29 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 	return plaintext, nil
 }
 
+func (e ECDecryptor) DeriveNanoTDFSymmetricKey(curve elliptic.Curve, clientEphemeralKey []byte) ([]byte, error) {
+	ephemeralECDSAPublicKey, err := UncompressECPubKey(curve, clientEphemeralKey)
+	if err != nil {
+		return nil, err
+	}
+
+	ephemeralECDHPublicKey, err := ephemeralECDSAPublicKey.ECDH()
+	if err != nil {
+		return nil, fmt.Errorf("ecdh failure: %w", err)
+	}
+	sharedSecret, err := e.sk.ECDH(ephemeralECDHPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("there was a problem deriving a shared ECDH key: %w", err)
+	}
+
+	key, err := CalculateHKDF(e.salt, sharedSecret)
+	if err != nil {
+		return nil, fmt.Errorf("DeriveNanoTDFSymmetricKey error during CalculateHKDF: %w", err)
+	}
+
+	return key, nil
+}
+
 func convCurve(c ecdh.Curve) elliptic.Curve {
 	switch c {
 	case ecdh.P256():

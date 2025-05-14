@@ -74,13 +74,13 @@ message ResourceDecision {
   Decision decision = 3;
 }
 
-// Can the entity (PE or NPE) access?
+// Can the identified entity/entities access?
 // 1. one entity reference (actor)
 // 2. one action
 // 3. one resource
 message GetDecisionRequest {
-  // entity must be provided
-  EntityIdentifier entity_reference = 1 [(buf.validate.field).required = true];
+  // an entity must be identified for authorization decisioning
+  EntityIdentifier entity_identifier = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   Resource resource = 3 [(buf.validate.field).required = true];
@@ -98,14 +98,14 @@ message GetDecisionResponse {
   // repeated string obligations = 2;
 }
 
-// Can the entity (PE or NPE) access?
+// Can the identified entity/entities access?
 // 1. one entity reference (actor)
 // 2. one action
 // 3. multiple resources
 // Note: this is a more performant bulk request for multiple resource decisions
 message GetDecisionMultiResourceRequest {
-  // entity must be provided
-  EntityIdentifier entity_reference = 1 [(buf.validate.field).required = true];
+  // an entity must be identified for authorization decisioning
+  EntityIdentifier entity_identifier = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   repeated Resource resources = 3 [
@@ -128,8 +128,8 @@ message GetDecisionMultiResourceResponse {
 
 // Is access allowed?
 // 1. Multiplexing of a Decision<EntityIdentifier, Action, repeated Resource> request
-// This is a more performant bulk request for complex decisioning (multiple entity chains or actions on
-// multiple resource decisions)
+// This is a more performant bulk request for complex decisioning (i.e. multiple entity chains or actions on
+// multiple resources)
 message GetDecisionBulkRequest {
   repeated GetDecisionMultiResourceRequest decision_requests = 1;
 }
@@ -137,13 +137,13 @@ message GetDecisionBulkResponse {
   repeated GetDecisionMultiResourceResponse decision_responses = 1;
 }
 
-// What is permitted to the EntityIdentifier (actor), broken down as permitted actions on attribute value FQNs?
+// What is permitted to the identified entity/entities (actor), broken down as permitted actions on attribute value FQNs?
 //
 // Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use
 // GetDecision if the resource is known
 message GetEntitlementsRequest {
-  // entity must be provided
-  EntityIdentifier entity_reference = 1 [(buf.validate.field).required = true];
+  // an entity must be identified for entitlement decisioning
+  EntityIdentifier entity_identifier = 1 [(buf.validate.field).required = true];
   // optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
   // down the hierarchical values instead of returning solely the value that is directly entitled
   optional bool with_comprehensive_hierarchy = 2;

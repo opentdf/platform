@@ -263,9 +263,9 @@
     "v2GetDecisionMultiResourceRequest": {
       "type": "object",
       "properties": {
-        "entityReference": {
+        "entityIdentifier": {
           "$ref": "#/definitions/v2EntityIdentifier",
-          "title": "entity must be provided"
+          "title": "an entity must be identified for authorization decisioning"
         },
         "action": {
           "$ref": "#/definitions/policyAction",
@@ -279,7 +279,7 @@
           }
         }
       },
-      "title": "Can the entity (PE or NPE) access?\n1. one entity reference (actor)\n2. one action\n3. multiple resources\nNote: this is a more performant bulk request for multiple resource decisions"
+      "title": "Can the identified entity/entities access?\n1. one entity reference (actor)\n2. one action\n3. multiple resources\nNote: this is a more performant bulk request for multiple resource decisions"
     },
     "v2GetDecisionMultiResourceResponse": {
       "type": "object",

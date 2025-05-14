@@ -4524,7 +4524,7 @@ this case the resource acts as and represents a single entity for authorization/
         
       
         <h3 id="authorization.v2.GetDecisionBulkRequest">GetDecisionBulkRequest</h3>
-        <p>Is access allowed?</p><p>1. Multiplexing of a Decision<EntityIdentifier, Action, repeated Resource> request</p><p>This is a more performant bulk request for complex decisioning (multiple entity chains or actions on</p><p>multiple resource decisions)</p>
+        <p>Is access allowed?</p><p>1. Multiplexing of a Decision<EntityIdentifier, Action, repeated Resource> request</p><p>This is a more performant bulk request for complex decisioning (i.e. multiple entity chains or actions on</p><p>multiple resources)</p>
 
         
           <table class="field-table">
@@ -4572,7 +4572,7 @@ this case the resource acts as and represents a single entity for authorization/
         
       
         <h3 id="authorization.v2.GetDecisionMultiResourceRequest">GetDecisionMultiResourceRequest</h3>
-        <p>Can the entity (PE or NPE) access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. multiple resources</p><p>Note: this is a more performant bulk request for multiple resource decisions</p>
+        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. multiple resources</p><p>Note: this is a more performant bulk request for multiple resource decisions</p>
 
         
           <table class="field-table">
@@ -4582,10 +4582,10 @@ this case the resource acts as and represents a single entity for authorization/
             <tbody>
               
                 <tr>
-                  <td>entity_reference</td>
+                  <td>entity_identifier</td>
                   <td><a href="#authorization.v2.EntityIdentifier">EntityIdentifier</a></td>
                   <td></td>
-                  <td><p>entity must be provided </p></td>
+                  <td><p>an entity must be identified for authorization decisioning </p></td>
                 </tr>
               
                 <tr>
@@ -4641,7 +4641,7 @@ this case the resource acts as and represents a single entity for authorization/
         
       
         <h3 id="authorization.v2.GetDecisionRequest">GetDecisionRequest</h3>
-        <p>Can the entity (PE or NPE) access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. one resource</p>
+        <p>Can the identified entity/entities access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. one resource</p>
 
         
           <table class="field-table">
@@ -4651,10 +4651,10 @@ this case the resource acts as and represents a single entity for authorization/
             <tbody>
               
                 <tr>
-                  <td>entity_reference</td>
+                  <td>entity_identifier</td>
                   <td><a href="#authorization.v2.EntityIdentifier">EntityIdentifier</a></td>
                   <td></td>
-                  <td><p>entity must be provided </p></td>
+                  <td><p>an entity must be identified for authorization decisioning </p></td>
                 </tr>
               
                 <tr>
@@ -4706,7 +4706,7 @@ repeated string obligations = 2; </p></td>
         
       
         <h3 id="authorization.v2.GetEntitlementsRequest">GetEntitlementsRequest</h3>
-        <p>What is permitted to the EntityIdentifier (actor), broken down as permitted actions on attribute value FQNs?</p><p>Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use</p><p>GetDecision if the resource is known</p>
+        <p>What is permitted to the identified entity/entities (actor), broken down as permitted actions on attribute value FQNs?</p><p>Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use</p><p>GetDecision if the resource is known</p>
 
         
           <table class="field-table">
@@ -4716,10 +4716,10 @@ repeated string obligations = 2; </p></td>
             <tbody>
               
                 <tr>
-                  <td>entity_reference</td>
+                  <td>entity_identifier</td>
                   <td><a href="#authorization.v2.EntityIdentifier">EntityIdentifier</a></td>
                   <td></td>
-                  <td><p>entity must be provided </p></td>
+                  <td><p>an entity must be identified for entitlement decisioning </p></td>
                 </tr>
               
                 <tr>

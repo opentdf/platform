@@ -1,42 +1,44 @@
+// Wrapper for AuthorizationServiceClient (generated code) DO NOT EDIT
 package sdkconnect
 
 import (
 	"context"
-
 	"connectrpc.com/connect"
+	"google.golang.org/grpc"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
-	"google.golang.org/grpc"
+
 )
 
-type AuthorizationConnectClient struct {
+type AuthorizationServiceClientConnectWrapper struct {
 	authorizationconnect.AuthorizationServiceClient
 }
 
-func NewAuthorizationConnectClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AuthorizationConnectClient {
-	return AuthorizationConnectClient{
-		AuthorizationServiceClient: authorizationconnect.NewAuthorizationServiceClient(httpClient, baseURL, opts...),
-	}
+func NewAuthorizationServiceClientConnectWrapper(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) *AuthorizationServiceClientConnectWrapper {
+	return &AuthorizationServiceClientConnectWrapper{AuthorizationServiceClient: authorizationconnect.NewAuthorizationServiceClient(httpClient, baseURL, opts...)}
 }
 
-func (c AuthorizationConnectClient) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest, _ ...grpc.CallOption) (*authorization.GetDecisionsResponse, error) {
-	res, err := c.AuthorizationServiceClient.GetDecisions(ctx, connect.NewRequest(req))
+func (w *AuthorizationServiceClientConnectWrapper) GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest, _ ...grpc.CallOption) (*authorization.GetDecisionsResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.AuthorizationServiceClient.GetDecisions(ctx, connect.NewRequest(req))
 	if res == nil {
 		return nil, err
 	}
 	return res.Msg, err
 }
 
-func (c AuthorizationConnectClient) GetDecisionsByToken(ctx context.Context, req *authorization.GetDecisionsByTokenRequest, _ ...grpc.CallOption) (*authorization.GetDecisionsByTokenResponse, error) {
-	res, err := c.AuthorizationServiceClient.GetDecisionsByToken(ctx, connect.NewRequest(req))
+func (w *AuthorizationServiceClientConnectWrapper) GetDecisionsByToken(ctx context.Context, req *authorization.GetDecisionsByTokenRequest, _ ...grpc.CallOption) (*authorization.GetDecisionsByTokenResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.AuthorizationServiceClient.GetDecisionsByToken(ctx, connect.NewRequest(req))
 	if res == nil {
 		return nil, err
 	}
 	return res.Msg, err
 }
 
-func (c AuthorizationConnectClient) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest, _ ...grpc.CallOption) (*authorization.GetEntitlementsResponse, error) {
-	res, err := c.AuthorizationServiceClient.GetEntitlements(ctx, connect.NewRequest(req))
+func (w *AuthorizationServiceClientConnectWrapper) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest, _ ...grpc.CallOption) (*authorization.GetEntitlementsResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.AuthorizationServiceClient.GetEntitlements(ctx, connect.NewRequest(req))
 	if res == nil {
 		return nil, err
 	}

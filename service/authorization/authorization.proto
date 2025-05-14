@@ -19,6 +19,18 @@ message Entity {
   // ephemeral id for tracking between request and response
   string id = 1;
 
+  // Deprecated: was not supported
+  reserved 4;
+  reserved "remote_claims_url";
+
+  // Deprecated: was not supported
+  reserved 5;
+  reserved "uuid";
+
+  // Deprecated: use claims instead
+  reserved 7;
+  reserved "custom";
+
   // Standard entity types supported by the platform, one of which must be set
   oneof entity_type {
     string email_address = 2;
@@ -26,15 +38,6 @@ message Entity {
     // used by ERS claims mode
     google.protobuf.Any claims = 6;
     string client_id = 8;
-
-    // Deprecated: was not supported
-    // string remote_claims_url = 4;
-
-    // Deprecated: was not supported
-    // string uuid = 5;
-
-    // Deprecated: use claims instead
-    // EntityCustom custom = 7;
   }
   enum Category {
     CATEGORY_UNSPECIFIED = 0;

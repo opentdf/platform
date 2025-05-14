@@ -8,9 +8,9 @@ import "google/protobuf/any.proto";
 import "google/protobuf/struct.proto";
 
 message EntityRepresentation {
-  repeated google.protobuf.Struct additional_props = 1;
   // ephemeral entity id from the request
-  string original_id = 2;
+  string original_id = 1;
+  repeated google.protobuf.Struct additional_props = 2;
 }
 
 // Resolve a set of entities to their representations.

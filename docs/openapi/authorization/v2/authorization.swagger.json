@@ -230,6 +230,24 @@
         }
       }
     },
+    "v2EntityReference": {
+      "type": "object",
+      "properties": {
+        "entityChain": {
+          "$ref": "#/definitions/entityEntityChain",
+          "title": "chain of one or more entities"
+        },
+        "registeredResourceValueFqn": {
+          "type": "string",
+          "title": "fully qualified name of the registered resource value stored in platform policy, where in\nthis case the resource acts as and represents a single entity for authorization/entitlement decisioning"
+        },
+        "token": {
+          "$ref": "#/definitions/entityToken",
+          "title": "access token (JWT), which is used to create an entity chain (comprising one or more entities)"
+        }
+      },
+      "description": "The EntityReference is the actor in an entitlement or decision request - the PE, NPE, or PE+NPE being authorized.\nThe abstraction houses the distinct entity types, PE and/or NPE combinations, or a registered\nresource value being treated as an entity in entitlement/authorization decisioning."
+    },
     "v2GetDecisionBulkResponse": {
       "type": "object",
       "properties": {
@@ -242,37 +260,12 @@
         }
       }
     },
-    "v2GetDecisionByTokenMultiResourceResponse": {
-      "type": "object",
-      "properties": {
-        "allPermitted": {
-          "type": "boolean",
-          "title": "convenience flag indicating global resource decisions result (permit/deny)"
-        },
-        "resourceDecisions": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v2ResourceDecision"
-          },
-          "title": "individual resource decisions"
-        }
-      }
-    },
-    "v2GetDecisionByTokenResponse": {
-      "type": "object",
-      "properties": {
-        "decisionResponse": {
-          "$ref": "#/definitions/v2GetDecisionResponse"
-        }
-      }
-    },
     "v2GetDecisionMultiResourceRequest": {
       "type": "object",
       "properties": {
-        "entityChain": {
-          "$ref": "#/definitions/entityEntityChain",
-          "title": "entity chain must be defined"
+        "entity": {
+          "$ref": "#/definitions/v2EntityReference",
+          "title": "entity must be provided"
         },
         "action": {
           "$ref": "#/definitions/policyAction",
@@ -312,18 +305,6 @@
           "$ref": "#/definitions/v2ResourceDecision",
           "description": "optional list of obligations represented in URI format\n repeated string obligations = 2;",
           "title": "decision on the resource"
-        }
-      }
-    },
-    "v2GetEntitlementsByTokenResponse": {
-      "type": "object",
-      "properties": {
-        "entitlements": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationv2EntityEntitlements"
-          }
         }
       }
     },

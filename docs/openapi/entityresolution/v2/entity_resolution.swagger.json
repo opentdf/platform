@@ -85,15 +85,15 @@
     "entityresolutionv2EntityRepresentation": {
       "type": "object",
       "properties": {
+        "originalId": {
+          "type": "string",
+          "title": "ephemeral entity id from the request"
+        },
         "additionalProps": {
           "type": "array",
           "items": {
             "type": "object"
           }
-        },
-        "originalId": {
-          "type": "string",
-          "title": "ephemeral entity id from the request"
         }
       }
     },

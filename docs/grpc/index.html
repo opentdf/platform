@@ -483,7 +483,7 @@
                 </li>
               
                 <li>
-                  <a href="#authorization.v2.EntityReference"><span class="badge">M</span>EntityReference</a>
+                  <a href="#authorization.v2.EntityIdentifier"><span class="badge">M</span>EntityIdentifier</a>
                 </li>
               
                 <li>
@@ -4484,8 +4484,8 @@ string</p></td>
 
         
       
-        <h3 id="authorization.v2.EntityReference">EntityReference</h3>
-        <p>The EntityReference is the actor in an entitlement or decision request - the PE, NPE, or PE+NPE being authorized.</p><p>The abstraction houses the distinct entity types, PE and/or NPE combinations, or a registered</p><p>resource value being treated as an entity in entitlement/authorization decisioning.</p>
+        <h3 id="authorization.v2.EntityIdentifier">EntityIdentifier</h3>
+        <p>The EntityIdentifier specifies the actor in an entitlement or decision request - the PE, NPE, or PE+NPE being authorized.</p><p>The abstraction houses the distinct entity types, PE and/or NPE combinations, or a registered resource value</p><p>being treated as an entity in entitlement/authorization decisioning.</p>
 
         
           <table class="field-table">
@@ -4524,7 +4524,7 @@ this case the resource acts as and represents a single entity for authorization/
         
       
         <h3 id="authorization.v2.GetDecisionBulkRequest">GetDecisionBulkRequest</h3>
-        <p>Is access allowed?</p><p>1. Multiplexing of a Decision<EntityReference, Action, repeated Resource> request</p><p>This is a more performant bulk request for complex decisioning (multiple entity chains or actions on</p><p>multiple resource decisions)</p>
+        <p>Is access allowed?</p><p>1. Multiplexing of a Decision<EntityIdentifier, Action, repeated Resource> request</p><p>This is a more performant bulk request for complex decisioning (multiple entity chains or actions on</p><p>multiple resource decisions)</p>
 
         
           <table class="field-table">
@@ -4583,7 +4583,7 @@ this case the resource acts as and represents a single entity for authorization/
               
                 <tr>
                   <td>entity_reference</td>
-                  <td><a href="#authorization.v2.EntityReference">EntityReference</a></td>
+                  <td><a href="#authorization.v2.EntityIdentifier">EntityIdentifier</a></td>
                   <td></td>
                   <td><p>entity must be provided </p></td>
                 </tr>
@@ -4652,7 +4652,7 @@ this case the resource acts as and represents a single entity for authorization/
               
                 <tr>
                   <td>entity_reference</td>
-                  <td><a href="#authorization.v2.EntityReference">EntityReference</a></td>
+                  <td><a href="#authorization.v2.EntityIdentifier">EntityIdentifier</a></td>
                   <td></td>
                   <td><p>entity must be provided </p></td>
                 </tr>
@@ -4706,7 +4706,7 @@ repeated string obligations = 2; </p></td>
         
       
         <h3 id="authorization.v2.GetEntitlementsRequest">GetEntitlementsRequest</h3>
-        <p>What is permitted to the EntityReference (actor), broken down as permitted actions on attribute value FQNs?</p><p>Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use</p><p>GetDecision if the resource is known</p>
+        <p>What is permitted to the EntityIdentifier (actor), broken down as permitted actions on attribute value FQNs?</p><p>Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use</p><p>GetDecision if the resource is known</p>
 
         
           <table class="field-table">
@@ -4717,7 +4717,7 @@ repeated string obligations = 2; </p></td>
               
                 <tr>
                   <td>entity_reference</td>
-                  <td><a href="#authorization.v2.EntityReference">EntityReference</a></td>
+                  <td><a href="#authorization.v2.EntityIdentifier">EntityIdentifier</a></td>
                   <td></td>
                   <td><p>entity must be provided </p></td>
                 </tr>

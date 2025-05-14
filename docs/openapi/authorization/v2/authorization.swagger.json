@@ -230,7 +230,7 @@
         }
       }
     },
-    "v2EntityReference": {
+    "v2EntityIdentifier": {
       "type": "object",
       "properties": {
         "entityChain": {
@@ -246,7 +246,7 @@
           "title": "access token (JWT), which is used to create an entity chain (comprising one or more entities)"
         }
       },
-      "description": "The EntityReference is the actor in an entitlement or decision request - the PE, NPE, or PE+NPE being authorized.\nThe abstraction houses the distinct entity types, PE and/or NPE combinations, or a registered\nresource value being treated as an entity in entitlement/authorization decisioning."
+      "description": "The EntityIdentifier specifies the actor in an entitlement or decision request - the PE, NPE, or PE+NPE being authorized.\nThe abstraction houses the distinct entity types, PE and/or NPE combinations, or a registered resource value\nbeing treated as an entity in entitlement/authorization decisioning."
     },
     "v2GetDecisionBulkResponse": {
       "type": "object",
@@ -264,7 +264,7 @@
       "type": "object",
       "properties": {
         "entityReference": {
-          "$ref": "#/definitions/v2EntityReference",
+          "$ref": "#/definitions/v2EntityIdentifier",
           "title": "entity must be provided"
         },
         "action": {

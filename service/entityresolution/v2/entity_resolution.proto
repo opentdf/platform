@@ -2,40 +2,45 @@ syntax = "proto3";
 
 package entityresolution.v2;
 
-import "authorization/authorization.proto";
-import "authorization/v2/authorization.proto";
 import "buf/validate/validate.proto";
-import "entityresolution/entity_resolution.proto";
+import "entity/entity.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/struct.proto";
+
+message EntityRepresentation {
+  // ephemeral entity id from the request
+  string original_id = 1;
+  repeated google.protobuf.Struct additional_props = 2;
+}
 
 // Resolve a set of entities to their representations.
 message ResolveEntitiesRequest {
-  repeated authorization.v2.Entity entities_v2 = 2 [
+  repeated entity.Entity entities = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).repeated = {min_items: 1}
   ];
 }
 message ResolveEntitiesResponse {
-  repeated entityresolution.EntityRepresentation entity_representations = 1;
+  repeated EntityRepresentation entity_representations = 1;
 }
 
-// Create an entity chain from a single JWT.
-message CreateEntityChainFromJwtRequest {
-  authorization.Token token = 1;
-}
-message CreateEntityChainFromJwtResponse {
-  authorization.v2.EntityChain entity_chains = 1;
+message EntityNotFoundError {
+  int32 code = 1;
+  string message = 2;
+  repeated google.protobuf.Any details = 3;
+  string entity = 4;
 }
 
-// Create an entity chain from multiple JWTs.
-message CreateEntityChainFromJwtMultiRequest {
-  repeated authorization.Token token = 1;
+// Create an entity chain for each token (JWT) in the request.
+message CreateEntityChainsFromTokensRequest {
+  repeated entity.Token tokens = 1;
 }
-message CreateEntityChainFromJwtMultiResponse {
-  repeated authorization.v2.EntityChain entity_chains = 1;
+
+message CreateEntityChainsFromTokensResponse {
+  repeated entity.EntityChain entity_chains = 1;
 }
 
 service EntityResolutionService {
   rpc ResolveEntities(ResolveEntitiesRequest) returns (ResolveEntitiesResponse) {}
-  rpc CreateEntityChainFromJwt(CreateEntityChainFromJwtRequest) returns (CreateEntityChainFromJwtResponse) {}
-  rpc CreateEntityChainFromJwtMulti(CreateEntityChainFromJwtMultiRequest) returns (CreateEntityChainFromJwtMultiResponse) {}
+  rpc CreateEntityChainsFromTokens(CreateEntityChainsFromTokensRequest) returns (CreateEntityChainsFromTokensResponse) {}
 }

@@ -165,46 +165,6 @@
         }
       }
     },
-    "authorizationv2Entity": {
-      "type": "object",
-      "properties": {
-        "ephemeralId": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
-        "emailAddress": {
-          "type": "string",
-          "title": "one of the entity options must be set"
-        },
-        "userName": {
-          "type": "string"
-        },
-        "claims": {
-          "$ref": "#/definitions/protobufAny",
-          "title": "used by ERS claims mode"
-        },
-        "clientId": {
-          "type": "string",
-          "title": "EntityCustom custom = 5;"
-        },
-        "registeredResourceValueFqn": {
-          "type": "string"
-        },
-        "category": {
-          "$ref": "#/definitions/authorizationv2EntityCategory"
-        }
-      },
-      "title": "PE (Person Entity) or NPE (Non-Person Entity)"
-    },
-    "authorizationv2EntityCategory": {
-      "type": "string",
-      "enum": [
-        "CATEGORY_UNSPECIFIED",
-        "CATEGORY_SUBJECT",
-        "CATEGORY_ENVIRONMENT"
-      ],
-      "default": "CATEGORY_UNSPECIFIED"
-    },
     "entityresolutionCreateEntityChainFromJwtRequest": {
       "type": "object",
       "properties": {
@@ -254,14 +214,6 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/authorizationEntity"
-          },
-          "title": "either v1 or v2 authorization entities are permitted, but not both"
-        },
-        "entitiesV2": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationv2Entity"
           }
         }
       },

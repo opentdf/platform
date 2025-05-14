@@ -20,7 +20,7 @@ PROJECT_DIR=$(cd "$SCRIPT_DIR/../.." && pwd)
 
 # Check if Vault is already running
 if pgrep -f "vault server"; then
-  echo "Vault is already running. I hope it is set up properly..." >&2
+  echo "Vault is already running." >&2
 else
   # Check if port 8200 is in use
   if lsof -i :8200; then
@@ -77,17 +77,17 @@ setup_vault_adminrole() {
   fi
 
   # Write policies
-  if ! vault policy write kas-admin "${SCRIPT_DIR}/vault/policy-admin.hcl"; then
+  if ! vault policy write kas-admin "${SCRIPT_DIR}/vaultkms/policy-admin.hcl"; then
     echo "Failed to write kas-admin policy. Exiting." >&2
     return 1
   fi
 
-  if ! vault policy write kas-service "${SCRIPT_DIR}/vault/policy-service.hcl"; then
+  if ! vault policy write kas-service "${SCRIPT_DIR}/vaultkms/policy-service.hcl"; then
     echo "Failed to write kas-service policy. Exiting." >&2
     return 1
   fi
 
-  if ! vault policy write kas-viewer "${SCRIPT_DIR}/vault/policy-viewer.hcl"; then
+  if ! vault policy write kas-viewer "${SCRIPT_DIR}/vaultkms/policy-viewer.hcl"; then
     echo "Failed to write kas-viewer policy. Exiting." >&2
     return 1
   fi
@@ -101,39 +101,7 @@ setup_vault_adminrole() {
 
   # Export the admin token
   export KAS_ADMIN_TOKEN="$ADMIN_TOKEN"
-
-  # Log in with the admin token
-  if ! echo "$KAS_ADMIN_TOKEN" | vault login -; then
-    echo "Failed to log in with admin token. Exiting." >&2
-    return 1
-  fi
-
-  # Iterate through keys in opentdf-dev.yaml and store them in Vault
-  if ! yq eval -o=json ".server.cryptoProvider.standard.keys" <"${PROJECT_DIR}/opentdf.yaml"; then
-    echo "Failed to retrieve keys from opentdf.yaml. Exiting." >&2
-    return 1
-  fi
-  OPENTDF_KAS_KEYS_JSON=$(yq eval -o=json ".server.cryptoProvider.standard.keys" <"${PROJECT_DIR}/opentdf.yaml")
-  if [ -z "$OPENTDF_KAS_KEYS_JSON" ]; then
-    echo "No keys found in opentdf.yaml. Exiting." >&2
-    return 1
-  fi
-
-  # Store keys in Vault from opentdf.yaml
-  echo "$OPENTDF_KAS_KEYS_JSON" | jq -r 'keys[]' | while read -r KEY; do
-    PRIVATE_KEY_PATH=${PROJECT_DIR}/$(echo "$OPENTDF_KAS_KEYS_JSON" | jq -r ".[${KEY}].private")
-    PUBLIC_KEY_PATH=${PROJECT_DIR}/$(echo "$OPENTDF_KAS_KEYS_JSON" | jq -r ".[${KEY}].cert")
-    KEY_ALGORITHM=$(echo "$OPENTDF_KAS_KEYS_JSON" | jq -r ".[${KEY}].alg")
-    KEY_ID=$(echo "$OPENTDF_KAS_KEYS_JSON" | jq -r ".[${KEY}].kid")
-
-    if ! vault kv put "secret/kas_keypair/${KEY_ID}" \
-      private="$(<"$PRIVATE_KEY_PATH")" \
-      public="$(<"$PUBLIC_KEY_PATH")" \
-      algorithm="$KEY_ALGORITHM"; then
-      echo "Failed to store key '${KEY}' in Vault. Exiting." >&2
-      return 1
-    fi
-  done
+  echo "Admin token created; exported as KAS_ADMIN_TOKEN" >&2
 }
 
 setup_vault_approle() {

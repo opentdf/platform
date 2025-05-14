@@ -9,7 +9,11 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	pbActions "github.com/opentdf/platform/protocol/go/policy/actions"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/policy/actions"
@@ -1214,7 +1218,7 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_Succeeds()
 	s.Nil(got)
 
 	// verify resource value action attribute values deleted
-	// NOTE: special case using QueryRow directly since we intentionally don't have a Get query for action attribute values
+	// using QueryRow directly since the registered resource value was just deleted and the get above will return a nil result
 	row, err := s.db.PolicyClient.QueryRow(s.ctx,
 		"SELECT COUNT(*) FROM registered_resource_action_attribute_values WHERE registered_resource_value_id = $1",
 		[]any{created.GetId()})
@@ -1230,4 +1234,127 @@ func (s *RegisteredResourcesSuite) Test_DeleteRegisteredResourceValue_WithInvali
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(deleted)
+}
+
+///
+/// Registered Resource Action Attribute Values
+///
+
+// Cascade Deletes
+
+func (s *RegisteredResourcesSuite) Test_DeleteAction_CascadeDeleteActionAttributeValue_Succeeds() {
+	// create action and resource value with action attribute values
+
+	action, err := s.db.PolicyClient.CreateAction(s.ctx, &pbActions.CreateActionRequest{
+		Name: "test_delete_action",
+	})
+	s.Require().NoError(err)
+
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_delete_action_res",
+	})
+	s.Require().NoError(err)
+	s.NotNil(res)
+
+	attrVal := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+
+	resVal, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: res.GetId(),
+		Value:      "test_delete_action_res_value",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
+					ActionId: action.GetId(),
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+					AttributeValueId: attrVal.ID,
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(resVal)
+	s.Require().Len(resVal.GetActionAttributeValues(), 1)
+
+	// delete action
+
+	_, err = s.db.PolicyClient.DeleteAction(s.ctx, &pbActions.DeleteActionRequest{
+		Id: action.GetId(),
+	})
+	s.Require().NoError(err)
+
+	// verify resource value action attribute values deleted
+
+	resVal, err = s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: resVal.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(resVal)
+	s.Empty(resVal.GetActionAttributeValues())
+}
+
+func (s *RegisteredResourcesSuite) Test_DeleteAttributeValue_CascadeDeleteActionAttributeValue_Succeeds() {
+	// create attribute value and resource value with action attribute values
+
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: "test_delete_attr_value.com",
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "test_delete_attr",
+		Values:      []string{"test_delete_attr_value1"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr)
+
+	attrVal := attr.GetValues()[0]
+	s.Require().NotNil(attrVal)
+
+	res, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_delete_attr_value_res",
+	})
+	s.Require().NoError(err)
+	s.NotNil(res)
+
+	resVal, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: res.GetId(),
+		Value:      "test_delete_attr_value_res_value",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameCreate,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+					AttributeValueId: attrVal.GetId(),
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(resVal)
+	s.Require().Len(resVal.GetActionAttributeValues(), 1)
+
+	// delete attribute value
+
+	_, err = s.db.PolicyClient.UnsafeDeleteAttributeValue(s.ctx, attrVal, &unsafe.UnsafeDeleteAttributeValueRequest{
+		Id:  attrVal.GetId(),
+		Fqn: attrVal.GetFqn(),
+	})
+	s.Require().NoError(err)
+
+	// verify resource value action attribute values deleted
+
+	resVal, err = s.db.PolicyClient.GetRegisteredResourceValue(s.ctx, &registeredresources.GetRegisteredResourceValueRequest{
+		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
+			Id: resVal.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(resVal)
+	s.Empty(resVal.GetActionAttributeValues())
 }

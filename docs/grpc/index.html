@@ -440,6 +440,33 @@
         
           
           <li>
+            <a href="#entity%2fentity.proto">entity/entity.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#entity.Entity"><span class="badge">M</span>Entity</a>
+                </li>
+              
+                <li>
+                  <a href="#entity.EntityChain"><span class="badge">M</span>EntityChain</a>
+                </li>
+              
+                <li>
+                  <a href="#entity.Token"><span class="badge">M</span>Token</a>
+                </li>
+              
+              
+                <li>
+                  <a href="#entity.Entity.Category"><span class="badge">E</span>Entity.Category</a>
+                </li>
+              
+              
+              
+            </ul>
+          </li>
+        
+          
+          <li>
             <a href="#authorization%2fv2%2fauthorization.proto">authorization/v2/authorization.proto</a>
             <ul>
               
@@ -571,6 +598,45 @@
               
                 <li>
                   <a href="#entityresolution.EntityResolutionService"><span class="badge">S</span>EntityResolutionService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
+            <a href="#entityresolution%2fv2%2fentity_resolution.proto">entityresolution/v2/entity_resolution.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#entityresolution.v2.CreateEntityChainsFromTokensRequest"><span class="badge">M</span>CreateEntityChainsFromTokensRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.v2.CreateEntityChainsFromTokensResponse"><span class="badge">M</span>CreateEntityChainsFromTokensResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.v2.EntityNotFoundError"><span class="badge">M</span>EntityNotFoundError</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.v2.EntityRepresentation"><span class="badge">M</span>EntityRepresentation</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.v2.ResolveEntitiesRequest"><span class="badge">M</span>ResolveEntitiesRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.v2.ResolveEntitiesResponse"><span class="badge">M</span>ResolveEntitiesResponse</a>
+                </li>
+              
+              
+              
+              
+                <li>
+                  <a href="#entityresolution.v2.EntityResolutionService"><span class="badge">S</span>EntityResolutionService</a>
                 </li>
               
             </ul>
@@ -4162,6 +4228,170 @@ string</p></td>
     
       
       <div class="file-heading">
+        <h2 id="entity/entity.proto">entity/entity.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="entity.Entity">Entity</h3>
+        <p>PE (Person Entity) or NPE (Non-Person Entity)</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>ephemeral_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>email_address</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>user_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>claims</td>
+                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
+                  <td></td>
+                  <td><p>used by ERS claims mode </p></td>
+                </tr>
+              
+                <tr>
+                  <td>client_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>category</td>
+                  <td><a href="#entity.Entity.Category">Entity.Category</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entity.EntityChain">EntityChain</h3>
+        <p>A set of related PE and NPE</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>ephemeral_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>entities</td>
+                  <td><a href="#entity.Entity">Entity</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entity.Token">Token</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>ephemeral_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral id for tracking between request and response </p></td>
+                </tr>
+              
+                <tr>
+                  <td>jwt</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>the token </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+        <h3 id="entity.Entity.Category">Entity.Category</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>CATEGORY_UNSPECIFIED</td>
+                <td>0</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CATEGORY_SUBJECT</td>
+                <td>1</td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CATEGORY_ENVIRONMENT</td>
+                <td>2</td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      
+
+      
+    
+      
+      <div class="file-heading">
         <h2 id="authorization/v2/authorization.proto">authorization/v2/authorization.proto</h2><a href="#title">Top</a>
       </div>
       <p></p>
@@ -4313,7 +4543,7 @@ string</p></td>
               
                 <tr>
                   <td>token</td>
-                  <td><a href="#authorization.Token">authorization.Token</a></td>
+                  <td><a href="#entity.Token">entity.Token</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -4382,7 +4612,7 @@ string</p></td>
               
                 <tr>
                   <td>token</td>
-                  <td><a href="#authorization.Token">authorization.Token</a></td>
+                  <td><a href="#entity.Token">entity.Token</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -4444,7 +4674,7 @@ string</p></td>
               
                 <tr>
                   <td>entity_chain</td>
-                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
+                  <td><a href="#entity.EntityChain">entity.EntityChain</a></td>
                   <td></td>
                   <td><p>entity chain must be defined </p></td>
                 </tr>
@@ -4513,7 +4743,7 @@ string</p></td>
               
                 <tr>
                   <td>entity_chain</td>
-                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
+                  <td><a href="#entity.EntityChain">entity.EntityChain</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -4578,7 +4808,7 @@ repeated string obligations = 2; </p></td>
               
                 <tr>
                   <td>token</td>
-                  <td><a href="#authorization.Token">authorization.Token</a></td>
+                  <td><a href="#entity.Token">entity.Token</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -4634,7 +4864,7 @@ down the hierarchical values instead of returning solely the value that is direc
               
                 <tr>
                   <td>entity_chain</td>
-                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
+                  <td><a href="#entity.EntityChain">entity.EntityChain</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -5116,6 +5346,218 @@ down the hierarchical values instead of returning solely the value that is direc
             </tbody>
           </table>
           
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="entityresolution/v2/entity_resolution.proto">entityresolution/v2/entity_resolution.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+        <h3 id="entityresolution.v2.CreateEntityChainsFromTokensRequest">CreateEntityChainsFromTokensRequest</h3>
+        <p>Create an entity chain for each token (JWT) in the request.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>tokens</td>
+                  <td><a href="#entity.Token">entity.Token</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.v2.CreateEntityChainsFromTokensResponse">CreateEntityChainsFromTokensResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entity_chains</td>
+                  <td><a href="#entity.EntityChain">entity.EntityChain</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.v2.EntityNotFoundError">EntityNotFoundError</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>code</td>
+                  <td><a href="#int32">int32</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>message</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>details</td>
+                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>entity</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.v2.EntityRepresentation">EntityRepresentation</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>additional_props</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>original_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>ephemeral entity id from the request </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.v2.ResolveEntitiesRequest">ResolveEntitiesRequest</h3>
+        <p>Resolve a set of entities to their representations.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entities</td>
+                  <td><a href="#entity.Entity">entity.Entity</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.v2.ResolveEntitiesResponse">ResolveEntitiesResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>entity_representations</td>
+                  <td><a href="#entityresolution.v2.EntityRepresentation">EntityRepresentation</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+
+      
+
+      
+        <h3 id="entityresolution.v2.EntityResolutionService">EntityResolutionService</h3>
+        <p></p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ResolveEntities</td>
+                <td><a href="#entityresolution.v2.ResolveEntitiesRequest">ResolveEntitiesRequest</a></td>
+                <td><a href="#entityresolution.v2.ResolveEntitiesResponse">ResolveEntitiesResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>CreateEntityChainsFromTokens</td>
+                <td><a href="#entityresolution.v2.CreateEntityChainsFromTokensRequest">CreateEntityChainsFromTokensRequest</a></td>
+                <td><a href="#entityresolution.v2.CreateEntityChainsFromTokensResponse">CreateEntityChainsFromTokensResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
         
     
       

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package authorization.v2;
 
-import "authorization/authorization.proto";
+import "entity/entity.proto";
 import "buf/validate/validate.proto";
 import "google/protobuf/wrappers.proto";
 import "policy/objects.proto";
@@ -52,7 +52,7 @@ message ResourceDecision {
 // 2. one action
 // 3. one resource
 message GetDecisionRequest {
-  authorization.EntityChain entity_chain = 1 [(buf.validate.field).required = true];
+  entity.EntityChain entity_chain = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   Resource resource = 3 [(buf.validate.field).required = true];
@@ -83,7 +83,7 @@ message GetDecisionResponse {
 // Note: this is a more performant bulk request for multiple resource decisions
 message GetDecisionMultiResourceRequest {
   // entity chain must be defined
-  authorization.EntityChain entity_chain = 1 [(buf.validate.field).required = true];
+  entity.EntityChain entity_chain = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   repeated Resource resources = 3 [
@@ -126,7 +126,7 @@ message GetDecisionBulkResponse {
 // Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use
 // GetDecision if the resource is known
 message GetEntitlementsRequest {
-  authorization.EntityChain entity_chain = 1 [(buf.validate.field).required = true];
+  entity.EntityChain entity_chain = 1 [(buf.validate.field).required = true];
   // optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
   // down the hierarchical values instead of returning solely the value that is directly entitled
   optional bool with_comprehensive_hierarchy = 2;
@@ -143,7 +143,7 @@ message GetEntitlementsResponse {
 
 // What can the entity (PE or NPE, represented by the token) do, broken down as permitted actions on attribute value FQNs?
 message GetEntitlementsByTokenRequest {
-  authorization.Token token = 1 [(buf.validate.field).required = true];
+  entity.Token token = 1 [(buf.validate.field).required = true];
   // optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
   // down the hierarchical values instead of returning solely the value that is directly entitled
   optional bool with_comprehensive_hierarchy = 2;
@@ -157,7 +157,7 @@ message GetEntitlementsByTokenResponse {
 // 2. one action
 // 3. one resource
 message GetDecisionByTokenRequest {
-  authorization.Token token = 1 [(buf.validate.field).required = true];
+  entity.Token token = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   Resource resource = 3 [(buf.validate.field).required = true];
@@ -177,7 +177,7 @@ message GetDecisionByTokenResponse {
 // 2. one action
 // 3. multiple resource
 message GetDecisionByTokenMultiResourceRequest {
-  authorization.Token token = 1 [(buf.validate.field).required = true];
+  entity.Token token = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   repeated Resource resources = 3 [

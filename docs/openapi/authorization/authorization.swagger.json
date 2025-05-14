@@ -118,15 +118,6 @@
       "default": "STANDARD_ACTION_UNSPECIFIED",
       "title": "- STANDARD_ACTION_DECRYPT: Deprecated\nMigrate to 'read' action name\n - STANDARD_ACTION_TRANSMIT: Deprecated\nMigrate to 'create' action name"
     },
-    "EntityCategory": {
-      "type": "string",
-      "enum": [
-        "CATEGORY_UNSPECIFIED",
-        "CATEGORY_SUBJECT",
-        "CATEGORY_ENVIRONMENT"
-      ],
-      "default": "CATEGORY_UNSPECIFIED"
-    },
     "authorizationDecisionRequest": {
       "type": "object",
       "properties": {
@@ -215,10 +206,19 @@
           "type": "string"
         },
         "category": {
-          "$ref": "#/definitions/EntityCategory"
+          "$ref": "#/definitions/authorizationEntityCategory"
         }
       },
       "title": "PE (Person Entity) or NPE (Non-Person Entity)"
+    },
+    "authorizationEntityCategory": {
+      "type": "string",
+      "enum": [
+        "CATEGORY_UNSPECIFIED",
+        "CATEGORY_SUBJECT",
+        "CATEGORY_ENVIRONMENT"
+      ],
+      "default": "CATEGORY_UNSPECIFIED"
     },
     "authorizationEntityChain": {
       "type": "object",

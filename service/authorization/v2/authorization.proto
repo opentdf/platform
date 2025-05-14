@@ -18,7 +18,7 @@ enum Decision {
 // The abstraction houses the distinct entity types, PE and/or NPE combinations, or a registered
 // resource value being treated as an entity in entitlement/authorization decisioning.
 message EntityReference {
-  oneof actor {
+  oneof value {
     option (buf.validate.oneof).required = true;
 
     // chain of one or more entities
@@ -80,7 +80,7 @@ message ResourceDecision {
 // 3. one resource
 message GetDecisionRequest {
   // entity must be provided
-  EntityReference entity = 1 [(buf.validate.field).required = true];
+  EntityReference entity_reference = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   Resource resource = 3 [(buf.validate.field).required = true];
@@ -105,7 +105,7 @@ message GetDecisionResponse {
 // Note: this is a more performant bulk request for multiple resource decisions
 message GetDecisionMultiResourceRequest {
   // entity must be provided
-  EntityReference entity = 1 [(buf.validate.field).required = true];
+  EntityReference entity_reference = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   repeated Resource resources = 3 [
@@ -143,7 +143,7 @@ message GetDecisionBulkResponse {
 // GetDecision if the resource is known
 message GetEntitlementsRequest {
   // entity must be provided
-  EntityReference entity = 1 [(buf.validate.field).required = true];
+  EntityReference entity_reference = 1 [(buf.validate.field).required = true];
   // optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
   // down the hierarchical values instead of returning solely the value that is directly entitled
   optional bool with_comprehensive_hierarchy = 2;

@@ -263,7 +263,7 @@
     "v2GetDecisionMultiResourceRequest": {
       "type": "object",
       "properties": {
-        "entity": {
+        "entityReference": {
           "$ref": "#/definitions/v2EntityReference",
           "title": "entity must be provided"
         },

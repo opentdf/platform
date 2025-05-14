@@ -36,28 +36,23 @@ const (
 	// EntityResolutionServiceResolveEntitiesProcedure is the fully-qualified name of the
 	// EntityResolutionService's ResolveEntities RPC.
 	EntityResolutionServiceResolveEntitiesProcedure = "/entityresolution.v2.EntityResolutionService/ResolveEntities"
-	// EntityResolutionServiceCreateEntityChainFromJwtProcedure is the fully-qualified name of the
-	// EntityResolutionService's CreateEntityChainFromJwt RPC.
-	EntityResolutionServiceCreateEntityChainFromJwtProcedure = "/entityresolution.v2.EntityResolutionService/CreateEntityChainFromJwt"
-	// EntityResolutionServiceCreateEntityChainFromJwtMultiProcedure is the fully-qualified name of the
-	// EntityResolutionService's CreateEntityChainFromJwtMulti RPC.
-	EntityResolutionServiceCreateEntityChainFromJwtMultiProcedure = "/entityresolution.v2.EntityResolutionService/CreateEntityChainFromJwtMulti"
+	// EntityResolutionServiceCreateEntityChainsFromTokensProcedure is the fully-qualified name of the
+	// EntityResolutionService's CreateEntityChainsFromTokens RPC.
+	EntityResolutionServiceCreateEntityChainsFromTokensProcedure = "/entityresolution.v2.EntityResolutionService/CreateEntityChainsFromTokens"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	entityResolutionServiceServiceDescriptor                             = v2.File_entityresolution_v2_entity_resolution_proto.Services().ByName("EntityResolutionService")
-	entityResolutionServiceResolveEntitiesMethodDescriptor               = entityResolutionServiceServiceDescriptor.Methods().ByName("ResolveEntities")
-	entityResolutionServiceCreateEntityChainFromJwtMethodDescriptor      = entityResolutionServiceServiceDescriptor.Methods().ByName("CreateEntityChainFromJwt")
-	entityResolutionServiceCreateEntityChainFromJwtMultiMethodDescriptor = entityResolutionServiceServiceDescriptor.Methods().ByName("CreateEntityChainFromJwtMulti")
+	entityResolutionServiceServiceDescriptor                            = v2.File_entityresolution_v2_entity_resolution_proto.Services().ByName("EntityResolutionService")
+	entityResolutionServiceResolveEntitiesMethodDescriptor              = entityResolutionServiceServiceDescriptor.Methods().ByName("ResolveEntities")
+	entityResolutionServiceCreateEntityChainsFromTokensMethodDescriptor = entityResolutionServiceServiceDescriptor.Methods().ByName("CreateEntityChainsFromTokens")
 )
 
 // EntityResolutionServiceClient is a client for the entityresolution.v2.EntityResolutionService
 // service.
 type EntityResolutionServiceClient interface {
 	ResolveEntities(context.Context, *connect.Request[v2.ResolveEntitiesRequest]) (*connect.Response[v2.ResolveEntitiesResponse], error)
-	CreateEntityChainFromJwt(context.Context, *connect.Request[v2.CreateEntityChainFromJwtRequest]) (*connect.Response[v2.CreateEntityChainFromJwtResponse], error)
-	CreateEntityChainFromJwtMulti(context.Context, *connect.Request[v2.CreateEntityChainFromJwtMultiRequest]) (*connect.Response[v2.CreateEntityChainFromJwtMultiResponse], error)
+	CreateEntityChainsFromTokens(context.Context, *connect.Request[v2.CreateEntityChainsFromTokensRequest]) (*connect.Response[v2.CreateEntityChainsFromTokensResponse], error)
 }
 
 // NewEntityResolutionServiceClient constructs a client for the
@@ -77,16 +72,10 @@ func NewEntityResolutionServiceClient(httpClient connect.HTTPClient, baseURL str
 			connect.WithSchema(entityResolutionServiceResolveEntitiesMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		createEntityChainFromJwt: connect.NewClient[v2.CreateEntityChainFromJwtRequest, v2.CreateEntityChainFromJwtResponse](
+		createEntityChainsFromTokens: connect.NewClient[v2.CreateEntityChainsFromTokensRequest, v2.CreateEntityChainsFromTokensResponse](
 			httpClient,
-			baseURL+EntityResolutionServiceCreateEntityChainFromJwtProcedure,
-			connect.WithSchema(entityResolutionServiceCreateEntityChainFromJwtMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
-		createEntityChainFromJwtMulti: connect.NewClient[v2.CreateEntityChainFromJwtMultiRequest, v2.CreateEntityChainFromJwtMultiResponse](
-			httpClient,
-			baseURL+EntityResolutionServiceCreateEntityChainFromJwtMultiProcedure,
-			connect.WithSchema(entityResolutionServiceCreateEntityChainFromJwtMultiMethodDescriptor),
+			baseURL+EntityResolutionServiceCreateEntityChainsFromTokensProcedure,
+			connect.WithSchema(entityResolutionServiceCreateEntityChainsFromTokensMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -94,9 +83,8 @@ func NewEntityResolutionServiceClient(httpClient connect.HTTPClient, baseURL str
 
 // entityResolutionServiceClient implements EntityResolutionServiceClient.
 type entityResolutionServiceClient struct {
-	resolveEntities               *connect.Client[v2.ResolveEntitiesRequest, v2.ResolveEntitiesResponse]
-	createEntityChainFromJwt      *connect.Client[v2.CreateEntityChainFromJwtRequest, v2.CreateEntityChainFromJwtResponse]
-	createEntityChainFromJwtMulti *connect.Client[v2.CreateEntityChainFromJwtMultiRequest, v2.CreateEntityChainFromJwtMultiResponse]
+	resolveEntities              *connect.Client[v2.ResolveEntitiesRequest, v2.ResolveEntitiesResponse]
+	createEntityChainsFromTokens *connect.Client[v2.CreateEntityChainsFromTokensRequest, v2.CreateEntityChainsFromTokensResponse]
 }
 
 // ResolveEntities calls entityresolution.v2.EntityResolutionService.ResolveEntities.
@@ -104,24 +92,17 @@ func (c *entityResolutionServiceClient) ResolveEntities(ctx context.Context, req
 	return c.resolveEntities.CallUnary(ctx, req)
 }
 
-// CreateEntityChainFromJwt calls
-// entityresolution.v2.EntityResolutionService.CreateEntityChainFromJwt.
-func (c *entityResolutionServiceClient) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[v2.CreateEntityChainFromJwtRequest]) (*connect.Response[v2.CreateEntityChainFromJwtResponse], error) {
-	return c.createEntityChainFromJwt.CallUnary(ctx, req)
-}
-
-// CreateEntityChainFromJwtMulti calls
-// entityresolution.v2.EntityResolutionService.CreateEntityChainFromJwtMulti.
-func (c *entityResolutionServiceClient) CreateEntityChainFromJwtMulti(ctx context.Context, req *connect.Request[v2.CreateEntityChainFromJwtMultiRequest]) (*connect.Response[v2.CreateEntityChainFromJwtMultiResponse], error) {
-	return c.createEntityChainFromJwtMulti.CallUnary(ctx, req)
+// CreateEntityChainsFromTokens calls
+// entityresolution.v2.EntityResolutionService.CreateEntityChainsFromTokens.
+func (c *entityResolutionServiceClient) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[v2.CreateEntityChainsFromTokensRequest]) (*connect.Response[v2.CreateEntityChainsFromTokensResponse], error) {
+	return c.createEntityChainsFromTokens.CallUnary(ctx, req)
 }
 
 // EntityResolutionServiceHandler is an implementation of the
 // entityresolution.v2.EntityResolutionService service.
 type EntityResolutionServiceHandler interface {
 	ResolveEntities(context.Context, *connect.Request[v2.ResolveEntitiesRequest]) (*connect.Response[v2.ResolveEntitiesResponse], error)
-	CreateEntityChainFromJwt(context.Context, *connect.Request[v2.CreateEntityChainFromJwtRequest]) (*connect.Response[v2.CreateEntityChainFromJwtResponse], error)
-	CreateEntityChainFromJwtMulti(context.Context, *connect.Request[v2.CreateEntityChainFromJwtMultiRequest]) (*connect.Response[v2.CreateEntityChainFromJwtMultiResponse], error)
+	CreateEntityChainsFromTokens(context.Context, *connect.Request[v2.CreateEntityChainsFromTokensRequest]) (*connect.Response[v2.CreateEntityChainsFromTokensResponse], error)
 }
 
 // NewEntityResolutionServiceHandler builds an HTTP handler from the service implementation. It
@@ -136,26 +117,18 @@ func NewEntityResolutionServiceHandler(svc EntityResolutionServiceHandler, opts 
 		connect.WithSchema(entityResolutionServiceResolveEntitiesMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	entityResolutionServiceCreateEntityChainFromJwtHandler := connect.NewUnaryHandler(
-		EntityResolutionServiceCreateEntityChainFromJwtProcedure,
-		svc.CreateEntityChainFromJwt,
-		connect.WithSchema(entityResolutionServiceCreateEntityChainFromJwtMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
-	entityResolutionServiceCreateEntityChainFromJwtMultiHandler := connect.NewUnaryHandler(
-		EntityResolutionServiceCreateEntityChainFromJwtMultiProcedure,
-		svc.CreateEntityChainFromJwtMulti,
-		connect.WithSchema(entityResolutionServiceCreateEntityChainFromJwtMultiMethodDescriptor),
+	entityResolutionServiceCreateEntityChainsFromTokensHandler := connect.NewUnaryHandler(
+		EntityResolutionServiceCreateEntityChainsFromTokensProcedure,
+		svc.CreateEntityChainsFromTokens,
+		connect.WithSchema(entityResolutionServiceCreateEntityChainsFromTokensMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/entityresolution.v2.EntityResolutionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case EntityResolutionServiceResolveEntitiesProcedure:
 			entityResolutionServiceResolveEntitiesHandler.ServeHTTP(w, r)
-		case EntityResolutionServiceCreateEntityChainFromJwtProcedure:
-			entityResolutionServiceCreateEntityChainFromJwtHandler.ServeHTTP(w, r)
-		case EntityResolutionServiceCreateEntityChainFromJwtMultiProcedure:
-			entityResolutionServiceCreateEntityChainFromJwtMultiHandler.ServeHTTP(w, r)
+		case EntityResolutionServiceCreateEntityChainsFromTokensProcedure:
+			entityResolutionServiceCreateEntityChainsFromTokensHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -169,10 +142,6 @@ func (UnimplementedEntityResolutionServiceHandler) ResolveEntities(context.Conte
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("entityresolution.v2.EntityResolutionService.ResolveEntities is not implemented"))
 }
 
-func (UnimplementedEntityResolutionServiceHandler) CreateEntityChainFromJwt(context.Context, *connect.Request[v2.CreateEntityChainFromJwtRequest]) (*connect.Response[v2.CreateEntityChainFromJwtResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("entityresolution.v2.EntityResolutionService.CreateEntityChainFromJwt is not implemented"))
-}
-
-func (UnimplementedEntityResolutionServiceHandler) CreateEntityChainFromJwtMulti(context.Context, *connect.Request[v2.CreateEntityChainFromJwtMultiRequest]) (*connect.Response[v2.CreateEntityChainFromJwtMultiResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("entityresolution.v2.EntityResolutionService.CreateEntityChainFromJwtMulti is not implemented"))
+func (UnimplementedEntityResolutionServiceHandler) CreateEntityChainsFromTokens(context.Context, *connect.Request[v2.CreateEntityChainsFromTokensRequest]) (*connect.Response[v2.CreateEntityChainsFromTokensResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("entityresolution.v2.EntityResolutionService.CreateEntityChainsFromTokens is not implemented"))
 }

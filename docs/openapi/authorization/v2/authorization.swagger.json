@@ -50,19 +50,6 @@
         }
       }
     },
-    "authorizationToken": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
-        "jwt": {
-          "type": "string",
-          "title": "the token"
-        }
-      }
-    },
     "authorizationv2Decision": {
       "type": "string",
       "enum": [
@@ -72,63 +59,6 @@
       ],
       "default": "DECISION_UNSPECIFIED",
       "title": "- DECISION_PERMIT: DECISION_OBLIGATED = 3;"
-    },
-    "authorizationv2Entity": {
-      "type": "object",
-      "properties": {
-        "ephemeralId": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
-        "emailAddress": {
-          "type": "string",
-          "title": "one of the entity options must be set"
-        },
-        "userName": {
-          "type": "string"
-        },
-        "claims": {
-          "$ref": "#/definitions/protobufAny",
-          "title": "used by ERS claims mode"
-        },
-        "clientId": {
-          "type": "string",
-          "title": "EntityCustom custom = 5;"
-        },
-        "registeredResourceValueFqn": {
-          "type": "string"
-        },
-        "category": {
-          "$ref": "#/definitions/authorizationv2EntityCategory"
-        }
-      },
-      "title": "PE (Person Entity) or NPE (Non-Person Entity)"
-    },
-    "authorizationv2EntityCategory": {
-      "type": "string",
-      "enum": [
-        "CATEGORY_UNSPECIFIED",
-        "CATEGORY_SUBJECT",
-        "CATEGORY_ENVIRONMENT"
-      ],
-      "default": "CATEGORY_UNSPECIFIED"
-    },
-    "authorizationv2EntityChain": {
-      "type": "object",
-      "properties": {
-        "ephemeralChainId": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
-        "entities": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationv2Entity"
-          }
-        }
-      },
-      "title": "A set of related PE and NPE"
     },
     "authorizationv2EntityEntitlements": {
       "type": "object",
@@ -180,6 +110,71 @@
         }
       },
       "title": "Struct to uniquely identify a resource with optional additional metadata"
+    },
+    "entityEntity": {
+      "type": "object",
+      "properties": {
+        "ephemeralId": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "emailAddress": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "claims": {
+          "$ref": "#/definitions/protobufAny",
+          "title": "used by ERS claims mode"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/definitions/entityEntityCategory"
+        }
+      },
+      "title": "PE (Person Entity) or NPE (Non-Person Entity)"
+    },
+    "entityEntityCategory": {
+      "type": "string",
+      "enum": [
+        "CATEGORY_UNSPECIFIED",
+        "CATEGORY_SUBJECT",
+        "CATEGORY_ENVIRONMENT"
+      ],
+      "default": "CATEGORY_UNSPECIFIED"
+    },
+    "entityEntityChain": {
+      "type": "object",
+      "properties": {
+        "ephemeralId": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/entityEntity"
+          }
+        }
+      },
+      "title": "A set of related PE and NPE"
+    },
+    "entityToken": {
+      "type": "object",
+      "properties": {
+        "ephemeralId": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "jwt": {
+          "type": "string",
+          "title": "the token"
+        }
+      }
     },
     "policyAction": {
       "type": "object",
@@ -235,6 +230,24 @@
         }
       }
     },
+    "v2EntityReference": {
+      "type": "object",
+      "properties": {
+        "entityChain": {
+          "$ref": "#/definitions/entityEntityChain",
+          "title": "chain of one or more entities"
+        },
+        "registeredResourceValueFqn": {
+          "type": "string",
+          "title": "fully qualified name of the registered resource value stored in platform policy, where in\nthis case the resource acts as and represents a single entity for authorization/entitlement decisioning"
+        },
+        "token": {
+          "$ref": "#/definitions/entityToken",
+          "title": "access token (JWT), which is used to create an entity chain (comprising one or more entities)"
+        }
+      },
+      "description": "The EntityReference is the actor in an entitlement or decision request - the PE, NPE, or PE+NPE being authorized.\nThe abstraction houses the distinct entity types, PE and/or NPE combinations, or a registered\nresource value being treated as an entity in entitlement/authorization decisioning."
+    },
     "v2GetDecisionBulkResponse": {
       "type": "object",
       "properties": {
@@ -247,37 +260,12 @@
         }
       }
     },
-    "v2GetDecisionByTokenMultiResourceResponse": {
-      "type": "object",
-      "properties": {
-        "allPermitted": {
-          "type": "boolean",
-          "title": "convenience flag indicating global resource decisions result (permit/deny)"
-        },
-        "resourceDecisions": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v2ResourceDecision"
-          },
-          "title": "individual resource decisions"
-        }
-      }
-    },
-    "v2GetDecisionByTokenResponse": {
-      "type": "object",
-      "properties": {
-        "decisionResponse": {
-          "$ref": "#/definitions/v2GetDecisionResponse"
-        }
-      }
-    },
     "v2GetDecisionMultiResourceRequest": {
       "type": "object",
       "properties": {
         "entity": {
-          "$ref": "#/definitions/authorizationv2EntityChain",
-          "title": "entity chain must be defined"
+          "$ref": "#/definitions/v2EntityReference",
+          "title": "entity must be provided"
         },
         "action": {
           "$ref": "#/definitions/policyAction",
@@ -317,18 +305,6 @@
           "$ref": "#/definitions/v2ResourceDecision",
           "description": "optional list of obligations represented in URI format\n repeated string obligations = 2;",
           "title": "decision on the resource"
-        }
-      }
-    },
-    "v2GetEntitlementsByTokenResponse": {
-      "type": "object",
-      "properties": {
-        "entitlements": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationv2EntityEntitlements"
-          }
         }
       }
     },

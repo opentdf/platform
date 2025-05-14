@@ -16,16 +16,27 @@ message Token {
 
 // PE (Person Entity) or NPE (Non-Person Entity)
 message Entity {
-  string id = 1; // ephemeral id for tracking between request and response
-  // Standard entity types supported by the platform
+  // ephemeral id for tracking between request and response
+  string id = 1;
+
+  // Deprecated: was not supported
+  reserved 4;
+  reserved "remote_claims_url";
+
+  // Deprecated: was not supported
+  reserved 5;
+  reserved "uuid";
+
+  // Deprecated: use claims instead
+  reserved 7;
+  reserved "custom";
+
+  // Standard entity types supported by the platform, one of which must be set
   oneof entity_type {
-    // one of the entity options must be set
     string email_address = 2;
     string user_name = 3;
-    string remote_claims_url = 4;
-    string uuid = 5;
+    // used by ERS claims mode
     google.protobuf.Any claims = 6;
-    EntityCustom custom = 7;
     string client_id = 8;
   }
   enum Category {
@@ -45,10 +56,7 @@ message EntityCustom {
 message EntityChain {
   // ephemeral id for tracking between request and response
   string id = 1;
-  repeated Entity entities = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).repeated = {min_items: 1}
-  ];
+  repeated Entity entities = 2;
 }
 
 /*
@@ -298,11 +306,11 @@ service AuthorizationService {
       body: "*"
     };
   }
-  // Deprecated: Use AuthorizationV2 methods instead (GetDecisionByToken, GetDecisionByTokenMultiResource)
+  // Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource)
   rpc GetDecisionsByToken(GetDecisionsByTokenRequest) returns (GetDecisionsByTokenResponse) {
     option (google.api.http) = {post: "/v1/token/authorization"};
   }
-  // Deprecated: Use AuthorizationV2 method instead (GetEntitlements, GetEntitlementsByToken)
+  // Deprecated: Use AuthorizationV2 method instead (GetEntitlements)
   rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {
     option (google.api.http) = {
       post: "/v1/entitlements"

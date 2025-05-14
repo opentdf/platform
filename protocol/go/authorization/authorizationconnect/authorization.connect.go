@@ -56,9 +56,9 @@ var (
 type AuthorizationServiceClient interface {
 	// Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource, GetDecisionBulk)
 	GetDecisions(context.Context, *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error)
-	// Deprecated: Use AuthorizationV2 methods instead (GetDecisionByToken, GetDecisionByTokenMultiResource)
+	// Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource)
 	GetDecisionsByToken(context.Context, *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error)
-	// Deprecated: Use AuthorizationV2 method instead (GetEntitlements, GetEntitlementsByToken)
+	// Deprecated: Use AuthorizationV2 method instead (GetEntitlements)
 	GetEntitlements(context.Context, *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error)
 }
 
@@ -120,9 +120,9 @@ func (c *authorizationServiceClient) GetEntitlements(ctx context.Context, req *c
 type AuthorizationServiceHandler interface {
 	// Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource, GetDecisionBulk)
 	GetDecisions(context.Context, *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error)
-	// Deprecated: Use AuthorizationV2 methods instead (GetDecisionByToken, GetDecisionByTokenMultiResource)
+	// Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource)
 	GetDecisionsByToken(context.Context, *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error)
-	// Deprecated: Use AuthorizationV2 method instead (GetEntitlements, GetEntitlementsByToken)
+	// Deprecated: Use AuthorizationV2 method instead (GetEntitlements)
 	GetEntitlements(context.Context, *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error)
 }
 

@@ -103,7 +103,7 @@ type EntityImpliedFrom struct {
 	Username bool `mapstructure:"username,omitempty" json:"username,omitempty"`
 }
 
-type KeyCloakConnector struct {
+type Connector struct {
 	token  *gocloak.JWT
 	client *gocloak.GoCloak
 }
@@ -334,7 +334,7 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable, logger *logg
 	return genericMap, nil
 }
 
-func getKCClient(ctx context.Context, kcConfig Config, logger *logger.Logger) (*KeyCloakConnector, error) {
+func getKCClient(ctx context.Context, kcConfig Config, logger *logger.Logger) (*Connector, error) {
 	var client *gocloak.GoCloak
 	if kcConfig.LegacyKeycloak {
 		logger.Warn("using legacy connection mode for Keycloak < 17.x.x")
@@ -358,12 +358,12 @@ func getKCClient(ctx context.Context, kcConfig Config, logger *logger.Logger) (*
 		logger.Error("error connecting to keycloak!", slog.String("error", err.Error()))
 		return nil, err
 	}
-	keycloakConnector := KeyCloakConnector{token: token, client: client}
+	keycloakConnector := Connector{token: token, client: client}
 
 	return &keycloakConnector, nil
 }
 
-func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConnector, kcConfig *Config, logger *logger.Logger) ([]*gocloak.User, error) {
+func expandGroup(ctx context.Context, groupID string, kcConnector *Connector, kcConfig *Config, logger *logger.Logger) ([]*gocloak.User, error) {
 	logger.Info("expanding group", slog.String("groupID", groupID))
 	var entityRepresentations []*gocloak.User
 

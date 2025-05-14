@@ -108,6 +108,9 @@
           "$ref": "#/definitions/protobufAny",
           "title": "used by ERS claims mode"
         },
+        "clientId": {
+          "type": "string"
+        },
         "category": {
           "$ref": "#/definitions/EntityCategory"
         }

@@ -154,7 +154,7 @@ func (vm *VaultKeyService) refreshKeys(ctx context.Context) error {
 }
 
 func (vm *VaultKeyService) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (trust.KeyDetails, error) {
-	if err := vm.refreshKeys(ctx); err != nil {
+	if err := vm.LoadKeys(ctx); err != nil {
 		return nil, fmt.Errorf("failed to refresh keys: %w", err)
 	}
 	for _, item := range vm.items {
@@ -166,7 +166,7 @@ func (vm *VaultKeyService) FindKeyByAlgorithm(ctx context.Context, algorithm str
 }
 
 func (vm *VaultKeyService) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
-	if err := vm.refreshKeys(ctx); err != nil {
+	if err := vm.LoadKeys(ctx); err != nil {
 		return nil, fmt.Errorf("failed to refresh keys: %w", err)
 	}
 	item, exists := vm.items[id]
@@ -177,7 +177,7 @@ func (vm *VaultKeyService) FindKeyByID(ctx context.Context, id trust.KeyIdentifi
 }
 
 func (vm *VaultKeyService) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
-	if err := vm.refreshKeys(ctx); err != nil {
+	if err := vm.LoadKeys(ctx); err != nil {
 		return nil, fmt.Errorf("failed to refresh keys: %w", err)
 	}
 	keys := make([]trust.KeyDetails, 0, len(vm.items))
@@ -244,6 +244,9 @@ func (k *InProcessWrappedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int)
 }
 
 func (vm *VaultKeyService) Decrypt(ctx context.Context, keyID trust.KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+	if err := vm.refreshKeys(ctx); err != nil {
+		return nil, fmt.Errorf("failed to refresh keys: %w", err)
+	}
 	item, exists := vm.items[keyID]
 	if !exists {
 		return nil, fmt.Errorf("key not found: %s", keyID)
@@ -258,6 +261,9 @@ func (vm *VaultKeyService) Decrypt(ctx context.Context, keyID trust.KeyIdentifie
 }
 
 func (vm *VaultKeyService) DeriveKey(ctx context.Context, kasKID trust.KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
+	if err := vm.refreshKeys(ctx); err != nil {
+		return nil, fmt.Errorf("failed to refresh keys: %w", err)
+	}
 	vi := vm.items[kasKID]
 	if vi == nil {
 		return nil, fmt.Errorf("key not found: %s", kasKID)

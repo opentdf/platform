@@ -45,7 +45,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.35.0
 	go.opentelemetry.io/otel/trace v1.35.0
 	golang.org/x/net v0.39.0
-	google.golang.org/grpc v1.71.1
+	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v2 v2.4.0
@@ -53,7 +53,7 @@ require (
 )
 
 require (
-	cel.dev/expr v0.19.1 // indirect
+	cel.dev/expr v0.20.0 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/containerd/continuity v0.4.4 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect

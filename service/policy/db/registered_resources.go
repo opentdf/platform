@@ -36,27 +36,6 @@ func unmarshalRegisteredResourceValuesProto(valuesJSON []byte, values *[]*policy
 	return nil
 }
 
-func unmarshalRegisteredResourceActionAttributeValuesProto(actionAttrValuesJSON []byte, values *[]*policy.RegisteredResourceValue_ActionAttributeValue) error {
-	if actionAttrValuesJSON == nil {
-		return nil
-	}
-
-	raw := []json.RawMessage{}
-	if err := json.Unmarshal(actionAttrValuesJSON, &raw); err != nil {
-		return fmt.Errorf("failed to unmarshal action attribute values array [%s]: %w", string(actionAttrValuesJSON), err)
-	}
-
-	for _, r := range raw {
-		v := &policy.RegisteredResourceValue_ActionAttributeValue{}
-		if err := protojson.Unmarshal(r, v); err != nil {
-			return fmt.Errorf("failed to unmarshal action attribute value [%s]: %w", string(r), err)
-		}
-		*values = append(*values, v)
-	}
-
-	return nil
-}
-
 ///
 /// Registered Resources
 ///
@@ -255,11 +234,6 @@ func (c PolicyDBClient) CreateRegisteredResourceValue(ctx context.Context, r *re
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	err = c.createRegisteredResourceActionAttributeValues(ctx, createdID, r.GetActionAttributeValues())
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
 	return c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
 		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
 			Id: createdID,
@@ -296,11 +270,6 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 		return nil, err
 	}
 
-	actionAttrValues := []*policy.RegisteredResourceValue_ActionAttributeValue{}
-	if err = unmarshalRegisteredResourceActionAttributeValuesProto(rv.ActionAttributeValues, &actionAttrValues); err != nil {
-		return nil, err
-	}
-
 	return &policy.RegisteredResourceValue{
 		Id:       rv.ID,
 		Value:    rv.Value,
@@ -308,7 +277,6 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 		Resource: &policy.RegisteredResource{
 			Id: rv.RegisteredResourceID,
 		},
-		ActionAttributeValues: actionAttrValues,
 	}, nil
 }
 
@@ -319,10 +287,14 @@ func (c PolicyDBClient) GetRegisteredResourceValuesByFQNs(ctx context.Context, r
 	for _, fqn := range r.GetFqns() {
 		normalizedFQN := strings.ToLower(fqn)
 
-		rv, err := c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
-			Identifier: &registeredresources.GetRegisteredResourceValueRequest_Fqn{
-				Fqn: normalizedFQN,
-			},
+		parsed, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](fqn)
+		if err != nil {
+			return nil, err
+		}
+
+		rv, err := c.Queries.getRegisteredResourceValue(ctx, getRegisteredResourceValueParams{
+			Name:  parsed.Name,
+			Value: parsed.Value,
 		})
 		if err != nil {
 			c.logger.Error("registered resource value for FQN not found", slog.String("fqn", fqn), slog.Any("err", err))
@@ -331,7 +303,19 @@ func (c PolicyDBClient) GetRegisteredResourceValuesByFQNs(ctx context.Context, r
 
 		count++
 
-		resp[normalizedFQN] = rv
+		metadata := &common.Metadata{}
+		if err = unmarshalMetadata(rv.Metadata, metadata); err != nil {
+			return nil, err
+		}
+
+		resp[normalizedFQN] = &policy.RegisteredResourceValue{
+			Id:       rv.ID,
+			Value:    rv.Value,
+			Metadata: metadata,
+			Resource: &policy.RegisteredResource{
+				Id: rv.RegisteredResourceID,
+			},
+		}
 	}
 
 	if count == 0 {
@@ -367,11 +351,6 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 			return nil, err
 		}
 
-		actionAttrValues := []*policy.RegisteredResourceValue_ActionAttributeValue{}
-		if err = unmarshalRegisteredResourceActionAttributeValuesProto(r.ActionAttributeValues, &actionAttrValues); err != nil {
-			return nil, err
-		}
-
 		rvList[i] = &policy.RegisteredResourceValue{
 			Id:       r.ID,
 			Value:    r.Value,
@@ -379,7 +358,6 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 			Resource: &policy.RegisteredResource{
 				Id: r.RegisteredResourceID,
 			},
-			ActionAttributeValues: actionAttrValues,
 		}
 	}
 
@@ -403,7 +381,7 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *registeredresources.UpdateRegisteredResourceValueRequest) (*policy.RegisteredResourceValue, error) {
 	id := r.GetId()
 	value := strings.ToLower(r.GetValue())
-	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		v, err := c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
 			Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
 				Id: id,
@@ -430,22 +408,11 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 		return nil, db.ErrNotFound
 	}
 
-	// update overwrites all action attribute values with those provided in the request, so clear all existing ones first
-	_, err = c.Queries.deleteRegisteredResourceActionAttributeValues(ctx, id)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	err = c.createRegisteredResourceActionAttributeValues(ctx, id, r.GetActionAttributeValues())
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{
-		Identifier: &registeredresources.GetRegisteredResourceValueRequest_Id{
-			Id: id,
-		},
-	})
+	return &policy.RegisteredResourceValue{
+		Id:       id,
+		Value:    value,
+		Metadata: metadata,
+	}, nil
 }
 
 func (c PolicyDBClient) DeleteRegisteredResourceValue(ctx context.Context, id string) (*policy.RegisteredResourceValue, error) {
@@ -460,64 +427,4 @@ func (c PolicyDBClient) DeleteRegisteredResourceValue(ctx context.Context, id st
 	return &policy.RegisteredResourceValue{
 		Id: id,
 	}, nil
-}
-
-///
-/// Registered Resource Action Attribute Values
-///
-
-func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx context.Context, registeredResourceValueID string, actionAttrValues []*registeredresources.ActionAttributeValue) error {
-	if len(actionAttrValues) == 0 {
-		return nil
-	}
-
-	createActionAttributeValueParams := make([]createRegisteredResourceActionAttributeValuesParams, len(actionAttrValues))
-	var actionID, attributeValueID string
-	for i, aav := range actionAttrValues {
-		switch identifier := aav.GetActionIdentifier().(type) {
-		case *registeredresources.ActionAttributeValue_ActionId:
-			actionID = identifier.ActionId
-		case *registeredresources.ActionAttributeValue_ActionName:
-			a, err := c.Queries.getAction(ctx, getActionParams{
-				Name: pgtypeText(strings.ToLower(identifier.ActionName)),
-			})
-			if err != nil {
-				return db.WrapIfKnownInvalidQueryErr(err)
-			}
-			actionID = a.ID
-		default:
-			return db.ErrSelectIdentifierInvalid
-		}
-
-		switch identifier := aav.GetAttributeValueIdentifier().(type) {
-		case *registeredresources.ActionAttributeValue_AttributeValueId:
-			attributeValueID = identifier.AttributeValueId
-		case *registeredresources.ActionAttributeValue_AttributeValueFqn:
-			av, err := c.Queries.GetAttributeValue(ctx, GetAttributeValueParams{
-				Fqn: pgtypeText(strings.ToLower(identifier.AttributeValueFqn)),
-			})
-			if err != nil {
-				return db.WrapIfKnownInvalidQueryErr(err)
-			}
-			attributeValueID = av.ID
-		default:
-			return db.ErrSelectIdentifierInvalid
-		}
-
-		createActionAttributeValueParams[i] = createRegisteredResourceActionAttributeValuesParams{
-			RegisteredResourceValueID: registeredResourceValueID,
-			ActionID:                  actionID,
-			AttributeValueID:          attributeValueID,
-		}
-	}
-
-	count, err := c.Queries.createRegisteredResourceActionAttributeValues(ctx, createActionAttributeValueParams)
-	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if count != int64(len(actionAttrValues)) {
-		return fmt.Errorf("failed to create all action attribute values, expected %d, got %d", len(actionAttrValues), count)
-	}
-
-	return nil
 }

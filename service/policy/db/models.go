@@ -300,22 +300,6 @@ type RegisteredResource struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
-// Table to store the linkage of registered resource values to actions and attribute values
-type RegisteredResourceActionAttributeValue struct {
-	// Primary key for the table
-	ID string `json:"id"`
-	// Foreign key to the registered_resource_values table
-	RegisteredResourceValueID string `json:"registered_resource_value_id"`
-	// Foreign key to the actions table
-	ActionID string `json:"action_id"`
-	// Foreign key to the attribute_values table
-	AttributeValueID string `json:"attribute_value_id"`
-	// Timestamp when the record was created
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	// Timestamp when the record was last updated
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
-}
-
 // Table to store registered resource values
 type RegisteredResourceValue struct {
 	// Primary key for the table

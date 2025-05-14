@@ -624,31 +624,3 @@ registered_resource_values:
       id: a932ff01-cca6-41f6-a147-7eba7560611b
       registered_resource_id: 39cd944b-d703-4330-936a-83b3d497c8d4
       value: res_with_values2__value1
-
-##
-# Registered Resource Action Attribute Values
-#
-##
-registered_resource_action_attribute_values:
-  metadata:
-    table_name: registered_resource_action_attribute_values
-    columns:
-      - id
-      - registered_resource_value_id
-      - action_id
-      - attribute_value_id
-  data:
-    res_with_values__value1___action_attr_value1:
-      id: 41452356-3b56-494e-950c-b801239bab4a
-      registered_resource_value_id: 1d2c3b4a-5e6f-7a89-0b1c-2d3e4f5a6789
-      # loaded by migration
-      action_name: create
-      # example.com/attr/attr1/value/value1
-      attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
-    res_with_values__value1___action_attr_value2:
-      id: f2492cf7-33a9-4259-b556-1068ee55f043
-      registered_resource_value_id: 1d2c3b4a-5e6f-7a89-0b1c-2d3e4f5a6789
-      # loaded by migration
-      action_name: custom_action_1
-      # example.com/attr/attr1/value/value2  
-      attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3

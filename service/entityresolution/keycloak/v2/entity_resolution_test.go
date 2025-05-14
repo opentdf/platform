@@ -75,8 +75,8 @@ const (
 	tokenExchangeJwt      = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiIsImtpZCI6ImE1NThkYzg0NzYzNDVjY2QyZWFhNjEzNjg4YmI2YTNkIn0.eyJleHAiOjE3MTU3OTA5MTAsImlhdCI6MTcxNTc5MDYxMCwianRpIjoiNjEyOTI2NzQtMDhmOS00ZmQ1LTk3Y2MtZDg3M2RhODRkZjllIiwiaXNzIjoiaHR0cHM6Ly9sb2NhbC1kc3AudmlydHJ1LmNvbTo4NDQzL2F1dGgvcmVhbG1zL29wZW50ZGYiLCJhdWQiOlsiaHR0cDovL2xvY2FsaG9zdDo4MDgwIiwiYWNjb3VudCIsIm9wZW50ZGYtc2RrIl0sInN1YiI6ImU2ZWI0YWU1LThjMDUtNDI3NC04ZmExLTFmMGY1ZmJjY2JkZiIsInR5cCI6IkJlYXJlciIsImF6cCI6Im9wZW50ZGYiLCJzZXNzaW9uX3N0YXRlIjoiZTQ0YzMxNWMtNjk5Yy00NGFkLTk2NDUtNmRkMmIyMjgzN2JlIiwiYWNyIjoiMSIsInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvcGVudGRmLXJlYWRvbmx5IiwiZGVmYXVsdC1yb2xlcy1vcGVudGRmIiwib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJlNDRjMzE1Yy02OTljLTQ0YWQtOTY0NS02ZGQyYjIyODM3YmUiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInByZWZlcnJlZF91c2VybmFtZSI6InNlcnZpY2UtYWNjb3VudC1vcGVudGRmLXNkayJ9.dmAulsUNfdPXVyWmVPsbGqaztshyHTD-m2hh1l2hmhwuNISJZjON0e1kXNxYXRLABr_PJzIpGYQCXz98yxOyiw"
 )
 
-func testKeycloakConfig(server *httptest.Server) keycloak.KeycloakConfig {
-	return keycloak.KeycloakConfig{
+func testConfig(server *httptest.Server) keycloak.Config {
+	return keycloak.Config{
 		URL:            server.URL,
 		ClientID:       "c1",
 		ClientSecret:   "cs",
@@ -85,8 +85,8 @@ func testKeycloakConfig(server *httptest.Server) keycloak.KeycloakConfig {
 	}
 }
 
-func testKeycloakConfigInferID(server *httptest.Server) keycloak.KeycloakConfig {
-	return keycloak.KeycloakConfig{
+func testConfigInferID(server *httptest.Server) keycloak.Config {
+	return keycloak.Config{
 		URL:            server.URL,
 		ClientID:       "c1",
 		ClientSecret:   "cs",
@@ -155,7 +155,7 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 	}
 	server := testServer(t, nil, nil, nil, nil, csqr)
 	defer server.Close()
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
 
@@ -177,7 +177,7 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	validBody = append(validBody, &entity.Entity{EphemeralId: "1234", EntityType: &entity.Entity_EmailAddress{EmailAddress: "bob@sample.org"}})
 	validBody = append(validBody, &entity.Entity{EphemeralId: "1235", EntityType: &entity.Entity_EmailAddress{EmailAddress: "alice@sample.org"}})
 
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
@@ -213,7 +213,7 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 	validBody = append(validBody, &entity.Entity{EphemeralId: "1234", EntityType: &entity.Entity_UserName{UserName: "bob.smith"}})
 	validBody = append(validBody, &entity.Entity{EphemeralId: "1235", EntityType: &entity.Entity_UserName{UserName: "alice.smith"}})
 
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
@@ -253,7 +253,7 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	var validBody []*entity.Entity
 	validBody = append(validBody, &entity.Entity{EphemeralId: "123456", EntityType: &entity.Entity_EmailAddress{EmailAddress: "group1@sample.org"}})
 
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
@@ -289,7 +289,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	var validBody []*entity.Entity
 	validBody = append(validBody, &entity.Entity{EphemeralId: "1234", EntityType: &entity.Entity_EmailAddress{EmailAddress: "random@sample.org"}})
 
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
@@ -310,7 +310,7 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 	server := testServer(t, nil, nil, nil, nil, csqr)
 	defer server.Close()
 
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: clientCredentialsJwt}}
 
@@ -330,7 +330,7 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 	server := testServer(t, nil, nil, nil, nil, nil)
 	defer server.Close()
 
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: passwordPubClientJwt}}
 
@@ -350,7 +350,7 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 	server := testServer(t, nil, nil, nil, nil, nil)
 	defer server.Close()
 
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: passwordPrivClientJwt}}
 
@@ -370,7 +370,7 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 	server := testServer(t, nil, nil, nil, nil, nil)
 	defer server.Close()
 
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: authPubClientJwt}}
 
@@ -390,7 +390,7 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 	server := testServer(t, nil, nil, nil, nil, nil)
 	defer server.Close()
 
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: authPrivClientJwt}}
 
@@ -410,7 +410,7 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 	server := testServer(t, nil, nil, nil, nil, nil)
 	defer server.Close()
 
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: implicitPubClientJwt}}
 
@@ -430,7 +430,7 @@ func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
 	server := testServer(t, nil, nil, nil, nil, nil)
 	defer server.Close()
 
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: implicitPrivClientJwt}}
 
@@ -453,7 +453,7 @@ func Test_JwtClientAndClientTokenExchange(t *testing.T) {
 	server := testServer(t, nil, nil, nil, nil, csqr)
 	defer server.Close()
 
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: tokenExchangeJwt}}
 
@@ -476,7 +476,7 @@ func Test_JwtMultiple(t *testing.T) {
 	server := testServer(t, nil, nil, nil, nil, csqr)
 	defer server.Close()
 
-	kcconfig := testKeycloakConfig(server)
+	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: tokenExchangeJwt, EphemeralId: "tok1"}, {Jwt: authPrivClientJwt, EphemeralId: "tok2"}}
 
@@ -513,7 +513,7 @@ func Test_KCEntityResolutionNotFoundInferEmail(t *testing.T) {
 	var validBody []*entity.Entity
 	validBody = append(validBody, &entity.Entity{EphemeralId: "1234", EntityType: &entity.Entity_EmailAddress{EmailAddress: "random@sample.org"}})
 
-	kcconfig := testKeycloakConfigInferID(server)
+	kcconfig := testConfigInferID(server)
 
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
@@ -543,7 +543,7 @@ func Test_KCEntityResolutionNotFoundInferClientId(t *testing.T) {
 	var validBody []*entity.Entity
 	validBody = append(validBody, &entity.Entity{EphemeralId: "1234", EntityType: &entity.Entity_ClientId{ClientId: "random"}})
 
-	kcconfig := testKeycloakConfigInferID(server)
+	kcconfig := testConfigInferID(server)
 
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
@@ -572,7 +572,7 @@ func Test_KCEntityResolutionNotFoundNotInferUsername(t *testing.T) {
 	var validBody []*entity.Entity
 	validBody = append(validBody, &entity.Entity{EphemeralId: "1234", EntityType: &entity.Entity_UserName{UserName: "randomuser"}})
 
-	kcconfig := testKeycloakConfigInferID(server)
+	kcconfig := testConfigInferID(server)
 
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody

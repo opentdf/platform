@@ -40,12 +40,12 @@ const serviceAccountUsernamePrefix = "service-account-"
 
 type EntityResolutionServiceV2 struct {
 	entityresolutionV2.UnimplementedEntityResolutionServiceServer
-	idpConfig KeycloakConfig
+	idpConfig Config
 	logger    *logger.Logger
 	trace.Tracer
 }
 
-type KeycloakConfig struct {
+type Config struct {
 	URL            string                 `mapstructure:"url" json:"url"`
 	Realm          string                 `mapstructure:"realm" json:"realm"`
 	ClientID       string                 `mapstructure:"clientid" json:"clientid"`
@@ -56,7 +56,7 @@ type KeycloakConfig struct {
 }
 
 func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger) (*EntityResolutionServiceV2, serviceregistry.HandlerServer) {
-	var inputIdpConfig KeycloakConfig
+	var inputIdpConfig Config
 	if err := mapstructure.Decode(config, &inputIdpConfig); err != nil {
 		panic(err)
 	}
@@ -81,7 +81,7 @@ func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Cont
 	return connect.NewResponse(&resp), err
 }
 
-func (c KeycloakConfig) LogValue() slog.Value {
+func (c Config) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("url", c.URL),
 		slog.String("realm", c.Realm),
@@ -111,7 +111,7 @@ type KeyCloakConnector struct {
 func CreateEntityChainsFromTokens(
 	ctx context.Context,
 	req *entityresolutionV2.CreateEntityChainsFromTokensRequest,
-	kcConfig KeycloakConfig,
+	kcConfig Config,
 	logger *logger.Logger,
 ) (entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
 	entityChains := []*entity.EntityChain{}
@@ -128,7 +128,7 @@ func CreateEntityChainsFromTokens(
 }
 
 func EntityResolution(ctx context.Context,
-	req *entityresolutionV2.ResolveEntitiesRequest, kcConfig KeycloakConfig, logger *logger.Logger,
+	req *entityresolutionV2.ResolveEntitiesRequest, kcConfig Config, logger *logger.Logger,
 ) (entityresolutionV2.ResolveEntitiesResponse, error) {
 	connector, err := getKCClient(ctx, kcConfig, logger)
 	if err != nil {
@@ -334,7 +334,7 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable, logger *logg
 	return genericMap, nil
 }
 
-func getKCClient(ctx context.Context, kcConfig KeycloakConfig, logger *logger.Logger) (*KeyCloakConnector, error) {
+func getKCClient(ctx context.Context, kcConfig Config, logger *logger.Logger) (*KeyCloakConnector, error) {
 	var client *gocloak.GoCloak
 	if kcConfig.LegacyKeycloak {
 		logger.Warn("using legacy connection mode for Keycloak < 17.x.x")
@@ -363,7 +363,7 @@ func getKCClient(ctx context.Context, kcConfig KeycloakConfig, logger *logger.Lo
 	return &keycloakConnector, nil
 }
 
-func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConnector, kcConfig *KeycloakConfig, logger *logger.Logger) ([]*gocloak.User, error) {
+func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConnector, kcConfig *Config, logger *logger.Logger) ([]*gocloak.User, error) {
 	logger.Info("expanding group", slog.String("groupID", groupID))
 	var entityRepresentations []*gocloak.User
 
@@ -387,7 +387,7 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConne
 	return entityRepresentations, nil
 }
 
-func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtString string, logger *logger.Logger) ([]*entity.Entity, error) {
+func getEntitiesFromToken(ctx context.Context, kcConfig Config, jwtString string, logger *logger.Logger) ([]*entity.Entity, error) {
 	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
 		return nil, errors.New("error parsing jwt " + err.Error())
@@ -455,7 +455,7 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 	return entities, nil
 }
 
-func getServiceAccountClient(ctx context.Context, username string, kcConfig KeycloakConfig, logger *logger.Logger) (string, error) {
+func getServiceAccountClient(ctx context.Context, username string, kcConfig Config, logger *logger.Logger) (string, error) {
 	connector, err := getKCClient(ctx, kcConfig, logger)
 	if err != nil {
 		return "", err

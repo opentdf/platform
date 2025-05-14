@@ -2,41 +2,29 @@ syntax = "proto3";
 
 package authorization;
 
-import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
+
 import "policy/objects.proto";
 
+
 message Token {
-  // ephemeral id for tracking between request and response
-  string id = 1;
-  // the token
-  string jwt = 2 [(buf.validate.field).required = true];
+  string id = 1; // ephemeral id for tracking between request and response
+  string jwt = 2; // the token
 }
 
 // PE (Person Entity) or NPE (Non-Person Entity)
 message Entity {
-  // ephemeral id for tracking between request and response
-  string id = 1;
-
-  // Deprecated: was not supported
-  reserved 4;
-  reserved "remote_claims_url";
-
-  // Deprecated: was not supported
-  reserved 5;
-  reserved "uuid";
-
-  // Deprecated: use claims instead
-  reserved 7;
-  reserved "custom";
-
-  // Standard entity types supported by the platform, one of which must be set
+  string id = 1; // ephemeral id for tracking between request and response
+  // Standard entity types supported by the platform
   oneof entity_type {
+    // one of the entity options must be set
     string email_address = 2;
     string user_name = 3;
-    // used by ERS claims mode
+    string remote_claims_url = 4;
+    string uuid = 5;
     google.protobuf.Any claims = 6;
+    EntityCustom custom = 7;
     string client_id = 8;
   }
   enum Category {
@@ -54,56 +42,55 @@ message EntityCustom {
 
 // A set of related PE and NPE
 message EntityChain {
-  // ephemeral id for tracking between request and response
-  string id = 1;
+  string id = 1; // ephemeral id for tracking between request and response
   repeated Entity entities = 2;
 }
 
 /*
-      Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)
-      and Alice (represented by entity chain ec2) have TRANSMIT authorization for
-      2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+   Example Request Get Decisions to answer the question -  Do Bob (represented by entity chain ec1)
+   and Alice (represented by entity chain ec2) have TRANSMIT authorization for
+   2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
 
-     {
-     "actions": [
-       {
-         "standard": "STANDARD_ACTION_TRANSMIT"
-       }
-     ],
-     "entityChains": [
-       {
-         "id": "ec1",
-         "entities": [
-           {
-             "emailAddress": "bob@example.org"
-           }
-         ]
-       },
-       {
-         "id": "ec2",
-         "entities": [
-           {
-             "userName": "alice@example.org"
-           }
-         ]
-       }
-     ],
-     "resourceAttributes": [
-       {
-         "resourceAttributeId":  "attr-set-1",
-         "attributeFqns": [
-           "https://www.example.org/attr/foo/value/value1"
-         ]
-       },
-       {
-         "resourceAttributeId":  "attr-set-2",
-         "attributeFqns": [
-           "https://example.net/attr/attr1/value/value1",
-           "https://example.net/attr/attr1/value/value2"
-         ]
-       }
-     ]
-   }
+  {
+  "actions": [
+    {
+      "standard": "STANDARD_ACTION_TRANSMIT"
+    }
+  ],
+  "entityChains": [
+    {
+      "id": "ec1",
+      "entities": [
+        {
+          "emailAddress": "bob@example.org"
+        }
+      ]
+    },
+    {
+      "id": "ec2",
+      "entities": [
+        {
+          "userName": "alice@example.org"
+        }
+      ]
+    }
+  ],
+  "resourceAttributes": [
+    {
+      "resourceAttributeId":  "attr-set-1",
+      "attributeFqns": [
+        "https://www.example.org/attr/foo/value/value1"
+      ]
+    },
+    {
+      "resourceAttributeId":  "attr-set-2",
+      "attributeFqns": [
+        "https://example.net/attr/attr1/value/value1",
+        "https://example.net/attr/attr1/value/value2"
+      ]
+    }
+  ]
+}
 
 */
 message DecisionRequest {
@@ -247,41 +234,42 @@ message GetEntitlementsResponse {
   repeated EntityEntitlements entitlements = 1;
 }
 
-/*
-      Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)
-      and Alice and client2 (represented by token tok2) have TRANSMIT authorization for
-      2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
 
-     {
-     "actions": [
-       {
-         "standard": "STANDARD_ACTION_TRANSMIT"
-       }
-     ],
-     "tokens": [
-       {
-         "id": "tok1",
-         "jwt": ....
-       },
-       {
-         "id": "tok2",
-         "jwt": .....
-       }
-     ],
-     "resourceAttributes": [
-       {
-         "attributeFqns": [
-           "https://www.example.org/attr/foo/value/value1"
-         ]
-       },
-       {
-         "attributeFqns": [
-           "https://example.net/attr/attr1/value/value1",
-           "https://example.net/attr/attr1/value/value2"
-         ]
-       }
-     ]
-   }
+/*
+   Example Request Get Decisions by Token to answer the question -  Do Bob and client1 (represented by token tok1)
+   and Alice and client2 (represented by token tok2) have TRANSMIT authorization for
+   2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?
+
+  {
+  "actions": [
+    {
+      "standard": "STANDARD_ACTION_TRANSMIT"
+    }
+  ],
+  "tokens": [
+    {
+      "id": "tok1",
+      "jwt": ....
+    },
+    {
+      "id": "tok2",
+      "jwt": .....
+    }
+  ],
+  "resourceAttributes": [
+    {
+      "attributeFqns": [
+        "https://www.example.org/attr/foo/value/value1"
+      ]
+    },
+    {
+      "attributeFqns": [
+        "https://example.net/attr/attr1/value/value1",
+        "https://example.net/attr/attr1/value/value2"
+      ]
+    }
+  ]
+}
 
 */
 message TokenDecisionRequest {
@@ -299,18 +287,15 @@ message GetDecisionsByTokenResponse {
 }
 
 service AuthorizationService {
-  // Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource, GetDecisionBulk)
   rpc GetDecisions(GetDecisionsRequest) returns (GetDecisionsResponse) {
     option (google.api.http) = {
       post: "/v1/authorization"
       body: "*"
     };
   }
-  // Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource)
   rpc GetDecisionsByToken(GetDecisionsByTokenRequest) returns (GetDecisionsByTokenResponse) {
     option (google.api.http) = {post: "/v1/token/authorization"};
   }
-  // Deprecated: Use AuthorizationV2 method instead (GetEntitlements)
   rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {
     option (google.api.http) = {
       post: "/v1/entitlements"

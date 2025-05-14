@@ -724,6 +724,8 @@ type CreateRegisteredResourceValueRequest struct {
 	// Required
 	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	// Optional
+	// The associated Action <> AttributeValue combinations to be utilized in authorization/entitlement decisioning
+	// (i.e. action read -> attribute value https://example.com/attr/department/value/marketing)
 	ActionAttributeValues []*ActionAttributeValue `protobuf:"bytes,3,rep,name=action_attribute_values,json=actionAttributeValues,proto3" json:"action_attribute_values,omitempty"`
 	// Optional
 	// Common metadata

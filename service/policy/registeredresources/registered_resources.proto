@@ -176,6 +176,8 @@ message CreateRegisteredResourceValueRequest {
   ];
 
   // Optional
+  // The associated Action <> AttributeValue combinations to be utilized in authorization/entitlement decisioning
+  // (i.e. action read -> attribute value https://example.com/attr/department/value/marketing)
   repeated ActionAttributeValue action_attribute_values = 3;
   
   // Optional

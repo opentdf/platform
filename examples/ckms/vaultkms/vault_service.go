@@ -69,7 +69,17 @@ func (vm *VaultKeyService) LoadKeys(ctx context.Context) error {
 		return fmt.Errorf("unable to list secrets at %s: %w", secretsPath, err)
 	}
 
-	for _, key := range lra.Data["keys"].([]interface{}) {
+	var keys []interface{}
+	if lra == nil || lra.Data == nil || lra.Data["keys"] == nil {
+		return fmt.Errorf("no keys found at %s", secretsPath)
+	}
+
+	keys, ok := lra.Data["keys"].([]interface{})
+	if !ok {
+		return fmt.Errorf("unable to assert type of keys to []interface{} for path %s", secretsPath)
+	}
+
+	for _, key := range keys {
 		if k, err := vm.loadKey(ctx, key); err != nil {
 			slog.ErrorContext(ctx, "failed to load key", "key", key, "err", err)
 		} else {

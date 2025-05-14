@@ -110,7 +110,7 @@ func Generate() error {
 						var currentDir string
 						currentDir, err = getCurrentFileDir()
 						outputPath := filepath.Join(currentDir, "..", "..", "..", "sdkconnect", packageName+".go")
-						err = os.WriteFile(outputPath, []byte(code), 0644) //nolint:gosec // ignore G306
+						err = os.WriteFile(outputPath, []byte(code), 0o644) //nolint:gosec // ignore G306
 						found = true
 						return false // stop traversal
 					}

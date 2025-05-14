@@ -3,8 +3,6 @@ syntax = "proto3";
 package entityresolution;
 
 import "authorization/authorization.proto";
-import "authorization/v2/authorization.proto";
-import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/struct.proto";
@@ -26,15 +24,7 @@ import "google/protobuf/struct.proto";
 
 */
 message ResolveEntitiesRequest {
-  // either v1 or v2 authorization entities are permitted, but not both
   repeated authorization.Entity entities = 1;
-  repeated authorization.v2.Entity entities_v2 = 2;
-
-  option (buf.validate.message).cel = {
-    id: "resolve_entities_request.at_least_one_entity"
-    message: "either"
-    expression: "(has(this.entities) && !has(this.entities_v2) || !has(this.entities) && has(this.entities_v2))"
-  };
 }
 
 message EntityRepresentation {

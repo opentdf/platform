@@ -444,14 +444,6 @@
             <ul>
               
                 <li>
-                  <a href="#authorization.v2.Entity"><span class="badge">M</span>Entity</a>
-                </li>
-              
-                <li>
-                  <a href="#authorization.v2.EntityChain"><span class="badge">M</span>EntityChain</a>
-                </li>
-              
-                <li>
                   <a href="#authorization.v2.EntityEntitlements"><span class="badge">M</span>EntityEntitlements</a>
                 </li>
               
@@ -536,10 +528,6 @@
                   <a href="#authorization.v2.Decision"><span class="badge">E</span>Decision</a>
                 </li>
               
-                <li>
-                  <a href="#authorization.v2.Entity.Category"><span class="badge">E</span>Entity.Category</a>
-                </li>
-              
               
               
                 <li>
@@ -583,45 +571,6 @@
               
                 <li>
                   <a href="#entityresolution.EntityResolutionService"><span class="badge">S</span>EntityResolutionService</a>
-                </li>
-              
-            </ul>
-          </li>
-        
-          
-          <li>
-            <a href="#entityresolution%2fv2%2fentity_resolution.proto">entityresolution/v2/entity_resolution.proto</a>
-            <ul>
-              
-                <li>
-                  <a href="#entityresolution.v2.CreateEntityChainFromJwtMultiRequest"><span class="badge">M</span>CreateEntityChainFromJwtMultiRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#entityresolution.v2.CreateEntityChainFromJwtMultiResponse"><span class="badge">M</span>CreateEntityChainFromJwtMultiResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#entityresolution.v2.CreateEntityChainFromJwtRequest"><span class="badge">M</span>CreateEntityChainFromJwtRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#entityresolution.v2.CreateEntityChainFromJwtResponse"><span class="badge">M</span>CreateEntityChainFromJwtResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#entityresolution.v2.ResolveEntitiesRequest"><span class="badge">M</span>ResolveEntitiesRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#entityresolution.v2.ResolveEntitiesResponse"><span class="badge">M</span>ResolveEntitiesResponse</a>
-                </li>
-              
-              
-              
-              
-                <li>
-                  <a href="#entityresolution.v2.EntityResolutionService"><span class="badge">S</span>EntityResolutionService</a>
                 </li>
               
             </ul>
@@ -3683,7 +3632,7 @@ string</p></td>
                   <td>email_address</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>one of the entity options must be set </p></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -3694,38 +3643,10 @@ string</p></td>
                 </tr>
               
                 <tr>
-                  <td>remote_claims_url</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>uuid</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
                   <td>claims</td>
                   <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
                   <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>custom</td>
-                  <td><a href="#authorization.EntityCustom">EntityCustom</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>client_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
+                  <td><p>used by ERS claims mode </p></td>
                 </tr>
               
                 <tr>
@@ -4239,103 +4160,6 @@ string</p></td>
       <p></p>
 
       
-        <h3 id="authorization.v2.Entity">Entity</h3>
-        <p>PE (Person Entity) or NPE (Non-Person Entity)</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>ephemeral_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>ephemeral id for tracking between request and response </p></td>
-                </tr>
-              
-                <tr>
-                  <td>email_address</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>one of the entity options must be set </p></td>
-                </tr>
-              
-                <tr>
-                  <td>user_name</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>claims</td>
-                  <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
-                  <td></td>
-                  <td><p>used by ERS claims mode </p></td>
-                </tr>
-              
-                <tr>
-                  <td>client_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>EntityCustom custom = 5; </p></td>
-                </tr>
-              
-                <tr>
-                  <td>registered_resource_value_fqn</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>category</td>
-                  <td><a href="#authorization.v2.Entity.Category">Entity.Category</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="authorization.v2.EntityChain">EntityChain</h3>
-        <p>A set of related PE and NPE</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>ephemeral_chain_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>ephemeral id for tracking between request and response </p></td>
-                </tr>
-              
-                <tr>
-                  <td>entities</td>
-                  <td><a href="#authorization.v2.Entity">Entity</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="authorization.v2.EntityEntitlements">EntityEntitlements</h3>
         <p>Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]</p>
 
@@ -4612,8 +4436,8 @@ string</p></td>
             <tbody>
               
                 <tr>
-                  <td>entity</td>
-                  <td><a href="#authorization.v2.EntityChain">EntityChain</a></td>
+                  <td>entity_chain</td>
+                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
                   <td></td>
                   <td><p>entity chain must be defined </p></td>
                 </tr>
@@ -4681,8 +4505,8 @@ string</p></td>
             <tbody>
               
                 <tr>
-                  <td>entity</td>
-                  <td><a href="#authorization.v2.EntityChain">EntityChain</a></td>
+                  <td>entity_chain</td>
+                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -4803,7 +4627,7 @@ down the hierarchical values instead of returning solely the value that is direc
               
                 <tr>
                   <td>entity_chain</td>
-                  <td><a href="#authorization.v2.EntityChain">EntityChain</a></td>
+                  <td><a href="#authorization.EntityChain">authorization.EntityChain</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -4966,35 +4790,6 @@ down the hierarchical values instead of returning solely the value that is direc
                 <td>DECISION_PERMIT</td>
                 <td>2</td>
                 <td><p>DECISION_OBLIGATED = 3;</p></td>
-              </tr>
-            
-          </tbody>
-        </table>
-      
-        <h3 id="authorization.v2.Entity.Category">Entity.Category</h3>
-        <p></p>
-        <table class="enum-table">
-          <thead>
-            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
-          </thead>
-          <tbody>
-            
-              <tr>
-                <td>CATEGORY_UNSPECIFIED</td>
-                <td>0</td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>CATEGORY_SUBJECT</td>
-                <td>1</td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>CATEGORY_ENVIRONMENT</td>
-                <td>2</td>
-                <td><p></p></td>
               </tr>
             
           </tbody>
@@ -5211,13 +5006,6 @@ down the hierarchical values instead of returning solely the value that is direc
                   <td>entities</td>
                   <td><a href="#authorization.Entity">authorization.Entity</a></td>
                   <td>repeated</td>
-                  <td><p>either v1 or v2 authorization entities are permitted, but not both </p></td>
-                </tr>
-              
-                <tr>
-                  <td>entities_v2</td>
-                  <td><a href="#authorization.v2.Entity">authorization.v2.Entity</a></td>
-                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
@@ -5321,197 +5109,6 @@ down the hierarchical values instead of returning solely the value that is direc
             </tbody>
           </table>
           
-        
-    
-      
-      <div class="file-heading">
-        <h2 id="entityresolution/v2/entity_resolution.proto">entityresolution/v2/entity_resolution.proto</h2><a href="#title">Top</a>
-      </div>
-      <p></p>
-
-      
-        <h3 id="entityresolution.v2.CreateEntityChainFromJwtMultiRequest">CreateEntityChainFromJwtMultiRequest</h3>
-        <p>Create an entity chain from multiple JWTs.</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>token</td>
-                  <td><a href="#authorization.Token">authorization.Token</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="entityresolution.v2.CreateEntityChainFromJwtMultiResponse">CreateEntityChainFromJwtMultiResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>entity_chains</td>
-                  <td><a href="#authorization.v2.EntityChain">authorization.v2.EntityChain</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="entityresolution.v2.CreateEntityChainFromJwtRequest">CreateEntityChainFromJwtRequest</h3>
-        <p>Create an entity chain from a single JWT.</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>token</td>
-                  <td><a href="#authorization.Token">authorization.Token</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="entityresolution.v2.CreateEntityChainFromJwtResponse">CreateEntityChainFromJwtResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>entity_chains</td>
-                  <td><a href="#authorization.v2.EntityChain">authorization.v2.EntityChain</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="entityresolution.v2.ResolveEntitiesRequest">ResolveEntitiesRequest</h3>
-        <p>Resolve a set of entities to their representations.</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>entities_v2</td>
-                  <td><a href="#authorization.v2.Entity">authorization.v2.Entity</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="entityresolution.v2.ResolveEntitiesResponse">ResolveEntitiesResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>entity_representations</td>
-                  <td><a href="#entityresolution.EntityRepresentation">entityresolution.EntityRepresentation</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-
-      
-
-      
-
-      
-        <h3 id="entityresolution.v2.EntityResolutionService">EntityResolutionService</h3>
-        <p></p>
-        <table class="enum-table">
-          <thead>
-            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
-          </thead>
-          <tbody>
-            
-              <tr>
-                <td>ResolveEntities</td>
-                <td><a href="#entityresolution.v2.ResolveEntitiesRequest">ResolveEntitiesRequest</a></td>
-                <td><a href="#entityresolution.v2.ResolveEntitiesResponse">ResolveEntitiesResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>CreateEntityChainFromJwt</td>
-                <td><a href="#entityresolution.v2.CreateEntityChainFromJwtRequest">CreateEntityChainFromJwtRequest</a></td>
-                <td><a href="#entityresolution.v2.CreateEntityChainFromJwtResponse">CreateEntityChainFromJwtResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>CreateEntityChainFromJwtMulti</td>
-                <td><a href="#entityresolution.v2.CreateEntityChainFromJwtMultiRequest">CreateEntityChainFromJwtMultiRequest</a></td>
-                <td><a href="#entityresolution.v2.CreateEntityChainFromJwtMultiResponse">CreateEntityChainFromJwtMultiResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-          </tbody>
-        </table>
-
         
     
       

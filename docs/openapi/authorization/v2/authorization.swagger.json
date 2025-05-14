@@ -27,6 +27,15 @@
       "default": "STANDARD_ACTION_UNSPECIFIED",
       "title": "- STANDARD_ACTION_DECRYPT: Deprecated\nMigrate to 'read' action name\n - STANDARD_ACTION_TRANSMIT: Deprecated\nMigrate to 'create' action name"
     },
+    "EntityCategory": {
+      "type": "string",
+      "enum": [
+        "CATEGORY_UNSPECIFIED",
+        "CATEGORY_SUBJECT",
+        "CATEGORY_ENVIRONMENT"
+      ],
+      "default": "CATEGORY_UNSPECIFIED"
+    },
     "EntityEntitlementsActionsList": {
       "type": "object",
       "properties": {
@@ -50,6 +59,46 @@
         }
       }
     },
+    "authorizationEntity": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "emailAddress": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        },
+        "claims": {
+          "$ref": "#/definitions/protobufAny",
+          "title": "used by ERS claims mode"
+        },
+        "category": {
+          "$ref": "#/definitions/EntityCategory"
+        }
+      },
+      "title": "PE (Person Entity) or NPE (Non-Person Entity)"
+    },
+    "authorizationEntityChain": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "ephemeral id for tracking between request and response"
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authorizationEntity"
+          }
+        }
+      },
+      "title": "A set of related PE and NPE"
+    },
     "authorizationToken": {
       "type": "object",
       "properties": {
@@ -72,63 +121,6 @@
       ],
       "default": "DECISION_UNSPECIFIED",
       "title": "- DECISION_PERMIT: DECISION_OBLIGATED = 3;"
-    },
-    "authorizationv2Entity": {
-      "type": "object",
-      "properties": {
-        "ephemeralId": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
-        "emailAddress": {
-          "type": "string",
-          "title": "one of the entity options must be set"
-        },
-        "userName": {
-          "type": "string"
-        },
-        "claims": {
-          "$ref": "#/definitions/protobufAny",
-          "title": "used by ERS claims mode"
-        },
-        "clientId": {
-          "type": "string",
-          "title": "EntityCustom custom = 5;"
-        },
-        "registeredResourceValueFqn": {
-          "type": "string"
-        },
-        "category": {
-          "$ref": "#/definitions/authorizationv2EntityCategory"
-        }
-      },
-      "title": "PE (Person Entity) or NPE (Non-Person Entity)"
-    },
-    "authorizationv2EntityCategory": {
-      "type": "string",
-      "enum": [
-        "CATEGORY_UNSPECIFIED",
-        "CATEGORY_SUBJECT",
-        "CATEGORY_ENVIRONMENT"
-      ],
-      "default": "CATEGORY_UNSPECIFIED"
-    },
-    "authorizationv2EntityChain": {
-      "type": "object",
-      "properties": {
-        "ephemeralChainId": {
-          "type": "string",
-          "title": "ephemeral id for tracking between request and response"
-        },
-        "entities": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationv2Entity"
-          }
-        }
-      },
-      "title": "A set of related PE and NPE"
     },
     "authorizationv2EntityEntitlements": {
       "type": "object",
@@ -275,8 +267,8 @@
     "v2GetDecisionMultiResourceRequest": {
       "type": "object",
       "properties": {
-        "entity": {
-          "$ref": "#/definitions/authorizationv2EntityChain",
+        "entityChain": {
+          "$ref": "#/definitions/authorizationEntityChain",
           "title": "entity chain must be defined"
         },
         "action": {

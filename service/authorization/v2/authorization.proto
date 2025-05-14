@@ -4,7 +4,6 @@ package authorization.v2;
 
 import "authorization/authorization.proto";
 import "buf/validate/validate.proto";
-import "google/protobuf/any.proto";
 import "google/protobuf/wrappers.proto";
 import "policy/objects.proto";
 
@@ -13,39 +12,6 @@ enum Decision {
   DECISION_DENY = 1;
   DECISION_PERMIT = 2;
   // DECISION_OBLIGATED = 3;
-}
-
-// A set of related PE and NPE
-message EntityChain {
-  // ephemeral id for tracking between request and response
-  string ephemeral_chain_id = 1;
-  repeated Entity entities = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).repeated = {min_items: 1}
-  ];
-}
-
-// PE (Person Entity) or NPE (Non-Person Entity)
-message Entity {
-  // ephemeral id for tracking between request and response
-  string ephemeral_id = 1;
-  // Standard entity types supported by the platform
-  oneof entity_type {
-    // one of the entity options must be set
-    string email_address = 2;
-    string user_name = 3;
-    // used by ERS claims mode
-    google.protobuf.Any claims = 4;
-    // EntityCustom custom = 5;
-    string client_id = 6;
-    string registered_resource_value_fqn = 7;
-  }
-  enum Category {
-    CATEGORY_UNSPECIFIED = 0;
-    CATEGORY_SUBJECT = 1;
-    CATEGORY_ENVIRONMENT = 2;
-  }
-  Category category = 9;
 }
 
 // Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]
@@ -86,7 +52,7 @@ message ResourceDecision {
 // 2. one action
 // 3. one resource
 message GetDecisionRequest {
-  EntityChain entity = 1 [(buf.validate.field).required = true];
+  authorization.EntityChain entity_chain = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   Resource resource = 3 [(buf.validate.field).required = true];
@@ -95,6 +61,12 @@ message GetDecisionRequest {
     id: "get_decision_request.action_name_required"
     message: "action.name must be provided"
     expression: "has(this.action.name)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "get_decision_request.entity_chain_required"
+    message: "entity_chain.entities must be provided"
+    expression: "has(this.entity_chain.entities) && this.entity_chain.entities.size() > 0"
   };
 }
 message GetDecisionResponse {
@@ -111,7 +83,7 @@ message GetDecisionResponse {
 // Note: this is a more performant bulk request for multiple resource decisions
 message GetDecisionMultiResourceRequest {
   // entity chain must be defined
-  EntityChain entity = 1 [(buf.validate.field).required = true];
+  authorization.EntityChain entity_chain = 1 [(buf.validate.field).required = true];
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   repeated Resource resources = 3 [
@@ -123,6 +95,12 @@ message GetDecisionMultiResourceRequest {
     id: "get_decision_multi_request.action_name_required"
     message: "action.name must be provided"
     expression: "has(this.action.name)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "get_decision_multi_resource_request.entity_chain_required"
+    message: "entity_chain.entities must be provided"
+    expression: "has(this.entity_chain.entities) && this.entity_chain.entities.size() > 0"
   };
 }
 message GetDecisionMultiResourceResponse {
@@ -148,10 +126,16 @@ message GetDecisionBulkResponse {
 // Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use
 // GetDecision if the resource is known
 message GetEntitlementsRequest {
-  EntityChain entity_chain = 1 [(buf.validate.field).required = true];
+  authorization.EntityChain entity_chain = 1 [(buf.validate.field).required = true];
   // optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
   // down the hierarchical values instead of returning solely the value that is directly entitled
   optional bool with_comprehensive_hierarchy = 2;
+
+  option (buf.validate.message).cel = {
+    id: "get_entitlements_request.entity_chain_required"
+    message: "entity_chain.entities must be provided"
+    expression: "has(this.entity_chain.entities) && this.entity_chain.entities.size() > 0"
+  };
 }
 message GetEntitlementsResponse {
   repeated EntityEntitlements entitlements = 1;

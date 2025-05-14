@@ -71,7 +71,7 @@ message ResourceDecision {
   // ephemeral id for tracking between request and response
   string ephemeral_resource_id = 1;
   // decision result
-  Decision decision = 3;
+  Decision decision = 2;
 }
 
 // Can the identified entity/entities access?

@@ -20,23 +20,23 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type ClaimsEntityResolutionServiceV2 struct {
+type EntityResolutionServiceV2 struct {
 	entityresolutionV2.UnimplementedEntityResolutionServiceServer
 	logger *logger.Logger
 	trace.Tracer
 }
 
-func RegisterClaimsERS(_ config.ServiceConfig, logger *logger.Logger) (ClaimsEntityResolutionServiceV2, serviceregistry.HandlerServer) {
-	claimsSVC := ClaimsEntityResolutionServiceV2{logger: logger}
+func RegisterClaimsERS(_ config.ServiceConfig, logger *logger.Logger) (EntityResolutionServiceV2, serviceregistry.HandlerServer) {
+	claimsSVC := EntityResolutionServiceV2{logger: logger}
 	return claimsSVC, nil
 }
 
-func (s ClaimsEntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
+func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
 	resp, err := EntityResolution(ctx, req.Msg, s.logger)
 	return connect.NewResponse(&resp), err
 }
 
-func (s ClaimsEntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
+func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
 	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainsFromTokens")
 	defer span.End()
 

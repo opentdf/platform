@@ -38,7 +38,7 @@ const (
 
 const serviceAccountUsernamePrefix = "service-account-"
 
-type KeycloakEntityResolutionService struct {
+type EntityResolutionServiceV2 struct {
 	entityresolutionV2.UnimplementedEntityResolutionServiceServer
 	idpConfig KeycloakConfig
 	logger    *logger.Logger
@@ -55,17 +55,17 @@ type KeycloakConfig struct {
 	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty"`
 }
 
-func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger) (*KeycloakEntityResolutionService, serviceregistry.HandlerServer) {
+func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger) (*EntityResolutionServiceV2, serviceregistry.HandlerServer) {
 	var inputIdpConfig KeycloakConfig
 	if err := mapstructure.Decode(config, &inputIdpConfig); err != nil {
 		panic(err)
 	}
 	logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
-	keycloakSVC := &KeycloakEntityResolutionService{idpConfig: inputIdpConfig, logger: logger}
+	keycloakSVC := &EntityResolutionServiceV2{idpConfig: inputIdpConfig, logger: logger}
 	return keycloakSVC, nil
 }
 
-func (s KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
+func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
 	ctx, span := s.Tracer.Start(ctx, "ResolveEntities")
 	defer span.End()
 
@@ -73,7 +73,7 @@ func (s KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, re
 	return connect.NewResponse(&resp), err
 }
 
-func (s KeycloakEntityResolutionService) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
+func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
 	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainsFromTokens")
 	defer span.End()
 

@@ -36,7 +36,7 @@ func unmarshalRegisteredResourceValuesProto(valuesJSON []byte, values *[]*policy
 	return nil
 }
 
-func unmarshalRegisteredResourceActionAttributeValuesProto(actionAttrValuesJSON []byte, values *[]*policy.RegisteredResourceActionAttributeValue) error {
+func unmarshalRegisteredResourceActionAttributeValuesProto(actionAttrValuesJSON []byte, values *[]*policy.RegisteredResourceValue_ActionAttributeValue) error {
 	if actionAttrValuesJSON == nil {
 		return nil
 	}
@@ -47,7 +47,7 @@ func unmarshalRegisteredResourceActionAttributeValuesProto(actionAttrValuesJSON 
 	}
 
 	for _, r := range raw {
-		v := &policy.RegisteredResourceActionAttributeValue{}
+		v := &policy.RegisteredResourceValue_ActionAttributeValue{}
 		if err := protojson.Unmarshal(r, v); err != nil {
 			return fmt.Errorf("failed to unmarshal action attribute value [%s]: %w", string(r), err)
 		}
@@ -296,7 +296,7 @@ func (c PolicyDBClient) GetRegisteredResourceValue(ctx context.Context, r *regis
 		return nil, err
 	}
 
-	actionAttrValues := []*policy.RegisteredResourceActionAttributeValue{}
+	actionAttrValues := []*policy.RegisteredResourceValue_ActionAttributeValue{}
 	if err = unmarshalRegisteredResourceActionAttributeValuesProto(rv.ActionAttributeValues, &actionAttrValues); err != nil {
 		return nil, err
 	}
@@ -367,7 +367,7 @@ func (c PolicyDBClient) ListRegisteredResourceValues(ctx context.Context, r *reg
 			return nil, err
 		}
 
-		actionAttrValues := []*policy.RegisteredResourceActionAttributeValue{}
+		actionAttrValues := []*policy.RegisteredResourceValue_ActionAttributeValue{}
 		if err = unmarshalRegisteredResourceActionAttributeValuesProto(r.ActionAttributeValues, &actionAttrValues); err != nil {
 			return nil, err
 		}

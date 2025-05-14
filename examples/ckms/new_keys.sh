@@ -5,7 +5,6 @@
 #   . ./setup_vault_env.sh
 #   ./new_keys.sh
 
-
 # Determine the directory containing this script
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PROJECT_DIR=$(cd "$SCRIPT_DIR/../.." && pwd)
@@ -19,8 +18,7 @@ fi
 export VAULT_ADDR="${VAULT_ADDR:-https://127.0.0.1:8200}"
 export VAULT_CACERT="${VAULT_CACERT:-${SCRIPT_DIR}/vault-ca.pem}"
 
-
-if [ -z $KAS_ADMIN_TOKEN ]; then
+if [ -z "$KAS_ADMIN_TOKEN" ]; then
   echo "KAS_ADMIN_TOKEN is not set. Creating a new admin role" >&2
 
   echo root | vault login -
@@ -28,11 +26,11 @@ if [ -z $KAS_ADMIN_TOKEN ]; then
     echo "Failed to log in to Vault. Exiting." >&2
     exit 1
   fi
-  
+
   ADMIN_TOKEN=$(vault token create -policy="kas-admin" -policy="kas-viewer" -format=json | jq -r '.auth.client_token')
   if [ -z "$ADMIN_TOKEN" ]; then
     echo "Failed to create admin token. Exiting." >&2
-    return 1
+    exit 1
   fi
 
   export KAS_ADMIN_TOKEN="$ADMIN_TOKEN"
@@ -43,7 +41,6 @@ if ! echo "$KAS_ADMIN_TOKEN" | vault login -; then
   echo "Failed to log in with admin token. Exiting." >&2
   exit 1
 fi
-
 
 mkdir -p "${PROJECT_DIR}/keys"
 

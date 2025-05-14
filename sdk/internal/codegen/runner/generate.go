@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"log/slog"
@@ -108,8 +109,8 @@ func Generate() error {
 						code := generateWrapper(ts.Name.Name, iface, client.grpcPackagePath, packageName)
 						var currentDir string
 						currentDir, err = getCurrentFileDir()
-						outputPath := filepath.Join(currentDir, "..", "..", "..", "sdkconnect", fmt.Sprintf("%s.go", packageName))
-						err = os.WriteFile(outputPath, []byte(code), 0644)
+						outputPath := filepath.Join(currentDir, "..", "..", "..", "sdkconnect", packageName+".go")
+						err = os.WriteFile(outputPath, []byte(code), 0644) //nolint:gosec // ignore G306
 						found = true
 						return false // stop traversal
 					}
@@ -136,7 +137,7 @@ func Generate() error {
 func getCurrentFileDir() (string, error) {
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
-		return "", fmt.Errorf("could not get caller information")
+		return "", errors.New("could not get caller information")
 	}
 	return filepath.Dir(filename), nil
 }

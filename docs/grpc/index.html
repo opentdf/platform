@@ -3678,7 +3678,7 @@ string</p></td>
                   <td>email_address</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>one of the entity options must be set </p></td>
                 </tr>
               
                 <tr>
@@ -3689,10 +3689,31 @@ string</p></td>
                 </tr>
               
                 <tr>
+                  <td>remote_claims_url</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>uuid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>claims</td>
                   <td><a href="#google.protobuf.Any">google.protobuf.Any</a></td>
                   <td></td>
-                  <td><p>used by ERS claims mode </p></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>custom</td>
+                  <td><a href="#authorization.EntityCustom">EntityCustom</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -4136,21 +4157,21 @@ string</p></td>
                 <td>GetDecisions</td>
                 <td><a href="#authorization.GetDecisionsRequest">GetDecisionsRequest</a></td>
                 <td><a href="#authorization.GetDecisionsResponse">GetDecisionsResponse</a></td>
-                <td><p>Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource, GetDecisionBulk)</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>GetDecisionsByToken</td>
                 <td><a href="#authorization.GetDecisionsByTokenRequest">GetDecisionsByTokenRequest</a></td>
                 <td><a href="#authorization.GetDecisionsByTokenResponse">GetDecisionsByTokenResponse</a></td>
-                <td><p>Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource)</p></td>
+                <td><p></p></td>
               </tr>
             
               <tr>
                 <td>GetEntitlements</td>
                 <td><a href="#authorization.GetEntitlementsRequest">GetEntitlementsRequest</a></td>
                 <td><a href="#authorization.GetEntitlementsResponse">GetEntitlementsResponse</a></td>
-                <td><p>Deprecated: Use AuthorizationV2 method instead (GetEntitlements)</p></td>
+                <td><p></p></td>
               </tr>
             
           </tbody>
@@ -4503,7 +4524,7 @@ this case the resource acts as and represents a single entity for authorization/
         
       
         <h3 id="authorization.v2.GetDecisionBulkRequest">GetDecisionBulkRequest</h3>
-        <p>Can the entities (PE or NPE) access?</p><p>1. Multiplexing of a Decision<entityChain, Action, repeated Resource> request</p><p>This is a more performant bulk request for complex decisioning (multiple entity chains or actions on</p><p>multiple resource decisions)</p>
+        <p>Is access allowed?</p><p>1. Multiplexing of a Decision<EntityReference, Action, repeated Resource> request</p><p>This is a more performant bulk request for complex decisioning (multiple entity chains or actions on</p><p>multiple resource decisions)</p>
 
         
           <table class="field-table">
@@ -4551,7 +4572,7 @@ this case the resource acts as and represents a single entity for authorization/
         
       
         <h3 id="authorization.v2.GetDecisionMultiResourceRequest">GetDecisionMultiResourceRequest</h3>
-        <p>Can the entity (PE or NPE) access?</p><p>1. one entity chain</p><p>2. one action</p><p>3. multiple resources</p><p>Note: this is a more performant bulk request for multiple resource decisions</p>
+        <p>Can the entity (PE or NPE) access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. multiple resources</p><p>Note: this is a more performant bulk request for multiple resource decisions</p>
 
         
           <table class="field-table">
@@ -4620,7 +4641,7 @@ this case the resource acts as and represents a single entity for authorization/
         
       
         <h3 id="authorization.v2.GetDecisionRequest">GetDecisionRequest</h3>
-        <p>Can the entity (PE or NPE) access?</p><p>1. one entity chain</p><p>2. one action</p><p>3. one resource</p>
+        <p>Can the entity (PE or NPE) access?</p><p>1. one entity reference (actor)</p><p>2. one action</p><p>3. one resource</p>
 
         
           <table class="field-table">
@@ -4685,7 +4706,7 @@ repeated string obligations = 2; </p></td>
         
       
         <h3 id="authorization.v2.GetEntitlementsRequest">GetEntitlementsRequest</h3>
-        <p>What can the entity (PE or NPE, represented by the entity chain) do, broken down as permitted actions on attribute value FQNs?</p><p>Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use</p><p>GetDecision if the resource is known</p>
+        <p>What is permitted to the EntityReference (actor), broken down as permitted actions on attribute value FQNs?</p><p>Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use</p><p>GetDecision if the resource is known</p>
 
         
           <table class="field-table">

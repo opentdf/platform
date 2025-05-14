@@ -381,7 +381,7 @@ func (x *ResourceDecision) GetDecision() Decision {
 }
 
 // Can the entity (PE or NPE) access?
-// 1. one entity chain
+// 1. one entity reference (actor)
 // 2. one action
 // 3. one resource
 type GetDecisionRequest struct {
@@ -498,7 +498,7 @@ func (x *GetDecisionResponse) GetDecision() *ResourceDecision {
 }
 
 // Can the entity (PE or NPE) access?
-// 1. one entity chain
+// 1. one entity reference (actor)
 // 2. one action
 // 3. multiple resources
 // Note: this is a more performant bulk request for multiple resource decisions
@@ -624,8 +624,8 @@ func (x *GetDecisionMultiResourceResponse) GetResourceDecisions() []*ResourceDec
 	return nil
 }
 
-// Can the entities (PE or NPE) access?
-// 1. Multiplexing of a Decision<entityChain, Action, repeated Resource> request
+// Is access allowed?
+// 1. Multiplexing of a Decision<EntityReference, Action, repeated Resource> request
 // This is a more performant bulk request for complex decisioning (multiple entity chains or actions on
 // multiple resource decisions)
 type GetDecisionBulkRequest struct {
@@ -722,7 +722,7 @@ func (x *GetDecisionBulkResponse) GetDecisionResponses() []*GetDecisionMultiReso
 	return nil
 }
 
-// What can the entity (PE or NPE, represented by the entity chain) do, broken down as permitted actions on attribute value FQNs?
+// What is permitted to the EntityReference (actor), broken down as permitted actions on attribute value FQNs?
 //
 // Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use
 // GetDecision if the resource is known

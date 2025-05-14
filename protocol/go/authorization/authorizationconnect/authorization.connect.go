@@ -54,11 +54,8 @@ var (
 
 // AuthorizationServiceClient is a client for the authorization.AuthorizationService service.
 type AuthorizationServiceClient interface {
-	// Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource, GetDecisionBulk)
 	GetDecisions(context.Context, *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error)
-	// Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource)
 	GetDecisionsByToken(context.Context, *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error)
-	// Deprecated: Use AuthorizationV2 method instead (GetEntitlements)
 	GetEntitlements(context.Context, *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error)
 }
 
@@ -118,11 +115,8 @@ func (c *authorizationServiceClient) GetEntitlements(ctx context.Context, req *c
 // AuthorizationServiceHandler is an implementation of the authorization.AuthorizationService
 // service.
 type AuthorizationServiceHandler interface {
-	// Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource, GetDecisionBulk)
 	GetDecisions(context.Context, *connect.Request[authorization.GetDecisionsRequest]) (*connect.Response[authorization.GetDecisionsResponse], error)
-	// Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource)
 	GetDecisionsByToken(context.Context, *connect.Request[authorization.GetDecisionsByTokenRequest]) (*connect.Response[authorization.GetDecisionsByTokenResponse], error)
-	// Deprecated: Use AuthorizationV2 method instead (GetEntitlements)
 	GetEntitlements(context.Context, *connect.Request[authorization.GetEntitlementsRequest]) (*connect.Response[authorization.GetEntitlementsResponse], error)
 }
 

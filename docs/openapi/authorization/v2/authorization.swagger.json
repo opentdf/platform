@@ -279,7 +279,7 @@
           }
         }
       },
-      "title": "Can the entity (PE or NPE) access?\n1. one entity chain\n2. one action\n3. multiple resources\nNote: this is a more performant bulk request for multiple resource decisions"
+      "title": "Can the entity (PE or NPE) access?\n1. one entity reference (actor)\n2. one action\n3. multiple resources\nNote: this is a more performant bulk request for multiple resource decisions"
     },
     "v2GetDecisionMultiResourceResponse": {
       "type": "object",

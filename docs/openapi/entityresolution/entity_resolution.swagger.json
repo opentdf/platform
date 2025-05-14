@@ -90,14 +90,23 @@
           "title": "ephemeral id for tracking between request and response"
         },
         "emailAddress": {
-          "type": "string"
+          "type": "string",
+          "title": "one of the entity options must be set"
         },
         "userName": {
           "type": "string"
         },
+        "remoteClaimsUrl": {
+          "type": "string"
+        },
+        "uuid": {
+          "type": "string"
+        },
         "claims": {
-          "$ref": "#/definitions/protobufAny",
-          "title": "used by ERS claims mode"
+          "$ref": "#/definitions/protobufAny"
+        },
+        "custom": {
+          "$ref": "#/definitions/authorizationEntityCustom"
         },
         "clientId": {
           "type": "string"
@@ -133,6 +142,15 @@
         }
       },
       "title": "A set of related PE and NPE"
+    },
+    "authorizationEntityCustom": {
+      "type": "object",
+      "properties": {
+        "extension": {
+          "$ref": "#/definitions/protobufAny"
+        }
+      },
+      "title": "Entity type for custom entities beyond the standard types"
     },
     "authorizationToken": {
       "type": "object",

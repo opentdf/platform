@@ -51,7 +51,7 @@
     },
     "/v1/entitlements": {
       "post": {
-        "summary": "Deprecated: Use AuthorizationV2 method instead (GetEntitlements, GetEntitlementsByToken)",
+        "summary": "Deprecated: Use AuthorizationV2 method instead (GetEntitlements)",
         "operationId": "AuthorizationService_GetEntitlements",
         "responses": {
           "200": {
@@ -85,7 +85,7 @@
     },
     "/v1/token/authorization": {
       "post": {
-        "summary": "Deprecated: Use AuthorizationV2 methods instead (GetDecisionByToken, GetDecisionByTokenMultiResource)",
+        "summary": "Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource)",
         "operationId": "AuthorizationService_GetDecisionsByToken",
         "responses": {
           "200": {

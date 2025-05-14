@@ -306,11 +306,11 @@ service AuthorizationService {
       body: "*"
     };
   }
-  // Deprecated: Use AuthorizationV2 methods instead (GetDecisionByToken, GetDecisionByTokenMultiResource)
+  // Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource)
   rpc GetDecisionsByToken(GetDecisionsByTokenRequest) returns (GetDecisionsByTokenResponse) {
     option (google.api.http) = {post: "/v1/token/authorization"};
   }
-  // Deprecated: Use AuthorizationV2 method instead (GetEntitlements, GetEntitlementsByToken)
+  // Deprecated: Use AuthorizationV2 method instead (GetEntitlements)
   rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {
     option (google.api.http) = {
       post: "/v1/entitlements"

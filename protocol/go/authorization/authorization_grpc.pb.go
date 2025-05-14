@@ -30,9 +30,9 @@ const (
 type AuthorizationServiceClient interface {
 	// Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource, GetDecisionBulk)
 	GetDecisions(ctx context.Context, in *GetDecisionsRequest, opts ...grpc.CallOption) (*GetDecisionsResponse, error)
-	// Deprecated: Use AuthorizationV2 methods instead (GetDecisionByToken, GetDecisionByTokenMultiResource)
+	// Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource)
 	GetDecisionsByToken(ctx context.Context, in *GetDecisionsByTokenRequest, opts ...grpc.CallOption) (*GetDecisionsByTokenResponse, error)
-	// Deprecated: Use AuthorizationV2 method instead (GetEntitlements, GetEntitlementsByToken)
+	// Deprecated: Use AuthorizationV2 method instead (GetEntitlements)
 	GetEntitlements(ctx context.Context, in *GetEntitlementsRequest, opts ...grpc.CallOption) (*GetEntitlementsResponse, error)
 }
 
@@ -77,9 +77,9 @@ func (c *authorizationServiceClient) GetEntitlements(ctx context.Context, in *Ge
 type AuthorizationServiceServer interface {
 	// Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource, GetDecisionBulk)
 	GetDecisions(context.Context, *GetDecisionsRequest) (*GetDecisionsResponse, error)
-	// Deprecated: Use AuthorizationV2 methods instead (GetDecisionByToken, GetDecisionByTokenMultiResource)
+	// Deprecated: Use AuthorizationV2 methods instead (GetDecision, GetDecisionMultiResource)
 	GetDecisionsByToken(context.Context, *GetDecisionsByTokenRequest) (*GetDecisionsByTokenResponse, error)
-	// Deprecated: Use AuthorizationV2 method instead (GetEntitlements, GetEntitlementsByToken)
+	// Deprecated: Use AuthorizationV2 method instead (GetEntitlements)
 	GetEntitlements(context.Context, *GetEntitlementsRequest) (*GetEntitlementsResponse, error)
 	mustEmbedUnimplementedAuthorizationServiceServer()
 }

@@ -108,7 +108,7 @@ func convertPEMToJWK(_ string) (string, error) {
 type InProcessProvider struct {
 	cryptoProvider CryptoProvider
 	logger         *slog.Logger
-	defaultKeys    []string
+	defaultKeys    map[string]bool
 	legacyKeys     map[string]bool
 }
 
@@ -182,10 +182,15 @@ func NewSecurityProviderAdapter(cryptoProvider CryptoProvider, defaultKeys, lega
 		legacyKeysMap[key] = true
 	}
 
+	defaultKeysMap := make(map[string]bool, len(defaultKeys))
+	for _, key := range defaultKeys {
+		defaultKeysMap[key] = true
+	}
+
 	return &InProcessProvider{
 		cryptoProvider: cryptoProvider,
 		logger:         slog.Default(),
-		defaultKeys:    defaultKeys,
+		defaultKeys:    defaultKeysMap,
 		legacyKeys:     legacyKeysMap,
 	}
 }
@@ -209,7 +214,7 @@ func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm stri
 		return nil, ErrCertNotFound
 	}
 	for _, kid := range kids {
-		if legacy != a.legacyKeys[kid] {
+		if legacy && a.legacyKeys[kid] || !legacy && a.defaultKeys[kid] {
 			return &KeyDetailsAdapter{
 				id:             trust.KeyIdentifier(kid),
 				algorithm:      algorithm,

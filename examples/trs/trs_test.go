@@ -1,6 +1,7 @@
 package trs
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -23,7 +24,7 @@ const (
 var (
 	workspaceFolderAbsPath string
 	originalDir            string
-	initErr                error
+	errInit                error
 )
 
 func init() {
@@ -34,17 +35,17 @@ func init() {
 	}
 
 	// Save current working directory to restore it at the end
-	originalDir, initErr = os.Getwd()
-	if initErr != nil {
-		panic(fmt.Sprintf("Failed to get current directory: %v", initErr))
+	originalDir, errInit = os.Getwd()
+	if errInit != nil {
+		panic(fmt.Sprintf("Failed to get current directory: %v", errInit))
 	}
 
 	// Users of the TRS recipe will need to modify the following statement to point to the root of the project
 	// Set the relative path to the workspace (root) folder
 	workspaceRoot := filepath.Join(filepath.Dir(filename), "..", "..")
-	workspaceFolderAbsPath, initErr = filepath.Abs(workspaceRoot)
-	if initErr != nil {
-		panic(fmt.Sprintf("Failed to get absolute path: %v", initErr))
+	workspaceFolderAbsPath, errInit = filepath.Abs(workspaceRoot)
+	if errInit != nil {
+		panic(fmt.Sprintf("Failed to get absolute path: %v", errInit))
 	}
 }
 
@@ -65,6 +66,7 @@ func makeConfigFile(workingDirectory string) string {
 	if err != nil {
 		panic(fmt.Sprintf("Failed to read config file: %v", err))
 	}
+
 	if err := os.WriteFile(newConfigFile, input, 0644); err != nil {
 		panic(fmt.Sprintf("Failed to write config file: %v", err))
 	}
@@ -120,14 +122,14 @@ func backgroundPlatformServer(t *testing.T, id int, wg *sync.WaitGroup, configFi
 
 		// Now wait for the server.Start goroutine to complete.
 		serverErr := <-serverExited
-		if serverErr != nil && serverErr != http.ErrServerClosed {
+		if errors.Is(serverErr, http.ErrServerClosed) {
 			t.Logf("Worker %d: Server exited with error after done signal: %v\n", id, serverErr)
 		} else {
 			t.Logf("Worker %d: Server shut down gracefully after done signal.\n", id)
 		}
 	case err := <-serverExited:
 		// Server exited on its own (e.g., startup error, or normal shutdown via OS signal before 'done')
-		if err != nil && err != http.ErrServerClosed {
+		if errors.Is(err, http.ErrServerClosed) {
 			// If server.Start returns an immediate error (e.g., port in use),
 			// it will come through here.
 			t.Logf("Worker %d: Server exited with error: %v\n", id, err)
@@ -139,9 +141,7 @@ func backgroundPlatformServer(t *testing.T, id int, wg *sync.WaitGroup, configFi
 }
 
 func setupServer(t *testing.T) (chan struct{}, *sync.WaitGroup) {
-	if err := os.Chdir(workspaceFolderAbsPath); err != nil {
-		t.Fatalf("Failed to change to workspace directory: %v", err)
-	}
+	t.Chdir(workspaceFolderAbsPath)
 	t.Logf("Changed working directory to: %s", workspaceFolderAbsPath)
 
 	configFile := makeConfigFile(workspaceFolderAbsPath)
@@ -174,13 +174,13 @@ func TestTRSIntegration(t *testing.T) {
 
 	// Register cleanup to happen after this test and all its subtests
 	t.Cleanup(func() {
-		fmt.Println("Cleaning up - signaling worker to stop...")
+		t.Logf("Cleaning up - signaling worker to stop...")
 		close(done)
 
-		fmt.Println("Waiting for worker to finish...")
+		t.Logf("Waiting for worker to finish...")
 		wg.Wait()
 
-		fmt.Println("Worker finished.")
+		t.Logf("Worker finished.")
 	})
 
 	// Use subtests for different endpoints
@@ -201,7 +201,7 @@ func TestTRSIntegration(t *testing.T) {
 			t.Fatalf("Failed to read response body: %v", err)
 		}
 
-		expectedResponse := fmt.Sprintf("Hello %s", testName)
+		expectedResponse := "Hello " + testName
 		assert.Equal(t, expectedResponse, string(body))
 	})
 
@@ -246,7 +246,7 @@ func TestTRSIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to read response body: %v", err)
 		}
-		assert.Greater(t, len(body), 0, "Expected non-empty response body")
+		assert.NotEmpty(t, body, "Expected non-empty response body")
 	})
 
 	// No manual cleanup needed here - t.Cleanup handles it

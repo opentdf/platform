@@ -19,7 +19,7 @@ type testReadyService struct {
 	sdk *otdf.SDK
 }
 
-type TrsConfig struct {
+type Config struct {
 	Services map[string]Service `json:"services"`
 }
 
@@ -45,9 +45,9 @@ var platformEndpoint = "localhost:8080"
 func encryptString(input string, sdk *otdf.SDK) (string, error) {
 	var ciphertext bytes.Buffer
 	plaintext := strings.NewReader(input)
-	baseKasUrl := platformEndpoint
-	if !strings.HasPrefix(baseKasUrl, "http://") && !strings.HasPrefix(baseKasUrl, "https://") {
-		baseKasUrl = fmt.Sprintf("http://%s", baseKasUrl)
+	baseKasURL := platformEndpoint
+	if !strings.HasPrefix(baseKasURL, "http://") && !strings.HasPrefix(baseKasURL, "https://") {
+		baseKasURL = "http://" + baseKasURL
 	}
 
 	_, err := sdk.CreateTDF(
@@ -56,7 +56,7 @@ func encryptString(input string, sdk *otdf.SDK) (string, error) {
 		otdf.WithDataAttributes(nil...),
 		otdf.WithKasInformation(
 			otdf.KASInfo{
-				URL:       baseKasUrl,
+				URL:       baseKasURL,
 				PublicKey: "",
 			},
 		),
@@ -116,8 +116,7 @@ func (trs testReadyService) EncryptNameHandler() func(w http.ResponseWriter, r *
 /*
 FIXME: Use the given sdkClient, rather than replacing it.
 */
-func newSdkClientHack(sdkClient *otdf.SDK) (*otdf.SDK, error) {
-
+func newSdkClientHack(_ *otdf.SDK) (*otdf.SDK, error) {
 	sdkClient, err := otdf.New(platformEndpoint,
 		otdf.WithPlatformConfiguration(otdf.PlatformConfiguration{}),
 		otdf.WithInsecurePlaintextConn(),
@@ -131,7 +130,7 @@ func createTestReadyService(sdkClient *otdf.SDK, extraProps map[string]interface
 	slog.Debug("Caller passed SDK client", slog.String("client", fmt.Sprintf("%+v", sdkClient)))
 
 	slog.Info("Setting up service")
-	var cfg TrsConfig
+	var cfg Config
 	// Convert map to JSON
 	svcJSON, err := json.Marshal(extraProps)
 	if err != nil {
@@ -183,20 +182,17 @@ func registerServiceEndpoints(trs testReadyService, mux *runtime.ServeMux) error
 }
 
 func NewRegistration() *serviceregistry.Service[testReadyService] {
-
 	return &serviceregistry.Service[testReadyService]{
 		ServiceOptions: serviceregistry.ServiceOptions[testReadyService]{
 			Namespace:   "trs",
 			ServiceDesc: &grpc.ServiceDesc{ServiceName: "trs", HandlerType: (*testReadyService)(nil)},
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (testReadyService, serviceregistry.HandlerServer) {
-
 				trsService := createTestReadyService(srp.SDK, srp.Config)
 
 				slog.Info("Registering test ready service")
-				return trsService, func(ctx context.Context, mux *runtime.ServeMux) error {
+				return trsService, func(_ context.Context, mux *runtime.ServeMux) error {
 					return registerServiceEndpoints(trsService, mux)
 				}
-
 			},
 		},
 	}

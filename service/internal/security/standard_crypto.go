@@ -351,7 +351,21 @@ func (s StandardCrypto) RSAPublicKeyAsJSON(kid string) (string, error) {
 }
 
 func (s StandardCrypto) GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
-	ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, ephemeralPublicKeyBytes)
+	k, ok := s.keysByID[kasKID]
+	if !ok {
+		return nil, ErrKeyPairInfoNotFound
+	}
+	ec, ok := k.(StandardECCrypto)
+	if !ok {
+		return nil, ErrKeyPairInfoMalformed
+	}
+	privateKeyPEM := []byte(ec.ecPrivateKeyPem)
+
+	return DeriveNanoTDFSymmetricKey(curve, ephemeralPublicKeyBytes, privateKeyPEM)
+}
+
+func DeriveNanoTDFSymmetricKey(curve elliptic.Curve, clientEphemera []byte, privateKeyPEM []byte) ([]byte, error) {
+	ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, clientEphemera)
 	if err != nil {
 		return nil, err
 	}
@@ -366,16 +380,7 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPubl
 	}
 	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(pemBlock)
 
-	k, ok := s.keysByID[kasKID]
-	if !ok {
-		return nil, ErrKeyPairInfoNotFound
-	}
-	ec, ok := k.(StandardECCrypto)
-	if !ok {
-		return nil, ErrKeyPairInfoMalformed
-	}
-
-	symmetricKey, err := ocrypto.ComputeECDHKey([]byte(ec.ecPrivateKeyPem), ephemeralECDSAPublicKeyPEM)
+	symmetricKey, err := ocrypto.ComputeECDHKey(privateKeyPEM, ephemeralECDSAPublicKeyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
 	}

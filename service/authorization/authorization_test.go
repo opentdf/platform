@@ -877,8 +877,8 @@ func Test_GetEntitlements_HandlesPagination(t *testing.T) {
 	as := AuthorizationService{
 		logger: logger,
 		sdk: &otdf.SDK{
-			SubjectMapping:  &sdkconnect.SubjectMappingServiceClientConnectWrapper{SubjectMappingServiceClient: &mySubjectMappingClient{}},
-			Attributes:      &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &myAttributesClient{}},
+			SubjectMapping:  &sdkconnect.SubjectMappingServiceClientConnectWrapper{SubjectMappingServiceClient: &paginatedMockSubjectMappingClient{}},
+			Attributes:      &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &paginatedMockAttributesClient{}},
 			EntityResoution: &sdkconnect.EntityResolutionServiceClientConnectWrapper{EntityResolutionServiceClient: &myERSClient{}},
 		},
 		eval:   prepared,

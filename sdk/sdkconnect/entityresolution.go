@@ -2,12 +2,11 @@
 package sdkconnect
 
 import (
-	"context"
 	"connectrpc.com/connect"
-	"google.golang.org/grpc"
+	"context"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/entityresolution/entityresolutionconnect"
-
+	"google.golang.org/grpc"
 )
 
 type EntityResolutionServiceClientConnectWrapper struct {

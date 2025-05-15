@@ -2,12 +2,11 @@
 package sdkconnect
 
 import (
-	"context"
 	"connectrpc.com/connect"
-	"google.golang.org/grpc"
+	"context"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
-
+	"google.golang.org/grpc"
 )
 
 type AttributesServiceClientConnectWrapper struct {

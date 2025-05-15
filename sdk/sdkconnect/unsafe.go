@@ -2,12 +2,11 @@
 package sdkconnect
 
 import (
-	"context"
 	"connectrpc.com/connect"
-	"google.golang.org/grpc"
+	"context"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe/unsafeconnect"
-
+	"google.golang.org/grpc"
 )
 
 type UnsafeServiceClientConnectWrapper struct {

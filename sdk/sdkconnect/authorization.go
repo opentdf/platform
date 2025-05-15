@@ -2,12 +2,11 @@
 package sdkconnect
 
 import (
-	"context"
 	"connectrpc.com/connect"
-	"google.golang.org/grpc"
+	"context"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
-
+	"google.golang.org/grpc"
 )
 
 type AuthorizationServiceClientConnectWrapper struct {

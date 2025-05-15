@@ -164,12 +164,11 @@ func generateWrapper(interfaceName string, interfaceType *ast.InterfaceType, pac
 package sdkconnect
 
 import (
-	"context"
 	"connectrpc.com/connect"
+	"context"
+	"%s"
+	"%s"
 	"google.golang.org/grpc"
-	"%s"
-	"%s"
-
 )
 
 type %sConnectWrapper struct {

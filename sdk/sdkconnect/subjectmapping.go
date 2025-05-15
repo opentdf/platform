@@ -2,12 +2,11 @@
 package sdkconnect
 
 import (
-	"context"
 	"connectrpc.com/connect"
-	"google.golang.org/grpc"
+	"context"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
-
+	"google.golang.org/grpc"
 )
 
 type SubjectMappingServiceClientConnectWrapper struct {

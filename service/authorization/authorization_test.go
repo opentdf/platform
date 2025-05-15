@@ -16,15 +16,13 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
-	attrconnect "github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
-	smconnect "github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
 	otdf "github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -49,15 +47,15 @@ var (
 )
 
 type myAttributesClient struct {
-	attrconnect.AttributesServiceClient
+	attr.AttributesServiceClient
 }
 
-func (*myAttributesClient) ListAttributes(_ context.Context, _ *connect.Request[attr.ListAttributesRequest]) (*connect.Response[attr.ListAttributesResponse], error) {
-	return connect.NewResponse(&listAttributeResp), errListAttributes
+func (*myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
+	return &listAttributeResp, errListAttributes
 }
 
-func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *connect.Request[attr.GetAttributeValuesByFqnsRequest]) (*connect.Response[attr.GetAttributeValuesByFqnsResponse], error) {
-	return connect.NewResponse(&getAttributesByValueFqnsResponse), errGetAttributesByValueFqns
+func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attr.GetAttributeValuesByFqnsResponse, error) {
+	return &getAttributesByValueFqnsResponse, errGetAttributesByValueFqns
 }
 
 type myERSClient struct {
@@ -65,23 +63,23 @@ type myERSClient struct {
 }
 
 type mySubjectMappingClient struct {
-	smconnect.SubjectMappingServiceClient
+	sm.SubjectMappingServiceClient
 }
 
 type paginatedMockSubjectMappingClient struct {
-	smconnect.SubjectMappingServiceClient
+	sm.SubjectMappingServiceClient
 }
 
-func (*mySubjectMappingClient) ListSubjectMappings(_ context.Context, _ *connect.Request[sm.ListSubjectMappingsRequest]) (*connect.Response[sm.ListSubjectMappingsResponse], error) {
-	return connect.NewResponse(&listSubjectMappings), nil
+func (*mySubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest, _ ...grpc.CallOption) (*sm.ListSubjectMappingsResponse, error) {
+	return &listSubjectMappings, nil
 }
 
-func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
-	return connect.NewResponse(&createEntityChainResp), nil
+func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *entityresolution.CreateEntityChainFromJwtRequest, _ ...grpc.CallOption) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
+	return &createEntityChainResp, nil
 }
 
-func (*myERSClient) ResolveEntities(_ context.Context, _ *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
-	return connect.NewResponse(&resolveEntitiesResp), nil
+func (*myERSClient) ResolveEntities(_ context.Context, _ *entityresolution.ResolveEntitiesRequest, _ ...grpc.CallOption) (*entityresolution.ResolveEntitiesResponse, error) {
+	return &resolveEntitiesResp, nil
 }
 
 var (
@@ -89,7 +87,7 @@ var (
 	smListCallCount    = 0
 )
 
-func (*paginatedMockSubjectMappingClient) ListSubjectMappings(_ context.Context, _ *connect.Request[sm.ListSubjectMappingsRequest]) (*connect.Response[sm.ListSubjectMappingsResponse], error) {
+func (*paginatedMockSubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest, _ ...grpc.CallOption) (*sm.ListSubjectMappingsResponse, error) {
 	smListCallCount++
 	// simulate paginated list and policy LIST behavior
 	if smPaginationOffset > 0 {
@@ -100,13 +98,13 @@ func (*paginatedMockSubjectMappingClient) ListSubjectMappings(_ context.Context,
 			},
 		}
 		smPaginationOffset = 0
-		return connect.NewResponse(rsp), nil
+		return rsp, nil
 	}
-	return connect.NewResponse(&listSubjectMappings), nil
+	return &listSubjectMappings, nil
 }
 
 type paginatedMockAttributesClient struct {
-	attrconnect.AttributesServiceClient
+	attr.AttributesServiceClient
 }
 
 var (
@@ -114,7 +112,7 @@ var (
 	attrListCallCount    = 0
 )
 
-func (*paginatedMockAttributesClient) ListAttributes(_ context.Context, _ *connect.Request[attr.ListAttributesRequest]) (*connect.Response[attr.ListAttributesResponse], error) {
+func (*paginatedMockAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
 	attrListCallCount++
 	// simulate paginated list and policy LIST behavior
 	if attrPaginationOffset > 0 {
@@ -125,9 +123,9 @@ func (*paginatedMockAttributesClient) ListAttributes(_ context.Context, _ *conne
 			},
 		}
 		attrPaginationOffset = 0
-		return connect.NewResponse(rsp), nil
+		return rsp, nil
 	}
-	return connect.NewResponse(&listAttributeResp), nil
+	return &listAttributeResp, nil
 }
 
 func TestGetComprehensiveHierarchy(t *testing.T) {
@@ -286,9 +284,9 @@ func Test_GetDecisionsAllOf_Pass(t *testing.T) {
 	as := AuthorizationService{
 		logger: logger,
 		sdk: &otdf.SDK{
-			SubjectMapping:  &sdkconnect.SubjectMappingServiceClientConnectWrapper{SubjectMappingServiceClient: &mySubjectMappingClient{}},
-			Attributes:      &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &myAttributesClient{}},
-			EntityResoution: &sdkconnect.EntityResolutionServiceClientConnectWrapper{EntityResolutionServiceClient: &myERSClient{}},
+			SubjectMapping:  &mySubjectMappingClient{},
+			Attributes:      &myAttributesClient{},
+			EntityResoution: &myERSClient{},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -452,9 +450,9 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	as := AuthorizationService{
 		logger: logger,
 		sdk: &otdf.SDK{
-			SubjectMapping:  &sdkconnect.SubjectMappingServiceClientConnectWrapper{SubjectMappingServiceClient: &mySubjectMappingClient{}},
-			Attributes:      &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &myAttributesClient{}},
-			EntityResoution: &sdkconnect.EntityResolutionServiceClientConnectWrapper{EntityResolutionServiceClient: &myERSClient{}},
+			SubjectMapping:  &mySubjectMappingClient{},
+			Attributes:      &myAttributesClient{},
+			EntityResoution: &myERSClient{},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -552,9 +550,9 @@ func Test_GetDecisionsAllOfWithEnvironmental_Pass(t *testing.T) {
 	as := AuthorizationService{
 		logger: logger,
 		sdk: &otdf.SDK{
-			SubjectMapping:  &sdkconnect.SubjectMappingServiceClientConnectWrapper{SubjectMappingServiceClient: &mySubjectMappingClient{}},
-			Attributes:      &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &myAttributesClient{}},
-			EntityResoution: &sdkconnect.EntityResolutionServiceClientConnectWrapper{EntityResolutionServiceClient: &myERSClient{}},
+			SubjectMapping:  &mySubjectMappingClient{},
+			Attributes:      &myAttributesClient{},
+			EntityResoution: &myERSClient{},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -649,9 +647,9 @@ func Test_GetDecisionsAllOfWithEnvironmental_Fail(t *testing.T) {
 	as := AuthorizationService{
 		logger: logger,
 		sdk: &otdf.SDK{
-			SubjectMapping:  &sdkconnect.SubjectMappingServiceClientConnectWrapper{SubjectMappingServiceClient: &mySubjectMappingClient{}},
-			Attributes:      &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &myAttributesClient{}},
-			EntityResoution: &sdkconnect.EntityResolutionServiceClientConnectWrapper{EntityResolutionServiceClient: &myERSClient{}},
+			SubjectMapping:  &mySubjectMappingClient{},
+			Attributes:      &myAttributesClient{},
+			EntityResoution: &myERSClient{},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -724,9 +722,9 @@ func Test_GetEntitlementsSimple(t *testing.T) {
 	as := AuthorizationService{
 		logger: logger,
 		sdk: &otdf.SDK{
-			SubjectMapping:  &sdkconnect.SubjectMappingServiceClientConnectWrapper{SubjectMappingServiceClient: &mySubjectMappingClient{}},
-			Attributes:      &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &myAttributesClient{}},
-			EntityResoution: &sdkconnect.EntityResolutionServiceClientConnectWrapper{EntityResolutionServiceClient: &myERSClient{}},
+			SubjectMapping:  &mySubjectMappingClient{},
+			Attributes:      &myAttributesClient{},
+			EntityResoution: &myERSClient{},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -798,9 +796,9 @@ func Test_GetEntitlementsFqnCasing(t *testing.T) {
 	as := AuthorizationService{
 		logger: logger,
 		sdk: &otdf.SDK{
-			SubjectMapping:  &sdkconnect.SubjectMappingServiceClientConnectWrapper{SubjectMappingServiceClient: &mySubjectMappingClient{}},
-			Attributes:      &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &myAttributesClient{}},
-			EntityResoution: &sdkconnect.EntityResolutionServiceClientConnectWrapper{EntityResolutionServiceClient: &myERSClient{}},
+			SubjectMapping:  &mySubjectMappingClient{},
+			Attributes:      &myAttributesClient{},
+			EntityResoution: &myERSClient{},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -877,9 +875,9 @@ func Test_GetEntitlements_HandlesPagination(t *testing.T) {
 	as := AuthorizationService{
 		logger: logger,
 		sdk: &otdf.SDK{
-			SubjectMapping:  &sdkconnect.SubjectMappingServiceClientConnectWrapper{SubjectMappingServiceClient: &paginatedMockSubjectMappingClient{}},
-			Attributes:      &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &paginatedMockAttributesClient{}},
-			EntityResoution: &sdkconnect.EntityResolutionServiceClientConnectWrapper{EntityResolutionServiceClient: &myERSClient{}},
+			SubjectMapping:  &paginatedMockSubjectMappingClient{},
+			Attributes:      &paginatedMockAttributesClient{},
+			EntityResoution: &myERSClient{},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -969,9 +967,9 @@ func Test_GetEntitlementsWithComprehensiveHierarchy(t *testing.T) {
 	as := AuthorizationService{
 		logger: logger,
 		sdk: &otdf.SDK{
-			SubjectMapping:  &sdkconnect.SubjectMappingServiceClientConnectWrapper{SubjectMappingServiceClient: &mySubjectMappingClient{}},
-			Attributes:      &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &myAttributesClient{}},
-			EntityResoution: &sdkconnect.EntityResolutionServiceClientConnectWrapper{EntityResolutionServiceClient: &myERSClient{}},
+			SubjectMapping:  &mySubjectMappingClient{},
+			Attributes:      &myAttributesClient{},
+			EntityResoution: &myERSClient{},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -1211,9 +1209,9 @@ func Test_GetDecisions_RA_FQN_Edge_Cases(t *testing.T) {
 	as := AuthorizationService{
 		logger: logger,
 		sdk: &otdf.SDK{
-			SubjectMapping:  &sdkconnect.SubjectMappingServiceClientConnectWrapper{SubjectMappingServiceClient: &mySubjectMappingClient{}},
-			Attributes:      &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &myAttributesClient{}},
-			EntityResoution: &sdkconnect.EntityResolutionServiceClientConnectWrapper{EntityResolutionServiceClient: &myERSClient{}},
+			SubjectMapping:  &mySubjectMappingClient{},
+			Attributes:      &myAttributesClient{},
+			EntityResoution: &myERSClient{},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -1419,9 +1417,9 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 	as := AuthorizationService{
 		logger: logger,
 		sdk: &otdf.SDK{
-			SubjectMapping:  &sdkconnect.SubjectMappingServiceClientConnectWrapper{SubjectMappingServiceClient: &mySubjectMappingClient{}},
-			Attributes:      &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &myAttributesClient{}},
-			EntityResoution: &sdkconnect.EntityResolutionServiceClientConnectWrapper{EntityResolutionServiceClient: &myERSClient{}},
+			SubjectMapping:  &mySubjectMappingClient{},
+			Attributes:      &myAttributesClient{},
+			EntityResoution: &myERSClient{},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),
@@ -1698,9 +1696,9 @@ func Test_GetDecisions_Empty_EC_RA(t *testing.T) {
 	as := AuthorizationService{
 		logger: logger,
 		sdk: &otdf.SDK{
-			SubjectMapping:  &sdkconnect.SubjectMappingServiceClientConnectWrapper{SubjectMappingServiceClient: &mySubjectMappingClient{}},
-			Attributes:      &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &myAttributesClient{}},
-			EntityResoution: &sdkconnect.EntityResolutionServiceClientConnectWrapper{EntityResolutionServiceClient: &myERSClient{}},
+			SubjectMapping:  &mySubjectMappingClient{},
+			Attributes:      &myAttributesClient{},
+			EntityResoution: &myERSClient{},
 		},
 		eval:   prepared,
 		Tracer: noop.NewTracerProvider().Tracer(""),

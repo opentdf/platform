@@ -2,12 +2,11 @@
 package sdkconnect
 
 import (
-	"context"
 	"connectrpc.com/connect"
-	"google.golang.org/grpc"
+	"context"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources/registeredresourcesconnect"
-
+	"google.golang.org/grpc"
 )
 
 type RegisteredResourcesServiceClientConnectWrapper struct {

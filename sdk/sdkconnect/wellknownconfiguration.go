@@ -2,12 +2,11 @@
 package sdkconnect
 
 import (
-	"context"
 	"connectrpc.com/connect"
-	"google.golang.org/grpc"
+	"context"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
-
+	"google.golang.org/grpc"
 )
 
 type WellKnownServiceClientConnectWrapper struct {

@@ -2,12 +2,11 @@
 package sdkconnect
 
 import (
-	"context"
 	"connectrpc.com/connect"
-	"google.golang.org/grpc"
+	"context"
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement/keymanagementconnect"
-
+	"google.golang.org/grpc"
 )
 
 type KeyManagementServiceClientConnectWrapper struct {

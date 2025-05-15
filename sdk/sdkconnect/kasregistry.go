@@ -2,12 +2,11 @@
 package sdkconnect
 
 import (
-	"context"
 	"connectrpc.com/connect"
-	"google.golang.org/grpc"
+	"context"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
-
+	"google.golang.org/grpc"
 )
 
 type KeyAccessServerRegistryServiceClientConnectWrapper struct {

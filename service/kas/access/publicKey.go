@@ -21,9 +21,12 @@ const (
 )
 
 func (p *Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
-	k, err := p.GetKeyIndex().FindKeyByAlgorithm(ctx, algorithm, false)
-	if err == nil {
-		return string(k.ID()), nil
+	keyIdx := p.GetKeyIndex()
+	if keyIdx != nil {
+		k, err := keyIdx.FindKeyByAlgorithm(ctx, algorithm, false)
+		if err == nil {
+			return string(k.ID()), nil
+		}
 	}
 	p.Logger.WarnContext(ctx, "KeyIndex.FindKeyByAlgorithm failed", "err", err)
 

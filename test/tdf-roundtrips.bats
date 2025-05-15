@@ -110,6 +110,8 @@
 
 @test "examples: legacy key support Z-TDF" {
   echo "[INFO] validating default key is r1"
+  echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
+  
   [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
 
   echo "[INFO] encrypting samples"

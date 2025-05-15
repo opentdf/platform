@@ -20,6 +20,34 @@ const (
 	startupDelay = 6 * time.Second // Give server time to start
 )
 
+var (
+	workspaceFolderAbsPath string
+	originalDir            string
+	initErr                error
+)
+
+func init() {
+	// Get the current file's directory
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("Failed to get current file path")
+	}
+
+	// Save current working directory to restore it at the end
+	originalDir, initErr = os.Getwd()
+	if initErr != nil {
+		panic(fmt.Sprintf("Failed to get current directory: %v", initErr))
+	}
+
+	// Users of the TRS recipe will need to modify the following statement to point to the root of the project
+	// Set the relative path to the workspace (root) folder
+	workspaceRoot := filepath.Join(filepath.Dir(filename), "..", "..")
+	workspaceFolderAbsPath, initErr = filepath.Abs(workspaceRoot)
+	if initErr != nil {
+		panic(fmt.Sprintf("Failed to get absolute path: %v", initErr))
+	}
+}
+
 func makeConfigFile(workingDirectory string) string {
 	// Using the workingDirectory, perform 'cp opentdf-dev.yaml opentdf.yaml'
 	// then, return the full path to the config file
@@ -48,13 +76,16 @@ func makeConfigFile(workingDirectory string) string {
 func backgroundPlatformServer(t *testing.T, id int, wg *sync.WaitGroup, configFile string, done <-chan struct{}) {
 	defer wg.Done() // Signal that this goroutine has finished when it returns
 
-	t.Logf("Worker %d: Starting\n", id)
+	cwd, _ := os.Getwd()
+	t.Logf("Worker %d: Arranging goroutine in working directory: %s\n", id, cwd)
 
 	serverExited := make(chan error, 1) // Channel to capture error from server.Start
 
 	// Run server.Start in a goroutine so backgroundPlatformServer can react to 'done'
 	go func() {
-		t.Logf("Worker %d: Goroutine launching server.Start with WithWaitForShutdownSignal\n", id)
+		cwd, _ := os.Getwd()
+		t.Logf("Worker %d: Preparing to start server in working directory: %s\n", id, cwd)
+
 		err := server.Start(
 			server.WithWaitForShutdownSignal(), // Shutdown when SIGINT or SIGTERM is received
 			server.WithConfigFile(configFile),
@@ -108,36 +139,12 @@ func backgroundPlatformServer(t *testing.T, id int, wg *sync.WaitGroup, configFi
 }
 
 func setupServer(t *testing.T) (chan struct{}, *sync.WaitGroup) {
-	// Save current working directory to restore it at the end
-	originalDir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get current directory: %v", err)
-	}
-	defer func() {
-		if err := os.Chdir(originalDir); err != nil {
-			t.Logf("Failed to restore original directory: %v", err)
-		}
-	}()
-
-	// Get the current file's directory
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("Failed to get current file path")
-	}
-
-	// Navigate up two directories from the test file location (service/trs → service → root)
-	workspaceFolder := filepath.Join(filepath.Dir(filename), "..", "..")
-	workspaceFolder, err = filepath.Abs(workspaceFolder)
-	if err != nil {
-		t.Fatalf("Failed to get absolute path: %v", err)
-	}
-
-	if err := os.Chdir(workspaceFolder); err != nil {
+	if err := os.Chdir(workspaceFolderAbsPath); err != nil {
 		t.Fatalf("Failed to change to workspace directory: %v", err)
 	}
-	t.Logf("Working directory set to: %s", workspaceFolder)
+	t.Logf("Changed working directory to: %s", workspaceFolderAbsPath)
 
-	configFile := makeConfigFile(workspaceFolder)
+	configFile := makeConfigFile(workspaceFolderAbsPath)
 
 	var wg sync.WaitGroup // To wait for our goroutine to finish
 

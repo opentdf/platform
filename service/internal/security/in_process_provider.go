@@ -202,18 +202,23 @@ func (a *InProcessProvider) WithLogger(logger *slog.Logger) *InProcessProvider {
 }
 
 // FindKeyByAlgorithm finds a key by algorithm using the underlying CryptoProvider
-func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm string, _ bool) (trust.KeyDetails, error) {
+func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm string, legacy bool) (trust.KeyDetails, error) {
 	// Get the key ID for this algorithm
-	kid := a.cryptoProvider.FindKID(algorithm)
-	if kid == "" {
+	kids, err := a.cryptoProvider.ListKeysByAlg(algorithm)
+	if err != nil || len(kids) == 0 {
 		return nil, ErrCertNotFound
 	}
-	return &KeyDetailsAdapter{
-		id:             trust.KeyIdentifier(kid),
-		algorithm:      algorithm,
-		cryptoProvider: a.cryptoProvider,
-		legacy:         a.legacyKeys[kid],
-	}, nil
+	for _, kid := range kids {
+		if legacy != a.legacyKeys[kid] {
+			return &KeyDetailsAdapter{
+				id:             trust.KeyIdentifier(kid),
+				algorithm:      algorithm,
+				cryptoProvider: a.cryptoProvider,
+				legacy:         legacy,
+			}, nil
+		}
+	}
+	return nil, ErrCertNotFound
 }
 
 // FindKeyByID finds a key by ID
@@ -251,13 +256,19 @@ func (a *InProcessProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, err
 
 	// Try to find keys for known algorithms
 	for _, alg := range []string{AlgorithmRSA2048, AlgorithmECP256R1} {
-		if kid := a.cryptoProvider.FindKID(alg); kid != "" {
-			keys = append(keys, &KeyDetailsAdapter{
-				id:             trust.KeyIdentifier(kid),
-				algorithm:      alg,
-				legacy:         a.legacyKeys[kid],
-				cryptoProvider: a.cryptoProvider,
-			})
+		if kids, err := a.cryptoProvider.ListKeysByAlg(alg); err == nil && len(kids) > 0 {
+			for _, kid := range kids {
+				keys = append(keys, &KeyDetailsAdapter{
+					id:             trust.KeyIdentifier(kid),
+					algorithm:      alg,
+					cryptoProvider: a.cryptoProvider,
+					legacy:         a.legacyKeys[kid],
+				})
+			}
+		} else if err != nil {
+			if a.logger != nil {
+				a.logger.Warn("failed to list keys by algorithm", "algorithm", alg, "error", err)
+			}
 		}
 	}
 

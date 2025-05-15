@@ -19,9 +19,30 @@ comp:kas:
   - any-glob-to-any-file:
     - 'service/kas/**'
 comp:policy:
-- all:
   - changed-files:
     - any-glob-to-any-file:
       - 'service/policy/**/*'
-    - all-globs-to-all-files:
-      - '!service/policy/db/**/*'
+comp:authorization:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'service/authorization/**/*'
+comp:examples:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'examples/**/*'
+comp:lib:fixtures:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'lib/fixtures/**/*'
+comp:lib:flattening:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'lib/flattening/**/*'
+comp:lib:ocrypto:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'lib/ocrypto/**/*'
+comp:middleware:auth:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'service/internal/auth/**/*'

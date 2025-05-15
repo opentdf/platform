@@ -1085,7 +1085,7 @@ func versionSalt() []byte {
 // createNanoTDFSymmetricKey creates the symmetric key for nanoTDF header
 func createNanoTDFSymmetricKey(config NanoTDFConfig) ([]byte, error) {
 	if config.kasPublicKey == nil {
-		return nil, fmt.Errorf("KAS public key is required for encrypted policy mode")
+		return nil, errors.New("KAS public key is required for encrypted policy mode")
 	}
 
 	ecdhKey, err := ocrypto.ConvertToECDHPrivateKey(config.keyPair.PrivateKey)

@@ -33,34 +33,53 @@ type Provider struct {
 	trace.Tracer
 }
 
+func (p *Provider) initSecurityProviderAdapter() {
+	// If the CryptoProvider is set, create a SecurityProviderAdapter
+	if p.CryptoProvider == nil || p.KeyManager != nil && p.KeyIndex != nil {
+		return
+	}
+	var defaults []string
+	var legacies []string
+	if p.KASConfig.Keyring != nil {
+		for _, key := range p.KASConfig.Keyring {
+			if key.Legacy {
+				legacies = append(legacies, key.KID)
+			} else {
+				defaults = append(defaults, key.KID)
+			}
+		}
+	} else {
+		for _, alg := range []string{security.AlgorithmECP256R1, security.AlgorithmRSA2048} {
+			kid := p.CryptoProvider.FindKID(alg)
+			if kid != "" {
+				defaults = append(defaults, kid)
+			} else {
+				p.Logger.Warn("no default key found for algorithm", "algorithm", alg)
+			}
+		}
+	}
+
+	inProcessService := security.NewSecurityProviderAdapter(p.CryptoProvider, defaults, legacies)
+
+	if p.KeyIndex == nil {
+		p.Logger.Warn("fallback to in-process key index")
+		p.KeyIndex = inProcessService
+	}
+	if p.KeyManager == nil {
+		p.Logger.Error("fallback to in-process manager")
+		p.KeyManager = inProcessService
+	}
+}
+
 // GetSecurityProvider returns the SecurityProvider
 func (p *Provider) GetSecurityProvider() trust.KeyManager {
-	// If SecurityProvider is explicitly set, use it
-	if p.KeyManager != nil {
-		return p.KeyManager
-	}
-
-	// Otherwise, create an adapter from CryptoProvider if available
-	if p.CryptoProvider != nil {
-		return security.NewSecurityProviderAdapter(p.CryptoProvider)
-	}
-
-	// This shouldn't happen in normal operation
-	p.Logger.Error("no security provider available")
-	return nil
+	p.initSecurityProviderAdapter()
+	return p.KeyManager
 }
 
 func (p *Provider) GetKeyIndex() trust.KeyIndex {
-	if p.KeyIndex != nil {
-		return p.KeyIndex
-	}
-
-	if p.CryptoProvider != nil {
-		return security.NewSecurityProviderAdapter(p.CryptoProvider)
-	}
-
-	p.Logger.Error("no key index available")
-	return nil
+	p.initSecurityProviderAdapter()
+	return p.KeyIndex
 }
 
 type KASConfig struct {

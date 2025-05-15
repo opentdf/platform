@@ -95,6 +95,18 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 	}
 }
 
+func (s StandardCrypto) ListKeysByAlg(alg string) ([]string, error) {
+	k, ok := s.keysByAlg[alg]
+	if !ok {
+		return nil, fmt.Errorf("no key found with algorithm [%s]: %w", alg, ErrCertNotFound)
+	}
+	keys := make([]string, 0, len(k))
+	for kid := range k {
+		keys = append(keys, kid)
+	}
+	return keys, nil
+}
+
 func loadKeys(ks []KeyPairInfo) (*StandardCrypto, error) {
 	keysByAlg := make(map[string]keylist)
 	keysByID := make(keylist)

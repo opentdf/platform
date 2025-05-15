@@ -16,6 +16,10 @@ type CryptoProvider interface {
 	// Gets some KID associated with a given algorithm.
 	// Returns empty string if none are found.
 	FindKID(alg string) string
+
+	// Gets all KIDs associated with a given algorithm.
+	ListKeysByAlg(alg string) ([]string, error)
+
 	RSAPublicKey(keyID string) (string, error)
 	RSAPublicKeyAsJSON(keyID string) (string, error)
 	RSADecrypt(hash crypto.Hash, keyID string, keyLabel string, ciphertext []byte) ([]byte, error)

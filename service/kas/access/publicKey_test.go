@@ -335,7 +335,7 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 
 	kas := Provider{
 		URI:        *kasURI,
-		KeyManager: security.NewSecurityProviderAdapter(c),
+		KeyManager: security.NewSecurityProviderAdapter(c, nil, nil),
 		Logger:     logger.CreateTestLogger(),
 		Tracer:     noop.NewTracerProvider().Tracer(""),
 	}

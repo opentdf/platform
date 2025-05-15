@@ -108,6 +108,8 @@ func convertPEMToJWK(_ string) (string, error) {
 type InProcessProvider struct {
 	cryptoProvider CryptoProvider
 	logger         *slog.Logger
+	defaultKeys    []string
+	legacyKeys     map[string]bool
 }
 
 // KeyDetailsAdapter adapts CryptoProvider to KeyDetails
@@ -174,10 +176,17 @@ func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error)
 }
 
 // NewSecurityProviderAdapter creates a new adapter that implements SecurityProvider using a CryptoProvider
-func NewSecurityProviderAdapter(cryptoProvider CryptoProvider) trust.KeyService {
+func NewSecurityProviderAdapter(cryptoProvider CryptoProvider, defaultKeys, legacyKeys []string) trust.KeyService {
+	legacyKeysMap := make(map[string]bool, len(legacyKeys))
+	for _, key := range legacyKeys {
+		legacyKeysMap[key] = true
+	}
+
 	return &InProcessProvider{
 		cryptoProvider: cryptoProvider,
 		logger:         slog.Default(),
+		defaultKeys:    defaultKeys,
+		legacyKeys:     legacyKeysMap,
 	}
 }
 
@@ -203,6 +212,7 @@ func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm stri
 		id:             trust.KeyIdentifier(kid),
 		algorithm:      algorithm,
 		cryptoProvider: a.cryptoProvider,
+		legacy:         a.legacyKeys[kid],
 	}, nil
 }
 
@@ -216,7 +226,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 				return &KeyDetailsAdapter{
 					id:             id,
 					algorithm:      alg,
-					legacy:         false,
+					legacy:         a.legacyKeys[string(id)],
 					cryptoProvider: a.cryptoProvider,
 				}, nil
 			}
@@ -225,7 +235,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 				return &KeyDetailsAdapter{
 					id:             id,
 					algorithm:      alg,
-					legacy:         false,
+					legacy:         a.legacyKeys[string(id)],
 					cryptoProvider: a.cryptoProvider,
 				}, nil
 			}
@@ -245,6 +255,7 @@ func (a *InProcessProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, err
 			keys = append(keys, &KeyDetailsAdapter{
 				id:             trust.KeyIdentifier(kid),
 				algorithm:      alg,
+				legacy:         a.legacyKeys[kid],
 				cryptoProvider: a.cryptoProvider,
 			})
 		}

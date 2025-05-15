@@ -282,6 +282,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.RegisteredResourceValue.ActionAttributeValue"><span class="badge">M</span>RegisteredResourceValue.ActionAttributeValue</a>
+                </li>
+              
+                <li>
                   <a href="#policy.ResourceMapping"><span class="badge">M</span>ResourceMapping</a>
                 </li>
               
@@ -1210,6 +1214,10 @@
           <li>
             <a href="#policy%2fregisteredresources%2fregistered_resources.proto">policy/registeredresources/registered_resources.proto</a>
             <ul>
+              
+                <li>
+                  <a href="#policy.registeredresources.ActionAttributeValue"><span class="badge">M</span>ActionAttributeValue</a>
+                </li>
               
                 <li>
                   <a href="#policy.registeredresources.CreateRegisteredResourceRequest"><span class="badge">M</span>CreateRegisteredResourceRequest</a>
@@ -2682,6 +2690,58 @@ enable federation </p></td>
                 <tr>
                   <td>resource</td>
                   <td><a href="#policy.RegisteredResource">RegisteredResource</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action_attribute_values</td>
+                  <td><a href="#policy.RegisteredResourceValue.ActionAttributeValue">RegisteredResourceValue.ActionAttributeValue</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.RegisteredResourceValue.ActionAttributeValue">RegisteredResourceValue.ActionAttributeValue</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#policy.Action">Action</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value</td>
+                  <td><a href="#policy.Value">Value</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -10517,6 +10577,51 @@ Namespace &lt;&gt; Key RPCs
       <p></p>
 
       
+        <h3 id="policy.registeredresources.ActionAttributeValue">ActionAttributeValue</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>action_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.registeredresources.CreateRegisteredResourceRequest">CreateRegisteredResourceRequest</h3>
         <p></p>
 
@@ -10604,6 +10709,15 @@ Common metadata </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action_attribute_values</td>
+                  <td><a href="#policy.registeredresources.ActionAttributeValue">ActionAttributeValue</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional
+The associated Action &lt;&gt; AttributeValue combinations to be utilized in authorization/entitlement decisioning
+(i.e. action read -&gt; attribute value https://example.com/attr/department/value/marketing) </p></td>
                 </tr>
               
                 <tr>
@@ -11139,6 +11253,14 @@ Common metadata </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action_attribute_values</td>
+                  <td><a href="#policy.registeredresources.ActionAttributeValue">ActionAttributeValue</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional
+Action Attribute Values provided here will replace all existing records in the database. To delete all action attribute values, set this field to an empty list. </p></td>
                 </tr>
               
                 <tr>

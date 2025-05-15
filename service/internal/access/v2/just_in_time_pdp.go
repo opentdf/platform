@@ -6,9 +6,10 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/lib/flattening"
-	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
+	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/common"
-	"github.com/opentdf/platform/protocol/go/entityresolution"
+	"github.com/opentdf/platform/protocol/go/entity"
+	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
@@ -74,15 +75,31 @@ func NewJustInTimePDP(
 // decisions are allowed.
 func (p *JustInTimePDP) GetDecision(
 	ctx context.Context,
-	entityChain *authz.EntityChain,
+	entityIdentifier *authzV2.EntityIdentifier,
 	action *policy.Action,
-	resources []*authz.Resource,
+	resources []*authzV2.Resource,
 ) ([]*Decision, bool, error) {
-	p.logger.DebugContext(ctx, "getting decision - resolving entity chain")
-	entityRepresentations, err := p.resolveEntities(ctx, entityChain)
+	var (
+		entityRepresentations []*entityresolutionV2.EntityRepresentation
+		err                   error
+	)
+
+	switch entityIdentifier.GetIdentifier().(type) {
+	case *authzV2.EntityIdentifier_EntityChain:
+		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain())
+	case *authzV2.EntityIdentifier_Token:
+		p.logger.DebugContext(ctx, "getting decision - resolving token")
+		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken())
+	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
+		p.logger.DebugContext(ctx, "getting decision - resolving registered resource value FQN")
+		// TODO: implement this case
+	default:
+		p.logger.ErrorContext(ctx, "invalid entity identifier type", slog.String("error", ErrInvalidEntityType.Error()), slog.String("type", fmt.Sprintf("%T", entityIdentifier.GetIdentifier())))
+		return nil, false, ErrInvalidEntityType
+	}
 	if err != nil {
-		p.logger.ErrorContext(ctx, "failed to resolve entity chain", slog.String("error", err.Error()))
-		return nil, false, fmt.Errorf("failed to resolve entity chain: %w", err)
+		p.logger.ErrorContext(ctx, "failed to resolve entity identifier", slog.String("error", err.Error()))
+		return nil, false, fmt.Errorf("failed to resolve entity identifier: %w", err)
 	}
 
 	// TODO: get bulk decision (multiple entity representations) within PDP?
@@ -113,15 +130,31 @@ func (p *JustInTimePDP) GetDecision(
 // It resolves the entity chain to get the entity representations and then calls the embedded PDP to get the entitlements.
 func (p *JustInTimePDP) GetEntitlements(
 	ctx context.Context,
-	entityChain *authz.EntityChain,
+	entityIdentifier *authzV2.EntityIdentifier,
 	withComprehensiveHierarchy bool,
-) ([]*authz.EntityEntitlements, error) {
+) ([]*authzV2.EntityEntitlements, error) {
 	p.logger.DebugContext(ctx, "getting entitlements - resolving entity chain")
 
-	entityRepresentations, err := p.resolveEntities(ctx, entityChain)
+	var (
+		entityRepresentations []*entityresolutionV2.EntityRepresentation
+		err                   error
+	)
+
+	switch entityIdentifier.GetIdentifier().(type) {
+	case *authzV2.EntityIdentifier_EntityChain:
+		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain())
+	case *authzV2.EntityIdentifier_Token:
+		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken())
+	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
+		p.logger.DebugContext(ctx, "getting decision - resolving registered resource value FQN")
+		// TODO: implement this case
+	default:
+		p.logger.ErrorContext(ctx, "invalid entity identifier type", slog.String("error", ErrInvalidEntityType.Error()), slog.String("type", fmt.Sprintf("%T", entityIdentifier.GetIdentifier())))
+		return nil, ErrInvalidEntityType
+	}
 	if err != nil {
-		p.logger.ErrorContext(ctx, "failed to resolve entity chain", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("failed to resolve entity chain: %w", err)
+		p.logger.ErrorContext(ctx, "failed to resolve entity identifier", slog.String("error", err.Error()))
+		return nil, fmt.Errorf("failed to resolve entity identifier: %w", err)
 	}
 
 	matchedSubjectMappings, err := p.getMatchedSubjectMappings(ctx, entityRepresentations)
@@ -147,7 +180,7 @@ func (p *JustInTimePDP) GetEntitlements(
 // getMatchedSubjectMappings retrieves the subject mappings for the provided entity representations
 func (p *JustInTimePDP) getMatchedSubjectMappings(
 	ctx context.Context,
-	entityRepresentations []*entityresolution.EntityRepresentation,
+	entityRepresentations []*entityresolutionV2.EntityRepresentation,
 	// updated with the results, attrValue FQN to attribute and value with subject mappings
 	// entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 ) ([]*policy.SubjectMapping, error) {
@@ -181,39 +214,6 @@ func (p *JustInTimePDP) getMatchedSubjectMappings(
 		return nil, fmt.Errorf("failed to match subject mappings: %w", err)
 	}
 	return rsp.GetSubjectMappings(), nil
-
-	// // Build the value, definition, and subject mapping combination to map under each mapped attribute value FQN
-	// for _, sm := range subjectMappings.GetSubjectMappings() {
-	// 	if err := validateSubjectMapping(sm); err != nil {
-	// 		p.logger.ErrorContext(ctx, "subject mapping is invalid", slog.String("error", err.Error()))
-	// 		return fmt.Errorf("subject mapping is invalid: %w", err)
-	// 	}
-
-	// 	mappedValue := sm.GetAttributeValue()
-	// 	mappedValueFQN := mappedValue.GetFqn()
-
-	// 	// If more than one relevant subject mapping for a value, merge existing with new
-	// 	if _, ok := entitleableAttributes[mappedValueFQN]; ok {
-	// 		entitleableAttributes[mappedValueFQN].Value.SubjectMappings = append(entitleableAttributes[mappedValueFQN].Value.SubjectMappings, sm)
-	// 		continue
-	// 	}
-
-	// 	// Take subject mapping's attribute value and its definition from memory
-	// 	parentDefinition, err := p.getDefinition(mappedValueFQN)
-	// 	if err != nil {
-	// 		p.logger.ErrorContext(ctx, "failed to get attribute definition", slog.String("error", err.Error()))
-	// 		return fmt.Errorf("failed to get attribute definition: %w", err)
-	// 	}
-
-	// 	mappedValue.SubjectMappings = []*policy.SubjectMapping{sm}
-	// 	mapped := &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-	// 		Value:     mappedValue,
-	// 		Attribute: parentDefinition,
-	// 	}
-
-	// 	entitleableAttributes[mappedValueFQN] = mapped
-	// }
-	// return nil
 }
 
 // fetchAllDefinitions retrieves all attribute definitions within policy
@@ -273,9 +273,11 @@ func (p *JustInTimePDP) fetchAllSubjectMappings(ctx context.Context) ([]*policy.
 	return smList, nil
 }
 
-// resolveEntities roundtrips to ERS to resolve the provided entity chain.
-func (p *JustInTimePDP) resolveEntities(ctx context.Context, entityChain *authz.EntityChain) ([]*entityresolution.EntityRepresentation, error) {
-	ersResp, err := p.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{EntitiesV2: entityChain.GetEntities()})
+// resolveEntitiesFromEntityChain roundtrips to ERS to resolve the provided entity chain
+func (p *JustInTimePDP) resolveEntitiesFromEntityChain(ctx context.Context, entityChain *entity.EntityChain) ([]*entityresolutionV2.EntityRepresentation, error) {
+	// TODO: is it safe to log the entity chain?
+	p.logger.DebugContext(ctx, "resolving entities from entity chain", slog.String("entityChain", entityChain.String()))
+	ersResp, err := p.sdk.EntityResolutionV2.ResolveEntities(ctx, &entityresolutionV2.ResolveEntitiesRequest{Entities: entityChain.GetEntities()})
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve entities: %w", err)
 	}
@@ -284,4 +286,19 @@ func (p *JustInTimePDP) resolveEntities(ctx context.Context, entityChain *authz.
 		return nil, fmt.Errorf("failed to get entity representations: %w", err)
 	}
 	return entityRepresentations, nil
+}
+
+// resolveEntitiesFromToken roundtrips to ERS to resolve the provided token
+func (p *JustInTimePDP) resolveEntitiesFromToken(ctx context.Context, token *entity.Token) ([]*entityresolutionV2.EntityRepresentation, error) {
+	// WARNING: do not log the token JWT, just its ID
+	p.logger.DebugContext(ctx, "resolving entities from token", slog.String("token ephemeral id", token.GetEphemeralId()))
+	ersResp, err := p.sdk.EntityResolutionV2.CreateEntityChainsFromTokens(ctx, &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: []*entity.Token{token}})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create entity chains from token: %w", err)
+	}
+	entityChains := ersResp.GetEntityChains()
+	if len(entityChains) != 1 {
+		return nil, fmt.Errorf("received %d entity chains in ERS response and expected exactly 1: %w", len(entityChains), err)
+	}
+	return p.resolveEntitiesFromEntityChain(ctx, entityChains[0])
 }

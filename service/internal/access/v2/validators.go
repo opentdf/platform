@@ -3,8 +3,8 @@ package access
 import (
 	"fmt"
 
-	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
-	ers "github.com/opentdf/platform/protocol/go/entityresolution"
+	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
+	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
@@ -15,8 +15,8 @@ import (
 //   - entityRepresentation: must not be nil
 //   - action: must not be nil
 //   - resources: must not be nil and must contain at least one resource
-func validateGetDecision(entityRepresentation *ers.EntityRepresentation, action *policy.Action, resources []*authz.Resource) error {
-	if err := validateEntityRepresentations([]*ers.EntityRepresentation{entityRepresentation}); err != nil {
+func validateGetDecision(entityRepresentation *entityresolutionV2.EntityRepresentation, action *policy.Action, resources []*authzV2.Resource) error {
+	if err := validateEntityRepresentations([]*entityresolutionV2.EntityRepresentation{entityRepresentation}); err != nil {
 		return fmt.Errorf("invalid entity representation: %w", err)
 	}
 	if action == nil {
@@ -92,7 +92,7 @@ func validateAttribute(attribute *policy.Attribute) error {
 // validateEntityRepresentations validates the entity representations are valid for an entitlement decision
 //
 //   - entityRepresentations: must have at least one non-nil entity representation
-func validateEntityRepresentations(entityRepresentations []*ers.EntityRepresentation) error {
+func validateEntityRepresentations(entityRepresentations []*entityresolutionV2.EntityRepresentation) error {
 	if len(entityRepresentations) == 0 {
 		return fmt.Errorf("empty entity chain: %w", ErrInvalidEntityChain)
 	}
@@ -111,7 +111,12 @@ func validateEntityRepresentations(entityRepresentations []*ers.EntityRepresenta
 //   - entitlements: must not be nil
 //   - action: must not be nil
 //   - resource: must not be nil
-func validateGetResourceDecision(accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, entitlements subjectmappingbuiltin.AttributeValueFQNsToActions, action *policy.Action, resource *authz.Resource) error {
+func validateGetResourceDecision(
+	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
+	action *policy.Action,
+	resource *authzV2.Resource,
+) error {
 	if entitlements == nil {
 		return fmt.Errorf("entitled FQNs to actions are nil: %w", ErrInvalidEntitledFQNsToActions)
 	}

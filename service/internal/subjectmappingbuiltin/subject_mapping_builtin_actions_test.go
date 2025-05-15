@@ -3,7 +3,7 @@ package subjectmappingbuiltin_test
 import (
 	"testing"
 
-	"github.com/opentdf/platform/protocol/go/entityresolution"
+	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
@@ -105,9 +105,9 @@ var (
 )
 
 // Helper function to create an entity representation for testing
-func createEntityRepresentation(originalID string, entityData map[string]interface{}) *entityresolution.EntityRepresentation {
+func createEntityRepresentation(originalID string, entityData map[string]interface{}) *entityresolutionV2.EntityRepresentation {
 	props, _ := structpb.NewStruct(entityData)
-	return &entityresolution.EntityRepresentation{
+	return &entityresolutionV2.EntityRepresentation{
 		OriginalId: originalID,
 		AdditionalProps: []*structpb.Struct{
 			props,
@@ -143,7 +143,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_SingleEntity(t *testi
 		),
 	}
 
-	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings, []*entityresolution.EntityRepresentation{engineeringEntity})
+	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings, []*entityresolutionV2.EntityRepresentation{engineeringEntity})
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
 
@@ -186,7 +186,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_MultipleEntities(t *t
 	// Execute function
 	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(
 		attributeMappings,
-		[]*entityresolution.EntityRepresentation{engineeringEntity, salesEntity},
+		[]*entityresolutionV2.EntityRepresentation{engineeringEntity, salesEntity},
 	)
 
 	// Validate results
@@ -234,7 +234,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_NoMatchingEntities(t 
 	// Execute function
 	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(
 		attributeMappings,
-		[]*entityresolution.EntityRepresentation{marketingEntity},
+		[]*entityresolutionV2.EntityRepresentation{marketingEntity},
 	)
 
 	// Validate results
@@ -268,7 +268,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_MultipleAttributes(t 
 	// Execute function
 	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(
 		attributeMappings,
-		[]*entityresolution.EntityRepresentation{engineeringEntity},
+		[]*entityresolutionV2.EntityRepresentation{engineeringEntity},
 	)
 
 	// Validate results

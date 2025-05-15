@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
-	ers "github.com/opentdf/platform/protocol/go/entityresolution"
+	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
@@ -127,7 +127,12 @@ func NewPolicyDecisionPoint(
 }
 
 // GetDecision evaluates the action on the resources for the entity and returns a decision.
-func (p *PolicyDecisionPoint) GetDecision(ctx context.Context, entityRepresentation *ers.EntityRepresentation, action *policy.Action, resources []*authz.Resource) (*Decision, error) {
+func (p *PolicyDecisionPoint) GetDecision(
+	ctx context.Context,
+	entityRepresentation *entityresolutionV2.EntityRepresentation,
+	action *policy.Action,
+	resources []*authz.Resource,
+) (*Decision, error) {
 	loggable := []any{
 		slog.String("entity ID", entityRepresentation.GetOriginalId()),
 		slog.String("action", action.GetName()),
@@ -222,7 +227,7 @@ func (p *PolicyDecisionPoint) GetDecision(ctx context.Context, entityRepresentat
 
 func (p *PolicyDecisionPoint) GetEntitlements(
 	ctx context.Context,
-	entityRepresentations []*ers.EntityRepresentation,
+	entityRepresentations []*entityresolutionV2.EntityRepresentation,
 	optionalMatchedSubjectMappings []*policy.SubjectMapping,
 	withComprehensiveHierarchy bool,
 ) ([]*authz.EntityEntitlements, error) {

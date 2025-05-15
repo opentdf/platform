@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"github.com/opentdf/platform/lib/flattening"
-	"github.com/opentdf/platform/protocol/go/entityresolution"
+	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
@@ -13,7 +13,10 @@ import (
 type AttributeValueFQNsToActions map[string][]*policy.Action
 type EntityIDsToEntitlements map[string]AttributeValueFQNsToActions
 
-func EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entityRepresentations []*entityresolution.EntityRepresentation) (EntityIDsToEntitlements, error) {
+func EvaluateSubjectMappingMultipleEntitiesWithActions(
+	attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+	entityRepresentations []*entityresolutionV2.EntityRepresentation,
+) (EntityIDsToEntitlements, error) {
 	results := make(map[string]AttributeValueFQNsToActions)
 	for _, er := range entityRepresentations {
 		entitlements, err := EvaluateSubjectMappingsWithActions(attributeMappings, er)
@@ -27,7 +30,10 @@ func EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings map[str
 }
 
 // Returns a map of attribute value FQNs to each entitled action on the value
-func EvaluateSubjectMappingsWithActions(resolveableAttributes map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entityRepresentation *entityresolution.EntityRepresentation) (AttributeValueFQNsToActions, error) {
+func EvaluateSubjectMappingsWithActions(
+	resolveableAttributes map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+	entityRepresentation *entityresolutionV2.EntityRepresentation,
+) (AttributeValueFQNsToActions, error) {
 	jsonEntities := entityRepresentation.GetAdditionalProps()
 	var entitlementsSet = make(map[string][]*policy.Action)
 

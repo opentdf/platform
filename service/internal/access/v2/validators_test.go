@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
-	ers "github.com/opentdf/platform/protocol/go/entityresolution"
+	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
+	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/policy/actions"
@@ -14,7 +14,7 @@ import (
 )
 
 func TestValidateGetDecision(t *testing.T) {
-	validEntityRepresentation := &ers.EntityRepresentation{
+	validEntityRepresentation := &entityresolutionV2.EntityRepresentation{
 		OriginalId: "entity-id",
 		AdditionalProps: []*structpb.Struct{
 			{
@@ -29,10 +29,10 @@ func TestValidateGetDecision(t *testing.T) {
 		Name: "read",
 	}
 
-	validResources := []*authz.Resource{
+	validResources := []*authzV2.Resource{
 		{
-			Resource: &authz.Resource_AttributeValues_{
-				AttributeValues: &authz.Resource_AttributeValues{
+			Resource: &authzV2.Resource_AttributeValues_{
+				AttributeValues: &authzV2.Resource_AttributeValues{
 					Fqns: []string{"https://example.org/attr/classification/value/public"},
 				},
 			},
@@ -41,9 +41,9 @@ func TestValidateGetDecision(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		entityRep *ers.EntityRepresentation
+		entityRep *entityresolutionV2.EntityRepresentation
 		action    *policy.Action
-		resources []*authz.Resource
+		resources []*authzV2.Resource
 		wantErr   error
 	}{
 		{
@@ -71,7 +71,7 @@ func TestValidateGetDecision(t *testing.T) {
 			name:      "Empty resources",
 			entityRep: validEntityRepresentation,
 			action:    validAction,
-			resources: []*authz.Resource{},
+			resources: []*authzV2.Resource{},
 			wantErr:   ErrInvalidResource,
 		},
 		{
@@ -277,12 +277,12 @@ func TestValidateAttribute(t *testing.T) {
 func TestValidateEntityRepresentations(t *testing.T) {
 	tests := []struct {
 		name                  string
-		entityRepresentations []*ers.EntityRepresentation
+		entityRepresentations []*entityresolutionV2.EntityRepresentation
 		wantErr               error
 	}{
 		{
 			name:                  "Valid entity representations",
-			entityRepresentations: []*ers.EntityRepresentation{{}},
+			entityRepresentations: []*entityresolutionV2.EntityRepresentation{{}},
 			wantErr:               nil,
 		},
 		{
@@ -292,12 +292,12 @@ func TestValidateEntityRepresentations(t *testing.T) {
 		},
 		{
 			name:                  "Empty entity representations",
-			entityRepresentations: []*ers.EntityRepresentation{},
+			entityRepresentations: []*entityresolutionV2.EntityRepresentation{},
 			wantErr:               ErrInvalidEntityChain,
 		},
 		{
 			name:                  "Entity representation is nil",
-			entityRepresentations: []*ers.EntityRepresentation{nil},
+			entityRepresentations: []*entityresolutionV2.EntityRepresentation{nil},
 			wantErr:               ErrInvalidEntityChain,
 		},
 	}
@@ -332,9 +332,9 @@ func TestValidateGetResourceDecision(t *testing.T) {
 	}
 
 	// non-nil resource
-	validResource := &authz.Resource{
-		Resource: &authz.Resource_AttributeValues_{
-			AttributeValues: &authz.Resource_AttributeValues{
+	validResource := &authzV2.Resource{
+		Resource: &authzV2.Resource_AttributeValues_{
+			AttributeValues: &authzV2.Resource_AttributeValues{
 				Fqns: []string{"https://example.org/attr/classification/value/public"},
 			},
 		},
@@ -345,7 +345,7 @@ func TestValidateGetResourceDecision(t *testing.T) {
 		accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
 		entitlements              map[string][]*policy.Action
 		action                    *policy.Action
-		resource                  *authz.Resource
+		resource                  *authzV2.Resource
 		wantErr                   error
 	}{
 		{
@@ -409,7 +409,7 @@ func TestValidateGetResourceDecision(t *testing.T) {
 			accessibleAttributeValues: validDecisionableAttributes,
 			entitlements:              validEntitledFQNsToActions,
 			action:                    validAction,
-			resource:                  &authz.Resource{},
+			resource:                  &authzV2.Resource{},
 			wantErr:                   ErrInvalidResource,
 		},
 	}

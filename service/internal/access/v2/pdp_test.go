@@ -9,7 +9,7 @@ import (
 
 	"github.com/opentdf/platform/lib/identifier"
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
-	ers "github.com/opentdf/platform/protocol/go/entityresolution"
+	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/policy/actions"
@@ -202,7 +202,7 @@ func (s *PDPTestSuite) assertAllDecisionResults(decision *Decision, expectedResu
 }
 
 // createEntityWithProps creates an entity representation with the specified properties
-func (s *PDPTestSuite) createEntityWithProps(entityID string, props map[string]interface{}) *ers.EntityRepresentation {
+func (s *PDPTestSuite) createEntityWithProps(entityID string, props map[string]interface{}) *entityresolutionV2.EntityRepresentation {
 	propsStruct := &structpb.Struct{
 		Fields: make(map[string]*structpb.Value),
 	}
@@ -215,7 +215,7 @@ func (s *PDPTestSuite) createEntityWithProps(entityID string, props map[string]i
 		propsStruct.Fields[k] = value
 	}
 
-	return &ers.EntityRepresentation{
+	return &entityresolutionV2.EntityRepresentation{
 		OriginalId: entityID,
 		AdditionalProps: []*structpb.Struct{
 			{
@@ -253,9 +253,9 @@ type PDPTestSuite struct {
 		platformCloudMapping *policy.SubjectMapping
 
 		// Test entity representations
-		adminEntity     *ers.EntityRepresentation
-		developerEntity *ers.EntityRepresentation
-		analystEntity   *ers.EntityRepresentation
+		adminEntity     *entityresolutionV2.EntityRepresentation
+		developerEntity *entityresolutionV2.EntityRepresentation
+		analystEntity   *entityresolutionV2.EntityRepresentation
 	}
 }
 
@@ -1023,7 +1023,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		})
 
 		// Get entitlements for this entity
-		entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entity}, nil, false)
+		entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entity}, nil, false)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -1060,7 +1060,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		})
 
 		// Get entitlements for this entity
-		entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entity}, nil, false)
+		entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entity}, nil, false)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -1079,7 +1079,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		})
 
 		// Get entitlements for this entity
-		entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entity}, nil, false)
+		entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entity}, nil, false)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -1100,7 +1100,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 	s.Run("Multiple entities with various entitlements", func() {
 		entityCases := []struct {
 			name                 string
-			entityRepresentation *ers.EntityRepresentation
+			entityRepresentation *entityresolutionV2.EntityRepresentation
 			expectedEntitlements []string
 		}{
 			{
@@ -1123,7 +1123,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		for _, entityCase := range entityCases {
 			s.Run(entityCase.name, func() {
 				// Get entitlements for this entity
-				entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entityCase.entityRepresentation}, nil, false)
+				entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entityCase.entityRepresentation}, nil, false)
 
 				// Assertions
 				s.Require().NoError(err)
@@ -1148,7 +1148,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		})
 
 		// Get entitlements with comprehensive hierarchy
-		entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entity}, nil, true)
+		entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entity}, nil, true)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -1207,7 +1207,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		filteredMappings := []*policy.SubjectMapping{f.secretMapping, f.confidentialMapping, f.publicMapping}
 
 		// Get entitlements with filtered mappings
-		entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entity}, filteredMappings, false)
+		entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entity}, filteredMappings, false)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -1325,7 +1325,7 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 
 	// Get entitlements for this entity
 	withComprehensiveHierarchy := true
-	entitlements, err := pdp.GetEntitlements(s.ctx, []*ers.EntityRepresentation{entity}, nil, withComprehensiveHierarchy)
+	entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entity}, nil, withComprehensiveHierarchy)
 	s.Require().NoError(err)
 	s.Require().NotNil(entitlements)
 

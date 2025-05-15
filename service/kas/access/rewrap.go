@@ -23,7 +23,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/entity"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/security"
@@ -603,7 +603,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 	return policy, results, nil
 }
 
-func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entity *entityInfo) (string, policyKAOResults) {
+func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo) (string, policyKAOResults) {
 	if p.Tracer != nil {
 		var span trace.Span
 		ctx, span = p.Start(ctx, "rewrap-tdf3")
@@ -625,9 +625,9 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		policyReqs[policy] = req
 	}
 
-	tok := &authorization.Token{
-		Id:  "rewrap-token",
-		Jwt: entity.Token,
+	tok := &entity.Token{
+		EphemeralId: "rewrap-token",
+		Jwt:         entityInfo.Token,
 	}
 	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies)
 	if accessErr != nil {
@@ -718,7 +718,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 	return sessionKey, results
 }
 
-func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entity *entityInfo) (string, policyKAOResults) {
+func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entityInfo *entityInfo) (string, policyKAOResults) {
 	ctx, span := p.Start(ctx, "nanoTDFRewrap")
 	defer span.End()
 
@@ -736,9 +736,9 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		}
 	}
 	// do the access check
-	tok := &authorization.Token{
-		Id:  "rewrap-tok",
-		Jwt: entity.Token,
+	tok := &entity.Token{
+		EphemeralId: "rewrap-tok",
+		Jwt:         entityInfo.Token,
 	}
 
 	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies)

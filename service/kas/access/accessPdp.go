@@ -3,10 +3,12 @@ package access
 import (
 	"context"
 	"errors"
-	"fmt"
+	"strconv"
 
-	"github.com/opentdf/platform/protocol/go/authorization"
+	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
+	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/opentdf/platform/service/tracing"
 )
 
@@ -16,15 +18,19 @@ const (
 	ErrDecisionCountUnexpected = Error("authorization decision count unexpected")
 )
 
+var decryptAction = &policy.Action{
+	Name: actions.ActionNameRead,
+}
+
 type PDPAccessResult struct {
 	Access bool
 	Error  error
 	Policy *Policy
 }
 
-func (p *Provider) canAccess(ctx context.Context, token *authorization.Token, policies []*Policy) ([]PDPAccessResult, error) {
+func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies []*Policy) ([]PDPAccessResult, error) {
 	var res []PDPAccessResult
-	var rasList []*authorization.ResourceAttribute
+	resources := make([]*authzV2.Resource, 0, len(policies))
 	idPolicyMap := make(map[string]*Policy)
 	for i, policy := range policies {
 		if len(policy.Body.Dissem) > 0 {
@@ -32,12 +38,20 @@ func (p *Provider) canAccess(ctx context.Context, token *authorization.Token, po
 			p.Logger.Error("Dissems check is not enabled in v2 platform kas")
 		}
 		if len(policy.Body.DataAttributes) > 0 {
-			id := fmt.Sprintf("rewrap-%d", i)
-			ras := &authorization.ResourceAttribute{ResourceAttributesId: id}
+			id := "rewrap-" + strconv.Itoa(i)
+			attrValueFqns := make([]string, 0, len(policy.Body.DataAttributes))
 			for _, attr := range policy.Body.DataAttributes {
-				ras.AttributeValueFqns = append(ras.AttributeValueFqns, attr.URI)
+				attrValueFqns = append(attrValueFqns, attr.URI)
 			}
-			rasList = append(rasList, ras)
+			resource := &authzV2.Resource{
+				EphemeralId: id,
+				Resource: &authzV2.Resource_AttributeValues_{
+					AttributeValues: &authzV2.Resource_AttributeValues{
+						Fqns: attrValueFqns,
+					},
+				},
+			}
+			resources = append(resources, resource)
 			idPolicyMap[id] = policy
 		} else {
 			res = append(res, PDPAccessResult{Access: true, Policy: policy})
@@ -47,37 +61,33 @@ func (p *Provider) canAccess(ctx context.Context, token *authorization.Token, po
 	ctx, span := p.Start(ctx, "checkAttributes")
 	defer span.End()
 
-	dr, err := p.checkAttributes(ctx, rasList, token)
+	dr, err := p.checkAttributes(ctx, resources, token)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, resp := range dr.GetDecisionResponses() {
-		policy, ok := idPolicyMap[resp.GetResourceAttributesId()]
+	for _, decision := range dr.GetResourceDecisions() {
+		policy, ok := idPolicyMap[decision.GetEphemeralResourceId()]
 		if !ok { // this really should not happen
 			continue
 		}
-		res = append(res, PDPAccessResult{Policy: policy, Access: resp.GetDecision() == authorization.DecisionResponse_DECISION_PERMIT})
+		res = append(res, PDPAccessResult{Policy: policy, Access: decision.GetDecision() == authzV2.Decision_DECISION_PERMIT})
 	}
 
 	return res, nil
 }
 
-func (p *Provider) checkAttributes(ctx context.Context, ras []*authorization.ResourceAttribute, ent *authorization.Token) (*authorization.GetDecisionsByTokenResponse, error) {
-	in := authorization.GetDecisionsByTokenRequest{
-		DecisionRequests: []*authorization.TokenDecisionRequest{
-			{
-				Actions: []*policy.Action{
-					{Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_DECRYPT}},
-				},
-				Tokens:             []*authorization.Token{ent},
-				ResourceAttributes: ras,
-			},
+func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Resource, ent *entity.Token) (*authzV2.GetDecisionMultiResourceResponse, error) {
+	req := &authzV2.GetDecisionMultiResourceRequest{
+		EntityIdentifier: &authzV2.EntityIdentifier{
+			Identifier: &authzV2.EntityIdentifier_Token{Token: ent},
 		},
+		Action:    decryptAction,
+		Resources: resources,
 	}
 
 	ctx = tracing.InjectTraceContext(ctx)
-	dr, err := p.SDK.Authorization.GetDecisionsByToken(ctx, &in)
+	dr, err := p.SDK.AuthorizationV2.GetDecisionMultiResource(ctx, req)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "Error received from GetDecisionsByToken", "err", err)
 		return nil, errors.Join(ErrDecisionUnexpected, err)

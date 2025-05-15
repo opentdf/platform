@@ -152,7 +152,7 @@ jobs:
           wait-for: 90s
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
       - name: Setup Bats and bats libs
-        uses: bats-core/bats-action@3.0.0
+        uses: bats-core/bats-action@42fcc8700f773c075a16a90eb11674c0318ad507 #v3.0.1
       - run: test/service-start.bats
       - run: test/tdf-roundtrips.bats
       - run: test/policy-service.bats
@@ -211,12 +211,12 @@ jobs:
           log-output-if: true
           wait-for: 90s
       - run: |
-          echo "VAULT_CACERT="$(pwd)/vault-ca.pem" >> $GITHUB_ENV
+          echo "VAULT_CACERT=$(pwd)/vault-ca.pem" >> $GITHUB_ENV
       - name: Added Trusted Certs
         run: |
           sudo chmod -R 777 ./keys
           sudo apt-get install -y ca-certificates
-          sudo cp ${VAULT_CACERT} /usr/local/share/ca-certificates
+          sudo cp "${VAULT_CACERT}" /usr/local/share/ca-certificates
           sudo update-ca-certificates
       - run: docker compose up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
       - run: go run ./service provision keycloak
@@ -232,7 +232,7 @@ jobs:
           log-output-if: true
           wait-for: 90s
       - name: Setup Bats and bats libs
-        uses: bats-core/bats-action@3.0.0
+        uses: bats-core/bats-action@42fcc8700f773c075a16a90eb11674c0318ad507 #v3.0.1
       - run: ./trust-sample.bats
 
   benchmark:

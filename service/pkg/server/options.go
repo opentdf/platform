@@ -101,8 +101,10 @@ func WithCoreServices(services ...serviceregistry.IService) StartOptions {
 }
 
 // WithServices option adds additional services to the platform.
-// This will set the mode for these services to the namespace name.
 // It takes a variadic parameter of type serviceregistry.IService, which represents the services to be added.
+//
+// This will set the mode for these services to the Namespace name. To understand the registration of these
+// services more fully, including the service "mode", follow the usage of the extraServices field in StartConfig.
 func WithServices(services ...serviceregistry.IService) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.extraServices = append(c.extraServices, services...)

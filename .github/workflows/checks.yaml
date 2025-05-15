@@ -346,6 +346,7 @@ jobs:
       focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts
+      otdfctl-ref: 107e016c326564234757a55e55086fdf66e83078
 
   # test latest otdfctl CLI 'main' against platform PR branch
   otdfctl-test:
@@ -392,6 +393,8 @@ jobs:
       - run: cd service && go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: cd service && go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: make proto-generate
+      - name: generate connect wrappers
+        run: make connect-wrapper-generate
       - name: Restore go.mod after installing protoc-gen-doc
         run: git restore {service,protocol/go}/go.{mod,sum}
       - name: validate go mod tidy
@@ -401,7 +404,7 @@ jobs:
           git restore go.sum
       - run: git diff
       - run: git diff-files --ignore-submodules
-      - name: Check that make proto-generate has run before PR submission; see above for error details
+      - name: Check that make proto-generate and connect-wrapper-generate have run before PR submission; see above for error details
         run: git diff-files --quiet --ignore-submodules
 
   ci:

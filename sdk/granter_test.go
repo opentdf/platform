@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
+	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -612,7 +613,7 @@ func TestReasonerSpecificity(t *testing.T) {
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
-			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
+			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &mockAttributesClient{}}, tc.policy...)
 			require.NoError(t, err)
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
@@ -763,7 +764,7 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 		},
 	} {
 		t.Run((tc.n + "\n" + tc.desc), func(t *testing.T) {
-			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
+			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &mockAttributesClient{}}, tc.policy...)
 			require.NoError(t, err)
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {

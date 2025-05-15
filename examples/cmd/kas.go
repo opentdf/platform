@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/sdk"
@@ -71,7 +70,7 @@ func listKases(cmd *cobra.Command) error {
 		return err
 	}
 
-	r, err := s.KeyAccessServerRegistry.ListKeyAccessServers(cmd.Context(), connect.NewRequest(&kasregistry.ListKeyAccessServersRequest{}))
+	r, err := s.KeyAccessServerRegistry.ListKeyAccessServers(cmd.Context(), &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
 		slog.Error("ListKeyAccessServers", "error", err)
 		return err
@@ -79,12 +78,12 @@ func listKases(cmd *cobra.Command) error {
 
 	slog.Info("listing kas registry")
 
-	if len(r.Msg.GetKeyAccessServers()) == 0 {
+	if len(r.GetKeyAccessServers()) == 0 {
 		cmd.Println("no key access servers registered")
 		return nil
 	}
 
-	for _, k := range r.Msg.GetKeyAccessServers() {
+	for _, k := range r.GetKeyAccessServers() {
 		if longformat {
 			fmt.Printf("%s\t%s\t%s\n", k.GetUri(), k.GetId(), k.GetPublicKey())
 		} else {
@@ -95,12 +94,12 @@ func listKases(cmd *cobra.Command) error {
 }
 
 func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *policy.PublicKey) (string, error) {
-	r, err := s.KeyAccessServerRegistry.ListKeyAccessServers(ctx, connect.NewRequest(&kasregistry.ListKeyAccessServersRequest{}))
+	r, err := s.KeyAccessServerRegistry.ListKeyAccessServers(ctx, &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
 		slog.Error("ListKeyAccessServers", "err", err)
 		return "", err
 	}
-	for _, ki := range r.Msg.GetKeyAccessServers() {
+	for _, ki := range r.GetKeyAccessServers() {
 		if strings.ToLower(uri) == strings.ToLower(ki.GetUri()) {
 			oldpk := ki.GetPublicKey()
 			recreate := false
@@ -114,7 +113,7 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 			if !recreate {
 				return ki.GetId(), nil
 			}
-			_, err := s.KeyAccessServerRegistry.DeleteKeyAccessServer(ctx, connect.NewRequest(&kasregistry.DeleteKeyAccessServerRequest{Id: ki.GetId()}))
+			_, err := s.KeyAccessServerRegistry.DeleteKeyAccessServer(ctx, &kasregistry.DeleteKeyAccessServerRequest{Id: ki.GetId()})
 			if err != nil {
 				slog.Error("DeleteKeyAccessServer", "err", err)
 				return "", err
@@ -130,15 +129,15 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 			Remote: uri + "/v2/kas_public_key",
 		}
 	}
-	ur, err := s.KeyAccessServerRegistry.CreateKeyAccessServer(ctx, connect.NewRequest(&kasregistry.CreateKeyAccessServerRequest{
+	ur, err := s.KeyAccessServerRegistry.CreateKeyAccessServer(ctx, &kasregistry.CreateKeyAccessServerRequest{
 		Uri:       uri,
 		PublicKey: pk,
-	}))
+	})
 	if err != nil {
 		slog.Error("CreateKeyAccessServer", "uri", uri, "publicKey", uri+"/v2/kas_public_key")
 		return "", err
 	}
-	return ur.Msg.GetKeyAccessServer().GetId(), nil
+	return ur.GetKeyAccessServer().GetId(), nil
 }
 
 func algString2Proto(a string) policy.KasPublicKeyAlgEnum {
@@ -206,15 +205,15 @@ func removeKas(cmd *cobra.Command) error {
 		return err
 	}
 
-	r, err := s.KeyAccessServerRegistry.ListKeyAccessServers(cmd.Context(), connect.NewRequest(&kasregistry.ListKeyAccessServersRequest{}))
+	r, err := s.KeyAccessServerRegistry.ListKeyAccessServers(cmd.Context(), &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
 		slog.Error("ListKeyAccessServers", "err", err)
 		return err
 	}
 	deletedSomething := false
-	for _, ki := range r.Msg.GetKeyAccessServers() {
+	for _, ki := range r.GetKeyAccessServers() {
 		if strings.ToLower(kas) == strings.ToLower(ki.GetUri()) {
-			_, err := s.KeyAccessServerRegistry.DeleteKeyAccessServer(cmd.Context(), connect.NewRequest(&kasregistry.DeleteKeyAccessServerRequest{Id: ki.GetId()}))
+			_, err := s.KeyAccessServerRegistry.DeleteKeyAccessServer(cmd.Context(), &kasregistry.DeleteKeyAccessServerRequest{Id: ki.GetId()})
 			if err != nil {
 				slog.Error("DeleteKeyAccessServer", "err", err)
 				return err

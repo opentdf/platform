@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
@@ -171,12 +170,12 @@ func (s *RoundtripSuite) CreateTestData() error {
 	// create namespace example.com
 	var exampleNamespace *policy.Namespace
 	slog.Info("listing namespaces")
-	listResp, err := client.Namespaces.ListNamespaces(context.Background(), connect.NewRequest(&namespaces.ListNamespacesRequest{}))
+	listResp, err := client.Namespaces.ListNamespaces(context.Background(), &namespaces.ListNamespacesRequest{})
 	if err != nil {
 		return err
 	}
-	slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.Msg.GetNamespaces())))
-	for _, ns := range listResp.Msg.GetNamespaces() {
+	slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.GetNamespaces())))
+	for _, ns := range listResp.GetNamespaces() {
 		slog.Info(fmt.Sprintf("existing namespace; name: %s, id: %s", ns.GetName(), ns.GetId()))
 		if ns.GetName() == "example.com" {
 			exampleNamespace = ns
@@ -185,20 +184,20 @@ func (s *RoundtripSuite) CreateTestData() error {
 
 	if exampleNamespace == nil {
 		slog.Info("creating new namespace")
-		resp, err := client.Namespaces.CreateNamespace(context.Background(), connect.NewRequest(&namespaces.CreateNamespaceRequest{
+		resp, err := client.Namespaces.CreateNamespace(context.Background(), &namespaces.CreateNamespaceRequest{
 			Name: "example.com",
-		}))
+		})
 		if err != nil {
 			return err
 		}
-		exampleNamespace = resp.Msg.GetNamespace()
+		exampleNamespace = resp.GetNamespace()
 	}
 
 	slog.Info("##################################\n#######################################")
 
 	// Create the attributes
 	slog.Info("creating attribute language with allOf rule")
-	_, err = client.Attributes.CreateAttribute(context.Background(), connect.NewRequest(&attributes.CreateAttributeRequest{
+	_, err = client.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "language",
 		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF.Enum(),
@@ -207,7 +206,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 			"french",
 			"spanish",
 		},
-	}))
+	})
 	if err != nil {
 		if returnStatus, ok := status.FromError(err); ok && returnStatus.Code() == codes.AlreadyExists {
 			slog.Info("attribute already exists")
@@ -220,7 +219,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 	}
 
 	slog.Info("creating attribute color with anyOf rule")
-	_, err = client.Attributes.CreateAttribute(context.Background(), connect.NewRequest(&attributes.CreateAttributeRequest{
+	_, err = client.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "color",
 		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF.Enum(),
@@ -229,7 +228,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 			"green",
 			"blue",
 		},
-	}))
+	})
 	if err != nil {
 		if returnStatus, ok := status.FromError(err); ok && returnStatus.Code() == codes.AlreadyExists {
 			slog.Info("attribute already exists")
@@ -242,7 +241,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 	}
 
 	slog.Info("creating attribute cards with hierarchy rule")
-	_, err = client.Attributes.CreateAttribute(context.Background(), connect.NewRequest(&attributes.CreateAttributeRequest{
+	_, err = client.Attributes.CreateAttribute(context.Background(), &attributes.CreateAttributeRequest{
 		Name:        "cards",
 		NamespaceId: exampleNamespace.GetId(),
 		Rule:        *policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY.Enum(),
@@ -251,7 +250,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 			"queen",
 			"jack",
 		},
-	}))
+	})
 	if err != nil {
 		if returnStatus, ok := status.FromError(err); ok && returnStatus.Code() == codes.AlreadyExists {
 			slog.Info("attribute already exists")
@@ -265,33 +264,33 @@ func (s *RoundtripSuite) CreateTestData() error {
 
 	slog.Info("##################################\n#######################################")
 
-	allAttr, err := client.Attributes.ListAttributes(context.Background(), connect.NewRequest(&attributes.ListAttributesRequest{}))
+	allAttr, err := client.Attributes.ListAttributes(context.Background(), &attributes.ListAttributesRequest{})
 	if err != nil {
 		slog.Error("could not list attributes", slog.String("error", err.Error()))
 		return err
 	}
-	slog.Info("list attributes response: " + protojson.Format(allAttr.Msg))
+	slog.Info("list attributes response: " + protojson.Format(allAttr))
 
 	slog.Info("##################################\n#######################################")
 
 	// get the attribute ids for the values were mapping to the client
 	var attributeValueIDs []string
-	fqnResp, err := client.Attributes.GetAttributeValuesByFqns(context.Background(), connect.NewRequest(&attributes.GetAttributeValuesByFqnsRequest{
+	fqnResp, err := client.Attributes.GetAttributeValuesByFqns(context.Background(), &attributes.GetAttributeValuesByFqnsRequest{
 		Fqns:      attributesToMap,
 		WithValue: &policy.AttributeValueSelector{},
-	}))
+	})
 	if err != nil {
 		slog.Error("get attribute values by fqn ", slog.String("error", err.Error()))
 		return err
 	}
 	for _, attribute := range attributesToMap {
-		attributeValueIDs = append(attributeValueIDs, fqnResp.Msg.GetFqnAttributeValues()[attribute].GetValue().GetId())
+		attributeValueIDs = append(attributeValueIDs, fqnResp.GetFqnAttributeValues()[attribute].GetValue().GetId())
 	}
 
 	// create subject mappings
 	slog.Info("creating subject mappings for client " + s.TestConfig.ClientID)
 	for _, attributeID := range attributeValueIDs {
-		_, err = client.SubjectMapping.CreateSubjectMapping(context.Background(), connect.NewRequest(&subjectmapping.CreateSubjectMappingRequest{
+		_, err = client.SubjectMapping.CreateSubjectMapping(context.Background(), &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId: attributeID,
 			Actions: []*policy.Action{
 				{Name: actions.ActionNameCreate},
@@ -311,7 +310,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 					}},
 				},
 			},
-		}))
+		})
 		if err != nil {
 			if returnStatus, ok := status.FromError(err); ok && returnStatus.Code() == codes.AlreadyExists {
 				slog.Info("subject mapping already exists")
@@ -324,12 +323,12 @@ func (s *RoundtripSuite) CreateTestData() error {
 		}
 	}
 
-	allSubMaps, err := client.SubjectMapping.ListSubjectMappings(context.Background(), connect.NewRequest(&subjectmapping.ListSubjectMappingsRequest{}))
+	allSubMaps, err := client.SubjectMapping.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
 	if err != nil {
 		slog.Error("could not list subject mappings", slog.String("error", err.Error()))
 		return err
 	}
-	slog.Info("list subject mappings response: " + protojson.Format(allSubMaps.Msg))
+	slog.Info("list subject mappings response: " + protojson.Format(allSubMaps))
 
 	return nil
 }

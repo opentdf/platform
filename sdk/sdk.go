@@ -15,24 +15,25 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/protocol/go/authorization/authorizationconnect"
-	"github.com/opentdf/platform/protocol/go/entityresolution/entityresolutionconnect"
+	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/actions/actionsconnect"
-	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
-	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
-	"github.com/opentdf/platform/protocol/go/policy/keymanagement/keymanagementconnect"
-	"github.com/opentdf/platform/protocol/go/policy/namespaces/namespacesconnect"
-	"github.com/opentdf/platform/protocol/go/policy/registeredresources/registeredresourcesconnect"
-	"github.com/opentdf/platform/protocol/go/policy/resourcemapping/resourcemappingconnect"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
-	"github.com/opentdf/platform/protocol/go/policy/unsafe/unsafeconnect"
+	"github.com/opentdf/platform/protocol/go/policy/actions"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
+	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
 	"github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/xeipuuv/gojsonschema"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
@@ -65,18 +66,18 @@ type SDK struct {
 	*collectionStore
 	conn                    *ConnectRPCConnection
 	tokenSource             auth.AccessTokenSource
-	Actions                 actionsconnect.ActionServiceClient
-	Attributes              attributesconnect.AttributesServiceClient
-	Authorization           authorizationconnect.AuthorizationServiceClient
-	EntityResoution         entityresolutionconnect.EntityResolutionServiceClient
-	KeyAccessServerRegistry kasregistryconnect.KeyAccessServerRegistryServiceClient
-	Namespaces              namespacesconnect.NamespaceServiceClient
-	RegisteredResources     registeredresourcesconnect.RegisteredResourcesServiceClient
-	ResourceMapping         resourcemappingconnect.ResourceMappingServiceClient
-	SubjectMapping          subjectmappingconnect.SubjectMappingServiceClient
-	Unsafe                  unsafeconnect.UnsafeServiceClient
-	KeyManagement           keymanagementconnect.KeyManagementServiceClient
-	wellknownConfiguration  wellknownconfigurationconnect.WellKnownServiceClient
+	Actions                 actions.ActionServiceClient
+	Attributes              attributes.AttributesServiceClient
+	Authorization           authorization.AuthorizationServiceClient
+	EntityResoution         entityresolution.EntityResolutionServiceClient
+	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
+	Namespaces              namespaces.NamespaceServiceClient
+	RegisteredResources     registeredresources.RegisteredResourcesServiceClient
+	ResourceMapping         resourcemapping.ResourceMappingServiceClient
+	SubjectMapping          subjectmapping.SubjectMappingServiceClient
+	Unsafe                  unsafe.UnsafeServiceClient
+	KeyManagement           keymanagement.KeyManagementServiceClient
+	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -194,18 +195,18 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		kasKeyCache:             newKasKeyCache(),
 		conn:                    &ConnectRPCConnection{Client: platformConn.Client, Endpoint: platformConn.Endpoint, Options: platformConn.Options},
 		tokenSource:             accessTokenSource,
-		Actions:                 actionsconnect.NewActionServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		Attributes:              attributesconnect.NewAttributesServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		Namespaces:              namespacesconnect.NewNamespaceServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		RegisteredResources:     registeredresourcesconnect.NewRegisteredResourcesServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		ResourceMapping:         resourcemappingconnect.NewResourceMappingServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		SubjectMapping:          subjectmappingconnect.NewSubjectMappingServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		Unsafe:                  unsafeconnect.NewUnsafeServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		KeyAccessServerRegistry: kasregistryconnect.NewKeyAccessServerRegistryServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		Authorization:           authorizationconnect.NewAuthorizationServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		EntityResoution:         entityresolutionconnect.NewEntityResolutionServiceClient(ersConn.Client, ersConn.Endpoint, ersConn.Options...),
-		KeyManagement:           keymanagementconnect.NewKeyManagementServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		wellknownConfiguration:  wellknownconfigurationconnect.NewWellKnownServiceClient(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		Actions:                 sdkconnect.NewActionServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		Attributes:              sdkconnect.NewAttributesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		Namespaces:              sdkconnect.NewNamespaceServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		RegisteredResources:     sdkconnect.NewRegisteredResourcesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		ResourceMapping:         sdkconnect.NewResourceMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		SubjectMapping:          sdkconnect.NewSubjectMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		Unsafe:                  sdkconnect.NewUnsafeServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		KeyAccessServerRegistry: sdkconnect.NewKeyAccessServerRegistryServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		Authorization:           sdkconnect.NewAuthorizationServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		EntityResoution:         sdkconnect.NewEntityResolutionServiceClientConnectWrapper(ersConn.Client, ersConn.Endpoint, ersConn.Options...),
+		KeyManagement:           sdkconnect.NewKeyManagementServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		wellknownConfiguration:  sdkconnect.NewWellKnownServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 	}, nil
 }
 

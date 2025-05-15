@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -2040,12 +2041,12 @@ func (f *FakeKas) Rewrap(_ context.Context, in *connect.Request[kaspb.RewrapRequ
 
 	requestBody, found := token.Get("requestBody")
 	if !found {
-		return nil, fmt.Errorf("requestBody not found in token")
+		return nil, errors.New("requestBody not found in token")
 	}
 
 	requestBodyStr, ok := requestBody.(string)
 	if !ok {
-		return nil, fmt.Errorf("requestBody not a string")
+		return nil, errors.New("requestBody not a string")
 	}
 	result := f.getRewrapResponse(requestBodyStr)
 
@@ -2171,7 +2172,7 @@ func (s *TDFSuite) checkIdentical(file, checksum string) bool {
 	s.Require().NoError(err, "io.Copy failed")
 
 	c := h.Sum(nil)
-	return checksum == fmt.Sprintf("%x", c)
+	return checksum == hex.EncodeToString(c)
 }
 
 func TestIsLessThanSemver(t *testing.T) {

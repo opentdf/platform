@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -348,6 +350,11 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 	}, nil
 }
 
+func isValidBase64(s string) bool {
+	_, err := base64.StdEncoding.DecodeString(s)
+	return err == nil
+}
+
 /*
 * Key Access Server Keys
  */
@@ -355,11 +362,16 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 	keyID := r.GetKeyId()
 	algo := int32(r.GetKeyAlgorithm())
 	mode := int32(r.GetKeyMode())
-	privateCtx := r.GetPrivateKeyCtx()
-	pubCtx := r.GetPublicKeyCtx()
 	providerConfigID := r.GetProviderConfigId()
 	keyStatus := int32(policy.KeyStatus_KEY_STATUS_ACTIVE)
 	kasID := r.GetKasId()
+
+	if !isValidBase64(r.GetPublicKeyCtx().GetPem()) {
+		return nil, errors.Join(errors.New("public key ctx"), db.ErrExpectedBase64EncodedValue)
+	}
+	if mode == int32(policy.KeyMode_KEY_MODE_LOCAL) && !isValidBase64(r.GetPrivateKeyCtx().GetWrappedKey()) {
+		return nil, errors.Join(errors.New("private key ctx"), db.ErrExpectedBase64EncodedValue)
+	}
 
 	// Only allow one active key for an algo per KAS.
 	activeKeyExists, err := c.Queries.checkIfKeyExists(ctx, checkIfKeyExistsParams{
@@ -381,6 +393,16 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		if err != nil {
 			return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, kasID)
 		}
+	}
+
+	// Marshal private key and public key context
+	pubCtx, err := json.Marshal(r.GetPublicKeyCtx())
+	if err != nil {
+		return nil, db.ErrMarshalValueFailed
+	}
+	privateCtx, err := json.Marshal(r.GetPrivateKeyCtx())
+	if err != nil {
+		return nil, db.ErrMarshalValueFailed
 	}
 
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
@@ -408,6 +430,12 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		return nil, err
 	}
 
+	privateKeyCtx := &policy.KasPrivateKeyCtx{}
+	publicKeyCtx := &policy.KasPublicKeyCtx{}
+	if err := unmarshalPrivatePublicKeyContext(key.PublicKeyCtx, key.PrivateKeyCtx, publicKeyCtx, privateKeyCtx); err != nil {
+		return nil, err
+	}
+
 	return &kasregistry.CreateKeyResponse{
 		KasKey: &policy.KasKey{
 			KasId: key.KeyAccessServerID,
@@ -417,8 +445,8 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 				KeyStatus:      policy.KeyStatus(key.KeyStatus),
 				KeyAlgorithm:   policy.Algorithm(key.KeyAlgorithm),
 				KeyMode:        policy.KeyMode(key.KeyMode),
-				PrivateKeyCtx:  key.PrivateKeyCtx,
-				PublicKeyCtx:   key.PublicKeyCtx,
+				PrivateKeyCtx:  privateKeyCtx,
+				PublicKeyCtx:   publicKeyCtx,
 				ProviderConfig: pc,
 				Metadata:       metadata,
 			},
@@ -491,6 +519,12 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Kas
 		}
 	}
 
+	privateKeyCtx := &policy.KasPrivateKeyCtx{}
+	publicKeyCtx := &policy.KasPublicKeyCtx{}
+	if err := unmarshalPrivatePublicKeyContext(key.PublicKeyCtx, key.PrivateKeyCtx, publicKeyCtx, privateKeyCtx); err != nil {
+		return nil, err
+	}
+
 	return &policy.KasKey{
 		KasId: key.KeyAccessServerID,
 		Key: &policy.AsymmetricKey{
@@ -499,8 +533,8 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Kas
 			KeyStatus:      policy.KeyStatus(key.KeyStatus),
 			KeyAlgorithm:   policy.Algorithm(key.KeyAlgorithm),
 			KeyMode:        policy.KeyMode(key.KeyMode),
-			PrivateKeyCtx:  key.PrivateKeyCtx,
-			PublicKeyCtx:   key.PublicKeyCtx,
+			PrivateKeyCtx:  privateKeyCtx,
+			PublicKeyCtx:   publicKeyCtx,
 			ProviderConfig: providerConfig,
 			Metadata:       metadata,
 		},
@@ -511,11 +545,6 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 	id := r.GetId()
 	if !pgtypeUUID(id).Valid {
 		return nil, db.ErrUUIDInvalid
-	}
-
-	// Check if trying to update to unspecified key status
-	if r.GetKeyStatus() == policy.KeyStatus_KEY_STATUS_UNSPECIFIED && r.GetMetadata() == nil && r.GetMetadataUpdateBehavior() == common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_UNSPECIFIED {
-		return nil, errors.New("cannot update key status to unspecified")
 	}
 
 	// Add check to see if a key exists with the updated keys given algo and if that key is active.
@@ -611,6 +640,12 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 			return nil, err
 		}
 
+		publicKeyCtx := &policy.KasPublicKeyCtx{}
+		privateKeyCtx := &policy.KasPrivateKeyCtx{}
+		if err := unmarshalPrivatePublicKeyContext(key.PublicKeyCtx, key.PrivateKeyCtx, publicKeyCtx, privateKeyCtx); err != nil {
+			return nil, err
+		}
+
 		keys[i] = &policy.KasKey{
 			KasId: key.KeyAccessServerID,
 			Key: &policy.AsymmetricKey{
@@ -619,8 +654,8 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 				KeyStatus:      policy.KeyStatus(key.KeyStatus),
 				KeyAlgorithm:   policy.Algorithm(key.KeyAlgorithm),
 				KeyMode:        policy.KeyMode(key.KeyMode),
-				PublicKeyCtx:   key.PublicKeyCtx,
-				PrivateKeyCtx:  key.PrivateKeyCtx,
+				PublicKeyCtx:   publicKeyCtx,
+				PrivateKeyCtx:  privateKeyCtx,
 				ProviderConfig: providerConfig,
 				Metadata:       metadata,
 			},

@@ -322,7 +322,6 @@ message KeyAccessServer {
   // Kas keys associated with this KAS
   repeated KasKey kas_keys = 5;
 
-
   // Optional
   // Unique name of the KAS instance
   string name = 20;
@@ -435,7 +434,6 @@ message RegisteredResourceValue {
   common.Metadata metadata = 100;
 }
 
-
 // Supported key algorithms.
 enum Algorithm {
   ALGORITHM_UNSPECIFIED = 0;
@@ -468,16 +466,37 @@ enum KeyMode {
 message KasKey {
   string kas_id = 1;
   AsymmetricKey key = 2;
+  string kas_uri = 3;
+}
+
+message KasPublicKeyCtx {
+  // Required
+  string pem = 1 [(buf.validate.field).string = {min_len: 1}]; // Base64 encoded public key in PEM format
+}
+
+message KasPrivateKeyCtx {
+  // Required
+  string key_id = 1 [(buf.validate.field).string = {min_len: 1}]; // Key ID for the symmetric key wrapping this key.
+  // Optional
+  string wrapped_key = 2; // Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.
 }
 
 message AsymmetricKey {
+  // Required
   string id = 1;
+  // Required
   string key_id = 2;
+  // Required
   Algorithm key_algorithm = 3;
+  // Required
   KeyStatus key_status = 4;
+  // Required
   KeyMode key_mode = 5; // Specifies how the key is managed (local or remote)
-  bytes public_key_ctx = 6; // Specific structure based on key provider implementation
-  bytes private_key_ctx = 7; // Specific structure based on key provider implementation
+  // Required
+  KasPublicKeyCtx public_key_ctx = 6; // Specific structure based on key provider implementation
+  // Optional
+  KasPrivateKeyCtx private_key_ctx = 7; // Specific structure based on key provider implementation
+  // Optional
   KeyProviderConfig provider_config = 8; // Configuration for the key provider
 
   // Common metadata fields

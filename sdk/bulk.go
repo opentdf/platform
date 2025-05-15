@@ -34,7 +34,7 @@ func (b BulkErrors) Unwrap() []error {
 }
 
 func (b BulkErrors) Error() string {
-	return fmt.Sprintf("Some TDFs could not be Decrypted: %s", errors.Join(b...).Error())
+	return "Some TDFs could not be Decrypted: " + errors.Join(b...).Error()
 }
 
 // FromBulkErrors Returns List of Decrypt Failures and true if is decryption failures

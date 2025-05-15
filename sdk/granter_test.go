@@ -9,13 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
-	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -505,16 +503,16 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 var listAttributeResp attributes.ListAttributesResponse
 
 type mockAttributesClient struct {
-	attributesconnect.AttributesServiceClient
+	attributes.AttributesServiceClient
 }
 
-func (*mockAttributesClient) ListAttributes(_ context.Context, _ *connect.Request[attributes.ListAttributesRequest]) (*connect.Response[attributes.ListAttributesResponse], error) {
-	return connect.NewResponse(&listAttributeResp), nil
+func (*mockAttributesClient) ListAttributes(_ context.Context, _ *attributes.ListAttributesRequest, _ ...grpc.CallOption) (*attributes.ListAttributesResponse, error) {
+	return &listAttributeResp, nil
 }
 
-func (*mockAttributesClient) GetAttributeValuesByFqns(_ context.Context, req *connect.Request[attributes.GetAttributeValuesByFqnsRequest]) (*connect.Response[attributes.GetAttributeValuesByFqnsResponse], error) {
+func (*mockAttributesClient) GetAttributeValuesByFqns(_ context.Context, req *attributes.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attributes.GetAttributeValuesByFqnsResponse, error) {
 	av := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue)
-	for _, v := range req.Msg.GetFqns() {
+	for _, v := range req.GetFqns() {
 		vfqn, err := NewAttributeValueFQN(v)
 		if err != nil {
 			return nil, err
@@ -526,9 +524,9 @@ func (*mockAttributesClient) GetAttributeValuesByFqns(_ context.Context, req *co
 		}
 	}
 
-	return connect.NewResponse(&attributes.GetAttributeValuesByFqnsResponse{
+	return &attributes.GetAttributeValuesByFqnsResponse{
 		FqnAttributeValues: av,
-	}), nil
+	}, nil
 }
 
 // Tests titles are written in the form [{attr}.{value}] => [{resulting kas boolean exp}]
@@ -613,7 +611,7 @@ func TestReasonerSpecificity(t *testing.T) {
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
-			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &mockAttributesClient{}}, tc.policy...)
+			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
 			require.NoError(t, err)
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
@@ -764,7 +762,7 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 		},
 	} {
 		t.Run((tc.n + "\n" + tc.desc), func(t *testing.T) {
-			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &sdkconnect.AttributesServiceClientConnectWrapper{AttributesServiceClient: &mockAttributesClient{}}, tc.policy...)
+			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
 			require.NoError(t, err)
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {

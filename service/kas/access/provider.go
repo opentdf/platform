@@ -33,44 +33,6 @@ type Provider struct {
 	trace.Tracer
 }
 
-func (p *Provider) initSecurityProviderAdapter() {
-	// If the CryptoProvider is set, create a SecurityProviderAdapter
-	if p.CryptoProvider == nil || p.KeyManager != nil && p.KeyIndex != nil {
-		return
-	}
-	var defaults []string
-	var legacies []string
-	if p.KASConfig.Keyring != nil {
-		for _, key := range p.KASConfig.Keyring {
-			if key.Legacy {
-				legacies = append(legacies, key.KID)
-			} else {
-				defaults = append(defaults, key.KID)
-			}
-		}
-	} else {
-		for _, alg := range []string{security.AlgorithmECP256R1, security.AlgorithmRSA2048} {
-			kid := p.CryptoProvider.FindKID(alg)
-			if kid != "" {
-				defaults = append(defaults, kid)
-			} else {
-				p.Logger.Warn("no default key found for algorithm", "algorithm", alg)
-			}
-		}
-	}
-
-	inProcessService := security.NewSecurityProviderAdapter(p.CryptoProvider, defaults, legacies)
-
-	if p.KeyIndex == nil {
-		p.Logger.Warn("fallback to in-process key index")
-		p.KeyIndex = inProcessService
-	}
-	if p.KeyManager == nil {
-		p.Logger.Error("fallback to in-process manager")
-		p.KeyManager = inProcessService
-	}
-}
-
 // GetSecurityProvider returns the SecurityProvider
 func (p *Provider) GetSecurityProvider() trust.KeyManager {
 	p.initSecurityProviderAdapter()
@@ -138,6 +100,43 @@ func (kasCfg *KASConfig) UpgradeMapToKeyring(c security.CryptoProvider) {
 		deprecatedOrDefault(kasCfg.RSACertID, security.AlgorithmRSA2048)
 	default:
 		kasCfg.Keyring = append(kasCfg.Keyring, inferLegacyKeys(kasCfg.Keyring)...)
+	}
+}
+
+func (p *Provider) initSecurityProviderAdapter() {
+	// If the CryptoProvider is set, create a SecurityProviderAdapter
+	if p.CryptoProvider == nil || p.KeyManager != nil && p.KeyIndex != nil {
+		return
+	}
+	var defaults []string
+	var legacies []string
+	for _, key := range p.KASConfig.Keyring {
+		if key.Legacy {
+			legacies = append(legacies, key.KID)
+		} else {
+			defaults = append(defaults, key.KID)
+		}
+	}
+	if len(defaults) == 0 && len(legacies) == 0 {
+		for _, alg := range []string{security.AlgorithmECP256R1, security.AlgorithmRSA2048} {
+			kid := p.CryptoProvider.FindKID(alg)
+			if kid != "" {
+				defaults = append(defaults, kid)
+			} else {
+				p.Logger.Warn("no default key found for algorithm", "algorithm", alg)
+			}
+		}
+	}
+
+	inProcessService := security.NewSecurityProviderAdapter(p.CryptoProvider, defaults, legacies)
+
+	if p.KeyIndex == nil {
+		p.Logger.Warn("fallback to in-process key index")
+		p.KeyIndex = inProcessService
+	}
+	if p.KeyManager == nil {
+		p.Logger.Error("fallback to in-process manager")
+		p.KeyManager = inProcessService
 	}
 }
 

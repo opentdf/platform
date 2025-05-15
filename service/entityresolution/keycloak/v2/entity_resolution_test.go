@@ -530,7 +530,7 @@ func Test_KCEntityResolutionNotFoundInferEmail(t *testing.T) {
 	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
 	propMap := entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "random@sample.org", propMap["emailAddress"])
-	assert.Equal(t, "1234", propMap["id"])
+	assert.Equal(t, "1234", propMap["ephemeralId"])
 }
 
 func Test_KCEntityResolutionNotFoundInferClientId(t *testing.T) {
@@ -560,7 +560,7 @@ func Test_KCEntityResolutionNotFoundInferClientId(t *testing.T) {
 	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
 	propMap := entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "random", propMap["clientId"])
-	assert.Equal(t, "1234", propMap["id"])
+	assert.Equal(t, "1234", propMap["ephemeralId"])
 }
 
 func Test_KCEntityResolutionNotFoundNotInferUsername(t *testing.T) {

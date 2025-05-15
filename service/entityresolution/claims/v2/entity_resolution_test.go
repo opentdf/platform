@@ -1,6 +1,7 @@
 package claims_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/entity"
@@ -29,12 +30,13 @@ func Test_ClientResolveEntity(t *testing.T) {
 	entityRepresentations := resp.GetEntityRepresentations()
 	assert.NotNil(t, entityRepresentations)
 	assert.Len(t, entityRepresentations, 1)
+	fmt.Printf("entityRepresentations: %+v\n", entityRepresentations)
 
 	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
 	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
 	propMap := entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "random", propMap["clientId"])
-	assert.Equal(t, "1234", propMap["id"])
+	assert.Equal(t, "1234", propMap["ephemeralId"])
 }
 
 func Test_EmailResolveEntity(t *testing.T) {
@@ -56,7 +58,7 @@ func Test_EmailResolveEntity(t *testing.T) {
 	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
 	propMap := entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "random", propMap["emailAddress"])
-	assert.Equal(t, "1234", propMap["id"])
+	assert.Equal(t, "1234", propMap["ephemeralId"])
 }
 
 func Test_ClaimsResolveEntity(t *testing.T) {

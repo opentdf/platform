@@ -11,13 +11,16 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,71 +45,107 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 		key:         key,
 		accessToken: "thisisafakeaccesstoken",
 	}
-	server := FakeAccessServiceServer{}
+	serverConnect := FakeAccessServiceServerConnect{}
+	serverGrpc := FakeAccessServiceServer{}
 	oo := NewTokenAddingInterceptorWithClient(&ts, httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}))
 
-	client, stop := runServer(&server, oo)
-	defer stop()
+	clientConnect, stopC := runConnectServer(&serverConnect, oo)
+	defer stopC()
 
-	_, err = client.PublicKey(t.Context(), &kas.PublicKeyRequest{})
+	clientGrpc, stopG := runServer(&serverGrpc, oo)
+	defer stopG()
+
+	_, err = clientConnect.PublicKey(context.Background(), connect.NewRequest(&kas.PublicKeyRequest{}))
+	require.NoError(t, err, "error making call")
+	_, err = clientGrpc.PublicKey(context.Background(), &kas.PublicKeyRequest{})
 	require.NoError(t, err, "error making call")
 
-	assert.ElementsMatch(t, server.accessToken, []string{"DPoP thisisafakeaccesstoken"})
-	require.Len(t, server.dpopToken, 1, "incorrect dpop token headers")
+	for _, server := range []struct {
+		accessToken []string
+		dpopToken   []string
+	}{
+		{accessToken: serverConnect.accessToken, dpopToken: serverConnect.dpopToken},
+		{accessToken: serverGrpc.accessToken, dpopToken: serverGrpc.dpopToken},
+	} {
+		assert.ElementsMatch(t, server.accessToken, []string{"DPoP thisisafakeaccesstoken"})
+		require.Len(t, server.dpopToken, 1, "incorrect dpop token headers")
+		alg, ok := key.Algorithm().(jwa.SignatureAlgorithm)
+		assert.True(t, ok, "got a bad signing algorithm")
 
-	dpopToken := server.dpopToken[0]
-	alg, ok := key.Algorithm().(jwa.SignatureAlgorithm)
-	assert.True(t, ok, "got a bad signing algorithm")
+		dpopToken := server.dpopToken[0]
+		_, err = jws.Verify([]byte(dpopToken), jws.WithKey(alg, key))
+		require.NoError(t, err, "error verifying signature")
 
-	_, err = jws.Verify([]byte(dpopToken), jws.WithKey(alg, key))
-	require.NoError(t, err, "error verifying signature")
+		parsedSignature, _ := jws.Parse([]byte(dpopToken))
+		require.Len(t, parsedSignature.Signatures(), 1, "incorrect number of signatures")
 
-	parsedSignature, _ := jws.Parse([]byte(dpopToken))
-	require.Len(t, parsedSignature.Signatures(), 1, "incorrect number of signatures")
+		sig := parsedSignature.Signatures()[0]
+		tokenKey, ok := sig.ProtectedHeaders().Get("jwk")
+		require.True(t, ok, "didn't get jwk token key")
+		tkkey, ok := tokenKey.(jwk.Key)
+		require.True(t, ok, "wrong type for jwk token key", tokenKey)
 
-	sig := parsedSignature.Signatures()[0]
-	tokenKey, ok := sig.ProtectedHeaders().Get("jwk")
-	require.True(t, ok, "didn't get jwk token key")
-	tkkey, ok := tokenKey.(jwk.Key)
-	require.True(t, ok, "wrong type for jwk token key", tokenKey)
+		tp, _ := tkkey.Thumbprint(crypto.SHA256)
+		ktp, _ := key.Thumbprint(crypto.SHA256)
+		assert.Equal(t, tp, ktp, "got the wrong key from the token")
 
-	tp, _ := tkkey.Thumbprint(crypto.SHA256)
-	ktp, _ := key.Thumbprint(crypto.SHA256)
-	assert.Equal(t, tp, ktp, "got the wrong key from the token")
+		parsedToken, _ := jwt.Parse([]byte(dpopToken), jwt.WithVerify(false))
 
-	parsedToken, _ := jwt.Parse([]byte(dpopToken), jwt.WithVerify(false))
+		method, ok := parsedToken.Get("htm")
+		require.True(t, ok, "error getting htm claim")
+		assert.Equal(t, http.MethodPost, method, "got a bad method")
 
-	method, ok := parsedToken.Get("htm")
-	require.True(t, ok, "error getting htm claim")
-	assert.Equal(t, http.MethodPost, method, "got a bad method")
+		path, ok := parsedToken.Get("htu")
+		require.True(t, ok, "error getting htu claim")
+		assert.Equal(t, "/kas.AccessService/PublicKey", path, "got a bad path")
 
-	path, ok := parsedToken.Get("htu")
-	require.True(t, ok, "error getting htu claim")
-	assert.Equal(t, "/kas.AccessService/PublicKey", path, "got a bad path")
+		h := sha256.New()
+		h.Write([]byte("thisisafakeaccesstoken"))
+		expectedHash := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil))
 
-	h := sha256.New()
-	h.Write([]byte("thisisafakeaccesstoken"))
-	expectedHash := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil))
-
-	ath, ok := parsedToken.Get("ath")
-	require.True(t, ok, "error getting ath claim")
-	assert.Equal(t, expectedHash, ath, "invalid ath claim in token")
+		ath, ok := parsedToken.Get("ath")
+		require.True(t, ok, "error getting ath claim")
+		assert.Equal(t, expectedHash, ath, "invalid ath claim in token")
+	}
 }
 
 func Test_InvalidCredentials_DoesNotSendMessage(t *testing.T) {
 	ts := FakeTokenSource{key: nil, accessToken: ""}
-	server := FakeAccessServiceServer{}
+	serverConnect := FakeAccessServiceServerConnect{}
+	serverGrpc := FakeAccessServiceServer{}
 	oo := NewTokenAddingInterceptorWithClient(&ts, httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}))
 
-	client, stop := runServer(&server, oo)
-	defer stop()
+	clientConnect, stopC := runConnectServer(&serverConnect, oo)
+	defer stopC()
+	clientGrpc, stopG := runServer(&serverGrpc, oo)
+	defer stopG()
 
-	_, err := client.PublicKey(t.Context(), &kas.PublicKeyRequest{})
+	_, err := clientConnect.PublicKey(context.Background(), connect.NewRequest(&kas.PublicKeyRequest{}))
 	require.Error(t, err, "should not have sent message because the token source returned an error")
+	_, err = clientGrpc.PublicKey(context.Background(), &kas.PublicKeyRequest{})
+	require.Error(t, err, "should not have sent message because the token source returned an error")
+}
+
+type FakeAccessServiceServerConnect struct {
+	accessToken []string
+	dpopToken   []string
+	dpopKey     jwk.Key
+	kasconnect.UnimplementedAccessServiceHandler
+}
+
+func (f *FakeAccessServiceServerConnect) PublicKey(ctx context.Context, req *connect.Request[kas.PublicKeyRequest]) (*connect.Response[kas.PublicKeyResponse], error) {
+	f.accessToken = []string{req.Header().Get("authorization")}
+	f.dpopToken = []string{req.Header().Get("dpop")}
+	var ok bool
+	f.dpopKey, ok = ctx.Value("dpop-jwk").(jwk.Key)
+	if !ok {
+		f.dpopKey = nil
+	}
+	return connect.NewResponse(&kas.PublicKeyResponse{}), nil
 }
 
 type FakeAccessServiceServer struct {
@@ -154,6 +193,26 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 		return nil, errors.New("no such key")
 	}
 	return f(fts.key)
+}
+
+func runConnectServer(
+	f *FakeAccessServiceServerConnect, oo TokenAddingInterceptor,
+) (kasconnect.AccessServiceClient, func()) {
+	mux := http.NewServeMux()
+	path, handler := kasconnect.NewAccessServiceHandler(f)
+	mux.Handle(path, handler)
+
+	server := httptest.NewServer(mux)
+
+	client := kasconnect.NewAccessServiceClient(
+		server.Client(),
+		server.URL,
+		connect.WithInterceptors(oo.AddCredentialsConnect()),
+	)
+
+	return client, func() {
+		server.Close()
+	}
 }
 
 func runServer( //nolint:ireturn // this is pretty concrete

@@ -27,8 +27,8 @@ func (p *Provider) lookupKid(ctx context.Context, algorithm string) (string, err
 		if err == nil {
 			return string(k.ID()), nil
 		}
+		p.Logger.WarnContext(ctx, "KeyIndex.FindKeyByAlgorithm failed", "err", err)
 	}
-	p.Logger.WarnContext(ctx, "KeyIndex.FindKeyByAlgorithm failed", "err", err)
 
 	if len(p.Keyring) == 0 {
 		p.Logger.WarnContext(ctx, "no default keys found", "algorithm", algorithm)

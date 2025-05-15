@@ -1,7 +1,6 @@
 package claims_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/entity"
@@ -30,7 +29,6 @@ func Test_ClientResolveEntity(t *testing.T) {
 	entityRepresentations := resp.GetEntityRepresentations()
 	assert.NotNil(t, entityRepresentations)
 	assert.Len(t, entityRepresentations, 1)
-	fmt.Printf("entityRepresentations: %+v\n", entityRepresentations)
 
 	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
 	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)

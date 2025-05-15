@@ -52,11 +52,11 @@ type fakeKeyIndex struct {
 }
 
 func (f *fakeKeyIndex) FindKeyByAlgorithm(context.Context, string, bool) (trust.KeyDetails, error) {
-	return nil, nil
+	return nil, errors.New("not implemented")
 }
 
 func (f *fakeKeyIndex) FindKeyByID(context.Context, trust.KeyIdentifier) (trust.KeyDetails, error) {
-	return nil, nil
+	return nil, errors.New("not implemented")
 }
 func (f *fakeKeyIndex) ListKeys(context.Context) ([]trust.KeyDetails, error) { return f.keys, f.err }
 
@@ -108,7 +108,6 @@ func TestListLegacyKeys_Empty(t *testing.T) {
 }
 
 func TestListLegacyKeys_KeyIndexError(t *testing.T) {
-	ctx := context.Background()
 	testLogger := logger.CreateTestLogger()
 	p := &Provider{
 		Logger: testLogger,
@@ -116,7 +115,7 @@ func TestListLegacyKeys_KeyIndexError(t *testing.T) {
 			err: errors.New("fail"),
 		},
 	}
-	kids := p.listLegacyKeys(ctx)
+	kids := p.listLegacyKeys(t.Context())
 	assert.Empty(t, kids)
 }
 

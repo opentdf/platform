@@ -16,7 +16,6 @@
 
 # Determine the directory containing this script
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-PROJECT_DIR=$(cd "$SCRIPT_DIR/../.." && pwd)
 
 # Check if Vault is already running
 if pgrep -f "vault server"; then

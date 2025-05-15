@@ -124,7 +124,8 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_
 
 	ers, err := registry.GetNamespace(serviceEntityResolution)
 	suite.Require().NoError(err)
-	suite.Len(ers.Services, 1)
+	ersServiceVersionsCount := 2
+	suite.Len(ers.Services, ersServiceVersionsCount)
 	suite.Equal(modeCore, ers.Mode)
 }
 
@@ -209,7 +210,8 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 
 	ers, err := registry.GetNamespace(serviceEntityResolution)
 	suite.Require().NoError(err)
-	suite.Len(ers.Services, 1)
+	ersServiceVersionsCount := 2
+	suite.Len(ers.Services, ersServiceVersionsCount)
 	suite.Equal(modeERS, ers.Mode)
 }
 

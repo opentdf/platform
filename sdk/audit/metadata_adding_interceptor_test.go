@@ -24,7 +24,7 @@ type FakeAccessServiceServerConnect struct {
 	kasconnect.UnimplementedAccessServiceHandler
 }
 
-func (f *FakeAccessServiceServerConnect) PublicKey(ctx context.Context, req *connect.Request[kas.PublicKeyRequest]) (*connect.Response[kas.PublicKeyResponse], error) {
+func (f *FakeAccessServiceServerConnect) PublicKey(_ context.Context, req *connect.Request[kas.PublicKeyRequest]) (*connect.Response[kas.PublicKeyResponse], error) {
 	requestIDFromHeader := req.Header().Get(string(RequestIDHeaderKey))
 	if requestIDFromHeader != "" {
 		f.requestID, _ = uuid.Parse(requestIDFromHeader)
@@ -116,8 +116,7 @@ func TestIsOKWithNoContextValues(t *testing.T) {
 	}
 }
 
-func runConnectServer(
-	f *FakeAccessServiceServerConnect) (kasconnect.AccessServiceClient, func()) {
+func runConnectServer(f *FakeAccessServiceServerConnect) (kasconnect.AccessServiceClient, func()) {
 	mux := http.NewServeMux()
 	path, handler := kasconnect.NewAccessServiceHandler(f)
 	mux.Handle(path, handler)

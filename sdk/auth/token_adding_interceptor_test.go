@@ -57,9 +57,9 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 	clientGrpc, stopG := runServer(&serverGrpc, oo)
 	defer stopG()
 
-	_, err = clientConnect.PublicKey(context.Background(), connect.NewRequest(&kas.PublicKeyRequest{}))
+	_, err = clientConnect.PublicKey(t.Context(), connect.NewRequest(&kas.PublicKeyRequest{}))
 	require.NoError(t, err, "error making call")
-	_, err = clientGrpc.PublicKey(context.Background(), &kas.PublicKeyRequest{})
+	_, err = clientGrpc.PublicKey(t.Context(), &kas.PublicKeyRequest{})
 	require.NoError(t, err, "error making call")
 
 	for _, server := range []struct {
@@ -124,9 +124,9 @@ func Test_InvalidCredentials_DoesNotSendMessage(t *testing.T) {
 	clientGrpc, stopG := runServer(&serverGrpc, oo)
 	defer stopG()
 
-	_, err := clientConnect.PublicKey(context.Background(), connect.NewRequest(&kas.PublicKeyRequest{}))
+	_, err := clientConnect.PublicKey(t.Context(), connect.NewRequest(&kas.PublicKeyRequest{}))
 	require.Error(t, err, "should not have sent message because the token source returned an error")
-	_, err = clientGrpc.PublicKey(context.Background(), &kas.PublicKeyRequest{})
+	_, err = clientGrpc.PublicKey(t.Context(), &kas.PublicKeyRequest{})
 	require.Error(t, err, "should not have sent message because the token source returned an error")
 }
 

@@ -10,6 +10,9 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 )
 
+type AttributeValueFQNsToActions map[string][]*policy.Action
+type EntityIDsToEntitlements map[string]AttributeValueFQNsToActions
+
 func EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue, entityRepresentations []*entityresolution.EntityRepresentation) (EntityIDsToEntitlements, error) {
 	results := make(map[string]AttributeValueFQNsToActions)
 	for _, er := range entityRepresentations {

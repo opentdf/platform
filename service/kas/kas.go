@@ -59,6 +59,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				if srp.OTDF.TrustKeyIndex == nil {
 					// Set up both the legacy CryptoProvider and the new SecurityProvider
 					kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
+					p.CryptoProvider = srp.OTDF.CryptoProvider
 				} else {
 					p.KeyIndex = srp.OTDF.TrustKeyIndex
 					p.KeyManager = srp.OTDF.TrustKeyManager

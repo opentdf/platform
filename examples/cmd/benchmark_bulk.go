@@ -83,7 +83,7 @@ func runBenchmarkBulk(cmd *cobra.Command, _ []string) error {
 			sdk.WithDataAttributes(dataAttributes...),
 			sdk.WithKasInformation(
 				sdk.KASInfo{
-					URL:       "http://" + "localhost:8080",
+					URL:       "http://localhost:8080",
 					PublicKey: "",
 				}),
 			sdk.WithAutoconfigure(false))

@@ -123,15 +123,16 @@ func runBenchmark(cmd *cobra.Command, _ []string) error {
 		// 	}
 		// }
 	} else {
-		tdf, err := client.CreateTDF(
-			out, in,
-			sdk.WithDataAttributes(dataAttributes...),
-			sdk.WithKasInformation(
-				sdk.KASInfo{
-					URL:       "http://" + "localhost:8080",
-					PublicKey: "",
-				}),
-			sdk.WithAutoconfigure(false))
+		tdf, err :=
+			client.CreateTDF(
+				out, in,
+				sdk.WithDataAttributes(dataAttributes...),
+				sdk.WithKasInformation(
+					sdk.KASInfo{
+						URL:       fmt.Sprintf("http://%s", "localhost:8080"),
+						PublicKey: "",
+					}),
+				sdk.WithAutoconfigure(false))
 		if err != nil {
 			return err
 		}

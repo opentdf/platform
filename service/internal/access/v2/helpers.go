@@ -62,7 +62,7 @@ func getFilteredEntitleableAttributes(
 			Value:     valueWithMapping,
 			Attribute: parentDefinition,
 		}
-		
+
 		// If this value already exists in the filtered map, append the subject mapping
 		if existing, exists := filtered[mappedValueFQN]; exists {
 			existing.Value.SubjectMappings = append(existing.Value.SubjectMappings, sm)

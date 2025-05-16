@@ -81,9 +81,9 @@ func newVaultTrustService(vaultClient *vault.Client) (*vaultkms.VaultKeyService,
 }
 
 func main() {
-	fmt.Println("Starting CKMS...")
+	log.Println("Starting CKMS...")
 	if err := start(); err != nil {
 		log.Fatalf("Error starting CKMS: %v", err)
 	}
-	fmt.Println("CKMS started successfully.")
+	log.Println("CKMS started successfully.")
 }

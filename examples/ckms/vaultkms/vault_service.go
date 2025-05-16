@@ -36,7 +36,7 @@ func (v *VaultItem) IsLegacy() bool {
 
 func (v *VaultItem) ExportPublicKey(_ context.Context, format trust.KeyType) (string, error) {
 	if format != trust.KeyTypePKCS8 {
-		return "", fmt.Errorf("unsupported key format: %s", format)
+		return "", fmt.Errorf("unsupported key format: %v", format)
 	}
 	return v.public.PublicKeyInPemFormat()
 }
@@ -54,15 +54,15 @@ type VaultKeyService struct {
 	items  map[trust.KeyIdentifier]*VaultItem
 }
 
-func (v VaultKeyService) Name() string {
-	return "examples.opentdf.io/vault"
-}
-
 func NewVaultKeyService(client *vault.Client) *VaultKeyService {
 	return &VaultKeyService{
 		client: client,
 		items:  make(map[trust.KeyIdentifier]*VaultItem),
 	}
+}
+
+func (v VaultKeyService) Name() string {
+	return "examples.opentdf.io/vault"
 }
 
 func (v *VaultKeyService) LoadKeys(ctx context.Context) error {
@@ -97,75 +97,11 @@ func (v *VaultKeyService) LoadKeys(ctx context.Context) error {
 	return nil
 }
 
-func (v *VaultKeyService) loadKey(ctx context.Context, key interface{}) (*VaultItem, error) {
-	kid := trust.KeyIdentifier(key.(string))
-	secretPath := fmt.Sprintf("kas_keypair/%s", kid)
-	secret, err := v.client.KVv2("secret").Get(ctx, secretPath)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read secret in kv store secret with path [%s]: %v", secretPath, err)
-	}
-
-	var privateKeyPEM string
-	if privateData, ok := secret.Data["private"].(string); !ok {
-		return nil, fmt.Errorf("unable to assert type of private key to string for key %s", kid)
-	} else {
-		privateKeyPEM = privateData
-	}
-
-	privateKey, err := ocrypto.FromPrivatePEM(privateKeyPEM)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create private key from PEM: %w", err)
-	}
-	var nanoKey *ocrypto.ECDecryptor
-	if _, ok := privateKey.(*ocrypto.ECDecryptor); ok {
-		salt := nanoSalt()
-		nk, err := ocrypto.FromPrivatePEMWithSalt(privateKeyPEM, salt, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create EC decryptor from PEM: %w", err)
-		}
-		if ec2, ok := nk.(ocrypto.ECDecryptor); ok {
-			nanoKey = &ec2
-		} else {
-			return nil, fmt.Errorf("failed to assert type of EC decryptor for key %s", kid)
-		}
-	}
-
-	var publicKey ocrypto.PublicKeyEncryptor
-	if publicKeyPEM, ok := secret.Data["public"].(string); ok {
-		publicKey, err = ocrypto.FromPublicPEM(publicKeyPEM)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create public key from PEM: %w", err)
-		}
-	} else {
-		publicKey = privateKey.PublicKey()
-	}
-
-	algorithm, ok := secret.Data["algorithm"].(string)
-	if !ok {
-		return nil, fmt.Errorf("unable to assert type of algorithm to string for key %s", kid)
-	}
-
-	return &VaultItem{
-		kid:     kid,
-		alg:     algorithm,
-		public:  publicKey,
-		private: privateKey,
-		nano:    nanoKey,
-	}, nil
-}
-
 func nanoSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte("L1L"))
 	salt := digest.Sum(nil)
 	return salt
-}
-
-func (v *VaultKeyService) refreshKeys(ctx context.Context) error {
-	if len(v.items) > 0 {
-		return nil
-	}
-	return v.LoadKeys(ctx)
 }
 
 func (v *VaultKeyService) FindKeyByAlgorithm(ctx context.Context, algorithm string, _ bool) (trust.KeyDetails, error) {
@@ -300,4 +236,74 @@ func (k *InProcessWrappedKey) generateHMACDigest(msg []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to write to HMAC: %w", err)
 	}
 	return mac.Sum(nil), nil
+}
+
+func (v *VaultKeyService) loadKey(ctx context.Context, key interface{}) (*VaultItem, error) {
+	var kid trust.KeyIdentifier
+	if keyStr, ok := key.(string); ok {
+		kid = trust.KeyIdentifier(keyStr)
+	} else {
+		return nil, fmt.Errorf("key is not a string: %T", key)
+	}
+
+	secretPath := fmt.Sprintf("kas_keypair/%s", kid)
+	secret, err := v.client.KVv2("secret").Get(ctx, secretPath)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read secret in kv store secret with path [%s]: %w", secretPath, err)
+	}
+
+	var privateKeyPEM string
+	if pem, ok := secret.Data["private"].(string); ok {
+		privateKeyPEM = pem
+	} else {
+		return nil, fmt.Errorf("unable to assert type of private key to string for key %s", kid)
+	}
+
+	privateKey, err := ocrypto.FromPrivatePEM(privateKeyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create private key from PEM: %w", err)
+	}
+	var nanoKey *ocrypto.ECDecryptor
+	if _, ok := privateKey.(*ocrypto.ECDecryptor); ok {
+		salt := nanoSalt()
+		nk, err := ocrypto.FromPrivatePEMWithSalt(privateKeyPEM, salt, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create EC decryptor from PEM: %w", err)
+		}
+		if ec2, ecOK := nk.(ocrypto.ECDecryptor); ecOK {
+			nanoKey = &ec2
+		} else {
+			return nil, fmt.Errorf("failed to assert type of EC decryptor for key %s", kid)
+		}
+	}
+
+	var publicKey ocrypto.PublicKeyEncryptor
+	if publicKeyPEM, ok := secret.Data["public"].(string); ok {
+		publicKey, err = ocrypto.FromPublicPEM(publicKeyPEM)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create public key from PEM: %w", err)
+		}
+	} else {
+		publicKey = privateKey.PublicKey()
+	}
+
+	algorithm, ok := secret.Data["algorithm"].(string)
+	if !ok {
+		return nil, fmt.Errorf("unable to assert type of algorithm to string for key %s", kid)
+	}
+
+	return &VaultItem{
+		kid:     kid,
+		alg:     algorithm,
+		public:  publicKey,
+		private: privateKey,
+		nano:    nanoKey,
+	}, nil
+}
+
+func (v *VaultKeyService) refreshKeys(ctx context.Context) error {
+	if len(v.items) > 0 {
+		return nil
+	}
+	return v.LoadKeys(ctx)
 }

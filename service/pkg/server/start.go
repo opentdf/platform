@@ -86,17 +86,6 @@ func Start(f ...StartOptions) error {
 
 	logger.Debug("config loaded", slog.Any("config", cfg.LogValue()))
 
-	// If the mode is not all, does not include both core and entityresolution, or is not entityresolution on its own, we need to have a valid SDK config
-	// entityresolution does not connect to other services and can run on its own
-	// core only connects to entityresolution
-	if !(slices.Contains(cfg.Mode, "all") || // no config required for all mode
-		(slices.Contains(cfg.Mode, "core") && slices.Contains(cfg.Mode, "entityresolution")) || // or core and entityresolution modes togethor
-		(slices.Contains(cfg.Mode, "entityresolution") && len(cfg.Mode) == 1)) && // or entityresolution on its own
-		cfg.SDKConfig == (config.SDKConfig{}) {
-		logger.Error("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
-		return errors.New("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
-	}
-
 	logger.Info("starting opentdf services")
 
 	// Set allowed public routes when platform is being extended
@@ -197,6 +186,17 @@ func Start(f ...StartOptions) error {
 		client     *sdk.SDK
 		oidcconfig *auth.OIDCConfiguration
 	)
+
+	// If the mode is not all, does not include both core and entityresolution, or is not entityresolution on its own, we need to have a valid SDK config
+	// entityresolution does not connect to other services and can run on its own
+	// core only connects to entityresolution
+	if !(slices.Contains(cfg.Mode, "all") || // no config required for all mode
+		(slices.Contains(cfg.Mode, "core") && slices.Contains(cfg.Mode, "entityresolution")) || // or core and entityresolution modes togethor
+		(slices.Contains(cfg.Mode, "entityresolution") && len(cfg.Mode) == 1)) && // or entityresolution on its own
+		cfg.SDKConfig == (config.SDKConfig{}) {
+		logger.Error("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
+		return errors.New("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
+	}
 
 	// If client credentials are provided, use them
 	if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {

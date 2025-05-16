@@ -232,12 +232,6 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		logger: logger,
 	}
 
-	listener, err := o.openHTTPServerPort()
-	if err != nil {
-		return nil, err
-	}
-	o.Listener = listener
-
 	if !config.CryptoProvider.IsEmpty() {
 		// Create crypto provider
 		logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
@@ -448,7 +442,14 @@ func (s OpenTDFServer) Start() error {
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 
-	go s.startHTTPServer(s.Listener)
+	ln, err := s.openHTTPServerPort()
+	if err != nil {
+		return err
+	}
+	s.Listener = ln
+
+	// Start Http Server
+	go s.startHTTPServer(ln)
 
 	return nil
 }

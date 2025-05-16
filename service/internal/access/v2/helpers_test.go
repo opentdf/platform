@@ -211,7 +211,7 @@ func TestGetFilteredEntitleableAttributes(t *testing.T) {
 			require.NoError(t, err)
 
 			// Verify size matches expected number of filtered elements
-			assert.Len(t, len(tt.expectedFilteredFQNs), len(filtered),
+			assert.Len(t, filtered, len(tt.expectedFilteredFQNs),
 				"Expected filtered map to have %d elements, got %d",
 				len(tt.expectedFilteredFQNs), len(filtered))
 
@@ -375,7 +375,7 @@ func TestPopulateLowerValuesIfHierarchy(t *testing.T) {
 				for _, key := range tt.expectedMapKeyFQNs {
 					assert.Contains(t, tt.actionsPerAttributeValueFqn, key, "Expected map to contain key %s", key)
 					assert.Equal(t, tt.entitledActions, tt.actionsPerAttributeValueFqn[key], "Expected map value for key %s to match", key)
-					assert.Len(t, len(tt.entitledActions.GetActions()), len(tt.actionsPerAttributeValueFqn[key].GetActions()), "Expected map value for key %s to match", key)
+					assert.Len(t, tt.actionsPerAttributeValueFqn[key].GetActions(), len(tt.entitledActions.GetActions()), "Expected map value for key %s to match", key)
 				}
 			}
 		})
@@ -529,7 +529,7 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 			}
 
 			// Verify only the expected keys were added
-			assert.Len(t, len(tt.expectedMapAdditions), len(decisionableAttributes), "Expected %d additions to map, got %d", len(tt.expectedMapAdditions), len(decisionableAttributes))
+			assert.Len(t, decisionableAttributes, len(tt.expectedMapAdditions), "Expected %d additions to map, got %d", len(tt.expectedMapAdditions), len(decisionableAttributes))
 		})
 	}
 

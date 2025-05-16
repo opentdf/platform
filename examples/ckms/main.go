@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -44,7 +45,7 @@ func start() error {
 func newVaultTrustService(vaultClient *vault.Client) (*vaultkms.VaultKeyService, error) {
 	roleID := os.Getenv("KAS_APPROLE_ROLEID")
 	if roleID == "" {
-		return nil, fmt.Errorf("no role ID was provided in KAS_APPROLE_ROLEID env var")
+		return nil, errors.New("no role ID was provided in KAS_APPROLE_ROLEID env var")
 	}
 
 	// FIXME: The Secret ID is a value that needs to be protected, so do this!!
@@ -56,7 +57,7 @@ func newVaultTrustService(vaultClient *vault.Client) (*vaultkms.VaultKeyService,
 
 	secretID := &auth.SecretID{FromString: os.Getenv("KAS_APPROLE_SECRETID")}
 	if secretID.FromString == "" {
-		return nil, fmt.Errorf("no role secret ID was provided in KAS_APPROLE_SECRETID env var")
+		return nil, errors.New("no role secret ID was provided in KAS_APPROLE_SECRETID env var")
 	}
 
 	appRoleAuth, err := auth.NewAppRoleAuth(
@@ -72,7 +73,7 @@ func newVaultTrustService(vaultClient *vault.Client) (*vaultkms.VaultKeyService,
 		return nil, fmt.Errorf("unable to login to AppRole auth method: %w", err)
 	}
 	if authInfo == nil {
-		return nil, fmt.Errorf("no auth info was returned after login")
+		return nil, errors.New("no auth info was returned after login")
 	}
 
 	kms := vaultkms.NewVaultKeyService(vaultClient)

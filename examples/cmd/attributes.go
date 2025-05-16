@@ -116,7 +116,7 @@ func listAttributes(cmd *cobra.Command) error {
 		if err != nil {
 			return err
 		}
-		slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.Namespaces)))
+		slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.GetNamespaces())))
 		for _, n := range listResp.GetNamespaces() {
 			nsuris = append(nsuris, n.GetFqn())
 		}
@@ -215,7 +215,7 @@ func addNamespace(ctx context.Context, s *sdk.SDK, u string) (string, error) {
 		slog.Error("CreateNamespace", "err", err)
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
-	return resp.Namespace.GetId(), nil
+	return resp.GetNamespace().GetId(), nil
 }
 
 func addAttribute(cmd *cobra.Command) error {
@@ -369,19 +369,19 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 			kasById[kasid] = kas
 		}
 	case assign:
-		return fmt.Errorf("assign must take a `--kas` parameter")
+		return errors.New("assign must take a `--kas` parameter")
 	case len(values) == 0:
 		// look up all kasids associated with the attribute
 		ar, err := s.Attributes.GetAttribute(cmd.Context(), &attributes.GetAttributeRequest{Id: auuid})
 		if err != nil {
 			return err
 		}
-		for _, b := range ar.Attribute.GetGrants() {
+		for _, b := range ar.GetAttribute().GetGrants() {
 			kasids = append(kasids, b.GetId())
 			kasById[b.GetId()] = b.GetUri()
 		}
 	case len(values) > 1:
-		return fmt.Errorf("TODO: unassign from multiple values at a time")
+		return errors.New("TODO: unassign from multiple values at a time")
 	default:
 		// look up all kasids associated with the value
 		avu, err := avuuid(cmd.Context(), s, auuid, values[0])
@@ -482,5 +482,5 @@ func upsertAttr(ctx context.Context, s *sdk.SDK, auth, name string, values []str
 		slog.Error("CreateAttribute", "err", err, "auth", auth, "name", name, "values", values, "rule", ruler())
 		return "", err
 	}
-	return av.Attribute.GetId(), nil
+	return av.GetAttribute().GetId(), nil
 }

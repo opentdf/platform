@@ -124,7 +124,7 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 			sdk.WithDataAttributes(dataAttributes...),
 			sdk.WithKasInformation(
 				sdk.KASInfo{
-					URL:       fmt.Sprintf("http://%s", "localhost:8080"),
+					URL:       "http://" + "localhost:8080",
 					PublicKey: "",
 				}),
 			sdk.WithAutoconfigure(false))
@@ -151,7 +151,7 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 
 		file, err := os.Open("sensitive.txt.tdf")
 		if err != nil {
-			errors <- fmt.Errorf("file open error: %v", err)
+			errors <- fmt.Errorf("file open error: %w", err)
 			return
 		}
 		defer file.Close()
@@ -159,19 +159,19 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		if config.TDFFormat == NanoTDF {
 			_, err = client.ReadNanoTDF(io.Discard, file)
 			if err != nil {
-				errors <- fmt.Errorf("ReadNanoTDF error: %v", err)
+				errors <- fmt.Errorf("ReadNanoTDF error: %w", err)
 				return
 			}
 		} else {
 			tdfreader, err := client.LoadTDF(file)
 			if err != nil {
-				errors <- fmt.Errorf("LoadTDF error: %v", err)
+				errors <- fmt.Errorf("LoadTDF error: %w", err)
 				return
 			}
 
 			_, err = io.Copy(io.Discard, tdfreader)
-			if err != nil && err != io.EOF {
-				errors <- fmt.Errorf("read error: %v", err)
+			if err != nil && !errors.Is(err, io.EOF) {
+				errors <- fmt.Errorf("read error: %w", err)
 				return
 			}
 		}

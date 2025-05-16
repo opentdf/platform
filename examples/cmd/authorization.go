@@ -65,21 +65,21 @@ func authorizationExamples() error {
 	})
 
 	decisionRequest := &authorization.GetDecisionsRequest{DecisionRequests: drs}
-	slog.Info(fmt.Sprintf("Submitting decision request: %s", protojson.Format(decisionRequest)))
+	slog.Info("Submitting decision request: " + protojson.Format(decisionRequest))
 	decisionResponse, err := s.Authorization.GetDecisions(context.Background(), decisionRequest)
 	if err != nil {
 		return err
 	}
-	slog.Info(fmt.Sprintf("Received decision response: %s", protojson.Format(decisionResponse)))
+	slog.Info("Received decision response: " + protojson.Format(decisionResponse))
 
 	// map response back to entity chain id
 	decisionsByEntityChain := make(map[string]*authorization.DecisionResponse)
-	for _, dr := range decisionResponse.DecisionResponses {
-		decisionsByEntityChain[dr.EntityChainId] = dr
+	for _, dr := range decisionResponse.GetDecisionResponses() {
+		decisionsByEntityChain[dr.GetEntityChainId()] = dr
 	}
 
-	slog.Info(fmt.Sprintf("decision for bob: %s", protojson.Format(decisionsByEntityChain["ec1"])))
-	slog.Info(fmt.Sprintf("decision for alice: %s", protojson.Format(decisionsByEntityChain["ec2"])))
+	slog.Info("decision for bob: " + protojson.Format(decisionsByEntityChain["ec1"]))
+	slog.Info("decision for alice: " + protojson.Format(decisionsByEntityChain["ec2"]))
 	return nil
 }
 

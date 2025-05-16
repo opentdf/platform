@@ -105,7 +105,7 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 			oldpk := ki.GetPublicKey()
 			recreate := false
 			switch {
-			case pk != nil && len(pk.GetCached().Keys) == 0 && len(oldpk.GetCached().Keys) == 0:
+			case pk != nil && len(pk.GetCached().GetKeys()) == 0 && len(oldpk.GetCached().GetKeys()) == 0:
 				recreate = pk.GetRemote() != oldpk.GetRemote()
 			case pk != nil:
 				// previously remote, now local, or local and changed
@@ -138,7 +138,7 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 		slog.Error("CreateKeyAccessServer", "uri", uri, "publicKey", uri+"/v2/kas_public_key")
 		return "", err
 	}
-	return ur.KeyAccessServer.GetId(), nil
+	return ur.GetKeyAccessServer().GetId(), nil
 }
 
 func algString2Proto(a string) policy.KasPublicKeyAlgEnum {
@@ -163,7 +163,7 @@ func updateKas(cmd *cobra.Command) error {
 	switch {
 	case keyIdentifier != "":
 		if key == "" || algorithm == "" {
-			err := fmt.Errorf("if --kid is found, --public-key and --algorithm must also be specified")
+			err := errors.New("if --kid is found, --public-key and --algorithm must also be specified")
 			return err
 		}
 		pk = new(policy.PublicKey)

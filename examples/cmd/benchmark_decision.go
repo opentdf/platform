@@ -57,7 +57,7 @@ func runDecisionBenchmark(cmd *cobra.Command, args []string) error {
 	numberDenied := 0
 	if err == nil {
 		for _, dr := range res.GetDecisionResponses() {
-			if dr.Decision == authorization.DecisionResponse_DECISION_PERMIT {
+			if dr.GetDecision() == authorization.DecisionResponse_DECISION_PERMIT {
 				numberApproved += 1
 			} else {
 				numberDenied += 1

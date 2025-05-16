@@ -75,7 +75,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	out := os.Stdout
 	if outputName == "-" && collection > 0 {
-		return fmt.Errorf("cannot use stdout for collection")
+		return errors.New("cannot use stdout for collection")
 	}
 
 	var writer []io.Writer
@@ -103,7 +103,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	baseKasURL := platformEndpoint
 	if !strings.HasPrefix(baseKasURL, "http://") && !strings.HasPrefix(baseKasURL, "https://") {
-		baseKasURL = fmt.Sprintf("http://%s", baseKasURL)
+		baseKasURL = "http://" + baseKasURL
 	}
 
 	if !nanoFormat {
@@ -144,7 +144,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		if collection > 0 {
 			nanoTDFConfig.EnableCollection()
 		}
-		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("%s/kas", baseKasURL))
+		err = nanoTDFConfig.SetKasURL(baseKasURL + "/kas")
 		if err != nil {
 			return err
 		}

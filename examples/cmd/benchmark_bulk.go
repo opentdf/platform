@@ -79,7 +79,7 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 			sdk.WithDataAttributes(dataAttributes...),
 			sdk.WithKasInformation(
 				sdk.KASInfo{
-					URL:       fmt.Sprintf("http://%s", "localhost:8080"),
+					URL:       "http://" + "localhost:8080",
 					PublicKey: "",
 				}),
 			sdk.WithAutoconfigure(false))
@@ -101,7 +101,7 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 	operation := func() {
 		file, err := os.Open("sensitive.txt.tdf")
 		if err != nil {
-			requestFailure = fmt.Errorf("file open error: %v", err)
+			requestFailure = fmt.Errorf("file open error: %w", err)
 			return
 		}
 		defer file.Close()

@@ -51,7 +51,7 @@ func newSDK() (*sdk.SDK, error) {
 	if clientCredentials != "" {
 		i := strings.Index(clientCredentials, ":")
 		if i < 0 {
-			return nil, fmt.Errorf("invalid client id/secret pair")
+			return nil, errors.New("invalid client id/secret pair")
 		}
 		opts = append(opts, sdk.WithClientCredentials(clientCredentials[:i], clientCredentials[i+1:], nil))
 	}

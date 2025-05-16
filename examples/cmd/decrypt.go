@@ -99,7 +99,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 
 		// Print decrypted string
 		_, err = io.Copy(os.Stdout, tdfreader)
-		if err != nil && err != io.EOF {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return err
 		}
 	} else {

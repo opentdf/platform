@@ -584,6 +584,14 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_With_Actio
 					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
 				},
 			},
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: "custom_action_1",
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr2/value/value2",
+				},
+			},
 		},
 	}
 
@@ -591,11 +599,26 @@ func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_With_Actio
 	s.Require().NoError(err)
 	s.NotNil(created)
 	actionAttrValues := created.GetActionAttributeValues()
-	s.Len(actionAttrValues, 1)
-	s.Equal(actions.ActionNameCreate, actionAttrValues[0].GetAction().GetName())
-	attrValue := actionAttrValues[0].GetAttributeValue()
-	s.Equal("https://example.com/attr/attr1/value/value1", attrValue.GetFqn())
-	s.Equal("value1", attrValue.GetValue())
+	s.Len(actionAttrValues, 2)
+
+	foundCount := 0
+	for _, aav := range actionAttrValues {
+		actionName := aav.GetAction().GetName()
+		attrVal := aav.GetAttributeValue()
+
+		if actionName == actions.ActionNameCreate {
+			foundCount++
+			s.Equal("https://example.com/attr/attr1/value/value1", attrVal.GetFqn())
+			s.Equal("value1", attrVal.GetValue())
+		}
+
+		if actionName == "custom_action_1" {
+			foundCount++
+			s.Equal("https://example.com/attr/attr2/value/value2", attrVal.GetFqn())
+			s.Equal("value2", attrVal.GetValue())
+		}
+	}
+	s.Equal(2, foundCount)
 }
 
 func (s *RegisteredResourcesSuite) Test_CreateRegisteredResourceValue_WithInvalidResource_Fails() {

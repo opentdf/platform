@@ -203,7 +203,7 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemap
 		if err = unmarshalResourceMappingGroup(rm.Group, resourceMappingGroup); err != nil {
 			return nil, err
 		}
-		if resourceMappingGroup.Id == "" {
+		if resourceMappingGroup.GetId() == "" {
 			resourceMappingGroup = nil
 		}
 

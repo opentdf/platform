@@ -434,7 +434,7 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroupNsDiffFromAttrNsF
 	metadata := &common.MetadataMutable{}
 
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
-	rmGroup := s.getResourceMappingGroupFixtures()[2] //scenario.com_ns_group_1
+	rmGroup := s.getResourceMappingGroupFixtures()[2] // scenario.com_ns_group_1
 	mapping := &resourcemapping.CreateResourceMappingRequest{
 		AttributeValueId: attrValue.ID,
 		Metadata:         metadata,

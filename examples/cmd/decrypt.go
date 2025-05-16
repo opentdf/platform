@@ -1,3 +1,4 @@
+//nolint:forbidigo,nestif // Sample code
 package cmd
 
 import (
@@ -71,7 +72,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	switch {
 	case err != nil:
 		return err
-	case n < 3:
+	case n < 3: //nolint: mnd // All TDFs are more than 2 bytes
 		return errors.New("file too small; no magic number found")
 	case bytes.HasPrefix(magic[:], []byte("L1L")):
 		isNano = true

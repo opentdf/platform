@@ -13,9 +13,7 @@ func init() {
 	isValidCmd := &cobra.Command{
 		Use:   "isvalid [files...]",
 		Short: "Check validity of a TDF",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return areValid(cmd, args)
-		},
+		RunE:  areValid,
 	}
 
 	ExamplesCmd.AddCommand(isValidCmd)
@@ -50,7 +48,7 @@ func areValid(cmd *cobra.Command, files []string) error {
 		}
 		defer in.Close()
 
-		fmt.Printf("File: [%s], TypeInfo: %v\n", file, isValid(cmd, in))
+		cmd.Printf("File: [%s], TypeInfo: %v\n", file, isValid(cmd, in))
 	}
 	return nil
 }

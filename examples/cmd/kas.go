@@ -1,7 +1,9 @@
+//nolint:forbidigo // Sample code
 package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"

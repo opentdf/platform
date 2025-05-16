@@ -1,3 +1,4 @@
+//nolint:forbidigo // We use Println here extensively because we are printing markdown.
 package cmd
 
 import (
@@ -17,11 +18,11 @@ func init() {
 		Long:  `A OpenTDF benchmark tool to measure throughput and latency with configurable concurrency.`,
 		RunE:  runDecisionBenchmark,
 	}
-	benchmarkCmd.Flags().IntVar(&config.RequestCount, "count", 100, "Total number of requests")
+	benchmarkCmd.Flags().IntVar(&config.RequestCount, "count", 100, "Total number of requests") //nolint: mnd // This is output to the help with explanation
 	ExamplesCmd.AddCommand(benchmarkCmd)
 }
 
-func runDecisionBenchmark(cmd *cobra.Command, args []string) error {
+func runDecisionBenchmark(_ *cobra.Command, _ []string) error {
 	// Create new offline client
 	client, err := newSDK()
 	if err != nil {
@@ -58,9 +59,9 @@ func runDecisionBenchmark(cmd *cobra.Command, args []string) error {
 	if err == nil {
 		for _, dr := range res.GetDecisionResponses() {
 			if dr.GetDecision() == authorization.DecisionResponse_DECISION_PERMIT {
-				numberApproved += 1
+				numberApproved++
 			} else {
-				numberDenied += 1
+				numberDenied++
 			}
 		}
 	}

@@ -1,8 +1,10 @@
+//nolint:forbidigo,nestif // Sample code
 package cmd
 
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -53,19 +55,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	plainText := args[0]
 	in := strings.NewReader(plainText)
-
-	opts := []sdk.Option{
-		sdk.WithInsecurePlaintextConn(),
-		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-	}
-
-	if noKIDInKAO {
-		opts = append(opts, sdk.WithNoKIDInKAO())
-	}
-	// double negative always gets me
-	if !noKIDInNano {
-		opts = append(opts, sdk.WithNoKIDInNano())
-	}
 
 	// Create new offline client
 	client, err := newSDK()
@@ -139,7 +128,10 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		nanoTDFConfig.SetAttributes(dataAttributes)
+		err = nanoTDFConfig.SetAttributes(dataAttributes)
+		if err != nil {
+			return err
+		}
 		nanoTDFConfig.EnableECDSAPolicyBinding()
 		if collection > 0 {
 			nanoTDFConfig.EnableCollection()

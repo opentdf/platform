@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -15,7 +14,7 @@ import (
 var AuthorizationExampleCmd = &cobra.Command{
 	Use:   "authorization",
 	Short: "Example usage for authorization service",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		return authorizationExamples()
 	},
 }
@@ -48,8 +47,7 @@ func authorizationExamples() error {
 		}},
 	}}
 
-	// TODO Get attribute value ids
-	tradeSecretAttributeValueFqn := "https://namespace.com/attr/attr_name/value/replaceme"
+	tradeSecretAttributeValueFqn := "https://namespace.com/attr/attr_name/value/replaceme" //nolint: gosec // TODO Get attribute value ids
 	openAttributeValueFqn := "https://open.io/attr/attr_name/value/open"
 
 	slog.Info("Getting decision for bob and alice for transmit action on resource set with trade secret and resource" +

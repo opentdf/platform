@@ -1,3 +1,4 @@
+//nolint:forbidigo // Markdown output
 package cmd
 
 import (
@@ -42,7 +43,7 @@ func init() {
 }
 
 func formatDuration(nanos int64) string {
-	ms := float64(nanos) / 1_000_000.0 // Convert to milliseconds
+	ms := float64(nanos) / 1_000_000.0 //nolint:mnd // Convert to milliseconds
 	return fmt.Sprintf("%.3f ms", ms)
 }
 

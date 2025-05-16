@@ -19,8 +19,6 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-const EntityIDPrefix string = "entity_idx_"
-
 var ErrEmptyStringAttribute = errors.New("resource attributes must have at least one attribute value fqn")
 
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct

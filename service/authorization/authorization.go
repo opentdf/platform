@@ -22,6 +22,7 @@ import (
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
+	ent "github.com/opentdf/platform/service/entity"
 	"github.com/opentdf/platform/service/internal/access"
 	"github.com/opentdf/platform/service/internal/entitlements"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
@@ -37,8 +38,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-const EntityIDPrefix string = "entity_idx_"
 
 var ErrEmptyStringAttribute = errors.New("resource attributes must have at least one attribute value fqn")
 
@@ -411,7 +410,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 		// Ensure the entity has an ID
 		entityID := entity.GetId()
 		if entityID == "" {
-			entityID = EntityIDPrefix + strconv.Itoa(idx)
+			entityID = ent.EntityIDPrefix + strconv.Itoa(idx)
 		}
 		// Check to maksure if the value is a list. Good validation if someone customizes the rego policy
 		entityEntitlements, valueListOk := resultsEntitlements[entityID].([]interface{})
@@ -633,7 +632,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 				for entIdx, e := range ecEntitlements.Msg.GetEntitlements() {
 					entityID := e.GetEntityId()
 					if entityID == "" {
-						entityID = EntityIDPrefix + strconv.Itoa(entIdx)
+						entityID = ent.EntityIDPrefix + strconv.Itoa(entIdx)
 					}
 					entityCategory := entities[entIdx].GetCategory()
 					auditECEntitlements = append(auditECEntitlements, audit.EntityChainEntitlement{

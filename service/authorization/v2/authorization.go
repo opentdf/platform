@@ -183,7 +183,7 @@ func (as *AuthorizationService) GetDecisionMultiResource(ctx context.Context, re
 }
 
 // GetDecisionBulk for multiple requests, each comprising a combination of entity chain, action, and one or more resources
-func (as *AuthorizationService) GetDecisionBulk(_ context.Context, _ *connect.Request[authzV2.GetDecisionBulkRequest]) (*connect.Response[authzV2.GetDecisionBulkResponse], error) {
+func (as *AuthorizationService) GetDecisionBulk(ctx context.Context, req *connect.Request[authzV2.GetDecisionBulkRequest]) (*connect.Response[authzV2.GetDecisionBulkResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionBulk not implemented"))
 }
 
@@ -196,7 +196,7 @@ func rollupMultiResourceDecision(
 		return nil, errors.New("no decisions returned")
 	}
 
-	resourceDecisions := make([]*authzV2.ResourceDecision, 0, len(decisions))
+	var resourceDecisions []*authzV2.ResourceDecision
 
 	for idx, decision := range decisions {
 		if decision == nil {
@@ -214,7 +214,7 @@ func rollupMultiResourceDecision(
 			Decision:            access,
 			EphemeralResourceId: result.ResourceID,
 		}
-		resourceDecisions[idx] = resourceDecision
+		resourceDecisions = append(resourceDecisions, resourceDecision)
 	}
 
 	return resourceDecisions, nil

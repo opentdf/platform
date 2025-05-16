@@ -7,7 +7,6 @@ import (
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	access "github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRollupSingleResourceDecision(t *testing.T) {
@@ -89,11 +88,11 @@ func TestRollupSingleResourceDecision(t *testing.T) {
 			result, err := rollupSingleResourceDecision(tc.permitted, tc.decisions)
 
 			if tc.expectedError != nil {
-				require.Error(t, err)
+				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsgContain)
 				assert.Nil(t, result)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				assert.Equal(t, tc.expectedResult, result)
 			}
 		})
@@ -195,11 +194,11 @@ func TestRollupMultiResourceDecision(t *testing.T) {
 			result, err := rollupMultiResourceDecision(tc.decisions)
 
 			if tc.expectedError != nil {
-				require.Error(t, err)
+				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsgContain)
 				assert.Nil(t, result)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				assert.Equal(t, tc.expectedResult, result)
 			}
 		})
@@ -221,24 +220,24 @@ func TestRollupMultiResourceDecisionSimple(t *testing.T) {
 
 	result, err := rollupMultiResourceDecision(decisions)
 
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	assert.Len(t, result, 1)
-	assert.Equal(t, "resource-123", result[0].GetEphemeralResourceId())
-	assert.Equal(t, authzV2.Decision_DECISION_PERMIT, result[0].GetDecision())
+	assert.Equal(t, "resource-123", result[0].EphemeralResourceId)
+	assert.Equal(t, authzV2.Decision_DECISION_PERMIT, result[0].Decision)
 }
 
 func TestRollupMultiResourceDecisionWithNilChecks(t *testing.T) {
 	t.Run("nil decisions array", func(t *testing.T) {
-		var decisions []*access.Decision
+		var decisions []*access.Decision = nil
 		_, err := rollupMultiResourceDecision(decisions)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no decisions returned")
 	})
 
 	t.Run("nil decision in array", func(t *testing.T) {
 		decisions := []*access.Decision{nil}
 		_, err := rollupMultiResourceDecision(decisions)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "nil decision at index 0")
 	})
 
@@ -250,23 +249,23 @@ func TestRollupMultiResourceDecisionWithNilChecks(t *testing.T) {
 			},
 		}
 		_, err := rollupMultiResourceDecision(decisions)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no decision results returned")
 	})
 }
 
 func TestRollupSingleResourceDecisionWithNilChecks(t *testing.T) {
 	t.Run("nil decisions array", func(t *testing.T) {
-		var decisions []*access.Decision
+		var decisions []*access.Decision = nil
 		_, err := rollupSingleResourceDecision(true, decisions)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no decisions returned")
 	})
 
 	t.Run("nil decision in array", func(t *testing.T) {
 		decisions := []*access.Decision{nil}
 		_, err := rollupSingleResourceDecision(true, decisions)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "nil decision at index 0")
 	})
 
@@ -278,7 +277,7 @@ func TestRollupSingleResourceDecisionWithNilChecks(t *testing.T) {
 			},
 		}
 		_, err := rollupSingleResourceDecision(true, decisions)
-		require.Error(t, err)
+		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no decision results returned")
 	})
 }

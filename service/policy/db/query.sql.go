@@ -1231,8 +1231,198 @@ func (q *Queries) ListAttributesSummary(ctx context.Context, arg ListAttributesS
 	return items, nil
 }
 
-const listKeyAccessServers = `-- name: ListKeyAccessServers :many
+const listKeyAccessServerGrants = `-- name: ListKeyAccessServerGrants :many
+WITH listed AS (
+    SELECT
+        COUNT(*) OVER () AS total,
+        kas.id AS kas_id,
+        kas.uri AS kas_uri,
+        kas.name AS kas_name,
+        kas.public_key AS kas_public_key,
+        JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+            'labels', kas.metadata -> 'labels',
+            'created_at', kas.created_at,
+            'updated_at', kas.updated_at
+        )) AS kas_metadata,
+        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+            'id', attrkag.attribute_definition_id,
+            'fqn', fqns_on_attr.fqn
+        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL) AS attributes_grants,
+        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+            'id', valkag.attribute_value_id,
+            'fqn', fqns_on_vals.fqn
+        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL) AS values_grants,
+        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+            'id', nskag.namespace_id,
+            'fqn', fqns_on_ns.fqn
+        )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants
+    FROM key_access_servers AS kas
+    LEFT JOIN
+        attribute_definition_key_access_grants AS attrkag
+        ON kas.id = attrkag.key_access_server_id
+    LEFT JOIN
+        attribute_fqns AS fqns_on_attr
+        ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id
+            AND fqns_on_attr.value_id IS NULL
+    LEFT JOIN
+        attribute_value_key_access_grants AS valkag
+        ON kas.id = valkag.key_access_server_id
+    LEFT JOIN 
+        attribute_fqns AS fqns_on_vals
+        ON valkag.attribute_value_id = fqns_on_vals.value_id
+    LEFT JOIN
+        attribute_namespace_key_access_grants AS nskag
+        ON kas.id = nskag.key_access_server_id
+    LEFT JOIN
+        attribute_fqns AS fqns_on_ns
+            ON nskag.namespace_id = fqns_on_ns.namespace_id
+        AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
+    WHERE (NULLIF($3, '') IS NULL OR kas.id = $3::uuid) 
+        AND (NULLIF($4, '') IS NULL OR kas.uri = $4::varchar) 
+        AND (NULLIF($5, '') IS NULL OR kas.name = $5::varchar) 
+    GROUP BY 
+        kas.id
+)
+SELECT 
+    listed.kas_id,
+    listed.kas_uri,
+    listed.kas_name,
+    listed.kas_public_key,
+    listed.kas_metadata,
+    listed.attributes_grants,
+    listed.values_grants,
+    listed.namespace_grants,
+    listed.total  
+FROM listed
+LIMIT $2 
+OFFSET $1
+`
 
+type ListKeyAccessServerGrantsParams struct {
+	Offset  int32       `json:"offset_"`
+	Limit   int32       `json:"limit_"`
+	KasID   interface{} `json:"kas_id"`
+	KasUri  interface{} `json:"kas_uri"`
+	KasName interface{} `json:"kas_name"`
+}
+
+type ListKeyAccessServerGrantsRow struct {
+	KasID            string      `json:"kas_id"`
+	KasUri           string      `json:"kas_uri"`
+	KasName          pgtype.Text `json:"kas_name"`
+	KasPublicKey     []byte      `json:"kas_public_key"`
+	KasMetadata      []byte      `json:"kas_metadata"`
+	AttributesGrants []byte      `json:"attributes_grants"`
+	ValuesGrants     []byte      `json:"values_grants"`
+	NamespaceGrants  []byte      `json:"namespace_grants"`
+	Total            int64       `json:"total"`
+}
+
+// --------------------------------------------------------------
+// KEY ACCESS SERVERS
+// --------------------------------------------------------------
+//
+//	WITH listed AS (
+//	    SELECT
+//	        COUNT(*) OVER () AS total,
+//	        kas.id AS kas_id,
+//	        kas.uri AS kas_uri,
+//	        kas.name AS kas_name,
+//	        kas.public_key AS kas_public_key,
+//	        JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
+//	            'labels', kas.metadata -> 'labels',
+//	            'created_at', kas.created_at,
+//	            'updated_at', kas.updated_at
+//	        )) AS kas_metadata,
+//	        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+//	            'id', attrkag.attribute_definition_id,
+//	            'fqn', fqns_on_attr.fqn
+//	        )) FILTER (WHERE attrkag.attribute_definition_id IS NOT NULL) AS attributes_grants,
+//	        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+//	            'id', valkag.attribute_value_id,
+//	            'fqn', fqns_on_vals.fqn
+//	        )) FILTER (WHERE valkag.attribute_value_id IS NOT NULL) AS values_grants,
+//	        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(
+//	            'id', nskag.namespace_id,
+//	            'fqn', fqns_on_ns.fqn
+//	        )) FILTER (WHERE nskag.namespace_id IS NOT NULL) AS namespace_grants
+//	    FROM key_access_servers AS kas
+//	    LEFT JOIN
+//	        attribute_definition_key_access_grants AS attrkag
+//	        ON kas.id = attrkag.key_access_server_id
+//	    LEFT JOIN
+//	        attribute_fqns AS fqns_on_attr
+//	        ON attrkag.attribute_definition_id = fqns_on_attr.attribute_id
+//	            AND fqns_on_attr.value_id IS NULL
+//	    LEFT JOIN
+//	        attribute_value_key_access_grants AS valkag
+//	        ON kas.id = valkag.key_access_server_id
+//	    LEFT JOIN
+//	        attribute_fqns AS fqns_on_vals
+//	        ON valkag.attribute_value_id = fqns_on_vals.value_id
+//	    LEFT JOIN
+//	        attribute_namespace_key_access_grants AS nskag
+//	        ON kas.id = nskag.key_access_server_id
+//	    LEFT JOIN
+//	        attribute_fqns AS fqns_on_ns
+//	            ON nskag.namespace_id = fqns_on_ns.namespace_id
+//	        AND fqns_on_ns.attribute_id IS NULL AND fqns_on_ns.value_id IS NULL
+//	    WHERE (NULLIF($3, '') IS NULL OR kas.id = $3::uuid)
+//	        AND (NULLIF($4, '') IS NULL OR kas.uri = $4::varchar)
+//	        AND (NULLIF($5, '') IS NULL OR kas.name = $5::varchar)
+//	    GROUP BY
+//	        kas.id
+//	)
+//	SELECT
+//	    listed.kas_id,
+//	    listed.kas_uri,
+//	    listed.kas_name,
+//	    listed.kas_public_key,
+//	    listed.kas_metadata,
+//	    listed.attributes_grants,
+//	    listed.values_grants,
+//	    listed.namespace_grants,
+//	    listed.total
+//	FROM listed
+//	LIMIT $2
+//	OFFSET $1
+func (q *Queries) ListKeyAccessServerGrants(ctx context.Context, arg ListKeyAccessServerGrantsParams) ([]ListKeyAccessServerGrantsRow, error) {
+	rows, err := q.db.Query(ctx, listKeyAccessServerGrants,
+		arg.Offset,
+		arg.Limit,
+		arg.KasID,
+		arg.KasUri,
+		arg.KasName,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListKeyAccessServerGrantsRow
+	for rows.Next() {
+		var i ListKeyAccessServerGrantsRow
+		if err := rows.Scan(
+			&i.KasID,
+			&i.KasUri,
+			&i.KasName,
+			&i.KasPublicKey,
+			&i.KasMetadata,
+			&i.AttributesGrants,
+			&i.ValuesGrants,
+			&i.NamespaceGrants,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listKeyAccessServers = `-- name: ListKeyAccessServers :many
 WITH counted AS (
     SELECT COUNT(kas.id) AS total
     FROM key_access_servers AS kas
@@ -1285,9 +1475,7 @@ type ListKeyAccessServersRow struct {
 	Total      int64       `json:"total"`
 }
 
-// --------------------------------------------------------------
-// KEY ACCESS SERVERS
-// --------------------------------------------------------------
+// ListKeyAccessServers
 //
 //	WITH counted AS (
 //	    SELECT COUNT(kas.id) AS total

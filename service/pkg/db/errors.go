@@ -32,7 +32,7 @@ var (
 	ErrExpectedBase64EncodedValue = errors.New("ErrExpectedBase64EncodedValue: expected base64 encoded value")
 	ErrMarshalValueFailed         = errors.New("ErrMashalValueFailed: failed to marshal value")
 	ErrUnmarshalValueFailed       = errors.New("ErrUnmarshalValueFailed: failed to unmarshal value")
-	ErrNamespaceMismatch          = errors.New("ErrNamesapceMismatch: namespace mismatch")
+	ErrNamespaceMismatch          = errors.New("ErrNamespaceMismatch: namespace mismatch")
 )
 
 // Get helpful error message for PostgreSQL violation

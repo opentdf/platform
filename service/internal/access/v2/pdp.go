@@ -91,6 +91,15 @@ func NewPolicyDecisionPoint(
 			return nil, fmt.Errorf("invalid attribute definition: %w", err)
 		}
 		allAttributesByDefinitionFQN[attr.GetFqn()] = attr
+
+		// Not every value may have a subject mapping and be entitleable, but a lookup must still be possible
+		for _, value := range attr.GetValues() {
+			mapped := &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+				Value:     value,
+				Attribute: attr,
+			}
+			allEntitleableAttributesByValueFQN[value.GetFqn()] = mapped
+		}
 	}
 
 	for _, sm := range allSubjectMappings {

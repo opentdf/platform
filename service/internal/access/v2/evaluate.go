@@ -42,7 +42,9 @@ func getResourceDecision(
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %w", ErrInvalidResource)
 	}
-	return nil, nil
+
+	// should never reach here
+	return nil, fmt.Errorf("unable to get resource resource decision: %w", ErrInvalidResource)
 }
 
 // evaluateResourceAttributeValues evaluates a list of attribute values against the action and entitlements
@@ -230,7 +232,6 @@ func anyOfRule(
 		return nil
 	}
 	return entitlementFailures
-
 }
 
 // hierarchyRule validates that:

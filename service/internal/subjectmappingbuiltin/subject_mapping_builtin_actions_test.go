@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -127,7 +128,6 @@ func createAttributeMapping(attributeFQN string, subjectMappings ...*policy.Subj
 	return &attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 		Value: value,
 	}
-
 }
 
 func TestEvaluateSubjectMappingMultipleEntitiesWithActions_SingleEntity(t *testing.T) {
@@ -144,7 +144,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_SingleEntity(t *testi
 	}
 
 	result, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(attributeMappings, []*entityresolutionV2.EntityRepresentation{engineeringEntity})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, result, 1)
 
 	// Check entity entitlements
@@ -190,7 +190,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_MultipleEntities(t *t
 	)
 
 	// Validate results
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, result, 2)
 
 	// Check engineering entity entitlements
@@ -238,7 +238,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_NoMatchingEntities(t 
 	)
 
 	// Validate results
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, result, 1)
 
 	// Marketing entity should exist in the result but with empty entitlements
@@ -272,7 +272,7 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_MultipleAttributes(t 
 	)
 
 	// Validate results
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, result, 1)
 
 	entitlements, exists := result["engineering-entity"]
@@ -358,7 +358,7 @@ func TestEvaluateSubjectMappingsWithActions_OneGoodResolution(t *testing.T) {
 			}
 			// Execute function
 			entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, entity)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Len(t, entitlements, 1)
 
 			// Check actions for the attribute
@@ -426,7 +426,7 @@ func TestEvaluateSubjectMappingsWithActions_MultipleMatchingSubjectMappings(t *t
 	entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, multiMatchEntity)
 
 	// Validate results
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, entitlements, 2)
 
 	// Check confidential actions - should include read, create, and update from both subject mappings
@@ -474,7 +474,7 @@ func TestEvaluateSubjectMappingsWithActions_NoMatchingSubjectMappings(t *testing
 	entitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, marketingEntity)
 
 	// Validate results
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, entitlements)
 }
 
@@ -558,7 +558,7 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 
 	// Test senior engineer
 	seniorEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, seniorEngEntity)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, seniorEntitlements, 0)
 	seniorActions, exists := seniorEntitlements[classRestrictedFQN]
 	assert.False(t, exists)
@@ -566,7 +566,7 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 
 	// Test principal engineer with admin
 	adminEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, principalEngWithAdmin)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, adminEntitlements, 1)
 	seniorWithAdminActions, exists := adminEntitlements[classRestrictedFQN]
 	assert.True(t, exists)
@@ -580,7 +580,7 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 
 	// Test senior engineer with admin in a different index
 	adminEntitlementsBadIndex, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, seniorEngWithAdminEntityInBadIndex)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, adminEntitlementsBadIndex, 0)
 	adminActionsBadIndex, exists := adminEntitlementsBadIndex[classRestrictedFQN]
 	assert.False(t, exists)
@@ -588,8 +588,8 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 
 	// Test non-engineering admin
 	nonEngAdminEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, nonEngAdminEntity)
-	assert.NoError(t, err)
-	assert.Len(t, nonEngAdminEntitlements, 0)
+	require.NoError(t, err)
+	assert.Empty(t, nonEngAdminEntitlements)
 	nonEngAdminActions, exists := nonEngAdminEntitlements[classRestrictedFQN]
 	assert.False(t, exists)
 	assert.Empty(t, nonEngAdminActions)

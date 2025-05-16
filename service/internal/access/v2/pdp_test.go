@@ -362,7 +362,7 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint() {
 			pdp, err := NewPolicyDecisionPoint(s.T().Context(), s.logger, tc.attributes, tc.subjectMappings)
 
 			if tc.expectError {
-				s.Error(err)
+				s.Require().Error(err)
 				s.Nil(pdp)
 			} else {
 				s.NoError(err)
@@ -891,21 +891,21 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		s.Require().NotNil(entityEntitlement, "Entity entitlements should be found")
 
 		// Verify entitlements for classification
-		secretActions := entityEntitlement.ActionsPerAttributeValueFqn[testClassSecretFQN]
+		secretActions := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassSecretFQN]
 		s.Require().NotNil(secretActions, "Secret classification entitlements should exist")
-		s.Contains(actionNames(secretActions.Actions), actions.ActionNameRead)
-		s.Contains(actionNames(secretActions.Actions), actions.ActionNameUpdate)
+		s.Contains(actionNames(secretActions.GetActions()), actions.ActionNameRead)
+		s.Contains(actionNames(secretActions.GetActions()), actions.ActionNameUpdate)
 
 		// Verify entitlements for department
-		engineeringActions := entityEntitlement.ActionsPerAttributeValueFqn[testDeptEngineeringFQN]
+		engineeringActions := entityEntitlement.GetActionsPerAttributeValueFqn()[testDeptEngineeringFQN]
 		s.Require().NotNil(engineeringActions, "Engineering department entitlements should exist")
-		s.Contains(actionNames(engineeringActions.Actions), actions.ActionNameRead)
-		s.Contains(actionNames(engineeringActions.Actions), actions.ActionNameCreate)
+		s.Contains(actionNames(engineeringActions.GetActions()), actions.ActionNameRead)
+		s.Contains(actionNames(engineeringActions.GetActions()), actions.ActionNameCreate)
 
 		// Verify entitlements for country
-		usaActions := entityEntitlement.ActionsPerAttributeValueFqn[testCountryUSAFQN]
+		usaActions := entityEntitlement.GetActionsPerAttributeValueFqn()[testCountryUSAFQN]
 		s.Require().NotNil(usaActions, "USA country entitlements should exist")
-		s.Contains(actionNames(usaActions.Actions), actions.ActionNameRead)
+		s.Contains(actionNames(usaActions.GetActions()), actions.ActionNameRead)
 	})
 
 	s.Run("Entity with no matching entitlements", func() {
@@ -925,7 +925,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		// Find the entity's entitlements
 		entityEntitlement := findEntityEntitlements(entitlements, "test-entity-2")
 		s.Require().NotNil(entityEntitlement, "Entity should be included in results even with no entitlements")
-		s.Empty(entityEntitlement.ActionsPerAttributeValueFqn, "No attribute value FQNs should be mapped for this entity")
+		s.Empty(entityEntitlement.GetActionsPerAttributeValueFqn(), "No attribute value FQNs should be mapped for this entity")
 	})
 
 	s.Run("Entity with partial entitlements", func() {
@@ -946,12 +946,12 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		s.Require().NotNil(entityEntitlement, "Entity entitlements should be found")
 
 		// Verify public classification entitlements exist
-		s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, testClassPublicFQN, "Public classification entitlements should exist")
-		publicActions := entityEntitlement.ActionsPerAttributeValueFqn[testClassPublicFQN]
-		s.Contains(actionNames(publicActions.Actions), actions.ActionNameRead)
+		s.Contains(entityEntitlement.GetActionsPerAttributeValueFqn(), testClassPublicFQN, "Public classification entitlements should exist")
+		publicActions := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassPublicFQN]
+		s.Contains(actionNames(publicActions.GetActions()), actions.ActionNameRead)
 
 		// Verify sales department entitlements do not exist
-		s.NotContains(entityEntitlement.ActionsPerAttributeValueFqn, testDeptSalesFQN, "Sales department should not have entitlements")
+		s.NotContains(entityEntitlement.GetActionsPerAttributeValueFqn(), testDeptSalesFQN, "Sales department should not have entitlements")
 	})
 
 	s.Run("Multiple entities with various entitlements", func() {
@@ -988,11 +988,11 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 				// Find the entity's entitlements
 				entityEntitlement := findEntityEntitlements(entitlements, entityCase.name)
 				s.Require().NotNil(entityEntitlement, "Entity entitlements should be found")
-				s.Require().Len(entityEntitlement.ActionsPerAttributeValueFqn, len(entityCase.expectedEntitlements), "Number of entitlements should match expected")
+				s.Require().Len(entityEntitlement.GetActionsPerAttributeValueFqn(), len(entityCase.expectedEntitlements), "Number of entitlements should match expected")
 
 				// Verify expected entitlements exist
 				for _, expectedFQN := range entityCase.expectedEntitlements {
-					s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, expectedFQN)
+					s.Contains(entityEntitlement.GetActionsPerAttributeValueFqn(), expectedFQN)
 				}
 			})
 		}
@@ -1015,40 +1015,40 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		s.Require().NotNil(entityEntitlement)
 
 		// With comprehensive hierarchy, the entity should have access to secret and all lower classifications
-		s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, testClassSecretFQN)
+		s.Contains(entityEntitlement.GetActionsPerAttributeValueFqn(), testClassSecretFQN)
 
 		// The function populateLowerValuesIfHierarchy assumes the values in the hierarchy are arranged
 		// in order from highest to lowest. In our test fixture, that means:
 		// topsecret > secret > confidential > public
 
 		// Secret clearance should give access to confidential and public (the items lower in the list)
-		s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, testClassConfidentialFQN)
-		s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, testClassPublicFQN)
+		s.Contains(entityEntitlement.GetActionsPerAttributeValueFqn(), testClassConfidentialFQN)
+		s.Contains(entityEntitlement.GetActionsPerAttributeValueFqn(), testClassPublicFQN)
 
 		// But not to higher classifications
-		s.NotContains(entityEntitlement.ActionsPerAttributeValueFqn, testClassTopSecretFQN)
+		s.NotContains(entityEntitlement.GetActionsPerAttributeValueFqn(), testClassTopSecretFQN)
 
 		// Verify the actions for the lower levels match those granted to the secret level
-		secretActions := entityEntitlement.ActionsPerAttributeValueFqn[testClassSecretFQN]
+		secretActions := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassSecretFQN]
 		s.Require().NotNil(secretActions)
 
-		confidentialActions := entityEntitlement.ActionsPerAttributeValueFqn[testClassConfidentialFQN]
+		confidentialActions := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassConfidentialFQN]
 		s.Require().NotNil(confidentialActions)
 
-		publicActions := entityEntitlement.ActionsPerAttributeValueFqn[testClassPublicFQN]
+		publicActions := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassPublicFQN]
 		s.Require().NotNil(publicActions)
 
-		s.Len(secretActions.Actions, len(f.secretMapping.GetActions()))
+		s.Len(secretActions.GetActions(), len(f.secretMapping.GetActions()))
 
 		// The actions should be the same for all levels
 		s.ElementsMatch(
-			actionNames(secretActions.Actions),
-			actionNames(confidentialActions.Actions),
+			actionNames(secretActions.GetActions()),
+			actionNames(confidentialActions.GetActions()),
 			"Secret and confidential should have the same actions")
 
 		s.ElementsMatch(
-			actionNames(secretActions.Actions),
-			actionNames(publicActions.Actions),
+			actionNames(secretActions.GetActions()),
+			actionNames(publicActions.GetActions()),
 			"Secret and public should have the same actions")
 	})
 
@@ -1074,11 +1074,11 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		s.Require().NotNil(entityEntitlement)
 
 		// Should only have classification entitlements
-		s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, testClassSecretFQN)
+		s.Contains(entityEntitlement.GetActionsPerAttributeValueFqn(), testClassSecretFQN)
 
 		// Should not have department or country entitlements
-		s.NotContains(entityEntitlement.ActionsPerAttributeValueFqn, testDeptEngineeringFQN)
-		s.NotContains(entityEntitlement.ActionsPerAttributeValueFqn, testCountryUSAFQN)
+		s.NotContains(entityEntitlement.GetActionsPerAttributeValueFqn(), testDeptEngineeringFQN)
+		s.NotContains(entityEntitlement.GetActionsPerAttributeValueFqn(), testCountryUSAFQN)
 	})
 }
 
@@ -1189,54 +1189,55 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 	// Find the entity's entitlements
 	entityEntitlement := findEntityEntitlements(entitlements, "hierarchy-test-entity")
 	s.Require().NotNil(entityEntitlement, "Entity entitlements should be found")
-	s.Require().Len(entityEntitlement.ActionsPerAttributeValueFqn, 5, "Number of entitlements should match expected")
-	s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, topValueFQN, "Top level should be present")
-	s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, upperMiddleValueFQN, "Upper-middle level should be present")
-	s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, middleValueFQN, "Middle level should be present")
-	s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, lowerMiddleValueFQN, "Lower-middle level should be present")
-	s.Contains(entityEntitlement.ActionsPerAttributeValueFqn, bottomValueFQN, "Bottom level should be present")
+	s.Require().Len(entityEntitlement.GetActionsPerAttributeValueFqn(), 5, "Number of entitlements should match expected")
+	s.Contains(entityEntitlement.GetActionsPerAttributeValueFqn(), topValueFQN, "Top level should be present")
+	s.Contains(entityEntitlement.GetActionsPerAttributeValueFqn(), upperMiddleValueFQN, "Upper-middle level should be present")
+	s.Contains(entityEntitlement.GetActionsPerAttributeValueFqn(), middleValueFQN, "Middle level should be present")
+	s.Contains(entityEntitlement.GetActionsPerAttributeValueFqn(), lowerMiddleValueFQN, "Lower-middle level should be present")
+	s.Contains(entityEntitlement.GetActionsPerAttributeValueFqn(), bottomValueFQN, "Bottom level should be present")
 
 	// Verify actions for each level
-	topActions := entityEntitlement.ActionsPerAttributeValueFqn[topValueFQN]
+	topActions := entityEntitlement.GetActionsPerAttributeValueFqn()[topValueFQN]
 	s.Require().NotNil(topActions, "Top level actions should exist")
-	s.Len(topActions.Actions, 1)
-	s.Contains(actionNames(topActions.Actions), actions.ActionNameRead, "Top level should have read action")
+	s.Len(topActions.GetActions(), 1)
+	s.Contains(actionNames(topActions.GetActions()), actions.ActionNameRead, "Top level should have read action")
 
-	upperMiddleActions := entityEntitlement.ActionsPerAttributeValueFqn[upperMiddleValueFQN]
+	upperMiddleActions := entityEntitlement.GetActionsPerAttributeValueFqn()[upperMiddleValueFQN]
 	s.Require().NotNil(upperMiddleActions, "Upper-middle level actions should exist")
-	s.Len(upperMiddleActions.Actions, 2)
-	upperMiddleActionNames := actionNames(upperMiddleActions.Actions)
+	s.Len(upperMiddleActions.GetActions(), 2)
+	upperMiddleActionNames := actionNames(upperMiddleActions.GetActions())
 	s.Contains(upperMiddleActionNames, actions.ActionNameCreate, "Upper-middle level should have create action")
 	s.Contains(upperMiddleActionNames, actions.ActionNameRead, "Upper-middle level should have read action")
 
-	middleActions := entityEntitlement.ActionsPerAttributeValueFqn[middleValueFQN]
+	middleActions := entityEntitlement.GetActionsPerAttributeValueFqn()[middleValueFQN]
 	s.Require().NotNil(middleActions, "Middle level actions should exist")
-	s.Len(middleActions.Actions, 4)
-	middleActionNames := actionNames(middleActions.Actions)
+	s.Len(middleActions.GetActions(), 4)
+	middleActionNames := actionNames(middleActions.GetActions())
 	s.Contains(middleActionNames, actions.ActionNameUpdate, "Middle level should have update action")
 	s.Contains(middleActionNames, actionNameTransmit, "Middle level should have transmit action")
 	s.Contains(middleActionNames, actions.ActionNameCreate, "Middle level should have create action")
 	s.Contains(middleActionNames, actions.ActionNameRead, "Middle level should have read action")
 
-	lowerMiddleActions := entityEntitlement.ActionsPerAttributeValueFqn[lowerMiddleValueFQN]
+	lowerMiddleActions := entityEntitlement.GetActionsPerAttributeValueFqn()[lowerMiddleValueFQN]
 	s.Require().NotNil(lowerMiddleActions, "Lower-middle level actions should exist")
-	s.Len(lowerMiddleActions.Actions, 5)
-	lowerMiddleActionNames := actionNames(lowerMiddleActions.Actions)
+	s.Len(lowerMiddleActions.GetActions(), 5)
+	lowerMiddleActionNames := actionNames(lowerMiddleActions.GetActions())
 	s.Contains(lowerMiddleActionNames, actions.ActionNameDelete, "Lower-middle level should have delete action")
 	s.Contains(lowerMiddleActionNames, actions.ActionNameUpdate, "Lower-middle level should have update action")
 	s.Contains(lowerMiddleActionNames, actions.ActionNameCreate, "Lower-middle level should have create action")
 	s.Contains(lowerMiddleActionNames, actionNameTransmit, "Lower-middle level should have read action")
 	s.Contains(lowerMiddleActionNames, actions.ActionNameRead, "Lower-middle level should have read action")
 
-	bottomActions := entityEntitlement.ActionsPerAttributeValueFqn[bottomValueFQN]
+	bottomActions := entityEntitlement.GetActionsPerAttributeValueFqn()[bottomValueFQN]
 	s.Require().NotNil(bottomActions, "Bottom level actions should exist")
-	s.Len(bottomActions.Actions, 6)
-	s.Contains(actionNames(bottomActions.Actions), actions.ActionNameRead, "Bottom level should have read action")
-	s.Contains(actionNames(bottomActions.Actions), actions.ActionNameUpdate, "Bottom level should have update action")
-	s.Contains(actionNames(bottomActions.Actions), actions.ActionNameCreate, "Bottom level should have create action")
-	s.Contains(actionNames(bottomActions.Actions), actions.ActionNameDelete, "Bottom level should have delete action")
-	s.Contains(actionNames(bottomActions.Actions), actionNameTransmit, "Bottom level should have transmit action")
-	s.Contains(actionNames(bottomActions.Actions), customActionGather, "Bottom level should have gather action")
+	s.Len(bottomActions.GetActions(), 6)
+	bottomActionNames := actionNames(bottomActions.GetActions())
+	s.Contains(bottomActionNames, actions.ActionNameRead, "Bottom level should have read action")
+	s.Contains(bottomActionNames, actions.ActionNameUpdate, "Bottom level should have update action")
+	s.Contains(bottomActionNames, actions.ActionNameCreate, "Bottom level should have create action")
+	s.Contains(bottomActionNames, actions.ActionNameDelete, "Bottom level should have delete action")
+	s.Contains(bottomActionNames, actionNameTransmit, "Bottom level should have transmit action")
+	s.Contains(bottomActionNames, customActionGather, "Bottom level should have gather action")
 }
 
 // Test_GetDecision_PartialActionEntitlement tests scenarios where actions only partially align with entitlements
@@ -1585,7 +1586,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		// Drill down proper structure of denial
 		resourceDecision := decision.Results[0]
 		s.Require().False(resourceDecision.Passed)
-		s.Equal(resourceDecision.ResourceID, "secret-engineering-usa-resource")
+		s.Equal("secret-engineering-usa-resource", resourceDecision.ResourceID)
 		s.Len(resourceDecision.DataRuleResults, 3)
 		for _, ruleResult := range resourceDecision.DataRuleResults {
 			switch ruleResult.RuleDefinition.GetFqn() {
@@ -1625,10 +1626,10 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 
 		// No other action is permitted by all three attributes
 		for _, action := range []string{actions.ActionNameCreate, actions.ActionNameUpdate, actions.ActionNameDelete} {
-			decision, err := pdp.GetDecision(s.T().Context(), entity, &policy.Action{Name: action}, []*authz.Resource{combinedResource})
+			d, err := pdp.GetDecision(s.T().Context(), entity, &policy.Action{Name: action}, []*authz.Resource{combinedResource})
 			s.Require().NoError(err)
-			s.Require().NotNil(decision)
-			s.False(decision.Access, "Action %s should not be allowed", action)
+			s.Require().NotNil(d)
+			s.False(d.Access, "Action %s should not be allowed", action)
 		}
 	})
 
@@ -1825,7 +1826,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 // assertDecisionResult is a helper function to assert that a decision result for a given FQN matches the expected pass/fail state
 func (s *PDPTestSuite) assertDecisionResult(decision *Decision, fqn string, shouldPass bool) {
 	resourceDecision := findResourceDecision(decision, fqn)
-	s.Require().NotNil(resourceDecision, fmt.Sprintf("No result found for FQN %s", fqn))
+	s.Require().NotNil(resourceDecision, "No result found for FQN: "+fqn)
 	s.Equal(shouldPass, resourceDecision.Passed, "Unexpected result for FQN %s. Expected (%t), got (%t)", fqn, shouldPass, resourceDecision.Passed)
 }
 
@@ -1898,7 +1899,7 @@ func actionNames(actions []*policy.Action) []string {
 // findEntityEntitlements finds entity entitlements by ID
 func findEntityEntitlements(entitlements []*authz.EntityEntitlements, entityID string) *authz.EntityEntitlements {
 	for _, e := range entitlements {
-		if e != nil && e.EphemeralId == entityID {
+		if e != nil && e.GetEphemeralId() == entityID {
 			return e
 		}
 	}

@@ -83,8 +83,8 @@ func populateLowerValuesIfHierarchy(
 	lower := false
 	for _, value := range definition.GetValues() {
 		if lower {
-			alreadyEntitledActions, ok := entitledActionsPerAttributeValueFqn[value.GetFqn()]
-			if !ok {
+			alreadyEntitledActions, exists := entitledActionsPerAttributeValueFqn[value.GetFqn()]
+			if !exists {
 				entitledActionsPerAttributeValueFqn[value.GetFqn()] = entitledActions
 			} else {
 				// Ensure the actions are unique
@@ -95,7 +95,6 @@ func populateLowerValuesIfHierarchy(
 				}
 
 				entitledActionsPerAttributeValueFqn[value.GetFqn()] = merged
-
 			}
 		}
 		if value.GetFqn() == valueFQN {

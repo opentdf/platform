@@ -1,7 +1,6 @@
 package access
 
 import (
-	"errors"
 	"testing"
 
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -9,7 +8,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/policy/actions"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -87,10 +86,10 @@ func TestValidateGetDecision(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateGetDecision(tt.entityRep, tt.action, tt.resources)
 			if tt.wantErr != nil {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v", tt.wantErr, err)
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.wantErr)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -158,10 +157,10 @@ func TestValidateSubjectMapping(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateSubjectMapping(tt.subjectMapping)
 			if tt.wantErr != nil {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v", tt.wantErr, err)
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.wantErr)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -265,10 +264,10 @@ func TestValidateAttribute(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateAttribute(tt.attribute)
 			if tt.wantErr != nil {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v", tt.wantErr, err)
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.wantErr)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -306,10 +305,10 @@ func TestValidateEntityRepresentations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateEntityRepresentations(tt.entityRepresentations)
 			if tt.wantErr != nil {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v", tt.wantErr, err)
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.wantErr)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -418,10 +417,10 @@ func TestValidateGetResourceDecision(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateGetResourceDecision(tt.accessibleAttributeValues, tt.entitlements, tt.action, tt.resource)
 			if tt.wantErr != nil {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v in %s", tt.wantErr, err, tt.name)
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.wantErr)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

@@ -646,7 +646,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 			if tc.expectError {
 				s.Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 				s.NotNil(result)
 				s.Equal(tc.expectPass, result.Passed)
 			}
@@ -730,9 +730,9 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 
 				// Check results array has the correct length based on grouping by definition
 				definitions := make(map[string]bool)
-				for _, fqn := range tc.resourceAttrs.Fqns {
+				for _, fqn := range tc.resourceAttrs.GetFqns() {
 					if attrAndValue, ok := s.accessibleAttrValues[fqn]; ok {
-						definitions[attrAndValue.Attribute.GetFqn()] = true
+						definitions[attrAndValue.GetAttribute().GetFqn()] = true
 					}
 				}
 				s.Len(resourceDecision.DataRuleResults, len(definitions))
@@ -785,7 +785,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			if tc.expectError {
 				s.Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 				s.NotNil(decision)
 			}
 		})

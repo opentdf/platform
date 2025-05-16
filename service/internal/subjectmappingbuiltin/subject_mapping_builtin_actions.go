@@ -11,6 +11,7 @@ import (
 )
 
 type AttributeValueFQNsToActions map[string][]*policy.Action
+
 type EntityIDsToEntitlements map[string]AttributeValueFQNsToActions
 
 func EvaluateSubjectMappingMultipleEntitiesWithActions(

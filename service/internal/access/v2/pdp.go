@@ -116,7 +116,6 @@ func NewPolicyDecisionPoint(
 			Attribute: parentDefinition,
 		}
 		allEntitleableAttributesByValueFQN[mappedValueFQN] = mapped
-
 	}
 
 	pdp := &PolicyDecisionPoint{
@@ -266,7 +265,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 		return nil, err
 	}
 
-	result := make([]*authz.EntityEntitlements, len(entityRepresentations))
+	var result []*authz.EntityEntitlements
 	for entityID, fqnsToActions := range entityIDsToFQNsToActions {
 		actionsPerAttributeValueFqn := make(map[string]*authz.EntityEntitlements_ActionsList)
 
@@ -291,8 +290,8 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 					return nil, err
 				}
 			}
-
 		}
+
 		result = append(result, &authz.EntityEntitlements{
 			EphemeralId:                 entityID,
 			ActionsPerAttributeValueFqn: actionsPerAttributeValueFqn,

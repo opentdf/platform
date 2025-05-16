@@ -1,7 +1,6 @@
 package access
 
 import (
-	"errors"
 	"testing"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -10,6 +9,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Updated assertions to include better validation of the retrieved definition
@@ -61,9 +61,9 @@ func TestGetDefinition(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			def, err := getDefinition(tt.valueFQN, tt.definitions)
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, validDefinition, def, "Expected definition to match")
 			}
 		})
@@ -205,13 +205,13 @@ func TestGetFilteredEntitleableAttributes(t *testing.T) {
 
 			// Check error handling
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Verify size matches expected number of filtered elements
-			assert.Equal(t, len(tt.expectedFilteredFQNs), len(filtered),
+			assert.Len(t, len(tt.expectedFilteredFQNs), len(filtered),
 				"Expected filtered map to have %d elements, got %d",
 				len(tt.expectedFilteredFQNs), len(filtered))
 
@@ -222,11 +222,11 @@ func TestGetFilteredEntitleableAttributes(t *testing.T) {
 
 				// Verify attribute definitions are preserved from the original map
 				originalAttributeAndValue := tt.allEntitleableAttributes[expectedFQN]
-				assert.Equal(t, originalAttributeAndValue.Attribute, attributeAndValue.Attribute,
+				assert.Equal(t, originalAttributeAndValue.GetAttribute(), attributeAndValue.GetAttribute(),
 					"Expected attribute definition to be preserved for FQN: %s", expectedFQN)
 
 				// Verify value FQN is correct
-				assert.Equal(t, expectedFQN, attributeAndValue.Value.GetFqn(),
+				assert.Equal(t, expectedFQN, attributeAndValue.GetValue().GetFqn(),
 					"Expected value FQN to match for FQN: %s", expectedFQN)
 			}
 
@@ -367,15 +367,15 @@ func TestPopulateLowerValuesIfHierarchy(t *testing.T) {
 			err := populateLowerValuesIfHierarchy(tt.valueFQN, entitleableAttributes, tt.entitledActions, tt.actionsPerAttributeValueFqn)
 
 			if tt.wantErr != nil {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v", tt.wantErr, err)
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.wantErr)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Len(t, tt.expectedMapKeyFQNs, len(tt.actionsPerAttributeValueFqn), "Expected map to have %d keys, got %d", len(tt.expectedMapKeyFQNs), len(tt.actionsPerAttributeValueFqn))
 				for _, key := range tt.expectedMapKeyFQNs {
 					assert.Contains(t, tt.actionsPerAttributeValueFqn, key, "Expected map to contain key %s", key)
 					assert.Equal(t, tt.entitledActions, tt.actionsPerAttributeValueFqn[key], "Expected map value for key %s to match", key)
-					assert.Equal(t, len(tt.entitledActions.Actions), len(tt.actionsPerAttributeValueFqn[key].Actions), "Expected map value for key %s to match", key)
+					assert.Len(t, len(tt.entitledActions.GetActions()), len(tt.actionsPerAttributeValueFqn[key].GetActions()), "Expected map value for key %s to match", key)
 				}
 			}
 		})
@@ -512,12 +512,12 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 			err := populateHigherValuesIfHierarchy(t.Context(), logger.CreateTestLogger(), tt.valueFQN, tt.definition, allValueFQNsToAttributeValues, decisionableAttributes)
 
 			if tt.wantErr != nil {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, tt.wantErr), "Expected error %v, got %v", tt.wantErr, err)
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.wantErr)
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Check for expected additions to the map
 			for _, expectedAddition := range tt.expectedMapAdditions {
@@ -529,7 +529,7 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 			}
 
 			// Verify only the expected keys were added
-			assert.Equal(t, len(tt.expectedMapAdditions), len(decisionableAttributes), "Expected %d additions to map, got %d", len(tt.expectedMapAdditions), len(decisionableAttributes))
+			assert.Len(t, len(tt.expectedMapAdditions), len(decisionableAttributes), "Expected %d additions to map, got %d", len(tt.expectedMapAdditions), len(decisionableAttributes))
 		})
 	}
 
@@ -537,7 +537,7 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 
 	// Populate up from second highest
 	err := populateHigherValuesIfHierarchy(t.Context(), logger.CreateTestLogger(), exampleRestrictedFQN, hierarchyAttribute, allValueFQNsToAttributeValues, decisionableAttributes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, decisionableAttributes)
 	assert.Len(t, decisionableAttributes, 1)
 
@@ -548,7 +548,7 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 
 	// Call it with lowest
 	err = populateHigherValuesIfHierarchy(t.Context(), logger.CreateTestLogger(), examplePublicFQN, hierarchyAttribute, allValueFQNsToAttributeValues, decisionableAttributes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, decisionableAttributes)
 
 	// Every value above public should be present

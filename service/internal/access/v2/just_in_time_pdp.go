@@ -174,7 +174,6 @@ func (p *JustInTimePDP) GetEntitlements(
 		return nil, fmt.Errorf("failed to get entitlements: %w", err)
 	}
 	return entitlements, nil
-
 }
 
 // getMatchedSubjectMappings retrieves the subject mappings for the provided entity representations

@@ -43,7 +43,7 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 			for _, attr := range policy.Body.DataAttributes {
 				attrValueFqns = append(attrValueFqns, attr.URI)
 			}
-			resource := &authzV2.Resource{
+			resources[i] = &authzV2.Resource{
 				EphemeralId: id,
 				Resource: &authzV2.Resource_AttributeValues_{
 					AttributeValues: &authzV2.Resource_AttributeValues{
@@ -51,11 +51,17 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 					},
 				},
 			}
-			resources = append(resources, resource)
 			idPolicyMap[id] = policy
 		} else {
 			res = append(res, PDPAccessResult{Access: true, Policy: policy})
 		}
+	}
+
+	// @security
+	// TODO: is this accurate?
+	if len(resources) == 0 {
+		p.Logger.DebugContext(ctx, "No resources to check")
+		return res, nil
 	}
 
 	ctx, span := p.Start(ctx, "checkAttributes")

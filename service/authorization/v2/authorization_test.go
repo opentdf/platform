@@ -222,7 +222,7 @@ func TestRollupMultiResourceDecisionSimple(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
-	assert.Equal(t, "resource-123", result[0].EphemeralResourceId)
+	assert.Equal(t, "resource-123", result[0].GetEphemeralResourceId())
 	assert.Equal(t, authzV2.Decision_DECISION_PERMIT, result[0].Decision)
 }
 

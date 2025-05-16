@@ -403,21 +403,23 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 		return nil, err
 	}
 
-	// get the attribute value and resouce mapping group, ensure the namesapce is the same
-	attrVal, err := c.GetAttributeValue(ctx, attributeValueID)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	attr, err := c.GetAttribute(ctx, attrVal.GetAttribute().GetId())
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	group, err := c.GetResourceMappingGroup(ctx, groupID)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if attr.GetNamespace().GetId() != group.GetNamespaceId() {
-		return nil, db.ErrNamespaceMismatch
+	if groupID != "" {
+		// get the attribute value and resouce mapping group, ensure the namesapce is the same
+		attrVal, err := c.GetAttributeValue(ctx, attributeValueID)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		attr, err := c.GetAttribute(ctx, attrVal.GetAttribute().GetId())
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		group, err := c.GetResourceMappingGroup(ctx, groupID)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		if attr.GetNamespace().GetId() != group.GetNamespaceId() {
+			return nil, db.ErrNamespaceMismatch
+		}
 	}
 
 	count, err := c.Queries.UpdateResourceMapping(ctx, UpdateResourceMappingParams{

@@ -27,6 +27,9 @@ type PrivateKeyDecryptor interface {
 	// Decrypt decrypts ciphertext with private key.
 	Decrypt(data []byte) ([]byte, error)
 
+	// DecryptWithEphemeralKey decrypts ciphertext with private key and ephemeral key, if needed.
+	DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error)
+
 	// Gets the public key
 	PublicKey() PublicKeyEncryptor
 }
@@ -118,6 +121,10 @@ func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 	}
 
 	return bytes, nil
+}
+
+func (asymDecryption AsymDecryption) DecryptWithEphemeralKey(data, _ []byte) ([]byte, error) {
+	return asymDecryption.Decrypt(data)
 }
 
 type ECDecryptor struct {

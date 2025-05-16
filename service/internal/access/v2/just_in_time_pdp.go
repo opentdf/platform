@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -276,7 +277,7 @@ func (p *JustInTimePDP) fetchAllSubjectMappings(ctx context.Context) ([]*policy.
 }
 
 // resolveEntitiesFromEntityChain roundtrips to ERS to resolve the provided entity chain
-// and optionally skips environment entities (which is current behavior in decision flow)
+// and optionally skips environment entities (which is expected behavior in decision flow)
 func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
 	ctx context.Context,
 	entityChain *entity.EntityChain,
@@ -296,6 +297,9 @@ func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
 	} else {
 		filteredEntities = entityChain.GetEntities()
 	}
+	if len(filteredEntities) == 0 {
+		return nil, errors.New("no subject entities to resolve - all were environment entities and skipped")
+	}
 
 	ersResp, err := p.sdk.EntityResolutionV2.ResolveEntities(ctx, &entityresolutionV2.ResolveEntitiesRequest{Entities: filteredEntities})
 	if err != nil {
@@ -309,7 +313,7 @@ func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
 }
 
 // resolveEntitiesFromToken roundtrips to ERS to resolve the provided token
-// and optionally skips environment entities (which is current behavior in decision flow)
+// and optionally skips environment entities (which is expected behavior in decision flow)
 func (p *JustInTimePDP) resolveEntitiesFromToken(
 	ctx context.Context,
 	token *entity.Token,

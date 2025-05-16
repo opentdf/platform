@@ -6,7 +6,6 @@ import (
 	"context"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces/namespacesconnect"
-	"google.golang.org/grpc"
 )
 
 type NamespaceServiceClientConnectWrapper struct {
@@ -17,7 +16,19 @@ func NewNamespaceServiceClientConnectWrapper(httpClient connect.HTTPClient, base
 	return &NamespaceServiceClientConnectWrapper{NamespaceServiceClient: namespacesconnect.NewNamespaceServiceClient(httpClient, baseURL, opts...)}
 }
 
-func (w *NamespaceServiceClientConnectWrapper) GetNamespace(ctx context.Context, req *namespaces.GetNamespaceRequest, _ ...grpc.CallOption) (*namespaces.GetNamespaceResponse, error) {
+type NamespaceServiceClient interface {
+	GetNamespace(ctx context.Context, req *namespaces.GetNamespaceRequest) (*namespaces.GetNamespaceResponse, error)
+	ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error)
+	CreateNamespace(ctx context.Context, req *namespaces.CreateNamespaceRequest) (*namespaces.CreateNamespaceResponse, error)
+	UpdateNamespace(ctx context.Context, req *namespaces.UpdateNamespaceRequest) (*namespaces.UpdateNamespaceResponse, error)
+	DeactivateNamespace(ctx context.Context, req *namespaces.DeactivateNamespaceRequest) (*namespaces.DeactivateNamespaceResponse, error)
+	AssignKeyAccessServerToNamespace(ctx context.Context, req *namespaces.AssignKeyAccessServerToNamespaceRequest) (*namespaces.AssignKeyAccessServerToNamespaceResponse, error)
+	RemoveKeyAccessServerFromNamespace(ctx context.Context, req *namespaces.RemoveKeyAccessServerFromNamespaceRequest) (*namespaces.RemoveKeyAccessServerFromNamespaceResponse, error)
+	AssignPublicKeyToNamespace(ctx context.Context, req *namespaces.AssignPublicKeyToNamespaceRequest) (*namespaces.AssignPublicKeyToNamespaceResponse, error)
+	RemovePublicKeyFromNamespace(ctx context.Context, req *namespaces.RemovePublicKeyFromNamespaceRequest) (*namespaces.RemovePublicKeyFromNamespaceResponse, error)
+}
+
+func (w *NamespaceServiceClientConnectWrapper) GetNamespace(ctx context.Context, req *namespaces.GetNamespaceRequest) (*namespaces.GetNamespaceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.NamespaceServiceClient.GetNamespace(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -26,7 +37,7 @@ func (w *NamespaceServiceClientConnectWrapper) GetNamespace(ctx context.Context,
 	return res.Msg, err
 }
 
-func (w *NamespaceServiceClientConnectWrapper) ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest, _ ...grpc.CallOption) (*namespaces.ListNamespacesResponse, error) {
+func (w *NamespaceServiceClientConnectWrapper) ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.NamespaceServiceClient.ListNamespaces(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -35,7 +46,7 @@ func (w *NamespaceServiceClientConnectWrapper) ListNamespaces(ctx context.Contex
 	return res.Msg, err
 }
 
-func (w *NamespaceServiceClientConnectWrapper) CreateNamespace(ctx context.Context, req *namespaces.CreateNamespaceRequest, _ ...grpc.CallOption) (*namespaces.CreateNamespaceResponse, error) {
+func (w *NamespaceServiceClientConnectWrapper) CreateNamespace(ctx context.Context, req *namespaces.CreateNamespaceRequest) (*namespaces.CreateNamespaceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.NamespaceServiceClient.CreateNamespace(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -44,7 +55,7 @@ func (w *NamespaceServiceClientConnectWrapper) CreateNamespace(ctx context.Conte
 	return res.Msg, err
 }
 
-func (w *NamespaceServiceClientConnectWrapper) UpdateNamespace(ctx context.Context, req *namespaces.UpdateNamespaceRequest, _ ...grpc.CallOption) (*namespaces.UpdateNamespaceResponse, error) {
+func (w *NamespaceServiceClientConnectWrapper) UpdateNamespace(ctx context.Context, req *namespaces.UpdateNamespaceRequest) (*namespaces.UpdateNamespaceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.NamespaceServiceClient.UpdateNamespace(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -53,7 +64,7 @@ func (w *NamespaceServiceClientConnectWrapper) UpdateNamespace(ctx context.Conte
 	return res.Msg, err
 }
 
-func (w *NamespaceServiceClientConnectWrapper) DeactivateNamespace(ctx context.Context, req *namespaces.DeactivateNamespaceRequest, _ ...grpc.CallOption) (*namespaces.DeactivateNamespaceResponse, error) {
+func (w *NamespaceServiceClientConnectWrapper) DeactivateNamespace(ctx context.Context, req *namespaces.DeactivateNamespaceRequest) (*namespaces.DeactivateNamespaceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.NamespaceServiceClient.DeactivateNamespace(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -62,7 +73,7 @@ func (w *NamespaceServiceClientConnectWrapper) DeactivateNamespace(ctx context.C
 	return res.Msg, err
 }
 
-func (w *NamespaceServiceClientConnectWrapper) AssignKeyAccessServerToNamespace(ctx context.Context, req *namespaces.AssignKeyAccessServerToNamespaceRequest, _ ...grpc.CallOption) (*namespaces.AssignKeyAccessServerToNamespaceResponse, error) {
+func (w *NamespaceServiceClientConnectWrapper) AssignKeyAccessServerToNamespace(ctx context.Context, req *namespaces.AssignKeyAccessServerToNamespaceRequest) (*namespaces.AssignKeyAccessServerToNamespaceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.NamespaceServiceClient.AssignKeyAccessServerToNamespace(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -71,7 +82,7 @@ func (w *NamespaceServiceClientConnectWrapper) AssignKeyAccessServerToNamespace(
 	return res.Msg, err
 }
 
-func (w *NamespaceServiceClientConnectWrapper) RemoveKeyAccessServerFromNamespace(ctx context.Context, req *namespaces.RemoveKeyAccessServerFromNamespaceRequest, _ ...grpc.CallOption) (*namespaces.RemoveKeyAccessServerFromNamespaceResponse, error) {
+func (w *NamespaceServiceClientConnectWrapper) RemoveKeyAccessServerFromNamespace(ctx context.Context, req *namespaces.RemoveKeyAccessServerFromNamespaceRequest) (*namespaces.RemoveKeyAccessServerFromNamespaceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.NamespaceServiceClient.RemoveKeyAccessServerFromNamespace(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -80,7 +91,7 @@ func (w *NamespaceServiceClientConnectWrapper) RemoveKeyAccessServerFromNamespac
 	return res.Msg, err
 }
 
-func (w *NamespaceServiceClientConnectWrapper) AssignPublicKeyToNamespace(ctx context.Context, req *namespaces.AssignPublicKeyToNamespaceRequest, _ ...grpc.CallOption) (*namespaces.AssignPublicKeyToNamespaceResponse, error) {
+func (w *NamespaceServiceClientConnectWrapper) AssignPublicKeyToNamespace(ctx context.Context, req *namespaces.AssignPublicKeyToNamespaceRequest) (*namespaces.AssignPublicKeyToNamespaceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.NamespaceServiceClient.AssignPublicKeyToNamespace(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -89,7 +100,7 @@ func (w *NamespaceServiceClientConnectWrapper) AssignPublicKeyToNamespace(ctx co
 	return res.Msg, err
 }
 
-func (w *NamespaceServiceClientConnectWrapper) RemovePublicKeyFromNamespace(ctx context.Context, req *namespaces.RemovePublicKeyFromNamespaceRequest, _ ...grpc.CallOption) (*namespaces.RemovePublicKeyFromNamespaceResponse, error) {
+func (w *NamespaceServiceClientConnectWrapper) RemovePublicKeyFromNamespace(ctx context.Context, req *namespaces.RemovePublicKeyFromNamespaceRequest) (*namespaces.RemovePublicKeyFromNamespaceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.NamespaceServiceClient.RemovePublicKeyFromNamespace(ctx, connect.NewRequest(req))
 	if res == nil {

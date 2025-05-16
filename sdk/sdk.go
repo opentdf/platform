@@ -15,18 +15,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/actions"
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
-	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
-	"github.com/opentdf/platform/protocol/go/policy/namespaces"
-	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
-	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
-	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
 	"github.com/opentdf/platform/sdk/audit"
@@ -66,18 +55,18 @@ type SDK struct {
 	*collectionStore
 	conn                    *ConnectRPCConnection
 	tokenSource             auth.AccessTokenSource
-	Actions                 actions.ActionServiceClient
-	Attributes              attributes.AttributesServiceClient
-	Authorization           authorization.AuthorizationServiceClient
-	EntityResoution         entityresolution.EntityResolutionServiceClient
-	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
-	Namespaces              namespaces.NamespaceServiceClient
-	RegisteredResources     registeredresources.RegisteredResourcesServiceClient
-	ResourceMapping         resourcemapping.ResourceMappingServiceClient
-	SubjectMapping          subjectmapping.SubjectMappingServiceClient
-	Unsafe                  unsafe.UnsafeServiceClient
-	KeyManagement           keymanagement.KeyManagementServiceClient
-	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
+	Actions                 sdkconnect.ActionServiceClient
+	Attributes              sdkconnect.AttributesServiceClient
+	Authorization           sdkconnect.AuthorizationServiceClient
+	EntityResoution         sdkconnect.EntityResolutionServiceClient
+	KeyAccessServerRegistry sdkconnect.KeyAccessServerRegistryServiceClient
+	Namespaces              sdkconnect.NamespaceServiceClient
+	RegisteredResources     sdkconnect.RegisteredResourcesServiceClient
+	ResourceMapping         sdkconnect.ResourceMappingServiceClient
+	SubjectMapping          sdkconnect.SubjectMappingServiceClient
+	Unsafe                  sdkconnect.UnsafeServiceClient
+	KeyManagement           sdkconnect.KeyManagementServiceClient
+	wellknownConfiguration  sdkconnect.WellKnownServiceClient
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {

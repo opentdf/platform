@@ -168,7 +168,6 @@ import (
 	"context"
 	"%s"
 	"%s"
-	"google.golang.org/grpc"
 )
 
 type %sConnectWrapper struct {
@@ -192,6 +191,8 @@ func New%sConnectWrapper(httpClient connect.HTTPClient, baseURL string, opts ...
 		connectPackageName,
 		interfaceName)
 
+	// Generate the interface type definition
+	wrapperCode += generateInterfaceType(interfaceName, methods, packageName)
 	// Now generate a wrapper function for each method in the interface
 	for _, method := range methods {
 		wrapperCode += generateWrapperMethod(interfaceName, method, packageName)
@@ -201,10 +202,23 @@ func New%sConnectWrapper(httpClient connect.HTTPClient, baseURL string, opts ...
 	return wrapperCode
 }
 
+func generateInterfaceType(interfaceName string, methods []string, packageName string) string {
+	// Generate the interface type definition
+	interfaceType := fmt.Sprintf(`
+type %s interface {
+`, interfaceName)
+	for _, method := range methods {
+		interfaceType += fmt.Sprintf(`	%s(ctx context.Context, req *%s.%sRequest) (*%s.%sResponse, error)
+`, method, packageName, method, packageName, method)
+	}
+	interfaceType += "}\n"
+	return interfaceType
+}
+
 // Generate the wrapper method for a specific method in the interface
 func generateWrapperMethod(interfaceName, methodName, packageName string) string {
 	return fmt.Sprintf(`
-func (w *%sConnectWrapper) %s(ctx context.Context, req *%s.%sRequest, _ ...grpc.CallOption) (*%s.%sResponse, error) {
+func (w *%sConnectWrapper) %s(ctx context.Context, req *%s.%sRequest) (*%s.%sResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.%s.%s(ctx, connect.NewRequest(req))
 	if res == nil {

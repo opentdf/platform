@@ -6,7 +6,6 @@ import (
 	"context"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
-	"google.golang.org/grpc"
 )
 
 type WellKnownServiceClientConnectWrapper struct {
@@ -17,7 +16,11 @@ func NewWellKnownServiceClientConnectWrapper(httpClient connect.HTTPClient, base
 	return &WellKnownServiceClientConnectWrapper{WellKnownServiceClient: wellknownconfigurationconnect.NewWellKnownServiceClient(httpClient, baseURL, opts...)}
 }
 
-func (w *WellKnownServiceClientConnectWrapper) GetWellKnownConfiguration(ctx context.Context, req *wellknownconfiguration.GetWellKnownConfigurationRequest, _ ...grpc.CallOption) (*wellknownconfiguration.GetWellKnownConfigurationResponse, error) {
+type WellKnownServiceClient interface {
+	GetWellKnownConfiguration(ctx context.Context, req *wellknownconfiguration.GetWellKnownConfigurationRequest) (*wellknownconfiguration.GetWellKnownConfigurationResponse, error)
+}
+
+func (w *WellKnownServiceClientConnectWrapper) GetWellKnownConfiguration(ctx context.Context, req *wellknownconfiguration.GetWellKnownConfigurationRequest) (*wellknownconfiguration.GetWellKnownConfigurationResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.WellKnownServiceClient.GetWellKnownConfiguration(ctx, connect.NewRequest(req))
 	if res == nil {

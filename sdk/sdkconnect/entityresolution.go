@@ -6,7 +6,6 @@ import (
 	"context"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/entityresolution/entityresolutionconnect"
-	"google.golang.org/grpc"
 )
 
 type EntityResolutionServiceClientConnectWrapper struct {
@@ -17,7 +16,12 @@ func NewEntityResolutionServiceClientConnectWrapper(httpClient connect.HTTPClien
 	return &EntityResolutionServiceClientConnectWrapper{EntityResolutionServiceClient: entityresolutionconnect.NewEntityResolutionServiceClient(httpClient, baseURL, opts...)}
 }
 
-func (w *EntityResolutionServiceClientConnectWrapper) ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest, _ ...grpc.CallOption) (*entityresolution.ResolveEntitiesResponse, error) {
+type EntityResolutionServiceClient interface {
+	ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error)
+	CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error)
+}
+
+func (w *EntityResolutionServiceClientConnectWrapper) ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.EntityResolutionServiceClient.ResolveEntities(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -26,7 +30,7 @@ func (w *EntityResolutionServiceClientConnectWrapper) ResolveEntities(ctx contex
 	return res.Msg, err
 }
 
-func (w *EntityResolutionServiceClientConnectWrapper) CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest, _ ...grpc.CallOption) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
+func (w *EntityResolutionServiceClientConnectWrapper) CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.EntityResolutionServiceClient.CreateEntityChainFromJwt(ctx, connect.NewRequest(req))
 	if res == nil {

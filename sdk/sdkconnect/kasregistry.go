@@ -6,7 +6,6 @@ import (
 	"context"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
-	"google.golang.org/grpc"
 )
 
 type KeyAccessServerRegistryServiceClientConnectWrapper struct {
@@ -17,7 +16,21 @@ func NewKeyAccessServerRegistryServiceClientConnectWrapper(httpClient connect.HT
 	return &KeyAccessServerRegistryServiceClientConnectWrapper{KeyAccessServerRegistryServiceClient: kasregistryconnect.NewKeyAccessServerRegistryServiceClient(httpClient, baseURL, opts...)}
 }
 
-func (w *KeyAccessServerRegistryServiceClientConnectWrapper) ListKeyAccessServers(ctx context.Context, req *kasregistry.ListKeyAccessServersRequest, _ ...grpc.CallOption) (*kasregistry.ListKeyAccessServersResponse, error) {
+type KeyAccessServerRegistryServiceClient interface {
+	ListKeyAccessServers(ctx context.Context, req *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error)
+	GetKeyAccessServer(ctx context.Context, req *kasregistry.GetKeyAccessServerRequest) (*kasregistry.GetKeyAccessServerResponse, error)
+	CreateKeyAccessServer(ctx context.Context, req *kasregistry.CreateKeyAccessServerRequest) (*kasregistry.CreateKeyAccessServerResponse, error)
+	UpdateKeyAccessServer(ctx context.Context, req *kasregistry.UpdateKeyAccessServerRequest) (*kasregistry.UpdateKeyAccessServerResponse, error)
+	DeleteKeyAccessServer(ctx context.Context, req *kasregistry.DeleteKeyAccessServerRequest) (*kasregistry.DeleteKeyAccessServerResponse, error)
+	ListKeyAccessServerGrants(ctx context.Context, req *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error)
+	CreateKey(ctx context.Context, req *kasregistry.CreateKeyRequest) (*kasregistry.CreateKeyResponse, error)
+	GetKey(ctx context.Context, req *kasregistry.GetKeyRequest) (*kasregistry.GetKeyResponse, error)
+	ListKeys(ctx context.Context, req *kasregistry.ListKeysRequest) (*kasregistry.ListKeysResponse, error)
+	UpdateKey(ctx context.Context, req *kasregistry.UpdateKeyRequest) (*kasregistry.UpdateKeyResponse, error)
+	RotateKey(ctx context.Context, req *kasregistry.RotateKeyRequest) (*kasregistry.RotateKeyResponse, error)
+}
+
+func (w *KeyAccessServerRegistryServiceClientConnectWrapper) ListKeyAccessServers(ctx context.Context, req *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.KeyAccessServerRegistryServiceClient.ListKeyAccessServers(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -26,7 +39,7 @@ func (w *KeyAccessServerRegistryServiceClientConnectWrapper) ListKeyAccessServer
 	return res.Msg, err
 }
 
-func (w *KeyAccessServerRegistryServiceClientConnectWrapper) GetKeyAccessServer(ctx context.Context, req *kasregistry.GetKeyAccessServerRequest, _ ...grpc.CallOption) (*kasregistry.GetKeyAccessServerResponse, error) {
+func (w *KeyAccessServerRegistryServiceClientConnectWrapper) GetKeyAccessServer(ctx context.Context, req *kasregistry.GetKeyAccessServerRequest) (*kasregistry.GetKeyAccessServerResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.KeyAccessServerRegistryServiceClient.GetKeyAccessServer(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -35,7 +48,7 @@ func (w *KeyAccessServerRegistryServiceClientConnectWrapper) GetKeyAccessServer(
 	return res.Msg, err
 }
 
-func (w *KeyAccessServerRegistryServiceClientConnectWrapper) CreateKeyAccessServer(ctx context.Context, req *kasregistry.CreateKeyAccessServerRequest, _ ...grpc.CallOption) (*kasregistry.CreateKeyAccessServerResponse, error) {
+func (w *KeyAccessServerRegistryServiceClientConnectWrapper) CreateKeyAccessServer(ctx context.Context, req *kasregistry.CreateKeyAccessServerRequest) (*kasregistry.CreateKeyAccessServerResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.KeyAccessServerRegistryServiceClient.CreateKeyAccessServer(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -44,7 +57,7 @@ func (w *KeyAccessServerRegistryServiceClientConnectWrapper) CreateKeyAccessServ
 	return res.Msg, err
 }
 
-func (w *KeyAccessServerRegistryServiceClientConnectWrapper) UpdateKeyAccessServer(ctx context.Context, req *kasregistry.UpdateKeyAccessServerRequest, _ ...grpc.CallOption) (*kasregistry.UpdateKeyAccessServerResponse, error) {
+func (w *KeyAccessServerRegistryServiceClientConnectWrapper) UpdateKeyAccessServer(ctx context.Context, req *kasregistry.UpdateKeyAccessServerRequest) (*kasregistry.UpdateKeyAccessServerResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.KeyAccessServerRegistryServiceClient.UpdateKeyAccessServer(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -53,7 +66,7 @@ func (w *KeyAccessServerRegistryServiceClientConnectWrapper) UpdateKeyAccessServ
 	return res.Msg, err
 }
 
-func (w *KeyAccessServerRegistryServiceClientConnectWrapper) DeleteKeyAccessServer(ctx context.Context, req *kasregistry.DeleteKeyAccessServerRequest, _ ...grpc.CallOption) (*kasregistry.DeleteKeyAccessServerResponse, error) {
+func (w *KeyAccessServerRegistryServiceClientConnectWrapper) DeleteKeyAccessServer(ctx context.Context, req *kasregistry.DeleteKeyAccessServerRequest) (*kasregistry.DeleteKeyAccessServerResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.KeyAccessServerRegistryServiceClient.DeleteKeyAccessServer(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -62,7 +75,7 @@ func (w *KeyAccessServerRegistryServiceClientConnectWrapper) DeleteKeyAccessServ
 	return res.Msg, err
 }
 
-func (w *KeyAccessServerRegistryServiceClientConnectWrapper) ListKeyAccessServerGrants(ctx context.Context, req *kasregistry.ListKeyAccessServerGrantsRequest, _ ...grpc.CallOption) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
+func (w *KeyAccessServerRegistryServiceClientConnectWrapper) ListKeyAccessServerGrants(ctx context.Context, req *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.KeyAccessServerRegistryServiceClient.ListKeyAccessServerGrants(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -71,7 +84,7 @@ func (w *KeyAccessServerRegistryServiceClientConnectWrapper) ListKeyAccessServer
 	return res.Msg, err
 }
 
-func (w *KeyAccessServerRegistryServiceClientConnectWrapper) CreateKey(ctx context.Context, req *kasregistry.CreateKeyRequest, _ ...grpc.CallOption) (*kasregistry.CreateKeyResponse, error) {
+func (w *KeyAccessServerRegistryServiceClientConnectWrapper) CreateKey(ctx context.Context, req *kasregistry.CreateKeyRequest) (*kasregistry.CreateKeyResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.KeyAccessServerRegistryServiceClient.CreateKey(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -80,7 +93,7 @@ func (w *KeyAccessServerRegistryServiceClientConnectWrapper) CreateKey(ctx conte
 	return res.Msg, err
 }
 
-func (w *KeyAccessServerRegistryServiceClientConnectWrapper) GetKey(ctx context.Context, req *kasregistry.GetKeyRequest, _ ...grpc.CallOption) (*kasregistry.GetKeyResponse, error) {
+func (w *KeyAccessServerRegistryServiceClientConnectWrapper) GetKey(ctx context.Context, req *kasregistry.GetKeyRequest) (*kasregistry.GetKeyResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.KeyAccessServerRegistryServiceClient.GetKey(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -89,7 +102,7 @@ func (w *KeyAccessServerRegistryServiceClientConnectWrapper) GetKey(ctx context.
 	return res.Msg, err
 }
 
-func (w *KeyAccessServerRegistryServiceClientConnectWrapper) ListKeys(ctx context.Context, req *kasregistry.ListKeysRequest, _ ...grpc.CallOption) (*kasregistry.ListKeysResponse, error) {
+func (w *KeyAccessServerRegistryServiceClientConnectWrapper) ListKeys(ctx context.Context, req *kasregistry.ListKeysRequest) (*kasregistry.ListKeysResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.KeyAccessServerRegistryServiceClient.ListKeys(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -98,7 +111,7 @@ func (w *KeyAccessServerRegistryServiceClientConnectWrapper) ListKeys(ctx contex
 	return res.Msg, err
 }
 
-func (w *KeyAccessServerRegistryServiceClientConnectWrapper) UpdateKey(ctx context.Context, req *kasregistry.UpdateKeyRequest, _ ...grpc.CallOption) (*kasregistry.UpdateKeyResponse, error) {
+func (w *KeyAccessServerRegistryServiceClientConnectWrapper) UpdateKey(ctx context.Context, req *kasregistry.UpdateKeyRequest) (*kasregistry.UpdateKeyResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.KeyAccessServerRegistryServiceClient.UpdateKey(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -107,7 +120,7 @@ func (w *KeyAccessServerRegistryServiceClientConnectWrapper) UpdateKey(ctx conte
 	return res.Msg, err
 }
 
-func (w *KeyAccessServerRegistryServiceClientConnectWrapper) RotateKey(ctx context.Context, req *kasregistry.RotateKeyRequest, _ ...grpc.CallOption) (*kasregistry.RotateKeyResponse, error) {
+func (w *KeyAccessServerRegistryServiceClientConnectWrapper) RotateKey(ctx context.Context, req *kasregistry.RotateKeyRequest) (*kasregistry.RotateKeyResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.KeyAccessServerRegistryServiceClient.RotateKey(ctx, connect.NewRequest(req))
 	if res == nil {

@@ -6,7 +6,6 @@ import (
 	"context"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/actions/actionsconnect"
-	"google.golang.org/grpc"
 )
 
 type ActionServiceClientConnectWrapper struct {
@@ -17,7 +16,15 @@ func NewActionServiceClientConnectWrapper(httpClient connect.HTTPClient, baseURL
 	return &ActionServiceClientConnectWrapper{ActionServiceClient: actionsconnect.NewActionServiceClient(httpClient, baseURL, opts...)}
 }
 
-func (w *ActionServiceClientConnectWrapper) GetAction(ctx context.Context, req *actions.GetActionRequest, _ ...grpc.CallOption) (*actions.GetActionResponse, error) {
+type ActionServiceClient interface {
+	GetAction(ctx context.Context, req *actions.GetActionRequest) (*actions.GetActionResponse, error)
+	ListActions(ctx context.Context, req *actions.ListActionsRequest) (*actions.ListActionsResponse, error)
+	CreateAction(ctx context.Context, req *actions.CreateActionRequest) (*actions.CreateActionResponse, error)
+	UpdateAction(ctx context.Context, req *actions.UpdateActionRequest) (*actions.UpdateActionResponse, error)
+	DeleteAction(ctx context.Context, req *actions.DeleteActionRequest) (*actions.DeleteActionResponse, error)
+}
+
+func (w *ActionServiceClientConnectWrapper) GetAction(ctx context.Context, req *actions.GetActionRequest) (*actions.GetActionResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ActionServiceClient.GetAction(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -26,7 +33,7 @@ func (w *ActionServiceClientConnectWrapper) GetAction(ctx context.Context, req *
 	return res.Msg, err
 }
 
-func (w *ActionServiceClientConnectWrapper) ListActions(ctx context.Context, req *actions.ListActionsRequest, _ ...grpc.CallOption) (*actions.ListActionsResponse, error) {
+func (w *ActionServiceClientConnectWrapper) ListActions(ctx context.Context, req *actions.ListActionsRequest) (*actions.ListActionsResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ActionServiceClient.ListActions(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -35,7 +42,7 @@ func (w *ActionServiceClientConnectWrapper) ListActions(ctx context.Context, req
 	return res.Msg, err
 }
 
-func (w *ActionServiceClientConnectWrapper) CreateAction(ctx context.Context, req *actions.CreateActionRequest, _ ...grpc.CallOption) (*actions.CreateActionResponse, error) {
+func (w *ActionServiceClientConnectWrapper) CreateAction(ctx context.Context, req *actions.CreateActionRequest) (*actions.CreateActionResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ActionServiceClient.CreateAction(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -44,7 +51,7 @@ func (w *ActionServiceClientConnectWrapper) CreateAction(ctx context.Context, re
 	return res.Msg, err
 }
 
-func (w *ActionServiceClientConnectWrapper) UpdateAction(ctx context.Context, req *actions.UpdateActionRequest, _ ...grpc.CallOption) (*actions.UpdateActionResponse, error) {
+func (w *ActionServiceClientConnectWrapper) UpdateAction(ctx context.Context, req *actions.UpdateActionRequest) (*actions.UpdateActionResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ActionServiceClient.UpdateAction(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -53,7 +60,7 @@ func (w *ActionServiceClientConnectWrapper) UpdateAction(ctx context.Context, re
 	return res.Msg, err
 }
 
-func (w *ActionServiceClientConnectWrapper) DeleteAction(ctx context.Context, req *actions.DeleteActionRequest, _ ...grpc.CallOption) (*actions.DeleteActionResponse, error) {
+func (w *ActionServiceClientConnectWrapper) DeleteAction(ctx context.Context, req *actions.DeleteActionRequest) (*actions.DeleteActionResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ActionServiceClient.DeleteAction(ctx, connect.NewRequest(req))
 	if res == nil {

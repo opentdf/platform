@@ -6,7 +6,6 @@ import (
 	"context"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe/unsafeconnect"
-	"google.golang.org/grpc"
 )
 
 type UnsafeServiceClientConnectWrapper struct {
@@ -17,7 +16,20 @@ func NewUnsafeServiceClientConnectWrapper(httpClient connect.HTTPClient, baseURL
 	return &UnsafeServiceClientConnectWrapper{UnsafeServiceClient: unsafeconnect.NewUnsafeServiceClient(httpClient, baseURL, opts...)}
 }
 
-func (w *UnsafeServiceClientConnectWrapper) UnsafeUpdateNamespace(ctx context.Context, req *unsafe.UnsafeUpdateNamespaceRequest, _ ...grpc.CallOption) (*unsafe.UnsafeUpdateNamespaceResponse, error) {
+type UnsafeServiceClient interface {
+	UnsafeUpdateNamespace(ctx context.Context, req *unsafe.UnsafeUpdateNamespaceRequest) (*unsafe.UnsafeUpdateNamespaceResponse, error)
+	UnsafeReactivateNamespace(ctx context.Context, req *unsafe.UnsafeReactivateNamespaceRequest) (*unsafe.UnsafeReactivateNamespaceResponse, error)
+	UnsafeDeleteNamespace(ctx context.Context, req *unsafe.UnsafeDeleteNamespaceRequest) (*unsafe.UnsafeDeleteNamespaceResponse, error)
+	UnsafeUpdateAttribute(ctx context.Context, req *unsafe.UnsafeUpdateAttributeRequest) (*unsafe.UnsafeUpdateAttributeResponse, error)
+	UnsafeReactivateAttribute(ctx context.Context, req *unsafe.UnsafeReactivateAttributeRequest) (*unsafe.UnsafeReactivateAttributeResponse, error)
+	UnsafeDeleteAttribute(ctx context.Context, req *unsafe.UnsafeDeleteAttributeRequest) (*unsafe.UnsafeDeleteAttributeResponse, error)
+	UnsafeUpdateAttributeValue(ctx context.Context, req *unsafe.UnsafeUpdateAttributeValueRequest) (*unsafe.UnsafeUpdateAttributeValueResponse, error)
+	UnsafeReactivateAttributeValue(ctx context.Context, req *unsafe.UnsafeReactivateAttributeValueRequest) (*unsafe.UnsafeReactivateAttributeValueResponse, error)
+	UnsafeDeleteAttributeValue(ctx context.Context, req *unsafe.UnsafeDeleteAttributeValueRequest) (*unsafe.UnsafeDeleteAttributeValueResponse, error)
+	UnsafeDeleteKasKey(ctx context.Context, req *unsafe.UnsafeDeleteKasKeyRequest) (*unsafe.UnsafeDeleteKasKeyResponse, error)
+}
+
+func (w *UnsafeServiceClientConnectWrapper) UnsafeUpdateNamespace(ctx context.Context, req *unsafe.UnsafeUpdateNamespaceRequest) (*unsafe.UnsafeUpdateNamespaceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.UnsafeServiceClient.UnsafeUpdateNamespace(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -26,7 +38,7 @@ func (w *UnsafeServiceClientConnectWrapper) UnsafeUpdateNamespace(ctx context.Co
 	return res.Msg, err
 }
 
-func (w *UnsafeServiceClientConnectWrapper) UnsafeReactivateNamespace(ctx context.Context, req *unsafe.UnsafeReactivateNamespaceRequest, _ ...grpc.CallOption) (*unsafe.UnsafeReactivateNamespaceResponse, error) {
+func (w *UnsafeServiceClientConnectWrapper) UnsafeReactivateNamespace(ctx context.Context, req *unsafe.UnsafeReactivateNamespaceRequest) (*unsafe.UnsafeReactivateNamespaceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.UnsafeServiceClient.UnsafeReactivateNamespace(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -35,7 +47,7 @@ func (w *UnsafeServiceClientConnectWrapper) UnsafeReactivateNamespace(ctx contex
 	return res.Msg, err
 }
 
-func (w *UnsafeServiceClientConnectWrapper) UnsafeDeleteNamespace(ctx context.Context, req *unsafe.UnsafeDeleteNamespaceRequest, _ ...grpc.CallOption) (*unsafe.UnsafeDeleteNamespaceResponse, error) {
+func (w *UnsafeServiceClientConnectWrapper) UnsafeDeleteNamespace(ctx context.Context, req *unsafe.UnsafeDeleteNamespaceRequest) (*unsafe.UnsafeDeleteNamespaceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.UnsafeServiceClient.UnsafeDeleteNamespace(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -44,7 +56,7 @@ func (w *UnsafeServiceClientConnectWrapper) UnsafeDeleteNamespace(ctx context.Co
 	return res.Msg, err
 }
 
-func (w *UnsafeServiceClientConnectWrapper) UnsafeUpdateAttribute(ctx context.Context, req *unsafe.UnsafeUpdateAttributeRequest, _ ...grpc.CallOption) (*unsafe.UnsafeUpdateAttributeResponse, error) {
+func (w *UnsafeServiceClientConnectWrapper) UnsafeUpdateAttribute(ctx context.Context, req *unsafe.UnsafeUpdateAttributeRequest) (*unsafe.UnsafeUpdateAttributeResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.UnsafeServiceClient.UnsafeUpdateAttribute(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -53,7 +65,7 @@ func (w *UnsafeServiceClientConnectWrapper) UnsafeUpdateAttribute(ctx context.Co
 	return res.Msg, err
 }
 
-func (w *UnsafeServiceClientConnectWrapper) UnsafeReactivateAttribute(ctx context.Context, req *unsafe.UnsafeReactivateAttributeRequest, _ ...grpc.CallOption) (*unsafe.UnsafeReactivateAttributeResponse, error) {
+func (w *UnsafeServiceClientConnectWrapper) UnsafeReactivateAttribute(ctx context.Context, req *unsafe.UnsafeReactivateAttributeRequest) (*unsafe.UnsafeReactivateAttributeResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.UnsafeServiceClient.UnsafeReactivateAttribute(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -62,7 +74,7 @@ func (w *UnsafeServiceClientConnectWrapper) UnsafeReactivateAttribute(ctx contex
 	return res.Msg, err
 }
 
-func (w *UnsafeServiceClientConnectWrapper) UnsafeDeleteAttribute(ctx context.Context, req *unsafe.UnsafeDeleteAttributeRequest, _ ...grpc.CallOption) (*unsafe.UnsafeDeleteAttributeResponse, error) {
+func (w *UnsafeServiceClientConnectWrapper) UnsafeDeleteAttribute(ctx context.Context, req *unsafe.UnsafeDeleteAttributeRequest) (*unsafe.UnsafeDeleteAttributeResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.UnsafeServiceClient.UnsafeDeleteAttribute(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -71,7 +83,7 @@ func (w *UnsafeServiceClientConnectWrapper) UnsafeDeleteAttribute(ctx context.Co
 	return res.Msg, err
 }
 
-func (w *UnsafeServiceClientConnectWrapper) UnsafeUpdateAttributeValue(ctx context.Context, req *unsafe.UnsafeUpdateAttributeValueRequest, _ ...grpc.CallOption) (*unsafe.UnsafeUpdateAttributeValueResponse, error) {
+func (w *UnsafeServiceClientConnectWrapper) UnsafeUpdateAttributeValue(ctx context.Context, req *unsafe.UnsafeUpdateAttributeValueRequest) (*unsafe.UnsafeUpdateAttributeValueResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.UnsafeServiceClient.UnsafeUpdateAttributeValue(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -80,7 +92,7 @@ func (w *UnsafeServiceClientConnectWrapper) UnsafeUpdateAttributeValue(ctx conte
 	return res.Msg, err
 }
 
-func (w *UnsafeServiceClientConnectWrapper) UnsafeReactivateAttributeValue(ctx context.Context, req *unsafe.UnsafeReactivateAttributeValueRequest, _ ...grpc.CallOption) (*unsafe.UnsafeReactivateAttributeValueResponse, error) {
+func (w *UnsafeServiceClientConnectWrapper) UnsafeReactivateAttributeValue(ctx context.Context, req *unsafe.UnsafeReactivateAttributeValueRequest) (*unsafe.UnsafeReactivateAttributeValueResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.UnsafeServiceClient.UnsafeReactivateAttributeValue(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -89,7 +101,7 @@ func (w *UnsafeServiceClientConnectWrapper) UnsafeReactivateAttributeValue(ctx c
 	return res.Msg, err
 }
 
-func (w *UnsafeServiceClientConnectWrapper) UnsafeDeleteAttributeValue(ctx context.Context, req *unsafe.UnsafeDeleteAttributeValueRequest, _ ...grpc.CallOption) (*unsafe.UnsafeDeleteAttributeValueResponse, error) {
+func (w *UnsafeServiceClientConnectWrapper) UnsafeDeleteAttributeValue(ctx context.Context, req *unsafe.UnsafeDeleteAttributeValueRequest) (*unsafe.UnsafeDeleteAttributeValueResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.UnsafeServiceClient.UnsafeDeleteAttributeValue(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -98,7 +110,7 @@ func (w *UnsafeServiceClientConnectWrapper) UnsafeDeleteAttributeValue(ctx conte
 	return res.Msg, err
 }
 
-func (w *UnsafeServiceClientConnectWrapper) UnsafeDeleteKasKey(ctx context.Context, req *unsafe.UnsafeDeleteKasKeyRequest, _ ...grpc.CallOption) (*unsafe.UnsafeDeleteKasKeyResponse, error) {
+func (w *UnsafeServiceClientConnectWrapper) UnsafeDeleteKasKey(ctx context.Context, req *unsafe.UnsafeDeleteKasKeyRequest) (*unsafe.UnsafeDeleteKasKeyResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.UnsafeServiceClient.UnsafeDeleteKasKey(ctx, connect.NewRequest(req))
 	if res == nil {

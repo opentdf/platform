@@ -18,11 +18,11 @@ import (
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -47,38 +47,38 @@ var (
 )
 
 type myAttributesClient struct {
-	attr.AttributesServiceClient
+	sdkconnect.AttributesServiceClient
 }
 
-func (*myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
+func (*myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest) (*attr.ListAttributesResponse, error) {
 	return &listAttributeResp, errListAttributes
 }
 
-func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attr.GetAttributeValuesByFqnsResponse, error) {
+func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest) (*attr.GetAttributeValuesByFqnsResponse, error) {
 	return &getAttributesByValueFqnsResponse, errGetAttributesByValueFqns
 }
 
 type myERSClient struct {
-	entityresolution.EntityResolutionServiceClient
+	sdkconnect.EntityResolutionServiceClient
 }
 
 type mySubjectMappingClient struct {
-	sm.SubjectMappingServiceClient
+	sdkconnect.SubjectMappingServiceClient
 }
 
 type paginatedMockSubjectMappingClient struct {
-	sm.SubjectMappingServiceClient
+	sdkconnect.SubjectMappingServiceClient
 }
 
-func (*mySubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest, _ ...grpc.CallOption) (*sm.ListSubjectMappingsResponse, error) {
+func (*mySubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest) (*sm.ListSubjectMappingsResponse, error) {
 	return &listSubjectMappings, nil
 }
 
-func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *entityresolution.CreateEntityChainFromJwtRequest, _ ...grpc.CallOption) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
+func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
 	return &createEntityChainResp, nil
 }
 
-func (*myERSClient) ResolveEntities(_ context.Context, _ *entityresolution.ResolveEntitiesRequest, _ ...grpc.CallOption) (*entityresolution.ResolveEntitiesResponse, error) {
+func (*myERSClient) ResolveEntities(_ context.Context, _ *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
 	return &resolveEntitiesResp, nil
 }
 
@@ -87,7 +87,7 @@ var (
 	smListCallCount    = 0
 )
 
-func (*paginatedMockSubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest, _ ...grpc.CallOption) (*sm.ListSubjectMappingsResponse, error) {
+func (*paginatedMockSubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest) (*sm.ListSubjectMappingsResponse, error) {
 	smListCallCount++
 	// simulate paginated list and policy LIST behavior
 	if smPaginationOffset > 0 {
@@ -104,7 +104,7 @@ func (*paginatedMockSubjectMappingClient) ListSubjectMappings(_ context.Context,
 }
 
 type paginatedMockAttributesClient struct {
-	attr.AttributesServiceClient
+	sdkconnect.AttributesServiceClient
 }
 
 var (
@@ -112,7 +112,7 @@ var (
 	attrListCallCount    = 0
 )
 
-func (*paginatedMockAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest, _ ...grpc.CallOption) (*attr.ListAttributesResponse, error) {
+func (*paginatedMockAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest) (*attr.ListAttributesResponse, error) {
 	attrListCallCount++
 	// simulate paginated list and policy LIST behavior
 	if attrPaginationOffset > 0 {

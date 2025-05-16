@@ -6,7 +6,6 @@ import (
 	"context"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources/registeredresourcesconnect"
-	"google.golang.org/grpc"
 )
 
 type RegisteredResourcesServiceClientConnectWrapper struct {
@@ -17,7 +16,21 @@ func NewRegisteredResourcesServiceClientConnectWrapper(httpClient connect.HTTPCl
 	return &RegisteredResourcesServiceClientConnectWrapper{RegisteredResourcesServiceClient: registeredresourcesconnect.NewRegisteredResourcesServiceClient(httpClient, baseURL, opts...)}
 }
 
-func (w *RegisteredResourcesServiceClientConnectWrapper) CreateRegisteredResource(ctx context.Context, req *registeredresources.CreateRegisteredResourceRequest, _ ...grpc.CallOption) (*registeredresources.CreateRegisteredResourceResponse, error) {
+type RegisteredResourcesServiceClient interface {
+	CreateRegisteredResource(ctx context.Context, req *registeredresources.CreateRegisteredResourceRequest) (*registeredresources.CreateRegisteredResourceResponse, error)
+	GetRegisteredResource(ctx context.Context, req *registeredresources.GetRegisteredResourceRequest) (*registeredresources.GetRegisteredResourceResponse, error)
+	ListRegisteredResources(ctx context.Context, req *registeredresources.ListRegisteredResourcesRequest) (*registeredresources.ListRegisteredResourcesResponse, error)
+	UpdateRegisteredResource(ctx context.Context, req *registeredresources.UpdateRegisteredResourceRequest) (*registeredresources.UpdateRegisteredResourceResponse, error)
+	DeleteRegisteredResource(ctx context.Context, req *registeredresources.DeleteRegisteredResourceRequest) (*registeredresources.DeleteRegisteredResourceResponse, error)
+	CreateRegisteredResourceValue(ctx context.Context, req *registeredresources.CreateRegisteredResourceValueRequest) (*registeredresources.CreateRegisteredResourceValueResponse, error)
+	GetRegisteredResourceValue(ctx context.Context, req *registeredresources.GetRegisteredResourceValueRequest) (*registeredresources.GetRegisteredResourceValueResponse, error)
+	GetRegisteredResourceValuesByFQNs(ctx context.Context, req *registeredresources.GetRegisteredResourceValuesByFQNsRequest) (*registeredresources.GetRegisteredResourceValuesByFQNsResponse, error)
+	ListRegisteredResourceValues(ctx context.Context, req *registeredresources.ListRegisteredResourceValuesRequest) (*registeredresources.ListRegisteredResourceValuesResponse, error)
+	UpdateRegisteredResourceValue(ctx context.Context, req *registeredresources.UpdateRegisteredResourceValueRequest) (*registeredresources.UpdateRegisteredResourceValueResponse, error)
+	DeleteRegisteredResourceValue(ctx context.Context, req *registeredresources.DeleteRegisteredResourceValueRequest) (*registeredresources.DeleteRegisteredResourceValueResponse, error)
+}
+
+func (w *RegisteredResourcesServiceClientConnectWrapper) CreateRegisteredResource(ctx context.Context, req *registeredresources.CreateRegisteredResourceRequest) (*registeredresources.CreateRegisteredResourceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.RegisteredResourcesServiceClient.CreateRegisteredResource(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -26,7 +39,7 @@ func (w *RegisteredResourcesServiceClientConnectWrapper) CreateRegisteredResourc
 	return res.Msg, err
 }
 
-func (w *RegisteredResourcesServiceClientConnectWrapper) GetRegisteredResource(ctx context.Context, req *registeredresources.GetRegisteredResourceRequest, _ ...grpc.CallOption) (*registeredresources.GetRegisteredResourceResponse, error) {
+func (w *RegisteredResourcesServiceClientConnectWrapper) GetRegisteredResource(ctx context.Context, req *registeredresources.GetRegisteredResourceRequest) (*registeredresources.GetRegisteredResourceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.RegisteredResourcesServiceClient.GetRegisteredResource(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -35,7 +48,7 @@ func (w *RegisteredResourcesServiceClientConnectWrapper) GetRegisteredResource(c
 	return res.Msg, err
 }
 
-func (w *RegisteredResourcesServiceClientConnectWrapper) ListRegisteredResources(ctx context.Context, req *registeredresources.ListRegisteredResourcesRequest, _ ...grpc.CallOption) (*registeredresources.ListRegisteredResourcesResponse, error) {
+func (w *RegisteredResourcesServiceClientConnectWrapper) ListRegisteredResources(ctx context.Context, req *registeredresources.ListRegisteredResourcesRequest) (*registeredresources.ListRegisteredResourcesResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.RegisteredResourcesServiceClient.ListRegisteredResources(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -44,7 +57,7 @@ func (w *RegisteredResourcesServiceClientConnectWrapper) ListRegisteredResources
 	return res.Msg, err
 }
 
-func (w *RegisteredResourcesServiceClientConnectWrapper) UpdateRegisteredResource(ctx context.Context, req *registeredresources.UpdateRegisteredResourceRequest, _ ...grpc.CallOption) (*registeredresources.UpdateRegisteredResourceResponse, error) {
+func (w *RegisteredResourcesServiceClientConnectWrapper) UpdateRegisteredResource(ctx context.Context, req *registeredresources.UpdateRegisteredResourceRequest) (*registeredresources.UpdateRegisteredResourceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.RegisteredResourcesServiceClient.UpdateRegisteredResource(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -53,7 +66,7 @@ func (w *RegisteredResourcesServiceClientConnectWrapper) UpdateRegisteredResourc
 	return res.Msg, err
 }
 
-func (w *RegisteredResourcesServiceClientConnectWrapper) DeleteRegisteredResource(ctx context.Context, req *registeredresources.DeleteRegisteredResourceRequest, _ ...grpc.CallOption) (*registeredresources.DeleteRegisteredResourceResponse, error) {
+func (w *RegisteredResourcesServiceClientConnectWrapper) DeleteRegisteredResource(ctx context.Context, req *registeredresources.DeleteRegisteredResourceRequest) (*registeredresources.DeleteRegisteredResourceResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.RegisteredResourcesServiceClient.DeleteRegisteredResource(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -62,7 +75,7 @@ func (w *RegisteredResourcesServiceClientConnectWrapper) DeleteRegisteredResourc
 	return res.Msg, err
 }
 
-func (w *RegisteredResourcesServiceClientConnectWrapper) CreateRegisteredResourceValue(ctx context.Context, req *registeredresources.CreateRegisteredResourceValueRequest, _ ...grpc.CallOption) (*registeredresources.CreateRegisteredResourceValueResponse, error) {
+func (w *RegisteredResourcesServiceClientConnectWrapper) CreateRegisteredResourceValue(ctx context.Context, req *registeredresources.CreateRegisteredResourceValueRequest) (*registeredresources.CreateRegisteredResourceValueResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.RegisteredResourcesServiceClient.CreateRegisteredResourceValue(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -71,7 +84,7 @@ func (w *RegisteredResourcesServiceClientConnectWrapper) CreateRegisteredResourc
 	return res.Msg, err
 }
 
-func (w *RegisteredResourcesServiceClientConnectWrapper) GetRegisteredResourceValue(ctx context.Context, req *registeredresources.GetRegisteredResourceValueRequest, _ ...grpc.CallOption) (*registeredresources.GetRegisteredResourceValueResponse, error) {
+func (w *RegisteredResourcesServiceClientConnectWrapper) GetRegisteredResourceValue(ctx context.Context, req *registeredresources.GetRegisteredResourceValueRequest) (*registeredresources.GetRegisteredResourceValueResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.RegisteredResourcesServiceClient.GetRegisteredResourceValue(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -80,7 +93,7 @@ func (w *RegisteredResourcesServiceClientConnectWrapper) GetRegisteredResourceVa
 	return res.Msg, err
 }
 
-func (w *RegisteredResourcesServiceClientConnectWrapper) GetRegisteredResourceValuesByFQNs(ctx context.Context, req *registeredresources.GetRegisteredResourceValuesByFQNsRequest, _ ...grpc.CallOption) (*registeredresources.GetRegisteredResourceValuesByFQNsResponse, error) {
+func (w *RegisteredResourcesServiceClientConnectWrapper) GetRegisteredResourceValuesByFQNs(ctx context.Context, req *registeredresources.GetRegisteredResourceValuesByFQNsRequest) (*registeredresources.GetRegisteredResourceValuesByFQNsResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.RegisteredResourcesServiceClient.GetRegisteredResourceValuesByFQNs(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -89,7 +102,7 @@ func (w *RegisteredResourcesServiceClientConnectWrapper) GetRegisteredResourceVa
 	return res.Msg, err
 }
 
-func (w *RegisteredResourcesServiceClientConnectWrapper) ListRegisteredResourceValues(ctx context.Context, req *registeredresources.ListRegisteredResourceValuesRequest, _ ...grpc.CallOption) (*registeredresources.ListRegisteredResourceValuesResponse, error) {
+func (w *RegisteredResourcesServiceClientConnectWrapper) ListRegisteredResourceValues(ctx context.Context, req *registeredresources.ListRegisteredResourceValuesRequest) (*registeredresources.ListRegisteredResourceValuesResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.RegisteredResourcesServiceClient.ListRegisteredResourceValues(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -98,7 +111,7 @@ func (w *RegisteredResourcesServiceClientConnectWrapper) ListRegisteredResourceV
 	return res.Msg, err
 }
 
-func (w *RegisteredResourcesServiceClientConnectWrapper) UpdateRegisteredResourceValue(ctx context.Context, req *registeredresources.UpdateRegisteredResourceValueRequest, _ ...grpc.CallOption) (*registeredresources.UpdateRegisteredResourceValueResponse, error) {
+func (w *RegisteredResourcesServiceClientConnectWrapper) UpdateRegisteredResourceValue(ctx context.Context, req *registeredresources.UpdateRegisteredResourceValueRequest) (*registeredresources.UpdateRegisteredResourceValueResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.RegisteredResourcesServiceClient.UpdateRegisteredResourceValue(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -107,7 +120,7 @@ func (w *RegisteredResourcesServiceClientConnectWrapper) UpdateRegisteredResourc
 	return res.Msg, err
 }
 
-func (w *RegisteredResourcesServiceClientConnectWrapper) DeleteRegisteredResourceValue(ctx context.Context, req *registeredresources.DeleteRegisteredResourceValueRequest, _ ...grpc.CallOption) (*registeredresources.DeleteRegisteredResourceValueResponse, error) {
+func (w *RegisteredResourcesServiceClientConnectWrapper) DeleteRegisteredResourceValue(ctx context.Context, req *registeredresources.DeleteRegisteredResourceValueRequest) (*registeredresources.DeleteRegisteredResourceValueResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.RegisteredResourcesServiceClient.DeleteRegisteredResourceValue(ctx, connect.NewRequest(req))
 	if res == nil {

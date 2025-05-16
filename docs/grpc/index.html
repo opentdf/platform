@@ -3487,7 +3487,7 @@ Migrate to &#39;create&#39; action name</p></td>
         </table>
       
         <h3 id="policy.KeyMode">KeyMode</h3>
-        <p>Describe how the kas private key is managed.</p><p>If the key mode is LOCAL, then the kas private key is stored in the database.</p><p>This could be encrypted or unencrypted.</p><p>Remote means that the kas private key is stored in a remote key system like KMS or HSM</p><p>and all operations are done by the remote key system.</p>
+        <p>Describes the management and operational mode of a cryptographic key.</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -3497,19 +3497,40 @@ Migrate to &#39;create&#39; action name</p></td>
               <tr>
                 <td>KEY_MODE_UNSPECIFIED</td>
                 <td>0</td>
-                <td><p></p></td>
+                <td><p>Default, unspecified key mode.</p></td>
               </tr>
             
               <tr>
-                <td>KEY_MODE_LOCAL</td>
+                <td>KEY_MODE_LOCAL_CONFIG_KEK</td>
                 <td>1</td>
-                <td><p></p></td>
+                <td><p>Local key management: Private key is wrapped by a Key Encryption Key (KEK)
+sourced from local configuration.
+Unwrapping and cryptographic operations are performed locally.</p></td>
               </tr>
             
               <tr>
-                <td>KEY_MODE_REMOTE</td>
+                <td>KEY_MODE_LOCAL_PROVIDER_KEK</td>
                 <td>2</td>
-                <td><p></p></td>
+                <td><p>Local key management: Private key is wrapped by a Key Encryption Key (KEK)
+managed by an external provider (e.g., KMS).
+Key unwrapping is handled by the external provider; cryptographic operations
+are performed locally using the unwrapped key.</p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_MODE_REMOTE_OPERATIONS</td>
+                <td>3</td>
+                <td><p>Remote key management: Private key resides in, and all cryptographic
+operations are performed by, a remote Key Management Service (KMS) or HSM.
+The private key never leaves the secure environment of the remote system.</p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_MODE_PUBLIC_KEY_ONLY</td>
+                <td>4</td>
+                <td><p>Public key only: This mode is used when only a public key is required,
+typically for wrapping operations (e.g., encrypting a DEK for an external KAS).
+The corresponding private key is not managed by this system.</p></td>
               </tr>
             
           </tbody>
@@ -9980,7 +10001,9 @@ Pagination request for the list of keys </p></td>
                   <td>provider_config_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Conditionally Required. If the key_mode is REMOTE, this field is required. </p></td>
+                  <td><p>Conditionally Required.
+
+Validation handled by message-level CEL </p></td>
                 </tr>
               
                 <tr>

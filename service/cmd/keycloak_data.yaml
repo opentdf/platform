@@ -21,7 +21,7 @@ realms:
     custom_groups:
       - name: mygroup
         attributes:
-          mygroupattribute: 
+          mygroupattribute:
             - mygroupvalue
     clients:
       - client:
@@ -33,8 +33,9 @@ realms:
           secret: secret
           protocolMappers:
             - *customAudMapper
-        sa_realm_roles: 
+        sa_realm_roles:
           - opentdf-admin
+        copies: 10
       - client:
           clientID: opentdf-sdk
           enabled: true
@@ -44,7 +45,7 @@ realms:
           secret: secret
           protocolMappers:
             - *customAudMapper
-        sa_realm_roles: 
+        sa_realm_roles:
           - opentdf-standard
       - client:
           clientID: tdf-entity-resolution
@@ -90,9 +91,9 @@ realms:
           - value: testuser123
             type: password
         attributes:
-          superhero_name: 
+          superhero_name:
             - thor
-          superhero_group: 
+          superhero_group:
             - avengers
         groups:
           - mygroup
@@ -106,8 +107,7 @@ realms:
             - query-users
           tdf-entity-resolution:
             - entity-resolution-test-role
+        copies: 10
     token_exchanges:
       - start_client: opentdf
         target_client: opentdf-sdk
-
- 

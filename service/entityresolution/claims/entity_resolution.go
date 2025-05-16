@@ -1,4 +1,4 @@
-package entityresolution
+package claims
 
 import (
 	"context"

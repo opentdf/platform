@@ -54,7 +54,7 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 
 				as.config = authZCfg
 				as.Tracer = srp.Tracer
-				logger.Debug("authorization service config")
+				logger.Debug("authorization v2 service register func")
 
 				return as, nil
 			},

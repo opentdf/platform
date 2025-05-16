@@ -89,7 +89,7 @@ func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Res
 	ctx = tracing.InjectTraceContext(ctx)
 	dr, err := p.SDK.AuthorizationV2.GetDecisionMultiResource(ctx, req)
 	if err != nil {
-		p.Logger.ErrorContext(ctx, "Error received from GetDecisionsByToken", "err", err)
+		p.Logger.ErrorContext(ctx, "Error received from GetDecisionMultiResource", "err", err)
 		return nil, errors.Join(ErrDecisionUnexpected, err)
 	}
 	return dr, nil

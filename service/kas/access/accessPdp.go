@@ -30,7 +30,7 @@ type PDPAccessResult struct {
 
 func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies []*Policy) ([]PDPAccessResult, error) {
 	var res []PDPAccessResult
-	resources := make([]*authzV2.Resource, 0, len(policies))
+	var resources []*authzV2.Resource
 	idPolicyMap := make(map[string]*Policy)
 	for i, policy := range policies {
 		if len(policy.Body.Dissem) > 0 {
@@ -43,14 +43,14 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 			for _, attr := range policy.Body.DataAttributes {
 				attrValueFqns = append(attrValueFqns, attr.URI)
 			}
-			resources[i] = &authzV2.Resource{
+			resources = append(resources, &authzV2.Resource{
 				EphemeralId: id,
 				Resource: &authzV2.Resource_AttributeValues_{
 					AttributeValues: &authzV2.Resource_AttributeValues{
 						Fqns: attrValueFqns,
 					},
 				},
-			}
+			})
 			idPolicyMap[id] = policy
 		} else {
 			res = append(res, PDPAccessResult{Access: true, Policy: policy})

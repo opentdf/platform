@@ -1,0 +1,48 @@
+docs:
+- changed-files:
+  - any-glob-to-any-file:
+    - 'docs/**/*'
+comp:sdk:
+- changed-files:
+  - any-glob-to-any-file:
+    - 'sdk/**/*'
+comp:ci:
+- changed-files:
+  - any-glob-to-any-file:
+    - '.github/**/*'
+comp:db:
+- changed-files:
+  - any-glob-to-any-file:
+    - 'service/policy/db/**/*'
+comp:kas:
+- changed-files:
+  - any-glob-to-any-file:
+    - 'service/kas/**'
+comp:policy:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'service/policy/**/*'
+comp:authorization:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'service/authorization/**/*'
+comp:examples:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'examples/**/*'
+comp:lib:fixtures:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'lib/fixtures/**/*'
+comp:lib:flattening:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'lib/flattening/**/*'
+comp:lib:ocrypto:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'lib/ocrypto/**/*'
+comp:middleware:auth:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'service/internal/auth/**/*'

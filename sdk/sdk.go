@@ -59,6 +59,7 @@ type SDK struct {
 	Attributes              sdkconnect.AttributesServiceClient
 	Authorization           sdkconnect.AuthorizationServiceClient
 	EntityResoution         sdkconnect.EntityResolutionServiceClient
+	EntityResolutionV2      sdkconnect.EntityResolutionServiceClientV2
 	KeyAccessServerRegistry sdkconnect.KeyAccessServerRegistryServiceClient
 	Namespaces              sdkconnect.NamespaceServiceClient
 	RegisteredResources     sdkconnect.RegisteredResourcesServiceClient
@@ -194,6 +195,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		KeyAccessServerRegistry: sdkconnect.NewKeyAccessServerRegistryServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Authorization:           sdkconnect.NewAuthorizationServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		EntityResoution:         sdkconnect.NewEntityResolutionServiceClientConnectWrapper(ersConn.Client, ersConn.Endpoint, ersConn.Options...),
+		EntityResolutionV2:      sdkconnect.NewEntityResolutionServiceClientV2ConnectWrapper(ersConn.Client, ersConn.Endpoint, ersConn.Options...),
 		KeyManagement:           sdkconnect.NewKeyManagementServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		wellknownConfiguration:  sdkconnect.NewWellKnownServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 	}, nil

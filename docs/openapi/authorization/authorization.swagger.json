@@ -115,24 +115,6 @@
       "default": "STANDARD_ACTION_UNSPECIFIED",
       "title": "- STANDARD_ACTION_DECRYPT: Deprecated\nMigrate to 'read' action name\n - STANDARD_ACTION_TRANSMIT: Deprecated\nMigrate to 'create' action name"
     },
-    "DecisionResponseDecision": {
-      "type": "string",
-      "enum": [
-        "DECISION_UNSPECIFIED",
-        "DECISION_DENY",
-        "DECISION_PERMIT"
-      ],
-      "default": "DECISION_UNSPECIFIED"
-    },
-    "EntityCategory": {
-      "type": "string",
-      "enum": [
-        "CATEGORY_UNSPECIFIED",
-        "CATEGORY_SUBJECT",
-        "CATEGORY_ENVIRONMENT"
-      ],
-      "default": "CATEGORY_UNSPECIFIED"
-    },
     "authorizationDecisionRequest": {
       "type": "object",
       "properties": {
@@ -177,7 +159,7 @@
           "title": "Action of the decision response"
         },
         "decision": {
-          "$ref": "#/definitions/DecisionResponseDecision",
+          "$ref": "#/definitions/authorizationDecisionResponseDecision",
           "title": "The decision response"
         },
         "obligations": {
@@ -190,6 +172,15 @@
       },
       "description": "Results:\n- bob has permitted authorization to transmit for a resource defined by attr-set-1 attributes and has a watermark obligation\n- bob has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n- alice has permitted authorization to transmit for a resource defined by attr-set-1 attributes\n- alice has denied authorization to transmit a for a resource defined by attr-set-2 attributes\n\n{\n\"entityChainId\":  \"ec1\",\n\"resourceAttributesId\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\",\n\"obligations\":  [\n\"http://www.example.org/obligation/watermark\"\n]\n},\n{\n\"entityChainId\":  \"ec1\",\n\"resourceAttributesId\":  \"attr-set-2\",\n\"decision\":  \"DECISION_PERMIT\"\n},\n{\n\"entityChainId\":  \"ec2\",\n\"resourceAttributesId\":  \"attr-set-1\",\n\"decision\":  \"DECISION_PERMIT\"\n},\n{\n\"entityChainId\":  \"ec2\",\n\"resourceAttributesId\":  \"attr-set-2\",\n\"decision\":  \"DECISION_DENY\"\n}",
       "title": "Example response for a Decision Request -  Do Bob (represented by entity chain ec1)\nand Alice (represented by entity chain ec2) have TRANSMIT authorization for\n2 resources; resource1 (attr-set-1) defined by attributes foo:bar  resource2 (attr-set-2) defined by attribute foo:bar, color:red ?"
+    },
+    "authorizationDecisionResponseDecision": {
+      "type": "string",
+      "enum": [
+        "DECISION_UNSPECIFIED",
+        "DECISION_DENY",
+        "DECISION_PERMIT"
+      ],
+      "default": "DECISION_UNSPECIFIED"
     },
     "authorizationEntity": {
       "type": "object",
@@ -221,10 +212,19 @@
           "type": "string"
         },
         "category": {
-          "$ref": "#/definitions/EntityCategory"
+          "$ref": "#/definitions/authorizationEntityCategory"
         }
       },
       "title": "PE (Person Entity) or NPE (Non-Person Entity)"
+    },
+    "authorizationEntityCategory": {
+      "type": "string",
+      "enum": [
+        "CATEGORY_UNSPECIFIED",
+        "CATEGORY_SUBJECT",
+        "CATEGORY_ENVIRONMENT"
+      ],
+      "default": "CATEGORY_UNSPECIFIED"
     },
     "authorizationEntityChain": {
       "type": "object",

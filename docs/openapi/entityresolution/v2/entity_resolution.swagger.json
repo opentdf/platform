@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "entityresolution/entity_resolution.proto",
+    "title": "entityresolution/v2/entity_resolution.proto",
     "version": "version not set"
   },
   "tags": [
@@ -15,111 +15,35 @@
   "produces": [
     "application/json"
   ],
-  "paths": {
-    "/entityresolution/entitychain": {
-      "post": {
-        "summary": "Deprecated: use v2 CreateEntityChainsFromTokens instead",
-        "operationId": "EntityResolutionService_CreateEntityChainFromJwt",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/entityresolutionCreateEntityChainFromJwtResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/entityresolutionCreateEntityChainFromJwtRequest"
-            }
-          }
-        ],
-        "tags": [
-          "EntityResolutionService"
-        ]
-      }
-    },
-    "/entityresolution/resolve": {
-      "post": {
-        "summary": "Deprecated: use v2 ResolveEntities instead",
-        "operationId": "EntityResolutionService_ResolveEntities",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/entityresolutionResolveEntitiesResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/entityresolutionResolveEntitiesRequest"
-            }
-          }
-        ],
-        "tags": [
-          "EntityResolutionService"
-        ]
-      }
-    }
-  },
+  "paths": {},
   "definitions": {
-    "authorizationEntity": {
+    "entityEntity": {
       "type": "object",
       "properties": {
-        "id": {
+        "ephemeralId": {
           "type": "string",
           "title": "ephemeral id for tracking between request and response"
         },
         "emailAddress": {
-          "type": "string",
-          "title": "one of the entity options must be set"
+          "type": "string"
         },
         "userName": {
           "type": "string"
         },
-        "remoteClaimsUrl": {
-          "type": "string"
-        },
-        "uuid": {
-          "type": "string"
-        },
         "claims": {
-          "$ref": "#/definitions/protobufAny"
-        },
-        "custom": {
-          "$ref": "#/definitions/authorizationEntityCustom"
+          "$ref": "#/definitions/protobufAny",
+          "title": "used by ERS claims mode"
         },
         "clientId": {
           "type": "string"
         },
         "category": {
-          "$ref": "#/definitions/authorizationEntityCategory"
+          "$ref": "#/definitions/entityEntityCategory"
         }
       },
       "title": "PE (Person Entity) or NPE (Non-Person Entity)"
     },
-    "authorizationEntityCategory": {
+    "entityEntityCategory": {
       "type": "string",
       "enum": [
         "CATEGORY_UNSPECIFIED",
@@ -128,10 +52,10 @@
       ],
       "default": "CATEGORY_UNSPECIFIED"
     },
-    "authorizationEntityChain": {
+    "entityEntityChain": {
       "type": "object",
       "properties": {
-        "id": {
+        "ephemeralId": {
           "type": "string",
           "title": "ephemeral id for tracking between request and response"
         },
@@ -139,25 +63,16 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/authorizationEntity"
+            "$ref": "#/definitions/entityEntity"
           }
         }
       },
       "title": "A set of related PE and NPE"
     },
-    "authorizationEntityCustom": {
+    "entityToken": {
       "type": "object",
       "properties": {
-        "extension": {
-          "$ref": "#/definitions/protobufAny"
-        }
-      },
-      "title": "Entity type for custom entities beyond the standard types"
-    },
-    "authorizationToken": {
-      "type": "object",
-      "properties": {
-        "id": {
+        "ephemeralId": {
           "type": "string",
           "title": "ephemeral id for tracking between request and response"
         },
@@ -167,72 +82,32 @@
         }
       }
     },
-    "entityresolutionCreateEntityChainFromJwtRequest": {
+    "entityresolutionv2EntityRepresentation": {
       "type": "object",
       "properties": {
-        "tokens": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationToken"
-          }
-        }
-      },
-      "title": "Example: Get Entity chains for tokens aaaaaa and bbbbbb\n{\n\"tokens\": [\n\"aaaaaaa\",\n\"bbbbbbbb\"\n]\n}"
-    },
-    "entityresolutionCreateEntityChainFromJwtResponse": {
-      "type": "object",
-      "properties": {
-        "entityChains": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationEntityChain"
-          }
-        }
-      },
-      "title": "Example: Return the entity chains from the provided tokens\n{\n\"entity_chains\": [\n{\n\"id\": \"tok1\",\n\"entities\": [\n{\n\"clientId\": \"client1\"\n}\n]\n},\n{\n\"id\": \"tok2\",\n\"entities\": [\n{\n\"userName\": \"alice\",\n\"clientId\": \"client2\"\n}\n]\n}\n]\n}"
-    },
-    "entityresolutionEntityRepresentation": {
-      "type": "object",
-      "properties": {
+        "originalId": {
+          "type": "string",
+          "title": "ephemeral entity id from the request"
+        },
         "additionalProps": {
           "type": "array",
           "items": {
             "type": "object"
           }
-        },
-        "originalId": {
-          "type": "string",
-          "title": "ephemeral entity id from the request"
         }
       }
     },
-    "entityresolutionResolveEntitiesRequest": {
-      "type": "object",
-      "properties": {
-        "entities": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/authorizationEntity"
-          }
-        }
-      },
-      "title": "Example: Get idp attributes for bob and alice (both represented using an email address\n{\n\"entities\": [\n{\n\"id\": \"e1\",\n\"emailAddress\": \"bob@example.org\"\n},\n{\n\"id\": \"e2\",\n\"emailAddress\": \"alice@example.org\"\n}\n]\n}"
-    },
-    "entityresolutionResolveEntitiesResponse": {
+    "entityresolutionv2ResolveEntitiesResponse": {
       "type": "object",
       "properties": {
         "entityRepresentations": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/entityresolutionEntityRepresentation"
+            "$ref": "#/definitions/entityresolutionv2EntityRepresentation"
           }
         }
-      },
-      "title": "Example: Get idp attributes for bob and alice\n{\n\"entity_representations\": [\n{\n\"idp_entity_id\": \"e1\",\n\"additional_props\": {\"someAttr1\":\"someValue1\"}\n},\n{\n\"idp_entity_id\": \"e2\",\n\"additional_props\": {\"someAttr2\":\"someValue2\"}\n}\n]\n}"
+      }
     },
     "protobufAny": {
       "type": "object",
@@ -268,6 +143,18 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v2CreateEntityChainsFromTokensResponse": {
+      "type": "object",
+      "properties": {
+        "entityChains": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/entityEntityChain"
           }
         }
       }

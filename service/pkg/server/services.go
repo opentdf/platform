@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/authorization"
 	"github.com/opentdf/platform/service/entityresolution"
+	entityresolutionV2 "github.com/opentdf/platform/service/entityresolution/v2"
 	"github.com/opentdf/platform/service/health"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
@@ -72,6 +73,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 				kas.NewRegistration(),
 				wellknown.NewRegistration(),
 				entityresolution.NewRegistration(),
+				entityresolutionV2.NewRegistration(),
 			}...)
 			services = append(services, policy.NewRegistrations()...)
 		case "core":
@@ -88,9 +90,12 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 				return nil, err //nolint:wrapcheck // We are all friends here
 			}
 		case "entityresolution":
-			// If the mode is "entityresolution", register only the ERS service
+			// If the mode is "entityresolution", register only the ERS service (v1 and v2)
 			registeredServices = append(registeredServices, serviceEntityResolution)
 			if err := reg.RegisterService(entityresolution.NewRegistration(), modeERS); err != nil {
+				return nil, err //nolint:wrapcheck // We are all friends here
+			}
+			if err := reg.RegisterService(entityresolutionV2.NewRegistration(), modeERS); err != nil {
 				return nil, err //nolint:wrapcheck // We are all friends here
 			}
 		default:

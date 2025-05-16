@@ -101,6 +101,8 @@ message Value {
 
   repeated KasKey kas_keys = 9;
 
+  repeated ResourceMapping resource_mappings = 10;
+
   // Common metadata
   common.Metadata metadata = 100;
 }

@@ -1107,6 +1107,13 @@
             "$ref": "#/definitions/policyKasKey"
           }
         },
+        "resourceMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyResourceMapping"
+          }
+        },
         "metadata": {
           "$ref": "#/definitions/commonMetadata",
           "title": "Common metadata"

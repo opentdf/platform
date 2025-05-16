@@ -365,7 +365,7 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint() {
 				s.Require().Error(err)
 				s.Nil(pdp)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 				s.NotNil(pdp)
 			}
 		})

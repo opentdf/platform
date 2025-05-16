@@ -254,28 +254,29 @@ func (s *EvaluateTestSuite) TestAllOfRule() {
 			s.Len(failures, tc.expectedFailures)
 
 			// If expected failures, verify they are for the correct FQNs
-			if tc.expectedFailures > 0 {
-				failedFQNs := make(map[string]bool)
-				for _, failure := range failures {
-					failedFQNs[failure.AttributeValueFQN] = true
-					s.Equal(s.action.GetName(), failure.ActionName)
-				}
+			if tc.expectedFailures == 0 {
+				return
+			}
+			failedFQNs := make(map[string]bool)
+			for _, failure := range failures {
+				failedFQNs[failure.AttributeValueFQN] = true
+				s.Equal(s.action.GetName(), failure.ActionName)
+			}
 
-				// Verify each failure is for an actual resource value FQN
-				for _, fqn := range tc.resourceValueFQNs {
-					if entitlementActions, exists := tc.entitlements[fqn]; !exists {
+			// Verify each failure is for an actual resource value FQN
+			for _, fqn := range tc.resourceValueFQNs {
+				if entitlementActions, exists := tc.entitlements[fqn]; !exists {
+					s.True(failedFQNs[fqn], "FQN %s should be in failures", fqn)
+				} else {
+					hasReadAction := false
+					for _, entAction := range entitlementActions {
+						if entAction.GetName() == s.action.GetName() {
+							hasReadAction = true
+							break
+						}
+					}
+					if !hasReadAction {
 						s.True(failedFQNs[fqn], "FQN %s should be in failures", fqn)
-					} else {
-						hasReadAction := false
-						for _, entAction := range entitlementActions {
-							if entAction.GetName() == s.action.GetName() {
-								hasReadAction = true
-								break
-							}
-						}
-						if !hasReadAction {
-							s.True(failedFQNs[fqn], "FQN %s should be in failures", fqn)
-						}
 					}
 				}
 			}
@@ -387,32 +388,33 @@ func (s *EvaluateTestSuite) TestAnyOfRule() {
 			// Assert
 			if tc.expectedFailCount == 0 {
 				s.Nil(failures, "Expected no failures but got: %v", failures)
-			} else {
-				s.Len(failures, tc.expectedFailCount)
+				return
+			}
 
-				// Verify each failure is for an actual resource value FQN
-				failedFQNs := make(map[string]bool)
-				for _, failure := range failures {
-					failedFQNs[failure.AttributeValueFQN] = true
-					s.Equal(s.action.GetName(), failure.ActionName)
-				}
+			s.Len(failures, tc.expectedFailCount)
 
-				for _, fqn := range tc.resourceValueFQNs {
-					// If this FQN has no entitlements or doesn't have the right action, it should be in failures
+			// Verify each failure is for an actual resource value FQN
+			failedFQNs := make(map[string]bool)
+			for _, failure := range failures {
+				failedFQNs[failure.AttributeValueFQN] = true
+				s.Equal(s.action.GetName(), failure.ActionName)
+			}
+
+			for _, fqn := range tc.resourceValueFQNs {
+				// If this FQN has no entitlements or doesn't have the right action, it should be in failures
+				if entitlementActions, exists := tc.entitlements[fqn]; exists {
 					hasRightEntitlement := false
-					if entitlementActions, exists := tc.entitlements[fqn]; exists {
-						for _, entAction := range entitlementActions {
-							if entAction.GetName() == s.action.GetName() {
-								hasRightEntitlement = true
-								break
-							}
+					for _, entAction := range entitlementActions {
+						if entAction.GetName() == s.action.GetName() {
+							hasRightEntitlement = true
+							break
 						}
 					}
-
-					if !hasRightEntitlement {
-						s.True(failedFQNs[fqn], "FQN %s should be in failures", fqn)
+					if hasRightEntitlement {
+						continue
 					}
 				}
+				s.True(failedFQNs[fqn], "FQN %s should be in failures", fqn)
 			}
 		})
 	}
@@ -722,9 +724,9 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 			)
 
 			if tc.expectError {
-				s.Error(err)
+				s.Require().Error(err)
 			} else {
-				s.NoError(err)
+				s.Require().NoError(err)
 				s.NotNil(resourceDecision)
 				s.Equal(tc.expectAccessible, resourceDecision.Passed)
 

@@ -297,7 +297,6 @@ func TestEvaluateSubjectMappingMultipleEntitiesWithActions_MultipleAttributes(t 
 	assert.NotEmpty(t, internalActions)
 	assert.Len(t, internalActions, 1)
 	assert.Equal(t, actions.ActionNameRead, internalActions[0].GetName())
-
 }
 
 func TestEvaluateSubjectMappingsWithActions_OneGoodResolution(t *testing.T) {
@@ -559,7 +558,7 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 	// Test senior engineer
 	seniorEntitlements, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, seniorEngEntity)
 	require.NoError(t, err)
-	assert.Len(t, seniorEntitlements, 0)
+	assert.Empty(t, seniorEntitlements)
 	seniorActions, exists := seniorEntitlements[classRestrictedFQN]
 	assert.False(t, exists)
 	assert.Empty(t, seniorActions)
@@ -581,7 +580,7 @@ func TestEvaluateSubjectMappingsWithActions_ComplexCondition_MultipleConditionGr
 	// Test senior engineer with admin in a different index
 	adminEntitlementsBadIndex, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(attributeMappings, seniorEngWithAdminEntityInBadIndex)
 	require.NoError(t, err)
-	assert.Len(t, adminEntitlementsBadIndex, 0)
+	assert.Empty(t, adminEntitlementsBadIndex)
 	adminActionsBadIndex, exists := adminEntitlementsBadIndex[classRestrictedFQN]
 	assert.False(t, exists)
 	assert.Empty(t, adminActionsBadIndex)

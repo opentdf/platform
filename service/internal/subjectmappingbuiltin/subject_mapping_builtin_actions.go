@@ -36,7 +36,7 @@ func EvaluateSubjectMappingsWithActions(
 	entityRepresentation *entityresolutionV2.EntityRepresentation,
 ) (AttributeValueFQNsToActions, error) {
 	jsonEntities := entityRepresentation.GetAdditionalProps()
-	var entitlementsSet = make(map[string][]*policy.Action)
+	entitlementsSet := make(map[string][]*policy.Action)
 
 	for _, entity := range jsonEntities {
 		flattenedEntity, err := flattening.Flatten(entity.AsMap())

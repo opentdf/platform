@@ -86,7 +86,7 @@ func TestRollupSingleResourceDecision(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := rollupSingleResourceDecision(tc.permitted, tc.decisions)
-			
+
 			if tc.expectedError != nil {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsgContain)
@@ -192,7 +192,7 @@ func TestRollupMultiResourceDecision(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := rollupMultiResourceDecision(tc.decisions)
-			
+
 			if tc.expectedError != nil {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errorMsgContain)
@@ -215,11 +215,11 @@ func TestRollupMultiResourceDecisionSimple(t *testing.T) {
 			},
 		},
 	}
-	
+
 	decisions := []*access.Decision{decision}
-	
+
 	result, err := rollupMultiResourceDecision(decisions)
-	
+
 	assert.NoError(t, err)
 	assert.Len(t, result, 1)
 	assert.Equal(t, "resource-123", result[0].EphemeralResourceId)
@@ -233,14 +233,14 @@ func TestRollupMultiResourceDecisionWithNilChecks(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no decisions returned")
 	})
-	
+
 	t.Run("nil decision in array", func(t *testing.T) {
 		decisions := []*access.Decision{nil}
 		_, err := rollupMultiResourceDecision(decisions)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "nil decision at index 0")
 	})
-	
+
 	t.Run("nil Results field", func(t *testing.T) {
 		decisions := []*access.Decision{
 			{
@@ -261,14 +261,14 @@ func TestRollupSingleResourceDecisionWithNilChecks(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no decisions returned")
 	})
-	
+
 	t.Run("nil decision in array", func(t *testing.T) {
 		decisions := []*access.Decision{nil}
 		_, err := rollupSingleResourceDecision(true, decisions)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "nil decision at index 0")
 	})
-	
+
 	t.Run("nil Results field", func(t *testing.T) {
 		decisions := []*access.Decision{
 			{

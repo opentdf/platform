@@ -1,7 +1,6 @@
 package access
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -87,150 +86,9 @@ var (
 	testActionDelete = &policy.Action{Name: actions.ActionNameDelete}
 )
 
-// Helper functions for all tests
-
-// createResource creates a resource with attribute values
-func createResource(ephemeralID string, attributeValueFQNs ...string) *authz.Resource {
-	return &authz.Resource{
-		EphemeralId: ephemeralID,
-		Resource: &authz.Resource_AttributeValues_{
-			AttributeValues: &authz.Resource_AttributeValues{
-				Fqns: attributeValueFQNs,
-			},
-		},
-	}
-}
-
-// createResources creates multiple resources, one for each attribute value FQN
-func createResources(attributeValueFQNs ...string) []*authz.Resource {
-	resources := make([]*authz.Resource, len(attributeValueFQNs))
-	for i, fqn := range attributeValueFQNs {
-		// Use the FQN itself as the resource ID instead of a generic "ephemeral-id-X"
-		resources[i] = createResource(fqn, fqn)
-	}
-	return resources
-}
-
-// actionNames extracts action names from a slice of actions
-func actionNames(actions []*policy.Action) []string {
-	names := make([]string, len(actions))
-	for i, action := range actions {
-		names[i] = action.GetName()
-	}
-	return names
-}
-
-// findEntityEntitlements finds entity entitlements by ID
-func findEntityEntitlements(entitlements []*authz.EntityEntitlements, entityID string) *authz.EntityEntitlements {
-	for _, e := range entitlements {
-		if e != nil && e.EphemeralId == entityID {
-			return e
-		}
-	}
-	return nil
-}
-
-// createSimpleSubjectConditionSet creates a simple subject condition set with a single condition
-// that checks if a property contains any of the specified values
-func createSimpleSubjectConditionSet(selector string, values []string) *policy.SubjectConditionSet {
-	// Create a single condition that uses the IN operator
-	condition := &policy.Condition{
-		SubjectExternalSelectorValue: selector,
-		SubjectExternalValues:        values,
-		Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
-	}
-
-	// Add the condition to a condition group with AND operator
-	conditionGroup := &policy.ConditionGroup{
-		BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
-		Conditions:      []*policy.Condition{condition},
-	}
-
-	// Add the condition group to a subject set
-	subjectSet := &policy.SubjectSet{
-		ConditionGroups: []*policy.ConditionGroup{conditionGroup},
-	}
-
-	// Return the complete subject condition set
-	return &policy.SubjectConditionSet{
-		SubjectSets: []*policy.SubjectSet{subjectSet},
-	}
-}
-
-// createSimpleSubjectMapping creates a complete subject mapping with a simple condition
-func createSimpleSubjectMapping(attrValueFQN string, attrValue string, actions []*policy.Action, selector string, values []string) *policy.SubjectMapping {
-	return &policy.SubjectMapping{
-		AttributeValue: &policy.Value{
-			Fqn:   attrValueFQN,
-			Value: attrValue,
-		},
-		SubjectConditionSet: createSimpleSubjectConditionSet(selector, values),
-		Actions:             actions,
-	}
-}
-
-// Helper function to test decision results
-// findResourceDecision finds a decision result for a specific resource ID
-func findResourceDecision(decision *Decision, resourceID string) *ResourceDecision {
-	if decision == nil || len(decision.Results) == 0 {
-		return nil
-	}
-
-	// Search for the exact resource ID in the results
-	for _, result := range decision.Results {
-		if result.ResourceID == resourceID {
-			return &result
-		}
-	}
-	return nil
-}
-
-// assertDecisionResult is a helper function to assert that a decision result for a given FQN matches the expected pass/fail state
-func (s *PDPTestSuite) assertDecisionResult(decision *Decision, fqn string, shouldPass bool) {
-	resourceDecision := findResourceDecision(decision, fqn)
-	s.Require().NotNil(resourceDecision, fmt.Sprintf("No result found for FQN %s", fqn))
-	s.Equal(shouldPass, resourceDecision.Passed, "Unexpected result for FQN %s. Expected (%t), got (%t)", fqn, shouldPass, resourceDecision.Passed)
-}
-
-// assertAllDecisionResults tests all FQNs in a map of FQN to expected pass/fail state
-func (s *PDPTestSuite) assertAllDecisionResults(decision *Decision, expectedResults map[string]bool) {
-	for fqn, shouldPass := range expectedResults {
-		s.assertDecisionResult(decision, fqn, shouldPass)
-	}
-	// Verify we didn't miss any results
-	s.Len(decision.Results, len(expectedResults), "Number of results doesn't match expected count")
-}
-
-// createEntityWithProps creates an entity representation with the specified properties
-func (s *PDPTestSuite) createEntityWithProps(entityID string, props map[string]interface{}) *entityresolutionV2.EntityRepresentation {
-	propsStruct := &structpb.Struct{
-		Fields: make(map[string]*structpb.Value),
-	}
-
-	for k, v := range props {
-		value, err := structpb.NewValue(v)
-		if err != nil {
-			panic(fmt.Sprintf("Failed to convert value %v to structpb.Value: %v", v, err))
-		}
-		propsStruct.Fields[k] = value
-	}
-
-	return &entityresolutionV2.EntityRepresentation{
-		OriginalId: entityID,
-		AdditionalProps: []*structpb.Struct{
-			{
-				Fields: map[string]*structpb.Value{
-					"properties": structpb.NewStructValue(propsStruct),
-				},
-			},
-		},
-	}
-}
-
 // PDPTestSuite contains all the tests for the PolicyDecisionPoint
 type PDPTestSuite struct {
 	suite.Suite
-	ctx      context.Context
 	logger   *logger.Logger
 	fixtures struct {
 		// Test attributes
@@ -261,7 +119,6 @@ type PDPTestSuite struct {
 
 // SetupTest initializes the test suite
 func (s *PDPTestSuite) SetupTest() {
-	s.ctx = context.Background()
 	s.logger = logger.CreateTestLogger()
 
 	// Initialize attributes
@@ -502,7 +359,7 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			pdp, err := NewPolicyDecisionPoint(s.ctx, s.logger, tc.attributes, tc.subjectMappings)
+			pdp, err := NewPolicyDecisionPoint(s.T().Context(), s.logger, tc.attributes, tc.subjectMappings)
 
 			if tc.expectError {
 				s.Error(err)
@@ -521,7 +378,7 @@ func (s *PDPTestSuite) Test_GetDecision() {
 
 	// Create a PDP with relevant attributes and mappings
 	pdp, err := NewPolicyDecisionPoint(
-		s.ctx,
+		s.T().Context(),
 		s.logger,
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr},
 		[]*policy.SubjectMapping{f.secretMapping, f.confidentialMapping, f.engineeringMapping, f.financeMapping},
@@ -540,7 +397,7 @@ func (s *PDPTestSuite) Test_GetDecision() {
 		resources := createResources(testClassSecretFQN)
 
 		// Get decision
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, resources)
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -567,7 +424,7 @@ func (s *PDPTestSuite) Test_GetDecision() {
 		resources := createResources(testClassSecretFQN)
 
 		// Get decision for update action
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionUpdate, resources)
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionUpdate, resources)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -594,7 +451,7 @@ func (s *PDPTestSuite) Test_GetDecision() {
 		resources := createResources(testDeptEngineeringFQN)
 
 		// Get decision for update action (not allowed on engineering)
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionUpdate, resources)
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionUpdate, resources)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -620,7 +477,7 @@ func (s *PDPTestSuite) Test_GetDecision() {
 		resources := createResources(testClassSecretFQN, testDeptFinanceFQN)
 
 		// Get decision
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, resources)
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -647,7 +504,7 @@ func (s *PDPTestSuite) Test_GetDecision() {
 		resources := createResources(testBaseNamespace + "/attr/nonexistent/value/test")
 
 		// Get decision
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, resources)
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
 		// Assertions
 		s.Require().Error(err)
@@ -695,7 +552,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 
 	// Create a PDP with attributes and mappings from all namespaces
 	pdp, err := NewPolicyDecisionPoint(
-		s.ctx,
+		s.T().Context(),
 		s.logger,
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr, f.countryAttr, f.projectAttr, f.platformAttr},
 		[]*policy.SubjectMapping{
@@ -721,7 +578,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		resources := createResources(testClassSecretFQN, testProjectAlphaFQN)
 
 		// Request for a common action allowed by both mappings
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, resources)
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -749,7 +606,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		resources := createResources(testClassSecretFQN, testProjectAlphaFQN)
 
 		// Request for read action
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, resources)
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -777,7 +634,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		resources := createResources(testClassSecretFQN, testProjectAlphaFQN)
 
 		// Create action is permitted for project alpha but not for secret
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionCreate, resources)
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionCreate, resources)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -811,7 +668,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		)
 
 		// Request for delete action - allowed only by platform cloud mapping
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionDelete, resources)
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionDelete, resources)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -849,7 +706,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		}
 
 		// Request for read action
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 
 		// Assertions
 		s.Require().NoError(err)
@@ -888,7 +745,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		)
 
 		// Test read access - should pass for all namespaces
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, resources)
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -905,7 +762,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		s.assertAllDecisionResults(decision, decisionResults)
 
 		// Test delete access - should only pass for hybrid platform
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionDelete, resources)
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionDelete, resources)
 
 		// Overall access should be denied
 		s.Require().NoError(err)
@@ -948,7 +805,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		}
 
 		// Test read access - should pass for this combined resource
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 
 		// Assertions
 		s.Require().NoError(err)
@@ -966,7 +823,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		}
 
 		// Test update access - should pass for all except country
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionUpdate, []*authz.Resource{combinedResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionUpdate, []*authz.Resource{combinedResource})
 
 		// Overall access should be denied due to country not supporting update
 		s.Require().NoError(err)
@@ -1002,7 +859,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 
 	// Create a PDP with attributes and mappings
 	pdp, err := NewPolicyDecisionPoint(
-		s.ctx,
+		s.T().Context(),
 		s.logger,
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr, f.countryAttr},
 		[]*policy.SubjectMapping{
@@ -1023,7 +880,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		})
 
 		// Get entitlements for this entity
-		entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entity}, nil, false)
+		entitlements, err := pdp.GetEntitlements(s.T().Context(), []*entityresolutionV2.EntityRepresentation{entity}, nil, false)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -1060,7 +917,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		})
 
 		// Get entitlements for this entity
-		entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entity}, nil, false)
+		entitlements, err := pdp.GetEntitlements(s.T().Context(), []*entityresolutionV2.EntityRepresentation{entity}, nil, false)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -1079,7 +936,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		})
 
 		// Get entitlements for this entity
-		entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entity}, nil, false)
+		entitlements, err := pdp.GetEntitlements(s.T().Context(), []*entityresolutionV2.EntityRepresentation{entity}, nil, false)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -1123,7 +980,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		for _, entityCase := range entityCases {
 			s.Run(entityCase.name, func() {
 				// Get entitlements for this entity
-				entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entityCase.entityRepresentation}, nil, false)
+				entitlements, err := pdp.GetEntitlements(s.T().Context(), []*entityresolutionV2.EntityRepresentation{entityCase.entityRepresentation}, nil, false)
 
 				// Assertions
 				s.Require().NoError(err)
@@ -1148,7 +1005,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		})
 
 		// Get entitlements with comprehensive hierarchy
-		entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entity}, nil, true)
+		entitlements, err := pdp.GetEntitlements(s.T().Context(), []*entityresolutionV2.EntityRepresentation{entity}, nil, true)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -1207,7 +1064,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 		filteredMappings := []*policy.SubjectMapping{f.secretMapping, f.confidentialMapping, f.publicMapping}
 
 		// Get entitlements with filtered mappings
-		entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entity}, filteredMappings, false)
+		entitlements, err := pdp.GetEntitlements(s.T().Context(), []*entityresolutionV2.EntityRepresentation{entity}, filteredMappings, false)
 
 		// Assertions
 		s.Require().NoError(err)
@@ -1304,7 +1161,7 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 
 	// Create a PDP with the hierarchy attribute and mappings
 	pdp, err := NewPolicyDecisionPoint(
-		s.ctx,
+		s.T().Context(),
 		s.logger,
 		[]*policy.Attribute{hierarchyAttribute},
 		[]*policy.SubjectMapping{
@@ -1325,7 +1182,7 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 
 	// Get entitlements for this entity
 	withComprehensiveHierarchy := true
-	entitlements, err := pdp.GetEntitlements(s.ctx, []*entityresolutionV2.EntityRepresentation{entity}, nil, withComprehensiveHierarchy)
+	entitlements, err := pdp.GetEntitlements(s.T().Context(), []*entityresolutionV2.EntityRepresentation{entity}, nil, withComprehensiveHierarchy)
 	s.Require().NoError(err)
 	s.Require().NotNil(entitlements)
 
@@ -1426,7 +1283,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 
 	// Create a PDP with relevant attributes and mappings
 	pdp, err := NewPolicyDecisionPoint(
-		s.ctx,
+		s.T().Context(),
 		s.logger,
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr, f.projectAttr},
 		[]*policy.SubjectMapping{
@@ -1446,7 +1303,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		// Resource to evaluate
 		resources := createResources(testClassSecretFQN)
 
-		decision, err := pdp.GetDecision(s.ctx, entity, actionRead, resources)
+		decision, err := pdp.GetDecision(s.T().Context(), entity, actionRead, resources)
 
 		// Read shuld pass
 		s.Require().NoError(err)
@@ -1455,7 +1312,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		s.Len(decision.Results, 1)
 
 		// Create should fail
-		decision, err = pdp.GetDecision(s.ctx, entity, actionCreate, resources)
+		decision, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // Should be false because create is not allowed
@@ -1480,32 +1337,32 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		}
 
 		// Test read access - should be allowed by both attributes
-		decision, err := pdp.GetDecision(s.ctx, entity, actionRead, []*authz.Resource{combinedResource})
+		decision, err := pdp.GetDecision(s.T().Context(), entity, actionRead, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access)
 		s.Len(decision.Results, 1)
 
 		// Test create access - should be denied (confidential doesn't allow it)
-		decision, err = pdp.GetDecision(s.ctx, entity, actionCreate, []*authz.Resource{combinedResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // Overall access is denied
 
 		// Test print access - allowed by confidential but not by finance
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionPrint, []*authz.Resource{combinedResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionPrint, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // Overall access is denied because one rule fails
 
 		// Test update access - allowed by finance but not by confidential
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionUpdate, []*authz.Resource{combinedResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionUpdate, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // Overall access is denied because one rule fails
 
 		// Test delete access - denied by both
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionDelete, []*authz.Resource{combinedResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionDelete, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)
@@ -1521,19 +1378,19 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		resources := createResources(testProjectAlphaFQN)
 
 		// Test view access - should be allowed
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionView, resources)
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionView, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access)
 
 		// Test list access - should be denied
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionList, resources)
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionList, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)
 
 		// Test search access - should be denied
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionSearch, resources)
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionSearch, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)
@@ -1550,7 +1407,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		)
 
 		classificationPDP, err := NewPolicyDecisionPoint(
-			s.ctx,
+			s.T().Context(),
 			s.logger,
 			[]*policy.Attribute{f.classificationAttr},
 			[]*policy.SubjectMapping{allActionsPublicMapping, restrictedMapping},
@@ -1567,19 +1424,19 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		restrictedResources := createResources(testClassConfidentialFQN)
 
 		// Test read access - should be allowed for restricted
-		decision, err := classificationPDP.GetDecision(s.ctx, entity, actionRead, restrictedResources)
+		decision, err := classificationPDP.GetDecision(s.T().Context(), entity, actionRead, restrictedResources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access)
 
 		// Test create access - should be denied for restricted despite comprehensive actions on public
-		decision, err = classificationPDP.GetDecision(s.ctx, entity, actionCreate, restrictedResources)
+		decision, err = classificationPDP.GetDecision(s.T().Context(), entity, actionCreate, restrictedResources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)
 
 		// Test delete access - should be denied for restricted despite comprehensive actions on public
-		decision, err = classificationPDP.GetDecision(s.ctx, entity, testActionDelete, restrictedResources)
+		decision, err = classificationPDP.GetDecision(s.T().Context(), entity, testActionDelete, restrictedResources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)
@@ -1592,7 +1449,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 
 	// Create a PDP with all attribute types (HIERARCHY, ANY_OF, ALL_OF)
 	pdp, err := NewPolicyDecisionPoint(
-		s.ctx,
+		s.T().Context(),
 		s.logger,
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr, f.countryAttr, f.projectAttr, f.platformAttr},
 		[]*policy.SubjectMapping{
@@ -1622,19 +1479,19 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		}
 
 		// Test read access (both allow)
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access)
 
 		// Test create access (only engineering allows)
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionCreate, []*authz.Resource{combinedResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionCreate, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // False because both attributes need to pass
 
 		// Test update access (only secret allows)
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionUpdate, []*authz.Resource{combinedResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionUpdate, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // False because both attributes need to pass
@@ -1658,13 +1515,13 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		}
 
 		// Test read access (both allow)
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access)
 
 		// Test update access (only secret allows, usa doesn't)
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionUpdate, []*authz.Resource{combinedResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionUpdate, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // False because both attributes need to pass
@@ -1688,13 +1545,13 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		}
 
 		// Test read access (both allow)
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access)
 
 		// Test create access (only engineering allows)
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionCreate, []*authz.Resource{combinedResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionCreate, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // False because both attributes need to pass
@@ -1719,7 +1576,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		}
 
 		// Test read access (all three allow)
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)
@@ -1761,14 +1618,14 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		}
 
 		// Test read access (all three allow)
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access)
 
 		// No other action is permitted by all three attributes
 		for _, action := range []string{actions.ActionNameCreate, actions.ActionNameUpdate, actions.ActionNameDelete} {
-			decision, err := pdp.GetDecision(s.ctx, entity, &policy.Action{Name: action}, []*authz.Resource{combinedResource})
+			decision, err := pdp.GetDecision(s.T().Context(), entity, &policy.Action{Name: action}, []*authz.Resource{combinedResource})
 			s.Require().NoError(err)
 			s.Require().NotNil(decision)
 			s.False(decision.Access, "Action %s should not be allowed", action)
@@ -1794,7 +1651,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		}
 
 		// Test read access - should fail because department doesn't match
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{combinedResource})
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)
@@ -1844,13 +1701,13 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		}
 
 		// Test read access (all four allow)
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{complexResource})
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{complexResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access)
 
 		// Test delete access (only platform:cloud allows)
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionDelete, []*authz.Resource{complexResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionDelete, []*authz.Resource{complexResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // Overall fails because other attributes don't allow delete
@@ -1894,7 +1751,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		})
 
 		// Test read access
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{cascadingResource})
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{cascadingResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access, "Entity with Secret clearance should have access to both Secret and Confidential")
@@ -1905,7 +1762,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		})
 
 		// Test read access
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{cascadingResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{cascadingResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access, "Entity with Confidential clearance should NOT have access to both classifications")
@@ -1938,7 +1795,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		})
 
 		// Test read access
-		decision, err := pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{cascadingResource})
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{cascadingResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access, "Entity with Secret clearance should have access to both Secret and Confidential")
@@ -1949,7 +1806,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		})
 
 		// Test read access
-		decision, err = pdp.GetDecision(s.ctx, entity, testActionRead, []*authz.Resource{cascadingResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{cascadingResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access, "Entity with Confidential clearance should NOT have access to both classifications")
@@ -1961,4 +1818,144 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		s.Len(ruleResult.EntitlementFailures, 1)
 		s.Equal(ruleResult.EntitlementFailures[0].AttributeValueFQN, testClassSecretFQN)
 	})
+}
+
+// Helper functions for all tests
+
+// assertDecisionResult is a helper function to assert that a decision result for a given FQN matches the expected pass/fail state
+func (s *PDPTestSuite) assertDecisionResult(decision *Decision, fqn string, shouldPass bool) {
+	resourceDecision := findResourceDecision(decision, fqn)
+	s.Require().NotNil(resourceDecision, fmt.Sprintf("No result found for FQN %s", fqn))
+	s.Equal(shouldPass, resourceDecision.Passed, "Unexpected result for FQN %s. Expected (%t), got (%t)", fqn, shouldPass, resourceDecision.Passed)
+}
+
+// assertAllDecisionResults tests all FQNs in a map of FQN to expected pass/fail state
+func (s *PDPTestSuite) assertAllDecisionResults(decision *Decision, expectedResults map[string]bool) {
+	for fqn, shouldPass := range expectedResults {
+		s.assertDecisionResult(decision, fqn, shouldPass)
+	}
+	// Verify we didn't miss any results
+	s.Len(decision.Results, len(expectedResults), "Number of results doesn't match expected count")
+}
+
+// createEntityWithProps creates an entity representation with the specified properties
+func (s *PDPTestSuite) createEntityWithProps(entityID string, props map[string]interface{}) *entityresolutionV2.EntityRepresentation {
+	propsStruct := &structpb.Struct{
+		Fields: make(map[string]*structpb.Value),
+	}
+
+	for k, v := range props {
+		value, err := structpb.NewValue(v)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to convert value %v to structpb.Value: %v", v, err))
+		}
+		propsStruct.Fields[k] = value
+	}
+
+	return &entityresolutionV2.EntityRepresentation{
+		OriginalId: entityID,
+		AdditionalProps: []*structpb.Struct{
+			{
+				Fields: map[string]*structpb.Value{
+					"properties": structpb.NewStructValue(propsStruct),
+				},
+			},
+		},
+	}
+}
+
+// createResource creates a resource with attribute values
+func createResource(ephemeralID string, attributeValueFQNs ...string) *authz.Resource {
+	return &authz.Resource{
+		EphemeralId: ephemeralID,
+		Resource: &authz.Resource_AttributeValues_{
+			AttributeValues: &authz.Resource_AttributeValues{
+				Fqns: attributeValueFQNs,
+			},
+		},
+	}
+}
+
+// createResources creates multiple resources, one for each attribute value FQN
+func createResources(attributeValueFQNs ...string) []*authz.Resource {
+	resources := make([]*authz.Resource, len(attributeValueFQNs))
+	for i, fqn := range attributeValueFQNs {
+		// Use the FQN itself as the resource ID instead of a generic "ephemeral-id-X"
+		resources[i] = createResource(fqn, fqn)
+	}
+	return resources
+}
+
+// actionNames extracts action names from a slice of actions
+func actionNames(actions []*policy.Action) []string {
+	names := make([]string, len(actions))
+	for i, action := range actions {
+		names[i] = action.GetName()
+	}
+	return names
+}
+
+// findEntityEntitlements finds entity entitlements by ID
+func findEntityEntitlements(entitlements []*authz.EntityEntitlements, entityID string) *authz.EntityEntitlements {
+	for _, e := range entitlements {
+		if e != nil && e.EphemeralId == entityID {
+			return e
+		}
+	}
+	return nil
+}
+
+// createSimpleSubjectConditionSet creates a simple subject condition set with a single condition
+// that checks if a property contains any of the specified values
+func createSimpleSubjectConditionSet(selector string, values []string) *policy.SubjectConditionSet {
+	// Create a single condition that uses the IN operator
+	condition := &policy.Condition{
+		SubjectExternalSelectorValue: selector,
+		SubjectExternalValues:        values,
+		Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+	}
+
+	// Add the condition to a condition group with AND operator
+	conditionGroup := &policy.ConditionGroup{
+		BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+		Conditions:      []*policy.Condition{condition},
+	}
+
+	// Add the condition group to a subject set
+	subjectSet := &policy.SubjectSet{
+		ConditionGroups: []*policy.ConditionGroup{conditionGroup},
+	}
+
+	// Return the complete subject condition set
+	return &policy.SubjectConditionSet{
+		SubjectSets: []*policy.SubjectSet{subjectSet},
+	}
+}
+
+// createSimpleSubjectMapping creates a complete subject mapping with a simple condition
+func createSimpleSubjectMapping(attrValueFQN string, attrValue string, actions []*policy.Action, selector string, values []string) *policy.SubjectMapping {
+	return &policy.SubjectMapping{
+		AttributeValue: &policy.Value{
+			Fqn:   attrValueFQN,
+			Value: attrValue,
+		},
+		SubjectConditionSet: createSimpleSubjectConditionSet(selector, values),
+		Actions:             actions,
+	}
+}
+
+// Helper function to test decision results
+// findResourceDecision finds a decision result for a specific resource ID
+func findResourceDecision(decision *Decision, resourceID string) *ResourceDecision {
+	if decision == nil || len(decision.Results) == 0 {
+		return nil
+	}
+
+	// Search for the exact resource ID in the results
+	for _, result := range decision.Results {
+		if result.ResourceID == resourceID {
+			return &result
+		}
+	}
+	return nil
 }

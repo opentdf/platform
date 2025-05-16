@@ -1,7 +1,6 @@
 package access
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -50,7 +49,6 @@ var (
 // EvaluateTestSuite is a test suite for the evaluate.go file functions
 type EvaluateTestSuite struct {
 	suite.Suite
-	ctx    context.Context
 	logger *logger.Logger
 	action *policy.Action
 
@@ -62,7 +60,6 @@ type EvaluateTestSuite struct {
 }
 
 func (s *EvaluateTestSuite) SetupTest() {
-	s.ctx = context.Background()
 	s.logger = logger.CreateTestLogger()
 	s.action = actionRead
 
@@ -252,7 +249,7 @@ func (s *EvaluateTestSuite) TestAllOfRule() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			failures := allOfRule(s.ctx, s.logger, tc.entitlements, s.action, tc.resourceValueFQNs)
+			failures := allOfRule(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValueFQNs)
 
 			s.Len(failures, tc.expectedFailures)
 
@@ -385,7 +382,7 @@ func (s *EvaluateTestSuite) TestAnyOfRule() {
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
 			// Execute
-			failures := anyOfRule(s.ctx, s.logger, tc.entitlements, s.action, tc.resourceValueFQNs)
+			failures := anyOfRule(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValueFQNs)
 
 			// Assert
 			if tc.expectedFailCount == 0 {
@@ -564,7 +561,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
 			// Execute
-			failures := hierarchyRule(s.ctx, s.logger, tc.entitlements, s.action, tc.resourceValueFQNs, s.hierarchicalClassAttr)
+			failures := hierarchyRule(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValueFQNs, s.hierarchicalClassAttr)
 
 			// Assert
 			if tc.expectedFailures {
@@ -644,7 +641,7 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			result, err := evaluateDefinition(s.ctx, s.logger, tc.entitlements, s.action, tc.resourceValues, tc.definition)
+			result, err := evaluateDefinition(s.T().Context(), s.logger, tc.entitlements, s.action, tc.resourceValues, tc.definition)
 
 			if tc.expectError {
 				s.Error(err)
@@ -715,7 +712,7 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
 			resourceDecision, err := evaluateResourceAttributeValues(
-				s.ctx,
+				s.T().Context(),
 				s.logger,
 				tc.resourceAttrs,
 				"test-resource-id",
@@ -777,7 +774,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
 			decision, err := getResourceDecision(
-				s.ctx,
+				s.T().Context(),
 				s.logger,
 				s.accessibleAttrValues,
 				tc.entitlements,

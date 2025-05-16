@@ -32,6 +32,7 @@ var (
 	ErrExpectedBase64EncodedValue = errors.New("ErrExpectedBase64EncodedValue: expected base64 encoded value")
 	ErrMarshalValueFailed         = errors.New("ErrMashalValueFailed: failed to marshal value")
 	ErrUnmarshalValueFailed       = errors.New("ErrUnmarshalValueFailed: failed to unmarshal value")
+	ErrNamespaceMismatch          = errors.New("ErrNamesapceMismatch: namespace mismatch")
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -116,6 +117,7 @@ const (
 	ErrorTextExpectedBase64EncodedValue = "expected base64 encoded value"
 	ErrorTextMarshalFailed              = "failed to marshal value"
 	ErrorTextUnmarsalFailed             = "failed to unmarshal value"
+	ErrorTextNamespaceMismatch          = "namespace mismatch"
 )
 
 func StatusifyError(err error, fallbackErr string, log ...any) error {

@@ -4091,6 +4091,26 @@ value_subject_mappings AS (
 	LEFT JOIN subject_condition_set scs ON sm.subject_condition_set_id = scs.id
 	GROUP BY av.id
 ),
+value_resource_mappings AS (
+    SELECT
+        av.id,
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', rm.id,
+                'terms', rm.terms,
+                'group', JSON_BUILD_OBJECT(
+                    'id', rmg.id,
+                    'name', rmg.name,
+                    'namespace_id', rmg.namespace_id
+                )
+            )
+        ) FILTER (WHERE rm.id IS NOT NULL) AS rec_maps
+    FROM target_definition td
+    LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
+    LEFT JOIN resource_mappings rm ON av.id = rm.attribute_value_id
+    LEFT JOIN resource_mapping_groups rmg ON rm.group_id = rmg.id
+    GROUP BY av.id
+),
 values AS (
     SELECT
 		av.attribute_definition_id,
@@ -4102,6 +4122,7 @@ values AS (
 	            'fqn', fqns.fqn,
 	            'grants', avg.grants,
 	            'subject_mappings', avsm.sub_maps,
+                'resource_mappings', avrm.rec_maps,
                 'kas_keys', value_keys.keys
 	        -- enforce order of values in response
 	        ) ORDER BY ARRAY_POSITION(td.values_order, av.id)
@@ -4111,6 +4132,7 @@ values AS (
 	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 	LEFT JOIN value_grants avg ON av.id = avg.id
 	LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
+    LEFT JOIN value_resource_mappings avrm ON av.id = avrm.id
     LEFT JOIN (
         SELECT
             k.value_id,
@@ -4312,6 +4334,26 @@ type listAttributesByDefOrValueFqnsRow struct {
 //		LEFT JOIN subject_condition_set scs ON sm.subject_condition_set_id = scs.id
 //		GROUP BY av.id
 //	),
+//	value_resource_mappings AS (
+//	    SELECT
+//	        av.id,
+//	        JSON_AGG(
+//	            JSON_BUILD_OBJECT(
+//	                'id', rm.id,
+//	                'terms', rm.terms,
+//	                'group', JSON_BUILD_OBJECT(
+//	                    'id', rmg.id,
+//	                    'name', rmg.name,
+//	                    'namespace_id', rmg.namespace_id
+//	                )
+//	            )
+//	        ) FILTER (WHERE rm.id IS NOT NULL) AS rec_maps
+//	    FROM target_definition td
+//	    LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
+//	    LEFT JOIN resource_mappings rm ON av.id = rm.attribute_value_id
+//	    LEFT JOIN resource_mapping_groups rmg ON rm.group_id = rmg.id
+//	    GROUP BY av.id
+//	),
 //	values AS (
 //	    SELECT
 //			av.attribute_definition_id,
@@ -4323,6 +4365,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //		            'fqn', fqns.fqn,
 //		            'grants', avg.grants,
 //		            'subject_mappings', avsm.sub_maps,
+//	                'resource_mappings', avrm.rec_maps,
 //	                'kas_keys', value_keys.keys
 //		        -- enforce order of values in response
 //		        ) ORDER BY ARRAY_POSITION(td.values_order, av.id)
@@ -4332,6 +4375,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //		LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 //		LEFT JOIN value_grants avg ON av.id = avg.id
 //		LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
+//	    LEFT JOIN value_resource_mappings avrm ON av.id = avrm.id
 //	    LEFT JOIN (
 //	        SELECT
 //	            k.value_id,

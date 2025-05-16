@@ -430,6 +430,22 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownGroupIdFail
 	s.Nil(createdMapping)
 }
 
+func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroupNsDiffFromAttrNsFails() {
+	metadata := &common.MetadataMutable{}
+
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	rmGroup := s.getResourceMappingGroupFixtures()[2] //scenario.com_ns_group_1
+	mapping := &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Metadata:         metadata,
+		Terms:            []string{},
+		GroupId:          rmGroup.ID,
+	}
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+	s.Require().Error(err)
+	s.Nil(createdMapping)
+}
+
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds() {
 	testMappings := make(map[string]fixtures.FixtureDataResourceMapping)
 	for _, testMapping := range s.getResourceMappingFixtures() {

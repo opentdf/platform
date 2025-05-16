@@ -8,6 +8,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -28,9 +29,9 @@ func authorizationExamples() error {
 	}
 	defer s.Close()
 
-	// request decision on "TRANSMIT" Action
+	// request decision on "read" Action
 	actions := []*policy.Action{{
-		Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_TRANSMIT},
+		Name: actions.ActionNameRead,
 	}}
 
 	// model two groups of entities; user bob and user alice

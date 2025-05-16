@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -165,7 +166,7 @@ func allOfRule(
 		// Check if this FQN has the entitled action
 		if entitledActions, ok := entitlements[valueFQN]; ok {
 			for _, entitledAction := range entitledActions {
-				if entitledAction.GetName() == actionName {
+				if strings.EqualFold(entitledAction.GetName(), actionName) {
 					hasEntitlement = true
 					break
 				}
@@ -211,7 +212,7 @@ func anyOfRule(
 		entitledActions, ok := entitlements[valueFQN]
 		if ok {
 			for _, entitledAction := range entitledActions {
-				if entitledAction.GetName() == actionName {
+				if strings.EqualFold(entitledAction.GetName(), actionName) {
 					foundEntitlementForThisFQN = true
 					anyEntitlementFound = true
 					break
@@ -275,7 +276,7 @@ func hierarchyRule(
 		if idx, exists := valueFQNToIndex[entitlementFQN]; exists && idx <= lowestValueFQNIndex {
 			// Check if the required action is entitled
 			for _, entitledAction := range entitledActions {
-				if entitledAction.GetName() == actionName {
+				if strings.EqualFold(entitledAction.GetName(), actionName) {
 					return nil // Found an entitled action at or above the hierarchy level, no failures
 				}
 			}
@@ -288,7 +289,7 @@ func hierarchyRule(
 		foundValue := false
 		if entitledActions, ok := entitlements[valueFQN]; ok {
 			for _, entitledAction := range entitledActions {
-				if entitledAction.GetName() == actionName {
+				if strings.EqualFold(entitledAction.GetName(), actionName) {
 					foundValue = true
 					break
 				}

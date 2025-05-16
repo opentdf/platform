@@ -1,6 +1,7 @@
 package access
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -270,7 +271,7 @@ func (s *EvaluateTestSuite) TestAllOfRule() {
 				} else {
 					hasReadAction := false
 					for _, entAction := range entitlementActions {
-						if entAction.GetName() == s.action.GetName() {
+						if strings.EqualFold(entAction.GetName(), s.action.GetName()) {
 							hasReadAction = true
 							break
 						}
@@ -405,7 +406,7 @@ func (s *EvaluateTestSuite) TestAnyOfRule() {
 				if entitlementActions, exists := tc.entitlements[fqn]; exists {
 					hasRightEntitlement := false
 					for _, entAction := range entitlementActions {
-						if entAction.GetName() == s.action.GetName() {
+						if strings.EqualFold(entAction.GetName(), s.action.GetName()) {
 							hasRightEntitlement = true
 							break
 						}

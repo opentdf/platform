@@ -1,9 +1,7 @@
 package authorization
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -16,9 +14,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
-	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
-	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/assert"
@@ -27,106 +23,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
-
-var (
-	getAttributesByValueFqnsResponse attr.GetAttributeValuesByFqnsResponse
-	errGetAttributesByValueFqns      error
-	listAttributeResp                attr.ListAttributesResponse
-	errListAttributes                error
-	listSubjectMappings              sm.ListSubjectMappingsResponse
-	createEntityChainResp            entityresolution.CreateEntityChainFromJwtResponse
-	resolveEntitiesResp              entityresolution.ResolveEntitiesResponse
-	mockNamespace                    = "www.example.org"
-	mockAttrName                     = "foo"
-	mockAttrValue1                   = "value1"
-	mockAttrValue2                   = "value2"
-	mockAttrValue3                   = "value3"
-	mockFqn1                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue1)
-	mockFqn2                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue2)
-	mockFqn3                         = fmt.Sprintf("https://%s/attr/%s/value/%s", mockNamespace, mockAttrName, mockAttrValue3)
-)
-
-type myAttributesClient struct {
-	sdkconnect.AttributesServiceClient
-}
-
-func (*myAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest) (*attr.ListAttributesResponse, error) {
-	return &listAttributeResp, errListAttributes
-}
-
-func (*myAttributesClient) GetAttributeValuesByFqns(_ context.Context, _ *attr.GetAttributeValuesByFqnsRequest) (*attr.GetAttributeValuesByFqnsResponse, error) {
-	return &getAttributesByValueFqnsResponse, errGetAttributesByValueFqns
-}
-
-type myERSClient struct {
-	sdkconnect.EntityResolutionServiceClient
-}
-
-type mySubjectMappingClient struct {
-	sdkconnect.SubjectMappingServiceClient
-}
-
-type paginatedMockSubjectMappingClient struct {
-	sdkconnect.SubjectMappingServiceClient
-}
-
-func (*mySubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest) (*sm.ListSubjectMappingsResponse, error) {
-	return &listSubjectMappings, nil
-}
-
-func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
-	return &createEntityChainResp, nil
-}
-
-func (*myERSClient) ResolveEntities(_ context.Context, _ *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error) {
-	return &resolveEntitiesResp, nil
-}
-
-var (
-	smPaginationOffset = 3
-	smListCallCount    = 0
-)
-
-func (*paginatedMockSubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest) (*sm.ListSubjectMappingsResponse, error) {
-	smListCallCount++
-	// simulate paginated list and policy LIST behavior
-	if smPaginationOffset > 0 {
-		rsp := &sm.ListSubjectMappingsResponse{
-			SubjectMappings: nil,
-			Pagination: &policy.PageResponse{
-				NextOffset: int32(smPaginationOffset),
-			},
-		}
-		smPaginationOffset = 0
-		return rsp, nil
-	}
-	return &listSubjectMappings, nil
-}
-
-type paginatedMockAttributesClient struct {
-	sdkconnect.AttributesServiceClient
-}
-
-var (
-	attrPaginationOffset = 3
-	attrListCallCount    = 0
-)
-
-func (*paginatedMockAttributesClient) ListAttributes(_ context.Context, _ *attr.ListAttributesRequest) (*attr.ListAttributesResponse, error) {
-	attrListCallCount++
-	// simulate paginated list and policy LIST behavior
-	if attrPaginationOffset > 0 {
-		rsp := &attr.ListAttributesResponse{
-			Attributes: nil,
-			Pagination: &policy.PageResponse{
-				NextOffset: int32(attrPaginationOffset),
-			},
-		}
-		attrPaginationOffset = 0
-		return rsp, nil
-	}
-	return &listAttributeResp, nil
-}
 
 func TestGetComprehensiveHierarchy(t *testing.T) {
 	as := &AuthorizationService{

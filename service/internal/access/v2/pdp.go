@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
@@ -168,6 +169,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 
 		case *authz.Resource_AttributeValues_:
 			for _, valueFQN := range resource.GetAttributeValues().GetFqns() {
+				valueFQN = strings.ToLower(valueFQN)
 				// If same value FQN more than once, skip
 				if _, ok := decisionableAttributes[valueFQN]; ok {
 					continue

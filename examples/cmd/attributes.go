@@ -1,3 +1,4 @@
+//nolint:forbidigo,nestif // We use Println here extensively because we are printing markdown.
 package cmd
 
 import (
@@ -37,7 +38,7 @@ func init() {
 	add := &cobra.Command{
 		Use:  "add",
 		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return addAttribute(cmd)
 		},
 	}
@@ -49,7 +50,7 @@ func init() {
 	assign := &cobra.Command{
 		Use:  "assign",
 		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return assignAttribute(cmd, true)
 		},
 	}
@@ -63,7 +64,7 @@ func init() {
 		Args:    cobra.NoArgs,
 		Aliases: []string{"ls"},
 		Short:   "list available policy attributes",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return listAttributes(cmd)
 		},
 	}
@@ -75,7 +76,7 @@ func init() {
 		Use:     "remove",
 		Aliases: []string{"rm"},
 		Args:    cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return removeAttribute(cmd)
 		},
 	}
@@ -87,7 +88,7 @@ func init() {
 	unassign := &cobra.Command{
 		Use:  "unassign",
 		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return assignAttribute(cmd, false)
 		},
 	}
@@ -238,16 +239,16 @@ func addAttribute(cmd *cobra.Command) error {
 		slog.Error("upsertNamespace", "err", err)
 		return err
 	}
-	attr, err := url.PathUnescape(m[2])
+	attrEl, err := url.PathUnescape(m[2])
 	if err != nil {
 		slog.Error("url.PathUnescape(attr)", "err", err, "attr", m[2])
 		return err
 	}
-	aid, err := upsertAttr(cmd.Context(), s, nsu, attr, values)
+	aid, err := upsertAttr(cmd.Context(), s, nsu, attrEl, values)
 	if err != nil {
 		return err
 	}
-	slog.Info("created attribute", "passedin", attr, "id", aid)
+	slog.Info("created attribute", "passedin", attrEl, "id", aid)
 	return nil
 }
 
@@ -294,32 +295,32 @@ func removeAttribute(cmd *cobra.Command) error {
 		}
 		slog.Info("deactivated attribute", "attr", attr, "resp", resp)
 		return nil
-	} else {
-		for _, v := range values {
-			avu, err := avuuid(cmd.Context(), s, auuid, v)
+	}
+
+	for _, v := range values {
+		avu, err := avuuid(cmd.Context(), s, auuid, v)
+		if err != nil {
+			return err
+		}
+		if unsafeBool {
+			r, err := s.Unsafe.UnsafeDeleteAttributeValue(cmd.Context(), &unsafe.UnsafeDeleteAttributeValueRequest{
+				Id:  avu,
+				Fqn: strings.ToLower(attr + "/value/" + url.PathEscape(v)),
+			})
 			if err != nil {
+				slog.Error("UnsafeDeleteAttributeValue", "err", err, "id", avu)
 				return err
 			}
-			if unsafeBool {
-				r, err := s.Unsafe.UnsafeDeleteAttributeValue(cmd.Context(), &unsafe.UnsafeDeleteAttributeValueRequest{
-					Id:  avu,
-					Fqn: strings.ToLower(attr + "/value/" + url.PathEscape(v)),
-				})
-				if err != nil {
-					slog.Error("UnsafeDeleteAttributeValue", "err", err, "id", avu)
-					return err
-				}
-				slog.Info("deactivated attribute value", "attr", attr, "value", v, "resp", r)
-			} else {
-				r, err := s.Attributes.DeactivateAttributeValue(cmd.Context(), &attributes.DeactivateAttributeValueRequest{
-					Id: avu,
-				})
-				if err != nil {
-					slog.Error("DeactivateAttributeValue", "err", err, "id", avu)
-					return err
-				}
-				slog.Info("deactivated attribute value", "attr", attr, "value", v, "resp", r)
+			slog.Info("deactivated attribute value", "attr", attr, "value", v, "resp", r)
+		} else {
+			r, err := s.Attributes.DeactivateAttributeValue(cmd.Context(), &attributes.DeactivateAttributeValueRequest{
+				Id: avu,
+			})
+			if err != nil {
+				slog.Error("DeactivateAttributeValue", "err", err, "id", avu)
+				return err
 			}
+			slog.Info("deactivated attribute value", "attr", attr, "value", v, "resp", r)
 		}
 	}
 	return nil
@@ -351,7 +352,7 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 		return err
 	}
 
-	kasById := make(map[string]string)
+	kasByID := make(map[string]string)
 
 	var kasids []string
 	switch {
@@ -362,10 +363,10 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 				return err
 			}
 			kasids = append(kasids, kasid)
-			kasById[kasid] = kas
+			kasByID[kasid] = kas
 		}
 	case assign:
-		return fmt.Errorf("assign must take a `--kas` parameter")
+		return errors.New("assign must take a `--kas` parameter")
 	case len(values) == 0:
 		// look up all kasids associated with the attribute
 		ar, err := s.Attributes.GetAttribute(cmd.Context(), &attributes.GetAttributeRequest{Id: auuid})
@@ -374,10 +375,10 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 		}
 		for _, b := range ar.GetAttribute().GetGrants() {
 			kasids = append(kasids, b.GetId())
-			kasById[b.GetId()] = b.GetUri()
+			kasByID[b.GetId()] = b.GetUri()
 		}
 	case len(values) > 1:
-		return fmt.Errorf("TODO: unassign from multiple values at a time")
+		return errors.New("TODO: unassign from multiple values at a time")
 	default:
 		// look up all kasids associated with the value
 		avu, err := avuuid(cmd.Context(), s, auuid, values[0])
@@ -390,7 +391,7 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 		}
 		for _, b := range ar.GetValue().GetGrants() {
 			kasids = append(kasids, b.GetId())
-			kasById[b.GetId()] = b.GetUri()
+			kasByID[b.GetId()] = b.GetUri()
 		}
 	}
 
@@ -406,7 +407,7 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 				if err != nil {
 					return err
 				}
-				cmd.Printf("successfully assigned all of [%s] to [%s] (binding [%v])\n", attr, kasById[kasid], *r.GetAttributeKeyAccessServer())
+				cmd.Printf("successfully assigned all of [%s] to [%s] (binding [%v])\n", attr, kasByID[kasid], *r.GetAttributeKeyAccessServer())
 			} else {
 				r, err := s.Attributes.RemoveKeyAccessServerFromAttribute(cmd.Context(), &attributes.RemoveKeyAccessServerFromAttributeRequest{
 					AttributeKeyAccessServer: &attributes.AttributeKeyAccessServer{
@@ -417,7 +418,7 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 				if err != nil {
 					return err
 				}
-				cmd.Printf("successfully unassigned [%s] from [%s] (binding %v)\n", attr, kasById[kasid], *r.GetAttributeKeyAccessServer())
+				cmd.Printf("successfully unassigned [%s] from [%s] (binding %v)\n", attr, kasByID[kasid], *r.GetAttributeKeyAccessServer())
 			}
 		} else {
 			for _, v := range values {
@@ -435,7 +436,7 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 					if err != nil {
 						return err
 					}
-					cmd.Printf("successfully assigned [%s] to [%s] (binding [%v])\n", attr, kasById[kasid], *r.GetValueKeyAccessServer())
+					cmd.Printf("successfully assigned [%s] to [%s] (binding [%v])\n", attr, kasByID[kasid], *r.GetValueKeyAccessServer())
 				} else {
 					r, err := s.Attributes.RemoveKeyAccessServerFromValue(cmd.Context(), &attributes.RemoveKeyAccessServerFromValueRequest{
 						ValueKeyAccessServer: &attributes.ValueKeyAccessServer{
@@ -446,7 +447,7 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 					if err != nil {
 						return err
 					}
-					cmd.Printf("successfully unassigned [%s] from [%s] (binding [%v])\n", attr, kasById[kasid], *r.GetValueKeyAccessServer())
+					cmd.Printf("successfully unassigned [%s] from [%s] (binding [%v])\n", attr, kasByID[kasid], *r.GetValueKeyAccessServer())
 				}
 			}
 		}
@@ -459,22 +460,21 @@ func ruler() policy.AttributeRuleTypeEnum {
 	case "allof":
 		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF
 	case "anyof":
-		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF
+		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF
 	case "hierarchy":
-		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF
+		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY
 	default:
-		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF
+		return policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED
 	}
 }
 
 func upsertAttr(ctx context.Context, s *sdk.SDK, auth, name string, values []string) (string, error) {
-	av, err :=
-		s.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
-			NamespaceId: auth,
-			Name:        name,
-			Rule:        ruler(),
-			Values:      values,
-		})
+	av, err := s.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: auth,
+		Name:        name,
+		Rule:        ruler(),
+		Values:      values,
+	})
 	if err != nil {
 		slog.Error("CreateAttribute", "err", err, "auth", auth, "name", name, "values", values, "rule", ruler())
 		return "", err

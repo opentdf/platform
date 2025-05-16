@@ -14,7 +14,7 @@ import (
 var AuthorizationExampleCmd = &cobra.Command{
 	Use:   "authorization",
 	Short: "Example usage for authorization service",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		return authorizationExamples()
 	},
 }
@@ -34,16 +34,19 @@ func authorizationExamples() error {
 	// model two groups of entities; user bob and user alice
 	entityChains := []*authorization.EntityChain{{
 		Id: "ec1", // ec1 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"},
-			Category: authorization.Entity_CATEGORY_SUBJECT}},
+		Entities: []*authorization.Entity{{
+			EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"},
+			Category:   authorization.Entity_CATEGORY_SUBJECT,
+		}},
 	}, {
 		Id: "ec2", // ec2 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"},
-			Category: authorization.Entity_CATEGORY_SUBJECT}},
+		Entities: []*authorization.Entity{{
+			EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"},
+			Category:   authorization.Entity_CATEGORY_SUBJECT,
+		}},
 	}}
 
-	// TODO Get attribute value ids
-	tradeSecretAttributeValueFqn := "https://namespace.com/attr/attr_name/value/replaceme"
+	tradeSecretAttributeValueFqn := "https://namespace.com/attr/attr_name/value/replaceme" //nolint: gosec // TODO Get attribute value ids
 	openAttributeValueFqn := "https://open.io/attr/attr_name/value/open"
 
 	slog.Info("Getting decision for bob and alice for transmit action on resource set with trade secret and resource" +
@@ -69,7 +72,7 @@ func authorizationExamples() error {
 	// map response back to entity chain id
 	decisionsByEntityChain := make(map[string]*authorization.DecisionResponse)
 	for _, dr := range decisionResponse.GetDecisionResponses() {
-		decisionsByEntityChain[dr.EntityChainId] = dr
+		decisionsByEntityChain[dr.GetEntityChainId()] = dr
 	}
 
 	slog.Info("decision for bob: " + protojson.Format(decisionsByEntityChain["ec1"]))

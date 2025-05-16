@@ -49,7 +49,7 @@ go-lint:
 	status=0; \
 	for m in $(HAND_MODS); do \
 		echo "Linting module: $$m"; \
-		(cd "$$m" && golangci-lint run $(LINT_OPTIONS) --path-prefix="$$m" ) || status=1; \
+		(cd "$$m" && golangci-lint run $(LINT_OPTIONS) ) || status=1; \
 	done; \
 	exit $$status
 

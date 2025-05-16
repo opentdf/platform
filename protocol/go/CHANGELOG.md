@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4](https://github.com/opentdf/platform/compare/protocol/go/v0.3.3...protocol/go/v0.3.4) (2025-05-16)
+
+
+### Features
+
+* **core:** v2 ERS with proto updates ([#2210](https://github.com/opentdf/platform/issues/2210)) ([a161ef8](https://github.com/opentdf/platform/commit/a161ef85d12600672ff695cc84b07579a70c5cac))
+
 ## [0.3.3](https://github.com/opentdf/platform/compare/protocol/go/v0.3.2...protocol/go/v0.3.3) (2025-05-15)
 
 

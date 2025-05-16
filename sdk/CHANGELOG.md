@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.5](https://github.com/opentdf/platform/compare/sdk/v0.4.4...sdk/v0.4.5) (2025-05-16)
+
+
+### Features
+
+* **core:** Adds EC withSalt options ([#2126](https://github.com/opentdf/platform/issues/2126)) ([67b6fb8](https://github.com/opentdf/platform/commit/67b6fb8fc1263a4ddfa8ae1c8d451db50be77988))
+* **core:** v2 ERS with proto updates ([#2210](https://github.com/opentdf/platform/issues/2210)) ([a161ef8](https://github.com/opentdf/platform/commit/a161ef85d12600672ff695cc84b07579a70c5cac))
+* **policy:** key management crud ([#2110](https://github.com/opentdf/platform/issues/2110)) ([4c3d53d](https://github.com/opentdf/platform/commit/4c3d53d5fbb6f4659155ac60d289d92ac20180f1))
+* **sdk:** add nanotdf plaintext policy ([#2182](https://github.com/opentdf/platform/issues/2182)) ([e5c56db](https://github.com/opentdf/platform/commit/e5c56db5c962d6ff21e7346198f01558489adf3f))
+
+
+### Bug Fixes
+
+* **core:** Improves errors when under heavy load ([#2132](https://github.com/opentdf/platform/issues/2132)) ([4490a14](https://github.com/opentdf/platform/commit/4490a14db2492629e287445df26312eb3e363b81))
+* **sdk:** perfsprint lint issues ([#2208](https://github.com/opentdf/platform/issues/2208)) ([d36a078](https://github.com/opentdf/platform/commit/d36a078433a384418eee51b5bceb511cc9f6619e))
+
 ## [0.4.4](https://github.com/opentdf/platform/compare/sdk/v0.4.3...sdk/v0.4.4) (2025-04-28)
 
 

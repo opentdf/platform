@@ -104,11 +104,10 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 	}
 
 	// IF IPC is disabled we build a validated healthy connection to the platform
-	if !cfg.ipc {
+	if !cfg.ipc { //nolint:nestif // Most of checks are for errors
 		if IsPlatformEndpointMalformed(platformEndpoint) {
 			return nil, fmt.Errorf("%w [%v]", ErrPlatformEndpointMalformed, platformEndpoint)
 		}
-
 		if cfg.shouldValidatePlatformConnectivity {
 			if cfg.coreConn != nil {
 				err = ValidateHealthyPlatformConnection(cfg.coreConn.Endpoint, cfg.coreConn.Client)

@@ -1918,7 +1918,6 @@ func (s *TDFSuite) startBackend() {
 	var sdkPlatformURL string
 
 	for i, ki := range kasesToMake {
-
 		mux := http.NewServeMux()
 
 		s.kases[i] = FakeKas{

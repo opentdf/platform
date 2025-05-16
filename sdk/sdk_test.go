@@ -325,6 +325,7 @@ func TestIsPlatformEndpointMalformed(t *testing.T) {
 		})
 	}
 }
+
 func Test_GetType_NanoTDF(t *testing.T) {
 	nano := "TDFMABJsb2NhbGhvc3Q6ODA4MC9rYXOAAQIA2qvjMRfg7b27lT2kf9SwHRkDIg8ZXtfRoiIvdMUHq/gL5AUMfmv4Di8sKCyLkmUm/WITVj5hDeV/z4JmQ0JL7ZxqSmgZoK6TAHvkKhUly4zMEWMRXH8IktKhFKy1+fD+3qwDopqWAO5Nm2nYQqi75atEFckstulpNKg3N+Ul22OHr/ZuR127oPObBDYNRfktBdzoZbEQcPlr8q1B57q6y5SPZFjEzL9weK+uS5bUJWkF3nsHASo2bZw7IPhTZxoFVmCDjwvj6MbxNa7zG6aClHJ162zKxLLnD9TtIHuZ59R7LgiSieipXeExj+ky9OgIw5DfwyUuxsQLtKpMIAFPmLY9Hy2naUJxke0MT1EUBgastCq+YtFGslV9LJo/A8FtrRqludwtM0O+Z9FlAkZ1oNL7M7uOkLrh7eRrv+C1AAAX6FaBQoOtqnmyu6Jp+VzkxDddEeLRUyI="
 	nanoDecoded, err := base64.StdEncoding.DecodeString(nano)

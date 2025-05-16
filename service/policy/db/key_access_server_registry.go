@@ -350,11 +350,6 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 	}, nil
 }
 
-func isValidBase64(s string) bool {
-	_, err := base64.StdEncoding.DecodeString(s)
-	return err == nil
-}
-
 /*
 * Key Access Server Keys
  */
@@ -829,4 +824,9 @@ func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID, new
 	}
 
 	return rotatedIDs, nil
+}
+
+func isValidBase64(s string) bool {
+	_, err := base64.StdEncoding.DecodeString(s)
+	return err == nil
 }

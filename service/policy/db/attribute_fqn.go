@@ -110,6 +110,30 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 		}
 	}
 
+	for _, pair := range list {
+		if pair != nil {
+			attrGrants, err := mapKasKeysToGrants(pair.GetAttribute().GetKasKeys())
+			if err != nil {
+				return nil, fmt.Errorf("could not map KAS attribute keys to grants: %w", err)
+			}
+			// Update the response map with the attribute grants
+			pair.GetAttribute().Grants = append(pair.GetAttribute().Grants, attrGrants...)
+			// Update the value grants
+			valGrants, err := mapKasKeysToGrants(pair.GetValue().GetKasKeys())
+			if err != nil {
+				return nil, fmt.Errorf("could not map KAS value keys to grants: %w", err)
+			}
+			pair.GetValue().Grants = append(pair.GetValue().Grants, valGrants...)
+			// Update Namespace grants
+			nsGrants, err := mapKasKeysToGrants(pair.GetAttribute().GetNamespace().GetKasKeys())
+			if err != nil {
+				return nil, fmt.Errorf("could not map KAS namespace keys to grants: %w", err)
+			}
+			// Update the response map with the namespace grants
+			pair.GetAttribute().Grants = append(pair.GetAttribute().Grants, nsGrants...)
+		}
+	}
+
 	// check if all requested FQNs were found
 	for fqn, pair := range list {
 		if pair == nil {

@@ -11,7 +11,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
@@ -368,52 +367,6 @@ func (s *AttributesSuite) Test_GetAttribute_Deactivated_Succeeds() {
 	s.Equal(deactivated.ID, gotAttr.GetId())
 	s.Equal(deactivated.Name, gotAttr.GetName())
 	s.False(gotAttr.GetActive().GetValue())
-}
-
-func (s *AttributesSuite) Test_GetAttribute_ContainsKASGrants() {
-	// create an attribute
-	attr := &attributes.CreateAttributeRequest{
-		Name:        "test__get_attribute_contains_kas_grants",
-		NamespaceId: fixtureNamespaceID,
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
-	}
-	createdAttr, err := s.db.PolicyClient.CreateAttribute(s.ctx, attr)
-	s.Require().NoError(err)
-	s.NotNil(createdAttr)
-
-	// create a KAS
-	kas := &kasregistry.CreateKeyAccessServerRequest{
-		Uri: "https://example.com/kas",
-		PublicKey: &policy.PublicKey{
-			PublicKey: &policy.PublicKey_Remote{
-				Remote: "https://example.com/kas/key/1",
-			},
-		},
-		Name: "def_kas-name",
-	}
-	createdKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kas)
-	s.Require().NoError(err)
-	s.NotNil(createdKAS)
-
-	// create a grant for the KAS
-	assignment := &attributes.AttributeKeyAccessServer{
-		AttributeId:       createdAttr.GetId(),
-		KeyAccessServerId: createdKAS.GetId(),
-	}
-
-	createdGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, assignment)
-	s.Require().NoError(err)
-	s.NotNil(createdGrant)
-
-	// get the attribute & ensure it contains the grant
-	gotAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, createdAttr.GetId())
-	s.Require().NoError(err)
-	s.NotNil(gotAttr)
-
-	gotGrants := gotAttr.GetGrants()
-	s.Len(gotGrants, 1)
-	s.Equal(createdKAS.GetId(), gotGrants[0].GetId())
-	s.Equal(kas.GetName(), gotGrants[0].GetName())
 }
 
 func (s *AttributesSuite) Test_ListAttributes_NoPagination_Succeeds() {
@@ -1241,78 +1194,6 @@ func (s *AttributesSuite) Test_UnsafeReactivateAttribute_WithInvalidIdFails() {
 	s.Require().Error(err)
 	s.Nil(reactivatedAttr)
 	s.Require().ErrorIs(err, db.ErrNotFound)
-}
-
-func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_When_Attribute_Not_Found() {
-	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       nonExistentAttrID,
-		KeyAccessServerId: fixtureKeyAccessServerID,
-	}
-	resp, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
-
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
-}
-
-func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
-	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").ID,
-		KeyAccessServerId: nonExistentAttrID,
-	}
-	resp, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
-
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
-}
-
-func (s *AttributesSuite) Test_AssignKeyAccessServerToAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {
-	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr2").ID,
-		KeyAccessServerId: fixtureKeyAccessServerID,
-	}
-	resp, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, aKas)
-
-	s.Require().NoError(err)
-	s.NotNil(resp)
-	s.Equal(aKas, resp)
-}
-
-func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_When_Attribute_Not_Found() {
-	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       nonExistentAttrID,
-		KeyAccessServerId: fixtureKeyAccessServerID,
-	}
-	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
-
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-}
-
-func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Error_When_KeyAccessServer_Not_Found() {
-	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").ID,
-		KeyAccessServerId: nonExistentAttrID,
-	}
-	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
-
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-}
-
-func (s *AttributesSuite) Test_RemoveKeyAccessServerFromAttribute_Returns_Success_When_Attribute_And_KeyAccessServer_Exist() {
-	aKas := &attributes.AttributeKeyAccessServer{
-		AttributeId:       s.f.GetAttributeKey("example.com/attr/attr1").ID,
-		KeyAccessServerId: s.f.GetKasRegistryKey("key_access_server_1").ID,
-	}
-	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromAttribute(s.ctx, aKas)
-
-	s.Require().NoError(err)
-	s.NotNil(resp)
-	s.Equal(aKas, resp)
 }
 
 func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Returns_Error_When_Attribute_Not_Found() {

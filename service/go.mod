@@ -56,6 +56,7 @@ require (
 	cel.dev/expr v0.19.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/containerd/continuity v0.4.4 // indirect
+	github.com/oklog/ulid/v2 v2.1.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 )
 

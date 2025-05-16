@@ -62,7 +62,6 @@ type attributeQueryRow struct {
 	active        bool
 	namespaceName string
 	valuesJSON    []byte
-	grantsJSON    []byte
 	fqn           sql.NullString
 }
 
@@ -81,15 +80,6 @@ func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
 		values = v
 	}
 
-	var grants []*policy.KeyAccessServer
-	if row.grantsJSON != nil {
-		k, err := db.KeyAccessServerProtoJSON(row.grantsJSON)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal grantsJSON [%s]: %w", string(row.grantsJSON), err)
-		}
-		grants = k
-	}
-
 	ns := &policy.Namespace{
 		Id:   row.namespaceID,
 		Name: row.namespaceName,
@@ -104,7 +94,6 @@ func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
 		Active:    &wrapperspb.BoolValue{Value: row.active},
 		Metadata:  metadata,
 		Namespace: ns,
-		Grants:    grants,
 		Fqn:       row.fqn.String,
 	}
 
@@ -264,7 +253,6 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 		namespaceID:   attr.NamespaceID,
 		namespaceName: attr.NamespaceName.String,
 		valuesJSON:    attr.Values,
-		grantsJSON:    attr.Grants,
 		fqn:           sql.NullString(attr.Fqn),
 	})
 	if err != nil {
@@ -302,21 +290,35 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			return nil, fmt.Errorf("failed to unmarshal values [%s]: %w", string(attr.Values), err)
 		}
 
-		var grants []*policy.KeyAccessServer
-		if attr.Grants != nil {
-			grants, err = db.KeyAccessServerProtoJSON(attr.Grants)
-			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal grants [%s]: %w", string(attr.Grants), err)
-			}
-		}
-
 		var keys []*policy.KasKey
+		var attrGrants []*policy.KeyAccessServer
 		if len(attr.Keys) > 0 {
 			keys, err = db.KasKeysProtoJSON(attr.Keys)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
 			}
+			attrGrants, err = mapKasKeysToGrants(keys)
+			if err != nil {
+				return nil, fmt.Errorf("could not map KAS attribute keys to grants: %w", err)
+			}
 		}
+
+		for _, val := range values {
+			if val.GetKasKeys() != nil {
+				valGrants, err := mapKasKeysToGrants(val.GetKasKeys())
+				if err != nil {
+					return nil, fmt.Errorf("could not map KAS value keys to grants: %w", err)
+				}
+				val.Grants = append(val.Grants, valGrants...)
+			}
+		}
+
+		// Update Namespace grants
+		nsGrants, err := mapKasKeysToGrants(ns.GetKasKeys())
+		if err != nil {
+			return nil, fmt.Errorf("could not map KAS namespace keys to grants: %w", err)
+		}
+		ns.Grants = append(ns.Grants, nsGrants...)
 
 		attrs[i] = &policy.Attribute{
 			Id:        attr.ID,
@@ -324,8 +326,8 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
 			Fqn:       attr.Fqn,
 			Active:    &wrapperspb.BoolValue{Value: attr.Active},
-			Grants:    grants,
 			Namespace: ns,
+			Grants:    attrGrants,
 			Values:    values,
 			KasKeys:   keys,
 		}
@@ -573,33 +575,6 @@ func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *pol
 ///
 /// Key Access Server assignments
 ///
-
-func (c PolicyDBClient) AssignKeyAccessServerToAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
-	_, err := c.Queries.AssignKeyAccessServerToAttribute(ctx, AssignKeyAccessServerToAttributeParams{
-		AttributeDefinitionID: k.GetAttributeId(),
-		KeyAccessServerID:     k.GetKeyAccessServerId(),
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return k, nil
-}
-
-func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
-	count, err := c.Queries.RemoveKeyAccessServerFromAttribute(ctx, RemoveKeyAccessServerFromAttributeParams{
-		AttributeDefinitionID: k.GetAttributeId(),
-		KeyAccessServerID:     k.GetKeyAccessServerId(),
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if count == 0 {
-		return nil, db.ErrNotFound
-	}
-
-	return k, nil
-}
 
 func (c PolicyDBClient) AssignPublicKeyToAttribute(ctx context.Context, k *attributes.AttributeKey) (*attributes.AttributeKey, error) {
 	ak, err := c.Queries.assignPublicKeyToAttributeDefinition(ctx, assignPublicKeyToAttributeDefinitionParams{

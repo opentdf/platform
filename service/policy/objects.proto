@@ -29,7 +29,7 @@ message Namespace {
 
   common.Metadata metadata = 5;
 
-  // KAS grants for the namespace
+  // Deprecated KAS grants for the namespace. Use kas_keys instead.
   repeated KeyAccessServer grants = 6;
 
   // Keys for the namespace
@@ -53,7 +53,7 @@ message Attribute {
 
   repeated Value values = 5;
 
-  // Deprecated
+  // Deprecated KAS grants for the attribute. Use kas_keys instead.
   repeated KeyAccessServer grants = 6;
 
   string fqn = 7;
@@ -87,8 +87,7 @@ message Value {
   reserved "members";
   reserved 4;
 
-  // Deprecated
-  // list of key access servers
+  // Deprecated KAS grants for the value. Use kas_keys instead.
   repeated KeyAccessServer grants = 5;
 
   string fqn = 6;

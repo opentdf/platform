@@ -1,7 +1,6 @@
 ---------------------------------------------------------------- 
 -- KEY ACCESS SERVERS
 ----------------------------------------------------------------
-
 -- name: ListKeyAccessServerGrants :many
 WITH listed AS (
     SELECT
@@ -456,18 +455,8 @@ LEFT JOIN (
     av.id,
     av.value,
     av.active,
-    JSON_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-            'id', vkas.id,
-            'uri', vkas.uri,
-            'name', vkas.name,
-            'public_key', vkas.public_key
-        )
-    ) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
     av.attribute_definition_id
   FROM attribute_values av
-  LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
-  LEFT JOIN key_access_servers vkas ON avg.key_access_server_id = vkas.id
   GROUP BY av.id
 ) avt ON avt.attribute_definition_id = ad.id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
@@ -510,19 +499,9 @@ WITH target_definition AS (
         ad.rule,
         ad.active,
         ad.values_order,
-        JSONB_AGG(
-	        DISTINCT JSONB_BUILD_OBJECT(
-	            'id', kas.id,
-	            'uri', kas.uri,
-                'name', kas.name,
-	            'public_key', kas.public_key
-	        )
-	    ) FILTER (WHERE kas.id IS NOT NULL) AS grants,
         defk.keys AS keys
     FROM attribute_fqns fqns
     INNER JOIN attribute_definitions ad ON fqns.attribute_id = ad.id
-    LEFT JOIN attribute_definition_key_access_grants adkag ON ad.id = adkag.attribute_definition_id
-    LEFT JOIN key_access_servers kas ON adkag.key_access_server_id = kas.id
     LEFT JOIN (
         SELECT
             k.definition_id,
@@ -557,21 +536,11 @@ namespaces AS (
 			'name', n.name,
 			'active', n.active,
 	        'fqn', fqns.fqn,
-	        'grants', JSONB_AGG(
-	            DISTINCT JSONB_BUILD_OBJECT(
-	                'id', kas.id,
-	                'uri', kas.uri,
-                    'name', kas.name,
-	                'public_key', kas.public_key
-	            )
-	        ) FILTER (WHERE kas.id IS NOT NULL),
             'kas_keys', nmp_keys.keys
     	) AS namespace
 	FROM target_definition td
 	INNER JOIN attribute_namespaces n ON td.namespace_id = n.id
 	INNER JOIN attribute_fqns fqns ON n.id = fqns.namespace_id
-	LEFT JOIN attribute_namespace_key_access_grants ankag ON n.id = ankag.namespace_id
-	LEFT JOIN key_access_servers kas ON ankag.key_access_server_id = kas.id
     LEFT JOIN (
         SELECT
             k.namespace_id,
@@ -597,23 +566,6 @@ namespaces AS (
 	WHERE n.active = TRUE
 		AND (fqns.attribute_id IS NULL AND fqns.value_id IS NULL)
 	GROUP BY n.id, fqns.fqn, nmp_keys.keys
-),
-value_grants AS (
-	SELECT
-		av.id,
-		JSON_AGG(
-			DISTINCT JSONB_BUILD_OBJECT(
-				'id', kas.id,
-                'uri', kas.uri,
-                'name', kas.name,
-                'public_key', kas.public_key
-            )
-		) FILTER (WHERE kas.id IS NOT NULL) AS grants
-	FROM target_definition td
-	LEFT JOIN attribute_values av on td.id = av.attribute_definition_id
-	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
-	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
-	GROUP BY av.id
 ),
 value_subject_mappings AS (
 	SELECT
@@ -656,7 +608,6 @@ values AS (
 	            'value', av.value,
 	            'active', av.active,
 	            'fqn', fqns.fqn,
-	            'grants', avg.grants,
 	            'subject_mappings', avsm.sub_maps,
                 'kas_keys', value_keys.keys
 	        -- enforce order of values in response
@@ -665,7 +616,6 @@ values AS (
 	FROM target_definition td
 	LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
 	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-	LEFT JOIN value_grants avg ON av.id = avg.id
 	LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
     LEFT JOIN (
         SELECT
@@ -700,7 +650,6 @@ SELECT
 	n.namespace,
 	fqns.fqn,
 	values.values,
-	td.grants,
     td.keys
 FROM target_definition td
 INNER JOIN attribute_fqns fqns ON td.id = fqns.attribute_id
@@ -725,14 +674,6 @@ SELECT
             'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
     ) AS values,
-    JSONB_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-            'id', kas.id,
-            'uri', kas.uri,
-            'name', kas.name,
-            'public_key', kas.public_key
-        )
-    ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
     fqns.fqn,
     defk.keys as keys
 FROM attribute_definitions ad
@@ -742,15 +683,10 @@ LEFT JOIN (
         av.id,
         av.value,
         av.active,
-        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'name', vkas.name,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
         av.attribute_definition_id
     FROM attribute_values av
-    LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
-    LEFT JOIN key_access_servers vkas ON avg.key_access_server_id = vkas.id
     GROUP BY av.id
 ) avt ON avt.attribute_definition_id = ad.id
-LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
-LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 LEFT JOIN (
     SELECT
@@ -796,14 +732,6 @@ WHERE id = $1;
 
 -- name: DeleteAttribute :execrows
 DELETE FROM attribute_definitions WHERE id = $1;
-
--- name: AssignKeyAccessServerToAttribute :execrows
-INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id)
-VALUES ($1, $2);
-
--- name: RemoveKeyAccessServerFromAttribute :execrows
-DELETE FROM attribute_definition_key_access_grants
-WHERE attribute_definition_id = $1 AND key_access_server_id = $2;
 
 -- name: assignPublicKeyToAttributeDefinition :one
 INSERT INTO attribute_definition_public_key_map (definition_id, key_access_server_key_id)
@@ -855,19 +783,9 @@ SELECT
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
     av.attribute_definition_id,
     fqns.fqn,
-    JSONB_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-            'id', kas.id,
-            'uri', kas.uri,
-            'name', kas.name,
-            'public_key', kas.public_key
-        )
-    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
     value_keys.keys as keys
 FROM attribute_values av
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
-LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
 LEFT JOIN (
     SELECT
         k.value_id,
@@ -910,14 +828,6 @@ WHERE id = $1;
 
 -- name: DeleteAttributeValue :execrows
 DELETE FROM attribute_values WHERE id = $1;
-
--- name: AssignKeyAccessServerToAttributeValue :execrows
-INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id)
-VALUES ($1, $2);
-
--- name: RemoveKeyAccessServerFromAttributeValue :execrows
-DELETE FROM attribute_value_key_access_grants
-WHERE attribute_value_id = $1 AND key_access_server_id = $2;
 
 -- name: assignPublicKeyToAttributeValue :one
 INSERT INTO attribute_value_public_key_map (value_id, key_access_server_key_id)
@@ -1090,16 +1000,8 @@ SELECT
     ns.active,
     fqns.fqn,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
-    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
-        'id', kas.id,
-        'uri', kas.uri,
-        'name', kas.name,
-        'public_key', kas.public_key
-    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
     nmp_keys.keys as keys
 FROM attribute_namespaces ns
-LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
-LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 LEFT JOIN (
     SELECT
@@ -1144,14 +1046,6 @@ WHERE id = $1;
 
 -- name: DeleteNamespace :execrows
 DELETE FROM attribute_namespaces WHERE id = $1;
-
--- name: AssignKeyAccessServerToNamespace :execrows
-INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id)
-VALUES ($1, $2);
-
--- name: RemoveKeyAccessServerFromNamespace :execrows
-DELETE FROM attribute_namespace_key_access_grants
-WHERE namespace_id = $1 AND key_access_server_id = $2;
 
 -- name: assignPublicKeyToNamespace :one
 INSERT INTO attribute_namespace_public_key_map (namespace_id, key_access_server_key_id)

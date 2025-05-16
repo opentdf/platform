@@ -51,11 +51,24 @@ func getFilteredEntitleableAttributes(
 		}
 		parentDefinition := attributeAndValue.GetAttribute()
 
+		// Create a copy of the value with the subject mapping
+		valueWithMapping := &policy.Value{
+			Fqn:             mappedValue.GetFqn(),
+			Value:           mappedValue.GetValue(),
+			SubjectMappings: []*policy.SubjectMapping{sm},
+		}
+
 		mapped := &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-			Value:     mappedValue,
+			Value:     valueWithMapping,
 			Attribute: parentDefinition,
 		}
-		filtered[mappedValueFQN] = mapped
+		
+		// If this value already exists in the filtered map, append the subject mapping
+		if existing, exists := filtered[mappedValueFQN]; exists {
+			existing.Value.SubjectMappings = append(existing.Value.SubjectMappings, sm)
+		} else {
+			filtered[mappedValueFQN] = mapped
+		}
 	}
 
 	return filtered, nil

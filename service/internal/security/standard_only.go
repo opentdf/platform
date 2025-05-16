@@ -12,7 +12,7 @@ func (c Config) IsEmpty() bool {
 	return c.Type == "" && c.StandardConfig.IsEmpty()
 }
 
-func NewCryptoProvider(cfg Config) (CryptoProvider, error) {
+func NewCryptoProvider(cfg Config) (*StandardCrypto, error) {
 	switch cfg.Type {
 	case "hsm":
 		slog.Error("opentdf hsm mode has been removed")

@@ -26,7 +26,7 @@ type Provider struct {
 	KeyIndex     trust.KeyIndex
 	KeyManager   trust.KeyManager
 	// Deprecated: Use SecurityProvider instead
-	CryptoProvider security.CryptoProvider // Kept for backward compatibility
+	CryptoProvider *security.StandardCrypto // Kept for backward compatibility
 	Logger         *logger.Logger
 	Config         *config.ServiceConfig
 	KASConfig
@@ -73,7 +73,7 @@ func (p *Provider) IsReady(ctx context.Context) error {
 	return nil
 }
 
-func (kasCfg *KASConfig) UpgradeMapToKeyring(c security.CryptoProvider) {
+func (kasCfg *KASConfig) UpgradeMapToKeyring(c *security.StandardCrypto) {
 	switch {
 	case kasCfg.ECCertID != "" && len(kasCfg.Keyring) > 0:
 		panic("invalid kas cfg: please specify keyring or eccertid, not both")

@@ -27,9 +27,9 @@ func authorizationExamples() error {
 	}
 	defer s.Close()
 
-	// request decision on "TRANSMIT" Action
+	// request decision on "read" Action
 	actions := []*policy.Action{{
-		Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_TRANSMIT},
+		Name: "read",
 	}}
 
 	// model two groups of entities; user bob and user alice

@@ -16,6 +16,7 @@ import (
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
+	authorizationV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -71,6 +72,7 @@ type SDK struct {
 	Actions                 actions.ActionServiceClient
 	Attributes              attributes.AttributesServiceClient
 	Authorization           authorization.AuthorizationServiceClient
+	AuthorizationV2         authorizationV2.AuthorizationServiceClient
 	EntityResoution         entityresolution.EntityResolutionServiceClient
 	EntityResolutionV2      entityresolutionV2.EntityResolutionServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
@@ -208,16 +210,17 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		tokenSource:             accessTokenSource,
 		Actions:                 actions.NewActionServiceClient(platformConn),
 		Attributes:              attributes.NewAttributesServiceClient(platformConn),
+		Authorization:           authorization.NewAuthorizationServiceClient(platformConn),
+		AuthorizationV2:         authorizationV2.NewAuthorizationServiceClient(platformConn),
+		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(ersConn),
+		EntityResolutionV2:      entityresolutionV2.NewEntityResolutionServiceClient(ersConn),
+		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(platformConn),
+		KeyManagement:           keymanagement.NewKeyManagementServiceClient(platformConn),
 		Namespaces:              namespaces.NewNamespaceServiceClient(platformConn),
 		RegisteredResources:     registeredresources.NewRegisteredResourcesServiceClient(platformConn),
 		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(platformConn),
 		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(platformConn),
 		Unsafe:                  unsafe.NewUnsafeServiceClient(platformConn),
-		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(platformConn),
-		Authorization:           authorization.NewAuthorizationServiceClient(platformConn),
-		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(ersConn),
-		EntityResolutionV2:      entityresolutionV2.NewEntityResolutionServiceClient(ersConn),
-		KeyManagement:           keymanagement.NewKeyManagementServiceClient(platformConn),
 		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(platformConn),
 	}, nil
 }

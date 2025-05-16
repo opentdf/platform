@@ -132,9 +132,7 @@ func TestGetComprehensiveHierarchy(t *testing.T) {
 	as := &AuthorizationService{
 		logger: logger.CreateTestLogger(),
 	}
-	avf := attr.GetAttributeValuesByFqnsResponse{
-		FqnAttributeValues: nil,
-	}
+	var avf map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue
 	tests := []struct {
 		name            string
 		attributesMap   map[string]*policy.Attribute
@@ -197,7 +195,7 @@ func TestGetComprehensiveHierarchy(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := getComprehensiveHierarchy(
 				tc.attributesMap,
-				&avf,
+				avf,
 				tc.entitlement,
 				as,
 				tc.currentEntitles,

@@ -15,7 +15,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
-	auth "github.com/opentdf/platform/service/authorization"
+	"github.com/opentdf/platform/service/entity"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -184,7 +184,7 @@ func EntityResolution(ctx context.Context,
 			// make sure the id field is populated
 			originialID := ident.GetId()
 			if originialID == "" {
-				originialID = auth.EntityIDPrefix + strconv.Itoa(idx)
+				originialID = entity.EntityIDPrefix + strconv.Itoa(idx)
 			}
 			resolvedEntities = append(
 				resolvedEntities,
@@ -299,7 +299,7 @@ func EntityResolution(ctx context.Context,
 		// make sure the id field is populated
 		originialID := ident.GetId()
 		if originialID == "" {
-			originialID = auth.EntityIDPrefix + strconv.Itoa(idx)
+			originialID = entity.EntityIDPrefix + strconv.Itoa(idx)
 		}
 		resolvedEntities = append(
 			resolvedEntities,

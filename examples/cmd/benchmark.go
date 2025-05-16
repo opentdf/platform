@@ -94,7 +94,7 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	var dataAttributes = []string{"https://example.com/attr/attr1/value/value1"}
+	dataAttributes := []string{"https://example.com/attr/attr1/value/value1"}
 	if config.TDFFormat == NanoTDF {
 		nanoTDFConfig, err := client.NewNanoTDFConfig()
 		if err != nil {
@@ -119,16 +119,15 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		// 	}
 		// }
 	} else {
-		tdf, err :=
-			client.CreateTDF(
-				out, in,
-				sdk.WithDataAttributes(dataAttributes...),
-				sdk.WithKasInformation(
-					sdk.KASInfo{
-						URL:       fmt.Sprintf("http://%s", "localhost:8080"),
-						PublicKey: "",
-					}),
-				sdk.WithAutoconfigure(false))
+		tdf, err := client.CreateTDF(
+			out, in,
+			sdk.WithDataAttributes(dataAttributes...),
+			sdk.WithKasInformation(
+				sdk.KASInfo{
+					URL:       fmt.Sprintf("http://%s", "localhost:8080"),
+					PublicKey: "",
+				}),
+			sdk.WithAutoconfigure(false))
 		if err != nil {
 			return err
 		}

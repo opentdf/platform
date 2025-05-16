@@ -48,7 +48,7 @@ func formatDuration(nanos int64) string {
 
 func runMetrics(cmd *cobra.Command, _ []string) error {
 	// Ensure the directory exists
-	if err := os.MkdirAll(folderPath, 0755); err != nil {
+	if err := os.MkdirAll(folderPath, 0o755); err != nil {
 		return fmt.Errorf("error creating directory '%s': %w", folderPath, err)
 	}
 

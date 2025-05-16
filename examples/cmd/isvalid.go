@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	var isValidCmd = &cobra.Command{
+	isValidCmd := &cobra.Command{
 		Use:   "isvalid [files...]",
 		Short: "Check validity of a TDF",
 		RunE: func(cmd *cobra.Command, args []string) error {

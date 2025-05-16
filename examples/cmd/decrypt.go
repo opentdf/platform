@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	var decryptCmd = &cobra.Command{
+	decryptCmd := &cobra.Command{
 		Use:   "decrypt",
 		Short: "Decrypt TDF file",
 		RunE:  decrypt,
@@ -97,7 +97,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		//Print decrypted string
+		// Print decrypted string
 		_, err = io.Copy(os.Stdout, tdfreader)
 		if err != nil && err != io.EOF {
 			return err

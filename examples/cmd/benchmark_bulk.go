@@ -74,16 +74,15 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 			}
 		}
 	} else {
-		tdf, err :=
-			client.CreateTDF(
-				out, in,
-				sdk.WithDataAttributes(dataAttributes...),
-				sdk.WithKasInformation(
-					sdk.KASInfo{
-						URL:       fmt.Sprintf("http://%s", "localhost:8080"),
-						PublicKey: "",
-					}),
-				sdk.WithAutoconfigure(false))
+		tdf, err := client.CreateTDF(
+			out, in,
+			sdk.WithDataAttributes(dataAttributes...),
+			sdk.WithKasInformation(
+				sdk.KASInfo{
+					URL:       fmt.Sprintf("http://%s", "localhost:8080"),
+					PublicKey: "",
+				}),
+			sdk.WithAutoconfigure(false))
 		if err != nil {
 			return err
 		}
@@ -125,7 +124,6 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 				requestFailure = err
 			}
 		}
-
 	}
 
 	// Start the benchmark
@@ -134,7 +132,7 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 	totalTime := time.Since(startTime)
 
 	// Count errors and collect error messages
-	errorCount := 0
+	var errorCount int
 	successCount := 0
 	if requestFailure != nil {
 		errorCount = config.RequestCount

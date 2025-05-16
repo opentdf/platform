@@ -101,9 +101,9 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	baseKasUrl := platformEndpoint
-	if !strings.HasPrefix(baseKasUrl, "http://") && !strings.HasPrefix(baseKasUrl, "https://") {
-		baseKasUrl = fmt.Sprintf("http://%s", baseKasUrl)
+	baseKasURL := platformEndpoint
+	if !strings.HasPrefix(baseKasURL, "http://") && !strings.HasPrefix(baseKasURL, "https://") {
+		baseKasURL = fmt.Sprintf("http://%s", baseKasURL)
 	}
 
 	if !nanoFormat {
@@ -113,7 +113,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			opts = append(opts, sdk.WithWrappingKeyAlg(ocrypto.EC256Key))
 			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{
-					URL:       baseKasUrl,
+					URL:       baseKasURL,
 					PublicKey: "",
 				}))
 		}
@@ -144,7 +144,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		if collection > 0 {
 			nanoTDFConfig.EnableCollection()
 		}
-		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("%s/kas", baseKasUrl))
+		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("%s/kas", baseKasURL))
 		if err != nil {
 			return err
 		}
@@ -172,7 +172,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			_, err = client.CreateNanoTDF(writer, in, *nanoTDFConfig)
 			if err != nil {
 				return err
-
 			}
 		}
 
@@ -198,7 +197,7 @@ func keyTypeForKeyType(alg string) (ocrypto.KeyType, error) {
 	}
 }
 
-func cat(cmd *cobra.Command, nTdfFile string) error {
+func cat(_ *cobra.Command, nTdfFile string) error {
 	f, err := os.Open(nTdfFile)
 	if err != nil {
 		return err

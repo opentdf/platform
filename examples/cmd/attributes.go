@@ -472,13 +472,12 @@ func ruler() policy.AttributeRuleTypeEnum {
 }
 
 func upsertAttr(ctx context.Context, s *sdk.SDK, auth, name string, values []string) (string, error) {
-	av, err :=
-		s.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
-			NamespaceId: auth,
-			Name:        name,
-			Rule:        ruler(),
-			Values:      values,
-		})
+	av, err := s.Attributes.CreateAttribute(ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: auth,
+		Name:        name,
+		Rule:        ruler(),
+		Values:      values,
+	})
 	if err != nil {
 		slog.Error("CreateAttribute", "err", err, "auth", auth, "name", name, "values", values, "rule", ruler())
 		return "", err

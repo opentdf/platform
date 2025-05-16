@@ -8,7 +8,7 @@ import (
 var GenDocsCmd = &cobra.Command{
 	Use:   "docs",
 	Short: "Generates docs for the example commands",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		println("Generating Docs")
 		err := doc.GenMarkdownTree(ExamplesCmd, "./docs")
 		return err

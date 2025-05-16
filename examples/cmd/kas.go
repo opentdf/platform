@@ -24,7 +24,7 @@ func init() {
 		Use:     "update",
 		Aliases: []string{"add"},
 		Args:    cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return updateKas(cmd)
 		},
 	}
@@ -41,7 +41,7 @@ func init() {
 		Args:    cobra.NoArgs,
 		Aliases: []string{"ls"},
 		Short:   "list stored kas information",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return listKases(cmd)
 		},
 	}
@@ -53,7 +53,7 @@ func init() {
 		Args:    cobra.NoArgs,
 		Aliases: []string{"rm"},
 		Short:   "remove kas by uri",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return removeKas(cmd)
 		},
 	}
@@ -226,8 +226,8 @@ func removeKas(cmd *cobra.Command) error {
 	}
 	if !deletedSomething {
 		return fmt.Errorf("nothing deleted; [%s] not found", kas)
-	} else {
-		slog.Info("deleted kas registration", "kas", kas)
 	}
+
+	slog.Info("deleted kas registration", "kas", kas)
 	return nil
 }

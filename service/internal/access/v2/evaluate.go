@@ -65,7 +65,7 @@ func evaluateResourceAttributeValues(
 		// lowercase the value FQN to ensure case-insensitive matching
 		valueFQN = strings.ToLower(valueFQN)
 		resourceAttributeValues.Fqns[idx] = valueFQN
-		
+
 		attributeAndValue, okvalueFQN := accessibleAttributeValues[valueFQN]
 		if !okvalueFQN {
 			return nil, fmt.Errorf("%w: %s", ErrFQNNotFound, valueFQN)

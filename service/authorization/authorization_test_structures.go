@@ -108,8 +108,7 @@ func (*myAttributesClient) RemovePublicKeyFromValue(_ context.Context, _ *attr.R
 }
 
 // // Mock ERS Client for testing /////
-type myERSClient struct {
-}
+type myERSClient struct{}
 
 func (*myERSClient) CreateEntityChainFromJwt(_ context.Context, _ *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error) {
 	return &createEntityChainResp, nil
@@ -120,8 +119,7 @@ func (*myERSClient) ResolveEntities(_ context.Context, _ *entityresolution.Resol
 }
 
 // // Mock Subject Mapping Client for testing /////
-type mySubjectMappingClient struct {
-}
+type mySubjectMappingClient struct{}
 
 func (*mySubjectMappingClient) ListSubjectMappings(_ context.Context, _ *sm.ListSubjectMappingsRequest) (*sm.ListSubjectMappingsResponse, error) {
 	return &listSubjectMappings, nil
@@ -172,8 +170,7 @@ func (*mySubjectMappingClient) DeleteAllUnmappedSubjectConditionSets(_ context.C
 }
 
 // // Mock paginated Subject Mapping Client for testing /////
-type paginatedMockSubjectMappingClient struct {
-}
+type paginatedMockSubjectMappingClient struct{}
 
 var (
 	smPaginationOffset = 3
@@ -241,8 +238,7 @@ func (*paginatedMockSubjectMappingClient) DeleteAllUnmappedSubjectConditionSets(
 }
 
 // // Mock paginated attributs client for testing ////
-type paginatedMockAttributesClient struct {
-}
+type paginatedMockAttributesClient struct{}
 
 var (
 	attrPaginationOffset = 3

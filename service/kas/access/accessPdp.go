@@ -57,8 +57,8 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 		}
 	}
 
-	// @security
-	// TODO: is this accurate?
+	// If no data attributes were found in any policies, return early with the results
+	// instead of roundtripping to get a decision on no resources
 	if len(resources) == 0 {
 		p.Logger.DebugContext(ctx, "No resources to check")
 		return res, nil

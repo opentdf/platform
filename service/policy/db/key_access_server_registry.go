@@ -284,6 +284,72 @@ func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*
 	}, nil
 }
 
+func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > maxLimit {
+		return nil, db.ErrListLimitTooLarge
+	}
+
+	params := ListKeyAccessServerGrantsParams{
+		KasID:   r.GetKasId(),
+		KasUri:  r.GetKasUri(),
+		KasName: r.GetKasName(),
+		Offset:  offset,
+		Limit:   limit,
+	}
+	listRows, err := c.Queries.ListKeyAccessServerGrants(ctx, params)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	grants := make([]*kasregistry.KeyAccessServerGrants, len(listRows))
+	for i, grant := range listRows {
+		pubKey := new(policy.PublicKey)
+		if err := protojson.Unmarshal(grant.KasPublicKey, pubKey); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal KAS public key: %w", err)
+		}
+		kas := &policy.KeyAccessServer{
+			Id:        grant.KasID,
+			Uri:       grant.KasUri,
+			PublicKey: pubKey,
+			Name:      grant.KasName.String,
+		}
+		attrGrants, err := db.GrantedPolicyObjectProtoJSON(grant.AttributesGrants)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal attribute grants: %w", err)
+		}
+		valGrants, err := db.GrantedPolicyObjectProtoJSON(grant.ValuesGrants)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal value grants: %w", err)
+		}
+		namespaceGrants, err := db.GrantedPolicyObjectProtoJSON(grant.NamespaceGrants)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal namespace grants: %w", err)
+		}
+		grants[i] = &kasregistry.KeyAccessServerGrants{
+			KeyAccessServer: kas,
+			AttributeGrants: attrGrants,
+			ValueGrants:     valGrants,
+			NamespaceGrants: namespaceGrants,
+		}
+	}
+	var total int32
+	var nextOffset int32
+	if len(listRows) > 0 {
+		total = int32(listRows[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+	return &kasregistry.ListKeyAccessServerGrantsResponse{
+		Grants: grants,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: params.Offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
+}
+
 /*
 * Key Access Server Keys
  */

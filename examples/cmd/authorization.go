@@ -8,6 +8,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk"
+	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -30,7 +31,7 @@ func authorizationExamples() error {
 
 	// request decision on "read" Action
 	actions := []*policy.Action{{
-		Name: "read",
+		Name: actions.ActionNameRead,
 	}}
 
 	// model two groups of entities; user bob and user alice

@@ -106,8 +106,10 @@ func convertPEMToJWK(_ string) (string, error) {
 
 // InProcessProvider adapts a CryptoProvider to the SecurityProvider interface
 type InProcessProvider struct {
-	cryptoProvider CryptoProvider
+	cryptoProvider *StandardCrypto
 	logger         *slog.Logger
+	defaultKeys    map[string]bool
+	legacyKeys     map[string]bool
 }
 
 // KeyDetailsAdapter adapts CryptoProvider to KeyDetails
@@ -115,7 +117,7 @@ type KeyDetailsAdapter struct {
 	id             trust.KeyIdentifier
 	algorithm      string
 	legacy         bool
-	cryptoProvider CryptoProvider
+	cryptoProvider *StandardCrypto
 }
 
 // Mode returns the mode of the key details
@@ -174,10 +176,22 @@ func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error)
 }
 
 // NewSecurityProviderAdapter creates a new adapter that implements SecurityProvider using a CryptoProvider
-func NewSecurityProviderAdapter(cryptoProvider CryptoProvider) trust.KeyService {
+func NewSecurityProviderAdapter(cryptoProvider *StandardCrypto, defaultKeys, legacyKeys []string) trust.KeyService {
+	legacyKeysMap := make(map[string]bool, len(legacyKeys))
+	for _, key := range legacyKeys {
+		legacyKeysMap[key] = true
+	}
+
+	defaultKeysMap := make(map[string]bool, len(defaultKeys))
+	for _, key := range defaultKeys {
+		defaultKeysMap[key] = true
+	}
+
 	return &InProcessProvider{
 		cryptoProvider: cryptoProvider,
 		logger:         slog.Default(),
+		defaultKeys:    defaultKeysMap,
+		legacyKeys:     legacyKeysMap,
 	}
 }
 
@@ -192,18 +206,26 @@ func (a *InProcessProvider) WithLogger(logger *slog.Logger) *InProcessProvider {
 	return a
 }
 
-// FindKeyByAlgorithm finds a key by algorithm using the underlying CryptoProvider
-func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm string, _ bool) (trust.KeyDetails, error) {
+// FindKeyByAlgorithm finds a key by algorithm using the underlying CryptoProvider.
+// This will only return default keys if legacy is false.
+// If legacy is true, it will return the first legacy key found that matches the algorithm.
+func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm string, legacy bool) (trust.KeyDetails, error) {
 	// Get the key ID for this algorithm
-	kid := a.cryptoProvider.FindKID(algorithm)
-	if kid == "" {
+	kids, err := a.cryptoProvider.ListKIDsByAlgorithm(algorithm)
+	if err != nil || len(kids) == 0 {
 		return nil, ErrCertNotFound
 	}
-	return &KeyDetailsAdapter{
-		id:             trust.KeyIdentifier(kid),
-		algorithm:      algorithm,
-		cryptoProvider: a.cryptoProvider,
-	}, nil
+	for _, kid := range kids {
+		if legacy && a.legacyKeys[kid] || !legacy && a.defaultKeys[kid] {
+			return &KeyDetailsAdapter{
+				id:             trust.KeyIdentifier(kid),
+				algorithm:      algorithm,
+				cryptoProvider: a.cryptoProvider,
+				legacy:         legacy,
+			}, nil
+		}
+	}
+	return nil, ErrCertNotFound
 }
 
 // FindKeyByID finds a key by ID
@@ -216,7 +238,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 				return &KeyDetailsAdapter{
 					id:             id,
 					algorithm:      alg,
-					legacy:         false,
+					legacy:         a.legacyKeys[string(id)],
 					cryptoProvider: a.cryptoProvider,
 				}, nil
 			}
@@ -225,7 +247,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 				return &KeyDetailsAdapter{
 					id:             id,
 					algorithm:      alg,
-					legacy:         false,
+					legacy:         a.legacyKeys[string(id)],
 					cryptoProvider: a.cryptoProvider,
 				}, nil
 			}
@@ -241,12 +263,19 @@ func (a *InProcessProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, err
 
 	// Try to find keys for known algorithms
 	for _, alg := range []string{AlgorithmRSA2048, AlgorithmECP256R1} {
-		if kid := a.cryptoProvider.FindKID(alg); kid != "" {
-			keys = append(keys, &KeyDetailsAdapter{
-				id:             trust.KeyIdentifier(kid),
-				algorithm:      alg,
-				cryptoProvider: a.cryptoProvider,
-			})
+		if kids, err := a.cryptoProvider.ListKIDsByAlgorithm(alg); err == nil && len(kids) > 0 {
+			for _, kid := range kids {
+				keys = append(keys, &KeyDetailsAdapter{
+					id:             trust.KeyIdentifier(kid),
+					algorithm:      alg,
+					cryptoProvider: a.cryptoProvider,
+					legacy:         a.legacyKeys[kid],
+				})
+			}
+		} else if err != nil {
+			if a.logger != nil {
+				a.logger.Warn("failed to list keys by algorithm", "algorithm", alg, "error", err)
+			}
 		}
 	}
 
@@ -275,7 +304,7 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyID trust.KeyIdentifi
 		if len(ephemeralPublicKey) == 0 {
 			return nil, errors.New("ephemeral public key is required for EC decryption")
 		}
-		rawKey, err = a.cryptoProvider.ECDecrypt(kid, ephemeralPublicKey, ciphertext)
+		rawKey, err = a.cryptoProvider.ECDecrypt(ctx, kid, ephemeralPublicKey, ciphertext)
 
 	default:
 		return nil, errors.New("unsupported key algorithm")

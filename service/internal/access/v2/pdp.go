@@ -104,8 +104,8 @@ func NewPolicyDecisionPoint(
 
 	for _, sm := range allSubjectMappings {
 		if err := validateSubjectMapping(sm); err != nil {
-			l.Error("invalid subject mapping", slog.String("error", err.Error()))
-			return nil, fmt.Errorf("invalid subject mapping: %w", err)
+			l.WarnContext(ctx, "invalid subject mapping - skipping", slog.String("error", err.Error()), slog.Any("subject mapping", sm))
+			continue
 		}
 		mappedValue := sm.GetAttributeValue()
 		mappedValueFQN := mappedValue.GetFqn()

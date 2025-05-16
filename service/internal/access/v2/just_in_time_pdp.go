@@ -80,19 +80,23 @@ func (p *JustInTimePDP) GetDecision(
 	resources []*authzV2.Resource,
 ) ([]*Decision, bool, error) {
 	var (
-		entityRepresentations []*entityresolutionV2.EntityRepresentation
-		err                   error
+		entityRepresentations   []*entityresolutionV2.EntityRepresentation
+		err                     error
+		skipEnvironmentEntities = true
 	)
 
 	switch entityIdentifier.GetIdentifier().(type) {
 	case *authzV2.EntityIdentifier_EntityChain:
-		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain())
+		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
+
 	case *authzV2.EntityIdentifier_Token:
 		p.logger.DebugContext(ctx, "getting decision - resolving token")
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken())
+		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
+
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting decision - resolving registered resource value FQN")
 		// TODO: implement this case
+
 	default:
 		p.logger.ErrorContext(ctx, "invalid entity identifier type", slog.String("error", ErrInvalidEntityType.Error()), slog.String("type", fmt.Sprintf("%T", entityIdentifier.GetIdentifier())))
 		return nil, false, ErrInvalidEntityType
@@ -102,11 +106,9 @@ func (p *JustInTimePDP) GetDecision(
 		return nil, false, fmt.Errorf("failed to resolve entity identifier: %w", err)
 	}
 
-	// TODO: get bulk decision (multiple entity representations) within PDP?
-	// Maybe only one of the entity representations is needed... stripping off environment entities?
-	decisions := make([]*Decision, len(entityRepresentations))
+	var decisions []*Decision
 	allPermitted := true
-	for idx, entityRep := range entityRepresentations {
+	for _, entityRep := range entityRepresentations {
 		d, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
 		if err != nil {
 			p.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))
@@ -120,7 +122,7 @@ func (p *JustInTimePDP) GetDecision(
 			allPermitted = false
 		}
 		// Decisions should be granular, so do not globally pass or fail
-		decisions[idx] = d
+		decisions = append(decisions, d)
 	}
 
 	return decisions, allPermitted, nil
@@ -136,15 +138,16 @@ func (p *JustInTimePDP) GetEntitlements(
 	p.logger.DebugContext(ctx, "getting entitlements - resolving entity chain")
 
 	var (
-		entityRepresentations []*entityresolutionV2.EntityRepresentation
-		err                   error
+		entityRepresentations   []*entityresolutionV2.EntityRepresentation
+		err                     error
+		skipEnvironmentEntities = false
 	)
 
 	switch entityIdentifier.GetIdentifier().(type) {
 	case *authzV2.EntityIdentifier_EntityChain:
-		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain())
+		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 	case *authzV2.EntityIdentifier_Token:
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken())
+		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting decision - resolving registered resource value FQN")
 		// TODO: implement this case
@@ -273,10 +276,28 @@ func (p *JustInTimePDP) fetchAllSubjectMappings(ctx context.Context) ([]*policy.
 }
 
 // resolveEntitiesFromEntityChain roundtrips to ERS to resolve the provided entity chain
-func (p *JustInTimePDP) resolveEntitiesFromEntityChain(ctx context.Context, entityChain *entity.EntityChain) ([]*entityresolutionV2.EntityRepresentation, error) {
+// and optionally skips environment entities (which is current behavior in decision flow)
+func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
+	ctx context.Context,
+	entityChain *entity.EntityChain,
+	skipEnvironmentEntities bool,
+) ([]*entityresolutionV2.EntityRepresentation, error) {
 	// TODO: is it safe to log the entity chain?
-	p.logger.DebugContext(ctx, "resolving entities from entity chain", slog.String("entityChain", entityChain.String()))
-	ersResp, err := p.sdk.EntityResolutionV2.ResolveEntities(ctx, &entityresolutionV2.ResolveEntitiesRequest{Entities: entityChain.GetEntities()})
+	p.logger.DebugContext(ctx, "resolving entities from entity chain", slog.String("entityChain", entityChain.String()), slog.Bool("skipEnvironmentEntities", skipEnvironmentEntities))
+
+	var filteredEntities []*entity.Entity
+	if skipEnvironmentEntities {
+		for _, chained := range entityChain.GetEntities() {
+			if chained.GetCategory() == entity.Entity_CATEGORY_ENVIRONMENT {
+				continue
+			}
+			filteredEntities = append(filteredEntities, chained)
+		}
+	} else {
+		filteredEntities = entityChain.GetEntities()
+	}
+
+	ersResp, err := p.sdk.EntityResolutionV2.ResolveEntities(ctx, &entityresolutionV2.ResolveEntitiesRequest{Entities: filteredEntities})
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve entities: %w", err)
 	}
@@ -288,7 +309,12 @@ func (p *JustInTimePDP) resolveEntitiesFromEntityChain(ctx context.Context, enti
 }
 
 // resolveEntitiesFromToken roundtrips to ERS to resolve the provided token
-func (p *JustInTimePDP) resolveEntitiesFromToken(ctx context.Context, token *entity.Token) ([]*entityresolutionV2.EntityRepresentation, error) {
+// and optionally skips environment entities (which is current behavior in decision flow)
+func (p *JustInTimePDP) resolveEntitiesFromToken(
+	ctx context.Context,
+	token *entity.Token,
+	skipEnvironmentEntities bool,
+) ([]*entityresolutionV2.EntityRepresentation, error) {
 	// WARNING: do not log the token JWT, just its ID
 	p.logger.DebugContext(ctx, "resolving entities from token", slog.String("token ephemeral id", token.GetEphemeralId()))
 	ersResp, err := p.sdk.EntityResolutionV2.CreateEntityChainsFromTokens(ctx, &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: []*entity.Token{token}})
@@ -299,5 +325,5 @@ func (p *JustInTimePDP) resolveEntitiesFromToken(ctx context.Context, token *ent
 	if len(entityChains) != 1 {
 		return nil, fmt.Errorf("received %d entity chains in ERS response and expected exactly 1: %w", len(entityChains), err)
 	}
-	return p.resolveEntitiesFromEntityChain(ctx, entityChains[0])
+	return p.resolveEntitiesFromEntityChain(ctx, entityChains[0], skipEnvironmentEntities)
 }

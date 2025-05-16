@@ -11,9 +11,9 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -503,14 +503,14 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 var listAttributeResp attributes.ListAttributesResponse
 
 type mockAttributesClient struct {
-	attributes.AttributesServiceClient
+	sdkconnect.AttributesServiceClient
 }
 
-func (*mockAttributesClient) ListAttributes(_ context.Context, _ *attributes.ListAttributesRequest, _ ...grpc.CallOption) (*attributes.ListAttributesResponse, error) {
+func (*mockAttributesClient) ListAttributes(_ context.Context, _ *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error) {
 	return &listAttributeResp, nil
 }
 
-func (*mockAttributesClient) GetAttributeValuesByFqns(_ context.Context, req *attributes.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attributes.GetAttributeValuesByFqnsResponse, error) {
+func (*mockAttributesClient) GetAttributeValuesByFqns(_ context.Context, req *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error) {
 	av := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	for _, v := range req.GetFqns() {
 		vfqn, err := NewAttributeValueFQN(v)

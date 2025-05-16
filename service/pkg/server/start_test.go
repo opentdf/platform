@@ -256,13 +256,16 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			suite.Require().NoError(err)
 
 			// Start services with test service
-			err = startServices(context.Background(), &config.Config{
+			cleanup, err := startServices(context.Background(), &config.Config{
 				Mode: tc.mode,
 				Services: map[string]config.ServiceConfig{
 					"test": {},
 				},
 			}, s, nil, logger, registry)
 			require.NoError(t, err)
+			if cleanup != nil {
+				defer cleanup()
+			}
 
 			require.NoError(t, s.Start())
 			defer s.Stop()

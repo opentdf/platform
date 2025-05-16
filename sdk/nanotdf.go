@@ -573,7 +573,7 @@ func (c *collectionStore) get(header []byte) ([]byte, bool) {
 	return nil, false
 }
 
-func (c *collectionStore) close() {
+func (c *collectionStore) close() { //nolint:unused // leave for future use
 	c.closeChan <- struct{}{}
 }
 
@@ -1052,7 +1052,7 @@ func (s SDK) getNanoRewrapKey(ctx context.Context, decryptor *NanoTDFDecryptHand
 		}
 	}
 
-	client := newKASClient(s.dialOptions, s.tokenSource, nil)
+	client := newKASClient(s.conn.Client, s.conn.Options, s.tokenSource, nil)
 	kasURL, err := decryptor.header.kasURL.GetURL()
 	if err != nil {
 		return nil, fmt.Errorf("nano header kasUrl: %w", err)

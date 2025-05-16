@@ -16,8 +16,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
-	"net/url"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -25,20 +25,23 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attributespb "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
 	wellknownpb "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
-	"google.golang.org/grpc"
+	wellknownconnect "github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
-	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/stretchr/testify/assert"
@@ -284,8 +287,9 @@ type keyInfo struct {
 
 type TDFSuite struct {
 	suite.Suite
-	sdk   *SDK
-	kases []FakeKas
+	sdk              *SDK
+	kases            []FakeKas
+	kasTestURLLookup map[string]string
 }
 
 func (s *TDFSuite) SetupSuite() {
@@ -324,31 +328,35 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       "https://a.kas/",
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
 				WithDataAttributes(attributes...),
 			},
-			tdfReadOptions: []TDFReaderOption{},
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}),
+			},
 		},
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       "https://a.kas/",
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
 				WithDataAttributes(attributes...),
 				WithTargetMode("0.0.0"),
 			},
-			tdfReadOptions: []TDFReaderOption{},
-			useHex:         true,
+			tdfReadOptions: []TDFReaderOption{
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}),
+			},
+			useHex: true,
 		},
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       "https://d.kas/",
+					URL:       s.kasTestURLLookup["https://d.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
@@ -357,12 +365,13 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			},
 			tdfReadOptions: []TDFReaderOption{
 				WithSessionKeyType(ocrypto.EC256Key),
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://d.kas/"]}),
 			},
 		},
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       "https://d.kas/",
+					URL:       s.kasTestURLLookup["https://d.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
@@ -372,6 +381,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			},
 			tdfReadOptions: []TDFReaderOption{
 				WithSessionKeyType(ocrypto.EC256Key),
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://d.kas/"]}),
 			},
 			useHex: true,
 		},
@@ -491,20 +501,20 @@ func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       "https://a.kas/",
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
 				WithDataAttributes(attributes...),
 			},
 			tdfReadOptions: []TDFReaderOption{
-				WithKasAllowlist([]string{"https://a.kas/"}),
+				WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}),
 			},
 		},
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       "https://a.kas/",
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
@@ -513,12 +523,12 @@ func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
 			tdfReadOptions: []TDFReaderOption{
 				WithKasAllowlist([]string{"https://nope-not-a-kas.com/kas"}),
 			},
-			expectedError: "KasAllowlist: kas url https://a.kas/ is not allowed",
+			expectedError: "KasAllowlist: kas url " + s.kasTestURLLookup["https://a.kas/"] + " is not allowed",
 		},
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       "https://a.kas/",
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
@@ -527,12 +537,12 @@ func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
 			tdfReadOptions: []TDFReaderOption{
 				withKasAllowlist(AllowList{"nope-not-a-kas.com": true}),
 			},
-			expectedError: "KasAllowlist: kas url https://a.kas/ is not allowed",
+			expectedError: "KasAllowlist: kas url " + s.kasTestURLLookup["https://a.kas/"] + " is not allowed",
 		},
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       "https://a.kas/",
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
@@ -546,7 +556,7 @@ func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
 		{
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
-					URL:       "https://a.kas/",
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				}),
 				WithMetaData(string(metaData)),
@@ -822,7 +832,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 		{
 			kasURLs := []KASInfo{
 				{
-					URL:       "https://a.kas/",
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				},
 			}
@@ -866,11 +876,12 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 
 			var r *Reader
 			if test.verifiers == nil {
-				r, err = s.sdk.LoadTDF(readSeeker, WithDisableAssertionVerification(test.disableAssertionVerification))
+				r, err = s.sdk.LoadTDF(readSeeker, WithDisableAssertionVerification(test.disableAssertionVerification), WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}))
 			} else {
 				r, err = s.sdk.LoadTDF(readSeeker,
 					WithAssertionVerificationKeys(*test.verifiers),
-					WithDisableAssertionVerification(test.disableAssertionVerification))
+					WithDisableAssertionVerification(test.disableAssertionVerification),
+					WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}))
 			}
 			s.Require().NoError(err)
 
@@ -1140,7 +1151,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 		{
 			kasURLs := []KASInfo{
 				{
-					URL:       "https://a.kas/",
+					URL:       s.kasTestURLLookup["https://a.kas/"],
 					PublicKey: "",
 				},
 			}
@@ -1199,11 +1210,11 @@ func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing 
 			payload: payload, // len: 62
 			kasInfoList: []KASInfo{
 				{
-					URL:       "http://localhost:65432/api/kas",
+					URL:       s.kasTestURLLookup["http://localhost:65432/"],
 					PublicKey: mockRSAPublicKey1,
 				},
 				{
-					URL:       "http://localhost:65432/api/kas",
+					URL:       s.kasTestURLLookup["http://localhost:65432/"],
 					PublicKey: mockRSAPublicKey1,
 				},
 			},
@@ -1299,11 +1310,11 @@ func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing 
 func (s *TDFSuite) Test_TDFReaderFail() {
 	kasInfoList := []KASInfo{
 		{
-			URL:       "http://localhost:65432/api/kas",
+			URL:       s.kasTestURLLookup["http://localhost:65432/api/kas"],
 			PublicKey: mockRSAPublicKey1,
 		},
 		{
-			URL:       "http://localhost:65432/api/kas",
+			URL:       s.kasTestURLLookup["http://localhost:65432/api/kas"],
 			PublicKey: mockRSAPublicKey1,
 		},
 	}
@@ -1632,9 +1643,9 @@ func (s *TDFSuite) Test_KeySplits() {
 			tdfFileSize: 2759,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
-				{KAS: "https://a.kas/", SplitID: "a"},
-				{KAS: "https://b.kas/", SplitID: "a"},
-				{KAS: `https://c.kas/`, SplitID: "a"},
+				{KAS: s.kasTestURLLookup["https://a.kas/"], SplitID: "a"},
+				{KAS: s.kasTestURLLookup["https://b.kas/"], SplitID: "a"},
+				{KAS: s.kasTestURLLookup[`https://c.kas/`], SplitID: "a"},
 			},
 		},
 		{
@@ -1643,9 +1654,9 @@ func (s *TDFSuite) Test_KeySplits() {
 			tdfFileSize: 2759,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
-				{KAS: "https://a.kas/", SplitID: "a"},
-				{KAS: "https://b.kas/", SplitID: "b"},
-				{KAS: "https://c.kas/", SplitID: "c"},
+				{KAS: s.kasTestURLLookup["https://a.kas/"], SplitID: "a"},
+				{KAS: s.kasTestURLLookup["https://b.kas/"], SplitID: "b"},
+				{KAS: s.kasTestURLLookup["https://c.kas/"], SplitID: "c"},
 			},
 		},
 		{
@@ -1654,10 +1665,10 @@ func (s *TDFSuite) Test_KeySplits() {
 			tdfFileSize: 3351,
 			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
 			splitPlan: []keySplitStep{
-				{KAS: "https://a.kas/", SplitID: "a"},
-				{KAS: "https://b.kas/", SplitID: "a"},
-				{KAS: "https://b.kas/", SplitID: "b"},
-				{KAS: "https://c.kas/", SplitID: "b"},
+				{KAS: s.kasTestURLLookup["https://a.kas/"], SplitID: "a"},
+				{KAS: s.kasTestURLLookup["https://b.kas/"], SplitID: "a"},
+				{KAS: s.kasTestURLLookup["https://b.kas/"], SplitID: "b"},
+				{KAS: s.kasTestURLLookup["https://c.kas/"], SplitID: "b"},
 			},
 		},
 	} {
@@ -1881,7 +1892,7 @@ func (s *TDFSuite) startBackend() {
 	}
 
 	fwk := &FakeWellKnown{v: wellknownCfg}
-	fa := &FakeAttributes{}
+	fa := &FakeAttributes{s: s}
 	kasesToMake := []struct {
 		url, private, public string
 	}{
@@ -1898,137 +1909,129 @@ func (s *TDFSuite) startBackend() {
 		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3},
 		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1},
 	}
-	fkar := &FakeKASRegistry{kases: kasesToMake}
-
-	listeners := make(map[string]*bufconn.Listener)
-	dialer := func(ctx context.Context, host string) (net.Conn, error) {
-		l, ok := listeners[host]
-		if !ok {
-			slog.ErrorContext(ctx, "bufconn: unable to dial host!", "ctx", ctx, "host", host)
-			return nil, fmt.Errorf("unknown host [%s]", host)
-		}
-		slog.InfoContext(ctx, "bufconn: dialing (local grpc)", "ctx", ctx, "host", host)
-		return l.Dial()
-	}
+	fkar := &FakeKASRegistry{kases: kasesToMake, s: s}
 
 	s.kases = make([]FakeKas, 12)
 
-	for i, ki := range kasesToMake {
-		grpcListener := bufconn.Listen(1024 * 1024)
-		url, err := url.Parse(ki.url)
-		s.Require().NoError(err)
-		var origin string
-		switch {
-		case url.Port() == "80":
-			origin = url.Host
-		case url.Scheme == "https":
-			origin = url.Host + ":443"
-		case url.Port() != "":
-			origin = url.Host
-		default:
-			origin = url.Hostname()
-		}
-		listeners[origin] = grpcListener
+	s.kasTestURLLookup = make(map[string]string, 12)
 
-		grpcServer := grpc.NewServer()
+	var sdkPlatformURL string
+
+	for i, ki := range kasesToMake {
+		mux := http.NewServeMux()
+
 		s.kases[i] = FakeKas{
 			s: s, privateKey: ki.private, KASInfo: KASInfo{
 				URL: ki.url, PublicKey: ki.public, KID: "r1", Algorithm: "rsa:2048",
 			},
 			legakeys: map[string]keyInfo{},
 		}
-		attributespb.RegisterAttributesServiceServer(grpcServer, fa)
-		kaspb.RegisterAccessServiceServer(grpcServer, &s.kases[i])
-		wellknownpb.RegisterWellKnownServiceServer(grpcServer, fwk)
-		kasregistry.RegisterKeyAccessServerRegistryServiceServer(grpcServer, fkar)
+		path, handler := attributesconnect.NewAttributesServiceHandler(fa)
+		mux.Handle(path, handler)
+		kasPath, kasHandler := kasconnect.NewAccessServiceHandler(&s.kases[i])
+		mux.Handle(kasPath, kasHandler)
+		path, handler = wellknownconnect.NewWellKnownServiceHandler(fwk)
+		mux.Handle(path, handler)
+		path, handler = kasregistryconnect.NewKeyAccessServerRegistryServiceHandler(fkar)
+		mux.Handle(path, handler)
 
-		go func() {
-			err := grpcServer.Serve(grpcListener)
-			s.NoError(err)
-		}()
+		server := httptest.NewServer(mux)
+
+		// add to lookup reg
+		s.kasTestURLLookup[s.kases[i].KASInfo.URL] = server.URL
+		// replace kasinfo url with httptest server url
+		s.kases[i].KASInfo.URL = server.URL
+
+		if i == 0 {
+			sdkPlatformURL = server.URL
+		}
 	}
 
 	ats := getTokenSource(s.T())
 
-	sdk, err := New("localhost:65432",
+	sdk, err := New(sdkPlatformURL,
 		WithClientCredentials("test", "test", nil),
 		withCustomAccessTokenSource(&ats),
 		WithTokenEndpoint("http://localhost:65432/auth/token"),
-		WithInsecurePlaintextConn(),
-		WithExtraDialOptions(grpc.WithContextDialer(dialer)))
+		WithInsecurePlaintextConn())
 	s.Require().NoError(err)
 	s.sdk = sdk
 }
 
 type FakeWellKnown struct {
-	wellknownpb.UnimplementedWellKnownServiceServer
+	wellknownconnect.UnimplementedWellKnownServiceHandler
 	v map[string]interface{}
 }
 
-func (f *FakeWellKnown) GetWellKnownConfiguration(_ context.Context, _ *wellknownpb.GetWellKnownConfigurationRequest) (*wellknownpb.GetWellKnownConfigurationResponse, error) {
+func (f *FakeWellKnown) GetWellKnownConfiguration(_ context.Context, _ *connect.Request[wellknownpb.GetWellKnownConfigurationRequest]) (*connect.Response[wellknownpb.GetWellKnownConfigurationResponse], error) {
 	cfg, err := structpb.NewStruct(f.v)
 	if err != nil {
 		return nil, err
 	}
 
-	return &wellknownpb.GetWellKnownConfigurationResponse{
+	return connect.NewResponse(&wellknownpb.GetWellKnownConfigurationResponse{
 		Configuration: cfg,
-	}, nil
+	}), nil
 }
 
 type FakeAttributes struct {
-	attributespb.UnimplementedAttributesServiceServer
+	attributesconnect.UnimplementedAttributesServiceHandler
+	s *TDFSuite
 }
 
-func (f *FakeAttributes) GetAttributeValuesByFqns(_ context.Context, in *attributespb.GetAttributeValuesByFqnsRequest) (*attributespb.GetAttributeValuesByFqnsResponse, error) {
+func (f *FakeAttributes) GetAttributeValuesByFqns(_ context.Context, in *connect.Request[attributespb.GetAttributeValuesByFqnsRequest]) (*connect.Response[attributespb.GetAttributeValuesByFqnsResponse], error) {
 	r := make(map[string]*attributespb.GetAttributeValuesByFqnsResponse_AttributeAndValue)
-	for _, fqn := range in.GetFqns() {
+	for _, fqn := range in.Msg.GetFqns() {
 		av, err := NewAttributeValueFQN(fqn)
 		if err != nil {
 			slog.Error("invalid fqn", "notfqn", fqn, "error", err)
 			return nil, status.New(codes.InvalidArgument, fmt.Sprintf("invalid attribute fqn [%s]", fqn)).Err()
 		}
 		v := mockValueFor(av)
+		for i := range v.GetGrants() {
+			v.Grants[i].Uri = f.s.kasTestURLLookup[v.GetGrants()[i].GetUri()]
+		}
 		r[fqn] = &attributespb.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 			Attribute: v.GetAttribute(),
 			Value:     v,
 		}
 	}
-	return &attributespb.GetAttributeValuesByFqnsResponse{FqnAttributeValues: r}, nil
+	return connect.NewResponse(&attributespb.GetAttributeValuesByFqnsResponse{FqnAttributeValues: r}), nil
 }
 
 type FakeKASRegistry struct {
-	kasregistry.UnimplementedKeyAccessServerRegistryServiceServer
+	kasregistryconnect.UnimplementedKeyAccessServerRegistryServiceHandler
+	s     *TDFSuite
 	kases []struct {
 		url, private, public string
 	}
 }
 
-func (f *FakeKASRegistry) ListKeyAccessServers(_ context.Context, _ *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
+func (f *FakeKASRegistry) ListKeyAccessServers(_ context.Context, _ *connect.Request[kasregistry.ListKeyAccessServersRequest]) (*connect.Response[kasregistry.ListKeyAccessServersResponse], error) {
 	resp := &kasregistry.ListKeyAccessServersResponse{
 		KeyAccessServers: make([]*policy.KeyAccessServer, 0, len(f.kases)),
 	}
 
 	for _, k := range f.kases {
 		kas := &policy.KeyAccessServer{
-			Uri: k.url,
+			Uri: f.s.kasTestURLLookup[k.url],
 		}
 		resp.KeyAccessServers = append(resp.KeyAccessServers, kas)
 	}
 
-	return resp, nil
+	return connect.NewResponse(resp), nil
 }
 
 type FakeKas struct {
-	kaspb.UnimplementedAccessServiceServer
+	kasconnect.UnimplementedAccessServiceHandler
 	KASInfo
 	privateKey string
 	s          *TDFSuite
 	legakeys   map[string]keyInfo
 }
 
-func (f *FakeKas) Rewrap(_ context.Context, in *kaspb.RewrapRequest) (*kaspb.RewrapResponse, error) {
-	signedRequestToken := in.GetSignedRequestToken()
+func (f *FakeKas) Rewrap(_ context.Context, in *connect.Request[kaspb.RewrapRequest]) (*connect.Response[kaspb.RewrapResponse], error) {
+	signedRequestToken := in.Msg.GetSignedRequestToken()
 
 	token, err := jwt.ParseInsecure([]byte(signedRequestToken))
 	if err != nil {
@@ -2046,11 +2049,11 @@ func (f *FakeKas) Rewrap(_ context.Context, in *kaspb.RewrapRequest) (*kaspb.Rew
 	}
 	result := f.getRewrapResponse(requestBodyStr)
 
-	return result, nil
+	return connect.NewResponse(result), nil
 }
 
-func (f *FakeKas) PublicKey(_ context.Context, _ *kaspb.PublicKeyRequest) (*kaspb.PublicKeyResponse, error) {
-	return &kaspb.PublicKeyResponse{PublicKey: f.KASInfo.PublicKey, Kid: f.KID}, nil
+func (f *FakeKas) PublicKey(_ context.Context, _ *connect.Request[kaspb.PublicKeyRequest]) (*connect.Response[kaspb.PublicKeyResponse], error) {
+	return connect.NewResponse(&kaspb.PublicKeyResponse{PublicKey: f.KASInfo.PublicKey, Kid: f.KID}), nil
 }
 
 func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse {

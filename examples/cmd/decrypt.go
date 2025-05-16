@@ -56,7 +56,6 @@ func decrypt(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
-		client.Close()
 		return nil
 	}
 

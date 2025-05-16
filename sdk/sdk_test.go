@@ -6,18 +6,18 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
-	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
+	"github.com/opentdf/platform/protocol/go/policy/resourcemapping/resourcemappingconnect"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
 	"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var (
-	goodPlatformEndpoint = "localhost:8080"
-	badPlatformEndpoint  = "localhost:9999"
+	goodPlatformEndpoint = "http://localhost:8080"
+	badPlatformEndpoint  = "http://localhost:9999"
 )
 
 func GetMethods(i interface{}) []string {
@@ -122,18 +122,6 @@ func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
 	assert.NotNil(t, s)
 }
 
-func TestNew_ShouldCloseConnections(t *testing.T) {
-	s, err := sdk.New(goodPlatformEndpoint,
-		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
-			"platform_issuer": "https://example.org",
-		}),
-		sdk.WithClientCredentials("myid", "mysecret", nil),
-		sdk.WithTokenEndpoint("https://example.org/token"),
-	)
-	require.NoError(t, err)
-	require.NoError(t, s.Close())
-}
-
 func TestNew_ShouldValidateGoodNanoTdf(t *testing.T) {
 	goodNanoTdfStr := "TDFMABJsb2NhbGhvc3Q6ODA4MC9rYXOAAQIA2qvjMRfg7b27lT2kf9SwHRkDIg8ZXtfRoiIvdMUHq/gL5AUMfmv4Di8sKCyLkmUm/WITVj5hDeV/z4JmQ0JL7ZxqSmgZoK6TAHvkKhUly4zMEWMRXH8IktKhFKy1+fD+3qwDopqWAO5Nm2nYQqi75atEFckstulpNKg3N+Ul22OHr/ZuR127oPObBDYNRfktBdzoZbEQcPlr8q1B57q6y5SPZFjEzL9weK+uS5bUJWkF3nsHASo2bZw7IPhTZxoFVmCDjwvj6MbxNa7zG6aClHJ162zKxLLnD9TtIHuZ59R7LgiSieipXeExj+ky9OgIw5DfwyUuxsQLtKpMIAFPmLY9Hy2naUJxke0MT1EUBgastCq+YtFGslV9LJo/A8FtrRqludwtM0O+Z9FlAkZ1oNL7M7uOkLrh7eRrv+C1AAAX6FaBQoOtqnmyu6Jp+VzkxDddEeLRUyI="
 	goodDecodedData, err := base64.StdEncoding.DecodeString(goodNanoTdfStr)
@@ -228,22 +216,22 @@ func TestNew_ShouldHaveSameMethods(t *testing.T) {
 	}{
 		{
 			name:     "Attributes",
-			expected: GetMethods(reflect.TypeOf(attributes.NewAttributesServiceClient(s.Conn()))),
+			expected: GetMethods(reflect.TypeOf(attributesconnect.NewAttributesServiceClient(s.Conn().Client, s.Conn().Endpoint))),
 			actual:   GetMethods(reflect.TypeOf(s.Attributes)),
 		},
 		{
 			name:     "ResourceEncoding",
-			expected: GetMethods(reflect.TypeOf(resourcemapping.NewResourceMappingServiceClient(s.Conn()))),
+			expected: GetMethods(reflect.TypeOf(resourcemappingconnect.NewResourceMappingServiceClient(s.Conn().Client, s.Conn().Endpoint))),
 			actual:   GetMethods(reflect.TypeOf(s.ResourceMapping)),
 		},
 		{
 			name:     "SubjectEncoding",
-			expected: GetMethods(reflect.TypeOf(subjectmapping.NewSubjectMappingServiceClient(s.Conn()))),
+			expected: GetMethods(reflect.TypeOf(subjectmappingconnect.NewSubjectMappingServiceClient(s.Conn().Client, s.Conn().Endpoint))),
 			actual:   GetMethods(reflect.TypeOf(s.SubjectMapping)),
 		},
 		{
 			name:     "KeyAccessGrants",
-			expected: GetMethods(reflect.TypeOf(kasregistry.NewKeyAccessServerRegistryServiceClient(s.Conn()))),
+			expected: GetMethods(reflect.TypeOf(kasregistryconnect.NewKeyAccessServerRegistryServiceClient(s.Conn().Client, s.Conn().Endpoint))),
 			actual:   GetMethods(reflect.TypeOf(s.KeyAccessServerRegistry)),
 		},
 	}
@@ -273,93 +261,67 @@ func Test_New_ShouldFailWithDisconnectedPlatform(t *testing.T) {
 	assert.Nil(t, s)
 }
 
-func Test_ShouldSanitizePlatformEndpoint(t *testing.T) {
+func TestIsPlatformEndpointMalformed(t *testing.T) {
 	tests := []struct {
-		name     string
-		endpoint string
-		expected string
+		name        string
+		input       string
+		expected    bool
+		description string
 	}{
 		{
-			name:     "No scheme",
-			endpoint: "localhost:8080",
-			expected: "localhost:8080",
+			name:        "Valid URL with scheme and host",
+			input:       "https://example.com",
+			expected:    false,
+			description: "A valid URL with scheme and host should not be considered malformed.",
 		},
 		{
-			name:     "HTTP scheme with port",
-			endpoint: "http://localhost:8080",
-			expected: "localhost:8080",
+			name:        "Valid URL with scheme, host, and port",
+			input:       "https://example.com:8080",
+			expected:    false,
+			description: "A valid URL with scheme, host, and port should not be considered malformed.",
 		},
 		{
-			name:     "HTTPS scheme with port",
-			endpoint: "https://localhost:8080",
-			expected: "localhost:8080",
+			name:        "Valid URL with path",
+			input:       "https://example.com/path",
+			expected:    false,
+			description: "A valid URL with a path should not be considered malformed.",
 		},
 		{
-			name:     "HTTP scheme no port",
-			endpoint: "http://localhost",
-			expected: "localhost:80",
+			name:        "Invalid URL with missing host",
+			input:       "https://:8080",
+			expected:    true,
+			description: "A URL with a missing host should be considered malformed.",
 		},
 		{
-			name:     "HTTPS scheme no port",
-			endpoint: "https://localhost",
-			expected: "localhost:443",
+			name:        "Invalid URL with missing scheme",
+			input:       "example.com",
+			expected:    true,
+			description: "A URL without a scheme should be considered malformed.",
 		},
 		{
-			name:     "HTTPS scheme port (IP)",
-			endpoint: "https://192.168.1.1:8080",
-			expected: "192.168.1.1:8080",
+			name:        "Invalid URL with invalid characters",
+			input:       "https://exa mple.com",
+			expected:    true,
+			description: "A URL with invalid characters should be considered malformed.",
 		},
 		{
-			name:     "HTTPS scheme no port (IP)",
-			endpoint: "https://192.168.1.1",
-			expected: "192.168.1.1:443",
+			name:        "Invalid URL with colon in hostname",
+			input:       "https://example:com",
+			expected:    true,
+			description: "A URL with a colon in the hostname should be considered malformed.",
 		},
 		{
-			name:     "Malformed url",
-			endpoint: "http://localhost:8080:8080",
-			expected: "",
-		},
-		{
-			name:     "Malformed url",
-			endpoint: "http://localhost:8080:",
-			expected: "",
-		},
-		{
-			name:     "Malformed url",
-			endpoint: "http//localhost:8080:",
-			expected: "",
-		},
-		{
-			name:     "Malformed url",
-			endpoint: "//localhost",
-			expected: "",
-		},
-		{
-			name:     "Malformed url",
-			endpoint: "://localhost",
-			expected: "",
-		},
-		{
-			name:     "Malformed url",
-			endpoint: "http/localhost",
-			expected: "",
-		},
-		{
-			name:     "Malformed url",
-			endpoint: "http:localhost",
-			expected: "",
+			name:        "Empty input",
+			input:       "",
+			expected:    true,
+			description: "An empty input should be considered malformed.",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual, err := sdk.SanitizePlatformEndpoint(tt.endpoint)
-			if tt.expected == "" {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.expected, actual)
-			}
+			result := sdk.IsPlatformEndpointMalformed(tt.input)
+			assert.Equal(t, tt.expected, result, tt.description)
 		})
 	}
 }

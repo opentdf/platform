@@ -255,7 +255,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 	newLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
 	suite.Require().NoError(err)
 
-	err = startServices(ctx, &config.Config{
+	cleanup, err := startServices(ctx, &config.Config{
 		Mode:   []string{"test"},
 		Logger: logger.Config{Output: "stdout", Level: "info", Type: "json"},
 		// DB: db.Config{
@@ -272,6 +272,11 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 			"foobar":       {},
 		},
 	}, otdf, nil, newLogger, registry)
+	if cleanup != nil {
+		// call cleanup function
+		defer cleanup()
+	}
+
 	suite.Require().NoError(err)
 	// require.NotNil(t, cF)
 	// assert.Lenf(t, services, 2, "expected 2 services enabled, got %d", len(services))

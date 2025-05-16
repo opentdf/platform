@@ -6,17 +6,19 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"time"
 
+	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/sdk/auth"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -27,7 +29,8 @@ const (
 
 type KASClient struct {
 	accessTokenSource auth.AccessTokenSource
-	dialOptions       []grpc.DialOption
+	httpClient        *http.Client
+	connectOptions    []connect.ClientOption
 	sessionKey        ocrypto.KeyPair
 
 	// Set this to enable legacy, non-batch rewrap requests
@@ -45,10 +48,11 @@ type decryptor interface {
 	Decrypt(ctx context.Context, results []kaoResult) (int, error)
 }
 
-func newKASClient(dialOptions []grpc.DialOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.KeyPair) *KASClient {
+func newKASClient(httpClient *http.Client, options []connect.ClientOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.KeyPair) *KASClient {
 	return &KASClient{
 		accessTokenSource:           accessTokenSource,
-		dialOptions:                 dialOptions,
+		httpClient:                  httpClient,
+		connectOptions:              options,
 		sessionKey:                  sessionKey,
 		supportSingleRewrapEndpoint: true,
 	}
@@ -60,27 +64,22 @@ func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.Unsig
 	if err != nil {
 		return nil, err
 	}
-	grpcAddress, err := getGRPCAddress(requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().GetKasUrl())
+	kasURL := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().GetKasUrl()
+	parsedURL, err := parseBaseURL(kasURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot parse kas url(%s): %w", kasURL, err)
 	}
 
-	conn, err := grpc.NewClient(grpcAddress, k.dialOptions...)
-	if err != nil {
-		return nil, fmt.Errorf("error connecting to sas: %w", err)
-	}
-	defer conn.Close()
+	serviceClient := kasconnect.NewAccessServiceClient(k.httpClient, parsedURL, k.connectOptions...)
 
-	serviceClient := kas.NewAccessServiceClient(conn)
-
-	response, err := serviceClient.Rewrap(ctx, rewrapRequest)
+	response, err := serviceClient.Rewrap(ctx, connect.NewRequest(rewrapRequest))
 	if err != nil {
 		return upgradeRewrapErrorV1(err, requests)
 	}
 
-	upgradeRewrapResponseV1(response, requests)
+	upgradeRewrapResponseV1(response.Msg, requests)
 
-	return response, nil
+	return response.Msg, nil
 }
 
 // convert v1 responses to v2
@@ -313,24 +312,22 @@ func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecrypt
 	return policyResults, nil
 }
 
-func getGRPCAddress(kasURL string) (string, error) {
-	parsedURL, err := url.Parse(kasURL)
+func parseBaseURL(rawURL string) (string, error) {
+	u, err := url.Parse(rawURL)
 	if err != nil {
-		return "", fmt.Errorf("cannot parse kas url(%s): %w", kasURL, err)
+		return "", err
 	}
 
-	// Needed to support buffconn for testing
-	if parsedURL.Host == "" && parsedURL.Port() == "" {
-		return "", nil
+	host := u.Hostname()
+	port := u.Port()
+
+	// Add port only if it's present
+	addr := host
+	if port != "" {
+		addr = net.JoinHostPort(host, port)
 	}
 
-	port := parsedURL.Port()
-	// if port is empty, default to 443.
-	if port == "" {
-		port = "443"
-	}
-
-	return net.JoinHostPort(parsedURL.Hostname(), port), nil
+	return fmt.Sprintf("%s://%s", u.Scheme, addr), nil
 }
 
 func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapRequest, error) {
@@ -422,23 +419,18 @@ func (c *kasKeyCache) store(ki KASInfo) {
 	c.c[cacheKey] = timeStampedKASInfo{ki, time.Now()}
 }
 
-func (s SDK) getPublicKey(ctx context.Context, url, algorithm string) (*KASInfo, error) {
+func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm string) (*KASInfo, error) {
 	if s.kasKeyCache != nil {
-		if cachedValue := s.kasKeyCache.get(url, algorithm); nil != cachedValue {
+		if cachedValue := s.kasKeyCache.get(kasurl, algorithm); nil != cachedValue {
 			return cachedValue, nil
 		}
 	}
-	grpcAddress, err := getGRPCAddress(url)
+	parsedURL, err := parseBaseURL(kasurl)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot parse kas url(%s): %w", kasurl, err)
 	}
-	conn, err := grpc.NewClient(grpcAddress, s.dialOptions...)
-	if err != nil {
-		return nil, fmt.Errorf("error connecting to grpc service at %s: %w", url, err)
-	}
-	defer conn.Close()
 
-	serviceClient := kas.NewAccessServiceClient(conn)
+	serviceClient := kasconnect.NewAccessServiceClient(s.conn.Client, parsedURL, s.conn.Options...)
 
 	req := kas.PublicKeyRequest{
 		Algorithm: algorithm,
@@ -446,21 +438,21 @@ func (s SDK) getPublicKey(ctx context.Context, url, algorithm string) (*KASInfo,
 	if s.config.tdfFeatures.noKID {
 		req.V = "1"
 	}
-	resp, err := serviceClient.PublicKey(ctx, &req)
+	resp, err := serviceClient.PublicKey(ctx, connect.NewRequest(&req))
 	if err != nil {
 		return nil, fmt.Errorf("error making request to KAS: %w", err)
 	}
 
-	kid := resp.GetKid()
+	kid := resp.Msg.GetKid()
 	if s.config.tdfFeatures.noKID {
 		kid = ""
 	}
 
 	ki := KASInfo{
-		URL:       url,
+		URL:       kasurl,
 		Algorithm: algorithm,
 		KID:       kid,
-		PublicKey: resp.GetPublicKey(),
+		PublicKey: resp.Msg.GetPublicKey(),
 	}
 	if s.kasKeyCache != nil {
 		s.kasKeyCache.store(ki)

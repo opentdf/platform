@@ -19,6 +19,7 @@ import (
 	"connectrpc.com/validate"
 	"github.com/go-chi/cors"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/sdk"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
@@ -134,6 +135,7 @@ type OpenTDFServer struct {
 
 	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
 	CryptoProvider *security.StandardCrypto
+	Listener       net.Listener
 
 	logger *logger.Logger
 }
@@ -440,11 +442,13 @@ func (s OpenTDFServer) Start() error {
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 
-	// Start Http Server
 	ln, err := s.openHTTPServerPort()
 	if err != nil {
 		return err
 	}
+	s.Listener = ln
+
+	// Start Http Server
 	go s.startHTTPServer(ln)
 
 	return nil
@@ -458,6 +462,10 @@ func (s OpenTDFServer) Stop() {
 		s.logger.Error("failed to shutdown http server", slog.String("error", err.Error()))
 		return
 	}
+	// Close the listener
+	if s.Listener != nil {
+		s.Listener.Close()
+	}
 
 	s.logger.Info("shutting down in process grpc server")
 	if err := s.ConnectRPCInProcess.srv.Shutdown(ctx); err != nil {
@@ -468,7 +476,25 @@ func (s OpenTDFServer) Stop() {
 	s.logger.Info("shutdown complete")
 }
 
-func (s inProcessServer) Conn() *grpc.ClientConn {
+func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
+	var clientInterceptors []connect.Interceptor
+
+	// Add audit interceptor
+	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())
+
+	conn := sdk.ConnectRPCConnection{
+		Client:   s.srv.Client(),
+		Endpoint: s.srv.Listener.Addr().String(),
+		Options: []connect.ClientOption{
+			connect.WithInterceptors(clientInterceptors...),
+			connect.WithReadMaxBytes(s.maxCallRecvMsgSize),
+			connect.WithSendMaxBytes(s.maxCallSendMsgSize),
+		},
+	}
+	return &conn
+}
+
+func (s inProcessServer) GrpcConn() *grpc.ClientConn {
 	var clientInterceptors []grpc.UnaryClientInterceptor
 
 	// Add audit interceptor

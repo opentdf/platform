@@ -1,3 +1,4 @@
+//nolint:forbidigo // We use Println here extensively because we are printing markdown.
 package cmd
 
 import (
@@ -17,11 +18,11 @@ func init() {
 		Long:  `A OpenTDF benchmark tool to measure throughput and latency with configurable concurrency.`,
 		RunE:  runDecisionBenchmark,
 	}
-	benchmarkCmd.Flags().IntVar(&config.RequestCount, "count", 100, "Total number of requests")
+	benchmarkCmd.Flags().IntVar(&config.RequestCount, "count", 100, "Total number of requests") //nolint: mnd // This is output to the help with explanation
 	ExamplesCmd.AddCommand(benchmarkCmd)
 }
 
-func runDecisionBenchmark(cmd *cobra.Command, args []string) error {
+func runDecisionBenchmark(_ *cobra.Command, _ []string) error {
 	// Create new offline client
 	client, err := newSDK()
 	if err != nil {
@@ -44,7 +45,8 @@ func runDecisionBenchmark(cmd *cobra.Command, args []string) error {
 					{Id: "rewrap-tok", Entities: []*authorization.Entity{
 						{Id: "jwtentity-0-clientid-opentdf-public", EntityType: &authorization.Entity_ClientId{ClientId: "opentdf-public"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT},
 						{Id: "jwtentity-1-username-sample-user", EntityType: &authorization.Entity_UserName{UserName: "sample-user"}, Category: authorization.Entity_CATEGORY_SUBJECT},
-					}}},
+					}},
+				},
 				ResourceAttributes: ras,
 			},
 		},
@@ -56,12 +58,11 @@ func runDecisionBenchmark(cmd *cobra.Command, args []string) error {
 	numberDenied := 0
 	if err == nil {
 		for _, dr := range res.GetDecisionResponses() {
-			if dr.Decision == authorization.DecisionResponse_DECISION_PERMIT {
-				numberApproved += 1
+			if dr.GetDecision() == authorization.DecisionResponse_DECISION_PERMIT {
+				numberApproved++
 			} else {
-				numberDenied += 1
+				numberDenied++
 			}
-
 		}
 	}
 

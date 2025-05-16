@@ -3,6 +3,7 @@ package subjectmappingbuiltin
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/opentdf/platform/lib/flattening"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
@@ -72,7 +73,7 @@ func EvaluateSubjectMappingsWithActions(
 					// Cache each action by name to deduplicate
 					for _, action := range actions {
 						if !slices.ContainsFunc(entitlementsSet[valueFQN], func(a *policy.Action) bool {
-							return a.GetName() == action.GetName()
+							return strings.EqualFold(a.GetName(), action.GetName())
 						}) {
 							entitlementsSet[valueFQN] = append(entitlementsSet[valueFQN], action)
 						}

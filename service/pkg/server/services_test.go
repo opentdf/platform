@@ -255,23 +255,27 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 	newLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
 	suite.Require().NoError(err)
 
-	err = startServices(ctx, &config.Config{
-		Mode:   []string{"test"},
-		Logger: logger.Config{Output: "stdout", Level: "info", Type: "json"},
-		// DB: db.Config{
-		// 	Host:          "localhost",
-		// 	Port:          5432,
-		// 	Database:      "opentdf",
-		// 	User:          "",
-		// 	Password:      "",
-		// 	RunMigrations: false,
-		// },
-		Services: map[string]config.ServiceConfig{
-			"test":         {},
-			"test_with_db": {},
-			"foobar":       {},
+	err = startServices(ctx, startServicesParams{
+		cfg: &config.Config{
+			Mode:   []string{"test"},
+			Logger: logger.Config{Output: "stdout", Level: "info", Type: "json"},
+			// DB: db.Config{
+			// 	Host:          "localhost",
+			// 	Port:          5432,
+			// 	Database:      "opentdf",
+			// 	User:          "",
+			// 	Password:      "",
+			// 	RunMigrations: false,
+			// },
+			Services: map[string]config.ServiceConfig{
+				"test":         {},
+				"test_with_db": {},
+				"foobar":       {},
+			},
 		},
-	}, otdf, nil, newLogger, registry)
+		otdf:   otdf,
+		logger: newLogger,
+	})
 	suite.Require().NoError(err)
 	// require.NotNil(t, cF)
 	// assert.Lenf(t, services, 2, "expected 2 services enabled, got %d", len(services))

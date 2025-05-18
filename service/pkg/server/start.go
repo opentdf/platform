@@ -21,6 +21,7 @@ import (
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
@@ -89,6 +90,15 @@ func Start(f ...StartOptions) error {
 	defer shutdown()
 
 	logger.Debug("config loaded", slog.Any("config", cfg.LogValue()))
+
+	logger.Info("creating cache manager")
+	var cacheFreqTrack int64 = 1e7   // number of keys to track frequency of (10M).
+	var cacheMaxCost int64 = 1 << 30 // maximum cost of cache (1GB).
+	var cacheKeysPerGet int64 = 64   // number of keys per Get buffer.
+	cacheManager, err := cache.NewCacheManager(cacheFreqTrack, cacheMaxCost, cacheKeysPerGet)
+	if err != nil {
+		return fmt.Errorf("could not create cache manager: %w", err)
+	}
 
 	logger.Info("starting opentdf services")
 
@@ -317,7 +327,14 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	logger.Info("starting services")
-	err = startServices(ctx, cfg, otdf, client, logger, svcRegistry)
+	err = startServices(ctx, startServicesParams{
+		cfg:          cfg,
+		otdf:         otdf,
+		client:       client,
+		logger:       logger,
+		reg:          svcRegistry,
+		cacheManager: cacheManager,
+	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)

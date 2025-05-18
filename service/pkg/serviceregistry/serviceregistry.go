@@ -17,6 +17,7 @@ import (
 
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 )
@@ -41,6 +42,9 @@ type RegistrationParams struct {
 	// Logger is the logger that can be used to log messages. This logger is scoped to the service
 	Logger *logger.Logger
 	trace.Tracer
+
+	// Cache is the cache that can be used to cache data. This cache is scoped to the service
+	Cache *cache.Cache
 
 	////// The following functions are optional and intended to be called by the service //////
 
@@ -69,8 +73,6 @@ type DBRegister struct {
 }
 
 type IService interface {
-	IsDBRequired() bool
-	DBMigrations() *embed.FS
 	GetNamespace() string
 	GetServiceDesc() *grpc.ServiceDesc
 	Start(ctx context.Context, params RegistrationParams) error
@@ -80,6 +82,17 @@ type IService interface {
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
+}
+
+// DatabaseSupportedService is implemented by services that support database connections.
+type DatabaseSupportedService interface {
+	IsDBRequired() bool
+	DBMigrations() *embed.FS
+}
+
+// CacheSupportedService is implemented by services that support caching.
+type CacheSupportedService interface {
+	CacheOptions() *cache.CacheOptions
 }
 
 // Service is a struct that holds the registration information for a service as well as the state

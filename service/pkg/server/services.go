@@ -17,6 +17,7 @@ import (
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
 	logging "github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -113,11 +114,27 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 	return registeredServices, nil
 }
 
+type startServicesParams struct {
+	cfg          *config.Config
+	otdf         *server.OpenTDFServer
+	client       *sdk.SDK
+	logger       *logging.Logger
+	reg          serviceregistry.Registry
+	cacheManager *cache.CacheManager
+}
+
 // startServices iterates through the registered namespaces and starts the services
 // based on the configuration and namespace mode. It creates a new service logger
 // and a database client if required. It registers the services with the gRPC server,
 // in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
-func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry) error {
+func startServices(ctx context.Context, params startServicesParams) error {
+	cfg := params.cfg
+	otdf := params.otdf
+	client := params.client
+	logger := params.logger
+	reg := params.reg
+	cacheManager := params.cacheManager
+
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
 		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.
@@ -157,15 +174,27 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 
 		for _, svc := range namespace.Services {
 			// Get new db client if it is required and not already created
-			if svc.IsDBRequired() && svcDBClient == nil {
-				logger.Debug("creating database client", slog.String("namespace", ns))
-				var err error
-				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, tracer, ns, svc.DBMigrations())
-				if err != nil {
-					return err
+			if dbSvc, ok := svc.(serviceregistry.DatabaseSupportedService); ok {
+				if dbSvc.IsDBRequired() && svcDBClient == nil {
+					logger.Debug("creating database client", slog.String("namespace", ns))
+					var err error
+					svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, tracer, ns, dbSvc.DBMigrations())
+					if err != nil {
+						return err
+					}
 				}
 			}
 
+			// Check if the service supports and needs a cache
+			var cacheClient *cache.Cache
+			if cacheSvc, ok := svc.(serviceregistry.CacheSupportedService); ok {
+				cacheClient = cacheManager.NewCache(ns, *cacheSvc.CacheOptions())
+				if err != nil {
+					return fmt.Errorf("issue creating cache client for %s: %w", ns, err)
+				}
+			}
+
+			// Create a new service instance
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.GetNamespace()],
 				Logger:                 svcLogger,
@@ -175,6 +204,7 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 				RegisterReadinessCheck: health.RegisterReadinessCheck,
 				OTDF:                   otdf, // TODO: REMOVE THIS
 				Tracer:                 tracer,
+				Cache:                  cacheClient,
 			})
 			if err != nil {
 				return err

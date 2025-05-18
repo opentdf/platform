@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -11,6 +12,7 @@ import (
 	stringadapter "github.com/casbin/casbin/v2/persist/string-adapter"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/oidcuserinfo"
 	"github.com/opentdf/platform/service/pkg/util"
 
 	_ "embed"
@@ -35,15 +37,30 @@ type Enforcer struct {
 
 	isDefaultPolicy bool
 	isDefaultModel  bool
+
+	// OIDC UserInfo cache
+	oidc *oidcuserinfo.UserInfo
 }
 
 type casbinSubject []string
 
 type CasbinConfig struct {
 	PolicyConfig
+	// OIDC UserInfo enrichment fields
+	UserInfoEnrichment bool
+	UserInfoEndpoint   string
+	TokenEndpoint      string
+	ClientID           string
+	ClientSecret       string
 }
 
-// newCasbinEnforcer creates a new casbin enforcer
+type AuthToken struct {
+	Token    jwt.Token
+	RawToken string
+}
+
+// newCasbinEnforcer creates a new Casbin enforcer with the provided configuration and logger.
+// It sets up the Casbin model, policy, and adapter, and returns an Enforcer instance.
 func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error) {
 	// Set Casbin config defaults if not provided
 	isDefaultModel := false
@@ -123,11 +140,12 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 	}, nil
 }
 
-// casbinEnforce is a helper function to enforce the policy with casbin
-// TODO implement a common type so this can be used for both http and grpc
-func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, error) {
+// Enforce checks if the given AuthToken is allowed to perform the specified action on the resource.
+// It builds the subject from the token, checks all possible roles, and returns true if any are allowed.
+// Returns an error if permission is denied or if an internal error occurs during enforcement.
+func (e *Enforcer) Enforce(ctx context.Context, authToken AuthToken, resource, action string) (bool, error) {
 	// extract the role claim from the token
-	s := e.buildSubjectFromToken(token)
+	s := e.buildSubjectFromToken(ctx, authToken)
 	s = append(s, rolePrefix+defaultRole)
 
 	for _, info := range s {
@@ -144,14 +162,16 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 	return false, errors.New("permission denied")
 }
 
-func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
+// buildSubjectFromToken constructs the Casbin subject slice from the AuthToken.
+// It extracts roles and the username claim, and returns them as a subject list for policy enforcement.
+func (e *Enforcer) buildSubjectFromToken(ctx context.Context, authToken AuthToken) casbinSubject {
 	var subject string
 	info := casbinSubject{}
 
-	e.logger.Debug("building subject from token", slog.Any("token", t))
-	roles := e.extractRolesFromToken(t)
+	e.logger.Debug("building subject from token", slog.Any("token", authToken.Token))
+	roles := e.extractRolesFromToken(ctx, authToken)
 
-	if claim, found := t.Get(e.Config.UserNameClaim); found {
+	if claim, found := authToken.Token.Get(e.Config.UserNameClaim); found {
 		sub, ok := claim.(string)
 		subject = sub
 		if !ok {
@@ -164,35 +184,79 @@ func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	return info
 }
 
-func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
-	e.logger.Debug("extracting roles from token", slog.Any("token", t))
-	roles := []string{}
-
+// extractRolesFromToken extracts the roles from the AuthToken based on the configured claim.
+// If the claim is missing and UserInfo enrichment is enabled, it fetches roles from the OIDC UserInfo endpoint.
+// Returns a slice of role strings, or nil if no roles are found.
+func (e *Enforcer) extractRolesFromToken(ctx context.Context, authToken AuthToken) []string {
+	e.logger.Debug("extracting roles from token", slog.Any("token", authToken.Token))
 	roleClaim := e.Config.GroupsClaim
-	// roleMap := e.Config.RoleMap
-
 	selectors := strings.Split(roleClaim, ".")
-	claim, exists := t.Get(selectors[0])
+
+	claim, exists := e.getClaimFromToken(authToken, selectors[0])
+	if !exists && e.Config.UserInfoEnrichment {
+		claim, exists = e.getClaimFromUserInfo(ctx, authToken, selectors[0])
+	}
 	if !exists {
-		e.logger.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("token", t))
+		e.logger.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("token", authToken.Token))
 		return nil
 	}
-	e.logger.Debug("root claim found", slog.String("claim", roleClaim), slog.Any("claims", claim))
-	// use dotnotation if the claim is nested
+
+	claim = e.resolveNestedClaim(claim, selectors)
+	if claim == nil {
+		return nil
+	}
+
+	return e.parseRolesFromClaim(claim, roleClaim)
+}
+
+// getClaimFromToken tries to get the claim from the JWT token.
+func (e *Enforcer) getClaimFromToken(authToken AuthToken, claimKey string) (interface{}, bool) {
+	claim, exists := authToken.Token.Get(claimKey)
+	return claim, exists
+}
+
+// getClaimFromUserInfo fetches the claim from the OIDC UserInfo endpoint if available.
+func (e *Enforcer) getClaimFromUserInfo(ctx context.Context, authToken AuthToken, claimKey string) (interface{}, bool) {
+	issuer := authToken.Token.Issuer()
+	sub := authToken.Token.Subject()
+	userinfo, err := e.oidc.FetchUserInfo(
+		ctx,
+		authToken.RawToken, // pass the raw access token
+		issuer,
+		sub,
+		e.Config.UserInfoEndpoint,
+		e.Config.TokenEndpoint,
+		e.Config.ClientID,
+		e.Config.ClientSecret,
+	)
+	if err == nil {
+		if claimVal, ok := userinfo[claimKey]; ok {
+			return claimVal, true
+		}
+	}
+	return nil, false
+}
+
+// resolveNestedClaim resolves nested claims using dot notation if needed.
+func (e *Enforcer) resolveNestedClaim(claim interface{}, selectors []string) interface{} {
 	if len(selectors) > 1 {
 		claimMap, ok := claim.(map[string]interface{})
 		if !ok {
-			e.logger.Warn("claim is not of type map[string]interface{}", slog.String("claim", roleClaim), slog.Any("claims", claim))
+			e.logger.Warn("claim is not of type map[string]interface{}", slog.String("claim", strings.Join(selectors, ".")), slog.Any("claims", claim))
 			return nil
 		}
 		claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
 		if claim == nil {
-			e.logger.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("claims", claim))
+			e.logger.Warn("claim not found", slog.String("claim", strings.Join(selectors, ".")), slog.Any("claims", claim))
 			return nil
 		}
 	}
+	return claim
+}
 
-	// check the type of the role claim
+// parseRolesFromClaim parses the roles from the claim value.
+func (e *Enforcer) parseRolesFromClaim(claim interface{}, roleClaim string) []string {
+	roles := []string{}
 	switch v := claim.(type) {
 	case string:
 		roles = append(roles, v)
@@ -206,6 +270,5 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 		e.logger.Warn("could not get claim type", slog.String("selector", roleClaim), slog.Any("claims", claim))
 		return nil
 	}
-
 	return roles
 }

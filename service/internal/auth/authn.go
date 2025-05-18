@@ -240,7 +240,10 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		if !ok {
 			md = metadata.New(nil)
 		}
-		md.Append("access_token", ctxAuth.GetRawAccessTokenFromContext(ctxWithJWK, nil))
+		rawAccessToken := ctxAuth.GetRawAccessTokenFromContext(ctxWithJWK, nil)
+		if rawAccessToken != "" {
+			md.Append("access_token", rawAccessToken)
+		}
 		ctxWithJWK = metadata.NewIncomingContext(ctxWithJWK, md)
 
 		// Check if the token is allowed to access the resource
@@ -255,7 +258,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		default:
 			action = ActionUnsafe
 		}
-		if allow, err := a.enforcer.Enforce(accessTok, r.URL.Path, action); err != nil {
+		if allow, err := a.enforcer.Enforce(r.Context(), AuthToken{Token: accessTok, RawToken: rawAccessToken}, r.URL.Path, action); err != nil {
 			if err.Error() == "permission denied" {
 				a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", accessTok.Subject()), slog.String("error", err.Error()))
 				http.Error(w, "permission denied", http.StatusForbidden)
@@ -320,7 +323,12 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			}
 
 			// Check if the token is allowed to access the resource
-			if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
+			// Pass the raw access token to Enforcer for OIDC UserInfo enrichment
+			rawToken := ""
+			if len(header) > 0 {
+				rawToken = strings.TrimPrefix(strings.TrimPrefix(header[0], "Bearer "), "DPoP ")
+			}
+			if allowed, err := a.enforcer.Enforce(ctx, AuthToken{Token: token, RawToken: rawToken}, resource, action); err != nil {
 				if err.Error() == "permission denied" {
 					a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
 					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))

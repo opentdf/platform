@@ -26,6 +26,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/oidcuserinfo"
 	"github.com/opentdf/platform/service/tracing"
 	"github.com/opentdf/platform/service/trust"
 	"golang.org/x/net/http2"
@@ -542,4 +543,46 @@ func loadTLSConfig(config TLSConfig) (*tls.Config, error) {
 		MinVersion:   tls.VersionTLS12,
 		NextProtos:   []string{"h2", "http/1.1"},
 	}, nil
+}
+
+// UserInfoContextKey is the context key for storing user info
+var UserInfoContextKey = &struct{}{}
+
+// UserInfoUnaryInterceptor returns a ConnectRPC interceptor that fetches userinfo (from cache or OIDC)
+// and injects it into the context for downstream handlers.
+func UserInfoUnaryInterceptor(userInfoCache *oidcuserinfo.UserInfo) connect.UnaryInterceptorFunc {
+	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			// Extract token from the request headers (Authorization: Bearer ...)
+			authHeader := req.Header().Get("Authorization")
+			if !strings.HasPrefix(authHeader, "Bearer ") {
+				return next(ctx, req) // No token, skip userinfo
+			}
+			token := strings.TrimPrefix(authHeader, "Bearer ")
+
+			// You may need to extract issuer/sub from the token or context
+			// For demo, assume issuer/sub are available from context or token parsing
+			issuer, sub := extractIssuerAndSub(ctx, token)
+			if issuer == "" || sub == "" {
+				return next(ctx, req) // Can't get user identity, skip
+			}
+
+			// Try to get userinfo from cache (or fetch if not present)
+			userinfo, _ := userInfoCache.Get(ctx, issuer, sub)
+			if userinfo == nil {
+				// Optionally, fetch and cache userinfo here if not present
+				// userinfo, _ = userInfoCache.FetchUserInfo(ctx, token, issuer, sub, ...)
+			}
+
+			// Inject userinfo into context for downstream handlers
+			ctx = context.WithValue(ctx, UserInfoContextKey, userinfo)
+			return next(ctx, req)
+		})
+	})
+}
+
+// extractIssuerAndSub is a placeholder for extracting issuer and sub from the token/context
+func extractIssuerAndSub(ctx context.Context, token string) (string, string) {
+	// TODO: Implement real extraction logic (e.g., parse JWT, use context, etc.)
+	return "", ""
 }

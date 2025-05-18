@@ -77,6 +77,7 @@ server:
       #
       #  [matchers]
       #  m = g(r.sub, p.sub) && globOrRegexMatch(r.res, p.res) && globOrRegexMatch(r.act, p.act) && globOrRegexMatch(r.obj, p.obj)
+      userinfoEnrichment: false # Enables OIDC UserInfo enrichment (default: false)
   trace:
     enabled: false
     provider:
@@ -139,3 +140,5 @@ server:
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
   port: 8080
+  oidcUserInfo:
+    cacheTTL: 5m # TTL for OIDC UserInfo cache (default: 5m)

@@ -15,8 +15,11 @@ require (
 	github.com/bufbuild/protovalidate-go v0.9.3
 	github.com/casbin/casbin/v2 v2.101.0
 	github.com/creasty/defaults v1.7.0
+	github.com/dgraph-io/ristretto v0.1.1
 	github.com/docker/docker v28.0.2+incompatible
 	github.com/docker/go-connections v0.5.0
+	github.com/eko/gocache/lib/v4 v4.2.0
+	github.com/eko/gocache/store/ristretto/v4 v4.2.2
 	github.com/go-chi/cors v1.2.1
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/go-viper/mapstructure/v2 v2.2.1
@@ -56,7 +59,11 @@ require (
 	cel.dev/expr v0.19.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/containerd/continuity v0.4.4 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/golang/glog v1.2.4 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/zitadel/oidc/v3 v3.38.1 // indirect
+	go.uber.org/mock v0.4.0 // indirect
 )
 
 require (
@@ -68,7 +75,7 @@ require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.6.1 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.8.1 // indirect
 	github.com/casbin/govaluate v1.2.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -94,8 +101,8 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
-	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
-	golang.org/x/oauth2 v0.26.0 // indirect
+	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f // indirect
+	golang.org/x/oauth2 v0.29.0 // indirect
 )
 
 require (

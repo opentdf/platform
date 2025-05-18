@@ -27,6 +27,10 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	DPoPSkew       time.Duration `mapstructure:"dpopskew" default:"1h"`
 	TokenSkew      time.Duration `mapstructure:"skew" default:"1m"`
 	PublicClientID string        `mapstructure:"public_client_id" json:"public_client_id,omitempty"`
+
+	// UserInfo enrichment feature for OIDC
+	UserInfoEnrichment bool `mapstructure:"userinfoEnrichment" json:"userinfoEnrichment" default:"false"`
+	// UserInfoCacheTTL has been moved to oidcuserinfo.CacheConfig
 }
 
 type PolicyConfig struct {

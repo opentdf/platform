@@ -272,64 +272,6 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 	})
 }
 
-func (a Authentication) lookupOrigins(header http.Header) []string {
-	result := make([]string, 0)
-	for _, m := range []string{"Grpcgateway-Origin", "Grpcgateway-Referer", "Origin"} {
-		origins := header.Values(m)
-		if len(origins) == 0 {
-			continue
-		}
-		for _, o := range origins {
-			if strings.HasSuffix(o, ":443") {
-				o = "https://" + strings.TrimPrefix(strings.TrimSuffix(o, ":443"), "https://")
-			} else {
-				o = strings.TrimSuffix(o, ":80")
-			}
-			result = append(result, o)
-		}
-	}
-	return result
-}
-
-var goodPaths = regexp.MustCompile(`^[\w/-]{1,128}$`)
-
-func (a Authentication) lookupGatewayPaths(ctx context.Context, procedure string, header http.Header) []string {
-	origins := a.lookupOrigins(header)
-	if len(origins) == 0 {
-		return nil
-	}
-
-	var paths []string
-	switch procedure {
-	case "/kas.AccessService/Rewrap":
-		paths = append(paths, "/kas/v2/rewrap")
-	default:
-		patterns := header["Pattern"]
-		if len(patterns) == 0 {
-			a.logger.InfoContext(ctx, "underspecified grpc gateway path; no pattern header", slog.Any("origin", origins), slog.String("procedure", procedure))
-			paths = allowedPublicEndpoints[:]
-		} else {
-			a.logger.InfoContext(ctx, "underspecified grpc gateway path; patterns found", slog.Any("origin", origins), slog.String("procedure", procedure), slog.Any("patterns", patterns))
-		}
-		for _, pattern := range patterns {
-			if matched := goodPaths.MatchString(pattern); matched {
-				paths = append(paths, pattern)
-			}
-		}
-		if len(paths) != len(patterns) {
-			a.logger.WarnContext(ctx, "invalid grpc gateway path; ignoring one or more invalid patterns", slog.Any("origin", origins), slog.String("procedure", procedure), slog.Any("patterns", patterns))
-		}
-	}
-
-	u := make([]string, 0, len(origins)*len(paths))
-	for _, o := range origins {
-		for _, p := range paths {
-			u = append(u, normalizeURL(o, &url.URL{Path: p}))
-		}
-	}
-	return u
-}
-
 // UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
 func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptorFunc {
 	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
@@ -393,35 +335,6 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 	return connect.UnaryInterceptorFunc(interceptor)
 }
 
-func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header http.Header) (context.Context, error) {
-	for _, route := range a.ipcReauthRoutes {
-		reqPath := path
-		if reqPath == route {
-			// Extract the token from the request
-			authHeader := header["Authorization"]
-			if len(authHeader) < 1 {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
-			}
-
-			u := []string{path}
-			u = append(u, a.lookupGatewayPaths(ctx, path, header)...)
-
-			// Validate the token and create a JWT token
-			_, nextCtx, err := a.checkToken(ctx, authHeader, receiverInfo{
-				u: u,
-				m: []string{http.MethodPost},
-			}, header["Dpop"])
-			if err != nil {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-			}
-
-			// Return the next context with the token
-			return nextCtx, nil
-		}
-	}
-	return ctx, nil
-}
-
 // IPCReauthInterceptor is a grpc interceptor that verifies the token in the metadata
 // and reauthorizes the token if the route is in the list
 func (a Authentication) IPCUnaryServerInterceptor() connect.UnaryInterceptorFunc {
@@ -472,7 +385,7 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
 	default:
 		a.logger.Warn("failed to validate authentication header: not of type bearer or dpop", slog.String("header", authHeader[0]))
-		return nil, nil, fmt.Errorf("not of type bearer or dpop")
+		return nil, nil, errors.New("not of type bearer or dpop")
 	}
 
 	// Now we verify the token signature
@@ -520,17 +433,17 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 
 	cnf, ok := accessToken.Get("cnf")
 	if !ok {
-		return nil, fmt.Errorf("missing `cnf` claim in access token")
+		return nil, errors.New("missing `cnf` claim in access token")
 	}
 
 	cnfDict, ok := cnf.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("got `cnf` in an invalid format")
+		return nil, errors.New("got `cnf` in an invalid format")
 	}
 
 	jktI, ok := cnfDict["jkt"]
 	if !ok {
-		return nil, fmt.Errorf("missing `jkt` field in `cnf` claim. only thumbprint JWK confirmation is supported")
+		return nil, errors.New("missing `jkt` field in `cnf` claim. only thumbprint JWK confirmation is supported")
 	}
 
 	jkt, ok := jktI.(string)
@@ -540,7 +453,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 
 	dpop, err := jws.Parse([]byte(dpopHeader))
 	if err != nil {
-		return nil, fmt.Errorf("invalid DPoP JWT")
+		return nil, errors.New("invalid DPoP JWT")
 	}
 	if len(dpop.Signatures()) != 1 {
 		return nil, fmt.Errorf("expected one signature on DPoP JWT, got %d", len(dpop.Signatures()))
@@ -557,7 +470,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 
 	dpopKey := protectedHeaders.JWK()
 	if dpopKey == nil {
-		return nil, fmt.Errorf("JWK missing in DPoP JWT")
+		return nil, errors.New("JWK missing in DPoP JWT")
 	}
 
 	isPrivate, err := jwk.IsPrivateKey(dpopKey)
@@ -566,7 +479,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	}
 
 	if isPrivate {
-		return nil, fmt.Errorf("cannot use a private key for DPoP")
+		return nil, errors.New("cannot use a private key for DPoP")
 	}
 
 	thumbprint, err := dpopKey.Thumbprint(crypto.SHA256)
@@ -588,20 +501,20 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 
 	issuedAt := dpopToken.IssuedAt()
 	if issuedAt.IsZero() {
-		return nil, fmt.Errorf("missing `iat` claim in the DPoP JWT")
+		return nil, errors.New("missing `iat` claim in the DPoP JWT")
 	}
 
 	if issuedAt.Add(a.oidcConfiguration.DPoPSkew).Before(time.Now()) {
-		return nil, fmt.Errorf("the DPoP JWT has expired")
+		return nil, errors.New("the DPoP JWT has expired")
 	}
 
 	htma, ok := dpopToken.Get("htm")
 	if !ok {
-		return nil, fmt.Errorf("`htm` claim missing in DPoP JWT")
+		return nil, errors.New("`htm` claim missing in DPoP JWT")
 	}
 	htm, ok := htma.(string)
 	if !ok {
-		return nil, fmt.Errorf("`htm` claim invalid format in DPoP JWT")
+		return nil, errors.New("`htm` claim invalid format in DPoP JWT")
 	}
 
 	if !slices.Contains(dpopInfo.m, htm) {
@@ -610,11 +523,11 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 
 	htua, ok := dpopToken.Get("htu")
 	if !ok {
-		return nil, fmt.Errorf("`htu` claim missing in DPoP JWT")
+		return nil, errors.New("`htu` claim missing in DPoP JWT")
 	}
 	htu, ok := htua.(string)
 	if !ok {
-		return nil, fmt.Errorf("`htu` claim invalid format in DPoP JWT")
+		return nil, errors.New("`htu` claim invalid format in DPoP JWT")
 	}
 
 	if !slices.Contains(dpopInfo.u, htu) {
@@ -623,13 +536,13 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 
 	ath, ok := dpopToken.Get("ath")
 	if !ok {
-		return nil, fmt.Errorf("missing `ath` claim in DPoP JWT")
+		return nil, errors.New("missing `ath` claim in DPoP JWT")
 	}
 
 	h := sha256.New()
 	h.Write([]byte(acessTokenRaw))
 	if ath != base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil)) {
-		return nil, fmt.Errorf("incorrect `ath` claim in DPoP JWT")
+		return nil, errors.New("incorrect `ath` claim in DPoP JWT")
 	}
 	return dpopKey, nil
 }
@@ -644,4 +557,91 @@ func (a Authentication) isPublicRoute(path string) func(string) bool {
 		a.logger.Trace("matching route", slog.String("route", route), slog.String("path", path), slog.Bool("matched", matched))
 		return matched
 	}
+}
+
+func (a Authentication) lookupOrigins(header http.Header) []string {
+	result := make([]string, 0)
+	for _, m := range []string{"Grpcgateway-Origin", "Grpcgateway-Referer", "Origin"} {
+		origins := header.Values(m)
+		if len(origins) == 0 {
+			continue
+		}
+		for _, o := range origins {
+			if strings.HasSuffix(o, ":443") {
+				o = "https://" + strings.TrimPrefix(strings.TrimSuffix(o, ":443"), "https://")
+			} else {
+				o = strings.TrimSuffix(o, ":80")
+			}
+			result = append(result, o)
+		}
+	}
+	return result
+}
+
+var goodPaths = regexp.MustCompile(`^[\w/-]{1,128}$`)
+
+func (a Authentication) lookupGatewayPaths(ctx context.Context, procedure string, header http.Header) []string {
+	origins := a.lookupOrigins(header)
+	if len(origins) == 0 {
+		return nil
+	}
+
+	var paths []string
+	switch procedure {
+	case "/kas.AccessService/Rewrap":
+		paths = append(paths, "/kas/v2/rewrap")
+	default:
+		patterns := header["Pattern"]
+		if len(patterns) == 0 {
+			a.logger.InfoContext(ctx, "underspecified grpc gateway path; no pattern header", slog.Any("origin", origins), slog.String("procedure", procedure))
+			paths = allowedPublicEndpoints[:]
+		} else {
+			a.logger.InfoContext(ctx, "underspecified grpc gateway path; patterns found", slog.Any("origin", origins), slog.String("procedure", procedure), slog.Any("patterns", patterns))
+		}
+		for _, pattern := range patterns {
+			if matched := goodPaths.MatchString(pattern); matched {
+				paths = append(paths, pattern)
+			}
+		}
+		if len(paths) != len(patterns) {
+			a.logger.WarnContext(ctx, "invalid grpc gateway path; ignoring one or more invalid patterns", slog.Any("origin", origins), slog.String("procedure", procedure), slog.Any("patterns", patterns))
+		}
+	}
+
+	u := make([]string, 0, len(origins)*len(paths))
+	for _, o := range origins {
+		for _, p := range paths {
+			u = append(u, normalizeURL(o, &url.URL{Path: p}))
+		}
+	}
+	return u
+}
+
+func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header http.Header) (context.Context, error) {
+	for _, route := range a.ipcReauthRoutes {
+		reqPath := path
+		if reqPath == route {
+			// Extract the token from the request
+			authHeader := header["Authorization"]
+			if len(authHeader) < 1 {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+			}
+
+			u := []string{path}
+			u = append(u, a.lookupGatewayPaths(ctx, path, header)...)
+
+			// Validate the token and create a JWT token
+			_, nextCtx, err := a.checkToken(ctx, authHeader, receiverInfo{
+				u: u,
+				m: []string{http.MethodPost},
+			}, header["Dpop"])
+			if err != nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+			}
+
+			// Return the next context with the token
+			return nextCtx, nil
+		}
+	}
+	return ctx, nil
 }

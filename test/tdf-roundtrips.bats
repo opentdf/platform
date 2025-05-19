@@ -84,7 +84,7 @@
   printf '%s\n' "$output" | grep "Hello multikao split"
 }
 
-@test "examples: roundtrip nanoTDF" {
+@test "examples: roundtrip nanoTDF (encrypted policy)" {
   echo "[INFO] creating nanotdf file"
   go run ./examples encrypt -o sensitive.txt.ntdf --nano --no-kid-in-nano "Hello NanoTDF"
   go run ./examples encrypt -o sensitive-kid.txt.ntdf --nano "Hello NanoTDF KID"
@@ -96,8 +96,22 @@
   go run ./examples decrypt sensitive-kid.txt.ntdf | grep "Hello NanoTDF KID"
 }
 
+@test "examples: roundtrip nanoTDF (plaintext policy)" {
+  echo "[INFO] creating nanotdf file"
+  go run ./examples encrypt -o sensitive-plaintext_policy.txt.ntdf --policy-mode plaintext --nano --no-kid-in-nano "Hello NanoTDF"
+  go run ./examples encrypt -o sensitive-kid-plaintext_policy.txt.ntdf --policy-mode plaintext --nano "Hello NanoTDF KID"
+
+  echo "[INFO] decrypting nanotdf..."
+  go run ./examples decrypt sensitive-plaintext_policy.txt.ntdf
+  go run ./examples decrypt sensitive-plaintext_policy.txt.ntdf | grep "Hello NanoTDF"
+  go run ./examples decrypt sensitive-kid-plaintext_policy.txt.ntdf
+  go run ./examples decrypt sensitive-kid-plaintext_policy.txt.ntdf | grep "Hello NanoTDF KID"
+}
+
 @test "examples: legacy key support Z-TDF" {
   echo "[INFO] validating default key is r1"
+  echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
+  
   [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
 
   echo "[INFO] encrypting samples"
@@ -114,6 +128,7 @@
   wait_for_green
 
   echo "[INFO] validating default key is r2"
+  echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
   [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r2 ]
 
   echo "[INFO] decrypting after key rotation"
@@ -123,6 +138,7 @@
 
 @test "examples: legacy kas and service config format support" {
   echo "[INFO] validating default key is r1"
+  echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
   [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
 
   echo "[INFO] encrypting samples"
@@ -139,6 +155,7 @@
   wait_for_green
 
   echo "[INFO] validating default key is r1"
+  echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
   [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
 
   echo "[INFO] validating keys are correct by alg"

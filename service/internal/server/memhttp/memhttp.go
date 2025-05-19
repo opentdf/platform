@@ -6,7 +6,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -57,7 +56,7 @@ func New(handler http.Handler, opts ...Option) *Server {
 	return &Server{
 		server:         server,
 		Listener:       mlis,
-		url:            fmt.Sprintf("http://%s", mlis.Addr().String()),
+		url:            "http://" + mlis.Addr().String(),
 		serveErr:       serveErr,
 		cleanupContext: cfg.CleanupContext,
 	}

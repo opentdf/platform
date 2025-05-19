@@ -81,6 +81,8 @@ const (
 	kNanoTDFGMACLength = 8
 	ErrUser            = Error("request error")
 	ErrInternal        = Error("internal error")
+
+	ErrNanoTDFPolicyModeUnsupported = Error("unsupported policy mode")
 )
 
 func err400(s string) error {
@@ -293,19 +295,19 @@ func extractPolicyBinding(policyBinding interface{}) (string, error) {
 	switch v := policyBinding.(type) {
 	case string:
 		if v == "" {
-			return "", fmt.Errorf("empty policy binding")
+			return "", errors.New("empty policy binding")
 		}
 		return v, nil
 	case map[string]interface{}:
 		if hash, ok := v["hash"].(string); ok {
 			if hash == "" {
-				return "", fmt.Errorf("empty policy binding hash field")
+				return "", errors.New("empty policy binding hash field")
 			}
 			return hash, nil
 		}
-		return "", fmt.Errorf("invalid policy binding object, missing 'hash' field")
+		return "", errors.New("invalid policy binding object, missing 'hash' field")
 	default:
-		return "", fmt.Errorf("unsupported policy binding type")
+		return "", errors.New("unsupported policy binding type")
 	}
 }
 
@@ -527,12 +529,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
 				kidsToCheck = []trust.KeyIdentifier{kid}
 			} else {
-				p.Logger.InfoContext(ctx, "kid free kao")
-				for _, k := range p.Keyring {
-					if k.Algorithm == security.AlgorithmRSA2048 && k.Legacy {
-						kidsToCheck = append(kidsToCheck, trust.KeyIdentifier(k.KID))
-					}
-				}
+				kidsToCheck = p.listLegacyKeys(ctx)
 				if len(kidsToCheck) == 0 {
 					p.Logger.WarnContext(ctx, "failure to find legacy kids for rsa")
 					failedKAORewrap(results, kao, err400("bad request"))
@@ -595,10 +592,36 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 
 	if !anyValidKAOs {
 		p.Logger.WarnContext(ctx, "no valid KAOs found")
-		return policy, results, fmt.Errorf("no valid KAOs")
+		return policy, results, errors.New("no valid KAOs")
 	}
 
 	return policy, results, nil
+}
+
+func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
+	var kidsToCheck []trust.KeyIdentifier
+	p.Logger.InfoContext(ctx, "kid free kao")
+	if len(p.Keyring) > 0 {
+		// Using deprecated 'keyring' feature for lookup
+		for _, k := range p.Keyring {
+			if k.Algorithm == security.AlgorithmRSA2048 && k.Legacy {
+				kidsToCheck = append(kidsToCheck, trust.KeyIdentifier(k.KID))
+			}
+		}
+		return kidsToCheck
+	}
+
+	k, err := p.GetKeyIndex().ListKeys(ctx)
+	if err != nil {
+		p.Logger.WarnContext(ctx, "KeyIndex.ListKeys failed", "err", err)
+	} else {
+		for _, key := range k {
+			if key.Algorithm() == security.AlgorithmRSA2048 && key.IsLegacy() {
+				kidsToCheck = append(kidsToCheck, key.ID())
+			}
+		}
+	}
+	return kidsToCheck
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entity *entityInfo) (string, policyKAOResults) {
@@ -863,7 +886,7 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 		}
 
 		if !verify {
-			failedKAORewrap(results, kao, fmt.Errorf("policy binding verification failed"))
+			failedKAORewrap(results, kao, errors.New("policy binding verification failed"))
 			return nil, results
 		}
 		results[kao.GetKeyAccessObjectId()] = kaoResult{
@@ -879,24 +902,38 @@ func extractNanoPolicy(symmetricKey trust.ProtectedKey, header sdk.NanoTDFHeader
 	const (
 		kIvLen = 12
 	)
-	// The IV is always an empty 12 bytes for the policy.
-	iv := make([]byte, kIvLen)
-	tagSize, err := sdk.SizeOfAuthTagForCipher(header.GetCipher())
-	if err != nil {
-		return nil, fmt.Errorf("SizeOfAuthTagForCipher failed:%w", err)
-	}
-
-	policyData, err := symmetricKey.DecryptAESGCM(iv, header.EncryptedPolicyBody, tagSize)
-	if err != nil {
-		return nil, fmt.Errorf("Error decrypting policy body:%w", err)
-	}
 
 	var policy Policy
-	err = json.Unmarshal(policyData, &policy)
-	if err != nil {
-		return nil, fmt.Errorf("Error unmarshalling policy:%w", err)
+	switch header.PolicyMode {
+	case sdk.NanoTDFPolicyModePlainText:
+		err := json.Unmarshal(header.PolicyBody, &policy)
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshalling plaintext policy: %w", err)
+		}
+		return &policy, nil
+
+	case sdk.NanoTDFPolicyModeEncrypted:
+		iv := make([]byte, kIvLen)
+		tagSize, err := sdk.SizeOfAuthTagForCipher(header.GetCipher())
+		if err != nil {
+			return nil, fmt.Errorf("SizeOfAuthTagForCipher failed: %w", err)
+		}
+
+		policyData, err := symmetricKey.DecryptAESGCM(iv, header.PolicyBody, tagSize)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting policy body: %w", err)
+		}
+
+		err = json.Unmarshal(policyData, &policy)
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshalling encrypted policy: %w", err)
+		}
+		return &policy, nil
+	case sdk.NanoTDFPolicyModeRemote, sdk.NanoTDFPolicyModeEncryptedPolicyKeyAccess:
+	default:
+		// noop
 	}
-	return &policy, nil
+	return nil, errors.Join(fmt.Errorf("unsupported policy mode: %d", header.PolicyMode), ErrNanoTDFPolicyModeUnsupported)
 }
 
 func failAllKaos(reqs []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, results policyKAOResults, err error) {

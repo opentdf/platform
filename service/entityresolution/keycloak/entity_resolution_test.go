@@ -1,4 +1,4 @@
-package entityresolution_test
+package keycloak_test
 
 import (
 	"encoding/json"

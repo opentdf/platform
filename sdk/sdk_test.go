@@ -69,15 +69,15 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 func Test_PlatformConfiguration_BadCases(t *testing.T) {
 	assertions := func(t *testing.T, s *sdk.SDK) {
 		iss, err := s.PlatformConfiguration.Issuer()
-		assert.Equal(t, "", iss)
+		assert.Empty(t, iss)
 		require.ErrorIs(t, err, sdk.ErrPlatformIssuerNotFound)
 
 		authzEndpoint, err := s.PlatformConfiguration.AuthzEndpoint()
-		assert.Equal(t, "", authzEndpoint)
+		assert.Empty(t, authzEndpoint)
 		require.ErrorIs(t, err, sdk.ErrPlatformAuthzEndpointNotFound)
 
 		tokenEndpoint, err := s.PlatformConfiguration.TokenEndpoint()
-		assert.Equal(t, "", tokenEndpoint)
+		assert.Empty(t, tokenEndpoint)
 		require.ErrorIs(t, err, sdk.ErrPlatformTokenEndpointNotFound)
 	}
 

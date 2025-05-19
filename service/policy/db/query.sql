@@ -95,7 +95,7 @@ LEFT JOIN (
                         'key_status', kask.key_status,
                         'key_mode', kask.key_mode,
                         'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                        'public_key_ctx', kask.public_key_ctx
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -133,7 +133,7 @@ LEFT JOIN (
                         'key_status', kask.key_status,
                         'key_mode', kask.key_mode,
                         'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                        'public_key_ctx', kask.public_key_ctx
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -247,6 +247,7 @@ WHERE (sqlc.narg('id')::uuid IS NULL OR kask.id = sqlc.narg('id')::uuid)
   AND (sqlc.narg('kas_id')::uuid IS NULL OR kask.key_access_server_id = sqlc.narg('kas_id')::uuid)
   AND (sqlc.narg('kas_uri')::text IS NULL OR kas.uri = sqlc.narg('kas_uri')::text)
   AND (sqlc.narg('kas_name')::text IS NULL OR kas.name = sqlc.narg('kas_name')::text);
+
 
 -- name: updateKey :execrows
 UPDATE key_access_server_keys
@@ -528,18 +529,20 @@ WITH target_definition AS (
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
                     'kas_id', kask.key_access_server_id,
+                    'kas_uri', kas.uri,
                     'key', JSONB_BUILD_OBJECT(
                         'id', kask.id,
                         'key_id', kask.key_id,
                         'key_status', kask.key_status,
                         'key_mode', kask.key_mode,
                         'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                        'public_key_ctx', kask.public_key_ctx
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_definition_public_key_map k
         INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.definition_id
     ) defk ON ad.id = defk.definition_id
     WHERE fqns.fqn = ANY(@fqns::TEXT[]) 
@@ -575,18 +578,20 @@ namespaces AS (
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
                     'kas_id', kask.key_access_server_id,
+                    'kas_uri', kas.uri,
                     'key', JSONB_BUILD_OBJECT(
                         'id', kask.id,
                         'key_id', kask.key_id,
                         'key_status', kask.key_status,
                         'key_mode', kask.key_mode,
                         'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                        'public_key_ctx', kask.public_key_ctx
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_namespace_public_key_map k
         INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.namespace_id
     ) nmp_keys ON n.id = nmp_keys.namespace_id
 	WHERE n.active = TRUE
@@ -668,18 +673,20 @@ values AS (
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
                     'kas_id', kask.key_access_server_id,
+                    'kas_uri', kas.uri,
                     'key', JSONB_BUILD_OBJECT(
                         'id', kask.id,
                         'key_id', kask.key_id,
                         'key_status', kask.key_status,
                         'key_mode', kask.key_mode,
                         'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                        'public_key_ctx', kask.public_key_ctx
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM attribute_value_public_key_map k
         INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY k.value_id
     ) value_keys ON av.id = value_keys.value_id                        
 	WHERE av.active = TRUE
@@ -756,13 +763,15 @@ LEFT JOIN (
                     'key_status', kask.key_status,
                     'key_mode', kask.key_mode,
                     'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    'public_key_ctx', kask.public_key_ctx
                 ),
-                'kas_id', kask.key_access_server_id
+                'kas_id', kask.key_access_server_id,
+                'kas_uri', kas.uri
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_definition_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+    INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
     GROUP BY k.definition_id
 ) defk ON ad.id = defk.definition_id
 WHERE (sqlc.narg('id')::uuid IS NULL OR ad.id = sqlc.narg('id')::uuid)
@@ -804,6 +813,12 @@ RETURNING *;
 -- name: removePublicKeyFromAttributeDefinition :execrows
 DELETE FROM attribute_definition_public_key_map
 WHERE definition_id = $1 AND key_access_server_key_id = $2;
+
+-- name: rotatePublicKeyForAttributeDefinition :many
+UPDATE attribute_definition_public_key_map
+SET key_access_server_key_id = sqlc.arg('new_key_id')::uuid
+WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid)
+RETURNING definition_id;
 
 ---------------------------------------------------------------- 
 -- ATTRIBUTE VALUES
@@ -859,18 +874,20 @@ LEFT JOIN (
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
                 'kas_id', kask.key_access_server_id,
+                'kas_uri', kas.uri,
                 'key', JSONB_BUILD_OBJECT(
                     'id', kask.id,
                     'key_id', kask.key_id,
                     'key_status', kask.key_status,
                     'key_mode', kask.key_mode,
                     'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    'public_key_ctx', kask.public_key_ctx
                 )
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_value_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+    INNER JOIN key_access_servers kas ON kas.id = kask.key_access_server_id
     GROUP BY k.value_id
 ) value_keys ON av.id = value_keys.value_id   
 WHERE (sqlc.narg('id')::uuid IS NULL OR av.id = sqlc.narg('id')::uuid)
@@ -910,6 +927,12 @@ RETURNING *;
 -- name: removePublicKeyFromAttributeValue :execrows
 DELETE FROM attribute_value_public_key_map
 WHERE value_id = $1 AND key_access_server_key_id = $2;
+
+-- name: rotatePublicKeyForAttributeValue :many
+UPDATE attribute_value_public_key_map
+SET key_access_server_key_id = sqlc.arg('new_key_id')::uuid
+WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid)
+RETURNING value_id;
 
 ---------------------------------------------------------------- 
 -- RESOURCE MAPPING GROUPS
@@ -1084,18 +1107,20 @@ LEFT JOIN (
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
                 'kas_id', kask.key_access_server_id,
+                'kas_uri', kas.uri,
                 'key', JSONB_BUILD_OBJECT(
                     'id', kask.id,
                     'key_id', kask.key_id,
                     'key_status', kask.key_status,
                     'key_mode', kask.key_mode,
                     'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', ENCODE(kask.public_key_ctx::TEXT::BYTEA, 'base64')
+                    'public_key_ctx', kask.public_key_ctx
                 )
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_namespace_public_key_map k
     INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+    INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
     GROUP BY k.namespace_id
 ) nmp_keys ON ns.id = nmp_keys.namespace_id
 WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL 
@@ -1136,6 +1161,12 @@ RETURNING *;
 -- name: removePublicKeyFromNamespace :execrows
 DELETE FROM attribute_namespace_public_key_map
 WHERE namespace_id = $1 AND key_access_server_key_id = $2;
+
+-- name: rotatePublicKeyForNamespace :many
+UPDATE attribute_namespace_public_key_map
+SET key_access_server_key_id = sqlc.arg('new_key_id')::uuid
+WHERE (key_access_server_key_id = sqlc.arg('old_key_id')::uuid)
+RETURNING namespace_id;
 
 ---------------------------------------------------------------- 
 -- SUBJECT CONDITION SETS
@@ -1521,13 +1552,31 @@ SELECT
     v.id,
     v.registered_resource_id,
     v.value,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+    JSON_AGG(
+    	JSON_BUILD_OBJECT(
+    		'action', JSON_BUILD_OBJECT(
+    			'id', a.id,
+    			'name', a.name
+    		),
+    		'attribute_value', JSON_BUILD_OBJECT(
+    			'id', av.id,
+    			'value', av.value,
+    			'fqn', fqns.fqn
+    		)
+    	)
+    ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values
 FROM registered_resource_values v
 JOIN registered_resources r ON v.registered_resource_id = r.id
+LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
+LEFT JOIN actions a on rav.action_id = a.id
+LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE
     (NULLIF(@id, '') IS NULL OR v.id = @id::UUID) AND
     (NULLIF(@name, '') IS NULL OR r.name = @name::VARCHAR) AND
-    (NULLIF(@value, '') IS NULL OR v.value = @value::VARCHAR);
+    (NULLIF(@value, '') IS NULL OR v.value = @value::VARCHAR)
+GROUP BY v.id;
 
 -- name: listRegisteredResourceValues :many
 WITH counted AS (
@@ -1537,15 +1586,34 @@ WITH counted AS (
         NULLIF(@registered_resource_id, '') IS NULL OR registered_resource_id = @registered_resource_id::UUID
 )
 SELECT
-    id,
-    registered_resource_id,
-    value,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    v.id,
+    v.registered_resource_id,
+    v.value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+    JSON_AGG(
+    	JSON_BUILD_OBJECT(
+    		'action', JSON_BUILD_OBJECT(
+    			'id', a.id,
+    			'name', a.name
+    		),
+    		'attribute_value', JSON_BUILD_OBJECT(
+    			'id', av.id,
+    			'value', av.value,
+    			'fqn', fqns.fqn
+    		)
+    	)
+    ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values,
     counted.total
-FROM registered_resource_values
+FROM registered_resource_values v
+JOIN registered_resources r ON v.registered_resource_id = r.id
+LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
+LEFT JOIN actions a on rav.action_id = a.id
+LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id  
 CROSS JOIN counted
 WHERE
-    NULLIF(@registered_resource_id, '') IS NULL OR registered_resource_id = @registered_resource_id::UUID
+    NULLIF(@registered_resource_id, '') IS NULL OR v.registered_resource_id = @registered_resource_id::UUID
+GROUP BY v.id, counted.total
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -1558,6 +1626,18 @@ WHERE id = $1;
 
 -- name: deleteRegisteredResourceValue :execrows
 DELETE FROM registered_resource_values WHERE id = $1;
+
+---------------------------------------------------------------- 
+-- Registered Resource Action Attribute Values
+----------------------------------------------------------------
+
+-- name: createRegisteredResourceActionAttributeValues :copyfrom
+INSERT INTO registered_resource_action_attribute_values (registered_resource_value_id, action_id, attribute_value_id)
+VALUES ($1, $2, $3);
+
+-- name: deleteRegisteredResourceActionAttributeValues :execrows
+DELETE FROM registered_resource_action_attribute_values
+WHERE registered_resource_value_id = $1;
 
 ---------------------------------------------------------------- 
 -- Provider Config

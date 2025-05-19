@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"net/url"
+	"strconv"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -62,6 +63,7 @@ type PgxIface interface {
 	Ping(context.Context) error
 	Close()
 	Config() *pgxpool.Config
+	CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error)
 }
 
 type Config struct {
@@ -193,7 +195,7 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 	u := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
 		c.User,
 		url.QueryEscape(c.Password),
-		net.JoinHostPort(c.Host, fmt.Sprint(c.Port)),
+		net.JoinHostPort(c.Host, strconv.Itoa(c.Port)),
 		c.Database,
 		c.SSLMode,
 	)
@@ -204,7 +206,7 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 
 	// Configure the search_path schema immediately on connection opening
 	parsed.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
-		_, err := conn.Exec(ctx, fmt.Sprintf("SET search_path TO %s", c.Schema))
+		_, err := conn.Exec(ctx, "SET search_path TO "+c.Schema)
 		if err != nil {
 			slog.Error("failed to set database client search_path", slog.String("schema", c.Schema), slog.String("error", err.Error()))
 			return err

@@ -1,3 +1,4 @@
+//nolint:forbidigo,nestif // We use Println here extensively because we are printing markdown.
 package cmd
 
 import (
@@ -64,15 +65,15 @@ func init() {
 		RunE:  runBenchmark,
 	}
 
-	benchmarkCmd.Flags().IntVar(&config.ConcurrentRequests, "concurrent", 10, "Number of concurrent requests")
-	benchmarkCmd.Flags().IntVar(&config.RequestCount, "count", 100, "Total number of requests")
-	benchmarkCmd.Flags().IntVar(&config.RequestsPerSecond, "rps", 50, "Requests per second limit")
-	benchmarkCmd.Flags().IntVar(&config.TimeoutSeconds, "timeout", 30, "Timeout in seconds")
+	benchmarkCmd.Flags().IntVar(&config.ConcurrentRequests, "concurrent", 10, "Number of concurrent requests") //nolint: mnd // This is output to the help with explanation
+	benchmarkCmd.Flags().IntVar(&config.RequestCount, "count", 100, "Total number of requests")                //nolint: mnd // This is output to the help with explanation
+	benchmarkCmd.Flags().IntVar(&config.RequestsPerSecond, "rps", 50, "Requests per second limit")             //nolint: mnd // This is output to the help with explanation
+	benchmarkCmd.Flags().IntVar(&config.TimeoutSeconds, "timeout", 30, "Timeout in seconds")                   //nolint: mnd // This is output to the help with explanation
 	benchmarkCmd.Flags().Var(&config.TDFFormat, "tdf", "TDF format (tdf3 or nanotdf)")
 	ExamplesCmd.AddCommand(benchmarkCmd)
 }
 
-func runBenchmark(cmd *cobra.Command, args []string) error {
+func runBenchmark(cmd *cobra.Command, _ []string) error {
 	in := strings.NewReader("Hello, World!")
 
 	// Create new offline client
@@ -94,13 +95,16 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	var dataAttributes = []string{"https://example.com/attr/attr1/value/value1"}
+	dataAttributes := []string{"https://example.com/attr/attr1/value/value1"}
 	if config.TDFFormat == NanoTDF {
 		nanoTDFConfig, err := client.NewNanoTDFConfig()
 		if err != nil {
 			return err
 		}
-		nanoTDFConfig.SetAttributes(dataAttributes)
+		err = nanoTDFConfig.SetAttributes(dataAttributes)
+		if err != nil {
+			return err
+		}
 		nanoTDFConfig.EnableECDSAPolicyBinding()
 		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", "localhost:8080"))
 		if err != nil {
@@ -119,16 +123,15 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		// 	}
 		// }
 	} else {
-		tdf, err :=
-			client.CreateTDF(
-				out, in,
-				sdk.WithDataAttributes(dataAttributes...),
-				sdk.WithKasInformation(
-					sdk.KASInfo{
-						URL:       fmt.Sprintf("http://%s", "localhost:8080"),
-						PublicKey: "",
-					}),
-				sdk.WithAutoconfigure(false))
+		tdf, err := client.CreateTDF(
+			out, in,
+			sdk.WithDataAttributes(dataAttributes...),
+			sdk.WithKasInformation(
+				sdk.KASInfo{
+					URL:       "http://" + "localhost:8080",
+					PublicKey: "",
+				}),
+			sdk.WithAutoconfigure(false))
 		if err != nil {
 			return err
 		}
@@ -141,9 +144,12 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 	}
 
 	var wg sync.WaitGroup
-	requests := make(chan struct{}, config.ConcurrentRequests)
-	results := make(chan time.Duration, config.RequestCount)
-	errors := make(chan error, config.RequestCount)
+	// Queries (requests) channel
+	q := make(chan struct{}, config.ConcurrentRequests)
+	// Answer (response) channel
+	a := make(chan time.Duration, config.RequestCount)
+	// Error channel
+	e := make(chan error, config.RequestCount)
 
 	// Function to perform the operation
 	operation := func() {
@@ -152,7 +158,7 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 
 		file, err := os.Open("sensitive.txt.tdf")
 		if err != nil {
-			errors <- fmt.Errorf("file open error: %v", err)
+			e <- fmt.Errorf("file open error: %w", err)
 			return
 		}
 		defer file.Close()
@@ -160,52 +166,52 @@ func runBenchmark(cmd *cobra.Command, args []string) error {
 		if config.TDFFormat == NanoTDF {
 			_, err = client.ReadNanoTDF(io.Discard, file)
 			if err != nil {
-				errors <- fmt.Errorf("ReadNanoTDF error: %v", err)
+				e <- fmt.Errorf("ReadNanoTDF error: %w", err)
 				return
 			}
 		} else {
 			tdfreader, err := client.LoadTDF(file)
 			if err != nil {
-				errors <- fmt.Errorf("LoadTDF error: %v", err)
+				e <- fmt.Errorf("LoadTDF error: %w", err)
 				return
 			}
 
 			_, err = io.Copy(io.Discard, tdfreader)
-			if err != nil && err != io.EOF {
-				errors <- fmt.Errorf("read error: %v", err)
+			if err != nil && !errors.Is(err, io.EOF) {
+				e <- fmt.Errorf("read error: %w", err)
 				return
 			}
 		}
 
-		results <- time.Since(start)
+		a <- time.Since(start)
 	}
 
 	// Start the benchmark
 	startTime := time.Now()
 	for i := 0; i < config.RequestCount; i++ {
 		wg.Add(1)
-		requests <- struct{}{}
+		q <- struct{}{}
 		go func() {
-			defer func() { <-requests }()
+			defer func() { <-q }()
 			operation()
 		}()
 	}
 
 	wg.Wait()
-	close(results)
-	close(errors)
+	close(a)
+	close(e)
 
 	// Count errors and collect error messages
 	errorCount := 0
 	errorMsgs := make(map[string]int)
-	for err := range errors {
+	for err := range e {
 		errorCount++
 		errorMsgs[err.Error()]++
 	}
 
 	successCount := 0
 	var totalDuration time.Duration
-	for result := range results {
+	for result := range a {
 		successCount++
 		totalDuration += result
 	}

@@ -2,7 +2,6 @@ package integration
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -50,14 +49,6 @@ func (s *NamespacesSuite) SetupSuite() {
 func (s *NamespacesSuite) TearDownSuite() {
 	slog.Info("tearing down db.Namespaces test suite")
 	s.f.TearDown()
-}
-
-func (s *NamespacesSuite) getActiveNamespaceFixtures() []fixtures.FixtureDataNamespace {
-	return []fixtures.FixtureDataNamespace{
-		s.f.GetNamespaceKey("example.com"),
-		s.f.GetNamespaceKey("example.net"),
-		s.f.GetNamespaceKey("example.org"),
-	}
 }
 
 func (s *NamespacesSuite) Test_CreateNamespace() {
@@ -1184,12 +1175,12 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Returns_Error_When_
 
 func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
 	namespaceFix := s.getActiveNamespaceFixtures()[0]
-	gotAttr, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+	gotNS, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
 		NamespaceId: namespaceFix.ID,
 	})
 	s.Require().NoError(err)
-	s.NotNil(gotAttr)
-	s.Empty(gotAttr.GetKasKeys())
+	s.NotNil(gotNS)
+	s.Empty(gotNS.GetKasKeys())
 
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
 	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
@@ -1199,19 +1190,17 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(resp)
 
-	gotAttr, err = s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+	gotNS, err = s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
 		NamespaceId: namespaceFix.ID,
 	})
 	s.Require().NoError(err)
-	s.NotNil(gotAttr)
-	s.Len(gotAttr.GetKasKeys(), 1)
-	s.Equal(kasKey.KeyAccessServerID, gotAttr.GetKasKeys()[0].GetKasId())
-	s.Equal(kasKey.ID, gotAttr.GetKasKeys()[0].GetKey().GetId())
-	publicKeyCtx, err := base64.StdEncoding.DecodeString(kasKey.PublicKeyCtx)
-	s.Require().NoError(err)
-	s.Equal(publicKeyCtx, gotAttr.GetKasKeys()[0].GetKey().GetPublicKeyCtx())
-	s.Empty(gotAttr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
-	s.Empty(gotAttr.GetKasKeys()[0].GetKey().GetProviderConfig())
+	s.NotNil(gotNS)
+	s.Len(gotNS.GetKasKeys(), 1)
+	s.Equal(kasKey.KeyAccessServerID, gotNS.GetKasKeys()[0].GetKasId())
+	s.Equal(kasKey.ID, gotNS.GetKasKeys()[0].GetKey().GetId())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), gotNS.GetKasKeys()[0])
+	s.Empty(gotNS.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
+	s.Empty(gotNS.GetKasKeys()[0].GetKey().GetProviderConfig())
 
 	resp, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
 		NamespaceId: resp.GetNamespaceId(),
@@ -1220,22 +1209,22 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(resp)
 
-	gotAttr, err = s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+	gotNS, err = s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
 		NamespaceId: namespaceFix.ID,
 	})
 	s.Require().NoError(err)
-	s.NotNil(gotAttr)
-	s.Empty(gotAttr.GetKasKeys())
+	s.NotNil(gotNS)
+	s.Empty(gotNS.GetKasKeys())
 }
 
 func (s *NamespacesSuite) Test_RemovePublicKeyFromNamespace_Not_Found_Fails() {
 	namespaceFix := s.getActiveNamespaceFixtures()[0]
-	gotAttr, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+	gotNS, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
 		NamespaceId: namespaceFix.ID,
 	})
 	s.Require().NoError(err)
-	s.NotNil(gotAttr)
-	s.Empty(gotAttr.GetKasKeys())
+	s.NotNil(gotNS)
+	s.Empty(gotNS.GetKasKeys())
 
 	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
 	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
@@ -1267,6 +1256,14 @@ func (s *NamespacesSuite) Test_RemovePublicKeyFromNamespace_Not_Found_Fails() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
+}
+
+func (s *NamespacesSuite) getActiveNamespaceFixtures() []fixtures.FixtureDataNamespace {
+	return []fixtures.FixtureDataNamespace{
+		s.f.GetNamespaceKey("example.com"),
+		s.f.GetNamespaceKey("example.net"),
+		s.f.GetNamespaceKey("example.org"),
+	}
 }
 
 func TestNamespacesSuite(t *testing.T) {

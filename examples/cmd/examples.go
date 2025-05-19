@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	"fmt"
+	"errors"
 	"log"
-	"os"
 	"strings"
 
 	"google.golang.org/grpc/resolver"
@@ -51,19 +50,25 @@ func newSDK() (*sdk.SDK, error) {
 	if clientCredentials != "" {
 		i := strings.Index(clientCredentials, ":")
 		if i < 0 {
-			return nil, fmt.Errorf("invalid client id/secret pair")
+			return nil, errors.New("invalid client id/secret pair")
 		}
 		opts = append(opts, sdk.WithClientCredentials(clientCredentials[:i], clientCredentials[i+1:], nil))
 	}
 	if tokenEndpoint != "" {
 		opts = append(opts, sdk.WithTokenEndpoint(tokenEndpoint))
 	}
+	if noKIDInKAO {
+		opts = append(opts, sdk.WithNoKIDInKAO())
+	}
+	// double negative always gets me
+	if !noKIDInNano {
+		opts = append(opts, sdk.WithNoKIDInNano())
+	}
 	return sdk.New(platformEndpoint, opts...)
 }
 
 func Execute() {
 	if err := ExamplesCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatalf("Error executing command: %v", err)
 	}
 }

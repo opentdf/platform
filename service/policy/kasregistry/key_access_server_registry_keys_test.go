@@ -56,7 +56,7 @@ var (
 	validLocalNewKeyNoProvider = &kasregistry.RotateKeyRequest_NewKey{
 		KeyId:         validKeyID,
 		Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:       policy.KeyMode_KEY_MODE_LOCAL_PROVIDER_KEK,
+		KeyMode:       policy.KeyMode_KEY_MODE_PROVIDER_KEK,
 		PublicKeyCtx:  validPubCtx,
 		PrivateKeyCtx: validPrivCtx,
 		Metadata:      validMetadata,
@@ -64,7 +64,7 @@ var (
 	validLocalNewKeyProvider = &kasregistry.RotateKeyRequest_NewKey{
 		KeyId:            validKeyID,
 		Algorithm:        policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:          policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+		KeyMode:          policy.KeyMode_KEY_MODE_CONFIG_KEK,
 		PublicKeyCtx:     validPubCtx,
 		PrivateKeyCtx:    validPrivCtx,
 		Metadata:         validMetadata,
@@ -73,7 +73,7 @@ var (
 	validRemoteNewKey = &kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        validKeyID,
 		Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE_OPERATIONS,
+		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
 		PublicKeyCtx: validPubCtx,
 		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
 			KeyId: validKeyID,
@@ -85,7 +85,7 @@ var (
 	validRotateLocalConfigKEKNewKey = &kasregistry.RotateKeyRequest_NewKey{
 		KeyId:         validKeyID,
 		Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:       policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+		KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_KEK,
 		PublicKeyCtx:  validPubCtx,
 		PrivateKeyCtx: validPrivCtx, // Has WrappedKey (correct)
 		Metadata:      validMetadata,
@@ -95,7 +95,7 @@ var (
 	validRotateLocalProviderKEKNewKey = &kasregistry.RotateKeyRequest_NewKey{
 		KeyId:            validKeyID,
 		Algorithm:        policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:          policy.KeyMode_KEY_MODE_LOCAL_PROVIDER_KEK,
+		KeyMode:          policy.KeyMode_KEY_MODE_PROVIDER_KEK,
 		PublicKeyCtx:     validPubCtx,
 		PrivateKeyCtx:    validPrivCtx, // Has WrappedKey (correct)
 		Metadata:         validMetadata,
@@ -281,7 +281,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			req: &kasregistry.CreateKeyRequest{
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_KEK,
 				PublicKeyCtx: &policy.KasPublicKeyCtx{
 					Pem: validKeyCtx,
 				},
@@ -299,7 +299,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KasId:         invalidUUID, // Invalid UUID
 				KeyId:         validKeyID,
 				KeyAlgorithm:  policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:       policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+				KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_KEK,
 				PublicKeyCtx:  validPubCtx,
 				PrivateKeyCtx: validPrivCtx,
 			},
@@ -312,7 +312,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KasId:         "", // Empty string, should fail UUID validation
 				KeyId:         validKeyID,
 				KeyAlgorithm:  policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:       policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+				KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_KEK,
 				PublicKeyCtx:  validPubCtx,
 				PrivateKeyCtx: validPrivCtx,
 			},
@@ -324,7 +324,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			req: &kasregistry.CreateKeyRequest{
 				KasId:        validUUID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_KEK,
 				PublicKeyCtx: &policy.KasPublicKeyCtx{
 					Pem: validKeyCtx,
 				},
@@ -342,7 +342,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: invalidAlgo,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_KEK,
 				PublicKeyCtx: &policy.KasPublicKeyCtx{
 					Pem: validKeyCtx,
 				},
@@ -360,7 +360,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KasId:         validUUID,
 				KeyId:         validKeyID,
 				KeyAlgorithm:  policy.Algorithm_ALGORITHM_UNSPECIFIED, // Unspecified Algo
-				KeyMode:       policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+				KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_KEK,
 				PublicKeyCtx:  validPubCtx,
 				PrivateKeyCtx: validPrivCtx,
 			},
@@ -404,7 +404,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_KEK,
 				PublicKeyCtx: &policy.KasPublicKeyCtx{
 					Pem: "",
 				},
@@ -422,7 +422,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_KEK,
 				PublicKeyCtx: &policy.KasPublicKeyCtx{
 					Pem: validKeyCtx,
 				},
@@ -436,7 +436,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_KEK,
 				PublicKeyCtx: &policy.KasPublicKeyCtx{
 					Pem: validKeyCtx,
 				},
@@ -453,7 +453,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_KEK,
 				PublicKeyCtx: &policy.KasPublicKeyCtx{
 					Pem: validKeyCtx,
 				},
@@ -465,12 +465,12 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errPrivateKeyCtxMessageID,
 		},
 		{
-			name: "Invalid - KEY_MODE_REMOTE_OPERATIONS - WrappedKey should not be set",
+			name: "Invalid - KEY_MODE_REMOTE - WrappedKey should not be set",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_REMOTE_OPERATIONS,
+				KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
 				PublicKeyCtx: &policy.KasPublicKeyCtx{
 					Pem: validKeyCtx,
 				},
@@ -484,12 +484,12 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errPrivateKeyCtxMessageID, // Expects "private_key_ctx_optionally_required"
 		},
 		{
-			name: "Invalid - KEY_MODE_REMOTE_OPERATIONS - ProviderConfigId should be set",
+			name: "Invalid - KEY_MODE_REMOTE - ProviderConfigId should be set",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_REMOTE_OPERATIONS,
+				KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
 				PublicKeyCtx: &policy.KasPublicKeyCtx{
 					Pem: validKeyCtx,
 				},
@@ -502,12 +502,12 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errMessageProviderConfigID, // Expects "provider_config_id_optionally_required"
 		},
 		{
-			name: "Invalid - KEY_MODE_LOCAL_CONFIG_KEK - WrappedKey required",
+			name: "Invalid - KEY_MODE_CONFIG_KEK - WrappedKey required",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_KEK,
 				PublicKeyCtx: validPubCtx,
 				PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey is missing
 					KeyId: validKeyID,
@@ -518,12 +518,12 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errPrivateKeyCtxMessageID,
 		},
 		{
-			name: "Invalid - KEY_MODE_LOCAL_CONFIG_KEK - ProviderConfigId must be empty",
+			name: "Invalid - KEY_MODE_CONFIG_KEK - ProviderConfigId must be empty",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_KEK,
 				PublicKeyCtx: validPubCtx,
 				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
 					KeyId:      validKeyID,
@@ -535,12 +535,12 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errMessageProviderConfigID,
 		},
 		{
-			name: "Invalid - KEY_MODE_LOCAL_PROVIDER_KEK - WrappedKey required",
+			name: "Invalid - KEY_MODE_PROVIDER_KEK - WrappedKey required",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_PROVIDER_KEK,
+				KeyMode:      policy.KeyMode_KEY_MODE_PROVIDER_KEK,
 				PublicKeyCtx: validPubCtx,
 				PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey is missing
 					KeyId: validKeyID,
@@ -551,12 +551,12 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errPrivateKeyCtxMessageID,
 		},
 		{
-			name: "Invalid - KEY_MODE_LOCAL_PROVIDER_KEK - ProviderConfigId required",
+			name: "Invalid - KEY_MODE_PROVIDER_KEK - ProviderConfigId required",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_PROVIDER_KEK,
+				KeyMode:      policy.KeyMode_KEY_MODE_PROVIDER_KEK,
 				PublicKeyCtx: validPubCtx,
 				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
 					KeyId:      validKeyID,
@@ -601,12 +601,12 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errMessageProviderConfigID,
 		},
 		{
-			name: "Valid request - KEY_MODE_LOCAL_CONFIG_KEK",
+			name: "Valid request - KEY_MODE_CONFIG_KEK",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_KEK,
 				PublicKeyCtx: &policy.KasPublicKeyCtx{
 					Pem: validKeyCtx,
 				},
@@ -619,12 +619,12 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "Valid request - KEY_MODE_LOCAL_PROVIDER_KEK",
+			name: "Valid request - KEY_MODE_PROVIDER_KEK",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_PROVIDER_KEK,
+				KeyMode:      policy.KeyMode_KEY_MODE_PROVIDER_KEK,
 				PublicKeyCtx: &policy.KasPublicKeyCtx{
 					Pem: validKeyCtx,
 				},
@@ -638,12 +638,12 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "Valid request - KEY_MODE_REMOTE_OPERATIONS",
+			name: "Valid request - KEY_MODE_REMOTE",
 			req: &kasregistry.CreateKeyRequest{
 				KasId:        validUUID,
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-				KeyMode:      policy.KeyMode_KEY_MODE_REMOTE_OPERATIONS,
+				KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
 				PublicKeyCtx: &policy.KasPublicKeyCtx{
 					Pem: validKeyCtx,
 				},
@@ -1011,7 +1011,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 				},
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
-					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+					KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_KEK,
 					PublicKeyCtx:  validPubCtx,
 					PrivateKeyCtx: validPrivCtx,
 					Metadata:      validMetadata,
@@ -1029,7 +1029,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:         validKeyID,
 					Algorithm:     -1,
-					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+					KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_KEK,
 					PublicKeyCtx:  validPubCtx,
 					PrivateKeyCtx: validPrivCtx,
 					Metadata:      validMetadata,
@@ -1047,7 +1047,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:         validKeyID,
 					Algorithm:     policy.Algorithm_ALGORITHM_UNSPECIFIED,
-					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+					KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_KEK,
 					PublicKeyCtx:  validPubCtx,
 					PrivateKeyCtx: validPrivCtx,
 					Metadata:      validMetadata,
@@ -1101,7 +1101,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:         validKeyID,
 					Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
-					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+					KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_KEK,
 					PrivateKeyCtx: validPrivCtx,
 					Metadata:      validMetadata,
 				},
@@ -1118,7 +1118,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:     validKeyID,
 					Algorithm: policy.Algorithm_ALGORITHM_EC_P256,
-					KeyMode:   policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+					KeyMode:   policy.KeyMode_KEY_MODE_CONFIG_KEK,
 					PublicKeyCtx: &policy.KasPublicKeyCtx{
 						Pem: "",
 					},
@@ -1138,7 +1138,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:        validKeyID,
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
-					KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+					KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_KEK,
 					PublicKeyCtx: validPubCtx,
 					Metadata:     validMetadata,
 				},
@@ -1155,7 +1155,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:        validKeyID,
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
-					KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+					KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_KEK,
 					PublicKeyCtx: validPubCtx,
 					PrivateKeyCtx: &policy.KasPrivateKeyCtx{
 						WrappedKey: validKeyCtx,
@@ -1167,7 +1167,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errMessagePrivateKeyCtxKeyID,
 		},
 		{
-			name: "Invalid New Key - KEY_MODE_LOCAL_CONFIG_KEK - WrappedKey missing",
+			name: "Invalid New Key - KEY_MODE_CONFIG_KEK - WrappedKey missing",
 			req: &kasregistry.RotateKeyRequest{
 				ActiveKey: &kasregistry.RotateKeyRequest_Id{
 					Id: validUUID,
@@ -1175,7 +1175,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:        validKeyID,
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
-					KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+					KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_KEK,
 					PublicKeyCtx: validPubCtx,
 					PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey missing
 						KeyId: validKeyID,
@@ -1188,13 +1188,13 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errPrivateKeyCtxMessageID, // Expects "private_key_ctx_optionally_required"
 		},
 		{
-			name: "Invalid New Key - KEY_MODE_LOCAL_CONFIG_KEK - ProviderConfigId must be empty",
+			name: "Invalid New Key - KEY_MODE_CONFIG_KEK - ProviderConfigId must be empty",
 			req: &kasregistry.RotateKeyRequest{
 				ActiveKey: &kasregistry.RotateKeyRequest_Id{Id: validUUID},
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:            validKeyID,
 					Algorithm:        policy.Algorithm_ALGORITHM_EC_P256,
-					KeyMode:          policy.KeyMode_KEY_MODE_LOCAL_CONFIG_KEK,
+					KeyMode:          policy.KeyMode_KEY_MODE_CONFIG_KEK,
 					PublicKeyCtx:     validPubCtx,
 					PrivateKeyCtx:    validPrivCtx, // Has WrappedKey (correct)
 					ProviderConfigId: validUUID,    // Incorrect
@@ -1205,13 +1205,13 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errMessageProviderConfigID, // Expects "provider_config_id_optionally_required"
 		},
 		{
-			name: "Invalid New Key - KEY_MODE_LOCAL_PROVIDER_KEK - WrappedKey missing",
+			name: "Invalid New Key - KEY_MODE_PROVIDER_KEK - WrappedKey missing",
 			req: &kasregistry.RotateKeyRequest{
 				ActiveKey: &kasregistry.RotateKeyRequest_Id{Id: validUUID},
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:        validKeyID,
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
-					KeyMode:      policy.KeyMode_KEY_MODE_LOCAL_PROVIDER_KEK,
+					KeyMode:      policy.KeyMode_KEY_MODE_PROVIDER_KEK,
 					PublicKeyCtx: validPubCtx,
 					PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey missing
 						KeyId: validKeyID,
@@ -1224,13 +1224,13 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errPrivateKeyCtxMessageID,
 		},
 		{
-			name: "Invalid New Key - KEY_MODE_LOCAL_PROVIDER_KEK - ProviderConfigId missing",
+			name: "Invalid New Key - KEY_MODE_PROVIDER_KEK - ProviderConfigId missing",
 			req: &kasregistry.RotateKeyRequest{
 				ActiveKey: &kasregistry.RotateKeyRequest_Id{Id: validUUID},
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:         validKeyID,
 					Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
-					KeyMode:       policy.KeyMode_KEY_MODE_LOCAL_PROVIDER_KEK,
+					KeyMode:       policy.KeyMode_KEY_MODE_PROVIDER_KEK,
 					PublicKeyCtx:  validPubCtx,
 					PrivateKeyCtx: validPrivCtx, // Has WrappedKey (correct)
 					// ProviderConfigId missing (incorrect)
@@ -1241,7 +1241,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errMessageProviderConfigID,
 		},
 		{
-			name: "Invalid New Key - KEY_MODE_REMOTE_OPERATIONS - WrappedKey present",
+			name: "Invalid New Key - KEY_MODE_REMOTE - WrappedKey present",
 			req: &kasregistry.RotateKeyRequest{
 				ActiveKey: &kasregistry.RotateKeyRequest_Id{
 					Id: validUUID,
@@ -1249,7 +1249,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:        validKeyID,
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
-					KeyMode:      policy.KeyMode_KEY_MODE_REMOTE_OPERATIONS,
+					KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
 					PublicKeyCtx: validPubCtx,
 					PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey present (incorrect)
 						KeyId:      validKeyID,
@@ -1263,7 +1263,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errPrivateKeyCtxMessageID,
 		},
 		{
-			name: "Invalid New Key - KEY_MODE_REMOTE_OPERATIONS - ProviderConfigId missing",
+			name: "Invalid New Key - KEY_MODE_REMOTE - ProviderConfigId missing",
 			req: &kasregistry.RotateKeyRequest{
 				ActiveKey: &kasregistry.RotateKeyRequest_Id{
 					Id: validUUID,
@@ -1271,7 +1271,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 				NewKey: &kasregistry.RotateKeyRequest_NewKey{
 					KeyId:        validKeyID,
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
-					KeyMode:      policy.KeyMode_KEY_MODE_REMOTE_OPERATIONS,
+					KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
 					PublicKeyCtx: validPubCtx,
 					PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey empty (correct)
 						KeyId: validKeyID,
@@ -1323,7 +1323,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errMessageProviderConfigID,
 		},
 		{
-			name: "Valid Rotate Request - NewKey is KEY_MODE_LOCAL_CONFIG_KEK",
+			name: "Valid Rotate Request - NewKey is KEY_MODE_CONFIG_KEK",
 			req: &kasregistry.RotateKeyRequest{
 				ActiveKey: &kasregistry.RotateKeyRequest_Id{
 					Id: validUUID,
@@ -1333,7 +1333,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "Valid Rotate Request - NewKey is KEY_MODE_LOCAL_PROVIDER_KEK",
+			name: "Valid Rotate Request - NewKey is KEY_MODE_PROVIDER_KEK",
 			req: &kasregistry.RotateKeyRequest{
 				ActiveKey: &kasregistry.RotateKeyRequest_Id{
 					Id: validUUID,
@@ -1343,7 +1343,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "Valid Rotate Request - NewKey is KEY_MODE_REMOTE_OPERATIONS",
+			name: "Valid Rotate Request - NewKey is KEY_MODE_REMOTE",
 			req: &kasregistry.RotateKeyRequest{
 				ActiveKey: &kasregistry.RotateKeyRequest_Id{
 					Id: validUUID,

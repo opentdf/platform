@@ -640,13 +640,13 @@
       "type": "string",
       "enum": [
         "KEY_MODE_UNSPECIFIED",
-        "KEY_MODE_CONFIG_KEK",
-        "KEY_MODE_PROVIDER_KEK",
+        "KEY_MODE_CONFIG_ROOT_KEY",
+        "KEY_MODE_PROVIDER_ROOT_KEY",
         "KEY_MODE_REMOTE",
         "KEY_MODE_PUBLIC_KEY_ONLY"
       ],
       "default": "KEY_MODE_UNSPECIFIED",
-      "description": "Describes the management and operational mode of a cryptographic key.\n\n - KEY_MODE_UNSPECIFIED: KEY_MODE_UNSPECIFIED: Default, unspecified key mode. Indicates an uninitialized or error state.\n - KEY_MODE_CONFIG_KEK: KEY_MODE_CONFIG_KEK: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nsourced from local configuration. Unwrapping and all cryptographic operations are performed locally.\n - KEY_MODE_PROVIDER_KEK: KEY_MODE_PROVIDER_KEK: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nmanaged by an external provider (e.g., a Hardware Security Module or Cloud KMS).\nKey unwrapping is delegated to the external provider; subsequent cryptographic operations\nare performed locally using the unwrapped key.\n - KEY_MODE_REMOTE: KEY_MODE_REMOTE: Remote key management where the private key is stored in, and all cryptographic\noperations are performed by, a remote Key Management Service (KMS) or HSM.\nThe private key material never leaves the secure boundary of the remote system.\n - KEY_MODE_PUBLIC_KEY_ONLY: KEY_MODE_PUBLIC_KEY_ONLY: Public key only mode. Used when only a public key is available or required,\ntypically for wrapping operations (e.g., encrypting a Data Encryption Key (DEK) for an external KAS).\nThe corresponding private key is not managed or accessible by this system."
+      "description": "Describes the management and operational mode of a cryptographic key.\n\n - KEY_MODE_UNSPECIFIED: KEY_MODE_UNSPECIFIED: Default, unspecified key mode. Indicates an uninitialized or error state.\n - KEY_MODE_CONFIG_ROOT_KEY: KEY_MODE_CONFIG_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nsourced from local configuration. Unwrapping and all cryptographic operations are performed locally.\n - KEY_MODE_PROVIDER_ROOT_KEY: KEY_MODE_PROVIDER_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nmanaged by an external provider (e.g., a Hardware Security Module or Cloud KMS).\nKey unwrapping is delegated to the external provider; subsequent cryptographic operations\nare performed locally using the unwrapped key.\n - KEY_MODE_REMOTE: KEY_MODE_REMOTE: Remote key management where the private key is stored in, and all cryptographic\noperations are performed by, a remote Key Management Service (KMS) or HSM.\nThe private key material never leaves the secure boundary of the remote system.\n - KEY_MODE_PUBLIC_KEY_ONLY: KEY_MODE_PUBLIC_KEY_ONLY: Public key only mode. Used when only a public key is available or required,\ntypically for wrapping operations (e.g., encrypting a Data Encryption Key (DEK) for an external KAS).\nThe corresponding private key is not managed or accessible by this system."
     },
     "policyKeyProviderConfig": {
       "type": "object",

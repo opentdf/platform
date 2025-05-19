@@ -2,7 +2,9 @@ package subjectmappingbuiltin
 
 import (
 	"fmt"
+	"maps"
 	"slices"
+	"strings"
 
 	"github.com/opentdf/platform/lib/flattening"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
@@ -18,7 +20,7 @@ func EvaluateSubjectMappingMultipleEntitiesWithActions(
 	attributeMappings map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 	entityRepresentations []*entityresolutionV2.EntityRepresentation,
 ) (EntityIDsToEntitlements, error) {
-	results := make(map[string]AttributeValueFQNsToActions)
+	results := make(map[string]AttributeValueFQNsToActions, len(entityRepresentations))
 	for _, er := range entityRepresentations {
 		entitlements, err := EvaluateSubjectMappingsWithActions(attributeMappings, er)
 		if err != nil {
@@ -70,13 +72,11 @@ func EvaluateSubjectMappingsWithActions(
 					actions := subjectMapping.GetActions()
 
 					// Cache each action by name to deduplicate
+					m := make(map[string]*policy.Action, len(actions))
 					for _, action := range actions {
-						if !slices.ContainsFunc(entitlementsSet[valueFQN], func(a *policy.Action) bool {
-							return a.GetName() == action.GetName()
-						}) {
-							entitlementsSet[valueFQN] = append(entitlementsSet[valueFQN], action)
-						}
+						m[strings.ToLower(action.GetName())] = action
 					}
+					entitlementsSet[valueFQN] = append(entitlementsSet[valueFQN], slices.Collect(maps.Values(m))...)
 				}
 			}
 		}

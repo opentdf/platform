@@ -1057,7 +1057,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_ResourceMappingsReturned() {
 		if expected.GroupID == "" {
 			s.Nil(rm.GetGroup())
 		} else {
-			s.Equal(rm.GetGroup().GetId(), expected.GroupID)
+			s.Equal(expected.GroupID, rm.GetGroup().GetId())
 		}
 		s.Len(rm.GetTerms(), len(expected.Terms))
 		s.ElementsMatch(rm.GetTerms(), expected.Terms)
@@ -1065,7 +1065,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_ResourceMappingsReturned() {
 
 	// ensure the second value has no resource mappings
 	val2 := got.GetValues()[1]
-	s.Len(val2.GetResourceMappings(), 0)
+	s.Empty(val2.GetResourceMappings())
 }
 
 // Test multiple get attributes by multiple fqns

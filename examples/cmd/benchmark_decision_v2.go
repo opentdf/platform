@@ -9,7 +9,6 @@ import (
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	"github.com/opentdf/platform/protocol/go/entity"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/spf13/cobra"
 )
 
@@ -48,7 +47,7 @@ func runDecisionBenchmarkV2(_ *cobra.Command, _ []string) error {
 	start := time.Now()
 	res, err := client.AuthorizationV2.GetDecisionMultiResource(context.Background(), &authzV2.GetDecisionMultiResourceRequest{
 		Action: &policy.Action{
-			Name: actions.ActionNameRead,
+			Name: "read",
 		},
 		EntityIdentifier: &authzV2.EntityIdentifier{
 			Identifier: &authzV2.EntityIdentifier_EntityChain{

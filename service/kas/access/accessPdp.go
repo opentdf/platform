@@ -39,7 +39,7 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 		}
 		if len(policy.Body.DataAttributes) > 0 {
 			id := "rewrap-" + strconv.Itoa(i)
-			var attrValueFqns = make([]string, len(policy.Body.DataAttributes))
+			attrValueFqns := make([]string, len(policy.Body.DataAttributes))
 			for idx, attr := range policy.Body.DataAttributes {
 				attrValueFqns[idx] = attr.URI
 			}

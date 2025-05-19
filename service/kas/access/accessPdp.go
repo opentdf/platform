@@ -75,6 +75,7 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 	for _, decision := range dr.GetResourceDecisions() {
 		policy, ok := idPolicyMap[decision.GetEphemeralResourceId()]
 		if !ok { // this really should not happen
+			p.Logger.WarnContext(ctx, "Unexpected ephemeral resource id not mapped to a policy", "decision response ephemeral resource ID", decision.GetEphemeralResourceId())
 			continue
 		}
 		res = append(res, PDPAccessResult{Policy: policy, Access: decision.GetDecision() == authzV2.Decision_DECISION_PERMIT})

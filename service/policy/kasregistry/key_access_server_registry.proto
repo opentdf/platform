@@ -377,13 +377,13 @@ message CreateKeyRequest {
   option (buf.validate.message).cel = {
     id: "private_key_ctx_optionally_required"
     message:
-      "The wrapped_key is required if key_mode is KEY_MODE_CONFIG_KEK or KEY_MODE_PROVIDER_KEK. "
+      "The wrapped_key is required if key_mode is KEY_MODE_CONFIG_ROOT_KEY or KEY_MODE_PROVIDER_ROOT_KEY. "
       "The wrapped_key must be empty if key_mode is KEY_MODE_REMOTE or KEY_MODE_PUBLIC_KEY_ONLY."
     expression: "((this.key_mode == 1 || this.key_mode == 2) && this.private_key_ctx.wrapped_key != '') || ((this.key_mode == 3 || this.key_mode == 4) && this.private_key_ctx.wrapped_key == '')"
   };
   option (buf.validate.message).cel = {
     id: "provider_config_id_optionally_required"
-    message: "Provider config id is required if key_mode is KEY_MODE_PROVIDER_KEK or KEY_MODE_REMOTE. It must be empty for KEY_MODE_CONFIG_KEK and KEY_MODE_PUBLIC_KEY_ONLY."
+    message: "Provider config id is required if key_mode is KEY_MODE_PROVIDER_ROOT_KEY or KEY_MODE_REMOTE. It must be empty for KEY_MODE_CONFIG_ROOT_KEY and KEY_MODE_PUBLIC_KEY_ONLY."
     expression: "((this.key_mode == 1 || this.key_mode == 4) && this.provider_config_id == '') || ((this.key_mode == 2 || this.key_mode == 3) && this.provider_config_id != '')"
   };
   option (buf.validate.message).cel = {
@@ -406,7 +406,7 @@ message CreateKeyRequest {
   KeyMode key_mode = 4 [(buf.validate.field).cel = {
     id: "key_mode_defined"
     message: "The key_mode must be one of the defined values (1-4)."
-    expression: "this >= 1 && this <= 4" // Allow LOCAL_CONFIG_KEK, LOCAL_PROVIDER_KEK, REMOTE_OPERATIONS, PUBLIC_KEY_ONLY
+    expression: "this >= 1 && this <= 4" // Allow CONFIG_ROOT_KEY, PROVIDER_ROOT_KEY, REMOTE, PUBLIC_KEY_ONLY
   }]; // The mode of the key (e.g., local or external)
   // Required
   KasPublicKeyCtx public_key_ctx = 5 [(buf.validate.field).required = true]; // Context or additional data specific to the public key, based on the key provider implementation
@@ -515,13 +515,13 @@ message RotateKeyRequest {
   option (buf.validate.message).cel = {
     id: "private_key_ctx_optionally_required"
     message:
-      "For the new key, the wrapped_key is required if key_mode is KEY_MODE_CONFIG_KEK or KEY_MODE_PROVIDER_KEK. "
+      "For the new key, the wrapped_key is required if key_mode is KEY_MODE_CONFIG_ROOT_KEY or KEY_MODE_PROVIDER_ROOT_KEY. "
       "The wrapped_key must be empty if key_mode is KEY_MODE_REMOTE or KEY_MODE_PUBLIC_KEY_ONLY."
     expression: "((this.new_key.key_mode == 1 || this.new_key.key_mode == 2) && this.new_key.private_key_ctx.wrapped_key != '') || ((this.new_key.key_mode == 3 || this.new_key.key_mode == 4) && this.new_key.private_key_ctx.wrapped_key == '')"
   };
   option (buf.validate.message).cel = {
     id: "provider_config_id_optionally_required"
-    message: "For the new key, provider config id is required if key_mode is KEY_MODE_PROVIDER_KEK or KEY_MODE_REMOTE. It must be empty for KEY_MODE_CONFIG_KEK and KEY_MODE_PUBLIC_KEY_ONLY."
+    message: "For the new key, provider config id is required if key_mode is KEY_MODE_PROVIDER_ROOT_KEY or KEY_MODE_REMOTE. It must be empty for KEY_MODE_CONFIG_ROOT_KEY and KEY_MODE_PUBLIC_KEY_ONLY."
     expression: "((this.new_key.key_mode == 1 || this.new_key.key_mode == 4) && this.new_key.provider_config_id == '') || ((this.new_key.key_mode == 2 || this.new_key.key_mode == 3) && this.new_key.provider_config_id != '')"
   };
   option (buf.validate.message).cel = {

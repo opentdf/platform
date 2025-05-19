@@ -13,21 +13,6 @@ updates:
     commit-message:
       prefix: "chore(ci)"
 
-  # Dependabot for third party deps
-  - package-ecosystem: gomod
-    directories:
-      - /examples
-      - /lib/*
-      - /protocol/go
-      - /sdk
-      - /service
-    groups:
-      external:
-        exclude-patterns:
-          - "github.com/opentdf/*"
-    schedule:
-      interval: weekly
-
   # Dependabot for internal deps
   # Add explicit entry as any go.mods need internal dep checks
   - package-ecosystem: gomod

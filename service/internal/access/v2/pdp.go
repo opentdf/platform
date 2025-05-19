@@ -209,10 +209,10 @@ func (p *PolicyDecisionPoint) GetDecision(
 
 	decision := &Decision{
 		Access:  true,
-		Results: make([]ResourceDecision, 0, len(resources)),
+		Results: make([]ResourceDecision, len(resources)),
 	}
 
-	for _, resource := range resources {
+	for idx, resource := range resources {
 		resourceDecision, err := getResourceDecision(ctx, p.logger, decisionableAttributes, entitledFQNsToActions, action, resource)
 		if err != nil || resourceDecision == nil {
 			p.logger.ErrorContext(ctx, "error evaluating decision", append(loggable, slog.String("error", err.Error()), slog.Any("resource", resource))...)
@@ -223,7 +223,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 			decision.Access = false
 		}
 
-		decision.Results = append(decision.Results, *resourceDecision)
+		decision.Results[idx] = *resourceDecision
 	}
 
 	p.logger.DebugContext(

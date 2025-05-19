@@ -36,6 +36,7 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 	return &serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[authzV2Connect.AuthorizationServiceHandler]{
 			Namespace:      "authorization",
+			Version:        "v2",
 			ServiceDesc:    &authzV2.AuthorizationService_ServiceDesc,
 			ConnectRPCFunc: authzV2Connect.NewAuthorizationServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authzV2Connect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {

@@ -168,6 +168,9 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 					return err
 				}
 			}
+			if svc.GetVersion() != "" {
+				svcLogger = svcLogger.With("version", svc.GetVersion())
+			}
 
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.GetNamespace()],

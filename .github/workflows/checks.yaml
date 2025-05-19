@@ -254,6 +254,19 @@ jobs:
             echo "$OUTPUT";
             echo "EODECISION"
           } >> "$GITHUB_ENV"
+      - name: run decision v2 benchmark tests
+        run: |
+          # Run the benchmark with a specific count (adjust as needed)
+          OUTPUT=$(./examples/examples benchmark-decision-v2 --count 5000)
+          echo "--- Decision Benchmark Output ---"
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY" # Add to job summary page
+          # Save the output to an environment variable for the comment step
+          {
+            echo "BENCHMARK_DECISION_OUTPUT<<EODECISION"; # Unique delimiter
+            echo "$OUTPUT";
+            echo "EODECISION"
+          } >> "$GITHUB_ENV"
       - name: run tdf3 benchmark tests
         run: |
           OUTPUT=$(./examples/examples benchmark --count=5000 --concurrent=50)

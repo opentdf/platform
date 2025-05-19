@@ -39,9 +39,9 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 		}
 		if len(policy.Body.DataAttributes) > 0 {
 			id := "rewrap-" + strconv.Itoa(i)
-			attrValueFqns := make([]string, 0, len(policy.Body.DataAttributes))
-			for _, attr := range policy.Body.DataAttributes {
-				attrValueFqns = append(attrValueFqns, attr.URI)
+			var attrValueFqns = make([]string, len(policy.Body.DataAttributes))
+			for idx, attr := range policy.Body.DataAttributes {
+				attrValueFqns[idx] = attr.URI
 			}
 			resources = append(resources, &authzV2.Resource{
 				EphemeralId: id,

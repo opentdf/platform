@@ -408,24 +408,23 @@ func (KeyStatus) EnumDescriptor() ([]byte, []int) {
 type KeyMode int32
 
 const (
-	// Default, unspecified key mode.
+	// KEY_MODE_UNSPECIFIED: Default, unspecified key mode. Indicates an uninitialized or error state.
 	KeyMode_KEY_MODE_UNSPECIFIED KeyMode = 0
-	// Local key management: Private key is wrapped by a Key Encryption Key (KEK)
-	// sourced from local configuration.
-	// Unwrapping and cryptographic operations are performed locally.
+	// KEY_MODE_CONFIG_KEK: Local key management where the private key is wrapped by a Key Encryption Key (KEK)
+	// sourced from local configuration. Unwrapping and all cryptographic operations are performed locally.
 	KeyMode_KEY_MODE_CONFIG_KEK KeyMode = 1
-	// Local key management: Private key is wrapped by a Key Encryption Key (KEK)
-	// managed by an external provider (e.g., KMS).
-	// Key unwrapping is handled by the external provider; cryptographic operations
+	// KEY_MODE_PROVIDER_KEK: Local key management where the private key is wrapped by a Key Encryption Key (KEK)
+	// managed by an external provider (e.g., a Hardware Security Module or Cloud KMS).
+	// Key unwrapping is delegated to the external provider; subsequent cryptographic operations
 	// are performed locally using the unwrapped key.
 	KeyMode_KEY_MODE_PROVIDER_KEK KeyMode = 2
-	// Remote key management: Private key resides in, and all cryptographic
+	// KEY_MODE_REMOTE: Remote key management where the private key is stored in, and all cryptographic
 	// operations are performed by, a remote Key Management Service (KMS) or HSM.
-	// The private key never leaves the secure environment of the remote system.
+	// The private key material never leaves the secure boundary of the remote system.
 	KeyMode_KEY_MODE_REMOTE KeyMode = 3
-	// Public key only: This mode is used when only a public key is required,
-	// typically for wrapping operations (e.g., encrypting a DEK for an external KAS).
-	// The corresponding private key is not managed by this system.
+	// KEY_MODE_PUBLIC_KEY_ONLY: Public key only mode. Used when only a public key is available or required,
+	// typically for wrapping operations (e.g., encrypting a Data Encryption Key (DEK) for an external KAS).
+	// The corresponding private key is not managed or accessible by this system.
 	KeyMode_KEY_MODE_PUBLIC_KEY_ONLY KeyMode = 4
 )
 

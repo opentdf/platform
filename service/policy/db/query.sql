@@ -654,11 +654,14 @@ value_resource_mappings AS (
             JSON_BUILD_OBJECT(
                 'id', rm.id,
                 'terms', rm.terms,
-                'group', JSON_BUILD_OBJECT(
-                    'id', rmg.id,
-                    'name', rmg.name,
-                    'namespace_id', rmg.namespace_id
-                )
+                'group', CASE 
+                            WHEN rm.group_id IS NULL THEN NULL
+                            ELSE JSON_BUILD_OBJECT(
+                                'id', rmg.id,
+                                'name', rmg.name,
+                                'namespace_id', rmg.namespace_id
+                            )
+                         END
             )
         ) FILTER (WHERE rm.id IS NOT NULL) AS res_maps
     FROM target_definition td

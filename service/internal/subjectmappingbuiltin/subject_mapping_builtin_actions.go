@@ -75,7 +75,6 @@ func EvaluateSubjectMappingsWithActions(
 					m := make(map[string]*policy.Action, len(actions))
 					for _, action := range actions {
 						m[strings.ToLower(action.GetName())] = action
-
 					}
 					entitlementsSet[valueFQN] = append(entitlementsSet[valueFQN], slices.Collect(maps.Values(m))...)
 				}

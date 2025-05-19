@@ -31,16 +31,18 @@ func runDecisionBenchmarkV2(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	resources := make([]*authzV2.Resource, 0, config.RequestCount)
-	for i := range config.RequestCount {
-		resources[i] = &authzV2.Resource{
-			Resource: &authzV2.Resource_AttributeValues_{
-				AttributeValues: &authzV2.Resource_AttributeValues{
-					Fqns: []string{"https://example.com/attr/attr1/value/value1"},
-				},
+	var resources []*authzV2.Resource
+	resource := &authzV2.Resource{
+		Resource: &authzV2.Resource_AttributeValues_{
+			AttributeValues: &authzV2.Resource_AttributeValues{
+				Fqns: []string{"https://example.com/attr/attr1/value/value1"},
 			},
-			EphemeralId: fmt.Sprintf("resource-%d", i),
-		}
+		},
+	}
+
+	for i := range config.RequestCount {
+		resource.EphemeralId = fmt.Sprintf("resource-%d", i)
+		resources = append(resources, resource)
 	}
 
 	start := time.Now()
@@ -54,7 +56,7 @@ func runDecisionBenchmarkV2(_ *cobra.Command, _ []string) error {
 					EphemeralId: "decision-bulk-entity-chain",
 					Entities: []*entity.Entity{
 						{
-							EphemeralId: "jwtentity-0-clientid-opentdf-public",
+							EphemeralId: "jwtentity-0-clientid-opentdf-sdk",
 							EntityType:  &entity.Entity_ClientId{ClientId: "opentdf-public"},
 							Category:    entity.Entity_CATEGORY_ENVIRONMENT,
 						},

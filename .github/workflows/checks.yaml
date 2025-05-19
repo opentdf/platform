@@ -258,14 +258,14 @@ jobs:
         run: |
           # Run the benchmark with a specific count (adjust as needed)
           OUTPUT=$(./examples/examples benchmark-decision-v2 --count 5000)
-          echo "--- Decision Benchmark Output ---"
+          echo "--- Decision Benchmark v2 Output ---"
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY" # Add to job summary page
           # Save the output to an environment variable for the comment step
           {
-            echo "BENCHMARK_DECISION_OUTPUT<<EODECISION"; # Unique delimiter
+            echo "BENCHMARK_DECISION_V2_OUTPUT<<EODECISIONV2"; # Unique delimiter
             echo "$OUTPUT";
-            echo "EODECISION"
+            echo "EODECISIONV2"
           } >> "$GITHUB_ENV"
       - name: run tdf3 benchmark tests
         run: |
@@ -305,12 +305,13 @@ jobs:
         with:
           script: |
             const decisionOutput = process.env.BENCHMARK_DECISION_OUTPUT || '## Decision Benchmark Skipped or Failed';
+            const decisionV2Output = process.env.BENCHMARK_DECISION_V2_OUTPUT || '## Decision Benchmark v2 Skipped or Failed';
             const metricsOutput = process.env.BENCHMARK_METRICS_OUTPUT || '## Standard Benchmark Metrics Skipped or Failed';
             const bulkOutput = process.env.BENCHMARK_BULK_OUTPUT || '## Bulk Benchmark Skipped or Failed';
             const tdf3Output = process.env.BENCHMARK_TDF3_OUTPUT || '## TDF3 Benchmark Skipped or Failed';
             const nanoOutput = process.env.BENCHMARK_NANO_OUTPUT || '## Nano Benchmark Skipped or Failed';
 
-            const body = `<details><summary>Benchmark results, click to expand</summary>\n\n${decisionOutput}\n\n${bulkOutput}\n\n${tdf3Output}\n\n${nanoOutput}\n\n${metricsOutput}</details>`;
+            const body = `<details><summary>Benchmark results, click to expand</summary>\n\n${decisionOutput}\n\n$${decisionV2Output}\n\n{bulkOutput}\n\n${tdf3Output}\n\n${nanoOutput}\n\n${metricsOutput}</details>`;
 
             github.rest.issues.createComment({
               owner: context.repo.owner,

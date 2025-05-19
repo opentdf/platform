@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -868,6 +869,10 @@ type bigSetup struct {
 	val1ID          string
 	val2ID          string
 	kasAssociations map[string]string
+	rms             map[string]struct {
+		Terms   []string
+		GroupID string
+	}
 }
 
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_SameResultsWhetherAttrOrValueFqnUsed() {
@@ -1033,6 +1038,34 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_SubjectMappingsOnAllValues() {
 	}
 	s.True(foundRead)
 	s.True(foundCreate)
+}
+
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_ResourceMappingsReturned() {
+	ns := "test_fqn_resource_mapping.gov"
+	setup := s.bigTestSetup(ns)
+
+	got, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, setup.attrFqn)
+	s.Require().NoError(err)
+	s.NotNil(got)
+
+	// ensure the first value has expected resource mappings
+	val1 := got.GetValues()[0]
+	s.Len(val1.GetResourceMappings(), 2)
+	for _, rm := range val1.GetResourceMappings() {
+		expected, ok := setup.rms[rm.GetId()]
+		s.True(ok)
+		if expected.GroupID == "" {
+			s.Nil(rm.GetGroup())
+		} else {
+			s.Equal(rm.GetGroup().GetId(), expected.GroupID)
+		}
+		s.Len(rm.GetTerms(), len(expected.Terms))
+		s.ElementsMatch(rm.GetTerms(), expected.Terms)
+	}
+
+	// ensure the second value has no resource mappings
+	val2 := got.GetValues()[1]
+	s.Len(val2.GetResourceMappings(), 0)
 }
 
 // Test multiple get attributes by multiple fqns
@@ -1746,6 +1779,14 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 	s.Require().NoError(err)
 	s.NotNil(ns)
 
+	// create a resource mapping group for the namespace
+	rmGrp, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "test_group",
+	})
+	s.Require().NoError(err)
+	s.NotNil(rmGrp)
+
 	// give it attributes and values
 	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
 		NamespaceId: ns.GetId(),
@@ -1848,6 +1889,40 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 	s.Require().NoError(err)
 	s.NotNil(val2SM2)
 
+	rms := map[string]struct {
+		Terms   []string
+		GroupID string
+	}{}
+	// make a resource mapping for first value with the group
+	rm1, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		GroupId:          rmGrp.GetId(),
+		AttributeValueId: val1.GetId(),
+		Terms:            []string{"term1", "term2"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(rm1)
+	rms[rm1.GetId()] = struct {
+		Terms   []string
+		GroupID string
+	}{
+		Terms:   rm1.GetTerms(),
+		GroupID: rmGrp.GetId(),
+	}
+
+	// make another resource mapping for first value without the group
+	rm2, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: val1.GetId(),
+		Terms:            []string{"otherterm1", "otherterm2"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(rm2)
+	rms[rm2.GetId()] = struct {
+		Terms   []string
+		GroupID string
+	}{
+		Terms: rm2.GetTerms(),
+	}
+
 	return bigSetup{
 		attrFqn:         fmt.Sprintf("https://%s/attr/test_attr", namespaceName),
 		nsID:            ns.GetId(),
@@ -1855,5 +1930,6 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 		val1ID:          val1.GetId(),
 		val2ID:          val2.GetId(),
 		kasAssociations: kasAssociations,
+		rms:             rms,
 	}
 }

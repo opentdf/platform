@@ -262,8 +262,8 @@ func (p *JustInTimePDP) fetchAllSubjectMappings(ctx context.Context) ([]*policy.
 			},
 		})
 		if err != nil {
-			p.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
-			return nil, fmt.Errorf("failed to list attributes: %w", err)
+			p.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
+			return nil, fmt.Errorf("failed to list subject mappings: %w", err)
 		}
 
 		nextOffset = listed.GetPagination().GetNextOffset()

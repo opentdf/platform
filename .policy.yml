@@ -9,6 +9,7 @@ policy:
       - go_mod
       - repo_policy
       - large_pr
+      - external_contributors
     - dependabot_updates
     - autobump
     
@@ -160,10 +161,9 @@ approval_rules:
 - name: large_pr
   description: "If the PR is large, require 2 approvals"
   if:
-    modified_lines:
-      additions: "> 200"
-      deletions: "> 200"
-      total: ">400"
+    has_labels:
+      - "size/l"
+      - "size/xl"
     changed_files:
       paths:
         - ".*"  # This will match any file
@@ -180,3 +180,25 @@ approval_rules:
     teams:
     - "opentdf/architecture"
     - "opentdf/maintainers"
+
+- name: external_contributors
+  description: "Require 1 approval from architecture team for external contributors"
+  if:
+    has_labels:
+      - "external-contributor"
+  options:
+    invalidate_on_push: true
+    ignore_edited_comments: true
+  requires:
+    count: 1
+    conditions:
+      has_valid_signatures: true
+      has_status:
+        conclusions: 
+        - success
+        statuses:
+        - ci
+        - pull-request-checks
+        - DCO
+    teams:
+    - "opentdf/architecture"

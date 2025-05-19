@@ -61,15 +61,6 @@ var (
 		PrivateKeyCtx: validPrivCtx,
 		Metadata:      validMetadata,
 	}
-	validNewKeyProviderKEK = &kasregistry.RotateKeyRequest_NewKey{
-		KeyId:            validKeyID,
-		Algorithm:        policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:          policy.KeyMode_KEY_MODE_PROVIDER_KEK,
-		PublicKeyCtx:     validPubCtx,
-		PrivateKeyCtx:    validPrivCtx,
-		Metadata:         validMetadata,
-		ProviderConfigId: validUUID,
-	}
 	validRemoteNewKey = &kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        validKeyID,
 		Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,

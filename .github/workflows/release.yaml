@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - main
+      - "release/*"
 
 permissions: {}
 
@@ -22,9 +23,21 @@ jobs:
         with:
           app-id: "${{ secrets.APP_ID }}"
           private-key: "${{ secrets.AUTOMATION_KEY }}"
-      - uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f
-        id: release-please
+
+      - name: "Run release-please from main branch"
+        uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f
+        id: release-please-main
+        if: ${{ github.ref_name == 'main' }}
         with:
-          token: "${{ steps.generate_token.outputs.token }}"
-          config-file: release-please.json
+          token: ${{ steps.generate_token.outputs.token }}
+          config-file: release-please_main.json
+          manifest-file: .release-please-manifest.json
+
+      - name: "Run release-please from release branch"
+        uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f
+        id: release-please-release-branches
+        if: ${{ startsWith(github.ref_name, 'release/') }}
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          config-file: release-please_release-branches.json
           manifest-file: .release-please-manifest.json

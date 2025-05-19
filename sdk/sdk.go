@@ -110,12 +110,12 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		}
 		if cfg.shouldValidatePlatformConnectivity {
 			if cfg.coreConn != nil {
-				err = ValidateHealthyPlatformConnection(cfg.coreConn.Endpoint, cfg.coreConn.Client)
+				err = validateHealthyPlatformConnection(cfg.coreConn.Endpoint, cfg.coreConn.Client, cfg.coreConn.Options)
 				if err != nil {
 					return nil, err
 				}
 			} else {
-				err = ValidateHealthyPlatformConnection(platformEndpoint, cfg.httpClient)
+				err = validateHealthyPlatformConnection(platformEndpoint, cfg.httpClient, cfg.extraClientOptions)
 				if err != nil {
 					return nil, err
 				}
@@ -134,7 +134,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 				return nil, errors.Join(ErrPlatformConfigFailed, err)
 			}
 		} else {
-			pcfg, err = getPlatformConfiguration(&ConnectRPCConnection{Endpoint: platformEndpoint, Client: cfg.httpClient})
+			pcfg, err = getPlatformConfiguration(&ConnectRPCConnection{Endpoint: platformEndpoint, Client: cfg.httpClient, Options: cfg.extraClientOptions})
 			if err != nil {
 				return nil, errors.Join(ErrPlatformConfigFailed, err)
 			}
@@ -385,10 +385,11 @@ func IsValidNanoTdf(reader io.ReadSeeker) (bool, error) {
 }
 
 // Test connectability to the platform and validate a healthy status
-func ValidateHealthyPlatformConnection(platformEndpoint string, httpClient *http.Client) error {
+func validateHealthyPlatformConnection(platformEndpoint string, httpClient *http.Client, options []connect.ClientOption) error {
 	healthClient := connect.NewClient[healthpb.HealthCheckRequest, healthpb.HealthCheckResponse](
 		httpClient,
 		platformEndpoint+"/grpc.health.v1.Health/Check",
+		options...,
 	)
 	res, err := healthClient.CallUnary(
 		context.Background(),

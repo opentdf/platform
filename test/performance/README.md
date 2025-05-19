@@ -1,4 +1,4 @@
-# PPerformance
+# Performance
 
 ## Prerequisites
 

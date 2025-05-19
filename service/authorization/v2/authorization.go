@@ -204,11 +204,11 @@ func rollupMultiResourceDecision(
 		if len(decision.Results) == 0 {
 			return nil, errors.New("no decision results returned")
 		}
-		access := authzV2.Decision_DECISION_DENY
-		if decision.Access {
-			access = authzV2.Decision_DECISION_PERMIT
-		}
 		for _, result := range decision.Results {
+			access := authzV2.Decision_DECISION_DENY
+			if result.Passed {
+				access = authzV2.Decision_DECISION_PERMIT
+			}
 			resourceDecision := &authzV2.ResourceDecision{
 				Decision:            access,
 				EphemeralResourceId: result.ResourceID,

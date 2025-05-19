@@ -212,6 +212,7 @@ func TestRollupMultiResourceDecisionSimple(t *testing.T) {
 		Access: true,
 		Results: []access.ResourceDecision{
 			{
+				Passed:     true,
 				ResourceID: "resource-123",
 			},
 		},

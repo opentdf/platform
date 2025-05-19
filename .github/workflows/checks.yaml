@@ -311,7 +311,7 @@ jobs:
             const tdf3Output = process.env.BENCHMARK_TDF3_OUTPUT || '## TDF3 Benchmark Skipped or Failed';
             const nanoOutput = process.env.BENCHMARK_NANO_OUTPUT || '## Nano Benchmark Skipped or Failed';
 
-            const body = `<details><summary>Benchmark results, click to expand</summary>\n\n${decisionOutput}\n\n$${decisionV2Output}\n\n{bulkOutput}\n\n${tdf3Output}\n\n${nanoOutput}\n\n${metricsOutput}</details>`;
+            const body = `<details><summary>Benchmark results, click to expand</summary>\n\n${decisionOutput}\n\n${decisionV2Output}\n\n${bulkOutput}\n\n${tdf3Output}\n\n${nanoOutput}\n\n${metricsOutput}</details>`;
 
             github.rest.issues.createComment({
               owner: context.repo.owner,

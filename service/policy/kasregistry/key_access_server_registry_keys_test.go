@@ -53,18 +53,18 @@ var (
 		KeyId:      validKeyID,
 		WrappedKey: validKeyCtx,
 	}
-	validLocalNewKeyNoProvider = &kasregistry.RotateKeyRequest_NewKey{
+	validNewKeyConfigKEK = &kasregistry.RotateKeyRequest_NewKey{
 		KeyId:         validKeyID,
 		Algorithm:     policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:       policy.KeyMode_KEY_MODE_PROVIDER_KEK,
+		KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_KEK,
 		PublicKeyCtx:  validPubCtx,
 		PrivateKeyCtx: validPrivCtx,
 		Metadata:      validMetadata,
 	}
-	validLocalNewKeyProvider = &kasregistry.RotateKeyRequest_NewKey{
+	validNewKeyProviderKEK = &kasregistry.RotateKeyRequest_NewKey{
 		KeyId:            validKeyID,
 		Algorithm:        policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:          policy.KeyMode_KEY_MODE_CONFIG_KEK,
+		KeyMode:          policy.KeyMode_KEY_MODE_PROVIDER_KEK,
 		PublicKeyCtx:     validPubCtx,
 		PrivateKeyCtx:    validPrivCtx,
 		Metadata:         validMetadata,
@@ -664,12 +664,27 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				PublicKeyCtx: &policy.KasPublicKeyCtx{
 					Pem: validKeyCtx,
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey is empty (correct)
-					KeyId: validKeyID,
-				},
 				// ProviderConfigId is empty (correct)
 			},
 			expectError: false,
+		},
+		// New: KEY_MODE_PUBLIC_KEY_ONLY - PrivateKeyCtx must not be set at all
+		{
+			name: "Invalid - KEY_MODE_PUBLIC_KEY_ONLY - PrivateKeyCtx set (with valid key_id)",
+			req: &kasregistry.CreateKeyRequest{
+				KasId:        validUUID,
+				KeyId:        validKeyID,
+				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+				KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
+				PublicKeyCtx: &policy.KasPublicKeyCtx{
+					Pem: validKeyCtx,
+				},
+				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+					KeyId: validKeyID,
+				},
+			},
+			expectError:  true,
+			errorMessage: "private_key_ctx must not be set",
 		},
 	}
 
@@ -897,7 +912,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 		{
 			name: "Invalid Request (empty active key)",
 			req: &kasregistry.RotateKeyRequest{
-				NewKey: validLocalNewKeyNoProvider,
+				NewKey: validNewKeyConfigKEK,
 			},
 			expectError:  true,
 			errorMessage: errMessageOneOfRequired, // More specific for oneof requirement
@@ -908,7 +923,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 				ActiveKey: &kasregistry.RotateKeyRequest_Id{
 					Id: invalidUUID,
 				},
-				NewKey: validLocalNewKeyNoProvider,
+				NewKey: validNewKeyConfigKEK,
 			},
 			expectError:  true,
 			errorMessage: errMessageUUID,
@@ -919,7 +934,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 				ActiveKey: &kasregistry.RotateKeyRequest_Key{
 					Key: &kasregistry.KasKeyIdentifier{},
 				},
-				NewKey: validLocalNewKeyNoProvider,
+				NewKey: validNewKeyConfigKEK,
 			},
 			expectError:  true,
 			errorMessage: errMessageKeyIdentifier,
@@ -935,7 +950,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 						Kid: validKeyID,
 					},
 				},
-				NewKey: validLocalNewKeyNoProvider,
+				NewKey: validNewKeyConfigKEK,
 			},
 			expectError:  true,
 			errorMessage: errMessageKasID,
@@ -950,7 +965,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 						},
 					},
 				},
-				NewKey: validLocalNewKeyNoProvider,
+				NewKey: validNewKeyConfigKEK,
 			},
 			expectError:  true,
 			errorMessage: errMessageKeyKid,
@@ -966,7 +981,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 						Kid: validKeyID,
 					},
 				},
-				NewKey: validLocalNewKeyNoProvider,
+				NewKey: validNewKeyConfigKEK,
 			},
 			expectError:  true,
 			errorMessage: errMessageKeyName,
@@ -982,7 +997,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 						Kid: validKeyID,
 					},
 				},
-				NewKey: validLocalNewKeyNoProvider,
+				NewKey: validNewKeyConfigKEK,
 			},
 			expectError:  true,
 			errorMessage: errMessageKeyURI,
@@ -998,7 +1013,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 						Kid: validKeyID,
 					},
 				},
-				NewKey: validLocalNewKeyNoProvider,
+				NewKey: validNewKeyConfigKEK,
 			},
 			expectError:  true,
 			errorMessage: errMessageKeyURI,
@@ -1363,10 +1378,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
 					KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 					PublicKeyCtx: validPubCtx,
-					PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey is empty (correct)
-						KeyId: validKeyID,
-					},
-					// ProviderConfigId is empty (correct)
+					// PrivateKeyCtx omitted for KEY_MODE_PUBLIC_KEY_ONLY
 					Metadata: validMetadata,
 				},
 			},

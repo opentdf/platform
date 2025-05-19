@@ -386,6 +386,11 @@ message CreateKeyRequest {
     message: "Provider config id is required if key_mode is KEY_MODE_PROVIDER_KEK or KEY_MODE_REMOTE. It must be empty for KEY_MODE_CONFIG_KEK and KEY_MODE_PUBLIC_KEY_ONLY."
     expression: "((this.key_mode == 1 || this.key_mode == 4) && this.provider_config_id == '') || ((this.key_mode == 2 || this.key_mode == 3) && this.provider_config_id != '')"
   };
+  option (buf.validate.message).cel = {
+    id: "private_key_ctx_for_public_key_only"
+    message: "private_key_ctx must not be set if key_mode is KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "!(this.key_mode == 4 && has(this.private_key_ctx))"
+  };
 
   // Required
   string kas_id = 1 [(buf.validate.field).string.uuid = true]; // The unique identifier of the Key Access Server
@@ -406,7 +411,7 @@ message CreateKeyRequest {
   // Required
   KasPublicKeyCtx public_key_ctx = 5 [(buf.validate.field).required = true]; // Context or additional data specific to the public key, based on the key provider implementation
   // Required
-  KasPrivateKeyCtx private_key_ctx = 6 [(buf.validate.field).required = true]; // Context or additional data specific to the private key, based on the key provider implementation
+  KasPrivateKeyCtx private_key_ctx = 6; // Context or additional data specific to the private key, based on the key provider implementation
 
   // Optional
   string provider_config_id = 7; // Configuration ID for the key provider, if applicable
@@ -519,6 +524,11 @@ message RotateKeyRequest {
     message: "For the new key, provider config id is required if key_mode is KEY_MODE_PROVIDER_KEK or KEY_MODE_REMOTE. It must be empty for KEY_MODE_CONFIG_KEK and KEY_MODE_PUBLIC_KEY_ONLY."
     expression: "((this.new_key.key_mode == 1 || this.new_key.key_mode == 4) && this.new_key.provider_config_id == '') || ((this.new_key.key_mode == 2 || this.new_key.key_mode == 3) && this.new_key.provider_config_id != '')"
   };
+  option (buf.validate.message).cel = {
+    id: "private_key_ctx_for_public_key_only"
+    message: "private_key_ctx must not be set if key_mode is KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "!(this.new_key.key_mode == 4 && has(this.new_key.private_key_ctx))"
+  };
 
   // Required (Current Active Key ID)
   oneof active_key {
@@ -554,7 +564,7 @@ message RotateKeyRequest {
     // Required
     KasPublicKeyCtx public_key_ctx = 4 [(buf.validate.field).required = true];
     // Required
-    KasPrivateKeyCtx private_key_ctx = 5 [(buf.validate.field).required = true];
+    KasPrivateKeyCtx private_key_ctx = 5;
     // Conditionally Required.
     string provider_config_id = 6; // Validation handled by message-level CEL
 

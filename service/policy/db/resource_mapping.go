@@ -346,7 +346,7 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 	}
 
 	if groupID != "" {
-		// get the attribute value and resouce mapping group, ensure the namesapce is the same
+		// get the attribute value and resource mapping group, ensure the namesapce is the same
 		attrVal, err := c.GetAttributeValue(ctx, attributeValueID)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -404,7 +404,7 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 	}
 
 	if groupID != "" {
-		// get the attribute value and resouce mapping group, ensure the namesapce is the same
+		// get the attribute value and resource mapping group, ensure the namesapce is the same
 		attrVal, err := c.GetAttributeValue(ctx, attributeValueID)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)

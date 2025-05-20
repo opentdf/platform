@@ -3,7 +3,6 @@ package authorization
 import (
 	"context"
 	"errors"
-	"log/slog"
 
 	"connectrpc.com/connect"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -40,9 +39,9 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				// default ERS endpoint
 				as.sdk = srp.SDK
 				as.logger = logger
-				if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
-					logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
-				}
+				// if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
+				// 	logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
+				// }
 
 				as.config = authZCfg
 				as.Tracer = srp.Tracer

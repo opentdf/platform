@@ -14,7 +14,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
+type Service struct {
 	sdk    *otdf.SDK
 	config *Config
 	logger *logger.Logger
@@ -24,7 +24,7 @@ type AuthorizationService struct { //nolint:revive // AuthorizationService is a 
 type Config struct{}
 
 func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler] {
-	as := new(AuthorizationService)
+	as := new(Service)
 
 	return &serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[authzV2Connect.AuthorizationServiceHandler]{
@@ -54,28 +54,28 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 	}
 }
 
-// TODO: Not sure what we want to check here?
-func (as AuthorizationService) IsReady(ctx context.Context) error {
-	as.logger.TraceContext(ctx, "checking readiness of authorization service")
-	return nil
-}
+// TODO: uncomment after v1 is deprecated, as cannot have more than one readiness check under a namespace
+// func (as Service) IsReady(ctx context.Context) error {
+// 	as.logger.TraceContext(ctx, "checking readiness of authorization service")
+// 	return nil
+// }
 
 // GetEntitlements for an entity chain
-func (as *AuthorizationService) GetEntitlements(_ context.Context, _ *connect.Request[authzV2.GetEntitlementsRequest]) (*connect.Response[authzV2.GetEntitlementsResponse], error) {
+func (as *Service) GetEntitlements(_ context.Context, _ *connect.Request[authzV2.GetEntitlementsRequest]) (*connect.Response[authzV2.GetEntitlementsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetEntitlements not implemented"))
 }
 
 // GetDecision for an entity chain and an action on a single resource
-func (as *AuthorizationService) GetDecision(_ context.Context, _ *connect.Request[authzV2.GetDecisionRequest]) (*connect.Response[authzV2.GetDecisionResponse], error) {
+func (as *Service) GetDecision(_ context.Context, _ *connect.Request[authzV2.GetDecisionRequest]) (*connect.Response[authzV2.GetDecisionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecision not implemented"))
 }
 
 // GetDecisionMultiResource for an entity chain and action on multiple resources
-func (as *AuthorizationService) GetDecisionMultiResource(_ context.Context, _ *connect.Request[authzV2.GetDecisionMultiResourceRequest]) (*connect.Response[authzV2.GetDecisionMultiResourceResponse], error) {
+func (as *Service) GetDecisionMultiResource(_ context.Context, _ *connect.Request[authzV2.GetDecisionMultiResourceRequest]) (*connect.Response[authzV2.GetDecisionMultiResourceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionMultiResource not implemented"))
 }
 
 // GetDecisionBulk for multiple requests, each comprising a combination of entity chain, action, and one or more resources
-func (as *AuthorizationService) GetDecisionBulk(_ context.Context, _ *connect.Request[authzV2.GetDecisionBulkRequest]) (*connect.Response[authzV2.GetDecisionBulkResponse], error) {
+func (as *Service) GetDecisionBulk(_ context.Context, _ *connect.Request[authzV2.GetDecisionBulkRequest]) (*connect.Response[authzV2.GetDecisionBulkResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionBulk not implemented"))
 }

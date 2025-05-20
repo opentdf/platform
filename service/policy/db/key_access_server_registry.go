@@ -19,8 +19,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var DefaultKasKeyWellKnown = "default_kas_keys"
-
 type rotatedMappingIDs struct {
 	NamespaceIDs      []string
 	AttributeDefIDs   []string
@@ -1004,7 +1002,7 @@ func (c PolicyDBClient) SetDefaultKeyOnWellKnownConfig(ctx context.Context) erro
 		return err
 	}
 
-	return wellknownconfiguration.UpdateConfiguration(DefaultKasKeyWellKnown, genericKeyArr)
+	return wellknownconfiguration.UpdateConfigurationDefaultKey(genericKeyArr)
 }
 
 /*

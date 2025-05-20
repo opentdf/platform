@@ -57,23 +57,23 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 }
 
 // TODO: Not sure what we want to check here?
-func (as AuthorizationService) IsReady(ctx context.Context) error {
+func (as AuthorizationService) IsReady(_ context.Context) error {
 	as.logger.TraceContext(ctx, "checking readiness of authorization service")
 	return nil
 }
 
 // GetEntitlements for an entity chain
-func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connect.Request[authzV2.GetEntitlementsRequest]) (*connect.Response[authzV2.GetEntitlementsResponse], error) {
+func (as *AuthorizationService) GetEntitlements(_ context.Context, _ *connect.Request[authzV2.GetEntitlementsRequest]) (*connect.Response[authzV2.GetEntitlementsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetEntitlements not implemented"))
 }
 
 // GetDecision for an entity chain and an action on a single resource
-func (as *AuthorizationService) GetDecision(ctx context.Context, req *connect.Request[authzV2.GetDecisionRequest]) (*connect.Response[authzV2.GetDecisionResponse], error) {
+func (as *AuthorizationService) GetDecision(_ context.Context, _ *connect.Request[authzV2.GetDecisionRequest]) (*connect.Response[authzV2.GetDecisionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecision not implemented"))
 }
 
 // GetDecisionMultiResource for an entity chain and action on multiple resources
-func (as *AuthorizationService) GetDecisionMultiResource(ctx context.Context, req *connect.Request[authzV2.GetDecisionMultiResourceRequest]) (*connect.Response[authzV2.GetDecisionMultiResourceResponse], error) {
+func (as *AuthorizationService) GetDecisionMultiResource(_ context.Context, _ *connect.Request[authzV2.GetDecisionMultiResourceRequest]) (*connect.Response[authzV2.GetDecisionMultiResourceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionMultiResource not implemented"))
 }
 

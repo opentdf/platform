@@ -404,30 +404,45 @@ func (KeyStatus) EnumDescriptor() ([]byte, []int) {
 	return file_policy_objects_proto_rawDescGZIP(), []int{6}
 }
 
-// Describe how the kas private key is managed.
-// If the key mode is LOCAL, then the kas private key is stored in the database.
-// This could be encrypted or unencrypted.
-// Remote means that the kas private key is stored in a remote key system like KMS or HSM
-// and all operations are done by the remote key system.
+// Describes the management and operational mode of a cryptographic key.
 type KeyMode int32
 
 const (
+	// KEY_MODE_UNSPECIFIED: Default, unspecified key mode. Indicates an uninitialized or error state.
 	KeyMode_KEY_MODE_UNSPECIFIED KeyMode = 0
-	KeyMode_KEY_MODE_LOCAL       KeyMode = 1
-	KeyMode_KEY_MODE_REMOTE      KeyMode = 2
+	// KEY_MODE_CONFIG_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)
+	// sourced from local configuration. Unwrapping and all cryptographic operations are performed locally.
+	KeyMode_KEY_MODE_CONFIG_ROOT_KEY KeyMode = 1
+	// KEY_MODE_PROVIDER_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)
+	// managed by an external provider (e.g., a Hardware Security Module or Cloud KMS).
+	// Key unwrapping is delegated to the external provider; subsequent cryptographic operations
+	// are performed locally using the unwrapped key.
+	KeyMode_KEY_MODE_PROVIDER_ROOT_KEY KeyMode = 2
+	// KEY_MODE_REMOTE: Remote key management where the private key is stored in, and all cryptographic
+	// operations are performed by, a remote Key Management Service (KMS) or HSM.
+	// The private key material never leaves the secure boundary of the remote system.
+	KeyMode_KEY_MODE_REMOTE KeyMode = 3
+	// KEY_MODE_PUBLIC_KEY_ONLY: Public key only mode. Used when only a public key is available or required,
+	// typically for wrapping operations (e.g., encrypting a Data Encryption Key (DEK) for an external KAS).
+	// The corresponding private key is not managed or accessible by this system.
+	KeyMode_KEY_MODE_PUBLIC_KEY_ONLY KeyMode = 4
 )
 
 // Enum value maps for KeyMode.
 var (
 	KeyMode_name = map[int32]string{
 		0: "KEY_MODE_UNSPECIFIED",
-		1: "KEY_MODE_LOCAL",
-		2: "KEY_MODE_REMOTE",
+		1: "KEY_MODE_CONFIG_ROOT_KEY",
+		2: "KEY_MODE_PROVIDER_ROOT_KEY",
+		3: "KEY_MODE_REMOTE",
+		4: "KEY_MODE_PUBLIC_KEY_ONLY",
 	}
 	KeyMode_value = map[string]int32{
-		"KEY_MODE_UNSPECIFIED": 0,
-		"KEY_MODE_LOCAL":       1,
-		"KEY_MODE_REMOTE":      2,
+		"KEY_MODE_UNSPECIFIED":       0,
+		"KEY_MODE_CONFIG_ROOT_KEY":   1,
+		"KEY_MODE_PROVIDER_ROOT_KEY": 2,
+		"KEY_MODE_REMOTE":            3,
+		"KEY_MODE_PUBLIC_KEY_ONLY":   4,
 	}
 )
 

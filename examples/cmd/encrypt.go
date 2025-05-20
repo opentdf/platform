@@ -1,8 +1,10 @@
+//nolint:forbidigo,nestif // Sample code
 package cmd
 
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -54,19 +56,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	plainText := args[0]
 	in := strings.NewReader(plainText)
 
-	opts := []sdk.Option{
-		sdk.WithInsecurePlaintextConn(),
-		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-	}
-
-	if noKIDInKAO {
-		opts = append(opts, sdk.WithNoKIDInKAO())
-	}
-	// double negative always gets me
-	if !noKIDInNano {
-		opts = append(opts, sdk.WithNoKIDInNano())
-	}
-
 	// Create new offline client
 	client, err := newSDK()
 	if err != nil {
@@ -75,7 +64,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	out := os.Stdout
 	if outputName == "-" && collection > 0 {
-		return fmt.Errorf("cannot use stdout for collection")
+		return errors.New("cannot use stdout for collection")
 	}
 
 	var writer []io.Writer
@@ -101,9 +90,9 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	baseKasUrl := platformEndpoint
-	if !strings.HasPrefix(baseKasUrl, "http://") && !strings.HasPrefix(baseKasUrl, "https://") {
-		baseKasUrl = fmt.Sprintf("http://%s", baseKasUrl)
+	baseKasURL := platformEndpoint
+	if !strings.HasPrefix(baseKasURL, "http://") && !strings.HasPrefix(baseKasURL, "https://") {
+		baseKasURL = "http://" + baseKasURL
 	}
 
 	if !nanoFormat {
@@ -113,7 +102,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			opts = append(opts, sdk.WithWrappingKeyAlg(ocrypto.EC256Key))
 			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{
-					URL:       baseKasUrl,
+					URL:       baseKasURL,
 					PublicKey: "",
 				}))
 		}
@@ -139,12 +128,15 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		nanoTDFConfig.SetAttributes(dataAttributes)
+		err = nanoTDFConfig.SetAttributes(dataAttributes)
+		if err != nil {
+			return err
+		}
 		nanoTDFConfig.EnableECDSAPolicyBinding()
 		if collection > 0 {
 			nanoTDFConfig.EnableCollection()
 		}
-		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("%s/kas", baseKasUrl))
+		err = nanoTDFConfig.SetKasURL(baseKasURL + "/kas")
 		if err != nil {
 			return err
 		}
@@ -172,7 +164,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			_, err = client.CreateNanoTDF(writer, in, *nanoTDFConfig)
 			if err != nil {
 				return err
-
 			}
 		}
 
@@ -198,7 +189,7 @@ func keyTypeForKeyType(alg string) (ocrypto.KeyType, error) {
 	}
 }
 
-func cat(cmd *cobra.Command, nTdfFile string) error {
+func cat(_ *cobra.Command, nTdfFile string) error {
 	f, err := os.Open(nTdfFile)
 	if err != nil {
 		return err

@@ -133,7 +133,7 @@ type OpenTDFServer struct {
 	TrustKeyManager trust.KeyManager
 
 	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
-	CryptoProvider security.CryptoProvider
+	CryptoProvider *security.StandardCrypto
 
 	logger *logger.Logger
 }

@@ -38,14 +38,14 @@ const (
 
 const serviceAccountUsernamePrefix = "service-account-"
 
-type KeycloakEntityResolutionService struct {
+type KeycloakEntityResolutionService struct { //nolint:revive // Too late! Already exported
 	entityresolution.UnimplementedEntityResolutionServiceServer
 	idpConfig KeycloakConfig
 	logger    *logger.Logger
 	trace.Tracer
 }
 
-type KeycloakConfig struct {
+type KeycloakConfig struct { //nolint:revive // yeah but what if we want to embed multiple configs?
 	URL            string                 `mapstructure:"url" json:"url"`
 	Realm          string                 `mapstructure:"realm" json:"realm"`
 	ClientID       string                 `mapstructure:"clientid" json:"clientid"`
@@ -103,7 +103,7 @@ type EntityImpliedFrom struct {
 	Username bool `mapstructure:"username,omitempty" json:"username,omitempty"`
 }
 
-type KeyCloakConnector struct {
+type KeyCloakConnector struct { //nolint:revive // Too late! Already exported
 	token  *gocloak.JWT
 	client *gocloak.GoCloak
 }

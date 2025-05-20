@@ -981,17 +981,17 @@ func (c PolicyDBClient) SetWellKnownConfig(ctx context.Context) error {
 		return err
 	}
 
-	defaulKeyArr := make([]any, len(defaultKeys))
+	defaultKeyArr := make([]any, len(defaultKeys))
 	for i, key := range defaultKeys {
-		defaulKeyArr[i] = key
+		defaultKeyArr[i] = key
 	}
 
-	keyMapBytes, err := json.Marshal(defaulKeyArr)
+	keyMapBytes, err := json.Marshal(defaultKeyArr)
 	if err != nil {
 		return err
 	}
 
-	genericKeyArr := make([]any, len(defaulKeyArr))
+	genericKeyArr := make([]any, len(defaultKeyArr))
 	err = json.Unmarshal(keyMapBytes, &genericKeyArr)
 	if err != nil {
 		return err

@@ -150,7 +150,7 @@ func UnmarshalDefaultKasKey(keysJSON []byte, key *kasregistry.DefaultKasKey) err
 			return err
 		}
 
-		alg, err := strconv.Atoi(key.GetPublicKey().GetAlgorithm())
+		alg, err := strconv.ParseInt(key.GetPublicKey().GetAlgorithm(), 10, 32)
 		if err != nil {
 			return err
 		}

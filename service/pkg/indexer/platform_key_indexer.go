@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/trust"
 )
 
 var ErrNoActiveKeyForAlgorithm = errors.New("no active key found for specified algorithm")
@@ -22,7 +23,7 @@ var ErrNoActiveKeyForAlgorithm = errors.New("no active key found for specified a
 // Used for reaching out to platform to get keys
 type PlatformKeyIndexer struct {
 	// KeyIndex is the key index used to manage keys
-	KeyIndex
+	trust.KeyIndex
 	// SDK is the SDK instance used to interact with the platform
 	sdk *sdk.SDK
 	// KasURI
@@ -62,7 +63,7 @@ func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 	}
 }
 
-func (p *PlatformKeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, _ bool) (KeyDetails, error) {
+func (p *PlatformKeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, _ bool) (trust.KeyDetails, error) {
 	alg, err := convertAlgToEnum(algorithm)
 	if err != nil {
 		return nil, err
@@ -97,7 +98,7 @@ func (p *PlatformKeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm s
 	}, nil
 }
 
-func (p *PlatformKeyIndexer) FindKeyByID(ctx context.Context, id KeyIdentifier) (KeyDetails, error) {
+func (p *PlatformKeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
 	req := &kasregistry.GetKeyRequest{
 		Identifier: &kasregistry.GetKeyRequest_Key{
 			Key: &kasregistry.KasKeyIdentifier{
@@ -120,7 +121,7 @@ func (p *PlatformKeyIndexer) FindKeyByID(ctx context.Context, id KeyIdentifier) 
 	}, nil
 }
 
-func (p *PlatformKeyIndexer) ListKeys(ctx context.Context) ([]KeyDetails, error) {
+func (p *PlatformKeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
 	req := &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
 			KasUri: p.kasURI,
@@ -131,7 +132,7 @@ func (p *PlatformKeyIndexer) ListKeys(ctx context.Context) ([]KeyDetails, error)
 		return nil, err
 	}
 
-	keys := make([]KeyDetails, len(resp.GetKasKeys()))
+	keys := make([]trust.KeyDetails, len(resp.GetKasKeys()))
 	for i, key := range resp.GetKasKeys() {
 		keys[i] = &KasKeyAdapter{
 			key: key,
@@ -142,8 +143,8 @@ func (p *PlatformKeyIndexer) ListKeys(ctx context.Context) ([]KeyDetails, error)
 	return keys, nil
 }
 
-func (p *KasKeyAdapter) ID() KeyIdentifier {
-	return KeyIdentifier(p.key.GetKey().GetKeyId())
+func (p *KasKeyAdapter) ID() trust.KeyIdentifier {
+	return trust.KeyIdentifier(p.key.GetKey().GetKeyId())
 }
 
 // Might need to convert this to a standard format
@@ -168,7 +169,7 @@ func pemToPublicKey(publicPEM string) (*rsa.PublicKey, error) {
 	// Decode the PEM data
 	block, _ := pem.Decode([]byte(publicPEM))
 	if block == nil || block.Type != "PUBLIC KEY" {
-		return nil, fmt.Errorf("failed to decode PEM block or incorrect PEM type")
+		return nil, errors.New("failed to decode PEM block or incorrect PEM type")
 	}
 
 	// Parse the public key
@@ -180,7 +181,7 @@ func pemToPublicKey(publicPEM string) (*rsa.PublicKey, error) {
 	// Assert type and return
 	rsaPub, ok := pub.(*rsa.PublicKey)
 	if !ok {
-		return nil, fmt.Errorf("not an RSA public key")
+		return nil, errors.New("not an RSA public key")
 	}
 
 	return rsaPub, nil
@@ -212,7 +213,7 @@ func convertPEMToJWK(_ string) (string, error) {
 	return "", errors.New("convertPEMToJWK function is not implemented")
 }
 
-func (p *KasKeyAdapter) ExportPublicKey(ctx context.Context, format KeyType) (string, error) {
+func (p *KasKeyAdapter) ExportPublicKey(ctx context.Context, format trust.KeyType) (string, error) {
 	publicKeyCtx := p.key.GetKey().GetPublicKeyCtx()
 
 	// Decode the base64-encoded public key
@@ -222,7 +223,7 @@ func (p *KasKeyAdapter) ExportPublicKey(ctx context.Context, format KeyType) (st
 	}
 
 	switch format {
-	case KeyTypeJWK:
+	case trust.KeyTypeJWK:
 		// For JWK format (currently only supported for RSA)
 		if p.key.GetKey().GetKeyAlgorithm() == policy.Algorithm_ALGORITHM_RSA_2048 ||
 			p.key.GetKey().GetKeyAlgorithm() == policy.Algorithm_ALGORITHM_RSA_4096 {
@@ -235,7 +236,7 @@ func (p *KasKeyAdapter) ExportPublicKey(ctx context.Context, format KeyType) (st
 		}
 
 		return jwkKey, nil
-	case KeyTypePKCS8:
+	case trust.KeyTypePKCS8:
 		return string(decodedPubKey), nil
 	default:
 		return "", errors.New("unsupported key type")

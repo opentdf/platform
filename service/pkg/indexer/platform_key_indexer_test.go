@@ -7,12 +7,13 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/suite"
 )
 
 type PlatformKeyIndexTestSuite struct {
 	suite.Suite
-	rsaKey KeyDetails
+	rsaKey trust.KeyDetails
 }
 
 func (s *PlatformKeyIndexTestSuite) SetupTest() {
@@ -47,7 +48,7 @@ func (s *PlatformKeyIndexTestSuite) TestKeyDetails() {
 
 func (s *PlatformKeyIndexTestSuite) TestKeyExportPublicKey_JWKFormat() {
 	// Export JWK format
-	jwkString, err := s.rsaKey.ExportPublicKey(context.Background(), KeyTypeJWK)
+	jwkString, err := s.rsaKey.ExportPublicKey(context.Background(), trust.KeyTypeJWK)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(jwkString)
 
@@ -58,7 +59,7 @@ func (s *PlatformKeyIndexTestSuite) TestKeyExportPublicKey_JWKFormat() {
 
 func (s *PlatformKeyIndexTestSuite) TestKeyExportPublicKey_PKCSFormat() {
 	// Export JWK format
-	pem, err := s.rsaKey.ExportPublicKey(context.Background(), KeyTypePKCS8)
+	pem, err := s.rsaKey.ExportPublicKey(context.Background(), trust.KeyTypePKCS8)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(pem)
 

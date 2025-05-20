@@ -24,6 +24,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/opentdf/platform/service/pkg/oidc"
+
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/logger"
 
@@ -89,15 +91,19 @@ type Authentication struct {
 	// Custom Logger
 	logger *logger.Logger
 
+	// UserInfoCache holds the userinfo cache
+	userInfoCache *oidc.UserInfoCache
+
 	// Used for testing
-	_testCheckTokenFunc func(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error)
+	_testCheckTokenFunc func(ctx context.Context, token jwt.Token, tokenRaw string, dpopInfo receiverInfo, dpopHeader []string) (jwk.Key, error)
 }
 
 // Creates new authN which is used to verify tokens for a set of given issuers
-func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error) (*Authentication, error) {
+func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error, oidcConfig *oidc.DiscoveryConfiguration, userInfoCache *oidc.UserInfoCache) (*Authentication, error) {
 	a := &Authentication{
-		enforceDPoP: cfg.EnforceDPoP,
-		logger:      logger,
+		enforceDPoP:   cfg.EnforceDPoP,
+		logger:        logger,
+		userInfoCache: userInfoCache,
 	}
 
 	// validate the configuration
@@ -106,15 +112,6 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	}
 
 	cache := jwk.NewCache(ctx)
-
-	// Build new cache
-	// Discover OIDC Configuration
-	oidcConfig, err := DiscoverOIDCConfiguration(ctx, cfg.Issuer, a.logger)
-	if err != nil {
-		return nil, err
-	}
-	// Assign configured public_client_id
-	oidcConfig.PublicClientID = cfg.PublicClientID
 
 	// If the issuer is different from the one in the configuration, update the configuration
 	// This could happen if we are hitting an internal endpoint. Example we might point to https://keycloak.opentdf.svc/realms/opentdf
@@ -226,7 +223,14 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 				origin = "http://" + strings.TrimSuffix(origin, ":80")
 			}
 		}
-		accessTok, ctxWithJWK, err := a.checkToken(r.Context(), header, receiverInfo{
+
+		token, tokenRaw, err := a.parseTokenFromHeader(r.Header)
+		if err != nil {
+			slog.WarnContext(r.Context(), "failed to parse token", "error", err)
+			return
+		}
+
+		key, err := a.checkToken(r.Context(), token, tokenRaw, receiverInfo{
 			u: []string{normalizeURL(origin, r.URL)},
 			m: []string{r.Method},
 		}, dp)
@@ -236,15 +240,19 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		md, ok := metadata.FromIncomingContext(ctxWithJWK)
+		_, userInfoRaw, err := a.userInfoCache.Get(r.Context(), token, tokenRaw)
+		if err != nil {
+			slog.WarnContext(r.Context(), "failed to get user info", "error", err)
+			return
+		}
+
+		nextCtx := ctxAuth.ContextWithAuthNInfo(r.Context(), key, token, tokenRaw, userInfoRaw)
+		md, ok := metadata.FromIncomingContext(nextCtx)
 		if !ok {
 			md = metadata.New(nil)
 		}
-		rawAccessToken := ctxAuth.GetRawAccessTokenFromContext(ctxWithJWK, nil)
-		if rawAccessToken != "" {
-			md.Append("access_token", rawAccessToken)
-		}
-		ctxWithJWK = metadata.NewIncomingContext(ctxWithJWK, md)
+		md.Append("access_token", tokenRaw)
+		nextCtx = metadata.NewIncomingContext(nextCtx, md)
 
 		// Check if the token is allowed to access the resource
 		var action string
@@ -258,91 +266,23 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		default:
 			action = ActionUnsafe
 		}
-		if allow, err := a.enforcer.Enforce(r.Context(), AuthToken{Token: accessTok, RawToken: rawAccessToken}, r.URL.Path, action); err != nil {
+		if allow, err := a.enforcer.Enforce(token, userInfoRaw, r.URL.Path, action); err != nil {
 			if err.Error() == "permission denied" {
-				a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", accessTok.Subject()), slog.String("error", err.Error()))
+				a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
 				http.Error(w, "permission denied", http.StatusForbidden)
 				return
 			}
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		} else if !allow {
-			a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", accessTok.Subject()))
+			a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", token.Subject()))
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
 		}
 
-		r = r.WithContext(ctxWithJWK)
+		r = r.WithContext(nextCtx)
 		handler.ServeHTTP(w, r)
 	})
-}
-
-// UnaryServerInterceptor is a grpc interceptor that verifies the token in the metadata
-func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptorFunc {
-	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
-		return connect.UnaryFunc(func(
-			ctx context.Context,
-			req connect.AnyRequest,
-		) (connect.AnyResponse, error) {
-			// if the token is already in the context, skip the interceptor
-			if ctxAuth.GetAccessTokenFromContext(ctx, nil) != nil {
-				return next(ctx, req)
-			}
-
-			ri := receiverInfo{
-				u: []string{req.Spec().Procedure},
-				m: []string{http.MethodPost},
-			}
-
-			ri.u = append(ri.u, a.lookupGatewayPaths(ctx, req.Spec().Procedure, req.Header())...)
-
-			// Interceptor Logic
-			// Allow health checks and other public routes to pass through
-			if slices.ContainsFunc(a.publicRoutes, a.isPublicRoute(req.Spec().Procedure)) { //nolint:contextcheck // There is no way to pass a context here
-				return next(ctx, req)
-			}
-
-			header := req.Header()["Authorization"]
-			if len(header) < 1 {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
-			}
-
-			// parse the rpc method
-			p := strings.Split(req.Spec().Procedure, "/")
-			resource := p[1] + "/" + p[2]
-			action := getAction(p[2])
-
-			token, newCtx, err := a.checkToken(
-				ctx,
-				header,
-				ri,
-				req.Header()["Dpop"],
-			)
-			if err != nil {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-			}
-
-			// Check if the token is allowed to access the resource
-			// Pass the raw access token to Enforcer for OIDC UserInfo enrichment
-			rawToken := ""
-			if len(header) > 0 {
-				rawToken = strings.TrimPrefix(strings.TrimPrefix(header[0], "Bearer "), "DPoP ")
-			}
-			if allowed, err := a.enforcer.Enforce(ctx, AuthToken{Token: token, RawToken: rawToken}, resource, action); err != nil {
-				if err.Error() == "permission denied" {
-					a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
-					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
-				}
-				return nil, err
-			} else if !allowed {
-				a.logger.Warn("permission denied", slog.String("azp", token.Subject()))
-				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
-			}
-
-			return next(newCtx, req)
-		})
-	}
-	return connect.UnaryInterceptorFunc(interceptor)
 }
 
 // IPCReauthInterceptor is a grpc interceptor that verifies the token in the metadata
@@ -378,16 +318,14 @@ func getAction(method string) string {
 	return ActionOther
 }
 
-// checkToken is a helper function to verify the token.
-func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dpopInfo receiverInfo, dpopHeader []string) (jwt.Token, context.Context, error) {
-	// Use the test function if it is set
-	if a._testCheckTokenFunc != nil {
-		return a._testCheckTokenFunc(ctx, authHeader, dpopInfo, dpopHeader)
+func (a Authentication) parseTokenFromHeader(header http.Header) (jwt.Token, string, error) {
+	authHeader := header["Authorization"]
+	if len(authHeader) < 1 {
+		return nil, "", errors.New("missing authorization header")
 	}
 
-	var tokenRaw string
-
 	// If we don't get a DPoP/Bearer token type, we can't proceed
+	var tokenRaw string
 	switch {
 	case strings.HasPrefix(authHeader[0], "DPoP "):
 		tokenRaw = strings.TrimPrefix(authHeader[0], "DPoP ")
@@ -395,11 +333,11 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
 	default:
 		a.logger.Warn("failed to validate authentication header: not of type bearer or dpop", slog.String("header", authHeader[0]))
-		return nil, nil, errors.New("not of type bearer or dpop")
+		return nil, "", errors.New("not of type bearer or dpop")
 	}
 
 	// Now we verify the token signature
-	accessToken, err := jwt.Parse([]byte(tokenRaw),
+	token, err := jwt.Parse([]byte(tokenRaw),
 		jwt.WithKeySet(a.cachedKeySet),
 		jwt.WithValidate(true),
 		jwt.WithIssuer(a.oidcConfiguration.Issuer),
@@ -408,34 +346,43 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 	)
 	if err != nil {
 		a.logger.Warn("failed to validate auth token", slog.String("err", err.Error()))
-		return nil, nil, err
+		return nil, "", err
+	}
+
+	return token, tokenRaw, nil
+}
+
+// checkToken is a helper function to verify the token.
+func (a *Authentication) checkToken(ctx context.Context, token jwt.Token, tokenRaw string, dpopInfo receiverInfo, dpopHeader []string) (jwk.Key, error) {
+	// Use the test function if it is set
+	if a._testCheckTokenFunc != nil {
+		return a._testCheckTokenFunc(ctx, token, tokenRaw, dpopInfo, dpopHeader)
 	}
 
 	// Get actor ID (sub) from unverified token for audit and add to context
 	// Only set the actor ID if it is not already defined
 	existingActorID := ctx.Value(sdkAudit.ActorIDContextKey)
 	if existingActorID == nil {
-		actorID := accessToken.Subject()
+		actorID := token.Subject()
 		ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, actorID)
 	}
 
-	_, tokenHasCNF := accessToken.Get("cnf")
-	if !tokenHasCNF && !a.enforceDPoP {
-		// this condition is not quite tight because it's possible that the `cnf` claim may
-		// come from token introspection
-		ctx = ctxAuth.ContextWithAuthNInfo(ctx, nil, accessToken, tokenRaw)
-		return accessToken, ctx, nil
+	// this condition is not quite tight because it's possible that the `cnf` claim may
+	// come from token introspection
+	if _, tokenHasCNF := token.Get("cnf"); !tokenHasCNF && !a.enforceDPoP {
+		return nil, nil
 	}
-	key, err := a.validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
+
+	// Validate the DPoP token
+	key, err := a.validateDPoP(token, tokenRaw, dpopInfo, dpopHeader)
 	if err != nil {
 		a.logger.Warn("failed to validate dpop", slog.String("token", tokenRaw), slog.Any("err", err))
-		return nil, nil, err
+		return nil, err
 	}
-	ctx = ctxAuth.ContextWithAuthNInfo(ctx, key, accessToken, tokenRaw)
-	return accessToken, ctx, nil
+	return key, nil
 }
 
-func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string, dpopInfo receiverInfo, headers []string) (jwk.Key, error) {
+func (a Authentication) validateDPoP(accessToken jwt.Token, accessTokenRaw string, dpopInfo receiverInfo, headers []string) (jwk.Key, error) {
 	if len(headers) != 1 {
 		return nil, fmt.Errorf("got %d dpop headers, should have 1", len(headers))
 	}
@@ -550,7 +497,7 @@ func (a Authentication) validateDPoP(accessToken jwt.Token, acessTokenRaw string
 	}
 
 	h := sha256.New()
-	h.Write([]byte(acessTokenRaw))
+	h.Write([]byte(accessTokenRaw))
 	if ath != base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(h.Sum(nil)) {
 		return nil, errors.New("incorrect `ath` claim in DPoP JWT")
 	}
@@ -631,17 +578,16 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 	for _, route := range a.ipcReauthRoutes {
 		reqPath := path
 		if reqPath == route {
-			// Extract the token from the request
-			authHeader := header["Authorization"]
-			if len(authHeader) < 1 {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing authorization header"))
+			token, tokenRaw, err := a.parseTokenFromHeader(header)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
 			u := []string{path}
 			u = append(u, a.lookupGatewayPaths(ctx, path, header)...)
 
 			// Validate the token and create a JWT token
-			_, nextCtx, err := a.checkToken(ctx, authHeader, receiverInfo{
+			key, err := a.checkToken(ctx, token, tokenRaw, receiverInfo{
 				u: u,
 				m: []string{http.MethodPost},
 			}, header["Dpop"])
@@ -649,8 +595,13 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
+			_, userInfoRaw, err := a.userInfoCache.Get(ctx, token, tokenRaw)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+			}
+
 			// Return the next context with the token
-			return nextCtx, nil
+			return ctxAuth.ContextWithAuthNInfo(ctx, key, token, tokenRaw, userInfoRaw), nil
 		}
 	}
 	return ctx, nil

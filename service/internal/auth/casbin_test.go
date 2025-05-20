@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -81,7 +80,7 @@ func (s *AuthnCasbinSuite) Test_NewEnforcerWithCustomModel() {
 	})
 	s.Require().NoError(err)
 
-	allowed, err := enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "res", "act")
+	allowed, err := enforcer.Enforce(tok, nil, "res", "act")
 	s.Require().NoError(err)
 	s.True(allowed)
 }
@@ -245,7 +244,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: policyCfg}, logger.CreateTestLogger())
 		s.Require().NoError(err, name)
 		tok := s.newTokWithDefaultClaim(test.roles[0], test.roles[1], "", "")
-		allowed, err := enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, test.resource, test.action)
+		allowed, err := enforcer.Enforce(tok, nil, test.resource, test.action)
 		if !test.allowed {
 			s.Require().Error(err, name)
 		} else {
@@ -262,7 +261,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		}, logger.CreateTestLogger())
 		s.Require().NoError(err, name)
 		_, tok = s.newTokenWithCustomClaim(test.roles[0], test.roles[1])
-		allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, test.resource, test.action)
+		allowed, err = enforcer.Enforce(tok, nil, test.resource, test.action)
 		if !test.allowed {
 			s.Require().Error(err, name)
 		} else {
@@ -283,7 +282,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		}, logger.CreateTestLogger())
 		s.Require().NoError(err, name)
 		_, tok = s.newTokenWithCustomRoleMap(test.roles[0], test.roles[1])
-		allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, test.resource, test.action)
+		allowed, err = enforcer.Enforce(tok, nil, test.resource, test.action)
 		if !test.allowed {
 			s.Require().Error(err, name)
 		} else {
@@ -308,7 +307,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		}, logger.CreateTestLogger())
 		s.Require().NoError(err, name)
 		_, tok = s.newTokenWithCilentID()
-		allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, test.resource, test.action)
+		allowed, err = enforcer.Enforce(tok, nil, test.resource, test.action)
 		if !test.allowed {
 			s.Require().Error(err, name)
 		} else {
@@ -333,19 +332,19 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies() {
 	s.Require().NoError(err)
 	// other roles denied new policy: admin
 	tok := s.newTokWithDefaultClaim(true, false, "", "")
-	allowed, err := enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.service.DoSomething", "read")
+	allowed, err := enforcer.Enforce(tok, nil, "new.service.DoSomething", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.service.DoSomething", "write")
+	allowed, err = enforcer.Enforce(tok, nil, "new.service.DoSomething", "write")
 	s.Require().NoError(err)
 	s.True(allowed)
 
 	// other roles denied new policy: standard
 	tok = s.newTokWithDefaultClaim(false, true, "", "")
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.service.DoSomething", "read")
+	allowed, err = enforcer.Enforce(tok, nil, "new.service.DoSomething", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.service.DoSomething", "write")
+	allowed, err = enforcer.Enforce(tok, nil, "new.service.DoSomething", "write")
 	s.Require().Error(err)
 	s.False(allowed)
 }
@@ -358,7 +357,7 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 	enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: policyCfg}, logger.CreateTestLogger())
 	s.Require().NoError(err)
 	tok := s.newTokWithDefaultClaim(true, false, "", "")
-	allowed, err := enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "", "")
+	allowed, err := enforcer.Enforce(tok, nil, "", "")
 	s.Require().NoError(err)
 	s.True(allowed)
 
@@ -373,7 +372,7 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 	}, logger.CreateTestLogger())
 	s.Require().NoError(err)
 	tok = s.newTokWithDefaultClaim(true, false, "", "")
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "policy.attributes.DoSomething", "read")
+	allowed, err = enforcer.Enforce(tok, nil, "policy.attributes.DoSomething", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
 
@@ -388,7 +387,7 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 	}, logger.CreateTestLogger())
 	s.Require().NoError(err)
 	tok = s.newTokWithDefaultClaim(true, false, "", "")
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "policy.attributes.DoSomething", "read")
+	allowed, err = enforcer.Enforce(tok, nil, "policy.attributes.DoSomething", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
 
@@ -401,7 +400,7 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 	}, logger.CreateTestLogger())
 	s.Require().NoError(err)
 	tok = s.newTokWithDefaultClaim(true, false, "", "")
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "policy.attributes.DoSomething", "read")
+	allowed, err = enforcer.Enforce(tok, nil, "policy.attributes.DoSomething", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
 
@@ -416,7 +415,7 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 	}, logger.CreateTestLogger())
 	s.Require().NoError(err)
 	tok = s.newTokWithDefaultClaim(true, false, "", "")
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "policy.attributes.DoSomething", "read")
+	allowed, err = enforcer.Enforce(tok, nil, "policy.attributes.DoSomething", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
 }
@@ -439,46 +438,46 @@ func (s *AuthnCasbinSuite) Test_SetBuiltinPolicy() {
 
 	// unauthorized role
 	tok := s.newTokWithDefaultClaim(false, false, "", "")
-	allowed, err := enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.hello.World", "read")
+	allowed, err := enforcer.Enforce(tok, nil, "new.hello.World", "read")
 	s.Require().Error(err)
 	s.False(allowed)
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.hello.World", "write")
+	allowed, err = enforcer.Enforce(tok, nil, "new.hello.World", "write")
 	s.Require().Error(err)
 	s.False(allowed)
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.service.DoSomething", "read")
+	allowed, err = enforcer.Enforce(tok, nil, "new.service.DoSomething", "read")
 	s.Require().Error(err)
 	s.False(allowed)
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.service.DoSomething", "write")
+	allowed, err = enforcer.Enforce(tok, nil, "new.service.DoSomething", "write")
 	s.Require().Error(err)
 	s.False(allowed)
 
 	// other roles denied new policy: admin
 	tok = s.newTokWithDefaultClaim(true, false, "", "")
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.hello.World", "read")
+	allowed, err = enforcer.Enforce(tok, nil, "new.hello.World", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.hello.World", "write")
+	allowed, err = enforcer.Enforce(tok, nil, "new.hello.World", "write")
 	s.Require().NoError(err)
 	s.True(allowed)
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.service.DoSomething", "read")
+	allowed, err = enforcer.Enforce(tok, nil, "new.service.DoSomething", "read")
 	s.Require().Error(err)
 	s.False(allowed)
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.service.DoSomething", "write")
+	allowed, err = enforcer.Enforce(tok, nil, "new.service.DoSomething", "write")
 	s.Require().Error(err)
 	s.False(allowed)
 
 	// other roles denied new policy: standard
 	tok = s.newTokWithDefaultClaim(false, true, "", "")
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.hello.World", "read")
+	allowed, err = enforcer.Enforce(tok, nil, "new.hello.World", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.hello.World", "write")
+	allowed, err = enforcer.Enforce(tok, nil, "new.hello.World", "write")
 	s.Require().Error(err)
 	s.False(allowed)
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.service.DoSomething", "read")
+	allowed, err = enforcer.Enforce(tok, nil, "new.service.DoSomething", "read")
 	s.Require().Error(err)
 	s.False(allowed)
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.service.DoSomething", "write")
+	allowed, err = enforcer.Enforce(tok, nil, "new.service.DoSomething", "write")
 	s.Require().Error(err)
 	s.False(allowed)
 }
@@ -496,11 +495,11 @@ func (s *AuthnCasbinSuite) Test_Username_Policy() {
 	s.Require().NoError(err)
 
 	tok := s.newTokWithDefaultClaim(true, false, "preferred_username", "")
-	allowed, err := enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "new.service.DoSomething", "read")
+	allowed, err := enforcer.Enforce(tok, nil, "new.service.DoSomething", "read")
 	s.Require().NoError(err)
 	s.True(allowed)
 
-	allowed, err = enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, "policy.attributes.List", "read")
+	allowed, err = enforcer.Enforce(tok, nil, "policy.attributes.List", "read")
 	s.Require().Error(err)
 	s.False(allowed)
 }
@@ -543,7 +542,7 @@ func (s *AuthnCasbinSuite) Test_Override_Of_Username_Claim() {
 		s.Require().NoError(err, tc.name)
 
 		tok := s.newTokWithDefaultClaim(true, false, tc.usernameClaim, "")
-		allowed, err := enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, tc.resource, tc.action)
+		allowed, err := enforcer.Enforce(tok, nil, tc.resource, tc.action)
 		if tc.shouldAllow {
 			s.Require().NoError(err, tc.name)
 			s.True(allowed, tc.name)
@@ -595,7 +594,7 @@ func (s *AuthnCasbinSuite) Test_Override_Of_Groups_Claim() {
 		s.Require().NoError(err, tc.name)
 
 		tok := s.newTokWithDefaultClaim(tc.admin, tc.standard, "", "groups")
-		allowed, err := enforcer.Enforce(context.Background(), AuthToken{Token: tok, RawToken: ""}, tc.resource, tc.action)
+		allowed, err := enforcer.Enforce(tok, nil, tc.resource, tc.action)
 		if tc.shouldAllow {
 			s.Require().NoError(err, tc.name)
 			s.True(allowed, tc.name)

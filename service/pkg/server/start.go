@@ -18,11 +18,11 @@ import (
 	sdkauth "github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/auth/oauth"
 	"github.com/opentdf/platform/sdk/httputil"
-	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/oidc"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
@@ -47,8 +47,13 @@ func Start(f ...StartOptions) error {
 		startConfig = fn(startConfig)
 	}
 
-	ctx := context.Background()
+	// Create context if not provided
+	ctx := startConfig.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
+	// Load configuration
 	slog.Debug("loading configuration from environment")
 	cfg, err := config.LoadConfig(ctx, startConfig.ConfigKey, startConfig.ConfigFile)
 	if err != nil {
@@ -72,6 +77,7 @@ func Start(f ...StartOptions) error {
 		fmt.Print(devModeMessage) //nolint:forbidigo // This ascii art is only displayed in dev mode
 	}
 
+	// Configure logger
 	slog.Debug("configuring logger")
 	logger, err := logger.NewLogger(cfg.Logger)
 	if err != nil {
@@ -91,7 +97,9 @@ func Start(f ...StartOptions) error {
 
 	logger.Debug("config loaded", slog.Any("config", cfg.LogValue()))
 
+	// Configure cache manager
 	logger.Info("creating cache manager")
+	// TODO: make these config vars
 	var cacheFreqTrack int64 = 1e7   // number of keys to track frequency of (10M).
 	var cacheMaxCost int64 = 1 << 30 // maximum cost of cache (1GB).
 	var cacheKeysPerGet int64 = 64   // number of keys per Get buffer.
@@ -99,6 +107,15 @@ func Start(f ...StartOptions) error {
 	if err != nil {
 		return fmt.Errorf("could not create cache manager: %w", err)
 	}
+
+	// Connect with IdP
+	var oidcConfig *oidc.DiscoveryConfiguration
+	// Get OIDC discovery
+	oidcConfig, err = oidc.Discover(ctx, cfg.Server.Auth.Issuer, logger)
+	if err != nil {
+		return fmt.Errorf("failed to discover oidc configuration: %w", err)
+	}
+	cfg.Server.OIDCDiscovery = oidcConfig
 
 	logger.Info("starting opentdf services")
 
@@ -127,7 +144,7 @@ func Start(f ...StartOptions) error {
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	logger.Debug("initializing opentdf server")
 	cfg.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
-	otdf, err := server.NewOpenTDFServer(cfg.Server, logger)
+	otdf, err := server.NewOpenTDFServer(ctx, cfg.Server, logger, cacheManager)
 	if err != nil {
 		logger.Error("issue creating opentdf server", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating opentdf server: %w", err)
@@ -198,7 +215,6 @@ func Start(f ...StartOptions) error {
 	var (
 		sdkOptions []sdk.Option
 		client     *sdk.SDK
-		oidcconfig *auth.OIDCConfiguration
 	)
 
 	// If the mode is not all, does not include both core and entityresolution, or is not entityresolution on its own, we need to have a valid SDK config
@@ -216,13 +232,8 @@ func Start(f ...StartOptions) error {
 	if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
 		sdkOptions = append(sdkOptions, sdk.WithClientCredentials(cfg.SDKConfig.ClientID, cfg.SDKConfig.ClientSecret, nil))
 
-		oidcconfig, err = auth.DiscoverOIDCConfiguration(ctx, cfg.Server.Auth.Issuer, logger)
-		if err != nil {
-			return fmt.Errorf("could not retrieve oidc configuration: %w", err)
-		}
-
 		// provide token endpoint -- sdk cannot discover it since well-known service isnt running yet
-		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcconfig.TokenEndpoint))
+		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcConfig.TokenEndpoint))
 	}
 
 	// If the mode is all, use IPC for the SDK client
@@ -256,9 +267,9 @@ func Start(f ...StartOptions) error {
 			}
 
 			if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
-				if oidcconfig.Issuer == "" {
+				if oidcConfig.Issuer == "" {
 					// this should not occur, it will have been set above if this block is entered
-					return errors.New("cannot add token interceptor: oidcconfig is empty")
+					return errors.New("cannot add token interceptor: oidcConfig is empty")
 				}
 
 				rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
@@ -267,7 +278,7 @@ func Start(f ...StartOptions) error {
 				}
 				ts, err := sdk.NewIDPAccessTokenSource(
 					oauth.ClientCredentials{ClientID: cfg.SDKConfig.ClientID, ClientAuth: cfg.SDKConfig.ClientSecret},
-					oidcconfig.TokenEndpoint,
+					oidcConfig.TokenEndpoint,
 					nil,
 					&rsaKeyPair,
 				)

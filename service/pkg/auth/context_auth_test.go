@@ -18,22 +18,22 @@ func TestContextWithAuthNInfo(t *testing.T) {
 
 	// Initialize context
 	ctx := t.Context()
-	newCtx := ContextWithAuthNInfo(ctx, mockJWK, mockJWT, rawToken)
+	newCtx := ContextWithAuthNInfo(ctx, mockJWK, mockJWT, rawToken, nil)
 
 	// Assert that the context contains the correct values
 	value := newCtx.Value(authnContextKey)
 	testAuthContext, ok := value.(*authContext)
 	assert.True(t, ok)
 	assert.NotNil(t, testAuthContext)
-	assert.Equal(t, mockJWK, testAuthContext.key, "JWK should match")
-	assert.Equal(t, mockJWT, testAuthContext.accessToken, "JWT should match")
-	assert.Equal(t, rawToken, testAuthContext.rawToken, "Raw token should match")
+	assert.Equal(t, mockJWK, testAuthContext.Key, "JWK should match")
+	assert.Equal(t, mockJWT, testAuthContext.Token, "JWT should match")
+	assert.Equal(t, rawToken, testAuthContext.TokenRaw, "Raw token should match")
 }
 
 func TestGetJWKFromContext(t *testing.T) {
 	// Create mock context with JWK
 	mockJWK, _ := jwk.FromRaw([]byte("mockKey"))
-	ctx := ContextWithAuthNInfo(t.Context(), mockJWK, nil, "")
+	ctx := ContextWithAuthNInfo(t.Context(), mockJWK, nil, "", nil)
 
 	// Retrieve the JWK and assert
 	retrievedJWK := GetJWKFromContext(ctx, logger.CreateTestLogger())
@@ -44,7 +44,7 @@ func TestGetJWKFromContext(t *testing.T) {
 func TestGetAccessTokenFromContext(t *testing.T) {
 	// Create mock context with JWT
 	mockJWT, _ := jwt.NewBuilder().Build()
-	ctx := ContextWithAuthNInfo(t.Context(), nil, mockJWT, "")
+	ctx := ContextWithAuthNInfo(t.Context(), nil, mockJWT, "", nil)
 
 	// Retrieve the JWT and assert
 	retrievedJWT := GetAccessTokenFromContext(ctx, logger.CreateTestLogger())
@@ -55,7 +55,7 @@ func TestGetAccessTokenFromContext(t *testing.T) {
 func TestGetRawAccessTokenFromContext(t *testing.T) {
 	// Create mock context with raw token
 	rawToken := "mockRawToken"
-	ctx := ContextWithAuthNInfo(t.Context(), nil, nil, rawToken)
+	ctx := ContextWithAuthNInfo(t.Context(), nil, nil, rawToken, nil)
 
 	// Retrieve the raw token and assert
 	retrievedRawToken := GetRawAccessTokenFromContext(ctx, logger.CreateTestLogger())

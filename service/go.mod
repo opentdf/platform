@@ -40,6 +40,7 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.34.0
+	github.com/zitadel/oidc/v3 v3.38.1
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.35.0
@@ -60,9 +61,13 @@ require (
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/containerd/continuity v0.4.4 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/golang/glog v1.2.4 // indirect
+	github.com/gorilla/securecookie v1.1.2 // indirect
+	github.com/muhlemmer/gu v0.3.1 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
-	github.com/zitadel/oidc/v3 v3.38.1 // indirect
+	github.com/zitadel/logging v0.6.2 // indirect
+	github.com/zitadel/schema v1.3.1 // indirect
 	go.uber.org/mock v0.4.0 // indirect
 )
 

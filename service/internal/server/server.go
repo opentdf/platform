@@ -16,7 +16,6 @@ import (
 
 	"connectrpc.com/connect"
 	"connectrpc.com/grpcreflect"
-	"connectrpc.com/validate"
 	"github.com/go-chi/cors"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
@@ -24,9 +23,9 @@ import (
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
-	"github.com/opentdf/platform/service/pkg/oidcuserinfo"
+	"github.com/opentdf/platform/service/pkg/cache"
+	"github.com/opentdf/platform/service/pkg/oidc"
 	"github.com/opentdf/platform/service/tracing"
 	"github.com/opentdf/platform/service/trust"
 	"golang.org/x/net/http2"
@@ -51,7 +50,13 @@ func (e Error) Error() string {
 // Configurations for the server
 type Config struct {
 	Auth auth.Config `mapstructure:"auth" json:"auth"`
-	GRPC GRPCConfig  `mapstructure:"grpc" json:"grpc"`
+
+	Cache CacheConfig `mapstructure:"cache" json:"cache"`
+
+	// OIDC Discovery configuration
+	OIDCDiscovery *oidc.DiscoveryConfiguration
+
+	GRPC GRPCConfig `mapstructure:"grpc" json:"grpc"`
 	// To Deprecate: Use the WithKey[X]Provider StartOptions to register trust providers.
 	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider" json:"cryptoProvider"`
 	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
@@ -83,6 +88,10 @@ func (c Config) LogValue() slog.Value {
 	}
 
 	return slog.GroupValue(group...)
+}
+
+type CacheConfig struct {
+	UserInfoCacheTTL time.Duration `mapstructure:"userInfoCacheTTL" json:"userInfoCacheTTL" default:"5m"`
 }
 
 // GRPC Server specific configurations
@@ -129,6 +138,9 @@ type OpenTDFServer struct {
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
+	CacheManager        *cache.Manager
+
+	UserInfoCache *oidc.UserInfoCache
 
 	TrustKeyIndex   trust.KeyIndex
 	TrustKeyManager trust.KeyManager
@@ -152,41 +164,59 @@ type inProcessServer struct {
 	*ConnectRPC
 }
 
-func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, error) {
+// UserInfoCacheCost is the cost of the user info cache
+const userInfoCacheCost = 10
+
+func NewOpenTDFServer(ctx context.Context, config Config, logger *logger.Logger, cacheManager *cache.Manager) (*OpenTDFServer, error) {
 	var (
-		authN *auth.Authentication
-		err   error
+		err error
+		svr *OpenTDFServer
 	)
 
-	// Add authN interceptor
-	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
-	if config.Auth.Enabled {
-		authN, err = auth.NewAuthenticator(
-			context.Background(),
-			config.Auth,
-			logger,
-			config.WellKnownConfigRegister,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
-		}
-		logger.Debug("authentication interceptor enabled")
-	} else {
-		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
+	svr.logger = logger
+	svr.CacheManager = cacheManager
+	userInfoCache := cacheManager.NewCache("core:userInfoCache", cache.Options{
+		Expiration: config.Cache.UserInfoCacheTTL,
+		Cost:       userInfoCacheCost,
+	})
+	svr.UserInfoCache, err = oidc.NewUserInfoCache(config.OIDCDiscovery, userInfoCache)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user info cache: %w", err)
 	}
 
-	connectRPCIpc, err := newConnectRPCIPC(config, authN, logger)
+	// Add authN interceptor
+	svr.AuthN, err = auth.NewAuthenticator(
+		ctx,
+		config.Auth,
+		logger,
+		config.WellKnownConfigRegister,
+		config.OIDCDiscovery,
+		svr.UserInfoCache,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
+	}
+
+	// Setup IPC
+	ipc, err := newConnectRPCIPC(config, svr.AuthN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc ipc server: %w", err)
 	}
+	svr.ConnectRPCInProcess = &inProcessServer{
+		srv:                memhttp.New(ipc.Mux),
+		maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
+		maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
+		ConnectRPC:         ipc,
+	}
 
-	connectRPC, err := newConnectRPC(config, authN, logger)
+	// Setup Connect RPC
+	svr.ConnectRPC, err = newConnectRPC(config, svr.AuthN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc server: %w", err)
 	}
 
 	// GRPC Gateway Mux
-	grpcGatewayMux := runtime.NewServeMux(
+	svr.GRPCGatewayMux = runtime.NewServeMux(
 		runtime.WithIncomingHeaderMatcher(
 			func(key string) (string, bool) {
 				if k, ok := runtime.DefaultHeaderMatcher(key); ok {
@@ -212,35 +242,21 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	)
 
 	// Create http server
-	httpServer, err := newHTTPServer(config, connectRPC.Mux, grpcGatewayMux, authN, logger)
+	svr.HTTPServer, err = newHTTPServer(config, svr.ConnectRPC.Mux, svr.GRPCGatewayMux, svr.AuthN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
 
-	o := OpenTDFServer{
-		AuthN:          authN,
-		GRPCGatewayMux: grpcGatewayMux,
-		HTTPServer:     httpServer,
-		ConnectRPC:     connectRPC,
-		ConnectRPCInProcess: &inProcessServer{
-			srv:                memhttp.New(connectRPCIpc.Mux),
-			maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
-			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
-			ConnectRPC:         connectRPCIpc,
-		},
-		logger: logger,
-	}
-
+	// Create crypto provider
 	if !config.CryptoProvider.IsEmpty() {
-		// Create crypto provider
-		logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
-		o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
+		svr.logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
+		svr.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
 		if err != nil {
 			return nil, fmt.Errorf("security.NewCryptoProvider: %w", err)
 		}
 	}
 
-	return &o, nil
+	return svr, nil
 }
 
 // Custom response writer to add deprecation header
@@ -383,52 +399,6 @@ func pprofHandler(h http.Handler) http.Handler {
 	})
 }
 
-func newConnectRPCIPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
-	interceptors := make([]connect.HandlerOption, 0)
-
-	if c.Auth.Enabled {
-		interceptors = append(interceptors, connect.WithInterceptors(a.IPCUnaryServerInterceptor()))
-	} else {
-		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
-	}
-
-	// Add protovalidate interceptor
-	vaidationInterceptor, err := validate.NewInterceptor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
-	}
-
-	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor()))
-
-	return &ConnectRPC{
-		Interceptors: interceptors,
-		Mux:          http.NewServeMux(),
-	}, nil
-}
-
-func newConnectRPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
-	interceptors := make([]connect.HandlerOption, 0)
-
-	if c.Auth.Enabled {
-		interceptors = append(interceptors, connect.WithInterceptors(a.ConnectUnaryServerInterceptor()))
-	} else {
-		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
-	}
-
-	// Add protovalidate interceptor
-	vaidationInterceptor, err := validate.NewInterceptor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
-	}
-
-	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor()))
-
-	return &ConnectRPC{
-		Interceptors: interceptors,
-		Mux:          http.NewServeMux(),
-	}, nil
-}
-
 func (s OpenTDFServer) Start() error {
 	// Add reflection api to connect-rpc
 	reflector := grpcreflect.NewStaticReflector(
@@ -547,42 +517,3 @@ func loadTLSConfig(config TLSConfig) (*tls.Config, error) {
 
 // UserInfoContextKey is the context key for storing user info
 var UserInfoContextKey = &struct{}{}
-
-// UserInfoUnaryInterceptor returns a ConnectRPC interceptor that fetches userinfo (from cache or OIDC)
-// and injects it into the context for downstream handlers.
-func UserInfoUnaryInterceptor(userInfoCache *oidcuserinfo.UserInfo) connect.UnaryInterceptorFunc {
-	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
-		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			// Extract token from the request headers (Authorization: Bearer ...)
-			authHeader := req.Header().Get("Authorization")
-			if !strings.HasPrefix(authHeader, "Bearer ") {
-				return next(ctx, req) // No token, skip userinfo
-			}
-			token := strings.TrimPrefix(authHeader, "Bearer ")
-
-			// You may need to extract issuer/sub from the token or context
-			// For demo, assume issuer/sub are available from context or token parsing
-			issuer, sub := extractIssuerAndSub(ctx, token)
-			if issuer == "" || sub == "" {
-				return next(ctx, req) // Can't get user identity, skip
-			}
-
-			// Try to get userinfo from cache (or fetch if not present)
-			userinfo, _ := userInfoCache.Get(ctx, issuer, sub)
-			if userinfo == nil {
-				// Optionally, fetch and cache userinfo here if not present
-				// userinfo, _ = userInfoCache.FetchUserInfo(ctx, token, issuer, sub, ...)
-			}
-
-			// Inject userinfo into context for downstream handlers
-			ctx = context.WithValue(ctx, UserInfoContextKey, userinfo)
-			return next(ctx, req)
-		})
-	})
-}
-
-// extractIssuerAndSub is a placeholder for extracting issuer and sub from the token/context
-func extractIssuerAndSub(ctx context.Context, token string) (string, string) {
-	// TODO: Implement real extraction logic (e.g., parse JWT, use context, etc.)
-	return "", ""
-}

@@ -120,7 +120,7 @@ type startServicesParams struct {
 	client       *sdk.SDK
 	logger       *logging.Logger
 	reg          serviceregistry.Registry
-	cacheManager *cache.CacheManager
+	cacheManager *cache.Manager
 }
 
 // startServices iterates through the registered namespaces and starts the services
@@ -203,6 +203,7 @@ func startServices(ctx context.Context, params startServicesParams) error {
 				WellKnownConfig:        wellknown.RegisterConfiguration,
 				RegisterReadinessCheck: health.RegisterReadinessCheck,
 				OTDF:                   otdf, // TODO: REMOVE THIS
+				OIDCDiscoveryConfig:    *cfg.Server.OIDCDiscovery,
 				Tracer:                 tracer,
 				Cache:                  cacheClient,
 			})

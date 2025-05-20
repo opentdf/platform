@@ -36,6 +36,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -179,6 +180,7 @@ func (s *AuthSuite) SetupTest() {
 			Logger: slog.New(slog.Default().Handler()),
 		},
 		func(_ string, _ any) error { return nil },
+		&oidc.DiscoveryConfiguration{},
 	)
 
 	s.Require().NoError(err)
@@ -667,6 +669,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 		Logger: slog.New(slog.Default().Handler()),
 	},
 		func(_ string, _ any) error { return nil },
+		&oidc.DiscoveryConfiguration{},
 	)
 
 	s.Require().NoError(err)

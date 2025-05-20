@@ -28,9 +28,9 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	TokenSkew      time.Duration `mapstructure:"skew" default:"1m"`
 	PublicClientID string        `mapstructure:"public_client_id" json:"public_client_id,omitempty"`
 
-	// UserInfo enrichment feature for OIDC
-	UserInfoEnrichment bool `mapstructure:"userinfoEnrichment" json:"userinfoEnrichment" default:"false"`
-	// UserInfoCacheTTL has been moved to oidcuserinfo.CacheConfig
+	// Client credentials for the server to support Token Exchange
+	ClientId     string `mapstructure:"clientId" json:"clientId"`
+	ClientSecret string `mapstructure:"clientSecret" json:"clientSecret"`
 }
 
 type PolicyConfig struct {

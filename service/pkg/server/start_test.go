@@ -18,6 +18,7 @@ import (
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/stretchr/testify/assert"
@@ -73,7 +74,7 @@ func mockKeycloakServer() *httptest.Server {
 func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 	discoveryEndpoint := mockKeycloakServer()
 	// Create new opentdf server
-	return server.NewOpenTDFServer(server.Config{
+	return server.NewOpenTDFServer(context.Background(), server.Config{
 		WellKnownConfigRegister: func(_ string, _ any) error {
 			return nil
 		},
@@ -89,6 +90,7 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 		&logger.Logger{
 			Logger: slog.New(slog.Default().Handler()),
 		},
+		&cache.Manager{},
 	)
 }
 

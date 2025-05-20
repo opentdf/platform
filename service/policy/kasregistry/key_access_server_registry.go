@@ -72,7 +72,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 
 				kasrSvc.logger = logger
 				kasrSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
-				if err = kasrSvc.dbClient.SetWellKnownConfig(context.TODO()); err != nil {
+				if err = kasrSvc.dbClient.SetDefaultKeyOnWellKnownConfig(context.TODO()); err != nil {
 					logger.Error("error setting well-known config", slog.String("error", err.Error()))
 					panic(err)
 				}

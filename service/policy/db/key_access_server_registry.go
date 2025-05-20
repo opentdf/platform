@@ -965,7 +965,7 @@ func (c PolicyDBClient) SetDefaultKey(ctx context.Context, r *kasregistry.SetDef
 	}
 
 	// Set wellknown config
-	if err := c.SetWellKnownConfig(ctx); err != nil {
+	if err := c.SetDefaultKeyOnWellKnownConfig(ctx); err != nil {
 		return nil, err
 	}
 
@@ -975,7 +975,7 @@ func (c PolicyDBClient) SetDefaultKey(ctx context.Context, r *kasregistry.SetDef
 	}, nil
 }
 
-func (c PolicyDBClient) SetWellKnownConfig(ctx context.Context) error {
+func (c PolicyDBClient) SetDefaultKeyOnWellKnownConfig(ctx context.Context) error {
 	defaultKeys, err := c.GetDefaultKasKeys(ctx)
 	if err != nil {
 		return err

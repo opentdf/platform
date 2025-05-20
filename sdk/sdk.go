@@ -258,6 +258,11 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	return ts, err
 }
 
+// TODO: Remove after otdfctl updates
+func (s SDK) Close() error {
+	return nil
+}
+
 // Conn returns the underlying http connection
 func (s SDK) Conn() *ConnectRPCConnection {
 	return s.conn

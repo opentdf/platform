@@ -214,17 +214,9 @@ func convertPEMToJWK(_ string) (string, error) {
 
 func (p *KasKeyAdapter) ExportPublicKey(ctx context.Context, format KeyType) (string, error) {
 	publicKeyCtx := p.key.GetKey().GetPublicKeyCtx()
-	var pubKeyCtxMap map[string]any
-	if err := json.Unmarshal(publicKeyCtx, &pubKeyCtxMap); err != nil {
-		return "", err
-	}
 
-	pubKey, ok := pubKeyCtxMap["pubKey"].(string)
-	if !ok {
-		return "", errors.New("public key is not a string")
-	}
 	// Decode the base64-encoded public key
-	decodedPubKey, err := base64.StdEncoding.DecodeString(pubKey)
+	decodedPubKey, err := base64.StdEncoding.DecodeString(publicKeyCtx.GetPem())
 	if err != nil {
 		return "", err
 	}

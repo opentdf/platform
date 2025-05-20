@@ -2,7 +2,6 @@ package trust
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -26,7 +25,9 @@ func (s *PlatformKeyIndexTestSuite) SetupTest() {
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
 				KeyStatus:    policy.KeyStatus_KEY_STATUS_ACTIVE,
 				KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
-				PublicKeyCtx: []byte(`{"pubKey": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF3SEw0TkVrOFpDa0JzNjZXQVpWagpIS3NseDRseWdmaXN3aW42RUx5OU9OczZLVDRYa1crRGxsdExtck14bHZkbzVRaDg1UmFZS01mWUdDTWtPM0dGCkFsK0JOeWFOM1kwa0N1QjNPU2ErTzdyMURhNVZteVVuaEJNbFBrYnVPY1Y0cjlLMUhOSGd3eDl2UFp3RjRpQW8KQStEY1VBcWFEeHlvYjV6enNGZ0hUNjJHLzdLdEtiZ2hYT1dCanRUYUl1ZHpsK2FaSjFPemY0U1RkOXhST2QrMQordVo2VG1ocmFEUm9zdDUrTTZUN0toL2lGWk40TTFUY2hwWXU1TDhKR2tVaG9YaEdZcHUrMGczSzlqYlh6RVh5CnpJU3VXN2d6SGRWYUxvcnBkQlNkRHpOWkNvTFVoL0U1T3d5TFZFQkNKaDZJVUtvdWJ5WHVucnIxQnJmK2tLbEsKeHdJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg=="}`),
+				PublicKeyCtx: &policy.KasPublicKeyCtx{
+					Pem: "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF3SEw0TkVrOFpDa0JzNjZXQVpWagpIS3NseDRseWdmaXN3aW42RUx5OU9OczZLVDRYa1crRGxsdExtck14bHZkbzVRaDg1UmFZS01mWUdDTWtPM0dGCkFsK0JOeWFOM1kwa0N1QjNPU2ErTzdyMURhNVZteVVuaEJNbFBrYnVPY1Y0cjlLMUhOSGd3eDl2UFp3RjRpQW8KQStEY1VBcWFEeHlvYjV6enNGZ0hUNjJHLzdLdEtiZ2hYT1dCanRUYUl1ZHpsK2FaSjFPemY0U1RkOXhST2QrMQordVo2VG1ocmFEUm9zdDUrTTZUN0toL2lGWk40TTFUY2hwWXU1TDhKR2tVaG9YaEdZcHUrMGczSzlqYlh6RVh5CnpJU3VXN2d6SGRWYUxvcnBkQlNkRHpOWkNvTFVoL0U1T3d5TFZFQkNKaDZJVUtvdWJ5WHVucnIxQnJmK2tLbEsKeHdJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==",
+				},
 				ProviderConfig: &policy.KeyProviderConfig{
 					Id:   "test-provider-id",
 					Name: "openbao",
@@ -66,12 +67,7 @@ func (s *PlatformKeyIndexTestSuite) TestKeyExportPublicKey_PKCSFormat() {
 	pubCtx := keyAdapter.key.GetKey().GetPublicKeyCtx()
 	s.Require().NotEmpty(pubCtx)
 	base64Pem := ocrypto.Base64Encode([]byte(pem))
-
-	var pubCtxMap map[string]interface{}
-	err = json.Unmarshal(pubCtx, &pubCtxMap)
-	s.Require().NoError(err)
-
-	s.Equal(pubCtxMap["pubKey"], string(base64Pem))
+	s.Equal(pubCtx.GetPem(), string(base64Pem))
 }
 
 func TestNewPlatformKeyIndexTestSuite(t *testing.T) {

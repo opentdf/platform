@@ -573,7 +573,7 @@ func (c *collectionStore) get(header []byte) ([]byte, bool) {
 	return nil, false
 }
 
-func (c *collectionStore) close() { //nolint:unused // leave for future use
+func (c *collectionStore) close() {
 	c.closeChan <- struct{}{}
 }
 

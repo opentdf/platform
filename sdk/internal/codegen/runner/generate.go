@@ -122,6 +122,9 @@ func Generate() error {
 						currentDir, err = getCurrentFileDir()
 						outputPath := filepath.Join(currentDir, "..", "..", "..", "sdkconnect", packageName+".go")
 						err = os.WriteFile(outputPath, []byte(code), 0o644) //nolint:gosec // ignore G306
+						if err != nil {
+							slog.Error("Error writing file", "file", outputPath, "error", err)
+						}
 						found = true
 						return false // stop traversal
 					}
@@ -148,7 +151,7 @@ func Generate() error {
 func getCurrentFileDir() (string, error) {
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
-		return "", errors.New("could not get caller information")
+		return "", errors.New("could not get caller file (generate.go) working directory")
 	}
 	return filepath.Dir(filename), nil
 }

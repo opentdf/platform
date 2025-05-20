@@ -258,8 +258,10 @@ func buildIDPTokenSource(c *config) (auth.AccessTokenSource, error) {
 	return ts, err
 }
 
-// TODO: Remove after otdfctl updates
 func (s SDK) Close() error {
+	if s.collectionStore != nil {
+		s.collectionStore.close()
+	}
 	return nil
 }
 

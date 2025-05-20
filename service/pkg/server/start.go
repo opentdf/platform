@@ -297,6 +297,8 @@ func Start(f ...StartOptions) error {
 		}
 	}
 
+	defer client.Close()
+
 	logger.Info("starting services")
 	gatewayCleanup, err := startServices(ctx, cfg, otdf, client, logger, svcRegistry)
 	if err != nil {

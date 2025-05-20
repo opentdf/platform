@@ -106,6 +106,7 @@ func listAttributes(cmd *cobra.Command) error {
 		slog.Error("could not connect", slog.Any("error", err))
 		return err
 	}
+	defer s.Close()
 
 	ctx := cmd.Context()
 
@@ -224,6 +225,7 @@ func addAttribute(cmd *cobra.Command) error {
 		slog.Error("newSDK", slog.Any("error", err))
 		return err
 	}
+	defer s.Close()
 
 	are := regexp.MustCompile(`^(https?://[\w./]+)/attr/([^/\s]*)$`)
 	m := are.FindStringSubmatch(attr)
@@ -258,6 +260,7 @@ func removeAttribute(cmd *cobra.Command) error {
 		slog.Error("could not connect", "err", err)
 		return err
 	}
+	defer s.Close()
 
 	are := regexp.MustCompile(`^(https?://[\w./]+)/attr/([^/\s]*)$`)
 	m := are.FindStringSubmatch(attr)
@@ -332,6 +335,7 @@ func assignAttribute(cmd *cobra.Command, assign bool) error {
 		slog.Error("could not connect", "err", err)
 		return err
 	}
+	defer s.Close()
 
 	are := regexp.MustCompile(`^(https?://[\w./]+)/attr/([^/\s]*)$`)
 	m := are.FindStringSubmatch(attr)

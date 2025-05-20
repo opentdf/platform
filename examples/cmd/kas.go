@@ -71,6 +71,7 @@ func listKases(cmd *cobra.Command) error {
 		slog.Error("could not connect", "err", err)
 		return err
 	}
+	defer s.Close()
 
 	r, err := s.KeyAccessServerRegistry.ListKeyAccessServers(cmd.Context(), &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
@@ -158,6 +159,7 @@ func updateKas(cmd *cobra.Command) error {
 		slog.Error("could not connect", "err", err)
 		return err
 	}
+	defer s.Close()
 
 	var pk *policy.PublicKey
 	switch {
@@ -206,6 +208,7 @@ func removeKas(cmd *cobra.Command) error {
 		slog.Error("could not connect", "err", err)
 		return err
 	}
+	defer s.Close()
 
 	r, err := s.KeyAccessServerRegistry.ListKeyAccessServers(cmd.Context(), &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {

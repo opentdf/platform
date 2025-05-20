@@ -25,6 +25,7 @@ func authorizationExamples() error {
 		slog.Error("could not connect", slog.Any("error", err))
 		return err
 	}
+	defer s.Close()
 
 	// request decision on "TRANSMIT" Action
 	actions := []*policy.Action{{

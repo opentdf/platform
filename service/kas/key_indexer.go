@@ -1,4 +1,4 @@
-package keymanagement
+package kas
 
 import (
 	"context"
@@ -21,7 +21,7 @@ import (
 var ErrNoActiveKeyForAlgorithm = errors.New("no active key found for specified algorithm")
 
 // Used for reaching out to platform to get keys
-type PlatformKeyIndexer struct {
+type KeyIndexer struct {
 	// SDK is the SDK instance used to interact with the platform
 	sdk *sdk.SDK
 	// KasURI
@@ -31,13 +31,13 @@ type PlatformKeyIndexer struct {
 }
 
 // platformKeyAdapter is an adapter for KeyDetails, where keys come from the platform
-type KasKeyAdapter struct {
+type KeyAdapter struct {
 	key *policy.KasKey
 	log *logger.Logger
 }
 
-func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, l *logger.Logger) *PlatformKeyIndexer {
-	return &PlatformKeyIndexer{
+func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, l *logger.Logger) *KeyIndexer {
+	return &KeyIndexer{
 		sdk:    sdk,
 		kasURI: kasURI,
 		log:    l,
@@ -61,7 +61,7 @@ func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 	}
 }
 
-func (p *PlatformKeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, _ bool) (trust.KeyDetails, error) {
+func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, _ bool) (trust.KeyDetails, error) {
 	alg, err := convertAlgToEnum(algorithm)
 	if err != nil {
 		return nil, err
@@ -90,13 +90,13 @@ func (p *PlatformKeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm s
 		return nil, ErrNoActiveKeyForAlgorithm
 	}
 
-	return &KasKeyAdapter{
+	return &KeyAdapter{
 		key: activeKey,
 		log: p.log,
 	}, nil
 }
 
-func (p *PlatformKeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
+func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (trust.KeyDetails, error) {
 	req := &kasregistry.GetKeyRequest{
 		Identifier: &kasregistry.GetKeyRequest_Key{
 			Key: &kasregistry.KasKeyIdentifier{
@@ -113,13 +113,13 @@ func (p *PlatformKeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdenti
 		return nil, err
 	}
 
-	return &KasKeyAdapter{
+	return &KeyAdapter{
 		key: resp.GetKasKey(),
 		log: p.log,
 	}, nil
 }
 
-func (p *PlatformKeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
+func (p *KeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
 	req := &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
 			KasUri: p.kasURI,
@@ -132,7 +132,7 @@ func (p *PlatformKeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, 
 
 	keys := make([]trust.KeyDetails, len(resp.GetKasKeys()))
 	for i, key := range resp.GetKasKeys() {
-		keys[i] = &KasKeyAdapter{
+		keys[i] = &KeyAdapter{
 			key: key,
 			log: p.log,
 		}
@@ -141,21 +141,21 @@ func (p *PlatformKeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, 
 	return keys, nil
 }
 
-func (p *KasKeyAdapter) ID() trust.KeyIdentifier {
+func (p *KeyAdapter) ID() trust.KeyIdentifier {
 	return trust.KeyIdentifier(p.key.GetKey().GetKeyId())
 }
 
 // Might need to convert this to a standard format
-func (p *KasKeyAdapter) Algorithm() string {
+func (p *KeyAdapter) Algorithm() string {
 	return p.key.GetKey().GetKeyAlgorithm().String()
 }
 
-func (p *KasKeyAdapter) IsLegacy() bool {
+func (p *KeyAdapter) IsLegacy() bool {
 	return false
 }
 
 // This will point to the correct "manager"
-func (p *KasKeyAdapter) System() string {
+func (p *KeyAdapter) System() string {
 	var mode string
 	if p.key.GetKey().GetProviderConfig() != nil {
 		mode = p.key.GetKey().GetProviderConfig().GetName()
@@ -211,7 +211,7 @@ func convertPEMToJWK(_ string) (string, error) {
 	return "", errors.New("convertPEMToJWK function is not implemented")
 }
 
-func (p *KasKeyAdapter) ExportPublicKey(ctx context.Context, format trust.KeyType) (string, error) {
+func (p *KeyAdapter) ExportPublicKey(ctx context.Context, format trust.KeyType) (string, error) {
 	publicKeyCtx := p.key.GetKey().GetPublicKeyCtx()
 
 	// Decode the base64-encoded public key
@@ -241,6 +241,6 @@ func (p *KasKeyAdapter) ExportPublicKey(ctx context.Context, format trust.KeyTyp
 	}
 }
 
-func (p *KasKeyAdapter) ExportCertificate(_ context.Context) (string, error) {
+func (p *KeyAdapter) ExportCertificate(_ context.Context) (string, error) {
 	return "", errors.New("not implemented")
 }

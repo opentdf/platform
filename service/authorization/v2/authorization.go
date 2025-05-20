@@ -14,8 +14,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var ErrEmptyStringAttribute = errors.New("resource attributes must have at least one attribute value fqn")
-
 type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
 	sdk    *otdf.SDK
 	config *Config

@@ -372,7 +372,7 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 	if !isValidBase64(r.GetPublicKeyCtx().GetPem()) {
 		return nil, errors.Join(errors.New("public key ctx"), db.ErrExpectedBase64EncodedValue)
 	}
-	if mode == int32(policy.KeyMode_KEY_MODE_LOCAL) && !isValidBase64(r.GetPrivateKeyCtx().GetWrappedKey()) {
+	if (mode == int32(policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY) || mode == int32(policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY)) && !isValidBase64(r.GetPrivateKeyCtx().GetWrappedKey()) {
 		return nil, errors.Join(errors.New("private key ctx"), db.ErrExpectedBase64EncodedValue)
 	}
 

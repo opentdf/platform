@@ -118,7 +118,7 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_NonBase64Ctx_Fail() {
 		KasId:         s.kasKeys[0].KeyAccessServerID,
 		KeyId:         validKeyID1,
 		KeyAlgorithm:  policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:       policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx:  &policy.KasPublicKeyCtx{Pem: keyCtx},
 		PrivateKeyCtx: &policy.KasPrivateKeyCtx{WrappedKey: nonBase64Ctx, KeyId: validKeyID1},
 	}
@@ -134,7 +134,7 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_Success() {
 		KasId:        s.kasKeys[0].KeyAccessServerID,
 		KeyId:        keyID4,
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
 		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
 			WrappedKey: keyCtx,
@@ -430,7 +430,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
 		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
 			KeyId:      validKeyID1,
@@ -542,7 +542,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
 		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
 			KeyId:      validKeyID1,
@@ -672,7 +672,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
 		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
 			KeyId:      validKeyID1,
@@ -737,7 +737,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoDefaultKeyRotated_Success() {
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
 		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
 			KeyId:      validKeyID1,
@@ -794,7 +794,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_OneDefaultKeyRotated_Success() {
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
 		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
 			KeyId:      validKeyID1,
@@ -871,7 +871,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_TwoDefaultKeyRotated_Success() {
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_EC_P521,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
 		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
 			KeyId:      validKeyID1,
@@ -951,7 +951,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NanoDefaultKey_NewKeyIsNotECC_Fail(
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
 		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
 			KeyId:      validKeyID1,
@@ -1023,7 +1023,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_KasKeyNotFound_Fails() {
 		KasId:        kas.GetId(),
 		KeyId:        "default_key_id",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{
 			Pem: keyCtx,
 		},
@@ -1074,7 +1074,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_CannotSetNonECCAlgForNano_Fails
 		KasId:        kas.GetId(),
 		KeyId:        "default_key_id",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{
 			Pem: keyCtx,
 		},
@@ -1125,7 +1125,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NoDefaultKeys_ZTDFInsert_Succes
 		KasId:        kas.GetId(),
 		KeyId:        "default_key_id",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{
 			Pem: keyCtx,
 		},
@@ -1179,7 +1179,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NoDefaultKeys_NanoInsert_Succes
 		KasId:        kas.GetId(),
 		KeyId:        "default_key_id",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{
 			Pem: keyCtx,
 		},
@@ -1233,7 +1233,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_ZTDFKeyExists_ZTDFUpdate_Succes
 		KasId:        kas.GetId(),
 		KeyId:        "default_key_id",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{
 			Pem: keyCtx,
 		},
@@ -1251,7 +1251,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_ZTDFKeyExists_ZTDFUpdate_Succes
 		KasId:        kas.GetId(),
 		KeyId:        "default_key_id_2",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{
 			Pem: keyCtx,
 		},
@@ -1269,7 +1269,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_ZTDFKeyExists_ZTDFUpdate_Succes
 		KasId:        kas.GetId(),
 		KeyId:        "default_key_id_3",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{
 			Pem: keyCtx,
 		},
@@ -1358,7 +1358,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NanoKeyExists_NanoUpdate_Succes
 		KasId:        kas.GetId(),
 		KeyId:        "default_key_id",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{
 			Pem: keyCtx,
 		},
@@ -1376,7 +1376,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NanoKeyExists_NanoUpdate_Succes
 		KasId:        kas.GetId(),
 		KeyId:        "default_key_id_2",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{
 			Pem: keyCtx,
 		},
@@ -1394,7 +1394,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NanoKeyExists_NanoUpdate_Succes
 		KasId:        kas.GetId(),
 		KeyId:        "default_key_id_3",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{
 			Pem: keyCtx,
 		},
@@ -1474,7 +1474,7 @@ func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*polic
 		KasId:        kasID,
 		KeyId:        "original_key_id_to_rotate",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P384,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{
 			Pem: keyCtx,
 		},
@@ -1491,7 +1491,7 @@ func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*polic
 		KasId:        kasID,
 		KeyId:        "second_original_key_id",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{
 			Pem: keyCtx,
 		},

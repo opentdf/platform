@@ -13,10 +13,9 @@ erDiagram
         timestamp_with_time_zone created_at "Timestamp when the key was created"
         timestamp_with_time_zone expiration 
         uuid id PK "Unique identifier for the key"
-        integer key_cipher "Algorithm used to generate the key"
+        integer key_algorithm "Algorithm used to generate the key"
         character_varying key_id UK "Unique identifier for the key"
         integer key_mode "Indicates whether the key is stored LOCAL or REMOTE"
-        character_varying key_shape "The shape of the key, for example, #quot;2048#quot; or #quot;P256#quot;"
         integer key_status "Indicates the status of the key Active, Inactive, Compromised, or Expired"
         jsonb metadata "Additional metadata for the key"
         jsonb private_key_ctx "Private Key Context is a json defined structure of the private key. Could include information like PEM encoded key, or external key id information"
@@ -94,6 +93,12 @@ erDiagram
         character_varying value UK "Value of the attribute (i.e. #quot;manager#quot; or #quot;admin#quot; on an attribute for titles), unique within the definition"
     }
 
+    default_kas_keys {
+        uuid id PK 
+        uuid key_access_server_key_id FK 
+        character_varying tdf_type UK 
+    }
+
     goose_db_version {
         integer id PK 
         boolean is_applied 
@@ -103,14 +108,12 @@ erDiagram
 
     key_access_server_keys {
         timestamp_with_time_zone created_at 
-        boolean default_key "Whether this key is the default key, for its algorithm for the kas server"
         timestamp_with_time_zone expiration 
         uuid id PK 
         uuid key_access_server_id FK,UK 
-        integer key_cipher 
+        integer key_algorithm 
         character_varying key_id UK 
         integer key_mode 
-        character_varying key_shape 
         integer key_status 
         jsonb metadata 
         jsonb private_key_ctx 
@@ -233,6 +236,7 @@ erDiagram
     attribute_value_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
     resource_mappings }o--|| attribute_values : "attribute_value_id"
     subject_mappings }o--|| attribute_values : "attribute_value_id"
+    default_kas_keys }o--|| key_access_server_keys : "key_access_server_key_id"
     key_access_server_keys }o--|| key_access_servers : "key_access_server_id"
     sym_key }o--|| provider_config : "provider_config_id"
     registered_resource_values }o--|| registered_resources : "registered_resource_id"

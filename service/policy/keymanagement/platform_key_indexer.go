@@ -1,4 +1,4 @@
-package trust
+package keymanagement
 
 import (
 	"context"
@@ -59,7 +59,7 @@ func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 	case "ec:secp521r1":
 		return policy.Algorithm_ALGORITHM_EC_P521, nil
 	default:
-		return policy.Algorithm_ALGORITHM_UNSPECIFIED, errors.New("unsupported algorithm")
+		return policy.Algorithm_ALGORITHM_UNSPECIFIED, fmt.Errorf("unsupported algorithm: %s", alg)
 	}
 }
 

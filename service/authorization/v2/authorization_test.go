@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRollupSingleResourceDecision(t *testing.T) {
+func Test_RollupSingleResourceDecision(t *testing.T) {
 	tests := []struct {
 		name            string
 		permitted       bool
@@ -45,7 +45,7 @@ func TestRollupSingleResourceDecision(t *testing.T) {
 			permitted: false,
 			decisions: []*access.Decision{
 				{
-					Access: true, // This is intentionally different from permitted to verify permitted takes precedence
+					Access: true, // Verify permitted takes precedence
 					Results: []access.ResourceDecision{
 						{
 							ResourceID: "resource-123",
@@ -100,7 +100,7 @@ func TestRollupSingleResourceDecision(t *testing.T) {
 	}
 }
 
-func TestRollupMultiResourceDecision(t *testing.T) {
+func Test_RollupMultiResourceDecision(t *testing.T) {
 	tests := []struct {
 		name            string
 		decisions       []*access.Decision
@@ -177,6 +177,90 @@ func TestRollupMultiResourceDecision(t *testing.T) {
 			expectedError: nil,
 		},
 		{
+			name: "should rely on results and default to false decisions",
+			decisions: []*access.Decision{
+				{
+					Access: true,
+					Results: []access.ResourceDecision{
+						{
+							Passed:     true,
+							ResourceID: "resource-123",
+						},
+						{
+							Passed:     false,
+							ResourceID: "resource-abc",
+						},
+					},
+				},
+				{
+					Access: false,
+					Results: []access.ResourceDecision{
+						{
+							Passed:     false,
+							ResourceID: "resource-456",
+						},
+					},
+				},
+			},
+			expectedResult: []*authzV2.ResourceDecision{
+				{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-123",
+				},
+				{
+					Decision:            authzV2.Decision_DECISION_DENY,
+					EphemeralResourceId: "resource-abc",
+				},
+				{
+					Decision:            authzV2.Decision_DECISION_DENY,
+					EphemeralResourceId: "resource-456",
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "should ignore global access and care about resource decisions predominantly",
+			decisions: []*access.Decision{
+				{
+					Access: false,
+					Results: []access.ResourceDecision{
+						{
+							Passed:     false,
+							ResourceID: "resource-123",
+						},
+						{
+							Passed:     true,
+							ResourceID: "resource-abc",
+						},
+					},
+				},
+				{
+					Access: false,
+					Results: []access.ResourceDecision{
+						{
+							Passed:     true,
+							ResourceID: "resource-456",
+						},
+					},
+				},
+			},
+			expectedResult: []*authzV2.ResourceDecision{
+				{
+					Decision:            authzV2.Decision_DECISION_DENY,
+					EphemeralResourceId: "resource-123",
+				},
+				{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-abc",
+				},
+				{
+					Decision:            authzV2.Decision_DECISION_PERMIT,
+					EphemeralResourceId: "resource-456",
+				},
+			},
+			expectedError: nil,
+		},
+		{
 			name: "should return error when decision has no results",
 			decisions: []*access.Decision{
 				{
@@ -206,10 +290,9 @@ func TestRollupMultiResourceDecision(t *testing.T) {
 	}
 }
 
-func TestRollupMultiResourceDecisionSimple(t *testing.T) {
+func Test_RollupMultiResourceDecision_Simple(t *testing.T) {
 	// This test checks the minimal viable structure to pass through rollupMultiResourceDecision
 	decision := &access.Decision{
-		Access: true,
 		Results: []access.ResourceDecision{
 			{
 				Passed:     true,
@@ -228,7 +311,7 @@ func TestRollupMultiResourceDecisionSimple(t *testing.T) {
 	assert.Equal(t, authzV2.Decision_DECISION_PERMIT, result[0].GetDecision())
 }
 
-func TestRollupMultiResourceDecisionWithNilChecks(t *testing.T) {
+func Test_RollupMultiResourceDecision_WithNilChecks(t *testing.T) {
 	t.Run("nil decisions array", func(t *testing.T) {
 		var decisions []*access.Decision
 		_, err := rollupMultiResourceDecision(decisions)
@@ -256,7 +339,7 @@ func TestRollupMultiResourceDecisionWithNilChecks(t *testing.T) {
 	})
 }
 
-func TestRollupSingleResourceDecisionWithNilChecks(t *testing.T) {
+func Test_RollupSingleResourceDecision_WithNilChecks(t *testing.T) {
 	t.Run("nil decisions array", func(t *testing.T) {
 		var decisions []*access.Decision
 		_, err := rollupSingleResourceDecision(true, decisions)

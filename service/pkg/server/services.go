@@ -11,6 +11,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/authorization"
+	authorizationV2 "github.com/opentdf/platform/service/authorization/v2"
 	"github.com/opentdf/platform/service/entityresolution"
 	entityresolutionV2 "github.com/opentdf/platform/service/entityresolution/v2"
 	"github.com/opentdf/platform/service/health"
@@ -70,6 +71,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceKAS, serviceWellKnown, serviceEntityResolution}...)
 			services = append(services, []serviceregistry.IService{
 				authorization.NewRegistration(),
+				authorizationV2.NewRegistration(),
 				kas.NewRegistration(),
 				wellknown.NewRegistration(),
 				entityresolution.NewRegistration(),
@@ -80,6 +82,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceWellKnown}...)
 			services = append(services, []serviceregistry.IService{
 				authorization.NewRegistration(),
+				authorizationV2.NewRegistration(),
 				wellknown.NewRegistration(),
 			}...)
 			services = append(services, policy.NewRegistrations()...)
@@ -166,6 +169,9 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 				if err != nil {
 					return func() {}, err
 				}
+			}
+			if svc.GetVersion() != "" {
+				svcLogger = svcLogger.With("version", svc.GetVersion())
 			}
 
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{

@@ -647,6 +647,29 @@ value_subject_mappings AS (
 	LEFT JOIN subject_condition_set scs ON sm.subject_condition_set_id = scs.id
 	GROUP BY av.id
 ),
+value_resource_mappings AS (
+    SELECT
+        av.id,
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', rm.id,
+                'terms', rm.terms,
+                'group', CASE 
+                            WHEN rm.group_id IS NULL THEN NULL
+                            ELSE JSON_BUILD_OBJECT(
+                                'id', rmg.id,
+                                'name', rmg.name,
+                                'namespace_id', rmg.namespace_id
+                            )
+                         END
+            )
+        ) FILTER (WHERE rm.id IS NOT NULL) AS res_maps
+    FROM target_definition td
+    LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
+    LEFT JOIN resource_mappings rm ON av.id = rm.attribute_value_id
+    LEFT JOIN resource_mapping_groups rmg ON rm.group_id = rmg.id
+    GROUP BY av.id
+),
 values AS (
     SELECT
 		av.attribute_definition_id,
@@ -658,6 +681,7 @@ values AS (
 	            'fqn', fqns.fqn,
 	            'grants', avg.grants,
 	            'subject_mappings', avsm.sub_maps,
+                'resource_mappings', avrm.res_maps,
                 'kas_keys', value_keys.keys
 	        -- enforce order of values in response
 	        ) ORDER BY ARRAY_POSITION(td.values_order, av.id)
@@ -667,6 +691,7 @@ values AS (
 	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 	LEFT JOIN value_grants avg ON av.id = avg.id
 	LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
+    LEFT JOIN value_resource_mappings avrm ON av.id = avrm.id
     LEFT JOIN (
         SELECT
             k.value_id,
@@ -990,14 +1015,21 @@ SELECT
     JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-    COALESCE(m.group_id::TEXT, '')::TEXT as group_id,
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'id', rmg.id,
+            'name', rmg.name,
+            'namespace_id', rmg.namespace_id
+        )
+    ) AS group,
     counted.total
 FROM resource_mappings m 
 CROSS JOIN counted
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
-WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID) 
-GROUP BY av.id, m.id, fqns.fqn, counted.total
+LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
+WHERE (NULLIF(@group_id, '') IS NULL OR m.group_id = @group_id::UUID)
+GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, counted.total
 LIMIT @limit_ 
 OFFSET @offset_; 
 

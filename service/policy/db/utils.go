@@ -61,6 +61,15 @@ func unmarshalSubjectConditionSet(subjectConditionSetJSON []byte, scs *policy.Su
 	return nil
 }
 
+func unmarshalResourceMappingGroup(rmgroupJSON []byte, rmg *policy.ResourceMappingGroup) error {
+	if rmgroupJSON != nil {
+		if err := protojson.Unmarshal(rmgroupJSON, rmg); err != nil {
+			return fmt.Errorf("failed to unmarshal rmgroupJSON [%s]: %w", string(rmgroupJSON), err)
+		}
+	}
+	return nil
+}
+
 func unmarshalAllActionsProto(stdActionsJSON []byte, customActionsJSON []byte, actions *[]*policy.Action) error {
 	var (
 		stdActions    = new([]*policy.Action)

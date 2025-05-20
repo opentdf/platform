@@ -33,6 +33,7 @@ jobs:
             "docs/**/*"
 
   external-contributor:
+    if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'dependabot-preview[bot]' }}
     permissions:
       pull-requests: write
     runs-on: ubuntu-latest

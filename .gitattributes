@@ -1,5 +1,5 @@
 docs/grpc/** linguist-generated=true
 docs/openapi/** linguist-generated=true
+sdk/sdkconnect/** linguist-generated=true
 service/policy/db/*.sql.go linguist-generated=true
 service/policy/db/models.go linguist-generated=true
-sdk/sdkconnect/** linguist-generated=true

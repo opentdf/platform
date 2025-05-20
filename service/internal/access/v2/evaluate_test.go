@@ -15,30 +15,30 @@ import (
 )
 
 // Constants for namespaces and attribute FQNs
-const (
+var (
 	// Base namespaces
-	baseNamespace     = "https://namespace.com"
-	classificationFQN = baseNamespace + "/attr/classification"
-	departmentFQN     = baseNamespace + "/attr/department"
-	projectFQN        = baseNamespace + "/attr/project"
+	baseNamespace = "https://namespace.com"
+	levelFQN      = createAttrFQN(baseNamespace, "level")
+	departmentFQN = createAttrFQN(baseNamespace, "department")
+	projectFQN    = createAttrFQN(baseNamespace, "project")
 
-	// Classification values
-	classTopSecretFQN    = classificationFQN + "/value/topsecret"
-	classSecretFQN       = classificationFQN + "/value/secret"
-	classConfidentialFQN = classificationFQN + "/value/confidential"
-	classRestrictedFQN   = classificationFQN + "/value/restricted"
-	classPublicFQN       = classificationFQN + "/value/public"
+	// Leveled values
+	levelHighestFQN  = createAttrValueFQN(baseNamespace, "level", "highest")
+	levelUpperMidFQN = createAttrValueFQN(baseNamespace, "level", "upper_mid")
+	levelMidFQN      = createAttrValueFQN(baseNamespace, "level", "mid")
+	levelLowerMidFQN = createAttrValueFQN(baseNamespace, "level", "lower_mid")
+	levelLowestFQN   = createAttrValueFQN(baseNamespace, "level", "lowest")
 
 	// Department values
-	deptFinanceFQN   = departmentFQN + "/value/finance"
-	deptMarketingFQN = departmentFQN + "/value/marketing"
-	deptLegalFQN     = departmentFQN + "/value/legal"
+	deptFinanceFQN   = createAttrValueFQN(baseNamespace, "department", "finance")
+	deptMarketingFQN = createAttrValueFQN(baseNamespace, "department", "marketing")
+	deptLegalFQN     = createAttrValueFQN(baseNamespace, "department", "legal")
 
 	// Project values
-	projectJusticeLeagueFQN = projectFQN + "/value/justiceleague"
-	projectAvengersFQN      = projectFQN + "/value/avengers"
-	projectXmenFQN          = projectFQN + "/value/xmen"
-	projectFantasicFourFQN  = projectFQN + "/value/fantasticfour"
+	projectJusticeLeagueFQN = createAttrValueFQN(baseNamespace, "project", "justiceleague")
+	projectAvengersFQN      = createAttrValueFQN(baseNamespace, "project", "avengers")
+	projectXmenFQN          = createAttrValueFQN(baseNamespace, "project", "xmen")
+	projectFantasicFourFQN  = createAttrValueFQN(baseNamespace, "project", "fantasticfour")
 )
 
 var (
@@ -66,15 +66,15 @@ func (s *EvaluateTestSuite) SetupTest() {
 
 	// Setup classification attribute (HIERARCHY)
 	s.hierarchicalClassAttr = &policy.Attribute{
-		Fqn:  classificationFQN,
+		Fqn:  levelFQN,
 		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 		Values: []*policy.Value{
 			// highest in hierarchy
-			{Fqn: classTopSecretFQN, Value: "topsecret"},
-			{Fqn: classSecretFQN, Value: "secret"},
-			{Fqn: classConfidentialFQN, Value: "confidential"},
-			{Fqn: classRestrictedFQN, Value: "restricted"},
-			{Fqn: classPublicFQN, Value: "public"},
+			{Fqn: levelHighestFQN, Value: "highest"},
+			{Fqn: levelUpperMidFQN, Value: "upper_mid"},
+			{Fqn: levelMidFQN, Value: "mid"},
+			{Fqn: levelLowerMidFQN, Value: "lower_mid"},
+			{Fqn: levelLowestFQN, Value: "lowest"},
 			// lowest in hierarchy
 		},
 	}
@@ -103,25 +103,25 @@ func (s *EvaluateTestSuite) SetupTest() {
 
 	// Setup accessible attribute values map
 	s.accessibleAttrValues = map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
-		classConfidentialFQN: {
+		levelMidFQN: {
 			Attribute: s.hierarchicalClassAttr,
-			Value:     &policy.Value{Fqn: classConfidentialFQN},
+			Value:     &policy.Value{Fqn: levelMidFQN},
 		},
-		classSecretFQN: {
+		levelUpperMidFQN: {
 			Attribute: s.hierarchicalClassAttr,
-			Value:     &policy.Value{Fqn: classSecretFQN},
+			Value:     &policy.Value{Fqn: levelUpperMidFQN},
 		},
-		classRestrictedFQN: {
+		levelLowerMidFQN: {
 			Attribute: s.hierarchicalClassAttr,
-			Value:     &policy.Value{Fqn: classRestrictedFQN},
+			Value:     &policy.Value{Fqn: levelLowerMidFQN},
 		},
-		classTopSecretFQN: {
+		levelHighestFQN: {
 			Attribute: s.hierarchicalClassAttr,
-			Value:     &policy.Value{Fqn: classTopSecretFQN},
+			Value:     &policy.Value{Fqn: levelHighestFQN},
 		},
-		classPublicFQN: {
+		levelLowestFQN: {
 			Attribute: s.hierarchicalClassAttr,
-			Value:     &policy.Value{Fqn: classPublicFQN},
+			Value:     &policy.Value{Fqn: levelLowestFQN},
 		},
 		deptFinanceFQN: {
 			Attribute: s.anyOfDepartmentAttr,
@@ -210,7 +210,7 @@ func (s *EvaluateTestSuite) TestAllOfRule() {
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
 				projectAvengersFQN: []*policy.Action{actionRead},
-				// Missing classRestrictedFQN entirely
+				// Missing levelLowerMidFQN entirely
 			},
 			expectedFailures: 1,
 		},
@@ -432,122 +432,122 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 		{
 			name: "entitled to highest value",
 			resourceValueFQNs: []string{
-				classSecretFQN,
-				classConfidentialFQN,
+				levelUpperMidFQN,
+				levelMidFQN,
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classSecretFQN: []*policy.Action{actionRead}, // Entitled to highest value
+				levelUpperMidFQN: []*policy.Action{actionRead}, // Entitled to highest value
 			},
 			expectedFailures: false,
 		},
 		{
 			name: "entitled to higher value",
 			resourceValueFQNs: []string{
-				classRestrictedFQN,
+				levelLowerMidFQN,
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classTopSecretFQN: []*policy.Action{actionRead}, // Entitled to highest value
+				levelHighestFQN: []*policy.Action{actionRead}, // Entitled to highest value
 			},
 			expectedFailures: false,
 		},
 		{
 			name: "entitled to higher value 2",
 			resourceValueFQNs: []string{
-				classRestrictedFQN,
+				levelLowerMidFQN,
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classSecretFQN: []*policy.Action{actionRead}, // Entitled to higher value
+				levelUpperMidFQN: []*policy.Action{actionRead}, // Entitled to higher value
 			},
 			expectedFailures: false,
 		},
 		{
 			name: "multi higher entitlements",
 			resourceValueFQNs: []string{
-				classPublicFQN,
+				levelLowestFQN,
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classSecretFQN:       []*policy.Action{actionRead}, // higher
-				classConfidentialFQN: []*policy.Action{actionRead}, // higher
+				levelUpperMidFQN: []*policy.Action{actionRead}, // higher
+				levelMidFQN:      []*policy.Action{actionRead}, // higher
 			},
 			expectedFailures: false,
 		},
 		{
 			name: "higher and lower entitlements",
 			resourceValueFQNs: []string{
-				classRestrictedFQN,
+				levelLowerMidFQN,
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classPublicFQN: []*policy.Action{actionRead}, // lower
-				classSecretFQN: []*policy.Action{actionRead}, // higher
+				levelLowestFQN:   []*policy.Action{actionRead}, // lower
+				levelUpperMidFQN: []*policy.Action{actionRead}, // higher
 			},
 			expectedFailures: false,
 		},
 		{
 			name: "entitled to lower value but not highest",
 			resourceValueFQNs: []string{
-				classSecretFQN,
-				classConfidentialFQN,
+				levelUpperMidFQN,
+				levelMidFQN,
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classConfidentialFQN: []*policy.Action{actionRead}, // Only entitled to lower value
+				levelMidFQN: []*policy.Action{actionRead}, // Only entitled to lower value
 			},
 			expectedFailures: true,
 		},
 		{
 			name: "entitled to wrong action on highest value",
 			resourceValueFQNs: []string{
-				classSecretFQN,
-				classConfidentialFQN,
+				levelUpperMidFQN,
+				levelMidFQN,
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classSecretFQN: []*policy.Action{actionCreate}, // Wrong action
+				levelUpperMidFQN: []*policy.Action{actionCreate}, // Wrong action
 			},
 			expectedFailures: true,
 		},
 		{
 			name: "highest value from multiple resources",
 			resourceValueFQNs: []string{
-				classConfidentialFQN,
-				classTopSecretFQN, // This is highest
-				classRestrictedFQN,
+				levelMidFQN,
+				levelHighestFQN, // This is highest
+				levelLowerMidFQN,
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classTopSecretFQN: []*policy.Action{actionRead},
+				levelHighestFQN: []*policy.Action{actionRead},
 			},
 			expectedFailures: false,
 		},
 		{
 			name: "entitled to much higher value in hierarchy than requested",
 			resourceValueFQNs: []string{
-				classPublicFQN, // Lowest in hierarchy (index 4)
+				levelLowestFQN, // Lowest in hierarchy (index 4)
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classTopSecretFQN: []*policy.Action{actionRead}, // Highest in hierarchy (index 0)
+				levelHighestFQN: []*policy.Action{actionRead}, // Highest in hierarchy (index 0)
 			},
 			expectedFailures: false, // Should pass with the fix
 		},
 		{
 			name: "entitled to multiple values higher in hierarchy than requested",
 			resourceValueFQNs: []string{
-				classRestrictedFQN, // Lower in hierarchy (index 3)
-				classPublicFQN,     // Lowest in hierarchy (index 4)
+				levelLowerMidFQN, // Lower in hierarchy (index 3)
+				levelLowestFQN,   // Lowest in hierarchy (index 4)
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
 				// No entitlement for exact matches
-				classTopSecretFQN: []*policy.Action{actionRead}, // Much higher in hierarchy (index 0)
-				classSecretFQN:    []*policy.Action{actionRead}, // Higher in hierarchy (index 1)
+				levelHighestFQN:  []*policy.Action{actionRead}, // Much higher in hierarchy (index 0)
+				levelUpperMidFQN: []*policy.Action{actionRead}, // Higher in hierarchy (index 1)
 			},
 			expectedFailures: false, // Should pass with the fix
 		},
 		{
 			name: "entitled to value higher than highest requested but wrong action",
 			resourceValueFQNs: []string{
-				classConfidentialFQN, // Middle in hierarchy (index 2)
-				classRestrictedFQN,   // Lower in hierarchy (index 3)
+				levelMidFQN,      // Middle in hierarchy (index 2)
+				levelLowerMidFQN, // Lower in hierarchy (index 3)
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classSecretFQN:    []*policy.Action{actionCreate}, // Higher but wrong action
-				classTopSecretFQN: []*policy.Action{actionCreate}, // Highest but wrong action
+				levelUpperMidFQN: []*policy.Action{actionCreate}, // Higher but wrong action
+				levelHighestFQN:  []*policy.Action{actionCreate}, // Highest but wrong action
 			},
 			expectedFailures: true, // Should fail due to wrong action
 		},
@@ -555,7 +555,7 @@ func (s *EvaluateTestSuite) TestHierarchyRule() {
 			name:              "empty resource list",
 			resourceValueFQNs: []string{},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classSecretFQN: []*policy.Action{actionRead},
+				levelUpperMidFQN: []*policy.Action{actionRead},
 			},
 			expectedFailures: false, // No resources to check, should pass
 		},
@@ -590,12 +590,12 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 			name:       "all-of rule passing",
 			definition: s.allOfProjectAttr,
 			resourceValues: []string{
-				classConfidentialFQN,
-				classRestrictedFQN,
+				levelMidFQN,
+				levelLowerMidFQN,
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classConfidentialFQN: []*policy.Action{actionRead},
-				classRestrictedFQN:   []*policy.Action{actionRead},
+				levelMidFQN:      []*policy.Action{actionRead},
+				levelLowerMidFQN: []*policy.Action{actionRead},
 			},
 			expectPass:  true,
 			expectError: false,
@@ -617,11 +617,11 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 			name:       "hierarchy rule passing",
 			definition: s.hierarchicalClassAttr,
 			resourceValues: []string{
-				classSecretFQN,
-				classConfidentialFQN,
+				levelUpperMidFQN,
+				levelMidFQN,
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classSecretFQN: []*policy.Action{actionRead},
+				levelUpperMidFQN: []*policy.Action{actionRead},
 			},
 			expectPass:  true,
 			expectError: false,
@@ -629,13 +629,13 @@ func (s *EvaluateTestSuite) TestEvaluateDefinition() {
 		{
 			name: "unspecified rule type",
 			definition: &policy.Attribute{
-				Fqn:  classificationFQN,
+				Fqn:  levelFQN,
 				Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED,
 				Values: []*policy.Value{
-					{Fqn: classConfidentialFQN},
+					{Fqn: levelMidFQN},
 				},
 			},
-			resourceValues: []string{classConfidentialFQN},
+			resourceValues: []string{levelMidFQN},
 			entitlements:   subjectmappingbuiltin.AttributeValueFQNsToActions{},
 			expectPass:     false,
 			expectError:    true,
@@ -670,13 +670,13 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 			name: "all rules passing",
 			resourceAttrs: &authz.Resource_AttributeValues{
 				Fqns: []string{
-					classConfidentialFQN,
+					levelMidFQN,
 					deptFinanceFQN,
 				},
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classConfidentialFQN: []*policy.Action{actionRead},
-				deptFinanceFQN:       []*policy.Action{actionRead},
+				levelMidFQN:    []*policy.Action{actionRead},
+				deptFinanceFQN: []*policy.Action{actionRead},
 			},
 			expectAccessible: true,
 			expectError:      false,
@@ -685,13 +685,13 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 			name: "all rules passing - non lower-cased FQNs",
 			resourceAttrs: &authz.Resource_AttributeValues{
 				Fqns: []string{
-					strings.ToUpper(classConfidentialFQN),
+					strings.ToUpper(levelMidFQN),
 					strings.ToUpper(deptFinanceFQN),
 				},
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classConfidentialFQN: []*policy.Action{actionRead},
-				deptFinanceFQN:       []*policy.Action{actionRead},
+				levelMidFQN:    []*policy.Action{actionRead},
+				deptFinanceFQN: []*policy.Action{actionRead},
 			},
 			expectAccessible: true,
 			expectError:      false,
@@ -700,13 +700,13 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 			name: "one rule failing",
 			resourceAttrs: &authz.Resource_AttributeValues{
 				Fqns: []string{
-					classConfidentialFQN,
+					levelMidFQN,
 					deptFinanceFQN,
 				},
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classConfidentialFQN: []*policy.Action{actionRead},
-				deptFinanceFQN:       []*policy.Action{actionCreate}, // Wrong action
+				levelMidFQN:    []*policy.Action{actionRead},
+				deptFinanceFQN: []*policy.Action{actionCreate}, // Wrong action
 			},
 			expectAccessible: false,
 			expectError:      false,
@@ -715,12 +715,12 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 			name: "unknown attribute value FQN",
 			resourceAttrs: &authz.Resource_AttributeValues{
 				Fqns: []string{
-					classConfidentialFQN,
+					levelMidFQN,
 					"https://namespace.com/attr/department/value/unknown", // This FQN doesn't exist in accessibleAttributeValues
 				},
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classConfidentialFQN: []*policy.Action{actionRead},
+				levelMidFQN: []*policy.Action{actionRead},
 			},
 			expectAccessible: false,
 			expectError:      true,
@@ -772,12 +772,12 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			resource: &authz.Resource{
 				Resource: &authz.Resource_AttributeValues_{
 					AttributeValues: &authz.Resource_AttributeValues{
-						Fqns: []string{classConfidentialFQN},
+						Fqns: []string{levelMidFQN},
 					},
 				},
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				classConfidentialFQN: []*policy.Action{actionRead},
+				levelMidFQN: []*policy.Action{actionRead},
 			},
 			expectError: false,
 		},

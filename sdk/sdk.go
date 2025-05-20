@@ -58,7 +58,7 @@ type SDK struct {
 	Actions                 sdkconnect.ActionServiceClient
 	Attributes              sdkconnect.AttributesServiceClient
 	Authorization           sdkconnect.AuthorizationServiceClient
-	AuthorizationV2         sdkconnect.AuthorizationServiceClient
+	AuthorizationV2         sdkconnect.AuthorizationServiceClientV2
 	EntityResoution         sdkconnect.EntityResolutionServiceClient
 	EntityResolutionV2      sdkconnect.EntityResolutionServiceClientV2
 	KeyAccessServerRegistry sdkconnect.KeyAccessServerRegistryServiceClient
@@ -194,7 +194,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		Unsafe:                  sdkconnect.NewUnsafeServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		KeyAccessServerRegistry: sdkconnect.NewKeyAccessServerRegistryServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Authorization:           sdkconnect.NewAuthorizationServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
-		AuthorizationV2:         sdkconnect.NewAuthorizationServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		AuthorizationV2:         sdkconnect.NewAuthorizationServiceClientV2ConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		EntityResoution:         sdkconnect.NewEntityResolutionServiceClientConnectWrapper(ersConn.Client, ersConn.Endpoint, ersConn.Options...),
 		EntityResolutionV2:      sdkconnect.NewEntityResolutionServiceClientV2ConnectWrapper(ersConn.Client, ersConn.Endpoint, ersConn.Options...),
 		KeyManagement:           sdkconnect.NewKeyManagementServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),

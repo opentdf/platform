@@ -34,6 +34,12 @@ var clientsToGenerateList = []clientsToGenerate{
 		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/authorization",
 	},
 	{
+		grpcClientInterface: "AuthorizationServiceClient",
+		suffix:              "V2",
+		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/authorization/v2",
+		packageNameOverride: "authorizationv2",
+	},
+	{
 		grpcClientInterface: "EntityResolutionServiceClient",
 		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/entityresolution",
 	},

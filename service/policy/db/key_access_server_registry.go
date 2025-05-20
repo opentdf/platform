@@ -392,9 +392,12 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 	if err != nil {
 		return nil, db.ErrMarshalValueFailed
 	}
-	privateCtx, err := json.Marshal(r.GetPrivateKeyCtx())
-	if err != nil {
-		return nil, db.ErrMarshalValueFailed
+	var privateCtx []byte
+	if r.GetPrivateKeyCtx() != nil {
+		privateCtx, err = json.Marshal(r.GetPrivateKeyCtx())
+		if err != nil {
+			return nil, db.ErrMarshalValueFailed
+		}
 	}
 
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
@@ -935,6 +938,10 @@ func (c PolicyDBClient) SetDefaultKey(ctx context.Context, r *kasregistry.SetDef
 	keyToSet, err := c.GetKey(ctx, identifier)
 	if err != nil {
 		return nil, err
+	}
+
+	if keyToSet.GetKey().GetKeyMode() == policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY {
+		return nil, fmt.Errorf("cannot set key of mode %s as default key", keyToSet.GetKey().GetKeyMode().String())
 	}
 
 	previousDefaultKey, err := c.GetDefaultKasKeyByMode(ctx, r.GetTdfType())

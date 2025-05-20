@@ -15,8 +15,11 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/opentdf/platform/service/wellknownconfiguration"
 	"google.golang.org/protobuf/encoding/protojson"
 )
+
+var DefaultKasKeyWellKnown = "default_kas_keys"
 
 type rotatedMappingIDs struct {
 	NamespaceIDs      []string
@@ -373,21 +376,10 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		return nil, errors.Join(errors.New("private key ctx"), db.ErrExpectedBase64EncodedValue)
 	}
 
-	// Only allow one active key for an algo per KAS.
-	activeKeyExists, err := c.Queries.checkIfKeyExists(ctx, checkIfKeyExistsParams{
-		KeyAccessServerID: kasID,
-		KeyStatus:         keyStatus,
-		KeyAlgorithm:      algo,
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	} else if activeKeyExists {
-		return nil, fmt.Errorf("cannot create a new key when an active key already exists with algorithm %s", r.GetKeyAlgorithm().String())
-	}
-
 	// Especially if we need to verify the connection and get the public key.
 	// Need provider logic to validate connection to remote provider.
 	var pc *policy.KeyProviderConfig
+	var err error
 	if providerConfigID != "" {
 		pc, err = c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest_Id{Id: providerConfigID})
 		if err != nil {
@@ -731,19 +723,25 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 		return nil, err
 	}
 
-	// Step 3: Update Namespace/Attribute/Value tables to use the new key.
+	// Step 3: Check if the rotated out key is currently a default key. If so, update.
+	err = c.rotateDefaultKey(ctx, rotatedOutKey.GetKey().GetId(), newKasKey.GetKasKey().GetKey().GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 4: Update Namespace/Attribute/Value tables to use the new key.
 	rotatedIDs, err := c.rotatePublicKeyTables(ctx, activeKey.GetKey().GetId(), newKasKey.GetKasKey().GetKey().GetId())
 	if err != nil {
 		return nil, err
 	}
 
-	// Step 4: Populate the rotated resources.
+	// Step 5: Populate the rotated resources.
 	if err := c.populateChangeMappings(ctx, rotatedIDs, rotateKeyResp.GetRotatedResources()); err != nil {
 		return nil, err
 	}
 	rotateKeyResp.RotatedResources.RotatedOutKey = rotatedOutKey
 
-	// Step 5: Populate the new key
+	// Step 6: Populate the new key
 	rotateKeyResp.KasKey = newKasKey.GetKasKey()
 
 	return rotateKeyResp, nil
@@ -829,4 +827,189 @@ func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID, new
 	}
 
 	return rotatedIDs, nil
+}
+
+func (c PolicyDBClient) rotateDefaultKey(ctx context.Context, rotatedOutKeyID, newKeyID string) error {
+	defaultKeys, err := c.GetDefaultKeysByID(ctx, rotatedOutKeyID)
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+	// It's possible that the rotated out key was mapped to both modes: ztdf/nano.
+	// If the key algorithm is of type ECC.
+	for _, defaultKey := range defaultKeys {
+		tdfType, ok := kasregistry.TdfType_value[defaultKey.GetTdfType()]
+		if !ok {
+			return fmt.Errorf("invalid TDF type: %s", defaultKey.GetTdfType())
+		}
+
+		_, err = c.SetDefaultKey(ctx, &kasregistry.SetDefaultKeyRequest{
+			ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
+				Id: newKeyID,
+			},
+			TdfType: kasregistry.TdfType(tdfType),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c PolicyDBClient) GetDefaultKasKeys(ctx context.Context) ([]*kasregistry.DefaultKasKey, error) {
+	keys, err := c.Queries.getDefaultKeys(ctx)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	var defaultKeys []*kasregistry.DefaultKasKey
+	if len(keys) > 0 {
+		defaultKeys, err = db.DefaultKasKeysProtoJSON(keys)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return defaultKeys, nil
+}
+
+func (c PolicyDBClient) GetDefaultKeysByID(ctx context.Context, id string) ([]*kasregistry.DefaultKasKey, error) {
+	keys, err := c.Queries.getDefaultKeysById(ctx, pgtypeUUID(id))
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	var defaultKeys []*kasregistry.DefaultKasKey
+	if len(keys) > 0 {
+		defaultKeys, err = db.DefaultKasKeysProtoJSON(keys)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return defaultKeys, nil
+}
+
+func (c PolicyDBClient) GetDefaultKasKeyByMode(ctx context.Context, tdfType kasregistry.TdfType) (*kasregistry.DefaultKasKey, error) {
+	key, err := c.getDefaultKasKeyByMode(ctx, pgtypeText(tdfType.String()))
+	if err != nil && !errors.Is(db.WrapIfKnownInvalidQueryErr(err), db.ErrNotFound) {
+		c.logger.Error("GetDefaultKasKeyByMode", "error", err)
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	var defaultKey *kasregistry.DefaultKasKey
+	if len(key) > 0 {
+		defaultKey = &kasregistry.DefaultKasKey{}
+		err = db.UnmarshalDefaultKasKey(key, defaultKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return defaultKey, nil
+}
+
+func isAlgValidForNano(alg policy.Algorithm) bool {
+	switch alg {
+	case policy.Algorithm_ALGORITHM_EC_P256, policy.Algorithm_ALGORITHM_EC_P384, policy.Algorithm_ALGORITHM_EC_P521:
+		return true
+	case policy.Algorithm_ALGORITHM_RSA_2048, policy.Algorithm_ALGORITHM_RSA_4096, policy.Algorithm_ALGORITHM_UNSPECIFIED:
+		return false
+	default:
+		return false
+	}
+}
+
+func (c PolicyDBClient) SetDefaultKey(ctx context.Context, r *kasregistry.SetDefaultKeyRequest) (*kasregistry.SetDefaultKeyResponse, error) {
+	var identifier any
+	switch r.GetActiveKey().(type) {
+	case *kasregistry.SetDefaultKeyRequest_Id:
+		identifier = &kasregistry.GetKeyRequest_Id{
+			Id: r.GetId(),
+		}
+	case *kasregistry.SetDefaultKeyRequest_Key:
+		identifier = &kasregistry.GetKeyRequest_Key{
+			Key: r.GetKey(),
+		}
+	}
+	keyToSet, err := c.GetKey(ctx, identifier)
+	if err != nil {
+		return nil, err
+	}
+
+	previousDefaultKey, err := c.GetDefaultKasKeyByMode(ctx, r.GetTdfType())
+	if err != nil {
+		return nil, err
+	}
+
+	// If default key is nano, cipher must be ECC.
+	if r.GetTdfType() == kasregistry.TdfType_TDF_TYPE_NANO && !isAlgValidForNano(keyToSet.GetKey().GetKeyAlgorithm()) {
+		return nil, fmt.Errorf("key algorithm %s is not valid for TDF type NANO", keyToSet.GetKey().GetKeyAlgorithm().String())
+	}
+
+	// A trigger is set for BEFORE INSERT which will update the
+	// the key reference to the one being inserted, if present.
+	// If not, the insert will continue.
+	_, err = c.Queries.setDefaultKasKey(ctx, setDefaultKasKeyParams{
+		KeyAccessServerKeyID: pgtypeUUID(keyToSet.GetKey().GetId()),
+		TdfType:              r.GetTdfType().String(),
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	// Get the new default key.
+	newDefaultKey, err := c.GetDefaultKasKeyByMode(ctx, r.GetTdfType())
+	if err != nil {
+		return nil, err
+	}
+
+	// Set wellknown config
+	if err := c.SetWellKnownConfig(ctx); err != nil {
+		return nil, err
+	}
+
+	return &kasregistry.SetDefaultKeyResponse{
+		NewDefaultKasKey:      newDefaultKey,
+		PreviousDefaultKasKey: previousDefaultKey,
+	}, nil
+}
+
+func (c PolicyDBClient) SetWellKnownConfig(ctx context.Context) error {
+	defaultKeys, err := c.GetDefaultKasKeys(ctx)
+	if err != nil {
+		return err
+	}
+
+	defaulKeyArr := make([]any, len(defaultKeys))
+	for i, key := range defaultKeys {
+		defaulKeyArr[i] = key
+	}
+
+	keyMapBytes, err := json.Marshal(defaulKeyArr)
+	if err != nil {
+		return err
+	}
+
+	genericKeyArr := make([]any, len(defaulKeyArr))
+	err = json.Unmarshal(keyMapBytes, &genericKeyArr)
+	if err != nil {
+		return err
+	}
+
+	return wellknownconfiguration.UpdateConfiguration(DefaultKasKeyWellKnown, genericKeyArr)
+}
+
+/*
+**********************
+TESTING ONLY
+************************
+*/
+func (c PolicyDBClient) DeleteAllDefaultKeys(ctx context.Context) error {
+	_, err := c.Queries.deleteAllDefaultKasKeys(ctx)
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return nil
 }

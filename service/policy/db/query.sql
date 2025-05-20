@@ -1652,3 +1652,65 @@ WHERE id = $1;
 DELETE FROM provider_config 
 WHERE id = $1;
 
+
+---------------------------------------------------------------- 
+-- Default KAS Keys
+----------------------------------------------------------------
+-- name: getDefaultKeys :one
+SELECT
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+           'tdf_type', dkk.tdf_type,
+           'kas_uri', kas.uri,
+           'public_key', JSONB_BUILD_OBJECT(
+               'algorithm', kask.key_algorithm::TEXT,
+               'kid', kask.key_id,
+               'pem', kask.public_key_ctx ->> 'pem'
+           )
+        )
+    ) AS default_key
+FROM default_kas_keys dkk
+INNER JOIN key_access_server_keys kask ON dkk.key_access_server_key_id = kask.id
+INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id;
+
+-- name: getDefaultKasKeyByMode :one
+SELECT
+    DISTINCT JSONB_BUILD_OBJECT(
+       'tdf_type', dkk.tdf_type,
+       'kas_uri', kas.uri,
+       'public_key', JSONB_BUILD_OBJECT(
+            'algorithm', kask.key_algorithm::TEXT,
+            'kid', kask.key_id,
+            'pem', kask.public_key_ctx ->> 'pem'
+       )
+    ) AS default_key
+FROM default_kas_keys dkk
+INNER JOIN key_access_server_keys kask ON dkk.key_access_server_key_id = kask.id
+INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+WHERE (dkk.tdf_type = sqlc.narg('tdf_type')::TEXT);
+
+-- name: setDefaultKasKey :execrows
+INSERT INTO default_kas_keys (key_access_server_key_id, tdf_type)
+VALUES ($1, $2);
+
+-- name: getDefaultKeysById :one
+SELECT
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+           'tdf_type', dkk.tdf_type,
+           'kas_uri', kas.uri,
+           'public_key', JSONB_BUILD_OBJECT(
+               'algorithm', kask.key_algorithm::TEXT,
+               'kid', kask.key_id,
+               'pem', kask.public_key_ctx ->> 'pem'
+           )
+        )
+    ) AS default_key
+FROM default_kas_keys dkk
+INNER JOIN key_access_server_keys kask ON dkk.key_access_server_key_id = kask.id
+INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+WHERE (sqlc.narg('key_access_server_key_id')::UUID IS NULL OR dkk.key_access_server_key_id = sqlc.narg('key_access_server_key_id')::UUID);
+
+-- name: deleteAllDefaultKasKeys :execrows
+DELETE FROM default_kas_keys;
+

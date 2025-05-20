@@ -72,6 +72,11 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 
 				kasrSvc.logger = logger
 				kasrSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
+				if err = kasrSvc.dbClient.SetWellKnownConfig(context.TODO()); err != nil {
+					logger.Error("error setting well-known config", slog.String("error", err.Error()))
+					panic(err)
+				}
+
 				kasrSvc.config = cfg
 				return kasrSvc, nil
 			},
@@ -352,14 +357,21 @@ func (s KeyAccessServerRegistry) ListKeys(ctx context.Context, r *connect.Reques
 func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Request[kasr.RotateKeyRequest]) (*connect.Response[kasr.RotateKeyResponse], error) {
 	var resp *kasr.RotateKeyResponse
 	var objectID string
+	var identifier any
 
 	switch i := r.Msg.GetActiveKey().(type) {
 	case *kasr.RotateKeyRequest_Id:
 		s.logger.Debug("Rotating key by ID", slog.String("ID", i.Id))
 		objectID = i.Id
+		identifier = &kasr.GetKeyRequest_Id{
+			Id: i.Id,
+		}
 	case *kasr.RotateKeyRequest_Key:
 		s.logger.Debug("Rotating key by Kas Key", slog.String("Active Key ID", i.Key.GetKid()), slog.String("New Key ID", r.Msg.GetNewKey().GetKeyId()))
 		objectID = i.Key.GetKid()
+		identifier = &kasr.GetKeyRequest_Key{
+			Key: i.Key,
+		}
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, nil)
 	}
@@ -370,7 +382,7 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 		ObjectID:   objectID,
 	}
 
-	original, err := s.dbClient.GetKey(ctx, r.Msg.GetActiveKey())
+	original, err := s.dbClient.GetKey(ctx, identifier)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("keyAccessServer Keys", objectID))
@@ -421,5 +433,60 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 	}
 
 	// Implementation for RotateKey
+	return connect.NewResponse(resp), nil
+}
+
+func (s KeyAccessServerRegistry) SetDefaultKey(ctx context.Context, r *connect.Request[kasr.SetDefaultKeyRequest]) (*connect.Response[kasr.SetDefaultKeyResponse], error) {
+	resp := &kasr.SetDefaultKeyResponse{}
+
+	var objectID string
+	switch i := r.Msg.GetActiveKey().(type) {
+	case *kasr.SetDefaultKeyRequest_Id:
+		s.logger.Debug("Setting default key by ID", slog.String("ID", i.Id), slog.String("Tdf type", r.Msg.GetTdfType().String()))
+		objectID = i.Id
+	case *kasr.SetDefaultKeyRequest_Key:
+		s.logger.Debug("Setting default key by Key ID", slog.String("Active Key ID", i.Key.GetKid()), slog.String("Tdf type", r.Msg.GetTdfType().String()))
+		objectID = i.Key.GetKid()
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, nil)
+	}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeKasRegistryKeys,
+		ObjectID:   objectID,
+	}
+
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		var err error
+		resp, err = txClient.SetDefaultKey(ctx, r.Msg)
+		if err != nil {
+			s.logger.Error("failed to set default key", slog.String("error", err.Error()))
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return err
+		}
+
+		auditParams.Original = resp.GetPreviousDefaultKasKey()
+		auditParams.Updated = resp.GetNewDefaultKasKey()
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		return nil
+	})
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("SetDefaultKey", r.Msg.GetId()))
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
+func (s KeyAccessServerRegistry) GetDefaultKeys(ctx context.Context, _ *connect.Request[kasr.GetDefaultKeysRequest]) (*connect.Response[kasr.GetDefaultKeysResponse], error) {
+	s.logger.Debug("Getting Default KAS Keys")
+	resp := &kasr.GetDefaultKeysResponse{}
+
+	keys, err := s.dbClient.GetDefaultKasKeys(ctx)
+	if err != nil {
+		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed)
+	}
+	resp.DefaultKasKeys = keys
 	return connect.NewResponse(resp), nil
 }

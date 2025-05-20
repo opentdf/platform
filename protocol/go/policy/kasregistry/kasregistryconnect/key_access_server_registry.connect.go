@@ -67,6 +67,12 @@ const (
 	// KeyAccessServerRegistryServiceRotateKeyProcedure is the fully-qualified name of the
 	// KeyAccessServerRegistryService's RotateKey RPC.
 	KeyAccessServerRegistryServiceRotateKeyProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/RotateKey"
+	// KeyAccessServerRegistryServiceSetDefaultKeyProcedure is the fully-qualified name of the
+	// KeyAccessServerRegistryService's SetDefaultKey RPC.
+	KeyAccessServerRegistryServiceSetDefaultKeyProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/SetDefaultKey"
+	// KeyAccessServerRegistryServiceGetDefaultKeysProcedure is the fully-qualified name of the
+	// KeyAccessServerRegistryService's GetDefaultKeys RPC.
+	KeyAccessServerRegistryServiceGetDefaultKeysProcedure = "/policy.kasregistry.KeyAccessServerRegistryService/GetDefaultKeys"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -83,6 +89,8 @@ var (
 	keyAccessServerRegistryServiceListKeysMethodDescriptor                  = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("ListKeys")
 	keyAccessServerRegistryServiceUpdateKeyMethodDescriptor                 = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("UpdateKey")
 	keyAccessServerRegistryServiceRotateKeyMethodDescriptor                 = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("RotateKey")
+	keyAccessServerRegistryServiceSetDefaultKeyMethodDescriptor             = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("SetDefaultKey")
+	keyAccessServerRegistryServiceGetDefaultKeysMethodDescriptor            = keyAccessServerRegistryServiceServiceDescriptor.Methods().ByName("GetDefaultKeys")
 )
 
 // KeyAccessServerRegistryServiceClient is a client for the
@@ -106,6 +114,10 @@ type KeyAccessServerRegistryServiceClient interface {
 	UpdateKey(context.Context, *connect.Request[kasregistry.UpdateKeyRequest]) (*connect.Response[kasregistry.UpdateKeyResponse], error)
 	// Request to rotate a key in the Key Access Service.
 	RotateKey(context.Context, *connect.Request[kasregistry.RotateKeyRequest]) (*connect.Response[kasregistry.RotateKeyResponse], error)
+	// Request to set the default a default kas key.
+	SetDefaultKey(context.Context, *connect.Request[kasregistry.SetDefaultKeyRequest]) (*connect.Response[kasregistry.SetDefaultKeyResponse], error)
+	// Get Default kas keys
+	GetDefaultKeys(context.Context, *connect.Request[kasregistry.GetDefaultKeysRequest]) (*connect.Response[kasregistry.GetDefaultKeysResponse], error)
 }
 
 // NewKeyAccessServerRegistryServiceClient constructs a client for the
@@ -188,6 +200,18 @@ func NewKeyAccessServerRegistryServiceClient(httpClient connect.HTTPClient, base
 			connect.WithSchema(keyAccessServerRegistryServiceRotateKeyMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		setDefaultKey: connect.NewClient[kasregistry.SetDefaultKeyRequest, kasregistry.SetDefaultKeyResponse](
+			httpClient,
+			baseURL+KeyAccessServerRegistryServiceSetDefaultKeyProcedure,
+			connect.WithSchema(keyAccessServerRegistryServiceSetDefaultKeyMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		getDefaultKeys: connect.NewClient[kasregistry.GetDefaultKeysRequest, kasregistry.GetDefaultKeysResponse](
+			httpClient,
+			baseURL+KeyAccessServerRegistryServiceGetDefaultKeysProcedure,
+			connect.WithSchema(keyAccessServerRegistryServiceGetDefaultKeysMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -204,6 +228,8 @@ type keyAccessServerRegistryServiceClient struct {
 	listKeys                  *connect.Client[kasregistry.ListKeysRequest, kasregistry.ListKeysResponse]
 	updateKey                 *connect.Client[kasregistry.UpdateKeyRequest, kasregistry.UpdateKeyResponse]
 	rotateKey                 *connect.Client[kasregistry.RotateKeyRequest, kasregistry.RotateKeyResponse]
+	setDefaultKey             *connect.Client[kasregistry.SetDefaultKeyRequest, kasregistry.SetDefaultKeyResponse]
+	getDefaultKeys            *connect.Client[kasregistry.GetDefaultKeysRequest, kasregistry.GetDefaultKeysResponse]
 }
 
 // ListKeyAccessServers calls
@@ -266,6 +292,16 @@ func (c *keyAccessServerRegistryServiceClient) RotateKey(ctx context.Context, re
 	return c.rotateKey.CallUnary(ctx, req)
 }
 
+// SetDefaultKey calls policy.kasregistry.KeyAccessServerRegistryService.SetDefaultKey.
+func (c *keyAccessServerRegistryServiceClient) SetDefaultKey(ctx context.Context, req *connect.Request[kasregistry.SetDefaultKeyRequest]) (*connect.Response[kasregistry.SetDefaultKeyResponse], error) {
+	return c.setDefaultKey.CallUnary(ctx, req)
+}
+
+// GetDefaultKeys calls policy.kasregistry.KeyAccessServerRegistryService.GetDefaultKeys.
+func (c *keyAccessServerRegistryServiceClient) GetDefaultKeys(ctx context.Context, req *connect.Request[kasregistry.GetDefaultKeysRequest]) (*connect.Response[kasregistry.GetDefaultKeysResponse], error) {
+	return c.getDefaultKeys.CallUnary(ctx, req)
+}
+
 // KeyAccessServerRegistryServiceHandler is an implementation of the
 // policy.kasregistry.KeyAccessServerRegistryService service.
 type KeyAccessServerRegistryServiceHandler interface {
@@ -287,6 +323,10 @@ type KeyAccessServerRegistryServiceHandler interface {
 	UpdateKey(context.Context, *connect.Request[kasregistry.UpdateKeyRequest]) (*connect.Response[kasregistry.UpdateKeyResponse], error)
 	// Request to rotate a key in the Key Access Service.
 	RotateKey(context.Context, *connect.Request[kasregistry.RotateKeyRequest]) (*connect.Response[kasregistry.RotateKeyResponse], error)
+	// Request to set the default a default kas key.
+	SetDefaultKey(context.Context, *connect.Request[kasregistry.SetDefaultKeyRequest]) (*connect.Response[kasregistry.SetDefaultKeyResponse], error)
+	// Get Default kas keys
+	GetDefaultKeys(context.Context, *connect.Request[kasregistry.GetDefaultKeysRequest]) (*connect.Response[kasregistry.GetDefaultKeysResponse], error)
 }
 
 // NewKeyAccessServerRegistryServiceHandler builds an HTTP handler from the service implementation.
@@ -364,6 +404,18 @@ func NewKeyAccessServerRegistryServiceHandler(svc KeyAccessServerRegistryService
 		connect.WithSchema(keyAccessServerRegistryServiceRotateKeyMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	keyAccessServerRegistryServiceSetDefaultKeyHandler := connect.NewUnaryHandler(
+		KeyAccessServerRegistryServiceSetDefaultKeyProcedure,
+		svc.SetDefaultKey,
+		connect.WithSchema(keyAccessServerRegistryServiceSetDefaultKeyMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	keyAccessServerRegistryServiceGetDefaultKeysHandler := connect.NewUnaryHandler(
+		KeyAccessServerRegistryServiceGetDefaultKeysProcedure,
+		svc.GetDefaultKeys,
+		connect.WithSchema(keyAccessServerRegistryServiceGetDefaultKeysMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/policy.kasregistry.KeyAccessServerRegistryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case KeyAccessServerRegistryServiceListKeyAccessServersProcedure:
@@ -388,6 +440,10 @@ func NewKeyAccessServerRegistryServiceHandler(svc KeyAccessServerRegistryService
 			keyAccessServerRegistryServiceUpdateKeyHandler.ServeHTTP(w, r)
 		case KeyAccessServerRegistryServiceRotateKeyProcedure:
 			keyAccessServerRegistryServiceRotateKeyHandler.ServeHTTP(w, r)
+		case KeyAccessServerRegistryServiceSetDefaultKeyProcedure:
+			keyAccessServerRegistryServiceSetDefaultKeyHandler.ServeHTTP(w, r)
+		case KeyAccessServerRegistryServiceGetDefaultKeysProcedure:
+			keyAccessServerRegistryServiceGetDefaultKeysHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -439,4 +495,12 @@ func (UnimplementedKeyAccessServerRegistryServiceHandler) UpdateKey(context.Cont
 
 func (UnimplementedKeyAccessServerRegistryServiceHandler) RotateKey(context.Context, *connect.Request[kasregistry.RotateKeyRequest]) (*connect.Response[kasregistry.RotateKeyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.RotateKey is not implemented"))
+}
+
+func (UnimplementedKeyAccessServerRegistryServiceHandler) SetDefaultKey(context.Context, *connect.Request[kasregistry.SetDefaultKeyRequest]) (*connect.Response[kasregistry.SetDefaultKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.SetDefaultKey is not implemented"))
+}
+
+func (UnimplementedKeyAccessServerRegistryServiceHandler) GetDefaultKeys(context.Context, *connect.Request[kasregistry.GetDefaultKeysRequest]) (*connect.Response[kasregistry.GetDefaultKeysResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.kasregistry.KeyAccessServerRegistryService.GetDefaultKeys is not implemented"))
 }

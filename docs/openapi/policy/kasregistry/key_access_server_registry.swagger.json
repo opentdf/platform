@@ -425,11 +425,55 @@
       },
       "title": "Response to a CreateKeyRequest, containing the created asymmetric key"
     },
+    "kasregistryDefaultKasKey": {
+      "type": "object",
+      "properties": {
+        "tdfType": {
+          "type": "string",
+          "title": "The type of TDF (e.g., ZTDF, Nano)"
+        },
+        "kasUri": {
+          "type": "string",
+          "title": "The URL of the Key Access Server"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/kasregistryDefaultKasPublicKey",
+          "title": "The public key of the Key that belongs to the KAS"
+        }
+      }
+    },
+    "kasregistryDefaultKasPublicKey": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string"
+        },
+        "kid": {
+          "type": "string"
+        },
+        "pem": {
+          "type": "string"
+        }
+      }
+    },
     "kasregistryDeleteKeyAccessServerResponse": {
       "type": "object",
       "properties": {
         "keyAccessServer": {
           "$ref": "#/definitions/policyKeyAccessServer"
+        }
+      }
+    },
+    "kasregistryGetDefaultKeysResponse": {
+      "type": "object",
+      "properties": {
+        "defaultKasKeys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kasregistryDefaultKasKey"
+          },
+          "title": "The list of default keys"
         }
       }
     },
@@ -606,6 +650,28 @@
       },
       "title": "All resources that were rotated as part of the key rotation process"
     },
+    "kasregistrySetDefaultKeyResponse": {
+      "type": "object",
+      "properties": {
+        "newDefaultKasKey": {
+          "$ref": "#/definitions/kasregistryDefaultKasKey",
+          "title": "The key that was set as default"
+        },
+        "previousDefaultKasKey": {
+          "$ref": "#/definitions/kasregistryDefaultKasKey",
+          "title": "The previous default key, if any"
+        }
+      }
+    },
+    "kasregistryTdfType": {
+      "type": "string",
+      "enum": [
+        "TDF_TYPE_UNSPECIFIED",
+        "TDF_TYPE_ZTDF",
+        "TDF_TYPE_NANO"
+      ],
+      "default": "TDF_TYPE_UNSPECIFIED"
+    },
     "kasregistryUpdateKeyAccessServerResponse": {
       "type": "object",
       "properties": {
@@ -669,7 +735,7 @@
         "privateKeyCtx": {
           "$ref": "#/definitions/policyKasPrivateKeyCtx",
           "description": "Specific structure based on key provider implementation",
-          "title": "Optional"
+          "title": "Required"
         },
         "providerConfig": {
           "$ref": "#/definitions/policyKeyProviderConfig",

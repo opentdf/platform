@@ -23,6 +23,7 @@ const (
 	errMessageKeyURI                   = "key.uri"
 	errMessageKeyAlgo                  = "key_algorithm"
 	errMessageKeyMode                  = "key_mode"
+	errMessageTdfType                  = "tdf_type"
 	errMessagePubKeyCtx                = "public_key_ctx"
 	errMessagePrivateKeyCtx            = "The wrapped_key is required"
 	errMessageProviderConfigID         = "Provider config id is required"
@@ -857,6 +858,77 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					Id: validUUID,
 				},
 				NewKey: validRemoteNewKey,
+			},
+			expectError: false,
+		},
+	}
+
+	v := getValidator() // Get the validator instance (assuming this is defined elsewhere)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tc.name)
+				if tc.errorMessage != "" {
+					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
+				}
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
+	}
+}
+
+func Test_SetDefault_Keys(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *kasregistry.SetDefaultKeyRequest
+		expectError  bool
+		errorMessage string
+	}{
+		{
+			name:         "Invalid Request (empty)",
+			req:          &kasregistry.SetDefaultKeyRequest{},
+			expectError:  true,
+			errorMessage: errMessageRequired,
+		},
+		{
+			name: "Invalid Request (empty active key)",
+			req: &kasregistry.SetDefaultKeyRequest{
+				TdfType: kasregistry.TdfType_TDF_TYPE_NANO,
+			},
+			expectError:  true,
+			errorMessage: errMessageRequired,
+		},
+		{
+			name: "Invalid Request (invalid tdf mode)",
+			req: &kasregistry.SetDefaultKeyRequest{
+				ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
+					Id: validUUID,
+				},
+				TdfType: -1,
+			},
+			expectError:  true,
+			errorMessage: errMessageTdfType,
+		},
+		{
+			name: "Valid Request (nano)",
+			req: &kasregistry.SetDefaultKeyRequest{
+				ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
+					Id: validUUID,
+				},
+				TdfType: kasregistry.TdfType_TDF_TYPE_NANO,
+			},
+			expectError: false,
+		},
+		{
+			name: "Valid Request (ztdf)",
+			req: &kasregistry.SetDefaultKeyRequest{
+				ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
+					Id: validUUID,
+				},
+				TdfType: kasregistry.TdfType_TDF_TYPE_ZTDF,
 			},
 			expectError: false,
 		},

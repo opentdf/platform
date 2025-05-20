@@ -1,9 +1,11 @@
 package db
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -116,6 +118,68 @@ func KasKeysProtoJSON(keysJSON []byte) ([]*policy.KasKey, error) {
 	for _, r := range raw {
 		k := policy.KasKey{}
 		if err := protojson.Unmarshal(r, &k); err != nil {
+			return nil, err
+		}
+		keys = append(keys, &k)
+	}
+	return keys, nil
+}
+
+func formatAlg(alg policy.Algorithm) (string, error) {
+	switch alg {
+	case policy.Algorithm_ALGORITHM_RSA_2048:
+		return "rsa:2048", nil
+	case policy.Algorithm_ALGORITHM_RSA_4096:
+		return "rsa:4096", nil
+	case policy.Algorithm_ALGORITHM_EC_P256:
+		return "ec:secp256r1", nil
+	case policy.Algorithm_ALGORITHM_EC_P384:
+		return "ec:secp384r1", nil
+	case policy.Algorithm_ALGORITHM_EC_P521:
+		return "ec:secp512r1", nil
+	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
+		fallthrough
+	default:
+		return "", fmt.Errorf("unsupported algorithm: %s", alg)
+	}
+}
+
+func UnmarshalDefaultKasKey(keysJSON []byte, key *kasregistry.DefaultKasKey) error {
+	if keysJSON != nil {
+		if err := protojson.Unmarshal(keysJSON, key); err != nil {
+			return err
+		}
+
+		alg, err := strconv.Atoi(key.GetPublicKey().GetAlgorithm())
+		if err != nil {
+			return err
+		}
+		key.PublicKey.Algorithm, err = formatAlg(policy.Algorithm(alg))
+		if err != nil {
+			return err
+		}
+		// Base64 decode the public key
+		pem, err := base64.StdEncoding.DecodeString(key.GetPublicKey().GetPem())
+		if err != nil {
+			return err
+		}
+		key.PublicKey.Pem = string(pem)
+	}
+	return nil
+}
+
+func DefaultKasKeysProtoJSON(keysJSON []byte) ([]*kasregistry.DefaultKasKey, error) {
+	var (
+		keys []*kasregistry.DefaultKasKey
+		raw  []json.RawMessage
+	)
+	if err := json.Unmarshal(keysJSON, &raw); err != nil {
+		return nil, err
+	}
+	for _, r := range raw {
+		k := kasregistry.DefaultKasKey{}
+		err := UnmarshalDefaultKasKey(r, &k)
+		if err != nil {
 			return nil, err
 		}
 		keys = append(keys, &k)

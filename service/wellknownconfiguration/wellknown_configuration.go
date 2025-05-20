@@ -34,6 +34,14 @@ func RegisterConfiguration(namespace string, config any) error {
 	return nil
 }
 
+// We should probably have a safe-guard as to what config can be updated
+func UpdateConfiguration(namespace string, config any) error {
+	rwMutex.Lock()
+	defer rwMutex.Unlock()
+	wellKnownConfiguration[namespace] = config
+	return nil
+}
+
 func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler] {
 	return &serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[wellknownconfigurationconnect.WellKnownServiceHandler]{

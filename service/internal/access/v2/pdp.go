@@ -76,9 +76,6 @@ func NewPolicyDecisionPoint(
 	}
 
 	if allAttributeDefinitions == nil || allSubjectMappings == nil {
-		// if (allAttributeDefinitions != nil && allSubjectMappings == nil) ||
-		// 	(allAttributeDefinitions == nil && allSubjectMappings != nil) ||
-		// 	(allAttributeDefinitions == nil && allSubjectMappings == nil) {
 		l.ErrorContext(ctx, "invalid arguments", slog.String("error", ErrMissingRequiredPolicy.Error()))
 		return nil, ErrMissingRequiredPolicy
 	}

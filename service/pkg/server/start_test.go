@@ -263,9 +263,7 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 				},
 			}, s, nil, logger, registry)
 			require.NoError(t, err)
-			if cleanup != nil {
-				defer cleanup()
-			}
+			defer cleanup()
 
 			require.NoError(t, s.Start())
 			defer s.Stop()

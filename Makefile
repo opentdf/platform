@@ -1,7 +1,7 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean docker-build fix fmt go-lint license lint proto-generate connect-wrapper-generate proto-lint sdk/sdk test tidy toolcheck
+.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
 
 MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples

@@ -164,7 +164,7 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 				var err error
 				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, tracer, ns, svc.DBMigrations())
 				if err != nil {
-					return nil, err
+					return func() {}, err
 				}
 			}
 
@@ -179,11 +179,11 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 				Tracer:                 tracer,
 			})
 			if err != nil {
-				return nil, err
+				return func() {}, err
 			}
 
 			if err := svc.RegisterConfigUpdateHook(ctx, cfg.AddOnConfigChangeHook); err != nil {
-				return nil, fmt.Errorf("failed to register config update hook: %w", err)
+				return func() {}, fmt.Errorf("failed to register config update hook: %w", err)
 			}
 
 			// Register Connect RPC Services
@@ -203,7 +203,7 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 				logger.Info("service did not register a grpc gateway handler", slog.String("namespace", ns))
 			} else if gatewayCleanup == nil {
 				gatewayCleanup = func() {
-					slog.Info("executing cleanup")
+					slog.Debug("executing cleanup")
 					if grpcConn != nil {
 						grpcConn.Close()
 					}

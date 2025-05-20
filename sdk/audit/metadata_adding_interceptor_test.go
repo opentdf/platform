@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -57,13 +59,9 @@ func TestAddingAuditMetadataToOutgoingRequest(t *testing.T) {
 	ctx = context.WithValue(ctx, ActorIDContextKey, contextActorID)
 
 	_, err := clientConnect.PublicKey(ctx, connect.NewRequest(&kas.PublicKeyRequest{}))
-	if err != nil {
-		t.Fatalf("error making call: %v", err)
-	}
+	require.NoError(t, err)
 	_, err = clientGrpc.PublicKey(ctx, &kas.PublicKeyRequest{})
-	if err != nil {
-		t.Fatalf("error making call: %v", err)
-	}
+	require.NoError(t, err)
 
 	for _, ids := range []struct {
 		actorID   string
@@ -72,12 +70,8 @@ func TestAddingAuditMetadataToOutgoingRequest(t *testing.T) {
 		{requestID: serverConnect.requestID, actorID: serverConnect.actorID},
 		{requestID: serverGrpc.requestID, actorID: serverGrpc.actorID},
 	} {
-		if ids.requestID != contextRequestID {
-			t.Fatalf("request ID did not match: %v", serverConnect.requestID)
-		}
-		if ids.requestID != contextRequestID {
-			t.Fatalf("request ID did not match: %v", serverGrpc.requestID)
-		}
+		assert.Equal(t, contextRequestID, ids.requestID, "request ID did not match")
+		assert.Equal(t, contextActorID, ids.actorID, "actor ID did not match")
 	}
 }
 

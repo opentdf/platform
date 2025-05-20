@@ -62,7 +62,7 @@ func runBenchmarkBulk(cmd *cobra.Command, _ []string) error {
 		}
 		nanoTDFConfig.EnableECDSAPolicyBinding()
 		// if plaintext or platform endpoint is http, set kas url to http, otherwise https
-		if insecurePlaintextConn || strings.Contains(platformEndpoint, "http://") {
+		if insecurePlaintextConn || strings.HasPrefix(platformEndpoint, "http://") {
 			err = nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", "localhost:8080"))
 		} else {
 			err = nanoTDFConfig.SetKasURL(fmt.Sprintf("https://%s/kas", "localhost:8080"))
@@ -84,7 +84,7 @@ func runBenchmarkBulk(cmd *cobra.Command, _ []string) error {
 		}
 	} else {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...), sdk.WithAutoconfigure(false)}
-		if insecurePlaintextConn || strings.Contains(platformEndpoint, "http://") {
+		if insecurePlaintextConn || strings.HasPrefix(platformEndpoint, "http://") {
 			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{
 					URL:       "http://localhost:8080",

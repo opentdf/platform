@@ -234,6 +234,9 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 		}
 	}
 
+	if gatewayCleanup == nil {
+		gatewayCleanup = func() {}
+	}
 	return gatewayCleanup, nil
 }
 

@@ -23,7 +23,7 @@ linters:
     - fatcontext
     - forbidigo
     - forcetypeassert
-    # - funcorder
+    - funcorder
     - gocheckcompilerdirectives
     # - gochecknoinits
     - goconst
@@ -48,7 +48,7 @@ linters:
     - nolintlint
     - nonamedreturns
     - nosprintfhostport
-    # - perfsprint
+    - perfsprint
     - predeclared
     - promlinter
     - protogetter

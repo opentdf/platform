@@ -62,32 +62,12 @@ func (a *Logger) RewrapFailure(ctx context.Context, eventParams RewrapAuditEvent
 	a.rewrapBase(ctx, eventParams)
 }
 
-func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventParams) {
-	auditEvent, err := CreateRewrapAuditEvent(ctx, eventParams)
-	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating rewrap audit event", "err", err)
-		return
-	}
-
-	a.logger.Log(ctx, LevelAudit, "rewrap", "audit", *auditEvent)
-}
-
 func (a *Logger) PolicyCRUDSuccess(ctx context.Context, eventParams PolicyEventParams) {
 	a.policyCrudBase(ctx, true, eventParams)
 }
 
 func (a *Logger) PolicyCRUDFailure(ctx context.Context, eventParams PolicyEventParams) {
 	a.policyCrudBase(ctx, false, eventParams)
-}
-
-func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams PolicyEventParams) {
-	auditEvent, err := CreatePolicyEvent(ctx, isSuccess, eventParams)
-	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", "err", err)
-		return
-	}
-
-	a.logger.Log(ctx, LevelAudit, "policy crud", "audit", *auditEvent)
 }
 
 func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventParams) {
@@ -98,4 +78,24 @@ func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventPa
 	}
 
 	a.logger.Log(ctx, LevelAudit, "decision", "audit", *auditEvent)
+}
+
+func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventParams) {
+	auditEvent, err := CreateRewrapAuditEvent(ctx, eventParams)
+	if err != nil {
+		a.logger.ErrorContext(ctx, "error creating rewrap audit event", "err", err)
+		return
+	}
+
+	a.logger.Log(ctx, LevelAudit, "rewrap", "audit", *auditEvent)
+}
+
+func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams PolicyEventParams) {
+	auditEvent, err := CreatePolicyEvent(ctx, isSuccess, eventParams)
+	if err != nil {
+		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", "err", err)
+		return
+	}
+
+	a.logger.Log(ctx, LevelAudit, "policy crud", "audit", *auditEvent)
 }

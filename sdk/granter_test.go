@@ -2,10 +2,10 @@ package sdk
 
 import (
 	"context"
-	"fmt"
 	"maps"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -299,7 +299,7 @@ func TestAttributeFromMalformedURL(t *testing.T) {
 		t.Run(tc.n, func(t *testing.T) {
 			a, err := NewAttributeNameFQN(tc.u)
 			require.ErrorIs(t, err, ErrInvalid)
-			assert.Equal(t, "", a.String())
+			assert.Empty(t, a.String())
 		})
 	}
 }
@@ -342,7 +342,7 @@ func TestAttributeValueFromMalformedURL(t *testing.T) {
 		t.Run(tc.n, func(t *testing.T) {
 			a, err := NewAttributeValueFQN(tc.u)
 			require.ErrorIs(t, err, ErrInvalid)
-			assert.Equal(t, "", a.String())
+			assert.Empty(t, a.String())
 		})
 	}
 }
@@ -492,7 +492,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
 				i++
-				return fmt.Sprintf("%d", i)
+				return strconv.Itoa(i)
 			})
 			require.NoError(t, err)
 			assert.Equal(t, tc.plan, plan)
@@ -616,7 +616,7 @@ func TestReasonerSpecificity(t *testing.T) {
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
 				i++
-				return fmt.Sprintf("%d", i)
+				return strconv.Itoa(i)
 			})
 			require.NoError(t, err)
 			assert.ElementsMatch(t, tc.plan, plan)
@@ -767,7 +767,7 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
 				i++
-				return fmt.Sprintf("%d", i)
+				return strconv.Itoa(i)
 			})
 			require.NoError(t, err)
 			assert.ElementsMatch(t, tc.plan, plan)

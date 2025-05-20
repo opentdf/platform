@@ -1,3 +1,4 @@
+//nolint:forbidigo // Markdown output
 package cmd
 
 import (
@@ -42,13 +43,13 @@ func init() {
 }
 
 func formatDuration(nanos int64) string {
-	ms := float64(nanos) / 1_000_000.0 // Convert to milliseconds
+	ms := float64(nanos) / 1_000_000.0 //nolint:mnd // Convert to milliseconds
 	return fmt.Sprintf("%.3f ms", ms)
 }
 
 func runMetrics(cmd *cobra.Command, _ []string) error {
 	// Ensure the directory exists
-	if err := os.MkdirAll(folderPath, 0755); err != nil {
+	if err := os.MkdirAll(folderPath, 0o755); err != nil {
 		return fmt.Errorf("error creating directory '%s': %w", folderPath, err)
 	}
 

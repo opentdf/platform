@@ -74,8 +74,6 @@ For convenience, the `make toolcheck` script checks if you have the necessary de
 
 To provision a custom Keycloak setup, create a yaml following the format of [the sample Keycloak config](service/cmd/keycloak_data.yaml). You can create different realms with separate users, clients, roles, and groups. Run the provisioning with `go run ./service provision keycloak -f <path-to-your-yaml-file>`.
 
-### Develop a new service
-
 ## Developing a new platform service
 
 This guide will help you to develop a new service within the platform. The platform is focused on a modular binary
@@ -86,7 +84,7 @@ architecture, so the goal of the service is isolation while also getting the ben
 OpenTDF services are located under the `service` directory. Each service should have a unique directory name which is
 expected to relate to the service namespace.
 
-#### Service Namespace
+### Service Namespace
 
 A service namespace is a unique identifier for the service. It is used to identify the service in the platform and to
 enable multiple gRPC services to be rolled up into a single service.
@@ -96,8 +94,42 @@ contain any special characters. It should be the same as the directory name for 
 
 ### Registration
 
-Services are registered with the platform using the `serviceregistry.RegisterService` function. This function expects to be 
-given a `serviceregistry.IService` object.
+Services are registered with the platform by implementing the `serviceregistry.IService` interface, and
+calling the `serviceregistry.RegisterService` function.
 
 <!-- markdownlint-disable MD034 github embedded sourcecode -->
-https://github.com/opentdf/platform/blob/459e82aa3c1d278f5ac5f4835f94d9f3fe90727e/service/pkg/serviceregistry/serviceregistry.go#L48-L55
+https://github.com/opentdf/platform/blob/service/v0.5.2/service/pkg/serviceregistry/serviceregistry.go#L69-L80
+
+Notice that `serviceregistry.RegisterService` is called in `server.Start`.
+
+<!-- markdownlint-disable MD034 github embedded sourcecode -->
+https://github.com/opentdf/platform/blob/service/v0.5.2/service/pkg/server/start.go#L147-L157
+
+Services will be started if the deployed mode is `all` (the default) or the service name is given
+in the `mode`.  Note that `mode` may contain a comma-separated list of services (see below).
+
+<!-- markdownlint-disable MD034 github embedded sourcecode -->
+https://github.com/opentdf/platform/blob/service/v0.5.2/opentdf-example.yaml#L11
+
+<!-- markdownlint-disable MD034 github embedded sourcecode -->
+https://github.com/opentdf/platform/blob/service/v0.5.2/opentdf-ers-mode.yaml#L3
+
+The mode can be given as a list of strings as well, for instance `core,foo,bar` as 
+shown below:
+
+```yaml
+mode: core,foo,bar
+```
+
+It's important that the service name matches the Namespace of the service.  Optionally, you can
+also specify configuration for the service in the `opentdf.yaml` file.  The configuration
+is not required, but it is recommended to provide a default configuration for the service.
+
+For example, the `opentdf.yaml` file for a new service called `myservice` might include:
+
+```yaml
+services:
+  myservice:
+    enabled: true
+    foo: bar
+```

@@ -18,6 +18,7 @@
   "paths": {
     "/entityresolution/entitychain": {
       "post": {
+        "summary": "Deprecated: use v2 CreateEntityChainsFromTokens instead",
         "operationId": "EntityResolutionService_CreateEntityChainFromJwt",
         "responses": {
           "200": {
@@ -50,6 +51,7 @@
     },
     "/entityresolution/resolve": {
       "post": {
+        "summary": "Deprecated: use v2 ResolveEntities instead",
         "operationId": "EntityResolutionService_ResolveEntities",
         "responses": {
           "200": {
@@ -82,15 +84,6 @@
     }
   },
   "definitions": {
-    "EntityCategory": {
-      "type": "string",
-      "enum": [
-        "CATEGORY_UNSPECIFIED",
-        "CATEGORY_SUBJECT",
-        "CATEGORY_ENVIRONMENT"
-      ],
-      "default": "CATEGORY_UNSPECIFIED"
-    },
     "authorizationEntity": {
       "type": "object",
       "properties": {
@@ -121,10 +114,19 @@
           "type": "string"
         },
         "category": {
-          "$ref": "#/definitions/EntityCategory"
+          "$ref": "#/definitions/authorizationEntityCategory"
         }
       },
       "title": "PE (Person Entity) or NPE (Non-Person Entity)"
+    },
+    "authorizationEntityCategory": {
+      "type": "string",
+      "enum": [
+        "CATEGORY_UNSPECIFIED",
+        "CATEGORY_SUBJECT",
+        "CATEGORY_ENVIRONMENT"
+      ],
+      "default": "CATEGORY_UNSPECIFIED"
     },
     "authorizationEntityChain": {
       "type": "object",

@@ -14,13 +14,13 @@ import (
 
 func migrationInit(ctx context.Context, c *Client, migrations *embed.FS) (*goose.Provider, int64, func(), error) {
 	if !c.config.RunMigrations {
-		return nil, 0, nil, fmt.Errorf("migrations are disabled")
+		return nil, 0, nil, errors.New("migrations are disabled")
 	}
 
 	// Cast the pgxpool.Pool to a *sql.DB
 	pool, ok := c.Pgx.(*pgxpool.Pool)
 	if !ok || pool == nil {
-		return nil, 0, nil, fmt.Errorf("failed to cast pgxpool.Pool")
+		return nil, 0, nil, errors.New("failed to cast pgxpool.Pool")
 	}
 	conn := stdlib.OpenDBFromPool(pool)
 
@@ -33,7 +33,7 @@ func migrationInit(ctx context.Context, c *Client, migrations *embed.FS) (*goose
 	// Get the current version
 	v, e := provider.GetDBVersion(ctx)
 	if e != nil {
-		return nil, 0, nil, errors.Join(fmt.Errorf("failed to get current version"), e)
+		return nil, 0, nil, errors.Join(errors.New("failed to get current version"), e)
 	}
 	slog.Info("migration db info", slog.Any("current version", v))
 
@@ -49,12 +49,12 @@ func migrationInit(ctx context.Context, c *Client, migrations *embed.FS) (*goose
 // Schema will be created if it doesn't exist
 func (c *Client) RunMigrations(ctx context.Context, migrations *embed.FS) (int, error) {
 	if migrations == nil {
-		return 0, fmt.Errorf("migrations FS is required to run migrations")
+		return 0, errors.New("migrations FS is required to run migrations")
 	}
 	slog.Info("running migration up", slog.String("schema", c.config.Schema), slog.String("database", c.config.Database))
 
 	// Create schema if it doesn't exist
-	q := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", c.config.Schema)
+	q := "CREATE SCHEMA IF NOT EXISTS " + c.config.Schema
 	tag, err := c.Pgx.Exec(ctx, q)
 	if err != nil {
 		slog.ErrorContext(ctx, "Error while running command", slog.String("command", q), slog.String("error", err.Error()))
@@ -71,7 +71,7 @@ func (c *Client) RunMigrations(ctx context.Context, migrations *embed.FS) (int, 
 
 	res, err := provider.Up(ctx)
 	if err != nil {
-		return applied, errors.Join(fmt.Errorf("failed to run migrations"), err)
+		return applied, errors.Join(errors.New("failed to run migrations"), err)
 	}
 
 	if len(res) != 0 {
@@ -80,7 +80,7 @@ func (c *Client) RunMigrations(ctx context.Context, migrations *embed.FS) (int, 
 
 	for _, r := range res {
 		if r.Error != nil {
-			return applied, errors.Join(fmt.Errorf("failed to run migrations"), err)
+			return applied, errors.Join(errors.New("failed to run migrations"), err)
 		}
 		if !r.Empty {
 			applied++
@@ -114,10 +114,10 @@ func (c *Client) MigrationDown(ctx context.Context, migrations *embed.FS) error 
 
 	res, err := provider.Down(ctx)
 	if err != nil {
-		return errors.Join(fmt.Errorf("failed to run migrations"), err)
+		return errors.Join(errors.New("failed to run migrations"), err)
 	}
 	if res.Error != nil {
-		return errors.Join(fmt.Errorf("failed to run migrations"), res.Error)
+		return errors.Join(errors.New("failed to run migrations"), res.Error)
 	}
 
 	slog.Info("migration down complete ", slog.Any("post-op version", res.Source.Version))

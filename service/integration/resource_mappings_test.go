@@ -43,39 +43,6 @@ func (s *ResourceMappingsSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
-func (s *ResourceMappingsSuite) getExampleDotComNamespace() *fixtures.FixtureDataNamespace {
-	namespace := s.f.GetNamespaceKey("example.com")
-	return &namespace
-}
-
-func (s *ResourceMappingsSuite) getScenarioDotComNamespace() *fixtures.FixtureDataNamespace {
-	namespace := s.f.GetNamespaceKey("scenario.com")
-	return &namespace
-}
-
-func (s *ResourceMappingsSuite) getResourceMappingGroupFixtures() []fixtures.FixtureDataResourceMappingGroup {
-	return []fixtures.FixtureDataResourceMappingGroup{
-		s.f.GetResourceMappingGroupKey("example.com_ns_group_1"),
-		s.f.GetResourceMappingGroupKey("example.com_ns_group_2"),
-		s.f.GetResourceMappingGroupKey("scenario.com_ns_group_1"),
-	}
-}
-
-func (s *ResourceMappingsSuite) getResourceMappingFixtures() []fixtures.FixtureDataResourceMapping {
-	return []fixtures.FixtureDataResourceMapping{
-		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value1"),
-		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value2"),
-	}
-}
-
-// these are the attribute values that are used in the getResourceMappingFixtures method above
-func (s *ResourceMappingsSuite) getResourceMappingAttributeValueFixtures() []fixtures.FixtureDataAttributeValue {
-	return []fixtures.FixtureDataAttributeValue{
-		s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1"),
-		s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2"),
-	}
-}
-
 /*
  Resource Mapping Groups
 */
@@ -505,7 +472,7 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds(
 		testValue, ok := testValues[value.GetId()]
 		s.True(ok, "expected value %s", value.GetId())
 		s.Equal(testValue.Value, value.GetValue())
-		s.Equal(fmt.Sprintf("https://example.com/attr/attr1/value/%s", value.GetValue()), value.GetFqn())
+		s.Equal("https://example.com/attr/attr1/value/"+value.GetValue(), value.GetFqn())
 	}
 
 	s.Equal(testMappingCount, foundCount)
@@ -915,6 +882,39 @@ func (s *ResourceMappingsSuite) Test_DeleteResourceMappingWithUnknownIdFails() {
 	s.Require().Error(err)
 	s.Nil(deleted)
 	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *ResourceMappingsSuite) getExampleDotComNamespace() *fixtures.FixtureDataNamespace {
+	namespace := s.f.GetNamespaceKey("example.com")
+	return &namespace
+}
+
+func (s *ResourceMappingsSuite) getScenarioDotComNamespace() *fixtures.FixtureDataNamespace {
+	namespace := s.f.GetNamespaceKey("scenario.com")
+	return &namespace
+}
+
+func (s *ResourceMappingsSuite) getResourceMappingGroupFixtures() []fixtures.FixtureDataResourceMappingGroup {
+	return []fixtures.FixtureDataResourceMappingGroup{
+		s.f.GetResourceMappingGroupKey("example.com_ns_group_1"),
+		s.f.GetResourceMappingGroupKey("example.com_ns_group_2"),
+		s.f.GetResourceMappingGroupKey("scenario.com_ns_group_1"),
+	}
+}
+
+func (s *ResourceMappingsSuite) getResourceMappingFixtures() []fixtures.FixtureDataResourceMapping {
+	return []fixtures.FixtureDataResourceMapping{
+		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value1"),
+		s.f.GetResourceMappingKey("resource_mapping_to_attribute_value2"),
+	}
+}
+
+// these are the attribute values that are used in the getResourceMappingFixtures method above
+func (s *ResourceMappingsSuite) getResourceMappingAttributeValueFixtures() []fixtures.FixtureDataAttributeValue {
+	return []fixtures.FixtureDataAttributeValue{
+		s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1"),
+		s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2"),
+	}
 }
 
 func TestResourceMappingsSuite(t *testing.T) {

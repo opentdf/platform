@@ -93,7 +93,7 @@ func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
 	ns := &policy.Namespace{
 		Id:   row.namespaceID,
 		Name: row.namespaceName,
-		Fqn:  fmt.Sprintf("https://%s", row.namespaceName),
+		Fqn:  "https://" + row.namespaceName,
 	}
 
 	attr := &policy.Attribute{

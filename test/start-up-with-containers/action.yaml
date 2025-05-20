@@ -28,7 +28,7 @@ runs:
     - name: Check out platform
       uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
       with:
-        repository: opentdf/platform
+        repository: virtru-corp/data-security-platform
         # use a distinct path to avoid conflicts
         path: otdf-test-platform
         ref: ${{ inputs.platform-ref }}

@@ -10,7 +10,7 @@ import (
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	authzV2Connect "github.com/opentdf/platform/protocol/go/authorization/v2/authorizationv2connect"
 	otdf "github.com/opentdf/platform/sdk"
-	access "github.com/opentdf/platform/service/internal/access/v2"
+	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel"
@@ -19,9 +19,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var ErrEmptyStringAttribute = errors.New("resource attributes must have at least one attribute value fqn")
-
-type AuthorizationService struct { //nolint:revive // AuthorizationService is a valid name for this struct
+type Service struct {
 	sdk    *otdf.SDK
 	config *Config
 	logger *logger.Logger
@@ -31,7 +29,7 @@ type AuthorizationService struct { //nolint:revive // AuthorizationService is a 
 type Config struct{}
 
 func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler] {
-	as := new(AuthorizationService)
+	as := new(Service)
 
 	return &serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[authzV2Connect.AuthorizationServiceHandler]{
@@ -44,12 +42,12 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 
 				logger := srp.Logger
 
-				// default ERS endpoint
 				as.sdk = srp.SDK
 				as.logger = logger
-				if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
-					logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
-				}
+
+				// if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
+				// 	logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
+				// }
 
 				as.config = authZCfg
 				as.Tracer = srp.Tracer
@@ -61,14 +59,14 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 	}
 }
 
-// TODO: Not sure what we want to check here?
-func (as AuthorizationService) IsReady(ctx context.Context) error {
-	as.logger.TraceContext(ctx, "checking readiness of authorization service")
-	return nil
-}
+// TODO: uncomment after v1 is deprecated, as cannot have more than one readiness check under a namespace
+// func (as Service) IsReady(ctx context.Context) error {
+// 	as.logger.TraceContext(ctx, "checking readiness of authorization service")
+// 	return nil
+// }
 
 // GetEntitlements for an entity chain
-func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connect.Request[authzV2.GetEntitlementsRequest]) (*connect.Response[authzV2.GetEntitlementsResponse], error) {
+func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[authzV2.GetEntitlementsRequest]) (*connect.Response[authzV2.GetEntitlementsResponse], error) {
 	as.logger.DebugContext(ctx, "getting entitlements")
 
 	ctx, span := as.Tracer.Start(ctx, "GetEntitlements")
@@ -103,7 +101,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 }
 
 // GetDecision for an entity chain and an action on a single resource
-func (as *AuthorizationService) GetDecision(ctx context.Context, req *connect.Request[authzV2.GetDecisionRequest]) (*connect.Response[authzV2.GetDecisionResponse], error) {
+func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2.GetDecisionRequest]) (*connect.Response[authzV2.GetDecisionResponse], error) {
 	as.logger.DebugContext(ctx, "getting decision")
 
 	ctx, span := as.Tracer.Start(ctx, "GetDecision")
@@ -138,7 +136,7 @@ func (as *AuthorizationService) GetDecision(ctx context.Context, req *connect.Re
 }
 
 // GetDecisionMultiResource for an entity chain and action on multiple resources
-func (as *AuthorizationService) GetDecisionMultiResource(ctx context.Context, req *connect.Request[authzV2.GetDecisionMultiResourceRequest]) (*connect.Response[authzV2.GetDecisionMultiResourceResponse], error) {
+func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Request[authzV2.GetDecisionMultiResourceRequest]) (*connect.Response[authzV2.GetDecisionMultiResourceResponse], error) {
 	as.logger.DebugContext(ctx, "getting decision multi resource")
 
 	ctx, span := as.Tracer.Start(ctx, "GetDecisionMultiResource")
@@ -182,7 +180,7 @@ func (as *AuthorizationService) GetDecisionMultiResource(ctx context.Context, re
 }
 
 // GetDecisionBulk for multiple requests, each comprising a combination of entity chain, action, and one or more resources
-func (as *AuthorizationService) GetDecisionBulk(_ context.Context, _ *connect.Request[authzV2.GetDecisionBulkRequest]) (*connect.Response[authzV2.GetDecisionBulkResponse], error) {
+func (as *Service) GetDecisionBulk(_ context.Context, _ *connect.Request[authzV2.GetDecisionBulkRequest]) (*connect.Response[authzV2.GetDecisionBulkResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("GetDecisionBulk not implemented"))
 }
 

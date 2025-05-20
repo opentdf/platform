@@ -535,7 +535,6 @@ kas_registry_keys:
       - key_status
       - private_key_ctx
       - public_key_ctx
-      - provider_config_id
   data:
     kas_key_1:
       id: 7b9c4f44-ee74-418c-b05c-8320e01953be
@@ -557,6 +556,16 @@ kas_registry_keys:
       private_key_ctx: eyJ3cmFwcGVkS2V5IjoiYTJWNUNnPT0iLCJrZXlJZCI6ImtleSJ9Cg==
       public_key_ctx: eyJwZW0iOiJhMlY1Q2c9PSJ9Cg==
       provider_config_id: 19098106-54a1-4d33-8846-4894b5b6db3e # provider_config_2
+    kas_key_3:
+      id: 8f3c5e4a-6b5f-4d3c-9d1f-0f7d8e0e2a2b
+      key_access_server_id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb # key_access_server_1
+      key_algorithm: 1 # ALGORITHM_RSA_2048
+      key_id: kas_key_3
+      key_mode: 1 # KEY_MODE_LOCAL 
+      key_status: 2 # KEY_STATUS_INACTIVE
+      private_key_ctx: eyJ3cmFwcGVkS2V5IjoiYTJWNUNnPT0iLCJrZXlJZCI6ImtleSJ9Cg==
+      public_key_ctx: eyJwZW0iOiJhMlY1Q2c9PSJ9Cg==
+      
 
 ##############
 # Provider Config

@@ -682,6 +682,33 @@ func (f *Fixtures) provisionProviderConfigs() int64 {
 
 func (f *Fixtures) provisionKasRegistryKeys() int64 {
 	values := make([][]string, 0, len(fixtureData.KasRegistryKeys.Data))
+	// Create a local copy of columns to avoid modifying the global fixtureData
+	columns := make([]string, len(fixtureData.KasRegistryKeys.Metadata.Columns))
+	copy(columns, fixtureData.KasRegistryKeys.Metadata.Columns)
+
+	// Check if provider_config_id needs to be added to the columns
+	// This should only happen once, not inside the loop
+	providerConfigIDColumnPresent := false
+	for _, d := range fixtureData.KasRegistryKeys.Data {
+		if d.ProviderConfigID != "" {
+			providerConfigIDColumnPresent = true
+			break
+		}
+	}
+	if providerConfigIDColumnPresent {
+		// Ensure "provider_config_id" is not already in the base columns from YAML
+		exists := false
+		for _, colName := range columns {
+			if colName == "provider_config_id" {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			columns = append(columns, "provider_config_id")
+		}
+	}
+
 	for _, d := range fixtureData.KasRegistryKeys.Data {
 		pubCtx, err := base64.StdEncoding.DecodeString(d.PublicKeyCtx)
 		if err != nil {
@@ -693,7 +720,8 @@ func (f *Fixtures) provisionKasRegistryKeys() int64 {
 			slog.Error("⛔️ 📦 issue with kas registry private key context - check policy_fixtures.yaml for issues")
 			panic("issue with kas registry private key context")
 		}
-		values = append(values, []string{
+
+		currentRowValues := []string{
 			f.db.StringWrap(d.ID),
 			f.db.StringWrap(d.KeyAccessServerID),
 			f.db.StringWrap(d.KeyAlgorithm),
@@ -702,11 +730,19 @@ func (f *Fixtures) provisionKasRegistryKeys() int64 {
 			f.db.StringWrap(d.KeyStatus),
 			f.db.StringWrap(string(privateCtx)),
 			f.db.StringWrap(string(pubCtx)),
-			f.db.StringWrap(d.ProviderConfigID),
-		})
+		}
+
+		if providerConfigIDColumnPresent {
+			if d.ProviderConfigID == "" {
+				currentRowValues = append(currentRowValues, "NULL") // Use NULL for empty UUID
+			} else {
+				currentRowValues = append(currentRowValues, f.db.StringWrap(d.ProviderConfigID))
+			}
+		}
+		values = append(values, currentRowValues)
 	}
 
-	return f.provision(fixtureData.KasRegistryKeys.Metadata.TableName, fixtureData.KasRegistryKeys.Metadata.Columns, values)
+	return f.provision(fixtureData.KasRegistryKeys.Metadata.TableName, columns, values)
 }
 
 func (f *Fixtures) provisionRegisteredResources() int64 {

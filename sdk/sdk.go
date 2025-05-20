@@ -17,6 +17,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
+	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/actions"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -71,6 +72,7 @@ type SDK struct {
 	Attributes              attributes.AttributesServiceClient
 	Authorization           authorization.AuthorizationServiceClient
 	EntityResoution         entityresolution.EntityResolutionServiceClient
+	EntityResolutionV2      entityresolutionV2.EntityResolutionServiceClient
 	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
 	Namespaces              namespaces.NamespaceServiceClient
 	RegisteredResources     registeredresources.RegisteredResourcesServiceClient
@@ -214,6 +216,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(platformConn),
 		Authorization:           authorization.NewAuthorizationServiceClient(platformConn),
 		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(ersConn),
+		EntityResolutionV2:      entityresolutionV2.NewEntityResolutionServiceClient(ersConn),
 		KeyManagement:           keymanagement.NewKeyManagementServiceClient(platformConn),
 		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(platformConn),
 	}, nil

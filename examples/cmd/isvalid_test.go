@@ -16,11 +16,11 @@ type mockReadSeeker struct {
 	pos  int
 }
 
-func (m *mockReadSeeker) Read(p []byte) (n int, err error) {
+func (m *mockReadSeeker) Read(p []byte) (int, error) {
 	if m.pos >= len(m.data) {
 		return 0, io.EOF
 	}
-	n = copy(p, m.data[m.pos:])
+	n := copy(p, m.data[m.pos:])
 	m.pos += n
 	return n, nil
 }

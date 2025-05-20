@@ -63,6 +63,7 @@ type PgxIface interface {
 	Ping(context.Context) error
 	Close()
 	Config() *pgxpool.Config
+	CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error)
 }
 
 type Config struct {

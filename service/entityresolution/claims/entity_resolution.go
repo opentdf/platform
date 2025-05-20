@@ -1,4 +1,4 @@
-package entityresolution
+package claims
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type ClaimsEntityResolutionService struct {
+type ClaimsEntityResolutionService struct { //nolint:revive // Too late! Already exported
 	entityresolution.UnimplementedEntityResolutionServiceServer
 	logger *logger.Logger
 	trace.Tracer

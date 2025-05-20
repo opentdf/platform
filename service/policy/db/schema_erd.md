@@ -142,6 +142,15 @@ erDiagram
         timestamp_with_time_zone updated_at "Timestamp when the provider configuration was last updated"
     }
 
+    registered_resource_action_attribute_values {
+        uuid action_id FK,UK "Foreign key to the actions table"
+        uuid attribute_value_id FK,UK "Foreign key to the attribute_values table"
+        timestamp_with_time_zone created_at "Timestamp when the record was created"
+        uuid id PK "Primary key for the table"
+        uuid registered_resource_value_id FK,UK "Foreign key to the registered_resource_values table"
+        timestamp_with_time_zone updated_at "Timestamp when the record was last updated"
+    }
+
     registered_resource_values {
         timestamp_with_time_zone created_at "Timestamp when the record was created"
         uuid id PK "Primary key for the table"
@@ -214,6 +223,7 @@ erDiagram
         timestamp_with_time_zone updated_at "Timestamp when the key was last updated"
     }
 
+    registered_resource_action_attribute_values }o--|| actions : "action_id"
     subject_mapping_actions }o--|| actions : "action_id"
     asym_key }o--|| provider_config : "provider_config_id"
     attribute_definition_key_access_grants }o--|| attribute_definitions : "attribute_definition_id"
@@ -234,11 +244,13 @@ erDiagram
     attribute_value_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_value_public_key_map }o--|| attribute_values : "value_id"
     attribute_value_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
+    registered_resource_action_attribute_values }o--|| attribute_values : "attribute_value_id"
     resource_mappings }o--|| attribute_values : "attribute_value_id"
     subject_mappings }o--|| attribute_values : "attribute_value_id"
     default_kas_keys }o--|| key_access_server_keys : "key_access_server_key_id"
     key_access_server_keys }o--|| key_access_servers : "key_access_server_id"
     sym_key }o--|| provider_config : "provider_config_id"
+    registered_resource_action_attribute_values }o--|| registered_resource_values : "registered_resource_value_id"
     registered_resource_values }o--|| registered_resources : "registered_resource_id"
     resource_mappings }o--|| resource_mapping_groups : "group_id"
     subject_mappings }o--|| subject_condition_set : "subject_condition_set_id"

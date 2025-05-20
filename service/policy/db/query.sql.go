@@ -3239,6 +3239,12 @@ func (q *Queries) createRegisteredResource(ctx context.Context, arg createRegist
 	return id, err
 }
 
+type createRegisteredResourceActionAttributeValuesParams struct {
+	RegisteredResourceValueID string `json:"registered_resource_value_id"`
+	ActionID                  string `json:"action_id"`
+	AttributeValueID          string `json:"attribute_value_id"`
+}
+
 const createRegisteredResourceValue = `-- name: createRegisteredResourceValue :one
 
 INSERT INTO registered_resource_values (registered_resource_id, value, metadata)
@@ -3397,6 +3403,23 @@ DELETE FROM registered_resources WHERE id = $1
 //	DELETE FROM registered_resources WHERE id = $1
 func (q *Queries) deleteRegisteredResource(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteRegisteredResource, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteRegisteredResourceActionAttributeValues = `-- name: deleteRegisteredResourceActionAttributeValues :execrows
+DELETE FROM registered_resource_action_attribute_values
+WHERE registered_resource_value_id = $1
+`
+
+// deleteRegisteredResourceActionAttributeValues
+//
+//	DELETE FROM registered_resource_action_attribute_values
+//	WHERE registered_resource_value_id = $1
+func (q *Queries) deleteRegisteredResourceActionAttributeValues(ctx context.Context, registeredResourceValueID string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteRegisteredResourceActionAttributeValues, registeredResourceValueID)
 	if err != nil {
 		return 0, err
 	}
@@ -3835,13 +3858,31 @@ SELECT
     v.id,
     v.registered_resource_id,
     v.value,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+    JSON_AGG(
+    	JSON_BUILD_OBJECT(
+    		'action', JSON_BUILD_OBJECT(
+    			'id', a.id,
+    			'name', a.name
+    		),
+    		'attribute_value', JSON_BUILD_OBJECT(
+    			'id', av.id,
+    			'value', av.value,
+    			'fqn', fqns.fqn
+    		)
+    	)
+    ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values
 FROM registered_resource_values v
 JOIN registered_resources r ON v.registered_resource_id = r.id
+LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
+LEFT JOIN actions a on rav.action_id = a.id
+LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE
     (NULLIF($1, '') IS NULL OR v.id = $1::UUID) AND
     (NULLIF($2, '') IS NULL OR r.name = $2::VARCHAR) AND
     (NULLIF($3, '') IS NULL OR v.value = $3::VARCHAR)
+GROUP BY v.id
 `
 
 type getRegisteredResourceValueParams struct {
@@ -3851,10 +3892,11 @@ type getRegisteredResourceValueParams struct {
 }
 
 type getRegisteredResourceValueRow struct {
-	ID                   string `json:"id"`
-	RegisteredResourceID string `json:"registered_resource_id"`
-	Value                string `json:"value"`
-	Metadata             []byte `json:"metadata"`
+	ID                    string `json:"id"`
+	RegisteredResourceID  string `json:"registered_resource_id"`
+	Value                 string `json:"value"`
+	Metadata              []byte `json:"metadata"`
+	ActionAttributeValues []byte `json:"action_attribute_values"`
 }
 
 // getRegisteredResourceValue
@@ -3863,13 +3905,31 @@ type getRegisteredResourceValueRow struct {
 //	    v.id,
 //	    v.registered_resource_id,
 //	    v.value,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+//	    JSON_AGG(
+//	    	JSON_BUILD_OBJECT(
+//	    		'action', JSON_BUILD_OBJECT(
+//	    			'id', a.id,
+//	    			'name', a.name
+//	    		),
+//	    		'attribute_value', JSON_BUILD_OBJECT(
+//	    			'id', av.id,
+//	    			'value', av.value,
+//	    			'fqn', fqns.fqn
+//	    		)
+//	    	)
+//	    ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values
 //	FROM registered_resource_values v
 //	JOIN registered_resources r ON v.registered_resource_id = r.id
+//	LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
+//	LEFT JOIN actions a on rav.action_id = a.id
+//	LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+//	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	WHERE
 //	    (NULLIF($1, '') IS NULL OR v.id = $1::UUID) AND
 //	    (NULLIF($2, '') IS NULL OR r.name = $2::VARCHAR) AND
 //	    (NULLIF($3, '') IS NULL OR v.value = $3::VARCHAR)
+//	GROUP BY v.id
 func (q *Queries) getRegisteredResourceValue(ctx context.Context, arg getRegisteredResourceValueParams) (getRegisteredResourceValueRow, error) {
 	row := q.db.QueryRow(ctx, getRegisteredResourceValue, arg.ID, arg.Name, arg.Value)
 	var i getRegisteredResourceValueRow
@@ -3878,6 +3938,7 @@ func (q *Queries) getRegisteredResourceValue(ctx context.Context, arg getRegiste
 		&i.RegisteredResourceID,
 		&i.Value,
 		&i.Metadata,
+		&i.ActionAttributeValues,
 	)
 	return i, err
 }
@@ -4774,15 +4835,34 @@ WITH counted AS (
         NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
 )
 SELECT
-    id,
-    registered_resource_id,
-    value,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    v.id,
+    v.registered_resource_id,
+    v.value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+    JSON_AGG(
+    	JSON_BUILD_OBJECT(
+    		'action', JSON_BUILD_OBJECT(
+    			'id', a.id,
+    			'name', a.name
+    		),
+    		'attribute_value', JSON_BUILD_OBJECT(
+    			'id', av.id,
+    			'value', av.value,
+    			'fqn', fqns.fqn
+    		)
+    	)
+    ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values,
     counted.total
-FROM registered_resource_values
+FROM registered_resource_values v
+JOIN registered_resources r ON v.registered_resource_id = r.id
+LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
+LEFT JOIN actions a on rav.action_id = a.id
+LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id  
 CROSS JOIN counted
 WHERE
-    NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
+    NULLIF($1, '') IS NULL OR v.registered_resource_id = $1::UUID
+GROUP BY v.id, counted.total
 LIMIT $3
 OFFSET $2
 `
@@ -4794,11 +4874,12 @@ type listRegisteredResourceValuesParams struct {
 }
 
 type listRegisteredResourceValuesRow struct {
-	ID                   string `json:"id"`
-	RegisteredResourceID string `json:"registered_resource_id"`
-	Value                string `json:"value"`
-	Metadata             []byte `json:"metadata"`
-	Total                int64  `json:"total"`
+	ID                    string `json:"id"`
+	RegisteredResourceID  string `json:"registered_resource_id"`
+	Value                 string `json:"value"`
+	Metadata              []byte `json:"metadata"`
+	ActionAttributeValues []byte `json:"action_attribute_values"`
+	Total                 int64  `json:"total"`
 }
 
 // listRegisteredResourceValues
@@ -4810,15 +4891,34 @@ type listRegisteredResourceValuesRow struct {
 //	        NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
 //	)
 //	SELECT
-//	    id,
-//	    registered_resource_id,
-//	    value,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+//	    v.id,
+//	    v.registered_resource_id,
+//	    v.value,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+//	    JSON_AGG(
+//	    	JSON_BUILD_OBJECT(
+//	    		'action', JSON_BUILD_OBJECT(
+//	    			'id', a.id,
+//	    			'name', a.name
+//	    		),
+//	    		'attribute_value', JSON_BUILD_OBJECT(
+//	    			'id', av.id,
+//	    			'value', av.value,
+//	    			'fqn', fqns.fqn
+//	    		)
+//	    	)
+//	    ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values,
 //	    counted.total
-//	FROM registered_resource_values
+//	FROM registered_resource_values v
+//	JOIN registered_resources r ON v.registered_resource_id = r.id
+//	LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
+//	LEFT JOIN actions a on rav.action_id = a.id
+//	LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+//	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	CROSS JOIN counted
 //	WHERE
-//	    NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
+//	    NULLIF($1, '') IS NULL OR v.registered_resource_id = $1::UUID
+//	GROUP BY v.id, counted.total
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) listRegisteredResourceValues(ctx context.Context, arg listRegisteredResourceValuesParams) ([]listRegisteredResourceValuesRow, error) {
@@ -4835,6 +4935,7 @@ func (q *Queries) listRegisteredResourceValues(ctx context.Context, arg listRegi
 			&i.RegisteredResourceID,
 			&i.Value,
 			&i.Metadata,
+			&i.ActionAttributeValues,
 			&i.Total,
 		); err != nil {
 			return nil, err

@@ -335,7 +335,7 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 
 	kas := Provider{
 		URI:        *kasURI,
-		KeyManager: security.NewSecurityProviderAdapter(c),
+		KeyManager: security.NewSecurityProviderAdapter(c, nil, nil),
 		Logger:     logger.CreateTestLogger(),
 		Tracer:     noop.NewTracerProvider().Tracer(""),
 	}
@@ -345,7 +345,7 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-func mustNewCryptoProvider(t *testing.T, configStandard security.Config) security.CryptoProvider {
+func mustNewCryptoProvider(t *testing.T, configStandard security.Config) *security.StandardCrypto {
 	c, err := security.NewCryptoProvider(configStandard)
 	require.NoError(t, err)
 	require.NotNil(t, c)

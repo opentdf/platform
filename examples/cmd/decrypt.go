@@ -1,3 +1,4 @@
+//nolint:forbidigo,nestif // Sample code
 package cmd
 
 import (
@@ -14,7 +15,7 @@ import (
 )
 
 func init() {
-	var decryptCmd = &cobra.Command{
+	decryptCmd := &cobra.Command{
 		Use:   "decrypt",
 		Short: "Decrypt TDF file",
 		RunE:  decrypt,
@@ -71,7 +72,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 	switch {
 	case err != nil:
 		return err
-	case n < 3:
+	case n < 3: //nolint: mnd // All TDFs are more than 2 bytes
 		return errors.New("file too small; no magic number found")
 	case bytes.HasPrefix(magic[:], []byte("L1L")):
 		isNano = true
@@ -97,9 +98,9 @@ func decrypt(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		//Print decrypted string
+		// Print decrypted string
 		_, err = io.Copy(os.Stdout, tdfreader)
-		if err != nil && err != io.EOF {
+		if err != nil && !errors.Is(err, io.EOF) {
 			return err
 		}
 	} else {

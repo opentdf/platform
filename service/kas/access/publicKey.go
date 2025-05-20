@@ -21,6 +21,15 @@ const (
 )
 
 func (p *Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
+	keyIdx := p.GetKeyIndex()
+	if keyIdx != nil {
+		k, err := keyIdx.FindKeyByAlgorithm(ctx, algorithm, false)
+		if err == nil {
+			return string(k.ID()), nil
+		}
+		p.Logger.WarnContext(ctx, "KeyIndex.FindKeyByAlgorithm failed", "err", err)
+	}
+
 	if len(p.Keyring) == 0 {
 		p.Logger.WarnContext(ctx, "no default keys found", "algorithm", algorithm)
 		return "", connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("no default keys configured")))

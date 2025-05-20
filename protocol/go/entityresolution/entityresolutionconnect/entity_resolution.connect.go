@@ -51,7 +51,9 @@ var (
 // EntityResolutionServiceClient is a client for the entityresolution.EntityResolutionService
 // service.
 type EntityResolutionServiceClient interface {
+	// Deprecated: use v2 ResolveEntities instead
 	ResolveEntities(context.Context, *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error)
+	// Deprecated: use v2 CreateEntityChainsFromTokens instead
 	CreateEntityChainFromJwt(context.Context, *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error)
 }
 
@@ -99,7 +101,9 @@ func (c *entityResolutionServiceClient) CreateEntityChainFromJwt(ctx context.Con
 // EntityResolutionServiceHandler is an implementation of the
 // entityresolution.EntityResolutionService service.
 type EntityResolutionServiceHandler interface {
+	// Deprecated: use v2 ResolveEntities instead
 	ResolveEntities(context.Context, *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error)
+	// Deprecated: use v2 CreateEntityChainsFromTokens instead
 	CreateEntityChainFromJwt(context.Context, *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error)
 }
 

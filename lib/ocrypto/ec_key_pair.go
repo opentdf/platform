@@ -250,7 +250,7 @@ func ConvertToECDHPublicKey(key interface{}) (*ecdh.PublicKey, error) {
 		// No conversion needed
 		return k, nil
 	default:
-		return nil, fmt.Errorf("unsupported public key type")
+		return nil, errors.New("unsupported public key type")
 	}
 }
 
@@ -264,7 +264,7 @@ func ConvertToECDHPrivateKey(key interface{}) (*ecdh.PrivateKey, error) {
 		// No conversion needed
 		return k, nil
 	default:
-		return nil, fmt.Errorf("unsupported private key type")
+		return nil, errors.New("unsupported private key type")
 	}
 }
 
@@ -306,7 +306,7 @@ func VerifyECDSASig(digest, r, s []byte, pubKey *ecdsa.PublicKey) bool {
 func ECPubKeyFromPem(pemECPubKey []byte) (*ecdh.PublicKey, error) {
 	block, _ := pem.Decode(pemECPubKey)
 	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM formatted public key")
+		return nil, errors.New("failed to parse PEM formatted public key")
 	}
 
 	var pub any
@@ -318,7 +318,7 @@ func ECPubKeyFromPem(pemECPubKey []byte) (*ecdh.PublicKey, error) {
 
 		var ok bool
 		if pub, ok = cert.PublicKey.(*ecdsa.PublicKey); !ok {
-			return nil, fmt.Errorf("failed to parse PEM formatted public key")
+			return nil, errors.New("failed to parse PEM formatted public key")
 		}
 	} else {
 		var err error
@@ -335,14 +335,14 @@ func ECPubKeyFromPem(pemECPubKey []byte) (*ecdh.PublicKey, error) {
 		break
 	}
 
-	return nil, fmt.Errorf("not an ec PEM formatted public key")
+	return nil, errors.New("not an ec PEM formatted public key")
 }
 
 // ECPrivateKeyFromPem generate ec private from pem format
 func ECPrivateKeyFromPem(privateECKeyInPem []byte) (*ecdh.PrivateKey, error) {
 	block, _ := pem.Decode(privateECKeyInPem)
 	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM formatted private key")
+		return nil, errors.New("failed to parse PEM formatted private key")
 	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
@@ -357,7 +357,7 @@ func ECPrivateKeyFromPem(privateECKeyInPem []byte) (*ecdh.PrivateKey, error) {
 		break
 	}
 
-	return nil, fmt.Errorf("not an ec PEM formatted private key")
+	return nil, errors.New("not an ec PEM formatted private key")
 }
 
 // ComputeECDHKey calculate shared secret from public key from one party and the private key from another party.
@@ -461,7 +461,7 @@ func ECPublicKeyInPemFormat(publicKey ecdsa.PublicKey) (string, error) {
 func GetECKeySize(pemData []byte) (int, error) {
 	block, _ := pem.Decode(pemData)
 	if block == nil {
-		return 0, fmt.Errorf("failed to parse PEM block")
+		return 0, errors.New("failed to parse PEM block")
 	}
 
 	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
@@ -471,7 +471,7 @@ func GetECKeySize(pemData []byte) (int, error) {
 
 	ecKey, ok := pub.(*ecdsa.PublicKey)
 	if !ok {
-		return 0, fmt.Errorf("not an EC key")
+		return 0, errors.New("not an EC key")
 	}
 
 	switch ecKey.Curve {
@@ -482,7 +482,7 @@ func GetECKeySize(pemData []byte) (int, error) {
 	case elliptic.P521():
 		return ECCurveP521Size, nil
 	default:
-		return 0, fmt.Errorf("unknown curve")
+		return 0, errors.New("unknown curve")
 	}
 }
 

@@ -18,6 +18,7 @@
   "paths": {
     "/entityresolution/entitychain": {
       "post": {
+        "summary": "Deprecated: use v2 CreateEntityChainsFromTokens instead",
         "operationId": "EntityResolutionService_CreateEntityChainFromJwt",
         "responses": {
           "200": {
@@ -50,6 +51,7 @@
     },
     "/entityresolution/resolve": {
       "post": {
+        "summary": "Deprecated: use v2 ResolveEntities instead",
         "operationId": "EntityResolutionService_ResolveEntities",
         "responses": {
           "200": {

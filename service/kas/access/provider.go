@@ -26,7 +26,7 @@ type Provider struct {
 	KeyIndex     trust.KeyIndex
 	KeyManager   trust.KeyManager
 	// Deprecated: Use SecurityProvider instead
-	CryptoProvider security.CryptoProvider // Kept for backward compatibility
+	CryptoProvider *security.StandardCrypto // Kept for backward compatibility
 	Logger         *logger.Logger
 	Config         *config.ServiceConfig
 	KASConfig
@@ -35,32 +35,13 @@ type Provider struct {
 
 // GetSecurityProvider returns the SecurityProvider
 func (p *Provider) GetSecurityProvider() trust.KeyManager {
-	// If SecurityProvider is explicitly set, use it
-	if p.KeyManager != nil {
-		return p.KeyManager
-	}
-
-	// Otherwise, create an adapter from CryptoProvider if available
-	if p.CryptoProvider != nil {
-		return security.NewSecurityProviderAdapter(p.CryptoProvider)
-	}
-
-	// This shouldn't happen in normal operation
-	p.Logger.Error("no security provider available")
-	return nil
+	p.initSecurityProviderAdapter()
+	return p.KeyManager
 }
 
 func (p *Provider) GetKeyIndex() trust.KeyIndex {
-	if p.KeyIndex != nil {
-		return p.KeyIndex
-	}
-
-	if p.CryptoProvider != nil {
-		return security.NewSecurityProviderAdapter(p.CryptoProvider)
-	}
-
-	p.Logger.Error("no key index available")
-	return nil
+	p.initSecurityProviderAdapter()
+	return p.KeyIndex
 }
 
 type KASConfig struct {
@@ -92,7 +73,7 @@ func (p *Provider) IsReady(ctx context.Context) error {
 	return nil
 }
 
-func (kasCfg *KASConfig) UpgradeMapToKeyring(c security.CryptoProvider) {
+func (kasCfg *KASConfig) UpgradeMapToKeyring(c *security.StandardCrypto) {
 	switch {
 	case kasCfg.ECCertID != "" && len(kasCfg.Keyring) > 0:
 		panic("invalid kas cfg: please specify keyring or eccertid, not both")
@@ -119,6 +100,43 @@ func (kasCfg *KASConfig) UpgradeMapToKeyring(c security.CryptoProvider) {
 		deprecatedOrDefault(kasCfg.RSACertID, security.AlgorithmRSA2048)
 	default:
 		kasCfg.Keyring = append(kasCfg.Keyring, inferLegacyKeys(kasCfg.Keyring)...)
+	}
+}
+
+func (p *Provider) initSecurityProviderAdapter() {
+	// If the CryptoProvider is set, create a SecurityProviderAdapter
+	if p.CryptoProvider == nil || p.KeyManager != nil && p.KeyIndex != nil {
+		return
+	}
+	var defaults []string
+	var legacies []string
+	for _, key := range p.KASConfig.Keyring {
+		if key.Legacy {
+			legacies = append(legacies, key.KID)
+		} else {
+			defaults = append(defaults, key.KID)
+		}
+	}
+	if len(defaults) == 0 && len(legacies) == 0 {
+		for _, alg := range []string{security.AlgorithmECP256R1, security.AlgorithmRSA2048} {
+			kid := p.CryptoProvider.FindKID(alg)
+			if kid != "" {
+				defaults = append(defaults, kid)
+			} else {
+				p.Logger.Warn("no default key found for algorithm", "algorithm", alg)
+			}
+		}
+	}
+
+	inProcessService := security.NewSecurityProviderAdapter(p.CryptoProvider, defaults, legacies)
+
+	if p.KeyIndex == nil {
+		p.Logger.Warn("fallback to in-process key index")
+		p.KeyIndex = inProcessService
+	}
+	if p.KeyManager == nil {
+		p.Logger.Error("fallback to in-process manager")
+		p.KeyManager = inProcessService
 	}
 }
 

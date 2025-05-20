@@ -529,12 +529,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
 				kidsToCheck = []trust.KeyIdentifier{kid}
 			} else {
-				p.Logger.InfoContext(ctx, "kid free kao")
-				for _, k := range p.Keyring {
-					if k.Algorithm == security.AlgorithmRSA2048 && k.Legacy {
-						kidsToCheck = append(kidsToCheck, trust.KeyIdentifier(k.KID))
-					}
-				}
+				kidsToCheck = p.listLegacyKeys(ctx)
 				if len(kidsToCheck) == 0 {
 					p.Logger.WarnContext(ctx, "failure to find legacy kids for rsa")
 					failedKAORewrap(results, kao, err400("bad request"))
@@ -601,6 +596,32 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 	}
 
 	return policy, results, nil
+}
+
+func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
+	var kidsToCheck []trust.KeyIdentifier
+	p.Logger.InfoContext(ctx, "kid free kao")
+	if len(p.Keyring) > 0 {
+		// Using deprecated 'keyring' feature for lookup
+		for _, k := range p.Keyring {
+			if k.Algorithm == security.AlgorithmRSA2048 && k.Legacy {
+				kidsToCheck = append(kidsToCheck, trust.KeyIdentifier(k.KID))
+			}
+		}
+		return kidsToCheck
+	}
+
+	k, err := p.GetKeyIndex().ListKeys(ctx)
+	if err != nil {
+		p.Logger.WarnContext(ctx, "KeyIndex.ListKeys failed", "err", err)
+	} else {
+		for _, key := range k {
+			if key.Algorithm() == security.AlgorithmRSA2048 && key.IsLegacy() {
+				kidsToCheck = append(kidsToCheck, key.ID())
+			}
+		}
+	}
+	return kidsToCheck
 }
 
 func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRewrapRequest_WithPolicyRequest, clientPublicKey string, entity *entityInfo) (string, policyKAOResults) {

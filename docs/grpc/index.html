@@ -282,6 +282,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.RegisteredResourceValue.ActionAttributeValue"><span class="badge">M</span>RegisteredResourceValue.ActionAttributeValue</a>
+                </li>
+              
+                <li>
                   <a href="#policy.ResourceMapping"><span class="badge">M</span>ResourceMapping</a>
                 </li>
               
@@ -1355,6 +1359,10 @@
           <li>
             <a href="#policy%2fregisteredresources%2fregistered_resources.proto">policy/registeredresources/registered_resources.proto</a>
             <ul>
+              
+                <li>
+                  <a href="#policy.registeredresources.ActionAttributeValue"><span class="badge">M</span>ActionAttributeValue</a>
+                </li>
               
                 <li>
                   <a href="#policy.registeredresources.CreateRegisteredResourceRequest"><span class="badge">M</span>CreateRegisteredResourceRequest</a>
@@ -2832,6 +2840,58 @@ enable federation </p></td>
                 </tr>
               
                 <tr>
+                  <td>action_attribute_values</td>
+                  <td><a href="#policy.RegisteredResourceValue.ActionAttributeValue">RegisteredResourceValue.ActionAttributeValue</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.RegisteredResourceValue.ActionAttributeValue">RegisteredResourceValue.ActionAttributeValue</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#policy.Action">Action</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value</td>
+                  <td><a href="#policy.Value">Value</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -3427,7 +3487,7 @@ Migrate to &#39;create&#39; action name</p></td>
         </table>
       
         <h3 id="policy.KeyMode">KeyMode</h3>
-        <p>Describe how the kas private key is managed.</p><p>If the key mode is LOCAL, then the kas private key is stored in the database.</p><p>This could be encrypted or unencrypted.</p><p>Remote means that the kas private key is stored in a remote key system like KMS or HSM</p><p>and all operations are done by the remote key system.</p>
+        <p>Describes the management and operational mode of a cryptographic key.</p>
         <table class="enum-table">
           <thead>
             <tr><td>Name</td><td>Number</td><td>Description</td></tr>
@@ -3437,19 +3497,39 @@ Migrate to &#39;create&#39; action name</p></td>
               <tr>
                 <td>KEY_MODE_UNSPECIFIED</td>
                 <td>0</td>
-                <td><p></p></td>
+                <td><p>KEY_MODE_UNSPECIFIED: Default, unspecified key mode. Indicates an uninitialized or error state.</p></td>
               </tr>
             
               <tr>
-                <td>KEY_MODE_LOCAL</td>
+                <td>KEY_MODE_CONFIG_ROOT_KEY</td>
                 <td>1</td>
-                <td><p></p></td>
+                <td><p>KEY_MODE_CONFIG_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)
+sourced from local configuration. Unwrapping and all cryptographic operations are performed locally.</p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_MODE_PROVIDER_ROOT_KEY</td>
+                <td>2</td>
+                <td><p>KEY_MODE_PROVIDER_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)
+managed by an external provider (e.g., a Hardware Security Module or Cloud KMS).
+Key unwrapping is delegated to the external provider; subsequent cryptographic operations
+are performed locally using the unwrapped key.</p></td>
               </tr>
             
               <tr>
                 <td>KEY_MODE_REMOTE</td>
-                <td>2</td>
-                <td><p></p></td>
+                <td>3</td>
+                <td><p>KEY_MODE_REMOTE: Remote key management where the private key is stored in, and all cryptographic
+operations are performed by, a remote Key Management Service (KMS) or HSM.
+The private key material never leaves the secure boundary of the remote system.</p></td>
+              </tr>
+            
+              <tr>
+                <td>KEY_MODE_PUBLIC_KEY_ONLY</td>
+                <td>4</td>
+                <td><p>KEY_MODE_PUBLIC_KEY_ONLY: Public key only mode. Used when only a public key is available or required,
+typically for wrapping operations (e.g., encrypting a Data Encryption Key (DEK) for an external KAS).
+The corresponding private key is not managed or accessible by this system.</p></td>
               </tr>
             
           </tbody>
@@ -5127,14 +5207,14 @@ down the hierarchical values instead of returning solely the value that is direc
                 <td>ResolveEntities</td>
                 <td><a href="#entityresolution.ResolveEntitiesRequest">ResolveEntitiesRequest</a></td>
                 <td><a href="#entityresolution.ResolveEntitiesResponse">ResolveEntitiesResponse</a></td>
-                <td><p></p></td>
+                <td><p>Deprecated: use v2 ResolveEntities instead</p></td>
               </tr>
             
               <tr>
                 <td>CreateEntityChainFromJwt</td>
                 <td><a href="#entityresolution.CreateEntityChainFromJwtRequest">CreateEntityChainFromJwtRequest</a></td>
                 <td><a href="#entityresolution.CreateEntityChainFromJwtResponse">CreateEntityChainFromJwtResponse</a></td>
-                <td><p></p></td>
+                <td><p>Deprecated: use v2 CreateEntityChainsFromTokens instead</p></td>
               </tr>
             
           </tbody>
@@ -9920,7 +10000,9 @@ Pagination request for the list of keys </p></td>
                   <td>provider_config_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Conditionally Required. If the key_mode is REMOTE, this field is required. </p></td>
+                  <td><p>Conditionally Required.
+
+Validation handled by message-level CEL </p></td>
                 </tr>
               
                 <tr>
@@ -11577,6 +11659,51 @@ Namespace &lt;&gt; Key RPCs
       <p></p>
 
       
+        <h3 id="policy.registeredresources.ActionAttributeValue">ActionAttributeValue</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>action_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action_name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.registeredresources.CreateRegisteredResourceRequest">CreateRegisteredResourceRequest</h3>
         <p></p>
 
@@ -11664,6 +11791,15 @@ Common metadata </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action_attribute_values</td>
+                  <td><a href="#policy.registeredresources.ActionAttributeValue">ActionAttributeValue</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional
+The associated Action &lt;&gt; AttributeValue combinations to be utilized in authorization/entitlement decisioning
+(i.e. action read -&gt; attribute value https://example.com/attr/department/value/marketing) </p></td>
                 </tr>
               
                 <tr>
@@ -12199,6 +12335,14 @@ Common metadata </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action_attribute_values</td>
+                  <td><a href="#policy.registeredresources.ActionAttributeValue">ActionAttributeValue</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional
+Action Attribute Values provided here will replace all existing records in the database. To delete all action attribute values, set this field to an empty list. </p></td>
                 </tr>
               
                 <tr>

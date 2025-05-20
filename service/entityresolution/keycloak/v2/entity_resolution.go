@@ -14,8 +14,8 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
+	ent "github.com/opentdf/platform/service/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
-	auth "github.com/opentdf/platform/service/authorization"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -184,7 +184,7 @@ func EntityResolution(ctx context.Context,
 			// make sure the id field is populated
 			originialID := ident.GetEphemeralId()
 			if originialID == "" {
-				originialID = auth.EntityIDPrefix + strconv.Itoa(idx)
+				originialID = ent.EntityIDPrefix + strconv.Itoa(idx)
 			}
 			resolvedEntities = append(
 				resolvedEntities,
@@ -299,7 +299,7 @@ func EntityResolution(ctx context.Context,
 		// make sure the id field is populated
 		originialID := ident.GetEphemeralId()
 		if originialID == "" {
-			originialID = auth.EntityIDPrefix + strconv.Itoa(idx)
+			originialID = ent.EntityIDPrefix + strconv.Itoa(idx)
 		}
 		resolvedEntities = append(
 			resolvedEntities,

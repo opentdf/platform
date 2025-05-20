@@ -57,7 +57,7 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 }
 
 // TODO: Not sure what we want to check here?
-func (as AuthorizationService) IsReady(_ context.Context) error {
+func (as AuthorizationService) IsReady(ctx context.Context) error {
 	as.logger.TraceContext(ctx, "checking readiness of authorization service")
 	return nil
 }

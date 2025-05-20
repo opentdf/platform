@@ -22,8 +22,6 @@ var ErrNoActiveKeyForAlgorithm = errors.New("no active key found for specified a
 
 // Used for reaching out to platform to get keys
 type PlatformKeyIndexer struct {
-	// Implements the KeyIndex interface
-	trust.KeyIndex
 	// SDK is the SDK instance used to interact with the platform
 	sdk *sdk.SDK
 	// KasURI

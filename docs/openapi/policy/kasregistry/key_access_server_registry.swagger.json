@@ -735,7 +735,7 @@
         "privateKeyCtx": {
           "$ref": "#/definitions/policyKasPrivateKeyCtx",
           "description": "Specific structure based on key provider implementation",
-          "title": "Required"
+          "title": "Optional"
         },
         "providerConfig": {
           "$ref": "#/definitions/policyKeyProviderConfig",

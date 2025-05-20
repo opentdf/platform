@@ -2315,7 +2315,7 @@ type AsymmetricKey struct {
 	KeyMode KeyMode `protobuf:"varint,5,opt,name=key_mode,json=keyMode,proto3,enum=policy.KeyMode" json:"key_mode,omitempty"` // Specifies how the key is managed (local or remote)
 	// Required
 	PublicKeyCtx *KasPublicKeyCtx `protobuf:"bytes,6,opt,name=public_key_ctx,json=publicKeyCtx,proto3" json:"public_key_ctx,omitempty"` // Specific structure based on key provider implementation
-	// Required
+	// Optional
 	PrivateKeyCtx *KasPrivateKeyCtx `protobuf:"bytes,7,opt,name=private_key_ctx,json=privateKeyCtx,proto3" json:"private_key_ctx,omitempty"` // Specific structure based on key provider implementation
 	// Optional
 	ProviderConfig *KeyProviderConfig `protobuf:"bytes,8,opt,name=provider_config,json=providerConfig,proto3" json:"provider_config,omitempty"` // Configuration for the key provider

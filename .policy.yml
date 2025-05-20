@@ -168,6 +168,7 @@ approval_rules:
       paths:
         - ".*"  # This will match any file
       ignore:
+        - ".*_test/.go$" # Ignore test files
         - "^protocol/.*" # Ignore files in the protocol directory
         - "^docs/.*"     # Ignore files in the docs directory
   options:

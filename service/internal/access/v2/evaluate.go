@@ -37,6 +37,7 @@ func getResourceDecision(
 	case *authz.Resource_RegisteredResourceValueFqn:
 		// TODO: handle registered resources
 		// return evaluateRegisteredResourceValue(ctx, resource.GetRegisteredResourceValueFqn(), action, entitlements, accessibleAttributeValues)
+
 	case *authz.Resource_AttributeValues_:
 		return evaluateResourceAttributeValues(ctx, logger, resource.GetAttributeValues(), resource.GetEphemeralId(), action, entitlements, accessibleAttributeValues)
 
@@ -59,19 +60,19 @@ func evaluateResourceAttributeValues(
 	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 ) (*ResourceDecision, error) {
 	// Group value FQNs by parent definition
-	groupedByDefinition := make(map[string][]string)
+	definitionFqnToValueFqns := make(map[string][]string)
 	definitionsLookup := make(map[string]*policy.Attribute)
 	for idx, valueFQN := range resourceAttributeValues.GetFqns() {
 		// lowercase the value FQN to ensure case-insensitive matching
 		valueFQN = strings.ToLower(valueFQN)
 		resourceAttributeValues.Fqns[idx] = valueFQN
 
-		attributeAndValue, okvalueFQN := accessibleAttributeValues[valueFQN]
-		if !okvalueFQN {
+		attributeAndValue, ok := accessibleAttributeValues[valueFQN]
+		if !ok {
 			return nil, fmt.Errorf("%w: %s", ErrFQNNotFound, valueFQN)
 		}
 		definition := attributeAndValue.GetAttribute()
-		groupedByDefinition[definition.GetFqn()] = append(groupedByDefinition[definition.GetFqn()], valueFQN)
+		definitionFqnToValueFqns[definition.GetFqn()] = append(definitionFqnToValueFqns[definition.GetFqn()], valueFQN)
 		definitionsLookup[definition.GetFqn()] = definition
 	}
 
@@ -79,13 +80,13 @@ func evaluateResourceAttributeValues(
 	passed := true
 	dataRuleResults := make([]DataRuleResult, 0)
 
-	for defFQN, valueFQNs := range groupedByDefinition {
+	for defFQN, resourceValueFQNs := range definitionFqnToValueFqns {
 		definition := definitionsLookup[defFQN]
 		if definition == nil {
 			return nil, fmt.Errorf("%w: %s", ErrDefinitionNotFound, defFQN)
 		}
 
-		dataRuleResult, err := evaluateDefinition(ctx, logger, entitlements, action, valueFQNs, definition)
+		dataRuleResult, err := evaluateDefinition(ctx, logger, entitlements, action, resourceValueFQNs, definition)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrFailedEvaluation, err.Error())
 		}

@@ -14,6 +14,15 @@ import (
 	"github.com/opentdf/platform/service/logger"
 )
 
+var (
+	ErrInvalidResource              = errors.New("access: invalid resource")
+	ErrFQNNotFound                  = errors.New("access: attribute value FQN not found in memory")
+	ErrDefinitionNotFound           = errors.New("access: definition not found for FQN")
+	ErrFailedEvaluation             = errors.New("access: failed to evaluate definition")
+	ErrMissingRequiredSpecifiedRule = errors.New("access: AttributeDefinition rule cannot be unspecified")
+	ErrUnrecognizedRule             = errors.New("access: unrecognized AttributeDefinition rule")
+)
+
 // getResourceDecision evaluates the access decision for a single resource, driving the flows
 // between entitlement checks for the different types of resources
 func getResourceDecision(

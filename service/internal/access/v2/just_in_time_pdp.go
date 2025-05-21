@@ -19,6 +19,11 @@ import (
 	"github.com/opentdf/platform/service/logger"
 )
 
+var (
+	ErrMissingRequiredSDK = errors.New("access: missing required SDK")
+	ErrInvalidEntityType  = errors.New("access: invalid entity type")
+)
+
 type JustInTimePDP struct {
 	logger *logger.Logger
 	sdk    *otdfSDK.SDK

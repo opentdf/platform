@@ -1,6 +1,7 @@
 package access
 
 import (
+	"errors"
 	"fmt"
 
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -8,6 +9,12 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
+)
+
+var (
+	ErrInvalidAction                = errors.New("access: invalid action")
+	ErrInvalidEntityChain           = errors.New("access: invalid entity chain")
+	ErrInvalidEntitledFQNsToActions = errors.New("access: invalid entitled FQNs to actions")
 )
 
 // validateGetDecision validates the input parameters for GetDecision:
@@ -19,8 +26,8 @@ func validateGetDecision(entityRepresentation *entityresolutionV2.EntityRepresen
 	if err := validateEntityRepresentations([]*entityresolutionV2.EntityRepresentation{entityRepresentation}); err != nil {
 		return fmt.Errorf("invalid entity representation: %w", err)
 	}
-	if action == nil {
-		return fmt.Errorf("action is nil: %w", ErrInvalidAction)
+	if action.GetName() == "" {
+		return fmt.Errorf("action required with name: %w", ErrInvalidAction)
 	}
 	if len(resources) == 0 {
 		return fmt.Errorf("resources are empty: %w", ErrInvalidResource)

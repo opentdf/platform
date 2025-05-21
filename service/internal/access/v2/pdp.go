@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -49,11 +50,14 @@ type PolicyDecisionPoint struct {
 	// allRegisteredResourcesByValueFQN map[string]*policy.RegisteredResourceValue
 }
 
-var defaultFallbackLoggerConfig = logger.Config{
-	Level:  "info",
-	Type:   "json",
-	Output: "stdout",
-}
+var (
+	defaultFallbackLoggerConfig = logger.Config{
+		Level:  "info",
+		Type:   "json",
+		Output: "stdout",
+	}
+	ErrMissingRequiredPolicy = errors.New("access: both attribute definitions and subject mappings must be provided or neither")
+)
 
 // PolicyDecisionPoint creates a new Policy Decision Point instance.
 // It is presumed that all Attribute Definitions and Subject Mappings are valid and contain the entirety of entitlement policy.

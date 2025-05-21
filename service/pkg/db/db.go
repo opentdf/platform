@@ -244,7 +244,7 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 		parsed.MinConns = c.Pool.MinConns
 	}
 	if c.Pool.MinIdleConns > 0 {
-		parsed.MinIdleConns = c.Pool.MinConns
+		parsed.MinIdleConns = c.Pool.MinIdleConns
 	}
 	if c.ConnectTimeout > 0 {
 		parsed.ConnConfig.ConnectTimeout = time.Duration(c.ConnectTimeout) * time.Second

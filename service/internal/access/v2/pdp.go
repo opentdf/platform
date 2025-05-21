@@ -205,7 +205,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	for idx, resource := range resources {
 		resourceDecision, err := getResourceDecision(ctx, p.logger, decisionableAttributes, entitledFQNsToActions, action, resource)
 		if err != nil || resourceDecision == nil {
-			return nil, fmt.Errorf("error evaluating a discision on resource [%v]: %w", resource, err)
+			return nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}
 
 		if !resourceDecision.Passed {

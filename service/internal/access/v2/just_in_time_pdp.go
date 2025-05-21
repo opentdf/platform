@@ -320,7 +320,7 @@ func (p *JustInTimePDP) resolveEntitiesFromToken(
 	}
 	entityChains := ersResp.GetEntityChains()
 	if len(entityChains) != 1 {
-		return nil, fmt.Errorf("received %d entity chains in ERS response and expected exactly 1: %w", len(entityChains), err)
+		return nil, fmt.Errorf("received %d entity chains in ERS response but expected exactly 1", len(entityChains))
 	}
 	return p.resolveEntitiesFromEntityChain(ctx, entityChains[0], skipEnvironmentEntities)
 }

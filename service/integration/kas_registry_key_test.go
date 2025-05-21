@@ -659,6 +659,12 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
 		Uri:  "https://test-rotate-key.opentdf.io",
@@ -666,8 +672,10 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
@@ -687,6 +695,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
 	s.Equal(newKey.GetKeyId(), rotatedInKey.GetKasKey().GetKey().GetKeyId())
 	s.Equal(newKey.GetAlgorithm(), rotatedInKey.GetKasKey().GetKey().GetKeyAlgorithm())
 	s.Equal(newKey.GetKeyMode(), rotatedInKey.GetKasKey().GetKey().GetKeyMode())
@@ -712,18 +721,15 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 	defaultKasKeys, err = s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
 	s.Require().NoError(err)
 	s.Empty(defaultKasKeys)
-
-	// Clean up
-	s.cleanupKeys(
-		[]string{
-			keyMap[rotateKey].GetKey().GetId(),
-			keyMap[nonRotateKey].GetKey().GetId(),
-			rotatedInKey.GetKasKey().GetKey().GetId(),
-		},
-		[]string{kas.GetId()})
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_NoDefaultKeyRotated_Success() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
 		Uri:  "https://test-rotate-key.opentdf.io",
@@ -731,8 +737,10 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoDefaultKeyRotated_Success() {
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
@@ -759,25 +767,22 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoDefaultKeyRotated_Success() {
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
 
 	// Check that the rotated in key is now the ZTDF default key.
 	defaultKasKeys, err = s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
 	s.Require().NoError(err)
 	s.Len(defaultKasKeys, 1)
 	s.Equal(keyMap[nonRotateKey].GetKey().GetKeyId(), defaultKasKeys[0].GetPublicKey().GetKid())
-
-	// Clean up
-	s.cleanupKeys(
-		[]string{
-			keyMap[rotateKey].GetKey().GetId(),
-			keyMap[nonRotateKey].GetKey().GetId(),
-			rotatedInKey.GetKasKey().GetKey().GetId(),
-		},
-		[]string{kas.GetId()},
-	)
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_OneDefaultKeyRotated_Success() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
 		Uri:  "https://test-rotate-key.opentdf.io",
@@ -785,8 +790,10 @@ func (s *KasRegistryKeySuite) Test_RotateKey_OneDefaultKeyRotated_Success() {
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
@@ -822,6 +829,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_OneDefaultKeyRotated_Success() {
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
 
 	// Check that the rotated in key is now the ZTDF default key.
 	defaultKasKeys, err = s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
@@ -842,19 +850,15 @@ func (s *KasRegistryKeySuite) Test_RotateKey_OneDefaultKeyRotated_Success() {
 	s.NotNil(nonRotatedInDefaultKey)
 	s.Equal(newRotatedInDefaultKey.GetTdfType(), kasregistry.TdfType_TDF_TYPE_ZTDF.String())
 	s.Equal(nonRotatedInDefaultKey.GetTdfType(), kasregistry.TdfType_TDF_TYPE_NANO.String())
-
-	// Clean up
-	s.cleanupKeys(
-		[]string{
-			keyMap[rotateKey].GetKey().GetId(),
-			keyMap[nonRotateKey].GetKey().GetId(),
-			rotatedInKey.GetKasKey().GetKey().GetId(),
-		},
-		[]string{kas.GetId()},
-	)
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_TwoDefaultKeyRotated_Success() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
 		Uri:  "https://test-rotate-key.opentdf.io",
@@ -862,8 +866,10 @@ func (s *KasRegistryKeySuite) Test_RotateKey_TwoDefaultKeyRotated_Success() {
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_EC_P521,
@@ -899,6 +905,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_TwoDefaultKeyRotated_Success() {
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
 
 	// Check that the rotated in key is now the ZTDF default key.
 	defaultKasKeys, err = s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
@@ -922,19 +929,15 @@ func (s *KasRegistryKeySuite) Test_RotateKey_TwoDefaultKeyRotated_Success() {
 	s.NotNil(newNanoKey)
 	s.Equal(rotatedInKey.GetKasKey().GetKey().GetKeyId(), newZtdfKey.GetPublicKey().GetKid())
 	s.Equal(rotatedInKey.GetKasKey().GetKey().GetKeyId(), newNanoKey.GetPublicKey().GetKid())
-
-	// Clean up
-	s.cleanupKeys(
-		[]string{
-			keyMap[rotateKey].GetKey().GetId(),
-			keyMap[nonRotateKey].GetKey().GetId(),
-			rotatedInKey.GetKasKey().GetKey().GetId(),
-		},
-		[]string{kas.GetId()},
-	)
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_NanoDefaultKey_NewKeyIsNotECC_Fail() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
 		Uri:  "https://test-rotate-key.opentdf.io",
@@ -942,8 +945,10 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NanoDefaultKey_NewKeyIsNotECC_Fail(
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
@@ -978,6 +983,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NanoDefaultKey_NewKeyIsNotECC_Fail(
 	s.Len(defaultKasKeys, 1)
 	s.Equal(keyMap[rotateKey].GetKey().GetKeyId(), defaultKasKeys[0].GetPublicKey().GetKid())
 
+	// This is a workaround to get the key ID of the new key that was not rotated in, as it
+	// would not be inserted into the database when run as a transcation at the service level.
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
 		Key: &kasregistry.KasKeyIdentifier{
 			Identifier: &kasregistry.KasKeyIdentifier_Uri{
@@ -989,19 +996,16 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NanoDefaultKey_NewKeyIsNotECC_Fail(
 	s.Require().NoError(err)
 	s.NotNil(resp)
 
-	// Clean up
-	s.cleanupKeys(
-		[]string{
-			keyMap[rotateKey].GetKey().GetId(),
-			keyMap[nonRotateKey].GetKey().GetId(),
-			resp.GetKey().GetId(),
-		},
-		[]string{kas.GetId()},
-	)
+	keyIDs = append(keyIDs, resp.GetKey().GetId())
 }
 
-// Default Key Tests
 func (s *KasRegistryKeySuite) Test_SetDefaultKey_KasKeyNotFound_Fails() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_default_key_kas",
@@ -1010,6 +1014,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_KasKeyNotFound_Fails() {
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	// Create a key for the KAS
 	keyReq := kasregistry.CreateKeyRequest{
@@ -1028,6 +1033,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_KasKeyNotFound_Fails() {
 	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
 	s.Require().NoError(err)
 	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
 
 	// Ensure there is no default key mapping
 	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
@@ -1043,16 +1049,15 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_KasKeyNotFound_Fails() {
 	})
 	s.Require().Error(err)
 	s.Require().ErrorContains(err, "not found")
-
-	s.cleanupKeys(
-		[]string{
-			key.GetKasKey().GetKey().GetId(),
-		},
-		[]string{kas.GetId()},
-	)
 }
 
 func (s *KasRegistryKeySuite) Test_SetDefaultKey_CannotSetNonECCAlgForNano_Fails() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_default_key_kas",
@@ -1061,6 +1066,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_CannotSetNonECCAlgForNano_Fails
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	// Create a key for the KAS
 	keyReq := kasregistry.CreateKeyRequest{
@@ -1079,6 +1085,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_CannotSetNonECCAlgForNano_Fails
 	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
 	s.Require().NoError(err)
 	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
 
 	// Ensure there is no default key mapping
 	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
@@ -1094,16 +1101,15 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_CannotSetNonECCAlgForNano_Fails
 	})
 	s.Require().Error(err)
 	s.Require().ErrorContains(err, "not valid for TDF type NANO")
-
-	s.cleanupKeys(
-		[]string{
-			key.GetKasKey().GetKey().GetId(),
-		},
-		[]string{kas.GetId()},
-	)
 }
 
 func (s *KasRegistryKeySuite) Test_SetDefaultKey_NoDefaultKeys_ZTDFInsert_Success() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_default_key_kas",
@@ -1112,6 +1118,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NoDefaultKeys_ZTDFInsert_Succes
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	// Create a key for the KAS
 	keyReq := kasregistry.CreateKeyRequest{
@@ -1130,6 +1137,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NoDefaultKeys_ZTDFInsert_Succes
 	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
 	s.Require().NoError(err)
 	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
 
 	// Ensure there is no default key mapping
 	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
@@ -1148,16 +1156,15 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NoDefaultKeys_ZTDFInsert_Succes
 	s.Nil(defaultKeys.GetPreviousDefaultKasKey())
 	s.Equal(key.GetKasKey().GetKey().GetKeyId(), defaultKeys.GetNewDefaultKasKey().GetPublicKey().GetKid())
 	s.Equal(kasregistry.TdfType_TDF_TYPE_ZTDF.String(), defaultKeys.GetNewDefaultKasKey().GetTdfType())
-
-	s.cleanupKeys(
-		[]string{
-			key.GetKasKey().GetKey().GetId(),
-		},
-		[]string{kas.GetId()},
-	)
 }
 
 func (s *KasRegistryKeySuite) Test_SetDefaultKey_NoDefaultKeys_NanoInsert_Success() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_default_key_kas",
@@ -1166,6 +1173,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NoDefaultKeys_NanoInsert_Succes
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	// Create a key for the KAS
 	keyReq := kasregistry.CreateKeyRequest{
@@ -1184,6 +1192,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NoDefaultKeys_NanoInsert_Succes
 	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
 	s.Require().NoError(err)
 	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
 
 	// Ensure there is no default key mapping
 	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
@@ -1202,16 +1211,15 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NoDefaultKeys_NanoInsert_Succes
 	s.Nil(defaultKeys.GetPreviousDefaultKasKey())
 	s.Equal(key.GetKasKey().GetKey().GetKeyId(), defaultKeys.GetNewDefaultKasKey().GetPublicKey().GetKid())
 	s.Equal(kasregistry.TdfType_TDF_TYPE_NANO.String(), defaultKeys.GetNewDefaultKasKey().GetTdfType())
-
-	s.cleanupKeys(
-		[]string{
-			key.GetKasKey().GetKey().GetId(),
-		},
-		[]string{kas.GetId()},
-	)
 }
 
 func (s *KasRegistryKeySuite) Test_SetDefaultKey_ZTDFKeyExists_ZTDFUpdate_Success() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_default_key_kas",
@@ -1220,6 +1228,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_ZTDFKeyExists_ZTDFUpdate_Succes
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	// Create a key for the KAS
 	keyReq := kasregistry.CreateKeyRequest{
@@ -1238,6 +1247,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_ZTDFKeyExists_ZTDFUpdate_Succes
 	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
 	s.Require().NoError(err)
 	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
 
 	// Create a second key for the KAS
 	keyReq2 := kasregistry.CreateKeyRequest{
@@ -1256,6 +1266,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_ZTDFKeyExists_ZTDFUpdate_Succes
 	key2, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq2)
 	s.Require().NoError(err)
 	s.NotNil(key2)
+	keyIDs = append(keyIDs, key2.GetKasKey().GetKey().GetId())
 
 	// Create a third key for the KAS
 	keyReq3 := kasregistry.CreateKeyRequest{
@@ -1274,6 +1285,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_ZTDFKeyExists_ZTDFUpdate_Succes
 	key3, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq3)
 	s.Require().NoError(err)
 	s.NotNil(key3)
+	keyIDs = append(keyIDs, key3.GetKasKey().GetKey().GetId())
 
 	// Ensure there is no default key mapping
 	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
@@ -1325,18 +1337,15 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_ZTDFKeyExists_ZTDFUpdate_Succes
 			s.Equal(key3.GetKasKey().GetKey().GetKeyId(), defaultKasKey.GetPublicKey().GetKid())
 		}
 	}
-
-	s.cleanupKeys(
-		[]string{
-			key.GetKasKey().GetKey().GetId(),
-			key2.GetKasKey().GetKey().GetId(),
-			key3.GetKasKey().GetKey().GetId(),
-		},
-		[]string{kas.GetId()},
-	)
 }
 
 func (s *KasRegistryKeySuite) Test_SetDefaultKey_NanoKeyExists_NanoUpdate_Success() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_default_key_kas",
@@ -1345,6 +1354,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NanoKeyExists_NanoUpdate_Succes
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	// Create a key for the KAS
 	keyReq := kasregistry.CreateKeyRequest{
@@ -1363,6 +1373,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NanoKeyExists_NanoUpdate_Succes
 	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
 	s.Require().NoError(err)
 	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
 
 	// Create a second key for the KAS
 	keyReq2 := kasregistry.CreateKeyRequest{
@@ -1381,6 +1392,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NanoKeyExists_NanoUpdate_Succes
 	key2, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq2)
 	s.Require().NoError(err)
 	s.NotNil(key2)
+	keyIDs = append(keyIDs, key2.GetKasKey().GetKey().GetId())
 
 	// Create a third key for the KAS
 	keyReq3 := kasregistry.CreateKeyRequest{
@@ -1399,6 +1411,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NanoKeyExists_NanoUpdate_Succes
 	key3, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq3)
 	s.Require().NoError(err)
 	s.NotNil(key3)
+	keyIDs = append(keyIDs, key3.GetKasKey().GetKey().GetId())
 
 	// Ensure there is no default key mapping
 	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
@@ -1450,18 +1463,15 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NanoKeyExists_NanoUpdate_Succes
 			s.Equal(key3.GetKasKey().GetKey().GetKeyId(), defaultKasKey.GetPublicKey().GetKid())
 		}
 	}
-
-	s.cleanupKeys(
-		[]string{
-			key.GetKasKey().GetKey().GetId(),
-			key2.GetKasKey().GetKey().GetId(),
-			key3.GetKasKey().GetKey().GetId(),
-		},
-		[]string{kas.GetId()},
-	)
 }
 
 func (s *KasRegistryKeySuite) Test_SetDefaultKey_CannotSetPublicKeyOnlyKey_Fails() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_default_key_kas",
@@ -1470,6 +1480,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_CannotSetPublicKeyOnlyKey_Fails
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	// Create a key for the KAS
 	keyReq := kasregistry.CreateKeyRequest{
@@ -1484,6 +1495,7 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_CannotSetPublicKeyOnlyKey_Fails
 	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
 	s.Require().NoError(err)
 	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
 
 	// Ensure there is no default key mapping
 	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
@@ -1499,13 +1511,6 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_CannotSetPublicKeyOnlyKey_Fails
 	})
 	s.Require().Error(err)
 	s.Require().ErrorContains(err, "KEY_MODE_PUBLIC_KEY_ONLY as default key")
-
-	s.cleanupKeys(
-		[]string{
-			key.GetKasKey().GetKey().GetId(),
-		},
-		[]string{kas.GetId()},
-	)
 }
 
 func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*policy.KasKey {

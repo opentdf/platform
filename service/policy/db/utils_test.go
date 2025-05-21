@@ -146,3 +146,98 @@ func Test_UnmarshalAllActionsProto(t *testing.T) {
 		})
 	}
 }
+
+func Test_UnmarshalPrivatePublicKeyContext(t *testing.T) {
+	tests := []struct {
+		name    string
+		pubCtx  []byte
+		privCtx []byte
+		pubKey  *policy.KasPublicKeyCtx
+		privKey *policy.KasPrivateKeyCtx
+		wantErr bool
+	}{
+		{
+			name:    "Successful unmarshal of both public and private keys",
+			pubCtx:  []byte(`{"pem": "PUBLIC_KEY_PEM"}`),
+			privCtx: []byte(`{"keyId": "PRIVATE_KEY_ID", "wrappedKey": "WRAPPED_PRIVATE_KEY"}`),
+			pubKey:  &policy.KasPublicKeyCtx{},
+			privKey: &policy.KasPrivateKeyCtx{},
+			wantErr: false,
+		},
+		{
+			name:    "Successful unmarshal of only public key",
+			pubCtx:  []byte(`{"pem": "PUBLIC_KEY_PEM"}`),
+			privCtx: []byte(`{}`),
+			pubKey:  &policy.KasPublicKeyCtx{},
+			privKey: nil,
+			wantErr: false,
+		},
+		{
+			name:    "Successful unmarshal of only private key",
+			pubCtx:  []byte(`{}`),
+			privCtx: []byte(`{"keyId": "PRIVATE_KEY_ID", "wrappedKey": "WRAPPED_PRIVATE_KEY"}`),
+			pubKey:  nil,
+			privKey: &policy.KasPrivateKeyCtx{},
+			wantErr: false,
+		},
+		{
+			name:    "Invalid public key JSON",
+			pubCtx:  []byte(`{"pem": "invalid`),
+			privCtx: []byte(`{"keyId": "PRIVATE_KEY_ID", "wrappedKey": "WRAPPED_PRIVATE_KEY"}`),
+			pubKey:  &policy.KasPublicKeyCtx{},
+			privKey: &policy.KasPrivateKeyCtx{},
+			wantErr: true,
+		},
+		{
+			name:    "Invalid private key JSON",
+			pubCtx:  []byte(`{"pem": "PUBLIC_KEY_PEM"}`),
+			privCtx: []byte(`{"keyId": "invalid`),
+			pubKey:  &policy.KasPublicKeyCtx{},
+			privKey: &policy.KasPrivateKeyCtx{},
+			wantErr: true,
+		},
+		{
+			name:    "Empty public context",
+			pubCtx:  []byte(`{}`),
+			privCtx: []byte(`{"keyId": "PRIVATE_KEY_ID", "wrappedKey": "WRAPPED_PRIVATE_KEY"}`),
+			pubKey:  &policy.KasPublicKeyCtx{},
+			privKey: &policy.KasPrivateKeyCtx{},
+			wantErr: false,
+		},
+		{
+			name:    "Empty private context",
+			pubCtx:  []byte(`{"pem": "PUBLIC_KEY_PEM"}`),
+			privCtx: []byte(`{}`),
+			pubKey:  &policy.KasPublicKeyCtx{},
+			privKey: &policy.KasPrivateKeyCtx{},
+			wantErr: false,
+		},
+		{
+			name:    "Nil public and private key pointers",
+			pubCtx:  []byte(`{"pem": "PUBLIC_KEY_PEM"}`),
+			privCtx: []byte(`{"keyId": "PRIVATE_KEY_ID", "wrappedKey": "WRAPPED_PRIVATE_KEY"}`),
+			pubKey:  nil,
+			privKey: nil,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := unmarshalPrivatePublicKeyContext(tt.pubCtx, tt.privCtx, tt.pubKey, tt.privKey)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				if tt.pubKey != nil && len(tt.pubCtx) > 0 && string(tt.pubCtx) != `{}` {
+					assert.Equal(t, "PUBLIC_KEY_PEM", tt.pubKey.GetPem())
+				}
+				if tt.privKey != nil && len(tt.privCtx) > 0 && string(tt.privCtx) != `{}` {
+					assert.Equal(t, "PRIVATE_KEY_ID", tt.privKey.GetKeyId())
+					assert.Equal(t, "WRAPPED_PRIVATE_KEY", tt.privKey.GetWrappedKey())
+				}
+			}
+		})
+	}
+}

@@ -9,7 +9,7 @@ db:
 #   user: postgres
 #   password: changeme
 #   sslmode: prefer
-#   connect_timeout_seconds: 5
+#   connect_timeout_seconds: 30
 #   pool:
 #     max_connection_count: 4
 #     min_connection_count: 0

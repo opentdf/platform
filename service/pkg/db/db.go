@@ -96,7 +96,7 @@ type Config struct {
 	Password       string     `mapstructure:"password" json:"password" default:"changeme"`
 	SSLMode        string     `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
 	Schema         string     `mapstructure:"schema" json:"schema" default:"opentdf"`
-	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connectTimeoutSeconds" default:"5"`
+	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connectTimeoutSeconds" default:"30"`
 	Pool           PoolConfig `mapstructure:"pool" json:"pool"`
 
 	RunMigrations    bool      `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
@@ -237,18 +237,15 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 	}
 
 	// Apply connection and pool configurations
-	if c.Pool.MaxConns > 0 {
-		parsed.MaxConns = c.Pool.MaxConns
-	}
 	if c.Pool.MinConns > 0 {
 		parsed.MinConns = c.Pool.MinConns
 	}
 	if c.Pool.MinIdleConns > 0 {
 		parsed.MinIdleConns = c.Pool.MinIdleConns
 	}
-	if c.ConnectTimeout > 0 {
-		parsed.ConnConfig.ConnectTimeout = time.Duration(c.ConnectTimeout) * time.Second
-	}
+	// Non-zero defaults
+	parsed.ConnConfig.ConnectTimeout = time.Duration(c.ConnectTimeout) * time.Second
+	parsed.MaxConns = c.Pool.MaxConns
 	parsed.MaxConnLifetime = time.Duration(c.Pool.MaxConnLifetime) * time.Second
 	parsed.MaxConnIdleTime = time.Duration(c.Pool.MaxConnIdleTime) * time.Second
 	parsed.HealthCheckPeriod = time.Duration(c.Pool.HealthCheckPeriod) * time.Second

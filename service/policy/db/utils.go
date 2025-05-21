@@ -107,18 +107,22 @@ func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error 
 	return nil
 }
 
-func unmarshalPrivatePublicKeyContext(pubCtx, privCtx []byte, pubKey *policy.KasPublicKeyCtx, privKey *policy.KasPrivateKeyCtx) error {
+func unmarshalPrivatePublicKeyContext(pubCtx, privCtx []byte) (*policy.KasPublicKeyCtx, *policy.KasPrivateKeyCtx, error) {
+	var pubKey *policy.KasPublicKeyCtx
+	var privKey *policy.KasPrivateKeyCtx
 	if pubCtx != nil {
+		pubKey = &policy.KasPublicKeyCtx{}
 		if err := protojson.Unmarshal(pubCtx, pubKey); err != nil {
-			return errors.Join(fmt.Errorf("failed to unmarshal public key context [%s]: %w", string(pubCtx), err), db.ErrUnmarshalValueFailed)
+			return nil, nil, errors.Join(fmt.Errorf("failed to unmarshal public key context [%s]: %w", string(pubCtx), err), db.ErrUnmarshalValueFailed)
 		}
 	}
 	if privCtx != nil {
+		privKey = &policy.KasPrivateKeyCtx{}
 		if err := protojson.Unmarshal(privCtx, privKey); err != nil {
-			return errors.Join(errors.New("failed to unmarshal private key context"), db.ErrUnmarshalValueFailed)
+			return nil, nil, errors.Join(errors.New("failed to unmarshal private key context"), db.ErrUnmarshalValueFailed)
 		}
 	}
-	return nil
+	return pubKey, privKey, nil
 }
 
 func pgtypeUUID(s string) pgtype.UUID {

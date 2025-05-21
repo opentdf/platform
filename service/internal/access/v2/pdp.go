@@ -76,8 +76,7 @@ func NewPolicyDecisionPoint(
 	}
 
 	if allAttributeDefinitions == nil || allSubjectMappings == nil {
-		l.ErrorContext(ctx, "invalid arguments", slog.String("error", ErrMissingRequiredPolicy.Error()))
-		return nil, ErrMissingRequiredPolicy
+		return nil, fmt.Errorf("invalid arguments: %w", ErrMissingRequiredPolicy)
 	}
 
 	// Build lookup maps to in-memory policy
@@ -85,7 +84,6 @@ func NewPolicyDecisionPoint(
 	allEntitleableAttributesByValueFQN := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	for _, attr := range allAttributeDefinitions {
 		if err := validateAttribute(attr); err != nil {
-			l.Error("invalid attribute definition", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("invalid attribute definition: %w", err)
 		}
 		allAttributesByDefinitionFQN[attr.GetFqn()] = attr
@@ -102,7 +100,7 @@ func NewPolicyDecisionPoint(
 
 	for _, sm := range allSubjectMappings {
 		if err := validateSubjectMapping(sm); err != nil {
-			l.WarnContext(ctx, "invalid subject mapping - skipping", slog.String("error", err.Error()), slog.Any("subject mapping", sm))
+			l.WarnContext(ctx, "invalid subject mapping - skipping", slog.Any("error", err), slog.Any("subject mapping", sm))
 			continue
 		}
 		mappedValue := sm.GetAttributeValue()
@@ -114,7 +112,6 @@ func NewPolicyDecisionPoint(
 		// Take subject mapping's attribute value and its definition from memory
 		parentDefinition, err := getDefinition(mappedValueFQN, allAttributesByDefinitionFQN)
 		if err != nil {
-			l.Error("failed to get attribute definition", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("failed to get attribute definition: %w", err)
 		}
 		mappedValue.SubjectMappings = []*policy.SubjectMapping{sm}
@@ -147,7 +144,6 @@ func (p *PolicyDecisionPoint) GetDecision(
 	p.logger.DebugContext(ctx, "getting decision", loggable...)
 
 	if err := validateGetDecision(entityRepresentation, action, resources); err != nil {
-		p.logger.ErrorContext(ctx, "invalid input parameters", append(loggable, slog.String("error", err.Error()))...)
 		return nil, err
 	}
 
@@ -174,33 +170,26 @@ func (p *PolicyDecisionPoint) GetDecision(
 
 				attributeAndValue, ok := p.allEntitleableAttributesByValueFQN[valueFQN]
 				if !ok {
-					loggable = append(loggable, slog.String("error", ErrInvalidResource.Error()), slog.String("value", valueFQN), slog.Any("resource", resource))
-					p.logger.ErrorContext(ctx, "resource value FQN not found in memory", loggable...)
-					return nil, ErrInvalidResource
+					return nil, fmt.Errorf("resource value FQN not found in memory [%s]: %w", valueFQN, ErrInvalidResource)
 				}
 
 				decisionableAttributes[valueFQN] = attributeAndValue
 				err := populateHigherValuesIfHierarchy(ctx, p.logger, valueFQN, attributeAndValue.GetAttribute(), p.allEntitleableAttributesByValueFQN, decisionableAttributes)
 				if err != nil {
-					loggable = append(loggable, slog.String("error", err.Error()), slog.String("value", valueFQN), slog.Any("resource", resource))
-					p.logger.ErrorContext(ctx, "error populating higher hierarchy attribute values", loggable...)
-					return nil, err
+					return nil, fmt.Errorf("error populating higher hierarchy attribute values: %w", err)
 				}
 			}
 
 		default:
 			// default should never happen as we validate above
-			p.logger.ErrorContext(ctx, "invalid resource type", append(loggable, slog.String("error", ErrInvalidResource.Error()), slog.Any("resource", resource))...)
-			return nil, ErrInvalidResource
+			return nil, fmt.Errorf("invalid resource type [%T]: %w", resource.GetResource(), ErrInvalidResource)
 		}
 	}
 	p.logger.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionable attribute values count", len(decisionableAttributes)))
 	// Resolve them to their entitled FQNs and the actions available on each
 	entitledFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRepresentation)
 	if err != nil {
-		// TODO: is it safe to log entities/entity representations?
-		p.logger.ErrorContext(ctx, "error evaluating subject mappings for entitlement", append(loggable, slog.String("error", err.Error()), slog.Any("entity", entityRepresentation))...)
-		return nil, err
+		return nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}
 	p.logger.DebugContext(ctx, "evaluated subject mappings", slog.String("entity originalId", entityRepresentation.GetOriginalId()), slog.Any("entitled FQNs to actions", entitledFQNsToActions))
 
@@ -212,8 +201,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	for idx, resource := range resources {
 		resourceDecision, err := getResourceDecision(ctx, p.logger, decisionableAttributes, entitledFQNsToActions, action, resource)
 		if err != nil || resourceDecision == nil {
-			p.logger.ErrorContext(ctx, "error evaluating decision", append(loggable, slog.String("error", err.Error()), slog.Any("resource", resource))...)
-			return nil, err
+			return nil, fmt.Errorf("error evaluating a discision on resource [%v]: %w", resource, err)
 		}
 
 		if !resourceDecision.Passed {
@@ -245,8 +233,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 
 	err := validateEntityRepresentations(entityRepresentations)
 	if err != nil {
-		p.logger.Error("invalid input parameters", append(loggable, slog.String("error", err.Error()))...)
-		return nil, err
+		return nil, fmt.Errorf("invalid input parameters: %w", err)
 	}
 
 	var entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
@@ -256,8 +243,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 		p.logger.DebugContext(ctx, "getting entitlements with matched subject mappings", loggable...)
 		entitleableAttributes, err = getFilteredEntitleableAttributes(optionalMatchedSubjectMappings, p.allEntitleableAttributesByValueFQN)
 		if err != nil {
-			p.logger.ErrorContext(ctx, "error filtering entitleable attributes from matched subject mappings", append(loggable, slog.String("error", err.Error()))...)
-			return nil, err
+			return nil, fmt.Errorf("error filtering entitleable attributes from matched subject mappings: %w", err)
 		}
 	} else {
 		// Otherwise, use all entitleable attributes
@@ -268,9 +254,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 	// Resolve them to their entitled FQNs and the actions available on each
 	entityIDsToFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingMultipleEntitiesWithActions(entitleableAttributes, entityRepresentations)
 	if err != nil {
-		// TODO: is it safe to log entities/entity representations?
-		p.logger.ErrorContext(ctx, "error evaluating subject mappings for entitlement", append(loggable, slog.String("error", err.Error()), slog.Any("entities", entityRepresentations))...)
-		return nil, err
+		return nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}
 
 	var result []*authz.EntityEntitlements
@@ -292,10 +276,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 			if withComprehensiveHierarchy {
 				err = populateLowerValuesIfHierarchy(valueFQN, entitleableAttributes, entitledActions, actionsPerAttributeValueFqn)
 				if err != nil {
-					p.logger.ErrorContext(ctx, "error populating comprehensive lower hierarchy values",
-						append(loggable, slog.String("error", err.Error()), slog.String("value", valueFQN), slog.String("entityID", entityID))...,
-					)
-					return nil, err
+					return nil, fmt.Errorf("error populating comprehensive lower hierarchy values of valueFQN [%s] for entityID [%s]: %w", valueFQN, entityID, err)
 				}
 			}
 		}

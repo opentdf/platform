@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -88,7 +89,7 @@ func evaluateResourceAttributeValues(
 
 		dataRuleResult, err := evaluateDefinition(ctx, logger, entitlements, action, resourceValueFQNs, definition)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %s", ErrFailedEvaluation, err.Error())
+			return nil, errors.Join(ErrFailedEvaluation, err)
 		}
 		if !dataRuleResult.Passed {
 			passed = false

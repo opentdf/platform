@@ -25,7 +25,7 @@ func getDefinition(valueFQN string, allDefinitionsByDefFQN map[string]*policy.At
 
 	definition, ok := allDefinitionsByDefFQN[def.FQN()]
 	if !ok {
-		return nil, fmt.Errorf("definition not found: %w", err)
+		return nil, fmt.Errorf("definition not found for FQN: %s", def.FQN())
 	}
 	return definition, nil
 }

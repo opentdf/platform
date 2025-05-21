@@ -94,9 +94,10 @@ func (p *JustInTimePDP) GetDecision(
 		p.logger.DebugContext(ctx, "getting decision - resolving token")
 		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
 
+	// TODO: implement this case
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting decision - resolving registered resource value FQN")
-		// TODO: implement this case
+		return nil, false, errors.New("registered resources not yet implemented")
 
 	default:
 		p.logger.ErrorContext(ctx, "invalid entity identifier type", slog.String("error", ErrInvalidEntityType.Error()), slog.String("type", fmt.Sprintf("%T", entityIdentifier.GetIdentifier())))

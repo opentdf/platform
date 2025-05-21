@@ -229,14 +229,32 @@ func Test_UnmarshalPrivatePublicKeyContext(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
+				return // Exit early if an error was expected
+			}
+
+			// If we reach here, no error was expected
+			require.NoError(t, err)
+
+			if tt.pubCtx == nil {
+				assert.Nil(t, pubKeyCtx, "pubKeyCtx should be nil when tt.pubCtx is nil for test: %s", tt.name)
 			} else {
-				require.NoError(t, err)
-				if pubKeyCtx != nil && len(tt.pubCtx) > 0 && string(tt.pubCtx) != `{}` {
-					assert.Equal(t, "PUBLIC_KEY_PEM", pubKeyCtx.GetPem())
+				assert.NotNil(t, pubKeyCtx, "pubKeyCtx should not be nil when tt.pubCtx is not nil for test: %s", tt.name)
+				// Only check GetPem if input tt.pubCtx was not empty and not an empty JSON object,
+				// implying it was intended to contain the "PUBLIC_KEY_PEM".
+				if len(tt.pubCtx) > 0 && string(tt.pubCtx) != `{}` {
+					assert.Equal(t, "PUBLIC_KEY_PEM", pubKeyCtx.GetPem(), "Mismatch in pubKeyCtx.GetPem() for test: %s", tt.name)
 				}
-				if privKeyCtx != nil && len(tt.privCtx) > 0 && string(tt.privCtx) != `{}` {
-					assert.Equal(t, "PRIVATE_KEY_ID", privKeyCtx.GetKeyId())
-					assert.Equal(t, "WRAPPED_PRIVATE_KEY", privKeyCtx.GetWrappedKey())
+			}
+
+			if tt.privCtx == nil {
+				assert.Nil(t, privKeyCtx, "privKeyCtx should be nil when tt.privCtx is nil for test: %s", tt.name)
+			} else {
+				assert.NotNil(t, privKeyCtx, "privKeyCtx should not be nil when tt.privCtx is not nil for test: %s", tt.name)
+				// Only check GetKeyId and GetWrappedKey if input tt.privCtx was not empty and not an empty JSON object,
+				// implying it was intended to contain the "PRIVATE_KEY_ID" and "WRAPPED_PRIVATE_KEY".
+				if len(tt.privCtx) > 0 && string(tt.privCtx) != `{}` {
+					assert.Equal(t, "PRIVATE_KEY_ID", privKeyCtx.GetKeyId(), "Mismatch in privKeyCtx.GetKeyId() for test: %s", tt.name)
+					assert.Equal(t, "WRAPPED_PRIVATE_KEY", privKeyCtx.GetWrappedKey(), "Mismatch in privKeyCtx.GetWrappedKey() for test: %s", tt.name)
 				}
 			}
 		})

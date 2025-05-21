@@ -112,8 +112,7 @@ func (p *JustInTimePDP) GetDecision(
 	for _, entityRep := range entityRepresentations {
 		d, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
 		if err != nil {
-			// TODO: is it safe to log the entity representation?
-			return nil, false, fmt.Errorf("failed to get decision on entityRepresentation %+v: %w", entityRep, err)
+			return nil, false, fmt.Errorf("failed to get decision for entityRepresentation with original id [%s]: %w", entityRep.GetOriginalId(), err)
 		}
 		if d == nil {
 			return nil, false, fmt.Errorf("decision is nil: %w", err)
@@ -276,8 +275,7 @@ func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
 	entityChain *entity.EntityChain,
 	skipEnvironmentEntities bool,
 ) ([]*entityresolutionV2.EntityRepresentation, error) {
-	// TODO: is it safe to log the entity chain?
-	p.logger.DebugContext(ctx, "resolving entities from entity chain", slog.String("entityChain", entityChain.String()), slog.Bool("skipEnvironmentEntities", skipEnvironmentEntities))
+	p.logger.DebugContext(ctx, "resolving entities from entity chain", slog.String("entityChain ID", entityChain.GetEphemeralId()), slog.Bool("skipEnvironmentEntities", skipEnvironmentEntities))
 
 	var filteredEntities []*entity.Entity
 	if skipEnvironmentEntities {

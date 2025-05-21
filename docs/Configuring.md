@@ -154,7 +154,7 @@ Root level key `db`
 | `sslmode`                              | The ssl mode for the database                    | `prefer`    | OPENTDF_DB_SSLMODE                              |
 | `schema`                               | The schema for the database.                     | `opentdf`   | OPENTDF_DB_SCHEMA                               |
 | `runMigration`                         | Whether to run the database migration or not.    | `true`      | OPENTDF_DB_RUNMIGRATION                         |
-| `connect_timeout_seconds`              | Connection timeout duration (seconds).           | `30`         | OPENTDF_DB_CONNECT_TIMEOUT_SECONDS              |
+| `connect_timeout_seconds`              | Connection timeout duration (seconds).           | `15`         | OPENTDF_DB_CONNECT_TIMEOUT_SECONDS              |
 | `pool`                                 | Pool configuration settings.                     |             |                                                 |
 | `pool.max_connection_count`            | Maximum number of connections per pool.          | `4`         | OPENTDF_DB_POOL_MAX_CONNECTION_COUNT            |
 | `pool.min_connection_count`            | Minimum number of connections per pool.          | `0`         | OPENTDF_DB_POOL_MIN_CONNECTION_COUNT            |
@@ -178,7 +178,7 @@ db:
   sslmode: require
   schema: opentdf
   runMigration: false
-  connect_timeout_seconds: 30
+  connect_timeout_seconds: 15
   pool:
     max_connection_count: 4
     min_connection_count: 0

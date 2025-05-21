@@ -96,7 +96,7 @@ type Config struct {
 	Password       string     `mapstructure:"password" json:"password" default:"changeme"`
 	SSLMode        string     `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
 	Schema         string     `mapstructure:"schema" json:"schema" default:"opentdf"`
-	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connectTimeoutSeconds" default:"30"`
+	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connectTimeoutSeconds" default:"15"`
 	Pool           PoolConfig `mapstructure:"pool" json:"pool"`
 
 	RunMigrations    bool      `mapstructure:"runMigrations" json:"runMigrations" default:"true"`

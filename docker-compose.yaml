@@ -42,7 +42,12 @@ services:
       KC_HTTPS_CERTIFICATE_FILE: "/etc/x509/tls/localhost.crt"
       KC_HTTPS_CERTIFICATE_KEY_FILE: "/etc/x509/tls/localhost.key"
       KC_HTTPS_CLIENT_AUTH: "request"
-      JAVA_OPTS_APPEND: "-XX:UseSVE=0" # Uncommenting resolves SIGILL with Code 134 when running on a machine with an M4 chip: https://github.com/keycloak/keycloak/issues/36008
+      ###
+      # If you are running on a M4 chip use the run-compose.sh script to start the containers
+      JAVA_OPTS_APPEND: "${EXTRA_JAVA_OPTS}"
+      # OR comment the above line and uncomment the JAVA_OPTS_APPEND line below
+      # JAVA_OPTS_APPEND: "-XX:UseSVE=0" # Uncommenting resolves SIGILL with Code 134 when running on a machine with an M4 chip: https://github.com/keycloak/keycloak/issues/36008
+      ###
     ports:
       - "9001:9001"
       - "8888:8888"

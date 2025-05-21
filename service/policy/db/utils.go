@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -12,6 +13,19 @@ import (
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/encoding/protojson"
 )
+
+// isEmptyProtoMessage returns true if the proto.Message pointer is nil or zero-valued.
+func isEmptyProtoMessage(msg any) bool {
+	if msg == nil {
+		return true
+	}
+	v := reflect.ValueOf(msg)
+	if v.Kind() == reflect.Ptr && !v.IsNil() {
+		zero := reflect.New(v.Elem().Type()).Elem().Interface()
+		return reflect.DeepEqual(v.Elem().Interface(), zero)
+	}
+	return false
+}
 
 // Gathers request pagination limit/offset or configured default
 func (c PolicyDBClient) getRequestedLimitOffset(page *policy.PageRequest) (int32, int32) {
@@ -108,12 +122,12 @@ func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error 
 }
 
 func unmarshalPrivatePublicKeyContext(pubCtx, privCtx []byte, pubKey *policy.KasPublicKeyCtx, privKey *policy.KasPrivateKeyCtx) error {
-	if pubCtx != nil {
+	if !isEmptyProtoMessage(pubKey) {
 		if err := protojson.Unmarshal(pubCtx, pubKey); err != nil {
 			return errors.Join(fmt.Errorf("failed to unmarshal public key context [%s]: %w", string(pubCtx), err), db.ErrUnmarshalValueFailed)
 		}
 	}
-	if privCtx != nil {
+	if !isEmptyProtoMessage(privKey) {
 		if err := protojson.Unmarshal(privCtx, privKey); err != nil {
 			return errors.Join(errors.New("failed to unmarshal private key context"), db.ErrUnmarshalValueFailed)
 		}

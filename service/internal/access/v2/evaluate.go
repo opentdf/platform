@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -11,6 +12,15 @@ import (
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
+)
+
+var (
+	ErrInvalidResource              = errors.New("access: invalid resource")
+	ErrFQNNotFound                  = errors.New("access: attribute value FQN not found in memory")
+	ErrDefinitionNotFound           = errors.New("access: definition not found for FQN")
+	ErrFailedEvaluation             = errors.New("access: failed to evaluate definition")
+	ErrMissingRequiredSpecifiedRule = errors.New("access: AttributeDefinition rule cannot be unspecified")
+	ErrUnrecognizedRule             = errors.New("access: unrecognized AttributeDefinition rule")
 )
 
 // getResourceDecision evaluates the access decision for a single resource, driving the flows
@@ -59,19 +69,19 @@ func evaluateResourceAttributeValues(
 	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 ) (*ResourceDecision, error) {
 	// Group value FQNs by parent definition
-	groupedByDefinition := make(map[string][]string)
+	definitionFqnToValueFqns := make(map[string][]string)
 	definitionsLookup := make(map[string]*policy.Attribute)
 	for idx, valueFQN := range resourceAttributeValues.GetFqns() {
 		// lowercase the value FQN to ensure case-insensitive matching
 		valueFQN = strings.ToLower(valueFQN)
 		resourceAttributeValues.Fqns[idx] = valueFQN
 
-		attributeAndValue, okvalueFQN := accessibleAttributeValues[valueFQN]
-		if !okvalueFQN {
+		attributeAndValue, ok := accessibleAttributeValues[valueFQN]
+		if !ok {
 			return nil, fmt.Errorf("%w: %s", ErrFQNNotFound, valueFQN)
 		}
 		definition := attributeAndValue.GetAttribute()
-		groupedByDefinition[definition.GetFqn()] = append(groupedByDefinition[definition.GetFqn()], valueFQN)
+		definitionFqnToValueFqns[definition.GetFqn()] = append(definitionFqnToValueFqns[definition.GetFqn()], valueFQN)
 		definitionsLookup[definition.GetFqn()] = definition
 	}
 
@@ -79,15 +89,15 @@ func evaluateResourceAttributeValues(
 	passed := true
 	dataRuleResults := make([]DataRuleResult, 0)
 
-	for defFQN, valueFQNs := range groupedByDefinition {
+	for defFQN, resourceValueFQNs := range definitionFqnToValueFqns {
 		definition := definitionsLookup[defFQN]
 		if definition == nil {
 			return nil, fmt.Errorf("%w: %s", ErrDefinitionNotFound, defFQN)
 		}
 
-		dataRuleResult, err := evaluateDefinition(ctx, logger, entitlements, action, valueFQNs, definition)
+		dataRuleResult, err := evaluateDefinition(ctx, logger, entitlements, action, resourceValueFQNs, definition)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %s", ErrFailedEvaluation, err.Error())
+			return nil, errors.Join(ErrFailedEvaluation, err)
 		}
 		if !dataRuleResult.Passed {
 			passed = false

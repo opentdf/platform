@@ -2,6 +2,7 @@ package access
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -10,6 +11,11 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/logger"
+)
+
+var (
+	ErrInvalidSubjectMapping      = errors.New("access: invalid subject mapping")
+	ErrInvalidAttributeDefinition = errors.New("access: invalid attribute definition")
 )
 
 // getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions canmap
@@ -25,7 +31,7 @@ func getDefinition(valueFQN string, allDefinitionsByDefFQN map[string]*policy.At
 
 	definition, ok := allDefinitionsByDefFQN[def.FQN()]
 	if !ok {
-		return nil, fmt.Errorf("definition not found: %w", err)
+		return nil, fmt.Errorf("definition not found for FQN: %s", def.FQN())
 	}
 	return definition, nil
 }

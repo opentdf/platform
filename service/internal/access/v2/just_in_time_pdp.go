@@ -19,6 +19,11 @@ import (
 	"github.com/opentdf/platform/service/logger"
 )
 
+var (
+	ErrMissingRequiredSDK = errors.New("access: missing required SDK")
+	ErrInvalidEntityType  = errors.New("access: invalid entity type")
+)
+
 type JustInTimePDP struct {
 	logger *logger.Logger
 	sdk    *otdfSDK.SDK
@@ -36,7 +41,6 @@ func NewJustInTimePDP(
 	var err error
 
 	if sdk == nil {
-		l.ErrorContext(ctx, "invalid arguments", slog.String("error", ErrMissingRequiredSDK.Error()))
 		return nil, ErrMissingRequiredSDK
 	}
 	if l == nil {
@@ -53,17 +57,14 @@ func NewJustInTimePDP(
 
 	allAttributes, err := p.fetchAllDefinitions(ctx)
 	if err != nil {
-		l.ErrorContext(ctx, "failed to fetch all attribute definitions", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("failed to fetch all attribute definitions: %w", err)
 	}
 	allSubjectMappings, err := p.fetchAllSubjectMappings(ctx)
 	if err != nil {
-		l.ErrorContext(ctx, "failed to fetch all subject mappings", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("failed to fetch all subject mappings: %w", err)
 	}
 	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings)
 	if err != nil {
-		l.ErrorContext(ctx, "failed to create new policy decision point", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
 	}
 	p.pdp = pdp
@@ -94,16 +95,15 @@ func (p *JustInTimePDP) GetDecision(
 		p.logger.DebugContext(ctx, "getting decision - resolving token")
 		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
 
+	// TODO: implement this case
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting decision - resolving registered resource value FQN")
-		// TODO: implement this case
+		return nil, false, errors.New("registered resources not yet implemented")
 
 	default:
-		p.logger.ErrorContext(ctx, "invalid entity identifier type", slog.String("error", ErrInvalidEntityType.Error()), slog.String("type", fmt.Sprintf("%T", entityIdentifier.GetIdentifier())))
 		return nil, false, ErrInvalidEntityType
 	}
 	if err != nil {
-		p.logger.ErrorContext(ctx, "failed to resolve entity identifier", slog.String("error", err.Error()))
 		return nil, false, fmt.Errorf("failed to resolve entity identifier: %w", err)
 	}
 
@@ -112,11 +112,10 @@ func (p *JustInTimePDP) GetDecision(
 	for _, entityRep := range entityRepresentations {
 		d, err := p.pdp.GetDecision(ctx, entityRep, action, resources)
 		if err != nil {
-			p.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))
-			return nil, false, fmt.Errorf("failed to get decision: %w", err)
+			// TODO: is it safe to log the entity representation?
+			return nil, false, fmt.Errorf("failed to get decision on entityRepresentation %+v: %w", entityRep, err)
 		}
 		if d == nil {
-			p.logger.ErrorContext(ctx, "decision is nil")
 			return nil, false, fmt.Errorf("decision is nil: %w", err)
 		}
 		if !d.Access {
@@ -151,30 +150,28 @@ func (p *JustInTimePDP) GetEntitlements(
 		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting decision - resolving registered resource value FQN")
+		return nil, errors.New("registered resources not yet implemented")
 		// TODO: implement this case
 	default:
-		p.logger.ErrorContext(ctx, "invalid entity identifier type", slog.String("error", ErrInvalidEntityType.Error()), slog.String("type", fmt.Sprintf("%T", entityIdentifier.GetIdentifier())))
-		return nil, ErrInvalidEntityType
+		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
 	}
 	if err != nil {
-		p.logger.ErrorContext(ctx, "failed to resolve entity identifier", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("failed to resolve entity identifier: %w", err)
+		return nil, fmt.Errorf("failed to resolve entities from entity identifier: %w", err)
 	}
 
 	matchedSubjectMappings, err := p.getMatchedSubjectMappings(ctx, entityRepresentations)
 	if err != nil {
-		p.logger.ErrorContext(ctx, "failed to get matched subject mappings", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("failed to get matched subject mappings: %w", err)
 	}
 	// If no subject mappings are found, return empty entitlements
 	if matchedSubjectMappings == nil {
-		p.logger.ErrorContext(ctx, "matched subject mappings is empty")
+		// TODO: is this an error case?
+		p.logger.DebugContext(ctx, "matched subject mappings is empty")
 		return nil, nil
 	}
 
 	entitlements, err := p.pdp.GetEntitlements(ctx, entityRepresentations, matchedSubjectMappings, withComprehensiveHierarchy)
 	if err != nil {
-		p.logger.ErrorContext(ctx, "failed to get entitlements", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("failed to get entitlements: %w", err)
 	}
 	return entitlements, nil
@@ -194,7 +191,6 @@ func (p *JustInTimePDP) getMatchedSubjectMappings(
 		for _, entity := range entityRep.GetAdditionalProps() {
 			flattened, err := flattening.Flatten(entity.AsMap())
 			if err != nil {
-				p.logger.ErrorContext(ctx, "failed to flatten entity representation", slog.String("error", err.Error()))
 				return nil, fmt.Errorf("failed to flatten entity representation: %w", err)
 			}
 			for _, item := range flattened.Items {
@@ -213,7 +209,6 @@ func (p *JustInTimePDP) getMatchedSubjectMappings(
 	}
 	rsp, err := p.sdk.SubjectMapping.MatchSubjectMappings(ctx, req)
 	if err != nil {
-		p.logger.ErrorContext(ctx, "failed to match subject mappings", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("failed to match subject mappings: %w", err)
 	}
 	return rsp.GetSubjectMappings(), nil
@@ -234,7 +229,6 @@ func (p *JustInTimePDP) fetchAllDefinitions(ctx context.Context) ([]*policy.Attr
 			},
 		})
 		if err != nil {
-			p.logger.ErrorContext(ctx, "failed to list attributes", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("failed to list attributes: %w", err)
 		}
 
@@ -262,7 +256,6 @@ func (p *JustInTimePDP) fetchAllSubjectMappings(ctx context.Context) ([]*policy.
 			},
 		})
 		if err != nil {
-			p.logger.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("failed to list subject mappings: %w", err)
 		}
 

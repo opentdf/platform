@@ -430,6 +430,23 @@ func (s *ResourceMappingsSuite) Test_CreateResourceMappingWithUnknownGroupIdFail
 	s.Nil(createdMapping)
 }
 
+func (s *ResourceMappingsSuite) Test_CreateResourceMappingGroupNsDiffFromAttrNsFails() {
+	metadata := &common.MetadataMutable{}
+
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
+	rmGroup := s.getResourceMappingGroupFixtures()[2] // scenario.com_ns_group_1
+	mapping := &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Metadata:         metadata,
+		Terms:            []string{},
+		GroupId:          rmGroup.ID,
+	}
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
+	s.Nil(createdMapping)
+}
+
 func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds() {
 	testMappings := make(map[string]fixtures.FixtureDataResourceMapping)
 	for _, testMapping := range s.getResourceMappingFixtures() {
@@ -439,6 +456,11 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds(
 	testValues := make(map[string]fixtures.FixtureDataAttributeValue)
 	for _, testValue := range s.getResourceMappingAttributeValueFixtures() {
 		testValues[testValue.ID] = testValue
+	}
+
+	testGroups := make(map[string]fixtures.FixtureDataResourceMappingGroup)
+	for _, testGroup := range s.getResourceMappingGroupFixtures() {
+		testGroups[testGroup.ID] = testGroup
 	}
 
 	listRsp, err := s.db.PolicyClient.ListResourceMappings(s.ctx, &resourcemapping.ListResourceMappingsRequest{})
@@ -461,6 +483,8 @@ func (s *ResourceMappingsSuite) Test_ListResourceMappings_NoPagination_Succeeds(
 
 		s.Equal(testMapping.Terms, mapping.GetTerms())
 		s.Equal(testMapping.GroupID, mapping.GetGroup().GetId())
+		s.Equal(testGroups[mapping.GetGroup().GetId()].Name, mapping.GetGroup().GetName())
+		s.Equal(testGroups[mapping.GetGroup().GetId()].NamespaceID, mapping.GetGroup().GetNamespaceId())
 		metadata := mapping.GetMetadata()
 		createdAt := metadata.GetCreatedAt()
 		updatedAt := metadata.GetUpdatedAt()
@@ -855,6 +879,29 @@ func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithUnknownGroupIdFail
 	}
 	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, unknownResourceMappingID, updatedMapping)
 	s.Require().Error(err)
+	s.Nil(updated)
+}
+
+func (s *ResourceMappingsSuite) Test_UpdateResourceMappingWithGroupNsDiffFromAttrNsFails() {
+	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr2/value/value2")
+	mapping := &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: attrValue.ID,
+		Terms:            []string{"asdf qwerty"},
+	}
+	createdMapping, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, mapping)
+	s.Require().NoError(err)
+	s.NotNil(createdMapping)
+
+	rmGroup := s.getResourceMappingGroupFixtures()[2] // scenario.com_ns_group_1
+	// update the created with new metadata, terms and unknown group ID
+	updatedMapping := &resourcemapping.UpdateResourceMappingRequest{
+		AttributeValueId: createdMapping.GetAttributeValue().GetId(),
+		Terms:            []string{"asdf updated term1"},
+		GroupId:          rmGroup.ID,
+	}
+	updated, err := s.db.PolicyClient.UpdateResourceMapping(s.ctx, createdMapping.GetId(), updatedMapping)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrNamespaceMismatch)
 	s.Nil(updated)
 }
 

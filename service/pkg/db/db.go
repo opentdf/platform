@@ -69,22 +69,22 @@ type PgxIface interface {
 
 // PoolConfig holds all connection pool related configuration
 type PoolConfig struct {
-	// Maximum amount of connections to keep in the pool. Default is 4 connections.
+	// Maximum amount of connections to keep in the pool.
 	MaxConns int32 `mapstructure:"max_connection_count" json:"maxConnectionsCount" default:"4"`
 
-	// Minimum amount of connections to keep in the pool. Default is 0 connections.
+	// Minimum amount of connections to keep in the pool.
 	MinConns int32 `mapstructure:"min_connection_count" json:"minConnectionsCount" default:"0"`
 
-	// Minimum amount of idle connections to keep in the pool. Default is 0 connections.
-	MinIdleConns int32 `mapstructure:"min_idle_connection_count" json:"minIdleConnectionsCount" default:"0"`
+	// Minimum amount of idle connections to keep in the pool.
+	MinIdleConns int32 `mapstructure:"min_idle_connections_count" json:"minIdleConnectionsCount" default:"0"`
 
-	// Maximum amount of time a connection may be reused, in seconds. Default is 3600 seconds (1 hour).
+	// Maximum amount of time a connection may be reused, in seconds. Default: 3600 seconds (1 hour).
 	MaxConnLifetime int `mapstructure:"max_connection_lifetime_seconds" json:"maxConnectionLifetimeSeconds" default:"3600"`
 
-	// Maximum amount of time a connection may be idle before being closed, in seconds. Default is 1800 seconds (30 minutes).
+	// Maximum amount of time a connection may be idle before being closed, in seconds. Default: 1800 seconds (30 minutes).
 	MaxConnIdleTime int `mapstructure:"max_connection_idle_seconds" json:"maxConnectionIdleSeconds" default:"1800"`
 
-	// Period at which the pool will check the health of idle connections, in seconds. Default is 60 seconds.
+	// Period at which the pool will check the health of idle connections, in seconds. Default: 60 seconds (1 minute).
 	HealthCheckPeriod int `mapstructure:"health_check_period_seconds" json:"healthCheckPeriodSeconds" default:"60"`
 }
 

@@ -59,6 +59,7 @@ func getResourceDecision(
 }
 
 // evaluateResourceAttributeValues evaluates a list of attribute values against the action and entitlements
+// and lowercases the FQNs to ensure case-insensitive matching
 func evaluateResourceAttributeValues(
 	ctx context.Context,
 	logger *logger.Logger,
@@ -71,6 +72,7 @@ func evaluateResourceAttributeValues(
 	// Group value FQNs by parent definition
 	definitionFqnToValueFqns := make(map[string][]string)
 	definitionsLookup := make(map[string]*policy.Attribute)
+
 	for idx, valueFQN := range resourceAttributeValues.GetFqns() {
 		// lowercase the value FQN to ensure case-insensitive matching
 		valueFQN = strings.ToLower(valueFQN)

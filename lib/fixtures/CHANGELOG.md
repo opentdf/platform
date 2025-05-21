@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.10...lib/fixtures/v0.3.0) (2025-05-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979))
+
+### Features
+
+* bulk keycloak provisioning ([#2205](https://github.com/opentdf/platform/issues/2205)) ([59e4485](https://github.com/opentdf/platform/commit/59e4485bdd0ced85c69604130505553f447918d1))
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979)) ([164c922](https://github.com/opentdf/platform/commit/164c922af74b1265fe487362c356abb7f1503ada))
+
+
+### Bug Fixes
+
+* **deps:** bump toolchain in /lib/fixtures and /examples to resolve CVE GO-2025-3563 ([#2061](https://github.com/opentdf/platform/issues/2061)) ([9c16843](https://github.com/opentdf/platform/commit/9c168437db3b138613fe629419dd6bd9f837e881))
+* perfsprint lint issues ([#2209](https://github.com/opentdf/platform/issues/2209)) ([7cf8b53](https://github.com/opentdf/platform/commit/7cf8b5372a1f90f12a3b6e4038305bea9a877ee9))
+
 ## [0.2.10](https://github.com/opentdf/platform/compare/lib/fixtures/v0.2.9...lib/fixtures/v0.2.10) (2024-12-17)
 
 

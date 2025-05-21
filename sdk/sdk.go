@@ -413,7 +413,7 @@ func validateHealthyPlatformConnection(platformEndpoint string, httpClient *http
 
 func getPlatformConfiguration(conn *ConnectRPCConnection) (PlatformConfiguration, error) {
 	req := wellknownconfiguration.GetWellKnownConfigurationRequest{}
-	wellKnownConfig := wellknownconfigurationconnect.NewWellKnownServiceClient(conn.Client, conn.Endpoint)
+	wellKnownConfig := wellknownconfigurationconnect.NewWellKnownServiceClient(conn.Client, conn.Endpoint, conn.Options...)
 
 	response, err := wellKnownConfig.GetWellKnownConfiguration(context.Background(), connect.NewRequest(&req))
 	if err != nil {

@@ -6,13 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
-	"net/url"
 	"os"
 	"os/signal"
 	"slices"
 	"syscall"
 
+	"connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
@@ -25,9 +24,6 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 const devModeMessage = `
@@ -231,18 +227,19 @@ func Start(f ...StartOptions) error {
 				return errors.New("entityresolution endpoint must be provided in core mode")
 			}
 
-			ersDialOptions := []grpc.DialOption{}
+			ersConnectRPCConn := sdk.ConnectRPCConnection{}
+
 			var tlsConfig *tls.Config
 			if cfg.SDKConfig.EntityResolutionConnection.Insecure {
 				tlsConfig = &tls.Config{
 					MinVersion:         tls.VersionTLS12,
 					InsecureSkipVerify: true, // #nosec G402
 				}
-				ersDialOptions = append(ersDialOptions, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+				ersConnectRPCConn.Client = httputil.SafeHTTPClientWithTLSConfig(tlsConfig)
 			}
 			if cfg.SDKConfig.EntityResolutionConnection.Plaintext {
 				tlsConfig = &tls.Config{}
-				ersDialOptions = append(ersDialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
+				ersConnectRPCConn.Client = httputil.SafeHTTPClient()
 			}
 
 			if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
@@ -268,30 +265,16 @@ func Start(f ...StartOptions) error {
 				interceptor := sdkauth.NewTokenAddingInterceptorWithClient(ts,
 					httputil.SafeHTTPClientWithTLSConfig(tlsConfig))
 
-				ersDialOptions = append(ersDialOptions, grpc.WithChainUnaryInterceptor(interceptor.AddCredentials))
+				ersConnectRPCConn.Options = append(ersConnectRPCConn.Options, connect.WithInterceptors(interceptor.AddCredentialsConnect()))
 			}
 
-			parsedURL, err := url.Parse(cfg.SDKConfig.EntityResolutionConnection.Endpoint)
-			if err != nil {
-				return fmt.Errorf("cannot parse ers url(%s): %w", cfg.SDKConfig.EntityResolutionConnection.Endpoint, err)
+			if sdk.IsPlatformEndpointMalformed(cfg.SDKConfig.EntityResolutionConnection.Endpoint) {
+				return fmt.Errorf("entityresolution endpoint is malformed: %s", cfg.SDKConfig.EntityResolutionConnection.Endpoint)
 			}
-			// Needed to support buffconn for testing
-			if parsedURL.Host == "" {
-				return errors.New("ERS host is empty when parsing")
-			}
-			port := parsedURL.Port()
-			// if port is empty, default to 443.
-			if port == "" {
-				port = "443"
-			}
-			ersGRPCEndpoint := net.JoinHostPort(parsedURL.Hostname(), port)
+			ersConnectRPCConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
 
-			conn, err := grpc.NewClient(ersGRPCEndpoint, ersDialOptions...)
-			if err != nil {
-				return fmt.Errorf("could not connect to ERS: %w", err)
-			}
-			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(conn))
-			logger.Info("added with custom ers connection for ", "", ersGRPCEndpoint)
+			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(&ersConnectRPCConn))
+			logger.Info("added with custom ers connection for ", "", ersConnectRPCConn.Endpoint)
 		}
 
 		client, err = sdk.New("", sdkOptions...)
@@ -317,11 +300,12 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	logger.Info("starting services")
-	err = startServices(ctx, cfg, otdf, client, logger, svcRegistry)
+	gatewayCleanup, err := startServices(ctx, cfg, otdf, client, logger, svcRegistry)
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)
 	}
+	defer gatewayCleanup()
 
 	// Start watching the configuration for changes with registered config change service hooks
 	if err := cfg.Watch(ctx); err != nil {

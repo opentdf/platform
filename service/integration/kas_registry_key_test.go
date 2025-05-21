@@ -414,6 +414,17 @@ func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Limit_Success() {
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespaces_Success() {
+	attrValueIDs := make([]string, 0)
+	attrDefIDs := make([]string, 0)
+	namespaceIDs := make([]string, 0)
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+
+	defer func() {
+		s.cleanupAttrs(attrValueIDs, namespaceIDs, attrDefIDs)
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
@@ -422,10 +433,15 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
 	namespaceMap := s.setupNamespaceForRotate(1, 1, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
+	namespaceIDs = append(namespaceIDs, namespaceMap[rotateKey][0].GetId(), namespaceMap[nonRotateKey][0].GetId())
 	attributeMap := s.setupAttributesForRotate(1, 1, 1, 1, namespaceMap, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
+	attrDefIDs = append(attrDefIDs, attributeMap[rotateKey][0].GetId(), attributeMap[nonRotateKey][0].GetId())
+	attrValueIDs = append(attrValueIDs, attributeMap[rotateKey][0].GetValues()[0].GetId(), attributeMap[nonRotateKey][0].GetValues()[0].GetId())
 
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
@@ -441,6 +457,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
 
 	// Validate the rotated key
 	s.Equal(newKey.GetKeyId(), rotatedInKey.GetKasKey().GetKey().GetKeyId())
@@ -513,19 +530,20 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	s.Require().NoError(err)
 	s.Len(nonUpdatedAttrValue.GetKasKeys(), 1)
 	s.Equal(keyMap[nonRotateKey].GetKey().GetId(), nonUpdatedAttrValue.GetKasKeys()[0].GetKey().GetId())
-
-	// Clean up
-	s.cleanupRotate(
-		[]string{attrValue.GetId(), nonUpdatedAttrValue.GetId()},
-		[]string{namespaceMap[rotateKey][0].GetId(), namespaceMap[nonRotateKey][0].GetId()},
-		[]string{attributeMap[rotateKey][0].GetId(), attributeMap[nonRotateKey][0].GetId()},
-	)
-	s.cleanupKeys([]string{keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId(), rotatedInKey.GetKasKey().GetKey().GetId()},
-		[]string{kas.GetId()})
 }
 
-// For example, 2 attributes, 0 namespaces, 1 attribute value.
 func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_AttributeValue_Success() {
+	attrValueIDs := make([]string, 0)
+	attrDefIDs := make([]string, 0)
+	namespaceIDs := make([]string, 0)
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+
+	defer func() {
+		s.cleanupAttrs(attrValueIDs, namespaceIDs, attrDefIDs)
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
@@ -534,10 +552,14 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
 	namespaceMap := s.setupNamespaceForRotate(2, 2, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
+	namespaceIDs = append(namespaceIDs, namespaceMap[rotateKey][0].GetId(), namespaceMap[rotateKey][1].GetId(), namespaceMap[nonRotateKey][0].GetId(), namespaceMap[nonRotateKey][1].GetId())
 	attributeMap := s.setupAttributesForRotate(2, 2, 0, 0, namespaceMap, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
+	attrDefIDs = append(attrDefIDs, attributeMap[rotateKey][0].GetId(), attributeMap[nonRotateKey][0].GetId(), attributeMap[rotateKey][1].GetId(), attributeMap[nonRotateKey][1].GetId())
 
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
@@ -553,6 +575,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
 
 	// Validate the rotated key
 	s.Equal(newKey.GetKeyId(), rotatedInKey.GetKasKey().GetKey().GetKeyId())
@@ -633,30 +656,6 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 		s.Len(nonUpdatedAttr.GetKasKeys(), 1)
 		s.Equal(keyMap[nonRotateKey].GetKey().GetId(), nonUpdatedAttr.GetKasKeys()[0].GetKey().GetId())
 	}
-
-	// Clean up
-	namespaceIDs := make([]string, 0)
-	attributeIDs := make([]string, 0)
-	for _, ns := range namespaceMap[rotateKey] {
-		namespaceIDs = append(namespaceIDs, ns.GetId())
-	}
-	for _, ns := range namespaceMap[nonRotateKey] {
-		namespaceIDs = append(namespaceIDs, ns.GetId())
-	}
-	for _, attr := range attributeMap[rotateKey] {
-		attributeIDs = append(attributeIDs, attr.GetId())
-	}
-	for _, attr := range attributeMap[nonRotateKey] {
-		attributeIDs = append(attributeIDs, attr.GetId())
-	}
-
-	s.cleanupRotate(
-		[]string{},
-		namespaceIDs,
-		attributeIDs,
-	)
-	s.cleanupKeys([]string{keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId(), rotatedInKey.GetKasKey().GetKey().GetId()},
-		[]string{kas.GetId()})
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
@@ -744,9 +743,6 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoDefaultKeyRotated_Success() {
 			WrappedKey: keyCtx,
 		},
 	}
-
-	// Set default key mapping
-	s.Require().NoError(err)
 	_, err = s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
 		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
 			Id: keyMap[nonRotateKey].GetKey().GetId(),
@@ -958,9 +954,6 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NanoDefaultKey_NewKeyIsNotECC_Fail(
 			WrappedKey: keyCtx,
 		},
 	}
-
-	// Set default key mapping
-	s.Require().NoError(err)
 	_, err = s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
 		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
 			Id: keyMap[rotateKey].GetKey().GetId(),
@@ -1650,7 +1643,7 @@ func (s *KasRegistryKeySuite) setupAttributesForRotate(numAttrsToRotate, numAttr
 			attrValueNames := make([]string, 0)
 			if i-numAttrValuesToRotate == 0 {
 				// Create all the attribute values for the first attribute
-				for j := 0; j < numAttrValuesToRotate; j++ {
+				for j := 0; j < numAttrsToNotRotate; j++ {
 					attrValueNames = append(attrValueNames, nonRotatePrefix+uuid.NewString())
 				}
 			}
@@ -1704,7 +1697,7 @@ func (s *KasRegistryKeySuite) setupAttributesForRotate(numAttrsToRotate, numAttr
 	}
 }
 
-func (s *KasRegistryKeySuite) cleanupRotate(attrValueIDs []string, namespaceIDs []string, attributeIDs []string) {
+func (s *KasRegistryKeySuite) cleanupAttrs(attrValueIDs []string, namespaceIDs []string, attributeIDs []string) {
 	for _, id := range attrValueIDs {
 		_, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, id)
 		s.Require().NoError(err)
@@ -1722,6 +1715,7 @@ func (s *KasRegistryKeySuite) cleanupRotate(attrValueIDs []string, namespaceIDs 
 func (s *KasRegistryKeySuite) cleanupKeys(keyIDs []string, keyAccessServerIDs []string) {
 	err := s.db.PolicyClient.DeleteAllDefaultKeys(s.ctx)
 	s.Require().NoError(err)
+
 	for _, id := range keyIDs {
 		_, err := s.db.PolicyClient.DeleteKey(s.ctx, id)
 		s.Require().NoError(err)

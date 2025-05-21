@@ -999,7 +999,8 @@ func (c PolicyDBClient) SetDefaultKeyOnWellKnownConfig(ctx context.Context) erro
 		return err
 	}
 
-	return wellknownconfiguration.UpdateConfigurationDefaultKey(genericKeyArr)
+	wellknownconfiguration.UpdateConfigurationDefaultKey(genericKeyArr)
+	return nil
 }
 
 /*

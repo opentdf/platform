@@ -1449,7 +1449,7 @@ func Test_SetDefault_Keys(t *testing.T) {
 		},
 	}
 
-	v := getValidator() // Get the validator instance (assuming this is defined elsewhere)
+	v := getValidator()
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -154,7 +154,7 @@ func UnmarshalDefaultKasKey(keysJSON []byte, key *kasregistry.DefaultKasKey) err
 		if err != nil {
 			return err
 		}
-		key.PublicKey.Algorithm, err = formatAlg(policy.Algorithm(alg))
+		algorithm, err := formatAlg(policy.Algorithm(alg))
 		if err != nil {
 			return err
 		}
@@ -164,6 +164,7 @@ func UnmarshalDefaultKasKey(keysJSON []byte, key *kasregistry.DefaultKasKey) err
 			return err
 		}
 		key.PublicKey.Pem = string(pem)
+		key.PublicKey.Algorithm = algorithm
 	}
 	return nil
 }

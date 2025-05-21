@@ -36,11 +36,10 @@ func RegisterConfiguration(namespace string, config any) error {
 }
 
 // We should probably have a safe-guard as to what config can be updated
-func UpdateConfigurationDefaultKey(config any) error {
+func UpdateConfigurationDefaultKey(config any) {
 	rwMutex.Lock()
 	defer rwMutex.Unlock()
 	wellKnownConfiguration[defaultKasKeyWellKnown] = config
-	return nil
 }
 
 func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler] {

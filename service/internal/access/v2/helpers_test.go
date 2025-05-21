@@ -77,7 +77,7 @@ func TestGetFilteredEntitleableAttributes(t *testing.T) {
 	confidentialFQN := "https://example.org/attr/classification/value/confidential"
 	secretFQN := "https://example.org/attr/classification/value/secret"
 
-	departmentFQN := "https://example.org/attr/department"
+	deptFQN := "https://example.org/attr/department"
 	hrFQN := "https://example.org/attr/department/value/hr"
 	financeFQN := "https://example.org/attr/department/value/finance"
 	itFQN := "https://example.org/attr/department/value/it"
@@ -91,7 +91,7 @@ func TestGetFilteredEntitleableAttributes(t *testing.T) {
 	}
 
 	departmentAttr := &policy.Attribute{
-		Fqn:  departmentFQN,
+		Fqn:  deptFQN,
 		Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 	}
 

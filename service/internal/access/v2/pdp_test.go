@@ -703,7 +703,6 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 
 // Test_GetDecision_CombinedAttributeRules tests scenarios with combinations of different attribute rules on a single resource
 func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() {
-
 	f := s.fixtures
 
 	// Create a PDP with all attribute types (HIERARCHY, ANY_OF, ALL_OF)
@@ -1357,7 +1356,6 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 
 // TestGetEntitlements tests the functionality of retrieving entitlements for entities
 func (s *PDPTestSuite) Test_GetEntitlements() {
-
 	f := s.fixtures
 
 	// Create a PDP with attributes and mappings

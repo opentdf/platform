@@ -161,8 +161,9 @@ func (p *PolicyDecisionPoint) GetDecision(
 		}
 
 		switch resource.GetResource().(type) {
+		// TODO: handle gathering decisionable attributes of registered resources
 		case *authz.Resource_RegisteredResourceValueFqn:
-			// TODO: handle gathering decisionable attributes of registered resources
+			return nil, fmt.Errorf("registered resource value FQN not supported: %w", ErrInvalidResource)
 
 		case *authz.Resource_AttributeValues_:
 			for _, valueFQN := range resource.GetAttributeValues().GetFqns() {
@@ -190,6 +191,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 		}
 	}
 	p.logger.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionable attribute values count", len(decisionableAttributes)))
+
 	// Resolve them to their entitled FQNs and the actions available on each
 	entitledFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRepresentation)
 	if err != nil {

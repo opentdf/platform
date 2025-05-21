@@ -14,7 +14,7 @@ require (
 	github.com/bmatcuk/doublestar v1.3.4
 	github.com/bufbuild/protovalidate-go v0.9.3
 	github.com/casbin/casbin/v2 v2.101.0
-	github.com/creasty/defaults v1.7.0
+	github.com/creasty/defaults v1.8.0
 	github.com/docker/docker v28.0.2+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/go-chi/cors v1.2.1
@@ -28,7 +28,7 @@ require (
 	github.com/open-policy-agent/opa v1.4.2
 	github.com/opentdf/platform/lib/fixtures v0.2.10
 	github.com/opentdf/platform/lib/flattening v0.1.3
-	github.com/opentdf/platform/lib/identifier v0.0.0-20250506204946-8822c4516627
+	github.com/opentdf/platform/lib/identifier v0.0.2
 	github.com/opentdf/platform/lib/ocrypto v0.1.9
 	github.com/opentdf/platform/protocol/go v0.3.3
 	github.com/opentdf/platform/sdk v0.4.4

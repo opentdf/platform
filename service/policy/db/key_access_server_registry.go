@@ -423,9 +423,8 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		return nil, err
 	}
 
-	privateKeyCtx := &policy.KasPrivateKeyCtx{}
-	publicKeyCtx := &policy.KasPublicKeyCtx{}
-	if err := unmarshalPrivatePublicKeyContext(key.PublicKeyCtx, key.PrivateKeyCtx, publicKeyCtx, privateKeyCtx); err != nil {
+	publicKeyCtx, privateKeyCtx, err := unmarshalPrivatePublicKeyContext(key.PublicKeyCtx, key.PrivateKeyCtx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -512,9 +511,8 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Kas
 		}
 	}
 
-	privateKeyCtx := &policy.KasPrivateKeyCtx{}
-	publicKeyCtx := &policy.KasPublicKeyCtx{}
-	if err := unmarshalPrivatePublicKeyContext(key.PublicKeyCtx, key.PrivateKeyCtx, publicKeyCtx, privateKeyCtx); err != nil {
+	publicKeyCtx, privateKeyCtx, err := unmarshalPrivatePublicKeyContext(key.PublicKeyCtx, key.PrivateKeyCtx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -633,9 +631,8 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 			return nil, err
 		}
 
-		publicKeyCtx := &policy.KasPublicKeyCtx{}
-		privateKeyCtx := &policy.KasPrivateKeyCtx{}
-		if err := unmarshalPrivatePublicKeyContext(key.PublicKeyCtx, key.PrivateKeyCtx, publicKeyCtx, privateKeyCtx); err != nil {
+		publicKeyCtx, privateKeyCtx, err := unmarshalPrivatePublicKeyContext(key.PublicKeyCtx, key.PrivateKeyCtx)
+		if err != nil {
 			return nil, err
 		}
 

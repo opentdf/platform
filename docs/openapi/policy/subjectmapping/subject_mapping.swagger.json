@@ -946,6 +946,51 @@
       },
       "title": "Deprecated"
     },
+    "policyResourceMapping": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata"
+        },
+        "attributeValue": {
+          "$ref": "#/definitions/policyValue"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "group": {
+          "$ref": "#/definitions/policyResourceMappingGroup"
+        }
+      },
+      "title": "Resource Mappings (aka Access Control Resource Encodings aka ACRE) are\nstructures supporting the mapping of Resources and Attribute Values"
+    },
+    "policyResourceMappingGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "namespaceId": {
+          "type": "string",
+          "title": "the namespace containing the group of resource mappings"
+        },
+        "name": {
+          "type": "string",
+          "title": "the common name for the group of resource mappings, which must be unique\nper namespace"
+        },
+        "metadata": {
+          "$ref": "#/definitions/commonMetadata",
+          "title": "Common metadata"
+        }
+      },
+      "description": "Resource Mapping Groups are namespaced collections of Resource Mappings\nassociated under a common group name."
+    },
     "policySourceType": {
       "type": "string",
       "enum": [
@@ -1081,6 +1126,13 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/policyKasKey"
+          }
+        },
+        "resourceMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyResourceMapping"
           }
         },
         "metadata": {

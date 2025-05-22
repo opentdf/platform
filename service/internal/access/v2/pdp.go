@@ -269,7 +269,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 		for valueFQN, actions := range fqnsToActions {
 			// If already entitled (such as via a higher entitled comprehensive hierarchy attr value), merge with existing
 			if alreadyEntitled, ok := actionsPerAttributeValueFqn[valueFQN]; ok {
-				actions = mergeDeduplicatedActions(alreadyEntitled.GetActions(), actions)
+				actions = mergeDeduplicatedActions(make(map[string]*policy.Action), actions, alreadyEntitled.GetActions())
 			}
 			entitledActions := &authz.EntityEntitlements_ActionsList{
 				Actions: actions,

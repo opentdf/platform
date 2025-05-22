@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 // Updated assertions to include better validation of the retrieved definition
@@ -374,7 +375,7 @@ func TestPopulateLowerValuesIfHierarchy(t *testing.T) {
 				assert.Len(t, tt.expectedMapKeyFQNs, len(tt.actionsPerAttributeValueFqn), "Expected map to have %d keys, got %d", len(tt.expectedMapKeyFQNs), len(tt.actionsPerAttributeValueFqn))
 				for _, key := range tt.expectedMapKeyFQNs {
 					assert.Contains(t, tt.actionsPerAttributeValueFqn, key, "Expected map to contain key %s", key)
-					assert.Equal(t, tt.entitledActions, tt.actionsPerAttributeValueFqn[key], "Expected map value for key %s to match", key)
+					assert.True(t, proto.Equal(tt.entitledActions, tt.actionsPerAttributeValueFqn[key]), "Expected map value for key %s to match", key)
 					assert.Len(t, tt.actionsPerAttributeValueFqn[key].GetActions(), len(tt.entitledActions.GetActions()), "Expected map value for key %s to match", key)
 				}
 			}
@@ -566,5 +567,137 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 	}
 	for _, state := range found {
 		assert.True(t, state)
+	}
+}
+
+func TestMergeDeduplicatedActions(t *testing.T) {
+	// Define test actions
+	readAction := &policy.Action{Name: "read"}
+	writeAction := &policy.Action{Name: "write"}
+	updateAction := &policy.Action{Name: "update"}
+	deleteAction := &policy.Action{Name: "delete"}
+
+	tests := []struct {
+		name            string
+		initialSet      map[string]*policy.Action
+		actionsToMerge  [][]*policy.Action
+		expectedActions map[string]bool
+	}{
+		{
+			name:       "Empty initial set with single merge list",
+			initialSet: map[string]*policy.Action{},
+			actionsToMerge: [][]*policy.Action{
+				{readAction, writeAction},
+			},
+			expectedActions: map[string]bool{
+				"read":  true,
+				"write": true,
+			},
+		},
+		{
+			name: "Populated initial set with no merge",
+			initialSet: map[string]*policy.Action{
+				"read":   readAction,
+				"update": updateAction,
+			},
+			actionsToMerge: [][]*policy.Action{},
+			expectedActions: map[string]bool{
+				"read":   true,
+				"update": true,
+			},
+		},
+		{
+			name: "Populated initial set with non-overlapping merge",
+			initialSet: map[string]*policy.Action{
+				"read":   readAction,
+				"update": updateAction,
+			},
+			actionsToMerge: [][]*policy.Action{
+				{writeAction, deleteAction},
+			},
+			expectedActions: map[string]bool{
+				"read":   true,
+				"write":  true,
+				"update": true,
+				"delete": true,
+			},
+		},
+		{
+			name: "Populated initial set with overlapping merge",
+			initialSet: map[string]*policy.Action{
+				"read":   readAction,
+				"update": updateAction,
+			},
+			actionsToMerge: [][]*policy.Action{
+				{readAction, writeAction},
+			},
+			expectedActions: map[string]bool{
+				"read":   true,
+				"write":  true,
+				"update": true,
+			},
+		},
+		{
+			name: "Multiple merge lists with overlaps",
+			initialSet: map[string]*policy.Action{
+				"read": readAction,
+			},
+			actionsToMerge: [][]*policy.Action{
+				{writeAction, updateAction},
+				{deleteAction, writeAction},
+			},
+			expectedActions: map[string]bool{
+				"read":   true,
+				"write":  true,
+				"update": true,
+				"delete": true,
+			},
+		},
+		{
+			name: "Nil action lists",
+			initialSet: map[string]*policy.Action{
+				"read": readAction,
+			},
+			actionsToMerge: [][]*policy.Action{
+				nil,
+				{writeAction},
+				nil,
+			},
+			expectedActions: map[string]bool{
+				"read":  true,
+				"write": true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a copy of the initial set to avoid modifying the test data
+			initialSet := make(map[string]*policy.Action)
+			for k, v := range tt.initialSet {
+				initialSet[k] = v
+			}
+
+			// Convert actionsToMerge to variadic arguments
+			var actionsToMergeSlices [][]*policy.Action
+			for _, actionList := range tt.actionsToMerge {
+				actionsToMergeSlices = append(actionsToMergeSlices, actionList)
+			}
+
+			// Call the function under test
+			result := mergeDeduplicatedActions(initialSet, actionsToMergeSlices...)
+
+			assert.Len(t, result, len(tt.expectedActions))
+
+			// Check that all expected action names are present
+			resultNames := make(map[string]bool)
+			for _, action := range result {
+				resultNames[action.GetName()] = true
+			}
+
+			for name := range tt.expectedActions {
+				assert.True(t, resultNames[name], "Expected action %s not found in result", name)
+			}
+		})
 	}
 }

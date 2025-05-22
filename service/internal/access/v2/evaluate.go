@@ -47,7 +47,6 @@ func getResourceDecision(
 	// TODO: handle registered resources
 	case *authz.Resource_RegisteredResourceValueFqn:
 		return nil, fmt.Errorf("registered resources not supported yet: %w", ErrInvalidResource)
-
 	case *authz.Resource_AttributeValues_:
 		return evaluateResourceAttributeValues(ctx, logger, resource.GetAttributeValues(), resource.GetEphemeralId(), action, entitlements, accessibleAttributeValues)
 

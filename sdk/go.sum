@@ -116,8 +116,8 @@ github.com/opencontainers/image-spec v1.1.0 h1:8SG7/vwALn54lVB/0yZ/MMwhFrPYtpEHQ
 github.com/opencontainers/image-spec v1.1.0/go.mod h1:W4s4sFTMaBeK1BQLXbG4AdM2szdn85PY75RI83NrTrM=
 github.com/opentdf/platform/lib/fixtures v0.3.0 h1:pgEm9ynMDIFH7Wd/lre2tfvtura8LfaV3iA1w1m7D3Q=
 github.com/opentdf/platform/lib/fixtures v0.3.0/go.mod h1:K/r0REv5MYClnkuiCxCOT1LTXbuIDP0kqixlGmPQzXc=
-github.com/opentdf/platform/lib/ocrypto v0.1.9 h1:GvgPB7CoK7JmWvsSvJ0hc+RC0wezgcuRpy3q2oYKjdA=
-github.com/opentdf/platform/lib/ocrypto v0.1.9/go.mod h1:UTtqh8mvhAYA+sEnaMxpr/406e84L5Q1sAxtKGIXfu4=
+github.com/opentdf/platform/lib/ocrypto v0.2.0 h1:hs7aQ9AfA6HPWkPJURkH/WdFkNFliq542axtMCy+ZX8=
+github.com/opentdf/platform/lib/ocrypto v0.2.0/go.mod h1:8gv+GV3OqrMBhkmc+Iw34Q3JnYRFNt0V0oudFlAkRcQ=
 github.com/opentdf/platform/protocol/go v0.3.4 h1:kmKC4Uaig+gkAj35BOi5WkuFIKHlYm088x57EhPVZ48=
 github.com/opentdf/platform/protocol/go v0.3.4/go.mod h1:nErYkgt32GW22CNqSyLO+JE49C3JndI1TsVdF+CUYd4=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=

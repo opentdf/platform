@@ -144,46 +144,29 @@ func formatAlg(alg policy.Algorithm) (string, error) {
 	}
 }
 
-func UnmarshalDefaultKasKey(keysJSON []byte, key *kasregistry.DefaultKasKey) error {
+func UnmarshalSimpleKasKey(keysJSON []byte) (*kasregistry.SimpleKasKey, error) {
+	var key *kasregistry.SimpleKasKey
 	if keysJSON != nil {
+		key = &kasregistry.SimpleKasKey{}
 		if err := protojson.Unmarshal(keysJSON, key); err != nil {
-			return err
+			return nil, err
 		}
 
 		alg, err := strconv.ParseInt(key.GetPublicKey().GetAlgorithm(), 10, 32)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		algorithm, err := formatAlg(policy.Algorithm(alg))
 		if err != nil {
-			return err
+			return nil, err
 		}
 		// Base64 decode the public key
 		pem, err := base64.StdEncoding.DecodeString(key.GetPublicKey().GetPem())
 		if err != nil {
-			return err
+			return nil, err
 		}
 		key.PublicKey.Pem = string(pem)
 		key.PublicKey.Algorithm = algorithm
 	}
-	return nil
-}
-
-func DefaultKasKeysProtoJSON(keysJSON []byte) ([]*kasregistry.DefaultKasKey, error) {
-	var (
-		keys []*kasregistry.DefaultKasKey
-		raw  []json.RawMessage
-	)
-	if err := json.Unmarshal(keysJSON, &raw); err != nil {
-		return nil, err
-	}
-	for _, r := range raw {
-		k := kasregistry.DefaultKasKey{}
-		err := UnmarshalDefaultKasKey(r, &k)
-		if err != nil {
-			return nil, err
-		}
-		keys = append(keys, &k)
-	}
-	return keys, nil
+	return key, nil
 }

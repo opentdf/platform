@@ -425,37 +425,6 @@
       },
       "title": "Response to a CreateKeyRequest, containing the created asymmetric key"
     },
-    "kasregistryDefaultKasKey": {
-      "type": "object",
-      "properties": {
-        "tdfType": {
-          "type": "string",
-          "title": "The type of TDF (e.g., ZTDF, Nano)"
-        },
-        "kasUri": {
-          "type": "string",
-          "title": "The URL of the Key Access Server"
-        },
-        "publicKey": {
-          "$ref": "#/definitions/kasregistryDefaultKasPublicKey",
-          "title": "The public key of the Key that belongs to the KAS"
-        }
-      }
-    },
-    "kasregistryDefaultKasPublicKey": {
-      "type": "object",
-      "properties": {
-        "algorithm": {
-          "type": "string"
-        },
-        "kid": {
-          "type": "string"
-        },
-        "pem": {
-          "type": "string"
-        }
-      }
-    },
     "kasregistryDeleteKeyAccessServerResponse": {
       "type": "object",
       "properties": {
@@ -464,15 +433,11 @@
         }
       }
     },
-    "kasregistryGetDefaultKeysResponse": {
+    "kasregistryGetBaseKeyResponse": {
       "type": "object",
       "properties": {
-        "defaultKasKeys": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/kasregistryDefaultKasKey"
-          },
+        "baseKey": {
+          "$ref": "#/definitions/kasregistrySimpleKasKey",
           "title": "The list of default keys"
         }
       }
@@ -650,27 +615,45 @@
       },
       "title": "All resources that were rotated as part of the key rotation process"
     },
-    "kasregistrySetDefaultKeyResponse": {
+    "kasregistrySetBaseKeyResponse": {
       "type": "object",
       "properties": {
-        "newDefaultKasKey": {
-          "$ref": "#/definitions/kasregistryDefaultKasKey",
-          "title": "The key that was set as default"
+        "newBaseKey": {
+          "$ref": "#/definitions/kasregistrySimpleKasKey",
+          "title": "The key that was set as base"
         },
-        "previousDefaultKasKey": {
-          "$ref": "#/definitions/kasregistryDefaultKasKey",
-          "title": "The previous default key, if any"
+        "previousBaseKey": {
+          "$ref": "#/definitions/kasregistrySimpleKasKey",
+          "title": "The previous base key, if any"
         }
       }
     },
-    "kasregistryTdfType": {
-      "type": "string",
-      "enum": [
-        "TDF_TYPE_UNSPECIFIED",
-        "TDF_TYPE_ZTDF",
-        "TDF_TYPE_NANO"
-      ],
-      "default": "TDF_TYPE_UNSPECIFIED"
+    "kasregistrySimpleKasKey": {
+      "type": "object",
+      "properties": {
+        "kasUri": {
+          "type": "string",
+          "title": "The URL of the Key Access Server"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/kasregistrySimpleKasPublicKey",
+          "title": "The public key of the Key that belongs to the KAS"
+        }
+      }
+    },
+    "kasregistrySimpleKasPublicKey": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string"
+        },
+        "kid": {
+          "type": "string"
+        },
+        "pem": {
+          "type": "string"
+        }
+      }
     },
     "kasregistryUpdateKeyAccessServerResponse": {
       "type": "object",

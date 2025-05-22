@@ -226,10 +226,9 @@ type AttributeValuePublicKeyMap struct {
 	KeyAccessServerKeyID string `json:"key_access_server_key_id"`
 }
 
-type DefaultKasKey struct {
+type BaseKey struct {
 	ID                   string      `json:"id"`
 	KeyAccessServerKeyID pgtype.UUID `json:"key_access_server_key_id"`
-	TdfType              string      `json:"tdf_type"`
 }
 
 // Table to store the known registrations of key access servers (KASs)

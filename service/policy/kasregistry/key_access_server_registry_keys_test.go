@@ -1398,52 +1398,31 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 func Test_SetDefault_Keys(t *testing.T) {
 	testCases := []struct {
 		name         string
-		req          *kasregistry.SetDefaultKeyRequest
+		req          *kasregistry.SetBaseKeyRequest
 		expectError  bool
 		errorMessage string
 	}{
 		{
 			name:         "Invalid Request (empty)",
-			req:          &kasregistry.SetDefaultKeyRequest{},
+			req:          &kasregistry.SetBaseKeyRequest{},
 			expectError:  true,
 			errorMessage: errMessageRequired,
-		},
-		{
-			name: "Invalid Request (empty active key)",
-			req: &kasregistry.SetDefaultKeyRequest{
-				TdfType: kasregistry.TdfType_TDF_TYPE_NANO,
-			},
-			expectError:  true,
-			errorMessage: errMessageRequired,
-		},
-		{
-			name: "Invalid Request (invalid tdf mode)",
-			req: &kasregistry.SetDefaultKeyRequest{
-				ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
-					Id: validUUID,
-				},
-				TdfType: -1,
-			},
-			expectError:  true,
-			errorMessage: errMessageTdfType,
 		},
 		{
 			name: "Valid Request (nano)",
-			req: &kasregistry.SetDefaultKeyRequest{
-				ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
+			req: &kasregistry.SetBaseKeyRequest{
+				ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
 					Id: validUUID,
 				},
-				TdfType: kasregistry.TdfType_TDF_TYPE_NANO,
 			},
 			expectError: false,
 		},
 		{
 			name: "Valid Request (ztdf)",
-			req: &kasregistry.SetDefaultKeyRequest{
-				ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
+			req: &kasregistry.SetBaseKeyRequest{
+				ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
 					Id: validUUID,
 				},
-				TdfType: kasregistry.TdfType_TDF_TYPE_ZTDF,
 			},
 			expectError: false,
 		},

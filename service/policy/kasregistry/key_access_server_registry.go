@@ -72,7 +72,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 
 				kasrSvc.logger = logger
 				kasrSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
-				if err = kasrSvc.dbClient.SetDefaultKeyOnWellKnownConfig(context.TODO()); err != nil {
+				if err = kasrSvc.dbClient.SetBaseKeyOnWellKnownConfig(context.TODO()); err != nil {
 					logger.Error("error setting well-known config", slog.String("error", err.Error()))
 					panic(err)
 				}
@@ -436,16 +436,16 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 	return connect.NewResponse(resp), nil
 }
 
-func (s KeyAccessServerRegistry) SetDefaultKey(ctx context.Context, r *connect.Request[kasr.SetDefaultKeyRequest]) (*connect.Response[kasr.SetDefaultKeyResponse], error) {
-	resp := &kasr.SetDefaultKeyResponse{}
+func (s KeyAccessServerRegistry) SetBaseKey(ctx context.Context, r *connect.Request[kasr.SetBaseKeyRequest]) (*connect.Response[kasr.SetBaseKeyResponse], error) {
+	resp := &kasr.SetBaseKeyResponse{}
 
 	var objectID string
 	switch i := r.Msg.GetActiveKey().(type) {
-	case *kasr.SetDefaultKeyRequest_Id:
-		s.logger.Debug("Setting default key by ID", slog.String("ID", i.Id), slog.String("Tdf type", r.Msg.GetTdfType().String()))
+	case *kasr.SetBaseKeyRequest_Id:
+		s.logger.Debug("Setting base key by ID", slog.String("ID", i.Id))
 		objectID = i.Id
-	case *kasr.SetDefaultKeyRequest_Key:
-		s.logger.Debug("Setting default key by Key ID", slog.String("Active Key ID", i.Key.GetKid()), slog.String("Tdf type", r.Msg.GetTdfType().String()))
+	case *kasr.SetBaseKeyRequest_Key:
+		s.logger.Debug("Setting base key by Key ID", slog.String("Active Key ID", i.Key.GetKid()))
 		objectID = i.Key.GetKid()
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, nil)
@@ -459,15 +459,15 @@ func (s KeyAccessServerRegistry) SetDefaultKey(ctx context.Context, r *connect.R
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
 		var err error
-		resp, err = txClient.SetDefaultKey(ctx, r.Msg)
+		resp, err = txClient.SetBaseKey(ctx, r.Msg)
 		if err != nil {
 			s.logger.Error("failed to set default key", slog.String("error", err.Error()))
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 			return err
 		}
 
-		auditParams.Original = resp.GetPreviousDefaultKasKey()
-		auditParams.Updated = resp.GetNewDefaultKasKey()
+		auditParams.Original = resp.GetPreviousBaseKey()
+		auditParams.Updated = resp.GetNewBaseKey()
 		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 		return nil
@@ -479,14 +479,14 @@ func (s KeyAccessServerRegistry) SetDefaultKey(ctx context.Context, r *connect.R
 	return connect.NewResponse(resp), nil
 }
 
-func (s KeyAccessServerRegistry) GetDefaultKeys(ctx context.Context, _ *connect.Request[kasr.GetDefaultKeysRequest]) (*connect.Response[kasr.GetDefaultKeysResponse], error) {
-	s.logger.Debug("Getting Default KAS Keys")
-	resp := &kasr.GetDefaultKeysResponse{}
+func (s KeyAccessServerRegistry) GetBaseKey(ctx context.Context, _ *connect.Request[kasr.GetBaseKeyRequest]) (*connect.Response[kasr.GetBaseKeyResponse], error) {
+	s.logger.Debug("Getting Base Key")
+	resp := &kasr.GetBaseKeyResponse{}
 
-	keys, err := s.dbClient.GetDefaultKasKeys(ctx)
+	key, err := s.dbClient.GetBaseKey(ctx)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed)
 	}
-	resp.DefaultKasKeys = keys
+	resp.BaseKey = key
 	return connect.NewResponse(resp), nil
 }

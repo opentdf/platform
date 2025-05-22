@@ -1060,14 +1060,6 @@
                 </li>
               
                 <li>
-                  <a href="#policy.kasregistry.DefaultKasKey"><span class="badge">M</span>DefaultKasKey</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.kasregistry.DefaultKasPublicKey"><span class="badge">M</span>DefaultKasPublicKey</a>
-                </li>
-              
-                <li>
                   <a href="#policy.kasregistry.DeleteKeyAccessServerRequest"><span class="badge">M</span>DeleteKeyAccessServerRequest</a>
                 </li>
               
@@ -1076,11 +1068,11 @@
                 </li>
               
                 <li>
-                  <a href="#policy.kasregistry.GetDefaultKeysRequest"><span class="badge">M</span>GetDefaultKeysRequest</a>
+                  <a href="#policy.kasregistry.GetBaseKeyRequest"><span class="badge">M</span>GetBaseKeyRequest</a>
                 </li>
               
                 <li>
-                  <a href="#policy.kasregistry.GetDefaultKeysResponse"><span class="badge">M</span>GetDefaultKeysResponse</a>
+                  <a href="#policy.kasregistry.GetBaseKeyResponse"><span class="badge">M</span>GetBaseKeyResponse</a>
                 </li>
               
                 <li>
@@ -1188,11 +1180,19 @@
                 </li>
               
                 <li>
-                  <a href="#policy.kasregistry.SetDefaultKeyRequest"><span class="badge">M</span>SetDefaultKeyRequest</a>
+                  <a href="#policy.kasregistry.SetBaseKeyRequest"><span class="badge">M</span>SetBaseKeyRequest</a>
                 </li>
               
                 <li>
-                  <a href="#policy.kasregistry.SetDefaultKeyResponse"><span class="badge">M</span>SetDefaultKeyResponse</a>
+                  <a href="#policy.kasregistry.SetBaseKeyResponse"><span class="badge">M</span>SetBaseKeyResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.SimpleKasKey"><span class="badge">M</span>SimpleKasKey</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.SimpleKasPublicKey"><span class="badge">M</span>SimpleKasPublicKey</a>
                 </li>
               
                 <li>
@@ -1219,10 +1219,6 @@
                   <a href="#policy.kasregistry.UpdatePublicKeyResponse"><span class="badge">M</span>UpdatePublicKeyResponse</a>
                 </li>
               
-              
-                <li>
-                  <a href="#policy.kasregistry.TdfType"><span class="badge">E</span>TdfType</a>
-                </li>
               
               
               
@@ -9060,82 +9056,6 @@ Mutable metadata for the key </p></td>
 
         
       
-        <h3 id="policy.kasregistry.DefaultKasKey">DefaultKasKey</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>tdf_type</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>The type of TDF (e.g., ZTDF, Nano) </p></td>
-                </tr>
-              
-                <tr>
-                  <td>kas_uri</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>The URL of the Key Access Server </p></td>
-                </tr>
-              
-                <tr>
-                  <td>public_key</td>
-                  <td><a href="#policy.kasregistry.DefaultKasPublicKey">DefaultKasPublicKey</a></td>
-                  <td></td>
-                  <td><p>The public key of the Key that belongs to the KAS </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.kasregistry.DefaultKasPublicKey">DefaultKasPublicKey</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>algorithm</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>kid</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>pem</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="policy.kasregistry.DeleteKeyAccessServerRequest">DeleteKeyAccessServerRequest</h3>
         <p></p>
 
@@ -9184,14 +9104,14 @@ Mutable metadata for the key </p></td>
 
         
       
-        <h3 id="policy.kasregistry.GetDefaultKeysRequest">GetDefaultKeysRequest</h3>
+        <h3 id="policy.kasregistry.GetBaseKeyRequest">GetBaseKeyRequest</h3>
         <p></p>
 
         
 
         
       
-        <h3 id="policy.kasregistry.GetDefaultKeysResponse">GetDefaultKeysResponse</h3>
+        <h3 id="policy.kasregistry.GetBaseKeyResponse">GetBaseKeyResponse</h3>
         <p></p>
 
         
@@ -9202,9 +9122,9 @@ Mutable metadata for the key </p></td>
             <tbody>
               
                 <tr>
-                  <td>default_kas_keys</td>
-                  <td><a href="#policy.kasregistry.DefaultKasKey">DefaultKasKey</a></td>
-                  <td>repeated</td>
+                  <td>base_key</td>
+                  <td><a href="#policy.kasregistry.SimpleKasKey">SimpleKasKey</a></td>
+                  <td></td>
                   <td><p>The list of default keys </p></td>
                 </tr>
               
@@ -10237,8 +10157,8 @@ Validation handled by message-level CEL </p></td>
 
         
       
-        <h3 id="policy.kasregistry.SetDefaultKeyRequest">SetDefaultKeyRequest</h3>
-        <p>Sets the specified key as the default key for the Key Access Server</p><p>Note: The key must be active. </p><p>Side effects:</p><p>If a key of the same cipher is set as default, calling 'SetDefaultKey' will override that key with the specified key.</p>
+        <h3 id="policy.kasregistry.SetBaseKeyRequest">SetBaseKeyRequest</h3>
+        <p>Sets the specified key as the base key for the Key Access Server</p><p>Note: The key must be active.</p>
 
         
           <table class="field-table">
@@ -10261,15 +10181,6 @@ Validation handled by message-level CEL </p></td>
                   <td><p>Alternative way to specify the key using KAS ID and Key ID </p></td>
                 </tr>
               
-                <tr>
-                  <td>tdf_type</td>
-                  <td><a href="#policy.kasregistry.TdfType">TdfType</a></td>
-                  <td></td>
-                  <td><p>Required
-
-The type of TDF (e.g., ZTDF, Nano) </p></td>
-                </tr>
-              
             </tbody>
           </table>
 
@@ -10277,7 +10188,7 @@ The type of TDF (e.g., ZTDF, Nano) </p></td>
 
         
       
-        <h3 id="policy.kasregistry.SetDefaultKeyResponse">SetDefaultKeyResponse</h3>
+        <h3 id="policy.kasregistry.SetBaseKeyResponse">SetBaseKeyResponse</h3>
         <p></p>
 
         
@@ -10288,17 +10199,86 @@ The type of TDF (e.g., ZTDF, Nano) </p></td>
             <tbody>
               
                 <tr>
-                  <td>new_default_kas_key</td>
-                  <td><a href="#policy.kasregistry.DefaultKasKey">DefaultKasKey</a></td>
+                  <td>new_base_key</td>
+                  <td><a href="#policy.kasregistry.SimpleKasKey">SimpleKasKey</a></td>
                   <td></td>
-                  <td><p>The key that was set as default </p></td>
+                  <td><p>The key that was set as base </p></td>
                 </tr>
               
                 <tr>
-                  <td>previous_default_kas_key</td>
-                  <td><a href="#policy.kasregistry.DefaultKasKey">DefaultKasKey</a></td>
+                  <td>previous_base_key</td>
+                  <td><a href="#policy.kasregistry.SimpleKasKey">SimpleKasKey</a></td>
                   <td></td>
-                  <td><p>The previous default key, if any </p></td>
+                  <td><p>The previous base key, if any </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.SimpleKasKey">SimpleKasKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The URL of the Key Access Server </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key</td>
+                  <td><a href="#policy.kasregistry.SimpleKasPublicKey">SimpleKasPublicKey</a></td>
+                  <td></td>
+                  <td><p>The public key of the Key that belongs to the KAS </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.SimpleKasPublicKey">SimpleKasPublicKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>algorithm</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pem</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -10545,35 +10525,6 @@ Common metadata </p></td>
       
 
       
-        <h3 id="policy.kasregistry.TdfType">TdfType</h3>
-        <p></p>
-        <table class="enum-table">
-          <thead>
-            <tr><td>Name</td><td>Number</td><td>Description</td></tr>
-          </thead>
-          <tbody>
-            
-              <tr>
-                <td>TDF_TYPE_UNSPECIFIED</td>
-                <td>0</td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>TDF_TYPE_ZTDF</td>
-                <td>1</td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>TDF_TYPE_NANO</td>
-                <td>2</td>
-                <td><p></p></td>
-              </tr>
-            
-          </tbody>
-        </table>
-      
 
       
 
@@ -10665,16 +10616,16 @@ Request to create a new key in the Key Access Service.</p></td>
               </tr>
             
               <tr>
-                <td>SetDefaultKey</td>
-                <td><a href="#policy.kasregistry.SetDefaultKeyRequest">SetDefaultKeyRequest</a></td>
-                <td><a href="#policy.kasregistry.SetDefaultKeyResponse">SetDefaultKeyResponse</a></td>
+                <td>SetBaseKey</td>
+                <td><a href="#policy.kasregistry.SetBaseKeyRequest">SetBaseKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.SetBaseKeyResponse">SetBaseKeyResponse</a></td>
                 <td><p>Request to set the default a default kas key.</p></td>
               </tr>
             
               <tr>
-                <td>GetDefaultKeys</td>
-                <td><a href="#policy.kasregistry.GetDefaultKeysRequest">GetDefaultKeysRequest</a></td>
-                <td><a href="#policy.kasregistry.GetDefaultKeysResponse">GetDefaultKeysResponse</a></td>
+                <td>GetBaseKey</td>
+                <td><a href="#policy.kasregistry.GetBaseKeyRequest">GetBaseKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.GetBaseKeyResponse">GetBaseKeyResponse</a></td>
                 <td><p>Get Default kas keys</p></td>
               </tr>
             

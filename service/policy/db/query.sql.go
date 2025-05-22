@@ -2888,34 +2888,6 @@ func (q *Queries) assignPublicKeyToNamespace(ctx context.Context, arg assignPubl
 	return i, err
 }
 
-const checkIfKeyExists = `-- name: checkIfKeyExists :one
-SELECT EXISTS (
-    SELECT 1
-    FROM key_access_server_keys
-    WHERE key_access_server_id = $1 AND key_status = $2 AND key_algorithm = $3
-)
-`
-
-type checkIfKeyExistsParams struct {
-	KeyAccessServerID string `json:"key_access_server_id"`
-	KeyStatus         int32  `json:"key_status"`
-	KeyAlgorithm      int32  `json:"key_algorithm"`
-}
-
-// checkIfKeyExists
-//
-//	SELECT EXISTS (
-//	    SELECT 1
-//	    FROM key_access_server_keys
-//	    WHERE key_access_server_id = $1 AND key_status = $2 AND key_algorithm = $3
-//	)
-func (q *Queries) checkIfKeyExists(ctx context.Context, arg checkIfKeyExistsParams) (bool, error) {
-	row := q.db.QueryRow(ctx, checkIfKeyExists, arg.KeyAccessServerID, arg.KeyStatus, arg.KeyAlgorithm)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
-}
-
 const createCustomAction = `-- name: createCustomAction :one
 INSERT INTO actions (name, metadata, is_standard)
 VALUES ($1, $2, FALSE)
@@ -2940,30 +2912,10 @@ func (q *Queries) createCustomAction(ctx context.Context, arg createCustomAction
 }
 
 const createKey = `-- name: createKey :one
-WITH inserted AS (
-  INSERT INTO key_access_server_keys
+INSERT INTO key_access_server_keys
     (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id)
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-  RETURNING id, key_id, key_algorithm, key_status, key_mode, public_key_ctx, private_key_ctx, expiration, provider_config_id, metadata, created_at, updated_at, key_access_server_id
-)
-SELECT 
-  id,
-  key_id,
-  key_status,
-  key_mode,
-  key_algorithm,
-  private_key_ctx,
-  public_key_ctx,
-  provider_config_id,
-  key_access_server_id,
-  JSON_STRIP_NULLS(
-    JSON_BUILD_OBJECT(
-      'labels', metadata -> 'labels',         
-      'created_at', created_at,               
-      'updated_at', updated_at                
-    )
-  ) AS metadata
-FROM inserted
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id
 `
 
 type createKeyParams struct {
@@ -2978,48 +2930,15 @@ type createKeyParams struct {
 	ProviderConfigID  pgtype.UUID `json:"provider_config_id"`
 }
 
-type createKeyRow struct {
-	ID                string      `json:"id"`
-	KeyID             string      `json:"key_id"`
-	KeyStatus         int32       `json:"key_status"`
-	KeyMode           int32       `json:"key_mode"`
-	KeyAlgorithm      int32       `json:"key_algorithm"`
-	PrivateKeyCtx     []byte      `json:"private_key_ctx"`
-	PublicKeyCtx      []byte      `json:"public_key_ctx"`
-	ProviderConfigID  pgtype.UUID `json:"provider_config_id"`
-	KeyAccessServerID string      `json:"key_access_server_id"`
-	Metadata          []byte      `json:"metadata"`
-}
-
 // ---------------------------------------------------------------
 // Key Access Server Keys
 // ----------------------------------------------------------------
 //
-//	WITH inserted AS (
-//	  INSERT INTO key_access_server_keys
+//	INSERT INTO key_access_server_keys
 //	    (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id)
-//	  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-//	  RETURNING id, key_id, key_algorithm, key_status, key_mode, public_key_ctx, private_key_ctx, expiration, provider_config_id, metadata, created_at, updated_at, key_access_server_id
-//	)
-//	SELECT
-//	  id,
-//	  key_id,
-//	  key_status,
-//	  key_mode,
-//	  key_algorithm,
-//	  private_key_ctx,
-//	  public_key_ctx,
-//	  provider_config_id,
-//	  key_access_server_id,
-//	  JSON_STRIP_NULLS(
-//	    JSON_BUILD_OBJECT(
-//	      'labels', metadata -> 'labels',
-//	      'created_at', created_at,
-//	      'updated_at', updated_at
-//	    )
-//	  ) AS metadata
-//	FROM inserted
-func (q *Queries) createKey(ctx context.Context, arg createKeyParams) (createKeyRow, error) {
+//	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+//	RETURNING id
+func (q *Queries) createKey(ctx context.Context, arg createKeyParams) (string, error) {
 	row := q.db.QueryRow(ctx, createKey,
 		arg.KeyAccessServerID,
 		arg.KeyAlgorithm,
@@ -3031,20 +2950,9 @@ func (q *Queries) createKey(ctx context.Context, arg createKeyParams) (createKey
 		arg.PublicKeyCtx,
 		arg.ProviderConfigID,
 	)
-	var i createKeyRow
-	err := row.Scan(
-		&i.ID,
-		&i.KeyID,
-		&i.KeyStatus,
-		&i.KeyMode,
-		&i.KeyAlgorithm,
-		&i.PrivateKeyCtx,
-		&i.PublicKeyCtx,
-		&i.ProviderConfigID,
-		&i.KeyAccessServerID,
-		&i.Metadata,
-	)
-	return i, err
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const createOrListActionsByName = `-- name: createOrListActionsByName :many
@@ -3342,15 +3250,15 @@ func (q *Queries) createSubjectMapping(ctx context.Context, arg createSubjectMap
 	return id, err
 }
 
-const deleteAllDefaultKasKeys = `-- name: deleteAllDefaultKasKeys :execrows
-DELETE FROM default_kas_keys
+const deleteAllBaseKeys = `-- name: deleteAllBaseKeys :execrows
+DELETE FROM base_keys
 `
 
-// deleteAllDefaultKasKeys
+// deleteAllBaseKeys
 //
-//	DELETE FROM default_kas_keys
-func (q *Queries) deleteAllDefaultKasKeys(ctx context.Context) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteAllDefaultKasKeys)
+//	DELETE FROM base_keys
+func (q *Queries) deleteAllBaseKeys(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAllBaseKeys)
 	if err != nil {
 		return 0, err
 	}
@@ -3517,61 +3425,19 @@ func (q *Queries) getAction(ctx context.Context, arg getActionParams) (getAction
 	return i, err
 }
 
-const getDefaultKasKeyByMode = `-- name: getDefaultKasKeyByMode :one
+const getBaseKey = `-- name: getBaseKey :one
+
 SELECT
     DISTINCT JSONB_BUILD_OBJECT(
-       'tdf_type', dkk.tdf_type,
        'kas_uri', kas.uri,
        'public_key', JSONB_BUILD_OBJECT(
             'algorithm', kask.key_algorithm::TEXT,
             'kid', kask.key_id,
             'pem', kask.public_key_ctx ->> 'pem'
        )
-    ) AS default_key
-FROM default_kas_keys dkk
-INNER JOIN key_access_server_keys kask ON dkk.key_access_server_key_id = kask.id
-INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
-WHERE (dkk.tdf_type = $1::TEXT)
-`
-
-// getDefaultKasKeyByMode
-//
-//	SELECT
-//	    DISTINCT JSONB_BUILD_OBJECT(
-//	       'tdf_type', dkk.tdf_type,
-//	       'kas_uri', kas.uri,
-//	       'public_key', JSONB_BUILD_OBJECT(
-//	            'algorithm', kask.key_algorithm::TEXT,
-//	            'kid', kask.key_id,
-//	            'pem', kask.public_key_ctx ->> 'pem'
-//	       )
-//	    ) AS default_key
-//	FROM default_kas_keys dkk
-//	INNER JOIN key_access_server_keys kask ON dkk.key_access_server_key_id = kask.id
-//	INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
-//	WHERE (dkk.tdf_type = $1::TEXT)
-func (q *Queries) getDefaultKasKeyByMode(ctx context.Context, tdfType pgtype.Text) ([]byte, error) {
-	row := q.db.QueryRow(ctx, getDefaultKasKeyByMode, tdfType)
-	var default_key []byte
-	err := row.Scan(&default_key)
-	return default_key, err
-}
-
-const getDefaultKeys = `-- name: getDefaultKeys :one
-SELECT
-    JSONB_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-           'tdf_type', dkk.tdf_type,
-           'kas_uri', kas.uri,
-           'public_key', JSONB_BUILD_OBJECT(
-               'algorithm', kask.key_algorithm::TEXT,
-               'kid', kask.key_id,
-               'pem', kask.public_key_ctx ->> 'pem'
-           )
-        )
-    ) AS default_key
-FROM default_kas_keys dkk
-INNER JOIN key_access_server_keys kask ON dkk.key_access_server_key_id = kask.id
+    ) AS base_keys
+FROM base_keys bk
+INNER JOIN key_access_server_keys kask ON bk.key_access_server_key_id = kask.id
 INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 `
 
@@ -3580,69 +3446,22 @@ INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
 // --------------------------------------------------------------
 //
 //	SELECT
-//	    JSONB_AGG(
-//	        DISTINCT JSONB_BUILD_OBJECT(
-//	           'tdf_type', dkk.tdf_type,
-//	           'kas_uri', kas.uri,
-//	           'public_key', JSONB_BUILD_OBJECT(
-//	               'algorithm', kask.key_algorithm::TEXT,
-//	               'kid', kask.key_id,
-//	               'pem', kask.public_key_ctx ->> 'pem'
-//	           )
-//	        )
-//	    ) AS default_key
-//	FROM default_kas_keys dkk
-//	INNER JOIN key_access_server_keys kask ON dkk.key_access_server_key_id = kask.id
+//	    DISTINCT JSONB_BUILD_OBJECT(
+//	       'kas_uri', kas.uri,
+//	       'public_key', JSONB_BUILD_OBJECT(
+//	            'algorithm', kask.key_algorithm::TEXT,
+//	            'kid', kask.key_id,
+//	            'pem', kask.public_key_ctx ->> 'pem'
+//	       )
+//	    ) AS base_keys
+//	FROM base_keys bk
+//	INNER JOIN key_access_server_keys kask ON bk.key_access_server_key_id = kask.id
 //	INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
-func (q *Queries) getDefaultKeys(ctx context.Context) ([]byte, error) {
-	row := q.db.QueryRow(ctx, getDefaultKeys)
-	var default_key []byte
-	err := row.Scan(&default_key)
-	return default_key, err
-}
-
-const getDefaultKeysById = `-- name: getDefaultKeysById :one
-SELECT
-    JSONB_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-           'tdf_type', dkk.tdf_type,
-           'kas_uri', kas.uri,
-           'public_key', JSONB_BUILD_OBJECT(
-               'algorithm', kask.key_algorithm::TEXT,
-               'kid', kask.key_id,
-               'pem', kask.public_key_ctx ->> 'pem'
-           )
-        )
-    ) AS default_key
-FROM default_kas_keys dkk
-INNER JOIN key_access_server_keys kask ON dkk.key_access_server_key_id = kask.id
-INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
-WHERE ($1::UUID IS NULL OR dkk.key_access_server_key_id = $1::UUID)
-`
-
-// getDefaultKeysById
-//
-//	SELECT
-//	    JSONB_AGG(
-//	        DISTINCT JSONB_BUILD_OBJECT(
-//	           'tdf_type', dkk.tdf_type,
-//	           'kas_uri', kas.uri,
-//	           'public_key', JSONB_BUILD_OBJECT(
-//	               'algorithm', kask.key_algorithm::TEXT,
-//	               'kid', kask.key_id,
-//	               'pem', kask.public_key_ctx ->> 'pem'
-//	           )
-//	        )
-//	    ) AS default_key
-//	FROM default_kas_keys dkk
-//	INNER JOIN key_access_server_keys kask ON dkk.key_access_server_key_id = kask.id
-//	INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
-//	WHERE ($1::UUID IS NULL OR dkk.key_access_server_key_id = $1::UUID)
-func (q *Queries) getDefaultKeysById(ctx context.Context, keyAccessServerKeyID pgtype.UUID) ([]byte, error) {
-	row := q.db.QueryRow(ctx, getDefaultKeysById, keyAccessServerKeyID)
-	var default_key []byte
-	err := row.Scan(&default_key)
-	return default_key, err
+func (q *Queries) getBaseKey(ctx context.Context) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getBaseKey)
+	var base_keys []byte
+	err := row.Scan(&base_keys)
+	return base_keys, err
 }
 
 const getKey = `-- name: getKey :one
@@ -3656,6 +3475,7 @@ SELECT
   kask.public_key_ctx,
   kask.provider_config_id,
   kask.key_access_server_id,
+  kas.uri AS kas_uri,
   JSON_STRIP_NULLS(
     JSON_BUILD_OBJECT(
       'labels', kask.metadata -> 'labels',         
@@ -3696,6 +3516,7 @@ type getKeyRow struct {
 	PublicKeyCtx      []byte      `json:"public_key_ctx"`
 	ProviderConfigID  pgtype.UUID `json:"provider_config_id"`
 	KeyAccessServerID string      `json:"key_access_server_id"`
+	KasUri            string      `json:"kas_uri"`
 	Metadata          []byte      `json:"metadata"`
 	ProviderName      pgtype.Text `json:"provider_name"`
 	PcConfig          []byte      `json:"pc_config"`
@@ -3714,6 +3535,7 @@ type getKeyRow struct {
 //	  kask.public_key_ctx,
 //	  kask.provider_config_id,
 //	  kask.key_access_server_id,
+//	  kas.uri AS kas_uri,
 //	  JSON_STRIP_NULLS(
 //	    JSON_BUILD_OBJECT(
 //	      'labels', kask.metadata -> 'labels',
@@ -3753,6 +3575,7 @@ func (q *Queries) getKey(ctx context.Context, arg getKeyParams) (getKeyRow, erro
 		&i.PublicKeyCtx,
 		&i.ProviderConfigID,
 		&i.KeyAccessServerID,
+		&i.KasUri,
 		&i.Metadata,
 		&i.ProviderName,
 		&i.PcConfig,
@@ -4035,53 +3858,6 @@ func (q *Queries) getSubjectMapping(ctx context.Context, id string) (getSubjectM
 		&i.AttributeValue,
 	)
 	return i, err
-}
-
-const isUpdateKeySafe = `-- name: isUpdateKeySafe :one
-WITH keyToUpdate AS (
-    SELECT 
-        kask.key_access_server_id AS kas_id,
-        kask.key_algorithm
-    FROM key_access_server_keys AS kask
-    WHERE kask.id = $1
-)
-SELECT EXISTS (
-    SELECT 1
-    FROM key_access_server_keys AS kask
-    INNER JOIN keyToUpdate ON kask.key_access_server_id = keyToUpdate.kas_id
-    WHERE kask.key_access_server_id = keyToUpdate.kas_id 
-    AND kask.key_status = $2
-    AND kask.key_algorithm = keyToUpdate.key_algorithm
-)
-`
-
-type isUpdateKeySafeParams struct {
-	ID        string `json:"id"`
-	KeyStatus int32  `json:"key_status"`
-}
-
-// isUpdateKeySafe
-//
-//	WITH keyToUpdate AS (
-//	    SELECT
-//	        kask.key_access_server_id AS kas_id,
-//	        kask.key_algorithm
-//	    FROM key_access_server_keys AS kask
-//	    WHERE kask.id = $1
-//	)
-//	SELECT EXISTS (
-//	    SELECT 1
-//	    FROM key_access_server_keys AS kask
-//	    INNER JOIN keyToUpdate ON kask.key_access_server_id = keyToUpdate.kas_id
-//	    WHERE kask.key_access_server_id = keyToUpdate.kas_id
-//	    AND kask.key_status = $2
-//	    AND kask.key_algorithm = keyToUpdate.key_algorithm
-//	)
-func (q *Queries) isUpdateKeySafe(ctx context.Context, arg isUpdateKeySafeParams) (bool, error) {
-	row := q.db.QueryRow(ctx, isUpdateKeySafe, arg.ID, arg.KeyStatus)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
 }
 
 const listActions = `-- name: listActions :many
@@ -4673,7 +4449,8 @@ func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, fqns []str
 const listKeys = `-- name: listKeys :many
 WITH listed AS (
     SELECT
-        kas.id AS kas_id
+        kas.id AS kas_id,
+        kas.uri AS kas_uri
     FROM key_access_servers AS kas
     WHERE ($4::uuid IS NULL OR kas.id = $4::uuid)
             AND ($5::text IS NULL OR kas.name = $5::text)
@@ -4690,6 +4467,7 @@ SELECT
   kask.public_key_ctx,
   kask.provider_config_id,
   kask.key_access_server_id,
+  listed.kas_uri AS kas_uri,
   JSON_STRIP_NULLS(
     JSON_BUILD_OBJECT(
       'labels', kask.metadata -> 'labels',         
@@ -4731,6 +4509,7 @@ type listKeysRow struct {
 	PublicKeyCtx      []byte      `json:"public_key_ctx"`
 	ProviderConfigID  pgtype.UUID `json:"provider_config_id"`
 	KeyAccessServerID string      `json:"key_access_server_id"`
+	KasUri            string      `json:"kas_uri"`
 	Metadata          []byte      `json:"metadata"`
 	ProviderName      pgtype.Text `json:"provider_name"`
 	ProviderConfig    []byte      `json:"provider_config"`
@@ -4741,7 +4520,8 @@ type listKeysRow struct {
 //
 //	WITH listed AS (
 //	    SELECT
-//	        kas.id AS kas_id
+//	        kas.id AS kas_id,
+//	        kas.uri AS kas_uri
 //	    FROM key_access_servers AS kas
 //	    WHERE ($4::uuid IS NULL OR kas.id = $4::uuid)
 //	            AND ($5::text IS NULL OR kas.name = $5::text)
@@ -4758,6 +4538,7 @@ type listKeysRow struct {
 //	  kask.public_key_ctx,
 //	  kask.provider_config_id,
 //	  kask.key_access_server_id,
+//	  listed.kas_uri AS kas_uri,
 //	  JSON_STRIP_NULLS(
 //	    JSON_BUILD_OBJECT(
 //	      'labels', kask.metadata -> 'labels',
@@ -4804,6 +4585,7 @@ func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysR
 			&i.PublicKeyCtx,
 			&i.ProviderConfigID,
 			&i.KeyAccessServerID,
+			&i.KasUri,
 			&i.Metadata,
 			&i.ProviderName,
 			&i.ProviderConfig,
@@ -5518,22 +5300,17 @@ func (q *Queries) rotatePublicKeyForNamespace(ctx context.Context, arg rotatePub
 	return items, nil
 }
 
-const setDefaultKasKey = `-- name: setDefaultKasKey :execrows
-INSERT INTO default_kas_keys (key_access_server_key_id, tdf_type)
-VALUES ($1, $2)
+const setBaseKey = `-- name: setBaseKey :execrows
+INSERT INTO base_keys (key_access_server_key_id)
+VALUES ($1)
 `
 
-type setDefaultKasKeyParams struct {
-	KeyAccessServerKeyID pgtype.UUID `json:"key_access_server_key_id"`
-	TdfType              string      `json:"tdf_type"`
-}
-
-// setDefaultKasKey
+// setBaseKey
 //
-//	INSERT INTO default_kas_keys (key_access_server_key_id, tdf_type)
-//	VALUES ($1, $2)
-func (q *Queries) setDefaultKasKey(ctx context.Context, arg setDefaultKasKeyParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setDefaultKasKey, arg.KeyAccessServerKeyID, arg.TdfType)
+//	INSERT INTO base_keys (key_access_server_key_id)
+//	VALUES ($1)
+func (q *Queries) setBaseKey(ctx context.Context, keyAccessServerKeyID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, setBaseKey, keyAccessServerKeyID)
 	if err != nil {
 		return 0, err
 	}

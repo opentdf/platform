@@ -22,7 +22,7 @@ type WellKnownService struct {
 var (
 	wellKnownConfiguration = make(map[string]any)
 	rwMutex                sync.RWMutex
-	defaultKasKeyWellKnown = "default_kas_keys"
+	baseKeyWellKnown       = "base_key"
 )
 
 func RegisterConfiguration(namespace string, config any) error {
@@ -36,10 +36,10 @@ func RegisterConfiguration(namespace string, config any) error {
 }
 
 // We should probably have a safe-guard as to what config can be updated
-func UpdateConfigurationDefaultKey(config any) {
+func UpdateConfigurationBaseKey(config any) {
 	rwMutex.Lock()
 	defer rwMutex.Unlock()
-	wellKnownConfiguration[defaultKasKeyWellKnown] = config
+	wellKnownConfiguration[baseKeyWellKnown] = config
 }
 
 func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler] {

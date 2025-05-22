@@ -599,17 +599,9 @@ message RotateKeyResponse {
   RotatedResources rotated_resources = 2;
 }
 
-enum TdfType {
-  TDF_TYPE_UNSPECIFIED = 0;
-  TDF_TYPE_ZTDF = 1;
-  TDF_TYPE_NANO = 2;
-}
-
-// Sets the specified key as the default key for the Key Access Server
-// Note: The key must be active. 
-// Side effects:
-//  If a key of the same cipher is set as default, calling 'SetDefaultKey' will override that key with the specified key.
-message SetDefaultKeyRequest {
+// Sets the specified key as the base key for the Key Access Server
+// Note: The key must be active.
+message SetBaseKeyRequest {
   // Required
   oneof active_key {
     option (buf.validate.oneof).required = true;
@@ -618,30 +610,27 @@ message SetDefaultKeyRequest {
     // Alternative way to specify the key using KAS ID and Key ID
     KasKeyIdentifier key = 2;
   }
-  // Required
-  TdfType tdf_type = 3 [(buf.validate.field).enum = {in: [1, 2]}]; // The type of TDF (e.g., ZTDF, Nano)
 }
 
-message DefaultKasPublicKey {
+message SimpleKasPublicKey {
   string algorithm = 1;
   string kid = 2;
   string pem = 3;
 }
 
-message DefaultKasKey {
-    string tdf_type = 1; // The type of TDF (e.g., ZTDF, Nano)
-    string kas_uri = 2; // The URL of the Key Access Server
-    DefaultKasPublicKey public_key = 3; // The public key of the Key that belongs to the KAS
+message SimpleKasKey {
+    string kas_uri = 1; // The URL of the Key Access Server
+    SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
 };
 
-message GetDefaultKeysRequest {}
-message GetDefaultKeysResponse {
-  repeated DefaultKasKey default_kas_keys = 1; // The list of default keys
+message GetBaseKeyRequest {}
+message GetBaseKeyResponse {
+  SimpleKasKey base_key = 1; // The list of default keys
 }
 
-message SetDefaultKeyResponse {
-  DefaultKasKey new_default_kas_key = 1; // The key that was set as default
-  DefaultKasKey previous_default_kas_key = 2; // The previous default key, if any
+message SetBaseKeyResponse {
+  SimpleKasKey new_base_key = 1; // The key that was set as base
+  SimpleKasKey previous_base_key = 2; // The previous base key, if any
 }
 
 service KeyAccessServerRegistryService {
@@ -696,8 +685,8 @@ service KeyAccessServerRegistryService {
   rpc RotateKey(RotateKeyRequest) returns (RotateKeyResponse) {}
 
   // Request to set the default a default kas key.
-  rpc SetDefaultKey(SetDefaultKeyRequest) returns (SetDefaultKeyResponse) {}
+  rpc SetBaseKey(SetBaseKeyRequest) returns (SetBaseKeyResponse) {}
 
   // Get Default kas keys
-  rpc GetDefaultKeys(GetDefaultKeysRequest) returns (GetDefaultKeysResponse) {}
+  rpc GetBaseKey(GetBaseKeyRequest) returns (GetBaseKeyResponse) {}
 }

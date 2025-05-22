@@ -292,17 +292,6 @@ func (s *KasRegistryKeySuite) Test_UpdateKey_InvalidKeyId_Fails() {
 	s.Require().ErrorContains(err, db.ErrUUIDInvalid.Error())
 }
 
-func (s *KasRegistryKeySuite) Test_UpdateKey_AlreadyActiveKeyWithSameAlgo_Fails() {
-	req := kasregistry.UpdateKeyRequest{
-		Id:        s.kasKeys[1].ID,
-		KeyStatus: policy.KeyStatus_KEY_STATUS_ACTIVE,
-	}
-	resp, err := s.db.PolicyClient.UpdateKey(s.ctx, &req)
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorContains(err, "key cannot be updated")
-}
-
 func (s *KasRegistryKeySuite) Test_UpdateKeyStatus_Success() {
 	req := kasregistry.UpdateKeyRequest{
 		Id:        s.kasKeys[1].ID,
@@ -688,9 +677,9 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 	}
 
 	// Ensure there is no default key mapping
-	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
 	s.Require().NoError(err)
-	s.Empty(defaultKasKeys)
+	s.Empty(baseKey)
 
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
 	s.Require().NoError(err)
@@ -718,12 +707,12 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 	s.Equal(policy.KeyStatus_KEY_STATUS_INACTIVE, oldKey.GetKey().GetKeyStatus())
 
 	// Ensure there are no default kas keys after rotation
-	defaultKasKeys, err = s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
+	baseKey, err = s.db.PolicyClient.GetBaseKey(s.ctx)
 	s.Require().NoError(err)
-	s.Empty(defaultKasKeys)
+	s.Empty(baseKey)
 }
 
-func (s *KasRegistryKeySuite) Test_RotateKey_NoDefaultKeyRotated_Success() {
+func (s *KasRegistryKeySuite) Test_RotateKey_NoBaseKeyRotated_Success() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
 	defer func() {
@@ -751,18 +740,17 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoDefaultKeyRotated_Success() {
 			WrappedKey: keyCtx,
 		},
 	}
-	_, err = s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
+	_, err = s.db.PolicyClient.SetBaseKey(s.ctx, &kasregistry.SetBaseKeyRequest{
+		ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
 			Id: keyMap[nonRotateKey].GetKey().GetId(),
 		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_ZTDF,
 	})
 	s.Require().NoError(err)
 
 	// Ensure there is no default key mapping
-	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
 	s.Require().NoError(err)
-	s.Len(defaultKasKeys, 1)
+	s.Require().NotNil(baseKey)
 
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
 	s.Require().NoError(err)
@@ -770,13 +758,13 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoDefaultKeyRotated_Success() {
 	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
 
 	// Check that the rotated in key is now the ZTDF default key.
-	defaultKasKeys, err = s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
+	baseKey, err = s.db.PolicyClient.GetBaseKey(s.ctx)
 	s.Require().NoError(err)
-	s.Len(defaultKasKeys, 1)
-	s.Equal(keyMap[nonRotateKey].GetKey().GetKeyId(), defaultKasKeys[0].GetPublicKey().GetKid())
+	s.Require().NotNil(baseKey)
+	s.Equal(keyMap[nonRotateKey].GetKey().GetKeyId(), baseKey.GetPublicKey().GetKid())
 }
 
-func (s *KasRegistryKeySuite) Test_RotateKey_OneDefaultKeyRotated_Success() {
+func (s *KasRegistryKeySuite) Test_RotateKey_BaseKeyRotated_Success() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
 	defer func() {
@@ -806,200 +794,25 @@ func (s *KasRegistryKeySuite) Test_RotateKey_OneDefaultKeyRotated_Success() {
 	}
 
 	// Set default key mapping
-	_, err = s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
+	_, err = s.db.PolicyClient.SetBaseKey(s.ctx, &kasregistry.SetBaseKeyRequest{
+		ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
 			Id: keyMap[rotateKey].GetKey().GetId(),
 		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_ZTDF,
 	})
 	s.Require().NoError(err)
-	_, err = s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
-			Id: keyMap[nonRotateKey].GetKey().GetId(),
-		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_NANO,
-	})
-	s.Require().NoError(err)
-
-	// Ensure there is no default key mapping
-	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
-	s.Require().NoError(err)
-	s.Len(defaultKasKeys, 2)
 
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
 	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
 
-	// Check that the rotated in key is now the ZTDF default key.
-	defaultKasKeys, err = s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
 	s.Require().NoError(err)
-	s.Len(defaultKasKeys, 2)
-	// Check that rotated in key is the default key.
-	var newRotatedInDefaultKey *kasregistry.DefaultKasKey
-	var nonRotatedInDefaultKey *kasregistry.DefaultKasKey
-	for _, defaultKasKey := range defaultKasKeys {
-		s.NotEqual(defaultKasKey.GetPublicKey().GetKid(), keyMap[rotateKey].GetKey().GetId())
-		if defaultKasKey.GetPublicKey().GetKid() == keyMap[nonRotateKey].GetKey().GetKeyId() {
-			nonRotatedInDefaultKey = defaultKasKey
-		} else if defaultKasKey.GetPublicKey().GetKid() == rotatedInKey.GetKasKey().GetKey().GetKeyId() {
-			newRotatedInDefaultKey = defaultKasKey
-		}
-	}
-	s.NotNil(newRotatedInDefaultKey)
-	s.NotNil(nonRotatedInDefaultKey)
-	s.Equal(newRotatedInDefaultKey.GetTdfType(), kasregistry.TdfType_TDF_TYPE_ZTDF.String())
-	s.Equal(nonRotatedInDefaultKey.GetTdfType(), kasregistry.TdfType_TDF_TYPE_NANO.String())
+	s.Require().NotNil(baseKey)
+	s.Equal(rotatedInKey.GetKasKey().GetKey().GetKeyId(), baseKey.GetPublicKey().GetKid())
 }
 
-func (s *KasRegistryKeySuite) Test_RotateKey_TwoDefaultKeyRotated_Success() {
-	keyIDs := make([]string, 0)
-	kasIDs := make([]string, 0)
-	defer func() {
-		s.cleanupKeys(keyIDs, kasIDs)
-	}()
-
-	kasReq := kasregistry.CreateKeyAccessServerRequest{
-		Name: "test_rotate_key_kas",
-		Uri:  "https://test-rotate-key.opentdf.io",
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
-	s.Require().NoError(err)
-	s.NotNil(kas)
-	kasIDs = append(kasIDs, kas.GetId())
-
-	keyMap := s.setupKeysForRotate(kas.GetId())
-	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
-	newKey := kasregistry.RotateKeyRequest_NewKey{
-		KeyId:        "new_key_id",
-		Algorithm:    policy.Algorithm_ALGORITHM_EC_P521,
-		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
-			KeyId:      validKeyID1,
-			WrappedKey: keyCtx,
-		},
-	}
-
-	// Set default key mapping
-	_, err = s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
-			Id: keyMap[rotateKey].GetKey().GetId(),
-		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_ZTDF,
-	})
-	s.Require().NoError(err)
-	_, err = s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
-			Id: keyMap[rotateKey].GetKey().GetId(),
-		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_NANO,
-	})
-	s.Require().NoError(err)
-
-	// Ensure there is no default key mapping
-	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
-	s.Require().NoError(err)
-	s.Len(defaultKasKeys, 2)
-
-	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
-	s.Require().NoError(err)
-	s.NotNil(rotatedInKey)
-	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
-
-	// Check that the rotated in key is now the ZTDF default key.
-	defaultKasKeys, err = s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
-	s.Require().NoError(err)
-	s.Len(defaultKasKeys, 2)
-	// Check that rotated in key is the default key.
-	var newZtdfKey *kasregistry.DefaultKasKey
-	var newNanoKey *kasregistry.DefaultKasKey
-	for _, defaultKasKey := range defaultKasKeys {
-		s.NotEqual(defaultKasKey.GetPublicKey().GetKid(), keyMap[rotateKey].GetKey().GetId())
-		switch defaultKasKey.GetTdfType() {
-		case kasregistry.TdfType_TDF_TYPE_ZTDF.String():
-			newZtdfKey = defaultKasKey
-		case kasregistry.TdfType_TDF_TYPE_NANO.String():
-			newNanoKey = defaultKasKey
-		default:
-			s.Fail("Unexpected TDF type")
-		}
-	}
-	s.NotNil(newZtdfKey)
-	s.NotNil(newNanoKey)
-	s.Equal(rotatedInKey.GetKasKey().GetKey().GetKeyId(), newZtdfKey.GetPublicKey().GetKid())
-	s.Equal(rotatedInKey.GetKasKey().GetKey().GetKeyId(), newNanoKey.GetPublicKey().GetKid())
-}
-
-func (s *KasRegistryKeySuite) Test_RotateKey_NanoDefaultKey_NewKeyIsNotECC_Fail() {
-	keyIDs := make([]string, 0)
-	kasIDs := make([]string, 0)
-	defer func() {
-		s.cleanupKeys(keyIDs, kasIDs)
-	}()
-
-	kasReq := kasregistry.CreateKeyAccessServerRequest{
-		Name: "test_rotate_key_kas",
-		Uri:  "https://test-rotate-key.opentdf.io",
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
-	s.Require().NoError(err)
-	s.NotNil(kas)
-	kasIDs = append(kasIDs, kas.GetId())
-
-	keyMap := s.setupKeysForRotate(kas.GetId())
-	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
-	newKey := kasregistry.RotateKeyRequest_NewKey{
-		KeyId:        "new_key_id",
-		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
-			KeyId:      validKeyID1,
-			WrappedKey: keyCtx,
-		},
-	}
-	_, err = s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
-			Id: keyMap[rotateKey].GetKey().GetId(),
-		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_NANO,
-	})
-	s.Require().NoError(err)
-
-	// Ensure there is no default key mapping
-	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
-	s.Require().NoError(err)
-	s.Len(defaultKasKeys, 1)
-
-	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
-	s.Require().Error(err)
-	s.Require().ErrorContains(err, "not valid for TDF type NANO")
-	s.Nil(rotatedInKey)
-
-	// Check that the rotated in key is now the ZTDF default key.
-	defaultKasKeys, err = s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
-	s.Require().NoError(err)
-	s.Len(defaultKasKeys, 1)
-	s.Equal(keyMap[rotateKey].GetKey().GetKeyId(), defaultKasKeys[0].GetPublicKey().GetKid())
-
-	// This is a workaround to get the key ID of the new key that was not rotated in, as it
-	// would not be inserted into the database when run as a transcation at the service level.
-	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Key{
-		Key: &kasregistry.KasKeyIdentifier{
-			Identifier: &kasregistry.KasKeyIdentifier_Uri{
-				Uri: kas.GetUri(),
-			},
-			Kid: newKey.GetKeyId(),
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(resp)
-
-	keyIDs = append(keyIDs, resp.GetKey().GetId())
-}
-
-func (s *KasRegistryKeySuite) Test_SetDefaultKey_KasKeyNotFound_Fails() {
+func (s *KasRegistryKeySuite) Test_SetBaseKey_KasKeyNotFound_Fails() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
 	defer func() {
@@ -1036,129 +849,21 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_KasKeyNotFound_Fails() {
 	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
 
 	// Ensure there is no default key mapping
-	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
 	s.Require().NoError(err)
-	s.Empty(defaultKasKeys)
+	s.Require().Nil(baseKey)
 
 	// Set default key mapping
-	_, err = s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
+	_, err = s.db.PolicyClient.SetBaseKey(s.ctx, &kasregistry.SetBaseKeyRequest{
+		ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
 			Id: uuid.NewString(),
 		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_ZTDF,
 	})
 	s.Require().Error(err)
 	s.Require().ErrorContains(err, "not found")
 }
 
-func (s *KasRegistryKeySuite) Test_SetDefaultKey_CannotSetNonECCAlgForNano_Fails() {
-	keyIDs := make([]string, 0)
-	kasIDs := make([]string, 0)
-	defer func() {
-		s.cleanupKeys(keyIDs, kasIDs)
-	}()
-
-	// Create a new KAS server
-	kasReq := kasregistry.CreateKeyAccessServerRequest{
-		Name: "test_default_key_kas",
-		Uri:  "https://test-default-key.opentdf.io",
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
-	s.Require().NoError(err)
-	s.NotNil(kas)
-	kasIDs = append(kasIDs, kas.GetId())
-
-	// Create a key for the KAS
-	keyReq := kasregistry.CreateKeyRequest{
-		KasId:        kas.GetId(),
-		KeyId:        "default_key_id",
-		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
-			Pem: keyCtx,
-		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
-			KeyId:      validKeyID1,
-			WrappedKey: keyCtx,
-		},
-	}
-	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
-	s.Require().NoError(err)
-	s.NotNil(key)
-	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
-
-	// Ensure there is no default key mapping
-	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
-	s.Require().NoError(err)
-	s.Empty(defaultKasKeys)
-
-	// Set default key mapping
-	_, err = s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
-			Id: key.GetKasKey().GetKey().GetId(),
-		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_NANO,
-	})
-	s.Require().Error(err)
-	s.Require().ErrorContains(err, "not valid for TDF type NANO")
-}
-
-func (s *KasRegistryKeySuite) Test_SetDefaultKey_NoDefaultKeys_ZTDFInsert_Success() {
-	keyIDs := make([]string, 0)
-	kasIDs := make([]string, 0)
-	defer func() {
-		s.cleanupKeys(keyIDs, kasIDs)
-	}()
-
-	// Create a new KAS server
-	kasReq := kasregistry.CreateKeyAccessServerRequest{
-		Name: "test_default_key_kas",
-		Uri:  "https://test-default-key.opentdf.io",
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
-	s.Require().NoError(err)
-	s.NotNil(kas)
-	kasIDs = append(kasIDs, kas.GetId())
-
-	// Create a key for the KAS
-	keyReq := kasregistry.CreateKeyRequest{
-		KasId:        kas.GetId(),
-		KeyId:        "default_key_id",
-		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
-			Pem: keyCtx,
-		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
-			KeyId:      validKeyID1,
-			WrappedKey: keyCtx,
-		},
-	}
-	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
-	s.Require().NoError(err)
-	s.NotNil(key)
-	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
-
-	// Ensure there is no default key mapping
-	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
-	s.Require().NoError(err)
-	s.Empty(defaultKasKeys)
-
-	// Set default key mapping
-	defaultKeys, err := s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
-			Id: key.GetKasKey().GetKey().GetId(),
-		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_ZTDF,
-	})
-	s.Require().NoError(err)
-	s.NotNil(defaultKeys)
-	s.Nil(defaultKeys.GetPreviousDefaultKasKey())
-	s.Equal(key.GetKasKey().GetKey().GetKeyId(), defaultKeys.GetNewDefaultKasKey().GetPublicKey().GetKid())
-	s.Equal(kasregistry.TdfType_TDF_TYPE_ZTDF.String(), defaultKeys.GetNewDefaultKasKey().GetTdfType())
-}
-
-func (s *KasRegistryKeySuite) Test_SetDefaultKey_NoDefaultKeys_NanoInsert_Success() {
+func (s *KasRegistryKeySuite) Test_SetBaseKey_Insert_Success() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
 	defer func() {
@@ -1195,277 +900,23 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_NoDefaultKeys_NanoInsert_Succes
 	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
 
 	// Ensure there is no default key mapping
-	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
 	s.Require().NoError(err)
-	s.Empty(defaultKasKeys)
+	s.Require().Nil(baseKey)
 
 	// Set default key mapping
-	defaultKeys, err := s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
+	newBaseKey, err := s.db.PolicyClient.SetBaseKey(s.ctx, &kasregistry.SetBaseKeyRequest{
+		ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
 			Id: key.GetKasKey().GetKey().GetId(),
 		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_NANO,
 	})
 	s.Require().NoError(err)
-	s.NotNil(defaultKeys)
-	s.Nil(defaultKeys.GetPreviousDefaultKasKey())
-	s.Equal(key.GetKasKey().GetKey().GetKeyId(), defaultKeys.GetNewDefaultKasKey().GetPublicKey().GetKid())
-	s.Equal(kasregistry.TdfType_TDF_TYPE_NANO.String(), defaultKeys.GetNewDefaultKasKey().GetTdfType())
+	s.NotNil(newBaseKey)
+	s.Nil(newBaseKey.GetPreviousBaseKey())
+	s.Equal(key.GetKasKey().GetKey().GetKeyId(), newBaseKey.GetNewBaseKey().GetPublicKey().GetKid())
 }
 
-func (s *KasRegistryKeySuite) Test_SetDefaultKey_ZTDFKeyExists_ZTDFUpdate_Success() {
-	keyIDs := make([]string, 0)
-	kasIDs := make([]string, 0)
-	defer func() {
-		s.cleanupKeys(keyIDs, kasIDs)
-	}()
-
-	// Create a new KAS server
-	kasReq := kasregistry.CreateKeyAccessServerRequest{
-		Name: "test_default_key_kas",
-		Uri:  "https://test-default-key.opentdf.io",
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
-	s.Require().NoError(err)
-	s.NotNil(kas)
-	kasIDs = append(kasIDs, kas.GetId())
-
-	// Create a key for the KAS
-	keyReq := kasregistry.CreateKeyRequest{
-		KasId:        kas.GetId(),
-		KeyId:        "default_key_id",
-		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
-			Pem: keyCtx,
-		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
-			KeyId:      validKeyID1,
-			WrappedKey: keyCtx,
-		},
-	}
-	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
-	s.Require().NoError(err)
-	s.NotNil(key)
-	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
-
-	// Create a second key for the KAS
-	keyReq2 := kasregistry.CreateKeyRequest{
-		KasId:        kas.GetId(),
-		KeyId:        "default_key_id_2",
-		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
-			Pem: keyCtx,
-		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
-			KeyId:      validKeyID1,
-			WrappedKey: keyCtx,
-		},
-	}
-	key2, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq2)
-	s.Require().NoError(err)
-	s.NotNil(key2)
-	keyIDs = append(keyIDs, key2.GetKasKey().GetKey().GetId())
-
-	// Create a third key for the KAS
-	keyReq3 := kasregistry.CreateKeyRequest{
-		KasId:        kas.GetId(),
-		KeyId:        "default_key_id_3",
-		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
-			Pem: keyCtx,
-		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
-			KeyId:      validKeyID1,
-			WrappedKey: keyCtx,
-		},
-	}
-	key3, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq3)
-	s.Require().NoError(err)
-	s.NotNil(key3)
-	keyIDs = append(keyIDs, key3.GetKasKey().GetKey().GetId())
-
-	// Ensure there is no default key mapping
-	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
-	s.Require().NoError(err)
-	s.Empty(defaultKasKeys)
-
-	// Set default key mapping
-	defaultKeys, err := s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
-			Id: key.GetKasKey().GetKey().GetId(),
-		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_ZTDF,
-	})
-	s.Require().NoError(err)
-	s.NotNil(defaultKeys)
-	s.Nil(defaultKeys.GetPreviousDefaultKasKey())
-	s.Equal(key.GetKasKey().GetKey().GetKeyId(), defaultKeys.GetNewDefaultKasKey().GetPublicKey().GetKid())
-	s.Equal(kasregistry.TdfType_TDF_TYPE_ZTDF.String(), defaultKeys.GetNewDefaultKasKey().GetTdfType())
-
-	// Set nano key
-	_, err = s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
-			Id: key3.GetKasKey().GetKey().GetId(),
-		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_NANO,
-	})
-	s.Require().NoError(err)
-
-	// Update default key mapping
-	defaultKeys2, err := s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
-			Id: key2.GetKasKey().GetKey().GetId(),
-		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_ZTDF,
-	})
-	s.Require().NoError(err)
-	s.NotNil(defaultKeys2)
-	s.NotNil(defaultKeys2.GetPreviousDefaultKasKey())
-	s.Equal(key2.GetKasKey().GetKey().GetKeyId(), defaultKeys2.GetNewDefaultKasKey().GetPublicKey().GetKid())
-	s.Equal(kasregistry.TdfType_TDF_TYPE_ZTDF.String(), defaultKeys2.GetNewDefaultKasKey().GetTdfType())
-	s.Equal(key.GetKasKey().GetKey().GetKeyId(), defaultKeys2.GetPreviousDefaultKasKey().GetPublicKey().GetKid())
-
-	// Ensure nano key is still the same
-	defaultKasKeys, err = s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
-	s.Require().NoError(err)
-	s.Len(defaultKasKeys, 2)
-	for _, defaultKasKey := range defaultKasKeys {
-		if defaultKasKey.GetTdfType() == kasregistry.TdfType_TDF_TYPE_NANO.String() {
-			s.Equal(key3.GetKasKey().GetKey().GetKeyId(), defaultKasKey.GetPublicKey().GetKid())
-		}
-	}
-}
-
-func (s *KasRegistryKeySuite) Test_SetDefaultKey_NanoKeyExists_NanoUpdate_Success() {
-	keyIDs := make([]string, 0)
-	kasIDs := make([]string, 0)
-	defer func() {
-		s.cleanupKeys(keyIDs, kasIDs)
-	}()
-
-	// Create a new KAS server
-	kasReq := kasregistry.CreateKeyAccessServerRequest{
-		Name: "test_default_key_kas",
-		Uri:  "https://test-default-key.opentdf.io",
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
-	s.Require().NoError(err)
-	s.NotNil(kas)
-	kasIDs = append(kasIDs, kas.GetId())
-
-	// Create a key for the KAS
-	keyReq := kasregistry.CreateKeyRequest{
-		KasId:        kas.GetId(),
-		KeyId:        "default_key_id",
-		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
-			Pem: keyCtx,
-		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
-			KeyId:      validKeyID1,
-			WrappedKey: keyCtx,
-		},
-	}
-	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
-	s.Require().NoError(err)
-	s.NotNil(key)
-	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
-
-	// Create a second key for the KAS
-	keyReq2 := kasregistry.CreateKeyRequest{
-		KasId:        kas.GetId(),
-		KeyId:        "default_key_id_2",
-		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
-			Pem: keyCtx,
-		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
-			KeyId:      validKeyID1,
-			WrappedKey: keyCtx,
-		},
-	}
-	key2, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq2)
-	s.Require().NoError(err)
-	s.NotNil(key2)
-	keyIDs = append(keyIDs, key2.GetKasKey().GetKey().GetId())
-
-	// Create a third key for the KAS
-	keyReq3 := kasregistry.CreateKeyRequest{
-		KasId:        kas.GetId(),
-		KeyId:        "default_key_id_3",
-		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
-			Pem: keyCtx,
-		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
-			KeyId:      validKeyID1,
-			WrappedKey: keyCtx,
-		},
-	}
-	key3, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq3)
-	s.Require().NoError(err)
-	s.NotNil(key3)
-	keyIDs = append(keyIDs, key3.GetKasKey().GetKey().GetId())
-
-	// Ensure there is no default key mapping
-	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
-	s.Require().NoError(err)
-	s.Empty(defaultKasKeys)
-
-	// Set default nano key mapping
-	defaultKeys, err := s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
-			Id: key.GetKasKey().GetKey().GetId(),
-		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_NANO,
-	})
-	s.Require().NoError(err)
-	s.NotNil(defaultKeys)
-	s.Nil(defaultKeys.GetPreviousDefaultKasKey())
-	s.Equal(key.GetKasKey().GetKey().GetKeyId(), defaultKeys.GetNewDefaultKasKey().GetPublicKey().GetKid())
-	s.Equal(kasregistry.TdfType_TDF_TYPE_NANO.String(), defaultKeys.GetNewDefaultKasKey().GetTdfType())
-
-	// Set default ztdf key mapping
-	_, err = s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
-			Id: key3.GetKasKey().GetKey().GetId(),
-		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_ZTDF,
-	})
-	s.Require().NoError(err)
-
-	// Update default nano key mapping
-	defaultKeys2, err := s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
-			Id: key2.GetKasKey().GetKey().GetId(),
-		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_NANO,
-	})
-	s.Require().NoError(err)
-	s.NotNil(defaultKeys2)
-	s.NotNil(defaultKeys2.GetPreviousDefaultKasKey())
-	s.Equal(key2.GetKasKey().GetKey().GetKeyId(), defaultKeys2.GetNewDefaultKasKey().GetPublicKey().GetKid())
-	s.Equal(kasregistry.TdfType_TDF_TYPE_NANO.String(), defaultKeys2.GetNewDefaultKasKey().GetTdfType())
-	s.Equal(key.GetKasKey().GetKey().GetKeyId(), defaultKeys2.GetPreviousDefaultKasKey().GetPublicKey().GetKid())
-
-	// Ensure ztdf key is still the same
-	defaultKasKeys, err = s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
-	s.Require().NoError(err)
-	s.Len(defaultKasKeys, 2)
-	for _, defaultKasKey := range defaultKasKeys {
-		if defaultKasKey.GetTdfType() == kasregistry.TdfType_TDF_TYPE_ZTDF.String() {
-			s.Equal(key3.GetKasKey().GetKey().GetKeyId(), defaultKasKey.GetPublicKey().GetKid())
-		}
-	}
-}
-
-func (s *KasRegistryKeySuite) Test_SetDefaultKey_CannotSetPublicKeyOnlyKey_Fails() {
+func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetPublicKeyOnlyKey_Fails() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
 	defer func() {
@@ -1498,19 +949,76 @@ func (s *KasRegistryKeySuite) Test_SetDefaultKey_CannotSetPublicKeyOnlyKey_Fails
 	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
 
 	// Ensure there is no default key mapping
-	defaultKasKeys, err := s.db.PolicyClient.GetDefaultKasKeys(s.ctx)
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
 	s.Require().NoError(err)
-	s.Empty(defaultKasKeys)
+	s.Require().Nil(baseKey)
 
 	// Set default key mapping
-	_, err = s.db.PolicyClient.SetDefaultKey(s.ctx, &kasregistry.SetDefaultKeyRequest{
-		ActiveKey: &kasregistry.SetDefaultKeyRequest_Id{
+	_, err = s.db.PolicyClient.SetBaseKey(s.ctx, &kasregistry.SetBaseKeyRequest{
+		ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
 			Id: key.GetKasKey().GetKey().GetId(),
 		},
-		TdfType: kasregistry.TdfType_TDF_TYPE_ZTDF,
 	})
 	s.Require().Error(err)
 	s.Require().ErrorContains(err, "KEY_MODE_PUBLIC_KEY_ONLY as default key")
+}
+
+func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetInactiveKey_Fails() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	// Create a new KAS server
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_default_key_kas",
+		Uri:  "https://test-default-key.opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
+
+	// Create a key for the KAS
+	keyReq := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "default_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.KasPublicKeyCtx{
+			Pem: keyCtx,
+		},
+		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+			KeyId:      validKeyID1,
+			WrappedKey: keyCtx,
+		},
+	}
+	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+	s.Require().NoError(err)
+	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
+
+	// Ensure there is no default key mapping
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
+	s.Require().NoError(err)
+	s.Require().Nil(baseKey)
+
+	// Update the key status to inactive
+	_, err = s.db.PolicyClient.UpdateKey(s.ctx, &kasregistry.UpdateKeyRequest{
+		Id:        key.GetKasKey().GetKey().GetId(),
+		KeyStatus: policy.KeyStatus_KEY_STATUS_INACTIVE,
+	})
+	s.Require().NoError(err)
+
+	// Set default key mapping
+	_, err = s.db.PolicyClient.SetBaseKey(s.ctx, &kasregistry.SetBaseKeyRequest{
+		ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
+			Id: key.GetKasKey().GetKey().GetId(),
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, "cannot set key of status")
 }
 
 func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*policy.KasKey {
@@ -1718,7 +1226,7 @@ func (s *KasRegistryKeySuite) cleanupAttrs(attrValueIDs []string, namespaceIDs [
 }
 
 func (s *KasRegistryKeySuite) cleanupKeys(keyIDs []string, keyAccessServerIDs []string) {
-	err := s.db.PolicyClient.DeleteAllDefaultKeys(s.ctx)
+	err := s.db.PolicyClient.DeleteAllBaseKeys(s.ctx)
 	s.Require().NoError(err)
 
 	for _, id := range keyIDs {

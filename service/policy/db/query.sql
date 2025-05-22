@@ -167,54 +167,10 @@ DELETE FROM key_access_servers WHERE id = $1;
 -- Key Access Server Keys
 ------------------------------------------------------------------
 -- name: createKey :one
-WITH inserted AS (
-  INSERT INTO key_access_server_keys
+INSERT INTO key_access_server_keys
     (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id)
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-  RETURNING *
-)
-SELECT 
-  id,
-  key_id,
-  key_status,
-  key_mode,
-  key_algorithm,
-  private_key_ctx,
-  public_key_ctx,
-  provider_config_id,
-  key_access_server_id,
-  JSON_STRIP_NULLS(
-    JSON_BUILD_OBJECT(
-      'labels', metadata -> 'labels',         
-      'created_at', created_at,               
-      'updated_at', updated_at                
-    )
-  ) AS metadata
-FROM inserted;
-
--- name: checkIfKeyExists :one
-SELECT EXISTS (
-    SELECT 1
-    FROM key_access_server_keys
-    WHERE key_access_server_id = $1 AND key_status = $2 AND key_algorithm = $3
-);
-
--- name: isUpdateKeySafe :one
-WITH keyToUpdate AS (
-    SELECT 
-        kask.key_access_server_id AS kas_id,
-        kask.key_algorithm
-    FROM key_access_server_keys AS kask
-    WHERE kask.id = $1
-)
-SELECT EXISTS (
-    SELECT 1
-    FROM key_access_server_keys AS kask
-    INNER JOIN keyToUpdate ON kask.key_access_server_id = keyToUpdate.kas_id
-    WHERE kask.key_access_server_id = keyToUpdate.kas_id 
-    AND kask.key_status = $2
-    AND kask.key_algorithm = keyToUpdate.key_algorithm
-);
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id;
 
 -- name: getKey :one
 SELECT 
@@ -227,6 +183,7 @@ SELECT
   kask.public_key_ctx,
   kask.provider_config_id,
   kask.key_access_server_id,
+  kas.uri AS kas_uri,
   JSON_STRIP_NULLS(
     JSON_BUILD_OBJECT(
       'labels', kask.metadata -> 'labels',         
@@ -259,7 +216,8 @@ WHERE id = $1;
 -- name: listKeys :many
 WITH listed AS (
     SELECT
-        kas.id AS kas_id
+        kas.id AS kas_id,
+        kas.uri AS kas_uri
     FROM key_access_servers AS kas
     WHERE (sqlc.narg('kas_id')::uuid IS NULL OR kas.id = sqlc.narg('kas_id')::uuid)
             AND (sqlc.narg('kas_name')::text IS NULL OR kas.name = sqlc.narg('kas_name')::text)
@@ -276,6 +234,7 @@ SELECT
   kask.public_key_ctx,
   kask.provider_config_id,
   kask.key_access_server_id,
+  listed.kas_uri AS kas_uri,
   JSON_STRIP_NULLS(
     JSON_BUILD_OBJECT(
       'labels', kask.metadata -> 'labels',         
@@ -1737,61 +1696,25 @@ WHERE id = $1;
 ---------------------------------------------------------------- 
 -- Default KAS Keys
 ----------------------------------------------------------------
--- name: getDefaultKeys :one
-SELECT
-    JSONB_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-           'tdf_type', dkk.tdf_type,
-           'kas_uri', kas.uri,
-           'public_key', JSONB_BUILD_OBJECT(
-               'algorithm', kask.key_algorithm::TEXT,
-               'kid', kask.key_id,
-               'pem', kask.public_key_ctx ->> 'pem'
-           )
-        )
-    ) AS default_key
-FROM default_kas_keys dkk
-INNER JOIN key_access_server_keys kask ON dkk.key_access_server_key_id = kask.id
-INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id;
 
--- name: getDefaultKasKeyByMode :one
+-- name: getBaseKey :one
 SELECT
     DISTINCT JSONB_BUILD_OBJECT(
-       'tdf_type', dkk.tdf_type,
        'kas_uri', kas.uri,
        'public_key', JSONB_BUILD_OBJECT(
             'algorithm', kask.key_algorithm::TEXT,
             'kid', kask.key_id,
             'pem', kask.public_key_ctx ->> 'pem'
        )
-    ) AS default_key
-FROM default_kas_keys dkk
-INNER JOIN key_access_server_keys kask ON dkk.key_access_server_key_id = kask.id
-INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
-WHERE (dkk.tdf_type = sqlc.narg('tdf_type')::TEXT);
+    ) AS base_keys
+FROM base_keys bk
+INNER JOIN key_access_server_keys kask ON bk.key_access_server_key_id = kask.id
+INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id;
 
--- name: setDefaultKasKey :execrows
-INSERT INTO default_kas_keys (key_access_server_key_id, tdf_type)
-VALUES ($1, $2);
+-- name: setBaseKey :execrows
+INSERT INTO base_keys (key_access_server_key_id)
+VALUES ($1);
 
--- name: getDefaultKeysById :one
-SELECT
-    JSONB_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-           'tdf_type', dkk.tdf_type,
-           'kas_uri', kas.uri,
-           'public_key', JSONB_BUILD_OBJECT(
-               'algorithm', kask.key_algorithm::TEXT,
-               'kid', kask.key_id,
-               'pem', kask.public_key_ctx ->> 'pem'
-           )
-        )
-    ) AS default_key
-FROM default_kas_keys dkk
-INNER JOIN key_access_server_keys kask ON dkk.key_access_server_key_id = kask.id
-INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
-WHERE (sqlc.narg('key_access_server_key_id')::UUID IS NULL OR dkk.key_access_server_key_id = sqlc.narg('key_access_server_key_id')::UUID);
-
--- name: deleteAllDefaultKasKeys :execrows
-DELETE FROM default_kas_keys;
+-- name: deleteAllBaseKeys :execrows
+DELETE FROM base_keys;
 

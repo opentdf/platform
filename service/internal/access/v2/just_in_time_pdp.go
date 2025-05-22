@@ -92,7 +92,6 @@ func (p *JustInTimePDP) GetDecision(
 		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_Token:
-		p.logger.DebugContext(ctx, "getting decision - resolving token")
 		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
 
 	// TODO: implement this case

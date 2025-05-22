@@ -60,7 +60,7 @@ func getResourceDecision(
 // and lowercases the FQNs to ensure case-insensitive matching
 func evaluateResourceAttributeValues(
 	ctx context.Context,
-	logger *logger.Logger,
+	l *logger.Logger,
 	resourceAttributeValues *authz.Resource_AttributeValues,
 	resourceID string,
 	action *policy.Action,
@@ -91,7 +91,7 @@ func evaluateResourceAttributeValues(
 			return nil, fmt.Errorf("%w: %s", ErrDefinitionNotFound, defFQN)
 		}
 
-		dataRuleResult, err := evaluateDefinition(ctx, logger, entitlements, action, resourceValueFQNs, definition)
+		dataRuleResult, err := evaluateDefinition(ctx, l, entitlements, action, resourceValueFQNs, definition)
 		if err != nil {
 			return nil, errors.Join(ErrFailedEvaluation, err)
 		}
@@ -112,7 +112,7 @@ func evaluateResourceAttributeValues(
 
 func evaluateDefinition(
 	ctx context.Context,
-	logger *logger.Logger,
+	l *logger.Logger,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resourceValueFQNs []string,
@@ -120,25 +120,25 @@ func evaluateDefinition(
 ) (*DataRuleResult, error) {
 	var entitlementFailures []EntitlementFailure
 
-	logger.DebugContext(
+	l = l.With("definitionRule", attrDefinition.GetRule().String())
+	l = l.With("definitionFQN", attrDefinition.GetFqn())
+	l = l.With("action", action.GetName())
+
+	l.DebugContext(
 		ctx,
 		"evaluating definition",
-		slog.String("definition rule", attrDefinition.GetRule().String()),
-		slog.String("definition FQN", attrDefinition.GetFqn()),
-		slog.Any("entitlements", entitlements),
-		slog.String("action", action.GetName()),
-		slog.Any("resource value FQNs", resourceValueFQNs),
+		slog.Any("resourceValueFQNs", resourceValueFQNs),
 	)
 
 	switch attrDefinition.GetRule() {
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF:
-		entitlementFailures = allOfRule(ctx, logger, entitlements, action, resourceValueFQNs)
+		entitlementFailures = allOfRule(ctx, l, entitlements, action, resourceValueFQNs)
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF:
-		entitlementFailures = anyOfRule(ctx, logger, entitlements, action, resourceValueFQNs)
+		entitlementFailures = anyOfRule(ctx, l, entitlements, action, resourceValueFQNs)
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY:
-		entitlementFailures = hierarchyRule(ctx, logger, entitlements, action, resourceValueFQNs, attrDefinition)
+		entitlementFailures = hierarchyRule(ctx, l, entitlements, action, resourceValueFQNs, attrDefinition)
 
 	case policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED:
 		return nil, fmt.Errorf("%w: %s, rule: %s", ErrMissingRequiredSpecifiedRule, attrDefinition.GetFqn(), attrDefinition.GetRule().String())
@@ -146,11 +146,13 @@ func evaluateDefinition(
 		return nil, fmt.Errorf("%w: %s", ErrUnrecognizedRule, attrDefinition.GetRule().String())
 	}
 
+	passed := len(entitlementFailures) == 0
 	result := &DataRuleResult{
-		Passed:         len(entitlementFailures) == 0,
+		Passed:         passed,
 		RuleDefinition: attrDefinition,
 	}
-	if len(entitlementFailures) > 0 {
+	l.DebugContext(ctx, "evaluationResult", slog.Bool("passed", passed))
+	if !passed {
 		result.EntitlementFailures = entitlementFailures
 	}
 	return result, nil

@@ -214,14 +214,16 @@ func (p *PolicyDecisionPoint) GetDecision(
 			decision.Access = false
 		}
 
+		l.DebugContext(
+			ctx,
+			"resourceDecision result",
+			slog.Bool("passed", resourceDecision.Passed),
+			slog.String("resourceID", resourceDecision.ResourceID),
+			slog.Int("dataRuleResultsCount", len(resourceDecision.DataRuleResults)),
+		)
 		decision.Results[idx] = *resourceDecision
 	}
 
-	// l.DebugContext(
-	// 	ctx,
-	// 	"decision results",
-	// 	slog.Any("decision", decision),
-	// )
 
 	return decision, nil
 }

@@ -151,7 +151,7 @@ func evaluateDefinition(
 		Passed:         passed,
 		RuleDefinition: attrDefinition,
 	}
-	l.DebugContext(ctx, "evaluationResult", slog.Bool("passed", passed))
+	l.DebugContext(ctx, "definition evaluation result", slog.Bool("passed", passed))
 	if !passed {
 		result.EntitlementFailures = entitlementFailures
 	}

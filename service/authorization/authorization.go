@@ -267,11 +267,11 @@ func updateValsByFqnLookup(attribute *policy.Attribute, scopeMap map[string]bool
 // makeValsByFqnsLookup creates a lookup map of attribute values by FQN.
 func makeValsByFqnsLookup(attrs []*policy.Attribute, subMapsByVal map[string][]*policy.SubjectMapping, scopeMap map[string]bool) map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue {
 	fqnAttrVals := make(map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue)
-	for _, attr := range attrs {
+	for i := range attrs {
 		// add subject mappings to attribute values
-		attr.Values = updateValsWithSubMaps(attr.GetValues(), subMapsByVal)
+		attrs[i].Values = updateValsWithSubMaps(attrs[i].GetValues(), subMapsByVal)
 		// update the lookup map with attribute values by FQN
-		fqnAttrVals = updateValsByFqnLookup(attr, scopeMap, fqnAttrVals)
+		fqnAttrVals = updateValsByFqnLookup(attrs[i], scopeMap, fqnAttrVals)
 	}
 	return fqnAttrVals
 }
@@ -349,7 +349,11 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	subMapsByVal := makeSubMapsByValLookup(subjectMappingsList)
 	// create a lookup map of attribute values by FQN (for rego query)
 	fqnAttrVals := makeValsByFqnsLookup(attrsList, subMapsByVal, scopeMap)
-	as.logger.DebugContext(ctx, fmt.Sprintf("retrieved %d attribute values to test subject mappings", len(fqnAttrVals)))
+	avf := &attr.GetAttributeValuesByFqnsResponse{
+		FqnAttributeValues: fqnAttrVals,
+	}
+	subjectMappings := avf.GetFqnAttributeValues()
+	as.logger.DebugContext(ctx, fmt.Sprintf("retrieved %d subject mappings", len(subjectMappings)))
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Msg.Entities == nil {
 		as.logger.ErrorContext(ctx, "requires entities")
@@ -367,7 +371,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	}
 
 	// call rego on all entities
-	in, err := entitlements.OpaInput(fqnAttrVals, ersResp)
+	in, err := entitlements.OpaInput(subjectMappings, ersResp)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to build rego input", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to build rego input"))
@@ -434,7 +438,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 			}
 			// if comprehensive and a hierarchy attribute is entitled then add the lower entitlements
 			if req.Msg.GetWithComprehensiveHierarchy() {
-				entitlements = getComprehensiveHierarchy(attributesMap, fqnAttrVals, entitlement, as, entitlements)
+				entitlements = getComprehensiveHierarchy(attributesMap, avf, entitlement, as, entitlements)
 			}
 			// Add entitlement to entitlements array
 			entitlements[valueIDX] = entitlement
@@ -733,10 +737,11 @@ func retrieveAttributeDefinitions(ctx context.Context, attrFqns []string, sdk *o
 	return resp.GetFqnAttributeValues(), nil
 }
 
-func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, attrDefs map[string]*attr.GetAttributeValuesByFqnsResponse_AttributeAndValue, entitlement string, as *AuthorizationService, entitlements []string) []string {
+func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *attr.GetAttributeValuesByFqnsResponse, entitlement string, as *AuthorizationService, entitlements []string) []string {
 	// load attributesMap
 	if len(attributesMap) == 0 {
 		// Go through all attribute definitions
+		attrDefs := avf.GetFqnAttributeValues()
 		for _, attrDef := range attrDefs {
 			for _, attrVal := range attrDef.GetAttribute().GetValues() {
 				attributesMap[attrVal.GetFqn()] = attrDef.GetAttribute()

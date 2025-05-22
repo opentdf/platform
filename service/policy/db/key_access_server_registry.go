@@ -886,12 +886,17 @@ func (c PolicyDBClient) SetBaseKeyOnWellKnownConfig(ctx context.Context) error {
 		return err
 	}
 
-	keyMapBytes, err := protojson.Marshal(baseKey)
+	keyMapBytes, err := json.Marshal(baseKey)
 	if err != nil {
 		return err
 	}
 
-	wellknownconfiguration.UpdateConfigurationBaseKey(string(keyMapBytes))
+	var keyMap map[string]any
+	if err := json.Unmarshal(keyMapBytes, &keyMap); err != nil {
+		return err
+	}
+
+	wellknownconfiguration.UpdateConfigurationBaseKey(keyMap)
 	return nil
 }
 

@@ -67,12 +67,12 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 	ctx, span := p.Start(ctx, "checkAttributes")
 	defer span.End()
 
-	dr, err := p.checkAttributes(ctx, resources, token)
+	resourceDecisions, err := p.checkAttributes(ctx, resources, token)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, decision := range dr.GetResourceDecisions() {
+	for _, decision := range resourceDecisions {
 		policy, ok := idPolicyMap[decision.GetEphemeralResourceId()]
 		if !ok { // this really should not happen
 			p.Logger.WarnContext(ctx, "Unexpected ephemeral resource id not mapped to a policy", "decision response ephemeral resource ID", decision.GetEphemeralResourceId())
@@ -84,7 +84,28 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 	return res, nil
 }
 
-func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Resource, ent *entity.Token) (*authzV2.GetDecisionMultiResourceResponse, error) {
+// checkAttributes makes authorization service GetDecision requests to check access to resources
+func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Resource, ent *entity.Token) ([]*authzV2.ResourceDecision, error) {
+	ctx = tracing.InjectTraceContext(ctx)
+
+	// If only one resource, prefer singular endpoint
+	if len(resources) == 1 {
+		req := &authzV2.GetDecisionRequest{
+			EntityIdentifier: &authzV2.EntityIdentifier{
+				Identifier: &authzV2.EntityIdentifier_Token{Token: ent},
+			},
+			Action:   decryptAction,
+			Resource: resources[0],
+		}
+		dr, err := p.SDK.AuthorizationV2.GetDecision(ctx, req)
+		if err != nil {
+			p.Logger.ErrorContext(ctx, "Error received from GetDecision", "err", err)
+			return nil, errors.Join(ErrDecisionUnexpected, err)
+		}
+		return []*authzV2.ResourceDecision{dr.GetDecision()}, nil
+	}
+
+	// If more than one resource, use the optimized bulk endpoint
 	req := &authzV2.GetDecisionMultiResourceRequest{
 		EntityIdentifier: &authzV2.EntityIdentifier{
 			Identifier: &authzV2.EntityIdentifier_Token{Token: ent},
@@ -93,11 +114,10 @@ func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Res
 		Resources: resources,
 	}
 
-	ctx = tracing.InjectTraceContext(ctx)
 	dr, err := p.SDK.AuthorizationV2.GetDecisionMultiResource(ctx, req)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "Error received from GetDecisionMultiResource", "err", err)
 		return nil, errors.Join(ErrDecisionUnexpected, err)
 	}
-	return dr, nil
+	return dr.GetResourceDecisions(), nil
 }

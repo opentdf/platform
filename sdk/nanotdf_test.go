@@ -308,7 +308,7 @@ func TestCreateNanoTDF(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := New("localhost:8080", WithPlatformConfiguration(PlatformConfiguration{}))
+			s, err := New("http://localhost:8080", WithPlatformConfiguration(PlatformConfiguration{}))
 			require.NoError(t, err)
 			_, err = s.CreateNanoTDF(tt.writer, tt.reader, tt.config)
 			if tt.expectedError != "" {

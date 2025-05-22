@@ -39,7 +39,7 @@ jobs:
       patch: ${{ steps.release-please-main.outputs.patch || steps.release-please-release-branches.outputs.patch }}
       sha: ${{ steps.release-please-main.outputs.sha || steps.release-please-release-branches.outputs.sha }}
       release_created: ${{ steps.release-please-main.outputs.release_created || steps.release-please-release-branches.outputs.release_created }}
-      tag_name: ${{ steps.release-please-main.outputs.tag_name || steps.release-please-release-branches.outputs.tag_name }}      
+      tag_name: ${{ steps.release-please-main.outputs.tag_name || steps.release-please-release-branches.outputs.tag_name }}
     steps:
       - name: Generate a token
         id: generate_token

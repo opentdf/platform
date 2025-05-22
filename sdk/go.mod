@@ -18,10 +18,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.34.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/oauth2 v0.30.0
-<<<<<<< HEAD
-=======
 	golang.org/x/tools v0.33.0
->>>>>>> main
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
 )

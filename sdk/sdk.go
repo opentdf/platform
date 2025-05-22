@@ -15,13 +15,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/lib/ocrypto"
-<<<<<<< HEAD
-	"github.com/opentdf/platform/protocol/go/authorization"
-	authorizationV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
-	"github.com/opentdf/platform/protocol/go/entityresolution"
-	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
-=======
->>>>>>> main
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration/wellknownconfigurationconnect"
@@ -62,22 +55,6 @@ type SDK struct {
 	*collectionStore
 	conn                    *ConnectRPCConnection
 	tokenSource             auth.AccessTokenSource
-<<<<<<< HEAD
-	Actions                 actions.ActionServiceClient
-	Attributes              attributes.AttributesServiceClient
-	Authorization           authorization.AuthorizationServiceClient
-	AuthorizationV2         authorizationV2.AuthorizationServiceClient
-	EntityResoution         entityresolution.EntityResolutionServiceClient
-	EntityResolutionV2      entityresolutionV2.EntityResolutionServiceClient
-	KeyAccessServerRegistry kasregistry.KeyAccessServerRegistryServiceClient
-	Namespaces              namespaces.NamespaceServiceClient
-	RegisteredResources     registeredresources.RegisteredResourcesServiceClient
-	ResourceMapping         resourcemapping.ResourceMappingServiceClient
-	SubjectMapping          subjectmapping.SubjectMappingServiceClient
-	Unsafe                  unsafe.UnsafeServiceClient
-	KeyManagement           keymanagement.KeyManagementServiceClient
-	wellknownConfiguration  wellknownconfiguration.WellKnownServiceClient
-=======
 	Actions                 sdkconnect.ActionServiceClient
 	Attributes              sdkconnect.AttributesServiceClient
 	Authorization           sdkconnect.AuthorizationServiceClient
@@ -92,7 +69,6 @@ type SDK struct {
 	Unsafe                  sdkconnect.UnsafeServiceClient
 	KeyManagement           sdkconnect.KeyManagementServiceClient
 	wellknownConfiguration  sdkconnect.WellKnownServiceClient
->>>>>>> main
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -209,22 +185,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		kasKeyCache:             newKasKeyCache(),
 		conn:                    &ConnectRPCConnection{Client: platformConn.Client, Endpoint: platformConn.Endpoint, Options: platformConn.Options},
 		tokenSource:             accessTokenSource,
-<<<<<<< HEAD
-		Actions:                 actions.NewActionServiceClient(platformConn),
-		Attributes:              attributes.NewAttributesServiceClient(platformConn),
-		Authorization:           authorization.NewAuthorizationServiceClient(platformConn),
-		AuthorizationV2:         authorizationV2.NewAuthorizationServiceClient(platformConn),
-		EntityResoution:         entityresolution.NewEntityResolutionServiceClient(ersConn),
-		EntityResolutionV2:      entityresolutionV2.NewEntityResolutionServiceClient(ersConn),
-		KeyAccessServerRegistry: kasregistry.NewKeyAccessServerRegistryServiceClient(platformConn),
-		KeyManagement:           keymanagement.NewKeyManagementServiceClient(platformConn),
-		Namespaces:              namespaces.NewNamespaceServiceClient(platformConn),
-		RegisteredResources:     registeredresources.NewRegisteredResourcesServiceClient(platformConn),
-		ResourceMapping:         resourcemapping.NewResourceMappingServiceClient(platformConn),
-		SubjectMapping:          subjectmapping.NewSubjectMappingServiceClient(platformConn),
-		Unsafe:                  unsafe.NewUnsafeServiceClient(platformConn),
-		wellknownConfiguration:  wellknownconfiguration.NewWellKnownServiceClient(platformConn),
-=======
 		Actions:                 sdkconnect.NewActionServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Attributes:              sdkconnect.NewAttributesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Namespaces:              sdkconnect.NewNamespaceServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
@@ -239,7 +199,6 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		EntityResolutionV2:      sdkconnect.NewEntityResolutionServiceClientV2ConnectWrapper(ersConn.Client, ersConn.Endpoint, ersConn.Options...),
 		KeyManagement:           sdkconnect.NewKeyManagementServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		wellknownConfiguration:  sdkconnect.NewWellKnownServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
->>>>>>> main
 	}, nil
 }
 

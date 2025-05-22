@@ -86,7 +86,6 @@ func TestValidateGetDecision(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateGetDecision(tt.entityRep, tt.action, tt.resources)
 			if tt.wantErr != nil {
-				require.Error(t, err)
 				require.ErrorIs(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
@@ -157,7 +156,6 @@ func TestValidateSubjectMapping(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateSubjectMapping(tt.subjectMapping)
 			if tt.wantErr != nil {
-				require.Error(t, err)
 				require.ErrorIs(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
@@ -264,7 +262,6 @@ func TestValidateAttribute(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateAttribute(tt.attribute)
 			if tt.wantErr != nil {
-				require.Error(t, err)
 				require.ErrorIs(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
@@ -305,7 +302,6 @@ func TestValidateEntityRepresentations(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateEntityRepresentations(tt.entityRepresentations)
 			if tt.wantErr != nil {
-				require.Error(t, err)
 				require.ErrorIs(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
@@ -417,7 +413,6 @@ func TestValidateGetResourceDecision(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validateGetResourceDecision(tt.accessibleAttributeValues, tt.entitlements, tt.action, tt.resource)
 			if tt.wantErr != nil {
-				require.Error(t, err)
 				require.ErrorIs(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)

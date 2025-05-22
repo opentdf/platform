@@ -224,7 +224,6 @@ func (p *PolicyDecisionPoint) GetDecision(
 		decision.Results[idx] = *resourceDecision
 	}
 
-
 	return decision, nil
 }
 

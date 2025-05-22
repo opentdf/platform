@@ -1,5 +1,3 @@
-# Generate release PRs, and follow up with update PRs
-
 name: Release
 
 on:
@@ -15,29 +13,4 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Generate a token
-        id: generate_token
-        uses: actions/create-github-app-token@30bf6253fa41bdc8d1501d202ad15287582246b4 # v2.0.3
-        with:
-          app-id: "${{ secrets.APP_ID }}"
-          private-key: "${{ secrets.AUTOMATION_KEY }}"
-
-      - name: "Run release-please from main branch"
-        uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f
-        id: release-please-main
-        if: ${{ github.ref_name == 'main' }}
-        with:
-          token: ${{ steps.generate_token.outputs.token }}
-          config-file: release-please_main.json
-          manifest-file: .release-please-manifest.json
-
-      - name: "Run release-please from release branch"
-        uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f
-        id: release-please-release-branches
-        if: ${{ startsWith(github.ref_name, 'release/') }}
-        with:
-          token: ${{ steps.generate_token.outputs.token }}
-          config-file: release-please_release-branches.json
-          manifest-file: .release-please-manifest.json
+    uses: opentdf/platform/reusable_release-please.yaml@main

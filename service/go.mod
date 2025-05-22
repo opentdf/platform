@@ -14,7 +14,7 @@ require (
 	github.com/bmatcuk/doublestar v1.3.4
 	github.com/bufbuild/protovalidate-go v0.9.3
 	github.com/casbin/casbin/v2 v2.101.0
-	github.com/creasty/defaults v1.7.0
+	github.com/creasty/defaults v1.8.0
 	github.com/docker/docker v28.0.2+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/go-chi/cors v1.2.1
@@ -23,12 +23,12 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.1
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
-	github.com/jackc/pgx/v5 v5.5.5
+	github.com/jackc/pgx/v5 v5.7.5
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/open-policy-agent/opa v1.4.2
 	github.com/opentdf/platform/lib/fixtures v0.2.10
 	github.com/opentdf/platform/lib/flattening v0.1.3
-	github.com/opentdf/platform/lib/identifier v0.0.0-20250506204946-8822c4516627
+	github.com/opentdf/platform/lib/identifier v0.0.2
 	github.com/opentdf/platform/lib/ocrypto v0.1.9
 	github.com/opentdf/platform/protocol/go v0.3.3
 	github.com/opentdf/platform/sdk v0.4.4
@@ -113,8 +113,8 @@ require (
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
-	github.com/jackc/puddle/v2 v2.2.1 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect

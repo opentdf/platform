@@ -28,6 +28,7 @@ func NewRegistration() *serviceregistry.Service[entityresolutionv2connect.Entity
 	return &serviceregistry.Service[entityresolutionv2connect.EntityResolutionServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[entityresolutionv2connect.EntityResolutionServiceHandler]{
 			Namespace:      "entityresolution",
+			Version:        "v2",
 			ServiceDesc:    &ersV2.EntityResolutionService_ServiceDesc,
 			ConnectRPCFunc: entityresolutionv2connect.NewEntityResolutionServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (entityresolutionv2connect.EntityResolutionServiceHandler, serviceregistry.HandlerServer) {

@@ -1,0 +1,67 @@
+# Generate release PRs, and follow up with update PRs
+
+on:
+  workflow_call:
+    inputs:
+      config-file-main-branch:
+        type: string
+        default: "release-please_main-branch.json"
+      config-file-release-branches:
+        type: string
+        default: "release-please_release-branches.json"
+      manifest-file:
+        type: string
+        default: ".release-please-manifest.json"
+    outputs:
+      major:
+        value: ${{ jobs.release-please.outputs.major }}
+      minor:
+        value: ${{ jobs.release-please.outputs.minor }}
+      patch:
+        value: ${{ jobs.release-please.outputs.patch }}
+      sha:
+        value: ${{ jobs.release-please.outputs.sha }}
+      release_created:
+        value: ${{ jobs.release-please.outputs.release_created }}
+      tag_name:
+        value: ${{ jobs.release-please.outputs.tag_name }}
+permissions: {}
+
+jobs:
+  release-please:
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    outputs:
+      major: ${{ steps.release-please-main.outputs.major || steps.release-please-release-branches.outputs.major }}
+      minor: ${{ steps.release-please-main.outputs.minor || steps.release-please-release-branches.outputs.minor }}
+      patch: ${{ steps.release-please-main.outputs.patch || steps.release-please-release-branches.outputs.patch }}
+      sha: ${{ steps.release-please-main.outputs.sha || steps.release-please-release-branches.outputs.sha }}
+      release_created: ${{ steps.release-please-main.outputs.release_created || steps.release-please-release-branches.outputs.release_created }}
+      tag_name: ${{ steps.release-please-main.outputs.tag_name || steps.release-please-release-branches.outputs.tag_name }}      
+    steps:
+      - name: Generate a token
+        id: generate_token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_KEY }}
+
+      - name: "Run release-please from main branch"
+        uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f # v4.1.3
+        id: release-please-main
+        if: ${{ github.ref_name == 'main' }}
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          config-file: ${{ inputs.config-file-main-branch }}
+          manifest-file: ${{ inputs.manifest-file }}
+
+      - name: "Run release-please from release branch"
+        uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f # v4.1.3
+        id: release-please-release-branches
+        if: ${{ startsWith(github.ref_name, 'release/') }}
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          config-file: ${{ inputs.config-file-release-branches }}
+          manifest-file: ${{ inputs.manifest-file }}

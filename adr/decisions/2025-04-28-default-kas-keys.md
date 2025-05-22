@@ -6,7 +6,7 @@ tags:
  - keymanagement
  - kas
 ---
-# Default Platform KAS Key
+# Base Platform KAS Key
 
 > :bulb: **Note** Key Mappings: New implementation of KAS Grants
 
@@ -69,31 +69,20 @@ This option provides the most flexible and manageable solution.
 
 ### Implementation Details (Chosen Option)
 
-The `wellknownconfiguration.WellKnownService/GetWellKnownConfiguration` endpoint will be extended to include a `default_tdf_key` object containing the default KAS URL and its public key details.
+The `wellknownconfiguration.WellKnownService/GetWellKnownConfiguration` endpoint will be extended to include a `base_key` object containing the default KAS URL and its public key details.
 
 Example Well-Known Configuration Extension:
 
 ```json
 {
   "configuration": {
-    "default_tdf_key": {
-        "tdf": {
-            "kas_url": "https://default-kas.example.com/kas",
-            "public_key": {
-                "algorithm": "ec:secp256r1", // Or rsa:2048, etc.
-                "kid": "default-kas-key-1",
-                "pem": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE...\n-----END PUBLIC KEY-----"
-            }
-        },
-        "nanotdf": {
-            "kas_url": "https://default-kas.example.com/kas",
-            "public_key": {
-                "algorithm": "ec:secp256r1",
-                "kid": "default-kas-key-1",
-                "pem": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE...\n-----END PUBLIC KEY-----"
-            }
-        }
-        
+    "base_key": {
+    	"kas_url": "https://default-kas.example.com/kas",
+    	"public_key": {
+		"algorithm": "ec:secp256r1", // Or rsa:2048, etc.
+		"kid": "default-kas-key-1",
+		"pem": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE...\n-----END PUBLIC KEY-----"
+    }  
     },
     "health": {
       "endpoint": "/healthz"
@@ -115,11 +104,11 @@ Example Well-Known Configuration Extension:
 
 The TDF SDKs will be updated to:
 
-- Extract the `default_tdf_key` information.
+- Extract the `base_key` information.
 - Use this kas_url and public_key as the default KASInfo when creating TDFs only if no other applicable key mappings are found.
 
 > [!WARNING] 
-> If no `default_tdf_key` is defined. The SDK's will error when a `value`, `definition` or `namespace` does not have a key associated.
+> If no `base_key` is defined. The SDK's will error when a `value`, `definition` or `namespace` does not have a key associated.
 
 ### Consequences
 
@@ -132,7 +121,7 @@ The TDF SDKs will be updated to:
 - 🟥 Bad: If the `wellknownconfiguration.WellKnownService/GetWellKnownConfiguration` endpoint is unavailable or misconfigured, TDF creation might fail when relying on the default KAS. Robust error handling and fallback mechanisms (even if just logging a clear error) in the SDK are necessary.
 
 ### Validation
-- **Unit Tests:** SDK tests will verify that the `default_tdf_key` from the well-known configuration is correctly parsed and used when no other grants apply.
+- **Unit Tests:** SDK tests will verify that the `base_key` from the well-known configuration is correctly parsed and used when no other grants apply.
 - **Integration Tests:** Tests will ensure that PEPs can successfully create TDFs using the default KAS fetched from a live `wellknownconfiguration.WellKnownService/GetWellKnownConfiguration` endpoint.
 - **Manual Testing:** Deployments will be manually configured with different default KAS settings to verify end-to-end functionality.
 - **Documentation:** Update SDK and platform documentation to reflect the new configuration option and its usage.

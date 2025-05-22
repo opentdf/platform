@@ -256,6 +256,19 @@ func TestValidateAttribute(t *testing.T) {
 			},
 			wantErr: ErrInvalidAttributeDefinition,
 		},
+		{
+			name: "Attribute value FQN does not match attribute FQN",
+			attribute: &policy.Attribute{
+				Fqn:  "https://example.org/attr/name",
+				Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
+				Values: []*policy.Value{
+					{
+						Fqn: "https://example.org/attr/other/value/public",
+					},
+				},
+			},
+			wantErr: ErrInvalidAttributeDefinition,
+		},
 	}
 
 	for _, tt := range tests {

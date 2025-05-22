@@ -3,6 +3,7 @@ package access
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
@@ -86,8 +87,8 @@ func validateAttribute(attribute *policy.Attribute) error {
 		if value == nil {
 			return fmt.Errorf("attribute value is nil: %w", ErrInvalidAttributeDefinition)
 		}
-		if value.GetFqn() == "" {
-			return fmt.Errorf("attribute value FQN is empty: %w", ErrInvalidAttributeDefinition)
+		if !strings.HasPrefix(value.GetFqn(), attribute.GetFqn()) {
+			return fmt.Errorf("attribute value FQN must be of definition FQN: %w", ErrInvalidAttributeDefinition)
 		}
 	}
 	if attribute.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED {

@@ -368,7 +368,6 @@ func TestPopulateLowerValuesIfHierarchy(t *testing.T) {
 			err := populateLowerValuesIfHierarchy(tt.valueFQN, entitleableAttributes, tt.entitledActions, tt.actionsPerAttributeValueFqn)
 
 			if tt.wantErr != nil {
-				require.Error(t, err)
 				require.ErrorIs(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
@@ -513,7 +512,6 @@ func TestPopulateHigherValuesIfHierarchy(t *testing.T) {
 			err := populateHigherValuesIfHierarchy(t.Context(), logger.CreateTestLogger(), tt.valueFQN, tt.definition, allValueFQNsToAttributeValues, decisionableAttributes)
 
 			if tt.wantErr != nil {
-				require.Error(t, err)
 				require.ErrorIs(t, err, tt.wantErr)
 				return
 			}
@@ -680,9 +678,7 @@ func TestMergeDeduplicatedActions(t *testing.T) {
 
 			// Convert actionsToMerge to variadic arguments
 			var actionsToMergeSlices [][]*policy.Action
-			for _, actionList := range tt.actionsToMerge {
-				actionsToMergeSlices = append(actionsToMergeSlices, actionList)
-			}
+			actionsToMergeSlices = append(actionsToMergeSlices, tt.actionsToMerge...)
 
 			// Call the function under test
 			result := mergeDeduplicatedActions(initialSet, actionsToMergeSlices...)

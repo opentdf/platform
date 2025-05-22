@@ -682,21 +682,6 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 			expectError:      false,
 		},
 		{
-			name: "all rules passing - non lower-cased FQNs",
-			resourceAttrs: &authz.Resource_AttributeValues{
-				Fqns: []string{
-					strings.ToUpper(levelMidFQN),
-					strings.ToUpper(deptFinanceFQN),
-				},
-			},
-			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
-				levelMidFQN:    []*policy.Action{actionRead},
-				deptFinanceFQN: []*policy.Action{actionRead},
-			},
-			expectAccessible: true,
-			expectError:      false,
-		},
-		{
 			name: "one rule failing",
 			resourceAttrs: &authz.Resource_AttributeValues{
 				Fqns: []string{

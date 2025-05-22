@@ -2,6 +2,7 @@ package access
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -412,6 +413,34 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 
 		expectedResults := map[string]bool{
 			testClassSecretFQN:     true,
+			testDeptEngineeringFQN: true,
+		}
+		s.assertAllDecisionResults(decision, expectedResults)
+		for _, result := range decision.Results {
+			s.True(result.Passed, "All data rules should pass")
+			s.Len(result.DataRuleResults, 1)
+			s.Empty(result.DataRuleResults[0].EntitlementFailures)
+		}
+	})
+
+	s.Run("Multiple resources and entitled actions/attributes of varied casing - full access", func() {
+		entity := s.createEntityWithProps("test-user-1", map[string]interface{}{
+			"clearance":  "ts",
+			"department": "engineering",
+		})
+		secretFQN := strings.ToUpper(testClassSecretFQN)
+
+		resources := createResourcePerFqn(secretFQN, testDeptEngineeringFQN)
+
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+		s.Len(decision.Results, 2)
+
+		expectedResults := map[string]bool{
+			secretFQN:              true,
 			testDeptEngineeringFQN: true,
 		}
 		s.assertAllDecisionResults(decision, expectedResults)

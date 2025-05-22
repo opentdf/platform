@@ -70,11 +70,7 @@ func evaluateResourceAttributeValues(
 	definitionFqnToValueFqns := make(map[string][]string)
 	definitionsLookup := make(map[string]*policy.Attribute)
 
-	for idx, valueFQN := range resourceAttributeValues.GetFqns() {
-		// lowercase the value FQN to ensure case-insensitive matching
-		valueFQN = strings.ToLower(valueFQN)
-		resourceAttributeValues.Fqns[idx] = valueFQN
-
+	for _, valueFQN := range resourceAttributeValues.GetFqns() {
 		attributeAndValue, ok := accessibleAttributeValues[valueFQN]
 		if !ok {
 			return nil, fmt.Errorf("%w: %s", ErrFQNNotFound, valueFQN)

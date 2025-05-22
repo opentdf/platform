@@ -163,8 +163,11 @@ func (p *PolicyDecisionPoint) GetDecision(
 			return nil, fmt.Errorf("registered resource value FQN not supported: %w", ErrInvalidResource)
 
 		case *authz.Resource_AttributeValues_:
-			for _, valueFQN := range resource.GetAttributeValues().GetFqns() {
+			for idx, valueFQN := range resource.GetAttributeValues().GetFqns() {
+				// lowercase each resource attribute value FQN for case consistent map key lookups
 				valueFQN = strings.ToLower(valueFQN)
+				resource.GetAttributeValues().Fqns[idx] = valueFQN
+
 				// If same value FQN more than once, skip
 				if _, ok := decisionableAttributes[valueFQN]; ok {
 					continue

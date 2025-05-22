@@ -678,9 +678,7 @@ func TestMergeDeduplicatedActions(t *testing.T) {
 
 			// Convert actionsToMerge to variadic arguments
 			var actionsToMergeSlices [][]*policy.Action
-			for _, actionList := range tt.actionsToMerge {
-				actionsToMergeSlices = append(actionsToMergeSlices, actionList)
-			}
+			actionsToMergeSlices = append(actionsToMergeSlices, tt.actionsToMerge...)
 
 			// Call the function under test
 			result := mergeDeduplicatedActions(initialSet, actionsToMergeSlices...)

@@ -100,6 +100,10 @@ func populateLowerValuesIfHierarchy(
 	}
 
 	lower := false
+	entitledActionsSet := make(map[string]*policy.Action)
+	for _, action := range entitledActions.GetActions() {
+		entitledActionsSet[action.GetName()] = action
+	}
 	for _, value := range definition.GetValues() {
 		if lower {
 			alreadyEntitledActions, exists := entitledActionsPerAttributeValueFqn[value.GetFqn()]
@@ -107,7 +111,7 @@ func populateLowerValuesIfHierarchy(
 				entitledActionsPerAttributeValueFqn[value.GetFqn()] = entitledActions
 			} else {
 				// Ensure the actions are unique
-				mergedActions := mergeDeduplicatedActions(entitledActions.GetActions(), alreadyEntitledActions.GetActions())
+				mergedActions := mergeDeduplicatedActions(entitledActionsSet, alreadyEntitledActions.GetActions())
 
 				merged := &authz.EntityEntitlements_ActionsList{
 					Actions: mergedActions,
@@ -161,22 +165,17 @@ func populateHigherValuesIfHierarchy(
 }
 
 // Deduplicate and merge two lists of actions
-func mergeDeduplicatedActions(existingActions []*policy.Action, actionsToMerge []*policy.Action) []*policy.Action {
-	actionMap := make(map[string]*policy.Action)
-
-	// Add existing actions to the map
-	for _, action := range existingActions {
-		actionMap[action.GetName()] = action
-	}
-
+func mergeDeduplicatedActions(actionsSet map[string]*policy.Action, actionsToMerge ...[]*policy.Action) []*policy.Action {
 	// Add or override with actions to merge
-	for _, action := range actionsToMerge {
-		actionMap[action.GetName()] = action
+	for _, actionList := range actionsToMerge {
+		for _, action := range actionList {
+			actionsSet[action.GetName()] = action
+		}
 	}
 
 	// Convert map back to slice
-	merged := make([]*policy.Action, 0, len(actionMap))
-	for _, action := range actionMap {
+	merged := make([]*policy.Action, 0, len(actionsSet))
+	for _, action := range actionsSet {
 		merged = append(merged, action)
 	}
 

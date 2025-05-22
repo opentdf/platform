@@ -140,12 +140,9 @@ func (p *PolicyDecisionPoint) GetDecision(
 	action *policy.Action,
 	resources []*authz.Resource,
 ) (*Decision, error) {
-	loggable := []any{
-		slog.String("entity ID", entityRepresentation.GetOriginalId()),
-		slog.String("action", action.GetName()),
-		slog.Int("resources total", len(resources)),
-	}
-	p.logger.DebugContext(ctx, "getting decision", loggable...)
+	l := p.logger.With("entityID", entityRepresentation.GetOriginalId())
+	l = l.With("action", action.GetName())
+	l.DebugContext(ctx, "getting decision", slog.Int("resourcesCount", len(resources)))
 
 	if err := validateGetDecision(entityRepresentation, action, resources); err != nil {
 		return nil, err
@@ -161,12 +158,16 @@ func (p *PolicyDecisionPoint) GetDecision(
 		}
 
 		switch resource.GetResource().(type) {
+		// TODO: handle gathering decisionable attributes of registered resources
 		case *authz.Resource_RegisteredResourceValueFqn:
-			// TODO: handle gathering decisionable attributes of registered resources
+			return nil, fmt.Errorf("registered resource value FQN not supported: %w", ErrInvalidResource)
 
 		case *authz.Resource_AttributeValues_:
-			for _, valueFQN := range resource.GetAttributeValues().GetFqns() {
+			for idx, valueFQN := range resource.GetAttributeValues().GetFqns() {
+				// lowercase each resource attribute value FQN for case consistent map key lookups
 				valueFQN = strings.ToLower(valueFQN)
+				resource.GetAttributeValues().Fqns[idx] = valueFQN
+
 				// If same value FQN more than once, skip
 				if _, ok := decisionableAttributes[valueFQN]; ok {
 					continue
@@ -189,13 +190,14 @@ func (p *PolicyDecisionPoint) GetDecision(
 			return nil, fmt.Errorf("invalid resource type [%T]: %w", resource.GetResource(), ErrInvalidResource)
 		}
 	}
-	p.logger.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionable attribute values count", len(decisionableAttributes)))
+	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionableAttributeValuesCount", len(decisionableAttributes)))
+
 	// Resolve them to their entitled FQNs and the actions available on each
 	entitledFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRepresentation)
 	if err != nil {
 		return nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}
-	p.logger.DebugContext(ctx, "evaluated subject mappings", slog.String("entity originalId", entityRepresentation.GetOriginalId()), slog.Any("entitled FQNs to actions", entitledFQNsToActions))
+	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitled FQNs to actions", entitledFQNsToActions))
 
 	decision := &Decision{
 		Access:  true,
@@ -215,10 +217,10 @@ func (p *PolicyDecisionPoint) GetDecision(
 		decision.Results[idx] = *resourceDecision
 	}
 
-	p.logger.DebugContext(
+	l.DebugContext(
 		ctx,
 		"decision results",
-		append(loggable, slog.Any("decision", decision))...,
+		slog.Any("decision", decision),
 	)
 
 	return decision, nil
@@ -230,28 +232,26 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 	optionalMatchedSubjectMappings []*policy.SubjectMapping,
 	withComprehensiveHierarchy bool,
 ) ([]*authz.EntityEntitlements, error) {
-	loggable := []any{
-		slog.Int("entities total", len(entityRepresentations)),
-		slog.Bool("with comprehensive hierarchy", withComprehensiveHierarchy),
-	}
-
 	err := validateEntityRepresentations(entityRepresentations)
 	if err != nil {
 		return nil, fmt.Errorf("invalid input parameters: %w", err)
 	}
 
+	l := p.logger.With("withComprehensiveHierarchy", strconv.FormatBool(withComprehensiveHierarchy))
+	l.DebugContext(ctx, "getting entitlements", slog.Int("entityRepresentationsCount", len(entityRepresentations)))
+
 	var entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
 
 	// Check entitlement only against the filtered matched subject mappings if provided
 	if optionalMatchedSubjectMappings != nil {
-		p.logger.DebugContext(ctx, "getting entitlements with matched subject mappings", loggable...)
+		l.DebugContext(ctx, "filtering to provided matched subject mappings", slog.Int("matchedSubjectMappingsCount", len(optionalMatchedSubjectMappings)))
 		entitleableAttributes, err = getFilteredEntitleableAttributes(optionalMatchedSubjectMappings, p.allEntitleableAttributesByValueFQN)
 		if err != nil {
 			return nil, fmt.Errorf("error filtering entitleable attributes from matched subject mappings: %w", err)
 		}
 	} else {
 		// Otherwise, use all entitleable attributes
-		p.logger.DebugContext(ctx, "getting entitlements with all subject mappings (unmatched)", loggable...)
+		l.DebugContext(ctx, "getting entitlements with all subject mappings (unmatched)")
 		entitleableAttributes = p.allEntitleableAttributesByValueFQN
 	}
 
@@ -260,6 +260,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 	if err != nil {
 		return nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}
+	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitlementsByEntityID", entityIDsToFQNsToActions))
 
 	var result []*authz.EntityEntitlements
 	for entityID, fqnsToActions := range entityIDsToFQNsToActions {
@@ -268,7 +269,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 		for valueFQN, actions := range fqnsToActions {
 			// If already entitled (such as via a higher entitled comprehensive hierarchy attr value), merge with existing
 			if alreadyEntitled, ok := actionsPerAttributeValueFqn[valueFQN]; ok {
-				actions = mergeDeduplicatedActions(alreadyEntitled.GetActions(), actions)
+				actions = mergeDeduplicatedActions(make(map[string]*policy.Action), actions, alreadyEntitled.GetActions())
 			}
 			entitledActions := &authz.EntityEntitlements_ActionsList{
 				Actions: actions,
@@ -290,10 +291,10 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 			ActionsPerAttributeValueFqn: actionsPerAttributeValueFqn,
 		})
 	}
-	p.logger.DebugContext(
+	l.DebugContext(
 		ctx,
 		"entitlement results",
-		append(loggable, slog.Any("entitlements", result))...,
+		slog.Any("entitlements", result),
 	)
 	return result, nil
 }

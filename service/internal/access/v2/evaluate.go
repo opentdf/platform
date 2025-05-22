@@ -44,18 +44,16 @@ func getResourceDecision(
 	)
 
 	switch resource.GetResource().(type) {
+	// TODO: handle registered resources
 	case *authz.Resource_RegisteredResourceValueFqn:
-		// TODO: handle registered resources
-		// return evaluateRegisteredResourceValue(ctx, resource.GetRegisteredResourceValueFqn(), action, entitlements, accessibleAttributeValues)
+		return nil, fmt.Errorf("registered resources not supported yet: %w", ErrInvalidResource)
+
 	case *authz.Resource_AttributeValues_:
 		return evaluateResourceAttributeValues(ctx, logger, resource.GetAttributeValues(), resource.GetEphemeralId(), action, entitlements, accessibleAttributeValues)
 
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %w", ErrInvalidResource)
 	}
-
-	// should never reach here
-	return nil, fmt.Errorf("unable to get resource resource decision: %w", ErrInvalidResource)
 }
 
 // evaluateResourceAttributeValues evaluates a list of attribute values against the action and entitlements
@@ -73,11 +71,7 @@ func evaluateResourceAttributeValues(
 	definitionFqnToValueFqns := make(map[string][]string)
 	definitionsLookup := make(map[string]*policy.Attribute)
 
-	for idx, valueFQN := range resourceAttributeValues.GetFqns() {
-		// lowercase the value FQN to ensure case-insensitive matching
-		valueFQN = strings.ToLower(valueFQN)
-		resourceAttributeValues.Fqns[idx] = valueFQN
-
+	for _, valueFQN := range resourceAttributeValues.GetFqns() {
 		attributeAndValue, ok := accessibleAttributeValues[valueFQN]
 		if !ok {
 			return nil, fmt.Errorf("%w: %s", ErrFQNNotFound, valueFQN)

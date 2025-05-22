@@ -704,6 +704,10 @@ WHERE id = $1;
 -- name: DeleteAttribute :execrows
 DELETE FROM attribute_definitions WHERE id = $1;
 
+-- name: RemoveKeyAccessServerFromAttribute :execrows
+DELETE FROM attribute_definition_key_access_grants
+WHERE attribute_definition_id = $1 AND key_access_server_id = $2;
+
 -- name: assignPublicKeyToAttributeDefinition :one
 INSERT INTO attribute_definition_public_key_map (definition_id, key_access_server_key_id)
 VALUES ($1, $2)
@@ -796,6 +800,10 @@ WHERE id = $1;
 
 -- name: DeleteAttributeValue :execrows
 DELETE FROM attribute_values WHERE id = $1;
+
+-- name: RemoveKeyAccessServerFromAttributeValue :execrows
+DELETE FROM attribute_value_key_access_grants
+WHERE attribute_value_id = $1 AND key_access_server_id = $2;
 
 -- name: assignPublicKeyToAttributeValue :one
 INSERT INTO attribute_value_public_key_map (value_id, key_access_server_key_id)
@@ -1018,6 +1026,10 @@ WHERE id = $1;
 
 -- name: DeleteNamespace :execrows
 DELETE FROM attribute_namespaces WHERE id = $1;
+
+-- name: RemoveKeyAccessServerFromNamespace :execrows
+DELETE FROM attribute_namespace_key_access_grants
+WHERE namespace_id = $1 AND key_access_server_id = $2;
 
 -- name: assignPublicKeyToNamespace :one
 INSERT INTO attribute_namespace_public_key_map (namespace_id, key_access_server_key_id)

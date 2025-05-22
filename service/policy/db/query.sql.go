@@ -1969,6 +1969,72 @@ func (q *Queries) ListSubjectConditionSets(ctx context.Context, arg ListSubjectC
 	return items, nil
 }
 
+const removeKeyAccessServerFromAttribute = `-- name: RemoveKeyAccessServerFromAttribute :execrows
+DELETE FROM attribute_definition_key_access_grants
+WHERE attribute_definition_id = $1 AND key_access_server_id = $2
+`
+
+type RemoveKeyAccessServerFromAttributeParams struct {
+	AttributeDefinitionID string `json:"attribute_definition_id"`
+	KeyAccessServerID     string `json:"key_access_server_id"`
+}
+
+// RemoveKeyAccessServerFromAttribute
+//
+//	DELETE FROM attribute_definition_key_access_grants
+//	WHERE attribute_definition_id = $1 AND key_access_server_id = $2
+func (q *Queries) RemoveKeyAccessServerFromAttribute(ctx context.Context, arg RemoveKeyAccessServerFromAttributeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeKeyAccessServerFromAttribute, arg.AttributeDefinitionID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const removeKeyAccessServerFromAttributeValue = `-- name: RemoveKeyAccessServerFromAttributeValue :execrows
+DELETE FROM attribute_value_key_access_grants
+WHERE attribute_value_id = $1 AND key_access_server_id = $2
+`
+
+type RemoveKeyAccessServerFromAttributeValueParams struct {
+	AttributeValueID  string `json:"attribute_value_id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// RemoveKeyAccessServerFromAttributeValue
+//
+//	DELETE FROM attribute_value_key_access_grants
+//	WHERE attribute_value_id = $1 AND key_access_server_id = $2
+func (q *Queries) RemoveKeyAccessServerFromAttributeValue(ctx context.Context, arg RemoveKeyAccessServerFromAttributeValueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeKeyAccessServerFromAttributeValue, arg.AttributeValueID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const removeKeyAccessServerFromNamespace = `-- name: RemoveKeyAccessServerFromNamespace :execrows
+DELETE FROM attribute_namespace_key_access_grants
+WHERE namespace_id = $1 AND key_access_server_id = $2
+`
+
+type RemoveKeyAccessServerFromNamespaceParams struct {
+	NamespaceID       string `json:"namespace_id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// RemoveKeyAccessServerFromNamespace
+//
+//	DELETE FROM attribute_namespace_key_access_grants
+//	WHERE namespace_id = $1 AND key_access_server_id = $2
+func (q *Queries) RemoveKeyAccessServerFromNamespace(ctx context.Context, arg RemoveKeyAccessServerFromNamespaceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeKeyAccessServerFromNamespace, arg.NamespaceID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateAttribute = `-- name: UpdateAttribute :execrows
 UPDATE attribute_definitions
 SET

@@ -375,7 +375,27 @@ func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context
 }
 
 func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("method RemoveKeyAccessServerFromAttribute is deprecated"))
+	rsp := &attributes.RemoveKeyAccessServerFromAttributeResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeKasAttributeDefinitionAssignment,
+	}
+
+	attributeKas, err := s.dbClient.RemoveKeyAccessServerFromAttribute(ctx, req.Msg.GetAttributeKeyAccessServer())
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("attributeKas", req.Msg.GetAttributeKeyAccessServer().String()))
+	}
+
+	auditParams.ObjectID = attributeKas.GetAttributeId()
+	auditParams.Original = req.Msg.GetAttributeKeyAccessServer()
+	auditParams.Updated = attributeKas
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.AttributeKeyAccessServer = attributeKas
+
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, req *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error) {
@@ -383,7 +403,27 @@ func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, re
 }
 
 func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("method RemoveKeyAccessServerFromValue is deprecated"))
+	rsp := &attributes.RemoveKeyAccessServerFromValueResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeKasAttributeValueAssignment,
+	}
+
+	valueKas, err := s.dbClient.RemoveKeyAccessServerFromValue(ctx, req.Msg.GetValueKeyAccessServer())
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("attributeValueKas", req.Msg.GetValueKeyAccessServer().String()))
+	}
+
+	auditParams.ObjectID = valueKas.GetValueId()
+	auditParams.Original = req.Msg.GetValueKeyAccessServer()
+	auditParams.Updated = valueKas
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp.ValueKeyAccessServer = valueKas
+
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *AttributesService) AssignPublicKeyToAttribute(ctx context.Context, r *connect.Request[attributes.AssignPublicKeyToAttributeRequest]) (*connect.Response[attributes.AssignPublicKeyToAttributeResponse], error) {

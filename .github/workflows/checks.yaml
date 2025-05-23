@@ -342,7 +342,7 @@ jobs:
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go
-      otdfctl-ref: refs/remotes/origin/test/platform
+      otdfctl-ref: refs/pull/562
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts
 

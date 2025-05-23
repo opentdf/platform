@@ -39,6 +39,7 @@ func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *con
 		return connect.NewResponse(resp), nil
 	}
 	resp, err := EntityResolution(ctx, req.Msg, s.logger)
+	resolveEntitiesCache[req.Msg.String()] = &resp
 	return connect.NewResponse(&resp), err
 }
 
@@ -54,6 +55,7 @@ func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Cont
 	defer span.End()
 
 	resp, err := CreateEntityChainsFromTokens(ctx, req.Msg, s.logger)
+	createEntityChainsFromTokensCache[req.Msg.String()] = &resp
 	return connect.NewResponse(&resp), err
 }
 

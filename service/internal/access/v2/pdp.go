@@ -197,7 +197,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	if err != nil {
 		return nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}
-	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitled FQNs to actions", entitledFQNsToActions))
+	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitledValueFqnsToActions", entitledFQNsToActions))
 
 	decision := &Decision{
 		Access:  true,
@@ -214,14 +214,15 @@ func (p *PolicyDecisionPoint) GetDecision(
 			decision.Access = false
 		}
 
+		l.DebugContext(
+			ctx,
+			"resourceDecision result",
+			slog.Bool("passed", resourceDecision.Passed),
+			slog.String("resourceID", resourceDecision.ResourceID),
+			slog.Int("dataRuleResultsCount", len(resourceDecision.DataRuleResults)),
+		)
 		decision.Results[idx] = *resourceDecision
 	}
-
-	l.DebugContext(
-		ctx,
-		"decision results",
-		slog.Any("decision", decision),
-	)
 
 	return decision, nil
 }

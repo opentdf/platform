@@ -67,7 +67,7 @@ func runDecisionBenchmark(_ *cobra.Command, _ []string) error {
 	}
 
 	// Print results
-	fmt.Printf("# Benchmark Results:\n")
+	fmt.Printf("# Benchmark authorization.GetDecisions Results:\n")
 	fmt.Printf("| Metric                  | Value                  |\n")
 	fmt.Printf("|-------------------------|------------------------|\n")
 	if err == nil {

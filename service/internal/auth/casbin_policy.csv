@@ -24,6 +24,9 @@ p,	role:standard,		kasregistry.*,													read,			allow
 p,	role:standard,      kas.AccessService/Rewrap, 			           *,			allow
 p,  role:standard,      authorization.AuthorizationService/GetDecisions,        read, allow
 p,  role:standard,      authorization.AuthorizationService/GetDecisionsByToken, read, allow
+p,  role:standard,      authorization.v2.AuthorizationService/GetDecision, read, allow
+p,  role:standard,      authorization.v2.AuthorizationService/GetDecisionMultiResource, read, allow
+p,  role:standard,      authorization.v2.AuthorizationService/GetDecisionBulk, read, allow
 
 ## HTTP routes
 p,	role:standard,		/attributes*,														read,			allow

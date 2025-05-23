@@ -150,17 +150,12 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 	propagator := otel.GetTextMapPropagator()
 	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
-	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
 	request := req.Msg
 	entityIdentifier := request.GetEntityIdentifier()
 	action := request.GetAction()
 	resources := request.GetResources()
 
-	decisions, allPermitted, err := pdp.GetDecision(ctx, entityIdentifier, action, resources)
+	decisions, allPermitted, err := as.pdp.GetDecision(ctx, entityIdentifier, action, resources)
 	if err != nil {
 		// TODO: any bad request errors that aren't 500s?
 		as.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))

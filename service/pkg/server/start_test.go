@@ -258,14 +258,14 @@ func (s *StartTestSuite) TearDownSuite() {
 		if entry.Name() == ignoreFile {
 			continue
 		}
-		err = os.Remove(fmt.Sprintf("testdata/%s", entry.Name()))
+		err = os.Remove("testdata/" + entry.Name())
 		if err != nil {
 			s.T().Logf("Error removing directory %s: %v", entry.Name(), err)
 		}
 	}
 }
 
-func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
+func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 	testCases := []struct {
 		name         string
 		mode         []string
@@ -335,8 +335,8 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 	}
 
 	for _, tc := range testCases {
-		suite.Run(tc.name, func() {
-			t := suite.T()
+		s.Run(tc.name, func() {
+			t := s.T()
 			s, err := mockOpenTDFServer()
 			require.NoError(t, err)
 
@@ -354,7 +354,7 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 
 			registry := serviceregistry.NewServiceRegistry()
 			err = registry.RegisterService(registerTestService, "test")
-			suite.Require().NoError(err)
+			require.NoError(t, err)
 
 			// Start services with test service
 			cleanup, err := startServices(context.Background(), &config.Config{
@@ -402,8 +402,8 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 	}
 }
 
-func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
-	t := suite.T()
+func (s *StartTestSuite) Test_Start_Mode_Config_Errors() {
+	t := s.T()
 	discoveryEndpoint := mockKeycloakServer()
 	originalFilePath := "testdata/all-no-config.yaml"
 	testCases := []struct {
@@ -461,8 +461,8 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
 	}
 }
 
-func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
-	t := suite.T()
+func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
+	t := s.T()
 	discoveryEndpoint := mockKeycloakServer()
 	// require.NoError(t, err)
 	originalFilePath := "testdata/all-no-config.yaml"

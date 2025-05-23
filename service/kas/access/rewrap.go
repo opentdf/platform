@@ -762,7 +762,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		Jwt:         entityInfo.Token,
 	}
 
-	pdpAccessResults, accessErr := p.canAccess(ctx, tok, policies)
+	pdpAccessResults, accessErr := p.canAccess(context.Background(), tok, policies)
 	if accessErr != nil {
 		failAllKaos(requests, results, err500("could not perform access"))
 		return "", results

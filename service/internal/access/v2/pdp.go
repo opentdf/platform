@@ -226,7 +226,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 		err      error
 	}
 
-	numWorkers := 5
+	numWorkers := 100
 	if len(resources) < numWorkers {
 		numWorkers = len(resources)
 	}

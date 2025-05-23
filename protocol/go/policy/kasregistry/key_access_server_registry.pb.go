@@ -3016,7 +3016,7 @@ type GetBaseKeyResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	BaseKey *SimpleKasKey `protobuf:"bytes,1,opt,name=base_key,json=baseKey,proto3" json:"base_key,omitempty"` // The list of default keys
+	BaseKey *SimpleKasKey `protobuf:"bytes,1,opt,name=base_key,json=baseKey,proto3" json:"base_key,omitempty"` // The current base key
 }
 
 func (x *GetBaseKeyResponse) Reset() {

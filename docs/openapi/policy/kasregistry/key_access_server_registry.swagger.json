@@ -438,7 +438,7 @@
       "properties": {
         "baseKey": {
           "$ref": "#/definitions/kasregistrySimpleKasKey",
-          "title": "The list of default keys"
+          "title": "The current base key"
         }
       }
     },

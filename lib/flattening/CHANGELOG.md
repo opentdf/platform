@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/opentdf/platform/compare/lib/flattening/v0.1.3...lib/flattening/v0.2.0) (2025-05-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979))
+
+### Features
+
+* **core:** Require go 1.23+ ([#1979](https://github.com/opentdf/platform/issues/1979)) ([164c922](https://github.com/opentdf/platform/commit/164c922af74b1265fe487362c356abb7f1503ada))
+
 ## [0.1.3](https://github.com/opentdf/platform/compare/lib/flattening/v0.1.2...lib/flattening/v0.1.3) (2024-12-17)
 
 

@@ -120,17 +120,10 @@ func Start(f ...StartOptions) error {
 	}
 	defer otdf.Stop()
 
-	otdf.TrustKeyIndex = startConfig.trustKeyIndex
-	otdf.TrustKeyManager = startConfig.trustKeyManager
-	if otdf.TrustKeyIndex != nil || otdf.TrustKeyManager != nil {
-		if otdf.CryptoProvider != nil {
-			logger.Error("cannot set trust key index or manager when crypto provider is set")
-			return errors.New("cannot set trust key index or manager when crypto provider is set")
-		}
-		if otdf.TrustKeyIndex == nil || otdf.TrustKeyManager == nil {
-			logger.Error("must set both trust key index and manager, or use a crypto provider or key service")
-			return errors.New("must set both trust key index and manager")
-		}
+	//
+	if otdf.CryptoProvider != nil && len(startConfig.trustKeyManagers) > 0 {
+		logger.Error("cannot set trust key index or manager when crypto provider is set")
+		return errors.New("cannot set trust key index or manager when crypto provider is set")
 	}
 
 	// Initialize the service registry
@@ -300,7 +293,7 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	logger.Info("starting services")
-	gatewayCleanup, err := startServices(ctx, cfg, otdf, client, logger, svcRegistry)
+	gatewayCleanup, err := startServices(ctx, cfg, otdf, client, startConfig.trustKeyManagers, logger, svcRegistry)
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)

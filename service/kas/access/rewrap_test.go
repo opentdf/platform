@@ -40,6 +40,10 @@ type fakeKeyDetails struct {
 func (f *fakeKeyDetails) ID() trust.KeyIdentifier { return f.id }
 func (f *fakeKeyDetails) Algorithm() string       { return f.algorithm }
 func (f *fakeKeyDetails) IsLegacy() bool          { return f.legacy }
+func (f *fakeKeyDetails) ExportPrivateKey() ([]byte, error) {
+	return []byte{}, nil
+}
+
 func (f *fakeKeyDetails) ExportPublicKey(context.Context, trust.KeyType) (string, error) {
 	return "", nil
 }
@@ -87,11 +91,12 @@ func TestListLegacyKeys_KeyIndexPopulated(t *testing.T) {
 		&fakeKeyDetails{id: "id3", algorithm: "ec:secp256r1", legacy: true},
 		&fakeKeyDetails{id: "id4", algorithm: "rsa:2048", legacy: true},
 	}
+	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{
+		keys: fakeKeys,
+	})
 	p := &Provider{
-		Logger: testLogger,
-		KeyIndex: &fakeKeyIndex{
-			keys: fakeKeys,
-		},
+		Logger:       testLogger,
+		KeyDelegator: delegator,
 	}
 	kids := p.listLegacyKeys(t.Context())
 	assert.ElementsMatch(t, []trust.KeyIdentifier{"id1", "id4"}, kids)
@@ -99,9 +104,10 @@ func TestListLegacyKeys_KeyIndexPopulated(t *testing.T) {
 
 func TestListLegacyKeys_Empty(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
+	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{})
 	p := &Provider{
-		Logger:   testLogger,
-		KeyIndex: &fakeKeyIndex{},
+		Logger:       testLogger,
+		KeyDelegator: delegator,
 	}
 	kids := p.listLegacyKeys(t.Context())
 	assert.Empty(t, kids)
@@ -109,11 +115,12 @@ func TestListLegacyKeys_Empty(t *testing.T) {
 
 func TestListLegacyKeys_KeyIndexError(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
+	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{
+		err: errors.New("fail"),
+	})
 	p := &Provider{
-		Logger: testLogger,
-		KeyIndex: &fakeKeyIndex{
-			err: errors.New("fail"),
-		},
+		Logger:       testLogger,
+		KeyDelegator: delegator,
 	}
 	kids := p.listLegacyKeys(t.Context())
 	assert.Empty(t, kids)

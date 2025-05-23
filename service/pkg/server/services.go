@@ -23,6 +23,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policy"
 	"github.com/opentdf/platform/service/tracing"
+	"github.com/opentdf/platform/service/trust"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -120,7 +121,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 // based on the configuration and namespace mode. It creates a new service logger
 // and a database client if required. It registers the services with the gRPC server,
 // in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
-func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry) (func(), error) {
+func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, keyManagers []trust.KeyManager, logger *logging.Logger, reg serviceregistry.Registry) (func(), error) {
 	var gatewayCleanup func()
 
 	// Iterate through the registered namespaces
@@ -183,6 +184,7 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 				RegisterReadinessCheck: health.RegisterReadinessCheck,
 				OTDF:                   otdf, // TODO: REMOVE THIS
 				Tracer:                 tracer,
+				KeyManagers:            keyManagers,
 			})
 			if err != nil {
 				return func() {}, err

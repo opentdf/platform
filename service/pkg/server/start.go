@@ -120,12 +120,6 @@ func Start(f ...StartOptions) error {
 	}
 	defer otdf.Stop()
 
-	//
-	if otdf.CryptoProvider != nil && len(startConfig.trustKeyManagers) > 0 {
-		logger.Error("cannot set trust key index or manager when crypto provider is set")
-		return errors.New("cannot set trust key index or manager when crypto provider is set")
-	}
-
 	// Initialize the service registry
 	logger.Debug("initializing service registry")
 	svcRegistry := serviceregistry.NewServiceRegistry()

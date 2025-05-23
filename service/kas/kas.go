@@ -43,8 +43,6 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 			GRPCGatewayFunc: kaspb.RegisterAccessServiceHandler,
 			OnConfigUpdate:  onConfigUpdate,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasconnect.AccessServiceHandler, serviceregistry.HandlerServer) {
-				// FIXME msg="mismatched key access url" keyAccessURL=http://localhost:9000 kasURL=https://:9000
-
 				// Determine KAS URI based on public hostname and server's listening port/scheme
 				kasHost := srp.OTDF.PublicHostname
 				serverAddr := srp.OTDF.HTTPServer.Addr
@@ -73,7 +71,10 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					}
 				}
 
-				scheme := "https"
+				scheme := "http"
+				if srp.OTDF.HTTPServer.TLSConfig != nil {
+					scheme = "https"
+				}
 
 				kasURLString := fmt.Sprintf("%s://%s", scheme, net.JoinHostPort(kasHost, port))
 

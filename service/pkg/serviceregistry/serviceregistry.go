@@ -195,7 +195,7 @@ func (s Service[S]) RegisterConfigUpdateHook(ctx context.Context, hookAppender f
 }
 
 // RegisterOnCompleteServiceRegistrationHook appends a registered service's onCompleteServiceRegistrationHook to any watching services.
-func (s Service[S]) RegisterOnCompleteServiceRegistrationHook(ctx context.Context, hookAppender func(config.ServiceRegistrationCompleteHook)) error {
+func (s Service[S]) RegisterOnCompleteServiceRegistrationHook(_ context.Context, hookAppender func(config.ServiceRegistrationCompleteHook)) error {
 	// If no hook is registered, exit
 	if s.OnCompleteServiceRegistration != nil {
 		var onChange config.ServiceRegistrationCompleteHook = func(ctx context.Context) error {

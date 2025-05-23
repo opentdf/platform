@@ -139,7 +139,9 @@ func (c *Config) RunRegistrationCompleteHooks(ctx context.Context) error {
 		return nil
 	}
 	for _, hook := range c.onServiceRegistrationCompleteHooks {
-		hook(ctx)
+		if err := hook(ctx); err != nil {
+			return err
+		}
 	}
 	return nil
 }

@@ -35,7 +35,7 @@ func OnCompleteServiceRegistration(as *Service) serviceregistry.OnCompleteServic
 		pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
 		if err != nil {
 			as.logger.Error("failed to create JIT PDP", slog.String("error", err.Error()))
-			panic(err)
+			return fmt.Errorf("auth service: failed to create JIT PDP: %w", err)
 		}
 		as.pdp = pdp
 		return nil

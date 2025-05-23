@@ -32,7 +32,7 @@ type Config struct{}
 // When all services are completed, new up the JustInTime PDP to retrieve and store all entitlement policy in memory
 func OnCompleteServiceRegistration(as *Service) serviceregistry.OnCompleteServiceRegistrationHook {
 	return func(ctx context.Context) error {
-		pdp, err := access.NewJustInTimePDP(context.Background(), as.logger, as.sdk)
+		pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
 		if err != nil {
 			as.logger.Error("failed to create JIT PDP", slog.String("error", err.Error()))
 			panic(err)

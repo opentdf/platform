@@ -22,7 +22,6 @@ const (
 	errMessageKeyName                  = "key.name"
 	errMessageKeyURI                   = "key.uri"
 	errMessageKeyAlgo                  = "key_algorithm"
-	errMessageTdfType                  = "tdf_type"
 	errMessageKeyMode                  = "key_mode_defined" // Updated for CEL rule ID
 	errMessagePubKeyCtx                = "public_key_ctx"
 	errMessagePrivateKeyCtx            = "The wrapped_key is required"            // This seems to be a generic message, CEL rules are more specific

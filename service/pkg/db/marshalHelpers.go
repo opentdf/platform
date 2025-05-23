@@ -152,6 +152,8 @@ func UnmarshalSimpleKasKey(keysJSON []byte) (*kasregistry.SimpleKasKey, error) {
 			return nil, err
 		}
 
+		// In the db, this is stored as an integer, which is parsed to a string
+		// and then converted to the correct algorithm format.
 		alg, err := strconv.ParseInt(key.GetPublicKey().GetAlgorithm(), 10, 32)
 		if err != nil {
 			return nil, err
@@ -160,7 +162,7 @@ func UnmarshalSimpleKasKey(keysJSON []byte) (*kasregistry.SimpleKasKey, error) {
 		if err != nil {
 			return nil, err
 		}
-		// Base64 decode the public key
+		// The pem should always be present and base64 encoded, as it is required for creating a key.
 		pem, err := base64.StdEncoding.DecodeString(key.GetPublicKey().GetPem())
 		if err != nil {
 			return nil, err

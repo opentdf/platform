@@ -35,7 +35,6 @@ func RegisterConfiguration(namespace string, config any) error {
 	return nil
 }
 
-// We should probably have a safe-guard as to what config can be updated
 func UpdateConfigurationBaseKey(config any) {
 	rwMutex.Lock()
 	defer rwMutex.Unlock()

@@ -625,7 +625,7 @@ message SimpleKasKey {
 
 message GetBaseKeyRequest {}
 message GetBaseKeyResponse {
-  SimpleKasKey base_key = 1; // The list of default keys
+  SimpleKasKey base_key = 1; // The current base key
 }
 
 message SetBaseKeyResponse {

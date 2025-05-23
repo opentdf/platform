@@ -23,6 +23,7 @@ type Service struct {
 	sdk    *otdf.SDK
 	config *Config
 	logger *logger.Logger
+	pdp    *access.JustInTimePDP
 	trace.Tracer
 }
 
@@ -51,6 +52,15 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 
 				as.config = authZCfg
 				as.Tracer = srp.Tracer
+
+				// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
+				pdp, err := access.NewJustInTimePDP(context.Background(), as.logger, as.sdk)
+				if err != nil {
+					logger.Error("failed to create JIT PDP", slog.String("error", err.Error()))
+					panic(err)
+				}
+				as.pdp = pdp
+
 				logger.Debug("authorization v2 service register func")
 
 				return as, nil
@@ -79,14 +89,7 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 	entityIdentifier := req.Msg.GetEntityIdentifier()
 	withComprehensiveHierarchy := req.Msg.GetWithComprehensiveHierarchy()
 
-	// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
-	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	entitlements, err := pdp.GetEntitlements(ctx, entityIdentifier, withComprehensiveHierarchy)
+	entitlements, err := as.pdp.GetEntitlements(ctx, entityIdentifier, withComprehensiveHierarchy)
 	if err != nil {
 		// TODO: any bad request errors that aren't 500s?
 		as.logger.ErrorContext(ctx, "failed to get entitlements", slog.String("error", err.Error()))
@@ -111,17 +114,12 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	propagator := otel.GetTextMapPropagator()
 	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
-	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
 	request := req.Msg
 	entityIdentifier := request.GetEntityIdentifier()
 	action := request.GetAction()
 	resource := request.GetResource()
 
-	decisions, permitted, err := pdp.GetDecision(ctx, entityIdentifier, action, []*authzV2.Resource{resource})
+	decisions, permitted, err := as.pdp.GetDecision(ctx, entityIdentifier, action, []*authzV2.Resource{resource})
 	if err != nil {
 		// TODO: any bad request errors that aren't 500s?
 		as.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))

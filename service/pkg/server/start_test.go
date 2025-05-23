@@ -20,6 +20,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -261,7 +262,7 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 				Services: map[string]config.ServiceConfig{
 					"test": {},
 				},
-			}, s, nil, logger, registry)
+			}, s, nil, []trust.KeyManager{}, logger, registry)
 			require.NoError(t, err)
 			defer cleanup()
 

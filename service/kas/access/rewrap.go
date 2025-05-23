@@ -462,7 +462,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
 
-			if !p.ECTDFEnabled {
+			if !p.ECTDFEnabled || !p.PreviewFeatures.ECTDFEnabled {
 				p.Logger.WarnContext(ctx, "ec-wrapped not enabled")
 				failedKAORewrap(results, kao, err400("bad request"))
 				continue
@@ -517,7 +517,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			}
 
 			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
-			dek, err = p.GetSecurityProvider().Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), compressedKey)
+			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), compressedKey)
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt EC key", "err", err)
 				failedKAORewrap(results, kao, err400("bad request"))
@@ -537,13 +537,13 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				}
 			}
 
-			dek, err = p.GetSecurityProvider().Decrypt(ctx, kidsToCheck[0], kao.GetKeyAccessObject().GetWrappedKey(), nil)
+			dek, err = p.KeyDelegator.Decrypt(ctx, kidsToCheck[0], kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			for _, kid := range kidsToCheck[1:] {
 				p.Logger.WarnContext(ctx, "continue paging through legacy KIDs for kid free kao", "err", err)
 				if err == nil {
 					break
 				}
-				dek, err = p.GetSecurityProvider().Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
+				dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
 			}
 		}
 		if err != nil {
@@ -611,7 +611,7 @@ func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
 		return kidsToCheck
 	}
 
-	k, err := p.GetKeyIndex().ListKeys(ctx)
+	k, err := p.KeyDelegator.ListKeys(ctx)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "KeyIndex.ListKeys failed", "err", err)
 	} else {
@@ -673,7 +673,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			failAllKaos(requests, results, err400("invalid request"))
 			return "", results
 		}
-		if !p.ECTDFEnabled {
+		if !p.ECTDFEnabled || !p.PreviewFeatures.ECTDFEnabled {
 			p.Logger.ErrorContext(ctx, "ec rewrap not enabled")
 			failAllKaos(requests, results, err400("invalid request"))
 			return "", results
@@ -768,7 +768,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		return "", results
 	}
 
-	sessionKey, err := p.GetSecurityProvider().GenerateECSessionKey(ctx, clientPublicKey)
+	sessionKey, err := p.KeyDelegator.GenerateECSessionKey(ctx, clientPublicKey)
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure in GenerateNanoTDFSessionKey", "err", err)
 		failAllKaos(requests, results, err400("keypair mismatch"))
@@ -865,7 +865,7 @@ func (p *Provider) verifyNanoRewrapRequests(ctx context.Context, req *kaspb.Unsi
 			return nil, results
 		}
 
-		symmetricKey, err := p.GetSecurityProvider().DeriveKey(ctx, trust.KeyIdentifier(kid), header.EphemeralKey, ecCurve)
+		symmetricKey, err := p.KeyDelegator.DeriveKey(ctx, trust.KeyIdentifier(kid), header.EphemeralKey, ecCurve)
 		if err != nil {
 			failedKAORewrap(results, kao, fmt.Errorf("failed to generate symmetric key: %w", err))
 			return nil, results

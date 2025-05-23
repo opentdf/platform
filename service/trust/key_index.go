@@ -28,6 +28,9 @@ type KeyDetails interface {
 	// IsLegacy returns true if this is a legacy key that should only be used for decryption
 	IsLegacy() bool
 
+	// ExportPrivateKey exports the private key in the specified format
+	ExportPrivateKey() ([]byte, error)
+
 	// ExportPublicKey exports the public key in the specified format
 	ExportPublicKey(ctx context.Context, format KeyType) (string, error)
 

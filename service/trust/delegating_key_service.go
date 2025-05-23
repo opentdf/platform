@@ -71,11 +71,11 @@ func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier,
 		return nil, err
 	}
 
-	return manager.Decrypt(ctx, keyID, ciphertext, ephemeralPublicKey)
+	return manager.Decrypt(ctx, keyDetails, ciphertext, ephemeralPublicKey)
 }
 
-func (d *DelegatingKeyService) DeriveKey(ctx context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error) {
-	keyDetails, err := d.index.FindKeyByID(ctx, kasKID)
+func (d *DelegatingKeyService) DeriveKey(ctx context.Context, keyID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error) {
+	keyDetails, err := d.index.FindKeyByID(ctx, keyID)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (d *DelegatingKeyService) DeriveKey(ctx context.Context, kasKID KeyIdentifi
 		return nil, err
 	}
 
-	return manager.DeriveKey(ctx, kasKID, ephemeralPublicKeyBytes, curve)
+	return manager.DeriveKey(ctx, keyDetails, ephemeralPublicKeyBytes, curve)
 }
 
 func (d *DelegatingKeyService) GenerateECSessionKey(ctx context.Context, ephemeralPublicKey string) (Encapsulator, error) {

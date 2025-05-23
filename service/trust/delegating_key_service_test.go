@@ -18,16 +18,16 @@ func (m *MockKeyManager) Name() string {
 	return args.String(0)
 }
 
-func (m *MockKeyManager) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error) {
-	args := m.Called(ctx, keyID, ciphertext, ephemeralPublicKey)
+func (m *MockKeyManager) Decrypt(ctx context.Context, keyDetails KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error) {
+	args := m.Called(ctx, keyDetails, ciphertext, ephemeralPublicKey)
 	if a0, ok := args.Get(0).(ProtectedKey); ok {
 		return a0, args.Error(1)
 	}
 	return nil, args.Error(1)
 }
 
-func (m *MockKeyManager) DeriveKey(ctx context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error) {
-	args := m.Called(ctx, kasKID, ephemeralPublicKeyBytes, curve)
+func (m *MockKeyManager) DeriveKey(ctx context.Context, keyDetails KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error) {
+	args := m.Called(ctx, keyDetails, ephemeralPublicKeyBytes, curve)
 	if a0, ok := args.Get(0).(ProtectedKey); ok {
 		return a0, args.Error(1)
 	}
@@ -96,6 +96,11 @@ func (m *MockKeyDetails) Algorithm() string {
 func (m *MockKeyDetails) IsLegacy() bool {
 	args := m.Called()
 	return args.Bool(0)
+}
+
+func (m *MockKeyDetails) ExportPrivateKey() ([]byte, error) {
+	args := m.Called()
+	return args.Get(0).([]byte), args.Error(1)
 }
 
 func (m *MockKeyDetails) ExportPublicKey(ctx context.Context, format KeyType) (string, error) {

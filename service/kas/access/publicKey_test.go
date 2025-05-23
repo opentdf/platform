@@ -52,6 +52,10 @@ func (m *MockKeyDetails) IsLegacy() bool {
 	return m.legacy
 }
 
+func (m *MockKeyDetails) ExportPrivateKey() ([]byte, error) {
+	return nil, errors.New("not implemented for tests")
+}
+
 func (m *MockKeyDetails) ExportPublicKey(_ context.Context, format trust.KeyType) (string, error) {
 	switch format {
 	case trust.KeyTypeJWK:
@@ -117,11 +121,11 @@ func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, 
 	return keys, nil
 }
 
-func (m *MockSecurityProvider) Decrypt(_ context.Context, _ trust.KeyIdentifier, _, _ []byte) (trust.ProtectedKey, error) {
+func (m *MockSecurityProvider) Decrypt(_ context.Context, _ trust.KeyDetails, _, _ []byte) (trust.ProtectedKey, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ trust.KeyIdentifier, _ []byte, _ elliptic.Curve) (trust.ProtectedKey, error) {
+func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ trust.KeyDetails, _ []byte, _ elliptic.Curve) (trust.ProtectedKey, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
@@ -163,10 +167,11 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 	kasURI := urlHost(t)
 
 	// Create Provider with the mock security provider
+	delegator := trust.NewDelegatingKeyService(mockProvider)
+	delegator.RegisterKeyManager(mockProvider.Name(), func() (trust.KeyManager, error) { return mockProvider, nil })
 	kas := Provider{
-		URI:        *kasURI,
-		KeyIndex:   mockProvider,
-		KeyManager: mockProvider,
+		URI:          *kasURI,
+		KeyDelegator: delegator,
 		KASConfig: KASConfig{
 			Keyring: []CurrentKeyFor{
 				{
@@ -333,11 +338,16 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 	defer c.Close()
 	kasURI := urlHost(t)
 
+	inProcess := security.NewSecurityProviderAdapter(c, nil, nil)
+
+	delegator := trust.NewDelegatingKeyService(inProcess)
+	delegator.RegisterKeyManager(inProcess.Name(), func() (trust.KeyManager, error) { return inProcess, nil })
+
 	kas := Provider{
-		URI:        *kasURI,
-		KeyManager: security.NewSecurityProviderAdapter(c, nil, nil),
-		Logger:     logger.CreateTestLogger(),
-		Tracer:     noop.NewTracerProvider().Tracer(""),
+		URI:          *kasURI,
+		KeyDelegator: delegator,
+		Logger:       logger.CreateTestLogger(),
+		Tracer:       noop.NewTracerProvider().Tracer(""),
 	}
 
 	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{Fmt: "pkcs8"}})

@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -16,6 +17,7 @@ import (
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/trust"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var ErrNoActiveKeyForAlgorithm = errors.New("no active key found for specified algorithm")
@@ -37,6 +39,11 @@ type KeyAdapter struct {
 }
 
 func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, l *logger.Logger) *KeyIndexer {
+	// Check if https:// is added kasURI
+	if !strings.HasPrefix(kasURI, "https://") {
+		kasURI = "https://" + kasURI
+	}
+
 	return &KeyIndexer{
 		sdk:    sdk,
 		kasURI: kasURI,
@@ -209,6 +216,10 @@ func rsaPublicKeyAsJSON(_ context.Context, publicPEM string) (string, error) {
 // Repurpose of the StandardCrypto function
 func convertPEMToJWK(_ string) (string, error) {
 	return "", errors.New("convertPEMToJWK function is not implemented")
+}
+
+func (p *KeyAdapter) ExportPrivateKey() ([]byte, error) {
+	return protojson.Marshal(p.key.GetKey().GetPrivateKeyCtx())
 }
 
 func (p *KeyAdapter) ExportPublicKey(ctx context.Context, format trust.KeyType) (string, error) {

@@ -137,6 +137,10 @@ func (k *KeyDetailsAdapter) IsLegacy() bool {
 	return k.legacy
 }
 
+func (k *KeyDetailsAdapter) ExportPrivateKey() ([]byte, error) {
+	return nil, errors.New("private key export not supported")
+}
+
 func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format trust.KeyType) (string, error) {
 	kid := string(k.id)
 	switch format {
@@ -283,8 +287,8 @@ func (a *InProcessProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, err
 }
 
 // Decrypt implements the unified decryption method for both RSA and EC
-func (a *InProcessProvider) Decrypt(ctx context.Context, keyID trust.KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
-	kid := string(keyID)
+func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+	kid := string(keyDetails.ID())
 
 	// Try to determine the key type
 	keyType, err := a.determineKeyType(ctx, kid)
@@ -321,14 +325,14 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyID trust.KeyIdentifi
 }
 
 // DeriveKey generates a symmetric key for NanoTDF
-func (a *InProcessProvider) DeriveKey(_ context.Context, kasKID trust.KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
-	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(kasKID), ephemeralPublicKeyBytes, curve)
+func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
+	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(keyDetails.ID()), ephemeralPublicKeyBytes, curve)
 	return NewInProcessAESKey(k), err
 }
 
 // GenerateECSessionKey generates a session key for NanoTDF
 func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
-	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, versionSalt(), nil)
+	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
 }
 
 // Close releases any resources held by the provider

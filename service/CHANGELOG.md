@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.4](https://github.com/opentdf/platform/compare/service/v0.5.3...service/v0.5.4) (2025-05-23)
+
+
+### Features
+
+* **authz:** access pdp v2 with actions ([#2264](https://github.com/opentdf/platform/issues/2264)) ([7afefb7](https://github.com/opentdf/platform/commit/7afefb7ac051cc57e8a81dd260f24ac2ae7db246))
+* **policy:** Default Platform Keys ([#2254](https://github.com/opentdf/platform/issues/2254)) ([d7447fe](https://github.com/opentdf/platform/commit/d7447fe2604443b4c75c8e547acf414bf78af988))
+
 ## [0.5.3](https://github.com/opentdf/platform/compare/service/v0.5.2...service/v0.5.3) (2025-05-22)
 
 

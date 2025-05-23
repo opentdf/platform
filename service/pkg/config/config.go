@@ -14,6 +14,9 @@ import (
 // ChangeHook is a function invoked when the configuration changes.
 type ChangeHook func(configServices ServicesMap) error
 
+// ServiceRegistrationCompleteHook is a function invoked when all service registrations are complete.
+type ServiceRegistrationCompleteHook func(context.Context) error
+
 // Config structure holding all services.
 type ServicesMap map[string]ServiceConfig
 
@@ -47,6 +50,8 @@ type Config struct {
 	// Trace is for configuring open telemetry based tracing.
 	Trace tracing.Config `mapstructure:"trace"`
 
+	// onServiceRegistrationCompleteHooks is a list of functions to call when all service registrations are complete.
+	onServiceRegistrationCompleteHooks []ServiceRegistrationCompleteHook
 	// onConfigChangeHooks is a list of functions to call when the configuration changes.
 	onConfigChangeHooks []ChangeHook
 	// loaders is a list of configuration loaders.
@@ -110,6 +115,11 @@ func (c *Config) AddOnConfigChangeHook(hook ChangeHook) {
 	c.onConfigChangeHooks = append(c.onConfigChangeHooks, hook)
 }
 
+// AddOnServiceRegistrationCompleteHook adds a hook to the list of hooks to call when all service registrations are complete.
+func (c *Config) AddOnServiceRegistrationCompleteHook(hook ServiceRegistrationCompleteHook) {
+	c.onServiceRegistrationCompleteHooks = append(c.onServiceRegistrationCompleteHooks, hook)
+}
+
 // Watch starts watching the configuration for changes in all config loaders.
 func (c *Config) Watch(ctx context.Context) error {
 	if len(c.loaders) == 0 {
@@ -119,6 +129,17 @@ func (c *Config) Watch(ctx context.Context) error {
 		if err := loader.Watch(ctx, c, c.OnChange); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// RunRegistrationCompleteHooks triggers the service hooks that run once all services are live.
+func (c *Config) RunRegistrationCompleteHooks(ctx context.Context) error {
+	if len(c.onServiceRegistrationCompleteHooks) == 0 {
+		return nil
+	}
+	for _, hook := range c.onServiceRegistrationCompleteHooks {
+		hook(ctx)
 	}
 	return nil
 }

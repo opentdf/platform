@@ -29,15 +29,29 @@ type Service struct {
 
 type Config struct{}
 
+func OnCompleteServiceRegistration(as *Service) serviceregistry.OnCompleteServiceRegistrationHook {
+	return func(ctx context.Context) error {
+		// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
+		pdp, err := access.NewJustInTimePDP(context.Background(), as.logger, as.sdk)
+		if err != nil {
+			as.logger.Error("failed to create JIT PDP", slog.String("error", err.Error()))
+			panic(err)
+		}
+		as.pdp = pdp
+		return nil
+	}
+}
+
 func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler] {
 	as := new(Service)
 
 	return &serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[authzV2Connect.AuthorizationServiceHandler]{
-			Namespace:      "authorization",
-			Version:        "v2",
-			ServiceDesc:    &authzV2.AuthorizationService_ServiceDesc,
-			ConnectRPCFunc: authzV2Connect.NewAuthorizationServiceHandler,
+			Namespace:                     "authorization",
+			Version:                       "v2",
+			ServiceDesc:                   &authzV2.AuthorizationService_ServiceDesc,
+			ConnectRPCFunc:                authzV2Connect.NewAuthorizationServiceHandler,
+			OnCompleteServiceRegistration: OnCompleteServiceRegistration(as),
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authzV2Connect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				authZCfg := new(Config)
 
@@ -52,14 +66,6 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 
 				as.config = authZCfg
 				as.Tracer = srp.Tracer
-
-				// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
-				pdp, err := access.NewJustInTimePDP(context.Background(), as.logger, as.sdk)
-				if err != nil {
-					logger.Error("failed to create JIT PDP", slog.String("error", err.Error()))
-					panic(err)
-				}
-				as.pdp = pdp
 
 				logger.Debug("authorization v2 service register func")
 

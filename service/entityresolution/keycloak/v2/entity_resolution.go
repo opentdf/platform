@@ -65,7 +65,13 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger) (*E
 	return keycloakSVC, nil
 }
 
+var resolveEntitiesCache = make(map[string]*entityresolutionV2.ResolveEntitiesResponse)
+
 func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
+	if resp, ok := resolveEntitiesCache[req.Msg.String()]; ok {
+		return connect.NewResponse(resp), nil
+	}
+
 	ctx, span := s.Tracer.Start(ctx, "ResolveEntities")
 	defer span.End()
 
@@ -73,7 +79,13 @@ func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *con
 	return connect.NewResponse(&resp), err
 }
 
+var createEntityChainsFromTokensCache = make(map[string]*entityresolutionV2.CreateEntityChainsFromTokensResponse)
+
 func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
+	if resp, ok := createEntityChainsFromTokensCache[req.Msg.String()]; ok {
+		return connect.NewResponse(resp), nil
+	}
+
 	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainsFromTokens")
 	defer span.End()
 

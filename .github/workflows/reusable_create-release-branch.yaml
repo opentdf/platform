@@ -29,6 +29,5 @@ jobs:
         id: release-branch
         uses: opentdf/platform/.github/actions/release-branch@main
         with:
-          tag-prefix: "v"
           branch-prefix: "release/"
           github-token: ${{ steps.generate-token.outputs.token }}

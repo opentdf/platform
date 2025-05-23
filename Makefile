@@ -71,6 +71,8 @@ proto-generate:
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
 
+	go run ./sdk/internal/codegen
+
 connect-wrapper-generate:
 	go run ./sdk/internal/codegen
 

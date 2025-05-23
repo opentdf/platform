@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bufbuild/protovalidate-go"
+	"buf.build/go/protovalidate"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/stretchr/testify/suite"
 )

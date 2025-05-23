@@ -167,7 +167,7 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 	kasURI := urlHost(t)
 
 	// Create Provider with the mock security provider
-	delegator := trust.NewDelegatingKeyService(mockProvider)
+	delegator := trust.NewDelegatingKeyService(mockProvider, logger.CreateTestLogger())
 	delegator.RegisterKeyManager(mockProvider.Name(), func() (trust.KeyManager, error) { return mockProvider, nil })
 	kas := Provider{
 		URI:          *kasURI,
@@ -340,7 +340,7 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 
 	inProcess := security.NewSecurityProviderAdapter(c, nil, nil)
 
-	delegator := trust.NewDelegatingKeyService(inProcess)
+	delegator := trust.NewDelegatingKeyService(inProcess, logger.CreateTestLogger())
 	delegator.RegisterKeyManager(inProcess.Name(), func() (trust.KeyManager, error) { return inProcess, nil })
 
 	kas := Provider{

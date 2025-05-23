@@ -93,7 +93,7 @@ func TestListLegacyKeys_KeyIndexPopulated(t *testing.T) {
 	}
 	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{
 		keys: fakeKeys,
-	})
+	}, logger.CreateTestLogger())
 	p := &Provider{
 		Logger:       testLogger,
 		KeyDelegator: delegator,
@@ -104,7 +104,7 @@ func TestListLegacyKeys_KeyIndexPopulated(t *testing.T) {
 
 func TestListLegacyKeys_Empty(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
-	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{})
+	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{}, logger.CreateTestLogger())
 	p := &Provider{
 		Logger:       testLogger,
 		KeyDelegator: delegator,
@@ -117,7 +117,7 @@ func TestListLegacyKeys_KeyIndexError(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
 	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{
 		err: errors.New("fail"),
-	})
+	}, logger.CreateTestLogger())
 	p := &Provider{
 		Logger:       testLogger,
 		KeyDelegator: delegator,

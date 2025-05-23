@@ -5,6 +5,8 @@ import (
 	"crypto/elliptic"
 	"fmt"
 	"sync"
+
+	"github.com/opentdf/platform/service/logger"
 )
 
 type KeyManagerFactory func() (KeyManager, error)
@@ -24,15 +26,18 @@ type DelegatingKeyService struct {
 
 	defaultKeyManager KeyManager
 
+	l *logger.Logger
+
 	// Mutex to protect access to the manager cache
 	mutex sync.Mutex
 }
 
-func NewDelegatingKeyService(index KeyIndex) *DelegatingKeyService {
+func NewDelegatingKeyService(index KeyIndex, l *logger.Logger) *DelegatingKeyService {
 	return &DelegatingKeyService{
 		index:            index,
 		managerFactories: make(map[string]KeyManagerFactory),
 		managers:         make(map[string]KeyManager),
+		l:                l,
 	}
 }
 
@@ -46,7 +51,6 @@ func (d *DelegatingKeyService) SetDefaultMode(name string) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	d.defaultMode = name
-	d.defaultKeyManager = nil // Clear cached manager to pick up the new default
 }
 
 // Implementing KeyIndex methods
@@ -112,37 +116,77 @@ func (d *DelegatingKeyService) Close() {
 	for _, manager := range d.managers {
 		manager.Close()
 	}
+	d.defaultKeyManager = nil
 }
 
+// _defKM retrieves or initializes the default KeyManager.
+// It uses the `defaultMode` field to determine which manager is the default.
 func (d *DelegatingKeyService) _defKM() (KeyManager, error) {
+	d.mutex.Lock()
+	// Check if defaultKeyManager is already cached
 	if d.defaultKeyManager == nil {
-		manager, err := d.getKeyManager(d.defaultMode)
-		if err != nil {
-			return nil, err
+		// Default manager not cached, need to initialize it.
+		// Get the defaultMode name while still holding the lock.
+		defaultModeName := d.defaultMode
+		d.mutex.Unlock() // Unlock before calling getKeyManager to avoid re-entrant lock on the same goroutine.
+
+		if defaultModeName == "" {
+			return nil, fmt.Errorf("no default key manager mode configured")
 		}
+
+		// Get the manager instance for the defaultModeName.
+		// This call to getKeyManager will handle its own locking and,
+		// due to the check `if name == currentDefaultMode` in getKeyManager,
+		// will error out if `defaultModeName` itself is not found, preventing recursion.
+		manager, err := d.getKeyManager(defaultModeName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get default key manager for mode '%s': %w", defaultModeName, err)
+		}
+
+		// Cache the retrieved default manager.
+		d.mutex.Lock()
 		d.defaultKeyManager = manager
+		d.mutex.Unlock()
+		return manager, nil
 	}
-	return d.defaultKeyManager, nil
+
+	// Default manager was already cached
+	managerToReturn := d.defaultKeyManager
+	d.mutex.Unlock()
+	return managerToReturn, nil
 }
 
 func (d *DelegatingKeyService) getKeyManager(name string) (KeyManager, error) {
 	d.mutex.Lock()
-	defer d.mutex.Unlock()
 
+	// Check For Manager First
 	if manager, exists := d.managers[name]; exists {
+		d.mutex.Unlock()
 		return manager, nil
 	}
 
-	factory, exists := d.managerFactories[name]
-	if !exists {
-		return nil, fmt.Errorf("no key manager registered with name: %s", name)
+	// Check Factory
+	factory, factoryExists := d.managerFactories[name]
+	// Read defaultMode under lock for comparison.
+	currentDefaultMode := d.defaultMode
+	d.mutex.Unlock()
+
+	if factoryExists {
+		managerFromFactory, err := factory()
+		if err != nil {
+			return nil, fmt.Errorf("factory for key manager '%s' failed: %w", name, err)
+		}
+
+		d.mutex.Lock()
+		d.managers[name] = managerFromFactory // Cache the newly created manager
+		d.mutex.Unlock()
+		return managerFromFactory, nil
 	}
 
-	manager, err := factory()
-	if err != nil {
-		return nil, err
+	if name == currentDefaultMode && name != "" {
+		return nil, fmt.Errorf("configured default key manager '%s' not found (no factory/cache entry)", name)
 	}
 
-	d.managers[name] = manager
-	return manager, nil
+	d.l.Debug("Key manager not found by name, falling back to default", "requestedName", name, "configuredDefaultName", currentDefaultMode)
+	return d._defKM()
 }

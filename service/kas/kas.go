@@ -91,7 +91,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				if kasCfg.PreviewFeatures.KeyManagement {
 					srp.Logger.Info("Key management is enabled")
 					// Configure new delegation service
-					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURLString, srp.Logger))
+					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURLString, srp.Logger), srp.Logger)
 					for _, manager := range srp.KeyManagers {
 						p.KeyDelegator.RegisterKeyManager(manager.Name(), func() (trust.KeyManager, error) {
 							return manager, nil
@@ -99,7 +99,10 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					}
 
 					// Register Basic Key Manager
-					bm := security.NewBasicManager(srp.Logger.With("process", "basic-key-manager"), kasCfg.RootKey)
+					bm, err := security.NewBasicManager(srp.Logger.With("process", "basic-key-manager"), kasCfg.RootKey)
+					if err != nil {
+						panic(err)
+					}
 					p.KeyDelegator.RegisterKeyManager(bm.Name(), func() (trust.KeyManager, error) {
 						return bm, nil
 					})
@@ -113,7 +116,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 
 					inProcessService := p.InitSecurityProviderAdapter()
 
-					p.KeyDelegator = trust.NewDelegatingKeyService(inProcessService)
+					p.KeyDelegator = trust.NewDelegatingKeyService(inProcessService, srp.Logger)
 					p.KeyDelegator.RegisterKeyManager(inProcessService.Name(), func() (trust.KeyManager, error) {
 						return inProcessService, nil
 					})

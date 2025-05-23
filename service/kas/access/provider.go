@@ -40,7 +40,7 @@ type KASConfig struct {
 	// Deprecated
 	RSACertID string `mapstructure:"rsacertid" json:"rsacertid"`
 
-	RootKey []byte `mapstructure:"root_key" json:"root_key"`
+	RootKey string `mapstructure:"root_key" json:"root_key"`
 
 	// Enables experimental EC rewrap support in TDFs
 	// Enabling is required to parse KAOs with the `ec-wrapped` type,

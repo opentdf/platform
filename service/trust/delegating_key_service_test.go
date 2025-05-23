@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"testing"
 
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -186,7 +187,7 @@ type DelegatingKeyServiceTestSuite struct {
 
 func (suite *DelegatingKeyServiceTestSuite) SetupTest() {
 	suite.mockIndex = &MockKeyIndex{}
-	suite.service = NewDelegatingKeyService(suite.mockIndex)
+	suite.service = NewDelegatingKeyService(suite.mockIndex, logger.CreateTestLogger())
 	suite.mockManagerA = &MockKeyManager{}
 	suite.mockManagerB = &MockKeyManager{}
 }

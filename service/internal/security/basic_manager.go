@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -32,7 +33,7 @@ func (b *BasicManager) Name() string {
 	return basicManagerName
 }
 
-func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+func (b *BasicManager) Decrypt(_ context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
 	// Implementation of Decrypt method
 
 	// Get Private Key
@@ -73,7 +74,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 	case policy.Algorithm_ALGORITHM_EC_P256.String(), policy.Algorithm_ALGORITHM_EC_P384.String(), policy.Algorithm_ALGORITHM_EC_P521.String():
 		ecDecryptor, ok := decrypter.(*ocrypto.ECDecryptor)
 		if !ok {
-			return nil, fmt.Errorf("failed to cast to ECDecryptor")
+			return nil, errors.New("failed to cast to ECDecryptor")
 		}
 		plaintext, err := ecDecryptor.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
 		if err != nil {
@@ -85,7 +86,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 	return nil, fmt.Errorf("unsupported algorithm: %s", keyDetails.Algorithm())
 }
 
-func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
+func (b *BasicManager) DeriveKey(_ context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
 	// Implementation of DeriveKey method
 	privateKeyCtx, err := keyDetails.ExportPrivateKey()
 	if err != nil {
@@ -130,12 +131,16 @@ func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetail
 	return NewInProcessAESKey(key), nil
 }
 
-func (b *BasicManager) GenerateECSessionKey(ctx context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
+func (b *BasicManager) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
 	// Implementation of GenerateECSessionKey method
 	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
 }
 
 func (b *BasicManager) Close() {
-	// Implementation of Close method
+	// Zero out the root key to minimize its time in memory.
+	for i := range b.rootKey {
+		b.rootKey[i] = 0
+	}
+	b.rootKey = nil
 	return
 }

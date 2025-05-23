@@ -144,16 +144,27 @@ The database configuration is used to define how the application connects to its
 
 Root level key `db`
 
-| Field          | Description                                   | Default     | Environment Variables |
-| -------------- | --------------------------------------------- | ----------- | --------------------- |
-| `host`         | The host address for the database.            | `localhost` | OPENTDF_DB_HOST       |
-| `port`         | The port number for the database.             | `5432`      | OPENTDF_DB_PORT       |
-| `database`     | The name of the database.                     | `opentdf`   | OPENTDF_DB_DATABASE   |
-| `user`         | The username for the database.                | `postgres`  | OPENTDF_DB_USER       |
-| `password`     | The password for the database.                | `changeme`  | OPENTDF_DB_PASSWORD   |
-| `sslmode`      | The ssl mode for the database                 | `prefer`    | OPENTDF_DB_SSLMODE    |
-| `schema`       | The schema for the database.                  | `opentdf`   | OPENTDF_DB_SCHEMA     |
-| `runMigration` | Whether to run the database migration or not. | `true`      | OPENTDF_DB_RUNMIGRATION |
+| Field                                  | Description                                      | Default     | Environment Variables                           |
+| -------------------------------------- | ------------------------------------------------ | ----------- | ----------------------------------              |
+| `host`                                 | The host address for the database.               | `localhost` | OPENTDF_DB_HOST                                 |
+| `port`                                 | The port number for the database.                | `5432`      | OPENTDF_DB_PORT                                 |
+| `database`                             | The name of the database.                        | `opentdf`   | OPENTDF_DB_DATABASE                             |
+| `user`                                 | The username for the database.                   | `postgres`  | OPENTDF_DB_USER                                 |
+| `password`                             | The password for the database.                   | `changeme`  | OPENTDF_DB_PASSWORD                             |
+| `sslmode`                              | The ssl mode for the database                    | `prefer`    | OPENTDF_DB_SSLMODE                              |
+| `schema`                               | The schema for the database.                     | `opentdf`   | OPENTDF_DB_SCHEMA                               |
+| `runMigration`                         | Whether to run the database migration or not.    | `true`      | OPENTDF_DB_RUNMIGRATION                         |
+| `connect_timeout_seconds`              | Connection timeout duration (seconds).           | `15`         | OPENTDF_DB_CONNECT_TIMEOUT_SECONDS              |
+| `pool`                                 | Pool configuration settings.                     |             |                                                 |
+| `pool.max_connection_count`            | Maximum number of connections per pool.          | `4`         | OPENTDF_DB_POOL_MAX_CONNECTION_COUNT            |
+| `pool.min_connection_count`            | Minimum number of connections per pool.          | `0`         | OPENTDF_DB_POOL_MIN_CONNECTION_COUNT            |
+| `pool.max_connection_lifetime_seconds` | Maximum seconds per connection lifetime.         | `3600`      | OPENTDF_DB_POOL_MAX_CONNECTION_LIFETIME_SECONDS |
+| `pool.min_idle_connections_count`      | Minimum number of idle connections per pool.     | `0`         | OPENTDF_DB_POOL_MIN_IDLE_CONNECTIONS_COUNT      |
+| `pool.max_connection_idle_seconds`     | Maximum seconds allowed for idle connection.     | `1800`      | OPENTDF_DB_POOL_MAX_CONNECTION_IDLE_SECONDS     |
+| `pool.health_check_period_seconds`     | Interval seconds per health check.               | `60`        | OPENTDF_DB_POOL_HEALTH_CHECK_PERIOD_SECONDS     |
+
+
+
 
 Example:
 
@@ -167,6 +178,14 @@ db:
   sslmode: require
   schema: opentdf
   runMigration: false
+  connect_timeout_seconds: 15
+  pool:
+    max_connection_count: 4
+    min_connection_count: 0
+    max_connection_lifetime_seconds: 3600
+    min_idle_connections_count: 0
+    max_connection_idle_seconds: 1800
+    health_check_period_seconds: 60
 ```
 
 ### Tracing Configuration

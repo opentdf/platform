@@ -1068,6 +1068,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.GetBaseKeyRequest"><span class="badge">M</span>GetBaseKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.GetBaseKeyResponse"><span class="badge">M</span>GetBaseKeyResponse</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.GetKeyAccessServerRequest"><span class="badge">M</span>GetKeyAccessServerRequest</a>
                 </li>
               
@@ -1169,6 +1177,22 @@
               
                 <li>
                   <a href="#policy.kasregistry.RotatedResources"><span class="badge">M</span>RotatedResources</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.SetBaseKeyRequest"><span class="badge">M</span>SetBaseKeyRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.SetBaseKeyResponse"><span class="badge">M</span>SetBaseKeyResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.SimpleKasKey"><span class="badge">M</span>SimpleKasKey</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.SimpleKasPublicKey"><span class="badge">M</span>SimpleKasPublicKey</a>
                 </li>
               
                 <li>
@@ -9080,6 +9104,37 @@ Mutable metadata for the key </p></td>
 
         
       
+        <h3 id="policy.kasregistry.GetBaseKeyRequest">GetBaseKeyRequest</h3>
+        <p></p>
+
+        
+
+        
+      
+        <h3 id="policy.kasregistry.GetBaseKeyResponse">GetBaseKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>base_key</td>
+                  <td><a href="#policy.kasregistry.SimpleKasKey">SimpleKasKey</a></td>
+                  <td></td>
+                  <td><p>The current base key </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.GetKeyAccessServerRequest">GetKeyAccessServerRequest</h3>
         <p></p>
 
@@ -10102,6 +10157,137 @@ Validation handled by message-level CEL </p></td>
 
         
       
+        <h3 id="policy.kasregistry.SetBaseKeyRequest">SetBaseKeyRequest</h3>
+        <p>Sets the specified key as the base key for the Key Access Server</p><p>Note: The key must be active.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Current Key UUID tp be set as default </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.kasregistry.KasKeyIdentifier">KasKeyIdentifier</a></td>
+                  <td></td>
+                  <td><p>Alternative way to specify the key using KAS ID and Key ID </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.SetBaseKeyResponse">SetBaseKeyResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>new_base_key</td>
+                  <td><a href="#policy.kasregistry.SimpleKasKey">SimpleKasKey</a></td>
+                  <td></td>
+                  <td><p>The key that was set as base </p></td>
+                </tr>
+              
+                <tr>
+                  <td>previous_base_key</td>
+                  <td><a href="#policy.kasregistry.SimpleKasKey">SimpleKasKey</a></td>
+                  <td></td>
+                  <td><p>The previous base key, if any </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.SimpleKasKey">SimpleKasKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The URL of the Key Access Server </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key</td>
+                  <td><a href="#policy.kasregistry.SimpleKasPublicKey">SimpleKasPublicKey</a></td>
+                  <td></td>
+                  <td><p>The public key of the Key that belongs to the KAS </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.SimpleKasPublicKey">SimpleKasPublicKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>algorithm</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pem</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.UpdateKeyAccessServerRequest">UpdateKeyAccessServerRequest</h3>
         <p></p>
 
@@ -10427,6 +10613,20 @@ Request to create a new key in the Key Access Service.</p></td>
                 <td><a href="#policy.kasregistry.RotateKeyRequest">RotateKeyRequest</a></td>
                 <td><a href="#policy.kasregistry.RotateKeyResponse">RotateKeyResponse</a></td>
                 <td><p>Request to rotate a key in the Key Access Service.</p></td>
+              </tr>
+            
+              <tr>
+                <td>SetBaseKey</td>
+                <td><a href="#policy.kasregistry.SetBaseKeyRequest">SetBaseKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.SetBaseKeyResponse">SetBaseKeyResponse</a></td>
+                <td><p>Request to set the default a default kas key.</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetBaseKey</td>
+                <td><a href="#policy.kasregistry.GetBaseKeyRequest">GetBaseKeyRequest</a></td>
+                <td><a href="#policy.kasregistry.GetBaseKeyResponse">GetBaseKeyResponse</a></td>
+                <td><p>Get Default kas keys</p></td>
               </tr>
             
           </tbody>

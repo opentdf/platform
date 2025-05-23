@@ -1393,3 +1393,53 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 		})
 	}
 }
+
+func Test_SetDefault_Keys(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *kasregistry.SetBaseKeyRequest
+		expectError  bool
+		errorMessage string
+	}{
+		{
+			name:         "Invalid Request (empty)",
+			req:          &kasregistry.SetBaseKeyRequest{},
+			expectError:  true,
+			errorMessage: errMessageRequired,
+		},
+		{
+			name: "Valid Request (nano)",
+			req: &kasregistry.SetBaseKeyRequest{
+				ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
+					Id: validUUID,
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Valid Request (ztdf)",
+			req: &kasregistry.SetBaseKeyRequest{
+				ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
+					Id: validUUID,
+				},
+			},
+			expectError: false,
+		},
+	}
+
+	v := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tc.name)
+				if tc.errorMessage != "" {
+					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
+				}
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
+	}
+}

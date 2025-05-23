@@ -100,20 +100,6 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_ProviderConfigInvalid_Fail() {
 	s.Require().ErrorContains(err, db.ErrTextNotFound)
 }
 
-func (s *KasRegistryKeySuite) Test_CreateKasKey_ActiveKeyForAlgoExists_Fail() {
-	req := kasregistry.CreateKeyRequest{
-		KasId:        s.kasKeys[0].KeyAccessServerID,
-		KeyId:        validKeyID1,
-		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
-	}
-	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
-	s.Require().Error(err)
-	s.Require().ErrorContains(err, "cannot create a new key")
-	s.Nil(resp)
-}
-
 func (s *KasRegistryKeySuite) Test_CreateKasKey_NonBase64Ctx_Fail() {
 	nonBase64Ctx := `{"pem: "value"}`
 	req := kasregistry.CreateKeyRequest{
@@ -306,17 +292,6 @@ func (s *KasRegistryKeySuite) Test_UpdateKey_InvalidKeyId_Fails() {
 	s.Require().ErrorContains(err, db.ErrUUIDInvalid.Error())
 }
 
-func (s *KasRegistryKeySuite) Test_UpdateKey_AlreadyActiveKeyWithSameAlgo_Fails() {
-	req := kasregistry.UpdateKeyRequest{
-		Id:        s.kasKeys[1].ID,
-		KeyStatus: policy.KeyStatus_KEY_STATUS_ACTIVE,
-	}
-	resp, err := s.db.PolicyClient.UpdateKey(s.ctx, &req)
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorContains(err, "key cannot be updated")
-}
-
 func (s *KasRegistryKeySuite) Test_UpdateKeyStatus_Success() {
 	req := kasregistry.UpdateKeyRequest{
 		Id:        s.kasKeys[1].ID,
@@ -428,6 +403,17 @@ func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Limit_Success() {
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespaces_Success() {
+	attrValueIDs := make([]string, 0)
+	attrDefIDs := make([]string, 0)
+	namespaceIDs := make([]string, 0)
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+
+	defer func() {
+		s.cleanupAttrs(attrValueIDs, namespaceIDs, attrDefIDs)
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
@@ -436,10 +422,15 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
 	namespaceMap := s.setupNamespaceForRotate(1, 1, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
+	namespaceIDs = append(namespaceIDs, namespaceMap[rotateKey][0].GetId(), namespaceMap[nonRotateKey][0].GetId())
 	attributeMap := s.setupAttributesForRotate(1, 1, 1, 1, namespaceMap, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
+	attrDefIDs = append(attrDefIDs, attributeMap[rotateKey][0].GetId(), attributeMap[nonRotateKey][0].GetId())
+	attrValueIDs = append(attrValueIDs, attributeMap[rotateKey][0].GetValues()[0].GetId(), attributeMap[nonRotateKey][0].GetValues()[0].GetId())
 
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
@@ -455,6 +446,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
 
 	// Validate the rotated key
 	s.Equal(newKey.GetKeyId(), rotatedInKey.GetKasKey().GetKey().GetKeyId())
@@ -527,20 +519,20 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	s.Require().NoError(err)
 	s.Len(nonUpdatedAttrValue.GetKasKeys(), 1)
 	s.Equal(keyMap[nonRotateKey].GetKey().GetId(), nonUpdatedAttrValue.GetKasKeys()[0].GetKey().GetId())
-
-	// Clean up
-	s.cleanupRotate(
-		[]string{attrValue.GetId(), nonUpdatedAttrValue.GetId()},
-		[]string{namespaceMap[rotateKey][0].GetId(), namespaceMap[nonRotateKey][0].GetId()},
-		[]string{attributeMap[rotateKey][0].GetId(), attributeMap[nonRotateKey][0].GetId()},
-		[]string{keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId(), rotatedInKey.GetKasKey().GetKey().GetId()},
-		[]string{kas.GetId()},
-	)
 }
 
-// Should probably add a test where there are more than one of each attribute granularity to be rotated and make sure I get them
-// For example, 2 attributes, 0 namespaces, 1 attribute value.
 func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_AttributeValue_Success() {
+	attrValueIDs := make([]string, 0)
+	attrDefIDs := make([]string, 0)
+	namespaceIDs := make([]string, 0)
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+
+	defer func() {
+		s.cleanupAttrs(attrValueIDs, namespaceIDs, attrDefIDs)
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	// Create a new KAS server
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
@@ -549,10 +541,14 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
 	namespaceMap := s.setupNamespaceForRotate(2, 2, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
+	namespaceIDs = append(namespaceIDs, namespaceMap[rotateKey][0].GetId(), namespaceMap[rotateKey][1].GetId(), namespaceMap[nonRotateKey][0].GetId(), namespaceMap[nonRotateKey][1].GetId())
 	attributeMap := s.setupAttributesForRotate(2, 2, 0, 0, namespaceMap, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
+	attrDefIDs = append(attrDefIDs, attributeMap[rotateKey][0].GetId(), attributeMap[nonRotateKey][0].GetId(), attributeMap[rotateKey][1].GetId(), attributeMap[nonRotateKey][1].GetId())
 
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
@@ -568,6 +564,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
 
 	// Validate the rotated key
 	s.Equal(newKey.GetKeyId(), rotatedInKey.GetKasKey().GetKey().GetKeyId())
@@ -648,33 +645,15 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 		s.Len(nonUpdatedAttr.GetKasKeys(), 1)
 		s.Equal(keyMap[nonRotateKey].GetKey().GetId(), nonUpdatedAttr.GetKasKeys()[0].GetKey().GetId())
 	}
-
-	// Clean up
-	namespaceIDs := make([]string, 0)
-	attributeIDs := make([]string, 0)
-	for _, ns := range namespaceMap[rotateKey] {
-		namespaceIDs = append(namespaceIDs, ns.GetId())
-	}
-	for _, ns := range namespaceMap[nonRotateKey] {
-		namespaceIDs = append(namespaceIDs, ns.GetId())
-	}
-	for _, attr := range attributeMap[rotateKey] {
-		attributeIDs = append(attributeIDs, attr.GetId())
-	}
-	for _, attr := range attributeMap[nonRotateKey] {
-		attributeIDs = append(attributeIDs, attr.GetId())
-	}
-
-	s.cleanupRotate(
-		[]string{},
-		namespaceIDs,
-		attributeIDs,
-		[]string{keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId(), rotatedInKey.GetKasKey().GetKey().GetId()},
-		[]string{kas.GetId()},
-	)
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
 	kasReq := kasregistry.CreateKeyAccessServerRequest{
 		Name: "test_rotate_key_kas",
 		Uri:  "https://test-rotate-key.opentdf.io",
@@ -682,8 +661,10 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
 	s.Require().NoError(err)
 	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
 
 	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
@@ -694,9 +675,16 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 			WrappedKey: keyCtx,
 		},
 	}
+
+	// Ensure there is no default key mapping
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
+	s.Require().NoError(err)
+	s.Empty(baseKey)
+
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
 	s.Equal(newKey.GetKeyId(), rotatedInKey.GetKasKey().GetKey().GetKeyId())
 	s.Equal(newKey.GetAlgorithm(), rotatedInKey.GetKasKey().GetKey().GetKeyAlgorithm())
 	s.Equal(newKey.GetKeyMode(), rotatedInKey.GetKasKey().GetKey().GetKeyMode())
@@ -718,18 +706,319 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 	s.Require().NoError(err)
 	s.Equal(policy.KeyStatus_KEY_STATUS_INACTIVE, oldKey.GetKey().GetKeyStatus())
 
-	// Clean up
-	s.cleanupRotate(
-		[]string{},
-		[]string{},
-		[]string{},
-		[]string{
-			keyMap[rotateKey].GetKey().GetId(),
-			keyMap[nonRotateKey].GetKey().GetId(),
-			rotatedInKey.GetKasKey().GetKey().GetId(),
+	// Ensure there are no default kas keys after rotation
+	baseKey, err = s.db.PolicyClient.GetBaseKey(s.ctx)
+	s.Require().NoError(err)
+	s.Empty(baseKey)
+}
+
+func (s *KasRegistryKeySuite) Test_RotateKey_NoBaseKeyRotated_Success() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_rotate_key_kas",
+		Uri:  "https://test-rotate-key.opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
+
+	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
+	newKey := kasregistry.RotateKeyRequest_NewKey{
+		KeyId:        "new_key_id",
+		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+			KeyId:      validKeyID1,
+			WrappedKey: keyCtx,
 		},
-		[]string{kas.GetId()},
-	)
+	}
+	_, err = s.db.PolicyClient.SetBaseKey(s.ctx, &kasregistry.SetBaseKeyRequest{
+		ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
+			Id: keyMap[nonRotateKey].GetKey().GetId(),
+		},
+	})
+	s.Require().NoError(err)
+
+	// Ensure there is no default key mapping
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(baseKey)
+
+	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
+	s.Require().NoError(err)
+	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
+
+	// Check that the rotated in key is now the ZTDF default key.
+	baseKey, err = s.db.PolicyClient.GetBaseKey(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(baseKey)
+	s.Equal(keyMap[nonRotateKey].GetKey().GetKeyId(), baseKey.GetPublicKey().GetKid())
+}
+
+func (s *KasRegistryKeySuite) Test_RotateKey_BaseKeyRotated_Success() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_rotate_key_kas",
+		Uri:  "https://test-rotate-key.opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
+
+	keyMap := s.setupKeysForRotate(kas.GetId())
+	keyIDs = append(keyIDs, keyMap[rotateKey].GetKey().GetId(), keyMap[nonRotateKey].GetKey().GetId())
+	newKey := kasregistry.RotateKeyRequest_NewKey{
+		KeyId:        "new_key_id",
+		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+			KeyId:      validKeyID1,
+			WrappedKey: keyCtx,
+		},
+	}
+
+	// Set default key mapping
+	_, err = s.db.PolicyClient.SetBaseKey(s.ctx, &kasregistry.SetBaseKeyRequest{
+		ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
+			Id: keyMap[rotateKey].GetKey().GetId(),
+		},
+	})
+	s.Require().NoError(err)
+
+	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyMap[rotateKey], &newKey)
+	s.Require().NoError(err)
+	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
+
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NotNil(baseKey)
+	s.Equal(rotatedInKey.GetKasKey().GetKey().GetKeyId(), baseKey.GetPublicKey().GetKid())
+}
+
+func (s *KasRegistryKeySuite) Test_SetBaseKey_KasKeyNotFound_Fails() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	// Create a new KAS server
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_default_key_kas",
+		Uri:  "https://test-default-key.opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
+
+	// Create a key for the KAS
+	keyReq := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "default_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.KasPublicKeyCtx{
+			Pem: keyCtx,
+		},
+		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+			KeyId:      validKeyID1,
+			WrappedKey: keyCtx,
+		},
+	}
+	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+	s.Require().NoError(err)
+	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
+
+	// Ensure there is no default key mapping
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
+	s.Require().NoError(err)
+	s.Require().Nil(baseKey)
+
+	// Set default key mapping
+	_, err = s.db.PolicyClient.SetBaseKey(s.ctx, &kasregistry.SetBaseKeyRequest{
+		ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
+			Id: uuid.NewString(),
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, "not found")
+}
+
+func (s *KasRegistryKeySuite) Test_SetBaseKey_Insert_Success() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	// Create a new KAS server
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_default_key_kas",
+		Uri:  "https://test-default-key.opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
+
+	// Create a key for the KAS
+	keyReq := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "default_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.KasPublicKeyCtx{
+			Pem: keyCtx,
+		},
+		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+			KeyId:      validKeyID1,
+			WrappedKey: keyCtx,
+		},
+	}
+	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+	s.Require().NoError(err)
+	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
+
+	// Ensure there is no default key mapping
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
+	s.Require().NoError(err)
+	s.Require().Nil(baseKey)
+
+	// Set default key mapping
+	newBaseKey, err := s.db.PolicyClient.SetBaseKey(s.ctx, &kasregistry.SetBaseKeyRequest{
+		ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
+			Id: key.GetKasKey().GetKey().GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(newBaseKey)
+	s.Nil(newBaseKey.GetPreviousBaseKey())
+	s.Equal(key.GetKasKey().GetKey().GetKeyId(), newBaseKey.GetNewBaseKey().GetPublicKey().GetKid())
+}
+
+func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetPublicKeyOnlyKey_Fails() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	// Create a new KAS server
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_default_key_kas",
+		Uri:  "https://test-default-key.opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
+
+	// Create a key for the KAS
+	keyReq := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "default_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
+		PublicKeyCtx: &policy.KasPublicKeyCtx{
+			Pem: keyCtx,
+		},
+	}
+	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+	s.Require().NoError(err)
+	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
+
+	// Ensure there is no default key mapping
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
+	s.Require().NoError(err)
+	s.Require().Nil(baseKey)
+
+	// Set default key mapping
+	_, err = s.db.PolicyClient.SetBaseKey(s.ctx, &kasregistry.SetBaseKeyRequest{
+		ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
+			Id: key.GetKasKey().GetKey().GetId(),
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, "KEY_MODE_PUBLIC_KEY_ONLY as default key")
+}
+
+func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetInactiveKey_Fails() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	// Create a new KAS server
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_default_key_kas",
+		Uri:  "https://test-default-key.opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
+
+	// Create a key for the KAS
+	keyReq := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "default_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.KasPublicKeyCtx{
+			Pem: keyCtx,
+		},
+		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+			KeyId:      validKeyID1,
+			WrappedKey: keyCtx,
+		},
+	}
+	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+	s.Require().NoError(err)
+	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
+
+	// Ensure there is no default key mapping
+	baseKey, err := s.db.PolicyClient.GetBaseKey(s.ctx)
+	s.Require().NoError(err)
+	s.Require().Nil(baseKey)
+
+	// Update the key status to inactive
+	_, err = s.db.PolicyClient.UpdateKey(s.ctx, &kasregistry.UpdateKeyRequest{
+		Id:        key.GetKasKey().GetKey().GetId(),
+		KeyStatus: policy.KeyStatus_KEY_STATUS_INACTIVE,
+	})
+	s.Require().NoError(err)
+
+	// Set default key mapping
+	_, err = s.db.PolicyClient.SetBaseKey(s.ctx, &kasregistry.SetBaseKeyRequest{
+		ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
+			Id: key.GetKasKey().GetKey().GetId(),
+		},
+	})
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, "cannot set key of status")
 }
 
 func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*policy.KasKey {
@@ -737,7 +1026,7 @@ func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*polic
 	keyReq := kasregistry.CreateKeyRequest{
 		KasId:        kasID,
 		KeyId:        "original_key_id_to_rotate",
-		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P384,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 		PublicKeyCtx: &policy.KasPublicKeyCtx{
 			Pem: keyCtx,
@@ -867,7 +1156,7 @@ func (s *KasRegistryKeySuite) setupAttributesForRotate(numAttrsToRotate, numAttr
 			attrValueNames := make([]string, 0)
 			if i-numAttrValuesToRotate == 0 {
 				// Create all the attribute values for the first attribute
-				for j := 0; j < numAttrValuesToRotate; j++ {
+				for j := 0; j < numAttrsToNotRotate; j++ {
 					attrValueNames = append(attrValueNames, nonRotatePrefix+uuid.NewString())
 				}
 			}
@@ -921,7 +1210,7 @@ func (s *KasRegistryKeySuite) setupAttributesForRotate(numAttrsToRotate, numAttr
 	}
 }
 
-func (s *KasRegistryKeySuite) cleanupRotate(attrValueIDs []string, namespaceIDs []string, attributeIDs []string, keyIDs []string, keyAccessServerIDs []string) {
+func (s *KasRegistryKeySuite) cleanupAttrs(attrValueIDs []string, namespaceIDs []string, attributeIDs []string) {
 	for _, id := range attrValueIDs {
 		_, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, id)
 		s.Require().NoError(err)
@@ -934,6 +1223,12 @@ func (s *KasRegistryKeySuite) cleanupRotate(attrValueIDs []string, namespaceIDs 
 		_, err := s.db.PolicyClient.DeleteAttribute(s.ctx, id)
 		s.Require().NoError(err)
 	}
+}
+
+func (s *KasRegistryKeySuite) cleanupKeys(keyIDs []string, keyAccessServerIDs []string) {
+	err := s.db.PolicyClient.DeleteAllBaseKeys(s.ctx)
+	s.Require().NoError(err)
+
 	for _, id := range keyIDs {
 		_, err := s.db.PolicyClient.DeleteKey(s.ctx, id)
 		s.Require().NoError(err)

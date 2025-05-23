@@ -433,6 +433,15 @@
         }
       }
     },
+    "kasregistryGetBaseKeyResponse": {
+      "type": "object",
+      "properties": {
+        "baseKey": {
+          "$ref": "#/definitions/kasregistrySimpleKasKey",
+          "title": "The current base key"
+        }
+      }
+    },
     "kasregistryGetKeyAccessServerResponse": {
       "type": "object",
       "properties": {
@@ -605,6 +614,46 @@
         }
       },
       "title": "All resources that were rotated as part of the key rotation process"
+    },
+    "kasregistrySetBaseKeyResponse": {
+      "type": "object",
+      "properties": {
+        "newBaseKey": {
+          "$ref": "#/definitions/kasregistrySimpleKasKey",
+          "title": "The key that was set as base"
+        },
+        "previousBaseKey": {
+          "$ref": "#/definitions/kasregistrySimpleKasKey",
+          "title": "The previous base key, if any"
+        }
+      }
+    },
+    "kasregistrySimpleKasKey": {
+      "type": "object",
+      "properties": {
+        "kasUri": {
+          "type": "string",
+          "title": "The URL of the Key Access Server"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/kasregistrySimpleKasPublicKey",
+          "title": "The public key of the Key that belongs to the KAS"
+        }
+      }
+    },
+    "kasregistrySimpleKasPublicKey": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string"
+        },
+        "kid": {
+          "type": "string"
+        },
+        "pem": {
+          "type": "string"
+        }
+      }
     },
     "kasregistryUpdateKeyAccessServerResponse": {
       "type": "object",

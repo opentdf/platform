@@ -31,16 +31,31 @@ func RegisterClaimsERS(_ config.ServiceConfig, logger *logger.Logger) (EntityRes
 	return claimsSVC, nil
 }
 
+// var resolveEntitiesCache = make(map[*entityresolutionV2.ResolveEntitiesRequest]*entityresolutionV2.ResolveEntitiesResponse)
+var resolveEntitiesCache = make(map[string]*entityresolutionV2.ResolveEntitiesResponse)
+
 func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
+	if resp, ok := resolveEntitiesCache[req.Msg.String()]; ok {
+		return connect.NewResponse(resp), nil
+	}
 	resp, err := EntityResolution(ctx, req.Msg, s.logger)
+	resolveEntitiesCache[req.Msg.String()] = &resp
 	return connect.NewResponse(&resp), err
 }
 
+// var createEntityChainsFromTokensCache = make(map[*entityresolutionV2.CreateEntityChainsFromTokensRequest]*entityresolutionV2.CreateEntityChainsFromTokensResponse)
+var createEntityChainsFromTokensCache = make(map[string]*entityresolutionV2.CreateEntityChainsFromTokensResponse)
+
 func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
+	if resp, ok := createEntityChainsFromTokensCache[req.Msg.String()]; ok {
+		return connect.NewResponse(resp), nil
+	}
+
 	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainsFromTokens")
 	defer span.End()
 
 	resp, err := CreateEntityChainsFromTokens(ctx, req.Msg, s.logger)
+	createEntityChainsFromTokensCache[req.Msg.String()] = &resp
 	return connect.NewResponse(&resp), err
 }
 

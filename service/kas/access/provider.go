@@ -23,25 +23,13 @@ type Provider struct {
 	URI          url.URL `json:"uri"`
 	SDK          *otdf.SDK
 	AttributeSvc *url.URL
-	KeyIndex     trust.KeyIndex
-	KeyManager   trust.KeyManager
+	KeyDelegator *trust.DelegatingKeyService
 	// Deprecated: Use SecurityProvider instead
 	CryptoProvider *security.StandardCrypto // Kept for backward compatibility
 	Logger         *logger.Logger
 	Config         *config.ServiceConfig
 	KASConfig
 	trace.Tracer
-}
-
-// GetSecurityProvider returns the SecurityProvider
-func (p *Provider) GetSecurityProvider() trust.KeyManager {
-	p.initSecurityProviderAdapter()
-	return p.KeyManager
-}
-
-func (p *Provider) GetKeyIndex() trust.KeyIndex {
-	p.initSecurityProviderAdapter()
-	return p.KeyIndex
 }
 
 type KASConfig struct {
@@ -52,10 +40,18 @@ type KASConfig struct {
 	// Deprecated
 	RSACertID string `mapstructure:"rsacertid" json:"rsacertid"`
 
+	RootKey []byte `mapstructure:"root_key" json:"root_key"`
+
 	// Enables experimental EC rewrap support in TDFs
 	// Enabling is required to parse KAOs with the `ec-wrapped` type,
 	// and (currently) also enables responding with ECIES encrypted responses.
-	ECTDFEnabled bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	ECTDFEnabled    bool            `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	PreviewFeatures PreviewFeatures `mapstructure:"preview_features" json:"preview_features"`
+}
+
+type PreviewFeatures struct {
+	ECTDFEnabled  bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	KeyManagement bool `mapstructure:"key_management" json:"key_management"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.
@@ -103,11 +99,7 @@ func (kasCfg *KASConfig) UpgradeMapToKeyring(c *security.StandardCrypto) {
 	}
 }
 
-func (p *Provider) initSecurityProviderAdapter() {
-	// If the CryptoProvider is set, create a SecurityProviderAdapter
-	if p.CryptoProvider == nil || p.KeyManager != nil && p.KeyIndex != nil {
-		return
-	}
+func (p *Provider) InitSecurityProviderAdapter() trust.KeyService {
 	var defaults []string
 	var legacies []string
 	for _, key := range p.KASConfig.Keyring {
@@ -128,16 +120,7 @@ func (p *Provider) initSecurityProviderAdapter() {
 		}
 	}
 
-	inProcessService := security.NewSecurityProviderAdapter(p.CryptoProvider, defaults, legacies)
-
-	if p.KeyIndex == nil {
-		p.Logger.Warn("fallback to in-process key index")
-		p.KeyIndex = inProcessService
-	}
-	if p.KeyManager == nil {
-		p.Logger.Error("fallback to in-process manager")
-		p.KeyManager = inProcessService
-	}
+	return security.NewSecurityProviderAdapter(p.CryptoProvider, defaults, legacies)
 }
 
 // If there exists *any* legacy keys, returns empty list.

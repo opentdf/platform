@@ -293,6 +293,7 @@ LEFT JOIN
     provider_config as pc ON kask.provider_config_id = pc.id
 WHERE
     (sqlc.narg('key_algorithm')::integer IS NULL OR kask.key_algorithm = sqlc.narg('key_algorithm')::integer)
+ORDER BY kask.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_;
 
@@ -1732,4 +1733,3 @@ WHERE id = $1;
 -- name: deleteProviderConfig :execrows
 DELETE FROM provider_config 
 WHERE id = $1;
-

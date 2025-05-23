@@ -100,7 +100,10 @@ func (m *MockKeyDetails) IsLegacy() bool {
 
 func (m *MockKeyDetails) ExportPrivateKey() ([]byte, error) {
 	args := m.Called()
-	return args.Get(0).([]byte), args.Error(1)
+	if a0, ok := args.Get(0).([]byte); ok {
+		return a0, args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func (m *MockKeyDetails) ExportPublicKey(ctx context.Context, format KeyType) (string, error) {

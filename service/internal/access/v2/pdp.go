@@ -204,7 +204,9 @@ func (p *PolicyDecisionPoint) GetDecision(
 		Results: make([]ResourceDecision, len(resources)),
 	}
 
-	for idx, resource := range resources {
+	// Special case for single resource to avoid overhead of worker pool
+	if len(resources) == 1 {
+		resource := resources[0]
 		resourceDecision, err := getResourceDecision(ctx, p.logger, decisionableAttributes, entitledFQNsToActions, action, resource)
 		if err != nil || resourceDecision == nil {
 			return nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
@@ -213,15 +215,66 @@ func (p *PolicyDecisionPoint) GetDecision(
 		if !resourceDecision.Passed {
 			decision.Access = false
 		}
+		decision.Results[0] = *resourceDecision
+		return decision, nil
+	}
+
+	// Process multiple resources concurrently with worker pool
+	type resourceResult struct {
+		idx      int
+		decision *ResourceDecision
+		err      error
+	}
+
+	numWorkers := 5
+	if len(resources) < numWorkers {
+		numWorkers = len(resources)
+	}
+
+	// Create work and results channels
+	jobs := make(chan int, len(resources))
+	results := make(chan resourceResult, len(resources))
+
+	// Start workers
+	for w := 0; w < numWorkers; w++ {
+		go func() {
+			for idx := range jobs {
+				resource := resources[idx]
+				resourceDecision, err := getResourceDecision(ctx, p.logger, decisionableAttributes, entitledFQNsToActions, action, resource)
+				results <- resourceResult{
+					idx:      idx,
+					decision: resourceDecision,
+					err:      err,
+				}
+			}
+		}()
+	}
+
+	// Send jobs to workers
+	for i := range resources {
+		jobs <- i
+	}
+	close(jobs)
+
+	// Collect results
+	for i := 0; i < len(resources); i++ {
+		result := <-results
+		if result.err != nil || result.decision == nil {
+			return nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resources[result.idx], result.err)
+		}
+
+		if !result.decision.Passed {
+			decision.Access = false
+		}
 
 		l.DebugContext(
 			ctx,
 			"resourceDecision result",
-			slog.Bool("passed", resourceDecision.Passed),
-			slog.String("resourceID", resourceDecision.ResourceID),
-			slog.Int("dataRuleResultsCount", len(resourceDecision.DataRuleResults)),
+			slog.Bool("passed", result.decision.Passed),
+			slog.String("resourceID", result.decision.ResourceID),
+			slog.Int("dataRuleResultsCount", len(result.decision.DataRuleResults)),
 		)
-		decision.Results[idx] = *resourceDecision
+		decision.Results[result.idx] = *result.decision
 	}
 
 	return decision, nil

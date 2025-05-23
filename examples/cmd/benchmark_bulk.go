@@ -151,7 +151,7 @@ func runBenchmarkBulk(cmd *cobra.Command, _ []string) error {
 
 	// Warm the cache
 	operation()
-	
+
 	// Start the benchmark
 	startTime := time.Now()
 	operation()

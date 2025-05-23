@@ -34,7 +34,7 @@ jobs:
             "*_test.go"
 
   external-contributor:
-    if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'dependabot-preview[bot]' }}
+    if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'dependabot-preview[bot]' && github.actor != 'opentdf-automation[bot]' }}
     permissions:
       pull-requests: write
     runs-on: ubuntu-latest

@@ -222,7 +222,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {
 
 	mockProtectedKey := &MockProtectedKey{}
 	mockProtectedKey.On("DecryptAESGCM", mock.Anything, mock.Anything, mock.Anything).Return([]byte("decrypted"), nil)
-	suite.mockManagerA.On("Decrypt", mock.Anything, KeyIdentifier("key1"), []byte("ciphertext"), []byte("ephemeralKey")).Return(mockProtectedKey, nil)
+	suite.mockManagerA.On("Decrypt", mock.Anything, mockKeyDetails, []byte("ciphertext"), []byte("ephemeralKey")).Return(mockProtectedKey, nil)
 
 	suite.service.RegisterKeyManager("mockManager", func() (KeyManager, error) {
 		return suite.mockManagerA, nil
@@ -240,7 +240,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestDeriveKey() {
 
 	mockProtectedKey := &MockProtectedKey{}
 	mockProtectedKey.On("Export", mock.Anything).Return([]byte("exported"), nil)
-	suite.mockManagerA.On("DeriveKey", mock.Anything, KeyIdentifier("key1"), []byte("ephemeralKey"), elliptic.P256()).Return(mockProtectedKey, nil)
+	suite.mockManagerA.On("DeriveKey", mock.Anything, mockKeyDetails, []byte("ephemeralKey"), elliptic.P256()).Return(mockProtectedKey, nil)
 
 	suite.service.RegisterKeyManager("mockManager", func() (KeyManager, error) {
 		return suite.mockManagerA, nil

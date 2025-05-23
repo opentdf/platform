@@ -42,6 +42,13 @@ func (d *DelegatingKeyService) RegisterKeyManager(name string, factory KeyManage
 	d.managerFactories[name] = factory
 }
 
+func (d *DelegatingKeyService) SetDefaultMode(name string) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+	d.defaultMode = name
+	d.defaultKeyManager = nil // Clear cached manager to pick up the new default
+}
+
 // Implementing KeyIndex methods
 func (d *DelegatingKeyService) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (KeyDetails, error) {
 	return d.index.FindKeyByAlgorithm(ctx, algorithm, includeLegacy)

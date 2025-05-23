@@ -100,10 +100,6 @@ func (kasCfg *KASConfig) UpgradeMapToKeyring(c *security.StandardCrypto) {
 }
 
 func (p *Provider) InitSecurityProviderAdapter() trust.KeyService {
-	// If the CryptoProvider is set, create a SecurityProviderAdapter
-	if p.CryptoProvider == nil {
-		return nil
-	}
 	var defaults []string
 	var legacies []string
 	for _, key := range p.KASConfig.Keyring {

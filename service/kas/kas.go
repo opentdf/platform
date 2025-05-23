@@ -99,7 +99,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					}
 
 					// Register Basic Key Manager
-					bm := security.NewBasicManager(srp.Logger.With("service", "basic-key-manager"), kasCfg.RootKey)
+					bm := security.NewBasicManager(srp.Logger.With("process", "basic-key-manager"), kasCfg.RootKey)
 					p.KeyDelegator.RegisterKeyManager(bm.Name(), func() (trust.KeyManager, error) {
 						return bm, nil
 					})

@@ -44,8 +44,7 @@ func runDecisionBenchmarkV2(_ *cobra.Command, _ []string) error {
 		resources = append(resources, resource)
 	}
 
-	start := time.Now()
-	res, err := client.AuthorizationV2.GetDecisionMultiResource(context.Background(), &authzV2.GetDecisionMultiResourceRequest{
+	req := &authzV2.GetDecisionMultiResourceRequest{
 		Action: &policy.Action{
 			Name: "read",
 		},
@@ -69,7 +68,10 @@ func runDecisionBenchmarkV2(_ *cobra.Command, _ []string) error {
 			},
 		},
 		Resources: resources,
-	})
+	}
+
+	start := time.Now()
+	res, err := client.AuthorizationV2.GetDecisionMultiResource(context.Background(), req)
 	end := time.Now()
 	totalTime := end.Sub(start)
 

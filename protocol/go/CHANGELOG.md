@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.5](https://github.com/opentdf/platform/compare/protocol/go/v0.3.4...protocol/go/v0.3.5) (2025-05-23)
+
+
+### Features
+
+* **policy:** Default Platform Keys ([#2254](https://github.com/opentdf/platform/issues/2254)) ([d7447fe](https://github.com/opentdf/platform/commit/d7447fe2604443b4c75c8e547acf414bf78af988))
+
 ## [0.3.4](https://github.com/opentdf/platform/compare/protocol/go/v0.3.3...protocol/go/v0.3.4) (2025-05-20)
 
 

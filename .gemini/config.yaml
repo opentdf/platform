@@ -11,3 +11,4 @@ ignore_patterns:
   - "docs/grpc/**/*"
   - "docs/openapi/**/*"
   - "protocol/**/*"
+  - "service/policy/db/query.sql.go"

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_BuildConfig(t *testing.T) {
+func Test_BuildConfig_ConnString(t *testing.T) {
 	tests := []struct {
 		config *Config
 		want   string
@@ -42,6 +42,26 @@ func Test_BuildConfig(t *testing.T) {
 				SSLMode:  "prefer",
 			},
 			want: "postgres://postgres:k%21jBwK%40%24gn%40M%21ikpHo8SZ8@localhost:5432/opentdf?sslmode=prefer",
+		},
+		// Pool config should not pollute connection string
+		{
+			config: &Config{
+				Host:     "myhost",
+				Port:     1234,
+				Database: "mydb",
+				User:     "myuser",
+				Password: "mypassword",
+				SSLMode:  "require",
+				Pool: PoolConfig{
+					MinConns:          1,
+					MaxConns:          10,
+					MinIdleConns:      60,
+					MaxConnLifetime:   3600,
+					MaxConnIdleTime:   1800,
+					HealthCheckPeriod: 60,
+				},
+			},
+			want: "postgres://myuser:mypassword@myhost:1234/mydb?sslmode=require",
 		},
 	}
 

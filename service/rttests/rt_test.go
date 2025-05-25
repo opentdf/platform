@@ -28,10 +28,11 @@ import (
 // then those will need to be updated.
 
 type TestConfig struct {
-	PlatformEndpoint string
-	TokenEndpoint    string
-	ClientID         string
-	ClientSecret     string
+	PlatformEndpoint           string
+	PlatformEndpointWithScheme string
+	TokenEndpoint              string
+	ClientID                   string
+	ClientSecret               string
 }
 
 var attributesToMap = []string{
@@ -111,11 +112,14 @@ func (s *RoundtripSuite) SetupSuite() {
 	opts := []sdk.Option{}
 	if os.Getenv("TLS_ENABLED") == "" {
 		opts = append(opts, sdk.WithInsecurePlaintextConn())
+		s.TestConfig.PlatformEndpointWithScheme = "http://" + s.TestConfig.PlatformEndpoint
+	} else {
+		s.TestConfig.PlatformEndpointWithScheme = "https://" + s.TestConfig.PlatformEndpoint
 	}
 
 	opts = append(opts, sdk.WithClientCredentials(s.TestConfig.ClientID, s.TestConfig.ClientSecret, nil))
 
-	sdk, err := sdk.New(s.TestConfig.PlatformEndpoint, opts...)
+	sdk, err := sdk.New(s.TestConfig.PlatformEndpointWithScheme, opts...)
 	s.Require().NoError(err)
 	s.client = sdk
 
@@ -265,7 +269,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 		slog.Error("could not list attributes", slog.String("error", err.Error()))
 		return err
 	}
-	slog.Info(fmt.Sprintf("list attributes response: %s", protojson.Format(allAttr)))
+	slog.Info("list attributes response: " + protojson.Format(allAttr))
 
 	slog.Info("##################################\n#######################################")
 
@@ -324,7 +328,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 		slog.Error("could not list subject mappings", slog.String("error", err.Error()))
 		return err
 	}
-	slog.Info(fmt.Sprintf("list subject mappings response: %s", protojson.Format(allSubMaps)))
+	slog.Info("list subject mappings response: " + protojson.Format(allSubMaps))
 
 	return nil
 }
@@ -342,8 +346,7 @@ func encrypt(client *sdk.SDK, testConfig TestConfig, plaintext string, attribute
 		sdk.WithDataAttributes(attributes...),
 		sdk.WithKasInformation(
 			sdk.KASInfo{
-				// examples assume insecure http
-				URL:       fmt.Sprintf("http://%s", testConfig.PlatformEndpoint),
+				URL:       testConfig.PlatformEndpointWithScheme,
 				PublicKey: "",
 			}))
 	if err != nil {
@@ -410,19 +413,35 @@ func bulk(client *sdk.SDK, tdfSuccess []string, tdfFail []string, plaintext stri
 	for _, tdf := range passTDF {
 		builder, ok := tdf.Writer.(*strings.Builder)
 		if !ok {
-			return fmt.Errorf("bad writer")
+			return errors.New("bad writer")
 		}
 
 		if tdf.Error != nil {
 			return tdf.Error
 		}
 		if builder.String() != plaintext {
-			return fmt.Errorf("bulk did not equal plaintext")
+			return errors.New("bulk did not equal plaintext")
 		}
 	}
 	for _, tdf := range failTDF {
 		if tdf.Error == nil {
-			return fmt.Errorf("no expected err")
+			return errors.New("no expected err")
+		}
+	}
+
+	_ = client.BulkDecrypt(
+		context.Background(),
+		sdk.WithTDFs(passTDF...),
+		sdk.WithTDFType(sdk.Standard),
+		sdk.WithBulkKasAllowlist([]string{"http://some-non-existant:8080"}),
+	)
+	for _, tdf := range passTDF {
+		if tdf.Error == nil {
+			return errors.New("no expected err")
+		}
+		slog.Error("pass tdf error", "error", tdf.Error.Error())
+		if !strings.Contains(tdf.Error.Error(), "KasAllowlist") {
+			return errors.New("did not receive kas allowlist error")
 		}
 	}
 

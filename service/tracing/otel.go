@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -102,7 +103,7 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 	switch strings.ToLower(cfg.Provider.Name) {
 	case ProviderOTLP:
 		if cfg.Provider.OTLP == nil {
-			return nil, fmt.Errorf("OTLP provider selected but config missing")
+			return nil, errors.New("OTLP provider selected but config missing")
 		}
 		exporter, err = createOTLPExporter(ctx, cfg.Provider.OTLP)
 		if err != nil {
@@ -110,14 +111,14 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 		}
 	case ProviderFile:
 		if cfg.Provider.File == nil {
-			return nil, fmt.Errorf("file provider selected but config missing")
+			return nil, errors.New("file provider selected but config missing")
 		}
 		exporter, writerCloser, err = createFileExporter(cfg.Provider.File)
 		if err != nil {
 			return nil, fmt.Errorf("create file exporter failed: %w", err)
 		}
 	case "":
-		return nil, fmt.Errorf("tracing provider name missing")
+		return nil, errors.New("tracing provider name missing")
 	default:
 		return nil, fmt.Errorf("unsupported tracing provider: '%s'", cfg.Provider.Name)
 	}
@@ -203,7 +204,7 @@ func createOTLPExporter(ctx context.Context, cfg *OTLPConfig) (sdktrace.SpanExpo
 	logger := slog.Default()
 
 	if cfg.Endpoint == "" {
-		return nil, fmt.Errorf("OTLP endpoint is required")
+		return nil, errors.New("OTLP endpoint is required")
 	}
 
 	protocol := strings.ToLower(cfg.Protocol)
@@ -252,11 +253,11 @@ func createFileExporter(cfg *FileConfig) (sdktrace.SpanExporter, io.Closer, erro
 	logger := slog.Default()
 
 	if cfg.Path == "" {
-		return nil, nil, fmt.Errorf("file path is required for file exporter")
+		return nil, nil, errors.New("file path is required for file exporter")
 	}
 
 	dir := getDir(cfg.Path)
-	if err := os.MkdirAll(dir, 0750); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, nil, fmt.Errorf("failed to create dir %s for trace file: %w", dir, err)
 	}
 

@@ -1,6 +1,7 @@
 package security
 
 import (
+	"context"
 	"crypto"
 	"crypto/ecdh"
 	"crypto/elliptic"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/service/trust"
 )
 
 const (
@@ -27,6 +29,10 @@ type StandardConfig struct {
 	RSAKeys map[string]StandardKeyInfo `mapstructure:"rsa,omitempty" json:"rsa,omitempty"`
 	// Deprecated
 	ECKeys map[string]StandardKeyInfo `mapstructure:"ec,omitempty" json:"ec,omitempty"`
+}
+
+func (sc StandardConfig) IsEmpty() bool {
+	return len(sc.Keys) == 0 && len(sc.ECKeys) == 0 && len(sc.RSAKeys) == 0
 }
 
 type KeyPairInfo struct {
@@ -87,6 +93,20 @@ func NewStandardCrypto(cfg StandardConfig) (*StandardCrypto, error) {
 	default:
 		return loadDeprecatedKeys(cfg.RSAKeys, cfg.ECKeys)
 	}
+}
+
+// ListKIDsByAlgorithm returns a list of key identifiers for the specified algorithm
+// Errors if no keys are found of the requested algorithm.
+func (s StandardCrypto) ListKIDsByAlgorithm(alg string) ([]string, error) {
+	k, ok := s.keysByAlg[alg]
+	if !ok {
+		return nil, fmt.Errorf("no key found with algorithm [%s]: %w", alg, ErrCertNotFound)
+	}
+	keys := make([]string, 0, len(k))
+	for kid := range k {
+		keys = append(keys, kid)
+	}
+	return keys, nil
 }
 
 func loadKeys(ks []KeyPairInfo) (*StandardCrypto, error) {
@@ -267,6 +287,7 @@ func (s StandardCrypto) ECCertificate(kid string) (string, error) {
 	return ec.ecCertificatePEM, nil
 }
 
+// Exports the EC public key with kid as a pem encode pkix
 func (s StandardCrypto) ECPublicKey(kid string) (string, error) {
 	k, ok := s.keysByID[kid]
 	if !ok {
@@ -344,7 +365,21 @@ func (s StandardCrypto) RSAPublicKeyAsJSON(kid string) (string, error) {
 }
 
 func (s StandardCrypto) GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) ([]byte, error) {
-	ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, ephemeralPublicKeyBytes)
+	k, ok := s.keysByID[kasKID]
+	if !ok {
+		return nil, ErrKeyPairInfoNotFound
+	}
+	ec, ok := k.(StandardECCrypto)
+	if !ok {
+		return nil, ErrKeyPairInfoMalformed
+	}
+	privateKeyPEM := []byte(ec.ecPrivateKeyPem)
+
+	return DeriveNanoTDFSymmetricKey(curve, ephemeralPublicKeyBytes, privateKeyPEM)
+}
+
+func DeriveNanoTDFSymmetricKey(curve elliptic.Curve, clientEphemera []byte, privateKeyPEM []byte) ([]byte, error) {
+	ephemeralECDSAPublicKey, err := ocrypto.UncompressECPubKey(curve, clientEphemera)
 	if err != nil {
 		return nil, err
 	}
@@ -359,16 +394,7 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPubl
 	}
 	ephemeralECDSAPublicKeyPEM := pem.EncodeToMemory(pemBlock)
 
-	k, ok := s.keysByID[kasKID]
-	if !ok {
-		return nil, ErrKeyPairInfoNotFound
-	}
-	ec, ok := k.(StandardECCrypto)
-	if !ok {
-		return nil, ErrKeyPairInfoMalformed
-	}
-
-	symmetricKey, err := ocrypto.ComputeECDHKey([]byte(ec.ecPrivateKeyPem), ephemeralECDSAPublicKeyPEM)
+	symmetricKey, err := ocrypto.ComputeECDHKey(privateKeyPEM, ephemeralECDSAPublicKeyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
 	}
@@ -381,49 +407,14 @@ func (s StandardCrypto) GenerateNanoTDFSymmetricKey(kasKID string, ephemeralPubl
 	return key, nil
 }
 
-func (s StandardCrypto) GenerateEphemeralKasKeys() (any, []byte, error) {
-	ephemeralKeyPair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
-	if err != nil {
-		return nil, nil, fmt.Errorf("ocrypto.NewECKeyPair failed: %w", err)
-	}
-
-	pubKeyInPem, err := ephemeralKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get public key in PEM format: %w", err)
-	}
-	pubKeyBytes := []byte(pubKeyInPem)
-
-	privKey, err := ocrypto.ConvertToECDHPrivateKey(ephemeralKeyPair.PrivateKey)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to convert provate key to ECDH: %w", err)
-	}
-	return privKey, pubKeyBytes, nil
-}
-
-func (s StandardCrypto) GenerateNanoTDFSessionKey(privateKey any, ephemeralPublicKeyPEM []byte) ([]byte, error) {
-	ecdhKey, err := ocrypto.ConvertToECDHPrivateKey(privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("GenerateNanoTDFSessionKey failed to ConvertToECDHPrivateKey: %w", err)
-	}
-	ephemeralECDHPublicKey, err := ocrypto.ECPubKeyFromPem(ephemeralPublicKeyPEM)
-	if err != nil {
-		return nil, fmt.Errorf("GenerateNanoTDFSessionKey failed to ocrypto.ECPubKeyFromPem: %w", err)
-	}
-	// shared secret
-	sessionKey, err := ecdhKey.ECDH(ephemeralECDHPublicKey)
-	if err != nil {
-		return nil, fmt.Errorf("GenerateNanoTDFSessionKey failed to ecdhKey.ECDH: %w", err)
-	}
-
-	salt := versionSalt()
-	derivedKey, err := ocrypto.CalculateHKDF(salt, sessionKey)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
-	}
-	return derivedKey, nil
-}
-
 func (s StandardCrypto) Close() {
+}
+
+func TDFSalt() []byte {
+	digest := sha256.New()
+	digest.Write([]byte("TDF"))
+	salt := digest.Sum(nil)
+	return salt
 }
 
 func versionSalt() []byte {
@@ -433,28 +424,66 @@ func versionSalt() []byte {
 }
 
 // ECDecrypt uses hybrid ECIES to decrypt the data.
-func (s *StandardCrypto) ECDecrypt(keyID string, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
-	ska, ok := s.keysByID[keyID]
-	if !ok {
-		return nil, fmt.Errorf("key [%s] not found", keyID)
-	}
-	sk, ok := ska.(StandardECCrypto)
-	if !ok {
-		return nil, fmt.Errorf("key [%s] is not an EC key", keyID)
-	}
-	if sk.sk == nil {
-		// Parse the private key
-		loaded, err := ocrypto.ECPrivateKeyFromPem([]byte(sk.ecPrivateKeyPem))
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse EC private key: %w", err)
-		}
-		sk.sk = loaded
-	}
-
-	ed, err := ocrypto.NewECDecryptor(sk.sk)
+func (s *StandardCrypto) ECDecrypt(ctx context.Context, keyID string, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
+	unwrappedKey, err := s.Decrypt(ctx, trust.KeyIdentifier(keyID), ciphertext, ephemeralPublicKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create EC decryptor: %w", err)
+		return nil, err
+	}
+	return unwrappedKey.Export(nil)
+}
+
+// Decrypt implements the SecurityProvider Decrypt method
+func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+	kid := string(keyID)
+	ska, ok := s.keysByID[kid]
+	if !ok {
+		return nil, fmt.Errorf("key [%s] not found", kid)
 	}
 
-	return ed.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
+	var rawKey []byte
+	var err error
+
+	switch key := ska.(type) {
+	case StandardECCrypto:
+		if len(ephemeralPublicKey) == 0 {
+			return nil, errors.New("ephemeral public key is required for EC decryption")
+		}
+
+		if key.sk == nil {
+			// Parse the private key
+			loaded, err := ocrypto.ECPrivateKeyFromPem([]byte(key.ecPrivateKeyPem))
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse EC private key: %w", err)
+			}
+			key.sk = loaded
+		}
+
+		ed, err := ocrypto.NewSaltedECDecryptor(key.sk, TDFSalt(), nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create EC decryptor: %w", err)
+		}
+
+		rawKey, err = ed.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt with ephemeral key: %w", err)
+		}
+
+	case StandardRSACrypto:
+		if len(ephemeralPublicKey) > 0 {
+			return nil, errors.New("ephemeral public key should not be provided for RSA decryption")
+		}
+
+		rawKey, err = key.asymDecryption.Decrypt(ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data: %w", err)
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported key type for key ID [%s]", kid)
+	}
+
+	return &InProcessAESKey{
+		rawKey: rawKey,
+		logger: slog.Default(),
+	}, nil
 }

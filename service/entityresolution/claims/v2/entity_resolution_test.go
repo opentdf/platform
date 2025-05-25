@@ -1,11 +1,11 @@
-package entityresolution_test
+package claims_test
 
 import (
 	"testing"
 
-	"github.com/opentdf/platform/protocol/go/authorization"
-	"github.com/opentdf/platform/protocol/go/entityresolution"
-	claims "github.com/opentdf/platform/service/entityresolution/claims"
+	"github.com/opentdf/platform/protocol/go/entity"
+	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
+	claims "github.com/opentdf/platform/service/entityresolution/claims/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,47 +16,47 @@ import (
 const samplejwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6ImhlbGxvd29ybGQiLCJpYXQiOjE1MTYyMzkwMjJ9.EAOittOMzKENEAs44eaMuZe-xas7VNVsgBxhwmxYiIw"
 
 func Test_ClientResolveEntity(t *testing.T) {
-	var validBody []*authorization.Entity
-	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_ClientId{ClientId: "random"}})
+	var validBody []*entity.Entity
+	validBody = append(validBody, &entity.Entity{EphemeralId: "1234", EntityType: &entity.Entity_ClientId{ClientId: "random"}})
 
-	var req = entityresolution.ResolveEntitiesRequest{}
+	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
+	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
-	var entityRepresentations = resp.GetEntityRepresentations()
+	entityRepresentations := resp.GetEntityRepresentations()
 	assert.NotNil(t, entityRepresentations)
 	assert.Len(t, entityRepresentations, 1)
 
 	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
 	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
-	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
+	propMap := entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "random", propMap["clientId"])
-	assert.Equal(t, "1234", propMap["id"])
+	assert.Equal(t, "1234", propMap["ephemeralId"])
 }
 
 func Test_EmailResolveEntity(t *testing.T) {
-	var validBody []*authorization.Entity
-	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_EmailAddress{EmailAddress: "random"}})
+	var validBody []*entity.Entity
+	validBody = append(validBody, &entity.Entity{EphemeralId: "1234", EntityType: &entity.Entity_EmailAddress{EmailAddress: "random"}})
 
-	var req = entityresolution.ResolveEntitiesRequest{}
+	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
+	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
-	var entityRepresentations = resp.GetEntityRepresentations()
+	entityRepresentations := resp.GetEntityRepresentations()
 	assert.NotNil(t, entityRepresentations)
 	assert.Len(t, entityRepresentations, 1)
 
 	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
 	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
-	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
+	propMap := entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "random", propMap["emailAddress"])
-	assert.Equal(t, "1234", propMap["id"])
+	assert.Equal(t, "1234", propMap["ephemeralId"])
 }
 
 func Test_ClaimsResolveEntity(t *testing.T) {
@@ -72,38 +72,38 @@ func Test_ClaimsResolveEntity(t *testing.T) {
 	anyClaims, err := anypb.New(structClaims)
 	require.NoError(t, err)
 
-	var validBody []*authorization.Entity
-	validBody = append(validBody, &authorization.Entity{Id: "1234", EntityType: &authorization.Entity_Claims{Claims: anyClaims}})
+	var validBody []*entity.Entity
+	validBody = append(validBody, &entity.Entity{EphemeralId: "1234", EntityType: &entity.Entity_Claims{Claims: anyClaims}})
 
-	var req = entityresolution.ResolveEntitiesRequest{}
+	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	var resp, reserr = claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
+	resp, reserr := claims.EntityResolution(t.Context(), &req, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
-	var entityRepresentations = resp.GetEntityRepresentations()
+	entityRepresentations := resp.GetEntityRepresentations()
 	assert.NotNil(t, entityRepresentations)
 	assert.Len(t, entityRepresentations, 1)
 
 	assert.Equal(t, "1234", entityRepresentations[0].GetOriginalId())
 	assert.Len(t, entityRepresentations[0].GetAdditionalProps(), 1)
-	var propMap = entityRepresentations[0].GetAdditionalProps()[0].AsMap()
+	propMap := entityRepresentations[0].GetAdditionalProps()[0].AsMap()
 	assert.Equal(t, "bar", propMap["foo"])
 	assert.EqualValues(t, 42, propMap["baz"])
 }
 
 func Test_JWTToEntityChainClaims(t *testing.T) {
-	validBody := []*authorization.Token{{Jwt: samplejwt}}
+	validBody := []*entity.Token{{Jwt: samplejwt}}
 
-	var resp, reserr = claims.CreateEntityChainFromJwt(t.Context(), &entityresolution.CreateEntityChainFromJwtRequest{Tokens: validBody}, logger.CreateTestLogger())
+	resp, reserr := claims.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
 	assert.Len(t, resp.GetEntityChains(), 1)
 	assert.Len(t, resp.GetEntityChains()[0].GetEntities(), 1)
-	assert.IsType(t, &authorization.Entity_Claims{}, resp.GetEntityChains()[0].GetEntities()[0].GetEntityType())
-	assert.Equal(t, authorization.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
+	assert.IsType(t, &entity.Entity_Claims{}, resp.GetEntityChains()[0].GetEntities()[0].GetEntityType())
+	assert.Equal(t, entity.Entity_CATEGORY_SUBJECT, resp.GetEntityChains()[0].GetEntities()[0].GetCategory())
 
 	var unpackedStruct structpb.Struct
 	err := resp.GetEntityChains()[0].GetEntities()[0].GetClaims().UnmarshalTo(&unpackedStruct)

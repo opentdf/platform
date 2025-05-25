@@ -82,9 +82,16 @@ Generate development keys/certs for the platform infrastructure.
 Start the required infrastructure with [compose-spec](https://compose-spec.io).
 
 ```sh
-# Note this might be `podman compose` on some systems
+# If you are on an M4 chip (Apple Silicon), use the provided script to ensure the correct Java environment:
+./run-compose.sh -f docker-compose.yaml up
+
+# Otherwise, use docker compose directly:
 docker compose -f docker-compose.yaml up
 ```
+
+> **Note:**  
+> The `run-compose.sh` script is required on Apple Silicon (M1/M2/M3/M4) Macs to ensure the correct Java environment is used for containers that require x86_64 Java images.  
+> This is necessary because some images (such as Keycloak) may not have ARM-compatible builds, and the script sets up emulation as needed.
 
 Copy the development configuration file from the example and update it with your own values (if necessary, not common).
 

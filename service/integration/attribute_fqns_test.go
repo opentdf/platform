@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -112,7 +113,7 @@ func (s *AttributeFqnSuite) TestCreateAttributeValue() {
 // Test Get one attribute by the FQN of one of its values
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 	fqnFixtureKey := "example.com/attr/attr1/value/value1"
-	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+	fullFqn := "https://" + fqnFixtureKey
 	valueFixture := s.f.GetAttributeValueKey(fqnFixtureKey)
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
@@ -138,7 +139,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrValueFqn() {
 // Test Get one attribute by the FQN of one of its values
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithCasingNormalized() {
 	fqnFixtureKey := "example.com/attr/attr1/value/value1"
-	fullFqn := strings.ToUpper(fmt.Sprintf("https://%s", fqnFixtureKey))
+	fullFqn := strings.ToUpper("https://" + fqnFixtureKey)
 	valueFixture := s.f.GetAttributeValueKey(fqnFixtureKey)
 
 	// assign a KAS grant to the value
@@ -193,7 +194,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithCasingNormalized() {
 // Test Get one attribute by the FQN of the attribute definition
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrFqn() {
 	fqnFixtureKey := "example.net/attr/attr1"
-	fullFqn := fmt.Sprintf("https://%s", fqnFixtureKey)
+	fullFqn := "https://" + fqnFixtureKey
 	attrFixture := s.f.GetAttributeKey(fqnFixtureKey)
 
 	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
@@ -205,8 +206,237 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttrFqn() {
 	// the attribute should match the fixture
 	s.Equal(attr.GetId(), attrFixture.ID)
 	s.Equal(attr.GetName(), attrFixture.Name)
-	s.Equal(attr.GetRule().String(), fmt.Sprintf("ATTRIBUTE_RULE_TYPE_ENUM_%s", attrFixture.Rule))
+	s.Equal(attr.GetRule().String(), "ATTRIBUTE_RULE_TYPE_ENUM_"+attrFixture.Rule)
 	s.Equal(attr.GetActive().GetValue(), attrFixture.Active)
+	s.Empty(attr.GetKasKeys())
+}
+
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeDefKeysAssociated() {
+	// Create a attribute
+	namespace := "associate_attribute_with_key_namespace"
+	attributeName := "associate_attribute_with_key_def"
+
+	// Create namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: namespace,
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+
+	// Create attribute
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(),
+		Name:        attributeName,
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr)
+
+	fullFqn := fqnBuilder(namespace, attributeName, "")
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+	s.Empty(attr.GetKasKeys())
+
+	keyResp, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attr.GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(keyResp)
+
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+
+	// Key checks
+	s.Len(attr.GetKasKeys(), 1)
+	s.Equal(kasKey.KeyAccessServerID, attr.GetKasKeys()[0].GetKasId())
+	s.Equal(kasKey.ID, attr.GetKasKeys()[0].GetKey().GetId())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), attr.GetKasKeys()[0])
+	s.Empty(attr.GetKasKeys()[0].GetKey().GetProviderConfig())
+	s.Empty(attr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
+
+	// Remove association
+	_, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attr.GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+
+	// Remove the attribute
+	_, err = s.db.PolicyClient.DeleteAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+
+	// Remove the namespace
+	_, err = s.db.PolicyClient.DeleteNamespace(s.ctx, ns.GetId())
+	s.Require().NoError(err)
+}
+
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeValueKeysAssociated() {
+	fqnFixtureKey := "example.net/attr/attr1"
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	fullFqn := "https://" + fqnFixtureKey
+
+	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+
+	// the number of values should match the fixture
+	s.Len(attr.GetValues(), 2)
+	s.Empty(attr.GetKasKeys())
+	for _, v := range attr.GetValues() {
+		s.Empty(v.GetKasKeys())
+	}
+
+	// Associate key with attribute.
+	keyResp, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
+		ValueId: attr.GetValues()[0].GetId(),
+		KeyId:   kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(keyResp)
+
+	// Associate value 2 with the same key
+	keyResp, err = s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
+		ValueId: attr.GetValues()[1].GetId(),
+		KeyId:   kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(keyResp)
+
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+
+	// the number of values should match the fixture
+	s.Len(attr.GetValues(), 2)
+
+	// Key checks
+	s.Empty(attr.GetKasKeys())
+	for _, v := range attr.GetValues() {
+		s.Len(v.GetKasKeys(), 1)
+		s.Equal(kasKey.KeyAccessServerID, v.GetKasKeys()[0].GetKasId())
+		s.Equal(kasKey.ID, v.GetKasKeys()[0].GetKey().GetId())
+		validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), v.GetKasKeys()[0])
+		s.Empty(v.GetKasKeys()[0].GetKey().GetProviderConfig())
+		s.Empty(v.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
+
+		_, err = s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{
+			ValueId: v.GetId(),
+			KeyId:   kasKey.ID,
+		})
+		s.Require().NoError(err)
+	}
+}
+
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedWithNamespace() {
+	fqnFixtureKey := "example.net/attr/attr1"
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	fullFqn := "https://" + fqnFixtureKey
+
+	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+
+	// the number of values should match the fixture
+	s.Len(attr.GetValues(), 2)
+	s.Empty(attr.GetNamespace().GetKasKeys())
+
+	// Associate key with attribute.
+	keyResp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: attr.GetNamespace().GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(keyResp)
+
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+
+	// the number of values should match the fixture
+	s.Len(attr.GetValues(), 2)
+
+	// Key checks
+	s.Empty(attr.GetKasKeys())
+	s.Len(attr.GetNamespace().GetKasKeys(), 1)
+	s.Equal(kasKey.KeyAccessServerID, attr.GetNamespace().GetKasKeys()[0].GetKasId())
+	s.Equal(kasKey.ID, attr.GetNamespace().GetKasKeys()[0].GetKey().GetId())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), attr.GetNamespace().GetKasKeys()[0])
+	s.Empty(attr.GetNamespace().GetKasKeys()[0].GetKey().GetProviderConfig())
+	s.Empty(attr.GetNamespace().GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
+
+	_, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: attr.GetNamespace().GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+}
+
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeysAssociatedAttributes_MultipleAttributes() {
+	fqnFixtureKey := "example.net/attr/attr1"
+	fqnFixtureKeyTwo := "example.net/attr/attr2"
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	kasKey2 := s.f.GetKasRegistryServerKeys("kas_key_2")
+	fullFqn := "https://" + fqnFixtureKey
+	fullFqn2 := "https://" + fqnFixtureKeyTwo
+
+	attr, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	s.Require().NoError(err)
+	s.Len(attr.GetValues(), 2)
+	s.Empty(attr.GetKasKeys())
+
+	// Associate key with attribute.
+	keyResp, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attr.GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(keyResp)
+
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn2)
+	s.Require().NoError(err)
+	s.Empty(attr.GetValues())
+	s.Empty(attr.GetKasKeys())
+
+	// Associate key with attribute.
+	keyResp, err = s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attr.GetId(),
+		KeyId:       kasKey2.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(keyResp)
+
+	// Get attribute 1
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn)
+	attrOneID := attr.GetId()
+	s.Require().NoError(err)
+	s.Len(attr.GetKasKeys(), 1)
+	s.Equal(kasKey.KeyAccessServerID, attr.GetKasKeys()[0].GetKasId())
+	s.Equal(kasKey.ID, attr.GetKasKeys()[0].GetKey().GetId())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), attr.GetKasKeys()[0])
+	s.Empty(attr.GetKasKeys()[0].GetKey().GetProviderConfig())
+	s.Empty(attr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
+
+	// Get attribute 2
+	attr, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, fullFqn2)
+	attrTwoID := attr.GetId()
+	s.Require().NoError(err)
+	s.Len(attr.GetKasKeys(), 1)
+	s.Equal(kasKey2.KeyAccessServerID, attr.GetKasKeys()[0].GetKasId())
+	s.Equal(kasKey2.ID, attr.GetKasKeys()[0].GetKey().GetId())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey2.PublicKeyCtx), attr.GetKasKeys()[0])
+	s.Empty(attr.GetKasKeys()[0].GetKey().GetProviderConfig())
+	s.Empty(attr.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
+
+	_, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attrOneID,
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+
+	_, err = s.db.PolicyClient.RemovePublicKeyFromAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attrTwoID,
+		KeyId:       kasKey2.ID,
+	})
+	s.Require().NoError(err)
 }
 
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definitions() {
@@ -639,125 +869,9 @@ type bigSetup struct {
 	val1ID          string
 	val2ID          string
 	kasAssociations map[string]string
-}
-
-func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
-	// create a new namespace
-	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
-		Name: namespaceName,
-	})
-	s.Require().NoError(err)
-	s.NotNil(ns)
-
-	// give it attributes and values
-	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		NamespaceId: ns.GetId(),
-		Name:        "test_attr",
-		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
-		Values:      []string{"value1", "value2"},
-	})
-	s.Require().NoError(err)
-	s.NotNil(attr)
-	val1 := attr.GetValues()[0]
-	val2 := attr.GetValues()[1]
-
-	nsKasURI := fmt.Sprintf("https://testing_granted_ns.com/%s/kas", namespaceName)
-	attrKasURI := fmt.Sprintf("https://testing_granted_attr.com/%s/kas", namespaceName)
-	val1KasURI := fmt.Sprintf("https://testing_granted_val.com/%s/kas", namespaceName)
-	val2KasURI := fmt.Sprintf("https://testing_granted_val2.com/%s/kas", namespaceName)
-
-	kasAssociations := map[string]string{}
-	// create new KASes
-	for _, toAssociate := range []struct {
-		id  string
-		uri string
-	}{
-		{ns.GetId(), nsKasURI},
-		{attr.GetId(), attrKasURI},
-		{val1.GetId(), val1KasURI},
-		{val2.GetId(), val2KasURI},
-	} {
-		kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
-			Uri: toAssociate.uri,
-			PublicKey: &policy.PublicKey{
-				PublicKey: &policy.PublicKey_Remote{
-					Remote: toAssociate.uri + "/public_key",
-				},
-			},
-		})
-		s.Require().NoError(err)
-		s.NotNil(kas)
-		kasAssociations[toAssociate.id] = kas.GetId()
-	}
-
-	// make a grant association to the namespace
-	nsGrant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
-		KeyAccessServerId: kasAssociations[ns.GetId()],
-		NamespaceId:       ns.GetId(),
-	})
-	s.Require().NoError(err)
-	s.NotNil(nsGrant)
-
-	// make a grant association to the attribute definition
-	attrGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, &attributes.AttributeKeyAccessServer{
-		KeyAccessServerId: kasAssociations[attr.GetId()],
-		AttributeId:       attr.GetId(),
-	})
-	s.Require().NoError(err)
-	s.NotNil(attrGrant)
-
-	// make a grant association to the first value
-	val1Grant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, &attributes.ValueKeyAccessServer{
-		KeyAccessServerId: kasAssociations[val1.GetId()],
-		ValueId:           val1.GetId(),
-	})
-	s.Require().NoError(err)
-	s.NotNil(val1Grant)
-
-	// make a grant association to the second value
-	val2Grant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, &attributes.ValueKeyAccessServer{
-		KeyAccessServerId: kasAssociations[val2.GetId()],
-		ValueId:           val2.GetId(),
-	})
-	s.Require().NoError(err)
-	s.NotNil(val2Grant)
-
-	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
-	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
-	// give a subject mapping to the first value
-	val1SM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId:              val1.GetId(),
-		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set1").ID,
-		Actions:                       []*policy.Action{actionRead, fixtureActionCustomUpload},
-	})
-	s.Require().NoError(err)
-	s.NotNil(val1SM)
-
-	// give a subject mapping to the second value
-	val2SM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId:              val2.GetId(),
-		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set2").ID,
-		Actions:                       []*policy.Action{actionCreate},
-	})
-	s.Require().NoError(err)
-	s.NotNil(val2SM)
-
-	// give a second subject mapping to the second value
-	val2SM2, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId:              val2.GetId(),
-		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set3").ID,
-		Actions:                       []*policy.Action{actionRead, actionCreate},
-	})
-	s.Require().NoError(err)
-	s.NotNil(val2SM2)
-
-	return bigSetup{
-		attrFqn:         fmt.Sprintf("https://%s/attr/test_attr", namespaceName),
-		nsID:            ns.GetId(),
-		attrID:          attr.GetId(),
-		val1ID:          val1.GetId(),
-		val2ID:          val2.GetId(),
-		kasAssociations: kasAssociations,
+	rms             map[string]struct {
+		Terms   []string
+		GroupID string
 	}
 }
 
@@ -767,8 +881,8 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_SameResultsWhetherAttrOrValueF
 
 	fqns := []string{
 		setup.attrFqn,
-		fmt.Sprintf("%s/value/value1", setup.attrFqn),
-		fmt.Sprintf("%s/value/value2", setup.attrFqn),
+		setup.attrFqn + "/value/value1",
+		setup.attrFqn + "/value/value2",
 	}
 
 	retrieved := make([]*policy.Attribute, len(fqns))
@@ -798,9 +912,9 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_AllIndividualFqnsSetOnResults(
 	s.True(strings.HasPrefix(got.GetFqn(), "https://"))
 	s.Contains(got.GetFqn(), ns)
 	s.Contains(got.GetFqn(), "attr/test_attr")
-	s.Equal(got.GetNamespace().GetFqn(), fmt.Sprintf("https://%s", ns))
-	s.Equal(got.GetValues()[0].GetFqn(), fmt.Sprintf("%s/value/value1", setup.attrFqn))
-	s.Equal(got.GetValues()[1].GetFqn(), fmt.Sprintf("%s/value/value2", setup.attrFqn))
+	s.Equal(got.GetNamespace().GetFqn(), "https://"+ns)
+	s.Equal(got.GetValues()[0].GetFqn(), setup.attrFqn+"/value/value1")
+	s.Equal(got.GetValues()[1].GetFqn(), setup.attrFqn+"/value/value2")
 }
 
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_ProperOnAllObjects() {
@@ -924,6 +1038,34 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_SubjectMappingsOnAllValues() {
 	}
 	s.True(foundRead)
 	s.True(foundCreate)
+}
+
+func (s *AttributeFqnSuite) TestGetAttributeByFqn_ResourceMappingsReturned() {
+	ns := "test_fqn_resource_mapping.gov"
+	setup := s.bigTestSetup(ns)
+
+	got, err := s.db.PolicyClient.GetAttributeByFqn(s.ctx, setup.attrFqn)
+	s.Require().NoError(err)
+	s.NotNil(got)
+
+	// ensure the first value has expected resource mappings
+	val1 := got.GetValues()[0]
+	s.Len(val1.GetResourceMappings(), 2)
+	for _, rm := range val1.GetResourceMappings() {
+		expected, ok := setup.rms[rm.GetId()]
+		s.True(ok)
+		if expected.GroupID == "" {
+			s.Nil(rm.GetGroup())
+		} else {
+			s.Equal(expected.GroupID, rm.GetGroup().GetId())
+		}
+		s.Len(rm.GetTerms(), len(expected.Terms))
+		s.ElementsMatch(rm.GetTerms(), expected.Terms)
+	}
+
+	// ensure the second value has no resource mappings
+	val2 := got.GetValues()[1]
+	s.Empty(val2.GetResourceMappings())
 }
 
 // Test multiple get attributes by multiple fqns
@@ -1525,4 +1667,269 @@ func (s *AttributeFqnSuite) TestGetAttributesByValueFqns_Fails_WithNonValueFqns(
 	s.Require().Error(err)
 	s.Nil(v)
 	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributeFqnSuite) TestGetAttributeByValueFqns_KAS_Keys_Returned() {
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	fqn := "https://keys.com/attr/kas-key/value/key1"
+
+	kasReg, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, kasKey.KeyAccessServerID)
+	s.Require().NoError(err)
+	s.NotNil(kasReg)
+
+	// Create New Namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "keys.com"})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+
+	// Create Attribute
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "kas-key",
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"key1"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr)
+
+	// Assign Kas Key to namespace
+	nsKey, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: ns.GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(nsKey)
+
+	// Get Attribute By Value Fqns. Check NS for key
+	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn},
+	})
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.Len(v, 1)
+
+	for _, attr := range v {
+		s.Len(attr.GetAttribute().GetNamespace().GetKasKeys(), 1)
+		s.Empty(attr.GetAttribute().GetKasKeys())
+		s.Empty(attr.GetValue().GetKasKeys())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasUri())
+	}
+
+	// Assign Kas Key to Attribute
+	attrKey, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: attr.GetId(),
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrKey)
+
+	// Get Attribute By Value Fqns. Check NS and Attribute for Key
+	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn},
+	})
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.Len(v, 1)
+
+	for _, attr := range v {
+		s.Len(attr.GetAttribute().GetNamespace().GetKasKeys(), 1)
+		s.Len(attr.GetAttribute().GetKasKeys(), 1)
+		s.Empty(attr.GetValue().GetKasKeys())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasUri())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetKasKeys()[0].GetKasUri())
+	}
+
+	// Assign Kas Key to Value
+	valueKey, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
+		ValueId: attr.GetValues()[0].GetId(),
+		KeyId:   kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(valueKey)
+
+	// Get Attribute By Value Fqns. Check NS ,Attribute and Value for Key
+	v, err = s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn},
+	})
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.Len(v, 1)
+
+	for _, attr := range v {
+		s.Len(attr.GetAttribute().GetNamespace().GetKasKeys(), 1)
+		s.Len(attr.GetAttribute().GetKasKeys(), 1)
+		s.Len(attr.GetValue().GetKasKeys(), 1)
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetNamespace().GetKasKeys()[0].GetKasUri())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetAttribute().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetAttribute().GetKasKeys()[0].GetKasUri())
+		s.Equal(kasKey.KeyAccessServerID, attr.GetValue().GetKasKeys()[0].GetKasId())
+		s.Equal(kasReg.GetUri(), attr.GetValue().GetKasKeys()[0].GetKasUri())
+	}
+}
+
+func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
+	// create a new namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
+		Name: namespaceName,
+	})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+
+	// create a resource mapping group for the namespace
+	rmGrp, err := s.db.PolicyClient.CreateResourceMappingGroup(s.ctx, &resourcemapping.CreateResourceMappingGroupRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "test_group",
+	})
+	s.Require().NoError(err)
+	s.NotNil(rmGrp)
+
+	// give it attributes and values
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(),
+		Name:        "test_attr",
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"value1", "value2"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr)
+	val1 := attr.GetValues()[0]
+	val2 := attr.GetValues()[1]
+
+	nsKasURI := fmt.Sprintf("https://testing_granted_ns.com/%s/kas", namespaceName)
+	attrKasURI := fmt.Sprintf("https://testing_granted_attr.com/%s/kas", namespaceName)
+	val1KasURI := fmt.Sprintf("https://testing_granted_val.com/%s/kas", namespaceName)
+	val2KasURI := fmt.Sprintf("https://testing_granted_val2.com/%s/kas", namespaceName)
+
+	kasAssociations := map[string]string{}
+	// create new KASes
+	for _, toAssociate := range []struct {
+		id  string
+		uri string
+	}{
+		{ns.GetId(), nsKasURI},
+		{attr.GetId(), attrKasURI},
+		{val1.GetId(), val1KasURI},
+		{val2.GetId(), val2KasURI},
+	} {
+		kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+			Uri: toAssociate.uri,
+			PublicKey: &policy.PublicKey{
+				PublicKey: &policy.PublicKey_Remote{
+					Remote: toAssociate.uri + "/public_key",
+				},
+			},
+		})
+		s.Require().NoError(err)
+		s.NotNil(kas)
+		kasAssociations[toAssociate.id] = kas.GetId()
+	}
+
+	// make a grant association to the namespace
+	nsGrant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
+		KeyAccessServerId: kasAssociations[ns.GetId()],
+		NamespaceId:       ns.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(nsGrant)
+
+	// make a grant association to the attribute definition
+	attrGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, &attributes.AttributeKeyAccessServer{
+		KeyAccessServerId: kasAssociations[attr.GetId()],
+		AttributeId:       attr.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrGrant)
+
+	// make a grant association to the first value
+	val1Grant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, &attributes.ValueKeyAccessServer{
+		KeyAccessServerId: kasAssociations[val1.GetId()],
+		ValueId:           val1.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(val1Grant)
+
+	// make a grant association to the second value
+	val2Grant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, &attributes.ValueKeyAccessServer{
+		KeyAccessServerId: kasAssociations[val2.GetId()],
+		ValueId:           val2.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(val2Grant)
+
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+	actionCreate := s.f.GetStandardAction(policydb.ActionCreate.String())
+	// give a subject mapping to the first value
+	val1SM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              val1.GetId(),
+		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set1").ID,
+		Actions:                       []*policy.Action{actionRead, fixtureActionCustomUpload},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val1SM)
+
+	// give a subject mapping to the second value
+	val2SM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              val2.GetId(),
+		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set2").ID,
+		Actions:                       []*policy.Action{actionCreate},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val2SM)
+
+	// give a second subject mapping to the second value
+	val2SM2, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              val2.GetId(),
+		ExistingSubjectConditionSetId: s.f.GetSubjectConditionSetKey("subject_condition_set3").ID,
+		Actions:                       []*policy.Action{actionRead, actionCreate},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val2SM2)
+
+	rms := map[string]struct {
+		Terms   []string
+		GroupID string
+	}{}
+	// make a resource mapping for first value with the group
+	rm1, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		GroupId:          rmGrp.GetId(),
+		AttributeValueId: val1.GetId(),
+		Terms:            []string{"term1", "term2"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(rm1)
+	rms[rm1.GetId()] = struct {
+		Terms   []string
+		GroupID string
+	}{
+		Terms:   rm1.GetTerms(),
+		GroupID: rmGrp.GetId(),
+	}
+
+	// make another resource mapping for first value without the group
+	rm2, err := s.db.PolicyClient.CreateResourceMapping(s.ctx, &resourcemapping.CreateResourceMappingRequest{
+		AttributeValueId: val1.GetId(),
+		Terms:            []string{"otherterm1", "otherterm2"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(rm2)
+	rms[rm2.GetId()] = struct {
+		Terms   []string
+		GroupID string
+	}{
+		Terms: rm2.GetTerms(),
+	}
+
+	return bigSetup{
+		attrFqn:         fmt.Sprintf("https://%s/attr/test_attr", namespaceName),
+		nsID:            ns.GetId(),
+		attrID:          attr.GetId(),
+		val1ID:          val1.GetId(),
+		val2ID:          val2.GetId(),
+		kasAssociations: kasAssociations,
+		rms:             rms,
+	}
 }

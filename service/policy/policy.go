@@ -8,6 +8,7 @@ import (
 	"github.com/opentdf/platform/service/policy/attributes"
 	"github.com/opentdf/platform/service/policy/db/migrations"
 	"github.com/opentdf/platform/service/policy/kasregistry"
+	"github.com/opentdf/platform/service/policy/keymanagement"
 	"github.com/opentdf/platform/service/policy/namespaces"
 	"github.com/opentdf/platform/service/policy/registeredresources"
 	"github.com/opentdf/platform/service/policy/resourcemapping"
@@ -38,6 +39,7 @@ func NewRegistrations() []serviceregistry.IService {
 		unsafe.NewRegistration(namespace, dbRegister),
 		actions.NewRegistration(namespace, dbRegister),
 		registeredresources.NewRegistration(namespace, dbRegister),
+		keymanagement.NewRegistration(namespace, dbRegister),
 	}...)
 	return registrations
 }

@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"log/slog"
 	"os"
@@ -109,16 +110,6 @@ type FixtureDataKasRegistry struct {
 	Name string `yaml:"name"`
 }
 
-type FixtureDataPublicKey struct {
-	ID    string `yaml:"id"`
-	KasID string `yaml:"kas_id"`
-	Key   struct {
-		Alg string `yaml:"alg" json:"alg"`
-		Kid string `yaml:"kid" json:"kid"`
-		PEM string `yaml:"pem" json:"pem"`
-	} `yaml:"key" json:"key"`
-}
-
 type FixtureDataValueKeyMap struct {
 	ValueID string `yaml:"value_id"`
 	KeyID   string `yaml:"key_id"`
@@ -143,6 +134,31 @@ type FixtureDataRegisteredResourceValue struct {
 	ID                   string `yaml:"id"`
 	RegisteredResourceID string `yaml:"registered_resource_id"`
 	Value                string `yaml:"value"`
+}
+
+type FixtureDataRegisteredResourceActionAttributeValue struct {
+	ID                        string `yaml:"id"`
+	RegisteredResourceValueID string `yaml:"registered_resource_value_id"`
+	ActionName                string `yaml:"action_name"`
+	AttributeValueID          string `yaml:"attribute_value_id"`
+}
+
+type FixtureDataKasRegistryKey struct {
+	ID                string `yaml:"id"`
+	KeyAccessServerID string `yaml:"key_access_server_id"`
+	KeyAlgorithm      string `yaml:"key_algorithm"`
+	KeyID             string `yaml:"key_id"`
+	KeyMode           string `yaml:"key_mode"`
+	KeyStatus         string `yaml:"key_status"`
+	PrivateKeyCtx     string `yaml:"private_key_ctx"`
+	PublicKeyCtx      string `yaml:"public_key_ctx"`
+	ProviderConfigID  string `yaml:"provider_config_id"`
+}
+
+type FixtureDataProviderConfig struct {
+	ID             string `yaml:"id"`
+	ProviderName   string `yaml:"provider_name"`
+	ProviderConfig string `yaml:"config"`
 }
 
 type FixtureData struct {
@@ -188,10 +204,6 @@ type FixtureData struct {
 		Metadata FixtureMetadata                   `yaml:"metadata"`
 		Data     map[string]FixtureDataKasRegistry `yaml:"data"`
 	} `yaml:"kas_registry"`
-	PublicKey struct {
-		Metadata FixtureMetadata                 `yaml:"metadata"`
-		Data     map[string]FixtureDataPublicKey `yaml:"data"`
-	} `yaml:"public_keys"`
 	ValueKeyMap struct {
 		Metadata FixtureMetadata          `yaml:"metadata"`
 		Data     []FixtureDataValueKeyMap `yaml:"data"`
@@ -212,6 +224,18 @@ type FixtureData struct {
 		Metadata FixtureMetadata                               `yaml:"metadata"`
 		Data     map[string]FixtureDataRegisteredResourceValue `yaml:"data"`
 	} `yaml:"registered_resource_values"`
+	RegisteredResourceActionAttributeValues struct {
+		Metadata FixtureMetadata                                              `yaml:"metadata"`
+		Data     map[string]FixtureDataRegisteredResourceActionAttributeValue `yaml:"data"`
+	} `yaml:"registered_resource_action_attribute_values"`
+	KasRegistryKeys struct {
+		Metadata FixtureMetadata                      `yaml:"metadata"`
+		Data     map[string]FixtureDataKasRegistryKey `yaml:"data"`
+	} `yaml:"kas_registry_keys"`
+	ProviderConfigs struct {
+		Metadata FixtureMetadata                      `yaml:"metadata"`
+		Data     map[string]FixtureDataProviderConfig `yaml:"data"`
+	} `yaml:"provider_configs"`
 }
 
 func LoadFixtureData(file string) {
@@ -287,36 +311,6 @@ func (f *Fixtures) GetSubjectConditionSetKey(key string) SubjectConditionSet {
 	return scs
 }
 
-// Migration adds standard actions [create, read, update, delete] to the database
-func (f *Fixtures) loadMigratedStandardActions() {
-	actions := make(map[string]string)
-	rows, err := f.db.Client.Query(context.Background(), "SELECT id, name FROM actions WHERE is_standard = TRUE", nil)
-	if err != nil {
-		slog.Error("could not get standard actions", slog.String("error", err.Error()))
-		panic("could not get standard actions")
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id, name string
-		if err := rows.Scan(&id, &name); err != nil {
-			slog.Error("could not scan standard actions", slog.String("error", err.Error()))
-			panic("could not scan standard actions")
-		}
-		actions[name] = id
-	}
-	if err := rows.Err(); err != nil {
-		slog.Error("could not get standard actions", slog.String("error", err.Error()))
-		panic("could not get standard actions")
-	}
-	if len(actions) == 0 {
-		slog.Error("could not find standard actions")
-		panic("could not find standard actions")
-	}
-	slog.Info("found standard actions", slog.Any("actions", actions))
-	// add standard actions to fixtureData
-	f.MigratedData.StandardActions = actions
-}
-
 func (f *Fixtures) GetStandardAction(name string) *policypb.Action {
 	id, ok := f.MigratedData.StandardActions[name]
 	if !ok {
@@ -365,13 +359,13 @@ func (f *Fixtures) GetKasRegistryKey(key string) FixtureDataKasRegistry {
 	return kasr
 }
 
-func (f *Fixtures) GetPublicKey(key string) FixtureDataPublicKey {
-	pk, ok := fixtureData.PublicKey.Data[key]
-	if !ok || pk.ID == "" {
-		slog.Error("could not find public-keys", slog.String("id", key))
-		panic("could not find public-key fixture: " + key)
+func (f *Fixtures) GetKasRegistryServerKeys(key string) FixtureDataKasRegistryKey {
+	kasr, ok := fixtureData.KasRegistryKeys.Data[key]
+	if !ok || kasr.ID == "" {
+		slog.Error("could not find kas-registry", slog.String("id", key))
+		panic("could not find kas-registry fixture: " + key)
 	}
-	return pk
+	return kasr
 }
 
 func (f *Fixtures) GetValueMap(key string) []FixtureDataValueKeyMap {
@@ -455,18 +449,16 @@ func (f *Fixtures) Provision() {
 	akas := f.provisionAttributeKeyAccessServer()
 	slog.Info("📦 provisioning attribute value key access server data")
 	avkas := f.provisionAttributeValueKeyAccessServer()
-	slog.Info("📦 provisioning public keys")
-	pk := f.provisionPublicKeys()
-	slog.Info("📦 provisioning value key map")
-	vkm := f.provisionValueKeyMap()
-	slog.Info("📦 provisioning definition key map")
-	dkm := f.provisionDefinitionKeyMap()
-	slog.Info("📦 provisioning namespace key map")
-	nkm := f.provisionNamespaceKeyMap()
 	slog.Info("📦 provisioning registered resources")
 	rr := f.provisionRegisteredResources()
 	slog.Info("📦 provisioning registered resource values")
 	rrv := f.provisionRegisteredResourceValues()
+	slog.Info("📦 provisioning registered resource action attribute values")
+	rraav := f.provisionRegisteredResourceActionAttributeValues()
+	slog.Info("📦 provisioning provider configs")
+	pcs := f.provisionProviderConfigs()
+	slog.Info("📦 provisioning keys for kas registry")
+	kasKeys := f.provisionKasRegistryKeys()
 
 	slog.Info("📦 provisioned fixtures data",
 		slog.Int64("namespaces", n),
@@ -481,12 +473,11 @@ func (f *Fixtures) Provision() {
 		slog.Int64("kas_registry", kas),
 		slog.Int64("attribute_key_access_server", akas),
 		slog.Int64("attribute_value_key_access_server", avkas),
-		slog.Int64("public_keys", pk),
-		slog.Int64("value_key_map", vkm),
-		slog.Int64("definition_key_map", dkm),
-		slog.Int64("namespace_key_map", nkm),
 		slog.Int64("registered_resources", rr),
 		slog.Int64("registered_resource_values", rrv),
+		slog.Int64("registered_resource_action_attribute_values", rraav),
+		slog.Int64("provider_configs", pcs),
+		slog.Int64("kas_registry_keys", kasKeys),
 	)
 	slog.Info("📚 indexing FQNs for fixtures")
 	f.db.PolicyClient.AttrFqnReindex(context.Background())
@@ -671,51 +662,51 @@ func (f *Fixtures) provisionAttributeValueKeyAccessServer() int64 {
 	return f.provision("attribute_value_key_access_grants", []string{"attribute_value_id", "key_access_server_id"}, values)
 }
 
-func (f *Fixtures) provisionPublicKeys() int64 {
-	values := make([][]string, 0, len(fixtureData.PublicKey.Data))
-	for _, d := range fixtureData.PublicKey.Data {
+func (f *Fixtures) provisionProviderConfigs() int64 {
+	values := make([][]string, 0, len(fixtureData.ProviderConfigs.Data))
+	for _, d := range fixtureData.ProviderConfigs.Data {
+		providerConfigJSON, err := base64.StdEncoding.DecodeString(d.ProviderConfig)
+		if err != nil {
+			slog.Error("⛔️ 📦 issue with provider config JSON - check policy_fixtures.yaml for issues")
+			panic("issue with provider config JSON")
+		}
 		values = append(values, []string{
 			f.db.StringWrap(d.ID),
-			f.db.StringWrap(d.KasID),
-			f.db.StringWrap(d.Key.Kid),
-			f.db.StringWrap(d.Key.Alg),
-			f.db.StringWrap(d.Key.PEM),
+			f.db.StringWrap(d.ProviderName),
+			f.db.StringWrap(string(providerConfigJSON)),
 		})
 	}
-	return f.provision(fixtureData.PublicKey.Metadata.TableName, fixtureData.PublicKey.Metadata.Columns, values)
+
+	return f.provision(fixtureData.ProviderConfigs.Metadata.TableName, fixtureData.ProviderConfigs.Metadata.Columns, values)
 }
 
-func (f *Fixtures) provisionValueKeyMap() int64 {
-	values := make([][]string, 0, len(fixtureData.ValueKeyMap.Data))
-	for _, d := range fixtureData.ValueKeyMap.Data {
+func (f *Fixtures) provisionKasRegistryKeys() int64 {
+	values := make([][]string, 0, len(fixtureData.KasRegistryKeys.Data))
+	for _, d := range fixtureData.KasRegistryKeys.Data {
+		pubCtx, err := base64.StdEncoding.DecodeString(d.PublicKeyCtx)
+		if err != nil {
+			slog.Error("⛔️ 📦 issue with kas registry public key context - check policy_fixtures.yaml for issues")
+			panic("issue with kas registry public key context")
+		}
+		privateCtx, err := base64.StdEncoding.DecodeString(d.PrivateKeyCtx)
+		if err != nil {
+			slog.Error("⛔️ 📦 issue with kas registry private key context - check policy_fixtures.yaml for issues")
+			panic("issue with kas registry private key context")
+		}
 		values = append(values, []string{
-			f.db.StringWrap(d.ValueID),
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.KeyAccessServerID),
+			f.db.StringWrap(d.KeyAlgorithm),
 			f.db.StringWrap(d.KeyID),
+			f.db.StringWrap(d.KeyMode),
+			f.db.StringWrap(d.KeyStatus),
+			f.db.StringWrap(string(privateCtx)),
+			f.db.StringWrap(string(pubCtx)),
+			f.db.StringWrap(d.ProviderConfigID),
 		})
 	}
-	return f.provision(fixtureData.ValueKeyMap.Metadata.TableName, fixtureData.ValueKeyMap.Metadata.Columns, values)
-}
 
-func (f *Fixtures) provisionDefinitionKeyMap() int64 {
-	values := make([][]string, 0, len(fixtureData.DefinitionKeyMap.Data))
-	for _, d := range fixtureData.DefinitionKeyMap.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.DefinitionID),
-			f.db.StringWrap(d.KeyID),
-		})
-	}
-	return f.provision(fixtureData.DefinitionKeyMap.Metadata.TableName, fixtureData.DefinitionKeyMap.Metadata.Columns, values)
-}
-
-func (f *Fixtures) provisionNamespaceKeyMap() int64 {
-	values := make([][]string, 0, len(fixtureData.NamespaceKeyMap.Data))
-	for _, d := range fixtureData.NamespaceKeyMap.Data {
-		values = append(values, []string{
-			f.db.StringWrap(d.NamespaceID),
-			f.db.StringWrap(d.KeyID),
-		})
-	}
-	return f.provision(fixtureData.NamespaceKeyMap.Metadata.TableName, fixtureData.NamespaceKeyMap.Metadata.Columns, values)
+	return f.provision(fixtureData.KasRegistryKeys.Metadata.TableName, fixtureData.KasRegistryKeys.Metadata.Columns, values)
 }
 
 func (f *Fixtures) provisionRegisteredResources() int64 {
@@ -741,6 +732,25 @@ func (f *Fixtures) provisionRegisteredResourceValues() int64 {
 	return f.provision(fixtureData.RegisteredResourceValues.Metadata.TableName, fixtureData.RegisteredResourceValues.Metadata.Columns, values)
 }
 
+func (f *Fixtures) provisionRegisteredResourceActionAttributeValues() int64 {
+	values := make([][]string, 0, len(fixtureData.RegisteredResourceActionAttributeValues.Data))
+	for _, d := range fixtureData.RegisteredResourceActionAttributeValues.Data {
+		var actionID string
+		if id, ok := f.MigratedData.StandardActions[d.ActionName]; ok {
+			actionID = id
+		} else {
+			actionID = f.GetCustomActionKey(d.ActionName).ID
+		}
+		values = append(values, []string{
+			f.db.StringWrap(d.ID),
+			f.db.StringWrap(d.RegisteredResourceValueID),
+			f.db.StringWrap(actionID),
+			f.db.StringWrap(d.AttributeValueID),
+		})
+	}
+	return f.provision(fixtureData.RegisteredResourceActionAttributeValues.Metadata.TableName, fixtureData.RegisteredResourceActionAttributeValues.Metadata.Columns, values)
+}
+
 func (f *Fixtures) provision(t string, c []string, v [][]string) int64 {
 	rows, err := f.db.ExecInsert(t, c, v...)
 	if err != nil {
@@ -756,4 +766,34 @@ func (f *Fixtures) provision(t string, c []string, v [][]string) int64 {
 		panic("incorrect number of rows provisioned")
 	}
 	return rows
+}
+
+// Migration adds standard actions [create, read, update, delete] to the database
+func (f *Fixtures) loadMigratedStandardActions() {
+	actions := make(map[string]string)
+	rows, err := f.db.Client.Query(context.Background(), "SELECT id, name FROM actions WHERE is_standard = TRUE", nil)
+	if err != nil {
+		slog.Error("could not get standard actions", slog.String("error", err.Error()))
+		panic("could not get standard actions")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			slog.Error("could not scan standard actions", slog.String("error", err.Error()))
+			panic("could not scan standard actions")
+		}
+		actions[name] = id
+	}
+	if err := rows.Err(); err != nil {
+		slog.Error("could not get standard actions", slog.String("error", err.Error()))
+		panic("could not get standard actions")
+	}
+	if len(actions) == 0 {
+		slog.Error("could not find standard actions")
+		panic("could not find standard actions")
+	}
+	slog.Info("found standard actions", slog.Any("actions", actions))
+	// add standard actions to fixtureData
+	f.MigratedData.StandardActions = actions
 }

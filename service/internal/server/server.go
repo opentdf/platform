@@ -19,6 +19,7 @@ import (
 	"connectrpc.com/validate"
 	"github.com/go-chi/cors"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/sdk"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
@@ -27,6 +28,7 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/tracing"
+	"github.com/opentdf/platform/service/trust"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
@@ -48,8 +50,9 @@ func (e Error) Error() string {
 
 // Configurations for the server
 type Config struct {
-	Auth                    auth.Config                              `mapstructure:"auth" json:"auth"`
-	GRPC                    GRPCConfig                               `mapstructure:"grpc" json:"grpc"`
+	Auth auth.Config `mapstructure:"auth" json:"auth"`
+	GRPC GRPCConfig  `mapstructure:"grpc" json:"grpc"`
+	// To Deprecate: Use the WithKey[X]Provider StartOptions to register trust providers.
 	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider" json:"cryptoProvider"`
 	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
 	CORS                    CORSConfig                               `mapstructure:"cors" json:"cors"`
@@ -64,16 +67,22 @@ type Config struct {
 }
 
 func (c Config) LogValue() slog.Value {
-	return slog.GroupValue(
+	group := []slog.Attr{
 		slog.Any("auth", c.Auth),
 		slog.Any("grpc", c.GRPC),
-		slog.Any("cryptoProvider", c.CryptoProvider),
 		slog.Any("tls", c.TLS),
 		slog.Any("cors", c.CORS),
 		slog.Int("port", c.Port),
 		slog.String("host", c.Host),
 		slog.Bool("enablePprof", c.EnablePprof),
-	)
+	}
+
+	// CryptoProvider is deprecated in favor of the trust package.
+	if !c.CryptoProvider.IsEmpty() {
+		group = append(group, slog.Any("cryptoProvider", c.CryptoProvider))
+	}
+
+	return slog.GroupValue(group...)
 }
 
 // GRPC Server specific configurations
@@ -120,7 +129,13 @@ type OpenTDFServer struct {
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
-	CryptoProvider      security.CryptoProvider
+
+	TrustKeyIndex   trust.KeyIndex
+	TrustKeyManager trust.KeyManager
+
+	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
+	CryptoProvider *security.StandardCrypto
+	Listener       net.Listener
 
 	logger *logger.Logger
 }
@@ -217,11 +232,13 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		logger: logger,
 	}
 
-	// Create crypto provider
-	logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
-	o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
-	if err != nil {
-		return nil, fmt.Errorf("security.NewCryptoProvider: %w", err)
+	if !config.CryptoProvider.IsEmpty() {
+		// Create crypto provider
+		logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
+		o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
+		if err != nil {
+			return nil, fmt.Errorf("security.NewCryptoProvider: %w", err)
+		}
 	}
 
 	return &o, nil
@@ -425,11 +442,13 @@ func (s OpenTDFServer) Start() error {
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 
-	// Start Http Server
 	ln, err := s.openHTTPServerPort()
 	if err != nil {
 		return err
 	}
+	s.Listener = ln
+
+	// Start Http Server
 	go s.startHTTPServer(ln)
 
 	return nil
@@ -443,6 +462,10 @@ func (s OpenTDFServer) Stop() {
 		s.logger.Error("failed to shutdown http server", slog.String("error", err.Error()))
 		return
 	}
+	// Close the listener
+	if s.Listener != nil {
+		s.Listener.Close()
+	}
 
 	s.logger.Info("shutting down in process grpc server")
 	if err := s.ConnectRPCInProcess.srv.Shutdown(ctx); err != nil {
@@ -453,7 +476,25 @@ func (s OpenTDFServer) Stop() {
 	s.logger.Info("shutdown complete")
 }
 
-func (s inProcessServer) Conn() *grpc.ClientConn {
+func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
+	var clientInterceptors []connect.Interceptor
+
+	// Add audit interceptor
+	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())
+
+	conn := sdk.ConnectRPCConnection{
+		Client:   s.srv.Client(),
+		Endpoint: s.srv.Listener.Addr().String(),
+		Options: []connect.ClientOption{
+			connect.WithInterceptors(clientInterceptors...),
+			connect.WithReadMaxBytes(s.maxCallRecvMsgSize),
+			connect.WithSendMaxBytes(s.maxCallSendMsgSize),
+		},
+	}
+	return &conn
+}
+
+func (s inProcessServer) GrpcConn() *grpc.ClientConn {
 	var clientInterceptors []grpc.UnaryClientInterceptor
 
 	// Add audit interceptor

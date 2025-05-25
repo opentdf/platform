@@ -2,18 +2,18 @@ package sdk
 
 import (
 	"context"
-	"fmt"
 	"maps"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/sdk/sdkconnect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -299,7 +299,7 @@ func TestAttributeFromMalformedURL(t *testing.T) {
 		t.Run(tc.n, func(t *testing.T) {
 			a, err := NewAttributeNameFQN(tc.u)
 			require.ErrorIs(t, err, ErrInvalid)
-			assert.Equal(t, "", a.String())
+			assert.Empty(t, a.String())
 		})
 	}
 }
@@ -342,7 +342,7 @@ func TestAttributeValueFromMalformedURL(t *testing.T) {
 		t.Run(tc.n, func(t *testing.T) {
 			a, err := NewAttributeValueFQN(tc.u)
 			require.ErrorIs(t, err, ErrInvalid)
-			assert.Equal(t, "", a.String())
+			assert.Empty(t, a.String())
 		})
 	}
 }
@@ -492,7 +492,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
 				i++
-				return fmt.Sprintf("%d", i)
+				return strconv.Itoa(i)
 			})
 			require.NoError(t, err)
 			assert.Equal(t, tc.plan, plan)
@@ -500,19 +500,17 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 	}
 }
 
-var (
-	listAttributeResp attributes.ListAttributesResponse
-)
+var listAttributeResp attributes.ListAttributesResponse
 
 type mockAttributesClient struct {
-	attributes.AttributesServiceClient
+	sdkconnect.AttributesServiceClient
 }
 
-func (*mockAttributesClient) ListAttributes(_ context.Context, _ *attributes.ListAttributesRequest, _ ...grpc.CallOption) (*attributes.ListAttributesResponse, error) {
+func (*mockAttributesClient) ListAttributes(_ context.Context, _ *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error) {
 	return &listAttributeResp, nil
 }
 
-func (*mockAttributesClient) GetAttributeValuesByFqns(_ context.Context, req *attributes.GetAttributeValuesByFqnsRequest, _ ...grpc.CallOption) (*attributes.GetAttributeValuesByFqnsResponse, error) {
+func (*mockAttributesClient) GetAttributeValuesByFqns(_ context.Context, req *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error) {
 	av := make(map[string]*attributes.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 	for _, v := range req.GetFqns() {
 		vfqn, err := NewAttributeValueFQN(v)
@@ -618,7 +616,7 @@ func TestReasonerSpecificity(t *testing.T) {
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
 				i++
-				return fmt.Sprintf("%d", i)
+				return strconv.Itoa(i)
 			})
 			require.NoError(t, err)
 			assert.ElementsMatch(t, tc.plan, plan)
@@ -769,7 +767,7 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
 				i++
-				return fmt.Sprintf("%d", i)
+				return strconv.Itoa(i)
 			})
 			require.NoError(t, err)
 			assert.ElementsMatch(t, tc.plan, plan)

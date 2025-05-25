@@ -6,18 +6,18 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
-	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
+	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry/kasregistryconnect"
+	"github.com/opentdf/platform/protocol/go/policy/resourcemapping/resourcemappingconnect"
+	"github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
 	"github.com/opentdf/platform/sdk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var (
-	goodPlatformEndpoint = "localhost:8080"
-	badPlatformEndpoint  = "localhost:9999"
+	goodPlatformEndpoint = "http://localhost:8080"
+	badPlatformEndpoint  = "http://localhost:9999"
 )
 
 func GetMethods(i interface{}) []string {
@@ -75,19 +75,19 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 func Test_PlatformConfiguration_BadCases(t *testing.T) {
 	assertions := func(t *testing.T, s *sdk.SDK) {
 		iss, err := s.PlatformConfiguration.Issuer()
-		assert.Equal(t, "", iss)
+		assert.Empty(t, iss)
 		require.ErrorIs(t, err, sdk.ErrPlatformIssuerNotFound)
 
 		authzEndpoint, err := s.PlatformConfiguration.AuthzEndpoint()
-		assert.Equal(t, "", authzEndpoint)
+		assert.Empty(t, authzEndpoint)
 		require.ErrorIs(t, err, sdk.ErrPlatformAuthzEndpointNotFound)
 
 		tokenEndpoint, err := s.PlatformConfiguration.TokenEndpoint()
-		assert.Equal(t, "", tokenEndpoint)
+		assert.Empty(t, tokenEndpoint)
 		require.ErrorIs(t, err, sdk.ErrPlatformTokenEndpointNotFound)
 
 		publicClientID, err := s.PlatformConfiguration.PublicClientID()
-		assert.Equal(t, "", publicClientID)
+		assert.Empty(t, publicClientID)
 		require.ErrorIs(t, err, sdk.ErrPlatformPublicClientIDNotFound)
 	}
 
@@ -120,18 +120,6 @@ func Test_ShouldCreateNewSDK_NoCredentials(t *testing.T) {
 	// Then
 	require.NoError(t, err)
 	assert.NotNil(t, s)
-}
-
-func TestNew_ShouldCloseConnections(t *testing.T) {
-	s, err := sdk.New(goodPlatformEndpoint,
-		sdk.WithPlatformConfiguration(sdk.PlatformConfiguration{
-			"platform_issuer": "https://example.org",
-		}),
-		sdk.WithClientCredentials("myid", "mysecret", nil),
-		sdk.WithTokenEndpoint("https://example.org/token"),
-	)
-	require.NoError(t, err)
-	require.NoError(t, s.Close())
 }
 
 func TestNew_ShouldValidateGoodNanoTdf(t *testing.T) {
@@ -196,6 +184,7 @@ func TestNew_ShouldNotValidateBadStandardTdf(t *testing.T) {
 	assert.False(t, isValid)
 	require.Error(t, err)
 }
+
 func TestIsInvalid_MissingRequiredManifestPayloadField(t *testing.T) {
 	// This is a valid ZTDF, but missing the manifest.payload.type entry.
 	badStandardTdf := "UEsDBC0ACAAAAN2oTzIAAAAAAAAAAAAAAAAJAAAAMC5wYXlsb2FkD/U+BGl0DU+fwM4j8f6FgpXSaKlOvzGgSK/AnAzDUiID+S97s7fGqV7ajuc9uFBLBwgYUH8dLgAAAC4AAABQSwMELQAIAAAA3ahPMgAAAAAAAAAAAAAAAA8AAAAwLm1hbmlmZXN0Lmpzb257ImVuY3J5cHRpb25JbmZvcm1hdGlvbiI6eyJ0eXBlIjoic3BsaXQiLCJwb2xpY3kiOiJleUoxZFdsa0lqb2lPRFpqTW1ZNU16SXRaRE00TkMweE1XVm1MV0V3Tm1JdFpXRmtNR1F3TjJJeFpHUm1JaXdpWW05a2VTSTZleUprWVhSaFFYUjBjbWxpZFhSbGN5STZXM3NpWVhSMGNtbGlkWFJsSWpvaWFIUjBjSE02THk5bGVHRnRjR3hsTG1OdmJTOWhkSFJ5TDJGMGRISXhMM1poYkhWbEwzWmhiSFZsTVNJc0ltUnBjM0JzWVhsT1lXMWxJam9pSWl3aWFYTkVaV1poZFd4MElqcG1ZV3h6WlN3aWNIVmlTMlY1SWpvaUlpd2lhMkZ6VlZKTUlqb2lJbjFkTENKa2FYTnpaVzBpT2x0ZGZYMD0iLCJrZXlBY2Nlc3MiOlt7InR5cGUiOiJ3cmFwcGVkIiwidXJsIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgwIiwicHJvdG9jb2wiOiJrYXMiLCJ3cmFwcGVkS2V5IjoiazR4ci9UZkpMbGpkOUM4VXR5Q3pQaG5JUkRBek9RUzA0bTZreDVlUmh1VEtmZkErNEIxajJIWjBTUDRwb2tRSGo2bDAycU1aalBkVEd4eDRnNm5wemN2QkdoeFhyQyt4Q3dCTHcrWjViTVI4VG1uOVpsOUhrUmJWUXNpb01QbWk2NURaY0RwOHZPTUxob0ZrblA4WlNsQ3ZuNHBXMWN2eEpGN3N5MGpvNDBlZDhhUVp6RnU1b0J4alpCbDhUcnpSZ1NGK3VwTGp1cEdKUHF0VVpmd0FQZ3JGTFdRMmFXQ0laQ2VkTDlCSXozTFhRS3lGU1VEUmZiTyszT3dPZHV6aWpNbVUrWnJPSGFkNXRqRklxS0swZHlRMkFDR3RoajNIUEJDUGc0UDJoZ0tGeEgzQWUrMTVFVnV5QWpGOVk4NDlDU2Q4NGJMS0NzTjZ4Mjl0L2dpVGJnPT0iLCJwb2xpY3lCaW5kaW5nIjp7ImFsZyI6IkhTMjU2IiwiaGFzaCI6Ik1UWTFZelExTjJRNU5qRTVPREprWXpjM056QTRaVFZpWlRWaE56QTNNMlpoWldNNU16azVaR1U1WmpVd1kySmhNakJsTVRBeE5HWmhaRGhrWlRFMk5RPT0ifSwia2lkIjoicjEifV0sIm1ldGhvZCI6eyJhbGdvcml0aG0iOiJBRVMtMjU2LUdDTSIsIml2IjoiIiwiaXNTdHJlYW1hYmxlIjp0cnVlfSwiaW50ZWdyaXR5SW5mb3JtYXRpb24iOnsicm9vdFNpZ25hdHVyZSI6eyJhbGciOiJIUzI1NiIsInNpZyI6Ik1ESTNaREUyTmpBek1qUXhOMkUxWlRRNU1qVTFPREF5WW1abE5UQmtaak5rTWpBeU1qa3pNbUkwTUdRd01EWTNNakkzTm1VeFptTmhPRGd4TlRVellnPT0ifSwic2VnbWVudEhhc2hBbGciOiJHTUFDIiwic2VnbWVudFNpemVEZWZhdWx0IjoyMDk3MTUyLCJlbmNyeXB0ZWRTZWdtZW50U2l6ZURlZmF1bHQiOjIwOTcxODAsInNlZ21lbnRzIjpbeyJoYXNoIjoiTlRJeU1qQXpaamt5WmpkaVlqTmlOMk0yWVRrMVpXUmhPR1ZsTnpOa1lqZz0iLCJzZWdtZW50U2l6ZSI6MTgsImVuY3J5cHRlZFNlZ21lbnRTaXplIjo0Nn1dfX0sInBheWxvYWQiOnsidXJsIjoiMC5wYXlsb2FkIiwicHJvdG9jb2wiOiJ6aXAiLCJtaW1lVHlwZSI6ImFwcGxpY2F0aW9uL29jdGV0LXN0cmVhbSIsImlzRW5jcnlwdGVkIjp0cnVlfX1QSwcI2lLjxJ0FAACdBQAAUEsBAi0ALQAIAAAA3ahPMhhQfx0uAAAALgAAAAkAAAAAAAAAAAAAAAAAAAAAADAucGF5bG9hZFBLAQItAC0ACAAAAN2oTzLaUuPEnQUAAJ0FAAAPAAAAAAAAAAAAAAAAAGUAAAAwLm1hbmlmZXN0Lmpzb25QSwUGAAAAAAIAAgB0AAAAPwYAAAAA"
@@ -227,22 +216,22 @@ func TestNew_ShouldHaveSameMethods(t *testing.T) {
 	}{
 		{
 			name:     "Attributes",
-			expected: GetMethods(reflect.TypeOf(attributes.NewAttributesServiceClient(s.Conn()))),
+			expected: GetMethods(reflect.TypeOf(attributesconnect.NewAttributesServiceClient(s.Conn().Client, s.Conn().Endpoint))),
 			actual:   GetMethods(reflect.TypeOf(s.Attributes)),
 		},
 		{
 			name:     "ResourceEncoding",
-			expected: GetMethods(reflect.TypeOf(resourcemapping.NewResourceMappingServiceClient(s.Conn()))),
+			expected: GetMethods(reflect.TypeOf(resourcemappingconnect.NewResourceMappingServiceClient(s.Conn().Client, s.Conn().Endpoint))),
 			actual:   GetMethods(reflect.TypeOf(s.ResourceMapping)),
 		},
 		{
 			name:     "SubjectEncoding",
-			expected: GetMethods(reflect.TypeOf(subjectmapping.NewSubjectMappingServiceClient(s.Conn()))),
+			expected: GetMethods(reflect.TypeOf(subjectmappingconnect.NewSubjectMappingServiceClient(s.Conn().Client, s.Conn().Endpoint))),
 			actual:   GetMethods(reflect.TypeOf(s.SubjectMapping)),
 		},
 		{
 			name:     "KeyAccessGrants",
-			expected: GetMethods(reflect.TypeOf(kasregistry.NewKeyAccessServerRegistryServiceClient(s.Conn()))),
+			expected: GetMethods(reflect.TypeOf(kasregistryconnect.NewKeyAccessServerRegistryServiceClient(s.Conn().Client, s.Conn().Endpoint))),
 			actual:   GetMethods(reflect.TypeOf(s.KeyAccessServerRegistry)),
 		},
 	}
@@ -272,93 +261,67 @@ func Test_New_ShouldFailWithDisconnectedPlatform(t *testing.T) {
 	assert.Nil(t, s)
 }
 
-func Test_ShouldSanitizePlatformEndpoint(t *testing.T) {
+func TestIsPlatformEndpointMalformed(t *testing.T) {
 	tests := []struct {
-		name     string
-		endpoint string
-		expected string
+		name        string
+		input       string
+		expected    bool
+		description string
 	}{
 		{
-			name:     "No scheme",
-			endpoint: "localhost:8080",
-			expected: "localhost:8080",
+			name:        "Valid URL with scheme and host",
+			input:       "https://example.com",
+			expected:    false,
+			description: "A valid URL with scheme and host should not be considered malformed.",
 		},
 		{
-			name:     "HTTP scheme with port",
-			endpoint: "http://localhost:8080",
-			expected: "localhost:8080",
+			name:        "Valid URL with scheme, host, and port",
+			input:       "https://example.com:8080",
+			expected:    false,
+			description: "A valid URL with scheme, host, and port should not be considered malformed.",
 		},
 		{
-			name:     "HTTPS scheme with port",
-			endpoint: "https://localhost:8080",
-			expected: "localhost:8080",
+			name:        "Valid URL with path",
+			input:       "https://example.com/path",
+			expected:    false,
+			description: "A valid URL with a path should not be considered malformed.",
 		},
 		{
-			name:     "HTTP scheme no port",
-			endpoint: "http://localhost",
-			expected: "localhost:80",
+			name:        "Invalid URL with missing host",
+			input:       "https://:8080",
+			expected:    true,
+			description: "A URL with a missing host should be considered malformed.",
 		},
 		{
-			name:     "HTTPS scheme no port",
-			endpoint: "https://localhost",
-			expected: "localhost:443",
+			name:        "Invalid URL with missing scheme",
+			input:       "example.com",
+			expected:    true,
+			description: "A URL without a scheme should be considered malformed.",
 		},
 		{
-			name:     "HTTPS scheme port (IP)",
-			endpoint: "https://192.168.1.1:8080",
-			expected: "192.168.1.1:8080",
+			name:        "Invalid URL with invalid characters",
+			input:       "https://exa mple.com",
+			expected:    true,
+			description: "A URL with invalid characters should be considered malformed.",
 		},
 		{
-			name:     "HTTPS scheme no port (IP)",
-			endpoint: "https://192.168.1.1",
-			expected: "192.168.1.1:443",
+			name:        "Invalid URL with colon in hostname",
+			input:       "https://example:com",
+			expected:    true,
+			description: "A URL with a colon in the hostname should be considered malformed.",
 		},
 		{
-			name:     "Malformed url",
-			endpoint: "http://localhost:8080:8080",
-			expected: "",
-		},
-		{
-			name:     "Malformed url",
-			endpoint: "http://localhost:8080:",
-			expected: "",
-		},
-		{
-			name:     "Malformed url",
-			endpoint: "http//localhost:8080:",
-			expected: "",
-		},
-		{
-			name:     "Malformed url",
-			endpoint: "//localhost",
-			expected: "",
-		},
-		{
-			name:     "Malformed url",
-			endpoint: "://localhost",
-			expected: "",
-		},
-		{
-			name:     "Malformed url",
-			endpoint: "http/localhost",
-			expected: "",
-		},
-		{
-			name:     "Malformed url",
-			endpoint: "http:localhost",
-			expected: "",
+			name:        "Empty input",
+			input:       "",
+			expected:    true,
+			description: "An empty input should be considered malformed.",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual, err := sdk.SanitizePlatformEndpoint(tt.endpoint)
-			if tt.expected == "" {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.expected, actual)
-			}
+			result := sdk.IsPlatformEndpointMalformed(tt.input)
+			assert.Equal(t, tt.expected, result, tt.description)
 		})
 	}
 }

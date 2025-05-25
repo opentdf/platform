@@ -2,6 +2,7 @@ package unsafe
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -402,22 +403,6 @@ func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *con
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *UnsafeService) UnsafeDeletePublicKey(ctx context.Context, req *connect.Request[unsafe.UnsafeDeletePublicKeyRequest]) (*connect.Response[unsafe.UnsafeDeletePublicKeyResponse], error) {
-	auditParams := audit.PolicyEventParams{
-		ActionType: audit.ActionTypeDelete,
-		ObjectType: audit.ObjectTypePublicKey,
-		ObjectID:   req.Msg.GetId(),
-	}
-
-	resp, err := s.dbClient.UnsafeDeleteKey(ctx, req.Msg)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", req.Msg.GetId()))
-	}
-
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	return connect.NewResponse(&unsafe.UnsafeDeletePublicKeyResponse{
-		Key: resp,
-	}), nil
+func (s *UnsafeService) UnsafeDeleteKasKey(context.Context, *connect.Request[unsafe.UnsafeDeleteKasKeyRequest]) (*connect.Response[unsafe.UnsafeDeleteKasKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
 }

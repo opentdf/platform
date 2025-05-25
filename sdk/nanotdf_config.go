@@ -26,6 +26,7 @@ type NanoTDFConfig struct {
 	policy        policyInfo
 	bindCfg       bindingConfig
 	collectionCfg *collectionConfig
+	policyMode    PolicyType // Added field for policy mode
 }
 
 type NanoTDFOption func(*NanoTDFConfig) error
@@ -55,6 +56,7 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 			useCollection: false,
 			header:        []byte{},
 		},
+		policyMode: NanoTDFPolicyModeDefault,
 	}
 
 	return c, nil
@@ -89,6 +91,15 @@ func (config *NanoTDFConfig) EnableCollection() {
 	config.collectionCfg.useCollection = true
 }
 
+// SetPolicyMode sets whether the policy should be encrypted or plaintext
+func (config *NanoTDFConfig) SetPolicyMode(mode PolicyType) error {
+	if err := validNanoTDFPolicyMode(mode); err != nil {
+		return err
+	}
+	config.policyMode = mode
+	return nil
+}
+
 // WithNanoDataAttributes appends the given data attributes to the bound policy
 func WithNanoDataAttributes(attributes ...string) NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
@@ -107,6 +118,51 @@ func WithNanoDataAttributes(attributes ...string) NanoTDFOption {
 func WithECDSAPolicyBinding() NanoTDFOption {
 	return func(c *NanoTDFConfig) error {
 		c.bindCfg.useEcdsaBinding = true
+		return nil
+	}
+}
+
+type NanoTDFReaderConfig struct {
+	kasAllowlist    AllowList
+	ignoreAllowList bool
+}
+
+func newNanoTDFReaderConfig(opt ...NanoTDFReaderOption) (*NanoTDFReaderConfig, error) {
+	c := &NanoTDFReaderConfig{}
+
+	for _, o := range opt {
+		err := o(c)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return c, nil
+}
+
+type NanoTDFReaderOption func(*NanoTDFReaderConfig) error
+
+func WithNanoKasAllowlist(kasList []string) NanoTDFReaderOption {
+	return func(c *NanoTDFReaderConfig) error {
+		allowlist, err := newAllowList(kasList)
+		if err != nil {
+			return fmt.Errorf("failed to create kas allowlist: %w", err)
+		}
+		c.kasAllowlist = allowlist
+		return nil
+	}
+}
+
+func withNanoKasAllowlist(allowlist AllowList) NanoTDFReaderOption {
+	return func(c *NanoTDFReaderConfig) error {
+		c.kasAllowlist = allowlist
+		return nil
+	}
+}
+
+func WithNanoIgnoreAllowlist(ignore bool) NanoTDFReaderOption {
+	return func(c *NanoTDFReaderConfig) error {
+		c.ignoreAllowList = ignore
 		return nil
 	}
 }

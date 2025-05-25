@@ -1,176 +1,203 @@
 # Policy Bot Configuration Docs https://github.com/palantir/policy-bot?tab=readme-ov-file#policyyml-specification
 policy:
   approval:
-  - or:
-    - and:
-      - default
-      - github_actions
-      - lib_ocrypto
-      - go_mod
-      - repo_policy
-      - large_pr
-    - dependabot_updates
-    - autobump
-    
+    - or:
+        - and:
+            - default
+            - github_actions
+            - lib_ocrypto
+            - go_mod
+            - repo_policy
+            - large_pr
+            - external_contributors
+        - dependabot_updates
+        - autobump
+
   disapproval:
     requires:
       teams:
-      - "opentdf/maintainers"
-      - "opentdf/architecture"
-        
+        - "opentdf/maintainers"
+        - "opentdf/architecture"
 
 approval_rules:
-- name: default
-  description: "Always require at least 1 maintainer approval"
-  options:
-    invalidate_on_push: true
-    ignore_edited_comments: true
-  requires:
-    count: 1
-    conditions:
-      has_valid_signatures: true
-    teams:
-    - "opentdf/maintainers"
+  - name: default
+    description: "Always require at least 1 maintainer approval"
+    options:
+      invalidate_on_push: true
+      ignore_edited_comments: true
+    requires:
+      count: 1
+      conditions:
+        has_valid_signatures: true
+      teams:
+        - "opentdf/maintainers"
 
-- name: github_actions
-  description: "Approval rule for GitHub Actions"
-  if:
-    changed_files:
-      paths:
-      - "^.github/.*"
-  options:
-    invalidate_on_push: true
-    ignore_edited_comments: true
-  requires:
-    count: 2
-    conditions:
-      has_valid_signatures: true
-    teams:
-    - "opentdf/architecture"
-    - "opentdf/maintainers"
-    - "opentdf/sre"
-    - "opentdf/security"
+  - name: github_actions
+    description: "Approval rule for GitHub Actions"
+    if:
+      changed_files:
+        paths:
+          - "^.github/.*"
+    options:
+      invalidate_on_push: true
+      ignore_edited_comments: true
+    requires:
+      count: 2
+      conditions:
+        has_valid_signatures: true
+      teams:
+        - "opentdf/architecture"
+        - "opentdf/maintainers"
+        - "opentdf/sre"
+        - "opentdf/security"
 
-- name: lib_ocrypto
-  description: "If the crypto library is changed, require 1 architecture approval"
-  if:
-    changed_files:
-      paths:
-      - "^lib/ocrypto/.*"
-  options:
-    invalidate_on_push: true
-    ignore_edited_comments: true
-  requires:
-    count: 1
-    conditions:
-      has_valid_signatures: true
-    teams:
-    - "opentdf/architecture"
+  - name: lib_ocrypto
+    description: "If the crypto library is changed, require 1 architecture approval"
+    if:
+      changed_files:
+        paths:
+          - "^lib/ocrypto/.*"
+    options:
+      invalidate_on_push: true
+      ignore_edited_comments: true
+    requires:
+      count: 1
+      conditions:
+        has_valid_signatures: true
+      teams:
+        - "opentdf/architecture"
 
-- name: dependabot_updates
-  description: "If dependabot_updates and ci passes, require 0 approvals"
-  if:
-    has_labels:
-      - dependencies
-    has_author_in:
-      users:
-      - "dependabot[bot]"
-    has_contributor_in:
-      users:
-      - "dependabot[bot]"
-  options:
-    invalidate_on_push: true
-    ignore_edited_comments: true
-  requires:
-    count: 0
-    conditions:
-      has_valid_signatures: true
-      has_status:
-        conclusions: 
-        - success
-        statuses:
-        - ci
-        - pull-request-checks
+  - name: dependabot_updates
+    description: "If dependabot_updates and ci passes, require 0 approvals"
+    if:
+      has_labels:
+        - dependencies
+      has_author_in:
+        users:
+          - "dependabot[bot]"
+      has_contributor_in:
+        users:
+          - "dependabot[bot]"
+    options:
+      invalidate_on_push: true
+      ignore_edited_comments: true
+    requires:
+      count: 0
+      conditions:
+        has_valid_signatures: true
+        has_status:
+          conclusions:
+            - success
+          statuses:
+            - ci
+            - pull-request-checks
 
-- name: autobump
-  description: "If its a autobump pull request, require 0 approvals"
-  if:
-    has_author_in:
-      users:
-      - "opentdf-automation[bot]"
-    has_contributor_in:
-      users:
-      - "github-actions[bot]"
-    has_labels:
-      - autobump
-    from_branch:
-      pattern: "^update-go-mods-for-(service|sdk|examples)$"
-  options:
-    invalidate_on_push: true
-    ignore_edited_comments: true
-  requires:
-    count: 0
-    conditions:
-      has_valid_signatures: true
-      has_status:
-        conclusions: 
-        - success
-        statuses:
-        - ci
-        - pull-request-checks
+  - name: autobump
+    description: "If its a autobump pull request, require 0 approvals"
+    if:
+      has_author_in:
+        users:
+          - "opentdf-automation[bot]"
+      has_contributor_in:
+        users:
+          - "github-actions[bot]"
+      has_labels:
+        - autobump
+      from_branch:
+        pattern: "^update-go-mods-for-(service|sdk|examples)$"
+    options:
+      invalidate_on_push: true
+      ignore_edited_comments: true
+    requires:
+      count: 0
+      conditions:
+        has_valid_signatures: true
+        has_status:
+          conclusions:
+            - success
+          statuses:
+            - ci
+            - pull-request-checks
 
-- name: go_mod
-  description: "If go.mod or go.sum is changed, require 2 approvals"
-  if:
-   changed_files:
-    paths:
-    - "^(.*/)?(go\\.mod)$"  # Root or subdirectories
-    - "^(.*/)?(go\\.sum)$"  # Root or subdirectories
-  options:
-    invalidate_on_push: true
-    ignore_edited_comments: true
-  requires:
-    count: 2
-    conditions:
-      has_valid_signatures: true
-    teams:
-    - "opentdf/architecture"
-    - "opentdf/maintainers"
-    - "opentdf/security"
+  - name: go_mod
+    description: "If go.mod or go.sum is changed, require 2 approvals"
+    if:
+      changed_files:
+        paths:
+          - "^(.*/)?(go\\.mod)$" # Root or subdirectories
+          - "^(.*/)?(go\\.sum)$" # Root or subdirectories
+    options:
+      invalidate_on_push: true
+      ignore_edited_comments: true
+    requires:
+      count: 2
+      conditions:
+        has_valid_signatures: true
+      teams:
+        - "opentdf/architecture"
+        - "opentdf/maintainers"
+        - "opentdf/security"
 
-- name: repo_policy
-  description: "If repo policy like CODEOWNERS is changed, require 1 approval from security or architecture"
-  if:
-    changed_files:
-      paths:
-      - "^CODEOWNERS$"
-      - "^LICENSE$"
-      - "^.policy.yml$"
-  options:
-    invalidate_on_push: true
-    ignore_edited_comments: true
-  requires:
-    count: 1
-    conditions:
-      has_valid_signatures: true
-    teams:
-    - "opentdf/architecture"
-    - "opentdf/security"
+  - name: repo_policy
+    description: "If repo policy like CODEOWNERS is changed, require 1 approval from security or architecture"
+    if:
+      changed_files:
+        paths:
+          - "^CODEOWNERS$"
+          - "^LICENSE$"
+          - "^.policy.yml$"
+    options:
+      invalidate_on_push: true
+      ignore_edited_comments: true
+    requires:
+      count: 1
+      conditions:
+        has_valid_signatures: true
+      teams:
+        - "opentdf/architecture"
+        - "opentdf/security"
 
-- name: large_pr
-  description: "If the PR is large, require 2 approvals"
-  if:
-    modified_lines:
-      additions: "> 100"
-      deletions: "> 100"
-      total: "> 200"
-  options:
-    invalidate_on_push: true
-    ignore_edited_comments: true
-  requires:
-    count: 2
-    conditions:
-      has_valid_signatures: true
-    teams:
-    - "opentdf/architecture"
-    - "opentdf/maintainers"
+  - name: large_pr
+    description: "If the PR is large, require 2 approvals"
+    if:
+      has_labels:
+        - "size/l"
+        - "size/xl"
+      changed_files:
+        paths:
+          - ".*" # This will match any file
+        ignore:
+          - "^protocol/.*" # Ignore files in the protocol directory
+          - "^docs/.*" # Ignore files in the docs directory
+    options:
+      invalidate_on_push: true
+      ignore_edited_comments: true
+    requires:
+      count: 2
+      conditions:
+        has_valid_signatures: true
+      teams:
+        - "opentdf/architecture"
+        - "opentdf/maintainers"
+
+  - name: external_contributors
+    description: "Require 1 approval from architecture team for external contributors"
+    if:
+      has_labels:
+        - "external-contributor"
+    options:
+      invalidate_on_push: true
+      ignore_edited_comments: true
+    requires:
+      count: 1
+      conditions:
+        has_valid_signatures: true
+        has_status:
+          conclusions:
+            - success
+          statuses:
+            - ci
+            - pull-request-checks
+            - DCO
+      teams:
+        - "opentdf/architecture"

@@ -1,8 +1,10 @@
+//nolint:forbidigo,nestif // Sample code
 package cmd
 
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -23,6 +25,7 @@ var (
 	dataAttributes []string
 	collection     int
 	alg            string
+	policyMode     string
 )
 
 func init() {
@@ -40,6 +43,7 @@ func init() {
 	encryptCmd.Flags().StringVarP(&outputName, "output", "o", "sensitive.txt.tdf", "name or path of output file; - for stdout")
 	encryptCmd.Flags().StringVarP(&alg, "key-encapsulation-algorithm", "A", "rsa:2048", "Key wrap algorithm algorithm:parameters")
 	encryptCmd.Flags().IntVarP(&collection, "collection", "c", 0, "number of nano's to create for collection. If collection >0 (default) then output will be <iteration>_<output>")
+	encryptCmd.Flags().StringVar(&policyMode, "policy-mode", "", "Store policy as encrypted instead of plaintext (nanoTDF only) [plaintext|encrypted]")
 
 	ExamplesCmd.AddCommand(&encryptCmd)
 }
@@ -52,19 +56,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	plainText := args[0]
 	in := strings.NewReader(plainText)
 
-	opts := []sdk.Option{
-		sdk.WithInsecurePlaintextConn(),
-		sdk.WithClientCredentials("opentdf-sdk", "secret", nil),
-	}
-
-	if noKIDInKAO {
-		opts = append(opts, sdk.WithNoKIDInKAO())
-	}
-	// double negative always gets me
-	if !noKIDInNano {
-		opts = append(opts, sdk.WithNoKIDInNano())
-	}
-
 	// Create new offline client
 	client, err := newSDK()
 	if err != nil {
@@ -73,7 +64,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	out := os.Stdout
 	if outputName == "-" && collection > 0 {
-		return fmt.Errorf("cannot use stdout for collection")
+		return errors.New("cannot use stdout for collection")
 	}
 
 	var writer []io.Writer
@@ -99,6 +90,11 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	baseKasURL := platformEndpoint
+	if !strings.HasPrefix(baseKasURL, "http://") && !strings.HasPrefix(baseKasURL, "https://") {
+		baseKasURL = "http://" + baseKasURL
+	}
+
 	if !nanoFormat {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
 		if !autoconfigure {
@@ -106,8 +102,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			opts = append(opts, sdk.WithWrappingKeyAlg(ocrypto.EC256Key))
 			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{
-					// examples assume insecure http
-					URL:       fmt.Sprintf("http://%s", platformEndpoint),
+					URL:       baseKasURL,
 					PublicKey: "",
 				}))
 		}
@@ -133,15 +128,33 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		nanoTDFConfig.SetAttributes(dataAttributes)
+		err = nanoTDFConfig.SetAttributes(dataAttributes)
+		if err != nil {
+			return err
+		}
 		nanoTDFConfig.EnableECDSAPolicyBinding()
 		if collection > 0 {
 			nanoTDFConfig.EnableCollection()
 		}
-		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", platformEndpoint))
+		err = nanoTDFConfig.SetKasURL(baseKasURL + "/kas")
 		if err != nil {
 			return err
 		}
+
+		// Handle policy mode if nanoTDF
+		switch policyMode {
+		case "": // default to encrypted
+		case "encrypted":
+			err = nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModeEncrypted)
+		case "plaintext":
+			err = nanoTDFConfig.SetPolicyMode(sdk.NanoTDFPolicyModePlainText)
+		default:
+			err = fmt.Errorf("unsupported policy mode: %s", policyMode)
+		}
+		if err != nil {
+			return err
+		}
+
 		for i, writer := range writer {
 			input := plainText
 			if collection > 0 {
@@ -151,7 +164,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			_, err = client.CreateNanoTDF(writer, in, *nanoTDFConfig)
 			if err != nil {
 				return err
-
 			}
 		}
 
@@ -177,7 +189,7 @@ func keyTypeForKeyType(alg string) (ocrypto.KeyType, error) {
 	}
 }
 
-func cat(cmd *cobra.Command, nTdfFile string) error {
+func cat(_ *cobra.Command, nTdfFile string) error {
 	f, err := os.Open(nTdfFile)
 	if err != nil {
 		return err

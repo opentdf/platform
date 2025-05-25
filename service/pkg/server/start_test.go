@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -92,7 +94,7 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 
 func updateNestedKey(data map[string]interface{}, path []string, value interface{}) error {
 	if len(path) == 0 {
-		return fmt.Errorf("path cannot be empty")
+		return errors.New("path cannot be empty")
 	}
 
 	current := data
@@ -162,57 +164,141 @@ func TestStartTestSuite(t *testing.T) {
 	suite.Run(t, new(StartTestSuite))
 }
 
-func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered_Expect_Response() {
-	t := suite.T()
-	s, err := mockOpenTDFServer()
-	require.NoError(t, err)
-
-	logger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
-	require.NoError(t, err)
-
-	// Register Test Service
-	ts := TestService{}
-	registerTestService, _ := mockTestServiceRegistry(mockTestServiceOptions{
-		serviceObject: ts,
-		serviceHandler: func(_ context.Context, mux *runtime.ServeMux) error {
-			return mux.HandlePath(http.MethodGet, "/healthz", ts.TestHandler)
+func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
+	testCases := []struct {
+		name         string
+		mode         []string
+		status       int
+		responseBody string
+	}{
+		{
+			name:         "All_Mode",
+			mode:         []string{"all"},
+			status:       http.StatusOK,
+			responseBody: "hello from test service!",
 		},
-	})
-
-	registry := serviceregistry.NewServiceRegistry()
-	err = registry.RegisterService(registerTestService, "test")
-	suite.Require().NoError(err)
-	// Start services with test service
-	err = startServices(context.Background(), &config.Config{
-		Mode: []string{"all"},
-		Services: map[string]config.ServiceConfig{
-			"test": {},
+		{
+			name:         "And_Mode_Core",
+			mode:         []string{"core"},
+			status:       http.StatusNotFound,
+			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
 		},
-	}, s, nil, logger, registry)
-	require.NoError(t, err)
-
-	require.NoError(t, s.Start())
-	defer s.Stop()
-
-	var resp *http.Response
-	// Make request to test service and ensure it registered
-	for i := 3; i > 0; i-- {
-		resp, err = http.Get("http://localhost:43481/healthz")
-		if err == nil {
-			break
-		}
-		slog.Info("not yet ready", "err", err)
-		// retry after a blip
-		time.Sleep(100 * time.Millisecond)
+		{
+			name:         "And_Mode_Core_Plus_Test",
+			mode:         []string{"core", "test"},
+			status:       http.StatusOK,
+			responseBody: "hello from test service!",
+		},
+		{
+			name:         "And_Mode_All_Plus_Test",
+			mode:         []string{"all", "test"},
+			status:       http.StatusOK,
+			responseBody: "hello from test service!",
+		},
+		{
+			name:         "And_Mode_Kas",
+			mode:         []string{"kas"},
+			status:       http.StatusNotFound,
+			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+		},
+		{
+			name:         "And_Mode_Kas_Plus_Test",
+			mode:         []string{"kas", "test"},
+			status:       http.StatusOK,
+			responseBody: "hello from test service!",
+		},
+		{
+			name:         "And_Mode_EntityResolution",
+			mode:         []string{"entityresolution"},
+			status:       http.StatusNotFound,
+			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+		},
+		{
+			name:         "And_Mode_EntityResolution_Plus_Test",
+			mode:         []string{"entityresolution", "test"},
+			status:       http.StatusOK,
+			responseBody: "hello from test service!",
+		},
+		{
+			name:         "And_Mode_Unknown",
+			mode:         []string{"unknown"},
+			status:       http.StatusNotFound,
+			responseBody: "{\"code\":5,\"message\":\"Not Found\",\"details\":[]}",
+		},
+		{
+			name:         "And_Mode_Unknown_Plus_Test",
+			mode:         []string{"unknown", "test"},
+			status:       http.StatusOK,
+			responseBody: "hello from test service!",
+		},
 	}
 
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			t := suite.T()
+			s, err := mockOpenTDFServer()
+			require.NoError(t, err)
 
-	respBody, err := io.ReadAll(resp.Body)
+			logger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
+			require.NoError(t, err)
 
-	require.NoError(t, err)
-	assert.Equal(t, "hello from test service!", string(respBody))
+			// Register Test Service
+			ts := TestService{}
+			registerTestService, _ := mockTestServiceRegistry(mockTestServiceOptions{
+				serviceObject: ts,
+				serviceHandler: func(_ context.Context, mux *runtime.ServeMux) error {
+					return mux.HandlePath(http.MethodGet, "/healthz", ts.TestHandler)
+				},
+			})
+
+			registry := serviceregistry.NewServiceRegistry()
+			err = registry.RegisterService(registerTestService, "test")
+			suite.Require().NoError(err)
+
+			// Start services with test service
+			cleanup, err := startServices(context.Background(), &config.Config{
+				Mode: tc.mode,
+				Services: map[string]config.ServiceConfig{
+					"test": {},
+				},
+			}, s, nil, logger, registry)
+			require.NoError(t, err)
+			defer cleanup()
+
+			require.NoError(t, s.Start())
+			defer s.Stop()
+
+			var resp *http.Response
+			// Make request to test service and ensure it registered
+			for i := 3; i > 0; i-- {
+				resp, err = http.Get("http://localhost:43481/healthz")
+				if err == nil {
+					break
+				}
+				slog.Info("not yet ready", "err", err)
+				// retry after a blip
+				time.Sleep(100 * time.Millisecond)
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.status, resp.StatusCode)
+
+			respBody, err := io.ReadAll(resp.Body)
+
+			require.NoError(t, err)
+
+			// Here we compare values as JSON, otherwise the test can be flaky
+			var expectedJSON, actualJSON map[string]interface{}
+			err = json.Unmarshal([]byte(tc.responseBody), &expectedJSON)
+			if err == nil {
+				err = json.Unmarshal(respBody, &actualJSON)
+				require.NoError(t, err)
+				assert.Equal(t, expectedJSON, actualJSON)
+			} else {
+				assert.Equal(t, tc.responseBody, string(respBody))
+			}
+		})
+	}
 }
 
 func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
@@ -225,19 +311,28 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
 		newConfigFile    string
 		expErrorContains string
 	}{
-		{"core without sdk_config",
-			map[string]interface{}{
-				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL},
-			"err-core-no-config-*.yaml", "no sdk config provided"},
-		{"kas without sdk_config",
-			map[string]interface{}{
-				"mode": "kas", "server.auth.issuer": discoveryEndpoint.URL},
-			"err-kas-no-config-*.yaml", "no sdk config provided"},
-		{"core with sdk_config without ers endpoint",
+		{
+			"core without sdk_config",
 			map[string]interface{}{
 				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL,
-				"sdk_config.client_id": "opentdf", "sdk_config.client_secret": "opentdf"},
-			"err-core-w-config-no-ers-*.yaml", "entityresolution endpoint must be provided in core mode"},
+			},
+			"err-core-no-config-*.yaml", "no sdk config provided",
+		},
+		{
+			"kas without sdk_config",
+			map[string]interface{}{
+				"mode": "kas", "server.auth.issuer": discoveryEndpoint.URL,
+			},
+			"err-kas-no-config-*.yaml", "no sdk config provided",
+		},
+		{
+			"core with sdk_config without ers endpoint",
+			map[string]interface{}{
+				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL,
+				"sdk_config.client_id": "opentdf", "sdk_config.client_secret": "opentdf",
+			},
+			"err-core-w-config-no-ers-*.yaml", "entityresolution endpoint must be provided in core mode",
+		},
 	}
 	var tempFiles []string
 	defer func() {
@@ -275,24 +370,36 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
 		changes       map[string]interface{}
 		newConfigFile string
 	}{
-		{"all without sdk_config",
+		{
+			"all without sdk_config",
 			map[string]interface{}{
-				"server.auth.issuer": discoveryEndpoint.URL},
-			"all-no-config-*.yaml"},
-		{"core,entityresolution without sdk_config",
+				"server.auth.issuer": discoveryEndpoint.URL,
+			},
+			"all-no-config-*.yaml",
+		},
+		{
+			"core,entityresolution without sdk_config",
 			map[string]interface{}{
-				"mode": "core,entityresolution", "server.auth.issuer": discoveryEndpoint.URL},
-			"all-no-config-*.yaml"},
-		{"core,entityresolution,kas without sdk_config",
+				"mode": "core,entityresolution", "server.auth.issuer": discoveryEndpoint.URL,
+			},
+			"all-no-config-*.yaml",
+		},
+		{
+			"core,entityresolution,kas without sdk_config",
 			map[string]interface{}{
-				"mode": "core,entityresolution,kas", "server.auth.issuer": discoveryEndpoint.URL},
-			"all-no-config-*.yaml"},
-		{"core with correct sdk_config",
+				"mode": "core,entityresolution,kas", "server.auth.issuer": discoveryEndpoint.URL,
+			},
+			"all-no-config-*.yaml",
+		},
+		{
+			"core with correct sdk_config",
 			map[string]interface{}{
 				"mode": "core", "server.auth.issuer": discoveryEndpoint.URL,
 				"sdk_config.client_id": "opentdf", "sdk_config.client_secret": "opentdf",
-				"sdk_config.entityresolution.endpoint": "http://localhost:8181", "sdk_config.entityresolution.plaintext": "true"},
-			"core-w-config-correct-*.yaml"},
+				"sdk_config.entityresolution.endpoint": "http://localhost:8181", "sdk_config.entityresolution.plaintext": "true",
+			},
+			"core-w-config-correct-*.yaml",
+		},
 	}
 	var tempFiles []string
 	defer func() {

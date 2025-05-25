@@ -53,14 +53,17 @@ message GetRegisteredResourceRequest {
   oneof identifier {
     option (buf.validate.oneof).required = true;
 
-    string resource_id = 1 [
+    string id = 1 [
       (buf.validate.field).string.uuid = true
     ];
 
-    string fqn = 2 [
-      (buf.validate.field).string = {
-        min_len : 1
-        uri : true
+    string name = 2 [
+      (buf.validate.field).required = false,
+      (buf.validate.field).string.max_len = 253,
+      (buf.validate.field).cel = {
+        id: "rr_name_format",
+        message: "Registered Resource Name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.",
+        expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
       }
     ];
   }
@@ -119,6 +122,42 @@ message DeleteRegisteredResourceResponse {
 /// Registered Resource Values
 ///
 
+message ActionAttributeValue {
+  // Required
+  oneof action_identifier {
+    option (buf.validate.oneof).required = true;
+  
+    string action_id = 1 [
+      (buf.validate.field).string.uuid = true
+    ];
+
+    string action_name = 2 [
+      (buf.validate.field).string.max_len = 253,
+      (buf.validate.field).cel = {
+        id: "action_name_format"
+        message: "Action name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored action name will be normalized to lower case."
+        expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+      }
+    ];
+  }
+
+  // Required
+  oneof attribute_value_identifier {
+    option (buf.validate.oneof).required = true;
+
+    string attribute_value_id = 3 [
+      (buf.validate.field).string.uuid = true
+    ];
+
+    string attribute_value_fqn = 4 [
+      (buf.validate.field).string = {
+        min_len : 1
+        uri : true
+      }
+    ];
+  }
+}
+
 message CreateRegisteredResourceValueRequest {
   // Required
   string resource_id = 1 [
@@ -135,6 +174,11 @@ message CreateRegisteredResourceValueRequest {
       expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
     }
   ];
+
+  // Optional
+  // The associated Action <> AttributeValue combinations to be utilized in authorization/entitlement decisioning
+  // (i.e. action read -> attribute value https://example.com/attr/department/value/marketing)
+  repeated ActionAttributeValue action_attribute_values = 3;
   
   // Optional
   // Common metadata
@@ -148,7 +192,7 @@ message GetRegisteredResourceValueRequest {
   oneof identifier {
     option (buf.validate.oneof).required = true;
 
-    string value_id = 1 [
+    string id = 1 [
       (buf.validate.field).string.uuid = true
     ];
 
@@ -162,6 +206,26 @@ message GetRegisteredResourceValueRequest {
 }
 message GetRegisteredResourceValueResponse {
   policy.RegisteredResourceValue value = 1;
+}
+
+message GetRegisteredResourceValuesByFQNsRequest {
+  // Required
+  repeated string fqns = 1 [
+    (buf.validate.field).repeated = {
+      min_items: 1,
+      unique: true,
+      items: {
+        string: 
+          {
+            min_len: 1,
+            uri: true
+          }
+      },
+    }
+  ];
+}
+message GetRegisteredResourceValuesByFQNsResponse {
+  map<string, policy.RegisteredResourceValue> fqn_value_map = 1;
 }
 
 message ListRegisteredResourceValuesRequest {
@@ -197,6 +261,10 @@ message UpdateRegisteredResourceValueRequest {
       expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
     }
   ];
+
+  // Optional
+  // Action Attribute Values provided here will replace all existing records in the database. To delete all action attribute values, set this field to an empty list.
+  repeated ActionAttributeValue action_attribute_values = 3;
 
   // Optional
   // Common metadata
@@ -246,6 +314,9 @@ service RegisteredResourcesService {
   }
 
   rpc GetRegisteredResourceValue(GetRegisteredResourceValueRequest) returns (GetRegisteredResourceValueResponse) {
+  }
+
+  rpc GetRegisteredResourceValuesByFQNs(GetRegisteredResourceValuesByFQNsRequest) returns (GetRegisteredResourceValuesByFQNsResponse) {
   }
 
   rpc ListRegisteredResourceValues(ListRegisteredResourceValuesRequest) returns (ListRegisteredResourceValuesResponse) {

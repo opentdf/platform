@@ -51,14 +51,6 @@ func (s *NamespacesSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
-func (s *NamespacesSuite) getActiveNamespaceFixtures() []fixtures.FixtureDataNamespace {
-	return []fixtures.FixtureDataNamespace{
-		s.f.GetNamespaceKey("example.com"),
-		s.f.GetNamespaceKey("example.net"),
-		s.f.GetNamespaceKey("example.org"),
-	}
-}
-
 func (s *NamespacesSuite) Test_CreateNamespace() {
 	testData := s.getActiveNamespaceFixtures()
 
@@ -311,13 +303,13 @@ func (s *NamespacesSuite) Test_UpdateNamespace() {
 	s.Require().NoError(err)
 	s.NotNil(updatedWithChange)
 	s.Equal(created.GetId(), updatedWithChange.GetId())
-	s.EqualValues(expectedLabels, updatedWithChange.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, updatedWithChange.GetMetadata().GetLabels())
 
 	got, err := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
 	s.Require().NoError(err)
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
-	s.EqualValues(expectedLabels, got.GetMetadata().GetLabels())
+	s.Equal(expectedLabels, got.GetMetadata().GetLabels())
 	updatedMetadata := got.GetMetadata()
 	createdTime := metadata.GetCreatedAt().AsTime()
 	updatedTime := updatedMetadata.GetUpdatedAt().AsTime()
@@ -339,7 +331,7 @@ func (s *NamespacesSuite) Test_UpdateNamespace_DoesNotExist_ShouldFail() {
 func (s *NamespacesSuite) Test_DeactivateNamespace() {
 	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "deactivating-namespace.com"})
 	s.Require().NoError(err)
-	s.NotEqual("", n)
+	s.NotEmpty(n)
 
 	inactive, err := s.db.PolicyClient.DeactivateNamespace(s.ctx, n.GetId())
 	s.Require().NoError(err)
@@ -370,7 +362,7 @@ func setupCascadeDeactivateNamespace(s *NamespacesSuite) (string, string, string
 	// create a namespace
 	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "cascading-deactivate-namespace"})
 	s.Require().NoError(err)
-	s.NotEqual("", n)
+	s.NotEmpty(n)
 
 	// add an attribute under that namespaces
 	attr := &attributes.CreateAttributeRequest{
@@ -662,7 +654,7 @@ func (s *NamespacesSuite) Test_UnsafeDeleteNamespace_DoesNotExist_ShouldFail() {
 	s.NotNil(created)
 	got, _ := s.db.PolicyClient.GetNamespace(s.ctx, created.GetId())
 	s.NotNil(got)
-	s.NotEqual("", got.GetFqn())
+	s.NotEmpty(got.GetFqn())
 
 	ns, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, got, "https://bad.fqn")
 	s.Require().Error(err)
@@ -1157,15 +1149,120 @@ func (s *NamespacesSuite) Test_RemoveKASGrant_FailsAlreadyRemoved() {
 	s.Require().ErrorIs(err, db.ErrNotFound)
 }
 
-func (s *NamespacesSuite) Test_GetNamespace_Returns_Only_Active_PublicKeys() {
-	n, err := s.db.PolicyClient.GetNamespace(s.ctx, s.f.GetNamespaceKey("scenario.com").ID)
-	s.Require().NoError(err)
-	s.NotNil(n)
+func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Returns_Error_When_Namespace_Not_Found() {
+	kasKeys := s.f.GetKasRegistryServerKeys("kas_key_1")
+	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: nonExistentNamespaceID,
+		KeyId:       kasKeys.ID,
+	})
 
-	// ensure only active public keys are returned
-	s.NotEmpty(n.GetKeys())
-	for _, k := range n.GetKeys() {
-		s.True(k.GetIsActive().GetValue())
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+}
+
+func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Returns_Error_When_Key_Not_Found() {
+	f := s.getActiveNamespaceFixtures()
+	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: f[0].ID,
+		KeyId:       nonExistentNamespaceID,
+	})
+
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+}
+
+func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
+	namespaceFix := s.getActiveNamespaceFixtures()[0]
+	gotNS, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+		NamespaceId: namespaceFix.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(gotNS)
+	s.Empty(gotNS.GetKasKeys())
+
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: namespaceFix.ID,
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	gotNS, err = s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+		NamespaceId: namespaceFix.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(gotNS)
+	s.Len(gotNS.GetKasKeys(), 1)
+	s.Equal(kasKey.KeyAccessServerID, gotNS.GetKasKeys()[0].GetKasId())
+	s.Equal(kasKey.ID, gotNS.GetKasKeys()[0].GetKey().GetId())
+	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), gotNS.GetKasKeys()[0])
+	s.Empty(gotNS.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
+	s.Empty(gotNS.GetKasKeys()[0].GetKey().GetProviderConfig())
+
+	resp, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: resp.GetNamespaceId(),
+		KeyId:       resp.GetKeyId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	gotNS, err = s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+		NamespaceId: namespaceFix.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(gotNS)
+	s.Empty(gotNS.GetKasKeys())
+}
+
+func (s *NamespacesSuite) Test_RemovePublicKeyFromNamespace_Not_Found_Fails() {
+	namespaceFix := s.getActiveNamespaceFixtures()[0]
+	gotNS, err := s.db.PolicyClient.GetNamespace(s.ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+		NamespaceId: namespaceFix.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(gotNS)
+	s.Empty(gotNS.GetKasKeys())
+
+	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: namespaceFix.ID,
+		KeyId:       kasKey.ID,
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	invalidResp, err := s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: nonExistentAttrID,
+		KeyId:       resp.GetKeyId(),
+	})
+	s.Require().Error(err)
+	s.Nil(invalidResp)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	invalidResp, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: resp.GetNamespaceId(),
+		KeyId:       nonExistentKeyID,
+	})
+	s.Require().Error(err)
+	s.Nil(invalidResp)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+
+	resp, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: resp.GetNamespaceId(),
+		KeyId:       resp.GetKeyId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(resp)
+}
+
+func (s *NamespacesSuite) getActiveNamespaceFixtures() []fixtures.FixtureDataNamespace {
+	return []fixtures.FixtureDataNamespace{
+		s.f.GetNamespaceKey("example.com"),
+		s.f.GetNamespaceKey("example.net"),
+		s.f.GetNamespaceKey("example.org"),
 	}
 }
 

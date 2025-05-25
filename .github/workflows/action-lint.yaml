@@ -1,24 +1,56 @@
-name: "🔦 actionlint"
+name: "🔦 actionlint & 🌈 zizmor"
 
 on:
   pull_request:
     branches:
       - main
     paths:
-      - '.github/workflows/**'
+      - ".github/workflows/**"
+
+
+permissions: {}
 
 jobs:
-    actionlint:
-        runs-on: ubuntu-22.04
-        name: actionlint
-        permissions:
-            contents: read
-            pull-requests: write
-            checks: write
-        steps:
-            - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-            - name: "Run reviewdog actionlint"
-              uses: reviewdog/action-actionlint@664c8ef5435569dd2880e62d891ab3ecdf98dc60 # v1.57.0
-              with:
-                reporter: "github-pr-review"
-                fail_on_error: true
+  actionlint:
+    runs-on: ubuntu-22.04
+    name: actionlint
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+        with:
+          persist-credentials: false
+      - name: "Run reviewdog actionlint"
+        uses: reviewdog/action-actionlint@664c8ef5435569dd2880e62d891ab3ecdf98dc60 # v1.57.0
+        with:
+          reporter: "github-pr-review"
+          fail_level: error
+  zizmor:
+    name: zizmor latest via PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read # only needed for private repos
+      actions: read # only needed for private repos
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+        with:
+          persist-credentials: false
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # 5.4.2
+
+      - name: Run zizmor 🌈
+        run: uvx zizmor --format=sarif . > results.sarif
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@ff0a06e83cb2de871e5a09832bc6a81e7276941f # 3.28.18
+        with:
+          sarif_file: results.sarif
+          category: zizmor
+          

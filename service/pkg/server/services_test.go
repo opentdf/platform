@@ -26,7 +26,11 @@ type mockTestServiceOptions struct {
 	dbRegister         serviceregistry.DBRegister
 }
 
-const numExpectedPolicyServices = 8
+const (
+	numExpectedPolicyServices                  = 9
+	numExpectedEntityResolutionServiceVersions = 2
+	numExpectedAuthorizationServiceVersions    = 2
+)
 
 func mockTestServiceRegistry(opts mockTestServiceOptions) (serviceregistry.IService, *spyTestService) {
 	spy := &spyTestService{}
@@ -104,7 +108,7 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_
 
 	authz, err := registry.GetNamespace(serviceAuthorization)
 	suite.Require().NoError(err)
-	suite.Len(authz.Services, 1)
+	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
 	suite.Equal(modeCore, authz.Mode)
 
 	kas, err := registry.GetNamespace(serviceKAS)
@@ -124,7 +128,7 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_
 
 	ers, err := registry.GetNamespace(serviceEntityResolution)
 	suite.Require().NoError(err)
-	suite.Len(ers.Services, 1)
+	suite.Len(ers.Services, numExpectedEntityResolutionServiceVersions)
 	suite.Equal(modeCore, ers.Mode)
 }
 
@@ -136,7 +140,7 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_Core_Expect_Cor
 
 	authz, err := registry.GetNamespace(serviceAuthorization)
 	suite.Require().NoError(err)
-	suite.Len(authz.Services, 1)
+	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
 	suite.Equal(modeCore, authz.Mode)
 
 	_, err = registry.GetNamespace(serviceKAS)
@@ -162,7 +166,7 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 
 	authz, err := registry.GetNamespace(serviceAuthorization)
 	suite.Require().NoError(err)
-	suite.Len(authz.Services, 1)
+	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
 	suite.Equal(modeCore, authz.Mode)
 
 	kas, err := registry.GetNamespace(serviceKAS)
@@ -189,7 +193,7 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 
 	authz, err := registry.GetNamespace(serviceAuthorization)
 	suite.Require().NoError(err)
-	suite.Len(authz.Services, 1)
+	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
 	suite.Equal(modeCore, authz.Mode)
 
 	kas, err := registry.GetNamespace(serviceKAS)
@@ -209,7 +213,7 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 
 	ers, err := registry.GetNamespace(serviceEntityResolution)
 	suite.Require().NoError(err)
-	suite.Len(ers.Services, 1)
+	suite.Len(ers.Services, numExpectedEntityResolutionServiceVersions)
 	suite.Equal(modeERS, ers.Mode)
 }
 
@@ -253,7 +257,7 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 	newLogger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
 	suite.Require().NoError(err)
 
-	err = startServices(ctx, &config.Config{
+	cleanup, err := startServices(ctx, &config.Config{
 		Mode:   []string{"test"},
 		Logger: logger.Config{Output: "stdout", Level: "info", Type: "json"},
 		// DB: db.Config{
@@ -270,6 +274,10 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 			"foobar":       {},
 		},
 	}, otdf, nil, newLogger, registry)
+
+	// call cleanup function
+	defer cleanup()
+
 	suite.Require().NoError(err)
 	// require.NotNil(t, cF)
 	// assert.Lenf(t, services, 2, "expected 2 services enabled, got %d", len(services))

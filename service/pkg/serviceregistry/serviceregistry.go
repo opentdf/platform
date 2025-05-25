@@ -3,6 +3,7 @@ package serviceregistry
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -71,6 +72,7 @@ type IService interface {
 	IsDBRequired() bool
 	DBMigrations() *embed.FS
 	GetNamespace() string
+	GetVersion() string
 	GetServiceDesc() *grpc.ServiceDesc
 	Start(ctx context.Context, params RegistrationParams) error
 	IsStarted() bool
@@ -84,7 +86,7 @@ type IService interface {
 // Service is a struct that holds the registration information for a service as well as the state
 // of the service within the instance of the platform.
 type Service[S any] struct {
-	// Registration
+	// IService (registration)
 	impl S
 	// Started is a flag that indicates whether the service has been started
 	Started bool
@@ -98,6 +100,8 @@ type ServiceOptions[S any] struct {
 	// Namespace is the namespace of the service. One or more gRPC services can be registered under
 	// the same namespace.
 	Namespace string
+	// Version is the major version of the service according to the protocol buffer definition.
+	Version string
 	// ServiceDesc is the gRPC service descriptor. For non-gRPC services, this can be mocked out,
 	// but at minimum, the ServiceName field must be set
 	ServiceDesc *grpc.ServiceDesc
@@ -117,6 +121,10 @@ type ServiceOptions[S any] struct {
 
 func (s Service[S]) GetNamespace() string {
 	return s.Namespace
+}
+
+func (s Service[S]) GetVersion() string {
+	return s.Version
 }
 
 func (s Service[S]) GetServiceDesc() *grpc.ServiceDesc {
@@ -146,7 +154,7 @@ func (s Service[S]) DBMigrations() *embed.FS {
 // It returns an error if the service is already started or if there is an issue running database migrations.
 func (s *Service[S]) Start(ctx context.Context, params RegistrationParams) error {
 	if s.Started {
-		return fmt.Errorf("service already started")
+		return errors.New("service already started")
 	}
 
 	if s.DB.Required && !params.DBClient.RanMigrations() && params.DBClient.MigrationsEnabled() {
@@ -183,7 +191,7 @@ func (s Service[S]) RegisterConfigUpdateHook(ctx context.Context, hookAppender f
 
 func (s Service[S]) RegisterConnectRPCServiceHandler(_ context.Context, connectRPC *server.ConnectRPC) error {
 	if s.ConnectRPCFunc == nil {
-		return fmt.Errorf("service did not register a handler")
+		return errors.New("service did not register a handler")
 	}
 	connectRPC.ServiceReflection = append(connectRPC.ServiceReflection, s.GetServiceDesc().ServiceName)
 	path, handler := s.ConnectRPCFunc(s.impl, connectRPC.Interceptors...)
@@ -198,7 +206,7 @@ func (s Service[S]) RegisterConnectRPCServiceHandler(_ context.Context, connectR
 // If the service did not register a handler, it returns an error.
 func (s *Service[S]) RegisterHTTPHandlers(ctx context.Context, mux *runtime.ServeMux) error {
 	if s.httpHandlerFunc == nil {
-		return fmt.Errorf("service did not register any handlers")
+		return errors.New("service did not register any handlers")
 	}
 	return s.httpHandlerFunc(ctx, mux)
 }
@@ -210,7 +218,7 @@ func (s *Service[S]) RegisterHTTPHandlers(ctx context.Context, mux *runtime.Serv
 // If the service did not register a handler, it returns an error.
 func (s Service[S]) RegisterGRPCGatewayHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
 	if s.GRPCGatewayFunc == nil {
-		return fmt.Errorf("service did not register a handler")
+		return errors.New("service did not register a handler")
 	}
 	return s.GRPCGatewayFunc(ctx, mux, conn)
 }
@@ -218,6 +226,7 @@ func (s Service[S]) RegisterGRPCGatewayHandler(ctx context.Context, mux *runtime
 // namespace represents a namespace in the service registry.
 type Namespace struct {
 	Mode     string
+	Version  string
 	Services []IService
 }
 
@@ -237,8 +246,8 @@ func (reg Registry) RegisterCoreService(svc IService) error {
 }
 
 // RegisterService registers a service in the service registry.
-// It takes a Registration object and a mode string as parameters.
-// The Registration object contains information about the service to be registered,
+// It takes an serviceregistry.IService and a mode string as parameters.
+// The IService implementation contains information about the service to be registered,
 // such as the namespace and service description.
 // The mode string specifies the mode in which the service should be registered.
 // It returns an error if the service is already registered in the specified namespace.
@@ -257,7 +266,11 @@ func (reg Registry) RegisterService(svc IService, mode string) error {
 		return fmt.Errorf("service already registered namespace:%s service:%s", svc.GetNamespace(), svc.GetServiceDesc().ServiceName)
 	}
 
-	slog.Info("registered service", slog.String("namespace", svc.GetNamespace()), slog.String("service", svc.GetServiceDesc().ServiceName))
+	slog.Info(
+		"registered service",
+		slog.String("namespace", svc.GetNamespace()),
+		slog.String("service", svc.GetServiceDesc().ServiceName),
+	)
 	copyNamespace.Services = append(copyNamespace.Services, svc)
 
 	reg[svc.GetNamespace()] = copyNamespace

@@ -44,7 +44,7 @@ func (p *Provider) canAccess(ctx context.Context, token *authorization.Token, po
 		}
 	}
 
-	ctx, span := p.Tracer.Start(ctx, "checkAttributes")
+	ctx, span := p.Start(ctx, "checkAttributes")
 	defer span.End()
 
 	dr, err := p.checkAttributes(ctx, rasList, token)

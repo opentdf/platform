@@ -43,3 +43,11 @@ func (c PlatformConfiguration) PublicClientID() (string, error) {
 	}
 	return value, nil
 }
+
+func (c PlatformConfiguration) platformEndpoint() (string, error) {
+	value, ok := c["platform_endpoint"].(string)
+	if !ok {
+		return "", ErrPlatformEndpointNotFound
+	}
+	return value, nil
+}

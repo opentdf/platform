@@ -66,6 +66,7 @@ func TestSimpleMap(t *testing.T) {
 	assert.NotNil(t, actualOutput)
 	assert.ElementsMatch(t, expectedOutput.Items, actualOutput.Items)
 }
+
 func TestMapWithinMap(t *testing.T) {
 	simpleInput := map[string]interface{}{
 		"a": "aa",

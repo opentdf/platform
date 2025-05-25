@@ -4,6 +4,7 @@ on:
   release:
     types: [published]
 
+permissions: {}
 
 jobs:
   build:
@@ -12,7 +13,9 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+        with:
+          persist-credentials: false
 
       - name: "Authenticate to Google Cloud (Push to Public registry)"
         id: "gcp-auth"
@@ -24,26 +27,28 @@ jobs:
           create_credentials_file: false
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a
+        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # 3.8.2
 
       - name: Install Trivy
-        uses: aquasecurity/setup-trivy@ff1b8b060f23b650436d419b5e13f67f5d4c3087
+        uses: aquasecurity/setup-trivy@9ea583eb67910444b1f64abf338bd2e105a0a93d # 0.2.3
         with:
           version: v0.57.1
-      
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb
+        with:
+          cache-binary: false
 
-      - name: 'Docker login to Artifact Registry'
+      - name: "Docker login to Artifact Registry"
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
         with:
           registry: us-docker.pkg.dev
           username: oauth2accesstoken
           password: ${{ steps.gcp-auth.outputs.access_token }}
-        
+
       - id: docker_meta
         uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804
         with:
@@ -56,13 +61,13 @@ jobs:
             org.opencontainers.image.documentation=https://docs.opentdf.io
 
       - name: Build and Push container images
-        uses: docker/build-push-action@1a162644f9a7e87d8f4b053101d1d9a712edc18c
+        uses: docker/build-push-action@1dc73863535b631f98b2378be8619f83b136f4a0
         id: build-and-push
         with:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.docker_meta.outputs.tags }}
-      
+
       - name: Sign the images with GitHub OIDC Token
         env:
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
@@ -77,12 +82,18 @@ jobs:
 
       - name: Generate Reports
         run: |
-          trivy image --scanners vuln --format cyclonedx --output bom-cyclonedx.json ${{ secrets.DOCKER_REPO }}@${{ steps.build-and-push.outputs.digest }}
-          trivy image --format spdx-json --output bom-spdx.json ${{ secrets.DOCKER_REPO }}@${{ steps.build-and-push.outputs.digest }}
-          trivy image --format cosign-vuln --output cosign-vuln.json ${{ secrets.DOCKER_REPO }}@${{ steps.build-and-push.outputs.digest }}
+          trivy image --scanners vuln --format cyclonedx --output bom-cyclonedx.json '$REPO@$DIGEST'
+          trivy image --format spdx-json --output bom-spdx.json '$REPO@$DIGEST'
+          trivy image --format cosign-vuln --output cosign-vuln.json '$REPO@$DIGEST'
+        env:
+          REPO: ${{ secrets.DOCKER_REPO }}
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
 
       - name: Cosign Attest SBOM
         run: |
-          cosign attest --type cyclonedx --predicate bom-cyclonedx.json '${{ secrets.DOCKER_REPO }}@${{ steps.build-and-push.outputs.digest }}'
-          cosign attest --type spdxjson -predicate bom-spdx.json '${{ secrets.DOCKER_REPO }}@${{ steps.build-and-push.outputs.digest }}'
-          cosign attest --type vuln --predicate cosign-vuln.json '${{ secrets.DOCKER_REPO }}@${{ steps.build-and-push.outputs.digest }}'
+          cosign attest --type cyclonedx --predicate bom-cyclonedx.json '$REPO@$DIGEST'
+          cosign attest --type spdxjson -predicate bom-spdx.json '$REPO@$DIGEST'
+          cosign attest --type vuln --predicate cosign-vuln.json '$REPO@$DIGEST'
+        env:
+          REPO: ${{ secrets.DOCKER_REPO }}
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}

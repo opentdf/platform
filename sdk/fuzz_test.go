@@ -36,8 +36,7 @@ func newSDK() *SDK {
 	return sdk
 }
 
-type fakeTokenSource struct {
-}
+type fakeTokenSource struct{}
 
 func (f *fakeTokenSource) AccessToken(_ context.Context, _ *http.Client) (auth.AccessToken, error) {
 	return "fake token", nil
@@ -47,8 +46,7 @@ func (f *fakeTokenSource) MakeToken(func(jwk.Key) ([]byte, error)) ([]byte, erro
 	return []byte("fake token"), nil
 }
 
-type fakeWriter struct {
-}
+type fakeWriter struct{}
 
 func (fw *fakeWriter) Write(p []byte) (int, error) {
 	return len(p), nil

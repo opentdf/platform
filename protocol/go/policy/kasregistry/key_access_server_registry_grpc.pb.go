@@ -25,6 +25,13 @@ const (
 	KeyAccessServerRegistryService_UpdateKeyAccessServer_FullMethodName     = "/policy.kasregistry.KeyAccessServerRegistryService/UpdateKeyAccessServer"
 	KeyAccessServerRegistryService_DeleteKeyAccessServer_FullMethodName     = "/policy.kasregistry.KeyAccessServerRegistryService/DeleteKeyAccessServer"
 	KeyAccessServerRegistryService_ListKeyAccessServerGrants_FullMethodName = "/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServerGrants"
+	KeyAccessServerRegistryService_CreateKey_FullMethodName                 = "/policy.kasregistry.KeyAccessServerRegistryService/CreateKey"
+	KeyAccessServerRegistryService_GetKey_FullMethodName                    = "/policy.kasregistry.KeyAccessServerRegistryService/GetKey"
+	KeyAccessServerRegistryService_ListKeys_FullMethodName                  = "/policy.kasregistry.KeyAccessServerRegistryService/ListKeys"
+	KeyAccessServerRegistryService_UpdateKey_FullMethodName                 = "/policy.kasregistry.KeyAccessServerRegistryService/UpdateKey"
+	KeyAccessServerRegistryService_RotateKey_FullMethodName                 = "/policy.kasregistry.KeyAccessServerRegistryService/RotateKey"
+	KeyAccessServerRegistryService_SetBaseKey_FullMethodName                = "/policy.kasregistry.KeyAccessServerRegistryService/SetBaseKey"
+	KeyAccessServerRegistryService_GetBaseKey_FullMethodName                = "/policy.kasregistry.KeyAccessServerRegistryService/GetBaseKey"
 )
 
 // KeyAccessServerRegistryServiceClient is the client API for KeyAccessServerRegistryService service.
@@ -38,6 +45,21 @@ type KeyAccessServerRegistryServiceClient interface {
 	DeleteKeyAccessServer(ctx context.Context, in *DeleteKeyAccessServerRequest, opts ...grpc.CallOption) (*DeleteKeyAccessServerResponse, error)
 	// Deprecated
 	ListKeyAccessServerGrants(ctx context.Context, in *ListKeyAccessServerGrantsRequest, opts ...grpc.CallOption) (*ListKeyAccessServerGrantsResponse, error)
+	// KAS Key Management
+	// Request to create a new key in the Key Access Service.
+	CreateKey(ctx context.Context, in *CreateKeyRequest, opts ...grpc.CallOption) (*CreateKeyResponse, error)
+	// Request to retrieve a key from the Key Access Service.
+	GetKey(ctx context.Context, in *GetKeyRequest, opts ...grpc.CallOption) (*GetKeyResponse, error)
+	// Request to list keys in the Key Access Service.
+	ListKeys(ctx context.Context, in *ListKeysRequest, opts ...grpc.CallOption) (*ListKeysResponse, error)
+	// Request to update a key in the Key Access Service.
+	UpdateKey(ctx context.Context, in *UpdateKeyRequest, opts ...grpc.CallOption) (*UpdateKeyResponse, error)
+	// Request to rotate a key in the Key Access Service.
+	RotateKey(ctx context.Context, in *RotateKeyRequest, opts ...grpc.CallOption) (*RotateKeyResponse, error)
+	// Request to set the default a default kas key.
+	SetBaseKey(ctx context.Context, in *SetBaseKeyRequest, opts ...grpc.CallOption) (*SetBaseKeyResponse, error)
+	// Get Default kas keys
+	GetBaseKey(ctx context.Context, in *GetBaseKeyRequest, opts ...grpc.CallOption) (*GetBaseKeyResponse, error)
 }
 
 type keyAccessServerRegistryServiceClient struct {
@@ -102,6 +124,69 @@ func (c *keyAccessServerRegistryServiceClient) ListKeyAccessServerGrants(ctx con
 	return out, nil
 }
 
+func (c *keyAccessServerRegistryServiceClient) CreateKey(ctx context.Context, in *CreateKeyRequest, opts ...grpc.CallOption) (*CreateKeyResponse, error) {
+	out := new(CreateKeyResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_CreateKey_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyAccessServerRegistryServiceClient) GetKey(ctx context.Context, in *GetKeyRequest, opts ...grpc.CallOption) (*GetKeyResponse, error) {
+	out := new(GetKeyResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_GetKey_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyAccessServerRegistryServiceClient) ListKeys(ctx context.Context, in *ListKeysRequest, opts ...grpc.CallOption) (*ListKeysResponse, error) {
+	out := new(ListKeysResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_ListKeys_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyAccessServerRegistryServiceClient) UpdateKey(ctx context.Context, in *UpdateKeyRequest, opts ...grpc.CallOption) (*UpdateKeyResponse, error) {
+	out := new(UpdateKeyResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_UpdateKey_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyAccessServerRegistryServiceClient) RotateKey(ctx context.Context, in *RotateKeyRequest, opts ...grpc.CallOption) (*RotateKeyResponse, error) {
+	out := new(RotateKeyResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_RotateKey_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyAccessServerRegistryServiceClient) SetBaseKey(ctx context.Context, in *SetBaseKeyRequest, opts ...grpc.CallOption) (*SetBaseKeyResponse, error) {
+	out := new(SetBaseKeyResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_SetBaseKey_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyAccessServerRegistryServiceClient) GetBaseKey(ctx context.Context, in *GetBaseKeyRequest, opts ...grpc.CallOption) (*GetBaseKeyResponse, error) {
+	out := new(GetBaseKeyResponse)
+	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_GetBaseKey_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KeyAccessServerRegistryServiceServer is the server API for KeyAccessServerRegistryService service.
 // All implementations must embed UnimplementedKeyAccessServerRegistryServiceServer
 // for forward compatibility
@@ -113,6 +198,21 @@ type KeyAccessServerRegistryServiceServer interface {
 	DeleteKeyAccessServer(context.Context, *DeleteKeyAccessServerRequest) (*DeleteKeyAccessServerResponse, error)
 	// Deprecated
 	ListKeyAccessServerGrants(context.Context, *ListKeyAccessServerGrantsRequest) (*ListKeyAccessServerGrantsResponse, error)
+	// KAS Key Management
+	// Request to create a new key in the Key Access Service.
+	CreateKey(context.Context, *CreateKeyRequest) (*CreateKeyResponse, error)
+	// Request to retrieve a key from the Key Access Service.
+	GetKey(context.Context, *GetKeyRequest) (*GetKeyResponse, error)
+	// Request to list keys in the Key Access Service.
+	ListKeys(context.Context, *ListKeysRequest) (*ListKeysResponse, error)
+	// Request to update a key in the Key Access Service.
+	UpdateKey(context.Context, *UpdateKeyRequest) (*UpdateKeyResponse, error)
+	// Request to rotate a key in the Key Access Service.
+	RotateKey(context.Context, *RotateKeyRequest) (*RotateKeyResponse, error)
+	// Request to set the default a default kas key.
+	SetBaseKey(context.Context, *SetBaseKeyRequest) (*SetBaseKeyResponse, error)
+	// Get Default kas keys
+	GetBaseKey(context.Context, *GetBaseKeyRequest) (*GetBaseKeyResponse, error)
 	mustEmbedUnimplementedKeyAccessServerRegistryServiceServer()
 }
 
@@ -137,6 +237,27 @@ func (UnimplementedKeyAccessServerRegistryServiceServer) DeleteKeyAccessServer(c
 }
 func (UnimplementedKeyAccessServerRegistryServiceServer) ListKeyAccessServerGrants(context.Context, *ListKeyAccessServerGrantsRequest) (*ListKeyAccessServerGrantsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListKeyAccessServerGrants not implemented")
+}
+func (UnimplementedKeyAccessServerRegistryServiceServer) CreateKey(context.Context, *CreateKeyRequest) (*CreateKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateKey not implemented")
+}
+func (UnimplementedKeyAccessServerRegistryServiceServer) GetKey(context.Context, *GetKeyRequest) (*GetKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetKey not implemented")
+}
+func (UnimplementedKeyAccessServerRegistryServiceServer) ListKeys(context.Context, *ListKeysRequest) (*ListKeysResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListKeys not implemented")
+}
+func (UnimplementedKeyAccessServerRegistryServiceServer) UpdateKey(context.Context, *UpdateKeyRequest) (*UpdateKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateKey not implemented")
+}
+func (UnimplementedKeyAccessServerRegistryServiceServer) RotateKey(context.Context, *RotateKeyRequest) (*RotateKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RotateKey not implemented")
+}
+func (UnimplementedKeyAccessServerRegistryServiceServer) SetBaseKey(context.Context, *SetBaseKeyRequest) (*SetBaseKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetBaseKey not implemented")
+}
+func (UnimplementedKeyAccessServerRegistryServiceServer) GetBaseKey(context.Context, *GetBaseKeyRequest) (*GetBaseKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBaseKey not implemented")
 }
 func (UnimplementedKeyAccessServerRegistryServiceServer) mustEmbedUnimplementedKeyAccessServerRegistryServiceServer() {
 }
@@ -260,6 +381,132 @@ func _KeyAccessServerRegistryService_ListKeyAccessServerGrants_Handler(srv inter
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KeyAccessServerRegistryService_CreateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyAccessServerRegistryServiceServer).CreateKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyAccessServerRegistryService_CreateKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyAccessServerRegistryServiceServer).CreateKey(ctx, req.(*CreateKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyAccessServerRegistryService_GetKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyAccessServerRegistryServiceServer).GetKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyAccessServerRegistryService_GetKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyAccessServerRegistryServiceServer).GetKey(ctx, req.(*GetKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyAccessServerRegistryService_ListKeys_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListKeysRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyAccessServerRegistryServiceServer).ListKeys(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyAccessServerRegistryService_ListKeys_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyAccessServerRegistryServiceServer).ListKeys(ctx, req.(*ListKeysRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyAccessServerRegistryService_UpdateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyAccessServerRegistryServiceServer).UpdateKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyAccessServerRegistryService_UpdateKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyAccessServerRegistryServiceServer).UpdateKey(ctx, req.(*UpdateKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyAccessServerRegistryService_RotateKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RotateKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyAccessServerRegistryServiceServer).RotateKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyAccessServerRegistryService_RotateKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyAccessServerRegistryServiceServer).RotateKey(ctx, req.(*RotateKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyAccessServerRegistryService_SetBaseKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetBaseKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyAccessServerRegistryServiceServer).SetBaseKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyAccessServerRegistryService_SetBaseKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyAccessServerRegistryServiceServer).SetBaseKey(ctx, req.(*SetBaseKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyAccessServerRegistryService_GetBaseKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBaseKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyAccessServerRegistryServiceServer).GetBaseKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyAccessServerRegistryService_GetBaseKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyAccessServerRegistryServiceServer).GetBaseKey(ctx, req.(*GetBaseKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // KeyAccessServerRegistryService_ServiceDesc is the grpc.ServiceDesc for KeyAccessServerRegistryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -290,6 +537,34 @@ var KeyAccessServerRegistryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListKeyAccessServerGrants",
 			Handler:    _KeyAccessServerRegistryService_ListKeyAccessServerGrants_Handler,
+		},
+		{
+			MethodName: "CreateKey",
+			Handler:    _KeyAccessServerRegistryService_CreateKey_Handler,
+		},
+		{
+			MethodName: "GetKey",
+			Handler:    _KeyAccessServerRegistryService_GetKey_Handler,
+		},
+		{
+			MethodName: "ListKeys",
+			Handler:    _KeyAccessServerRegistryService_ListKeys_Handler,
+		},
+		{
+			MethodName: "UpdateKey",
+			Handler:    _KeyAccessServerRegistryService_UpdateKey_Handler,
+		},
+		{
+			MethodName: "RotateKey",
+			Handler:    _KeyAccessServerRegistryService_RotateKey_Handler,
+		},
+		{
+			MethodName: "SetBaseKey",
+			Handler:    _KeyAccessServerRegistryService_SetBaseKey_Handler,
+		},
+		{
+			MethodName: "GetBaseKey",
+			Handler:    _KeyAccessServerRegistryService_GetBaseKey_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

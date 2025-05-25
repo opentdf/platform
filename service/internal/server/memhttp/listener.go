@@ -56,4 +56,4 @@ func (*memoryAddr) Network() string { return "memory" }
 
 // String implements io.Stringer, returning a value that matches the
 // certificates used by net/http/httptest.
-func (*memoryAddr) String() string { return "opentdf.io" }
+func (*memoryAddr) String() string { return "http://opentdf.io" }

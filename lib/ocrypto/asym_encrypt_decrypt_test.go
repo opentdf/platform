@@ -1,13 +1,22 @@
 package ocrypto
 
 import (
+	"crypto/sha256"
 	"testing"
 )
 
+func salty(s string) []byte {
+	digest := sha256.New()
+	digest.Write([]byte(s))
+	return digest.Sum(nil)
+}
+
 func TestAsymEncryptionAndDecryption(t *testing.T) {
-	var keypairs = []struct {
+	keypairs := []struct {
 		privateKey string
 		publicKey  string
+		salt       []byte
+		info       []byte
 	}{
 		{ // Test 2048 key
 			`-----BEGIN PRIVATE KEY-----
@@ -47,6 +56,8 @@ GBKh0CWGAXWRmphzGj7kFpkAxT1b827MrQMYxkn4w2WB8B/bGKz0+dWyqnnzGYAS
 hVJ0rIiNE8dDWzQCRBfivLemXhX8UFICyoS5i0IwenFvTr6T85EvMxK3aSAlGya3
 3wIDAQAB
 -----END PUBLIC KEY-----`,
+			salty("L1L"),
+			nil,
 		},
 		{ // Test 3072 key
 			`-----BEGIN PRIVATE KEY-----
@@ -100,6 +111,8 @@ KdheIKdUG+Ouv+vMTeAYOw9+5OGainDWFJA3LZHid3qbX85Y0as9n1nSKoYXMMQT
 88Nx+U7Vv8fTudHUgueYGy7WtE6URRIkI5W94u5jDpcb9DZ90Wv5XhaJdRmQ2BhZ
 pCVg892PjJwMcTWhIKJgX+9QEL2bSb2VY3yEpEa2b2LhAgMBAAE=
 -----END PUBLIC KEY-----`,
+			salty("L1L"),
+			nil,
 		},
 		{ // Test 4096 key
 			`-----BEGIN PRIVATE KEY-----
@@ -168,6 +181,8 @@ Td+sCeVX1dczquJziOvYwCyC4nM7pY+13+DXgszMydj/jdSshM4p2GRQu/JYDJf+
 EfNOjyrEL5+gjYgiQzVVbYkRhr2ZNeNvzdQsM8j+I20ObCNY1RFCmp9//8xNbi1k
 ufgiB73q6Fnh5QHf1HNAeMUCAwEAAQ==
 -----END PUBLIC KEY-----`,
+			salty("TDF"),
+			nil,
 		},
 		{ // Test certificate
 			`-----BEGIN PRIVATE KEY-----
@@ -214,8 +229,11 @@ I099IoRfC5djHUYYLMU/VkOIHuPC3sb7J65pSN26eR8bTMVNagk187V/xNwUuvkf
 +NUxDO615/5BwQKnAu5xiIVagYnDZqKCOtYS5qhxF33Nlnwlm7hH8iVZ1RI+n52l
 wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 -----END CERTIFICATE-----`,
+			salty("L1L"),
+			nil,
 		},
-		{`-----BEGIN PRIVATE KEY-----
+		{
+			`-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgwQlQvwfqC0sEaPVi
 l1CdHNqAndukGsrqMsfiIefXHQChRANCAAQSZSoVakwpWhKBZIR9dmmTkKv7GK6n
 6d0yFeGzOyqB7l9LOzOwlCDdm9k0jBQBw597Dyy7KQzW73zi+pSpgfYr
@@ -229,11 +247,14 @@ KVoSgWSEfXZpk5Cr+xiup+ndMhXhszsqge5fSzszsJQg3ZvZNIwUAcOfew8suykM
 A1UdIwQYMBaAFCAo/c694aHwmw/0kUTKuFvAQ4OcMA8GA1UdEwEB/wQFMAMBAf8w
 CgYIKoZIzj0EAwIDSAAwRQIgUzKsJS6Pcu2aZ6BFfuqob552Ebdel4uFGZMqWrwW
 bW0CIQDT5QED+8mHFot9JXSx2q1c5mnRvl4yElK0fiHeatBdqw==
------END CERTIFICATE-----`},
+-----END CERTIFICATE-----`,
+			salty("L1L"),
+			nil,
+		},
 	}
 
 	for _, test := range keypairs {
-		asymEncryptor, err := FromPublicPEM(test.publicKey)
+		asymEncryptor, err := FromPublicPEMWithSalt(test.publicKey, test.salt, test.info)
 		if err != nil {
 			t.Fatalf("NewAsymEncryption - failed: %v", err)
 		}
@@ -244,7 +265,7 @@ bW0CIQDT5QED+8mHFot9JXSx2q1c5mnRvl4yElK0fiHeatBdqw==
 			t.Fatalf("AsymEncryption encrypt failed: %v", err)
 		}
 
-		asymDecryptor, err := FromPrivatePEM(test.privateKey)
+		asymDecryptor, err := FromPrivatePEMWithSalt(test.privateKey, test.salt, test.info)
 		if err != nil {
 			t.Fatalf("NewAsymDecryption - failed: %v", err)
 		}

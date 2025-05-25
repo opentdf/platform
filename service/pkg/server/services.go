@@ -8,10 +8,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/authorization"
+	authorizationV2 "github.com/opentdf/platform/service/authorization/v2"
 	"github.com/opentdf/platform/service/entityresolution"
+	entityresolutionV2 "github.com/opentdf/platform/service/entityresolution/v2"
 	"github.com/opentdf/platform/service/health"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
@@ -69,15 +71,18 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceKAS, serviceWellKnown, serviceEntityResolution}...)
 			services = append(services, []serviceregistry.IService{
 				authorization.NewRegistration(),
+				authorizationV2.NewRegistration(),
 				kas.NewRegistration(),
 				wellknown.NewRegistration(),
 				entityresolution.NewRegistration(),
+				entityresolutionV2.NewRegistration(),
 			}...)
 			services = append(services, policy.NewRegistrations()...)
 		case "core":
 			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceWellKnown}...)
 			services = append(services, []serviceregistry.IService{
 				authorization.NewRegistration(),
+				authorizationV2.NewRegistration(),
 				wellknown.NewRegistration(),
 			}...)
 			services = append(services, policy.NewRegistrations()...)
@@ -88,9 +93,12 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 				return nil, err //nolint:wrapcheck // We are all friends here
 			}
 		case "entityresolution":
-			// If the mode is "entityresolution", register only the ERS service
+			// If the mode is "entityresolution", register only the ERS service (v1 and v2)
 			registeredServices = append(registeredServices, serviceEntityResolution)
 			if err := reg.RegisterService(entityresolution.NewRegistration(), modeERS); err != nil {
+				return nil, err //nolint:wrapcheck // We are all friends here
+			}
+			if err := reg.RegisterService(entityresolutionV2.NewRegistration(), modeERS); err != nil {
 				return nil, err //nolint:wrapcheck // We are all friends here
 			}
 		default:
@@ -112,7 +120,9 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 // based on the configuration and namespace mode. It creates a new service logger
 // and a database client if required. It registers the services with the gRPC server,
 // in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
-func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry) error {
+func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry) (func(), error) {
+	var gatewayCleanup func()
+
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
 		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.
@@ -157,8 +167,11 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 				var err error
 				svcDBClient, err = newServiceDBClient(ctx, cfg.Logger, cfg.DB, tracer, ns, svc.DBMigrations())
 				if err != nil {
-					return err
+					return func() {}, err
 				}
+			}
+			if svc.GetVersion() != "" {
+				svcLogger = svcLogger.With("version", svc.GetVersion())
 			}
 
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
@@ -172,11 +185,11 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 				Tracer:                 tracer,
 			})
 			if err != nil {
-				return err
+				return func() {}, err
 			}
 
 			if err := svc.RegisterConfigUpdateHook(ctx, cfg.AddOnConfigChangeHook); err != nil {
-				return fmt.Errorf("failed to register config update hook: %w", err)
+				return func() {}, fmt.Errorf("failed to register config update hook: %w", err)
 			}
 
 			// Register Connect RPC Services
@@ -190,8 +203,18 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 			}
 
 			// Register GRPC Gateway Handler using the in-process connect rpc
-			if err := svc.RegisterGRPCGatewayHandler(ctx, otdf.GRPCGatewayMux, otdf.ConnectRPCInProcess.Conn()); err != nil {
+			grpcConn := otdf.ConnectRPCInProcess.GrpcConn()
+			err := svc.RegisterGRPCGatewayHandler(ctx, otdf.GRPCGatewayMux, otdf.ConnectRPCInProcess.GrpcConn())
+			if err != nil {
 				logger.Info("service did not register a grpc gateway handler", slog.String("namespace", ns))
+			} else if gatewayCleanup == nil {
+				gatewayCleanup = func() {
+					slog.Debug("executing cleanup")
+					if grpcConn != nil {
+						grpcConn.Close()
+					}
+					slog.Info("cleanup complete")
+				}
 			}
 
 			// Register Extra Handlers
@@ -211,7 +234,10 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 		}
 	}
 
-	return nil
+	if gatewayCleanup == nil {
+		gatewayCleanup = func() {}
+	}
+	return gatewayCleanup, nil
 }
 
 func extractServiceLoggerConfig(cfg config.ServiceConfig) (string, error) {

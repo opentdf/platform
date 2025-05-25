@@ -103,7 +103,7 @@ func NotTestReadNanoTDFHeader(t *testing.T) {
 			signatureMode: ocrypto.ECCModeSecp256r1,
 			cipher:        cipherModeAes256gcm64Bit,
 		},
-		//PolicyBinding: policyInfo{
+		// PolicyBinding: policyInfo{
 		//	body: PolicyBody{
 		//		mode: policyTypeRemotePolicy,
 		//		rp: remotePolicy{
@@ -117,9 +117,11 @@ func NotTestReadNanoTDFHeader(t *testing.T) {
 		//		value: []byte{181, 228, 19, 166, 2, 17, 229, 241},
 		//	},
 		// },
-		EphemeralKey: []byte{123, 34, 52, 160, 205, 63, 54, 255, 123, 186, 109,
+		EphemeralKey: []byte{
+			123, 34, 52, 160, 205, 63, 54, 255, 123, 186, 109,
 			143, 232, 223, 35, 246, 44, 157, 9, 53, 111, 133,
-			130, 248, 169, 207, 21, 18, 108, 138, 157, 164, 108},
+			130, 248, 169, 207, 21, 18, 108, 138, 157, 164, 108,
+		},
 	}
 
 	const (
@@ -194,7 +196,7 @@ func NotTestNanoTDFEncryptFile(t *testing.T) {
 	}
 
 	// TODO - populate config properly
-	var kasURL = "https://kas.virtru.com/kas"
+	kasURL := "https://kas.virtru.com/kas"
 	var config NanoTDFConfig
 	err = config.kasURL.setURL(kasURL)
 	if err != nil {
@@ -230,7 +232,7 @@ func NotTestCreateNanoTDF(t *testing.T) {
 	}
 
 	// TODO - populate config properly
-	var kasURL = "https://kas.virtru.com/kas"
+	kasURL := "https://kas.virtru.com/kas"
 	var config NanoTDFConfig
 	err = config.kasURL.setURL(kasURL)
 	if err != nil {
@@ -306,7 +308,7 @@ func TestCreateNanoTDF(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := New("localhost:8080", WithPlatformConfiguration(PlatformConfiguration{}))
+			s, err := New("http://localhost:8080", WithPlatformConfiguration(PlatformConfiguration{}))
 			require.NoError(t, err)
 			_, err = s.CreateNanoTDF(tt.writer, tt.reader, tt.config)
 			if tt.expectedError != "" {

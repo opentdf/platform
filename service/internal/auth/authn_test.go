@@ -253,6 +253,7 @@ func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
 	s.Require().Error(err)
 	s.Contains(err.Error(), "unauthenticated")
 }
+
 func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)))
@@ -262,7 +263,7 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
+	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("\"exp\" not satisfied", err.Error())
 }
@@ -314,7 +315,7 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
+	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("\"iss\" not satisfied: claim \"iss\" does not exist", err.Error())
 }
@@ -329,7 +330,7 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
+	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "\"iss\" not satisfied: values do not match")
 }
@@ -343,7 +344,7 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
+	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("claim \"aud\" not found", err.Error())
 }
@@ -358,7 +359,7 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
+	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("\"aud\" not satisfied", err.Error())
 }
@@ -374,7 +375,7 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
+	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), "dpop")
 }
@@ -456,7 +457,7 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 			dpopToken := makeDPoPToken(s.T(), testCase)
 			_, _, err = s.auth.checkToken(
 				context.Background(),
-				[]string{fmt.Sprintf("DPoP %s", string(testCase.accessToken))},
+				[]string{"DPoP " + string(testCase.accessToken)},
 				receiverInfo{
 					u: []string{"/a/path"},
 					m: []string{http.MethodPost},
@@ -680,7 +681,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, ctx, err := auth.checkToken(context.Background(), []string{fmt.Sprintf("Bearer %s", string(signedTok))}, receiverInfo{}, nil)
+	_, ctx, err := auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
 	s.Require().NoError(err)
 	s.Require().Nil(ctxAuth.GetJWKFromContext(ctx, logger.CreateTestLogger()))
 }
@@ -752,8 +753,10 @@ func (s *AuthSuite) Test_LookupGatewayPaths() {
 				"Grpcgateway-Origin": []string{s.server.URL, "https://origin.1.com"},
 				"Origin":             []string{"https://origin.com"},
 			},
-			expected: []string{s.server.URL + "/kas/v2/rewrap",
-				"https://origin.1.com/kas/v2/rewrap", "https://origin.com/kas/v2/rewrap"},
+			expected: []string{
+				s.server.URL + "/kas/v2/rewrap",
+				"https://origin.1.com/kas/v2/rewrap", "https://origin.com/kas/v2/rewrap",
+			},
 		},
 		{
 			name: "Unknown Path with Pattern",

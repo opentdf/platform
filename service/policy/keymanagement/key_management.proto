@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package policy.keymanagement;
+
+import "buf/validate/validate.proto";
+import "common/common.proto";
+import "policy/objects.proto";
+import "policy/selectors.proto";
+
+/*
+   Provider Configuration Requests and Response Messages
+*/
+message CreateProviderConfigRequest {
+  // Required
+  // The name of the key provider. (e.g. "AWS KMS", "Google Cloud KMS", "Azure Key Vault")
+  string name = 1 [(buf.validate.field).required = true];
+  // Required
+  // JSON configuration for the key provider. This is unique to individual key providers.
+  bytes config_json = 2 [(buf.validate.field).required = true];
+
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+}
+message CreateProviderConfigResponse {
+  KeyProviderConfig provider_config = 1;
+}
+
+message GetProviderConfigRequest {
+  // Required
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+    string id = 2 [(buf.validate.field).string.uuid = true];
+    string name = 3 [(buf.validate.field).string.min_len = 1];
+  }
+}
+message GetProviderConfigResponse {
+  KeyProviderConfig provider_config = 1;
+}
+
+message ListProviderConfigsRequest {
+  // Optional
+  policy.PageRequest pagination = 10;
+}
+message ListProviderConfigsResponse {
+  repeated KeyProviderConfig provider_configs = 1;
+
+  policy.PageResponse pagination = 10;
+}
+
+message UpdateProviderConfigRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+  // Optional
+  string name = 2 [(buf.validate.field).required = false];
+  // Optional
+  bytes config_json = 3 [(buf.validate.field).required = false];
+
+  // Optional
+  // Common metadata
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+message UpdateProviderConfigResponse {
+  KeyProviderConfig provider_config = 1;
+}
+
+// In order to delete a provider configuration you must first delete all keys associated with the provider.
+message DeleteProviderConfigRequest {
+  // Required
+  string id = 1 [(buf.validate.field).string.uuid = true];
+}
+message DeleteProviderConfigResponse {
+  KeyProviderConfig provider_config = 1;
+}
+
+service KeyManagementService {
+  // Key Management
+  // Provider Management
+  rpc CreateProviderConfig(CreateProviderConfigRequest) returns (CreateProviderConfigResponse) {}
+  rpc GetProviderConfig(GetProviderConfigRequest) returns (GetProviderConfigResponse) {}
+  rpc ListProviderConfigs(ListProviderConfigsRequest) returns (ListProviderConfigsResponse) {}
+  rpc UpdateProviderConfig(UpdateProviderConfigRequest) returns (UpdateProviderConfigResponse) {}
+  rpc DeleteProviderConfig(DeleteProviderConfigRequest) returns (DeleteProviderConfigResponse) {}
+}

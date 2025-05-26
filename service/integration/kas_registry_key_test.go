@@ -1058,7 +1058,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_MetadataUnchanged_Success() {
 	}
 	keyToRotateResp, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
 	s.Require().NoError(err)
-	s.NotNil(rotateKey)
+	s.NotNil(keyToRotateResp)
 	keyIDs = append(keyIDs, keyToRotateResp.GetKasKey().GetKey().GetId())
 	s.Require().Equal(labels, keyToRotateResp.GetKasKey().GetKey().GetMetadata().GetLabels())
 

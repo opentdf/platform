@@ -718,23 +718,6 @@ func Test_UpdateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errMessageUUID,
 		},
 		{
-			name: "Invalid Request (invalid key status)",
-			req: &kasregistry.UpdateKeyRequest{
-				Id:        validUUID,
-				KeyStatus: invalidKeyStatus,
-			},
-			expectError:  true,
-			errorMessage: errMessageKeyStatus,
-		},
-		{
-			name: "Invalid Request - updating key status to unspecified",
-			req: &kasregistry.UpdateKeyRequest{
-				Id: validUUID,
-			},
-			expectError:  true,
-			errorMessage: errKeystatusUpdateMessageID,
-		},
-		{
 			name: "Invalid Request - metadata update behavior is 0 when updating metadata",
 			req: &kasregistry.UpdateKeyRequest{
 				Id:       validUUID,
@@ -747,7 +730,6 @@ func Test_UpdateKeyAccessServer_Keys(t *testing.T) {
 			name: "Valid Request",
 			req: &kasregistry.UpdateKeyRequest{
 				Id:                     validUUID,
-				KeyStatus:              policy.KeyStatus_KEY_STATUS_ACTIVE,
 				Metadata:               validMetadata,
 				MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 			},

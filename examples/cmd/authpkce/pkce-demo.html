@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PKCE Demo - Keycloak Localhost</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; }
+    input, button { margin: 0.5em 0; }
+    pre { background: #f4f4f4; padding: 1em; white-space: pre-wrap; word-break: break-word; }
+    .token { word-break: break-all; }
+    .section { margin-bottom: 2em; }
+    .endpoint-btn { margin-right: 1em; }
+    #endpoint-result { max-width: 100%; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>PKCE OAuth2 Demo (Keycloak @ localhost:8888)</h1>
+  <div class="section">
+    <button id="login">Login</button>
+    <button id="logout" style="display:none">Logout</button>
+    <button id="refresh-token" style="display:none">Refresh Token</button>
+    <span id="login-status"></span>
+    <span id="user-info"></span>
+  </div>
+  <div class="section" id="userinfo-section" style="display:none">
+    <h2>UserInfo</h2>
+    <button id="fetch-userinfo">Fetch UserInfo</button>
+    <button id="refresh-userinfo">Refresh UserInfo</button>
+    <pre id="userinfo"></pre>
+  </div>
+  <div class="section" id="endpoints-section" style="display:none">
+    <h2>Quick Endpoint Tests</h2>
+    <button class="endpoint-btn" id="write-namespace-btn" data-url="__PLATFORM_ENDPOINT__/policy.namespaces.NamespaceService/CreateNamespace" data-method="POST">Admin Role: Create Random Namespace</button>
+    <button class="endpoint-btn" id="read-namespaces-btn" data-url="__PLATFORM_ENDPOINT__/policy.namespaces.NamespaceService/ListNamespaces" data-method="POST" data-body="{}">Standard Role: List Namespaces</button>
+    <button class="endpoint-btn" id="rewrap-unknown-btn" data-url="__PLATFORM_ENDPOINT__/kas.AccessService/Rewrap" data-method="POST" data-body="{}">Unknown Role: Read KAS ReWrap</button>
+    <pre id="endpoint-result"></pre>
+  </div>
+  <div class="section">
+    <h2>Tokens</h2>
+    <pre id="tokens"></pre>
+  </div>
+  <script>
+    // PKCE OAuth2 Demo JS (injected config)
+    const config = {
+      ...__PLATFORM_WELLKNOWN_CONFIG__,
+      clientId: '__CLIENT_ID__',
+      scope: '__SCOPE__',
+      platformEndpoint: '__PLATFORM_ENDPOINT__',
+      redirectUri: window.location.origin + window.location.pathname,
+    };
+    // Use OIDC standard keys from config
+    config.authUrl = config.authorization_endpoint;
+    config.tokenUrl = config.token_endpoint;
+    config.userinfoUrl = config.userinfo_endpoint;
+    config.logoutUrl = config.end_session_endpoint;
+    // PKCE helpers
+    function base64urlencode(a) {
+      return btoa(String.fromCharCode.apply(null, new Uint8Array(a)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+    }
+    async function sha256(str) {
+      const buf = new TextEncoder().encode(str);
+      const hash = await window.crypto.subtle.digest('SHA-256', buf);
+      return base64urlencode(hash);
+    }
+    function randomString(len) {
+      const arr = new Uint8Array(len);
+      window.crypto.getRandomValues(arr);
+      return Array.from(arr).map(x => ('0' + x.toString(16)).slice(-2)).join('');
+    }
+    // State
+    let codeVerifier = null;
+    let tokens = null;
+    // UI
+    const loginBtn = document.getElementById('login');
+    const logoutBtn = document.getElementById('logout');
+    const refreshTokenBtn = document.getElementById('refresh-token');
+    const loginStatus = document.getElementById('login-status');
+    const userinfoSection = document.getElementById('userinfo-section');
+    const fetchUserinfoBtn = document.getElementById('fetch-userinfo');
+    const refreshUserinfoBtn = document.getElementById('refresh-userinfo');
+    const userinfoPre = document.getElementById('userinfo');
+    const endpointsSection = document.getElementById('endpoints-section');
+    const endpointBtns = document.querySelectorAll('.endpoint-btn');
+    const endpointResult = document.getElementById('endpoint-result');
+    const tokensPre = document.getElementById('tokens');
+    // Main
+    function showTokens() {
+      tokensPre.textContent = tokens ? JSON.stringify(tokens, null, 2) : '';
+    }
+    // Helper to decode JWT
+    function parseJwt(token) {
+      if (!token) return {};
+      const base64Url = token.split('.')[1];
+      if (!base64Url) return {};
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    }
+    function showUserInfo() {
+      let html = '';
+      if (tokens && tokens.id_token) {
+        const idt = parseJwt(tokens.id_token);
+        if (idt.email) html += ' | <b>Email:</b> ' + idt.email;
+        if (idt.preferred_username) html += ' | <b>User:</b> ' + idt.preferred_username;
+      }
+      if (tokens && tokens.access_token) {
+        const at = parseJwt(tokens.access_token);
+        if (at.sub) html += ' | <b>Sub:</b> ' + at.sub;
+      }
+      document.getElementById('user-info').innerHTML = html;
+    }
+    function setLoggedIn(loggedIn) {
+      loginBtn.style.display = loggedIn ? 'none' : '';
+      logoutBtn.style.display = loggedIn ? '' : 'none';
+      refreshTokenBtn.style.display = loggedIn ? '' : 'none';
+      loginStatus.textContent = loggedIn ? 'Logged in' : 'Not logged in';
+      userinfoSection.style.display = loggedIn ? '' : 'none';
+      endpointsSection.style.display = loggedIn ? '' : 'none';
+      showTokens();
+      showUserInfo();
+    }
+    function clearTokens() {
+      tokens = null;
+      localStorage.removeItem('pkce_tokens');
+      showTokens();
+    }
+    function saveTokens(t) {
+      tokens = t;
+      localStorage.setItem('pkce_tokens', JSON.stringify(tokens));
+      showTokens();
+    }
+    function loadTokens() {
+      const t = localStorage.getItem('pkce_tokens');
+      if (t) tokens = JSON.parse(t);
+      showTokens();
+    }
+    async function login() {
+      codeVerifier = randomString(64);
+      localStorage.setItem('pkce_code_verifier', codeVerifier);
+      const codeChallenge = await sha256(codeVerifier);
+      const params = [
+        'response_type=code',
+        'client_id=' + encodeURIComponent(config.clientId),
+        'redirect_uri=' + encodeURIComponent(config.redirectUri),
+        'scope=' + encodeURIComponent(config.scope),
+        'code_challenge=' + encodeURIComponent(codeChallenge),
+        'code_challenge_method=S256'
+      ].join('&');
+      window.location = config.authUrl + '?' + params;
+    }
+    async function handleRedirect() {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get('code');
+      if (!code) return false;
+      codeVerifier = localStorage.getItem('pkce_code_verifier');
+      if (!codeVerifier) return false;
+      // Exchange code for tokens
+      const body = [
+        'grant_type=authorization_code',
+        'client_id=' + encodeURIComponent(config.clientId),
+        'code_verifier=' + encodeURIComponent(codeVerifier),
+        'code=' + encodeURIComponent(code),
+        'redirect_uri=' + encodeURIComponent(config.redirectUri)
+      ].join('&');
+      const resp = await fetch(config.tokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body
+      });
+      const data = await resp.json();
+      if (data.access_token) {
+        saveTokens(data);
+        window.history.replaceState({}, '', config.redirectUri);
+        setLoggedIn(true);
+      } else {
+        alert('Token exchange failed: ' + JSON.stringify(data));
+      }
+      return true;
+    }
+    async function fetchUserinfo() {
+      if (!tokens || !tokens.access_token) return;
+      const resp = await fetch(config.userinfoUrl, {
+        headers: { 'Authorization': 'Bearer ' + tokens.access_token }
+      });
+      const data = await resp.json();
+      userinfoPre.textContent = JSON.stringify(data, null, 2);
+    }
+    async function refreshUserinfo() {
+      await fetchUserinfo();
+    }
+    async function logout() {
+      clearTokens();
+      setLoggedIn(false);
+      window.location = config.logoutUrl + '?redirect_uri=' + encodeURIComponent(config.redirectUri);
+    }
+    // Add helper to generate random namespace
+    function randomNamespace() {
+      const rand = Math.random().toString(36).substring(2, 10);
+      return rand + '.example.com';
+    }
+    async function callEndpoint(url, method) {
+      if (!tokens || !tokens.access_token) return;
+      endpointResult.textContent = '...';
+      const btn = Array.from(endpointBtns).find(b => b.getAttribute('data-url') === url);
+      let body = '{}';
+      // Special case for write-namespace
+      if (btn && btn.id === 'write-namespace-btn') {
+        const ns = randomNamespace();
+        body = JSON.stringify({ name: ns });
+      } else if (btn && btn.getAttribute('data-body')) {
+        body = btn.getAttribute('data-body');
+      }
+      const headers = {
+        'Authorization': 'Bearer ' + tokens.access_token,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      let curl = 'curl -X ' + method + ' "' + url + '"';
+      Object.entries(headers).forEach(([k, v]) => {
+        curl += ' -H "' + k + ': ' + v + '"';
+      });
+      if (method === 'POST' && body) {
+        curl += " -d '" + body + "'";
+      }
+      let verbose = '<b>Request:</b><br>';
+      verbose += '<pre>' + curl + '</pre>';
+      verbose += '<b>Request Details:</b><br>';
+      verbose += '<pre>' + method + ' ' + url + '\n';
+      Object.entries(headers).forEach(([k, v]) => {
+        verbose += k + ': ' + v + '\n';
+      });
+      if (method === 'POST' && body) verbose += '\n' + body + '\n';
+      verbose += '</pre>';
+      endpointResult.innerHTML = verbose + '<b>Response:</b><br><pre>...</pre>';
+      try {
+        const resp = await fetch(url, {
+          method,
+          headers,
+          body: method === 'POST' ? body : undefined
+        });
+        const text = await resp.text();
+        endpointResult.innerHTML = verbose + '<b>Response:</b><br><pre>' + text + '</pre>';
+      } catch (e) {
+        endpointResult.innerHTML = verbose + '<b>Response:</b><br><pre>Error: ' + e + '</pre>';
+      }
+    }
+    // Add token refresh logic
+    async function refreshToken() {
+      if (!tokens || !tokens.refresh_token) {
+        alert('No refresh token available.');
+        return;
+      }
+      const body = [
+        'grant_type=refresh_token',
+        'client_id=' + encodeURIComponent(config.clientId),
+        'refresh_token=' + encodeURIComponent(tokens.refresh_token)
+      ].join('&');
+      try {
+        const resp = await fetch(config.tokenUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body
+        });
+        const data = await resp.json();
+        if (data.access_token) {
+          // Preserve the old refresh token if not returned
+          if (!data.refresh_token && tokens.refresh_token) {
+            data.refresh_token = tokens.refresh_token;
+          }
+          saveTokens(data);
+          setLoggedIn(true);
+        } else {
+          alert('Token refresh failed: ' + JSON.stringify(data));
+        }
+      } catch (e) {
+        alert('Token refresh error: ' + e);
+      }
+    }
+    // Event listeners
+    loginBtn.onclick = login;
+    logoutBtn.onclick = logout;
+    fetchUserinfoBtn.onclick = fetchUserinfo;
+    refreshUserinfoBtn.onclick = refreshUserinfo;
+    refreshTokenBtn.onclick = refreshToken;
+    endpointBtns.forEach(btn => {
+      btn.onclick = () => callEndpoint(btn.getAttribute('data-url'), btn.getAttribute('data-method'));
+    });
+    // Patch endpoint button URLs at runtime
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.endpoint-btn').forEach(btn => {
+        btn.setAttribute('data-url', btn.getAttribute('data-url').replace('__PLATFORM_ENDPOINT__', config.platformEndpoint));
+      });
+    });
+    // Init
+    (async function() {
+      loadTokens();
+      if (await handleRedirect()) return;
+      setLoggedIn(!!tokens && !!tokens.access_token);
+    })();
+  </script>
+</body>
+</html>

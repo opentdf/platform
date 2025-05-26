@@ -168,18 +168,18 @@ type inProcessServer struct {
 const userInfoCacheCost = 10
 
 func NewOpenTDFServer(ctx context.Context, config Config, logger *logger.Logger, cacheManager *cache.Manager) (*OpenTDFServer, error) {
-	var (
-		err error
-		svr *OpenTDFServer
-	)
+	var err error
+	svr := &OpenTDFServer{
+		logger:       logger,
+		CacheManager: cacheManager,
+	}
 
-	svr.logger = logger
-	svr.CacheManager = cacheManager
-	userInfoCache := cacheManager.NewCache("core:userInfoCache", cache.Options{
+	// Create userinfo cache for enriched claims
+	userInfoCache := cacheManager.NewCache("core:"+oidc.UserInfoCacheService, cache.Options{
 		Expiration: config.Cache.UserInfoCacheTTL,
 		Cost:       userInfoCacheCost,
 	})
-	svr.UserInfoCache, err = oidc.NewUserInfoCache(config.OIDCDiscovery, userInfoCache)
+	svr.UserInfoCache, err = oidc.NewUserInfoCache(config.OIDCDiscovery, userInfoCache, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user info cache: %w", err)
 	}

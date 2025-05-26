@@ -3,9 +3,12 @@ package sdk
 import (
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"net"
 	"net/url"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -213,6 +216,41 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 	return func(c *TDFConfig) error {
 		c.defaultSegmentSize = size
+		return nil
+	}
+}
+
+// WithStandardAssertions adds a predefined set of standard assertions to the TDFConfig.
+func WithStandardAssertions() TDFOption {
+	return func(c *TDFConfig) error {
+		// Define standard assertions
+		standardAssertions := []AssertionConfig{
+			{
+				ID:             uuid.NewString(),
+				Type:           BaseAssertion,
+				Scope:          Paylaod,
+				AppliesToState: Unencrypted,
+				Statement: Statement{
+					Format: "string",
+					Schema: "",
+					Value:  time.Now().Format(time.RFC3339),
+				},
+			},
+			{
+				ID:             uuid.NewString(),
+				Type:           BaseAssertion,
+				Scope:          Paylaod,
+				AppliesToState: Unencrypted,
+				Statement: Statement{
+					Format: "string",
+					Schema: "metadata",
+					Value:  fmt.Sprintf("SDK-Version/%s OS/%s-%s", TDFSpecVersion, runtime.GOOS, runtime.GOARCH),
+				},
+			},
+		}
+
+		// Append the standard assertions to the existing list
+		c.assertions = append(c.assertions, standardAssertions...)
 		return nil
 	}
 }

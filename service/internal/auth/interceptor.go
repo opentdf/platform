@@ -37,12 +37,12 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 
 			token, tokenRaw, err := a.parseTokenFromHeader(req.Header())
 			if err != nil {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 
 			key, err := a.checkToken(ctx, token, tokenRaw, ri, req.Header()["Dpop"])
 			if err != nil {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 
 			// Try to get the userinfo from the context

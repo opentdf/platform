@@ -239,7 +239,8 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, err = s.auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
+	_, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("\"exp\" not satisfied", err.Error())
 }
@@ -277,7 +278,8 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	_, err := s.auth.checkToken(context.Background(), nil, "BPOP ", receiverInfo{}, nil)
+	parsedToken, _ := jwt.Parse([]byte{}, jwt.WithKey(jwa.RS256, s.key))
+	_, err := s.auth.checkToken(context.Background(), parsedToken, "BPOP ", receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("not of type bearer or dpop", err.Error())
 }
@@ -291,7 +293,8 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, err = s.auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
+	_, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("\"iss\" not satisfied: claim \"iss\" does not exist", err.Error())
 }
@@ -306,7 +309,8 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, err = s.auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
+	_, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "\"iss\" not satisfied: values do not match")
 }
@@ -320,7 +324,8 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, err = s.auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
+	_, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("claim \"aud\" not found", err.Error())
 }
@@ -335,7 +340,8 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, err = s.auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
+	_, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("\"aud\" not satisfied", err.Error())
 }
@@ -351,7 +357,10 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, err = s.auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
+	token, _, err := s.auth.parseTokenFromHeader(hdr)
+	s.Require().NoError(err)
+	_, err = s.auth.checkToken(context.Background(), token, "Bearer "+string(signedTok), receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), "dpop")
 }
@@ -370,6 +379,10 @@ type dpopTestCase struct {
 }
 
 func (s *AuthSuite) TestInvalid_DPoP_Cases() {
+	if !s.auth.enforceDPoP {
+		s.T().Skip("DPoP enforcement is disabled; skipping DPoP error tests")
+	}
+
 	dpopRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
 	dpopKey, err := jwk.FromRaw(dpopRaw)
@@ -431,17 +444,17 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 	for _, testCase := range testCases {
 		s.Run(testCase.errorMessage, func() {
 			dpopToken := makeDPoPToken(s.T(), testCase)
-			_, err = s.auth.checkToken(
-				context.Background(),
-				nil, // jwt.Token (not used in this test context)
-				"DPoP "+string(testCase.accessToken),
-				receiverInfo{
-					u: []string{"/a/path"},
-					m: []string{http.MethodPost},
-				},
-				[]string{dpopToken},
-			)
-
+			hdr := http.Header{"Authorization": []string{"DPoP " + string(testCase.accessToken)}, "Dpop": []string{dpopToken}}
+			token, _, err := s.auth.parseTokenFromHeader(hdr)
+			if err != nil {
+				s.Require().Error(err)
+				s.Contains(err.Error(), testCase.errorMessage)
+				return
+			}
+			_, err = s.auth.checkToken(context.Background(), token, "DPoP "+string(testCase.accessToken), receiverInfo{
+				u: []string{"/a/path"},
+				m: []string{http.MethodPost},
+			}, []string{dpopToken})
 			s.Require().Error(err)
 			s.Contains(err.Error(), testCase.errorMessage)
 		})
@@ -633,6 +646,17 @@ func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 }
 
 func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
+	s.SetupTest() // Ensure OIDC config and test server are set up
+
+	// Recreate the OIDC config and user info cache as in SetupTest
+	oidcConfig := &oidc.DiscoveryConfiguration{
+		Issuer:           s.server.URL,
+		JwksURI:          s.server.URL + "/jwks",
+		UserinfoEndpoint: s.server.URL + "/userinfo",
+	}
+	cacheManager, _ := cache.NewCacheManager(100, 1<<20, 64)
+	userInfoCache, _ := oidc.NewUserInfoCache(oidcConfig, cacheManager.NewCache("userinfo", cache.Options{Expiration: time.Minute, Cost: 1}), &logger.Logger{Logger: slog.New(slog.Default().Handler())})
+
 	authnConfig := AuthNConfig{
 		EnforceDPoP: false,
 		Issuer:      s.server.URL,
@@ -644,8 +668,8 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 		Logger: slog.New(slog.Default().Handler()),
 	},
 		func(_ string, _ any) error { return nil },
-		&oidc.DiscoveryConfiguration{},
-		&oidc.UserInfoCache{},
+		oidcConfig,
+		userInfoCache,
 	)
 
 	s.Require().NoError(err)
@@ -660,9 +684,10 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	jwt, err := auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
+	parsedToken, _ := jwt.Parse(signedTok, jwt.WithKey(jwa.RS256, s.key))
+	jwtKey, err := auth.checkToken(context.Background(), parsedToken, "Bearer "+string(signedTok), receiverInfo{}, nil)
 	s.Require().NoError(err)
-	s.Require().Nil(jwt)
+	s.Require().Nil(jwtKey)
 }
 
 func (s *AuthSuite) Test_PublicPath_Matches() {

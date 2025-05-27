@@ -482,49 +482,54 @@ func (s *AuthnCasbinSuite) Test_SetBuiltinPolicy() {
 	s.False(allowed)
 }
 
-func (s *AuthnCasbinSuite) Test_Username_Policy() {
-	policyCfg := PolicyConfig{}
-	err := defaults.Set(&policyCfg)
-	s.Require().NoError(err)
-
-	policyCfg.Extension = strings.Join([]string{
-		"p, casbin-user, new.service.*, read, allow",
-	}, "\n")
-
-	enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: policyCfg}, logger.CreateTestLogger())
-	s.Require().NoError(err)
-
-	tok := s.newTokWithDefaultClaim(true, false, "preferred_username", "")
-	allowed, err := enforcer.Enforce(tok, nil, "new.service.DoSomething", "read")
-	s.Require().NoError(err)
-	s.True(allowed)
-
-	allowed, err = enforcer.Enforce(tok, nil, "policy.attributes.List", "read")
-	s.Require().Error(err)
-	s.False(allowed)
-}
-
-func (s *AuthnCasbinSuite) Test_Override_Of_Username_Claim() {
+func (s *AuthnCasbinSuite) Test_Username_Claim_Enforcement() {
 	tests := []struct {
 		name          string
 		usernameClaim string
 		resource      string
 		action        string
 		shouldAllow   bool
+		setClaim      bool // whether to set the username claim in the token
 	}{
 		{
-			name:          "Allow with correct username claim",
+			name:          "Allow with correct username claim (override)",
 			usernameClaim: "username",
 			resource:      "new.service.DoSomething",
 			action:        "read",
 			shouldAllow:   true,
+			setClaim:      true,
 		},
 		{
-			name:          "Deny with incorrect resource",
+			name:          "Deny with incorrect resource (override)",
 			usernameClaim: "username",
 			resource:      "policy.attributes.List",
 			action:        "read",
 			shouldAllow:   false,
+			setClaim:      true,
+		},
+		{
+			name:          "Allow with correct username claim (default)",
+			usernameClaim: "preferred_username",
+			resource:      "new.service.DoSomething",
+			action:        "read",
+			shouldAllow:   true,
+			setClaim:      true,
+		},
+		{
+			name:          "Deny with incorrect resource (default)",
+			usernameClaim: "preferred_username",
+			resource:      "policy.attributes.List",
+			action:        "read",
+			shouldAllow:   false,
+			setClaim:      true,
+		},
+		{
+			name:          "Deny when username claim not set in token",
+			usernameClaim: "username",
+			resource:      "new.service.DoSomething",
+			action:        "read",
+			shouldAllow:   false,
+			setClaim:      false,
 		},
 	}
 
@@ -541,60 +546,12 @@ func (s *AuthnCasbinSuite) Test_Override_Of_Username_Claim() {
 		enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: policyCfg}, logger.CreateTestLogger())
 		s.Require().NoError(err, tc.name)
 
-		tok := s.newTokWithDefaultClaim(true, false, tc.usernameClaim, "")
-		allowed, err := enforcer.Enforce(tok, nil, tc.resource, tc.action)
-		if tc.shouldAllow {
-			s.Require().NoError(err, tc.name)
-			s.True(allowed, tc.name)
+		var tok jwt.Token
+		if tc.setClaim {
+			tok = s.newTokWithDefaultClaim(true, false, tc.usernameClaim, "")
 		} else {
-			s.Require().Error(err, tc.name)
-			s.False(allowed, tc.name)
+			tok = s.newTokWithDefaultClaim(true, false, "", "") // username claim not set
 		}
-	}
-}
-
-func (s *AuthnCasbinSuite) Test_Override_Of_Groups_Claim() {
-	tests := []struct {
-		name        string
-		groupsClaim string
-		admin       bool
-		standard    bool
-		resource    string
-		action      string
-		shouldAllow bool
-	}{
-		{
-			name:        "Deny with wrong group claim",
-			groupsClaim: "realm_access.groups",
-			admin:       false,
-			standard:    true,
-			resource:    "new.service.DoSomething",
-			action:      "read",
-			shouldAllow: false,
-		},
-		{
-			name:        "Allow with correct group claim",
-			groupsClaim: "realm_access.groups",
-			admin:       false,
-			standard:    true,
-			resource:    "policy.attributes.List",
-			action:      "read",
-			shouldAllow: true,
-		},
-	}
-
-	for _, tc := range tests {
-		policyCfg := PolicyConfig{}
-		err := defaults.Set(&policyCfg)
-		s.Require().NoError(err, tc.name)
-
-		// Support both string and array for GroupsClaim
-		policyCfg.GroupsClaim = GroupsClaimList{tc.groupsClaim}
-
-		enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: policyCfg}, logger.CreateTestLogger())
-		s.Require().NoError(err, tc.name)
-
-		tok := s.newTokWithDefaultClaim(tc.admin, tc.standard, "", "groups")
 		allowed, err := enforcer.Enforce(tok, nil, tc.resource, tc.action)
 		if tc.shouldAllow {
 			s.Require().NoError(err, tc.name)

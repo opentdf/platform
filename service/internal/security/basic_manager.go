@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -101,9 +100,13 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		}
 		return NewInProcessAESKey(plaintext), nil
 	case policy.Algorithm_ALGORITHM_EC_P256.String(), policy.Algorithm_ALGORITHM_EC_P384.String(), policy.Algorithm_ALGORITHM_EC_P521.String():
-		ecDecryptor, ok := decrypter.(*ocrypto.ECDecryptor)
-		if !ok {
-			return nil, errors.New("failed to cast to ECDecryptor")
+		ecPrivKey, err := ocrypto.ECPrivateKeyFromPem(privKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create EC private key from PEM: %w", err)
+		}
+		ecDecryptor, err := ocrypto.NewECDecryptor(ecPrivKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ECDecryptor: %w", err)
 		}
 		plaintext, err := ecDecryptor.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
 		if err != nil {

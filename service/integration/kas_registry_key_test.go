@@ -75,7 +75,7 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_InvalidKasId_Fail() {
 		KeyId:        validKeyID1,
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_4096,
 		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{
 			Pem: keyCtx,
 		},
 	}
@@ -91,7 +91,7 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_ProviderConfigInvalid_Fail() {
 		KeyId:            validKeyID1,
 		KeyAlgorithm:     policy.Algorithm_ALGORITHM_RSA_4096,
 		KeyMode:          policy.KeyMode_KEY_MODE_REMOTE,
-		PublicKeyCtx:     &policy.KasPublicKeyCtx{Pem: keyCtx},
+		PublicKeyCtx:     &policy.PublicKeyCtx{Pem: keyCtx},
 		ProviderConfigId: providerConfigID,
 	}
 	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
@@ -107,7 +107,7 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_NonBase64Ctx_Fail() {
 		KeyId:        validKeyID1,
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: nonBase64Ctx},
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: nonBase64Ctx},
 	}
 	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
 	s.Require().Error(err)
@@ -119,8 +119,8 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_NonBase64Ctx_Fail() {
 		KeyId:         validKeyID1,
 		KeyAlgorithm:  policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:       policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx:  &policy.KasPublicKeyCtx{Pem: keyCtx},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{WrappedKey: nonBase64Ctx, KeyId: validKeyID1},
+		PublicKeyCtx:  &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{WrappedKey: nonBase64Ctx, KeyId: validKeyID1},
 	}
 	resp, err = s.db.PolicyClient.CreateKey(s.ctx, &req)
 	s.Require().Error(err)
@@ -135,8 +135,8 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_Success() {
 		KeyId:        keyID4,
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			WrappedKey: keyCtx,
 			KeyId:      validKeyID1,
 		},
@@ -292,17 +292,6 @@ func (s *KasRegistryKeySuite) Test_UpdateKey_InvalidKeyId_Fails() {
 	s.Require().ErrorContains(err, db.ErrUUIDInvalid.Error())
 }
 
-func (s *KasRegistryKeySuite) Test_UpdateKeyStatus_Success() {
-	req := kasregistry.UpdateKeyRequest{
-		Id:        s.kasKeys[1].ID,
-		KeyStatus: policy.KeyStatus_KEY_STATUS_COMPROMISED,
-	}
-	resp, err := s.db.PolicyClient.UpdateKey(s.ctx, &req)
-	s.Require().NoError(err)
-	s.NotNil(resp)
-	s.Equal(s.kasKeys[1].ID, resp.GetKey().GetId())
-}
-
 func (s *KasRegistryKeySuite) Test_UpdateKeyMetadata_Success() {
 	req := kasregistry.UpdateKeyRequest{
 		Id: s.kasKeys[1].ID,
@@ -436,8 +425,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			KeyId:      validKeyID1,
 			WrappedKey: keyCtx,
 		},
@@ -474,7 +463,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 		Id: keyMap[rotateKey].GetKey().GetId(),
 	})
 	s.Require().NoError(err)
-	s.Equal(policy.KeyStatus_KEY_STATUS_INACTIVE, oldKey.GetKey().GetKeyStatus())
+	s.Equal(policy.KeyStatus_KEY_STATUS_ROTATED, oldKey.GetKey().GetKeyStatus())
 
 	// Verify that namespace has the new key
 	updatedNs, err := s.db.PolicyClient.GetNamespace(s.ctx, namespaceMap[rotateKey][0].GetId())
@@ -554,8 +543,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			KeyId:      validKeyID1,
 			WrappedKey: keyCtx,
 		},
@@ -608,7 +597,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 		Id: keyMap[rotateKey].GetKey().GetId(),
 	})
 	s.Require().NoError(err)
-	s.Equal(policy.KeyStatus_KEY_STATUS_INACTIVE, oldKey.GetKey().GetKeyStatus())
+	s.Equal(policy.KeyStatus_KEY_STATUS_ROTATED, oldKey.GetKey().GetKeyStatus())
 
 	// Verify that namespace has the new key
 	for _, ns := range namespaceMap[rotateKey] {
@@ -669,8 +658,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			KeyId:      validKeyID1,
 			WrappedKey: keyCtx,
 		},
@@ -704,7 +693,7 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoAttributeKeyMapping_Success() {
 		Id: keyMap[rotateKey].GetKey().GetId(),
 	})
 	s.Require().NoError(err)
-	s.Equal(policy.KeyStatus_KEY_STATUS_INACTIVE, oldKey.GetKey().GetKeyStatus())
+	s.Equal(policy.KeyStatus_KEY_STATUS_ROTATED, oldKey.GetKey().GetKeyStatus())
 
 	// Ensure there are no default kas keys after rotation
 	baseKey, err = s.db.PolicyClient.GetBaseKey(s.ctx)
@@ -734,8 +723,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_NoBaseKeyRotated_Success() {
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			KeyId:      validKeyID1,
 			WrappedKey: keyCtx,
 		},
@@ -786,8 +775,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_BaseKeyRotated_Success() {
 		KeyId:        "new_key_id",
 		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			KeyId:      validKeyID1,
 			WrappedKey: keyCtx,
 		},
@@ -835,10 +824,10 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_KasKeyNotFound_Fails() {
 		KeyId:        "default_key_id",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{
 			Pem: keyCtx,
 		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			KeyId:      validKeyID1,
 			WrappedKey: keyCtx,
 		},
@@ -886,10 +875,10 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_Insert_Success() {
 		KeyId:        "default_key_id",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{
 			Pem: keyCtx,
 		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			KeyId:      validKeyID1,
 			WrappedKey: keyCtx,
 		},
@@ -939,7 +928,7 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetPublicKeyOnlyKey_Fails() 
 		KeyId:        "default_key_id",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{
 			Pem: keyCtx,
 		},
 	}
@@ -963,7 +952,7 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetPublicKeyOnlyKey_Fails() 
 	s.Require().ErrorContains(err, "KEY_MODE_PUBLIC_KEY_ONLY as default key")
 }
 
-func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetInactiveKey_Fails() {
+func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetNonActiveKey_Fails() {
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
 	defer func() {
@@ -986,10 +975,10 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetInactiveKey_Fails() {
 		KeyId:        "default_key_id",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{
 			Pem: keyCtx,
 		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			KeyId:      validKeyID1,
 			WrappedKey: keyCtx,
 		},
@@ -1004,12 +993,25 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetInactiveKey_Fails() {
 	s.Require().NoError(err)
 	s.Require().Nil(baseKey)
 
-	// Update the key status to inactive
-	_, err = s.db.PolicyClient.UpdateKey(s.ctx, &kasregistry.UpdateKeyRequest{
-		Id:        key.GetKasKey().GetKey().GetId(),
-		KeyStatus: policy.KeyStatus_KEY_STATUS_INACTIVE,
-	})
+	// Update the key status to rotated
+	rotatedKeysResp, err := s.db.PolicyClient.RotateKey(s.ctx,
+		key.GetKasKey(),
+		&kasregistry.RotateKeyRequest_NewKey{
+			KeyId:     "rotated_key_id",
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			KeyMode:   policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+			PublicKeyCtx: &policy.PublicKeyCtx{
+				Pem: keyCtx,
+			},
+			PrivateKeyCtx: &policy.PrivateKeyCtx{
+				KeyId:      validKeyID1,
+				WrappedKey: keyCtx,
+			},
+		},
+	)
 	s.Require().NoError(err)
+	s.NotNil(rotatedKeysResp)
+	keyIDs = append(keyIDs, rotatedKeysResp.GetKasKey().GetKey().GetId())
 
 	// Set default key mapping
 	_, err = s.db.PolicyClient.SetBaseKey(s.ctx, &kasregistry.SetBaseKeyRequest{
@@ -1021,6 +1023,69 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetInactiveKey_Fails() {
 	s.Require().ErrorContains(err, "cannot set key of status")
 }
 
+func (s *KasRegistryKeySuite) Test_RotateKey_MetadataUnchanged_Success() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_rotate_key_kas",
+		Uri:  "https://test-rotate-key.opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
+
+	labels := map[string]string{"key1": "value1", "key2": "value2"}
+	keyReq := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "original_key_id_to_rotate",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P384,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{
+			Pem: keyCtx,
+		},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			KeyId:      validKeyID1,
+			WrappedKey: keyCtx,
+		},
+		Metadata: &common.MetadataMutable{
+			Labels: labels,
+		},
+	}
+	keyToRotateResp, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+	s.Require().NoError(err)
+	s.NotNil(keyToRotateResp)
+	keyIDs = append(keyIDs, keyToRotateResp.GetKasKey().GetKey().GetId())
+	s.Require().Equal(labels, keyToRotateResp.GetKasKey().GetKey().GetMetadata().GetLabels())
+
+	newKey := kasregistry.RotateKeyRequest_NewKey{
+		KeyId:        "new_key_id",
+		Algorithm:    policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			KeyId:      validKeyID1,
+			WrappedKey: keyCtx,
+		},
+	}
+	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, keyToRotateResp.GetKasKey(), &newKey)
+	s.Require().NoError(err)
+	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
+
+	// Verify that the old key is now rotated
+	oldKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
+		Id: keyToRotateResp.GetKasKey().GetKey().GetId(),
+	})
+	s.Require().NoError(err)
+	s.Equal(policy.KeyStatus_KEY_STATUS_ROTATED, oldKey.GetKey().GetKeyStatus())
+	s.Require().Equal(labels, oldKey.GetKey().GetMetadata().GetLabels())
+}
+
 func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*policy.KasKey {
 	// Create a key for the KAS
 	keyReq := kasregistry.CreateKeyRequest{
@@ -1028,10 +1093,10 @@ func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*polic
 		KeyId:        "original_key_id_to_rotate",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P384,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{
 			Pem: keyCtx,
 		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			KeyId:      validKeyID1,
 			WrappedKey: keyCtx,
 		},
@@ -1045,10 +1110,10 @@ func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*polic
 		KeyId:        "second_original_key_id",
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{
 			Pem: keyCtx,
 		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			KeyId:      validKeyID2,
 			WrappedKey: keyCtx,
 		},
@@ -1282,7 +1347,7 @@ func validatePublicKeyCtx(s *suite.Suite, expectedPubCtx []byte, actual *policy.
 	decodedExpectedPubCtx, err := base64.StdEncoding.DecodeString(string(expectedPubCtx))
 	s.Require().NoError(err)
 
-	var expectedPub policy.KasPublicKeyCtx
+	var expectedPub policy.PublicKeyCtx
 	err = protojson.Unmarshal(decodedExpectedPubCtx, &expectedPub)
 	s.Require().NoError(err)
 	s.Equal(expectedPub.GetPem(), actual.GetKey().GetPublicKeyCtx().GetPem())
@@ -1292,7 +1357,7 @@ func validatePrivatePublicCtx(s *suite.Suite, expectedPrivCtx, expectedPubCtx []
 	decodedExpectedPrivCtx, err := base64.StdEncoding.DecodeString(string(expectedPrivCtx))
 	s.Require().NoError(err)
 
-	var expectedPriv policy.KasPrivateKeyCtx
+	var expectedPriv policy.PrivateKeyCtx
 	err = protojson.Unmarshal(decodedExpectedPrivCtx, &expectedPriv)
 	s.Require().NoError(err)
 

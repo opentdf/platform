@@ -537,22 +537,9 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 		return nil, err
 	}
 
-	count, err := c.Queries.updateKey(ctx, updateKeyParams{
-		ID:        id,
-		KeyStatus: pgtypeInt4(int32(r.GetKeyStatus()), r.GetKeyStatus() != policy.KeyStatus_KEY_STATUS_UNSPECIFIED),
-		Metadata:  metadataJSON,
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if count == 0 {
-		return nil, db.ErrNotFound
-	} else if count > 1 {
-		c.logger.Warn("UpdateKey updated more than one row", "count", count)
-	}
-
-	return c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
-		Id: id,
+	return c.updateKeyInternal(ctx, updateKeyParams{
+		ID:       id,
+		Metadata: metadataJSON,
 	})
 }
 
@@ -668,9 +655,9 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 		},
 	}
 
-	rotatedOutKey, err := c.UpdateKey(ctx, &kasregistry.UpdateKeyRequest{
-		Id:        activeKey.GetKey().GetId(),
-		KeyStatus: policy.KeyStatus_KEY_STATUS_INACTIVE,
+	rotatedOutKey, err := c.updateKeyInternal(ctx, updateKeyParams{
+		ID:        activeKey.GetKey().GetId(),
+		KeyStatus: pgtypeInt4(int32(policy.KeyStatus_KEY_STATUS_ROTATED), true),
 	})
 	if err != nil {
 		return nil, err
@@ -709,107 +696,6 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 	rotateKeyResp.KasKey = newKasKey.GetKasKey()
 
 	return rotateKeyResp, nil
-}
-
-func (c PolicyDBClient) populateChangeMappings(ctx context.Context, rotatedIDs rotatedMappingIDs, rotatedResources *kasregistry.RotatedResources) error {
-	for _, id := range rotatedIDs.NamespaceIDs {
-		mapping := &kasregistry.ChangeMappings{
-			Id: id,
-		}
-		ns, err := c.GetNamespace(ctx, &namespaces.GetNamespaceRequest_NamespaceId{
-			NamespaceId: id,
-		})
-		if err != nil {
-			return err
-		}
-		mapping.Fqn = ns.GetFqn()
-		rotatedResources.NamespaceMappings = append(rotatedResources.GetNamespaceMappings(), mapping)
-	}
-	for _, id := range rotatedIDs.AttributeDefIDs {
-		mapping := &kasregistry.ChangeMappings{
-			Id: id,
-		}
-		attrDef, err := c.GetAttribute(ctx, &attributes.GetAttributeRequest_AttributeId{
-			AttributeId: id,
-		})
-		if err != nil {
-			return err
-		}
-		mapping.Fqn = attrDef.GetFqn()
-		rotatedResources.AttributeDefinitionMappings = append(rotatedResources.GetAttributeDefinitionMappings(), mapping)
-	}
-	for _, id := range rotatedIDs.AttributeValueIDs {
-		mapping := &kasregistry.ChangeMappings{
-			Id: id,
-		}
-		attrVal, err := c.GetAttributeValue(ctx, &attributes.GetAttributeValueRequest_ValueId{
-			ValueId: id,
-		})
-		if err != nil {
-			return err
-		}
-		mapping.Fqn = attrVal.GetFqn()
-		rotatedResources.AttributeValueMappings = append(rotatedResources.GetAttributeValueMappings(), mapping)
-	}
-
-	return nil
-}
-
-/**
-* Rotate the public key in the Namespace, AttributeDefinition, and AttributeValue tables.
- */
-func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID, newKeyID string) (rotatedMappingIDs, error) {
-	var err error
-	rotatedIDs := rotatedMappingIDs{
-		NamespaceIDs:      make([]string, 0),
-		AttributeDefIDs:   make([]string, 0),
-		AttributeValueIDs: make([]string, 0),
-	}
-
-	rotatedIDs.NamespaceIDs, err = c.rotatePublicKeyForNamespace(ctx, rotatePublicKeyForNamespaceParams{
-		OldKeyID: oldKeyID,
-		NewKeyID: newKeyID,
-	})
-	if err != nil {
-		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	rotatedIDs.AttributeDefIDs, err = c.rotatePublicKeyForAttributeDefinition(ctx, rotatePublicKeyForAttributeDefinitionParams{
-		OldKeyID: oldKeyID,
-		NewKeyID: newKeyID,
-	})
-	if err != nil {
-		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	rotatedIDs.AttributeValueIDs, err = c.rotatePublicKeyForAttributeValue(ctx, rotatePublicKeyForAttributeValueParams{
-		OldKeyID: oldKeyID,
-		NewKeyID: newKeyID,
-	})
-	if err != nil {
-		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return rotatedIDs, nil
-}
-
-func (c PolicyDBClient) rotateBaseKey(ctx context.Context, rotatedOutKeyID *policy.KasKey, newKeyID string) error {
-	baseKey, err := c.GetBaseKey(ctx)
-	if err != nil {
-		return err
-	}
-	if baseKey.GetPublicKey().GetKid() == rotatedOutKeyID.GetKey().GetKeyId() && baseKey.GetKasUri() == rotatedOutKeyID.GetKasUri() {
-		_, err := c.SetBaseKey(ctx, &kasregistry.SetBaseKeyRequest{
-			ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
-				Id: newKeyID,
-			},
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (c PolicyDBClient) GetBaseKey(ctx context.Context) (*kasregistry.SimpleKasKey, error) {
@@ -909,6 +795,123 @@ func (c PolicyDBClient) DeleteAllBaseKeys(ctx context.Context) error {
 	_, err := c.Queries.deleteAllBaseKeys(ctx)
 	if err != nil {
 		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return nil
+}
+
+func (c PolicyDBClient) updateKeyInternal(ctx context.Context, params updateKeyParams) (*policy.KasKey, error) {
+	count, err := c.Queries.updateKey(ctx, params)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	} else if count > 1 {
+		c.logger.Warn("UpdateKey updated more than one row", "count", count)
+	}
+
+	return c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
+		Id: params.ID,
+	})
+}
+
+func (c PolicyDBClient) populateChangeMappings(ctx context.Context, rotatedIDs rotatedMappingIDs, rotatedResources *kasregistry.RotatedResources) error {
+	for _, id := range rotatedIDs.NamespaceIDs {
+		mapping := &kasregistry.ChangeMappings{
+			Id: id,
+		}
+		ns, err := c.GetNamespace(ctx, &namespaces.GetNamespaceRequest_NamespaceId{
+			NamespaceId: id,
+		})
+		if err != nil {
+			return err
+		}
+		mapping.Fqn = ns.GetFqn()
+		rotatedResources.NamespaceMappings = append(rotatedResources.GetNamespaceMappings(), mapping)
+	}
+	for _, id := range rotatedIDs.AttributeDefIDs {
+		mapping := &kasregistry.ChangeMappings{
+			Id: id,
+		}
+		attrDef, err := c.GetAttribute(ctx, &attributes.GetAttributeRequest_AttributeId{
+			AttributeId: id,
+		})
+		if err != nil {
+			return err
+		}
+		mapping.Fqn = attrDef.GetFqn()
+		rotatedResources.AttributeDefinitionMappings = append(rotatedResources.GetAttributeDefinitionMappings(), mapping)
+	}
+	for _, id := range rotatedIDs.AttributeValueIDs {
+		mapping := &kasregistry.ChangeMappings{
+			Id: id,
+		}
+		attrVal, err := c.GetAttributeValue(ctx, &attributes.GetAttributeValueRequest_ValueId{
+			ValueId: id,
+		})
+		if err != nil {
+			return err
+		}
+		mapping.Fqn = attrVal.GetFqn()
+		rotatedResources.AttributeValueMappings = append(rotatedResources.GetAttributeValueMappings(), mapping)
+	}
+
+	return nil
+}
+
+/**
+* Rotate the public key in the Namespace, AttributeDefinition, and AttributeValue tables.
+ */
+func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID, newKeyID string) (rotatedMappingIDs, error) {
+	var err error
+	rotatedIDs := rotatedMappingIDs{
+		NamespaceIDs:      make([]string, 0),
+		AttributeDefIDs:   make([]string, 0),
+		AttributeValueIDs: make([]string, 0),
+	}
+
+	rotatedIDs.NamespaceIDs, err = c.rotatePublicKeyForNamespace(ctx, rotatePublicKeyForNamespaceParams{
+		OldKeyID: oldKeyID,
+		NewKeyID: newKeyID,
+	})
+	if err != nil {
+		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	rotatedIDs.AttributeDefIDs, err = c.rotatePublicKeyForAttributeDefinition(ctx, rotatePublicKeyForAttributeDefinitionParams{
+		OldKeyID: oldKeyID,
+		NewKeyID: newKeyID,
+	})
+	if err != nil {
+		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	rotatedIDs.AttributeValueIDs, err = c.rotatePublicKeyForAttributeValue(ctx, rotatePublicKeyForAttributeValueParams{
+		OldKeyID: oldKeyID,
+		NewKeyID: newKeyID,
+	})
+	if err != nil {
+		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return rotatedIDs, nil
+}
+
+func (c PolicyDBClient) rotateBaseKey(ctx context.Context, rotatedOutKeyID *policy.KasKey, newKeyID string) error {
+	baseKey, err := c.GetBaseKey(ctx)
+	if err != nil {
+		return err
+	}
+	if baseKey.GetPublicKey().GetKid() == rotatedOutKeyID.GetKey().GetKeyId() && baseKey.GetKasUri() == rotatedOutKeyID.GetKasUri() {
+		_, err := c.SetBaseKey(ctx, &kasregistry.SetBaseKeyRequest{
+			ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
+				Id: newKeyID,
+			},
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

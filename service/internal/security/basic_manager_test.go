@@ -2,8 +2,6 @@ package security
 
 import (
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -386,7 +384,7 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 	ecPrivKey, err := ecKey.PrivateKeyInPemFormat()
 	require.NoError(t, err)
 
-	wrappedKASECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
+	wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
 	require.NoError(t, err)
 
 	bm, err := NewBasicManager(log, rootKeyHex)
@@ -409,7 +407,7 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "ec-kid-derive"
 		mockDetails.MAlgorithm = policy.Algorithm_ALGORITHM_EC_P256.String()
-		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedKASECPrivKeyStr}
+		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
 
 		// Set up mock expectations
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
@@ -422,16 +420,16 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, protectedKey)
 
-		kasECDHPrivKey, err := ocrypto.ECPrivateKeyFromPem([]byte(ecPrivKey)) // KAS's ECDH private key
+		ecdhPrivKey, err := ocrypto.ECPrivateKeyFromPem([]byte(ecPrivKey)) // ECDH private key
 		require.NoError(t, err)
 
-		// We need to compute the shared secret using the KAS private key and the client ephemeral public key
+		// We need to compute the shared secret using the private key and the client ephemeral public key
 		clientEphemeralECDSAPubKey, err := ocrypto.UncompressECPubKey(elliptic.P256(), clientEphemeralPublicKeyBytes)
 		require.NoError(t, err)
 		clientECDHPublicKey, err := ocrypto.ConvertToECDHPublicKey(clientEphemeralECDSAPubKey)
 		require.NoError(t, err)
 
-		expectedSharedSecret, err := ocrypto.ComputeECDHKeyFromECDHKeys(clientECDHPublicKey, kasECDHPrivKey)
+		expectedSharedSecret, err := ocrypto.ComputeECDHKeyFromECDHKeys(clientECDHPublicKey, ecdhPrivKey)
 		require.NoError(t, err)
 		expectedDerivedKey, err := ocrypto.CalculateHKDF(NanoVersionSalt(), expectedSharedSecret)
 		require.NoError(t, err)
@@ -482,13 +480,4 @@ func TestBasicManager_GenerateECSessionKey(t *testing.T) {
 		_, err := bm.GenerateECSessionKey(context.Background(), "invalid PEM data")
 		require.Error(t, err)
 	})
-}
-
-// Helper to create a real AES GCM cipher for testing DecryptAESGCM
-func createTestAESGCM(key []byte) (cipher.AEAD, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	return cipher.NewGCM(block)
 }

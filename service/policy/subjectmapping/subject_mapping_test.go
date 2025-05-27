@@ -131,7 +131,7 @@ func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testin
 					Actions:                validActions,
 				}
 			},
-			expectedError:  "operator",
+			expectedError: "operator",
 		},
 		{
 			name: "missing subject external selector value",
@@ -159,7 +159,7 @@ func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testin
 					Actions:                validActions,
 				}
 			},
-			expectedError:  "subject_external_selector_value",
+			expectedError: "subject_external_selector_value",
 		},
 		{
 			name: "empty subject external values",
@@ -187,7 +187,7 @@ func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testin
 					Actions:                validActions,
 				}
 			},
-			expectedError:  "subject_external_values",
+			expectedError: "subject_external_values",
 		},
 	}
 

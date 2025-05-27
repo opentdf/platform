@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/access"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
@@ -88,12 +89,6 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config, err))
 				} // kasURLString will be used for p.URI
 
-				p.URI = *kasURI
-				p.SDK = srp.SDK
-				p.Logger = srp.Logger
-				p.KASConfig = kasCfg
-				p.Tracer = srp.Tracer
-
 				if kasCfg.PreviewFeatures.KeyManagement {
 					srp.Logger.Info("Key management is enabled")
 					// Configure new delegation service
@@ -120,7 +115,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
 					p.CryptoProvider = srp.OTDF.CryptoProvider
 
-					inProcessService := p.InitSecurityProviderAdapter()
+					inProcessService := initSecurityProviderAdapter(p.CryptoProvider, kasCfg, srp.Logger)
 
 					p.KeyDelegator = trust.NewDelegatingKeyService(inProcessService, srp.Logger)
 					p.KeyDelegator.RegisterKeyManager(inProcessService.Name(), func() (trust.KeyManager, error) {
@@ -129,6 +124,12 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					// Set default for non-key-management mode
 					p.KeyDelegator.SetDefaultMode(inProcessService.Name())
 				}
+
+				p.URI = *kasURI
+				p.SDK = srp.SDK
+				p.Logger = srp.Logger
+				p.KASConfig = kasCfg
+				p.Tracer = srp.Tracer
 
 				srp.Logger.Debug("kas config", "config", kasCfg)
 
@@ -140,4 +141,28 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 			},
 		},
 	}
+}
+
+func initSecurityProviderAdapter(cryptoProvider *security.StandardCrypto, kasCfg access.KASConfig, l *logger.Logger) trust.KeyService {
+	var defaults []string
+	var legacies []string
+	for _, key := range kasCfg.Keyring {
+		if key.Legacy {
+			legacies = append(legacies, key.KID)
+		} else {
+			defaults = append(defaults, key.KID)
+		}
+	}
+	if len(defaults) == 0 && len(legacies) == 0 {
+		for _, alg := range []string{security.AlgorithmECP256R1, security.AlgorithmRSA2048} {
+			kid := cryptoProvider.FindKID(alg)
+			if kid != "" {
+				defaults = append(defaults, kid)
+			} else {
+				l.Warn("no default key found for algorithm", "algorithm", alg)
+			}
+		}
+	}
+
+	return security.NewSecurityProviderAdapter(cryptoProvider, defaults, legacies)
 }

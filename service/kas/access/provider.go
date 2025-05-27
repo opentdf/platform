@@ -99,10 +99,10 @@ func (kasCfg *KASConfig) UpgradeMapToKeyring(c *security.StandardCrypto) {
 	}
 }
 
-func (p *Provider) InitSecurityProviderAdapter() trust.KeyService {
+func InitSecurityProviderAdapter(cryptoProvider *security.StandardCrypto, kasCfg *KASConfig, l logger.Logger) trust.KeyService {
 	var defaults []string
 	var legacies []string
-	for _, key := range p.KASConfig.Keyring {
+	for _, key := range kasCfg.Keyring {
 		if key.Legacy {
 			legacies = append(legacies, key.KID)
 		} else {
@@ -111,16 +111,16 @@ func (p *Provider) InitSecurityProviderAdapter() trust.KeyService {
 	}
 	if len(defaults) == 0 && len(legacies) == 0 {
 		for _, alg := range []string{security.AlgorithmECP256R1, security.AlgorithmRSA2048} {
-			kid := p.CryptoProvider.FindKID(alg)
+			kid := cryptoProvider.FindKID(alg)
 			if kid != "" {
 				defaults = append(defaults, kid)
 			} else {
-				p.Logger.Warn("no default key found for algorithm", "algorithm", alg)
+				l.Warn("no default key found for algorithm", "algorithm", alg)
 			}
 		}
 	}
 
-	return security.NewSecurityProviderAdapter(p.CryptoProvider, defaults, legacies)
+	return security.NewSecurityProviderAdapter(cryptoProvider, defaults, legacies)
 }
 
 // If there exists *any* legacy keys, returns empty list.

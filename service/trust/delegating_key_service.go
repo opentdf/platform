@@ -3,6 +3,7 @@ package trust
 import (
 	"context"
 	"crypto/elliptic"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -131,7 +132,7 @@ func (d *DelegatingKeyService) _defKM() (KeyManager, error) {
 		d.mutex.Unlock() // Unlock before calling getKeyManager to avoid re-entrant lock on the same goroutine.
 
 		if defaultModeName == "" {
-			return nil, fmt.Errorf("no default key manager mode configured")
+			return nil, errors.New("no default key manager mode configured")
 		}
 
 		// Get the manager instance for the defaultModeName.

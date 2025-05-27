@@ -24,7 +24,13 @@ import (
 	ristretto_store "github.com/eko/gocache/store/ristretto/v4"
 )
 
-const basicManagerName = "opentdf.io/basic"
+const (
+	basicManagerName     = "opentdf.io/basic"
+	ristrettoBufferItems = 64
+	ristrettoMaxCost     = 3400000
+	ristrettoNumCounters = ristrettoMaxCost * 10
+	ristrettoCacheTTL    = 30
+)
 
 type BasicManager struct {
 	l       *logger.Logger
@@ -39,9 +45,9 @@ func NewBasicManager(logger *logger.Logger, rootKey string) (*BasicManager, erro
 	}
 
 	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1000,
-		MaxCost:     100,
-		BufferItems: 64,
+		NumCounters: ristrettoNumCounters,
+		MaxCost:     ristrettoMaxCost,
+		BufferItems: ristrettoBufferItems,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ristretto cache: %w", err)
@@ -53,7 +59,7 @@ func NewBasicManager(logger *logger.Logger, rootKey string) (*BasicManager, erro
 
 	return &BasicManager{
 		l:       logger,
-		rootKey: []byte(rk),
+		rootKey: rk,
 		cache:   cacheManager,
 	}, nil
 }
@@ -189,7 +195,7 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 		return nil, fmt.Errorf("failed to decrypt wrapped key: %w", err)
 	}
 
-	if err := b.cache.Set(ctx, kid, privKey, store.WithExpiration(time.Second*30)); err != nil {
+	if err := b.cache.Set(ctx, kid, privKey, store.WithExpiration(time.Second*ristrettoCacheTTL)); err != nil {
 		b.l.ErrorContext(ctx, "failed to cache private key", slog.String("kid", kid), slog.String("error", err.Error()))
 	}
 

@@ -12,20 +12,32 @@
     .endpoint-btn { margin-right: 1em; }
     #endpoint-result { max-width: 100%; overflow-x: auto; }
   </style>
+  <script>
+    // Global constants for easy tweaking
+    const AUTO_REFRESH_THRESHOLD_MS = 4 * 60 * 1000; // 4 minutes before expiry
+    const EXPIRY_TIMER_INTERVAL_MS = 1000;   // Timer update interval
+  </script>
 </head>
 <body>
   <h1>PKCE OAuth2 Demo (Keycloak @ localhost:8888)</h1>
   <div class="section">
-    <button id="login">Login</button>
-    <button id="logout" style="display:none">Logout</button>
-    <button id="refresh-token" style="display:none">Refresh Token</button>
-    <span id="login-status"></span>
-    <span id="user-info"></span>
+    <div>
+      <button id="login">Login</button>
+      <span id="login-status"></span>
+    </div>
+    <div style="margin-top:0.5em;">
+      <span id="token-expiry-timer"></span>
+      <label style="margin-left:1em;"><input type="checkbox" id="auto-refresh-token" checked> Auto-refresh token</label>
+      <button id="logout" style="display:none; margin-left:1em;">Logout</button>
+      <button id="refresh-token" style="display:none">Refresh Token</button>
+    </div>
+    <div style="margin-top:0.5em;">
+      <span id="user-info"></span>
+    </div>
   </div>
   <div class="section" id="userinfo-section" style="display:none">
     <h2>UserInfo</h2>
     <button id="fetch-userinfo">Fetch UserInfo</button>
-    <button id="refresh-userinfo">Refresh UserInfo</button>
     <pre id="userinfo"></pre>
   </div>
   <div class="section" id="endpoints-section" style="display:none">
@@ -35,7 +47,7 @@
     <button class="endpoint-btn" id="rewrap-unknown-btn" data-url="__PLATFORM_ENDPOINT__/kas.AccessService/Rewrap" data-method="POST" data-body="{}">Unknown Role: Read KAS ReWrap</button>
     <pre id="endpoint-result"></pre>
   </div>
-  <div class="section">
+  <div class="section" id="tokens-section">
     <h2>Tokens</h2>
     <pre id="tokens"></pre>
   </div>
@@ -80,15 +92,99 @@
     const loginStatus = document.getElementById('login-status');
     const userinfoSection = document.getElementById('userinfo-section');
     const fetchUserinfoBtn = document.getElementById('fetch-userinfo');
-    const refreshUserinfoBtn = document.getElementById('refresh-userinfo');
     const userinfoPre = document.getElementById('userinfo');
     const endpointsSection = document.getElementById('endpoints-section');
     const endpointBtns = document.querySelectorAll('.endpoint-btn');
     const endpointResult = document.getElementById('endpoint-result');
     const tokensPre = document.getElementById('tokens');
+    const autoRefreshCheckbox = document.getElementById('auto-refresh-token');
+    // --- Token Expiry Timer and Auto-Refresh ---
+    let expiryTimerInterval = null;
+    let autoRefreshEnabled = autoRefreshCheckbox.checked;
+    const tokenExpiryTimer = document.getElementById('token-expiry-timer');
+
+    function getAccessTokenExpiry() {
+      if (!tokens || !tokens.access_token) return null;
+      const at = parseJwt(tokens.access_token);
+      if (!at.exp) return null;
+      return at.exp * 1000; // exp is in seconds
+    }
+
+    function updateTokenExpiryTimer() {
+      const expiry = getAccessTokenExpiry();
+      if (!expiry) {
+        tokenExpiryTimer.textContent = '';
+        return;
+      }
+      const now = Date.now();
+      let seconds = Math.max(0, Math.floor((expiry - now) / 1000));
+      let min = Math.floor(seconds / 60);
+      let sec = seconds % 60;
+      tokenExpiryTimer.textContent = `Access token expires in: ${min}:${sec.toString().padStart(2, '0')}`;
+    }
+
+    function startExpiryTimer() {
+      if (expiryTimerInterval) clearInterval(expiryTimerInterval);
+      updateTokenExpiryTimer();
+      expiryTimerInterval = setInterval(() => {
+        updateTokenExpiryTimer();
+        if (autoRefreshEnabled) {
+          const expiry = getAccessTokenExpiry();
+          if (expiry && expiry - Date.now() < AUTO_REFRESH_THRESHOLD_MS) {
+            refreshToken();
+          }
+        }
+      }, EXPIRY_TIMER_INTERVAL_MS);
+    }
+    function stopExpiryTimer() {
+      if (expiryTimerInterval) clearInterval(expiryTimerInterval);
+      tokenExpiryTimer.textContent = '';
+    }
+    autoRefreshCheckbox.onchange = function() {
+      autoRefreshEnabled = autoRefreshCheckbox.checked;
+    };
     // Main
     function showTokens() {
-      tokensPre.textContent = tokens ? JSON.stringify(tokens, null, 2) : '';
+      if (!tokens) {
+        tokensPre.innerHTML = '';
+        return;
+      }
+      // Prepare token values and decoded JWTs
+      const accessToken = tokens.access_token || '';
+      const idToken = tokens.id_token || '';
+      const refreshToken = tokens.refresh_token || '';
+      let accessJwt = '';
+      let idJwt = '';
+      try {
+        accessJwt = accessToken ? JSON.stringify(parseJwt(accessToken), null, 2) : '';
+      } catch (e) {
+        accessJwt = 'Invalid JWT';
+      }
+      try {
+        idJwt = idToken ? JSON.stringify(parseJwt(idToken), null, 2) : '';
+      } catch (e) {
+        idJwt = 'Invalid JWT';
+      }
+      // Layout: 3 columns for easy comparison
+      tokensPre.innerHTML = `
+        <div style="display: flex; gap: 1em; flex-wrap: wrap;">
+          <div style="flex:1; min-width: 250px;">
+            <b>Access Token</b>
+            <pre class="token">${accessToken}</pre>
+            <details open><summary>Decoded JWT</summary><pre>${accessJwt}</pre></details>
+          </div>
+          <div style="flex:1; min-width: 250px;">
+            <b>ID Token</b>
+            <pre class="token">${idToken}</pre>
+            <details open><summary>Decoded JWT</summary><pre>${idJwt}</pre></details>
+          </div>
+          <div style="flex:1; min-width: 250px;">
+            <b>Refresh Token</b>
+            <pre class="token">${refreshToken}</pre>
+          </div>
+        </div>
+      `;
+      startExpiryTimer();
     }
     // Helper to decode JWT
     function parseJwt(token) {
@@ -119,15 +215,24 @@
       logoutBtn.style.display = loggedIn ? '' : 'none';
       refreshTokenBtn.style.display = loggedIn ? '' : 'none';
       loginStatus.textContent = loggedIn ? 'Logged in' : 'Not logged in';
+      // Show/hide token expiry and auto-refresh inline with status
+      tokenExpiryTimer.style.display = loggedIn ? '' : 'none';
+      autoRefreshCheckbox.parentElement.style.display = loggedIn ? '' : 'none';
       userinfoSection.style.display = loggedIn ? '' : 'none';
       endpointsSection.style.display = loggedIn ? '' : 'none';
       showTokens();
       showUserInfo();
+      if (loggedIn) {
+        startExpiryTimer();
+      } else {
+        stopExpiryTimer();
+      }
     }
     function clearTokens() {
       tokens = null;
       localStorage.removeItem('pkce_tokens');
       showTokens();
+      stopExpiryTimer();
     }
     function saveTokens(t) {
       tokens = t;
@@ -190,66 +295,6 @@
       const data = await resp.json();
       userinfoPre.textContent = JSON.stringify(data, null, 2);
     }
-    async function refreshUserinfo() {
-      await fetchUserinfo();
-    }
-    async function logout() {
-      clearTokens();
-      setLoggedIn(false);
-      window.location = config.logoutUrl + '?redirect_uri=' + encodeURIComponent(config.redirectUri);
-    }
-    // Add helper to generate random namespace
-    function randomNamespace() {
-      const rand = Math.random().toString(36).substring(2, 10);
-      return rand + '.example.com';
-    }
-    async function callEndpoint(url, method) {
-      if (!tokens || !tokens.access_token) return;
-      endpointResult.textContent = '...';
-      const btn = Array.from(endpointBtns).find(b => b.getAttribute('data-url') === url);
-      let body = '{}';
-      // Special case for write-namespace
-      if (btn && btn.id === 'write-namespace-btn') {
-        const ns = randomNamespace();
-        body = JSON.stringify({ name: ns });
-      } else if (btn && btn.getAttribute('data-body')) {
-        body = btn.getAttribute('data-body');
-      }
-      const headers = {
-        'Authorization': 'Bearer ' + tokens.access_token,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
-      let curl = 'curl -X ' + method + ' "' + url + '"';
-      Object.entries(headers).forEach(([k, v]) => {
-        curl += ' -H "' + k + ': ' + v + '"';
-      });
-      if (method === 'POST' && body) {
-        curl += " -d '" + body + "'";
-      }
-      let verbose = '<b>Request:</b><br>';
-      verbose += '<pre>' + curl + '</pre>';
-      verbose += '<b>Request Details:</b><br>';
-      verbose += '<pre>' + method + ' ' + url + '\n';
-      Object.entries(headers).forEach(([k, v]) => {
-        verbose += k + ': ' + v + '\n';
-      });
-      if (method === 'POST' && body) verbose += '\n' + body + '\n';
-      verbose += '</pre>';
-      endpointResult.innerHTML = verbose + '<b>Response:</b><br><pre>...</pre>';
-      try {
-        const resp = await fetch(url, {
-          method,
-          headers,
-          body: method === 'POST' ? body : undefined
-        });
-        const text = await resp.text();
-        endpointResult.innerHTML = verbose + '<b>Response:</b><br><pre>' + text + '</pre>';
-      } catch (e) {
-        endpointResult.innerHTML = verbose + '<b>Response:</b><br><pre>Error: ' + e + '</pre>';
-      }
-    }
-    // Add token refresh logic
     async function refreshToken() {
       if (!tokens || !tokens.refresh_token) {
         alert('No refresh token available.');
@@ -281,11 +326,20 @@
         alert('Token refresh error: ' + e);
       }
     }
+    async function logout() {
+      clearTokens();
+      setLoggedIn(false);
+      stopExpiryTimer();
+      // Open logout in a new window/tab (no redirect_uri)
+      window.open(config.logoutUrl, '_blank', 'noopener,noreferrer,width=500,height=600');
+      // Hide introspection result on logout
+      document.getElementById('introspection-result').style.display = 'none';
+      // Optionally, show a message or reload the page
+    }
     // Event listeners
     loginBtn.onclick = login;
     logoutBtn.onclick = logout;
     fetchUserinfoBtn.onclick = fetchUserinfo;
-    refreshUserinfoBtn.onclick = refreshUserinfo;
     refreshTokenBtn.onclick = refreshToken;
     endpointBtns.forEach(btn => {
       btn.onclick = () => callEndpoint(btn.getAttribute('data-url'), btn.getAttribute('data-method'));

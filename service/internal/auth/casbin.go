@@ -36,9 +36,6 @@ type Enforcer struct {
 
 	isDefaultPolicy bool
 	isDefaultModel  bool
-
-	// OIDC UserInfo cache
-	userInfoCache map[string]interface{}
 }
 
 type casbinSubject []string

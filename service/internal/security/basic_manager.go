@@ -78,7 +78,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 	}
 
 	// Unmarshal the private key to policy.KasPrivateKeyCtx
-	wrappedKey := &policy.KasPrivateKeyCtx{}
+	wrappedKey := &policy.PrivateKeyCtx{}
 	if err := protojson.Unmarshal(privateKeyCtx, wrappedKey); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal private key: %w", err)
 	}
@@ -121,7 +121,7 @@ func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetail
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
-	wrappedKey := &policy.KasPrivateKeyCtx{}
+	wrappedKey := &policy.PrivateKeyCtx{}
 	if err := protojson.Unmarshal(privateKeyCtx, wrappedKey); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal private key: %w", err)
 	}

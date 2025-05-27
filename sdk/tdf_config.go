@@ -244,7 +244,7 @@ func WithStandardAssertions() TDFOption {
 				Statement: Statement{
 					Format: "string",
 					Schema: "metadata",
-					Value:  fmt.Sprintf("SDK-Version/%s OS/%s-%s", TDFSpecVersion, runtime.GOOS, runtime.GOARCH),
+					Value:  fmt.Sprintf("Go-SDK/%s OS/%s-%s", TDFSpecVersion, runtime.GOOS, runtime.GOARCH),
 				},
 			},
 		}

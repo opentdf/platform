@@ -387,7 +387,7 @@ func TestWithStandardAssertions(t *testing.T) {
 	assert.Equal(t, Unencrypted, cfg.assertions[1].AppliesToState)
 	assert.Equal(t, "string", cfg.assertions[1].Statement.Format)
 	assert.Equal(t, "metadata", cfg.assertions[1].Statement.Schema)
-	assert.Contains(t, cfg.assertions[1].Statement.Value, "SDK-Version/")
+	assert.Contains(t, cfg.assertions[1].Statement.Value, "Go-SDK/")
 }
 
 func TestWithIgnoreAllowlist(t *testing.T) {

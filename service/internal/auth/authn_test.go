@@ -33,6 +33,7 @@ import (
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/oidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -135,7 +136,7 @@ func (s *AuthSuite) SetupTest() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if r.URL.Path == "/.well-known/openid-configuration" {
-			_, err := w.Write([]byte(fmt.Sprintf(`{"issuer":"%s","jwks_uri": "%s/jwks"}`, s.server.URL, s.server.URL)))
+			_, err := w.Write([]byte(fmt.Sprintf(`{"issuer":"%s","jwks_uri": "%s/jwks", "userinfo_endpoint": "%s/userinfo"}`, s.server.URL, s.server.URL, s.server.URL)))
 			if err != nil {
 				panic(err)
 			}
@@ -146,12 +147,27 @@ func (s *AuthSuite) SetupTest() {
 			if err != nil {
 				panic(err)
 			}
+			return
+		}
+		if r.URL.Path == "/userinfo" {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"sub": "test-user"}`))
+			return
 		}
 	}))
 
 	policyCfg := PolicyConfig{}
 	err = defaults.Set(&policyCfg)
 	s.Require().NoError(err)
+
+	// Setup a real OIDC DiscoveryConfiguration and UserInfoCache for tests
+	oidcConfig := &oidc.DiscoveryConfiguration{
+		Issuer:           s.server.URL,
+		JwksURI:          s.server.URL + "/jwks",
+		UserinfoEndpoint: s.server.URL + "/userinfo",
+	}
+	cacheManager, _ := cache.NewCacheManager(100, 1<<20, 64)
+	userInfoCache, _ := oidc.NewUserInfoCache(oidcConfig, cacheManager.NewCache("userinfo", cache.Options{Expiration: time.Minute, Cost: 1}), &logger.Logger{Logger: slog.New(slog.Default().Handler())})
 
 	auth, err := NewAuthenticator(
 		context.Background(),
@@ -180,8 +196,8 @@ func (s *AuthSuite) SetupTest() {
 			Logger: slog.New(slog.Default().Handler()),
 		},
 		func(_ string, _ any) error { return nil },
-		&oidc.DiscoveryConfiguration{},
-		&oidc.UserInfoCache{},
+		oidcConfig,
+		userInfoCache,
 	)
 
 	s.Require().NoError(err)

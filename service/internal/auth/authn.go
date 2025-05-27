@@ -359,6 +359,10 @@ func (a *Authentication) checkToken(ctx context.Context, token jwt.Token, tokenR
 		return a._testCheckTokenFunc(ctx, token, tokenRaw, dpopInfo, dpopHeader)
 	}
 
+	if token == nil {
+		return nil, errors.New("token is nil")
+	}
+
 	// Get actor ID (sub) from unverified token for audit and add to context
 	// Only set the actor ID if it is not already defined
 	existingActorID := ctx.Value(sdkAudit.ActorIDContextKey)

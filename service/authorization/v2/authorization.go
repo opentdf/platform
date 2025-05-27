@@ -166,7 +166,7 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 	resourceDecisions, err := rollupMultiResourceDecision(decisions)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to rollup multi resource decision", slog.String("error", err.Error()))
-		return nil, err
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	resp := &authzV2.GetDecisionMultiResourceResponse{

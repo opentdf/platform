@@ -323,12 +323,34 @@ func (s *RoundtripSuite) CreateTestData() error {
 		}
 	}
 
-	allSubMaps, err := client.SubjectMapping.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
-	if err != nil {
-		slog.Error("could not list subject mappings", slog.String("error", err.Error()))
-		return err
+	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
+	var nextOffset int32
+	smList := make([]*policy.SubjectMapping, 0)
+	ctx := s.T().Context()
+
+	for {
+		listed, err := client.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
+			// defer to service default for limit pagination
+			Pagination: &policy.PageRequest{
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
+			return fmt.Errorf("failed to list subject mappings: %w", err)
+		}
+
+		nextOffset = listed.GetPagination().GetNextOffset()
+		smList = append(smList, listed.GetSubjectMappings()...)
+
+		if nextOffset <= 0 {
+			break
+		}
 	}
-	slog.Info("list subject mappings response: " + protojson.Format(allSubMaps))
+	resp := &subjectmapping.ListSubjectMappingsResponse{
+		SubjectMappings: smList,
+	}
+	slog.Info("list all subject mappings: " + protojson.Format(resp))
 
 	return nil
 }

@@ -1312,13 +1312,9 @@ LEFT JOIN LATERAL (
     JOIN subject_mapping_actions sma ON sma.action_id = a.id
     WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
 ) custom_actions ON true
-WHERE ns.active = true AND ad.active = true AND av.active = true AND EXISTS (
-    SELECT 1
-    FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss, 
-         JSONB_ARRAY_ELEMENTS(ss->'conditionGroups') AS cg, 
-         JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
-    WHERE (each_condition->>'subjectExternalSelectorValue' = ANY(@selectors::TEXT[])) 
-);
+WHERE ns.active = true AND ad.active = true AND av.active = true 
+-- invoke the pre-compiled, immutable function to check presence of selectors
+AND check_subject_selectors(scs.condition, @selectors::TEXT[]);
 
 -- name: createSubjectMapping :one
 WITH inserted_mapping AS (

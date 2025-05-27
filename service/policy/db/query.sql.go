@@ -5042,13 +5042,8 @@ LEFT JOIN LATERAL (
     JOIN subject_mapping_actions sma ON sma.action_id = a.id
     WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
 ) custom_actions ON true
-WHERE ns.active = true AND ad.active = true AND av.active = true AND EXISTS (
-    SELECT 1
-    FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss, 
-         JSONB_ARRAY_ELEMENTS(ss->'conditionGroups') AS cg, 
-         JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
-    WHERE (each_condition->>'subjectExternalSelectorValue' = ANY($1::TEXT[])) 
-)
+WHERE ns.active = true AND ad.active = true AND av.active = true 
+AND check_subject_selectors(scs.condition, $1::TEXT[])
 `
 
 type matchSubjectMappingsRow struct {
@@ -5059,7 +5054,7 @@ type matchSubjectMappingsRow struct {
 	AttributeValue      []byte `json:"attribute_value"`
 }
 
-// matchSubjectMappings
+// invoke the pre-compiled, immutable function to check presence of selectors
 //
 //	SELECT
 //	    sm.id,
@@ -5093,13 +5088,8 @@ type matchSubjectMappingsRow struct {
 //	    JOIN subject_mapping_actions sma ON sma.action_id = a.id
 //	    WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
 //	) custom_actions ON true
-//	WHERE ns.active = true AND ad.active = true AND av.active = true AND EXISTS (
-//	    SELECT 1
-//	    FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss,
-//	         JSONB_ARRAY_ELEMENTS(ss->'conditionGroups') AS cg,
-//	         JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
-//	    WHERE (each_condition->>'subjectExternalSelectorValue' = ANY($1::TEXT[]))
-//	)
+//	WHERE ns.active = true AND ad.active = true AND av.active = true
+//	AND check_subject_selectors(scs.condition, $1::TEXT[])
 func (q *Queries) matchSubjectMappings(ctx context.Context, selectors []string) ([]matchSubjectMappingsRow, error) {
 	rows, err := q.db.Query(ctx, matchSubjectMappings, selectors)
 	if err != nil {

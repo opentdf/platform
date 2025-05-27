@@ -469,11 +469,6 @@ message ListKeysResponse {
 // Update an existing asymmetric key in the Key Management System
 message UpdateKeyRequest {
   option (buf.validate.message).cel = {
-    id: "key_status_cannot_update_to_unspecified"
-    message: "Key status cannot be updated to UNSPECIFIED."
-    expression: "((this.key_status != 0) || (has(this.metadata)))"
-  };
-  option (buf.validate.message).cel = {
     id: "metadata_update_behavior"
     message: "Metadata update behavior must be either APPEND or REPLACE, when updating metadata."
     expression: "((!has(this.metadata)) || (has(this.metadata) && this.metadata_update_behavior != 0))"
@@ -481,8 +476,6 @@ message UpdateKeyRequest {
 
   // Required
   string id = 1 [(buf.validate.field).string.uuid = true]; // The unique identifier of the key to update
-  // Optional
-  KeyStatus key_status = 2 [(buf.validate.field).enum.defined_only = true]; // The new status of the key (e.g., active, inactive)
 
   // Optional
   // Common metadata

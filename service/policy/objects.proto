@@ -463,8 +463,7 @@ enum Algorithm {
 enum KeyStatus {
   KEY_STATUS_UNSPECIFIED = 0;
   KEY_STATUS_ACTIVE = 1;
-  KEY_STATUS_INACTIVE = 2;
-  KEY_STATUS_COMPROMISED = 3;
+  KEY_STATUS_ROTATED = 2;
 }
 
 // Describes the management and operational mode of a cryptographic key.

@@ -61,7 +61,7 @@ ON attribute_values(active);
 -- +goose Down
 -- +goose StatementBegin
 
-DROP COLUMN IF EXISTS selector_values FROM subject_condition_set;
+ALTER TABLE subject_condition_set DROP COLUMN IF EXISTS selector_values;
 DROP TRIGGER IF EXISTS update_selector_values ON subject_condition_set;
 DROP FUNCTION IF EXISTS extract_selector_values;
 

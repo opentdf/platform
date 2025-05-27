@@ -5012,18 +5012,8 @@ func (q *Queries) listSubjectMappings(ctx context.Context, arg listSubjectMappin
 const matchSubjectMappings = `-- name: matchSubjectMappings :many
 SELECT
     sm.id,
-    (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
-        FROM actions a
-        JOIN subject_mapping_actions sma ON sma.action_id = a.id
-        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
-    ) AS standard_actions,
-    (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
-        FROM actions a
-        JOIN subject_mapping_actions sma ON sma.action_id = a.id
-        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
-    ) AS custom_actions,
+    standard_actions.actions AS standard_actions,
+    custom_actions.actions AS custom_actions,
     JSON_BUILD_OBJECT(
         'id', scs.id,
         'subject_sets', scs.condition
@@ -5040,12 +5030,25 @@ LEFT JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-WHERE ns.active = true AND ad.active = true and av.active = true AND EXISTS (
+LEFT JOIN LATERAL (
+    SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) AS actions
+    FROM actions a
+    JOIN subject_mapping_actions sma ON sma.action_id = a.id
+    WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
+) standard_actions ON true
+LEFT JOIN LATERAL (
+    SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) AS actions
+    FROM actions a
+    JOIN subject_mapping_actions sma ON sma.action_id = a.id
+    WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
+) custom_actions ON true
+WHERE ns.active = true AND ad.active = true AND av.active = true AND EXISTS (
     SELECT 1
-    FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss, JSONB_ARRAY_ELEMENTS(ss->'conditionGroups') AS cg, JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
+    FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss, 
+         JSONB_ARRAY_ELEMENTS(ss->'conditionGroups') AS cg, 
+         JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
     WHERE (each_condition->>'subjectExternalSelectorValue' = ANY($1::TEXT[])) 
 )
-GROUP BY av.id, sm.id, scs.id, fqns.fqn
 `
 
 type matchSubjectMappingsRow struct {
@@ -5060,18 +5063,8 @@ type matchSubjectMappingsRow struct {
 //
 //	SELECT
 //	    sm.id,
-//	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
-//	        FROM actions a
-//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
-//	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
-//	    ) AS standard_actions,
-//	    (
-//	        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
-//	        FROM actions a
-//	        JOIN subject_mapping_actions sma ON sma.action_id = a.id
-//	        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
-//	    ) AS custom_actions,
+//	    standard_actions.actions AS standard_actions,
+//	    custom_actions.actions AS custom_actions,
 //	    JSON_BUILD_OBJECT(
 //	        'id', scs.id,
 //	        'subject_sets', scs.condition
@@ -5088,12 +5081,25 @@ type matchSubjectMappingsRow struct {
 //	LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
 //	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 //	LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-//	WHERE ns.active = true AND ad.active = true and av.active = true AND EXISTS (
+//	LEFT JOIN LATERAL (
+//	    SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) AS actions
+//	    FROM actions a
+//	    JOIN subject_mapping_actions sma ON sma.action_id = a.id
+//	    WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
+//	) standard_actions ON true
+//	LEFT JOIN LATERAL (
+//	    SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) AS actions
+//	    FROM actions a
+//	    JOIN subject_mapping_actions sma ON sma.action_id = a.id
+//	    WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
+//	) custom_actions ON true
+//	WHERE ns.active = true AND ad.active = true AND av.active = true AND EXISTS (
 //	    SELECT 1
-//	    FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss, JSONB_ARRAY_ELEMENTS(ss->'conditionGroups') AS cg, JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
+//	    FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss,
+//	         JSONB_ARRAY_ELEMENTS(ss->'conditionGroups') AS cg,
+//	         JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
 //	    WHERE (each_condition->>'subjectExternalSelectorValue' = ANY($1::TEXT[]))
 //	)
-//	GROUP BY av.id, sm.id, scs.id, fqns.fqn
 func (q *Queries) matchSubjectMappings(ctx context.Context, selectors []string) ([]matchSubjectMappingsRow, error) {
 	rows, err := q.db.Query(ctx, matchSubjectMappings, selectors)
 	if err != nil {

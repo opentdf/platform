@@ -189,6 +189,7 @@ func Test_CreateSubjectConditionSetRequest_ValidSubjectConditionSet_Succeeds(t *
 								SubjectExternalValues:        []string{"some_value"},
 							},
 						},
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
 					},
 				},
 			},

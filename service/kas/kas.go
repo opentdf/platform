@@ -90,7 +90,8 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				} // kasURLString will be used for p.URI
 
 				if kasCfg.PreviewFeatures.KeyManagement {
-					srp.Logger.Info("Key management is enabled")
+					srp.Logger.Info("Preview Feature: Key management is enabled")
+
 					// Configure new delegation service
 					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURLString, srp.Logger), srp.Logger)
 					for _, manager := range srp.KeyManagers {

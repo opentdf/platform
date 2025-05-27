@@ -9,7 +9,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -39,11 +38,6 @@ type KeyAdapter struct {
 }
 
 func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, l *logger.Logger) *KeyIndexer {
-	// Check if https:// is added kasURI
-	if !strings.HasPrefix(kasURI, "https://") {
-		kasURI = "https://" + kasURI
-	}
-
 	return &KeyIndexer{
 		sdk:    sdk,
 		kasURI: kasURI,

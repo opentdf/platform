@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.6](https://github.com/opentdf/platform/compare/protocol/go/v0.3.5...protocol/go/v0.3.6) (2025-05-27)
+
+
+### Features
+
+* **policy:** Update key status's and UpdateKey rpc. ([#2315](https://github.com/opentdf/platform/issues/2315)) ([7908db9](https://github.com/opentdf/platform/commit/7908db9c2be5adeccd3fb9f177187aee53698ee8))
+
 ## [0.3.5](https://github.com/opentdf/platform/compare/protocol/go/v0.3.4...protocol/go/v0.3.5) (2025-05-23)
 
 

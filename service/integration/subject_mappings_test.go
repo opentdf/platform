@@ -1632,7 +1632,7 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ResponsiveToUpdatio
 	s.Require().NoError(err)
 	s.NotNil(createdSM)
 
-	// Validate the subject mapping is matched using the initial selector
+	// Validate the subject mapping is matched using the initial selector but not updated
 	props := []*policy.SubjectProperty{
 		{
 			ExternalSelectorValue: initialSelector,
@@ -1645,6 +1645,16 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ResponsiveToUpdatio
 
 	matchedSM := matchedList[0]
 	s.Equal(createdSM.GetId(), matchedSM.GetId())
+
+	updatedProps := []*policy.SubjectProperty{
+		{
+			ExternalSelectorValue: updatedSelector, // This selector is not yet in use
+		},
+	}
+
+	matchedList, err = s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, updatedProps)
+	s.Require().NoError(err)
+	s.Empty(matchedList)
 
 	// Update the Subject Condition Set with a different selector
 	updateRequest := &subjectmapping.UpdateSubjectConditionSetRequest{
@@ -1675,19 +1685,16 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ResponsiveToUpdatio
 	s.Require().NoError(err)
 	s.Empty(matchedAfterUpdate)
 
-	// Verify the subject mapping is matched with the updated selector
-	updatedProps := []*policy.SubjectProperty{
-		{
-			ExternalSelectorValue: updatedSelector,
-		},
-	}
-
 	matchedList, err = s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, updatedProps)
 	s.Require().NoError(err)
 	s.Len(matchedList, 1)
 
 	matchedSM = matchedList[0]
 	s.Equal(createdSM.GetId(), matchedSM.GetId())
+
+	matchedList, err = s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
+	s.Require().NoError(err)
+	s.Empty(matchedList)
 }
 
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_MetadataVariations() {

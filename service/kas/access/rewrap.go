@@ -462,7 +462,7 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		switch kao.GetKeyAccessObject().GetKeyType() {
 		case "ec-wrapped":
 
-			if !p.ECTDFEnabled || !p.PreviewFeatures.ECTDFEnabled {
+			if !p.ECTDFEnabled && !p.PreviewFeatures.ECTDFEnabled {
 				p.Logger.WarnContext(ctx, "ec-wrapped not enabled")
 				failedKAORewrap(results, kao, err400("bad request"))
 				continue
@@ -673,7 +673,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			failAllKaos(requests, results, err400("invalid request"))
 			return "", results
 		}
-		if !p.ECTDFEnabled || !p.PreviewFeatures.ECTDFEnabled {
+		if !p.ECTDFEnabled && !p.PreviewFeatures.ECTDFEnabled {
 			p.Logger.ErrorContext(ctx, "ec rewrap not enabled")
 			failAllKaos(requests, results, err400("invalid request"))
 			return "", results

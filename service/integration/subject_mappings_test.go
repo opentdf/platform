@@ -958,7 +958,22 @@ func (s *SubjectMappingsSuite) Test_ListSubjectConditionSet_Offset_Succeeds() {
 func (s *SubjectMappingsSuite) TestDeleteSubjectConditionSet() {
 	// create a new subject condition set, delete it, and verify get fails with not found
 	newConditionSet := &subjectmapping.SubjectConditionSetCreate{
-		SubjectSets: []*policy.SubjectSet{},
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_OR,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: ".someField[1]",
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN,
+								SubjectExternalValues:        []string{"some_value"},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	created, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, newConditionSet)

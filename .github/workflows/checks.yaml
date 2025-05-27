@@ -196,6 +196,13 @@ jobs:
             sdk/go.sum
       - run: go mod download
       - run: go mod verify
+      - run: |
+          .github/scripts/init-temp-keys.sh
+          mkcert -install
+          mkcert -cert-file ./keys/platform.crt -key-file ./keys/platform-key.pem localhost
+          cp opentdf-dev.yaml opentdf.yaml
+          yq eval '.server.tls.enabled = true' -i opentdf.yaml
+          yq eval '.trace = {"enabled":true}' -i opentdf.yaml
       - name: Install vault
        # See https://developer.hashicorp.com/vault/install#linux
         run: |
@@ -207,14 +214,14 @@ jobs:
         with:
           run: >
             vault server -dev -dev-root-token-id root  
-              -dev-tls -dev-tls-cert-dir="./"
+              -dev-tls -dev-tls-cert-dir="./keys"
           wait-on: |
             tcp:localhost:8200
           working-directory: ./examples/ckms
           log-output-if: true
           wait-for: 90s
       - run: |
-          echo "VAULT_CACERT=$(pwd)/vault-ca.pem" >> $GITHUB_ENV
+          echo "VAULT_CACERT=$(pwd)/keys/vault-ca.pem" >> $GITHUB_ENV
       - name: Added Trusted Certs
         run: |
           sudo chmod -R 777 ./keys

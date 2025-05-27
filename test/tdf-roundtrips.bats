@@ -111,7 +111,9 @@
 @test "examples: legacy key support Z-TDF" {
   echo "[INFO] validating default key is r1"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
-  
+  echo "[INFO] current opentdf.yaml configuration:"
+  cat opentdf.yaml
+
   [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
 
   echo "[INFO] encrypting samples"
@@ -129,6 +131,8 @@
 
   echo "[INFO] validating default key is r2"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
+  echo "[INFO] current opentdf.yaml configuration after key rotation:"
+  cat opentdf.yaml
   [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r2 ]
 
   echo "[INFO] decrypting after key rotation"
@@ -139,6 +143,8 @@
 @test "examples: legacy kas and service config format support" {
   echo "[INFO] validating default key is r1"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
+  echo "[INFO] current opentdf.yaml configuration:"
+  cat opentdf.yaml
   [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
 
   echo "[INFO] encrypting samples"
@@ -156,17 +162,18 @@
 
   echo "[INFO] validating default key is r1"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
+  echo "[INFO] current opentdf.yaml configuration after downgrade:"
+  cat opentdf.yaml
   [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
 
   echo "[INFO] validating keys are correct by alg"
-  [ "$(grpcurl -d '{"algorithm":"ec:secp256r1"}'  "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = e1 ]
-  [ "$(grpcurl -d '{"algorithm":"rsa:2048"}'  "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
+  [ "$(grpcurl -d '{"algorithm":"ec:secp256r1"}' "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = e1 ]
+  [ "$(grpcurl -d '{"algorithm":"rsa:2048"}' "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
 
   echo "[INFO] decrypting after key rotation"
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
   go run ./examples decrypt sensitive-with-kid.txt.tdf | grep "Hello with Key Identifier"
 }
-
 
 wait_for_green() {
   limit=5
@@ -181,7 +188,7 @@ wait_for_green() {
 downgrade_config() {
   ec_current_key=$1
   rsa_current_key=$2
-  cat >opentdf.yaml<<EOF
+  cat >opentdf.yaml <<EOF
 logger:
   level: debug
   type: text
@@ -247,7 +254,7 @@ update_config() {
   rsa_current_key=$3
   rsa_legacy_key=$4
 
-  cat >opentdf.yaml<<EOF
+  cat >opentdf.yaml <<EOF
 logger:
   level: debug
   type: text

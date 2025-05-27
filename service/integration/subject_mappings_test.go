@@ -1590,6 +1590,106 @@ func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_NonExistentField_Re
 	s.Empty(sm)
 }
 
+func (s *SubjectMappingsSuite) TestGetMatchedSubjectMappings_ResponsiveToUpdation() {
+	// Create a Subject Condition Set with a specific selector
+	initialSelector := ".test_updation_selector"
+	updatedSelector := ".updated_selector" // Will be used later for the update
+
+	subjectConditionSet := &subjectmapping.SubjectConditionSetCreate{
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: initialSelector,
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"test_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	createdSCS, err := s.db.PolicyClient.CreateSubjectConditionSet(s.ctx, subjectConditionSet)
+	s.Require().NoError(err)
+	s.NotNil(createdSCS)
+
+	// Create a Subject Mapping with the created SCS
+	fixtureAttrValID := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value2").ID
+	actionRead := s.f.GetStandardAction(policydb.ActionRead.String())
+
+	subjectMapping := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId:              fixtureAttrValID,
+		Actions:                       []*policy.Action{actionRead},
+		ExistingSubjectConditionSetId: createdSCS.GetId(),
+	}
+
+	createdSM, err := s.db.PolicyClient.CreateSubjectMapping(s.ctx, subjectMapping)
+	s.Require().NoError(err)
+	s.NotNil(createdSM)
+
+	// Validate the subject mapping is matched using the initial selector
+	props := []*policy.SubjectProperty{
+		{
+			ExternalSelectorValue: initialSelector,
+		},
+	}
+
+	matchedList, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
+	s.Require().NoError(err)
+	s.Len(matchedList, 1)
+
+	matchedSM := matchedList[0]
+	s.Equal(createdSM.GetId(), matchedSM.GetId())
+
+	// Update the Subject Condition Set with a different selector
+	updateRequest := &subjectmapping.UpdateSubjectConditionSetRequest{
+		Id: createdSCS.GetId(),
+		SubjectSets: []*policy.SubjectSet{
+			{
+				ConditionGroups: []*policy.ConditionGroup{
+					{
+						BooleanOperator: policy.ConditionBooleanTypeEnum_CONDITION_BOOLEAN_TYPE_ENUM_AND,
+						Conditions: []*policy.Condition{
+							{
+								SubjectExternalSelectorValue: updatedSelector, // Changed selector
+								Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+								SubjectExternalValues:        []string{"test_value"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	updatedSCS, err := s.db.PolicyClient.UpdateSubjectConditionSet(s.ctx, updateRequest)
+	s.Require().NoError(err)
+	s.NotNil(updatedSCS)
+
+	matchedAfterUpdate, err := s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, props)
+	s.Require().NoError(err)
+	s.Empty(matchedAfterUpdate)
+
+	// Verify the subject mapping is matched with the updated selector
+	updatedProps := []*policy.SubjectProperty{
+		{
+			ExternalSelectorValue: updatedSelector,
+		},
+	}
+
+	matchedList, err = s.db.PolicyClient.GetMatchedSubjectMappings(s.ctx, updatedProps)
+	s.Require().NoError(err)
+	s.Len(matchedList, 1)
+
+	matchedSM = matchedList[0]
+	s.Equal(createdSM.GetId(), matchedSM.GetId())
+}
+
 func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_MetadataVariations() {
 	fixedLabel := "fixed label"
 	updateLabel := "update label"

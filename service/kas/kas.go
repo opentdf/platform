@@ -88,6 +88,12 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config, err))
 				} // kasURLString will be used for p.URI
 
+				p.URI = *kasURI
+				p.SDK = srp.SDK
+				p.Logger = srp.Logger
+				p.KASConfig = kasCfg
+				p.Tracer = srp.Tracer
+
 				if kasCfg.PreviewFeatures.KeyManagement {
 					srp.Logger.Info("Key management is enabled")
 					// Configure new delegation service
@@ -123,12 +129,6 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					// Set default for non-key-management mode
 					p.KeyDelegator.SetDefaultMode(inProcessService.Name())
 				}
-
-				p.URI = *kasURI
-				p.SDK = srp.SDK
-				p.Logger = srp.Logger
-				p.KASConfig = kasCfg
-				p.Tracer = srp.Tracer
 
 				srp.Logger.Debug("kas config", "config", kasCfg)
 

@@ -5,7 +5,7 @@ set -euo pipefail
 
 for each in $PULL_NUMBERS; do
 	# Get branch info from PR
-	branch_name=$(curl -s -H "Authorization: token $GH_TOKEN" \
+	branch_name=$(curl -f -s -H "Authorization: token $GH_TOKEN" \
 		-H "Accept: application/vnd.github+json" \
 		"https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$each" | jq -r '.head.ref')
 
@@ -20,7 +20,7 @@ for each in $PULL_NUMBERS; do
 
 	# Use API for the commit signing part
 	echo "Creating signed commit via API."
-	new_commit=$(curl -s -X POST \
+	new_commit=$(curl -f -s -X POST \
 		-H "Authorization: token $GH_TOKEN" \
 		-H "Accept: application/vnd.github+json" \
 		-d "{\"message\": $(echo "$commit_msg" | jq -Rs .), \"tree\": \"$tree_sha\", \"parents\": [\"$parent_sha\"]}" \
@@ -29,7 +29,7 @@ for each in $PULL_NUMBERS; do
 	new_commit_sha=$(echo "$new_commit" | jq -r '.sha')
 
 	# Update reference via API
-	curl -s -X PATCH \
+	curl -f -s -X PATCH \
 		-H "Authorization: token $GH_TOKEN" \
 		-H "Accept: application/vnd.github+json" \
 		-d "{\"sha\": \"$new_commit_sha\", \"force\": true}" \

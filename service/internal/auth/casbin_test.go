@@ -254,7 +254,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 
 		slog.Info("running test w/ custom claim", slog.String("name", name))
 
-		policyCfg.GroupsClaim = "test.test_roles.roles"
+		policyCfg.GroupsClaim = GroupsClaimList{"test.test_roles.roles"}
 
 		enforcer, err = NewCasbinEnforcer(CasbinConfig{
 			PolicyConfig: policyCfg,
@@ -275,7 +275,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 			"admin":    "test-admin",
 			"standard": "test-standard",
 		}
-		policyCfg.GroupsClaim = "realm_access.roles"
+		policyCfg.GroupsClaim = GroupsClaimList{"realm_access.roles"}
 
 		enforcer, err = NewCasbinEnforcer(CasbinConfig{
 			PolicyConfig: policyCfg,
@@ -588,7 +588,8 @@ func (s *AuthnCasbinSuite) Test_Override_Of_Groups_Claim() {
 		err := defaults.Set(&policyCfg)
 		s.Require().NoError(err, tc.name)
 
-		policyCfg.GroupsClaim = tc.groupsClaim
+		// Support both string and array for GroupsClaim
+		policyCfg.GroupsClaim = GroupsClaimList{tc.groupsClaim}
 
 		enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: policyCfg}, logger.CreateTestLogger())
 		s.Require().NoError(err, tc.name)

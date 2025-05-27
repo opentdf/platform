@@ -33,10 +33,10 @@ import (
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/oidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -181,6 +181,7 @@ func (s *AuthSuite) SetupTest() {
 		},
 		func(_ string, _ any) error { return nil },
 		&oidc.DiscoveryConfiguration{},
+		&oidc.UserInfoCache{},
 	)
 
 	s.Require().NoError(err)
@@ -213,49 +214,6 @@ func TestNormalizeUrl(t *testing.T) {
 	}
 }
 
-func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
-	// Mock the checkToken method to return a valid token and context
-	mockToken := jwt.New()
-	type contextKey string
-	mockCtx := context.WithValue(context.Background(), contextKey("mockKey"), "mockValue")
-	s.auth._testCheckTokenFunc = func(_ context.Context, authHeader []string, _ receiverInfo, _ []string) (jwt.Token, context.Context, error) {
-		if len(authHeader) == 0 {
-			return nil, nil, errors.New("missing authorization header")
-		}
-		if authHeader[0] != "Bearer valid" {
-			return nil, nil, errors.New("unauthenticated")
-		}
-		return mockToken, mockCtx, nil
-	}
-
-	// Test ipcReauthCheck directly
-	validAuthHeader := http.Header{}
-	validAuthHeader.Add("Authorization", "Bearer valid")
-	t1Path := "/kas.AccessService/Rewrap"
-	nextCtx, err := s.auth.ipcReauthCheck(context.Background(), t1Path, validAuthHeader)
-	s.Require().NoError(err)
-	s.Require().NotNil(nextCtx)
-	s.Equal("mockValue", nextCtx.Value(contextKey("mockKey")))
-
-	// Test with a route not requiring reauthorization
-	nextCtx, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/PublicKey", nil)
-	s.Require().NoError(err)
-	s.Require().NotNil(nextCtx)
-	s.Nil(nextCtx.Value(contextKey("mockKey")))
-
-	// Test with missing authorization header
-	_, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/Rewrap", nil)
-	s.Require().Error(err)
-	s.Contains(err.Error(), "missing authorization header")
-
-	// Test with invalid token
-	unauthHeader := http.Header{}
-	unauthHeader.Add("Authorization", "Bearer invalid")
-	_, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/Rewrap", unauthHeader)
-	s.Require().Error(err)
-	s.Contains(err.Error(), "unauthenticated")
-}
-
 func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)))
@@ -265,7 +223,7 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	_, err = s.auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("\"exp\" not satisfied", err.Error())
 }
@@ -303,7 +261,7 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	_, _, err := s.auth.checkToken(context.Background(), []string{"BPOP "}, receiverInfo{}, nil)
+	_, err := s.auth.checkToken(context.Background(), nil, "BPOP ", receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("not of type bearer or dpop", err.Error())
 }
@@ -317,7 +275,7 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	_, err = s.auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("\"iss\" not satisfied: claim \"iss\" does not exist", err.Error())
 }
@@ -332,7 +290,7 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	_, err = s.auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "\"iss\" not satisfied: values do not match")
 }
@@ -346,7 +304,7 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	_, err = s.auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("claim \"aud\" not found", err.Error())
 }
@@ -361,7 +319,7 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	_, err = s.auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("\"aud\" not satisfied", err.Error())
 }
@@ -377,7 +335,7 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	_, err = s.auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), "dpop")
 }
@@ -457,9 +415,10 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 	for _, testCase := range testCases {
 		s.Run(testCase.errorMessage, func() {
 			dpopToken := makeDPoPToken(s.T(), testCase)
-			_, _, err = s.auth.checkToken(
+			_, err = s.auth.checkToken(
 				context.Background(),
-				[]string{"DPoP " + string(testCase.accessToken)},
+				nil, // jwt.Token (not used in this test context)
+				"DPoP "+string(testCase.accessToken),
 				receiverInfo{
 					u: []string{"/a/path"},
 					m: []string{http.MethodPost},
@@ -670,6 +629,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	},
 		func(_ string, _ any) error { return nil },
 		&oidc.DiscoveryConfiguration{},
+		&oidc.UserInfoCache{},
 	)
 
 	s.Require().NoError(err)
@@ -684,9 +644,9 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, ctx, err := auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	jwt, err := auth.checkToken(context.Background(), nil, "Bearer "+string(signedTok), receiverInfo{}, nil)
 	s.Require().NoError(err)
-	s.Require().Nil(ctxAuth.GetJWKFromContext(ctx, logger.CreateTestLogger()))
+	s.Require().Nil(jwt)
 }
 
 func (s *AuthSuite) Test_PublicPath_Matches() {

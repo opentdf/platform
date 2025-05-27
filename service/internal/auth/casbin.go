@@ -132,7 +132,6 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 }
 
 // casbinEnforce is a helper function to enforce the policy with casbin
-// TODO implement a common type so this can be used for both http and grpc
 func (e *Enforcer) Enforce(token jwt.Token, userInfo []byte, resource, action string) (bool, error) {
 	// extract the role claim from the token and userInfo
 	s := e.buildSubjectFromTokenAndUserInfo(token, userInfo)
@@ -177,30 +176,29 @@ func (e *Enforcer) buildSubjectFromTokenAndUserInfo(t jwt.Token, userInfo []byte
 // extractRolesFromToken extracts roles from a jwt.Token based on the configured claim path
 func (e *Enforcer) extractRolesFromToken(token jwt.Token) []string {
 	roles := []string{}
-	roleClaim := e.Config.GroupsClaim
-	selectors := strings.Split(roleClaim, ".")
-
-	claim, exists := token.Get(selectors[0])
-	if !exists {
-		e.logger.Warn("claim not found in token", slog.String("claim", roleClaim), slog.Any("token", token))
-		return roles
-	}
-	if len(selectors) > 1 {
-		claimMap, ok := claim.(map[string]interface{})
-		if !ok {
-			e.logger.Warn("claim is not of type map[string]interface{}", slog.String("claim", roleClaim), slog.Any("claims", claim))
-			return roles
+	for _, roleClaim := range e.Config.GroupsClaim {
+		selectors := strings.Split(roleClaim, ".")
+		claim, exists := token.Get(selectors[0])
+		if !exists {
+			e.logger.Warn("claim not found in token", slog.String("claim", roleClaim), slog.Any("token", token))
+			continue
 		}
-		claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
-		if claim == nil {
-			e.logger.Warn("nested claim not found", slog.String("claim", roleClaim), slog.Any("claims", claim))
-			return roles
+		if len(selectors) > 1 {
+			claimMap, ok := claim.(map[string]interface{})
+			if !ok {
+				e.logger.Warn("claim is not of type map[string]interface{}", slog.String("claim", roleClaim), slog.Any("claims", claim))
+				continue
+			}
+			claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
+			if claim == nil {
+				e.logger.Warn("nested claim not found", slog.String("claim", roleClaim), slog.Any("claims", claim))
+				continue
+			}
 		}
+		roles = append(roles, extractRolesFromClaim(claim, e.logger)...)
 	}
-
-	roles = extractRolesFromClaim(claim, e.logger)
 	if len(roles) == 0 {
-		e.logger.Warn("no roles found in accessToken claim", slog.String("claim", roleClaim), slog.Any("claims", claim))
+		e.logger.Warn("no roles found in accessToken claims", slog.Any("claims", e.Config.GroupsClaim))
 	}
 	return roles
 }
@@ -211,23 +209,22 @@ func (e *Enforcer) extractRolesFromUserInfo(userInfo []byte) []string {
 	if userInfo == nil {
 		return roles
 	}
-	roleClaim := e.Config.GroupsClaim
-	selectors := strings.Split(roleClaim, ".")
-
 	var userInfoMap map[string]interface{}
 	if err := json.Unmarshal(userInfo, &userInfoMap); err != nil {
 		e.logger.Warn("failed to unmarshal userInfo JSON", slog.Any("error", err))
 		return roles
 	}
-	claim := util.Dotnotation(userInfoMap, strings.Join(selectors, "."))
-	if claim == nil {
-		e.logger.Warn("claim not found in userInfo JSON", slog.String("claim", roleClaim), slog.Any("userInfo", userInfoMap))
-		return roles
+	for _, roleClaim := range e.Config.GroupsClaim {
+		selectors := strings.Split(roleClaim, ".")
+		claim := util.Dotnotation(userInfoMap, strings.Join(selectors, "."))
+		if claim == nil {
+			e.logger.Warn("claim not found in userInfo JSON", slog.String("claim", roleClaim), slog.Any("userInfo", userInfoMap))
+			continue
+		}
+		roles = append(roles, extractRolesFromClaim(claim, e.logger)...)
 	}
-
-	roles = extractRolesFromClaim(claim, e.logger)
 	if len(roles) == 0 {
-		e.logger.Warn("no roles found in userInfo claim", slog.String("claim", roleClaim), slog.Any("userInfo", userInfoMap))
+		e.logger.Warn("no roles found in userInfo claims", slog.Any("claims", e.Config.GroupsClaim))
 	}
 	return roles
 }

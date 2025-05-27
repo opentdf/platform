@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -33,13 +34,35 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	ClientSecret string `mapstructure:"clientSecret" json:"clientSecret"`
 }
 
+// GroupsClaimList is a custom type to support unmarshalling from string or []string
+// for backward compatibility in config files.
+type GroupsClaimList []string
+
+func (g *GroupsClaimList) UnmarshalJSON(data []byte) error {
+	var single string
+	if err := json.Unmarshal(data, &single); err == nil {
+		*g = GroupsClaimList{single}
+		return nil
+	}
+	var multi []string
+	if err := json.Unmarshal(data, &multi); err == nil {
+		*g = GroupsClaimList(multi)
+		return nil
+	}
+	return errors.New("invalid groups_claim: must be string or array of strings")
+}
+
+func (g *GroupsClaimList) UnmarshalText(text []byte) error {
+	return g.UnmarshalJSON(text)
+}
+
 type PolicyConfig struct {
 	Builtin string `mapstructure:"-" json:"-"`
 	// Username claim to use for user information
 	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"preferred_username"`
-	// Claim to use for group/role information
-	GroupsClaim string `mapstructure:"groups_claim" json:"group_claim" default:"realm_access.roles"`
-	// Deprecated: Use GroupClain instead
+	// Claims to use for group/role information (now supports multiple claims)
+	GroupsClaim GroupsClaimList `mapstructure:"groups_claim" json:"group_claim" default:"[\"realm_access.roles\",\"groups\"]"`
+	// Deprecated: Use GroupClaim instead
 	RoleClaim string `mapstructure:"claim" json:"claim" default:"realm_access.roles"`
 	// Deprecated: Use Casbin grouping statements g, <user/group>, <role>
 	RoleMap map[string]string `mapstructure:"map" json:"map"`

@@ -311,14 +311,13 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 		}
 
 		var keys []*policy.KasKey
-		var attrGrants []*policy.KeyAccessServer
 		if len(attr.Keys) > 0 {
 			keys, err = db.KasKeysProtoJSON(attr.Keys)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
 			}
 
-			attrGrants, err = mapKasKeysToGrants(keys, grants)
+			grants, err = mapKasKeysToGrants(keys, grants, c.logger)
 			if err != nil {
 				return nil, fmt.Errorf("failed to map keys to grants: %w", err)
 			}
@@ -329,14 +328,14 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 				continue
 			}
 
-			valGrants, err := mapKasKeysToGrants(val.GetKasKeys(), val.GetGrants())
+			valGrants, err := mapKasKeysToGrants(val.GetKasKeys(), val.GetGrants(), c.logger)
 			if err != nil {
 				return nil, fmt.Errorf("failed to map keys to grants: %w", err)
 			}
 			val.Grants = valGrants
 		}
 
-		nsGrants, err := mapKasKeysToGrants(ns.GetKasKeys(), ns.GetGrants())
+		nsGrants, err := mapKasKeysToGrants(ns.GetKasKeys(), ns.GetGrants(), c.logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to map keys to grants: %w", err)
 		}
@@ -348,7 +347,7 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
 			Fqn:       attr.Fqn,
 			Active:    &wrapperspb.BoolValue{Value: attr.Active},
-			Grants:    attrGrants,
+			Grants:    grants,
 			Namespace: ns,
 			Values:    values,
 			KasKeys:   keys,

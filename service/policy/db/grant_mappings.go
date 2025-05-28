@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/logger"
 )
 
 func mapAlgorithmToKasPublicKeyAlg(alg policy.Algorithm) policy.KasPublicKeyAlgEnum {
@@ -26,7 +27,7 @@ func mapAlgorithmToKasPublicKeyAlg(alg policy.Algorithm) policy.KasPublicKeyAlgE
 	}
 }
 
-func mapKasKeysToGrants(keys []*policy.KasKey, existingGrants []*policy.KeyAccessServer) ([]*policy.KeyAccessServer, error) {
+func mapKasKeysToGrants(keys []*policy.KasKey, existingGrants []*policy.KeyAccessServer, l *logger.Logger) ([]*policy.KeyAccessServer, error) {
 	kasMap := make(map[string]*policy.KeyAccessServer)
 
 	// Populate the map with existing grants
@@ -43,6 +44,7 @@ func mapKasKeysToGrants(keys []*policy.KasKey, existingGrants []*policy.KeyAcces
 		kasURI := key.GetKasUri()
 		if kasURI == "" {
 			// Skip keys without a URI, as it's essential for mapping
+			l.Debug("skipping key without URI: %s", key.GetKey().GetKeyId())
 			continue
 		}
 

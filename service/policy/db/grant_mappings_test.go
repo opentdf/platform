@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -246,7 +247,7 @@ func TestMapKasKeysToGrants(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotGrants, err := mapKasKeysToGrants(tt.keys, tt.existingGrants)
+			gotGrants, err := mapKasKeysToGrants(tt.keys, tt.existingGrants, logger.CreateTestLogger())
 
 			if tt.wantErr {
 				require.Error(t, err)

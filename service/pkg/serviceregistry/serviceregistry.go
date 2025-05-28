@@ -199,7 +199,7 @@ func (s Service[S]) RegisterOnServicesStartedHook(_ context.Context, hookAppende
 	// If no hook is registered, exit
 	if s.OnServicesStarted != nil {
 		var onChange config.ServicesStartedHook = func(ctx context.Context) error {
-			slog.Debug("service completed registration hook called",
+			slog.Debug("OnServicesStarted hook called",
 				slog.String("namespace", s.GetNamespace()),
 				slog.String("service", s.GetServiceDesc().ServiceName),
 			)

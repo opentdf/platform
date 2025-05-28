@@ -75,7 +75,7 @@ var clientsToGenerateList = []runner.ClientsToGenerate{
 func getCurrentFileDir() (string, error) {
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
-		return "", errors.New("could not get caller file (generate.go) working directory")
+		return "", errors.New("could not get caller file (main.go) working directory")
 	}
 	return filepath.Dir(filename), nil
 }

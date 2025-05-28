@@ -57,7 +57,7 @@ func mapKasKeysToGrants(keys []*policy.KasKey, existingGrants []*policy.KeyAcces
 		}
 
 		if pubKeyCtx := kasKeyInfo.GetPublicKeyCtx(); pubKeyCtx != nil {
-			// Grant pem isn't expected to be b64 encoded.
+			// PEM content in PublicKeyCtx is base64 encoded; decode it for KasPublicKey.Pem.
 			pem, err := base64.StdEncoding.DecodeString(pubKeyCtx.GetPem())
 			if err != nil {
 				return nil, fmt.Errorf("failed to decode PEM for key %s: %w", newKasPublicKey.GetKid(), err)

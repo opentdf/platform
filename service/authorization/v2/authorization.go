@@ -175,21 +175,21 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 
 	pdp, err := access.NewJustInTimePDPWithCachedEntitlementPolicy(ctx, as.logger, as.sdk, as.cache)
 	if err != nil {
-		as.logger.Error("failed to create JIT PDP", slog.String("error", err.Error()))
+		as.logger.Error("failed to create JIT PDP", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("auth service: failed to create JIT PDP: %w", err))
 	}
 
 	decisions, allPermitted, err := pdp.GetDecision(ctx, entityIdentifier, action, resources)
 	if err != nil {
 		// TODO: any bad request errors that aren't 500s?
-		as.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))
+		as.logger.ErrorContext(ctx, "failed to get decision", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	resourceDecisions, err := rollupMultiResourceDecision(decisions)
 	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to rollup multi resource decision", slog.String("error", err.Error()))
-		return nil, err
+		as.logger.ErrorContext(ctx, "failed to rollup multi resource decision", slog.Any("error", err))
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	resp := &authzV2.GetDecisionMultiResourceResponse{

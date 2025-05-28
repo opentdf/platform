@@ -15,8 +15,8 @@ import (
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
+
 	"github.com/opentdf/platform/service/logger"
-	policyCache "github.com/opentdf/platform/service/policy/cache"
 )
 
 var (
@@ -28,8 +28,7 @@ type JustInTimePDP struct {
 	logger *logger.Logger
 	sdk    *otdfSDK.SDK
 	// embedded PDP
-	pdp         *PolicyDecisionPoint
-	policyCache *policyCache.EntitlementPolicyCache
+	pdp *PolicyDecisionPoint
 }
 
 // JustInTimePDP creates a new Policy Decision Point instance with no in-memory policy and a remote connection
@@ -44,7 +43,6 @@ func NewJustInTimePDP(
 	if sdk == nil {
 		return nil, ErrMissingRequiredSDK
 	}
-
 	if l == nil {
 		l, err = logger.NewLogger(defaultFallbackLoggerConfig)
 		if err != nil {
@@ -65,60 +63,6 @@ func NewJustInTimePDP(
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch all subject mappings: %w", err)
 	}
-	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
-	}
-	p.pdp = pdp
-	return p, nil
-}
-
-// NewJustInTimePDPWithCachedEntitlementPolicy creates a JustInTimePDP but with cached entitlement policy
-func NewJustInTimePDPWithCachedEntitlementPolicy(
-	ctx context.Context,
-	l *logger.Logger,
-	sdk *otdfSDK.SDK,
-	cache *policyCache.EntitlementPolicyCache,
-) (*JustInTimePDP, error) {
-	var err error
-
-	if sdk == nil {
-		return nil, ErrMissingRequiredSDK
-	}
-
-	if l == nil {
-		l, err = logger.NewLogger(defaultFallbackLoggerConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize new PDP logger and none was provided: %w", err)
-		}
-	}
-
-	p := &JustInTimePDP{
-		sdk:         sdk,
-		logger:      l,
-		policyCache: cache,
-	}
-
-	var allAttributes []*policy.Attribute
-	var allSubjectMappings []*policy.SubjectMapping
-
-	// Use policy cache if provided, otherwise fetch directly
-	if p.policyCache != nil {
-		l.DebugContext(ctx, "Using EntitlementPolicyCache for attribute definitions and subject mappings")
-		allAttributes = p.policyCache.GetAttributes()
-		allSubjectMappings = p.policyCache.GetSubjectMappings()
-	} else {
-		l.DebugContext(ctx, "Fetching attribute definitions and subject mappings directly")
-		allAttributes, err = p.fetchAllDefinitions(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch all attribute definitions: %w", err)
-		}
-		allSubjectMappings, err = p.fetchAllSubjectMappings(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch all subject mappings: %w", err)
-		}
-	}
-
 	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)

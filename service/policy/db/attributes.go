@@ -333,7 +333,7 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			if err != nil {
 				return nil, fmt.Errorf("failed to map keys to grants: %w", err)
 			}
-			val.Grants = append(val.Grants, valGrants...)
+			val.Grants = valGrants
 		}
 
 		nsGrants, err := mapKasKeysToGrants(ns.GetKasKeys(), ns.GetGrants())

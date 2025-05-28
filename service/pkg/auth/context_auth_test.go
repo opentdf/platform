@@ -25,9 +25,9 @@ func TestContextWithAuthNInfo(t *testing.T) {
 	testAuthContext, ok := value.(*authContext)
 	assert.True(t, ok)
 	assert.NotNil(t, testAuthContext)
-	assert.Equal(t, mockJWK, testAuthContext.Key, "JWK should match")
-	assert.Equal(t, mockJWT, testAuthContext.Token, "JWT should match")
-	assert.Equal(t, rawToken, testAuthContext.TokenRaw, "Raw token should match")
+	assert.Equal(t, mockJWK, testAuthContext.key, "JWK should match")
+	assert.Equal(t, mockJWT, testAuthContext.token, "JWT should match")
+	assert.Equal(t, rawToken, testAuthContext.tokenRaw, "Raw token should match")
 }
 
 func TestGetJWKFromContext(t *testing.T) {

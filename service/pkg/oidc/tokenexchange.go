@@ -8,14 +8,13 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/zitadel/oidc/v3/pkg/client/tokenexchange"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 )
 
 // ExchangeToken performs OAuth2 token exchange (RFC 8693) using Zitadel's OIDC library.
 // actorToken and actorTokenType may be empty if not used.
-func ExchangeToken(ctx context.Context, issuer, clientID, clientSecret, subjectToken string, dpopKey jwk.Key) (string, error) {
+func ExchangeToken(ctx context.Context, issuer, clientID, clientSecret, subjectToken string) (string, error) {
 	// Create a logger for debugging
 	logger := log.New(os.Stderr, "[TOKEN_EXCHANGE] ", log.LstdFlags)
 	logger.Printf("Starting token exchange: issuer=%s, clientID=%s", issuer, clientID)

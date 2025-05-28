@@ -92,5 +92,12 @@ func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 		logger.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
 	}
 
+	if c.ClientId == "" {
+		return errors.New("config Auth.ClientId is required for token exchange to fetch userinfo")
+	}
+	if c.ClientSecret == "" {
+		return errors.New("config Auth.ClientSecret is required for token exchange to fetch userinfo")
+	}
+
 	return nil
 }

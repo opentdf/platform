@@ -45,10 +45,10 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 
-			// Try to get the userinfo from the context
-			_, userInfoRaw, err := a.userInfoCache.Get(ctx, token, tokenRaw)
+			// Fetch userinfo, only exchange token if needed
+			userInfoRaw, err := a.GetUserInfoWithExchange(ctx, token.Issuer(), token.Subject(), tokenRaw)
 			if err != nil {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 
 			nextCtx := ctxAuth.ContextWithAuthNInfo(ctx, key, token, tokenRaw, userInfoRaw)

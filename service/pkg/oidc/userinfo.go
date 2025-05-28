@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
@@ -18,6 +18,11 @@ import (
 
 const (
 	UserInfoCacheService = "userinfo"
+)
+
+var (
+	ErrUserInfoCacheMiss = errors.New("user info cache miss")
+	ErrUserInfoCacheCast = errors.New("failed to cast cached userinfo to []byte")
 )
 
 type UserInfo = oidc.UserInfo
@@ -35,31 +40,47 @@ func NewUserInfoCache(oidcConfig *oidc.DiscoveryConfiguration, cache *cache.Cach
 }
 
 // Get tries to get userinfo from cache otherwise fetches it from the UserInfo endpoint.
-func (u *UserInfoCache) Get(ctx context.Context, token jwt.Token, tokenRaw string) (*oidc.UserInfo, []byte, error) {
-	key := userInfoCacheKey(token.Issuer(), token.Subject())
-	if val, err := u.cache.Get(ctx, key); err == nil {
-		userInfoRaw, ok := val.([]byte)
-		if !ok {
-			return nil, nil, fmt.Errorf("failed to cast cached userinfo to []byte: %w", err)
-		}
-		userInfo := new(oidc.UserInfo)
-		if err := json.Unmarshal(userInfoRaw, userInfo); err != nil {
-			return nil, nil, fmt.Errorf("failed to decode userinfo from cache: %w", err)
-		}
+func (u *UserInfoCache) Get(ctx context.Context, issuer, subject string, tokenRaw string) (*oidc.UserInfo, []byte, error) {
+	key := userInfoCacheKey(issuer, subject)
+	userInfo, userInfoRaw, err := u.GetFromCache(ctx, issuer, subject)
+	if err == nil {
+		// If cache hit, return the cached userinfo
+		u.logger.Debug("Userinfo found in cache", "issuer", issuer, "subject", subject)
 		return userInfo, userInfoRaw, nil
+	} else if err != ErrUserInfoCacheMiss {
+		// If error and not a cache miss
+		u.logger.Error("Failed to get userinfo from cache", "issuer", issuer, "subject", subject, "error", err)
+		return nil, nil, err
 	}
 
 	// Fetch the userinfo
-	u.logger.Debug("Fetching userinfo from UserInfo endpoint", "issuer", token.Issuer(), "subject", token.Subject())
-	userInfo, userInfoRaw, err := FetchUserInfo(ctx, u.oidcConfig.UserinfoEndpoint, tokenRaw)
+	u.logger.Debug("Fetching userinfo from UserInfo endpoint", "issuer", issuer, "subject", subject)
+	userInfo, userInfoRaw, err = FetchUserInfo(ctx, u.oidcConfig.UserinfoEndpoint, tokenRaw)
 	if err != nil {
-		u.logger.Error("Failed to fetch userinfo from UserInfo endpoint", "issuer", token.Issuer(), "subject", token.Subject(), "error", err)
+		u.logger.Error("Failed to fetch userinfo from UserInfo endpoint", "issuer", issuer, "subject", subject, "error", err)
 		return nil, nil, err
 	}
-	u.logger.Debug("Fetched userinfo from UserInfo endpoint", "issuer", token.Issuer(), "subject", token.Subject())
+	u.logger.Debug("Fetched userinfo from UserInfo endpoint", "issuer", issuer, "subject", subject)
 
 	// Store it in cache and return
 	return userInfo, userInfoRaw, u.cache.Set(ctx, key, userInfoRaw, nil)
+}
+
+func (u *UserInfoCache) GetFromCache(ctx context.Context, issuer, subject string) (*oidc.UserInfo, []byte, error) {
+	key := userInfoCacheKey(issuer, subject)
+	val, err := u.cache.Get(ctx, key)
+	if err != nil {
+		return nil, nil, ErrUserInfoCacheMiss
+	}
+	userInfoRaw, ok := val.([]byte)
+	if !ok {
+		return nil, nil, fmt.Errorf("failed to cast cached userinfo to []byte: %w", err)
+	}
+	userInfo := new(oidc.UserInfo)
+	if err := json.Unmarshal(userInfoRaw, userInfo); err != nil {
+		return nil, nil, fmt.Errorf("failed to decode userinfo from cache: %w", err)
+	}
+	return userInfo, userInfoRaw, nil
 }
 
 // Invalidate all userinfo cache entries

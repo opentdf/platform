@@ -241,9 +241,11 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			return
 		}
 
-		_, userInfoRaw, err := a.userInfoCache.Get(r.Context(), token, tokenRaw)
+		// Fetch userinfo, only exchange token if needed
+		userInfoRaw, err := a.GetUserInfoWithExchange(r.Context(), token.Issuer(), token.Subject(), tokenRaw)
 		if err != nil {
-			slog.WarnContext(r.Context(), "failed to get user info", "error", err)
+			slog.WarnContext(r.Context(), "unauthenticated", "error", err, "dpop", dp, "authorization", header)
+			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
 		}
 
@@ -615,9 +617,10 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 
-			_, userInfoRaw, err := a.userInfoCache.Get(ctx, token, tokenRaw)
+			// Fetch userinfo, only exchange token if needed
+			userInfoRaw, err := a.GetUserInfoWithExchange(ctx, token.Issuer(), token.Subject(), tokenRaw)
 			if err != nil {
-				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 
 			// Return the next context with the token
@@ -625,4 +628,27 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 		}
 	}
 	return ctx, nil
+}
+
+// GetUserInfoWithExchange fetches userinfo, exchanging the token if needed.
+func (a *Authentication) GetUserInfoWithExchange(ctx context.Context, tokenIssuer, tokenSubject, tokenRaw string) ([]byte, error) {
+	// Try to get userinfo from cache with the original token
+	_, userInfoRaw, err := a.userInfoCache.GetFromCache(ctx, tokenIssuer, tokenSubject)
+	if err == nil {
+		return userInfoRaw, nil
+	}
+
+	// Only exchange the token if the userinfo is not in cache
+	exchangedToken, err := oidc.ExchangeToken(ctx, a.oidcConfiguration.Issuer, a.oidcConfiguration.ClientId, a.oidcConfiguration.ClientSecret, tokenRaw)
+	if err != nil {
+		a.logger.Error("failed to exchange token", slog.String("sub", tokenSubject), slog.String("error", err.Error()))
+		return []byte{}, errors.New("failed to exchange token")
+	}
+
+	// Fetch userinfo with the exchanged token
+	_, userInfoRaw, err = a.userInfoCache.Get(ctx, tokenIssuer, tokenSubject, exchangedToken)
+	if err != nil {
+		return nil, errors.New("unauthenticated")
+	}
+	return userInfoRaw, nil
 }

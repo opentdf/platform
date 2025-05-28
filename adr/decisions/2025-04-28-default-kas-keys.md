@@ -12,7 +12,9 @@ tags:
 
 ## Context and Problem Statement
 
-Currently, Policy Enforcement Points (PEPs) using the TDF SDK hardcode the platform endpoint to derive the default Key Access Server (KAS) URL. This default KAS is used when no specific key mappings (grants) are associated with namespaces, definitions, or values during TDF creation.
+Currently, Policy Enforcement Points (PEPs) using the TDF SDK hardcode the platform endpoint to derive the default Key Access Server (KAS) URL.
+The PEPs then use this KAS as the default wrapper provider for TDF when the policy does not provide this
+- i.e. there are no specific key mappings (grants) on the its attributes' namespaces, definitions, or values.
 In the current `peps/shared` package, the `Encrypt` method includes this code:
 ```go
 	tdf, err := ec.sdk.CreateTDF(

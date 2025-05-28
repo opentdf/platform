@@ -75,7 +75,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
 
-	privKey, err := b.unwrap(ctx, string(keyDetails.ID()), string(privateKeyCtx.WrappedKey))
+	privKey, err := b.unwrap(ctx, string(keyDetails.ID()), privateKeyCtx.WrappedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unwrap private key: %w", err)
 	}
@@ -118,7 +118,7 @@ func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetail
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
 
-	privKey, err := b.unwrap(ctx, string(keyDetails.ID()), string(privateKeyCtx.WrappedKey))
+	privKey, err := b.unwrap(ctx, string(keyDetails.ID()), privateKeyCtx.WrappedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unwrap private key: %w", err)
 	}

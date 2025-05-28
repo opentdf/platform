@@ -19,7 +19,7 @@ type KeyIdentifier string
 
 type PrivateKey struct {
 	// Key ID of the Key used to wrap the private key
-	WrappingKeyId KeyIdentifier
+	WrappingKeyID KeyIdentifier
 	// Wrapped Key is the encrypted private key
 	WrappedKey string
 }

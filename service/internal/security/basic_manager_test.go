@@ -263,7 +263,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		// Set up mock expectations
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyId: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
+		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
 		rsaEncryptor, err := ocrypto.NewAsymEncryption(rsaPubKey)
 		require.NoError(t, err)
@@ -288,7 +288,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		// Set up mock expectations
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyId: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
+		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
 		ecEncryptor, err := ocrypto.FromPublicPEM(ecPubKey)
 		require.NoError(t, err)
@@ -325,7 +325,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		// so that the unwrap logic can then fail as intended by this test.
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyId: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
+		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
 		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
 		require.Error(t, err)
@@ -341,7 +341,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyId: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil) // Ensure this mock is correctly set up
+		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil) // Ensure this mock is correctly set up
 		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to create decryptor from private PEM")
@@ -355,7 +355,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)                                                                                                                                     // Corrected: require.NoError
-		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyId: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil) // Ensure this mock is correctly set up
+		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil) // Ensure this mock is correctly set up
 		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unsupported algorithm: unknown-algo")
@@ -400,7 +400,7 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 		// Set up mock expectations
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyId: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
+		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
 		protectedKey, err := bm.DeriveKey(t.Context(), mockDetails, clientEphemeralPublicKeyBytes, elliptic.P256())
 		require.NoError(t, err)

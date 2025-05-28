@@ -71,10 +71,10 @@ proto-generate:
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
 
-	go run ./sdk/internal/codegen
+	go run ./sdk/codegen
 
 connect-wrapper-generate:
-	go run ./sdk/internal/codegen
+	go run ./sdk/codegen
 
 policy-sql-gen:
 	@which sqlc > /dev/null || { echo "sqlc not found, please install it: https://docs.sqlc.dev/en/stable/overview/install.html"; exit 1; }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -15,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -58,12 +58,12 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 }
 
 func TestCreatingRequest(t *testing.T) {
-	var dialOption []grpc.DialOption
+	var options []connect.ClientOption
 	tokenSource := getTokenSource(t)
 	kasKey, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
 	require.NoError(t, err, "error creating RSA Key")
 
-	client := newKASClient(dialOption, tokenSource, &kasKey)
+	client := newKASClient(nil, options, tokenSource, &kasKey)
 	require.NoError(t, err)
 
 	keyAccess := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{
@@ -125,7 +125,7 @@ func TestCreatingRequest(t *testing.T) {
 }
 
 func Test_StoreKASKeys(t *testing.T) {
-	s, err := New("localhost:8080",
+	s, err := New("http://localhost:8080",
 		WithPlatformConfiguration(PlatformConfiguration{
 			"idp": map[string]interface{}{
 				"issuer":                 "https://example.org",
@@ -212,4 +212,50 @@ func (suite *TestUpgradeRewrapRequestV1Suite) TestUpgradeRewrapRequestV1_Empty()
 
 func TestUpgradeRewrapRequestV1(t *testing.T) {
 	suite.Run(t, new(TestUpgradeRewrapRequestV1Suite))
+}
+
+func TestParseBaseUrl(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		expected    string
+		expectError bool
+	}{
+		{
+			name:        "Valid URL with scheme and port",
+			input:       "https://example.com:8080/path",
+			expected:    "https://example.com:8080",
+			expectError: false,
+		},
+		{
+			name:        "Valid URL with scheme and no port",
+			input:       "https://example.com/path",
+			expected:    "https://example.com",
+			expectError: false,
+		},
+		{
+			name:        "Valid URL with default port",
+			input:       "http://example.com",
+			expected:    "http://example.com",
+			expectError: false,
+		},
+		{
+			name:        "Invalid URL with invalid characters",
+			input:       "https://exa mple.com",
+			expected:    "",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parseBaseURL(tt.input)
+			if tt.expectError {
+				require.Error(t, err, "Expected an error for test case: %s", tt.name)
+			} else {
+				require.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
+				assert.Equal(t, tt.expected, result, "Unexpected result for test case: %s", tt.name)
+			}
+		})
+	}
 }

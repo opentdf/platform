@@ -93,6 +93,11 @@ erDiagram
         character_varying value UK "Value of the attribute (i.e. #quot;manager#quot; or #quot;admin#quot; on an attribute for titles), unique within the definition"
     }
 
+    base_keys {
+        uuid id PK 
+        uuid key_access_server_key_id FK 
+    }
+
     goose_db_version {
         integer id PK 
         boolean is_applied 
@@ -241,6 +246,7 @@ erDiagram
     registered_resource_action_attribute_values }o--|| attribute_values : "attribute_value_id"
     resource_mappings }o--|| attribute_values : "attribute_value_id"
     subject_mappings }o--|| attribute_values : "attribute_value_id"
+    base_keys }o--|| key_access_server_keys : "key_access_server_key_id"
     key_access_server_keys }o--|| key_access_servers : "key_access_server_id"
     sym_key }o--|| provider_config : "provider_config_id"
     registered_resource_action_attribute_values }o--|| registered_resource_values : "registered_resource_value_id"

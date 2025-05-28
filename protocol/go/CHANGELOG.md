@@ -1,19 +1,30 @@
 # Changelog
 
-## [0.3.3](https://github.com/opentdf/platform/compare/protocol/go/v0.3.2...protocol/go/v0.3.3) (2025-05-15)
+## [0.3.6](https://github.com/opentdf/platform/compare/protocol/go/v0.3.5...protocol/go/v0.3.6) (2025-05-27)
 
 
 ### Features
 
-* **authz:** authz v2, ers v2 protos and gencode for ABAC with actions & registered resource  ([#2124](https://github.com/opentdf/platform/issues/2124)) ([ea7992a](https://github.com/opentdf/platform/commit/ea7992a6d6739084496ec0afdcb22eb9199d1a85))
-* **policy:** DSPX-1018 NDR retrieval by FQN support ([#2131](https://github.com/opentdf/platform/issues/2131)) ([0001041](https://github.com/opentdf/platform/commit/00010419d372c358f8885953bcc33a27c2db4607))
-* **policy:** DSPX-1057 registered resource action attribute values (protos only) ([#2217](https://github.com/opentdf/platform/issues/2217)) ([6375596](https://github.com/opentdf/platform/commit/6375596555f09cabb3f1bc16d369fd6d2b94544a))
-* **policy:** key management crud ([#2110](https://github.com/opentdf/platform/issues/2110)) ([4c3d53d](https://github.com/opentdf/platform/commit/4c3d53d5fbb6f4659155ac60d289d92ac20180f1))
-* **policy:** Modify get request to search for keys by kasid with keyid. ([#2147](https://github.com/opentdf/platform/issues/2147)) ([780d2e4](https://github.com/opentdf/platform/commit/780d2e476f48678c7e384a9ef83df0b8e8b9428a))
-* **policy:** Return KAS Key structure ([#2172](https://github.com/opentdf/platform/issues/2172)) ([7f97b99](https://github.com/opentdf/platform/commit/7f97b99f7f08fbd53cdb3592206f974040c270f3))
-* **policy:** rotate keys rpc ([#2180](https://github.com/opentdf/platform/issues/2180)) ([0d00743](https://github.com/opentdf/platform/commit/0d00743d08c3e80fd1b5f9f37adc66d218b8c13b))
+* **policy:** Update key status's and UpdateKey rpc. ([#2315](https://github.com/opentdf/platform/issues/2315)) ([7908db9](https://github.com/opentdf/platform/commit/7908db9c2be5adeccd3fb9f177187aee53698ee8))
+* **policy** Rename key context structures. ([#2318](https://github.com/opentdf/platform/pull/2318))
+   ([4cb28a9](https://github.com/opentdf/platform/commit/4cb28a9216a208493086fc5d44d38270a9d6f3cc))
+
+## [0.3.5](https://github.com/opentdf/platform/compare/protocol/go/v0.3.4...protocol/go/v0.3.5) (2025-05-23)
+
+
+### Features
+
+* **policy:** Default Platform Keys ([#2254](https://github.com/opentdf/platform/issues/2254)) ([d7447fe](https://github.com/opentdf/platform/commit/d7447fe2604443b4c75c8e547acf414bf78af988))
+
+## [0.3.4](https://github.com/opentdf/platform/compare/protocol/go/v0.3.3...protocol/go/v0.3.4) (2025-05-20)
+
+
+### Features
+
+* **core:** v2 ERS with proto updates ([#2210](https://github.com/opentdf/platform/issues/2210)) ([a161ef8](https://github.com/opentdf/platform/commit/a161ef85d12600672ff695cc84b07579a70c5cac))
+* **policy:** Finish resource mapping groups ([#2224](https://github.com/opentdf/platform/issues/2224)) ([5ff754e](https://github.com/opentdf/platform/commit/5ff754e99189d09ec3698128d1bc51b6f7a90994))
 
 
 ### Bug Fixes
 
-* **policy:** return kas uri on keys for definition, namespace and values ([#2186](https://github.com/opentdf/platform/issues/2186)) ([6c55fb8](https://github.com/opentdf/platform/commit/6c55fb8614903c7fc68151908e25fe4c202f6574))
+* update key_mode to provide more context ([#2226](https://github.com/opentdf/platform/issues/2226)) ([44d0805](https://github.com/opentdf/platform/commit/44d0805fb34d87098ada7b5f7c934f65365f77f1))

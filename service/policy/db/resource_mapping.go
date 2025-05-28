@@ -187,8 +187,9 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemap
 
 	for i, rm := range list {
 		var (
-			metadata       = new(common.Metadata)
-			attributeValue = new(policy.Value)
+			metadata             = new(common.Metadata)
+			attributeValue       = new(policy.Value)
+			resourceMappingGroup = new(policy.ResourceMappingGroup)
 		)
 
 		if err = unmarshalMetadata(rm.Metadata, metadata); err != nil {
@@ -199,17 +200,20 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemap
 			return nil, err
 		}
 
+		if err = unmarshalResourceMappingGroup(rm.Group, resourceMappingGroup); err != nil {
+			return nil, err
+		}
+		if resourceMappingGroup.GetId() == "" {
+			resourceMappingGroup = nil
+		}
+
 		mapping := &policy.ResourceMapping{
 			Id:             rm.ID,
 			AttributeValue: attributeValue,
 			Terms:          rm.Terms,
 			Metadata:       metadata,
+			Group:          resourceMappingGroup,
 		}
-
-		if rm.GroupID != "" {
-			mapping.Group = &policy.ResourceMappingGroup{Id: rm.GroupID}
-		}
-
 		mappings[i] = mapping
 	}
 
@@ -341,6 +345,25 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 		return nil, err
 	}
 
+	if groupID != "" {
+		// get the attribute value and resource mapping group, ensure the namesapce is the same
+		attrVal, err := c.GetAttributeValue(ctx, attributeValueID)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		attr, err := c.GetAttribute(ctx, attrVal.GetAttribute().GetId())
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		group, err := c.GetResourceMappingGroup(ctx, groupID)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		if attr.GetNamespace().GetId() != group.GetNamespaceId() {
+			return nil, db.ErrNamespaceMismatch
+		}
+	}
+
 	createdID, err := c.Queries.CreateResourceMapping(ctx, CreateResourceMappingParams{
 		AttributeValueID: attributeValueID,
 		Terms:            terms,
@@ -378,6 +401,25 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if groupID != "" {
+		// get the attribute value and resource mapping group, ensure the namesapce is the same
+		attrVal, err := c.GetAttributeValue(ctx, attributeValueID)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		attr, err := c.GetAttribute(ctx, attrVal.GetAttribute().GetId())
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		group, err := c.GetResourceMappingGroup(ctx, groupID)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+		if attr.GetNamespace().GetId() != group.GetNamespaceId() {
+			return nil, db.ErrNamespaceMismatch
+		}
 	}
 
 	count, err := c.Queries.UpdateResourceMapping(ctx, UpdateResourceMappingParams{

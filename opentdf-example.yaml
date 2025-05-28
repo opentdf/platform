@@ -8,6 +8,15 @@ db:
 #   port: 5432
 #   user: postgres
 #   password: changeme
+#   sslmode: prefer
+#   connect_timeout_seconds: 15
+#   pool:
+#     max_connection_count: 4
+#     min_connection_count: 0
+#     min_idle_connections_count: 0
+#     max_connection_lifetime_seconds: 3600
+#     max_connection_idle_seconds: 1800
+#     health_check_period_seconds: 60
 # mode: all
 services:
   kas:

@@ -22,6 +22,7 @@ type WellKnownService struct {
 var (
 	wellKnownConfiguration = make(map[string]any)
 	rwMutex                sync.RWMutex
+	baseKeyWellKnown       = "base_key"
 )
 
 func RegisterConfiguration(namespace string, config any) error {
@@ -32,6 +33,12 @@ func RegisterConfiguration(namespace string, config any) error {
 	}
 	wellKnownConfiguration[namespace] = config
 	return nil
+}
+
+func UpdateConfigurationBaseKey(config any) {
+	rwMutex.Lock()
+	defer rwMutex.Unlock()
+	wellKnownConfiguration[baseKeyWellKnown] = config
 }
 
 func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.WellKnownServiceHandler] {

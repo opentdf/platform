@@ -5,18 +5,39 @@
 
 version: 2
 updates:
+  # Dependabot for CI
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
     commit-message:
       prefix: "chore(ci)"
+
+  # Dependabot for internal deps
+  # Add explicit entry as any go.mods need internal dep checks
   - package-ecosystem: gomod
-    directories:
-      - /examples
-      - /lib/*
-      - /protocol/go
-      - /sdk
-      - /service
+    directory: "/examples"
+    groups:
+      internal:
+        patterns:
+          - "github.com/opentdf/*"
     schedule:
       interval: daily
+  - package-ecosystem: gomod
+    directory: "/sdk"
+    groups:
+      internal:
+        patterns:
+          - "github.com/opentdf/*"
+    schedule:
+      interval: daily
+  - package-ecosystem: gomod
+    directory: "/service"
+    groups:
+      internal:
+        patterns:
+          - "github.com/opentdf/*"
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: "fix(deps)"

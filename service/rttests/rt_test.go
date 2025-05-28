@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -16,6 +17,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/policy/actions"
+	policyConfig "github.com/opentdf/platform/service/policy/config"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -125,6 +127,10 @@ func (s *RoundtripSuite) SetupSuite() {
 
 	err = s.CreateTestData()
 	s.Require().NoError(err)
+
+	// wait for cache to refresh
+	waitTime := time.Duration(policyConfig.GetPolicyEntitlementCacheRefreshInterval()+1) * time.Second
+	time.Sleep(waitTime)
 }
 
 func (s *RoundtripSuite) Tests() {

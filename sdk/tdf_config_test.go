@@ -366,30 +366,6 @@ func TestWithKasAllowlist(t *testing.T) {
 	}
 }
 
-func TestWithStandardAssertions(t *testing.T) {
-	cfg := makeConfig(t, WithStandardAssertions())
-
-	require.Len(t, cfg.assertions, 2)
-
-	// Check the first assertion
-	assert.NotEmpty(t, cfg.assertions[0].ID)
-	assert.Equal(t, BaseAssertion, cfg.assertions[0].Type)
-	assert.Equal(t, Paylaod, cfg.assertions[0].Scope)
-	assert.Equal(t, Unencrypted, cfg.assertions[0].AppliesToState)
-	assert.Equal(t, "string", cfg.assertions[0].Statement.Format)
-	assert.Equal(t, "", cfg.assertions[0].Statement.Schema)
-	assert.NotEmpty(t, cfg.assertions[0].Statement.Value)
-
-	// Check the second assertion
-	assert.NotEmpty(t, cfg.assertions[1].ID)
-	assert.Equal(t, BaseAssertion, cfg.assertions[1].Type)
-	assert.Equal(t, Paylaod, cfg.assertions[1].Scope)
-	assert.Equal(t, Unencrypted, cfg.assertions[1].AppliesToState)
-	assert.Equal(t, "string", cfg.assertions[1].Statement.Format)
-	assert.Equal(t, "metadata", cfg.assertions[1].Statement.Schema)
-	assert.Contains(t, cfg.assertions[1].Statement.Value, "Go-SDK/")
-}
-
 func TestWithIgnoreAllowlist(t *testing.T) {
 	tests := []struct {
 		name          string

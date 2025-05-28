@@ -44,7 +44,7 @@ func mapKasKeysToGrants(keys []*policy.KasKey, existingGrants []*policy.KeyAcces
 		kasURI := key.GetKasUri()
 		if kasURI == "" {
 			// Skip keys without a URI, as it's essential for mapping
-			l.Debug("skipping key without URI: %s", key.GetKey().GetKeyId())
+			l.Debug("skipping key without UR", "kid", key.GetKey().GetKeyId())
 			continue
 		}
 

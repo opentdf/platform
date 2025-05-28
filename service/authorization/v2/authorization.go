@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyCache "github.com/opentdf/platform/service/policy/cache"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
@@ -23,20 +24,45 @@ type Service struct {
 	sdk    *otdf.SDK
 	config *Config
 	logger *logger.Logger
+	pdp    *access.JustInTimePDP
 	trace.Tracer
 }
 
 type Config struct{}
+
+// When all services are completed, new up the JustInTime PDP to retrieve and store all entitlement policy in memory
+func OnCompleteServiceRegistration(as *Service) serviceregistry.OnCompleteServiceRegistrationHook {
+	return func(ctx context.Context) error {
+		cache, err := policyCache.NewEntitlementPolicyCache(as.sdk, as.logger)
+		if err != nil {
+			as.logger.Error("failed to create entitlement policy cache", slog.Any("error", err))
+			return fmt.Errorf("auth service: failed to create entitlement policy cache: %w", err)
+		}
+		if err := cache.Start(ctx); err != nil {
+			as.logger.Error("failed to start entitlement policy cache", slog.Any("error", err))
+			return fmt.Errorf("auth service: failed to start entitlement policy cache: %w", err)
+		}
+
+		pdp, err := access.NewJustInTimePDPWithCachedEntitlementPolicy(ctx, as.logger, as.sdk, cache)
+		if err != nil {
+			as.logger.Error("failed to create JIT PDP", slog.String("error", err.Error()))
+			return fmt.Errorf("auth service: failed to create JIT PDP: %w", err)
+		}
+		as.pdp = pdp
+		return nil
+	}
+}
 
 func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler] {
 	as := new(Service)
 
 	return &serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[authzV2Connect.AuthorizationServiceHandler]{
-			Namespace:      "authorization",
-			Version:        "v2",
-			ServiceDesc:    &authzV2.AuthorizationService_ServiceDesc,
-			ConnectRPCFunc: authzV2Connect.NewAuthorizationServiceHandler,
+			Namespace:                     "authorization",
+			Version:                       "v2",
+			ServiceDesc:                   &authzV2.AuthorizationService_ServiceDesc,
+			ConnectRPCFunc:                authzV2Connect.NewAuthorizationServiceHandler,
+			OnCompleteServiceRegistration: OnCompleteServiceRegistration(as),
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authzV2Connect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				authZCfg := new(Config)
 
@@ -51,6 +77,7 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 
 				as.config = authZCfg
 				as.Tracer = srp.Tracer
+
 				logger.Debug("authorization v2 service register func")
 
 				return as, nil
@@ -79,14 +106,7 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 	entityIdentifier := req.Msg.GetEntityIdentifier()
 	withComprehensiveHierarchy := req.Msg.GetWithComprehensiveHierarchy()
 
-	// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
-	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	entitlements, err := pdp.GetEntitlements(ctx, entityIdentifier, withComprehensiveHierarchy)
+	entitlements, err := as.pdp.GetEntitlements(ctx, entityIdentifier, withComprehensiveHierarchy)
 	if err != nil {
 		// TODO: any bad request errors that aren't 500s?
 		as.logger.ErrorContext(ctx, "failed to get entitlements", slog.String("error", err.Error()))
@@ -111,17 +131,12 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	propagator := otel.GetTextMapPropagator()
 	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
-	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
 	request := req.Msg
 	entityIdentifier := request.GetEntityIdentifier()
 	action := request.GetAction()
 	resource := request.GetResource()
 
-	decisions, permitted, err := pdp.GetDecision(ctx, entityIdentifier, action, []*authzV2.Resource{resource})
+	decisions, permitted, err := as.pdp.GetDecision(ctx, entityIdentifier, action, []*authzV2.Resource{resource})
 	if err != nil {
 		// TODO: any bad request errors that aren't 500s?
 		as.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))
@@ -146,17 +161,12 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 	propagator := otel.GetTextMapPropagator()
 	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
-	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
 	request := req.Msg
 	entityIdentifier := request.GetEntityIdentifier()
 	action := request.GetAction()
 	resources := request.GetResources()
 
-	decisions, allPermitted, err := pdp.GetDecision(ctx, entityIdentifier, action, resources)
+	decisions, allPermitted, err := as.pdp.GetDecision(ctx, entityIdentifier, action, resources)
 	if err != nil {
 		// TODO: any bad request errors that aren't 500s?
 		as.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))
@@ -166,7 +176,7 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 	resourceDecisions, err := rollupMultiResourceDecision(decisions)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to rollup multi resource decision", slog.String("error", err.Error()))
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, err
 	}
 
 	resp := &authzV2.GetDecisionMultiResourceResponse{

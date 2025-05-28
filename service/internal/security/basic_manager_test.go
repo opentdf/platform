@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/eko/gocache/lib/v4/store"
 )
@@ -264,9 +263,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		// Set up mock expectations
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		pkBytes, err := protojson.Marshal(mockDetails.MPrivateKey)
-		require.NoError(t, err)
-		mockDetails.On("ExportPrivateKey").Return(pkBytes, nil)
+		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyId: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
 		rsaEncryptor, err := ocrypto.NewAsymEncryption(rsaPubKey)
 		require.NoError(t, err)
@@ -291,9 +288,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		// Set up mock expectations
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		pkBytes, err := protojson.Marshal(mockDetails.MPrivateKey)
-		require.NoError(t, err)
-		mockDetails.On("ExportPrivateKey").Return(pkBytes, nil)
+		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyId: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
 		ecEncryptor, err := ocrypto.FromPublicPEM(ecPubKey)
 		require.NoError(t, err)
@@ -320,16 +315,6 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to get private key")
 	})
 
-	t.Run("fail unmarshal private key", func(t *testing.T) {
-		mockDetails := new(MockKeyDetails)
-		mockDetails.On("ID").Return(trust.KeyIdentifier("fail-unmarshal"))
-		mockDetails.On("ExportPrivateKey").Return([]byte("this is not json"), nil)
-
-		_, err := bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to unmarshal private key")
-	})
-
 	t.Run("fail unwrap", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "fail-unwrap-decrypt"
@@ -338,11 +323,9 @@ func TestBasicManager_Decrypt(t *testing.T) {
 
 		// Set up mock expectations for ExportPrivateKey to return a valid wrapped key
 		// so that the unwrap logic can then fail as intended by this test.
-		pkBytes, err := protojson.Marshal(mockDetails.MPrivateKey)
-		require.NoError(t, err)
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		mockDetails.On("ExportPrivateKey").Return(pkBytes, nil)
+		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyId: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
 		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
 		require.Error(t, err)
@@ -358,9 +341,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		pkBytes, err := protojson.Marshal(mockDetails.MPrivateKey)
-		require.NoError(t, err)
-		mockDetails.On("ExportPrivateKey").Return(pkBytes, nil) // Ensure this mock is correctly set up
+		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyId: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil) // Ensure this mock is correctly set up
 		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to create decryptor from private PEM")
@@ -373,10 +354,8 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedRSAPrivKeyStr}
 
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
-		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		pkBytes, err := protojson.Marshal(mockDetails.MPrivateKey)
-		require.NoError(t, err)                                 // Corrected: require.NoError
-		mockDetails.On("ExportPrivateKey").Return(pkBytes, nil) // Ensure this mock is correctly set up
+		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)                                                                                                                                     // Corrected: require.NoError
+		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyId: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil) // Ensure this mock is correctly set up
 		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unsupported algorithm: unknown-algo")
@@ -421,9 +400,7 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 		// Set up mock expectations
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
-		pkBytes, err := protojson.Marshal(mockDetails.MPrivateKey)
-		require.NoError(t, err)
-		mockDetails.On("ExportPrivateKey").Return(pkBytes, nil)
+		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyId: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
 		protectedKey, err := bm.DeriveKey(t.Context(), mockDetails, clientEphemeralPublicKeyBytes, elliptic.P256())
 		require.NoError(t, err)

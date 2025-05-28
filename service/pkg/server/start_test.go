@@ -247,9 +247,7 @@ func (s *StartTestSuite) TearDownSuite() {
 	ignoreFile := "all-no-config.yaml"
 
 	entries, err := os.ReadDir("testdata")
-	if err != nil {
-		s.T().Logf("Error reading testdata directory: %v", err)
-	}
+	s.Require().NoError(err, "Failed to read testdata directory")
 
 	for _, entry := range entries {
 		if !entry.IsDir() {
@@ -259,9 +257,7 @@ func (s *StartTestSuite) TearDownSuite() {
 			continue
 		}
 		err = os.Remove("testdata/" + entry.Name())
-		if err != nil {
-			s.T().Logf("Error removing directory %s: %v", entry.Name(), err)
-		}
+		s.Require().NoError(err, "Failed to remove testdata file: %s", entry.Name())
 	}
 }
 

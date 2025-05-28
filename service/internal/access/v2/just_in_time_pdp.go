@@ -105,8 +105,8 @@ func NewJustInTimePDPWithCachedEntitlementPolicy(
 	// Use policy cache if provided, otherwise fetch directly
 	if p.policyCache != nil {
 		l.DebugContext(ctx, "Using EntitlementPolicyCache for attribute definitions and subject mappings")
-		allAttributes = p.policyCache.GetAttributes(ctx)
-		allSubjectMappings = p.policyCache.GetSubjectMappings(ctx)
+		allAttributes = p.policyCache.GetAttributes()
+		allSubjectMappings = p.policyCache.GetSubjectMappings()
 	} else {
 		l.DebugContext(ctx, "Fetching attribute definitions and subject mappings directly")
 		allAttributes, err = p.fetchAllDefinitions(ctx)

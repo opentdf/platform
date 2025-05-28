@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -34,10 +35,10 @@ func NewEntitlementPolicyCache(
 	logger *logger.Logger,
 ) (*EntitlementPolicyCache, error) {
 	if logger == nil {
-		return nil, fmt.Errorf("logger is required")
+		return nil, errors.New("logger is required")
 	}
 	if sdk == nil {
-		return nil, fmt.Errorf("authenticated SDK is required")
+		return nil, errors.New("authenticated SDK is required")
 	}
 
 	cache := &EntitlementPolicyCache{
@@ -74,29 +75,6 @@ func (c *EntitlementPolicyCache) Stop() {
 	<-c.refreshCompleted // Wait for the refresh goroutine to complete
 }
 
-// periodicRefresh refreshes the cache at the specified interval
-func (c *EntitlementPolicyCache) periodicRefresh(ctx context.Context) {
-	ticker := time.NewTicker(c.configuredRefreshInterval)
-	defer func() {
-		ticker.Stop()
-		close(c.refreshCompleted)
-	}()
-
-	for {
-		select {
-		case <-ticker.C:
-			err := c.Refresh(ctx)
-			if err != nil {
-				c.logger.ErrorContext(ctx, "Failed to refresh cache", "error", err)
-			}
-		case <-c.stopRefresh:
-			return
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
 // Refresh manually refreshes the cache
 func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 	attributes, err := c.fetchAllDefinitions(ctx)
@@ -124,7 +102,7 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 }
 
 // GetAttributes returns the cached attributes
-func (c *EntitlementPolicyCache) GetAttributes(ctx context.Context) []*policy.Attribute {
+func (c *EntitlementPolicyCache) GetAttributes() []*policy.Attribute {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -133,12 +111,35 @@ func (c *EntitlementPolicyCache) GetAttributes(ctx context.Context) []*policy.At
 }
 
 // GetSubjectMappings returns the cached subject mappings
-func (c *EntitlementPolicyCache) GetSubjectMappings(ctx context.Context) []*policy.SubjectMapping {
+func (c *EntitlementPolicyCache) GetSubjectMappings() []*policy.SubjectMapping {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
 	// TODO: we may want to copy this so callers cannot modify the cached data
 	return c.subjectMappings
+}
+
+// periodicRefresh refreshes the cache at the specified interval
+func (c *EntitlementPolicyCache) periodicRefresh(ctx context.Context) {
+	ticker := time.NewTicker(c.configuredRefreshInterval)
+	defer func() {
+		ticker.Stop()
+		close(c.refreshCompleted)
+	}()
+
+	for {
+		select {
+		case <-ticker.C:
+			err := c.Refresh(ctx)
+			if err != nil {
+				c.logger.ErrorContext(ctx, "Failed to refresh cache", "error", err)
+			}
+		case <-c.stopRefresh:
+			return
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // fetchAllDefinitions retrieves all attribute definitions within policy

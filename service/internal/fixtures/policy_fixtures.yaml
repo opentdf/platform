@@ -556,7 +556,7 @@ kas_registry_keys:
       key_algorithm: 1 # ALGORITHM_RSA_2048
       key_id: kas_key_2
       key_mode: 1 # KEY_MODE_LOCAL 
-      key_status: 2 # KEY_STATUS_INACTIVE
+      key_status: 1 # KEY_STATUS_ACTIVE
       private_key_ctx: eyJ3cmFwcGVkS2V5IjoiYTJWNUNnPT0iLCJrZXlJZCI6ImtleSJ9Cg==
       public_key_ctx: eyJwZW0iOiJhMlY1Q2c9PSJ9Cg==
       provider_config_id: 19098106-54a1-4d33-8846-4894b5b6db3e # provider_config_2

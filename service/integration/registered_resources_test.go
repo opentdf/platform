@@ -1055,6 +1055,16 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
 		ResourceId: res.GetId(),
 		Value:      "value",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameRead,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
+				},
+			},
+		},
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
@@ -1079,7 +1089,32 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.Require().NotNil(got)
 	s.Equal(created.GetValue(), got.GetValue())
 	s.Equal(labels, got.GetMetadata().GetLabels())
-	s.Empty(got.GetActionAttributeValues())
+	s.Require().Len(got.GetActionAttributeValues(), 1)
+
+	newActionAttrVals := []*registeredresources.ActionAttributeValue{
+		{
+			ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+				ActionName: actions.ActionNameDelete,
+			},
+			AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+				AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
+			},
+		},
+		{
+			ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+				ActionName: "custom_action_1",
+			},
+			AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+				AttributeValueFqn: "https://example.com/attr/attr2/value/value2",
+			},
+		},
+	}
+
+	expectedNewActionAttrVals := make(map[string]struct{})
+	for _, aav := range newActionAttrVals {
+		mapID := aav.GetActionName() + aav.GetAttributeValueFqn()
+		expectedNewActionAttrVals[mapID] = struct{}{}
+	}
 
 	// update with changes
 	updated, err = s.db.PolicyClient.UpdateRegisteredResourceValue(s.ctx, &registeredresources.UpdateRegisteredResourceValueRequest{
@@ -1089,16 +1124,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 			Labels: updateLabels,
 		},
 		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
-		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
-			{
-				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
-					ActionName: actions.ActionNameCreate,
-				},
-				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
-					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
-				},
-			},
-		},
+		ActionAttributeValues:  newActionAttrVals,
 	})
 	s.Require().NoError(err)
 	s.NotNil(updated)
@@ -1119,12 +1145,15 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.False(createdAt.AsTime().IsZero())
 	s.False(updatedAt.AsTime().IsZero())
 	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
-	actionAttrValues := got.GetActionAttributeValues()
-	s.Require().Len(actionAttrValues, 1)
-	s.Equal(actions.ActionNameCreate, actionAttrValues[0].GetAction().GetName())
-	attrValue := actionAttrValues[0].GetAttributeValue()
-	s.Equal("https://example.com/attr/attr1/value/value1", attrValue.GetFqn())
-	s.Equal("value1", attrValue.GetValue())
+	gotActionAttrValues := got.GetActionAttributeValues()
+	s.Require().Len(gotActionAttrValues, 2)
+	for _, aav := range gotActionAttrValues {
+		action := aav.GetAction()
+		attrVal := aav.GetAttributeValue()
+		mapID := action.GetName() + attrVal.GetFqn()
+		_, ok := expectedNewActionAttrVals[mapID]
+		s.True(ok, "expected action attribute value not found (mapID: %s)", mapID)
+	}
 }
 
 func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_NormalizedName_Succeeds() {

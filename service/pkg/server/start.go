@@ -99,11 +99,7 @@ func Start(f ...StartOptions) error {
 
 	// Configure cache manager
 	logger.Info("creating cache manager")
-	// TODO: make these config vars
-	var cacheFreqTrack int64 = 1e7   // number of keys to track frequency of (10M).
-	var cacheMaxCost int64 = 1 << 30 // maximum cost of cache (1GB).
-	var cacheKeysPerGet int64 = 64   // number of keys per Get buffer.
-	cacheManager, err := cache.NewCacheManager(cacheFreqTrack, cacheMaxCost, cacheKeysPerGet)
+	cacheManager, err := cache.NewCacheManager(cfg.Server.Cache.RistrettoCache.MaxEntries, cfg.Server.Cache.RistrettoCache.MaxCost, cfg.Server.Cache.RistrettoCache.BufferItems)
 	if err != nil {
 		return fmt.Errorf("could not create cache manager: %w", err)
 	}

@@ -438,7 +438,7 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}
 
-		err = c.createRegisteredResourceActionAttributeValues(ctx, id, r.GetActionAttributeValues())
+		err = c.createRegisteredResourceActionAttributeValues(ctx, id, actionAttrValues)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}

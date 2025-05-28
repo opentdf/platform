@@ -3,11 +3,15 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/creasty/defaults"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/service/pkg/config"
 )
+
+// Default refresh interval, overriden by policy config when set
+var configuredRefreshInterval = 5 * time.Minute
 
 // Global policy config to share among policy services
 type Config struct {
@@ -15,6 +19,9 @@ type Config struct {
 	ListRequestLimitDefault int `mapstructure:"list_request_limit_default" default:"1000"`
 	// Maximum pagination list limit allowed by policy services
 	ListRequestLimitMax int `mapstructure:"list_request_limit_max" default:"2500"`
+
+	// Interval in seconds to refresh the in-memory policy entitlement cache (attributes and subject mappings)
+	CacheRefreshIntervalSeconds int `mapstructure:"cache_refresh_interval_seconds" default:"300"` // Default to 5 minutes
 }
 
 func (c Config) Validate() error {
@@ -42,6 +49,13 @@ func GetSharedPolicyConfig(cfg config.ServiceConfig) (*Config, error) {
 		return nil, fmt.Errorf("failed to validate policy config: %w", err)
 	}
 
+	configuredRefreshInterval = time.Duration(policyCfg.CacheRefreshIntervalSeconds) * time.Second
+
 	slog.Debug("policy config", slog.Any("config", policyCfg))
+
 	return policyCfg, nil
+}
+
+func GetPolicyEntitlementCacheRefreshInterval() time.Duration {
+	return configuredRefreshInterval
 }

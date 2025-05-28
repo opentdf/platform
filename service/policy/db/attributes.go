@@ -340,7 +340,7 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 		if err != nil {
 			return nil, fmt.Errorf("failed to map keys to grants: %w", err)
 		}
-		ns.Grants = append(ns.Grants, nsGrants...)
+		ns.Grants = nsGrants
 
 		attrs[i] = &policy.Attribute{
 			Id:        attr.ID,

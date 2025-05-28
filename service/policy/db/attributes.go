@@ -602,6 +602,10 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, 
 }
 
 func (c PolicyDBClient) AssignPublicKeyToAttribute(ctx context.Context, k *attributes.AttributeKey) (*attributes.AttributeKey, error) {
+	if err := c.verifyKeyIsActive(ctx, k.GetKeyId()); err != nil {
+		return nil, err
+	}
+
 	ak, err := c.Queries.assignPublicKeyToAttributeDefinition(ctx, assignPublicKeyToAttributeDefinitionParams{
 		DefinitionID:         k.GetAttributeId(),
 		KeyAccessServerKeyID: k.GetKeyId(),

@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
+	otdfSDK "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -24,6 +25,21 @@ type AttributesService struct { //nolint:revive // AttributesService is a valid 
 	logger   *logger.Logger
 	config   *policyconfig.Config
 	trace.Tracer
+	sdk   *otdfSDK.SDK
+	cache *policyconfig.EntitlementPolicyCache // Cache for attributes and subject mappings
+}
+
+func OnServicesStarted(svc *AttributesService) serviceregistry.OnServicesStartedHook {
+	return func(ctx context.Context) error {
+		cache, err := policyconfig.GetSharedEntitlementPolicyCache(ctx, svc.sdk, svc.logger, svc.config)
+		if err != nil {
+			svc.logger.Error("failed to create entitlement policy cache", slog.Any("error", err))
+			return fmt.Errorf("auth service: failed to create entitlement policy cache: %w", err)
+		}
+
+		svc.cache = cache
+		return nil
+	}
 }
 
 func OnConfigUpdate(as *AttributesService) serviceregistry.OnConfigUpdateHook {
@@ -63,6 +79,8 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				as.logger = logger
 				as.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				as.config = cfg
+				as.sdk = srp.SDK
+
 				return as, nil
 			},
 		},

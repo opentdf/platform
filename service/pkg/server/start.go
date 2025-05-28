@@ -313,8 +313,8 @@ func Start(f ...StartOptions) error {
 	}
 	defer cfg.Close(ctx)
 
-	// Run the service registration complete hooks
-	if err := cfg.RunRegistrationCompleteHooks(ctx); err != nil {
+	// Run the services started hooks
+	if err := cfg.RunServicesStartedHooks(ctx); err != nil {
 		return fmt.Errorf("failed to run service registration complete hooks: %w", err)
 	}
 

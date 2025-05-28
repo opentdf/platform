@@ -3,15 +3,11 @@ package config
 import (
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/creasty/defaults"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/service/pkg/config"
 )
-
-// Default refresh interval, overriden by policy config when set
-var configuredRefreshInterval = 5 * time.Second
 
 // Global policy config to share among policy services
 type Config struct {
@@ -31,6 +27,7 @@ func (c Config) Validate() error {
 	return nil
 }
 
+// GetSharedPolicyConfig retrieves the shared policy configuration, applying defaults and validating it.
 func GetSharedPolicyConfig(cfg config.ServiceConfig) (*Config, error) {
 	policyCfg := new(Config)
 
@@ -49,13 +46,6 @@ func GetSharedPolicyConfig(cfg config.ServiceConfig) (*Config, error) {
 		return nil, fmt.Errorf("failed to validate policy config: %w", err)
 	}
 
-	configuredRefreshInterval = time.Duration(policyCfg.CacheRefreshIntervalSeconds) * time.Second
-
 	slog.Debug("policy config", slog.Any("config", policyCfg))
-
 	return policyCfg, nil
-}
-
-func GetPolicyEntitlementCacheRefreshInterval() time.Duration {
-	return configuredRefreshInterval
 }

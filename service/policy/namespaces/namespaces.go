@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces/namespacesconnect"
+	otdfSDK "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -22,6 +23,21 @@ type NamespacesService struct { //nolint:revive // NamespacesService is a valid 
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 	config   *policyconfig.Config
+	sdk      *otdfSDK.SDK
+	cache    *policyconfig.EntitlementPolicyCache // Cache for attributes and subject mappings
+}
+
+func OnServicesStarted(svc *NamespacesService) serviceregistry.OnServicesStartedHook {
+	return func(ctx context.Context) error {
+		cache, err := policyconfig.GetSharedEntitlementPolicyCache(ctx, svc.sdk, svc.logger, svc.config)
+		if err != nil {
+			svc.logger.Error("failed to create entitlement policy cache", slog.Any("error", err))
+			return fmt.Errorf("auth service: failed to create entitlement policy cache: %w", err)
+		}
+
+		svc.cache = cache
+		return nil
+	}
 }
 
 func OnConfigUpdate(ns *NamespacesService) serviceregistry.OnConfigUpdateHook {
@@ -61,6 +77,8 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				nsService.logger = logger
 				nsService.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				nsService.config = cfg
+				nsService.sdk = srp.SDK
+
 				return nsService, nil
 			},
 		},

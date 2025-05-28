@@ -192,7 +192,7 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 				return func() {}, fmt.Errorf("failed to register config update hook: %w", err)
 			}
 
-			if err := svc.RegisterOnCompleteServiceRegistrationHook(ctx, cfg.AddOnServiceRegistrationCompleteHook); err != nil {
+			if err := svc.RegisterOnServicesStartedHook(ctx, cfg.AddOnServicesStartedHook); err != nil {
 				return func() {}, fmt.Errorf("failed to register on complete service registration hook: %w", err)
 			}
 

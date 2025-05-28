@@ -57,7 +57,7 @@ type (
 	// Allow services to implement handling for config changes as direced by caller
 	OnConfigUpdateHook func(context.Context, config.ServiceConfig) error
 	// Allow services to implement a callback to run when all services are registered
-	OnCompleteServiceRegistrationHook func(context.Context) error
+	OnServicesStartedHook func(context.Context) error
 )
 
 // DBRegister is a struct that holds the information needed to register a service with a database
@@ -80,7 +80,7 @@ type IService interface {
 	IsStarted() bool
 	Shutdown() error
 	RegisterConfigUpdateHook(ctx context.Context, hookAppender func(config.ChangeHook)) error
-	RegisterOnCompleteServiceRegistrationHook(ctx context.Context, hookAppender func(config.ServiceRegistrationCompleteHook)) error
+	RegisterOnServicesStartedHook(ctx context.Context, hookAppender func(config.ServicesStartedHook)) error
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
@@ -110,8 +110,8 @@ type ServiceOptions[S any] struct {
 	ServiceDesc *grpc.ServiceDesc
 	// OnConfigUpdate is a hook to handle in-service actions when config changes
 	OnConfigUpdate OnConfigUpdateHook
-	// OnCompleteServiceRegistration is a hook to handle in-service actions that should run when all services are registered
-	OnCompleteServiceRegistration OnCompleteServiceRegistrationHook
+	// OnServicesStarted is a hook to handle in-service actions that should run when all services are registered
+	OnServicesStarted OnServicesStartedHook
 	// RegisterFunc is the function that will be called to register the service
 	RegisterFunc RegisterFunc[S]
 	// HTTPHandlerFunc is the function that will be called to register extra http handlers
@@ -194,16 +194,16 @@ func (s Service[S]) RegisterConfigUpdateHook(ctx context.Context, hookAppender f
 	return nil
 }
 
-// RegisterOnCompleteServiceRegistrationHook appends a registered service's onCompleteServiceRegistrationHook to any watching services.
-func (s Service[S]) RegisterOnCompleteServiceRegistrationHook(_ context.Context, hookAppender func(config.ServiceRegistrationCompleteHook)) error {
+// RegisterOnServicesStartedHook appends a registered service's onServicesStartedHook to any watching services.
+func (s Service[S]) RegisterOnServicesStartedHook(_ context.Context, hookAppender func(config.ServicesStartedHook)) error {
 	// If no hook is registered, exit
-	if s.OnCompleteServiceRegistration != nil {
-		var onChange config.ServiceRegistrationCompleteHook = func(ctx context.Context) error {
+	if s.OnServicesStarted != nil {
+		var onChange config.ServicesStartedHook = func(ctx context.Context) error {
 			slog.Debug("service completed registration hook called",
 				slog.String("namespace", s.GetNamespace()),
 				slog.String("service", s.GetServiceDesc().ServiceName),
 			)
-			return s.OnCompleteServiceRegistration(ctx)
+			return s.OnServicesStarted(ctx)
 		}
 		hookAppender(onChange)
 	}

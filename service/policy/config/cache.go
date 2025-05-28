@@ -1,4 +1,4 @@
-package cache
+package config
 
 import (
 	"context"
@@ -13,12 +13,16 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/policy/config"
 )
+
+// Shared service-level instance of EntitlementPolicyCache (attributes and subject mappings)
+var entitlementPolicyCacheInstance *EntitlementPolicyCache
+var entitlementPolicyCacheOnce sync.Once
 
 // EntitlementPolicyCache caches attributes and subject mappings with periodic refresh
 type EntitlementPolicyCache struct {
 	mutex                     sync.RWMutex
+	debounceRefreshMutex      sync.Mutex
 	sdk                       *otdfSDK.SDK
 	logger                    *logger.Logger
 	attributes                []*policy.Attribute
@@ -28,30 +32,36 @@ type EntitlementPolicyCache struct {
 	refreshCompleted          chan struct{}
 }
 
-// NewEntitlementPolicyCache creates a new cache with the specified refresh interval
-// and functions for fetching attributes and subject mappings
-func NewEntitlementPolicyCache(
+func GetSharedEntitlementPolicyCache(
+	ctx context.Context,
 	sdk *otdfSDK.SDK,
-	logger *logger.Logger,
+	l *logger.Logger,
+	cfg *Config,
 ) (*EntitlementPolicyCache, error) {
-	if logger == nil {
-		return nil, errors.New("logger is required")
+	var err error
+	entitlementPolicyCacheOnce.Do(func() {
+		l.Debug("Initializing shared entitlement policy cache")
+		entitlementPolicyCacheInstance = &EntitlementPolicyCache{
+			logger:                    l,
+			sdk:                       sdk,
+			attributes:                make([]*policy.Attribute, 0),
+			subjectMappings:           make([]*policy.SubjectMapping, 0),
+			configuredRefreshInterval: time.Duration(cfg.CacheRefreshIntervalSeconds) * time.Second,
+			stopRefresh:               make(chan struct{}),
+			refreshCompleted:          make(chan struct{}),
+		}
+		if err = entitlementPolicyCacheInstance.Start(ctx); err != nil {
+			l.ErrorContext(ctx, "Failed to start entitlement policy cache", "error", err)
+			return
+		}
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize entitlement policy cache: %w", err)
 	}
-	if sdk == nil {
-		return nil, errors.New("authenticated SDK is required")
+	if entitlementPolicyCacheInstance == nil {
+		return nil, errors.New("entitlement policy cache not initialized")
 	}
-
-	cache := &EntitlementPolicyCache{
-		logger:                    logger,
-		sdk:                       sdk,
-		configuredRefreshInterval: config.GetPolicyEntitlementCacheRefreshInterval(),
-		attributes:                make([]*policy.Attribute, 0),
-		subjectMappings:           make([]*policy.SubjectMapping, 0),
-		stopRefresh:               make(chan struct{}),
-		refreshCompleted:          make(chan struct{}),
-	}
-
-	return cache, nil
+	return entitlementPolicyCacheInstance, nil
 }
 
 // Start initiates the cache and begins periodic refresh
@@ -77,6 +87,12 @@ func (c *EntitlementPolicyCache) Stop() {
 
 // Refresh manually refreshes the cache
 func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
+	if !c.debounceRefreshMutex.TryLock() {
+		c.logger.DebugContext(ctx, "EntitlementPolicyCache refresh already in progress, skipping")
+		return nil
+	}
+	defer c.debounceRefreshMutex.Unlock()
+
 	attributes, err := c.fetchAllDefinitions(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch attributes: %w", err)

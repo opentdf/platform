@@ -99,6 +99,9 @@ func Start(f ...StartOptions) error {
 
 	// Configure cache manager
 	logger.Info("creating cache manager")
+	if cfg.Server.Cache.Driver != "ristretto" {
+		return fmt.Errorf("unsupported cache driver: %s", cfg.Server.Cache.Driver)
+	}
 	cacheManager, err := cache.NewCacheManager(cfg.Server.Cache.RistrettoCache.MaxEntries, cfg.Server.Cache.RistrettoCache.MaxCost, cfg.Server.Cache.RistrettoCache.BufferItems)
 	if err != nil {
 		return fmt.Errorf("could not create cache manager: %w", err)

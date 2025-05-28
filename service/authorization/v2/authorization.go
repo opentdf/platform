@@ -24,7 +24,7 @@ type Service struct {
 	sdk    *otdf.SDK
 	config *Config
 	logger *logger.Logger
-	pdp    *access.JustInTimePDP
+	cache  *policyCache.EntitlementPolicyCache
 	trace.Tracer
 }
 
@@ -43,12 +43,7 @@ func OnCompleteServiceRegistration(as *Service) serviceregistry.OnCompleteServic
 			return fmt.Errorf("auth service: failed to start entitlement policy cache: %w", err)
 		}
 
-		pdp, err := access.NewJustInTimePDPWithCachedEntitlementPolicy(ctx, as.logger, as.sdk, cache)
-		if err != nil {
-			as.logger.Error("failed to create JIT PDP", slog.String("error", err.Error()))
-			return fmt.Errorf("auth service: failed to create JIT PDP: %w", err)
-		}
-		as.pdp = pdp
+		as.cache = cache
 		return nil
 	}
 }
@@ -106,7 +101,13 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 	entityIdentifier := req.Msg.GetEntityIdentifier()
 	withComprehensiveHierarchy := req.Msg.GetWithComprehensiveHierarchy()
 
-	entitlements, err := as.pdp.GetEntitlements(ctx, entityIdentifier, withComprehensiveHierarchy)
+	pdp, err := access.NewJustInTimePDPWithCachedEntitlementPolicy(ctx, as.logger, as.sdk, as.cache)
+	if err != nil {
+		as.logger.Error("failed to create JIT PDP", slog.String("error", err.Error()))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("auth service: failed to create JIT PDP: %w", err))
+	}
+
+	entitlements, err := pdp.GetEntitlements(ctx, entityIdentifier, withComprehensiveHierarchy)
 	if err != nil {
 		// TODO: any bad request errors that aren't 500s?
 		as.logger.ErrorContext(ctx, "failed to get entitlements", slog.String("error", err.Error()))
@@ -136,7 +137,13 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	action := request.GetAction()
 	resource := request.GetResource()
 
-	decisions, permitted, err := as.pdp.GetDecision(ctx, entityIdentifier, action, []*authzV2.Resource{resource})
+	pdp, err := access.NewJustInTimePDPWithCachedEntitlementPolicy(ctx, as.logger, as.sdk, as.cache)
+	if err != nil {
+		as.logger.Error("failed to create JIT PDP", slog.String("error", err.Error()))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("auth service: failed to create JIT PDP: %w", err))
+	}
+
+	decisions, permitted, err := pdp.GetDecision(ctx, entityIdentifier, action, []*authzV2.Resource{resource})
 	if err != nil {
 		// TODO: any bad request errors that aren't 500s?
 		as.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))
@@ -166,7 +173,13 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 	action := request.GetAction()
 	resources := request.GetResources()
 
-	decisions, allPermitted, err := as.pdp.GetDecision(ctx, entityIdentifier, action, resources)
+	pdp, err := access.NewJustInTimePDPWithCachedEntitlementPolicy(ctx, as.logger, as.sdk, as.cache)
+	if err != nil {
+		as.logger.Error("failed to create JIT PDP", slog.String("error", err.Error()))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("auth service: failed to create JIT PDP: %w", err))
+	}
+
+	decisions, allPermitted, err := pdp.GetDecision(ctx, entityIdentifier, action, resources)
 	if err != nil {
 		// TODO: any bad request errors that aren't 500s?
 		as.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))

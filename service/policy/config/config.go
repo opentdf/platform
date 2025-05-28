@@ -11,7 +11,7 @@ import (
 )
 
 // Default refresh interval, overriden by policy config when set
-var configuredRefreshInterval = 5 * time.Minute
+var configuredRefreshInterval = 5 * time.Second
 
 // Global policy config to share among policy services
 type Config struct {
@@ -21,7 +21,7 @@ type Config struct {
 	ListRequestLimitMax int `mapstructure:"list_request_limit_max" default:"2500"`
 
 	// Interval in seconds to refresh the in-memory policy entitlement cache (attributes and subject mappings)
-	CacheRefreshIntervalSeconds int `mapstructure:"cache_refresh_interval_seconds" default:"300"` // Default to 5 minutes
+	CacheRefreshIntervalSeconds int `mapstructure:"cache_refresh_interval_seconds" default:"30"` // Default to 30 seconds
 }
 
 func (c Config) Validate() error {

@@ -769,10 +769,10 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithChildKeys_Fails() {
 		KeyId:        keyID,
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P521,
 		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
+		PublicKeyCtx: &policy.PublicKeyCtx{
 			Pem: keyCtx,
 		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			KeyId:      keyID,
 			WrappedKey: keyCtx,
 		},

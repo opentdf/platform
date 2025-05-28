@@ -28,6 +28,8 @@ type KeyAccessServerRegistryServiceClient interface {
 	ListKeys(ctx context.Context, req *kasregistry.ListKeysRequest) (*kasregistry.ListKeysResponse, error)
 	UpdateKey(ctx context.Context, req *kasregistry.UpdateKeyRequest) (*kasregistry.UpdateKeyResponse, error)
 	RotateKey(ctx context.Context, req *kasregistry.RotateKeyRequest) (*kasregistry.RotateKeyResponse, error)
+	SetBaseKey(ctx context.Context, req *kasregistry.SetBaseKeyRequest) (*kasregistry.SetBaseKeyResponse, error)
+	GetBaseKey(ctx context.Context, req *kasregistry.GetBaseKeyRequest) (*kasregistry.GetBaseKeyResponse, error)
 }
 
 func (w *KeyAccessServerRegistryServiceClientConnectWrapper) ListKeyAccessServers(ctx context.Context, req *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
@@ -123,6 +125,24 @@ func (w *KeyAccessServerRegistryServiceClientConnectWrapper) UpdateKey(ctx conte
 func (w *KeyAccessServerRegistryServiceClientConnectWrapper) RotateKey(ctx context.Context, req *kasregistry.RotateKeyRequest) (*kasregistry.RotateKeyResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.KeyAccessServerRegistryServiceClient.RotateKey(ctx, connect.NewRequest(req))
+	if res == nil {
+		return nil, err
+	}
+	return res.Msg, err
+}
+
+func (w *KeyAccessServerRegistryServiceClientConnectWrapper) SetBaseKey(ctx context.Context, req *kasregistry.SetBaseKeyRequest) (*kasregistry.SetBaseKeyResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.KeyAccessServerRegistryServiceClient.SetBaseKey(ctx, connect.NewRequest(req))
+	if res == nil {
+		return nil, err
+	}
+	return res.Msg, err
+}
+
+func (w *KeyAccessServerRegistryServiceClientConnectWrapper) GetBaseKey(ctx context.Context, req *kasregistry.GetBaseKeyRequest) (*kasregistry.GetBaseKeyResponse, error) {
+	// Wrap Connect RPC client request
+	res, err := w.KeyAccessServerRegistryServiceClient.GetBaseKey(ctx, connect.NewRequest(req))
 	if res == nil {
 		return nil, err
 	}

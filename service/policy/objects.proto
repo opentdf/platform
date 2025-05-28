@@ -463,8 +463,7 @@ enum Algorithm {
 enum KeyStatus {
   KEY_STATUS_UNSPECIFIED = 0;
   KEY_STATUS_ACTIVE = 1;
-  KEY_STATUS_INACTIVE = 2;
-  KEY_STATUS_COMPROMISED = 3;
+  KEY_STATUS_ROTATED = 2;
 }
 
 // Describes the management and operational mode of a cryptographic key.
@@ -499,12 +498,12 @@ message KasKey {
   string kas_uri = 3;
 }
 
-message KasPublicKeyCtx {
+message PublicKeyCtx {
   // Required
   string pem = 1 [(buf.validate.field).string = {min_len: 1}]; // Base64 encoded public key in PEM format
 }
 
-message KasPrivateKeyCtx {
+message PrivateKeyCtx {
   // Required
   string key_id = 1 [(buf.validate.field).string = {min_len: 1}]; // Key ID for the symmetric key wrapping this key.
   // Optional
@@ -523,9 +522,9 @@ message AsymmetricKey {
   // Required
   KeyMode key_mode = 5; // Specifies how the key is managed (local or remote)
   // Required
-  KasPublicKeyCtx public_key_ctx = 6; // Specific structure based on key provider implementation
+  PublicKeyCtx public_key_ctx = 6; // Specific structure based on key provider implementation
   // Optional
-  KasPrivateKeyCtx private_key_ctx = 7; // Specific structure based on key provider implementation
+  PrivateKeyCtx private_key_ctx = 7; // Specific structure based on key provider implementation
   // Optional
   KeyProviderConfig provider_config = 8; // Configuration for the key provider
 

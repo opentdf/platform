@@ -4,6 +4,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -31,20 +32,22 @@ func runDecisionBenchmarkV2(_ *cobra.Command, _ []string) error {
 	}
 
 	var resources []*authzV2.Resource
-	resource := &authzV2.Resource{
-		Resource: &authzV2.Resource_AttributeValues_{
-			AttributeValues: &authzV2.Resource_AttributeValues{
-				Fqns: []string{"https://example.com/attr/attr1/value/value1"},
-			},
-		},
-	}
+	attrValueFQN := "https://example.com/attr/attr1/value/value1"
 
 	for i := range config.RequestCount {
-		resource.EphemeralId = fmt.Sprintf("resource-%d", i)
-		resources = append(resources, resource)
+		r := &authzV2.Resource{
+			EphemeralId: "resource-%d" + strconv.Itoa(i),
+			Resource: &authzV2.Resource_AttributeValues_{
+				AttributeValues: &authzV2.Resource_AttributeValues{
+					Fqns: []string{attrValueFQN},
+				},
+			},
+		}
+		resources = append(resources, r)
 	}
 
-	req := &authzV2.GetDecisionMultiResourceRequest{
+	start := time.Now()
+	res, err := client.AuthorizationV2.GetDecisionMultiResource(context.Background(), &authzV2.GetDecisionMultiResourceRequest{
 		Action: &policy.Action{
 			Name: "read",
 		},
@@ -68,10 +71,7 @@ func runDecisionBenchmarkV2(_ *cobra.Command, _ []string) error {
 			},
 		},
 		Resources: resources,
-	}
-
-	start := time.Now()
-	res, err := client.AuthorizationV2.GetDecisionMultiResource(context.Background(), req)
+	})
 	end := time.Now()
 	totalTime := end.Sub(start)
 

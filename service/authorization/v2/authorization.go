@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	policyCache "github.com/opentdf/platform/service/policy/cache"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
@@ -32,7 +33,17 @@ type Config struct{}
 // When all services are completed, new up the JustInTime PDP to retrieve and store all entitlement policy in memory
 func OnCompleteServiceRegistration(as *Service) serviceregistry.OnCompleteServiceRegistrationHook {
 	return func(ctx context.Context) error {
-		pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
+		cache, err := policyCache.NewEntitlementPolicyCache(as.sdk, as.logger)
+		if err != nil {
+			as.logger.Error("failed to create entitlement policy cache", slog.Any("error", err))
+			return fmt.Errorf("auth service: failed to create entitlement policy cache: %w", err)
+		}
+		if err := cache.Start(ctx); err != nil {
+			as.logger.Error("failed to start entitlement policy cache", slog.Any("error", err))
+			return fmt.Errorf("auth service: failed to start entitlement policy cache: %w", err)
+		}
+
+		pdp, err := access.NewJustInTimePDPWithCachedEntitlementPolicy(ctx, as.logger, as.sdk, cache)
 		if err != nil {
 			as.logger.Error("failed to create JIT PDP", slog.String("error", err.Error()))
 			return fmt.Errorf("auth service: failed to create JIT PDP: %w", err)

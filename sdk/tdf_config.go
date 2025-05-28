@@ -3,12 +3,9 @@ package sdk
 import (
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"net"
 	"net/url"
-	"runtime"
 	"strings"
-	"time"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -82,6 +79,7 @@ type TDFConfig struct {
 	keyType                    ocrypto.KeyType
 	useHex                     bool
 	excludeVersionFromManifest bool
+	addDefaultAssertion        bool
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -93,6 +91,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
 		keyType:                   ocrypto.RSA2048Key, // default to RSA
+		addDefaultAssertion:       false,
 	}
 
 	for _, o := range opt {
@@ -220,37 +219,10 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 }
 
-// WithStandardAssertions adds a predefined set of standard assertions to the TDFConfig.
-func WithStandardAssertions() TDFOption {
+// WithDefaultAssertion returns an Option that adds a default assertion to the TDF.
+func WithDefaultAssertion() TDFOption {
 	return func(c *TDFConfig) error {
-		// Define standard assertions
-		standardAssertions := []AssertionConfig{
-			{
-				ID:             uuid.NewString(),
-				Type:           BaseAssertion,
-				Scope:          Paylaod,
-				AppliesToState: Unencrypted,
-				Statement: Statement{
-					Format: "string",
-					Schema: "",
-					Value:  time.Now().Format(time.RFC3339),
-				},
-			},
-			{
-				ID:             uuid.NewString(),
-				Type:           BaseAssertion,
-				Scope:          Paylaod,
-				AppliesToState: Unencrypted,
-				Statement: Statement{
-					Format: "string",
-					Schema: "metadata",
-					Value:  fmt.Sprintf("Go-SDK/%s OS/%s-%s", TDFSpecVersion, runtime.GOOS, runtime.GOARCH),
-				},
-			},
-		}
-
-		// Append the standard assertions to the existing list
-		c.assertions = append(c.assertions, standardAssertions...)
+		c.addDefaultAssertion = true
 		return nil
 	}
 }

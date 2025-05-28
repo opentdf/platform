@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"runtime"
+	"time"
 
 	"github.com/gowebpki/jcs"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -282,4 +284,38 @@ func (k AssertionVerificationKeys) Get(assertionID string) (AssertionKey, error)
 // IsEmpty returns true if the default key and the keys map are empty.
 func (k AssertionVerificationKeys) IsEmpty() bool {
 	return k.DefaultKey.IsEmpty() && len(k.Keys) == 0
+}
+
+// GetDefaultAssertionConfig returns a default assertion configuration with predefined values.
+func GetDefaultAssertionConfig() AssertionConfig {
+	// Define the JSON structure
+	type Metadata struct {
+		TDFSpecVersion string `json:"TDFSpecVersion"`
+		CreationDate   string `json:"creationDate"`
+		OS             string `json:"OS"`
+		SDKLang        string `json:"sdk"`
+	}
+
+	// Populate the metadata
+	metadata := Metadata{
+		TDFSpecVersion: TDFSpecVersion,
+		CreationDate:   time.Now().Format(time.RFC3339),
+		OS:             runtime.GOOS,
+		SDKLang:        "Go",
+	}
+
+	// Marshal the metadata to JSON
+	metadataJSON, _ := json.Marshal(metadata)
+
+	return AssertionConfig{
+		ID:             "default-assertion",
+		Type:           BaseAssertion,
+		Scope:          Paylaod,
+		AppliesToState: Unencrypted,
+		Statement: Statement{
+			Format: "json",
+			Schema: "metadata",
+			Value:  string(metadataJSON),
+		},
+	}
 }

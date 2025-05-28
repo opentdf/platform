@@ -303,6 +303,10 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.Payload.IsEncrypted = true
 
 	var signedAssertion []Assertion
+	if tdfConfig.addDefaultAssertion {
+		tdfConfig.assertions = append(tdfConfig.assertions, GetDefaultAssertionConfig())
+	}
+
 	for _, assertion := range tdfConfig.assertions {
 		// Store a temporary assertion
 		tmpAssertion := Assertion{}

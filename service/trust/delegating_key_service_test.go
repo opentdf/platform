@@ -99,9 +99,9 @@ func (m *MockKeyDetails) IsLegacy() bool {
 	return args.Bool(0)
 }
 
-func (m *MockKeyDetails) ExportPrivateKey() ([]byte, error) {
+func (m *MockKeyDetails) ExportPrivateKey(_ context.Context) (*PrivateKey, error) {
 	args := m.Called()
-	if a0, ok := args.Get(0).([]byte); ok {
+	if a0, ok := args.Get(0).(*PrivateKey); ok {
 		return a0, args.Error(1)
 	}
 	return nil, args.Error(1)

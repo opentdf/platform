@@ -127,8 +127,8 @@ func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
 	}
 }
 
-// WithTrustKeyManager option sets the trust key manager to be used for the server.
-func WithTrustKeyManager(managers []trust.KeyManager) StartOptions {
+// WithTrustKeyManagers option sets the trust key manager to be used for the server.
+func WithTrustKeyManagers(managers []trust.KeyManager) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.trustKeyManagers = managers
 		return c

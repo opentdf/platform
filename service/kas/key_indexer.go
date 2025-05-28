@@ -16,7 +16,6 @@ import (
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/trust"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var ErrNoActiveKeyForAlgorithm = errors.New("no active key found for specified algorithm")
@@ -212,8 +211,11 @@ func convertPEMToJWK(_ string) (string, error) {
 	return "", errors.New("convertPEMToJWK function is not implemented")
 }
 
-func (p *KeyAdapter) ExportPrivateKey() ([]byte, error) {
-	return protojson.Marshal(p.key.GetKey().GetPrivateKeyCtx())
+func (p *KeyAdapter) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
+	return &trust.PrivateKey{
+		WrappingKeyId: trust.KeyIdentifier(p.key.GetKey().GetPrivateKeyCtx().GetKeyId()),
+		WrappedKey:    []byte(p.key.GetKey().GetPrivateKeyCtx().GetWrappedKey()),
+	}, nil
 }
 
 func (p *KeyAdapter) ExportPublicKey(ctx context.Context, format trust.KeyType) (string, error) {

@@ -16,7 +16,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/trust"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/store"
@@ -71,18 +70,12 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 	// Implementation of Decrypt method
 
 	// Get Private Key
-	privateKeyCtx, err := keyDetails.ExportPrivateKey()
+	privateKeyCtx, err := keyDetails.ExportPrivateKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
 
-	// Unmarshal the private key to policy.KasPrivateKeyCtx
-	wrappedKey := &policy.PrivateKeyCtx{}
-	if err := protojson.Unmarshal(privateKeyCtx, wrappedKey); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal private key: %w", err)
-	}
-
-	privKey, err := b.unwrap(ctx, string(keyDetails.ID()), wrappedKey.GetWrappedKey())
+	privKey, err := b.unwrap(ctx, string(keyDetails.ID()), string(privateKeyCtx.WrappedKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to unwrap private key: %w", err)
 	}
@@ -120,16 +113,12 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 
 func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
 	// Implementation of DeriveKey method
-	privateKeyCtx, err := keyDetails.ExportPrivateKey()
+	privateKeyCtx, err := keyDetails.ExportPrivateKey(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get private key: %w", err)
 	}
-	wrappedKey := &policy.PrivateKeyCtx{}
-	if err := protojson.Unmarshal(privateKeyCtx, wrappedKey); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal private key: %w", err)
-	}
 
-	privKey, err := b.unwrap(ctx, string(keyDetails.ID()), wrappedKey.GetWrappedKey())
+	privKey, err := b.unwrap(ctx, string(keyDetails.ID()), string(privateKeyCtx.WrappedKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to unwrap private key: %w", err)
 	}

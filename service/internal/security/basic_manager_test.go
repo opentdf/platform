@@ -59,9 +59,9 @@ func (m *MockKeyDetails) IsLegacy() bool {
 	return args.Bool(0)
 }
 
-func (m *MockKeyDetails) ExportPrivateKey() ([]byte, error) {
+func (m *MockKeyDetails) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
 	args := m.Called()
-	if pk, ok := args.Get(0).([]byte); ok {
+	if pk, ok := args.Get(0).(*trust.PrivateKey); ok {
 		return pk, args.Error(1)
 	}
 	return nil, args.Error(1)

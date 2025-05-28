@@ -137,7 +137,7 @@ func (k *KeyDetailsAdapter) IsLegacy() bool {
 	return k.legacy
 }
 
-func (k *KeyDetailsAdapter) ExportPrivateKey() ([]byte, error) {
+func (k *KeyDetailsAdapter) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
 	return nil, errors.New("private key export not supported")
 }
 

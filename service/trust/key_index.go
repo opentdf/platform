@@ -17,6 +17,13 @@ const (
 // KeyIdentifier uniquely identifies a key
 type KeyIdentifier string
 
+type PrivateKey struct {
+	// Key ID of the Key used to wrap the private key
+	WrappingKeyId KeyIdentifier
+	// Wrapped Key is the encrypted private key
+	WrappedKey []byte
+}
+
 // KeyDetails provides information about a specific key
 type KeyDetails interface {
 	// ID returns the unique identifier for the key
@@ -29,7 +36,8 @@ type KeyDetails interface {
 	IsLegacy() bool
 
 	// ExportPrivateKey exports the private key in the specified format
-	ExportPrivateKey() ([]byte, error)
+	// Returns error if key is not exportable
+	ExportPrivateKey(ctx context.Context) (*PrivateKey, error)
 
 	// ExportPublicKey exports the public key in the specified format
 	ExportPublicKey(ctx context.Context, format KeyType) (string, error)

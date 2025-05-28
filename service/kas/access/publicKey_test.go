@@ -52,7 +52,7 @@ func (m *MockKeyDetails) IsLegacy() bool {
 	return m.legacy
 }
 
-func (m *MockKeyDetails) ExportPrivateKey() ([]byte, error) {
+func (m *MockKeyDetails) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
 	return nil, errors.New("not implemented for tests")
 }
 

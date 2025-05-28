@@ -40,8 +40,8 @@ type fakeKeyDetails struct {
 func (f *fakeKeyDetails) ID() trust.KeyIdentifier { return f.id }
 func (f *fakeKeyDetails) Algorithm() string       { return f.algorithm }
 func (f *fakeKeyDetails) IsLegacy() bool          { return f.legacy }
-func (f *fakeKeyDetails) ExportPrivateKey() ([]byte, error) {
-	return []byte{}, nil
+func (f *fakeKeyDetails) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
+	return &trust.PrivateKey{}, nil
 }
 
 func (f *fakeKeyDetails) ExportPublicKey(context.Context, trust.KeyType) (string, error) {

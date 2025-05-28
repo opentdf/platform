@@ -122,7 +122,7 @@ func FetchUserInfo(ctx context.Context, userInfoEndpoint string, tokenRaw string
 
 	// Use our debug transport for the user info request
 	client := &http.Client{
-		Transport: NewDebugTransport(http.DefaultTransport),
+		Timeout: 30 * 1e9, // 30 seconds
 	}
 
 	resp, err := client.Do(req)

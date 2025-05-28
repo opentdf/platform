@@ -20,8 +20,8 @@ func ExchangeToken(ctx context.Context, issuer, clientID, clientSecret, subjectT
 	logger.Printf("Starting token exchange: issuer=%s, clientID=%s", issuer, clientID)
 
 	// Create a debug client with a custom transport that logs requests and responses
-	debugClient := &http.Client{
-		Transport: NewDebugTransport(http.DefaultTransport),
+	httpClient := &http.Client{
+		Timeout: 30 * 1e9, // 30 seconds
 	}
 
 	// Create the token exchanger with our debug client
@@ -30,7 +30,7 @@ func ExchangeToken(ctx context.Context, issuer, clientID, clientSecret, subjectT
 		issuer,
 		clientID,
 		clientSecret,
-		tokenexchange.WithHTTPClient(debugClient),
+		tokenexchange.WithHTTPClient(httpClient),
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to create token exchanger: %w", err)

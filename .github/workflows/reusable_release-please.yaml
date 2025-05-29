@@ -41,6 +41,14 @@ jobs:
       release_created: ${{ steps.release-please.outputs.release_created }}
       tag_name: ${{ steps.release-please.outputs.tag_name }}
     steps:
+
+      - name: "Validate branch"
+        if: ${{ !github.ref_name == 'main' || !startsWith(github.ref_name, 'release/') }}
+        shell: bash
+        run: |
+          echo "Error: invalid github ref [${{ github.ref }}] for release-please action, must be main or 'release/**" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit 1
+
       - name: Generate a token
         id: generate_token
         uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6

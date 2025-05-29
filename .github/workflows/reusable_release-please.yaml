@@ -48,7 +48,7 @@ jobs:
         env:
           REF: ${{ github.ref }}
         run: |
-          echo "Error: invalid github ref [$REF] for release-please action, must be main or 'release/**" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Error: invalid github ref ['$REF'] for release-please action, must be main or 'release/**" | tee -a "$GITHUB_STEP_SUMMARY"
           exit 1
 
       - name: Generate a token

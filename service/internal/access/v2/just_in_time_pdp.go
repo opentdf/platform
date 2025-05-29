@@ -13,6 +13,7 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
 
@@ -63,7 +64,11 @@ func NewJustInTimePDP(
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch all subject mappings: %w", err)
 	}
-	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings)
+	allRegisteredResources, err := p.fetchAllRegisteredResources(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch all registered resources: %w", err)
+	}
+	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings, allRegisteredResources)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
 	}
@@ -267,6 +272,34 @@ func (p *JustInTimePDP) fetchAllSubjectMappings(ctx context.Context) ([]*policy.
 		}
 	}
 	return smList, nil
+}
+
+// fetchAllRegisteredResources retrieves all registered resources within policy
+func (p *JustInTimePDP) fetchAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error) {
+	// If quantity of registered resources exceeds maximum list pagination, all are needed to determine entitlements
+	var nextOffset int32
+	rrList := make([]*policy.RegisteredResource, 0)
+
+	for {
+		listed, err := p.sdk.RegisteredResources.ListRegisteredResources(ctx, &registeredresources.ListRegisteredResourcesRequest{
+			// defer to service default for limit pagination
+			Pagination: &policy.PageRequest{
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list registered resources: %w", err)
+		}
+
+		nextOffset = listed.GetPagination().GetNextOffset()
+		rrList = append(rrList, listed.GetResources()...)
+
+		if nextOffset <= 0 {
+			break
+		}
+	}
+
+	return rrList, nil
 }
 
 // resolveEntitiesFromEntityChain roundtrips to ERS to resolve the provided entity chain

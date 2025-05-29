@@ -16,6 +16,7 @@ import (
 var (
 	ErrInvalidSubjectMapping      = errors.New("access: invalid subject mapping")
 	ErrInvalidAttributeDefinition = errors.New("access: invalid attribute definition")
+	ErrInvalidRegisteredResource  = errors.New("access: invalid registered resource")
 )
 
 // getDefinition parses the value FQN and uses it to retrieve the definition from the provided definitions canmap

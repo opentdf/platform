@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/opentdf/platform/lib/identifier"
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -47,7 +48,7 @@ type EntitlementFailure struct {
 type PolicyDecisionPoint struct {
 	logger                             *logger.Logger
 	allEntitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
-	// allRegisteredResourcesByValueFQN map[string]*policy.RegisteredResourceValue
+	allRegisteredResourcesByValueFQN   map[string]*policy.RegisteredResourceValue
 }
 
 var (
@@ -67,8 +68,7 @@ func NewPolicyDecisionPoint(
 	l *logger.Logger,
 	allAttributeDefinitions []*policy.Attribute,
 	allSubjectMappings []*policy.SubjectMapping,
-	// TODO: take in all registered resources and store them in memory by value FQN
-	// allRegisteredResources []*policy.RegisteredResource,
+	allRegisteredResources []*policy.RegisteredResource,
 ) (*PolicyDecisionPoint, error) {
 	var err error
 
@@ -126,9 +126,26 @@ func NewPolicyDecisionPoint(
 		allEntitleableAttributesByValueFQN[mappedValueFQN] = mapped
 	}
 
+	allRegisteredResourcesByValueFQN := make(map[string]*policy.RegisteredResourceValue)
+	for _, rr := range allRegisteredResources {
+		if err := validateRegisteredResource(rr); err != nil {
+			return nil, fmt.Errorf("invalid registered resource: %w", err)
+		}
+		rrName := rr.GetName()
+
+		for _, v := range rr.GetValues() {
+			fullyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
+				Name:  rrName,
+				Value: v.GetValue(),
+			}
+			allRegisteredResourcesByValueFQN[fullyQualifiedValue.FQN()] = v
+		}
+	}
+
 	pdp := &PolicyDecisionPoint{
 		l,
 		allEntitleableAttributesByValueFQN,
+		allRegisteredResourcesByValueFQN,
 	}
 	return pdp, nil
 }

@@ -129,8 +129,7 @@
 
   echo "[INFO] validating default key is r2"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
-  echo "[INFO] current opentdf.yaml configuration after key rotation:"
-  cat opentdf.yaml
+
   [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r2 ]
 
   echo "[INFO] decrypting after key rotation"
@@ -159,8 +158,7 @@
 
   echo "[INFO] validating default key is r1"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
-  echo "[INFO] current opentdf.yaml configuration after downgrade:"
-  cat opentdf.yaml
+
   [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
 
   echo "[INFO] validating keys are correct by alg"

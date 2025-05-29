@@ -193,6 +193,12 @@ jobs:
             sdk/go.sum
       - run: go mod download
       - run: go mod verify
+      - name: Install mkcert
+        run: |
+          sudo apt-get install -y libnss3-tools
+          curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
+          chmod +x mkcert-v*-linux-amd64
+          sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
       - run: |
           .github/scripts/init-temp-keys.sh
           mkcert -install
@@ -217,7 +223,7 @@ jobs:
           log-output-if: true
           wait-for: 90s
       - run: |
-          echo "VAULT_CACERT=$(pwd)/keys/vault-ca.pem" >> $GITHUB_ENV
+          echo "VAULT_CACERT=$(pwd)/keys/vault-ca.pem" >> "$GITHUB_ENV"
       - name: Added Trusted Certs
         run: |
           sudo chmod -R 777 ./keys

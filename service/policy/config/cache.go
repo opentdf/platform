@@ -12,8 +12,10 @@ import (
 )
 
 // Shared service-level instance of EntitlementPolicyCache (attributes and subject mappings)
-var entitlementPolicyCacheInstance *EntitlementPolicyCache
-var entitlementPolicyCacheOnce sync.Once
+var (
+	entitlementPolicyCacheInstance *EntitlementPolicyCache
+	entitlementPolicyCacheOnce     sync.Once
+)
 
 // debounceInterval is the minimum time between refresh operations
 const debounceInterval = 1 * time.Second

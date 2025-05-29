@@ -34,6 +34,7 @@ func OnServicesStarted(svc *UnsafeService) serviceregistry.OnServicesStartedHook
 		return nil
 	}
 }
+
 func OnConfigUpdate(unsafeSvc *UnsafeService) serviceregistry.OnConfigUpdateHook {
 	return func(_ context.Context, cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)

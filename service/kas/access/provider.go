@@ -46,11 +46,11 @@ type KASConfig struct {
 	// Enables experimental EC rewrap support in TDFs
 	// Enabling is required to parse KAOs with the `ec-wrapped` type,
 	// and (currently) also enables responding with ECIES encrypted responses.
-	ECTDFEnabled    bool            `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
-	PreviewFeatures PreviewFeatures `mapstructure:"preview_features" json:"preview_features"`
+	ECTDFEnabled bool    `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	Preview      Preview `mapstructure:"preview" json:"preview"`
 }
 
-type PreviewFeatures struct {
+type Preview struct {
 	ECTDFEnabled  bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
 	KeyManagement bool `mapstructure:"key_management" json:"key_management"`
 }

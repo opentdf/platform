@@ -89,7 +89,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config, err))
 				} // kasURLString will be used for p.URI
 
-				if kasCfg.PreviewFeatures.KeyManagement {
+				if kasCfg.Preview.KeyManagement {
 					srp.Logger.Info("Preview Feature: Key management is enabled")
 
 					// Configure new delegation service

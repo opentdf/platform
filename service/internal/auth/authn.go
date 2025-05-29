@@ -269,15 +269,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		default:
 			action = ActionUnsafe
 		}
-		if allow, err := a.enforcer.Enforce(token, userInfoRaw, r.URL.Path, action); err != nil {
-			if err.Error() == "permission denied" {
-				a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
-				http.Error(w, "permission denied", http.StatusForbidden)
-				return
-			}
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
-		} else if !allow {
+		if ! a.enforcer.Enforce(token, userInfoRaw, r.URL.Path, action) {
 			a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", token.Subject()))
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return

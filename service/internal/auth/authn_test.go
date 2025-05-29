@@ -166,19 +166,21 @@ func (s *AuthSuite) SetupTest() {
 		JwksURI:          s.server.URL + "/jwks",
 		UserinfoEndpoint: s.server.URL + "/userinfo",
 	}
-	cacheManager, _ := cache.NewCacheManager(100, 1<<20, 64)
+	cacheManager, _ := cache.NewCacheManager(1 << 20)
 	userInfoCache, _ := oidc.NewUserInfoCache(oidcConfig, cacheManager.NewCache("userinfo", cache.Options{Expiration: time.Minute, Cost: 1}), &logger.Logger{Logger: slog.New(slog.Default().Handler())})
 
 	auth, err := NewAuthenticator(
 		context.Background(),
 		Config{
 			AuthNConfig: AuthNConfig{
-				EnforceDPoP: true,
-				Issuer:      s.server.URL,
-				Audience:    "test",
-				DPoPSkew:    time.Hour,
-				TokenSkew:   time.Minute,
-				Policy:      policyCfg,
+				EnforceDPoP:  true,
+				Issuer:       s.server.URL,
+				Audience:     "test",
+				DPoPSkew:     time.Hour,
+				TokenSkew:    time.Minute,
+				Policy:       policyCfg,
+				ClientId:     "dummy-client-id",     // Added dummy ClientId for test config
+				ClientSecret: "dummy-client-secret", // Added dummy ClientSecret for test config
 			},
 			PublicRoutes: []string{
 				"/public",
@@ -654,7 +656,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 		JwksURI:          s.server.URL + "/jwks",
 		UserinfoEndpoint: s.server.URL + "/userinfo",
 	}
-	cacheManager, _ := cache.NewCacheManager(100, 1<<20, 64)
+	cacheManager, _ := cache.NewCacheManager(1 << 20)
 	userInfoCache, _ := oidc.NewUserInfoCache(oidcConfig, cacheManager.NewCache("userinfo", cache.Options{Expiration: time.Minute, Cost: 1}), &logger.Logger{Logger: slog.New(slog.Default().Handler())})
 
 	authnConfig := AuthNConfig{

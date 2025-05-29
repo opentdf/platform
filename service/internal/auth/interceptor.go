@@ -57,13 +57,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			p := strings.Split(req.Spec().Procedure, "/")
 			resource := p[1] + "/" + p[2]
 			action := getAction(p[2])
-			if allowed, err := a.enforcer.Enforce(token, userInfoRaw, resource, action); err != nil {
-				if err.Error() == "permission denied" {
-					a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
-					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
-				}
-				return nil, err
-			} else if !allowed {
+			if !a.enforcer.Enforce(token, userInfoRaw, resource, action) {
 				a.logger.Warn("permission denied", slog.String("azp", token.Subject()))
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}

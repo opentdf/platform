@@ -56,5 +56,5 @@ jobs:
         env:
           TARGETS: ${{ steps.backport.outputs.was_successful_by_target }}
         run: |
-          echo -e "Backports were successful:\n$TARGETS"
+          echo -e "Backports were successful:\n$TARGETS" | tee -a "$GITHUB_STEP_SUMMARY"
           exit 1

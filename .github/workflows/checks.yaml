@@ -217,7 +217,7 @@ jobs:
         with:
           run: >
             vault server -dev -dev-root-token-id root  
-              -dev-tls -dev-tls-cert-dir="./keys"
+              -dev-tls -dev-tls-cert-dir="keys"
           wait-on: |
             tcp:localhost:8200
           log-output-if: true
@@ -228,7 +228,8 @@ jobs:
         run: |
           sudo chmod -R 777 ./keys
           sudo apt-get install -y ca-certificates
-          sudo cp "${VAULT_CACERT}" /usr/local/share/ca-certificates
+          sudo cp "${VAULT_CACERT}" /usr/local/share/ca-certificates || echo unable to find "${VAULT_CACERT}"
+          sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates || echo unable to find ./keys/localhost.crt
           sudo update-ca-certificates
       - run: docker compose -f ./examples/ckms/docker-compose.yaml up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
       - run: go run ./service provision keycloak

@@ -316,7 +316,30 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
 			}
+
+			grants, err = mapKasKeysToGrants(keys, grants, c.logger)
+			if err != nil {
+				return nil, fmt.Errorf("failed to map keys to grants: %w", err)
+			}
 		}
+
+		for _, val := range values {
+			if val.GetKasKeys() == nil {
+				continue
+			}
+
+			valGrants, err := mapKasKeysToGrants(val.GetKasKeys(), val.GetGrants(), c.logger)
+			if err != nil {
+				return nil, fmt.Errorf("failed to map keys to grants: %w", err)
+			}
+			val.Grants = valGrants
+		}
+
+		nsGrants, err := mapKasKeysToGrants(ns.GetKasKeys(), ns.GetGrants(), c.logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to map keys to grants: %w", err)
+		}
+		ns.Grants = nsGrants
 
 		attrs[i] = &policy.Attribute{
 			Id:        attr.ID,

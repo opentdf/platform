@@ -17,9 +17,6 @@ var (
 	entitlementPolicyCacheOnce     sync.Once
 )
 
-// debounceInterval is the minimum time between refresh operations
-const debounceInterval = 1 * time.Second
-
 // EntitlementPolicyCache caches attributes and subject mappings with periodic refresh
 type EntitlementPolicyCache struct {
 	mutex                     sync.RWMutex
@@ -30,8 +27,6 @@ type EntitlementPolicyCache struct {
 	configuredRefreshInterval time.Duration
 	stopRefresh               chan struct{}
 	refreshCompleted          chan struct{}
-	lastRefreshTime           time.Time
-	lastRefreshMutex          sync.Mutex // Protects lastRefreshTime
 }
 
 func (c *EntitlementPolicyCache) IsEnabled() bool {
@@ -61,21 +56,6 @@ func (c *EntitlementPolicyCache) Stop() {
 
 // Refresh manually refreshes the cache
 func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
-	// Time-based debounce: if it's been less than debounceInterval since the last refresh, skip this one
-	c.lastRefreshMutex.Lock()
-	sinceLastRefresh := time.Since(c.lastRefreshTime)
-	if sinceLastRefresh < debounceInterval {
-		c.logger.TraceContext(ctx, "EntitlementPolicyCache refresh debounced, skipping",
-			"since_last_refresh", sinceLastRefresh.String(),
-			"debounce_interval", debounceInterval.String())
-		c.lastRefreshMutex.Unlock()
-		return nil
-	}
-
-	// We're going ahead with the refresh, update the last refresh time
-	c.lastRefreshTime = time.Now()
-	c.lastRefreshMutex.Unlock()
-
 	attributes, err := c.dbClient.ListAllAttributes(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch attributes: %w", err)
@@ -193,7 +173,6 @@ func GetSharedEntitlementPolicyCache(
 			subjectMappings:           make([]*policy.SubjectMapping, 0),
 			stopRefresh:               make(chan struct{}),
 			refreshCompleted:          make(chan struct{}),
-			lastRefreshTime:           time.Time{}, // Initialize with zero time to allow first refresh
 		}
 		if err := entitlementPolicyCacheInstance.Start(ctx); err != nil {
 			l.ErrorContext(ctx, "Failed to start entitlement policy cache", "error", err)

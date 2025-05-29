@@ -100,50 +100,54 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 	return nil
 }
 
-// ListCachedAttributes returns the cached attributes, where a limit of 0 and offset 0 returns all attributes
-func (c *EntitlementPolicyCache) ListCachedAttributes(limit, offset int32) []*policy.Attribute {
+// ListCachedAttributes returns the cached attributes and overall total, where
+// a limit of 0 and offset 0 returns all attributes
+func (c *EntitlementPolicyCache) ListCachedAttributes(limit, offset int32) ([]*policy.Attribute, int32) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
 	attributes := c.attributes
+	total := int32(len(attributes))
 	// TODO: we may want to copy this so callers cannot modify the cached data
 	// If offset is beyond the length, return empty slice
-	if offset >= int32(len(attributes)) {
-		return nil
+	if offset >= total {
+		return nil, 0
 	}
 	// If limit is 0, return any attributes beyond the offset
 	if limit == 0 {
-		return attributes[offset:]
+		return attributes[offset:], total
 	}
 	// Ensure we don't exceed the slice bounds
 	limited := offset + limit
-	if limited > int32(len(attributes)) {
-		limited = int32(len(attributes)) - offset
+	if limited > total {
+		limited = total - offset
 	}
-	return attributes[offset:limited]
+	return attributes[offset:limited], total
 }
 
-// ListCachedSubjectMappings returns the cached subject mappings, where a limit of 0 returns all subject mappings
-func (c *EntitlementPolicyCache) ListCachedSubjectMappings(limit, offset int32) []*policy.SubjectMapping {
+// ListCachedSubjectMappings returns the cached subject mappings and overall total, where
+// a limit of 0 returns all subject mappings
+func (c *EntitlementPolicyCache) ListCachedSubjectMappings(limit, offset int32) ([]*policy.SubjectMapping, int32) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
 	subjectMappings := c.subjectMappings
+	total := int32(len(subjectMappings))
 	// TODO: we may want to copy this so callers cannot modify the cached data
 	// If offset is beyond the length, return empty slice
-	if offset >= int32(len(subjectMappings)) {
-		return nil
+	if offset >= total {
+		return nil, 0
 	}
 	// If limit and offset are 0, return any subject mappings beyond the offset
 	if limit == 0 {
-		return subjectMappings[offset:]
+		return subjectMappings[offset:], total
 	}
 	// Ensure we don't exceed the slice bounds
 	limited := offset + limit
-	if limited > int32(len(subjectMappings)) {
-		limited = int32(len(subjectMappings)) - offset
+	if limited > total {
+		limited = total - offset
 	}
-	return subjectMappings[offset:limited]
+	return subjectMappings[offset:limited], total
 }
 
 // periodicRefresh refreshes the cache at the specified interval

@@ -153,12 +153,11 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 		}
 
 		// Get all cached attributes
-		cachedAttrs := s.cache.ListCachedAttributes(limit, offset)
+		cachedAttrs, total := s.cache.ListCachedAttributes(limit, offset)
 
 		// Calculate next offset using the same logic as the DB implementation
 		var nextOffset int32
 		next := offset + limit
-		total := int32(len(cachedAttrs))
 		if next < total {
 			nextOffset = next
 		} // else nextOffset remains 0

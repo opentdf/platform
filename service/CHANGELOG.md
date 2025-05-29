@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.5.4](https://github.com/opentdf/platform/compare/service/v0.5.3...service/v0.5.4) (2025-05-29)
+
+
+### Features
+
+* **authz:** access pdp v2 with actions ([#2264](https://github.com/opentdf/platform/issues/2264)) ([7afefb7](https://github.com/opentdf/platform/commit/7afefb7ac051cc57e8a81dd260f24ac2ae7db246))
+* **authz:** logic for authz v2 (actions within ABAC decisioning) ([#2146](https://github.com/opentdf/platform/issues/2146)) ([0fdc259](https://github.com/opentdf/platform/commit/0fdc2599ba2026f35055f30e186006b1ba87a931))
+* **policy:** Default Platform Keys ([#2254](https://github.com/opentdf/platform/issues/2254)) ([d7447fe](https://github.com/opentdf/platform/commit/d7447fe2604443b4c75c8e547acf414bf78af988))
+* **policy:** Update key status's and UpdateKey rpc. ([#2315](https://github.com/opentdf/platform/issues/2315)) ([7908db9](https://github.com/opentdf/platform/commit/7908db9c2be5adeccd3fb9f177187aee53698ee8))
+
+
+### Bug Fixes
+
+* **policy:** DSPX-1151 update of registered resource value always clears existing action attribute values ([#2325](https://github.com/opentdf/platform/issues/2325)) ([ca94425](https://github.com/opentdf/platform/commit/ca9442562257c52673c3d22ded75d42b32cc0933))
+* **policy:** Ensure non active keys cannot be assigned. ([#2321](https://github.com/opentdf/platform/issues/2321)) ([207d10d](https://github.com/opentdf/platform/commit/207d10d6535b66356cbdf9b4c09626786c7c9f44))
+
 ## [0.5.3](https://github.com/opentdf/platform/compare/service/v0.5.2...service/v0.5.3) (2025-05-22)
 
 

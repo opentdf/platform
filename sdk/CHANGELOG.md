@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.7](https://github.com/opentdf/platform/compare/sdk/v0.4.6...sdk/v0.4.7) (2025-05-29)
+
+
+### Features
+
+* **sdk:** Expose connectrpc wrapper codegen for re-use ([#2322](https://github.com/opentdf/platform/issues/2322)) ([8b29392](https://github.com/opentdf/platform/commit/8b2939288395cd4eea2e7b2aa7e9c02ecaac3ccd))
+
 ## [0.4.6](https://github.com/opentdf/platform/compare/sdk/v0.4.5...sdk/v0.4.6) (2025-05-28)
 
 

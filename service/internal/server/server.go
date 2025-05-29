@@ -91,12 +91,8 @@ func (c Config) LogValue() slog.Value {
 }
 
 type CacheRistrettoConfig struct {
-	// MaxCost is the maximum cost of the cache
-	MaxCost int64 `mapstructure:"maxCost" json:"maxCost" default:"10000000"` // 10MB = 10 * 1024 * 1024 = 10000000
-	// BufferItems is the number of items to buffer when evicting
-	BufferItems int64 `mapstructure:"bufferItems" json:"bufferItems" default:"64"`
-	// MaxEntries is the maximum number of entries in the cache
-	MaxEntries int64 `mapstructure:"maxEntries" json:"maxEntries" default:"1000000"` // 1 million entries
+	// MaxCost is the maximum cost of the cache (default: 100MB)
+	MaxCost int64 `mapstructure:"maxCost" json:"maxCost" default:"100000000"`
 }
 
 type CacheConfig struct {

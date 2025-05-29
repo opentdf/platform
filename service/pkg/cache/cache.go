@@ -28,7 +28,8 @@ type Options struct {
 }
 
 // NewCache creates a new Cache instance using Ristretto as the backend.
-func NewCacheManager(numCounters int64, maxCost int64, bufferItems int64) (*Manager, error) {
+func NewCacheManager(maxCost int64) (*Manager, error) {
+	numCounters, bufferItems := EstimateRistrettoConfigParams(maxCost)
 	store, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: numCounters, // number of keys to track frequency of (10x max items)
 		MaxCost:     maxCost,     // maximum cost of cache (e.g., 1<<20 for 1MB)

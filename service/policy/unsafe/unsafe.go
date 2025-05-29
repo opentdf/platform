@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe/unsafeconnect"
+	otdfSDK "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -23,8 +24,16 @@ type UnsafeService struct { //nolint:revive // UnsafeService is a valid name for
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 	config   *policyconfig.Config
+	sdk      *otdfSDK.SDK
+	cache    *policyconfig.EntitlementPolicyCache // Cache for attributes and subject mappings
 }
 
+func OnServicesStarted(svc *UnsafeService) serviceregistry.OnServicesStartedHook {
+	return func(ctx context.Context) error {
+		svc.cache = policyconfig.GetSharedEntitlementPolicyCache(ctx, svc.dbClient, svc.logger, svc.config)
+		return nil
+	}
+}
 func OnConfigUpdate(unsafeSvc *UnsafeService) serviceregistry.OnConfigUpdateHook {
 	return func(_ context.Context, cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
@@ -41,13 +50,16 @@ func OnConfigUpdate(unsafeSvc *UnsafeService) serviceregistry.OnConfigUpdateHook
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[unsafeconnect.UnsafeServiceHandler] {
 	unsafeSvc := new(UnsafeService)
 	onUpdateConfigHook := OnConfigUpdate(unsafeSvc)
+	onStartHook := OnServicesStarted(unsafeSvc)
+
 	return &serviceregistry.Service[unsafeconnect.UnsafeServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[unsafeconnect.UnsafeServiceHandler]{
-			Namespace:      ns,
-			DB:             dbRegister,
-			ServiceDesc:    &unsafe.UnsafeService_ServiceDesc,
-			ConnectRPCFunc: unsafeconnect.NewUnsafeServiceHandler,
-			OnConfigUpdate: onUpdateConfigHook,
+			Namespace:         ns,
+			DB:                dbRegister,
+			ServiceDesc:       &unsafe.UnsafeService_ServiceDesc,
+			ConnectRPCFunc:    unsafeconnect.NewUnsafeServiceHandler,
+			OnConfigUpdate:    onUpdateConfigHook,
+			OnServicesStarted: onStartHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (unsafeconnect.UnsafeServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
@@ -59,6 +71,8 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				unsafeSvc.logger = logger
 				unsafeSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				unsafeSvc.config = cfg
+				unsafeSvc.sdk = srp.SDK
+
 				return unsafeSvc, nil
 			},
 		},
@@ -98,6 +112,13 @@ func (s *UnsafeService) UnsafeUpdateNamespace(ctx context.Context, req *connect.
 		auditParams.Updated = updated
 
 		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		// Refresh the entitlement policy cache
+		if s.cache.IsEnabled() {
+			if err := s.cache.Refresh(ctx); err != nil {
+				s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after updating namespace", slog.Any("error", err))
+			}
+		}
 
 		rsp.Namespace = &policy.Namespace{
 			Id: id,
@@ -140,6 +161,13 @@ func (s *UnsafeService) UnsafeReactivateNamespace(ctx context.Context, req *conn
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
+	// Refresh the entitlement policy cache
+	if s.cache.IsEnabled() {
+		if err := s.cache.Refresh(ctx); err != nil {
+			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after reactivating namespace", slog.Any("error", err))
+		}
+	}
+
 	rsp.Namespace = &policy.Namespace{
 		Id: id,
 	}
@@ -171,6 +199,13 @@ func (s *UnsafeService) UnsafeDeleteNamespace(ctx context.Context, req *connect.
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	// Refresh the entitlement policy cache
+	if s.cache.IsEnabled() {
+		if err := s.cache.Refresh(ctx); err != nil {
+			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after deleting namespace", slog.Any("error", err))
+		}
+	}
 
 	rsp.Namespace = &policy.Namespace{
 		Id: id,
@@ -211,6 +246,13 @@ func (s *UnsafeService) UnsafeUpdateAttribute(ctx context.Context, req *connect.
 		auditParams.Updated = updated
 
 		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		// Refresh the entitlement policy cache
+		if s.cache.IsEnabled() {
+			if err := s.cache.Refresh(ctx); err != nil {
+				s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after updating attribute", slog.Any("error", err))
+			}
+		}
 
 		rsp.Attribute = &policy.Attribute{
 			Id: id,
@@ -253,6 +295,13 @@ func (s *UnsafeService) UnsafeReactivateAttribute(ctx context.Context, req *conn
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
+	// Refresh the entitlement policy cache
+	if s.cache.IsEnabled() {
+		if err := s.cache.Refresh(ctx); err != nil {
+			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after reactivating attribute", slog.Any("error", err))
+		}
+	}
+
 	rsp.Attribute = &policy.Attribute{
 		Id: id,
 	}
@@ -284,6 +333,13 @@ func (s *UnsafeService) UnsafeDeleteAttribute(ctx context.Context, req *connect.
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	// Refresh the entitlement policy cache
+	if s.cache.IsEnabled() {
+		if err := s.cache.Refresh(ctx); err != nil {
+			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after deleting attribute", slog.Any("error", err))
+		}
+	}
 
 	rsp.Attribute = &policy.Attribute{
 		Id: id,
@@ -324,6 +380,13 @@ func (s *UnsafeService) UnsafeUpdateAttributeValue(ctx context.Context, req *con
 		auditParams.Updated = updated
 
 		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		// Refresh the entitlement policy cache
+		if s.cache.IsEnabled() {
+			if err := s.cache.Refresh(ctx); err != nil {
+				s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after updating attribute value", slog.Any("error", err))
+			}
+		}
 
 		rsp.Value = &policy.Value{
 			Id: id,
@@ -366,6 +429,13 @@ func (s *UnsafeService) UnsafeReactivateAttributeValue(ctx context.Context, req 
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
+	// Refresh the entitlement policy cache
+	if s.cache.IsEnabled() {
+		if err := s.cache.Refresh(ctx); err != nil {
+			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after reactivating attribute value", slog.Any("error", err))
+		}
+	}
+
 	rsp.Value = &policy.Value{
 		Id: id,
 	}
@@ -396,6 +466,13 @@ func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *con
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	// Refresh the entitlement policy cache
+	if s.cache.IsEnabled() {
+		if err := s.cache.Refresh(ctx); err != nil {
+			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after deleting attribute value", slog.Any("error", err))
+		}
+	}
 
 	rsp.Value = &policy.Value{
 		Id: id,

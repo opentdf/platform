@@ -17,6 +17,7 @@ type Config struct {
 	ListRequestLimitMax int `mapstructure:"list_request_limit_max" default:"2500"`
 
 	// Interval in seconds to refresh the in-memory policy entitlement cache (attributes and subject mappings)
+	// If set to 0, no cache will be utilized.
 	CacheRefreshIntervalSeconds int `mapstructure:"cache_refresh_interval_seconds" default:"30"` // Default to 30 seconds
 }
 

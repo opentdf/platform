@@ -2,66 +2,38 @@ package config
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
-	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
-	otdfSDK "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
+	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
 // Shared service-level instance of EntitlementPolicyCache (attributes and subject mappings)
 var entitlementPolicyCacheInstance *EntitlementPolicyCache
 var entitlementPolicyCacheOnce sync.Once
 
+// debounceInterval is the minimum time between refresh operations
+const debounceInterval = 1 * time.Second
+
 // EntitlementPolicyCache caches attributes and subject mappings with periodic refresh
 type EntitlementPolicyCache struct {
 	mutex                     sync.RWMutex
-	debounceRefreshMutex      sync.Mutex
-	sdk                       *otdfSDK.SDK
+	dbClient                  policydb.PolicyDBClient
 	logger                    *logger.Logger
 	attributes                []*policy.Attribute
 	subjectMappings           []*policy.SubjectMapping
 	configuredRefreshInterval time.Duration
 	stopRefresh               chan struct{}
 	refreshCompleted          chan struct{}
+	lastRefreshTime           time.Time
+	lastRefreshMutex          sync.Mutex // Protects lastRefreshTime
 }
 
-func GetSharedEntitlementPolicyCache(
-	ctx context.Context,
-	sdk *otdfSDK.SDK,
-	l *logger.Logger,
-	cfg *Config,
-) (*EntitlementPolicyCache, error) {
-	var err error
-	entitlementPolicyCacheOnce.Do(func() {
-		l.Debug("Initializing shared entitlement policy cache")
-		entitlementPolicyCacheInstance = &EntitlementPolicyCache{
-			logger:                    l,
-			sdk:                       sdk,
-			attributes:                make([]*policy.Attribute, 0),
-			subjectMappings:           make([]*policy.SubjectMapping, 0),
-			configuredRefreshInterval: time.Duration(cfg.CacheRefreshIntervalSeconds) * time.Second,
-			stopRefresh:               make(chan struct{}),
-			refreshCompleted:          make(chan struct{}),
-		}
-		if err = entitlementPolicyCacheInstance.Start(ctx); err != nil {
-			l.ErrorContext(ctx, "Failed to start entitlement policy cache", "error", err)
-			return
-		}
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize entitlement policy cache: %w", err)
-	}
-	if entitlementPolicyCacheInstance == nil {
-		return nil, errors.New("entitlement policy cache not initialized")
-	}
-	return entitlementPolicyCacheInstance, nil
+func (c *EntitlementPolicyCache) IsEnabled() bool {
+	return c != nil
 }
 
 // Start initiates the cache and begins periodic refresh
@@ -87,18 +59,27 @@ func (c *EntitlementPolicyCache) Stop() {
 
 // Refresh manually refreshes the cache
 func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
-	if !c.debounceRefreshMutex.TryLock() {
-		c.logger.DebugContext(ctx, "EntitlementPolicyCache refresh already in progress, skipping")
+	// Time-based debounce: if it's been less than debounceInterval since the last refresh, skip this one
+	c.lastRefreshMutex.Lock()
+	sinceLastRefresh := time.Since(c.lastRefreshTime)
+	if sinceLastRefresh < debounceInterval {
+		c.logger.TraceContext(ctx, "EntitlementPolicyCache refresh debounced, skipping",
+			"since_last_refresh", sinceLastRefresh.String(),
+			"debounce_interval", debounceInterval.String())
+		c.lastRefreshMutex.Unlock()
 		return nil
 	}
-	defer c.debounceRefreshMutex.Unlock()
 
-	attributes, err := c.fetchAllDefinitions(ctx)
+	// We're going ahead with the refresh, update the last refresh time
+	c.lastRefreshTime = time.Now()
+	c.lastRefreshMutex.Unlock()
+
+	attributes, err := c.dbClient.ListAllAttributes(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch attributes: %w", err)
 	}
 
-	subjectMappings, err := c.fetchAllSubjectMappings(ctx)
+	subjectMappings, err := c.dbClient.ListAllSubjectMappings(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch subject mappings: %w", err)
 	}
@@ -117,22 +98,50 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 	return nil
 }
 
-// GetAttributes returns the cached attributes
-func (c *EntitlementPolicyCache) GetAttributes() []*policy.Attribute {
+// ListCachedAttributes returns the cached attributes, where a limit of 0 and offset 0 returns all attributes
+func (c *EntitlementPolicyCache) ListCachedAttributes(limit, offset int32) []*policy.Attribute {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
+	attributes := c.attributes
 	// TODO: we may want to copy this so callers cannot modify the cached data
-	return c.attributes
+	// If offset is beyond the length, return empty slice
+	if offset >= int32(len(attributes)) {
+		return nil
+	}
+	// If limit is 0, return any attributes beyond the offset
+	if limit == 0 {
+		return attributes[offset:]
+	}
+	// Ensure we don't exceed the slice bounds
+	limited := offset + limit
+	if limited > int32(len(attributes)) {
+		limited = int32(len(attributes)) - offset
+	}
+	return attributes[offset:limited]
 }
 
-// GetSubjectMappings returns the cached subject mappings
-func (c *EntitlementPolicyCache) GetSubjectMappings() []*policy.SubjectMapping {
+// ListCachedSubjectMappings returns the cached subject mappings, where a limit of 0 returns all subject mappings
+func (c *EntitlementPolicyCache) ListCachedSubjectMappings(limit, offset int32) []*policy.SubjectMapping {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
+	subjectMappings := c.subjectMappings
 	// TODO: we may want to copy this so callers cannot modify the cached data
-	return c.subjectMappings
+	// If offset is beyond the length, return empty slice
+	if offset >= int32(len(subjectMappings)) {
+		return nil
+	}
+	// If limit and offset are 0, return any subject mappings beyond the offset
+	if limit == 0 {
+		return subjectMappings[offset:]
+	}
+	// Ensure we don't exceed the slice bounds
+	limited := offset + limit
+	if limited > int32(len(subjectMappings)) {
+		limited = int32(len(subjectMappings)) - offset
+	}
+	return subjectMappings[offset:limited]
 }
 
 // periodicRefresh refreshes the cache at the specified interval
@@ -158,57 +167,33 @@ func (c *EntitlementPolicyCache) periodicRefresh(ctx context.Context) {
 	}
 }
 
-// fetchAllDefinitions retrieves all attribute definitions within policy
-func (c *EntitlementPolicyCache) fetchAllDefinitions(ctx context.Context) ([]*policy.Attribute, error) {
-	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
-	var nextOffset int32
-	attrsList := make([]*policy.Attribute, 0)
-
-	for {
-		listed, err := c.sdk.Attributes.ListAttributes(ctx, &attrs.ListAttributesRequest{
-			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
-			// defer to service default for limit pagination
-			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to list attributes: %w", err)
-		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
-		attrsList = append(attrsList, listed.GetAttributes()...)
-
-		if nextOffset <= 0 {
-			break
-		}
+func GetSharedEntitlementPolicyCache(
+	ctx context.Context,
+	dbClient policydb.PolicyDBClient,
+	l *logger.Logger,
+	cfg *Config,
+) *EntitlementPolicyCache {
+	if cfg.CacheRefreshIntervalSeconds == 0 {
+		l.DebugContext(ctx, "Entitlement policy cache is disabled, returning nil")
+		return nil
 	}
-	return attrsList, nil
-}
-
-// fetchAllSubjectMappings retrieves all attribute values' subject mappings within policy
-func (c *EntitlementPolicyCache) fetchAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
-	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
-	var nextOffset int32
-	smList := make([]*policy.SubjectMapping, 0)
-
-	for {
-		listed, err := c.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
-			// defer to service default for limit pagination
-			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to list subject mappings: %w", err)
+	entitlementPolicyCacheOnce.Do(func() {
+		l.DebugContext(ctx, "Initializing shared entitlement policy cache")
+		entitlementPolicyCacheInstance = &EntitlementPolicyCache{
+			logger:                    l,
+			dbClient:                  dbClient,
+			configuredRefreshInterval: time.Duration(cfg.CacheRefreshIntervalSeconds) * time.Second,
+			attributes:                make([]*policy.Attribute, 0),
+			subjectMappings:           make([]*policy.SubjectMapping, 0),
+			stopRefresh:               make(chan struct{}),
+			refreshCompleted:          make(chan struct{}),
+			lastRefreshTime:           time.Time{}, // Initialize with zero time to allow first refresh
 		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
-		smList = append(smList, listed.GetSubjectMappings()...)
-
-		if nextOffset <= 0 {
-			break
+		if err := entitlementPolicyCacheInstance.Start(ctx); err != nil {
+			l.ErrorContext(ctx, "Failed to start entitlement policy cache", "error", err)
+			return
 		}
-	}
-	return smList, nil
+		l.DebugContext(ctx, "Shared entitlement policy cache initialized")
+	})
+	return entitlementPolicyCacheInstance
 }

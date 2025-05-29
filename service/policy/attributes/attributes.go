@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
@@ -31,13 +32,7 @@ type AttributesService struct { //nolint:revive // AttributesService is a valid 
 
 func OnServicesStarted(svc *AttributesService) serviceregistry.OnServicesStartedHook {
 	return func(ctx context.Context) error {
-		cache, err := policyconfig.GetSharedEntitlementPolicyCache(ctx, svc.sdk, svc.logger, svc.config)
-		if err != nil {
-			svc.logger.Error("failed to create entitlement policy cache", slog.Any("error", err))
-			return fmt.Errorf("auth service: failed to create entitlement policy cache: %w", err)
-		}
-
-		svc.cache = cache
+		svc.cache = policyconfig.GetSharedEntitlementPolicyCache(ctx, svc.dbClient, svc.logger, svc.config)
 		return nil
 	}
 }
@@ -60,14 +55,17 @@ func OnConfigUpdate(as *AttributesService) serviceregistry.OnConfigUpdateHook {
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[attributesconnect.AttributesServiceHandler] {
 	as := new(AttributesService)
 	onUpdateConfigHook := OnConfigUpdate(as)
+	onStartHook := OnServicesStarted(as)
+
 	return &serviceregistry.Service[attributesconnect.AttributesServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[attributesconnect.AttributesServiceHandler]{
-			Namespace:       ns,
-			DB:              dbRegister,
-			ServiceDesc:     &attributes.AttributesService_ServiceDesc,
-			ConnectRPCFunc:  attributesconnect.NewAttributesServiceHandler,
-			GRPCGatewayFunc: attributes.RegisterAttributesServiceHandler,
-			OnConfigUpdate:  onUpdateConfigHook,
+			Namespace:         ns,
+			DB:                dbRegister,
+			ServiceDesc:       &attributes.AttributesService_ServiceDesc,
+			ConnectRPCFunc:    attributesconnect.NewAttributesServiceHandler,
+			GRPCGatewayFunc:   attributes.RegisterAttributesServiceHandler,
+			OnConfigUpdate:    onUpdateConfigHook,
+			OnServicesStarted: onStartHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnect.AttributesServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
@@ -118,6 +116,13 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attribute", req.Msg.String()))
 	}
 
+	// Refresh the entitlement policy cache after creating a new attribute
+	if s.cache.IsEnabled() {
+		if err := s.cache.Refresh(ctx); err != nil {
+			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after attribute creation", slog.Any("error", err))
+		}
+	}
+
 	return connect.NewResponse(rsp), nil
 }
 
@@ -129,6 +134,47 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 
 	state := req.Msg.GetState().String()
 	s.logger.Debug("listing attribute definitions", slog.String("state", state))
+
+	// If active state and caching enabled, return from cache instead of DB
+	isActiveState := req.Msg.GetState() == common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE
+	if s.cache.IsEnabled() && isActiveState {
+		s.logger.Debug("returning cached attributes")
+
+		limit := req.Msg.GetPagination().GetLimit()
+		if limit <= 0 {
+			limit = int32(s.config.ListRequestLimitDefault)
+		}
+		offset := req.Msg.GetPagination().GetOffset()
+
+		// Validate limit against the max configured value
+		maxLimit := int32(s.config.ListRequestLimitMax)
+		if maxLimit > 0 && limit > maxLimit {
+			return nil, db.StatusifyError(db.ErrListLimitTooLarge, db.ErrTextListLimitTooLarge)
+		}
+
+		// Get all cached attributes
+		cachedAttrs := s.cache.ListCachedAttributes(limit, offset)
+
+		// Calculate next offset using the same logic as the DB implementation
+		var nextOffset int32
+		next := offset + limit
+		total := int32(len(cachedAttrs))
+		if next < total {
+			nextOffset = next
+		} // else nextOffset remains 0
+
+		rsp := &attributes.ListAttributesResponse{
+			Attributes: cachedAttrs,
+			Pagination: &policy.PageResponse{
+				CurrentOffset: offset,
+				Total:         total,
+				NextOffset:    nextOffset,
+			},
+		}
+		return connect.NewResponse(rsp), nil
+	}
+
+	s.logger.Debug("querying database for attributes")
 
 	rsp, err := s.dbClient.ListAttributes(ctx, req.Msg)
 	if err != nil {
@@ -243,6 +289,13 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 	auditParams.Updated = updated
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
+	// Refresh the entitlement policy cache after deactivation
+	if s.cache.IsEnabled() {
+		if err := s.cache.Refresh(ctx); err != nil {
+			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after attribute deactivation", slog.Any("error", err))
+		}
+	}
+
 	rsp.Attribute = &policy.Attribute{
 		Id: attributeID,
 	}
@@ -278,6 +331,13 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 	})
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("value", req.Msg.String()))
+	}
+
+	// Refresh the entitlement policy cache after creating a new attribute value
+	if s.cache.IsEnabled() {
+		if err := s.cache.Refresh(ctx); err != nil {
+			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after attribute value creation", slog.Any("error", err))
+		}
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -374,8 +434,14 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 	auditParams.Updated = updated
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	rsp.Value = updated
+	// Refresh the entitlement policy cache after attribute value deactivation
+	if s.cache.IsEnabled() {
+		if err := s.cache.Refresh(ctx); err != nil {
+			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after attribute value deactivation", slog.Any("error", err))
+		}
+	}
 
+	rsp.Value = updated
 	return connect.NewResponse(rsp), nil
 }
 

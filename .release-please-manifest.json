@@ -4,6 +4,6 @@
   "lib/flattening": "0.1.3",
   "lib/identifier": "0.0.2",
   "protocol/go": "0.3.6",
-  "sdk": "0.4.6",
+  "sdk": "0.4.7",
   "service": "0.5.4"
 }

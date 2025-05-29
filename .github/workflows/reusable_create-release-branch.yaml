@@ -35,7 +35,6 @@ jobs:
           token: ${{ steps.generate-token.outputs.token }}
 
       - name: "Create release branch from tag"
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
         id: release-branch
         uses: opentdf/platform/.github/actions/release-branch@main
         with:

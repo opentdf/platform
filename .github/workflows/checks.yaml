@@ -175,9 +175,6 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-22.04
-    defaults:
-      run:
-        working-directory: ./examples/ckms
     env:
       TLS_ENABLED: "true"
       VAULT_ADDR: "https://127.0.0.1:8200"
@@ -217,7 +214,6 @@ jobs:
               -dev-tls -dev-tls-cert-dir="./keys"
           wait-on: |
             tcp:localhost:8200
-          working-directory: ./examples/ckms
           log-output-if: true
           wait-for: 90s
       - run: |
@@ -228,22 +224,22 @@ jobs:
           sudo apt-get install -y ca-certificates
           sudo cp "${VAULT_CACERT}" /usr/local/share/ca-certificates
           sudo update-ca-certificates
-      - run: docker compose up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
+      - run: docker compose -f ./examples/ckms/docker-compose.yaml up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
       - run: go run ./service provision keycloak
       - run: go run ./service provision fixtures
       - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
         name: start server in background
         with:
           run: |
-            . ./setup-vault-env.sh
-            go run ./
+            . ./examples/ckms/setup-vault-env.sh
+            go run ./examples/ckms
           wait-on: |
             tcp:localhost:8080
           log-output-if: true
           wait-for: 90s
       - name: Setup Bats and bats libs
         uses: bats-core/bats-action@42fcc8700f773c075a16a90eb11674c0318ad507 #v3.0.1
-      - run: ./trust-sample.bats
+      - run: ./examples/ckms/trust-sample.bats
 
   benchmark:
     permissions:

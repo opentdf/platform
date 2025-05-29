@@ -160,6 +160,11 @@ func (e *Enforcer) buildSubjectFromTokenAndUserInfo(t jwt.Token, userInfo []byte
 	roles := e.extractRolesFromToken(t)
 	roles = append(roles, e.extractRolesFromUserInfo(userInfo)...)
 
+	// Prefix all roles with role:
+	for _, r := range roles {
+		info = append(info, rolePrefix+r)
+	}
+
 	if claim, found := t.Get(e.Config.UserNameClaim); found {
 		sub, ok := claim.(string)
 		subject = sub
@@ -168,8 +173,9 @@ func (e *Enforcer) buildSubjectFromTokenAndUserInfo(t jwt.Token, userInfo []byte
 			subject = ""
 		}
 	}
-	info = append(info, roles...)
-	info = append(info, subject)
+	if subject != "" {
+		info = append(info, subject)
+	}
 	return info
 }
 

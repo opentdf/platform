@@ -111,13 +111,6 @@ func FetchUserInfo(ctx context.Context, userInfoEndpoint string, tokenRaw string
 		return nil, nil, fmt.Errorf("failed to create userinfo request: %w", err)
 	}
 
-	// Only log a small portion of the token for security
-	tokenPreview := ""
-	if len(tokenRaw) > 10 {
-		tokenPreview = tokenRaw[:10] + "..."
-	}
-	debugLogger.Printf("Using bearer token: %s", tokenPreview)
-
 	req.Header.Set("Authorization", "Bearer "+tokenRaw)
 
 	// Use our debug transport for the user info request

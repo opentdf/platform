@@ -45,8 +45,10 @@ jobs:
       - name: "Validate branch"
         if: ${{ !github.ref_name == 'main' || !startsWith(github.ref_name, 'release/') }}
         shell: bash
+        env:
+          REF: ${{ github.ref }}
         run: |
-          echo "Error: invalid github ref [${{ github.ref }}] for release-please action, must be main or 'release/**" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Error: invalid github ref [$REF] for release-please action, must be main or 'release/**" | tee -a "$GITHUB_STEP_SUMMARY"
           exit 1
 
       - name: Generate a token

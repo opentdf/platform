@@ -10,6 +10,16 @@ jobs:
     permissions:
       id-token: write
     steps:
+
+      - name: "Validate Inputs"
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        shell: bash
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          echo "Error: invalid github ref [$REF] for release-branch action, must be 'refs/tags/**'" >> $GITHUB_STEP_SUMMARY
+          exit 1
+
       - name: "Generate a token"
         id: generate-token
         uses: actions/create-github-app-token@30bf6253fa41bdc8d1501d202ad15287582246b4 # v2.0.3

@@ -87,7 +87,7 @@ func mapKasKeysToGrants(keys []*policy.KasKey, existingGrants []*policy.KeyAcces
 				}
 			}
 			if !kidExists {
-				existingKas.PublicKey.GetCached().Keys = append(existingKas.PublicKey.GetCached().GetKeys(), newKasPublicKey)
+				existingKas.GetPublicKey().GetCached().GetKeys() = append(existingKas.GetPublicKey().GetCached().GetKeys(), newKasPublicKey)
 			}
 		} else {
 			// New KAS URI, create a new grant

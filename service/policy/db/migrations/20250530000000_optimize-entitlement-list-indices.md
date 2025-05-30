@@ -1,5 +1,5 @@
 ### Changes
 
 - Indices where relational JOINs occur in `ListAttributes` query
-- Indicies where relational JOINs occur in `ListSubjectMappings` query
+- Indices where relational JOINs occur in `ListSubjectMappings` query
 - No schema changes

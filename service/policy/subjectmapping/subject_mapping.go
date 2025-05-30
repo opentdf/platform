@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
+	otdfSDK "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -22,6 +23,16 @@ type SubjectMappingService struct { //nolint:revive // SubjectMappingService is 
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 	config   *policyconfig.Config
+	sdk      *otdfSDK.SDK
+	// Cache for attributes and subject mappings
+	cache *policyconfig.EntitlementPolicyCache
+}
+
+func OnServicesStarted(svc *SubjectMappingService) serviceregistry.OnServicesStartedHook {
+	return func(ctx context.Context) error {
+		svc.cache = policyconfig.GetSharedEntitlementPolicyCache(ctx, svc.dbClient, svc.logger, svc.config)
+		return nil
+	}
 }
 
 func OnConfigUpdate(smSvc *SubjectMappingService) serviceregistry.OnConfigUpdateHook {
@@ -42,14 +53,17 @@ func OnConfigUpdate(smSvc *SubjectMappingService) serviceregistry.OnConfigUpdate
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[subjectmappingconnect.SubjectMappingServiceHandler] {
 	smSvc := new(SubjectMappingService)
 	onUpdateConfigHook := OnConfigUpdate(smSvc)
+	onStartHook := OnServicesStarted(smSvc)
+
 	return &serviceregistry.Service[subjectmappingconnect.SubjectMappingServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[subjectmappingconnect.SubjectMappingServiceHandler]{
-			Namespace:       ns,
-			DB:              dbRegister,
-			ServiceDesc:     &sm.SubjectMappingService_ServiceDesc,
-			ConnectRPCFunc:  subjectmappingconnect.NewSubjectMappingServiceHandler,
-			GRPCGatewayFunc: sm.RegisterSubjectMappingServiceHandler,
-			OnConfigUpdate:  onUpdateConfigHook,
+			Namespace:         ns,
+			DB:                dbRegister,
+			ServiceDesc:       &sm.SubjectMappingService_ServiceDesc,
+			ConnectRPCFunc:    subjectmappingconnect.NewSubjectMappingServiceHandler,
+			GRPCGatewayFunc:   sm.RegisterSubjectMappingServiceHandler,
+			OnConfigUpdate:    onUpdateConfigHook,
+			OnServicesStarted: onStartHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (subjectmappingconnect.SubjectMappingServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
@@ -61,9 +75,22 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				smSvc.logger = logger
 				smSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				smSvc.config = cfg
+				smSvc.sdk = srp.SDK
+
 				return smSvc, nil
 			},
 		},
+	}
+}
+
+// Close gracefully shuts down the subject mapping service cache and database client.
+func (s SubjectMappingService) Close() {
+	s.logger.Info("gracefully shutting down subject mapping service")
+
+	s.dbClient.Close()
+
+	if s.cache != nil {
+		s.cache.Stop()
 	}
 }
 
@@ -101,6 +128,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("subjectMapping", req.Msg.String()))
 	}
+
 	return connect.NewResponse(rsp), nil
 }
 
@@ -108,6 +136,43 @@ func (s SubjectMappingService) ListSubjectMappings(ctx context.Context,
 	req *connect.Request[sm.ListSubjectMappingsRequest],
 ) (*connect.Response[sm.ListSubjectMappingsResponse], error) {
 	s.logger.Debug("listing subject mappings")
+
+	// If caching enabled, return from cache instead of DB
+	if s.cache.IsEnabled() {
+		s.logger.Debug("returning cached subject mappings")
+
+		limit := req.Msg.GetPagination().GetLimit()
+		if limit <= 0 {
+			limit = int32(s.config.ListRequestLimitDefault)
+		}
+		offset := req.Msg.GetPagination().GetOffset()
+
+		// Validate limit against the max configured value
+		maxLimit := int32(s.config.ListRequestLimitMax)
+		if maxLimit > 0 && limit > maxLimit {
+			return nil, db.StatusifyError(db.ErrListLimitTooLarge, db.ErrTextListLimitTooLarge)
+		}
+
+		// Get all cached subject mappings
+		cachedSubjectMappings, total := s.cache.ListCachedSubjectMappings(limit, offset)
+
+		// Calculate next offset using the same logic as the DB implementation
+		var nextOffset int32
+		next := offset + limit
+		if next < total {
+			nextOffset = next
+		} // else nextOffset remains 0
+
+		rsp := &sm.ListSubjectMappingsResponse{
+			SubjectMappings: cachedSubjectMappings,
+			Pagination: &policy.PageResponse{
+				CurrentOffset: offset,
+				Total:         total,
+				NextOffset:    nextOffset,
+			},
+		}
+		return connect.NewResponse(rsp), nil
+	}
 
 	rsp, err := s.dbClient.ListSubjectMappings(ctx, req.Msg)
 	if err != nil {
@@ -172,6 +237,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
 	return connect.NewResponse(rsp), nil
 }
 

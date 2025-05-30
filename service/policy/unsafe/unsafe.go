@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/protocol/go/policy/unsafe/unsafeconnect"
+	otdfSDK "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -23,6 +24,7 @@ type UnsafeService struct { //nolint:revive // UnsafeService is a valid name for
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 	config   *policyconfig.Config
+	sdk      *otdfSDK.SDK
 }
 
 func OnConfigUpdate(unsafeSvc *UnsafeService) serviceregistry.OnConfigUpdateHook {
@@ -41,6 +43,7 @@ func OnConfigUpdate(unsafeSvc *UnsafeService) serviceregistry.OnConfigUpdateHook
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[unsafeconnect.UnsafeServiceHandler] {
 	unsafeSvc := new(UnsafeService)
 	onUpdateConfigHook := OnConfigUpdate(unsafeSvc)
+
 	return &serviceregistry.Service[unsafeconnect.UnsafeServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[unsafeconnect.UnsafeServiceHandler]{
 			Namespace:      ns,
@@ -59,10 +62,17 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				unsafeSvc.logger = logger
 				unsafeSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				unsafeSvc.config = cfg
+				unsafeSvc.sdk = srp.SDK
+
 				return unsafeSvc, nil
 			},
 		},
 	}
+}
+
+func (s *UnsafeService) Close() {
+	s.logger.Info("gracefully shutting down unsafe service")
+	s.dbClient.Close()
 }
 
 //

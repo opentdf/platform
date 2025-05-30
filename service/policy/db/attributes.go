@@ -198,7 +198,7 @@ func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attrib
 
 	for {
 		listed, err := c.ListAttributes(ctx, &attributes.ListAttributesRequest{
-			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
+			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
 			Pagination: &policy.PageRequest{
 				Limit:  c.listCfg.limitMax,
 				Offset: nextOffset,

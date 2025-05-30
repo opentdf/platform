@@ -6,9 +6,11 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
+	otdfSDK "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -24,6 +26,15 @@ type AttributesService struct { //nolint:revive // AttributesService is a valid 
 	logger   *logger.Logger
 	config   *policyconfig.Config
 	trace.Tracer
+	sdk   *otdfSDK.SDK
+	cache *policyconfig.EntitlementPolicyCache // Cache for attributes and subject mappings
+}
+
+func OnServicesStarted(svc *AttributesService) serviceregistry.OnServicesStartedHook {
+	return func(ctx context.Context) error {
+		svc.cache = policyconfig.GetSharedEntitlementPolicyCache(ctx, svc.dbClient, svc.logger, svc.config)
+		return nil
+	}
 }
 
 func OnConfigUpdate(as *AttributesService) serviceregistry.OnConfigUpdateHook {
@@ -44,14 +55,17 @@ func OnConfigUpdate(as *AttributesService) serviceregistry.OnConfigUpdateHook {
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[attributesconnect.AttributesServiceHandler] {
 	as := new(AttributesService)
 	onUpdateConfigHook := OnConfigUpdate(as)
+	onStartHook := OnServicesStarted(as)
+
 	return &serviceregistry.Service[attributesconnect.AttributesServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[attributesconnect.AttributesServiceHandler]{
-			Namespace:       ns,
-			DB:              dbRegister,
-			ServiceDesc:     &attributes.AttributesService_ServiceDesc,
-			ConnectRPCFunc:  attributesconnect.NewAttributesServiceHandler,
-			GRPCGatewayFunc: attributes.RegisterAttributesServiceHandler,
-			OnConfigUpdate:  onUpdateConfigHook,
+			Namespace:         ns,
+			DB:                dbRegister,
+			ServiceDesc:       &attributes.AttributesService_ServiceDesc,
+			ConnectRPCFunc:    attributesconnect.NewAttributesServiceHandler,
+			GRPCGatewayFunc:   attributes.RegisterAttributesServiceHandler,
+			OnConfigUpdate:    onUpdateConfigHook,
+			OnServicesStarted: onStartHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (attributesconnect.AttributesServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
@@ -63,13 +77,25 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				as.logger = logger
 				as.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				as.config = cfg
+				as.sdk = srp.SDK
+
 				return as, nil
 			},
 		},
 	}
 }
 
-func (s AttributesService) CreateAttribute(ctx context.Context,
+// Close gracefully shuts down the attributes service's cache and database client.
+func (s *AttributesService) Close() {
+	s.logger.Info("gracefully shutting down attributes service")
+	if s.cache != nil {
+		s.cache.Stop()
+	}
+
+	s.dbClient.Close()
+}
+
+func (s *AttributesService) CreateAttribute(ctx context.Context,
 	req *connect.Request[attributes.CreateAttributeRequest],
 ) (*connect.Response[attributes.CreateAttributeResponse], error) {
 	s.logger.Debug("creating new attribute definition", slog.String("name", req.Msg.GetName()))
@@ -111,6 +137,46 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 
 	state := req.Msg.GetState().String()
 	s.logger.Debug("listing attribute definitions", slog.String("state", state))
+
+	// If active state and caching enabled, return from cache instead of DB
+	isActiveState := req.Msg.GetState() == common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE
+	if s.cache.IsEnabled() && isActiveState {
+		s.logger.Debug("returning cached attributes")
+
+		limit := req.Msg.GetPagination().GetLimit()
+		if limit <= 0 {
+			limit = int32(s.config.ListRequestLimitDefault)
+		}
+		offset := req.Msg.GetPagination().GetOffset()
+
+		// Validate limit against the max configured value
+		maxLimit := int32(s.config.ListRequestLimitMax)
+		if maxLimit > 0 && limit > maxLimit {
+			return nil, db.StatusifyError(db.ErrListLimitTooLarge, db.ErrTextListLimitTooLarge)
+		}
+
+		// Get all cached attributes
+		cachedAttrs, total := s.cache.ListCachedAttributes(limit, offset)
+
+		// Calculate next offset using the same logic as the DB implementation
+		var nextOffset int32
+		next := offset + limit
+		if next < total {
+			nextOffset = next
+		} // else nextOffset remains 0
+
+		rsp := &attributes.ListAttributesResponse{
+			Attributes: cachedAttrs,
+			Pagination: &policy.PageResponse{
+				CurrentOffset: offset,
+				Total:         total,
+				NextOffset:    nextOffset,
+			},
+		}
+		return connect.NewResponse(rsp), nil
+	}
+
+	s.logger.Debug("querying database for attributes")
 
 	rsp, err := s.dbClient.ListAttributes(ctx, req.Msg)
 	if err != nil {
@@ -357,7 +423,6 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Value = updated
-
 	return connect.NewResponse(rsp), nil
 }
 

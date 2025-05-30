@@ -170,7 +170,11 @@ func (s *AuthSuite) SetupTest() {
 		UserinfoEndpoint: s.server.URL + "/userinfo",
 	}
 	cacheManager, _ := cache.NewCacheManager(1 << 20)
-	userInfoCache, _ := oidc.NewUserInfoCache(oidcConfig, cacheManager.NewCache("userinfo", cache.Options{Expiration: time.Minute, Cost: 1}), &logger.Logger{Logger: slog.New(slog.Default().Handler())})
+	userInfoCache, _ := oidc.NewUserInfoCache(
+		oidcConfig,
+		cacheManager.NewCache("userinfo", &logger.Logger{Logger: slog.New(slog.Default().Handler())}, cache.Options{Expiration: time.Minute, Cost: 1}),
+		&logger.Logger{Logger: slog.New(slog.Default().Handler())},
+	)
 
 	auth, err := NewAuthenticator(
 		context.Background(),
@@ -664,7 +668,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 		UserinfoEndpoint: s.server.URL + "/userinfo",
 	}
 	cacheManager, _ := cache.NewCacheManager(1 << 20)
-	userInfoCache, _ := oidc.NewUserInfoCache(oidcConfig, cacheManager.NewCache("userinfo", cache.Options{Expiration: time.Minute, Cost: 1}), &logger.Logger{Logger: slog.New(slog.Default().Handler())})
+	userInfoCache, _ := oidc.NewUserInfoCache(oidcConfig, cacheManager.NewCache("userinfo", &logger.Logger{Logger: slog.New(slog.Default().Handler())}, cache.Options{Expiration: time.Minute, Cost: 1}), &logger.Logger{Logger: slog.New(slog.Default().Handler())})
 
 	authnConfig := AuthNConfig{
 		EnforceDPoP: false,

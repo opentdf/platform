@@ -2,13 +2,14 @@ package cache
 
 import (
 	"context"
-	"log"
+	"strconv"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
 	"github.com/eko/gocache/lib/v4/cache"
 	"github.com/eko/gocache/lib/v4/store"
 	ristretto_store "github.com/eko/gocache/store/ristretto/v4"
+	"github.com/opentdf/platform/service/logger"
 )
 
 type Manager struct {
@@ -20,6 +21,7 @@ type Cache struct {
 	manager      *Manager
 	serviceName  string
 	cacheOptions Options
+	logger       *logger.Logger
 }
 
 type Options struct {
@@ -49,23 +51,29 @@ func NewCacheManager(maxCost int64) (*Manager, error) {
 // The purpose of this function is to create a new cache for a specific service.
 // Because caching can be expensive we want to make sure there are some strict controls with
 // how it is used.
-func (c *Manager) NewCache(serviceName string, options Options) *Cache {
-	log.Printf("[CACHE][%s] NewCache", serviceName)
-
-	return &Cache{
+func (c *Manager) NewCache(serviceName string, logger *logger.Logger, options Options) *Cache {
+	cache := &Cache{
 		manager:      c,
 		serviceName:  serviceName,
 		cacheOptions: options,
 	}
+	cache.logger = logger.
+		With("subsystem", "cache").
+		With("serviceTag", cache.getServiceTag()).
+		With("expiration", options.Expiration.String()).
+		With("cost", strconv.FormatInt(options.Cost, 10))
+	cache.logger.Info("created cache")
+	return cache
 }
 
 func (c *Cache) Get(ctx context.Context, key string) (interface{}, error) {
 	val, err := c.manager.cache.Get(ctx, c.getKey(key))
 	if err != nil {
-		log.Printf("[CACHE][%s] MISS key=%s", c.serviceName, key)
+		// All errors are a cache miss in the gocache library.
+		c.logger.Debug("cache miss", "key", key, "error", err)
 		return nil, err
 	}
-	log.Printf("[CACHE][%s] HIT key=%s", c.serviceName, key)
+	c.logger.Debug("cache hit", "key", key)
 	return val, nil
 }
 
@@ -79,30 +87,30 @@ func (c *Cache) Set(ctx context.Context, key string, object interface{}, tags []
 
 	err := c.manager.cache.Set(ctx, c.getKey(key), object, opts...)
 	if err != nil {
-		log.Printf("[CACHE][%s] SET ERROR key=%s err=%v", c.serviceName, key, err)
+		c.logger.Error("set error", "key", key, "error", err)
 		return err
 	}
-	log.Printf("[CACHE][%s] SET key=%s", c.serviceName, key)
+	c.logger.Debug("set cache", "key", key)
 	return nil
 }
 
 func (c *Cache) Invalidate(ctx context.Context) error {
 	err := c.manager.cache.Invalidate(ctx, store.WithInvalidateTags([]string{c.getServiceTag()}))
 	if err != nil {
-		log.Printf("[CACHE][%s] INVALIDATE ERROR tag=%s err=%v", c.serviceName, c.getServiceTag(), err)
+		c.logger.Error("invalidate error", "error", err)
 		return err
 	}
-	log.Printf("[CACHE][%s] INVALIDATE tag=%s", c.serviceName, c.getServiceTag())
+	c.logger.Info("invalidate cache")
 	return nil
 }
 
 func (c *Cache) Delete(ctx context.Context, key string) error {
 	err := c.manager.cache.Delete(ctx, c.getKey(key))
 	if err != nil {
-		log.Printf("[CACHE][%s] DELETE ERROR key=%s err=%v", c.serviceName, key, err)
+		c.logger.Error("delete error", "key", key, "error", err)
 		return err
 	}
-	log.Printf("[CACHE][%s] DELETE key=%s", c.serviceName, key)
+	c.logger.Info("delete cache", "key", key)
 	return nil
 }
 
@@ -111,5 +119,5 @@ func (c *Cache) getKey(key string) string {
 }
 
 func (c *Cache) getServiceTag() string {
-	return "svc-" + c.serviceName
+	return "svc:" + c.serviceName
 }

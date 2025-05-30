@@ -185,13 +185,13 @@ func NewOpenTDFServer(ctx context.Context, config Config, logger *logger.Logger,
 	}
 
 	// Create userinfo cache for enriched claims
-	userInfoCache := cacheManager.NewCache("core:"+oidc.UserInfoCacheService, cache.Options{
+	userInfoCache := cacheManager.NewCache("essential:"+oidc.UserInfoCacheService, logger, cache.Options{
 		Expiration: config.Cache.UserInfoCacheTTL,
 		Cost:       userInfoCacheCost,
 	})
 	svr.UserInfoCache, err = oidc.NewUserInfoCache(config.OIDCDiscovery, userInfoCache, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create user info cache: %w", err)
+		return nil, fmt.Errorf("failed to create userinfo cache: %w", err)
 	}
 
 	// Add authN interceptor

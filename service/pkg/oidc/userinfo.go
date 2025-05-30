@@ -7,9 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/opentdf/platform/service/logger"
@@ -25,7 +23,6 @@ const (
 
 var (
 	ErrUserInfoCacheMiss = errors.New("user info cache miss")
-	ErrUserInfoCacheCast = errors.New("failed to cast cached userinfo to []byte")
 )
 
 type UserInfo = oidc.UserInfo
@@ -44,32 +41,34 @@ func NewUserInfoCache(oidcConfig *oidc.DiscoveryConfiguration, cache *cache.Cach
 
 // Get tries to get userinfo from cache otherwise fetches it from the UserInfo endpoint.
 func (u *UserInfoCache) Get(ctx context.Context, issuer, subject string, tokenRaw string) (*oidc.UserInfo, []byte, error) {
+	l := u.logger.With("issuer", issuer).With("subject", subject)
 	key := userInfoCacheKey(issuer, subject)
 	userInfo, userInfoRaw, err := u.GetFromCache(ctx, issuer, subject)
 	if err == nil {
 		// If cache hit, return the cached userinfo
-		u.logger.Debug("Userinfo found in cache", "issuer", issuer, "subject", subject)
+		l.Debug("userinfo found in cache")
 		return userInfo, userInfoRaw, nil
 	} else if !errors.Is(err, ErrUserInfoCacheMiss) {
 		// If error and not a cache miss
-		u.logger.Error("Failed to get userinfo from cache", "issuer", issuer, "subject", subject, "error", err)
+		l.Error("failed to get userinfo from cache", "error", err)
 		return nil, nil, err
 	}
 
 	// Fetch the userinfo
-	u.logger.Debug("Fetching userinfo from UserInfo endpoint", "issuer", issuer, "subject", subject)
+	l.Debug("fetching userinfo from UserInfo endpoint")
 	userInfo, userInfoRaw, err = FetchUserInfo(ctx, u.oidcConfig.UserinfoEndpoint, tokenRaw)
 	if err != nil {
-		u.logger.Error("Failed to fetch userinfo from UserInfo endpoint", "issuer", issuer, "subject", subject, "error", err)
+		l.Error("failed to fetch userinfo from UserInfo endpoint", "error", err)
 		return nil, nil, err
 	}
-	u.logger.Debug("Fetched userinfo from UserInfo endpoint", "issuer", issuer, "subject", subject)
+	l.Debug("fetched userinfo from UserInfo endpoint")
 
 	// Store it in cache and return
 	return userInfo, userInfoRaw, u.cache.Set(ctx, key, userInfoRaw, nil)
 }
 
 func (u *UserInfoCache) GetFromCache(ctx context.Context, issuer, subject string) (*oidc.UserInfo, []byte, error) {
+	l := u.logger.With("issuer", issuer).With("subject", subject)
 	key := userInfoCacheKey(issuer, subject)
 	val, err := u.cache.Get(ctx, key)
 	if err != nil {
@@ -77,10 +76,12 @@ func (u *UserInfoCache) GetFromCache(ctx context.Context, issuer, subject string
 	}
 	userInfoRaw, ok := val.([]byte)
 	if !ok {
+		l.Error("failed to cast cached userinfo to []byte", "error", err)
 		return nil, nil, fmt.Errorf("failed to cast cached userinfo to []byte: %w", err)
 	}
 	userInfo := new(oidc.UserInfo)
 	if err := json.Unmarshal(userInfoRaw, userInfo); err != nil {
+		l.Error("failed to decode userinfo from cache", "error", err)
 		return nil, nil, fmt.Errorf("failed to decode userinfo from cache: %w", err)
 	}
 	return userInfo, userInfoRaw, nil
@@ -105,10 +106,6 @@ func userInfoCacheKey(issuer, subject string) string {
 
 // fetchUserInfo performs a GET request to the UserInfo endpoint to fetch user information.
 func FetchUserInfo(ctx context.Context, userInfoEndpoint string, tokenRaw string) (*oidc.UserInfo, []byte, error) {
-	// Create a logger for debugging
-	debugLogger := log.New(os.Stderr, "[USERINFO] ", log.LstdFlags)
-	debugLogger.Printf("Fetching UserInfo from endpoint: %s", userInfoEndpoint)
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, userInfoEndpoint, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create userinfo request: %w", err)
@@ -129,22 +126,18 @@ func FetchUserInfo(ctx context.Context, userInfoEndpoint string, tokenRaw string
 	if resp.StatusCode != http.StatusOK {
 		// Try to read the error response body
 		errorBody, _ := io.ReadAll(resp.Body)
-		debugLogger.Printf("Failed to fetch userinfo: status %d, response body: %s", resp.StatusCode, string(errorBody))
 		return nil, nil, fmt.Errorf("failed to fetch userinfo: status %d, details: %s", resp.StatusCode, string(errorBody))
 	}
 
 	userInfoRaw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		debugLogger.Printf("Failed to read userinfo response body: %v", err)
 		return nil, nil, fmt.Errorf("failed to read userinfo response body: %w", err)
 	}
 
 	userinfo := new(oidc.UserInfo)
 	if err := json.Unmarshal(userInfoRaw, userinfo); err != nil {
-		debugLogger.Printf("Failed to decode userinfo response: %v", err)
 		return nil, nil, fmt.Errorf("failed to decode userinfo response: %w", err)
 	}
 
-	debugLogger.Printf("Successfully fetched UserInfo for subject: %s", userinfo.Subject)
 	return userinfo, userInfoRaw, nil
 }

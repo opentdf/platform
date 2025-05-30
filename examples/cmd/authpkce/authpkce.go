@@ -6,11 +6,17 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
-	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/spf13/cobra"
+)
+
+const (
+	timeoutDuration = 15 * 1e9 // 15 seconds
 )
 
 //go:embed pkce-demo.html
@@ -28,9 +34,9 @@ const platformWellKnown = "/wellknownconfiguration.WellKnownService/GetWellKnown
 
 func servePKCEDemo() error {
 	http.HandleFunc("/pkce-demo", func(w http.ResponseWriter, r *http.Request) {
-		clientId := r.URL.Query().Get("client_id")
-		if clientId == "" {
-			clientId = "opentdf-public"
+		clientID := r.URL.Query().Get("client_id")
+		if clientID == "" {
+			clientID = "opentdf-public"
 		}
 
 		platformEndpoint := r.URL.Query().Get("platform_endpoint")
@@ -43,24 +49,48 @@ func servePKCEDemo() error {
 			scope = "openid profile email"
 		}
 
-		resp, err := http.Post(platformEndpoint+platformWellKnown, "application/json", bytes.NewBufferString("{}"))
+		httpClient := &http.Client{
+			Timeout: timeoutDuration,
+		}
+		resp, err := httpClient.Do(&http.Request{
+			Method: http.MethodPost,
+			URL:    &url.URL{Path: platformEndpoint + platformWellKnown},
+			Header: http.Header{
+				"Content-Type": {"application/json"},
+			},
+			Body: io.NopCloser(bytes.NewBufferString("{}")),
+		})
 		var oidcConfig map[string]interface{}
-		if err == nil && resp.StatusCode == 200 {
+		if err == nil && resp.StatusCode == http.StatusOK {
 			defer resp.Body.Close()
 			var data map[string]interface{}
-			json.NewDecoder(resp.Body).Decode(&data)
-			if conf, ok := data["configuration"].(map[string]interface{}); ok {
-				if idp, ok := conf["idp"].(map[string]interface{}); ok {
-					oidcConfig = idp
-				}
+			err := json.NewDecoder(resp.Body).Decode(&data)
+			if err != nil {
+				log.Printf("Error decoding response: %v\n", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			conf, ok := data["configuration"].(map[string]interface{})
+			if !ok {
+				log.Printf("No configuration found in response: %v", data)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			oidcConfig, ok = conf["idp"].(map[string]interface{})
+			if !ok {
+				log.Printf("No IDP configuration found in response: %v", conf)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
 			}
 		}
 		// Prepare template variables
 		oidcConfigJSON, _ := json.MarshalIndent(oidcConfig, "", "  ")
 		replacer := map[string]string{
 			"__PLATFORM_WELLKNOWN_CONFIG__": string(oidcConfigJSON),
-			"__CLIENT_ID__":                 clientId,
-			"__SCOPE__":                     "openid profile email",
+			"__CLIENT_ID__":                 clientID,
+			"__SCOPE__":                     scope,
 			"__PLATFORM_ENDPOINT__":         platformEndpoint,
 		}
 		html := string(pkceDemoHTML)
@@ -68,16 +98,21 @@ func servePKCEDemo() error {
 			html = strings.ReplaceAll(html, k, v)
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(html))
+		_, err = w.Write([]byte(html))
+		if err != nil {
+			log.Printf("Error writing response: %v\n", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 	})
 
-	fmt.Println("Serving PKCE demo at http://localhost:9000/pkce-demo")
-	return http.ListenAndServe(":9000", nil)
-}
-
-func safeString(v interface{}) string {
-	if s, ok := v.(string); ok {
-		return s
+	log.Printf("Serving PKCE demo at http://localhost:9000/pkce-demo")
+	server := &http.Server{
+		Addr:    ":9000",
+		Handler: nil,
+		// Set a reasonable timeout (e.g., 15 seconds)
+		ReadTimeout:  timeoutDuration,
+		WriteTimeout: timeoutDuration,
 	}
-	return ""
+	return server.ListenAndServe()
 }

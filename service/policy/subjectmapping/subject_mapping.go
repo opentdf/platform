@@ -67,6 +67,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	}
 }
 
+// Close gracefully shuts down the service, closing the database client.
+func (s SubjectMappingService) Close() {
+	s.logger.Info("gracefully shutting down")
+	s.dbClient.Close()
+}
+
 /* ---------------------------------------------------
  * ----------------- SubjectMappings -----------------
  * --------------------------------------------------*/

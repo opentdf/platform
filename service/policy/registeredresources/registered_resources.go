@@ -75,6 +75,12 @@ func (s *RegisteredResourcesService) IsReady(ctx context.Context) error {
 	return nil
 }
 
+// Close gracefully shuts down the service, closing the database client.
+func (s *RegisteredResourcesService) Close() {
+	s.logger.Info("gracefully shutting down")
+	s.dbClient.Close()
+}
+
 /// Registered Resources Handlers
 
 func (s *RegisteredResourcesService) CreateRegisteredResource(ctx context.Context, req *connect.Request[registeredresources.CreateRegisteredResourceRequest]) (*connect.Response[registeredresources.CreateRegisteredResourceResponse], error) {

@@ -79,6 +79,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	}
 }
 
+// Close gracefully shuts down the actions service, closing the database client.
+func (s *ActionService) Close() {
+	s.logger.Info("gracefully shutting down")
+	s.dbClient.Close()
+}
+
 func (a *ActionService) GetAction(ctx context.Context, req *connect.Request[actions.GetActionRequest]) (*connect.Response[actions.GetActionResponse], error) {
 	rsp := &actions.GetActionResponse{}
 

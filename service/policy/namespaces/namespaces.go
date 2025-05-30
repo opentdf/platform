@@ -78,6 +78,12 @@ func (ns NamespacesService) IsReady(ctx context.Context) error {
 	return nil
 }
 
+// Close gracefully shuts down the service, closing the database client.
+func (ns NamespacesService) Close() {
+	ns.logger.Info("gracefully shutting down")
+	ns.dbClient.Close()
+}
+
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *connect.Request[namespaces.ListNamespacesRequest]) (*connect.Response[namespaces.ListNamespacesResponse], error) {
 	state := req.Msg.GetState().String()
 	ns.logger.Debug("listing namespaces", slog.String("state", state))

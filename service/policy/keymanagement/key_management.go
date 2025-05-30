@@ -61,6 +61,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	}
 }
 
+// Close gracefully shuts down the service, closing the database client.
+func (ksvc Service) Close() {
+	ksvc.logger.Info("gracefully shutting down")
+	ksvc.dbClient.Close()
+}
+
 func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Request[keyMgmtProto.CreateProviderConfigRequest]) (*connect.Response[keyMgmtProto.CreateProviderConfigResponse], error) {
 	rsp := &keyMgmtProto.CreateProviderConfigResponse{}
 

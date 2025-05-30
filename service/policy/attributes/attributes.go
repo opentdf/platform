@@ -69,7 +69,13 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	}
 }
 
-func (s AttributesService) CreateAttribute(ctx context.Context,
+// Close gracefully shuts down the service, closing the database client.
+func (s *AttributesService) Close() {
+	s.logger.Info("gracefully shutting down")
+	s.dbClient.Close()
+}
+
+func (s *AttributesService) CreateAttribute(ctx context.Context,
 	req *connect.Request[attributes.CreateAttributeRequest],
 ) (*connect.Response[attributes.CreateAttributeResponse], error) {
 	s.logger.Debug("creating new attribute definition", slog.String("name", req.Msg.GetName()))

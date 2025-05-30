@@ -42,12 +42,6 @@ type casbinSubject []string
 
 type CasbinConfig struct {
 	PolicyConfig
-	// OIDC UserInfo enrichment fields
-	UserInfoEnrichment bool
-	UserInfoEndpoint   string
-	TokenEndpoint      string
-	ClientID           string
-	ClientSecret       string
 }
 
 // newCasbinEnforcer creates a new Casbin enforcer with the provided configuration and logger.

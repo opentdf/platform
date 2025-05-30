@@ -21,6 +21,7 @@ type Config struct {
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	EnforceDPoP    bool          `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
+	EnrichUserInfo bool          `mapstructure:"enrichUserInfo" json:"enrichUserInfo" default:"false"`
 	Issuer         string        `mapstructure:"issuer" json:"issuer"`
 	Audience       string        `mapstructure:"audience" json:"audience"`
 	Policy         PolicyConfig  `mapstructure:"policy" json:"policy"`
@@ -61,7 +62,7 @@ type PolicyConfig struct {
 	// Username claim to use for user information
 	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"preferred_username"`
 	// Claims to use for group/role information (now supports multiple claims)
-	GroupsClaim GroupsClaimList `mapstructure:"groups_claim" json:"group_claim" default:"[\"realm_access.roles\",\"groups\"]"`
+	GroupsClaim GroupsClaimList `mapstructure:"groups_claim" json:"group_claim" default:"[\"realm_access.roles\"]"`
 	// Deprecated: Use GroupClaim instead
 	RoleClaim string `mapstructure:"claim" json:"claim" default:"realm_access.roles"`
 	// Deprecated: Use Casbin grouping statements g, <user/group>, <role>
@@ -92,11 +93,15 @@ func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 		logger.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
 	}
 
-	if c.ClientId == "" {
-		return errors.New("config Auth.ClientId is required for token exchange to fetch userinfo")
-	}
-	if c.ClientSecret == "" {
-		return errors.New("config Auth.ClientSecret is required for token exchange to fetch userinfo")
+	if c.EnrichUserInfo {
+		if c.ClientId == "" {
+			return errors.New("config Auth.ClientId is required for token exchange to fetch userinfo")
+		}
+		if c.ClientSecret == "" {
+			return errors.New("config Auth.ClientSecret is required for token exchange to fetch userinfo")
+		}
+	} else {
+		logger.Warn("config Auth.EnrichUserInfo is false. UserInfo enrichment is disabled and token exchange will be skipped.")
 	}
 
 	return nil

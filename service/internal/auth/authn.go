@@ -269,7 +269,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		default:
 			action = ActionUnsafe
 		}
-		if ! a.enforcer.Enforce(token, userInfoRaw, r.URL.Path, action) {
+		if !a.enforcer.Enforce(token, userInfoRaw, r.URL.Path, action) {
 			a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", token.Subject()))
 			http.Error(w, "permission denied", http.StatusForbidden)
 			return
@@ -624,6 +624,12 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 
 // GetUserInfoWithExchange fetches userinfo, exchanging the token if needed.
 func (a *Authentication) GetUserInfoWithExchange(ctx context.Context, tokenIssuer, tokenSubject, tokenRaw string) ([]byte, error) {
+	// If userinfo enrichment is disabled, return empty userinfo
+	if !a.oidcConfiguration.EnrichUserInfo {
+		a.logger.Debug("userinfo enrichment is disabled, skipping token exchange", slog.String("sub", tokenSubject))
+		return []byte{}, nil
+	}
+
 	// Try to get userinfo from cache with the original token
 	_, userInfoRaw, err := a.userInfoCache.GetFromCache(ctx, tokenIssuer, tokenSubject)
 	if err == nil {

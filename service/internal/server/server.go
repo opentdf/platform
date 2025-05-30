@@ -548,6 +548,3 @@ func loadTLSConfig(config TLSConfig) (*tls.Config, error) {
 		NextProtos:   []string{"h2", "http/1.1"},
 	}, nil
 }
-
-// UserInfoContextKey is the context key for storing user info
-var UserInfoContextKey = &struct{}{}

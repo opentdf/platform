@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.5.5](https://github.com/opentdf/platform/compare/service/v0.5.4...service/v0.5.5) (2025-05-30)
+
+
+### Features
+
+* adds basic config root key manager ([#2303](https://github.com/opentdf/platform/issues/2303)) ([dd0d22f](https://github.com/opentdf/platform/commit/dd0d22fcafea3eb3b58d3836fe4776e4d15791cb))
+* **policy:** cache SubjectConditionSet selectors in dedicated column maintained via trigger ([#2320](https://github.com/opentdf/platform/issues/2320)) ([215791f](https://github.com/opentdf/platform/commit/215791f2185d6cacfa4a8ae4a009739ee30bfc66))
+* **policy:** map and merge grants and keys ([#2324](https://github.com/opentdf/platform/issues/2324)) ([abf770f](https://github.com/opentdf/platform/commit/abf770f6624f5f3a1ae291c006c76137197a38eb))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/sdk from 0.4.5 to 0.4.7 in /service in the internal group ([#2334](https://github.com/opentdf/platform/issues/2334)) ([7f5a182](https://github.com/opentdf/platform/commit/7f5a182d4d27876fedd42baf20cafd9f1731dac8))
+* **deps:** Updates to major ver of protovalidate ([#2284](https://github.com/opentdf/platform/issues/2284)) ([39ad3c9](https://github.com/opentdf/platform/commit/39ad3c90f3ede1267418b5d4b1bed3d218d94a13))
+
 ## [0.5.4](https://github.com/opentdf/platform/compare/service/v0.5.3...service/v0.5.4) (2025-05-29)
 
 

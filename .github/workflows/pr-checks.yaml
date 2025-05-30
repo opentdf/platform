@@ -32,12 +32,16 @@ jobs:
           #   - fix: fixes
           #   - feat: features and enhancements
           #   - chore: non-feature or enhancement (i.e. docs, ci, linting, automated, etc)
+          #   - refactor: code refactoring without behavior changes
+          #   - revert: undoes a previous commit or change
+          #   - adr: architectural decision records
           types: |
             fix
             feat
             chore
             refactor
             revert
+            adr
           # Scopes include:
           #   - main: used for automated releases
           #   - core: related to any core need such as the core service or monorepo

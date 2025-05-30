@@ -916,3 +916,18 @@ func (c PolicyDBClient) rotateBaseKey(ctx context.Context, rotatedOutKeyID *poli
 
 	return nil
 }
+
+func (c PolicyDBClient) verifyKeyIsActive(ctx context.Context, id string) error {
+	key, err := c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
+		Id: id,
+	})
+	if err != nil {
+		return err
+	}
+
+	if key.GetKey().GetKeyStatus() != policy.KeyStatus_KEY_STATUS_ACTIVE {
+		return fmt.Errorf("key with id %s is not active", id)
+	}
+
+	return nil
+}

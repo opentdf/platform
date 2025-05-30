@@ -4485,6 +4485,7 @@ LEFT JOIN
     provider_config as pc ON kask.provider_config_id = pc.id
 WHERE
     ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
+ORDER BY kask.created_at DESC
 LIMIT $3 
 OFFSET $2
 `
@@ -4556,6 +4557,7 @@ type listKeysRow struct {
 //	    provider_config as pc ON kask.provider_config_id = pc.id
 //	WHERE
 //	    ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
+//	ORDER BY kask.created_at DESC
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysRow, error) {

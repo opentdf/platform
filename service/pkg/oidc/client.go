@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,10 +11,8 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 )
 
-var (
-	// For testing purposes only
-	skipValidation bool = false
-)
+// For testing purposes only
+var skipValidation = false
 
 // SetSkipValidationForTest sets the skipValidation flag for testing
 // This should only be used in tests
@@ -46,7 +45,7 @@ func ValidateClientCredentials(ctx context.Context, issuer, clientID, clientSecr
 		return fmt.Errorf("failed to obtain client credentials: %w", err)
 	}
 	if tok == nil || tok.AccessToken == "" {
-		return fmt.Errorf("invalid client credentials: no access token received")
+		return errors.New("invalid client credentials: no access token received")
 	}
 	return nil
 }

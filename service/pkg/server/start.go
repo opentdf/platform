@@ -156,6 +156,7 @@ func Start(ctx context.Context, f ...StartOptions) error {
 
 	var registeredCoreServices []string
 
+	//nolint:contextcheck // We are all friends here
 	registeredCoreServices, err = registerCoreServices(svcRegistry, cfg.Mode)
 	if err != nil {
 		logger.Error("could not register core services", slog.String("error", err.Error()))
@@ -273,12 +274,11 @@ func Start(ctx context.Context, f ...StartOptions) error {
 				return fmt.Errorf("entityresolution endpoint is malformed: %s", cfg.SDKConfig.EntityResolutionConnection.Endpoint)
 			}
 			ersConnectRPCConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
-
 			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(&ersConnectRPCConn))
 			logger.Info("added with custom ers connection for ", "", ersConnectRPCConn.Endpoint)
 		}
 
-		client, err = sdk.New("", sdkOptions...)
+		client, err = newSDKWithContext(ctx, "", sdkOptions...)
 		if err != nil {
 			logger.Error("issue creating sdk client", slog.String("error", err.Error()))
 			return fmt.Errorf("issue creating sdk client: %w", err)
@@ -291,7 +291,7 @@ func Start(ctx context.Context, f ...StartOptions) error {
 		if cfg.SDKConfig.CorePlatformConnection.Plaintext {
 			sdkOptions = append(sdkOptions, sdk.WithInsecurePlaintextConn())
 		}
-		client, err = sdk.New(cfg.SDKConfig.CorePlatformConnection.Endpoint, sdkOptions...)
+		client, err = newSDKWithContext(ctx, cfg.SDKConfig.CorePlatformConnection.Endpoint, sdkOptions...)
 		if err != nil {
 			logger.Error("issue creating sdk client", slog.String("error", err.Error()))
 			return fmt.Errorf("issue creating sdk client: %w", err)

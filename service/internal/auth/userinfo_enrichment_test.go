@@ -77,7 +77,7 @@ func (m *mockUserInfoCache) GetFromCache(ctx context.Context, issuer, subject st
 	return nil, nil, errors.New("cache miss")
 }
 
-func (m *mockUserInfoCache) Get(_ context.Context, issuer, subject, token string) (*oidc.UserInfo, []byte, error) {
+func (m *mockUserInfoCache) Get(_ context.Context, _ string, _ string, _ string) (*oidc.UserInfo, []byte, error) {
 	m.getCount++
 	return &oidc.UserInfo{}, m.cachedInfo, nil
 }
@@ -144,7 +144,7 @@ func TestGetUserInfoWithExchange(t *testing.T) {
 	t.Run("when enrichUserInfo is enabled and cache hit using custom function", func(t *testing.T) {
 		cachedUserInfo := []byte(`{"sub":"subject","name":"Test User"}`)
 		hitCache := &mockUserInfoCache{
-			getCacheFunc: func(_ context.Context, issuer, subject string) (*oidc.UserInfo, []byte, error) {
+			getCacheFunc: func(_ context.Context, _ string, _ string) (*oidc.UserInfo, []byte, error) {
 				return &oidc.UserInfo{}, cachedUserInfo, nil
 			},
 		}

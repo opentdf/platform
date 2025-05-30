@@ -241,7 +241,7 @@ func (s *AuthnCasbinSuite) Test_Enforcement() {
 		slog.Info("running test w/ default claim", slog.String("name", name))
 		enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: policyCfg}, logger.CreateTestLogger())
 		s.Require().NoError(err, name)
-		tok := s.newTokWithDefaultClaim(test.roles[0], test.roles[1], "", "")
+		tok := s.newTokWithDefaultClaim(test.roles[0], test.roles[1], "")
 		allowed := enforcer.Enforce(tok, nil, test.resource, test.action)
 		if test.allowed {
 			s.True(allowed, name)
@@ -325,14 +325,14 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies() {
 	enforcer, err := NewCasbinEnforcer(CasbinConfig{PolicyConfig: policyCfg}, logger.CreateTestLogger())
 	s.Require().NoError(err)
 	// other roles denied new policy: admin
-	tok := s.newTokWithDefaultClaim(true, false, "", "")
+	tok := s.newTokWithDefaultClaim(true, false, "")
 	allowed := enforcer.Enforce(tok, nil, "new.service.DoSomething", "read")
 	s.True(allowed)
 	allowed = enforcer.Enforce(tok, nil, "new.service.DoSomething", "write")
 	s.True(allowed)
 
 	// other roles denied new policy: standard
-	tok = s.newTokWithDefaultClaim(false, true, "", "")
+	tok = s.newTokWithDefaultClaim(false, true, "")
 	allowed = enforcer.Enforce(tok, nil, "new.service.DoSomething", "read")
 	s.True(allowed)
 	allowed = enforcer.Enforce(tok, nil, "new.service.DoSomething", "write")
@@ -395,12 +395,12 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
 				s.Require().Error(err)
 				s.Nil(enforcer)
 				return
-			} else {
-				s.Require().NoError(err)
-				s.NotNil(enforcer)
 			}
 
-			tok := s.newTokWithDefaultClaim(true, false, "", "")
+			s.Require().NoError(err)
+			s.NotNil(enforcer)
+
+			tok := s.newTokWithDefaultClaim(true, false, "")
 			allowed := enforcer.Enforce(tok, nil, "policy.attributes.DoSomething", "read")
 			if tc.allowed {
 				s.True(allowed)
@@ -535,7 +535,7 @@ func (s *AuthnCasbinSuite) Test_SetBuiltinPolicy() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			tok := s.newTokWithDefaultClaim(tc.admin, tc.standard, "", "")
+			tok := s.newTokWithDefaultClaim(tc.admin, tc.standard, "")
 			allowed := enforcer.Enforce(tok, nil, tc.resource, tc.action)
 			if tc.allowed {
 				s.True(allowed, tc.name)
@@ -612,9 +612,9 @@ func (s *AuthnCasbinSuite) Test_Username_Claim_Enforcement() {
 
 		var tok jwt.Token
 		if tc.setClaim {
-			tok = s.newTokWithDefaultClaim(true, false, tc.usernameClaim, "")
+			tok = s.newTokWithDefaultClaim(true, false, tc.usernameClaim)
 		} else {
-			tok = s.newTokWithDefaultClaim(true, false, "", "") // username claim not set
+			tok = s.newTokWithDefaultClaim(true, false, "")
 		}
 
 		allowed := enforcer.Enforce(tok, nil, tc.resource, tc.action)
@@ -624,75 +624,6 @@ func (s *AuthnCasbinSuite) Test_Username_Claim_Enforcement() {
 			s.False(allowed, tc.name)
 		}
 	}
-}
-
-func (s *AuthnCasbinSuite) buildTokenRoles(admin bool, standard bool, roleMaps []string) []interface{} {
-	adminRole := "opentdf-admin"
-	if len(roleMaps) > 0 {
-		adminRole = roleMaps[0]
-	}
-	standardRole := "opentdf-standard"
-	if len(roleMaps) > 1 {
-		standardRole = roleMaps[1]
-	}
-
-	roles := make([]interface{}, 0, 2)
-
-	if admin {
-		roles = append(roles, adminRole)
-	}
-	if standard {
-		roles = append(roles, standardRole)
-	}
-
-	return roles
-}
-
-func (s *AuthnCasbinSuite) newTokWithDefaultClaim(admin bool, standard bool, usernameClaimName, groupClaimName string) jwt.Token {
-	tok := jwt.New()
-
-	if groupClaimName == "" {
-		groupClaimName = "roles"
-	}
-
-	tokenRoles := s.buildTokenRoles(admin, standard, nil)
-	if err := tok.Set("realm_access", map[string]interface{}{groupClaimName: tokenRoles}); err != nil {
-		s.T().Fatal(err)
-	}
-
-	if usernameClaimName != "" {
-		if err := tok.Set(usernameClaimName, "casbin-user"); err != nil {
-			s.T().Fatal(err)
-		}
-	}
-
-	return tok
-}
-
-func (s *AuthnCasbinSuite) newTokenWithCustomClaim(admin bool, standard bool) (string, jwt.Token) {
-	tok := jwt.New()
-	tokenRoles := s.buildTokenRoles(admin, standard, nil)
-	if err := tok.Set("test", map[string]interface{}{"test_roles": map[string]interface{}{"roles": tokenRoles}}); err != nil {
-		s.T().Fatal(err)
-	}
-	return "test.test_roles.roles", tok
-}
-
-func (s *AuthnCasbinSuite) newTokenWithCustomRoleMap(admin bool, standard bool) (string, jwt.Token) {
-	tok := jwt.New()
-	tokenRoles := s.buildTokenRoles(admin, standard, []string{"test-admin", "test-standard"})
-	if err := tok.Set("realm_access", map[string]interface{}{"roles": tokenRoles}); err != nil {
-		s.T().Fatal(err)
-	}
-	return "", tok
-}
-
-func (s *AuthnCasbinSuite) newTokenWithCilentID() (string, jwt.Token) {
-	tok := jwt.New()
-	if err := tok.Set("client_id", "test"); err != nil {
-		s.T().Fatal(err)
-	}
-	return "", tok
 }
 
 func (s *AuthnCasbinSuite) Test_Casbin_Claims_Matrix() {
@@ -849,4 +780,72 @@ func (s *AuthnCasbinSuite) Test_Casbin_Claims_Matrix() {
 			}
 		})
 	}
+}
+
+func (s *AuthnCasbinSuite) buildTokenRoles(admin bool, standard bool, roleMaps []string) []interface{} {
+	adminRole := "opentdf-admin"
+	if len(roleMaps) > 0 {
+		adminRole = roleMaps[0]
+	}
+	standardRole := "opentdf-standard"
+	if len(roleMaps) > 1 {
+		standardRole = roleMaps[1]
+	}
+
+	roles := make([]interface{}, 0, 2)
+
+	if admin {
+		roles = append(roles, adminRole)
+	}
+	if standard {
+		roles = append(roles, standardRole)
+	}
+
+	return roles
+}
+
+func (s *AuthnCasbinSuite) newTokWithDefaultClaim(admin bool, standard bool, usernameClaimName string) jwt.Token {
+	tok := jwt.New()
+
+	// Always using "roles" as the group claim name
+	groupClaimName := "roles"
+
+	tokenRoles := s.buildTokenRoles(admin, standard, nil)
+	if err := tok.Set("realm_access", map[string]interface{}{groupClaimName: tokenRoles}); err != nil {
+		s.T().Fatal(err)
+	}
+
+	if usernameClaimName != "" {
+		if err := tok.Set(usernameClaimName, "casbin-user"); err != nil {
+			s.T().Fatal(err)
+		}
+	}
+
+	return tok
+}
+
+func (s *AuthnCasbinSuite) newTokenWithCustomClaim(admin bool, standard bool) (string, jwt.Token) {
+	tok := jwt.New()
+	tokenRoles := s.buildTokenRoles(admin, standard, nil)
+	if err := tok.Set("test", map[string]interface{}{"test_roles": map[string]interface{}{"roles": tokenRoles}}); err != nil {
+		s.T().Fatal(err)
+	}
+	return "test.test_roles.roles", tok
+}
+
+func (s *AuthnCasbinSuite) newTokenWithCustomRoleMap(admin bool, standard bool) (string, jwt.Token) {
+	tok := jwt.New()
+	tokenRoles := s.buildTokenRoles(admin, standard, []string{"test-admin", "test-standard"})
+	if err := tok.Set("realm_access", map[string]interface{}{"roles": tokenRoles}); err != nil {
+		s.T().Fatal(err)
+	}
+	return "", tok
+}
+
+func (s *AuthnCasbinSuite) newTokenWithCilentID() (string, jwt.Token) {
+	tok := jwt.New()
+	if err := tok.Set("client_id", "test"); err != nil {
+		s.T().Fatal(err)
+	}
+	return "", tok
 }

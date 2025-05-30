@@ -59,14 +59,6 @@ func (c *Manager) NewCache(serviceName string, options Options) *Cache {
 	}
 }
 
-func (c *Cache) getKey(key string) string {
-	return c.serviceName + ":" + key
-}
-
-func (c *Cache) getServiceTag() string {
-	return "svc-" + c.serviceName
-}
-
 func (c *Cache) Get(ctx context.Context, key string) (interface{}, error) {
 	val, err := c.manager.cache.Get(ctx, c.getKey(key))
 	if err != nil {
@@ -112,4 +104,12 @@ func (c *Cache) Delete(ctx context.Context, key string) error {
 	}
 	log.Printf("[CACHE][%s] DELETE key=%s", c.serviceName, key)
 	return nil
+}
+
+func (c *Cache) getKey(key string) string {
+	return c.serviceName + ":" + key
+}
+
+func (c *Cache) getServiceTag() string {
+	return "svc-" + c.serviceName
 }

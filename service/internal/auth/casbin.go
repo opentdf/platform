@@ -136,23 +136,27 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		for j := range fields {
 			fields[j] = strings.TrimSpace(fields[j])
 		}
-		if fields[0] == "p" {
+		switch fields[0] {
+		case "p":
 			// Policy line: expect at least 5 fields: p, sub, obj, act, eft
-			if len(fields) < 5 {
+			const expectedFields = 5
+			sub, obj, act, eft := fields[1], fields[2], fields[3], fields[4]
+			if len(fields) < expectedFields {
 				return nil, fmt.Errorf("malformed casbin policy line %d: %q (expected at least 5 fields)", i+1, line)
 			}
-			if fields[2] == "" || fields[3] == "" {
+			if sub == "" || obj == "" || act == "" {
 				return nil, fmt.Errorf("malformed casbin policy line %d: %q (resource and action fields must not be empty)", i+1, line)
 			}
-			if fields[4] != "allow" && fields[4] != "deny" {
+			if eft != "allow" && eft != "deny" {
 				return nil, fmt.Errorf("malformed casbin policy line %d: %q (effect must be 'allow' or 'deny')", i+1, line)
 			}
-		} else if fields[0] == "g" {
+		case "g":
+			const expectedFields = 3
 			// Grouping line: expect at least 3 fields: g, user, role
-			if len(fields) < 3 {
+			if len(fields) < expectedFields {
 				return nil, fmt.Errorf("malformed casbin grouping line %d: %q (expected at least 3 fields)", i+1, line)
 			}
-		} else {
+		default:
 			// Unknown line type, fail-safe: error
 			return nil, fmt.Errorf("malformed casbin policy line %d: %q (unknown line type, must start with 'p' or 'g')", i+1, line)
 		}
@@ -229,9 +233,14 @@ func (e *Enforcer) buildSubjectFromTokenAndUserInfo(t jwt.Token, userInfo []byte
 	return info
 }
 
+const (
+	// defaultRolesCapacity is the default capacity for roles slice in extractRolesFromToken
+	defaultRolesCapacity = 4
+)
+
 // extractRolesFromToken extracts roles from a jwt.Token based on the configured claim path
 func (e *Enforcer) extractRolesFromToken(token jwt.Token) []string {
-	roles := make([]string, 0, 4) // preallocate for common case
+	roles := make([]string, 0, defaultRolesCapacity) // preallocate for common case
 	for _, selectors := range e.groupClaimSelectors {
 		if len(selectors) == 0 {
 			continue
@@ -269,7 +278,7 @@ func (e *Enforcer) extractRolesFromToken(token jwt.Token) []string {
 
 // extractRolesFromUserInfo extracts roles from a userInfo JSON ([]byte) based on the configured claim path
 func (e *Enforcer) extractRolesFromUserInfo(userInfo []byte) []string {
-	roles := make([]string, 0, 4)
+	roles := make([]string, 0, defaultRolesCapacity)
 	if userInfo == nil {
 		return roles
 	}

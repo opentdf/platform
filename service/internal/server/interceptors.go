@@ -11,7 +11,7 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 )
 
-func newConnectRPCIPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
+func newConnectRPCIPC(_ Config, a *auth.Authentication, _ *logger.Logger) (*ConnectRPC, error) {
 	interceptors := make([]connect.HandlerOption, 0)
 
 	// Auth interceptor

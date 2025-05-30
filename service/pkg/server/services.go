@@ -67,6 +67,7 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 		registeredServices []string
 	)
 
+	// TODO: Add support for passing context to the registration functions if needed
 	for _, m := range mode {
 		switch m {
 		case "all":

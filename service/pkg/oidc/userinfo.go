@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
@@ -18,6 +19,8 @@ import (
 
 const (
 	UserInfoCacheService = "userinfo"
+	// DefaultUserInfoTimeout is the default timeout for userinfo HTTP requests
+	DefaultUserInfoTimeout = 30 * time.Second
 )
 
 var (
@@ -115,7 +118,7 @@ func FetchUserInfo(ctx context.Context, userInfoEndpoint string, tokenRaw string
 
 	// Use our debug transport for the user info request
 	client := &http.Client{
-		Timeout: 30 * 1e9, // 30 seconds
+		Timeout: DefaultUserInfoTimeout,
 	}
 
 	resp, err := client.Do(req)

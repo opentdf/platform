@@ -7,9 +7,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/zitadel/oidc/v3/pkg/client/tokenexchange"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
+)
+
+const (
+	// DefaultTokenExchangeTimeout is the default timeout for token exchange HTTP requests
+	DefaultTokenExchangeTimeout = 30 * time.Second
 )
 
 // ExchangeToken performs OAuth2 token exchange (RFC 8693) using Zitadel's OIDC library.
@@ -21,7 +27,7 @@ func ExchangeToken(ctx context.Context, issuer, clientID, clientSecret, subjectT
 
 	// Create a debug client with a custom transport that logs requests and responses
 	httpClient := &http.Client{
-		Timeout: 30 * 1e9, // 30 seconds
+		Timeout: DefaultTokenExchangeTimeout,
 	}
 
 	// Create the token exchanger with our debug client

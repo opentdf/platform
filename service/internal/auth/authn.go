@@ -67,12 +67,13 @@ var (
 )
 
 const (
-	refreshInterval = 15 * time.Minute
-	ActionRead      = "read"
-	ActionWrite     = "write"
-	ActionDelete    = "delete"
-	ActionUnsafe    = "unsafe"
-	ActionOther     = "other"
+	refreshInterval           = 15 * time.Minute
+	clientVerificationTimeout = 30 * time.Second
+	ActionRead                = "read"
+	ActionWrite               = "write"
+	ActionDelete              = "delete"
+	ActionUnsafe              = "unsafe"
+	ActionOther               = "other"
 )
 
 // Authentication holds a jwks cache and information about the openid configuration
@@ -109,6 +110,16 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	// validate the configuration
 	if err := cfg.validateAuthNConfig(a.logger); err != nil {
 		return nil, err
+	}
+
+	// If userinfo enrichment is enabled, validate the client credentials with the IdP
+	if cfg.EnrichUserInfo {
+		logger.Info("validating client credentials with IdP", slog.String("issuer", cfg.Issuer), slog.String("client_id", cfg.ClientId), slog.Bool("tls_no_verify", cfg.AuthNConfig.TLSNoVerify))
+		if err := oidc.ValidateClientCredentials(ctx, cfg.Issuer, cfg.ClientId, cfg.ClientSecret, cfg.AuthNConfig.TLSNoVerify, clientVerificationTimeout); err != nil {
+			logger.Error("failed to validate client credentials with IdP", slog.String("error", err.Error()))
+			return nil, fmt.Errorf("client credentials validation failed: %w", err)
+		}
+		logger.Info("client credentials validation successful")
 	}
 
 	cache := jwk.NewCache(ctx)

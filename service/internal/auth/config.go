@@ -22,6 +22,7 @@ type Config struct {
 type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	EnforceDPoP    bool          `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
 	EnrichUserInfo bool          `mapstructure:"enrichUserInfo" json:"enrichUserInfo" default:"false"`
+	TLSNoVerify    bool          `mapstructure:"tls_no_verify" json:"tls_no_verify" default:"false"`
 	Issuer         string        `mapstructure:"issuer" json:"issuer"`
 	Audience       string        `mapstructure:"audience" json:"audience"`
 	Policy         PolicyConfig  `mapstructure:"policy" json:"policy"`

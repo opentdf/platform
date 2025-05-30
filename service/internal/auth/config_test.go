@@ -4,10 +4,15 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/oidc"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateAuthNConfig(t *testing.T) {
+	// Skip client credentials validation during tests
+	oidc.SetSkipValidationForTest(true)
+	defer oidc.SetSkipValidationForTest(false)
+
 	testLogger, err := logger.NewLogger(logger.Config{
 		Output: "stdout",
 		Level:  "debug",

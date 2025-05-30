@@ -212,6 +212,10 @@ func (s *AuthSuite) TearDownTest() {
 }
 
 func TestAuthSuite(t *testing.T) {
+	// Skip client credentials validation during tests
+	oidc.SetSkipValidationForTest(true)
+	defer oidc.SetSkipValidationForTest(false)
+
 	suite.Run(t, new(AuthSuite))
 }
 

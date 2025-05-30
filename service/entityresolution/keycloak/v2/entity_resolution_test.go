@@ -1,6 +1,7 @@
 package keycloak_test
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace/noop"
 	"google.golang.org/grpc/codes"
 )
 
@@ -83,6 +85,50 @@ func testConfig(server *httptest.Server) keycloak.Config {
 		Realm:          "tdf",
 		LegacyKeycloak: false,
 	}
+}
+
+// Helper function to create service and call entityResolution
+func testEntityResolution(ctx context.Context, req *entityresolutionV2.ResolveEntitiesRequest, config keycloak.Config, logger *logger.Logger) (entityresolutionV2.ResolveEntitiesResponse, error) {
+	// Convert Config to ServiceConfig (map[string]any)
+	serviceConfig := make(map[string]any)
+	serviceConfig["url"] = config.URL
+	serviceConfig["realm"] = config.Realm
+	serviceConfig["clientid"] = config.ClientID
+	serviceConfig["clientsecret"] = config.ClientSecret
+	serviceConfig["legacykeycloak"] = config.LegacyKeycloak
+	serviceConfig["subgroups"] = config.SubGroups
+	serviceConfig["inferid"] = config.InferID
+
+	svc, _ := keycloak.RegisterKeycloakERS(serviceConfig, logger)
+	svc.Tracer = noop.NewTracerProvider().Tracer("test")
+	connectReq := connect.NewRequest(req)
+	resp, err := svc.ResolveEntities(ctx, connectReq)
+	if err != nil {
+		return entityresolutionV2.ResolveEntitiesResponse{}, err
+	}
+	return *resp.Msg, nil
+}
+
+// Helper function to create service and call CreateEntityChainsFromTokens
+func testCreateEntityChainsFromTokens(ctx context.Context, req *entityresolutionV2.CreateEntityChainsFromTokensRequest, config keycloak.Config, logger *logger.Logger) (entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
+	// Convert Config to ServiceConfig (map[string]any)
+	serviceConfig := make(map[string]any)
+	serviceConfig["url"] = config.URL
+	serviceConfig["realm"] = config.Realm
+	serviceConfig["clientid"] = config.ClientID
+	serviceConfig["clientsecret"] = config.ClientSecret
+	serviceConfig["legacykeycloak"] = config.LegacyKeycloak
+	serviceConfig["subgroups"] = config.SubGroups
+	serviceConfig["inferid"] = config.InferID
+
+	svc, _ := keycloak.RegisterKeycloakERS(serviceConfig, logger)
+	svc.Tracer = noop.NewTracerProvider().Tracer("test")
+	connectReq := connect.NewRequest(req)
+	resp, err := svc.CreateEntityChainsFromTokens(ctx, connectReq)
+	if err != nil {
+		return entityresolutionV2.CreateEntityChainsFromTokensResponse{}, err
+	}
+	return *resp.Msg, nil
 }
 
 func testConfigInferID(server *httptest.Server) keycloak.Config {
@@ -157,7 +203,7 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 	defer server.Close()
 	kcconfig := testConfig(server)
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testEntityResolution(context.Background(), &req, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 	_ = json.NewEncoder(os.Stdout).Encode(&resp)
@@ -182,7 +228,7 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testEntityResolution(context.Background(), &req, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -218,7 +264,7 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testEntityResolution(context.Background(), &req, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -258,7 +304,7 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testEntityResolution(context.Background(), &req, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -294,7 +340,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testEntityResolution(context.Background(), &req, kcconfig, logger.CreateTestLogger())
 
 	require.Error(t, reserr)
 	assert.Equal(t, &entityresolutionV2.ResolveEntitiesResponse{}, &resp)
@@ -314,7 +360,7 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 
 	validBody := []*entity.Token{{Jwt: clientCredentialsJwt}}
 
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testCreateEntityChainsFromTokens(context.Background(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -334,7 +380,7 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 
 	validBody := []*entity.Token{{Jwt: passwordPubClientJwt}}
 
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testCreateEntityChainsFromTokens(context.Background(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -354,7 +400,7 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 
 	validBody := []*entity.Token{{Jwt: passwordPrivClientJwt}}
 
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testCreateEntityChainsFromTokens(context.Background(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -374,7 +420,7 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 
 	validBody := []*entity.Token{{Jwt: authPubClientJwt}}
 
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testCreateEntityChainsFromTokens(context.Background(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -394,7 +440,7 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 
 	validBody := []*entity.Token{{Jwt: authPrivClientJwt}}
 
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testCreateEntityChainsFromTokens(context.Background(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -414,7 +460,7 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 
 	validBody := []*entity.Token{{Jwt: implicitPubClientJwt}}
 
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testCreateEntityChainsFromTokens(context.Background(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -434,7 +480,7 @@ func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
 
 	validBody := []*entity.Token{{Jwt: implicitPrivClientJwt}}
 
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testCreateEntityChainsFromTokens(context.Background(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -457,7 +503,7 @@ func Test_JwtClientAndClientTokenExchange(t *testing.T) {
 
 	validBody := []*entity.Token{{Jwt: tokenExchangeJwt}}
 
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testCreateEntityChainsFromTokens(context.Background(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -480,7 +526,7 @@ func Test_JwtMultiple(t *testing.T) {
 
 	validBody := []*entity.Token{{Jwt: tokenExchangeJwt, EphemeralId: "tok1"}, {Jwt: authPrivClientJwt, EphemeralId: "tok2"}}
 
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testCreateEntityChainsFromTokens(context.Background(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -518,7 +564,7 @@ func Test_KCEntityResolutionNotFoundInferEmail(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testEntityResolution(context.Background(), &req, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -548,7 +594,7 @@ func Test_KCEntityResolutionNotFoundInferClientId(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testEntityResolution(context.Background(), &req, kcconfig, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -577,11 +623,39 @@ func Test_KCEntityResolutionNotFoundNotInferUsername(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	resp, reserr := testEntityResolution(context.Background(), &req, kcconfig, logger.CreateTestLogger())
 
 	require.Error(t, reserr)
 	assert.Equal(t, &entityresolutionV2.ResolveEntitiesResponse{}, &resp)
 	entityNotFound := entityresolutionV2.EntityNotFoundError{Code: int32(codes.NotFound), Message: keycloak.ErrGetRetrievalFailed.Error(), Entity: "randomuser"}
 	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), keycloak.ErrGetRetrievalFailed)
 	assert.Equal(t, expectedError, reserr)
+}
+
+func Test_ConnectionPoolConfiguration(t *testing.T) {
+	// Test that pool configuration is properly parsed
+	config := keycloak.Config{
+		URL:                   "http://localhost:8080",
+		Realm:                 "test",
+		ClientID:              "test-client",
+		ClientSecret:          "test-secret-value",
+		ConnectTimeoutSeconds: 30,
+		Pool: keycloak.PoolConfig{
+			MaxConnectionCount:       1000,
+			MaxIdleConnectionsCount:  200,
+			MaxConnectionIdleSeconds: 120,
+		},
+	}
+
+	// Verify configuration values
+	assert.Equal(t, 30, config.ConnectTimeoutSeconds)
+	assert.Equal(t, 1000, config.Pool.MaxConnectionCount)
+	assert.Equal(t, 200, config.Pool.MaxIdleConnectionsCount)
+	assert.Equal(t, 120, config.Pool.MaxConnectionIdleSeconds)
+
+	// Test LogValue doesn't expose sensitive data
+	logValue := config.LogValue()
+	logStr := logValue.String()
+	assert.Contains(t, logStr, "[REDACTED]")
+	assert.NotContains(t, logStr, "test-secret-value", "LogValue should not contain the actual secret value")
 }

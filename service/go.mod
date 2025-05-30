@@ -34,7 +34,7 @@ require (
 	github.com/opentdf/platform/lib/identifier v0.0.2
 	github.com/opentdf/platform/lib/ocrypto v0.2.0
 	github.com/opentdf/platform/protocol/go v0.3.6
-	github.com/opentdf/platform/sdk v0.4.5
+	github.com/opentdf/platform/sdk v0.4.7
 	github.com/pressly/goose/v3 v3.19.1
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1

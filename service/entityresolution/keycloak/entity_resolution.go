@@ -6,8 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/Nerzal/gocloak/v13"
@@ -43,16 +46,23 @@ type KeycloakEntityResolutionService struct { //nolint:revive // Too late! Alrea
 	idpConfig KeycloakConfig
 	logger    *logger.Logger
 	trace.Tracer
+	// Token caching fields
+	kcClient    *gocloak.GoCloak
+	kcToken     *gocloak.JWT
+	tokenMutex  sync.RWMutex
+	tokenExpiry time.Time
 }
 
 type KeycloakConfig struct { //nolint:revive // yeah but what if we want to embed multiple configs?
-	URL            string                 `mapstructure:"url" json:"url"`
-	Realm          string                 `mapstructure:"realm" json:"realm"`
-	ClientID       string                 `mapstructure:"clientid" json:"clientid"`
-	ClientSecret   string                 `mapstructure:"clientsecret" json:"clientsecret"`
-	LegacyKeycloak bool                   `mapstructure:"legacykeycloak" json:"legacykeycloak" default:"false"`
-	SubGroups      bool                   `mapstructure:"subgroups" json:"subgroups" default:"false"`
-	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty"`
+	URL                   string                 `mapstructure:"url" json:"url"`
+	Realm                 string                 `mapstructure:"realm" json:"realm"`
+	ClientID              string                 `mapstructure:"clientid" json:"clientid"`
+	ClientSecret          string                 `mapstructure:"clientsecret" json:"clientsecret"`
+	LegacyKeycloak        bool                   `mapstructure:"legacykeycloak" json:"legacykeycloak" default:"false"`
+	SubGroups             bool                   `mapstructure:"subgroups" json:"subgroups" default:"false"`
+	InferID               InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty"`
+	ConnectTimeoutSeconds int                    `mapstructure:"connect_timeout_seconds" json:"connect_timeout_seconds" default:"10"`
+	Pool                  PoolConfig             `mapstructure:"pool,omitempty" json:"pool,omitempty"`
 }
 
 func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger) (*KeycloakEntityResolutionService, serviceregistry.HandlerServer) {
@@ -61,23 +71,82 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger) (*K
 		panic(err)
 	}
 	logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
-	keycloakSVC := &KeycloakEntityResolutionService{idpConfig: inputIdpConfig, logger: logger}
+
+	// Initialize the Keycloak client once
+	var client *gocloak.GoCloak
+	if inputIdpConfig.LegacyKeycloak {
+		logger.Warn("using legacy connection mode for Keycloak < 17.x.x")
+		client = gocloak.NewClient(inputIdpConfig.URL)
+	} else {
+		client = gocloak.NewClient(inputIdpConfig.URL, gocloak.SetAuthAdminRealms("admin/realms"), gocloak.SetAuthRealms("realms"))
+	}
+
+	// Configure HTTP transport with connection pooling
+	restyClient := client.RestyClient()
+	restyClient.SetTransport(&http.Transport{
+		MaxIdleConns:        inputIdpConfig.Pool.MaxConnectionCount,
+		MaxIdleConnsPerHost: inputIdpConfig.Pool.MaxIdleConnectionsCount,
+		IdleConnTimeout:     time.Duration(inputIdpConfig.Pool.MaxConnectionIdleSeconds) * time.Second,
+		TLSHandshakeTimeout: time.Duration(inputIdpConfig.ConnectTimeoutSeconds) * time.Second,
+		DisableKeepAlives:   false,
+	})
+	restyClient.SetTimeout(time.Duration(inputIdpConfig.ConnectTimeoutSeconds) * time.Second)
+	client.SetRestyClient(restyClient)
+
+	keycloakSVC := &KeycloakEntityResolutionService{
+		idpConfig: inputIdpConfig,
+		logger:    logger,
+		kcClient:  client,
+	}
 	return keycloakSVC, nil
 }
 
-func (s KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
+// getOrRefreshToken returns a valid token, refreshing if necessary
+func (s *KeycloakEntityResolutionService) getOrRefreshToken(ctx context.Context) (*gocloak.JWT, error) {
+	s.tokenMutex.RLock()
+	if s.kcToken != nil && time.Now().Before(s.tokenExpiry) {
+		defer s.tokenMutex.RUnlock()
+		return s.kcToken, nil
+	}
+	s.tokenMutex.RUnlock()
+
+	// Need to refresh token
+	s.tokenMutex.Lock()
+	defer s.tokenMutex.Unlock()
+
+	// Double-check in case another goroutine refreshed while we were waiting
+	if s.kcToken != nil && time.Now().Before(s.tokenExpiry) {
+		return s.kcToken, nil
+	}
+
+	// Login to get new token
+	token, err := s.kcClient.LoginClient(ctx, s.idpConfig.ClientID, s.idpConfig.ClientSecret, s.idpConfig.Realm)
+	if err != nil {
+		s.logger.Error("error connecting to keycloak!", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	s.kcToken = token
+	// Refresh 30 seconds before expiry
+	s.tokenExpiry = time.Now().Add(time.Duration(token.ExpiresIn-30) * time.Second)
+	s.logger.Debug("refreshed keycloak token", slog.Time("expires_at", s.tokenExpiry))
+
+	return token, nil
+}
+
+func (s *KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
 	ctx, span := s.Tracer.Start(ctx, "ResolveEntities")
 	defer span.End()
 
-	resp, err := EntityResolution(ctx, req.Msg, s.idpConfig, s.logger)
+	resp, err := s.entityResolution(ctx, req.Msg)
 	return connect.NewResponse(&resp), err
 }
 
-func (s KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
+func (s *KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
 	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainFromJwt")
 	defer span.End()
 
-	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.idpConfig, s.logger)
+	resp, err := s.createEntityChainFromJWT(ctx, req.Msg)
 	return connect.NewResponse(&resp), err
 }
 
@@ -90,7 +159,14 @@ func (c KeycloakConfig) LogValue() slog.Value {
 		slog.Bool("legacykeycloak", c.LegacyKeycloak),
 		slog.Bool("subgroups", c.SubGroups),
 		slog.Any("inferid", c.InferID),
+		slog.Any("pool", c.Pool),
 	)
+}
+
+type PoolConfig struct {
+	MaxConnectionCount       int `mapstructure:"max_connection_count" json:"max_connection_count" default:"500"`
+	MaxIdleConnectionsCount  int `mapstructure:"max_idle_connections_count" json:"max_idle_connections_count" default:"100"`
+	MaxConnectionIdleSeconds int `mapstructure:"max_connection_idle_seconds" json:"max_connection_idle_seconds" default:"90"`
 }
 
 type InferredIdentityConfig struct {
@@ -103,21 +179,14 @@ type EntityImpliedFrom struct {
 	Username bool `mapstructure:"username,omitempty" json:"username,omitempty"`
 }
 
-type KeyCloakConnector struct { //nolint:revive // Too late! Already exported
-	token  *gocloak.JWT
-	client *gocloak.GoCloak
-}
-
-func CreateEntityChainFromJwt(
+func (s *KeycloakEntityResolutionService) createEntityChainFromJWT(
 	ctx context.Context,
 	req *entityresolution.CreateEntityChainFromJwtRequest,
-	kcConfig KeycloakConfig,
-	logger *logger.Logger,
 ) (entityresolution.CreateEntityChainFromJwtResponse, error) {
 	entityChains := []*authorization.EntityChain{}
 	// for each token in the tokens form an entity chain
 	for _, tok := range req.GetTokens() {
-		entities, err := getEntitiesFromToken(ctx, kcConfig, tok.GetJwt(), logger)
+		entities, err := s.getEntitiesFromToken(ctx, tok.GetJwt())
 		if err != nil {
 			return entityresolution.CreateEntityChainFromJwtResponse{}, err
 		}
@@ -127,10 +196,10 @@ func CreateEntityChainFromJwt(
 	return entityresolution.CreateEntityChainFromJwtResponse{EntityChains: entityChains}, nil
 }
 
-func EntityResolution(ctx context.Context,
-	req *entityresolution.ResolveEntitiesRequest, kcConfig KeycloakConfig, logger *logger.Logger,
+func (s *KeycloakEntityResolutionService) entityResolution(ctx context.Context,
+	req *entityresolution.ResolveEntitiesRequest,
 ) (entityresolution.ResolveEntitiesResponse, error) {
-	connector, err := getKCClient(ctx, kcConfig, logger)
+	token, err := s.getOrRefreshToken(ctx)
 	if err != nil {
 		return entityresolution.ResolveEntitiesResponse{},
 			connect.NewError(connect.CodeInternal, ErrCreationFailed)
@@ -140,43 +209,43 @@ func EntityResolution(ctx context.Context,
 	var resolvedEntities []*entityresolution.EntityRepresentation
 
 	for idx, ident := range payload {
-		logger.Debug("lookup", "entity", ident.GetEntityType())
+		s.logger.Debug("lookup", "entity", ident.GetEntityType())
 		var keycloakEntities []*gocloak.User
 		var getUserParams gocloak.GetUsersParams
 		exactMatch := true
 		switch ident.GetEntityType().(type) {
 		case *authorization.Entity_ClientId:
-			logger.Debug("looking up", slog.Any("type", ident.GetEntityType()), slog.String("client_id", ident.GetClientId()))
+			s.logger.Debug("looking up", slog.Any("type", ident.GetEntityType()), slog.String("client_id", ident.GetClientId()))
 			clientID := ident.GetClientId()
-			clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
+			clients, err := s.kcClient.GetClients(ctx, token.AccessToken, s.idpConfig.Realm, gocloak.GetClientsParams{
 				ClientID: &clientID,
 			})
 			if err != nil {
-				logger.Error("error getting client info", slog.String("error", err.Error()))
+				s.logger.Error("error getting client info", slog.String("error", err.Error()))
 				return entityresolution.ResolveEntitiesResponse{},
 					connect.NewError(connect.CodeInternal, ErrGetRetrievalFailed)
 			}
 			var jsonEntities []*structpb.Struct
 			for _, client := range clients {
-				json, err := typeToGenericJSONMap(client, logger)
+				json, err := typeToGenericJSONMap(client, s.logger)
 				if err != nil {
-					logger.Error("error serializing entity representation!", slog.String("error", err.Error()))
+					s.logger.Error("error serializing entity representation!", slog.String("error", err.Error()))
 					return entityresolution.ResolveEntitiesResponse{},
 						connect.NewError(connect.CodeInternal, ErrCreationFailed)
 				}
 				mystruct, structErr := structpb.NewStruct(json)
 				if structErr != nil {
-					logger.Error("error making struct!", slog.String("error", structErr.Error()))
+					s.logger.Error("error making struct!", slog.String("error", structErr.Error()))
 					return entityresolution.ResolveEntitiesResponse{},
 						connect.NewError(connect.CodeInternal, ErrCreationFailed)
 				}
 				jsonEntities = append(jsonEntities, mystruct)
 			}
-			if len(clients) == 0 && kcConfig.InferID.From.ClientID {
+			if len(clients) == 0 && s.idpConfig.InferID.From.ClientID {
 				// convert entity to json
 				entityStruct, err := entityToStructPb(ident)
 				if err != nil {
-					logger.Error("unable to make entity struct", slog.String("error", err.Error()))
+					s.logger.Error("unable to make entity struct", slog.String("error", err.Error()))
 					return entityresolution.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, ErrCreationFailed)
 				}
 				jsonEntities = append(jsonEntities, entityStruct)
@@ -201,44 +270,44 @@ func EntityResolution(ctx context.Context,
 		}
 
 		var jsonEntities []*structpb.Struct
-		users, err := connector.client.GetUsers(ctx, connector.token.AccessToken, kcConfig.Realm, getUserParams)
+		users, err := s.kcClient.GetUsers(ctx, token.AccessToken, s.idpConfig.Realm, getUserParams)
 		switch {
 		case err != nil:
-			logger.Error(err.Error())
+			s.logger.Error(err.Error())
 			return entityresolution.ResolveEntitiesResponse{},
 				connect.NewError(connect.CodeInternal, ErrGetRetrievalFailed)
 		case len(users) == 1:
 			user := users[0]
-			logger.Debug("user found", slog.String("user", *user.ID), slog.String("entity", ident.String()))
-			logger.Debug("user", slog.Any("details", user))
-			logger.Debug("user", slog.Any("attributes", user.Attributes))
+			s.logger.Debug("user found", slog.String("user", *user.ID), slog.String("entity", ident.String()))
+			s.logger.Debug("user", slog.Any("details", user))
+			s.logger.Debug("user", slog.Any("attributes", user.Attributes))
 			keycloakEntities = append(keycloakEntities, user)
 		default:
-			logger.Error("no user found for", slog.Any("entity", ident))
+			s.logger.Error("no user found for", slog.Any("entity", ident))
 			if ident.GetEmailAddress() != "" { //nolint:nestif // this case has many possible outcomes to handle
 				// try by group
-				groups, groupErr := connector.client.GetGroups(
+				groups, groupErr := s.kcClient.GetGroups(
 					ctx,
-					connector.token.AccessToken,
-					kcConfig.Realm,
+					token.AccessToken,
+					s.idpConfig.Realm,
 					gocloak.GetGroupsParams{Search: func() *string { t := ident.GetEmailAddress(); return &t }()},
 				)
 				switch {
 				case groupErr != nil:
-					logger.Error("error getting group", slog.String("group", groupErr.Error()))
+					s.logger.Error("error getting group", slog.String("group", groupErr.Error()))
 					return entityresolution.ResolveEntitiesResponse{},
 						connect.NewError(connect.CodeInternal, ErrGetRetrievalFailed)
 				case len(groups) == 1:
-					logger.Info("group found for", slog.String("entity", ident.String()))
+					s.logger.Info("group found for", slog.String("entity", ident.String()))
 					group := groups[0]
-					expandedRepresentations, exErr := expandGroup(ctx, *group.ID, connector, &kcConfig, logger)
+					expandedRepresentations, exErr := s.expandGroup(ctx, *group.ID, token)
 					if exErr != nil {
 						return entityresolution.ResolveEntitiesResponse{},
 							connect.NewError(connect.CodeNotFound, ErrNotFound)
 					}
 					keycloakEntities = expandedRepresentations
 				default:
-					logger.Error("no group found for", slog.String("entity", ident.String()))
+					s.logger.Error("no group found for", slog.String("entity", ident.String()))
 					var entityNotFoundErr entityresolution.EntityNotFoundError
 					switch ident.GetEntityType().(type) {
 					case *authorization.Entity_EmailAddress:
@@ -249,15 +318,15 @@ func EntityResolution(ctx context.Context,
 					// 	return &entityresolution.IdpPluginResponse{},
 					// 		status.Error(codes.InvalidArgument, db.ErrTextNotFound)
 					default:
-						logger.Error("unsupported/unknown type for", slog.String("entity", ident.String()))
+						s.logger.Error("unsupported/unknown type for", slog.String("entity", ident.String()))
 						entityNotFoundErr = entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrGetRetrievalFailed.Error(), Entity: ident.String()}
 					}
-					logger.Error(entityNotFoundErr.String())
-					if kcConfig.InferID.From.Email || kcConfig.InferID.From.Username {
+					s.logger.Error(entityNotFoundErr.String())
+					if s.idpConfig.InferID.From.Email || s.idpConfig.InferID.From.Username {
 						// user not found -- add json entity to resp instead
 						entityStruct, err := entityToStructPb(ident)
 						if err != nil {
-							logger.Error("unable to make entity struct from email or username", slog.String("error", err.Error()))
+							s.logger.Error("unable to make entity struct from email or username", slog.String("error", err.Error()))
 							return entityresolution.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, ErrCreationFailed)
 						}
 						jsonEntities = append(jsonEntities, entityStruct)
@@ -266,11 +335,11 @@ func EntityResolution(ctx context.Context,
 					}
 				}
 			} else if ident.GetUserName() != "" {
-				if kcConfig.InferID.From.Username {
+				if s.idpConfig.InferID.From.Username {
 					// user not found -- add json entity to resp instead
 					entityStruct, err := entityToStructPb(ident)
 					if err != nil {
-						logger.Error("unable to make entity struct from username", slog.String("error", err.Error()))
+						s.logger.Error("unable to make entity struct from username", slog.String("error", err.Error()))
 						return entityresolution.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInternal, ErrCreationFailed)
 					}
 					jsonEntities = append(jsonEntities, entityStruct)
@@ -282,15 +351,15 @@ func EntityResolution(ctx context.Context,
 		}
 
 		for _, er := range keycloakEntities {
-			json, err := typeToGenericJSONMap(er, logger)
+			json, err := typeToGenericJSONMap(er, s.logger)
 			if err != nil {
-				logger.Error("error serializing entity representation!", slog.String("error", err.Error()))
+				s.logger.Error("error serializing entity representation!", slog.String("error", err.Error()))
 				return entityresolution.ResolveEntitiesResponse{},
 					connect.NewError(connect.CodeInternal, ErrCreationFailed)
 			}
 			mystruct, structErr := structpb.NewStruct(json)
 			if structErr != nil {
-				logger.Error("error making struct!", slog.String("error", structErr.Error()))
+				s.logger.Error("error making struct!", slog.String("error", structErr.Error()))
 				return entityresolution.ResolveEntitiesResponse{},
 					connect.NewError(connect.CodeInternal, ErrCreationFailed)
 			}
@@ -308,7 +377,7 @@ func EntityResolution(ctx context.Context,
 				AdditionalProps: jsonEntities,
 			},
 		)
-		logger.Debug("entities", slog.Any("resolved", resolvedEntities))
+		s.logger.Debug("entities", slog.Any("resolved", resolvedEntities))
 	}
 
 	return entityresolution.ResolveEntitiesResponse{
@@ -334,60 +403,31 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable, logger *logg
 	return genericMap, nil
 }
 
-func getKCClient(ctx context.Context, kcConfig KeycloakConfig, logger *logger.Logger) (*KeyCloakConnector, error) {
-	var client *gocloak.GoCloak
-	if kcConfig.LegacyKeycloak {
-		logger.Warn("using legacy connection mode for Keycloak < 17.x.x")
-		client = gocloak.NewClient(kcConfig.URL)
-	} else {
-		client = gocloak.NewClient(kcConfig.URL, gocloak.SetAuthAdminRealms("admin/realms"), gocloak.SetAuthRealms("realms"))
-	}
-	// If needed, ability to disable tls checks for testing
-	// restyClient := client.RestyClient()
-	// restyClient.SetDebug(true)
-	// restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
-	// client.SetRestyClient(restyClient)
-
-	// For debugging
-	// logger.Debug(kcConfig.ClientID)
-	// logger.Debug(kcConfig.ClientSecret)
-	// logger.Debug(kcConfig.URL)
-	// logger.Debug(kcConfig.Realm)
-	token, err := client.LoginClient(ctx, kcConfig.ClientID, kcConfig.ClientSecret, kcConfig.Realm)
-	if err != nil {
-		logger.Error("error connecting to keycloak!", slog.String("error", err.Error()))
-		return nil, err
-	}
-	keycloakConnector := KeyCloakConnector{token: token, client: client}
-
-	return &keycloakConnector, nil
-}
-
-func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConnector, kcConfig *KeycloakConfig, logger *logger.Logger) ([]*gocloak.User, error) {
-	logger.Info("expanding group", slog.String("groupID", groupID))
+func (s *KeycloakEntityResolutionService) expandGroup(ctx context.Context, groupID string, token *gocloak.JWT) ([]*gocloak.User, error) {
+	s.logger.Info("expanding group", slog.String("groupID", groupID))
 	var entityRepresentations []*gocloak.User
 
-	grp, err := kcConnector.client.GetGroup(ctx, kcConnector.token.AccessToken, kcConfig.Realm, groupID)
+	grp, err := s.kcClient.GetGroup(ctx, token.AccessToken, s.idpConfig.Realm, groupID)
 	if err == nil {
-		grpMembers, memberErr := kcConnector.client.GetGroupMembers(ctx, kcConnector.token.AccessToken, kcConfig.Realm,
+		grpMembers, memberErr := s.kcClient.GetGroupMembers(ctx, token.AccessToken, s.idpConfig.Realm,
 			*grp.ID, gocloak.GetGroupsParams{})
 		if memberErr == nil {
-			logger.Debug("adding members", slog.Int("amount", len(grpMembers)), slog.String("from group", *grp.Name))
+			s.logger.Debug("adding members", slog.Int("amount", len(grpMembers)), slog.String("from group", *grp.Name))
 			for i := 0; i < len(grpMembers); i++ {
 				user := grpMembers[i]
 				entityRepresentations = append(entityRepresentations, user)
 			}
 		} else {
-			logger.Error("error getting group members", slog.String("error", memberErr.Error()))
+			s.logger.Error("error getting group members", slog.String("error", memberErr.Error()))
 		}
 	} else {
-		logger.Error("error getting group", slog.String("error", err.Error()))
+		s.logger.Error("error getting group", slog.String("error", err.Error()))
 		return nil, err
 	}
 	return entityRepresentations, nil
 }
 
-func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtString string, logger *logger.Logger) ([]*authorization.Entity, error) {
+func (s *KeycloakEntityResolutionService) getEntitiesFromToken(ctx context.Context, jwtString string) ([]*authorization.Entity, error) {
 	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
 		return nil, errors.New("error parsing jwt " + err.Error())
@@ -426,7 +466,7 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 
 	// double check for service account
 	if strings.HasPrefix(extractedValueUsernameCasted, serviceAccountUsernamePrefix) {
-		clientid, err := getServiceAccountClient(ctx, extractedValueUsernameCasted, kcConfig, logger)
+		clientid, err := s.getServiceAccountClient(ctx, extractedValueUsernameCasted)
 		if err != nil {
 			return nil, err
 		}
@@ -455,28 +495,28 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 	return entities, nil
 }
 
-func getServiceAccountClient(ctx context.Context, username string, kcConfig KeycloakConfig, logger *logger.Logger) (string, error) {
-	connector, err := getKCClient(ctx, kcConfig, logger)
+func (s *KeycloakEntityResolutionService) getServiceAccountClient(ctx context.Context, username string) (string, error) {
+	token, err := s.getOrRefreshToken(ctx)
 	if err != nil {
 		return "", err
 	}
 	expectedClientName := strings.TrimPrefix(username, serviceAccountUsernamePrefix)
 
-	clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
+	clients, err := s.kcClient.GetClients(ctx, token.AccessToken, s.idpConfig.Realm, gocloak.GetClientsParams{
 		ClientID: &expectedClientName,
 	})
 	switch {
 	case err != nil:
-		logger.Error(err.Error())
+		s.logger.Error(err.Error())
 		return "", err
 	case len(clients) == 1:
 		client := clients[0]
-		logger.Debug("client found", slog.String("client", *client.ClientID))
+		s.logger.Debug("client found", slog.String("client", *client.ClientID))
 		return *client.ClientID, nil
 	case len(clients) > 1:
-		logger.Error("more than one client found for ", slog.String("clientid", expectedClientName))
+		s.logger.Error("more than one client found for ", slog.String("clientid", expectedClientName))
 	default:
-		logger.Debug("no client found, likely not a service account", slog.String("clientid", expectedClientName))
+		s.logger.Debug("no client found, likely not a service account", slog.String("clientid", expectedClientName))
 	}
 
 	return "", nil

@@ -65,6 +65,7 @@ func (c *EntitlementPolicyCache) Start(ctx context.Context) error {
 
 // Stop stops the periodic refresh goroutine if it's running
 func (c *EntitlementPolicyCache) Stop() {
+	waitTimeout := 5 * time.Second // Timeout for the stop operation
 	// Only attempt to stop the refresh goroutine if an interval was set
 	if c.configuredRefreshInterval > 0 {
 		// Signal the goroutine to stop
@@ -73,7 +74,7 @@ func (c *EntitlementPolicyCache) Stop() {
 		select {
 		case <-c.refreshCompleted:
 			// Goroutine completed successfully
-		case <-time.After(5 * time.Second):
+		case <-time.After(waitTimeout):
 			// Timeout as a safety mechanism in case the goroutine is stuck
 			c.logger.WarnContext(context.Background(), "Timed out waiting for refresh goroutine to complete")
 		}
@@ -124,7 +125,7 @@ func (c *EntitlementPolicyCache) ListCachedAttributes(limit, offset int32) ([]*p
 		return attributes[offset:], total
 	}
 	// Ensure we don't exceed the slice bounds
-	limited := min(offset + limit, total)
+	limited := min(offset+limit, total)
 
 	return attributes[offset:limited], total
 }
@@ -147,13 +148,16 @@ func (c *EntitlementPolicyCache) ListCachedSubjectMappings(limit, offset int32) 
 		return subjectMappings[offset:], total
 	}
 	// Ensure we don't exceed the slice bounds
-	limited := min(offset + limit, total)
+	limited := min(offset+limit, total)
 
 	return subjectMappings[offset:limited], total
 }
 
 // periodicRefresh refreshes the cache at the specified interval
 func (c *EntitlementPolicyCache) periodicRefresh(ctx context.Context) {
+	// Half the refresh interval for the context timeout
+	waitTimeout := c.configuredRefreshInterval / 2
+
 	ticker := time.NewTicker(c.configuredRefreshInterval)
 	defer func() {
 		ticker.Stop()
@@ -165,7 +169,7 @@ func (c *EntitlementPolicyCache) periodicRefresh(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			// Create a child context that can be canceled if refresh takes too long
-			refreshCtx, cancel := context.WithTimeout(ctx, c.configuredRefreshInterval/2)
+			refreshCtx, cancel := context.WithTimeout(ctx, waitTimeout)
 			err := c.Refresh(refreshCtx)
 			cancel() // Always cancel the context to prevent leaks
 			if err != nil {

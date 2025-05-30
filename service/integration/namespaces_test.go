@@ -1170,7 +1170,88 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Returns_Error_When_
 
 	s.Require().Error(err)
 	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *NamespacesSuite) Test_AssignPublicKeyToNamespace_NotActiveKey_Fail() {
+	var kasID string
+	var namespaceID string
+	keyIDs := make([]string, 0)
+	defer func() {
+		for _, keyID := range keyIDs {
+			// delete the kas key
+			_, err := s.db.PolicyClient.DeleteKey(s.ctx, keyID)
+			s.Require().NoError(err)
+		}
+
+		if kasID != "" {
+			// delete the kas
+			_, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, kasID)
+			s.Require().NoError(err)
+		}
+
+		if namespaceID != "" {
+			_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, &policy.Namespace{Id: namespaceID}, "")
+			s.Require().NoError(err)
+		}
+	}()
+
+	// create a KAS
+	kasReq := &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://example.com/kas-ns-inactive-key-test", // Unique URI for this test
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Remote{
+				Remote: "https://example.com/kas-ns-inactive-key-test/key/1",
+			},
+		},
+		Name: "kas_ns_inactive_key_test", // Unique name for this test
+	}
+	createdKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasReq)
+	s.Require().NoError(err)
+	s.NotNil(createdKAS)
+	kasID = createdKAS.GetId()
+
+	kasKeyReq := &kasregistry.CreateKeyRequest{
+		KasId:        kasID,
+		KeyId:        "kas_key_ns_inactive_test", // Unique key ID for this test
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
+		PublicKeyCtx: &policy.PublicKeyCtx{
+			Pem: keyCtx,
+		},
+	}
+	toBeRotatedKey, err := s.db.PolicyClient.CreateKey(s.ctx, kasKeyReq)
+	s.Require().NoError(err)
+	s.NotNil(toBeRotatedKey)
+	originalKeyID := toBeRotatedKey.GetKasKey().GetKey().GetId()
+	keyIDs = append(keyIDs, originalKeyID)
+
+	// rotate the key
+	rotateNewKeyReq := &kasregistry.RotateKeyRequest_NewKey{
+		KeyId:     "kas_key_ns_inactive_test_rotated", // Unique rotated key ID
+		Algorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:   policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
+		PublicKeyCtx: &policy.PublicKeyCtx{
+			Pem: keyCtx, // Using the same key material for simplicity, real scenario might use new material
+		},
+	}
+	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, toBeRotatedKey.GetKasKey(), rotateNewKeyReq)
+	s.Require().NoError(err)
+	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
+
+	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "test-kas-ns.com"})
+	s.Require().NoError(err)
+	s.NotNil(createdNamespace)
+	namespaceID = createdNamespace.GetId()
+
+	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
+		NamespaceId: createdNamespace.GetId(),
+		KeyId:       originalKeyID,
+	})
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().Contains(err.Error(), fmt.Sprintf("key with id %s is not active", originalKeyID))
 }
 
 func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
@@ -1258,17 +1339,17 @@ func (s *NamespacesSuite) Test_RemovePublicKeyFromNamespace_Not_Found_Fails() {
 	s.NotNil(resp)
 }
 
+func TestNamespacesSuite(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping namespaces integration tests")
+	}
+	suite.Run(t, new(NamespacesSuite))
+}
+
 func (s *NamespacesSuite) getActiveNamespaceFixtures() []fixtures.FixtureDataNamespace {
 	return []fixtures.FixtureDataNamespace{
 		s.f.GetNamespaceKey("example.com"),
 		s.f.GetNamespaceKey("example.net"),
 		s.f.GetNamespaceKey("example.org"),
 	}
-}
-
-func TestNamespacesSuite(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping namespaces integration tests")
-	}
-	suite.Run(t, new(NamespacesSuite))
 }

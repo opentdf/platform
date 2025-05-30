@@ -3,7 +3,7 @@ package subjectmapping
 import (
 	"testing"
 
-	"github.com/bufbuild/protovalidate-go"
+	"buf.build/go/protovalidate"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/stretchr/testify/require"
@@ -19,9 +19,190 @@ func getValidator() protovalidate.Validator {
 
 const (
 	errMessageUUID         = "string.uuid"
+	errLessThanMinItems    = "repeated.min_items"
 	errMessageOptionalUUID = "optional_uuid_format"
 	fakeID                 = "cf75540a-cd58-4c6c-a502-7108be7a6edd"
 )
+
+var validActions = []*policy.Action{
+	{
+		Name: "action1",
+	},
+	{
+		Name: "read",
+	},
+}
+
+func Test_CreateSubjectMappingRequest_InvalidSubjectConditionSet_Fails(t *testing.T) {
+	testCases := []struct {
+		name           string
+		setupRequest   func() *subjectmapping.CreateSubjectMappingRequest
+		expectedError  string
+		expectedDetail string
+	}{
+		{
+			name: "empty subject sets",
+			setupRequest: func() *subjectmapping.CreateSubjectMappingRequest {
+				conditionSet := &subjectmapping.SubjectConditionSetCreate{}
+				return &subjectmapping.CreateSubjectMappingRequest{
+					AttributeValueId:       fakeID,
+					NewSubjectConditionSet: conditionSet,
+					Actions:                validActions,
+				}
+			},
+			expectedError:  errLessThanMinItems,
+			expectedDetail: "subject_sets",
+		},
+		{
+			name: "empty subject set",
+			setupRequest: func() *subjectmapping.CreateSubjectMappingRequest {
+				conditionSet := &subjectmapping.SubjectConditionSetCreate{
+					SubjectSets: []*policy.SubjectSet{{}},
+				}
+				return &subjectmapping.CreateSubjectMappingRequest{
+					AttributeValueId:       fakeID,
+					NewSubjectConditionSet: conditionSet,
+					Actions:                validActions,
+				}
+			},
+			expectedError:  errLessThanMinItems,
+			expectedDetail: "subject_sets",
+		},
+		{
+			name: "empty condition groups",
+			setupRequest: func() *subjectmapping.CreateSubjectMappingRequest {
+				conditionSet := &subjectmapping.SubjectConditionSetCreate{
+					SubjectSets: []*policy.SubjectSet{
+						{
+							ConditionGroups: []*policy.ConditionGroup{},
+						},
+					},
+				}
+				return &subjectmapping.CreateSubjectMappingRequest{
+					AttributeValueId:       fakeID,
+					NewSubjectConditionSet: conditionSet,
+					Actions:                validActions,
+				}
+			},
+			expectedError:  errLessThanMinItems,
+			expectedDetail: "condition_groups",
+		},
+		{
+			name: "empty condition group",
+			setupRequest: func() *subjectmapping.CreateSubjectMappingRequest {
+				conditionSet := &subjectmapping.SubjectConditionSetCreate{
+					SubjectSets: []*policy.SubjectSet{
+						{
+							ConditionGroups: []*policy.ConditionGroup{{}},
+						},
+					},
+				}
+				return &subjectmapping.CreateSubjectMappingRequest{
+					AttributeValueId:       fakeID,
+					NewSubjectConditionSet: conditionSet,
+					Actions:                validActions,
+				}
+			},
+			expectedError:  errLessThanMinItems,
+			expectedDetail: "condition_groups",
+		},
+		{
+			name: "missing operator",
+			setupRequest: func() *subjectmapping.CreateSubjectMappingRequest {
+				conditionSet := &subjectmapping.SubjectConditionSetCreate{
+					SubjectSets: []*policy.SubjectSet{
+						{
+							ConditionGroups: []*policy.ConditionGroup{
+								{
+									Conditions: []*policy.Condition{
+										{
+											SubjectExternalSelectorValue: ".some_field",
+											SubjectExternalValues:        []string{"some_value"},
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				return &subjectmapping.CreateSubjectMappingRequest{
+					AttributeValueId:       fakeID,
+					NewSubjectConditionSet: conditionSet,
+					Actions:                validActions,
+				}
+			},
+			expectedError: "operator",
+		},
+		{
+			name: "missing subject external selector value",
+			setupRequest: func() *subjectmapping.CreateSubjectMappingRequest {
+				conditionSet := &subjectmapping.SubjectConditionSetCreate{
+					SubjectSets: []*policy.SubjectSet{
+						{
+							ConditionGroups: []*policy.ConditionGroup{
+								{
+									Conditions: []*policy.Condition{
+										{
+											Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+											SubjectExternalSelectorValue: "",
+											SubjectExternalValues:        []string{"some_value"},
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				return &subjectmapping.CreateSubjectMappingRequest{
+					AttributeValueId:       fakeID,
+					NewSubjectConditionSet: conditionSet,
+					Actions:                validActions,
+				}
+			},
+			expectedError: "subject_external_selector_value",
+		},
+		{
+			name: "empty subject external values",
+			setupRequest: func() *subjectmapping.CreateSubjectMappingRequest {
+				conditionSet := &subjectmapping.SubjectConditionSetCreate{
+					SubjectSets: []*policy.SubjectSet{
+						{
+							ConditionGroups: []*policy.ConditionGroup{
+								{
+									Conditions: []*policy.Condition{
+										{
+											Operator:                     policy.SubjectMappingOperatorEnum_SUBJECT_MAPPING_OPERATOR_ENUM_IN,
+											SubjectExternalSelectorValue: ".some_field",
+											SubjectExternalValues:        []string{},
+										},
+									},
+								},
+							},
+						},
+					},
+				}
+				return &subjectmapping.CreateSubjectMappingRequest{
+					AttributeValueId:       fakeID,
+					NewSubjectConditionSet: conditionSet,
+					Actions:                validActions,
+				}
+			},
+			expectedError: "subject_external_values",
+		},
+	}
+
+	validator := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			request := tc.setupRequest()
+			err := validator.Validate(request)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.expectedError)
+		})
+	}
+}
 
 func Test_CreateSubjectMappingRequest_NilActionsArray_Fails(t *testing.T) {
 	req := &subjectmapping.CreateSubjectMappingRequest{

@@ -19,6 +19,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/opentdf/platform/service/trust"
 )
 
 // RegistrationParams is a struct that holds the parameters needed to register a service
@@ -41,6 +42,8 @@ type RegistrationParams struct {
 	// Logger is the logger that can be used to log messages. This logger is scoped to the service
 	Logger *logger.Logger
 	trace.Tracer
+
+	KeyManagers []trust.KeyManager
 
 	////// The following functions are optional and intended to be called by the service //////
 

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
+	"html"
 	"io"
 	"log"
 	"net/http"
@@ -42,6 +43,13 @@ func servePKCEDemo() error {
 		platformEndpoint := r.URL.Query().Get("platform_endpoint")
 		if platformEndpoint == "" {
 			platformEndpoint = "https://localhost:8080"
+		}
+		// Ensure platformEndpoint is a valid URL and does not contain script or other unsafe content
+		parsedURL, err := url.Parse(platformEndpoint)
+		if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+			log.Printf("Invalid platform_endpoint: %v", platformEndpoint)
+			http.Error(w, "Invalid platform_endpoint", http.StatusBadRequest)
+			return
 		}
 
 		scope := r.URL.Query().Get("scope")
@@ -82,16 +90,15 @@ func servePKCEDemo() error {
 			if !ok {
 				log.Printf("No IDP configuration found in response: %v", conf)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
 			}
 		}
-		// Prepare template variables
-		oidcConfigJSON, _ := json.MarshalIndent(oidcConfig, "", "  ")
+
+		oidcConfigJSON, _ := json.Marshal(oidcConfig)
 		replacer := map[string]string{
 			"__PLATFORM_WELLKNOWN_CONFIG__": string(oidcConfigJSON),
-			"__CLIENT_ID__":                 clientID,
-			"__SCOPE__":                     scope,
-			"__PLATFORM_ENDPOINT__":         platformEndpoint,
+			"__CLIENT_ID__":                 html.EscapeString(clientID),
+			"__SCOPE__":                     html.EscapeString(scope),
+			"__PLATFORM_ENDPOINT__":         html.EscapeString(platformEndpoint),
 		}
 		html := string(pkceDemoHTML)
 		for k, v := range replacer {

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.7](https://github.com/opentdf/platform/compare/protocol/go/v0.3.6...protocol/go/v0.3.7) (2025-05-30)
+
+
+### Features
+
+* **policy:** cache SubjectConditionSet selectors in dedicated column maintained via trigger ([#2320](https://github.com/opentdf/platform/issues/2320)) ([215791f](https://github.com/opentdf/platform/commit/215791f2185d6cacfa4a8ae4a009739ee30bfc66))
+
 ## [0.3.6](https://github.com/opentdf/platform/compare/protocol/go/v0.3.5...protocol/go/v0.3.6) (2025-05-27)
 
 

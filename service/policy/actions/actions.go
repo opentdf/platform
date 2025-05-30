@@ -56,6 +56,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	onUpdateConfigHook := OnConfigUpdate(actionsSvc)
 
 	return &serviceregistry.Service[actionsconnect.ActionServiceHandler]{
+		Close: actionsSvc.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[actionsconnect.ActionServiceHandler]{
 			Namespace:      ns,
 			DB:             dbRegister,
@@ -77,6 +78,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			},
 		},
 	}
+}
+
+// Close gracefully shuts down the actions service, closing the database client.
+func (a *ActionService) Close() {
+	a.logger.Info("gracefully shutting down actions service")
+	a.dbClient.Close()
 }
 
 func (a *ActionService) GetAction(ctx context.Context, req *connect.Request[actions.GetActionRequest]) (*connect.Response[actions.GetActionResponse], error) {

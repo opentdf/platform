@@ -42,7 +42,9 @@ func OnConfigUpdate(rmSvc *ResourceMappingService) serviceregistry.OnConfigUpdat
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[resourcemappingconnect.ResourceMappingServiceHandler] {
 	rmSvc := new(ResourceMappingService)
 	onUpdateConfigHook := OnConfigUpdate(rmSvc)
+
 	return &serviceregistry.Service[resourcemappingconnect.ResourceMappingServiceHandler]{
+		Close: rmSvc.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[resourcemappingconnect.ResourceMappingServiceHandler]{
 			Namespace:       ns,
 			DB:              dbRegister,
@@ -65,6 +67,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			},
 		},
 	}
+}
+
+// Close gracefully shuts down the service, closing the database client.
+func (s *ResourceMappingService) Close() {
+	s.logger.Info("gracefully shutting down resource mapping service")
+	s.dbClient.Close()
 }
 
 /*

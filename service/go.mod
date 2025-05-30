@@ -20,7 +20,7 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/eko/gocache/lib/v4 v4.2.0
 	github.com/eko/gocache/store/ristretto/v4 v4.2.2
-	github.com/fsnotify/fsnotify v1.8.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-chi/cors v1.2.1
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/go-viper/mapstructure/v2 v2.2.1
@@ -29,7 +29,7 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/lestrrat-go/jwx/v2 v2.0.21
-	github.com/open-policy-agent/opa v1.4.2
+	github.com/open-policy-agent/opa v1.5.0
 	github.com/opentdf/platform/lib/fixtures v0.3.0
 	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/identifier v0.0.2
@@ -57,9 +57,14 @@ require (
 )
 
 require (
+	github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da // indirect
+	github.com/vektah/gqlparser/v2 v2.5.26 // indirect
+)
+
+require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250425153114-8976f5be98c1.1 // indirect
 	cel.dev/expr v0.23.1 // indirect
-	dario.cat/mergo v1.0.0 // indirect
+	dario.cat/mergo v1.0.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect; indi\
@@ -71,9 +76,9 @@ require (
 	github.com/casbin/govaluate v1.2.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/containerd/continuity v0.4.4 // indirect
+	github.com/containerd/continuity v0.4.5 // indirect
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/containerd/platforms v0.2.1 // indirect
+	github.com/containerd/platforms v1.0.0-rc.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
@@ -117,8 +122,8 @@ require (
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
-	github.com/moby/sys/sequential v0.5.0 // indirect
-	github.com/moby/sys/user v0.3.0 // indirect
+	github.com/moby/sys/sequential v0.6.0 // indirect
+	github.com/moby/sys/user v0.4.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
@@ -126,12 +131,12 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
+	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/prometheus/client_golang v1.21.1 // indirect
-	github.com/prometheus/client_model v0.6.1 // indirect
+	github.com/prometheus/client_golang v1.22.0 // indirect
+	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
@@ -164,7 +169,7 @@ require (
 	go.uber.org/mock v0.4.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f // indirect
+	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect

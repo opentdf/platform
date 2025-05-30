@@ -15,7 +15,7 @@ require (
 	github.com/bmatcuk/doublestar v1.3.4
 	github.com/casbin/casbin/v2 v2.101.0
 	github.com/creasty/defaults v1.8.0
-	github.com/dgraph-io/ristretto v0.1.1
+	github.com/dgraph-io/ristretto v0.2.0
 	github.com/docker/docker v28.0.2+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/eko/gocache/lib/v4 v4.2.0
@@ -93,7 +93,6 @@ require (
 	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
-	github.com/golang/glog v1.2.4 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/cel-go v0.25.0 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect

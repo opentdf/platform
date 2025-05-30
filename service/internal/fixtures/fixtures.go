@@ -64,14 +64,14 @@ type SubjectConditionSet struct {
 	Condition struct {
 		SubjectSets []struct {
 			ConditionGroups []struct {
-				BooleanOperator string `yaml:"boolean_operator" json:"boolean_operator"`
+				BooleanOperator string `yaml:"booleanOperator" json:"booleanOperator"`
 				Conditions      []struct {
-					SubjectExternalSelectorValue string   `yaml:"subject_external_selector_value" json:"subject_external_selector_value"`
+					SubjectExternalSelectorValue string   `yaml:"subjectExternalSelectorValue" json:"subjectExternalSelectorValue"`
 					Operator                     string   `yaml:"operator" json:"operator"`
-					SubjectExternalValues        []string `yaml:"subject_external_values" json:"subject_external_values"`
+					SubjectExternalValues        []string `yaml:"subjectExternalValues" json:"subjectExternalValues"`
 				} `yaml:"conditions" json:"conditions"`
-			} `yaml:"condition_groups" json:"condition_groups"`
-		} `yaml:"subject_sets" json:"subject_sets"`
+			} `yaml:"conditionGroups" json:"conditionGroups"`
+		} `yaml:"subjectSets" json:"subjectSets"`
 	} `yaml:"condition" json:"condition"`
 }
 

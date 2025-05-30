@@ -485,6 +485,11 @@ func (s *TDFSuite) Test_SimpleTDF() {
 }
 
 func (s *TDFSuite) Test_DefaultAssertions() {
+	attributes := []string{
+		"https://example.com/attr/Classification/value/S",
+		"https://example.com/attr/Classification/value/X",
+	}
+
 	// Configure TDF options with default assertions
 	tdfOptions := []TDFOption{
 		WithKasInformation(KASInfo{
@@ -492,6 +497,7 @@ func (s *TDFSuite) Test_DefaultAssertions() {
 			PublicKey: "",
 		}),
 		WithDefaultAssertion(),
+		WithDataAttributes(attributes...),
 	}
 
 	tdfReadOptions := []TDFReaderOption{

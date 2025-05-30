@@ -73,27 +73,26 @@ jobs:
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
           TAGS: ${{ steps.docker_meta.outputs.tags }}
         run: |
-          images=""
-          for tag in ${TAGS}; do
-            images+="${tag}@${DIGEST} "
-          done
-          # shellcheck disable=SC2086
-          cosign sign --yes ${images}
+            images=()
+            for tag in ${TAGS}; do
+              images+=("${tag}@${DIGEST}")
+            done
+            cosign sign --yes "${images[@]}"
 
       - name: Generate Reports
         run: |
-          trivy image --scanners vuln --format cyclonedx --output bom-cyclonedx.json '$REPO@$DIGEST'
-          trivy image --format spdx-json --output bom-spdx.json '$REPO@$DIGEST'
-          trivy image --format cosign-vuln --output cosign-vuln.json '$REPO@$DIGEST'
+          trivy image --scanners vuln --format cyclonedx --output bom-cyclonedx.json "${REPO}@${DIGEST}"
+          trivy image --format spdx-json --output bom-spdx.json "${REPO}@${DIGEST}"
+          trivy image --format cosign-vuln --output cosign-vuln.json "${REPO}@${DIGEST}"
         env:
           REPO: ${{ secrets.DOCKER_REPO }}
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
 
       - name: Cosign Attest SBOM
         run: |
-          cosign attest --type cyclonedx --predicate bom-cyclonedx.json '$REPO@$DIGEST'
-          cosign attest --type spdxjson -predicate bom-spdx.json '$REPO@$DIGEST'
-          cosign attest --type vuln --predicate cosign-vuln.json '$REPO@$DIGEST'
+          cosign attest --type cyclonedx --predicate bom-cyclonedx.json "${REPO}@${DIGEST}"
+          cosign attest --type spdxjson -predicate bom-spdx.json "${REPO}@${DIGEST}"
+          cosign attest --type vuln --predicate cosign-vuln.json "${REPO}@${DIGEST}"
         env:
           REPO: ${{ secrets.DOCKER_REPO }}
           DIGEST: ${{ steps.build-and-push.outputs.digest }}

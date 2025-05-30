@@ -5042,11 +5042,8 @@ LEFT JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-WHERE ns.active = true AND ad.active = true and av.active = true AND EXISTS (
-    SELECT 1
-    FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss, JSONB_ARRAY_ELEMENTS(ss->'conditionGroups') AS cg, JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
-    WHERE (each_condition->>'subjectExternalSelectorValue' = ANY($1::TEXT[])) 
-)
+WHERE ns.active = true AND ad.active = true and av.active = true
+AND scs.selector_values && $1::TEXT[]
 GROUP BY av.id, sm.id, scs.id, fqns.fqn
 `
 
@@ -5090,11 +5087,8 @@ type matchSubjectMappingsRow struct {
 //	LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
 //	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 //	LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-//	WHERE ns.active = true AND ad.active = true and av.active = true AND EXISTS (
-//	    SELECT 1
-//	    FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss, JSONB_ARRAY_ELEMENTS(ss->'conditionGroups') AS cg, JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
-//	    WHERE (each_condition->>'subjectExternalSelectorValue' = ANY($1::TEXT[]))
-//	)
+//	WHERE ns.active = true AND ad.active = true and av.active = true
+//	AND scs.selector_values && $1::TEXT[]
 //	GROUP BY av.id, sm.id, scs.id, fqns.fqn
 func (q *Queries) matchSubjectMappings(ctx context.Context, selectors []string) ([]matchSubjectMappingsRow, error) {
 	rows, err := q.db.Query(ctx, matchSubjectMappings, selectors)

@@ -278,7 +278,7 @@ func Start(ctx context.Context, f ...StartOptions) error {
 			logger.Info("added with custom ers connection for ", "", ersConnectRPCConn.Endpoint)
 		}
 
-		client, err = newSDKWithContext(ctx, "", sdkOptions...)
+		client, err = sdk.New("", sdkOptions...)
 		if err != nil {
 			logger.Error("issue creating sdk client", slog.String("error", err.Error()))
 			return fmt.Errorf("issue creating sdk client: %w", err)
@@ -291,7 +291,7 @@ func Start(ctx context.Context, f ...StartOptions) error {
 		if cfg.SDKConfig.CorePlatformConnection.Plaintext {
 			sdkOptions = append(sdkOptions, sdk.WithInsecurePlaintextConn())
 		}
-		client, err = newSDKWithContext(ctx, cfg.SDKConfig.CorePlatformConnection.Endpoint, sdkOptions...)
+		client, err = sdk.New(cfg.SDKConfig.CorePlatformConnection.Endpoint, sdkOptions...)
 		if err != nil {
 			logger.Error("issue creating sdk client", slog.String("error", err.Error()))
 			return fmt.Errorf("issue creating sdk client: %w", err)

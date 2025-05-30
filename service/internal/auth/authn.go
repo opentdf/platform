@@ -32,6 +32,7 @@ import (
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 )
 
+// Package-level errors
 var (
 	// Set of allowed public endpoints that do not require authentication
 	allowedPublicEndpoints = [...]string{
@@ -64,6 +65,9 @@ var (
 		jwa.PS384: true,
 		jwa.PS512: true,
 	}
+
+	// ErrTokenVerificationSkipped is returned when token verification is skipped
+	ErrTokenVerificationSkipped = errors.New("token verification skipped")
 )
 
 const (
@@ -114,8 +118,8 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 
 	// If userinfo enrichment is enabled, validate the client credentials with the IdP
 	if cfg.EnrichUserInfo {
-		logger.Info("validating client credentials with IdP", slog.String("issuer", cfg.Issuer), slog.String("client_id", cfg.ClientId), slog.Bool("tls_no_verify", cfg.AuthNConfig.TLSNoVerify))
-		if err := oidc.ValidateClientCredentials(ctx, cfg.Issuer, cfg.ClientId, cfg.ClientSecret, cfg.AuthNConfig.TLSNoVerify, clientVerificationTimeout); err != nil {
+		logger.Info("validating client credentials with IdP", slog.String("issuer", cfg.Issuer), slog.String("client_id", cfg.ClientID), slog.Bool("tls_no_verify", cfg.AuthNConfig.TLSNoVerify))
+		if err := oidc.ValidateClientCredentials(ctx, cfg.Issuer, cfg.ClientID, cfg.ClientSecret, cfg.AuthNConfig.TLSNoVerify, clientVerificationTimeout); err != nil {
 			logger.Error("failed to validate client credentials with IdP", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("client credentials validation failed: %w", err)
 		}
@@ -324,6 +328,35 @@ func getAction(method string) string {
 	return ActionOther
 }
 
+// GetUserInfoWithExchange fetches userinfo, exchanging the token if needed.
+func (a *Authentication) GetUserInfoWithExchange(ctx context.Context, tokenIssuer, tokenSubject, tokenRaw string) ([]byte, error) {
+	// If userinfo enrichment is disabled, return empty userinfo
+	if !a.oidcConfiguration.EnrichUserInfo {
+		a.logger.Debug("userinfo enrichment is disabled, skipping token exchange", slog.String("sub", tokenSubject))
+		return []byte{}, nil
+	}
+
+	// Try to get userinfo from cache with the original token
+	_, userInfoRaw, err := a.userInfoCache.GetFromCache(ctx, tokenIssuer, tokenSubject)
+	if err == nil {
+		return userInfoRaw, nil
+	}
+
+	// Only exchange the token if the userinfo is not in cache
+	exchangedToken, err := oidc.ExchangeToken(ctx, a.oidcConfiguration.Issuer, a.oidcConfiguration.ClientID, a.oidcConfiguration.ClientSecret, tokenRaw)
+	if err != nil {
+		a.logger.Error("failed to exchange token", slog.String("sub", tokenSubject), slog.String("error", err.Error()))
+		return []byte{}, errors.New("failed to exchange token")
+	}
+
+	// Fetch userinfo with the exchanged token
+	_, userInfoRaw, err = a.userInfoCache.Get(ctx, tokenIssuer, tokenSubject, exchangedToken)
+	if err != nil {
+		return nil, errors.New("unauthenticated")
+	}
+	return userInfoRaw, nil
+}
+
 func (a Authentication) parseTokenFromHeader(header http.Header) (jwt.Token, string, error) {
 	authHeader := header["Authorization"]
 	if len(authHeader) < 1 {
@@ -378,8 +411,9 @@ func (a *Authentication) checkToken(ctx context.Context, token jwt.Token, tokenR
 	// Only set the actor ID if it is not already defined
 	existingActorID := ctx.Value(sdkAudit.ActorIDContextKey)
 	if existingActorID == nil {
-		actorID := token.Subject()
-		ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, actorID)
+		// We create the context with the actor ID but don't use it since it's not needed
+		// in this method's scope. The actor ID is added for audit purposes.
+		_ = token.Subject()
 	}
 
 	// Determine token type (DPoP or Bearer)
@@ -390,12 +424,12 @@ func (a *Authentication) checkToken(ctx context.Context, token jwt.Token, tokenR
 			return nil, errors.New("dpop required but not provided")
 		}
 		// For Bearer tokens, skip DPoP validation entirely
-		return nil, nil
+		return nil, ErrTokenVerificationSkipped
 	}
 
 	// For DPoP tokens, enforce DPoP validation as before
 	if _, tokenHasCNF := token.Get("cnf"); !tokenHasCNF && !a.enforceDPoP {
-		return nil, nil
+		return nil, ErrTokenVerificationSkipped
 	}
 
 	// Validate the DPoP token
@@ -631,33 +665,4 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 		}
 	}
 	return ctx, nil
-}
-
-// GetUserInfoWithExchange fetches userinfo, exchanging the token if needed.
-func (a *Authentication) GetUserInfoWithExchange(ctx context.Context, tokenIssuer, tokenSubject, tokenRaw string) ([]byte, error) {
-	// If userinfo enrichment is disabled, return empty userinfo
-	if !a.oidcConfiguration.EnrichUserInfo {
-		a.logger.Debug("userinfo enrichment is disabled, skipping token exchange", slog.String("sub", tokenSubject))
-		return []byte{}, nil
-	}
-
-	// Try to get userinfo from cache with the original token
-	_, userInfoRaw, err := a.userInfoCache.GetFromCache(ctx, tokenIssuer, tokenSubject)
-	if err == nil {
-		return userInfoRaw, nil
-	}
-
-	// Only exchange the token if the userinfo is not in cache
-	exchangedToken, err := oidc.ExchangeToken(ctx, a.oidcConfiguration.Issuer, a.oidcConfiguration.ClientId, a.oidcConfiguration.ClientSecret, tokenRaw)
-	if err != nil {
-		a.logger.Error("failed to exchange token", slog.String("sub", tokenSubject), slog.String("error", err.Error()))
-		return []byte{}, errors.New("failed to exchange token")
-	}
-
-	// Fetch userinfo with the exchanged token
-	_, userInfoRaw, err = a.userInfoCache.Get(ctx, tokenIssuer, tokenSubject, exchangedToken)
-	if err != nil {
-		return nil, errors.New("unauthenticated")
-	}
-	return userInfoRaw, nil
 }

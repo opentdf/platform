@@ -6,6 +6,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/oidc"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateAuthNConfig(t *testing.T) {
@@ -18,7 +19,7 @@ func TestValidateAuthNConfig(t *testing.T) {
 		Level:  "debug",
 		Type:   "json",
 	})
-	assert.NoError(t, err, "Failed to create logger")
+	require.NoError(t, err, "Failed to create logger")
 
 	tests := []struct {
 		name        string
@@ -32,7 +33,7 @@ func TestValidateAuthNConfig(t *testing.T) {
 				EnrichUserInfo: true,
 				Issuer:         "https://keycloak.example.com/realms/test",
 				Audience:       "test-client",
-				ClientId:       "platform-client",
+				ClientID:       "platform-client",
 				ClientSecret:   "platform-secret",
 			},
 			expectError: false,
@@ -65,7 +66,7 @@ func TestValidateAuthNConfig(t *testing.T) {
 				EnrichUserInfo: true,
 				Issuer:         "https://keycloak.example.com/realms/test",
 				Audience:       "test-client",
-				ClientId:       "platform-client",
+				ClientID:       "platform-client",
 				// Missing ClientSecret
 			},
 			expectError: true,
@@ -77,7 +78,7 @@ func TestValidateAuthNConfig(t *testing.T) {
 				EnrichUserInfo: true,
 				// Missing Issuer
 				Audience:     "test-client",
-				ClientId:     "platform-client",
+				ClientID:     "platform-client",
 				ClientSecret: "platform-secret",
 			},
 			expectError: true,
@@ -89,7 +90,7 @@ func TestValidateAuthNConfig(t *testing.T) {
 				EnrichUserInfo: true,
 				Issuer:         "https://keycloak.example.com/realms/test",
 				// Missing Audience
-				ClientId:     "platform-client",
+				ClientID:     "platform-client",
 				ClientSecret: "platform-secret",
 			},
 			expectError: true,
@@ -102,12 +103,12 @@ func TestValidateAuthNConfig(t *testing.T) {
 			err := tt.config.validateAuthNConfig(testLogger)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				if tt.errorMsg != "" {
 					assert.Equal(t, tt.errorMsg, err.Error())
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

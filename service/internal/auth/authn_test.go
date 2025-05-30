@@ -151,7 +151,10 @@ func (s *AuthSuite) SetupTest() {
 		}
 		if r.URL.Path == "/userinfo" {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"sub": "test-user"}`))
+			_, err := w.Write([]byte(`{"sub": "test-user"}`))
+			if err != nil {
+				panic(err)
+			}
 			return
 		}
 	}))
@@ -179,7 +182,7 @@ func (s *AuthSuite) SetupTest() {
 				DPoPSkew:     time.Hour,
 				TokenSkew:    time.Minute,
 				Policy:       policyCfg,
-				ClientId:     "dummy-client-id",     // Added dummy ClientId for test config
+				ClientID:     "dummy-client-id",     // Added dummy ClientID for test config
 				ClientSecret: "dummy-client-secret", // Added dummy ClientSecret for test config
 			},
 			PublicRoutes: []string{

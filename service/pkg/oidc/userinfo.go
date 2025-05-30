@@ -47,7 +47,7 @@ func (u *UserInfoCache) Get(ctx context.Context, issuer, subject string, tokenRa
 		// If cache hit, return the cached userinfo
 		u.logger.Debug("Userinfo found in cache", "issuer", issuer, "subject", subject)
 		return userInfo, userInfoRaw, nil
-	} else if err != ErrUserInfoCacheMiss {
+	} else if !errors.Is(err, ErrUserInfoCacheMiss) {
 		// If error and not a cache miss
 		u.logger.Error("Failed to get userinfo from cache", "issuer", issuer, "subject", subject, "error", err)
 		return nil, nil, err

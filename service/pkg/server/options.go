@@ -1,8 +1,6 @@
 package server
 
 import (
-	"context"
-
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -12,7 +10,6 @@ import (
 type StartOptions func(StartConfig) StartConfig
 
 type StartConfig struct {
-	Context               context.Context
 	ConfigKey             string
 	ConfigFile            string
 	WaitForShutdownSignal bool
@@ -25,13 +22,6 @@ type StartConfig struct {
 	configLoaders         []config.Loader
 
 	trustKeyManagers []trust.KeyManager
-}
-
-func WithContext(ctx context.Context) StartOptions {
-	return func(c StartConfig) StartConfig {
-		c.Context = ctx
-		return c
-	}
 }
 
 // Deprecated: Use WithConfigKey

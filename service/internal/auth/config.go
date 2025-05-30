@@ -32,7 +32,7 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	PublicClientID string        `mapstructure:"public_client_id" json:"public_client_id,omitempty"`
 
 	// Client credentials for the server to support Token Exchange
-	ClientId     string `mapstructure:"clientId" json:"clientId"`
+	ClientID     string `mapstructure:"clientId" json:"clientId"`
 	ClientSecret string `mapstructure:"clientSecret" json:"clientSecret"`
 }
 
@@ -95,8 +95,8 @@ func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 	}
 
 	if c.EnrichUserInfo {
-		if c.ClientId == "" {
-			return errors.New("config Auth.ClientId is required for token exchange to fetch userinfo")
+		if c.ClientID == "" {
+			return errors.New("config Auth.ClientID is required for token exchange to fetch userinfo")
 		}
 		if c.ClientSecret == "" {
 			return errors.New("config Auth.ClientSecret is required for token exchange to fetch userinfo")

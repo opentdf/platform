@@ -371,7 +371,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			defer cleanup()
 
 			require.NoError(t, s.Start())
-			defer s.Stop()
+			defer s.Stop(t.Context())
 
 			var resp *http.Response
 			// Make request to test service and ensure it registered
@@ -457,6 +457,7 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Errors() {
 			tempFiles = append(tempFiles, tempFilePath)
 
 			err = Start(
+				t.Context(),
 				WithConfigFile(tempFilePath),
 			)
 			require.Error(t, err)
@@ -524,6 +525,7 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 			tempFiles = append(tempFiles, tempFilePath)
 
 			err = Start(
+				t.Context(),
 				WithConfigFile(tempFilePath),
 			)
 			// require that it got past the service config and mode setup

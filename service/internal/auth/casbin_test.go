@@ -340,10 +340,6 @@ func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies() {
 }
 
 func (s *AuthnCasbinSuite) Test_ExtendDefaultPolicies_MalformedErrors() {
-	policyCfg := PolicyConfig{}
-	err := defaults.Set(&policyCfg)
-	s.Require().NoError(err)
-
 	testCases := []struct {
 		name      string
 		extension string
@@ -841,7 +837,9 @@ func (s *AuthnCasbinSuite) Test_Casbin_Claims_Matrix() {
 
 			tok := jwt.New()
 			for k, v := range tc.tokenClaims {
-				tok.Set(k, v)
+				if err := tok.Set(k, v); err != nil {
+					s.Fail("Failed to set token claim", err)
+				}
 			}
 			allowed := enforcer.Enforce(tok, tc.userInfo, "resource", "read")
 			if tc.shouldAllow && allowed {

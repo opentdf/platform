@@ -16,7 +16,6 @@ import (
 func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptorFunc {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-
 			// if the token is already in the context, skip the interceptor
 			if ctxAuth.GetAccessTokenFromContext(ctx, nil) != nil {
 				return next(ctx, req)

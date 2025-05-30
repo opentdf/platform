@@ -77,12 +77,12 @@ func (m *mockUserInfoCache) GetFromCache(ctx context.Context, issuer, subject st
 	return nil, nil, errors.New("cache miss")
 }
 
-func (m *mockUserInfoCache) Get(ctx context.Context, issuer, subject, token string) (*oidc.UserInfo, []byte, error) {
+func (m *mockUserInfoCache) Get(_ context.Context, issuer, subject, token string) (*oidc.UserInfo, []byte, error) {
 	m.getCount++
 	return &oidc.UserInfo{}, m.cachedInfo, nil
 }
 
-func (m *mockUserInfoCache) Invalidate(ctx context.Context) error {
+func (m *mockUserInfoCache) Invalidate(_ context.Context) error {
 	return nil
 }
 
@@ -92,7 +92,7 @@ func TestGetUserInfoWithExchange(t *testing.T) {
 		Level:  "debug",
 		Type:   "json",
 	})
-	assert.NoError(t, err, "Failed to create logger")
+	require.NoError(t, err, "Failed to create logger")
 
 	t.Run("when enrichUserInfo is disabled", func(t *testing.T) {
 		cache := &mockUserInfoCache{
@@ -108,7 +108,7 @@ func TestGetUserInfoWithExchange(t *testing.T) {
 			},
 		}
 
-		userInfo, err := auth.GetUserInfoWithExchange(context.Background(), "issuer", "subject", "token")
+		userInfo, err := auth.GetUserInfoWithExchange(t.Context(), "issuer", "subject", "token")
 
 		require.NoError(t, err)
 		assert.Equal(t, []byte{}, userInfo, "Should return empty userinfo when enrichUserInfo is disabled")
@@ -132,7 +132,7 @@ func TestGetUserInfoWithExchange(t *testing.T) {
 			},
 		}
 
-		userInfo, err := auth.GetUserInfoWithExchange(context.Background(), "issuer", "subject", "token")
+		userInfo, err := auth.GetUserInfoWithExchange(t.Context(), "issuer", "subject", "token")
 
 		require.NoError(t, err)
 		assert.Equal(t, cachedUserInfo, userInfo, "Should return cached userinfo")
@@ -144,7 +144,7 @@ func TestGetUserInfoWithExchange(t *testing.T) {
 	t.Run("when enrichUserInfo is enabled and cache hit using custom function", func(t *testing.T) {
 		cachedUserInfo := []byte(`{"sub":"subject","name":"Test User"}`)
 		hitCache := &mockUserInfoCache{
-			getCacheFunc: func(ctx context.Context, issuer, subject string) (*oidc.UserInfo, []byte, error) {
+			getCacheFunc: func(_ context.Context, issuer, subject string) (*oidc.UserInfo, []byte, error) {
 				return &oidc.UserInfo{}, cachedUserInfo, nil
 			},
 		}
@@ -157,7 +157,7 @@ func TestGetUserInfoWithExchange(t *testing.T) {
 			},
 		}
 
-		userInfo, err := auth.GetUserInfoWithExchange(context.Background(), "issuer", "subject", "token")
+		userInfo, err := auth.GetUserInfoWithExchange(t.Context(), "issuer", "subject", "token")
 
 		require.NoError(t, err)
 		assert.Equal(t, cachedUserInfo, userInfo, "Should return cached userinfo")

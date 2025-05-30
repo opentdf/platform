@@ -433,9 +433,9 @@ func (s OpenTDFServer) Start() error {
 	return nil
 }
 
-func (s OpenTDFServer) Stop() {
+func (s OpenTDFServer) Stop(ctx context.Context) {
 	s.logger.Info("shutting down http server")
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	ctx, cancel := context.WithTimeout(ctx, shutdownTimeout)
 	defer cancel()
 	if err := s.HTTPServer.Shutdown(ctx); err != nil {
 		s.logger.Error("failed to shutdown http server", slog.String("error", err.Error()))

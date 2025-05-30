@@ -37,16 +37,10 @@ const devModeMessage = `
 `
 const dpopKeySize = 2048
 
-func Start(f ...StartOptions) error {
+func Start(ctx context.Context, f ...StartOptions) error {
 	startConfig := StartConfig{}
 	for _, fn := range f {
 		startConfig = fn(startConfig)
-	}
-
-	// Create context if not provided
-	ctx := startConfig.Context
-	if ctx == nil {
-		ctx = context.Background()
 	}
 
 	// Load configuration
@@ -144,7 +138,7 @@ func Start(f ...StartOptions) error {
 		logger.Error("issue creating opentdf server", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating opentdf server: %w", err)
 	}
-	defer otdf.Stop()
+	defer otdf.Stop(ctx)
 
 	// Initialize the service registry
 	logger.Debug("initializing service registry")

@@ -41,7 +41,9 @@ func OnConfigUpdate(unsafeSvc *UnsafeService) serviceregistry.OnConfigUpdateHook
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[unsafeconnect.UnsafeServiceHandler] {
 	unsafeSvc := new(UnsafeService)
 	onUpdateConfigHook := OnConfigUpdate(unsafeSvc)
+
 	return &serviceregistry.Service[unsafeconnect.UnsafeServiceHandler]{
+		Close: unsafeSvc.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[unsafeconnect.UnsafeServiceHandler]{
 			Namespace:      ns,
 			DB:             dbRegister,
@@ -67,7 +69,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 
 // Close gracefully shuts down the service, closing the database client.
 func (s *UnsafeService) Close() {
-	s.logger.Info("gracefully shutting down")
+	s.logger.Info("gracefully shutting down unsafe service")
 	s.dbClient.Close()
 }
 

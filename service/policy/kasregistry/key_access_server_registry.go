@@ -54,7 +54,9 @@ func OnConfigUpdate(kasrSvc *KeyAccessServerRegistry) serviceregistry.OnConfigUp
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[kasregistryconnect.KeyAccessServerRegistryServiceHandler] {
 	kasrSvc := new(KeyAccessServerRegistry)
 	onUpdateConfigHook := OnConfigUpdate(kasrSvc)
+
 	return &serviceregistry.Service[kasregistryconnect.KeyAccessServerRegistryServiceHandler]{
+		Close: kasrSvc.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[kasregistryconnect.KeyAccessServerRegistryServiceHandler]{
 			Namespace:       ns,
 			DB:              dbRegister,
@@ -86,7 +88,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 
 // Close gracefully shuts down the service, closing the database client.
 func (s *KeyAccessServerRegistry) Close() {
-	s.logger.Info("gracefully shutting down")
+	s.logger.Info("gracefully shutting down key access server registry service")
 	s.dbClient.Close()
 }
 

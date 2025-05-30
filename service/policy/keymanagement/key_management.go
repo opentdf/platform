@@ -38,23 +38,27 @@ func OnConfigUpdate(svc *Service) serviceregistry.OnConfigUpdateHook {
 }
 
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[keyMgmtConnect.KeyManagementServiceHandler] {
+	ksvc := new(Service)
+	onUpdateConfigHook := OnConfigUpdate(ksvc)
+
 	return &serviceregistry.Service[keyMgmtConnect.KeyManagementServiceHandler]{
+		Close: ksvc.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[keyMgmtConnect.KeyManagementServiceHandler]{
 			Namespace:      ns,
 			DB:             dbRegister,
 			ServiceDesc:    &keyMgmtProto.KeyManagementService_ServiceDesc,
 			ConnectRPCFunc: keyMgmtConnect.NewKeyManagementServiceHandler,
+			OnConfigUpdate: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (keyMgmtConnect.KeyManagementServiceHandler, serviceregistry.HandlerServer) {
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
 				if err != nil {
 					srp.Logger.Error("Failed to get shared policy config", slog.String("error", err.Error()))
 					panic(err)
 				}
-				ksvc := &Service{
-					dbClient: policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault)),
-					logger:   srp.Logger,
-					config:   cfg,
-				}
+				ksvc.logger = srp.Logger
+				ksvc.config = cfg
+				ksvc.dbClient = policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
+
 				return ksvc, nil
 			},
 		},
@@ -62,8 +66,8 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 }
 
 // Close gracefully shuts down the service, closing the database client.
-func (ksvc Service) Close() {
-	ksvc.logger.Info("gracefully shutting down")
+func (ksvc *Service) Close() {
+	ksvc.logger.Info("gracefully shutting down key management service")
 	ksvc.dbClient.Close()
 }
 

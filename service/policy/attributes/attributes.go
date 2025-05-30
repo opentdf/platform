@@ -44,7 +44,9 @@ func OnConfigUpdate(as *AttributesService) serviceregistry.OnConfigUpdateHook {
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[attributesconnect.AttributesServiceHandler] {
 	as := new(AttributesService)
 	onUpdateConfigHook := OnConfigUpdate(as)
+
 	return &serviceregistry.Service[attributesconnect.AttributesServiceHandler]{
+		Close: as.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[attributesconnect.AttributesServiceHandler]{
 			Namespace:       ns,
 			DB:              dbRegister,
@@ -71,7 +73,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 
 // Close gracefully shuts down the service, closing the database client.
 func (s *AttributesService) Close() {
-	s.logger.Info("gracefully shutting down")
+	s.logger.Info("gracefully shutting down attributes service")
 	s.dbClient.Close()
 }
 

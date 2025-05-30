@@ -362,10 +362,10 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 						"test": {},
 					},
 				},
-				otdf:       s,
-				logger:     logger,
-				keyManager: []trust.KeyManager{},
-				registry:   registry,
+				otdf:        s,
+				logger:      logger,
+				keyManagers: []trust.KeyManager{},
+				reg:         registry,
 			})
 			require.NoError(t, err)
 			defer cleanup()

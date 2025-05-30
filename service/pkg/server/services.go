@@ -133,6 +133,8 @@ type startServicesParams struct {
 // and a database client if required. It registers the services with the gRPC server,
 // in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
 func startServices(ctx context.Context, params startServicesParams) (func(), error) {
+	var gatewayCleanup func()
+
 	cfg := params.cfg
 	otdf := params.otdf
 	client := params.client
@@ -140,8 +142,6 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	reg := params.reg
 	cacheManager := params.cacheManager
 	keyManagers := params.keyManagers
-
-	var gatewayCleanup func()
 
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {

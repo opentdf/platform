@@ -68,8 +68,6 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/zitadel/logging v0.6.2 // indirect
 	github.com/zitadel/schema v1.3.1 // indirect
-	github.com/golang/glog v1.2.4 // indirect
-	github.com/stretchr/objx v0.5.2 // indirect
 	go.uber.org/mock v0.4.0 // indirect
 )
 

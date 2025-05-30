@@ -308,13 +308,13 @@ func Start(f ...StartOptions) error {
 
 	logger.Info("starting services")
 	gatewayCleanup, err := startServices(ctx, startServicesParams{
-		cfg:              cfg,
-		otdf:             otdf,
-		client:           client,
-		trustKeyManagers: startConfig.trustKeyManagers,
-		logger:           logger,
-		reg:              svcRegistry,
-		cacheManager:     cacheManager,
+		cfg:          cfg,
+		otdf:         otdf,
+		client:       client,
+		keyManagers:  startConfig.trustKeyManagers,
+		logger:       logger,
+		reg:          svcRegistry,
+		cacheManager: cacheManager,
 	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))

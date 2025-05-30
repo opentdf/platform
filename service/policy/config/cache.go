@@ -63,9 +63,11 @@ func (c *EntitlementPolicyCache) Start(ctx context.Context) error {
 	return nil
 }
 
+// Timeout for the stop operation
+var stopTimeout = 5 * time.Second
+
 // Stop stops the periodic refresh goroutine if it's running
 func (c *EntitlementPolicyCache) Stop() {
-	waitTimeout := 5 * time.Second // Timeout for the stop operation
 	// Only attempt to stop the refresh goroutine if an interval was set
 	if c.configuredRefreshInterval > 0 {
 		// Signal the goroutine to stop
@@ -74,7 +76,7 @@ func (c *EntitlementPolicyCache) Stop() {
 		select {
 		case <-c.refreshCompleted:
 			// Goroutine completed successfully
-		case <-time.After(waitTimeout):
+		case <-time.After(stopTimeout):
 			// Timeout as a safety mechanism in case the goroutine is stuck
 			c.logger.WarnContext(context.Background(), "Timed out waiting for refresh goroutine to complete")
 		}
@@ -155,7 +157,7 @@ func (c *EntitlementPolicyCache) ListCachedSubjectMappings(limit, offset int32) 
 
 // periodicRefresh refreshes the cache at the specified interval
 func (c *EntitlementPolicyCache) periodicRefresh(ctx context.Context) {
-	// Half the refresh interval for the context timeout
+	//nolint:mnd // Half the refresh interval for the context timeout
 	waitTimeout := c.configuredRefreshInterval / 2
 
 	ticker := time.NewTicker(c.configuredRefreshInterval)

@@ -24,14 +24,6 @@ type NamespacesService struct { //nolint:revive // NamespacesService is a valid 
 	logger   *logger.Logger
 	config   *policyconfig.Config
 	sdk      *otdfSDK.SDK
-	cache    *policyconfig.EntitlementPolicyCache // Cache for attributes and subject mappings
-}
-
-func OnServicesStarted(svc *NamespacesService) serviceregistry.OnServicesStartedHook {
-	return func(ctx context.Context) error {
-		svc.cache = policyconfig.GetSharedEntitlementPolicyCache(ctx, svc.dbClient, svc.logger, svc.config)
-		return nil
-	}
 }
 
 func OnConfigUpdate(ns *NamespacesService) serviceregistry.OnConfigUpdateHook {
@@ -52,7 +44,6 @@ func OnConfigUpdate(ns *NamespacesService) serviceregistry.OnConfigUpdateHook {
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[namespacesconnect.NamespaceServiceHandler] {
 	nsService := new(NamespacesService)
 	onUpdateConfigHook := OnConfigUpdate(nsService)
-	onStartHook := OnServicesStarted(nsService)
 
 	return &serviceregistry.Service[namespacesconnect.NamespaceServiceHandler]{
 		ServiceOptions: serviceregistry.ServiceOptions[namespacesconnect.NamespaceServiceHandler]{
@@ -62,7 +53,6 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			ConnectRPCFunc:    namespacesconnect.NewNamespaceServiceHandler,
 			GRPCGatewayFunc:   namespaces.RegisterNamespaceServiceHandler,
 			OnConfigUpdate:    onUpdateConfigHook,
-			OnServicesStarted: onStartHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (namespacesconnect.NamespaceServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
@@ -91,6 +81,12 @@ func (ns NamespacesService) IsReady(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// Close gracefully shuts down the namespaces service, closing the database client.
+func (ns NamespacesService) Close() {
+	ns.logger.Info("gracefully shutting down namespaces service")
+	ns.dbClient.Close()
 }
 
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *connect.Request[namespaces.ListNamespacesRequest]) (*connect.Response[namespaces.ListNamespacesResponse], error) {
@@ -224,13 +220,6 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connec
 	auditParams.Updated = updated
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 	ns.logger.Debug("soft-deleted namespace", slog.String("id", namespaceID))
-
-	// Refresh the entitlement policy cache after deactivation
-	if ns.cache.IsEnabled() {
-		if err := ns.cache.Refresh(ctx); err != nil {
-			ns.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after namespace deactivation", slog.Any("error", err))
-		}
-	}
 
 	return connect.NewResponse(rsp), nil
 }

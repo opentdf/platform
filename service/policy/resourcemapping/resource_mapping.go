@@ -67,6 +67,11 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	}
 }
 
+func (s ResourceMappingService) Close() {
+	s.logger.Info("gracefully shutting down resource mapping service")
+	s.dbClient.Close()
+}
+
 /*
 	Resource Mapping Groups
 */

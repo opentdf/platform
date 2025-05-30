@@ -24,7 +24,8 @@ type SubjectMappingService struct { //nolint:revive // SubjectMappingService is 
 	logger   *logger.Logger
 	config   *policyconfig.Config
 	sdk      *otdfSDK.SDK
-	cache    *policyconfig.EntitlementPolicyCache // Cache for attributes and subject mappings
+	// Cache for attributes and subject mappings
+	cache *policyconfig.EntitlementPolicyCache
 }
 
 func OnServicesStarted(svc *SubjectMappingService) serviceregistry.OnServicesStartedHook {
@@ -79,6 +80,17 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				return smSvc, nil
 			},
 		},
+	}
+}
+
+// Close gracefully shuts down the subject mapping service cache and database client.
+func (s SubjectMappingService) Close() {
+	s.logger.Info("gracefully shutting down subject mapping service")
+
+	s.dbClient.Close()
+
+	if s.cache != nil {
+		s.cache.Stop()
 	}
 }
 

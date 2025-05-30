@@ -35,6 +35,17 @@ func (c *EntitlementPolicyCache) IsEnabled() bool {
 
 // Start initiates the cache and begins periodic refresh
 func (c *EntitlementPolicyCache) Start(ctx context.Context) error {
+	// Reset channels in case Start is called multiple times
+	// Only reset if stopRefresh is closed or nil
+	select {
+	case <-c.stopRefresh:
+		// Channel was closed, recreate it
+		c.stopRefresh = make(chan struct{})
+		c.refreshCompleted = make(chan struct{})
+	default:
+		// Channel is still open, do nothing
+	}
+
 	// Initial refresh
 	if err := c.Refresh(ctx); err != nil {
 		return fmt.Errorf("failed initial cache refresh: %w", err)
@@ -42,16 +53,31 @@ func (c *EntitlementPolicyCache) Start(ctx context.Context) error {
 
 	// Begin periodic refresh if an interval is set
 	if c.configuredRefreshInterval > 0 {
+		c.logger.DebugContext(ctx, "Starting periodic cache refresh",
+			"interval_seconds", c.configuredRefreshInterval.Seconds())
 		go c.periodicRefresh(ctx)
+	} else {
+		c.logger.DebugContext(ctx, "Periodic cache refresh is disabled (interval <= 0)")
 	}
 
 	return nil
 }
 
-// Stop stops the periodic refresh goroutine
+// Stop stops the periodic refresh goroutine if it's running
 func (c *EntitlementPolicyCache) Stop() {
-	close(c.stopRefresh)
-	<-c.refreshCompleted // Wait for the refresh goroutine to complete
+	// Only attempt to stop the refresh goroutine if an interval was set
+	if c.configuredRefreshInterval > 0 {
+		// Signal the goroutine to stop
+		close(c.stopRefresh)
+		// Wait with a timeout for the refresh goroutine to complete
+		select {
+		case <-c.refreshCompleted:
+			// Goroutine completed successfully
+		case <-time.After(5 * time.Second):
+			// Timeout as a safety mechanism in case the goroutine is stuck
+			c.logger.WarnContext(context.Background(), "Timed out waiting for refresh goroutine to complete")
+		}
+	}
 }
 
 // Refresh manually refreshes the cache
@@ -98,10 +124,8 @@ func (c *EntitlementPolicyCache) ListCachedAttributes(limit, offset int32) ([]*p
 		return attributes[offset:], total
 	}
 	// Ensure we don't exceed the slice bounds
-	limited := offset + limit
-	if limited > total {
-		limited = total - offset
-	}
+	limited := min(offset + limit, total)
+
 	return attributes[offset:limited], total
 }
 
@@ -118,15 +142,13 @@ func (c *EntitlementPolicyCache) ListCachedSubjectMappings(limit, offset int32) 
 	if offset >= total {
 		return nil, 0
 	}
-	// If limit and offset are 0, return any subject mappings beyond the offset
+	// If limit is 0, return any subject mappings beyond the offset
 	if limit == 0 {
 		return subjectMappings[offset:], total
 	}
 	// Ensure we don't exceed the slice bounds
-	limited := offset + limit
-	if limited > total {
-		limited = total - offset
-	}
+	limited := min(offset + limit, total)
+
 	return subjectMappings[offset:limited], total
 }
 
@@ -135,19 +157,24 @@ func (c *EntitlementPolicyCache) periodicRefresh(ctx context.Context) {
 	ticker := time.NewTicker(c.configuredRefreshInterval)
 	defer func() {
 		ticker.Stop()
+		// Always signal completion, regardless of how we exit
 		close(c.refreshCompleted)
 	}()
 
 	for {
 		select {
 		case <-ticker.C:
-			err := c.Refresh(ctx)
+			// Create a child context that can be canceled if refresh takes too long
+			refreshCtx, cancel := context.WithTimeout(ctx, c.configuredRefreshInterval/2)
+			err := c.Refresh(refreshCtx)
+			cancel() // Always cancel the context to prevent leaks
 			if err != nil {
 				c.logger.ErrorContext(ctx, "Failed to refresh cache", "error", err)
 			}
 		case <-c.stopRefresh:
 			return
 		case <-ctx.Done():
+			c.logger.DebugContext(ctx, "Context canceled, stopping periodic refresh")
 			return
 		}
 	}
@@ -163,9 +190,11 @@ func GetSharedEntitlementPolicyCache(
 		l.DebugContext(ctx, "Entitlement policy cache is disabled, returning nil")
 		return nil
 	}
+
+	var initErr error
 	entitlementPolicyCacheOnce.Do(func() {
 		l.DebugContext(ctx, "Initializing shared entitlement policy cache")
-		entitlementPolicyCacheInstance = &EntitlementPolicyCache{
+		instance := &EntitlementPolicyCache{
 			logger:                    l,
 			dbClient:                  dbClient,
 			configuredRefreshInterval: time.Duration(cfg.CacheRefreshIntervalSeconds) * time.Second,
@@ -174,11 +203,23 @@ func GetSharedEntitlementPolicyCache(
 			stopRefresh:               make(chan struct{}),
 			refreshCompleted:          make(chan struct{}),
 		}
-		if err := entitlementPolicyCacheInstance.Start(ctx); err != nil {
+
+		// Try to start the cache
+		if err := instance.Start(ctx); err != nil {
 			l.ErrorContext(ctx, "Failed to start entitlement policy cache", "error", err)
+			initErr = err
 			return
 		}
+
+		// Only set the instance if Start() succeeds
+		entitlementPolicyCacheInstance = instance
 		l.DebugContext(ctx, "Shared entitlement policy cache initialized")
 	})
+
+	// Log if we're returning nil due to an initialization error
+	if initErr != nil && entitlementPolicyCacheInstance == nil {
+		l.WarnContext(ctx, "Returning nil entitlement policy cache due to previous initialization error")
+	}
+
 	return entitlementPolicyCacheInstance
 }

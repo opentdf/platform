@@ -481,6 +481,10 @@ func (s *TDFSuite) Test_DefaultAssertions() {
 		WithDefaultAssertion(),
 	}
 
+	tdfReadOptions := []TDFReaderOption{
+		WithKasAllowlist([]string{"https://a.kas/"}),
+	}
+
 	// Create TDF
 	var buf bytes.Buffer
 	plainText := "Test Data"
@@ -491,7 +495,7 @@ func (s *TDFSuite) Test_DefaultAssertions() {
 	s.Require().NotNil(tdfObj)
 
 	// Load TDF
-	r, err := s.sdk.LoadTDF(bytes.NewReader(buf.Bytes()))
+	r, err := s.sdk.LoadTDF(bytes.NewReader(buf.Bytes()), tdfReadOptions...)
 	s.Require().NoError(err)
 
 	// Verify default assertion

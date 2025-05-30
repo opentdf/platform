@@ -116,13 +116,6 @@ func (s AttributesService) CreateAttribute(ctx context.Context,
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("attribute", req.Msg.String()))
 	}
 
-	// Refresh the entitlement policy cache after creating a new attribute
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after attribute creation", slog.Any("error", err))
-		}
-	}
-
 	return connect.NewResponse(rsp), nil
 }
 
@@ -288,13 +281,6 @@ func (s *AttributesService) DeactivateAttribute(ctx context.Context,
 	auditParams.Updated = updated
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	// Refresh the entitlement policy cache after deactivation
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after attribute deactivation", slog.Any("error", err))
-		}
-	}
-
 	rsp.Attribute = &policy.Attribute{
 		Id: attributeID,
 	}
@@ -330,13 +316,6 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 	})
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("value", req.Msg.String()))
-	}
-
-	// Refresh the entitlement policy cache after creating a new attribute value
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after attribute value creation", slog.Any("error", err))
-		}
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -432,13 +411,6 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 	auditParams.Original = original
 	auditParams.Updated = updated
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	// Refresh the entitlement policy cache after attribute value deactivation
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after attribute value deactivation", slog.Any("error", err))
-		}
-	}
 
 	rsp.Value = updated
 	return connect.NewResponse(rsp), nil

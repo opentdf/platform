@@ -162,13 +162,6 @@ func (s *UnsafeService) UnsafeReactivateNamespace(ctx context.Context, req *conn
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	// Refresh the entitlement policy cache
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after reactivating namespace", slog.Any("error", err))
-		}
-	}
-
 	rsp.Namespace = &policy.Namespace{
 		Id: id,
 	}
@@ -200,13 +193,6 @@ func (s *UnsafeService) UnsafeDeleteNamespace(ctx context.Context, req *connect.
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	// Refresh the entitlement policy cache
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after deleting namespace", slog.Any("error", err))
-		}
-	}
 
 	rsp.Namespace = &policy.Namespace{
 		Id: id,
@@ -296,13 +282,6 @@ func (s *UnsafeService) UnsafeReactivateAttribute(ctx context.Context, req *conn
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	// Refresh the entitlement policy cache
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after reactivating attribute", slog.Any("error", err))
-		}
-	}
-
 	rsp.Attribute = &policy.Attribute{
 		Id: id,
 	}
@@ -334,13 +313,6 @@ func (s *UnsafeService) UnsafeDeleteAttribute(ctx context.Context, req *connect.
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	// Refresh the entitlement policy cache
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after deleting attribute", slog.Any("error", err))
-		}
-	}
 
 	rsp.Attribute = &policy.Attribute{
 		Id: id,
@@ -430,13 +402,6 @@ func (s *UnsafeService) UnsafeReactivateAttributeValue(ctx context.Context, req 
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	// Refresh the entitlement policy cache
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after reactivating attribute value", slog.Any("error", err))
-		}
-	}
-
 	rsp.Value = &policy.Value{
 		Id: id,
 	}
@@ -467,13 +432,6 @@ func (s *UnsafeService) UnsafeDeleteAttributeValue(ctx context.Context, req *con
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	// Refresh the entitlement policy cache
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after deleting attribute value", slog.Any("error", err))
-		}
-	}
 
 	rsp.Value = &policy.Value{
 		Id: id,

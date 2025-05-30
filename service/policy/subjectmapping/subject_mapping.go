@@ -117,13 +117,6 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("subjectMapping", req.Msg.String()))
 	}
 
-	// Refresh the entitlement policy cache after creating a new subject mapping
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after subject mapping creation", slog.Any("error", err))
-		}
-	}
-
 	return connect.NewResponse(rsp), nil
 }
 
@@ -233,13 +226,6 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 		return nil, err
 	}
 
-	// Refresh the entitlement policy cache after updating a subject mapping
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after updating subject mapping", slog.Any("error", err))
-		}
-	}
-
 	return connect.NewResponse(rsp), nil
 }
 
@@ -263,13 +249,6 @@ func (s SubjectMappingService) DeleteSubjectMapping(ctx context.Context,
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	// Refresh the entitlement policy cache after deleting subject mapping
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after deleting subject mapping", slog.Any("error", err))
-		}
-	}
 
 	rsp.SubjectMapping = &policy.SubjectMapping{
 		Id: subjectMappingID,
@@ -345,13 +324,6 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 	auditParams.Original = conditionSet
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	// Refresh the entitlement policy cache after creating a new subject condition set
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after subject condition set creation", slog.Any("error", err))
-		}
-	}
-
 	rsp.SubjectConditionSet = conditionSet
 	return connect.NewResponse(rsp), nil
 }
@@ -385,13 +357,6 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 	auditParams.Updated = updated
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	// Refresh the entitlement policy cache after updating a subject condition set
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after updating subject condition set", slog.Any("error", err))
-		}
-	}
-
 	rsp.SubjectConditionSet = &policy.SubjectConditionSet{
 		Id: subjectConditionSetID,
 	}
@@ -418,13 +383,6 @@ func (s SubjectMappingService) DeleteSubjectConditionSet(ctx context.Context,
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	// Refresh the entitlement policy cache after deleting a subject condition set
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after deleting subject condition set", slog.Any("error", err))
-		}
-	}
 
 	rsp.SubjectConditionSet = &policy.SubjectConditionSet{
 		Id: conditionSetID,
@@ -453,13 +411,6 @@ func (s SubjectMappingService) DeleteAllUnmappedSubjectConditionSets(ctx context
 	for _, scs := range deleted {
 		auditParams.ObjectID = scs.GetId()
 		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-	}
-
-	// Refresh the entitlement policy cache after deleting unmapped subject condition sets
-	if s.cache.IsEnabled() {
-		if err := s.cache.Refresh(ctx); err != nil {
-			s.logger.ErrorContext(ctx, "failed to refresh entitlement policy cache after deleting unmapped subject condition sets", slog.Any("error", err))
-		}
 	}
 
 	rsp.SubjectConditionSets = deleted

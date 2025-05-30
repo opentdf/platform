@@ -293,7 +293,7 @@ func GetDefaultAssertionConfig() AssertionConfig {
 		TDFSpecVersion string `json:"TDFSpecVersion"`
 		CreationDate   string `json:"creationDate"`
 		OS             string `json:"OS"`
-		SDKLang        string `json:"sdk"`
+		SDKVersion     string `json:"sdkVersion"`
 	}
 
 	// Populate the metadata
@@ -301,7 +301,7 @@ func GetDefaultAssertionConfig() AssertionConfig {
 		TDFSpecVersion: TDFSpecVersion,
 		CreationDate:   time.Now().Format(time.RFC3339),
 		OS:             runtime.GOOS,
-		SDKLang:        "Go",
+		SDKVersion:     fmt.Sprintf("Go-%s", Version),
 	}
 
 	// Marshal the metadata to JSON

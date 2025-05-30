@@ -525,7 +525,7 @@ func (s *TDFSuite) Test_DefaultAssertions() {
 			// Check JSON fields
 			s.Equal(TDFSpecVersion, metadata["TDFSpecVersion"], "TDFSpecVersion mismatch")
 			s.Equal(runtime.GOOS, metadata["OS"], "OS mismatch")
-			s.Equal("Go", metadata["sdk"], "SDKLang mismatch")
+			s.Equal(fmt.Sprintf("Go-%s", Version), metadata["sdkVersion"], "SDKVersion mismatch")
 		}
 	}
 	s.True(found, "Default assertion not found")

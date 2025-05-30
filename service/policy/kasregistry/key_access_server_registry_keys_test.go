@@ -46,10 +46,10 @@ const (
 
 var (
 	validMetadata = &common.MetadataMutable{}
-	validPubCtx   = &policy.KasPublicKeyCtx{
+	validPubCtx   = &policy.PublicKeyCtx{
 		Pem: validKeyCtx,
 	}
-	validPrivCtx = &policy.KasPrivateKeyCtx{
+	validPrivCtx = &policy.PrivateKeyCtx{
 		KeyId:      validKeyID,
 		WrappedKey: validKeyCtx,
 	}
@@ -66,7 +66,7 @@ var (
 		Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
 		KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
 		PublicKeyCtx: validPubCtx,
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			KeyId: validKeyID,
 		},
 		ProviderConfigId: validUUID,
@@ -273,10 +273,10 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					KeyId:      validKeyID,
 					WrappedKey: validKeyCtx,
 				},
@@ -316,10 +316,10 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KasId:        validUUID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					KeyId:      validKeyID,
 					WrappedKey: validKeyCtx,
 				},
@@ -334,10 +334,10 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: invalidAlgo,
 				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					KeyId:      validKeyID,
 					WrappedKey: validKeyCtx,
 				},
@@ -365,10 +365,10 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      invalidKeyMode,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					KeyId:      validKeyID,
 					WrappedKey: validKeyCtx,
 				},
@@ -396,10 +396,10 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: "",
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					KeyId:      validKeyID,
 					WrappedKey: validKeyCtx,
 				},
@@ -414,7 +414,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
 			},
@@ -428,10 +428,10 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					WrappedKey: validKeyCtx,
 				},
 			},
@@ -445,10 +445,10 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					KeyId: validKeyID,
 				},
 			},
@@ -462,10 +462,10 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					KeyId:      validKeyID,
 					WrappedKey: validKeyCtx, // Should be empty
 				},
@@ -481,10 +481,10 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey is empty (correct)
+				PrivateKeyCtx: &policy.PrivateKeyCtx{ // WrappedKey is empty (correct)
 					KeyId: validKeyID,
 				},
 				// ProviderConfigId is missing (incorrect)
@@ -500,7 +500,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 				PublicKeyCtx: validPubCtx,
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey is missing
+				PrivateKeyCtx: &policy.PrivateKeyCtx{ // WrappedKey is missing
 					KeyId: validKeyID,
 				},
 				// ProviderConfigId is empty (correct)
@@ -516,7 +516,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 				PublicKeyCtx: validPubCtx,
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					KeyId:      validKeyID,
 					WrappedKey: validKeyCtx, // Correct
 				},
@@ -533,7 +533,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY,
 				PublicKeyCtx: validPubCtx,
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey is missing
+				PrivateKeyCtx: &policy.PrivateKeyCtx{ // WrappedKey is missing
 					KeyId: validKeyID,
 				},
 				ProviderConfigId: validUUID, // Correct
@@ -549,7 +549,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY,
 				PublicKeyCtx: validPubCtx,
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					KeyId:      validKeyID,
 					WrappedKey: validKeyCtx, // Correct
 				},
@@ -566,7 +566,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 				PublicKeyCtx: validPubCtx,
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					KeyId:      validKeyID,
 					WrappedKey: validKeyCtx, // Incorrect, should be empty
 				},
@@ -583,7 +583,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 				PublicKeyCtx: validPubCtx,
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey is empty (correct)
+				PrivateKeyCtx: &policy.PrivateKeyCtx{ // WrappedKey is empty (correct)
 					KeyId: validKeyID,
 				},
 				ProviderConfigId: validUUID, // Incorrect, should be empty
@@ -598,10 +598,10 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					KeyId:      validKeyID,
 					WrappedKey: validKeyCtx,
 				},
@@ -616,10 +616,10 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					KeyId:      validKeyID,
 					WrappedKey: validKeyCtx,
 				},
@@ -635,10 +635,10 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey is empty (correct)
+				PrivateKeyCtx: &policy.PrivateKeyCtx{ // WrappedKey is empty (correct)
 					KeyId: validKeyID,
 				},
 				ProviderConfigId: validUUID, // Correct
@@ -652,7 +652,7 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
 				// ProviderConfigId is empty (correct)
@@ -667,10 +667,10 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 				KeyId:        validKeyID,
 				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
 				KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
-				PublicKeyCtx: &policy.KasPublicKeyCtx{
+				PublicKeyCtx: &policy.PublicKeyCtx{
 					Pem: validKeyCtx,
 				},
-				PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
 					KeyId: validKeyID,
 				},
 			},
@@ -718,23 +718,6 @@ func Test_UpdateKeyAccessServer_Keys(t *testing.T) {
 			errorMessage: errMessageUUID,
 		},
 		{
-			name: "Invalid Request (invalid key status)",
-			req: &kasregistry.UpdateKeyRequest{
-				Id:        validUUID,
-				KeyStatus: invalidKeyStatus,
-			},
-			expectError:  true,
-			errorMessage: errMessageKeyStatus,
-		},
-		{
-			name: "Invalid Request - updating key status to unspecified",
-			req: &kasregistry.UpdateKeyRequest{
-				Id: validUUID,
-			},
-			expectError:  true,
-			errorMessage: errKeystatusUpdateMessageID,
-		},
-		{
 			name: "Invalid Request - metadata update behavior is 0 when updating metadata",
 			req: &kasregistry.UpdateKeyRequest{
 				Id:       validUUID,
@@ -747,7 +730,6 @@ func Test_UpdateKeyAccessServer_Keys(t *testing.T) {
 			name: "Valid Request",
 			req: &kasregistry.UpdateKeyRequest{
 				Id:                     validUUID,
-				KeyStatus:              policy.KeyStatus_KEY_STATUS_ACTIVE,
 				Metadata:               validMetadata,
 				MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 			},
@@ -1125,7 +1107,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					KeyId:     validKeyID,
 					Algorithm: policy.Algorithm_ALGORITHM_EC_P256,
 					KeyMode:   policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
-					PublicKeyCtx: &policy.KasPublicKeyCtx{
+					PublicKeyCtx: &policy.PublicKeyCtx{
 						Pem: "",
 					},
 					PrivateKeyCtx: validPrivCtx,
@@ -1163,7 +1145,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
 					KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 					PublicKeyCtx: validPubCtx,
-					PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+					PrivateKeyCtx: &policy.PrivateKeyCtx{
 						WrappedKey: validKeyCtx,
 					},
 					Metadata: validMetadata,
@@ -1183,7 +1165,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
 					KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
 					PublicKeyCtx: validPubCtx,
-					PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey missing
+					PrivateKeyCtx: &policy.PrivateKeyCtx{ // WrappedKey missing
 						KeyId: validKeyID,
 					},
 					Metadata: validMetadata,
@@ -1219,7 +1201,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
 					KeyMode:      policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY,
 					PublicKeyCtx: validPubCtx,
-					PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey missing
+					PrivateKeyCtx: &policy.PrivateKeyCtx{ // WrappedKey missing
 						KeyId: validKeyID,
 					},
 					ProviderConfigId: validUUID, // Correct
@@ -1257,7 +1239,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
 					KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
 					PublicKeyCtx: validPubCtx,
-					PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey present (incorrect)
+					PrivateKeyCtx: &policy.PrivateKeyCtx{ // WrappedKey present (incorrect)
 						KeyId:      validKeyID,
 						WrappedKey: validPrivCtx.GetWrappedKey(),
 					},
@@ -1279,7 +1261,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
 					KeyMode:      policy.KeyMode_KEY_MODE_REMOTE,
 					PublicKeyCtx: validPubCtx,
-					PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey empty (correct)
+					PrivateKeyCtx: &policy.PrivateKeyCtx{ // WrappedKey empty (correct)
 						KeyId: validKeyID,
 					},
 					// ProviderConfigId missing (incorrect)
@@ -1298,7 +1280,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
 					KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 					PublicKeyCtx: validPubCtx,
-					PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey present (incorrect)
+					PrivateKeyCtx: &policy.PrivateKeyCtx{ // WrappedKey present (incorrect)
 						KeyId:      validKeyID,
 						WrappedKey: validKeyCtx,
 					},
@@ -1318,7 +1300,7 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 					Algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
 					KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
 					PublicKeyCtx: validPubCtx,
-					PrivateKeyCtx: &policy.KasPrivateKeyCtx{ // WrappedKey empty (correct)
+					PrivateKeyCtx: &policy.PrivateKeyCtx{ // WrappedKey empty (correct)
 						KeyId: validKeyID,
 					},
 					ProviderConfigId: validUUID, // Incorrect
@@ -1378,6 +1360,56 @@ func Test_RotateKeyAccessServer_Keys(t *testing.T) {
 	}
 
 	v := getValidator() // Get the validator instance (assuming this is defined elsewhere)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := v.Validate(tc.req)
+			if tc.expectError {
+				require.Error(t, err, "Expected error for test case: %s", tc.name)
+				if tc.errorMessage != "" {
+					require.Contains(t, err.Error(), tc.errorMessage, "Expected error message to contain '%s' for test case: %s", tc.errorMessage, tc.name)
+				}
+			} else {
+				require.NoError(t, err, "Expected no error for test case: %s", tc.name)
+			}
+		})
+	}
+}
+
+func Test_SetDefault_Keys(t *testing.T) {
+	testCases := []struct {
+		name         string
+		req          *kasregistry.SetBaseKeyRequest
+		expectError  bool
+		errorMessage string
+	}{
+		{
+			name:         "Invalid Request (empty)",
+			req:          &kasregistry.SetBaseKeyRequest{},
+			expectError:  true,
+			errorMessage: errMessageRequired,
+		},
+		{
+			name: "Valid Request (nano)",
+			req: &kasregistry.SetBaseKeyRequest{
+				ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
+					Id: validUUID,
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Valid Request (ztdf)",
+			req: &kasregistry.SetBaseKeyRequest{
+				ActiveKey: &kasregistry.SetBaseKeyRequest_Id{
+					Id: validUUID,
+				},
+			},
+			expectError: false,
+		},
+	}
+
+	v := getValidator()
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

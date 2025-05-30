@@ -3,7 +3,7 @@ package keymanagement
 import (
 	"testing"
 
-	"github.com/bufbuild/protovalidate-go"
+	"buf.build/go/protovalidate"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/stretchr/testify/require"

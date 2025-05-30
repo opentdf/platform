@@ -39,11 +39,11 @@ jobs:
           - lib/flattening
           - lib/identifier
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.4.2
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 #v5.5.0
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version-file: ${{ matrix.directory }}/go.mod
           check-latest: false
@@ -67,7 +67,7 @@ jobs:
         if: env.IS_RELEASE_BRANCH == 'true'
         working-directory: ${{ matrix.directory }}
       - name: govluncheck
-        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee
+        uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
         with:
           go-version-input: "1.24.2"
           work-dir: ${{ matrix.directory }}
@@ -103,10 +103,10 @@ jobs:
     env:
       TLS_ENABLED: "true"
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.4.2
         with:
           persist-credentials: false
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 #v5.5.0
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version-file: "service/go.mod"
           check-latest: false
@@ -140,7 +140,7 @@ jobs:
       - run: docker compose up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
       - run: go run ./service provision keycloak
       - run: go run ./service provision fixtures
-      - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
+      - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
         name: start server in background
         with:
           run: >
@@ -152,7 +152,7 @@ jobs:
           wait-for: 90s
       - run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.9
       - name: Setup Bats and bats libs
-        uses: bats-core/bats-action@3.0.0
+        uses: bats-core/bats-action@2104b40bb7b6c2d5110b23a26b0bf265ab8027db # 3.0.0
       - run: test/service-start.bats
       - run: test/tdf-roundtrips.bats
       - run: test/policy-service.bats
@@ -180,10 +180,10 @@ jobs:
     env:
       TLS_ENABLED: "true"
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.4.2
         with:
           persist-credentials: false
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 #v5.5.0
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version-file: "service/go.mod"
           check-latest: false
@@ -218,7 +218,7 @@ jobs:
       - run: docker compose up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
       - run: go run ./service provision keycloak
       - run: go run ./service provision fixtures
-      - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
+      - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
         name: start server in background
         with:
           run: >
@@ -254,6 +254,19 @@ jobs:
             echo "$OUTPUT";
             echo "EODECISION"
           } >> "$GITHUB_ENV"
+      - name: run decision v2 benchmark tests
+        run: |
+          # Run the benchmark with a specific count (adjust as needed)
+          OUTPUT=$(./examples/examples benchmark-decision-v2 --count 5000)
+          echo "--- Decision Benchmark v2 Output ---"
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY" # Add to job summary page
+          # Save the output to an environment variable for the comment step
+          {
+            echo "BENCHMARK_DECISION_V2_OUTPUT<<EODECISIONV2"; # Unique delimiter
+            echo "$OUTPUT";
+            echo "EODECISIONV2"
+          } >> "$GITHUB_ENV"
       - name: run tdf3 benchmark tests
         run: |
           OUTPUT=$(./examples/examples benchmark --count=5000 --concurrent=50)
@@ -288,16 +301,17 @@ jobs:
 
       - name: save benchmark results as a comment
         if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
             const decisionOutput = process.env.BENCHMARK_DECISION_OUTPUT || '## Decision Benchmark Skipped or Failed';
+            const decisionV2Output = process.env.BENCHMARK_DECISION_V2_OUTPUT || '## Decision Benchmark v2 Skipped or Failed';
             const metricsOutput = process.env.BENCHMARK_METRICS_OUTPUT || '## Standard Benchmark Metrics Skipped or Failed';
             const bulkOutput = process.env.BENCHMARK_BULK_OUTPUT || '## Bulk Benchmark Skipped or Failed';
             const tdf3Output = process.env.BENCHMARK_TDF3_OUTPUT || '## TDF3 Benchmark Skipped or Failed';
             const nanoOutput = process.env.BENCHMARK_NANO_OUTPUT || '## Nano Benchmark Skipped or Failed';
 
-            const body = `<details><summary>Benchmark results, click to expand</summary>\n\n${decisionOutput}\n\n${bulkOutput}\n\n${tdf3Output}\n\n${nanoOutput}\n\n${metricsOutput}</details>`;
+            const body = `<details><summary>Benchmark results, click to expand</summary>\n\n${decisionOutput}\n\n${decisionV2Output}\n\n${bulkOutput}\n\n${tdf3Output}\n\n${nanoOutput}\n\n${metricsOutput}</details>`;
 
             github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -308,7 +322,7 @@ jobs:
 
       - name: save benchmark results as a step summary
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
             const fs = require('fs');
@@ -323,10 +337,10 @@ jobs:
     name: image build
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.4.2
         with:
           persist-credentials: false
-      - uses: docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb
+      - uses: docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb # v3.3.0
         with:
           cache-binary: false
       - uses: docker/build-push-action@1dc73863535b631f98b2378be8619f83b136f4a0 # v6.17.0
@@ -365,20 +379,20 @@ jobs:
     name: Protocol Buffer Lint and Gencode Up-to-date check
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.4.2
         with:
           persist-credentials: false
-      - uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99
+      - uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99 # v1.50.0
         with:
           github_token: ${{ github.token }}
-      - uses: bufbuild/buf-lint-action@06f9dd823d873146471cfaaf108a993fe00e5325
+      - uses: bufbuild/buf-lint-action@06f9dd823d873146471cfaaf108a993fe00e5325 # v1.1.1
         with:
           input: service
-      - uses: bufbuild/buf-breaking-action@c57b3d842a5c3f3b454756ef65305a50a587c5ba
+      - uses: bufbuild/buf-breaking-action@c57b3d842a5c3f3b454756ef65305a50a587c5ba # v1.1.4
         with:
           input: service
           against: "https://github.com/opentdf/platform.git#branch=main,subdir=service"
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 #v5.5.0
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version-file: "service/go.mod"
           check-latest: false
@@ -428,10 +442,10 @@ jobs:
     name: license check
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.4.2
         with:
           persist-credentials: false
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 #v5.5.0
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version-file: "service/go.mod"
           check-latest: false

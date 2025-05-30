@@ -226,6 +226,11 @@ type AttributeValuePublicKeyMap struct {
 	KeyAccessServerKeyID string `json:"key_access_server_key_id"`
 }
 
+type BaseKey struct {
+	ID                   string      `json:"id"`
+	KeyAccessServerKeyID pgtype.UUID `json:"key_access_server_key_id"`
+}
+
 // Table to store the known registrations of key access servers (KASs)
 type KeyAccessServer struct {
 	// Primary key for the table
@@ -368,9 +373,10 @@ type SubjectConditionSet struct {
 	// Conditions that must be met for the subject entity to be entitled to the attribute value (see protos for JSON structure)
 	Condition []byte `json:"condition"`
 	// Metadata for the condition set (see protos for structure)
-	Metadata  []byte             `json:"metadata"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	Metadata       []byte             `json:"metadata"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	SelectorValues []string           `json:"selector_values"`
 }
 
 // Table to store conditions that logically entitle subject entity representations to attribute values

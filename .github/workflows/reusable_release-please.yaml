@@ -14,16 +14,22 @@ on:
         default: ".release-please-manifest.json"
     outputs:
       major:
+        description: "Major version number"
         value: ${{ jobs.release-please.outputs.major }}
       minor:
+        description: "Minor version number"
         value: ${{ jobs.release-please.outputs.minor }}
       patch:
+        description: "Patch version number"
         value: ${{ jobs.release-please.outputs.patch }}
       sha:
+        description: "Commit SHA of the release"
         value: ${{ jobs.release-please.outputs.sha }}
       release_created:
+        description: "Indicates if a release was created"
         value: ${{ jobs.release-please.outputs.release_created }}
       tag_name:
+        description: "Tag name of the release"
         value: ${{ jobs.release-please.outputs.tag_name }}
 permissions: {}
 

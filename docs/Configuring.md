@@ -5,12 +5,22 @@ This guide provides details about the configuration setup for the platform, incl
 The platform leverages [viper](https://github.com/spf13/viper) to help load configuration.
 
 - [Platform Configuration](#platform-configuration)
+  - [Deployment Mode](#deployment-mode)
+  - [SDK Configuration](#sdk-configuration)
   - [Logger Configuration](#logger-configuration)
   - [Server Configuration](#server-configuration)
+    - [Crypto Provider](#crypto-provider)
   - [Database Configuration](#database-configuration)
+    - [Tracing Configuration](#tracing-configuration)
   - [Services Configuration](#services-configuration)
     - [Key Access Server (KAS)](#key-access-server-kas)
     - [Authorization](#authorization)
+    - [Policy](#policy)
+    - [Casbin Endpoint Authorization](#casbin-endpoint-authorization)
+      - [Key Aspects of Authorization Configuration](#key-aspects-of-authorization-configuration)
+      - [Configuration in opentdf-example.yaml](#configuration-in-opentdf-exampleyaml)
+      - [Role Permissions](#role-permissions)
+      - [Managing Authorization Policy](#managing-authorization-policy)
 
 ## Deployment Mode
 
@@ -22,9 +32,9 @@ The platform is designed as a modular monolith, meaning that all services are bu
 
 
 
-| Field    | Description  | Default  | Environment Variable |
-| -------- | -------------| -------- | -------------------- |
-| `mode`   | Drives which services to run. Following modes are supported. (all, core, kas) | `all` | OPENTDF_MODE |
+| Field  | Description                                                                   | Default | Environment Variable |
+| ------ | ----------------------------------------------------------------------------- | ------- | -------------------- |
+| `mode` | Drives which services to run. Following modes are supported. (all, core, kas) | `all`   | OPENTDF_MODE         |
 
 ## SDK Configuration
 
@@ -32,16 +42,16 @@ The sdk configuration is used when operating the service in mode `kas`. When run
 
 Root level key `sdk_config`
 
-| Field    | Description  | Default  | Environment Variable |
-| -------- | -------------| -------- | -------------------- |
-| `core.endpoint` | The core platform endpoint to connect to |  | OPENTDF_SDK_CONFIG_ENDPOINT |
-| `core.plaintext` | Use a plaintext grpc connection | `false` | OPENTDF_SDK_CONFIG_PLAINTEXT |
-| `core.insecure` | Use an insecure tls connection | `false` |  |
-| `entityresolution.endpoint` | The entityresolution endpoint to connect to |  |  |
-| `entityresolution.plaintext` | Use a plaintext ERS grpc connection | `false` |  |
-| `entityresolution.insecure` | Use an insecure tls connection | `false` |  |
-| `client_id` | OAuth client id |  | OPENTDF_SDK_CONFIG_CLIENT_ID |
-| `client_secret` |  The clients credentials | | OPENTDF_SDK_CONFIG_CLIENT_SECRET |
+| Field                        | Description                                 | Default | Environment Variable             |
+| ---------------------------- | ------------------------------------------- | ------- | -------------------------------- |
+| `core.endpoint`              | The core platform endpoint to connect to    |         | OPENTDF_SDK_CONFIG_ENDPOINT      |
+| `core.plaintext`             | Use a plaintext grpc connection             | `false` | OPENTDF_SDK_CONFIG_PLAINTEXT     |
+| `core.insecure`              | Use an insecure tls connection              | `false` |                                  |
+| `entityresolution.endpoint`  | The entityresolution endpoint to connect to |         |                                  |
+| `entityresolution.plaintext` | Use a plaintext ERS grpc connection         | `false` |                                  |
+| `entityresolution.insecure`  | Use an insecure tls connection              | `false` |                                  |
+| `client_id`                  | OAuth client id                             |         | OPENTDF_SDK_CONFIG_CLIENT_ID     |
+| `client_secret`              | The clients credentials                     |         | OPENTDF_SDK_CONFIG_CLIENT_SECRET |
 
 ## Logger Configuration
 
@@ -49,8 +59,8 @@ The logger configuration is used to define how the application logs its output.
 
 Root level key `logger`
 
-| Field    | Description                      | Default  | Environment Variable |
-| -------- | -------------------------------- | -------- | -------------------- |
+| Field    | Description                      | Default  | Environment Variable  |
+| -------- | -------------------------------- | -------- | --------------------- |
 | `level`  | The logging level.               | `info`   | OPENTDF_LOGGER_LEVEL  |
 | `type`   | The format of the log output.    | `json`   | OPENTDF_LOGGER_TYPE   |
 | `output` | The output destination for logs. | `stdout` | OPENTDF_LOGGER_OUTPUT |
@@ -71,7 +81,7 @@ The server configuration is used to define how the application runs its server.
 Root level key `server`
 
 | Field                   | Description                                                                                                   | Default | Environment Variable                 |
-|-------------------------|---------------------------------------------------------------------------------------------------------------|---------|--------------------------------------|
+| ----------------------- | ------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------ |
 | `auth.audience`         | The audience for the IDP.                                                                                     |         | OPENTDF_SERVER_AUTH_AUDIENCE         |
 | `auth.issuer`           | The issuer for the IDP.                                                                                       |         | OPENTDF_SERVER_AUTH_ISSUER           |
 | `auth.policy`           | The Casbin policy for enforcing authorization on endpoints. Described [below](#casbin-endpoint-authorization) |         |                                      |
@@ -144,24 +154,24 @@ The database configuration is used to define how the application connects to its
 
 Root level key `db`
 
-| Field                                  | Description                                      | Default     | Environment Variables                           |
-| -------------------------------------- | ------------------------------------------------ | ----------- | ----------------------------------              |
-| `host`                                 | The host address for the database.               | `localhost` | OPENTDF_DB_HOST                                 |
-| `port`                                 | The port number for the database.                | `5432`      | OPENTDF_DB_PORT                                 |
-| `database`                             | The name of the database.                        | `opentdf`   | OPENTDF_DB_DATABASE                             |
-| `user`                                 | The username for the database.                   | `postgres`  | OPENTDF_DB_USER                                 |
-| `password`                             | The password for the database.                   | `changeme`  | OPENTDF_DB_PASSWORD                             |
-| `sslmode`                              | The ssl mode for the database                    | `prefer`    | OPENTDF_DB_SSLMODE                              |
-| `schema`                               | The schema for the database.                     | `opentdf`   | OPENTDF_DB_SCHEMA                               |
-| `runMigration`                         | Whether to run the database migration or not.    | `true`      | OPENTDF_DB_RUNMIGRATION                         |
-| `connect_timeout_seconds`              | Connection timeout duration (seconds).           | `15`         | OPENTDF_DB_CONNECT_TIMEOUT_SECONDS              |
-| `pool`                                 | Pool configuration settings.                     |             |                                                 |
-| `pool.max_connection_count`            | Maximum number of connections per pool.          | `4`         | OPENTDF_DB_POOL_MAX_CONNECTION_COUNT            |
-| `pool.min_connection_count`            | Minimum number of connections per pool.          | `0`         | OPENTDF_DB_POOL_MIN_CONNECTION_COUNT            |
-| `pool.max_connection_lifetime_seconds` | Maximum seconds per connection lifetime.         | `3600`      | OPENTDF_DB_POOL_MAX_CONNECTION_LIFETIME_SECONDS |
-| `pool.min_idle_connections_count`      | Minimum number of idle connections per pool.     | `0`         | OPENTDF_DB_POOL_MIN_IDLE_CONNECTIONS_COUNT      |
-| `pool.max_connection_idle_seconds`     | Maximum seconds allowed for idle connection.     | `1800`      | OPENTDF_DB_POOL_MAX_CONNECTION_IDLE_SECONDS     |
-| `pool.health_check_period_seconds`     | Interval seconds per health check.               | `60`        | OPENTDF_DB_POOL_HEALTH_CHECK_PERIOD_SECONDS     |
+| Field                                  | Description                                   | Default     | Environment Variables                           |
+| -------------------------------------- | --------------------------------------------- | ----------- | ----------------------------------------------- |
+| `host`                                 | The host address for the database.            | `localhost` | OPENTDF_DB_HOST                                 |
+| `port`                                 | The port number for the database.             | `5432`      | OPENTDF_DB_PORT                                 |
+| `database`                             | The name of the database.                     | `opentdf`   | OPENTDF_DB_DATABASE                             |
+| `user`                                 | The username for the database.                | `postgres`  | OPENTDF_DB_USER                                 |
+| `password`                             | The password for the database.                | `changeme`  | OPENTDF_DB_PASSWORD                             |
+| `sslmode`                              | The ssl mode for the database                 | `prefer`    | OPENTDF_DB_SSLMODE                              |
+| `schema`                               | The schema for the database.                  | `opentdf`   | OPENTDF_DB_SCHEMA                               |
+| `runMigration`                         | Whether to run the database migration or not. | `true`      | OPENTDF_DB_RUNMIGRATION                         |
+| `connect_timeout_seconds`              | Connection timeout duration (seconds).        | `15`        | OPENTDF_DB_CONNECT_TIMEOUT_SECONDS              |
+| `pool`                                 | Pool configuration settings.                  |             |                                                 |
+| `pool.max_connection_count`            | Maximum number of connections per pool.       | `4`         | OPENTDF_DB_POOL_MAX_CONNECTION_COUNT            |
+| `pool.min_connection_count`            | Minimum number of connections per pool.       | `0`         | OPENTDF_DB_POOL_MIN_CONNECTION_COUNT            |
+| `pool.max_connection_lifetime_seconds` | Maximum seconds per connection lifetime.      | `3600`      | OPENTDF_DB_POOL_MAX_CONNECTION_LIFETIME_SECONDS |
+| `pool.min_idle_connections_count`      | Minimum number of idle connections per pool.  | `0`         | OPENTDF_DB_POOL_MIN_IDLE_CONNECTIONS_COUNT      |
+| `pool.max_connection_idle_seconds`     | Maximum seconds allowed for idle connection.  | `1800`      | OPENTDF_DB_POOL_MAX_CONNECTION_IDLE_SECONDS     |
+| `pool.health_check_period_seconds`     | Interval seconds per health check.            | `60`        | OPENTDF_DB_POOL_HEALTH_CHECK_PERIOD_SECONDS     |
 
 
 
@@ -190,10 +200,10 @@ db:
 
 ### Tracing Configuration
 
-| Field | Description | Default | Environment Variable |
-| ----- | ----------- | ------- | ------------------- |
-| `trace.enabled` | Enable distributed tracing | `false` | OPENTDF_SERVER_TRACE_ENABLED |
-| `trace.provider.name` | Tracing provider (file or otlp) | `otlp` | OPENTDF_SERVER_TRACE_PROVIDER_NAME |
+| Field                 | Description                     | Default | Environment Variable               |
+| --------------------- | ------------------------------- | ------- | ---------------------------------- |
+| `trace.enabled`       | Enable distributed tracing      | `false` | OPENTDF_SERVER_TRACE_ENABLED       |
+| `trace.provider.name` | Tracing provider (file or otlp) | `otlp`  | OPENTDF_SERVER_TRACE_PROVIDER_NAME |
 
 For file provider:
 - `trace.provider.file.path`: Path to trace file output
@@ -219,18 +229,21 @@ Root level key `kas`
 
 Environment Variable: `OPENTDF_SERVICES_KAS_KEYRING='[{"kid":"k1","alg":"rsa:2048"},{"kid":"k2","alg":"ec:secp256r1"}]'`
 
-| Field              | Description                                                                     | Default  |
-| ------------------ | ------------------------------------------------------------------------------- | -------- |
-| `keyring.*.kid`    | Which key id this is binding                                                    |          |
-| `keyring.*.alg`    | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
-| `keyring.*.legacy` | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
+| Field                             | Description                                                                     | Default  |
+| --------------------------------- | ------------------------------------------------------------------------------- | -------- |
+| `keyring.*.kid`                   | Which key id this is binding                                                    |          |
+| `keyring.*.alg`                   | (Optional) Associated algorithm. (Allows reusing KID with different algorithms) |          |
+| `keyring.*.legacy`                | Indicates this may be used for TDFs with no key ID; default if all unspecified. | inferred |
+| `preview_features.ec_tdf_enabled` | Whether tdf based ecc support is enabled.                                       | `false`  |
+| `preview_features.key_management` | Whether new key management features are enabled.                                | `false`  |
+| `root_key`                        | Key needed when new key_management functionality is enabled.                    |          |
+
 
 Example:
 
 ```yaml
 services:
   kas:
-    enabled: true
     keyring:
       - kid: e2
         alg: ec:secp256r1
@@ -248,9 +261,9 @@ services:
 
 Root level key `authorization`
 
-| Field     | Description              | Default | Environment Variables |
-| --------- | ------------------------ | ------- | --------------------- |
-| `rego.path` | Path to rego policy file | Leverages embedded rego policy | OPENTDF_SERVICES_AUTHORIZATION_REGO_PATH |
+| Field        | Description                     | Default                                | Environment Variables                     |
+| ------------ | ------------------------------- | -------------------------------------- | ----------------------------------------- |
+| `rego.path`  | Path to rego policy file        | Leverages embedded rego policy         | OPENTDF_SERVICES_AUTHORIZATION_REGO_PATH  |
 | `rego.query` | Rego query to execute in policy | `data.opentdf.entitlements.attributes` | OPENTDF_SERVICES_AUTHORIZATION_REGO_QUERY |
 
 Example:

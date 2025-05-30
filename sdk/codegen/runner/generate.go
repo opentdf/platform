@@ -1,91 +1,26 @@
 package runner
 
 import (
-	"errors"
 	"fmt"
 	"go/ast"
 	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 
 	"golang.org/x/tools/go/packages"
 )
 
-type clientsToGenerate struct {
-	grpcClientInterface string
-	suffix              string
-	packageNameOverride string
-	grpcPackagePath     string
+type ClientsToGenerate struct {
+	GrpcClientInterface string
+	Suffix              string
+	PackageNameOverride string
+	GrpcPackagePath     string
 }
 
-var clientsToGenerateList = []clientsToGenerate{
-	{
-		grpcClientInterface: "ActionServiceClient",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/actions",
-	},
-	{
-		grpcClientInterface: "AttributesServiceClient",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/attributes",
-	},
-	{
-		grpcClientInterface: "AuthorizationServiceClient",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/authorization",
-	},
-	{
-		grpcClientInterface: "AuthorizationServiceClient",
-		suffix:              "V2",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/authorization/v2",
-		packageNameOverride: "authorizationv2",
-	},
-	{
-		grpcClientInterface: "EntityResolutionServiceClient",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/entityresolution",
-	},
-	{
-		grpcClientInterface: "EntityResolutionServiceClient",
-		suffix:              "V2",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/entityresolution/v2",
-		packageNameOverride: "entityresolutionv2",
-	},
-	{
-		grpcClientInterface: "KeyAccessServerRegistryServiceClient",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/kasregistry",
-	},
-	{
-		grpcClientInterface: "KeyManagementServiceClient",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/keymanagement",
-	},
-	{
-		grpcClientInterface: "NamespaceServiceClient",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/namespaces",
-	},
-	{
-		grpcClientInterface: "RegisteredResourcesServiceClient",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/registeredresources",
-	},
-	{
-		grpcClientInterface: "ResourceMappingServiceClient",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/resourcemapping",
-	},
-	{
-		grpcClientInterface: "SubjectMappingServiceClient",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/subjectmapping",
-	},
-	{
-		grpcClientInterface: "UnsafeServiceClient",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/unsafe",
-	},
-	{
-		grpcClientInterface: "WellKnownServiceClient",
-		grpcPackagePath:     "github.com/opentdf/platform/protocol/go/wellknownconfiguration",
-	},
-}
-
-func Generate() error {
+func Generate(clientsToGenerateList []ClientsToGenerate, outputDir string) error {
 	for _, client := range clientsToGenerateList {
-		slog.Info("Generating wrapper for", "interface", client.grpcClientInterface, "package", client.grpcPackagePath)
+		slog.Info("Generating wrapper for", "interface", client.GrpcClientInterface, "package", client.GrpcPackagePath)
 		// Load the Go package using the import path
 		cfg := &packages.Config{
 			Mode: packages.NeedName |
@@ -94,12 +29,12 @@ func Generate() error {
 				packages.NeedSyntax |
 				packages.NeedCompiledGoFiles,
 		}
-		pkgs, err := packages.Load(cfg, client.grpcPackagePath)
+		pkgs, err := packages.Load(cfg, client.GrpcPackagePath)
 		if err != nil {
-			return fmt.Errorf("failed to load package %s: %w", client.grpcPackagePath, err)
+			return fmt.Errorf("failed to load package %s: %w", client.GrpcPackagePath, err)
 		}
 		if packages.PrintErrors(pkgs) > 0 {
-			return fmt.Errorf("errors loading package %s", client.grpcPackagePath)
+			return fmt.Errorf("errors loading package %s", client.GrpcPackagePath)
 		}
 		found := false
 		err = nil
@@ -118,15 +53,13 @@ func Generate() error {
 					if !ok {
 						return true
 					}
-					if ts.Name.Name == client.grpcClientInterface {
-						packageName := path.Base(client.grpcPackagePath)
-						if client.packageNameOverride != "" {
-							packageName = client.packageNameOverride
+					if ts.Name.Name == client.GrpcClientInterface {
+						packageName := path.Base(client.GrpcPackagePath)
+						if client.PackageNameOverride != "" {
+							packageName = client.PackageNameOverride
 						}
-						code := generateWrapper(ts.Name.Name, iface, client.grpcPackagePath, packageName, client.suffix)
-						var currentDir string
-						currentDir, err = getCurrentFileDir()
-						outputPath := filepath.Join(currentDir, "..", "..", "..", "sdkconnect", packageName+".go")
+						code := generateWrapper(ts.Name.Name, iface, client.GrpcPackagePath, packageName, client.Suffix)
+						outputPath := filepath.Join(outputDir, packageName+".go")
 						err = os.WriteFile(outputPath, []byte(code), 0o644) //nolint:gosec // ignore G306
 						if err != nil {
 							slog.Error("Error writing file", "file", outputPath, "error", err)
@@ -145,21 +78,13 @@ func Generate() error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("interface %q not found in package %s", client.grpcClientInterface, client.grpcPackagePath)
+			return fmt.Errorf("interface %q not found in package %s", client.GrpcClientInterface, client.GrpcPackagePath)
 		}
 		if err != nil {
 			return fmt.Errorf("error writing file: %w", err)
 		}
 	}
 	return nil
-}
-
-func getCurrentFileDir() (string, error) {
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", errors.New("could not get caller file (generate.go) working directory")
-	}
-	return filepath.Dir(filename), nil
 }
 
 // Helper function to get the method names of an interface

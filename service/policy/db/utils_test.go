@@ -5,6 +5,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_GetListLimit(t *testing.T) {
@@ -142,6 +143,119 @@ func Test_UnmarshalAllActionsProto(t *testing.T) {
 
 			if len(actions) != tt.wantLen {
 				t.Errorf("unmarshalAllActionsProto() len(actions) = %v, wantLen %v", len(actions), tt.wantLen)
+			}
+		})
+	}
+}
+
+func Test_UnmarshalPrivatePublicKeyContext(t *testing.T) {
+	tests := []struct {
+		name    string
+		pubCtx  []byte
+		privCtx []byte
+		wantErr bool
+	}{
+		{
+			name:    "Successful unmarshal of both public and private keys",
+			pubCtx:  []byte(`{"pem": "PUBLIC_KEY_PEM"}`),
+			privCtx: []byte(`{"keyId": "PRIVATE_KEY_ID", "wrappedKey": "WRAPPED_PRIVATE_KEY"}`),
+			wantErr: false,
+		},
+		{
+			name:    "Successful unmarshal of only public key",
+			pubCtx:  []byte(`{"pem": "PUBLIC_KEY_PEM"}`),
+			privCtx: []byte(`{}`),
+			wantErr: false,
+		},
+		{
+			name:    "Successful unmarshal of only private key",
+			pubCtx:  []byte(`{}`),
+			privCtx: []byte(`{"keyId": "PRIVATE_KEY_ID", "wrappedKey": "WRAPPED_PRIVATE_KEY"}`),
+			wantErr: false,
+		},
+		{
+			name:    "Invalid public key JSON",
+			pubCtx:  []byte(`{"pem": "invalid`),
+			privCtx: []byte(`{"keyId": "PRIVATE_KEY_ID", "wrappedKey": "WRAPPED_PRIVATE_KEY"}`),
+			wantErr: true,
+		},
+		{
+			name:    "Invalid private key JSON",
+			pubCtx:  []byte(`{"pem": "PUBLIC_KEY_PEM"}`),
+			privCtx: []byte(`{"keyId": "invalid`),
+			wantErr: true,
+		},
+		{
+			name:    "Empty public context",
+			pubCtx:  []byte(`{}`),
+			privCtx: []byte(`{"keyId": "PRIVATE_KEY_ID", "wrappedKey": "WRAPPED_PRIVATE_KEY"}`),
+			wantErr: false,
+		},
+		{
+			name:    "Empty private context",
+			pubCtx:  []byte(`{"pem": "PUBLIC_KEY_PEM"}`),
+			privCtx: []byte(`{}`),
+			wantErr: false,
+		},
+		{
+			name:    "Nil public and private key pointers",
+			pubCtx:  []byte(`{"pem": "PUBLIC_KEY_PEM"}`),
+			privCtx: []byte(`{"keyId": "PRIVATE_KEY_ID", "wrappedKey": "WRAPPED_PRIVATE_KEY"}`),
+			wantErr: false,
+		},
+		{
+			name:    "Nil public key pointer",
+			pubCtx:  nil,
+			privCtx: []byte(`{"keyId": "PRIVATE_KEY_ID", "wrappedKey": "WRAPPED_PRIVATE_KEY"}`),
+			wantErr: false,
+		},
+		{
+			name:    "Nil private key pointer",
+			pubCtx:  []byte(`{"pem": "PUBLIC_KEY_PEM"}`),
+			privCtx: nil,
+			wantErr: false,
+		},
+		{
+			name:    "Nil public and private key pointers",
+			pubCtx:  nil,
+			privCtx: nil,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pubKeyCtx, privKeyCtx, err := unmarshalPrivatePublicKeyContext(tt.pubCtx, tt.privCtx)
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return // Exit early if an error was expected
+			}
+
+			// If we reach here, no error was expected
+			require.NoError(t, err)
+
+			if tt.pubCtx == nil {
+				assert.Nil(t, pubKeyCtx, "pubKeyCtx should be nil when tt.pubCtx is nil for test: %s", tt.name)
+			} else {
+				assert.NotNil(t, pubKeyCtx, "pubKeyCtx should not be nil when tt.pubCtx is not nil for test: %s", tt.name)
+				// Only check GetPem if input tt.pubCtx was not empty and not an empty JSON object,
+				// implying it was intended to contain the "PUBLIC_KEY_PEM".
+				if len(tt.pubCtx) > 0 && string(tt.pubCtx) != `{}` {
+					assert.Equal(t, "PUBLIC_KEY_PEM", pubKeyCtx.GetPem(), "Mismatch in pubKeyCtx.GetPem() for test: %s", tt.name)
+				}
+			}
+
+			if tt.privCtx == nil {
+				assert.Nil(t, privKeyCtx, "privKeyCtx should be nil when tt.privCtx is nil for test: %s", tt.name)
+			} else {
+				assert.NotNil(t, privKeyCtx, "privKeyCtx should not be nil when tt.privCtx is not nil for test: %s", tt.name)
+				// Only check GetKeyId and GetWrappedKey if input tt.privCtx was not empty and not an empty JSON object,
+				// implying it was intended to contain the "PRIVATE_KEY_ID" and "WRAPPED_PRIVATE_KEY".
+				if len(tt.privCtx) > 0 && string(tt.privCtx) != `{}` {
+					assert.Equal(t, "PRIVATE_KEY_ID", privKeyCtx.GetKeyId(), "Mismatch in privKeyCtx.GetKeyId() for test: %s", tt.name)
+					assert.Equal(t, "WRAPPED_PRIVATE_KEY", privKeyCtx.GetWrappedKey(), "Mismatch in privKeyCtx.GetWrappedKey() for test: %s", tt.name)
+				}
 			}
 		})
 	}

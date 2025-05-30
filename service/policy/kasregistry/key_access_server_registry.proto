@@ -73,9 +73,7 @@ message CreateKeyAccessServerRequest {
   // Optional
   SourceType source_type = 3 [
     (buf.validate.field).required = false,
-    (buf.validate.field).enum = {
-      defined_only: true
-    }
+    (buf.validate.field).enum = {defined_only: true}
   ];
 
   // Optional
@@ -127,9 +125,7 @@ message UpdateKeyAccessServerRequest {
   // to unspecified.
   SourceType source_type = 4 [
     (buf.validate.field).required = false,
-    (buf.validate.field).enum = {
-      defined_only: true
-    }
+    (buf.validate.field).enum = {defined_only: true}
   ];
 
   // Optional
@@ -381,36 +377,41 @@ message CreateKeyRequest {
   option (buf.validate.message).cel = {
     id: "private_key_ctx_optionally_required"
     message:
-      "The wrapped_key is required if the key_mode is KEY_MODE_LOCAL. "
-      "If the key_mode is KEY_MODE_REMOTE, the wrapped_key should not be "
-      "present."
-    expression: "(this.key_mode == 1 && this.private_key_ctx.wrapped_key != '') || (this.key_mode == 2 && this.private_key_ctx.wrapped_key == '')";
+      "The wrapped_key is required if key_mode is KEY_MODE_CONFIG_ROOT_KEY or KEY_MODE_PROVIDER_ROOT_KEY. "
+      "The wrapped_key must be empty if key_mode is KEY_MODE_REMOTE or KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "((this.key_mode == 1 || this.key_mode == 2) && this.private_key_ctx.wrapped_key != '') || ((this.key_mode == 3 || this.key_mode == 4) && this.private_key_ctx.wrapped_key == '')"
   };
   option (buf.validate.message).cel = {
-    id: "providfer_config_id_optionally_required"
-    message:
-      "Provider config id is required if the key_mode is REMOTE. "
-    expression: "((this.key_mode == 1) || (this.key_mode == 2 && this.provider_config_id != ''))";
+    id: "provider_config_id_optionally_required"
+    message: "Provider config id is required if key_mode is KEY_MODE_PROVIDER_ROOT_KEY or KEY_MODE_REMOTE. It must be empty for KEY_MODE_CONFIG_ROOT_KEY and KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "((this.key_mode == 1 || this.key_mode == 4) && this.provider_config_id == '') || ((this.key_mode == 2 || this.key_mode == 3) && this.provider_config_id != '')"
   };
-
+  option (buf.validate.message).cel = {
+    id: "private_key_ctx_for_public_key_only"
+    message: "private_key_ctx must not be set if key_mode is KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "!(this.key_mode == 4 && has(this.private_key_ctx))"
+  };
 
   // Required
   string kas_id = 1 [(buf.validate.field).string.uuid = true]; // The unique identifier of the Key Access Server
   // Required
   string key_id = 2 [(buf.validate.field).string.min_len = 1]; // A user-defined identifier for the key
   // Required
-  Algorithm key_algorithm = 3 [(buf.validate.field).enum.defined_only = true]; // The algorithm to be used for the key
+  Algorithm key_algorithm = 3 [(buf.validate.field).cel = {
+    id: "key_algorithm_defined"
+    message: "The key_algorithm must be one of the defined values."
+    expression: "this in [1, 2, 3, 4]" // Allow ALGORITHM_EC_P256, ALGORITHM_RSA_2048, ALGORITHM_X25519, ALGORITHM_AES_256_GCM
+  }]; // The algorithm to be used for the key
   // Required
   KeyMode key_mode = 4 [(buf.validate.field).cel = {
-    id: "key_mode"
-    message: "The mode of the key (e.g., local or external)"
-    expression: "this == 1 || this == 2"
+    id: "key_mode_defined"
+    message: "The key_mode must be one of the defined values (1-4)."
+    expression: "this >= 1 && this <= 4" // Allow CONFIG_ROOT_KEY, PROVIDER_ROOT_KEY, REMOTE, PUBLIC_KEY_ONLY
   }]; // The mode of the key (e.g., local or external)
   // Required
-  KasPublicKeyCtx public_key_ctx = 5 [(buf.validate.field).required = true]; // Context or additional data specific to the public key, based on the key provider implementation
-  // Required
-  KasPrivateKeyCtx private_key_ctx = 6 [(buf.validate.field).required = true]; // Context or additional data specific to the private key, based on the key provider implementation
-  
+  PublicKeyCtx public_key_ctx = 5 [(buf.validate.field).required = true]; // Context or additional data specific to the public key, based on the key provider implementation
+  // Conditionally Required
+  PrivateKeyCtx private_key_ctx = 6; // Context or additional data specific to the private key, based on the key provider implementation
   // Optional
   string provider_config_id = 7; // Configuration ID for the key provider, if applicable
   // Common metadata
@@ -438,12 +439,19 @@ message GetKeyResponse {
 
 // List all asymmetric keys managed by a specific Key Access Server or with a given algorithm
 message ListKeysRequest {
-  Algorithm key_algorithm = 1 [(buf.validate.field).enum.defined_only = true]; // Filter keys by algorithm
+  Algorithm key_algorithm = 1 [(buf.validate.field).cel = {
+    id: "key_algorithm_defined"
+    message: "The key_algorithm must be one of the defined values."
+    expression: "this in [0, 1, 2, 3, 4]" // Allow ALGORITHM_EC_P256, ALGORITHM_RSA_2048, ALGORITHM_X25519, ALGORITHM_AES_256_GCM
+  }]; // Filter keys by algorithm
 
   oneof kas_filter {
     string kas_id = 2 [(buf.validate.field).string.uuid = true]; // Filter keys by the KAS ID
-    string kas_name = 3; // Filter keys by the KAS name
-    string kas_uri = 4; // Filter keys by the KAS URI
+    string kas_name = 3 [(buf.validate.field).string.min_len = 1]; // Filter keys by the KAS name
+    string kas_uri = 4 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }]; // Filter keys by the KAS URI
   }
 
   // Optional
@@ -460,22 +468,13 @@ message ListKeysResponse {
 // Update an existing asymmetric key in the Key Management System
 message UpdateKeyRequest {
   option (buf.validate.message).cel = {
-    id: "key_status_cannot_update_to_unspecified"
-    message:
-      "Key status cannot be updated to UNSPECIFIED."
-    expression: "((this.key_status != 0) || (has(this.metadata)))";
-  };
-  option (buf.validate.message).cel = {
     id: "metadata_update_behavior"
-    message:
-      "Metadata update behavior must be either APPEND or REPLACE, when updating metadata."
-    expression: "((!has(this.metadata)) || (has(this.metadata) && this.metadata_update_behavior != 0))";
+    message: "Metadata update behavior must be either APPEND or REPLACE, when updating metadata."
+    expression: "((!has(this.metadata)) || (has(this.metadata) && this.metadata_update_behavior != 0))"
   };
 
   // Required
   string id = 1 [(buf.validate.field).string.uuid = true]; // The unique identifier of the key to update
-  // Optional
-  KeyStatus key_status = 2 [(buf.validate.field).enum.defined_only = true]; // The new status of the key (e.g., active, inactive)
 
   // Optional
   // Common metadata
@@ -488,39 +487,40 @@ message UpdateKeyResponse {
   KasKey kas_key = 1; // The updated kas key
 }
 
-
-  // Nested message for specifying the active key using KAS ID and Key ID
-  message KasKeyIdentifier {
-    // Required UUID of the Key Access Server
-    oneof identifier {
-      option (buf.validate.oneof).required = true;
-      string kas_id = 2 [(buf.validate.field).string.uuid = true];
-      string name = 3 [(buf.validate.field).string.min_len = 1];
-      string uri = 4 [(buf.validate.field).string = {
-        min_len: 1
-        uri: true
-      }];
-    }
-    // Required Key ID of the key in question
-    string kid = 5 [(buf.validate.field).string.min_len = 1];
+// Nested message for specifying the active key using KAS ID and Key ID
+message KasKeyIdentifier {
+  // Required UUID of the Key Access Server
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+    string kas_id = 2 [(buf.validate.field).string.uuid = true];
+    string name = 3 [(buf.validate.field).string.min_len = 1];
+    string uri = 4 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
   }
+  // Required Key ID of the key in question
+  string kid = 5 [(buf.validate.field).string.min_len = 1];
+}
 
 message RotateKeyRequest {
   option (buf.validate.message).cel = {
     id: "private_key_ctx_optionally_required"
     message:
-      "The wrapped_key is required if the key_mode is KEY_MODE_LOCAL. "
-      "If the key_mode is KEY_MODE_REMOTE, the wrapped_key should not be "
-      "present."
-    expression: "(this.new_key.key_mode == 1 && this.new_key.private_key_ctx.wrapped_key != '') || (this.new_key.key_mode == 2 && this.new_key.private_key_ctx.wrapped_key == '')";
+      "For the new key, the wrapped_key is required if key_mode is KEY_MODE_CONFIG_ROOT_KEY or KEY_MODE_PROVIDER_ROOT_KEY. "
+      "The wrapped_key must be empty if key_mode is KEY_MODE_REMOTE or KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "((this.new_key.key_mode == 1 || this.new_key.key_mode == 2) && this.new_key.private_key_ctx.wrapped_key != '') || ((this.new_key.key_mode == 3 || this.new_key.key_mode == 4) && this.new_key.private_key_ctx.wrapped_key == '')"
   };
   option (buf.validate.message).cel = {
-    id: "providfer_config_id_optionally_required"
-    message:
-      "Provider config id is required if the key_mode is REMOTE. "
-    expression: "((this.new_key.key_mode == 1) || (this.new_key.key_mode == 2 && this.new_key.provider_config_id != ''))";
+    id: "provider_config_id_optionally_required"
+    message: "For the new key, provider config id is required if key_mode is KEY_MODE_PROVIDER_ROOT_KEY or KEY_MODE_REMOTE. It must be empty for KEY_MODE_CONFIG_ROOT_KEY and KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "((this.new_key.key_mode == 1 || this.new_key.key_mode == 4) && this.new_key.provider_config_id == '') || ((this.new_key.key_mode == 2 || this.new_key.key_mode == 3) && this.new_key.provider_config_id != '')"
   };
-
+  option (buf.validate.message).cel = {
+    id: "private_key_ctx_for_public_key_only"
+    message: "private_key_ctx must not be set if key_mode is KEY_MODE_PUBLIC_KEY_ONLY."
+    expression: "!(this.new_key.key_mode == 4 && has(this.new_key.private_key_ctx))"
+  };
 
   // Required (Current Active Key ID)
   oneof active_key {
@@ -539,33 +539,43 @@ message RotateKeyRequest {
     // Required
     string key_id = 1 [(buf.validate.field).string.min_len = 1];
     // Required
-    Algorithm algorithm = 2 [(buf.validate.field).enum.defined_only = true];
+    Algorithm algorithm = 2 [(buf.validate.field).cel = {
+      id: "key_algorithm_defined"
+      message: "The key_algorithm must be one of the defined values."
+      expression: "this in [1, 2, 3, 4]" // Allow ALGORITHM_EC_P256, ALGORITHM_RSA_2048, ALGORITHM_X25519, ALGORITHM_AES_256_GCM
+    }];
     // Required
-    KeyMode key_mode = 3 [(buf.validate.field).enum.defined_only = true];
+    KeyMode key_mode = 3 [
+      (buf.validate.field).enum.defined_only = true,
+      (buf.validate.field).cel = {
+        id: "new_key_mode_defined"
+        message: "The new key_mode must be one of the defined values (1-4)."
+        expression: "this in [1, 2, 3, 4]" // Allow all defined modes
+      }
+    ];
     // Required
-    KasPublicKeyCtx public_key_ctx = 4 [(buf.validate.field).required = true];
+    PublicKeyCtx public_key_ctx = 4 [(buf.validate.field).required = true];
     // Required
-    KasPrivateKeyCtx private_key_ctx = 5 [(buf.validate.field).required = true];
-    // Conditionally Required. If the key_mode is REMOTE, this field is required.
-    string provider_config_id = 6;
+    PrivateKeyCtx private_key_ctx = 5;
+    // Conditionally Required.
+    string provider_config_id = 6; // Validation handled by message-level CEL
 
     // Common metadata fields
     common.MetadataMutable metadata = 100;
   }
 }
 
-
-  /**
-  * Simplified information about the resources that were rotated as part of the key rotation process.
-  */
-  message ChangeMappings {
-    string id = 1;
-    string fqn = 2;
-  }
+/**
+ * Simplified information about the resources that were rotated as part of the key rotation process.
+ */
+message ChangeMappings {
+  string id = 1;
+  string fqn = 2;
+}
 
 /*
-* All resources that were rotated as part of the key rotation process
-*/
+ * All resources that were rotated as part of the key rotation process
+ */
 message RotatedResources {
   KasKey rotated_out_key = 1; // The old key that was rotated out
   repeated ChangeMappings attribute_definition_mappings = 2;
@@ -579,6 +589,40 @@ message RotateKeyResponse {
   KasKey kas_key = 1;
   // All resources that were rotated as part of the key rotation process
   RotatedResources rotated_resources = 2;
+}
+
+// Sets the specified key as the base key for the Key Access Server
+// Note: The key must be active.
+message SetBaseKeyRequest {
+  // Required
+  oneof active_key {
+    option (buf.validate.oneof).required = true;
+    // Current Key UUID tp be set as default
+    string id = 1 [(buf.validate.field).string.uuid = true];
+    // Alternative way to specify the key using KAS ID and Key ID
+    KasKeyIdentifier key = 2;
+  }
+}
+
+message SimpleKasPublicKey {
+  string algorithm = 1;
+  string kid = 2;
+  string pem = 3;
+}
+
+message SimpleKasKey {
+    string kas_uri = 1; // The URL of the Key Access Server
+    SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
+};
+
+message GetBaseKeyRequest {}
+message GetBaseKeyResponse {
+  SimpleKasKey base_key = 1; // The current base key
+}
+
+message SetBaseKeyResponse {
+  SimpleKasKey new_base_key = 1; // The key that was set as base
+  SimpleKasKey previous_base_key = 2; // The previous base key, if any
 }
 
 service KeyAccessServerRegistryService {
@@ -631,4 +675,10 @@ service KeyAccessServerRegistryService {
 
   // Request to rotate a key in the Key Access Service.
   rpc RotateKey(RotateKeyRequest) returns (RotateKeyResponse) {}
+
+  // Request to set the default a default kas key.
+  rpc SetBaseKey(SetBaseKeyRequest) returns (SetBaseKeyResponse) {}
+
+  // Get Default kas keys
+  rpc GetBaseKey(GetBaseKeyRequest) returns (GetBaseKeyResponse) {}
 }

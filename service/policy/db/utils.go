@@ -61,6 +61,15 @@ func unmarshalSubjectConditionSet(subjectConditionSetJSON []byte, scs *policy.Su
 	return nil
 }
 
+func unmarshalResourceMappingGroup(rmgroupJSON []byte, rmg *policy.ResourceMappingGroup) error {
+	if rmgroupJSON != nil {
+		if err := protojson.Unmarshal(rmgroupJSON, rmg); err != nil {
+			return fmt.Errorf("failed to unmarshal rmgroupJSON [%s]: %w", string(rmgroupJSON), err)
+		}
+	}
+	return nil
+}
+
 func unmarshalAllActionsProto(stdActionsJSON []byte, customActionsJSON []byte, actions *[]*policy.Action) error {
 	var (
 		stdActions    = new([]*policy.Action)
@@ -98,18 +107,22 @@ func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error 
 	return nil
 }
 
-func unmarshalPrivatePublicKeyContext(pubCtx, privCtx []byte, pubKey *policy.KasPublicKeyCtx, privKey *policy.KasPrivateKeyCtx) error {
+func unmarshalPrivatePublicKeyContext(pubCtx, privCtx []byte) (*policy.PublicKeyCtx, *policy.PrivateKeyCtx, error) {
+	var pubKey *policy.PublicKeyCtx
+	var privKey *policy.PrivateKeyCtx
 	if pubCtx != nil {
+		pubKey = &policy.PublicKeyCtx{}
 		if err := protojson.Unmarshal(pubCtx, pubKey); err != nil {
-			return errors.Join(fmt.Errorf("failed to unmarshal public key context [%s]: %w", string(pubCtx), err), db.ErrUnmarshalValueFailed)
+			return nil, nil, errors.Join(fmt.Errorf("failed to unmarshal public key context [%s]: %w", string(pubCtx), err), db.ErrUnmarshalValueFailed)
 		}
 	}
 	if privCtx != nil {
+		privKey = &policy.PrivateKeyCtx{}
 		if err := protojson.Unmarshal(privCtx, privKey); err != nil {
-			return errors.Join(errors.New("failed to unmarshal private key context"), db.ErrUnmarshalValueFailed)
+			return nil, nil, errors.Join(errors.New("failed to unmarshal private key context"), db.ErrUnmarshalValueFailed)
 		}
 	}
-	return nil
+	return pubKey, privKey, nil
 }
 
 func pgtypeUUID(s string) pgtype.UUID {

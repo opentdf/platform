@@ -234,9 +234,6 @@ subject_mappings:
       attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
       # subject_condition_sdk_client
       subject_condition_set_id: 86621a00-b63e-42e9-bea5-40ba52d98ede
-      # actions:
-      #   - standard: create
-      #   - standard: read
 
 subject_condition_set:
   metadata:
@@ -413,6 +410,12 @@ subject_mapping_actions_relation:
     subject_mapping_scenario_blue_read:
       subject_mapping_id: 1748761a-bd8c-4b23-8560-16ba7a181f19
       action_name: read
+    subject_mapping_sdk_attribute1_read:
+      subject_mapping_id: bc28cacb-1687-4c87-9c63-eae55e271320
+      action_name: read
+    subject_mapping_sdk_attribute1_create:
+      subject_mapping_id: bc28cacb-1687-4c87-9c63-eae55e271320
+      action_name: create
 
 ##
 # Resource Mapping Groups
@@ -553,7 +556,7 @@ kas_registry_keys:
       key_algorithm: 1 # ALGORITHM_RSA_2048
       key_id: kas_key_2
       key_mode: 1 # KEY_MODE_LOCAL 
-      key_status: 2 # KEY_STATUS_INACTIVE
+      key_status: 1 # KEY_STATUS_ACTIVE
       private_key_ctx: eyJ3cmFwcGVkS2V5IjoiYTJWNUNnPT0iLCJrZXlJZCI6ImtleSJ9Cg==
       public_key_ctx: eyJwZW0iOiJhMlY1Q2c9PSJ9Cg==
       provider_config_id: 19098106-54a1-4d33-8846-4894b5b6db3e # provider_config_2

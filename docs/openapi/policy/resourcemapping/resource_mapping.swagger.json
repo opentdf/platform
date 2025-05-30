@@ -559,12 +559,12 @@
           "title": "Required"
         },
         "publicKeyCtx": {
-          "$ref": "#/definitions/policyKasPublicKeyCtx",
+          "$ref": "#/definitions/policyPublicKeyCtx",
           "description": "Specific structure based on key provider implementation",
           "title": "Required"
         },
         "privateKeyCtx": {
-          "$ref": "#/definitions/policyKasPrivateKeyCtx",
+          "$ref": "#/definitions/policyPrivateKeyCtx",
           "description": "Specific structure based on key provider implementation",
           "title": "Optional"
         },
@@ -704,21 +704,6 @@
         }
       }
     },
-    "policyKasPrivateKeyCtx": {
-      "type": "object",
-      "properties": {
-        "keyId": {
-          "type": "string",
-          "description": "Key ID for the symmetric key wrapping this key.",
-          "title": "Required"
-        },
-        "wrappedKey": {
-          "type": "string",
-          "description": "Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.",
-          "title": "Optional"
-        }
-      }
-    },
     "policyKasPublicKey": {
       "type": "object",
       "properties": {
@@ -748,16 +733,6 @@
         "KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1"
       ],
       "default": "KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED"
-    },
-    "policyKasPublicKeyCtx": {
-      "type": "object",
-      "properties": {
-        "pem": {
-          "type": "string",
-          "description": "Base64 encoded public key in PEM format",
-          "title": "Required"
-        }
-      }
     },
     "policyKasPublicKeySet": {
       "type": "object",
@@ -813,11 +788,13 @@
       "type": "string",
       "enum": [
         "KEY_MODE_UNSPECIFIED",
-        "KEY_MODE_LOCAL",
-        "KEY_MODE_REMOTE"
+        "KEY_MODE_CONFIG_ROOT_KEY",
+        "KEY_MODE_PROVIDER_ROOT_KEY",
+        "KEY_MODE_REMOTE",
+        "KEY_MODE_PUBLIC_KEY_ONLY"
       ],
       "default": "KEY_MODE_UNSPECIFIED",
-      "description": "Describe how the kas private key is managed.\nIf the key mode is LOCAL, then the kas private key is stored in the database.\nThis could be encrypted or unencrypted.\nRemote means that the kas private key is stored in a remote key system like KMS or HSM\nand all operations are done by the remote key system."
+      "description": "Describes the management and operational mode of a cryptographic key.\n\n - KEY_MODE_UNSPECIFIED: KEY_MODE_UNSPECIFIED: Default, unspecified key mode. Indicates an uninitialized or error state.\n - KEY_MODE_CONFIG_ROOT_KEY: KEY_MODE_CONFIG_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nsourced from local configuration. Unwrapping and all cryptographic operations are performed locally.\n - KEY_MODE_PROVIDER_ROOT_KEY: KEY_MODE_PROVIDER_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nmanaged by an external provider (e.g., a Hardware Security Module or Cloud KMS).\nKey unwrapping is delegated to the external provider; subsequent cryptographic operations\nare performed locally using the unwrapped key.\n - KEY_MODE_REMOTE: KEY_MODE_REMOTE: Remote key management where the private key is stored in, and all cryptographic\noperations are performed by, a remote Key Management Service (KMS) or HSM.\nThe private key material never leaves the secure boundary of the remote system.\n - KEY_MODE_PUBLIC_KEY_ONLY: KEY_MODE_PUBLIC_KEY_ONLY: Public key only mode. Used when only a public key is available or required,\ntypically for wrapping operations (e.g., encrypting a Data Encryption Key (DEK) for an external KAS).\nThe corresponding private key is not managed or accessible by this system."
     },
     "policyKeyProviderConfig": {
       "type": "object",
@@ -843,8 +820,7 @@
       "enum": [
         "KEY_STATUS_UNSPECIFIED",
         "KEY_STATUS_ACTIVE",
-        "KEY_STATUS_INACTIVE",
-        "KEY_STATUS_COMPROMISED"
+        "KEY_STATUS_ROTATED"
       ],
       "default": "KEY_STATUS_UNSPECIFIED",
       "title": "The status of the key"
@@ -923,6 +899,21 @@
         }
       }
     },
+    "policyPrivateKeyCtx": {
+      "type": "object",
+      "properties": {
+        "keyId": {
+          "type": "string",
+          "description": "Key ID for the symmetric key wrapping this key.",
+          "title": "Required"
+        },
+        "wrappedKey": {
+          "type": "string",
+          "description": "Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.",
+          "title": "Optional"
+        }
+      }
+    },
     "policyPublicKey": {
       "type": "object",
       "properties": {
@@ -936,6 +927,16 @@
         }
       },
       "title": "Deprecated"
+    },
+    "policyPublicKeyCtx": {
+      "type": "object",
+      "properties": {
+        "pem": {
+          "type": "string",
+          "description": "Base64 encoded public key in PEM format",
+          "title": "Required"
+        }
+      }
     },
     "policyResourceMapping": {
       "type": "object",
@@ -1105,6 +1106,13 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/policyKasKey"
+          }
+        },
+        "resourceMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/policyResourceMapping"
           }
         },
         "metadata": {

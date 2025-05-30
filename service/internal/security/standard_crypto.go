@@ -399,7 +399,7 @@ func DeriveNanoTDFSymmetricKey(curve elliptic.Curve, clientEphemera []byte, priv
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
 	}
 
-	key, err := ocrypto.CalculateHKDF(versionSalt(), symmetricKey)
+	key, err := ocrypto.CalculateHKDF(NanoVersionSalt(), symmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}
@@ -417,7 +417,7 @@ func TDFSalt() []byte {
 	return salt
 }
 
-func versionSalt() []byte {
+func NanoVersionSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte(kNanoTDFMagicStringAndVersion))
 	return digest.Sum(nil)

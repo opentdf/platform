@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.4.7](https://github.com/opentdf/platform/compare/sdk/v0.4.6...sdk/v0.4.7) (2025-05-29)
+
+
+### Features
+
+* **sdk:** Expose connectrpc wrapper codegen for re-use ([#2322](https://github.com/opentdf/platform/issues/2322)) ([8b29392](https://github.com/opentdf/platform/commit/8b2939288395cd4eea2e7b2aa7e9c02ecaac3ccd))
+
+## [0.4.6](https://github.com/opentdf/platform/compare/sdk/v0.4.5...sdk/v0.4.6) (2025-05-28)
+
+
+### Features
+
+* **policy:** Default Platform Keys ([#2254](https://github.com/opentdf/platform/issues/2254)) ([d7447fe](https://github.com/opentdf/platform/commit/d7447fe2604443b4c75c8e547acf414bf78af988))
+
+## [0.4.5](https://github.com/opentdf/platform/compare/sdk/v0.4.4...sdk/v0.4.5) (2025-05-22)
+
+
+### Features
+
+* **authz:** authz v2 versioning implementation ([#2173](https://github.com/opentdf/platform/issues/2173)) ([557fc21](https://github.com/opentdf/platform/commit/557fc2148dae9508a8c7f1088bdcf799bd00b794))
+* **core:** Adds EC withSalt options ([#2126](https://github.com/opentdf/platform/issues/2126)) ([67b6fb8](https://github.com/opentdf/platform/commit/67b6fb8fc1263a4ddfa8ae1c8d451db50be77988))
+* **core:** v2 ERS with proto updates ([#2210](https://github.com/opentdf/platform/issues/2210)) ([a161ef8](https://github.com/opentdf/platform/commit/a161ef85d12600672ff695cc84b07579a70c5cac))
+* **policy:** key management crud ([#2110](https://github.com/opentdf/platform/issues/2110)) ([4c3d53d](https://github.com/opentdf/platform/commit/4c3d53d5fbb6f4659155ac60d289d92ac20180f1))
+* **sdk:** add nanotdf plaintext policy ([#2182](https://github.com/opentdf/platform/issues/2182)) ([e5c56db](https://github.com/opentdf/platform/commit/e5c56db5c962d6ff21e7346198f01558489adf3f))
+* **sdk:** Use ConnectRPC in the go client ([#2200](https://github.com/opentdf/platform/issues/2200)) ([fc34ee6](https://github.com/opentdf/platform/commit/fc34ee6293dfb9192d48784daaff34d26eaacd1d))
+
+
+### Bug Fixes
+
+* **core:** Improves errors when under heavy load ([#2132](https://github.com/opentdf/platform/issues/2132)) ([4490a14](https://github.com/opentdf/platform/commit/4490a14db2492629e287445df26312eb3e363b81))
+* **deps:** bump golang.org/x/oauth2 from 0.26.0 to 0.30.0 in /sdk ([#2252](https://github.com/opentdf/platform/issues/2252)) ([9b775a2](https://github.com/opentdf/platform/commit/9b775a23488861a8ab0ada848e59e53552f12e7f))
+* **deps:** bump google.golang.org/grpc from 1.71.0 to 1.72.1 in /sdk ([#2244](https://github.com/opentdf/platform/issues/2244)) ([49484e0](https://github.com/opentdf/platform/commit/49484e0b009db511fbc53fbebb8d45ca173f96ec))
+* **sdk:** adds connection options to getPlatformConfiguration ([#2286](https://github.com/opentdf/platform/issues/2286)) ([a3af31e](https://github.com/opentdf/platform/commit/a3af31e52daf795a733bb02397e2e618bb5dbddd))
+* **sdk:** perfsprint lint issues ([#2208](https://github.com/opentdf/platform/issues/2208)) ([d36a078](https://github.com/opentdf/platform/commit/d36a078433a384418eee51b5bceb511cc9f6619e))
+
 ## [0.4.4](https://github.com/opentdf/platform/compare/sdk/v0.4.3...sdk/v0.4.4) (2025-04-28)
 
 

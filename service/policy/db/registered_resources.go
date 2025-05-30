@@ -430,15 +430,18 @@ func (c PolicyDBClient) UpdateRegisteredResourceValue(ctx context.Context, r *re
 		return nil, db.ErrNotFound
 	}
 
-	// update overwrites all action attribute values with those provided in the request, so clear all existing ones first
-	_, err = c.Queries.deleteRegisteredResourceActionAttributeValues(ctx, id)
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
+	actionAttrValues := r.GetActionAttributeValues()
+	if len(actionAttrValues) > 0 {
+		// update overwrites all action attribute values with those provided in the request, so clear all existing ones first
+		_, err = c.Queries.deleteRegisteredResourceActionAttributeValues(ctx, id)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
 
-	err = c.createRegisteredResourceActionAttributeValues(ctx, id, r.GetActionAttributeValues())
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		err = c.createRegisteredResourceActionAttributeValues(ctx, id, actionAttrValues)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
 	}
 
 	return c.GetRegisteredResourceValue(ctx, &registeredresources.GetRegisteredResourceValueRequest{

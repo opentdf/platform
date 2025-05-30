@@ -21,6 +21,7 @@ import (
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/oidc"
+	"github.com/opentdf/platform/service/trust"
 )
 
 // RegistrationParams is a struct that holds the parameters needed to register a service
@@ -46,7 +47,8 @@ type RegistrationParams struct {
 	trace.Tracer
 
 	// Cache is the cache that can be used to cache data. This cache is scoped to the service
-	Cache *cache.Cache
+	Cache       *cache.Cache
+	KeyManagers []trust.KeyManager
 
 	////// The following functions are optional and intended to be called by the service //////
 
@@ -77,6 +79,7 @@ type DBRegister struct {
 
 type IService interface {
 	GetNamespace() string
+	GetVersion() string
 	GetServiceDesc() *grpc.ServiceDesc
 	Start(ctx context.Context, params RegistrationParams) error
 	IsStarted() bool
@@ -115,6 +118,8 @@ type ServiceOptions[S any] struct {
 	// Namespace is the namespace of the service. One or more gRPC services can be registered under
 	// the same namespace.
 	Namespace string
+	// Version is the major version of the service according to the protocol buffer definition.
+	Version string
 	// ServiceDesc is the gRPC service descriptor. For non-gRPC services, this can be mocked out,
 	// but at minimum, the ServiceName field must be set
 	ServiceDesc *grpc.ServiceDesc
@@ -134,6 +139,10 @@ type ServiceOptions[S any] struct {
 
 func (s Service[S]) GetNamespace() string {
 	return s.Namespace
+}
+
+func (s Service[S]) GetVersion() string {
+	return s.Version
 }
 
 func (s Service[S]) GetServiceDesc() *grpc.ServiceDesc {
@@ -235,6 +244,7 @@ func (s Service[S]) RegisterGRPCGatewayHandler(ctx context.Context, mux *runtime
 // namespace represents a namespace in the service registry.
 type Namespace struct {
 	Mode     string
+	Version  string
 	Services []IService
 }
 
@@ -274,7 +284,11 @@ func (reg Registry) RegisterService(svc IService, mode string) error {
 		return fmt.Errorf("service already registered namespace:%s service:%s", svc.GetNamespace(), svc.GetServiceDesc().ServiceName)
 	}
 
-	slog.Info("registered service", slog.String("namespace", svc.GetNamespace()), slog.String("service", svc.GetServiceDesc().ServiceName))
+	slog.Info(
+		"registered service",
+		slog.String("namespace", svc.GetNamespace()),
+		slog.String("service", svc.GetServiceDesc().ServiceName),
+	)
 	copyNamespace.Services = append(copyNamespace.Services, svc)
 
 	reg[svc.GetNamespace()] = copyNamespace

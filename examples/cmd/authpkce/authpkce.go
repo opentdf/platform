@@ -6,8 +6,8 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"html"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -60,14 +60,32 @@ func servePKCEDemo() error {
 		httpClient := &http.Client{
 			Timeout: timeoutDuration,
 		}
-		resp, err := httpClient.Do(&http.Request{
-			Method: http.MethodPost,
-			URL:    &url.URL{Path: platformEndpoint + platformWellKnown},
-			Header: http.Header{
-				"Content-Type": {"application/json"},
-			},
-			Body: io.NopCloser(bytes.NewBufferString("{}")),
-		})
+		// Parse the full URL for the request
+		fullURL, err := url.Parse(platformEndpoint + platformWellKnown)
+		if err != nil {
+			log.Printf("Invalid URL: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		req, err := http.NewRequest(http.MethodPost, fullURL.String(), bytes.NewBufferString("{}"))
+		if err != nil {
+			log.Printf("Error creating request: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			// If the request fails, log the error and return a 500 Internal Server Error
+			log.Printf("Error making request to %s: %v\n", platformEndpoint+platformWellKnown, err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+
+		// log the response body for debugging
+		log.Printf("Response from %s: %d\n", platformEndpoint+platformWellKnown, resp.StatusCode)
+
 		var oidcConfig map[string]interface{}
 		if err == nil && resp.StatusCode == http.StatusOK {
 			defer resp.Body.Close()
@@ -93,7 +111,14 @@ func servePKCEDemo() error {
 			}
 		}
 
-		oidcConfigJSON, _ := json.Marshal(oidcConfig)
+		oidcConfigJSON, err := json.Marshal(oidcConfig)
+		if err != nil {
+			log.Printf("Error marshalling OIDC config: %v\n", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		oidcConfigJSONStr := string(oidcConfigJSON)
+		fmt.Printf("OIDC Config: %s\n", oidcConfigJSONStr)
 		replacer := map[string]string{
 			"__PLATFORM_WELLKNOWN_CONFIG__": string(oidcConfigJSON),
 			"__CLIENT_ID__":                 html.EscapeString(clientID),

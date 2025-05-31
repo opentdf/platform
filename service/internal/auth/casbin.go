@@ -140,10 +140,11 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 		case "p":
 			// Policy line: expect at least 5 fields: p, sub, obj, act, eft
 			const expectedFields = 5
-			sub, obj, act, eft := fields[1], fields[2], fields[3], fields[4]
 			if len(fields) < expectedFields {
 				return nil, fmt.Errorf("malformed casbin policy line %d: %q (expected at least 5 fields)", i+1, line)
 			}
+
+			sub, obj, act, eft := fields[1], fields[2], fields[3], fields[4]
 			if sub == "" || obj == "" || act == "" {
 				return nil, fmt.Errorf("malformed casbin policy line %d: %q (resource and action fields must not be empty)", i+1, line)
 			}

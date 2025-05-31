@@ -65,9 +65,6 @@ var (
 		jwa.PS384: true,
 		jwa.PS512: true,
 	}
-
-	// ErrTokenVerificationSkipped is returned when token verification is skipped
-	ErrTokenVerificationSkipped = errors.New("token verification skipped")
 )
 
 const (
@@ -424,12 +421,12 @@ func (a *Authentication) checkToken(ctx context.Context, token jwt.Token, tokenR
 			return nil, errors.New("dpop required but not provided")
 		}
 		// For Bearer tokens, skip DPoP validation entirely
-		return nil, ErrTokenVerificationSkipped
+		return nil, nil
 	}
 
-	// For DPoP tokens, enforce DPoP validation as before
-	if _, tokenHasCNF := token.Get("cnf"); !tokenHasCNF && !a.enforceDPoP {
-		return nil, ErrTokenVerificationSkipped
+	// For DPoP tokens, always require the cnf claim
+	if _, tokenHasCNF := token.Get("cnf"); !tokenHasCNF {
+		return nil, errors.New("missing `cnf` claim in DPoP access token")
 	}
 
 	// Validate the DPoP token

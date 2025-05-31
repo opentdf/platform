@@ -52,8 +52,8 @@ func NewCacheManager(maxCost int64) (*Manager, error) {
 // The purpose of this function is to create a new cache for a specific service.
 // Because caching can be expensive we want to make sure there are some strict controls with
 // how it is used.
-func (c *Manager) NewCache(serviceName string, logger *logger.Logger, options Options) (*Cache, error) {
-	if logger == nil {
+func (c *Manager) NewCache(serviceName string, log *logger.Logger, options Options) (*Cache, error) {
+	if log == nil {
 		return nil, errors.New("logger cannot be nil")
 	}
 	cache := &Cache{
@@ -61,7 +61,7 @@ func (c *Manager) NewCache(serviceName string, logger *logger.Logger, options Op
 		serviceName:  serviceName,
 		cacheOptions: options,
 	}
-	cache.logger = logger.
+	cache.logger = log.
 		With("subsystem", "cache").
 		With("serviceTag", cache.getServiceTag()).
 		With("expiration", options.Expiration.String()).

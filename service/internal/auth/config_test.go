@@ -58,7 +58,7 @@ func TestValidateAuthNConfig(t *testing.T) {
 				ClientSecret: "platform-secret",
 			},
 			expectError: true,
-			errorMsg:    "config Auth.ClientId is required for token exchange to fetch userinfo",
+			errorMsg:    "config Auth.ClientID is required for token exchange to fetch userinfo",
 		},
 		{
 			name: "invalid config with enrichUserInfo true and missing clientSecret",

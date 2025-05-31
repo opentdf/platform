@@ -1,0 +1,14 @@
+# Lefthook configuration file
+#   Refer for explanation to following link:
+#   https://lefthook.dev/configuration/
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: golangci-lint service
+      glob: "service/**/*.go"
+      run: golangci-lint run ./service/...
+
+    - name: go test service
+      glob: "service/**/*.go"
+      run: go test ./service/...

@@ -65,6 +65,9 @@ var (
 		jwa.PS384: true,
 		jwa.PS512: true,
 	}
+
+	// ErrNoDPoPSkipCheck is returned when DPoP checking is intentionally skipped (e.g., for Bearer tokens)
+	ErrNoDPoPSkipCheck = errors.New("dpop check skipped")
 )
 
 const (
@@ -247,7 +250,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			u: []string{normalizeURL(origin, r.URL)},
 			m: []string{r.Method},
 		}, dp)
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrNoDPoPSkipCheck) {
 			slog.WarnContext(r.Context(), "unauthenticated", "error", err, "dpop", dp, "authorization", header)
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
@@ -421,7 +424,7 @@ func (a *Authentication) checkToken(ctx context.Context, token jwt.Token, tokenR
 			return nil, errors.New("dpop required but not provided")
 		}
 		// For Bearer tokens, skip DPoP validation entirely
-		return nil, nil
+		return nil, ErrNoDPoPSkipCheck
 	}
 
 	// For DPoP tokens, always require the cnf claim
@@ -647,7 +650,7 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 				u: u,
 				m: []string{http.MethodPost},
 			}, header["Dpop"])
-			if err != nil {
+			if err != nil && !errors.Is(err, ErrNoDPoPSkipCheck) {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
 

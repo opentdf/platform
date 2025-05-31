@@ -703,7 +703,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 
 	parsedToken, _ := jwt.Parse(signedTok, jwt.WithKey(jwa.RS256, s.key))
 	jwtKey, err := auth.checkToken(context.Background(), parsedToken, "Bearer "+string(signedTok), receiverInfo{}, nil)
-	s.Require().NoError(err)
+	s.Require().ErrorIs(err, ErrNoDPoPSkipCheck)
 	s.Require().Nil(jwtKey)
 }
 

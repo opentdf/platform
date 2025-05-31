@@ -40,7 +40,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			}
 
 			key, err := a.checkToken(ctx, token, tokenRaw, ri, req.Header()["Dpop"])
-			if err != nil {
+			if err != nil && !errors.Is(err, ErrNoDPoPSkipCheck) {
 				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 

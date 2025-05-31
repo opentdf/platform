@@ -55,6 +55,7 @@ server:
     enabled: true
     enforceDPoP: false
     public_client_id: "opentdf-public"
+    cache_refresh_interval: "5m"
     audience: "http://localhost:8080"
     issuer: http://localhost:8888/auth/realms/opentdf
     policy:
@@ -148,3 +149,5 @@ server:
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
   port: 8080
+  oidcUserInfo:
+    cacheTTL: 5m # TTL for OIDC UserInfo cache (default: 5m)

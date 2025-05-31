@@ -7,6 +7,7 @@ import (
 
 	"google.golang.org/grpc/resolver"
 
+	"github.com/opentdf/platform/examples/cmd/authpkce"
 	"github.com/opentdf/platform/sdk"
 	"github.com/spf13/cobra"
 )
@@ -33,6 +34,7 @@ func init() {
 	f.BoolVar(&storeCollectionHeaders, "storeCollectionHeaders", false, "Store collection headers")
 	f.BoolVar(&insecurePlaintextConn, "insecurePlaintextConn", false, "Use insecure plaintext connection")
 	f.BoolVar(&insecureSkipVerify, "insecureSkipVerify", false, "Skip server certificate verification")
+	ExamplesCmd.AddCommand(authpkce.Cmd)
 }
 
 func newSDK() (*sdk.SDK, error) {

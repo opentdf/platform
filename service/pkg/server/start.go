@@ -17,10 +17,11 @@ import (
 	sdkauth "github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/auth/oauth"
 	"github.com/opentdf/platform/sdk/httputil"
-	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/oidc"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
@@ -36,14 +37,13 @@ const devModeMessage = `
 `
 const dpopKeySize = 2048
 
-func Start(f ...StartOptions) error {
+func Start(ctx context.Context, f ...StartOptions) error {
 	startConfig := StartConfig{}
 	for _, fn := range f {
 		startConfig = fn(startConfig)
 	}
 
-	ctx := context.Background()
-
+	// Load configuration
 	slog.Debug("loading configuration from environment")
 	cfg, err := config.LoadConfig(ctx, startConfig.ConfigKey, startConfig.ConfigFile)
 	if err != nil {
@@ -67,6 +67,7 @@ func Start(f ...StartOptions) error {
 		fmt.Print(devModeMessage) //nolint:forbidigo // This ascii art is only displayed in dev mode
 	}
 
+	// Configure logger
 	slog.Debug("configuring logger")
 	logger, err := logger.NewLogger(cfg.Logger)
 	if err != nil {
@@ -85,6 +86,25 @@ func Start(f ...StartOptions) error {
 	defer shutdown()
 
 	logger.Debug("config loaded", slog.Any("config", cfg.LogValue()))
+
+	// Configure cache manager
+	logger.Info("creating cache manager")
+	if cfg.Server.Cache.Driver != "ristretto" {
+		return fmt.Errorf("unsupported cache driver: %s", cfg.Server.Cache.Driver)
+	}
+	cacheManager, err := cache.NewCacheManager(cfg.Server.Cache.RistrettoCache.MaxCost)
+	if err != nil {
+		return fmt.Errorf("could not create cache manager: %w", err)
+	}
+
+	// Connect with IdP
+	var oidcConfig *oidc.DiscoveryConfiguration
+	// Get OIDC discovery
+	oidcConfig, err = oidc.Discover(ctx, cfg.Server.Auth.Issuer, logger)
+	if err != nil {
+		return fmt.Errorf("failed to discover oidc configuration: %w", err)
+	}
+	cfg.Server.OIDCDiscovery = oidcConfig
 
 	logger.Info("starting opentdf services")
 
@@ -113,12 +133,12 @@ func Start(f ...StartOptions) error {
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	logger.Debug("initializing opentdf server")
 	cfg.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
-	otdf, err := server.NewOpenTDFServer(cfg.Server, logger)
+	otdf, err := server.NewOpenTDFServer(ctx, cfg.Server, logger, cacheManager)
 	if err != nil {
 		logger.Error("issue creating opentdf server", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating opentdf server: %w", err)
 	}
-	defer otdf.Stop()
+	defer otdf.Stop(ctx)
 
 	// Initialize the service registry
 	logger.Debug("initializing service registry")
@@ -136,6 +156,7 @@ func Start(f ...StartOptions) error {
 
 	var registeredCoreServices []string
 
+	//nolint:contextcheck // We are all friends here
 	registeredCoreServices, err = registerCoreServices(svcRegistry, cfg.Mode)
 	if err != nil {
 		logger.Error("could not register core services", slog.String("error", err.Error()))
@@ -171,7 +192,6 @@ func Start(f ...StartOptions) error {
 	var (
 		sdkOptions []sdk.Option
 		client     *sdk.SDK
-		oidcconfig *auth.OIDCConfiguration
 	)
 
 	// If the mode is not all, does not include both core and entityresolution, or is not entityresolution on its own, we need to have a valid SDK config
@@ -189,13 +209,8 @@ func Start(f ...StartOptions) error {
 	if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
 		sdkOptions = append(sdkOptions, sdk.WithClientCredentials(cfg.SDKConfig.ClientID, cfg.SDKConfig.ClientSecret, nil))
 
-		oidcconfig, err = auth.DiscoverOIDCConfiguration(ctx, cfg.Server.Auth.Issuer, logger)
-		if err != nil {
-			return fmt.Errorf("could not retrieve oidc configuration: %w", err)
-		}
-
 		// provide token endpoint -- sdk cannot discover it since well-known service isnt running yet
-		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcconfig.TokenEndpoint))
+		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcConfig.TokenEndpoint))
 	}
 
 	// If the mode is all, use IPC for the SDK client
@@ -230,9 +245,9 @@ func Start(f ...StartOptions) error {
 			}
 
 			if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
-				if oidcconfig.Issuer == "" {
+				if oidcConfig.Issuer == "" {
 					// this should not occur, it will have been set above if this block is entered
-					return errors.New("cannot add token interceptor: oidcconfig is empty")
+					return errors.New("cannot add token interceptor: oidcConfig is empty")
 				}
 
 				rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
@@ -241,7 +256,7 @@ func Start(f ...StartOptions) error {
 				}
 				ts, err := sdk.NewIDPAccessTokenSource(
 					oauth.ClientCredentials{ClientID: cfg.SDKConfig.ClientID, ClientAuth: cfg.SDKConfig.ClientSecret},
-					oidcconfig.TokenEndpoint,
+					oidcConfig.TokenEndpoint,
 					nil,
 					&rsaKeyPair,
 				)
@@ -259,11 +274,11 @@ func Start(f ...StartOptions) error {
 				return fmt.Errorf("entityresolution endpoint is malformed: %s", cfg.SDKConfig.EntityResolutionConnection.Endpoint)
 			}
 			ersConnectRPCConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
-
 			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(&ersConnectRPCConn))
 			logger.Info("added with custom ers connection for ", "", ersConnectRPCConn.Endpoint)
 		}
 
+		//nolint:contextcheck // Does not take context
 		client, err = sdk.New("", sdkOptions...)
 		if err != nil {
 			logger.Error("issue creating sdk client", slog.String("error", err.Error()))
@@ -277,6 +292,7 @@ func Start(f ...StartOptions) error {
 		if cfg.SDKConfig.CorePlatformConnection.Plaintext {
 			sdkOptions = append(sdkOptions, sdk.WithInsecurePlaintextConn())
 		}
+		//nolint:contextcheck // Does not take context
 		client, err = sdk.New(cfg.SDKConfig.CorePlatformConnection.Endpoint, sdkOptions...)
 		if err != nil {
 			logger.Error("issue creating sdk client", slog.String("error", err.Error()))
@@ -287,7 +303,15 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	logger.Info("starting services")
-	gatewayCleanup, err := startServices(ctx, cfg, otdf, client, startConfig.trustKeyManagers, logger, svcRegistry)
+	gatewayCleanup, err := startServices(ctx, startServicesParams{
+		cfg:          cfg,
+		otdf:         otdf,
+		client:       client,
+		keyManagers:  startConfig.trustKeyManagers,
+		logger:       logger,
+		reg:          svcRegistry,
+		cacheManager: cacheManager,
+	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)

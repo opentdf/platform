@@ -17,8 +17,10 @@ import (
 
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
+	"github.com/opentdf/platform/service/pkg/oidc"
 	"github.com/opentdf/platform/service/trust"
 )
 
@@ -30,7 +32,8 @@ type RegistrationParams struct {
 	// which could have need-to-know information we don't want to expose it to all services.
 	Config config.ServiceConfig
 	// OTDF is the OpenTDF server that can be used to interact with the OpenTDFServer instance.
-	OTDF *server.OpenTDFServer
+	OTDF                *server.OpenTDFServer
+	OIDCDiscoveryConfig oidc.DiscoveryConfiguration
 	// DBClient is the database client that can be used to interact with the database. This client
 	// is scoped to the service namespace and will not be shared with other service namespaces.
 	DBClient *db.Client
@@ -43,6 +46,8 @@ type RegistrationParams struct {
 	Logger *logger.Logger
 	trace.Tracer
 
+	// Cache is the cache that can be used to cache data. This cache is scoped to the service
+	Cache       *cache.Cache
 	KeyManagers []trust.KeyManager
 
 	////// The following functions are optional and intended to be called by the service //////
@@ -54,6 +59,7 @@ type RegistrationParams struct {
 	// ready to serve requests. This function should be called in the RegisterFunc function.
 	RegisterReadinessCheck func(namespace string, check func(context.Context) error) error
 }
+
 type (
 	HandlerServer       func(ctx context.Context, mux *runtime.ServeMux) error
 	RegisterFunc[S any] func(RegistrationParams) (impl S, HandlerServer HandlerServer)
@@ -72,8 +78,6 @@ type DBRegister struct {
 }
 
 type IService interface {
-	IsDBRequired() bool
-	DBMigrations() *embed.FS
 	GetNamespace() string
 	GetVersion() string
 	GetServiceDesc() *grpc.ServiceDesc
@@ -84,6 +88,17 @@ type IService interface {
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
+}
+
+// DatabaseSupportedService is implemented by services that support database connections.
+type DatabaseSupportedService interface {
+	IsDBRequired() bool
+	DBMigrations() *embed.FS
+}
+
+// CacheSupportedService is implemented by services that support caching.
+type CacheSupportedService interface {
+	CacheOptions() *cache.Options
 }
 
 // Service is a struct that holds the registration information for a service as well as the state

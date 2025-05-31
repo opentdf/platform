@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -20,6 +21,8 @@ type Config struct {
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	EnforceDPoP    bool          `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
+	EnrichUserInfo bool          `mapstructure:"enrichUserInfo" json:"enrichUserInfo" default:"false"`
+	TLSNoVerify    bool          `mapstructure:"tls_no_verify" json:"tls_no_verify" default:"false"`
 	Issuer         string        `mapstructure:"issuer" json:"issuer"`
 	Audience       string        `mapstructure:"audience" json:"audience"`
 	Policy         PolicyConfig  `mapstructure:"policy" json:"policy"`
@@ -27,15 +30,41 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	DPoPSkew       time.Duration `mapstructure:"dpopskew" default:"1h"`
 	TokenSkew      time.Duration `mapstructure:"skew" default:"1m"`
 	PublicClientID string        `mapstructure:"public_client_id" json:"public_client_id,omitempty"`
+
+	// Client credentials for the server to support Token Exchange
+	ClientID     string `mapstructure:"clientId" json:"clientId"`
+	ClientSecret string `mapstructure:"clientSecret" json:"clientSecret"`
+}
+
+// GroupsClaimList is a custom type to support unmarshalling from string or []string
+// for backward compatibility in config files.
+type GroupsClaimList []string
+
+func (g *GroupsClaimList) UnmarshalJSON(data []byte) error {
+	var single string
+	if err := json.Unmarshal(data, &single); err == nil {
+		*g = GroupsClaimList{single}
+		return nil
+	}
+	var multi []string
+	if err := json.Unmarshal(data, &multi); err == nil {
+		*g = GroupsClaimList(multi)
+		return nil
+	}
+	return errors.New("invalid groups_claim: must be string or array of strings")
+}
+
+func (g *GroupsClaimList) UnmarshalText(text []byte) error {
+	return g.UnmarshalJSON(text)
 }
 
 type PolicyConfig struct {
 	Builtin string `mapstructure:"-" json:"-"`
 	// Username claim to use for user information
 	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"preferred_username"`
-	// Claim to use for group/role information
-	GroupsClaim string `mapstructure:"groups_claim" json:"group_claim" default:"realm_access.roles"`
-	// Deprecated: Use GroupClain instead
+	// Claims to use for group/role information (now supports multiple claims)
+	GroupsClaim GroupsClaimList `mapstructure:"groups_claim" json:"group_claim" default:"[\"realm_access.roles\"]"`
+	// Deprecated: Use GroupClaim instead
 	RoleClaim string `mapstructure:"claim" json:"claim" default:"realm_access.roles"`
 	// Deprecated: Use Casbin grouping statements g, <user/group>, <role>
 	RoleMap map[string]string `mapstructure:"map" json:"map"`
@@ -63,6 +92,17 @@ func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 
 	if !c.EnforceDPoP {
 		logger.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
+	}
+
+	if c.EnrichUserInfo {
+		if c.ClientID == "" {
+			return errors.New("config Auth.ClientID is required for token exchange to fetch userinfo")
+		}
+		if c.ClientSecret == "" {
+			return errors.New("config Auth.ClientSecret is required for token exchange to fetch userinfo")
+		}
+	} else {
+		logger.Warn("config Auth.EnrichUserInfo is false. UserInfo enrichment is disabled and token exchange will be skipped.")
 	}
 
 	return nil

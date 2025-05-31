@@ -91,9 +91,19 @@ func NewLogger(config Config) (*Logger, error) {
 }
 
 func (l *Logger) With(key string, value string) *Logger {
+	nextLogger := l.Logger
+	if l.Logger != nil {
+		nextLogger = l.Logger.With(key, value)
+	}
+
+	nextAudit := l.Audit
+	if l.Audit != nil {
+		nextAudit = l.Audit.With(key, value)
+	}
+
 	return &Logger{
-		Logger: l.Logger.With(key, value),
-		Audit:  l.Audit.With(key, value),
+		Logger: nextLogger,
+		Audit:  nextAudit,
 	}
 }
 

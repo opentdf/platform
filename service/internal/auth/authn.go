@@ -78,6 +78,9 @@ const (
 	ActionDelete              = "delete"
 	ActionUnsafe              = "unsafe"
 	ActionOther               = "other"
+
+	AuthHeaderBearer = "Bearer "
+	AuthHeaderDPoP   = "DPoP "
 )
 
 // Authentication holds a jwks cache and information about the openid configuration
@@ -239,14 +242,14 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			}
 		}
 
-		token, tokenRaw, err := a.parseTokenFromHeader(r.Header)
+		token, tokenRaw, tokenType, err := a.parseTokenFromHeader(r.Header)
 		if err != nil {
 			slog.WarnContext(r.Context(), "failed to parse token", "error", err)
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
 
-		key, err := a.checkToken(r.Context(), token, tokenRaw, receiverInfo{
+		key, err := a.checkToken(r.Context(), token, tokenRaw, tokenType, receiverInfo{
 			u: []string{normalizeURL(origin, r.URL)},
 			m: []string{r.Method},
 		}, dp)
@@ -357,25 +360,49 @@ func (a *Authentication) GetUserInfoWithExchange(ctx context.Context, tokenIssue
 	return userInfoRaw, nil
 }
 
-func (a Authentication) parseTokenFromHeader(header http.Header) (jwt.Token, string, error) {
+type TokenType int
+
+const (
+	TokenTypeUnknown TokenType = iota
+	TokenTypeBearer
+	TokenTypeDPoP
+)
+
+func (t TokenType) String() string {
+	switch t {
+	case TokenTypeBearer:
+		return "Bearer"
+	case TokenTypeDPoP:
+		return "DPoP"
+	case TokenTypeUnknown:
+	default:
+		return "Unknown"
+	}
+	return "Unknown"
+}
+
+func (a Authentication) parseTokenFromHeader(header http.Header) (jwt.Token, string, TokenType, error) {
 	authHeader := header["Authorization"]
 	if len(authHeader) < 1 {
-		return nil, "", errors.New("missing authorization header")
+		return nil, "", TokenTypeUnknown, errors.New("missing authorization header")
 	}
 
-	// If we don't get a DPoP/Bearer token type, we can't proceed
 	var tokenRaw string
+	var tokenType TokenType
+	headerVal := authHeader[0]
+	headerValLower := strings.ToLower(headerVal)
 	switch {
-	case strings.HasPrefix(authHeader[0], "DPoP "):
-		tokenRaw = strings.TrimPrefix(authHeader[0], "DPoP ")
-	case strings.HasPrefix(authHeader[0], "Bearer "):
-		tokenRaw = strings.TrimPrefix(authHeader[0], "Bearer ")
+	case strings.HasPrefix(headerValLower, strings.ToLower(AuthHeaderDPoP)):
+		tokenRaw = headerVal[len(AuthHeaderDPoP):]
+		tokenType = TokenTypeDPoP
+	case strings.HasPrefix(headerValLower, strings.ToLower(AuthHeaderBearer)):
+		tokenRaw = headerVal[len(AuthHeaderBearer):]
+		tokenType = TokenTypeBearer
 	default:
-		a.logger.Warn("failed to validate authentication header: not of type bearer or dpop", slog.String("header", authHeader[0]))
-		return nil, "", errors.New("not of type bearer or dpop")
+		a.logger.Warn("failed to validate authentication header: not of type bearer or dpop", slog.String("header", headerVal))
+		return nil, "", TokenTypeUnknown, errors.New("not of type bearer or dpop")
 	}
 
-	// Now we verify the token signature
 	token, err := jwt.Parse([]byte(tokenRaw),
 		jwt.WithKeySet(a.cachedKeySet),
 		jwt.WithValidate(true),
@@ -385,24 +412,21 @@ func (a Authentication) parseTokenFromHeader(header http.Header) (jwt.Token, str
 	)
 	if err != nil {
 		a.logger.Warn("failed to validate auth token", slog.String("err", err.Error()))
-		return nil, "", err
+		return nil, "", TokenTypeUnknown, err
 	}
 
-	return token, tokenRaw, nil
+	return token, tokenRaw, tokenType, nil
 }
 
 // checkToken is a helper function to verify the token.
-func (a *Authentication) checkToken(ctx context.Context, token jwt.Token, tokenRaw string, dpopInfo receiverInfo, dpopHeader []string) (jwk.Key, error) {
+func (a *Authentication) checkToken(ctx context.Context, token jwt.Token, tokenRaw string, tokenType TokenType, dpopInfo receiverInfo, dpopHeader []string) (jwk.Key, error) {
 	// Use the test function if it is set
 	if a._testCheckTokenFunc != nil {
+		// For test, pass tokenType as an extra arg if needed (backward compatible)
 		return a._testCheckTokenFunc(ctx, token, tokenRaw, dpopInfo, dpopHeader)
 	}
 
 	if token == nil {
-		// Try to infer the error from the tokenRaw for test compatibility
-		if !strings.HasPrefix(tokenRaw, "Bearer ") && !strings.HasPrefix(tokenRaw, "DPoP ") {
-			return nil, errors.New("not of type bearer or dpop")
-		}
 		// If the token is nil but the prefix is correct, it's likely a parse/validation error
 		return nil, errors.New("invalid or missing token: token is nil (possible parse/validation error)")
 	}
@@ -416,10 +440,8 @@ func (a *Authentication) checkToken(ctx context.Context, token jwt.Token, tokenR
 		_ = token.Subject()
 	}
 
-	// Determine token type (DPoP or Bearer)
-	isBearer := strings.HasPrefix(tokenRaw, "Bearer ")
-
-	if isBearer {
+	// Use tokenType for logic
+	if tokenType == TokenTypeBearer {
 		if a.enforceDPoP {
 			return nil, errors.New("dpop required but not provided")
 		}
@@ -427,8 +449,12 @@ func (a *Authentication) checkToken(ctx context.Context, token jwt.Token, tokenR
 		return nil, ErrNoDPoPSkipCheck
 	}
 
-	// For DPoP tokens, always require the cnf claim
+	// Check for cnf claim in the DPoP token
 	if _, tokenHasCNF := token.Get("cnf"); !tokenHasCNF {
+		if !a.enforceDPoP {
+			// If DPoP is not enforced and the token does not have a cnf claim, allow it (legacy or non-DPoP case)
+			return nil, ErrNoDPoPSkipCheck
+		}
 		return nil, errors.New("missing `cnf` claim in DPoP access token")
 	}
 
@@ -637,7 +663,7 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 	for _, route := range a.ipcReauthRoutes {
 		reqPath := path
 		if reqPath == route {
-			token, tokenRaw, err := a.parseTokenFromHeader(header)
+			token, tokenRaw, tokenType, err := a.parseTokenFromHeader(header)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 			}
@@ -646,7 +672,7 @@ func (a Authentication) ipcReauthCheck(ctx context.Context, path string, header 
 			u = append(u, a.lookupGatewayPaths(ctx, path, header)...)
 
 			// Validate the token and create a JWT token
-			key, err := a.checkToken(ctx, token, tokenRaw, receiverInfo{
+			key, err := a.checkToken(ctx, token, tokenRaw, tokenType, receiverInfo{
 				u: u,
 				m: []string{http.MethodPost},
 			}, header["Dpop"])

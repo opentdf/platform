@@ -113,7 +113,7 @@ func servePKCEDemo() error {
 		}
 	})
 
-	log.Printf("Serving PKCE demo at http://localhost:9000/pkce-demo")
+	log.Printf("\n\n\tServing PKCE demo at http://localhost:9000/pkce-demo")
 	server := &http.Server{
 		Addr:    ":9000",
 		Handler: nil,

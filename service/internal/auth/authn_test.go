@@ -255,7 +255,8 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	s.Require().NoError(err)
 
 	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
-	_, _, err = s.auth.parseTokenFromHeader(hdr)
+	//nolint:dogsled // We are testing the error case here, so we don't need to check the token
+	_, _, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("\"exp\" not satisfied", err.Error())
 }
@@ -294,7 +295,7 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
 	parsedToken, _ := jwt.Parse([]byte{}, jwt.WithKey(jwa.RS256, s.key))
-	_, err := s.auth.checkToken(context.Background(), parsedToken, "BPOP ", receiverInfo{}, nil)
+	_, err := s.auth.checkToken(context.Background(), parsedToken, "BPOP ", TokenTypeUnknown, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Equal("not of type bearer or dpop", err.Error())
 }
@@ -309,7 +310,8 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 	s.Require().NoError(err)
 
 	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
-	_, _, err = s.auth.parseTokenFromHeader(hdr)
+	//nolint:dogsled // We are testing the error case here, so we don't need to check the token
+	_, _, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("\"iss\" not satisfied: claim \"iss\" does not exist", err.Error())
 }
@@ -325,7 +327,8 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	s.Require().NoError(err)
 
 	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
-	_, _, err = s.auth.parseTokenFromHeader(hdr)
+	//nolint:dogsled // We are testing the error case here, so we don't need to check the token
+	_, _, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "\"iss\" not satisfied: values do not match")
 }
@@ -340,7 +343,8 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	s.Require().NoError(err)
 
 	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
-	_, _, err = s.auth.parseTokenFromHeader(hdr)
+	//nolint:dogsled // We are testing the error case here, so we don't need to check the token
+	_, _, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("claim \"aud\" not found", err.Error())
 }
@@ -356,7 +360,8 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	s.Require().NoError(err)
 
 	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
-	_, _, err = s.auth.parseTokenFromHeader(hdr)
+	//nolint:dogsled // We are testing the error case here, so we don't need to check the token
+	_, _, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("\"aud\" not satisfied", err.Error())
 }
@@ -373,9 +378,9 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {
 	s.Require().NoError(err)
 
 	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
-	token, _, err := s.auth.parseTokenFromHeader(hdr)
+	token, _, tokenType, err := s.auth.parseTokenFromHeader(hdr)
 	s.Require().NoError(err)
-	_, err = s.auth.checkToken(context.Background(), token, "Bearer "+string(signedTok), receiverInfo{}, nil)
+	_, err = s.auth.checkToken(context.Background(), token, "Bearer "+string(signedTok), tokenType, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), "dpop")
 }
@@ -460,13 +465,13 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 		s.Run(testCase.errorMessage, func() {
 			dpopToken := makeDPoPToken(s.T(), testCase)
 			hdr := http.Header{"Authorization": []string{"DPoP " + string(testCase.accessToken)}, "Dpop": []string{dpopToken}}
-			token, _, err := s.auth.parseTokenFromHeader(hdr)
+			token, _, tokenType, err := s.auth.parseTokenFromHeader(hdr)
 			if err != nil {
 				s.Require().Error(err)
 				s.Contains(err.Error(), testCase.errorMessage)
 				return
 			}
-			_, err = s.auth.checkToken(context.Background(), token, "DPoP "+string(testCase.accessToken), receiverInfo{
+			_, err = s.auth.checkToken(context.Background(), token, "DPoP "+string(testCase.accessToken), tokenType, receiverInfo{
 				u: []string{"/a/path"},
 				m: []string{http.MethodPost},
 			}, []string{dpopToken})
@@ -702,7 +707,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	s.Require().NoError(err)
 
 	parsedToken, _ := jwt.Parse(signedTok, jwt.WithKey(jwa.RS256, s.key))
-	jwtKey, err := auth.checkToken(context.Background(), parsedToken, "Bearer "+string(signedTok), receiverInfo{}, nil)
+	jwtKey, err := auth.checkToken(context.Background(), parsedToken, "Bearer "+string(signedTok), TokenTypeBearer, receiverInfo{}, nil)
 	s.Require().ErrorIs(err, ErrNoDPoPSkipCheck)
 	s.Require().Nil(jwtKey)
 }

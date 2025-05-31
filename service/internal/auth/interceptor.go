@@ -34,12 +34,12 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				return next(ctx, req)
 			}
 
-			token, tokenRaw, err := a.parseTokenFromHeader(req.Header())
+			token, tokenRaw, tokenType, err := a.parseTokenFromHeader(req.Header())
 			if err != nil {
 				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 
-			key, err := a.checkToken(ctx, token, tokenRaw, ri, req.Header()["Dpop"])
+			key, err := a.checkToken(ctx, token, tokenRaw, tokenType, ri, req.Header()["Dpop"])
 			if err != nil && !errors.Is(err, ErrNoDPoPSkipCheck) {
 				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}

@@ -21,6 +21,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/oidc" // Added import
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/assert"
@@ -136,6 +137,12 @@ func mockKeycloakServer() *httptest.Server {
 
 func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 	discoveryEndpoint := mockKeycloakServer()
+	// Create a minimal discovery configuration for the mock server
+	oidcDiscoveryConfig := &oidc.DiscoveryConfiguration{
+		Issuer:  discoveryEndpoint.URL,
+		JwksURI: discoveryEndpoint.URL + "/oauth2/v1/keys", // Matching the mockKeycloakServer
+	}
+
 	// Create new opentdf server
 	return server.NewOpenTDFServer(context.Background(), server.Config{
 		WellKnownConfigRegister: func(_ string, _ any) error {
@@ -148,7 +155,8 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 			},
 			PublicRoutes: []string{"/testpath/*"},
 		},
-		Port: 43481,
+		OIDCDiscovery: oidcDiscoveryConfig, // Initialize OIDCDiscovery
+		Port:          43481,
 	},
 		&logger.Logger{
 			Logger: slog.New(slog.Default().Handler()),

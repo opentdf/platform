@@ -16,7 +16,7 @@ type DiscoveryConfiguration = oidc.DiscoveryConfiguration
 const discoverRequestTimeout = 10 * 1e9 // 10 seconds
 
 // DiscoverOPENIDConfiguration discovers the openid configuration for the issuer provided
-func Discover(ctx context.Context, issuer string, logger *logger.Logger) (*DiscoveryConfiguration, error) {
+var Discover = func(ctx context.Context, issuer string, logger *logger.Logger) (*DiscoveryConfiguration, error) {
 	logger.DebugContext(ctx, "discovering openid configuration", slog.String("issuer", issuer))
 	httpClient := &http.Client{
 		Timeout: discoverRequestTimeout,

@@ -21,9 +21,7 @@ const (
 	DefaultUserInfoTimeout = 30 * time.Second
 )
 
-var (
-	ErrUserInfoCacheMiss = errors.New("user info cache miss")
-)
+var ErrUserInfoCacheMiss = errors.New("user info cache miss")
 
 type UserInfo = oidc.UserInfo
 

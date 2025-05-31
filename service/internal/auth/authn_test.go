@@ -452,7 +452,7 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 		},
 		{
 			dpopPublic, dpopKey, signedTokWithNoCNF, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
-			"missing `cnf` claim in access token",
+			"missing `cnf` claim in DPoP access token",
 		},
 	}
 

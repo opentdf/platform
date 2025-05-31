@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
@@ -51,7 +52,10 @@ func NewCacheManager(maxCost int64) (*Manager, error) {
 // The purpose of this function is to create a new cache for a specific service.
 // Because caching can be expensive we want to make sure there are some strict controls with
 // how it is used.
-func (c *Manager) NewCache(serviceName string, logger *logger.Logger, options Options) *Cache {
+func (c *Manager) NewCache(serviceName string, logger *logger.Logger, options Options) (*Cache, error) {
+	if logger == nil {
+		return nil, errors.New("logger cannot be nil")
+	}
 	cache := &Cache{
 		manager:      c,
 		serviceName:  serviceName,
@@ -63,7 +67,7 @@ func (c *Manager) NewCache(serviceName string, logger *logger.Logger, options Op
 		With("expiration", options.Expiration.String()).
 		With("cost", strconv.FormatInt(options.Cost, 10))
 	cache.logger.Info("created cache")
-	return cache
+	return cache, nil
 }
 
 func (c *Cache) Get(ctx context.Context, key string) (interface{}, error) {

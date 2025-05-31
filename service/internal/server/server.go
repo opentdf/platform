@@ -185,10 +185,13 @@ func NewOpenTDFServer(ctx context.Context, config Config, logger *logger.Logger,
 	}
 
 	// Create userinfo cache for enriched claims
-	userInfoCache := cacheManager.NewCache("essential:"+oidc.UserInfoCacheService, logger, cache.Options{
+	userInfoCache, err := cacheManager.NewCache("essential:"+oidc.UserInfoCacheService, logger, cache.Options{
 		Expiration: config.Cache.UserInfoCacheTTL,
 		Cost:       userInfoCacheCost,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create userinfo cache: %w", err)
+	}
 	svr.UserInfoCache, err = oidc.NewUserInfoCache(config.OIDCDiscovery, userInfoCache, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create userinfo cache: %w", err)

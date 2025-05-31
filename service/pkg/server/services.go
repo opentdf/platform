@@ -200,7 +200,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 			// Check if the service supports and needs a cache
 			var cacheClient *cache.Cache
 			if cacheSvc, ok := svc.(serviceregistry.CacheSupportedService); ok {
-				cacheClient = cacheManager.NewCache(ns, svcLogger, *cacheSvc.CacheOptions())
+				cacheClient, err = cacheManager.NewCache(ns, svcLogger, *cacheSvc.CacheOptions())
 				if err != nil {
 					return func() {}, fmt.Errorf("issue creating cache client for %s: %w", ns, err)
 				}

@@ -2,9 +2,6 @@ package oidc
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -14,11 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
 // For testing purposes only
@@ -80,15 +74,11 @@ func ValidateClientCredentials(ctx context.Context, oidcConfig *DiscoveryConfigu
 
 	// If dpopJWK is nil, generate a new EC key for DPoP
 	if dpopJWK == nil {
-		ecdsaKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		var err error
+		dpopJWK, err = GenerateDPoPKey()
 		if err != nil {
-			return fmt.Errorf("failed to generate DPoP EC key: %w", err)
+			return err
 		}
-		dpopJWK, err = jwk.FromRaw(ecdsaKey)
-		if err != nil {
-			return fmt.Errorf("failed to convert EC key to JWK: %w", err)
-		}
-		dpopJWK.Set(jwk.AlgorithmKey, jwa.ES256)
 	}
 
 	if dpopJWK != nil {
@@ -123,52 +113,4 @@ func ValidateClientCredentials(ctx context.Context, oidcConfig *DiscoveryConfigu
 		return errors.New("invalid client credentials: no access token received")
 	}
 	return nil
-}
-
-// getDPoPAssertion generates a DPoP proof JWT for the given method and endpoint using the provided JWK.
-func getDPoPAssertion(dpopJWK jwk.Key, method, endpoint, nonce string) (string, error) {
-	const expirationTime = 5 * time.Minute
-
-	publicKey, err := jwk.PublicKeyOf(dpopJWK)
-	if err != nil {
-		return "", err
-	}
-
-	tokenBuilder := jwt.NewBuilder().
-		Claim("jti", uuid.NewString()).
-		Claim("htm", method).
-		Claim("htu", endpoint).
-		Claim("iat", time.Now().Unix()).
-		Claim("exp", time.Now().Add(expirationTime).Unix())
-
-	if nonce != "" {
-		tokenBuilder.Claim("nonce", nonce)
-	}
-
-	token, err := tokenBuilder.Build()
-	if err != nil {
-		return "", err
-	}
-
-	headers := jws.NewHeaders()
-	err = headers.Set("jwk", publicKey)
-	if err != nil {
-		return "", err
-	}
-	err = headers.Set("typ", "dpop+jwt")
-	if err != nil {
-		return "", err
-	}
-
-	alg := dpopJWK.Algorithm()
-	if alg == nil {
-		alg = jwa.ES256 // Default to ES256 if not set
-	}
-
-	proof, err := jwt.Sign(token, jwt.WithKey(alg, dpopJWK, jws.WithProtectedHeaders(headers)))
-	if err != nil {
-		return "", err
-	}
-
-	return string(proof), nil
 }

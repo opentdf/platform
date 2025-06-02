@@ -95,7 +95,6 @@ func checkAccessAndDpopTokens(t *testing.T, accessToken []string, dpopToken []st
 }
 
 func TestAddingTokensToOutgoingRequest(t *testing.T) {
-
 	oo, key := setupTokenAddingInterceptor(t)
 
 	serverGrpc := FakeAccessServiceServer{}
@@ -109,7 +108,6 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 }
 
 func TestAddingTokensToOutgoingRequest_Connect(t *testing.T) {
-
 	oo, key := setupTokenAddingInterceptor(t)
 
 	serverConnect := FakeAccessServiceServerConnect{}

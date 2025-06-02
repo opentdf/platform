@@ -48,7 +48,7 @@ type EntitlementFailure struct {
 type PolicyDecisionPoint struct {
 	logger                             *logger.Logger
 	allEntitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
-	allRegisteredResourcesByValueFQN   map[string]*policy.RegisteredResourceValue
+	allRegisteredResourceValuesByFQN   map[string]*policy.RegisteredResourceValue
 }
 
 var (
@@ -126,7 +126,7 @@ func NewPolicyDecisionPoint(
 		allEntitleableAttributesByValueFQN[mappedValueFQN] = mapped
 	}
 
-	allRegisteredResourcesByValueFQN := make(map[string]*policy.RegisteredResourceValue)
+	allRegisteredResourceValuesByFQN := make(map[string]*policy.RegisteredResourceValue)
 	for _, rr := range allRegisteredResources {
 		if err := validateRegisteredResource(rr); err != nil {
 			return nil, fmt.Errorf("invalid registered resource: %w", err)
@@ -138,14 +138,14 @@ func NewPolicyDecisionPoint(
 				Name:  rrName,
 				Value: v.GetValue(),
 			}
-			allRegisteredResourcesByValueFQN[fullyQualifiedValue.FQN()] = v
+			allRegisteredResourceValuesByFQN[fullyQualifiedValue.FQN()] = v
 		}
 	}
 
 	pdp := &PolicyDecisionPoint{
 		l,
 		allEntitleableAttributesByValueFQN,
-		allRegisteredResourcesByValueFQN,
+		allRegisteredResourceValuesByFQN,
 	}
 	return pdp, nil
 }

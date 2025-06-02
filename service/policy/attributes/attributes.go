@@ -10,7 +10,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/attributes/attributesconnect"
-	otdfSDK "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -26,7 +25,6 @@ type AttributesService struct { //nolint:revive // AttributesService is a valid 
 	logger   *logger.Logger
 	config   *policyconfig.Config
 	trace.Tracer
-	sdk   *otdfSDK.SDK
 	cache *policyconfig.EntitlementPolicyCache // Cache for attributes and subject mappings
 }
 
@@ -58,6 +56,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	onStartHook := OnServicesStarted(as)
 
 	return &serviceregistry.Service[attributesconnect.AttributesServiceHandler]{
+		Close: as.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[attributesconnect.AttributesServiceHandler]{
 			Namespace:         ns,
 			DB:                dbRegister,
@@ -77,7 +76,6 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				as.logger = logger
 				as.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				as.config = cfg
-				as.sdk = srp.SDK
 
 				return as, nil
 			},
@@ -91,7 +89,6 @@ func (s *AttributesService) Close() {
 	if s.cache != nil {
 		s.cache.Stop()
 	}
-
 	s.dbClient.Close()
 }
 

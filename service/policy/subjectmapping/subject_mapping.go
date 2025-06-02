@@ -9,7 +9,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	sm "github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping/subjectmappingconnect"
-	otdfSDK "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
@@ -23,7 +22,6 @@ type SubjectMappingService struct { //nolint:revive // SubjectMappingService is 
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 	config   *policyconfig.Config
-	sdk      *otdfSDK.SDK
 	// Cache for attributes and subject mappings
 	cache *policyconfig.EntitlementPolicyCache
 }
@@ -56,6 +54,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	onStartHook := OnServicesStarted(smSvc)
 
 	return &serviceregistry.Service[subjectmappingconnect.SubjectMappingServiceHandler]{
+		Close: smSvc.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[subjectmappingconnect.SubjectMappingServiceHandler]{
 			Namespace:         ns,
 			DB:                dbRegister,
@@ -75,7 +74,6 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				smSvc.logger = logger
 				smSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				smSvc.config = cfg
-				smSvc.sdk = srp.SDK
 
 				return smSvc, nil
 			},
@@ -83,7 +81,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	}
 }
 
-// Close gracefully shuts down the subject mapping service cache and database client.
+// Close gracefully shuts down the service, closing the database client.
 func (s SubjectMappingService) Close() {
 	s.logger.Info("gracefully shutting down subject mapping service")
 

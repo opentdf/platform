@@ -43,6 +43,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	onUpdateConfigHook := OnConfigUpdate(rrService)
 
 	return &serviceregistry.Service[registeredresourcesconnect.RegisteredResourcesServiceHandler]{
+		Close: rrService.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[registeredresourcesconnect.RegisteredResourcesServiceHandler]{
 			Namespace:      ns,
 			DB:             dbRegister,
@@ -75,7 +76,7 @@ func (s *RegisteredResourcesService) IsReady(ctx context.Context) error {
 	return nil
 }
 
-// Close gracefully shuts down the registered resources service, closing the database client.
+// Close gracefully shuts down the service, closing the database client.
 func (s *RegisteredResourcesService) Close() {
 	s.logger.Info("gracefully shutting down registered resources service")
 	s.dbClient.Close()

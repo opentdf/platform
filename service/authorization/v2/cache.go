@@ -250,7 +250,7 @@ func NewEntitlementPolicyCache(
 		BufferItems: bufferItems,
 	})
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to create ristretto cache: %w", err)
 	}
 	ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
 

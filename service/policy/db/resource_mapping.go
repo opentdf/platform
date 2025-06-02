@@ -405,6 +405,13 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 
 	if groupID != "" {
 		// get the attribute value and resource mapping group, ensure the namesapce is the same
+		if attributeValueID == "" {
+			rm, err := c.GetResourceMapping(ctx, id)
+			if err != nil {
+				return nil, db.WrapIfKnownInvalidQueryErr(err)
+			}
+			attributeValueID = rm.GetAttributeValue().GetId()
+		}
 		attrVal, err := c.GetAttributeValue(ctx, attributeValueID)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)

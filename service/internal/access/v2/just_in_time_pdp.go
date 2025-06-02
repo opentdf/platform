@@ -31,14 +31,25 @@ type JustInTimePDP struct {
 	pdp *PolicyDecisionPoint
 }
 
+type EntitlementPolicyCache interface {
+	ListCachedAttributes(ctx context.Context) ([]*policy.Attribute, error)
+	ListCachedSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error)
+	IsEnabled() bool
+}
+
 // JustInTimePDP creates a new Policy Decision Point instance with no in-memory policy and a remote connection
-// via authenticated SDK, then fetches all Attributes and Subject Mappings from the policy services.
+// via authenticated SDK, then fetches all Attributes and Subject Mappings from the policy services or the cache if enabled.
 func NewJustInTimePDP(
 	ctx context.Context,
 	l *logger.Logger,
 	sdk *otdfSDK.SDK,
+	cache EntitlementPolicyCache,
 ) (*JustInTimePDP, error) {
-	var err error
+	var (
+		err                error
+		allAttributes      []*policy.Attribute
+		allSubjectMappings []*policy.SubjectMapping
+	)
 
 	if sdk == nil {
 		return nil, ErrMissingRequiredSDK
@@ -55,14 +66,26 @@ func NewJustInTimePDP(
 		logger: l,
 	}
 
-	allAttributes, err := p.fetchAllDefinitions(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch all attribute definitions: %w", err)
+	if cache == nil || !cache.IsEnabled() {
+		allAttributes, err = p.fetchAllDefinitions(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch all attribute definitions: %w", err)
+		}
+		allSubjectMappings, err = p.fetchAllSubjectMappings(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch all subject mappings: %w", err)
+		}
+	} else {
+		allAttributes, err = cache.ListCachedAttributes(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list cached attributes: %w", err)
+		}
+		allSubjectMappings, err = cache.ListCachedSubjectMappings(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list cached subject mappings: %w", err)
+		}
 	}
-	allSubjectMappings, err := p.fetchAllSubjectMappings(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch all subject mappings: %w", err)
-	}
+
 	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)

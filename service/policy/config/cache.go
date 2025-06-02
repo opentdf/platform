@@ -23,6 +23,10 @@ var (
 const (
 	attributesCacheKey      = "attributes"
 	subjectMappingsCacheKey = "subject_mappings"
+
+	numCounters = 1000      // Number of counters for the ristretto cache
+	maxCost     = 100000000 // Maximum cost for the ristretto cache (100MB)
+	bufferItems = 64        // Buffer items for the ristretto cache
 )
 
 // EntitlementPolicyCache caches attributes and subject mappings with periodic refresh
@@ -220,9 +224,9 @@ func GetSharedEntitlementPolicyCache(
 		}
 
 		ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
-			NumCounters: 1000,
-			MaxCost:     100000000, // 100MB
-			BufferItems: 64,
+			NumCounters: numCounters,
+			MaxCost:     maxCost,
+			BufferItems: bufferItems,
 		})
 		if err != nil {
 			panic(err)

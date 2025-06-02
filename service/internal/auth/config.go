@@ -34,6 +34,8 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 
 	// Client credentials for the server to support Token Exchange
 	ClientID string `mapstructure:"clientId" json:"clientId"`
+	// Client Scope
+	ClientScopes []string `mapstructure:"clientScopes" json:"clientScopes"`
 	// Path to the PEM file containing the OIDC client private key (for private_key_jwt)
 	ClientPrivateKeyPath string `mapstructure:"clientPrivateKeyPath" json:"clientPrivateKeyPath"`
 	// Inline PEM for the OIDC client private key (optional, for private_key_jwt)
@@ -110,6 +112,9 @@ func (c *AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 		}
 		if c.ClientID == "" {
 			return errClientIDRequired
+		}
+		if len(c.ClientScopes) == 0 {
+			logger.Warn("clientScopes are empty; disregard if expected")
 		}
 		if c.ClientPrivateKey == "" && c.ClientPrivateKeyPath == "" {
 			return errPrivateKeyRequired

@@ -66,16 +66,8 @@ func NewJustInTimePDP(
 		logger: l,
 	}
 
-	if cache == nil || !cache.IsEnabled() {
-		allAttributes, err = p.fetchAllDefinitions(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch all attribute definitions: %w", err)
-		}
-		allSubjectMappings, err = p.fetchAllSubjectMappings(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch all subject mappings: %w", err)
-		}
-	} else {
+	//nolint:nestif // Logic is not too complex
+	if cache != nil && cache.IsEnabled() {
 		allAttributes, err = cache.ListCachedAttributes(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list cached attributes: %w", err)
@@ -83,6 +75,15 @@ func NewJustInTimePDP(
 		allSubjectMappings, err = cache.ListCachedSubjectMappings(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list cached subject mappings: %w", err)
+		}
+	} else {
+		allAttributes, err = p.fetchAllDefinitions(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch all attribute definitions: %w", err)
+		}
+		allSubjectMappings, err = p.fetchAllSubjectMappings(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch all subject mappings: %w", err)
 		}
 	}
 

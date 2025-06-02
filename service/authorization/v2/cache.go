@@ -2,6 +2,7 @@ package authorization
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -43,8 +44,7 @@ func NewEntitlementPolicyCache(
 	cfg *Config,
 ) (*EntitlementPolicyCache, error) {
 	if cfg.CacheRefreshIntervalSeconds == 0 {
-		l.DebugContext(ctx, "Entitlement policy cache is disabled, returning nil")
-		return nil, nil
+		return nil, errors.New("entitlement policy cache is disabled (refresh interval is 0 seconds)")
 	}
 
 	l.DebugContext(ctx, "Initializing shared entitlement policy cache")

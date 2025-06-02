@@ -37,13 +37,15 @@ type Config struct {
 
 func OnServicesStarted(svc *Service) serviceregistry.OnServicesStartedHook {
 	return func(ctx context.Context) error {
-		c, err := NewEntitlementPolicyCache(ctx, svc.sdk, svc.logger, svc.config)
-		if err != nil {
-			svc.logger.ErrorContext(ctx, "failed to create entitlement policy cache", slog.Any("error", err))
-			return fmt.Errorf("failed to create entitlement policy cache: %w", err)
-		}
+		if svc.config.CacheRefreshIntervalSeconds > 0 {
+			c, err := NewEntitlementPolicyCache(ctx, svc.sdk, svc.logger, svc.config)
+			if err != nil {
+				svc.logger.ErrorContext(ctx, "failed to create entitlement policy cache", slog.Any("error", err))
+				return fmt.Errorf("failed to create entitlement policy cache: %w", err)
+			}
 
-		svc.cache = c
+			svc.cache = c
+		}
 
 		return nil
 	}

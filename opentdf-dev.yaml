@@ -46,6 +46,7 @@ services:
   #   enabled: true
   #   list_request_limit_default: 1000
   #   list_request_limit_max: 2500
+  # authorization:
   #   cache_refresh_interval_seconds: 15
 server:
   tls:

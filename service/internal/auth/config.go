@@ -92,7 +92,7 @@ var (
 // readConfigFile allows injection for testing
 var readConfigFile = os.ReadFile
 
-func (c AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
+func (c *AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 	if c.PublicClientID == "" {
 		logger.Warn("config Auth.PublicClientID is empty and is required for discovery via well-known configuration.")
 	}

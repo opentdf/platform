@@ -11,11 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jws"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
 // For testing purposes only
@@ -44,54 +40,23 @@ func ValidateClientCredentials(ctx context.Context, oidcConfig *DiscoveryConfigu
 	}
 
 	tokenEndpoint := oidcConfig.TokenEndpoint
-	now := time.Now()
-	jwtBuilder := jwt.NewBuilder().
-		Issuer(clientID).
-		Subject(clientID).
-		Audience([]string{tokenEndpoint}).
-		IssuedAt(now).
-		Expiration(now.Add(5 * time.Minute)).
-		JwtID(uuid.NewString())
-	jwtAssertion, err := jwtBuilder.Build()
+
+	jwtAssertion, err := BuildJWTAssertion(clientID, tokenEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to build private_key_jwt assertion: %w", err)
 	}
 
-	// Clean up JWK input: remove any comment lines (starting with //) and trim whitespace
-	jwkStr := string(privateKeyPEM)
-	lines := strings.Split(jwkStr, "\n")
-	var jsonLines []string
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "//") && line != "" {
-			jsonLines = append(jsonLines, line)
-		}
-	}
-	jwkJSON := strings.Join(jsonLines, "\n")
-
-	fmt.Printf("[DEBUG] Raw JWK input (first 200 chars): %q\n", jwkStr[:min(200, len(jwkStr))])
-	fmt.Printf("[DEBUG] Cleaned JWK JSON (first 200 chars): %q\n", jwkJSON[:min(200, len(jwkJSON))])
-
-	key, err := jwk.ParseKey([]byte(jwkJSON), jwk.WithPEM(false)) // Use jwk.WithPEM(false) for JWK
+	key, err := ParseJWKFromPEM(privateKeyPEM)
 	if err != nil {
-		fmt.Printf("[DEBUG] Failed JWK JSON: %s\n", jwkJSON)
 		return fmt.Errorf("failed to parse private key: %w", err)
 	}
 
 	alg := jwa.RS256 // Always use RS256 for Okta
 
-	kid, _ := key.Get("kid")
-	headers := jws.NewHeaders()
-	_ = headers.Set(jws.AlgorithmKey, alg)
-	if kid != nil {
-		_ = headers.Set(jws.KeyIDKey, kid)
-	}
-
-	signedJWT, err := jwt.Sign(jwtAssertion, jwt.WithKey(alg, key, jws.WithProtectedHeaders(headers)))
+	signedJWT, err := SignJWTAssertion(jwtAssertion, key, alg)
 	if err != nil {
 		return fmt.Errorf("failed to sign private_key_jwt assertion: %w", err)
 	}
-	fmt.Printf("[DEBUG] Signed JWT (first 80 chars): %q\n", string(signedJWT)[:80])
 
 	form := url.Values{}
 	form.Set("grant_type", "client_credentials")
@@ -130,11 +95,4 @@ func ValidateClientCredentials(ctx context.Context, oidcConfig *DiscoveryConfigu
 		return errors.New("invalid client credentials: no access token received")
 	}
 	return nil
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

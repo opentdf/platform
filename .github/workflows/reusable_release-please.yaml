@@ -1,0 +1,74 @@
+# Generate release PRs, and follow up with update PRs
+
+on:
+  workflow_call:
+    inputs:
+      config-file-main-branch:
+        type: string
+        default: "release-please_main-branch.json"
+      config-file-release-branches:
+        type: string
+        default: "release-please_release-branches.json"
+      manifest-file:
+        type: string
+        default: ".release-please-manifest.json"
+    outputs:
+      major:
+        description: "Major version number"
+        value: ${{ jobs.release-please.outputs.major }}
+      minor:
+        description: "Minor version number"
+        value: ${{ jobs.release-please.outputs.minor }}
+      patch:
+        description: "Patch version number"
+        value: ${{ jobs.release-please.outputs.patch }}
+      sha:
+        description: "Commit SHA of the release"
+        value: ${{ jobs.release-please.outputs.sha }}
+      release_created:
+        description: "Indicates if a release was created"
+        value: ${{ jobs.release-please.outputs.release_created }}
+      tag_name:
+        description: "Tag name of the release"
+        value: ${{ jobs.release-please.outputs.tag_name }}
+permissions: {}
+
+jobs:
+  release-please:
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    outputs:
+      major: ${{ steps.release-please.outputs.major }}
+      minor: ${{ steps.release-please.outputs.minor }}
+      patch: ${{ steps.release-please.outputs.patch }}
+      sha: ${{ steps.release-please.outputs.sha }}
+      release_created: ${{ steps.release-please.outputs.release_created }}
+      tag_name: ${{ steps.release-please.outputs.tag_name }}
+    steps:
+
+      - name: "Validate ref"
+        if: ${{ !github.ref_name == 'main' || !startsWith(github.ref_name, 'release/') }}
+        shell: bash
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          echo "Error: invalid github ref ['$REF'] for release-please action, must be main or 'release/**" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: Generate a token
+        id: generate_token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_KEY }}
+
+      - name: "Run release-please"
+        uses: googleapis/release-please-action@a02a34c4d625f9be7cb89156071d8567266a2445 # v4.2.0
+        id: release-please
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          config-file: ${{ github.ref_name == 'main' && inputs.config-file-main-branch || startsWith(github.ref_name, 'release/') && inputs.config-file-release-branches }}
+          manifest-file: ${{ inputs.manifest-file }}
+          target-branch: ${{ github.ref_name }}

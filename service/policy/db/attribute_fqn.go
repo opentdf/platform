@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/common"
@@ -108,6 +109,32 @@ func (c *PolicyDBClient) GetAttributesByValueFqns(ctx context.Context, r *attrib
 				}
 			}
 		}
+	}
+
+	// Map and Merge Grants & Keys
+	for vfqn, pair := range list {
+		if pair == nil {
+			c.logger.DebugContext(ctx, "unknown fqn - no definition for value", slog.String("fqn", vfqn))
+			continue
+		}
+
+		attrGrants, err := mapKasKeysToGrants(pair.GetAttribute().GetKasKeys(), pair.GetAttribute().GetGrants(), c.logger)
+		if err != nil {
+			return nil, fmt.Errorf("could not map & merge attribute grants and keys: %w", err)
+		}
+		pair.GetAttribute().Grants = attrGrants
+
+		valGrants, err := mapKasKeysToGrants(pair.GetValue().GetKasKeys(), pair.GetValue().GetGrants(), c.logger)
+		if err != nil {
+			return nil, fmt.Errorf("could not map & merge value grants and keys: %w", err)
+		}
+		pair.GetValue().Grants = valGrants
+
+		nsGrants, err := mapKasKeysToGrants(pair.GetAttribute().GetNamespace().GetKasKeys(), pair.GetAttribute().GetNamespace().GetGrants(), c.logger)
+		if err != nil {
+			return nil, fmt.Errorf("could not map & merge namespace grants and keys: %w", err)
+		}
+		pair.GetAttribute().GetNamespace().Grants = nsGrants
 	}
 
 	// check if all requested FQNs were found

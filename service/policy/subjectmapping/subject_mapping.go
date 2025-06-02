@@ -42,7 +42,9 @@ func OnConfigUpdate(smSvc *SubjectMappingService) serviceregistry.OnConfigUpdate
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[subjectmappingconnect.SubjectMappingServiceHandler] {
 	smSvc := new(SubjectMappingService)
 	onUpdateConfigHook := OnConfigUpdate(smSvc)
+
 	return &serviceregistry.Service[subjectmappingconnect.SubjectMappingServiceHandler]{
+		Close: smSvc.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[subjectmappingconnect.SubjectMappingServiceHandler]{
 			Namespace:       ns,
 			DB:              dbRegister,
@@ -65,6 +67,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			},
 		},
 	}
+}
+
+// Close gracefully shuts down the service, closing the database client.
+func (s *SubjectMappingService) Close() {
+	s.logger.Info("gracefully shutting down subject mapping service")
+	s.dbClient.Close()
 }
 
 /* ---------------------------------------------------

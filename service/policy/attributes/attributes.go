@@ -121,8 +121,6 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 	state := req.Msg.GetState().String()
 	s.logger.Debug("listing attribute definitions", slog.String("state", state))
 
-	s.logger.Debug("querying database for attributes")
-
 	rsp, err := s.dbClient.ListAttributes(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)

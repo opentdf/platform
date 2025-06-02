@@ -36,6 +36,53 @@ type EntitlementPolicyCache struct {
 	refreshCompleted          chan struct{}
 }
 
+func NewEntitlementPolicyCache(
+	ctx context.Context,
+	sdk *otdfSDK.SDK,
+	l *logger.Logger,
+	cfg *Config,
+) (*EntitlementPolicyCache, error) {
+	if cfg.CacheRefreshIntervalSeconds == 0 {
+		l.DebugContext(ctx, "Entitlement policy cache is disabled, returning nil")
+		return nil, nil
+	}
+
+	l.DebugContext(ctx, "Initializing shared entitlement policy cache")
+	instance := &EntitlementPolicyCache{
+		logger:                    l,
+		sdk:                       sdk,
+		configuredRefreshInterval: time.Duration(cfg.CacheRefreshIntervalSeconds) * time.Second,
+		stopRefresh:               make(chan struct{}),
+		refreshCompleted:          make(chan struct{}),
+	}
+
+	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
+		NumCounters: numCounters,
+		MaxCost:     maxCost,
+		BufferItems: bufferItems,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ristretto cache: %w", err)
+	}
+	ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
+
+	attributesCache := cache.New[[]*policy.Attribute](ristrettoStore)
+	instance.attributesCache = attributesCache
+
+	subjectMappingCache := cache.New[[]*policy.SubjectMapping](ristrettoStore)
+	instance.subjectMappingCache = subjectMappingCache
+
+	// Try to start the cache
+	if err := instance.Start(ctx); err != nil {
+		l.ErrorContext(ctx, "Failed to start entitlement policy cache", "error", err)
+		return nil, fmt.Errorf("failed to start entitlement policy cache: %w", err)
+	}
+
+	// Only set the instance if Start() succeeds
+	l.DebugContext(ctx, "Shared entitlement policy cache initialized")
+	return instance, nil
+}
+
 func (c *EntitlementPolicyCache) IsEnabled() bool {
 	return c != nil
 }
@@ -222,52 +269,4 @@ func (c *EntitlementPolicyCache) periodicRefresh(ctx context.Context) {
 			return
 		}
 	}
-}
-
-func NewEntitlementPolicyCache(
-	ctx context.Context,
-	sdk *otdfSDK.SDK,
-	l *logger.Logger,
-	cfg *Config,
-) (*EntitlementPolicyCache, error) {
-	if cfg.CacheRefreshIntervalSeconds == 0 {
-		l.DebugContext(ctx, "Entitlement policy cache is disabled, returning nil")
-		return nil, nil
-	}
-
-	l.DebugContext(ctx, "Initializing shared entitlement policy cache")
-	instance := &EntitlementPolicyCache{
-		logger:                    l,
-		sdk:                       sdk,
-		configuredRefreshInterval: time.Duration(cfg.CacheRefreshIntervalSeconds) * time.Second,
-		stopRefresh:               make(chan struct{}),
-		refreshCompleted:          make(chan struct{}),
-	}
-
-	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: numCounters,
-		MaxCost:     maxCost,
-		BufferItems: bufferItems,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create ristretto cache: %w", err)
-	}
-	ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
-
-	attributesCache := cache.New[[]*policy.Attribute](ristrettoStore)
-	instance.attributesCache = attributesCache
-
-	subjectMappingCache := cache.New[[]*policy.SubjectMapping](ristrettoStore)
-	instance.subjectMappingCache = subjectMappingCache
-
-	// Try to start the cache
-	if err := instance.Start(ctx); err != nil {
-		l.ErrorContext(ctx, "Failed to start entitlement policy cache", "error", err)
-		return nil, fmt.Errorf("failed to start entitlement policy cache: %w", err)
-	}
-
-	// Only set the instance if Start() succeeds
-	l.DebugContext(ctx, "Shared entitlement policy cache initialized")
-	return instance, nil
-
 }

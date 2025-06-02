@@ -13,4 +13,4 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: opentdf/platform/reusable_release-please.yaml@main
+    uses: opentdf/platform/.github/workflows/reusable_release-please.yaml@main

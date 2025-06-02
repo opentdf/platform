@@ -34,6 +34,10 @@ func (v *VaultItem) IsLegacy() bool {
 	return false
 }
 
+func (v *VaultItem) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
+	return nil, errors.New("private key export not supported")
+}
+
 func (v *VaultItem) ExportPublicKey(_ context.Context, format trust.KeyType) (string, error) {
 	if format != trust.KeyTypePKCS8 {
 		return "", fmt.Errorf("unsupported key format: %v", format)
@@ -186,13 +190,13 @@ func (k *InProcessWrappedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int)
 	return decryptedData, nil
 }
 
-func (v *VaultKeyService) Decrypt(ctx context.Context, keyID trust.KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+func (v *VaultKeyService) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
 	if err := v.refreshKeys(ctx); err != nil {
 		return nil, fmt.Errorf("failed to refresh keys: %w", err)
 	}
-	item, exists := v.items[keyID]
+	item, exists := v.items[keyDetails.ID()]
 	if !exists {
-		return nil, fmt.Errorf("key not found: %s", keyID)
+		return nil, fmt.Errorf("key not found: %s", keyDetails.ID())
 	}
 
 	decryptedData, err := item.private.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
@@ -203,16 +207,16 @@ func (v *VaultKeyService) Decrypt(ctx context.Context, keyID trust.KeyIdentifier
 	return NewInProcessAESKey(decryptedData)
 }
 
-func (v *VaultKeyService) DeriveKey(ctx context.Context, kasKID trust.KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
+func (v *VaultKeyService) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
 	if err := v.refreshKeys(ctx); err != nil {
 		return nil, fmt.Errorf("failed to refresh keys: %w", err)
 	}
-	vi := v.items[kasKID]
+	vi := v.items[keyDetails.ID()]
 	if vi == nil {
-		return nil, fmt.Errorf("key not found: %s", kasKID)
+		return nil, fmt.Errorf("key not found: %s", keyDetails.ID())
 	}
 	if vi.nano == nil {
-		return nil, fmt.Errorf("key %s is not a nano key", kasKID)
+		return nil, fmt.Errorf("key %s is not a nano key", keyDetails.ID())
 	}
 	key, err := vi.nano.DeriveNanoTDFSymmetricKey(curve, ephemeralPublicKeyBytes)
 	if err != nil {

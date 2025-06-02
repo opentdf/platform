@@ -32,7 +32,7 @@ func start() error {
 		server.WithWaitForShutdownSignal(),
 		server.WithConfigFile(configFile),
 		server.WithConfigKey(configKey),
-		server.WithTrustKeyService(kms, kms),
+		server.WithTrustKeyManagers(kms),
 	}
 
 	// Start the platform server with the custom options

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/opentdf/platform/lib/flattening"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -155,8 +156,10 @@ func (p *JustInTimePDP) GetEntitlements(
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting decision - resolving registered resource value FQN")
-		return nil, errors.New("registered resources not yet implemented")
-		// TODO: implement this case
+		valueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
+		// registered resources do not have entity representations, so we can skip the remaining logic
+		return p.pdp.GetEntitlementsRegisteredResource(ctx, valueFQN, withComprehensiveHierarchy)
+
 	default:
 		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
 	}

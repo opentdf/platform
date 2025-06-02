@@ -244,6 +244,31 @@ func (p *PolicyDecisionPoint) GetDecision(
 	return decision, nil
 }
 
+func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
+	ctx context.Context,
+	registeredResourceValueFQN string,
+	withComprehensiveHierarchy bool,
+) ([]*authz.EntityEntitlements, error) {
+	value := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
+
+	err := validateRegisteredResourceValue(value)
+	if err != nil {
+		return nil, fmt.Errorf("invalid registered resource value: %w", err)
+	}
+
+	l := p.logger.With("withComprehensiveHierarchy", strconv.FormatBool(withComprehensiveHierarchy))
+	l.DebugContext(ctx, "getting entitlements for registered resource value", slog.String("fqn", registeredResourceValueFQN))
+
+	res := &authz.EntityEntitlements{
+		EphemeralId:                 registeredResourceValueFQN,
+		ActionsPerAttributeValueFqn: make(map[string]*authz.EntityEntitlements_ActionsList),
+	}
+
+	// todo: get entitlements for registered resource value
+
+	return []*authz.EntityEntitlements{res}, nil
+}
+
 func (p *PolicyDecisionPoint) GetEntitlements(
 	ctx context.Context,
 	entityRepresentations []*entityresolutionV2.EntityRepresentation,

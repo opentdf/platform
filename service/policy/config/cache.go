@@ -81,15 +81,24 @@ var stopTimeout = 5 * time.Second
 func (c *EntitlementPolicyCache) Stop() {
 	// Only attempt to stop the refresh goroutine if an interval was set
 	if c.configuredRefreshInterval > 0 {
-		// Signal the goroutine to stop
-		close(c.stopRefresh)
-		// Wait with a timeout for the refresh goroutine to complete
+		// Check if stopRefresh is already closed
 		select {
-		case <-c.refreshCompleted:
-			// Goroutine completed successfully
-		case <-time.After(stopTimeout):
-			// Timeout as a safety mechanism in case the goroutine is stuck
-			c.logger.WarnContext(context.Background(), "Timed out waiting for refresh goroutine to complete")
+		case <-c.stopRefresh:
+			// Channel is already closed, nothing to do
+			c.logger.DebugContext(context.Background(), "Stop called on already stopped cache")
+			return
+		default:
+			// Channel is still open, proceed with closing
+			// Signal the goroutine to stop
+			close(c.stopRefresh)
+			// Wait with a timeout for the refresh goroutine to complete
+			select {
+			case <-c.refreshCompleted:
+				// Goroutine completed successfully
+			case <-time.After(stopTimeout):
+				// Timeout as a safety mechanism in case the goroutine is stuck
+				c.logger.WarnContext(context.Background(), "Timed out waiting for refresh goroutine to complete")
+			}
 		}
 	}
 }

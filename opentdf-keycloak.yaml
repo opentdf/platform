@@ -8,15 +8,6 @@ logger:
 #   port: 5432
 #   user: postgres
 #   password: changeme
-#   sslmode: prefer
-#   connect_timeout_seconds: 15
-#   pool:
-#     max_connection_count: 4
-#     min_connection_count: 0
-#     min_idle_connections_count: 0
-#     max_connection_lifetime_seconds: 3600
-#     max_connection_idle_seconds: 1800
-#     health_check_period_seconds: 60
 services:
   kas:
     keyring:
@@ -48,27 +39,30 @@ services:
   # list_request_limit_max: 2500
 server:
   tls:
-    enabled: false
-    cert: ./keys/platform.crt
-    key: ./keys/platform-key.pem
+    enabled: true
+    cert: ./keys/localhost.pem
+    key: ./keys/localhost.key.pem
   auth:
     enabled: true
     enforceDPoP: false
     public_client_id: "opentdf-public"
-    cache_refresh_interval: "5m"
     audience: "http://localhost:8080"
     issuer: http://localhost:8888/auth/realms/opentdf
-    clientPrivateKeyPath: "./keys/client-credentials-private.jwk"
+    enrichUserInfo: true
+    clientId: "opentdf"
+    clientSecret: "secret"
     policy:
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
       # Claim that represents the user (i.e. email)
       username_claim: # preferred_username
       # That claim to access groups (i.e. realm_access.roles)
-      groups_claim: # realm_access.roles
+      groups_claim: 
+        - realm_access.roles
+        - groups
       ## Extends the builtin policy
-      extension: |
-        g, opentdf-admin, role:admin
-        g, opentdf-standard, role:standard
+      # extension: |
+      #   g, opentdf-admin, role:admin
+      #   g, opentdf-standard, role:standard
       ## Custom policy that overrides builtin policy (see examples https://github.com/casbin/casbin/tree/master/examples)
       csv: #|
       #  p, role:admin, *, *, allow
@@ -128,6 +122,7 @@ server:
       - Content-Type
       - X-CSRF-Token
       - X-Request-ID
+      - DPoP
     # List of response headers that browsers are allowed to access
     exposedheaders:
       - Link
@@ -150,5 +145,3 @@ server:
           private: kas-ec-private.pem
           cert: kas-ec-cert.pem
   port: 8080
-  oidcUserInfo:
-    cacheTTL: 5m # TTL for OIDC UserInfo cache (default: 5m)

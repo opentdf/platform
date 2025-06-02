@@ -182,14 +182,14 @@ func (s *AuthSuite) SetupTest() {
 		context.Background(),
 		Config{
 			AuthNConfig: AuthNConfig{
-				EnforceDPoP:  true,
-				Issuer:       s.server.URL,
-				Audience:     "test",
-				DPoPSkew:     time.Hour,
-				TokenSkew:    time.Minute,
-				Policy:       policyCfg,
-				ClientID:     "dummy-client-id",     // Added dummy ClientID for test config
-				ClientSecret: "dummy-client-secret", // Added dummy ClientSecret for test config
+				EnforceDPoP:      true,
+				Issuer:           s.server.URL,
+				Audience:         "test",
+				DPoPSkew:         time.Hour,
+				TokenSkew:        time.Minute,
+				Policy:           policyCfg,
+				ClientID:         "dummy-client-id", // Added dummy ClientID for test config
+				ClientPrivateKey: "",
 			},
 			PublicRoutes: []string{
 				"/public",

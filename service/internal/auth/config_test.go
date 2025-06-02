@@ -21,20 +21,31 @@ func TestValidateAuthNConfig(t *testing.T) {
 	})
 	require.NoError(t, err, "Failed to create logger")
 
+	keyPath := "./testdata/client-credentials-private.jwk"
+	// Save original readFileFunc and restore after test
+	origReadFileFunc := readConfigFile
+	defer func() { readConfigFile = origReadFileFunc }()
+	readConfigFile = func(path string) ([]byte, error) {
+		if path == keyPath {
+			return []byte(`{"kty":"RSA","n":"testn","e":"AQAB","d":"testd"}`), nil
+		}
+		return origReadFileFunc(path)
+	}
+
 	tests := []struct {
 		name        string
 		config      AuthNConfig
 		expectError bool
-		errorMsg    string
+		errorVal    error
 	}{
 		{
 			name: "valid config with enrichUserInfo true",
 			config: AuthNConfig{
-				EnrichUserInfo: true,
-				Issuer:         "https://keycloak.example.com/realms/test",
-				Audience:       "test-client",
-				ClientID:       "platform-client",
-				ClientSecret:   "platform-secret",
+				EnrichUserInfo:       true,
+				Issuer:               "https://keycloak.example.com/realms/test",
+				Audience:             "test-client",
+				ClientID:             "platform-client",
+				ClientPrivateKeyPath: keyPath,
 			},
 			expectError: false,
 		},
@@ -44,7 +55,7 @@ func TestValidateAuthNConfig(t *testing.T) {
 				EnrichUserInfo: false,
 				Issuer:         "https://keycloak.example.com/realms/test",
 				Audience:       "test-client",
-				// ClientId and ClientSecret are not required when enrichUserInfo is false
+				// ClientId are not required when enrichUserInfo is false
 			},
 			expectError: false,
 		},
@@ -55,34 +66,22 @@ func TestValidateAuthNConfig(t *testing.T) {
 				Issuer:         "https://keycloak.example.com/realms/test",
 				Audience:       "test-client",
 				// Missing ClientId
-				ClientSecret: "platform-secret",
+				ClientPrivateKeyPath: keyPath,
 			},
 			expectError: true,
-			errorMsg:    "config Auth.ClientID is required for token exchange to fetch userinfo",
-		},
-		{
-			name: "invalid config with enrichUserInfo true and missing clientSecret",
-			config: AuthNConfig{
-				EnrichUserInfo: true,
-				Issuer:         "https://keycloak.example.com/realms/test",
-				Audience:       "test-client",
-				ClientID:       "platform-client",
-				// Missing ClientSecret
-			},
-			expectError: true,
-			errorMsg:    "config Auth.ClientSecret is required for token exchange to fetch userinfo",
+			errorVal:    errClientIDRequired,
 		},
 		{
 			name: "invalid config with missing issuer",
 			config: AuthNConfig{
 				EnrichUserInfo: true,
 				// Missing Issuer
-				Audience:     "test-client",
-				ClientID:     "platform-client",
-				ClientSecret: "platform-secret",
+				Audience:             "test-client",
+				ClientID:             "platform-client",
+				ClientPrivateKeyPath: keyPath,
 			},
 			expectError: true,
-			errorMsg:    "config Auth.Issuer is required",
+			errorVal:    errIssuerRequired,
 		},
 		{
 			name: "invalid config with missing audience",
@@ -90,11 +89,68 @@ func TestValidateAuthNConfig(t *testing.T) {
 				EnrichUserInfo: true,
 				Issuer:         "https://keycloak.example.com/realms/test",
 				// Missing Audience
-				ClientID:     "platform-client",
-				ClientSecret: "platform-secret",
+				ClientID:             "platform-client",
+				ClientPrivateKeyPath: keyPath,
 			},
 			expectError: true,
-			errorMsg:    "config Auth.Audience is required",
+			errorVal:    errAudienceRequired,
+		},
+		{
+			name: "valid config with enrichUserInfo true and clientPrivateKey (private_key_jwt inline)",
+			config: AuthNConfig{
+				EnrichUserInfo:   true,
+				Issuer:           "https://keycloak.example.com/realms/test",
+				Audience:         "test-client",
+				ClientID:         "platform-client",
+				ClientPrivateKey: "{\"kty\":\"RSA\",\"d\":\"abc\"}",
+			},
+			expectError: false,
+		},
+		{
+			name: "valid config with enrichUserInfo true and clientPrivateKeyPath (private_key_jwt path)",
+			config: AuthNConfig{
+				EnrichUserInfo:       true,
+				Issuer:               "https://keycloak.example.com/realms/test",
+				Audience:             "test-client",
+				ClientID:             "platform-client",
+				ClientPrivateKeyPath: keyPath,
+			},
+			expectError: false,
+		},
+		{
+			name: "invalid config with enrichUserInfo true and missing clientId (private_key_jwt path)",
+			config: AuthNConfig{
+				EnrichUserInfo:       true,
+				Issuer:               "https://keycloak.example.com/realms/test",
+				Audience:             "test-client",
+				ClientPrivateKeyPath: keyPath,
+			},
+			expectError: true,
+			errorVal:    errClientIDRequired,
+		},
+		{
+			name: "invalid config with enrichUserInfo true and missing clientPrivateKey and clientPrivateKeyPath",
+			config: AuthNConfig{
+				EnrichUserInfo: true,
+				Issuer:         "https://keycloak.example.com/realms/test",
+				Audience:       "test-client",
+				ClientID:       "platform-client",
+			},
+			expectError: true,
+			errorVal:    errPrivateKeyRequired,
+		},
+		{
+			name: "invalid config with unreadable clientPrivateKeyPath",
+			config: AuthNConfig{
+				EnrichUserInfo:       true,
+				Issuer:               "https://keycloak.example.com/realms/test",
+				Audience:             "test-client",
+				ClientID:             "platform-client",
+				ClientPrivateKeyPath: "/tmp/does-not-exist-12345.jwk",
+			},
+			expectError: true,
+			// We expect an error containing 'failed to read client private key from path:'
+			// but not a specific error value, so we will check for error presence only.
 		},
 	}
 
@@ -104,8 +160,8 @@ func TestValidateAuthNConfig(t *testing.T) {
 
 			if tt.expectError {
 				require.Error(t, err)
-				if tt.errorMsg != "" {
-					assert.Equal(t, tt.errorMsg, err.Error())
+				if tt.errorVal != nil {
+					assert.ErrorIs(t, err, tt.errorVal)
 				}
 			} else {
 				require.NoError(t, err)

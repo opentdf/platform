@@ -121,8 +121,8 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 
 	// If userinfo enrichment is enabled, validate the client credentials with the IdP
 	if cfg.EnrichUserInfo {
-		logger.Info("validating client credentials with IdP", slog.String("issuer", cfg.Issuer), slog.String("client_id", cfg.ClientID), slog.Bool("tls_no_verify", cfg.AuthNConfig.TLSNoVerify))
-		if err := oidc.ValidateClientCredentials(ctx, cfg.Issuer, cfg.ClientID, cfg.ClientSecret, cfg.AuthNConfig.TLSNoVerify, clientVerificationTimeout); err != nil {
+		logger.Info("validating client credentials with IdP", slog.String("issuer", oidcConfig.Issuer), slog.String("client_id", cfg.ClientID), slog.Bool("tls_no_verify", cfg.AuthNConfig.TLSNoVerify))
+		if err := oidc.ValidateClientCredentials(ctx, oidcConfig, cfg.ClientID, []byte(cfg.ClientPrivateKey), cfg.AuthNConfig.TLSNoVerify, clientVerificationTimeout); err != nil {
 			logger.Error("failed to validate client credentials with IdP", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("client credentials validation failed: %w", err)
 		}
@@ -346,7 +346,7 @@ func (a *Authentication) GetUserInfoWithExchange(ctx context.Context, tokenIssue
 	}
 
 	// Only exchange the token if the userinfo is not in cache
-	exchangedToken, err := oidc.ExchangeToken(ctx, a.oidcConfiguration.Issuer, a.oidcConfiguration.ClientID, a.oidcConfiguration.ClientSecret, tokenRaw)
+	exchangedToken, err := oidc.ExchangeToken(ctx, a.oidcConfiguration.Issuer, a.oidcConfiguration.ClientID, a.oidcConfiguration.ClientPrivateKey, tokenRaw)
 	if err != nil {
 		a.logger.Error("failed to exchange token", slog.String("sub", tokenSubject), slog.String("error", err.Error()))
 		return []byte{}, errors.New("failed to exchange token")

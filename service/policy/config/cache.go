@@ -6,6 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dgraph-io/ristretto"
+	"github.com/eko/gocache/lib/v4/cache"
+	ristretto_store "github.com/eko/gocache/store/ristretto/v4"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -17,13 +20,17 @@ var (
 	entitlementPolicyCacheOnce     sync.Once
 )
 
+const (
+	attributesCacheKey      = "attributes"
+	subjectMappingsCacheKey = "subject_mappings"
+)
+
 // EntitlementPolicyCache caches attributes and subject mappings with periodic refresh
 type EntitlementPolicyCache struct {
-	mutex                     sync.RWMutex
 	dbClient                  policydb.PolicyDBClient
 	logger                    *logger.Logger
-	attributes                []*policy.Attribute
-	subjectMappings           []*policy.SubjectMapping
+	attributesCache           *cache.Cache[[]*policy.Attribute]
+	subjectMappingCache       *cache.Cache[[]*policy.SubjectMapping]
 	configuredRefreshInterval time.Duration
 	stopRefresh               chan struct{}
 	refreshCompleted          chan struct{}
@@ -89,16 +96,19 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to fetch attributes: %w", err)
 	}
+	err = c.attributesCache.Set(ctx, attributesCacheKey, attributes)
+	if err != nil {
+		return fmt.Errorf("failed to cache attributes: %w", err)
+	}
 
 	subjectMappings, err := c.dbClient.ListAllSubjectMappings(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch subject mappings: %w", err)
 	}
-
-	c.mutex.Lock()
-	c.attributes = attributes
-	c.subjectMappings = subjectMappings
-	c.mutex.Unlock()
+	err = c.subjectMappingCache.Set(ctx, subjectMappingsCacheKey, subjectMappings)
+	if err != nil {
+		return fmt.Errorf("failed to cache subject mappings: %w", err)
+	}
 
 	c.logger.DebugContext(ctx,
 		"EntitlementPolicyCache refreshed",
@@ -111,48 +121,49 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 
 // ListCachedAttributes returns the cached attributes and overall total, where
 // a limit of 0 and offset 0 returns all attributes
-func (c *EntitlementPolicyCache) ListCachedAttributes(limit, offset int32) ([]*policy.Attribute, int32) {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
+func (c *EntitlementPolicyCache) ListCachedAttributes(ctx context.Context, limit, offset int32) ([]*policy.Attribute, int32, error) {
+	attributes, err := c.attributesCache.Get(ctx, attributesCacheKey)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to retrieve attributes from cache: %w", err)
+	}
 
-	attributes := c.attributes
 	total := int32(len(attributes))
 	// TODO: we may want to copy this so callers cannot modify the cached data
 	// If offset is beyond the length, return empty slice
 	if offset >= total {
-		return nil, 0
+		return nil, 0, nil
 	}
 	// If limit is 0, return any attributes beyond the offset
 	if limit == 0 {
-		return attributes[offset:], total
+		return attributes[offset:], total, nil
 	}
 	// Ensure we don't exceed the slice bounds
 	limited := min(offset+limit, total)
 
-	return attributes[offset:limited], total
+	return attributes[offset:limited], total, nil
 }
 
 // ListCachedSubjectMappings returns the cached subject mappings and overall total, where
 // a limit of 0 returns all subject mappings
-func (c *EntitlementPolicyCache) ListCachedSubjectMappings(limit, offset int32) ([]*policy.SubjectMapping, int32) {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-
-	subjectMappings := c.subjectMappings
+func (c *EntitlementPolicyCache) ListCachedSubjectMappings(ctx context.Context, limit, offset int32) ([]*policy.SubjectMapping, int32, error) {
+	subjectMappings, err := c.subjectMappingCache.Get(ctx, subjectMappingsCacheKey)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to retrieve subject mappings from cache: %w", err)
+	}
 	total := int32(len(subjectMappings))
 	// TODO: we may want to copy this so callers cannot modify the cached data
 	// If offset is beyond the length, return empty slice
 	if offset >= total {
-		return nil, 0
+		return nil, 0, nil
 	}
 	// If limit is 0, return any subject mappings beyond the offset
 	if limit == 0 {
-		return subjectMappings[offset:], total
+		return subjectMappings[offset:], total, nil
 	}
 	// Ensure we don't exceed the slice bounds
 	limited := min(offset+limit, total)
 
-	return subjectMappings[offset:limited], total
+	return subjectMappings[offset:limited], total, nil
 }
 
 // periodicRefresh refreshes the cache at the specified interval
@@ -204,11 +215,25 @@ func GetSharedEntitlementPolicyCache(
 			logger:                    l,
 			dbClient:                  dbClient,
 			configuredRefreshInterval: time.Duration(cfg.CacheRefreshIntervalSeconds) * time.Second,
-			attributes:                make([]*policy.Attribute, 0),
-			subjectMappings:           make([]*policy.SubjectMapping, 0),
 			stopRefresh:               make(chan struct{}),
 			refreshCompleted:          make(chan struct{}),
 		}
+
+		ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
+			NumCounters: 1000,
+			MaxCost:     100000000, // 100MB
+			BufferItems: 64,
+		})
+		if err != nil {
+			panic(err)
+		}
+		ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
+
+		attributesCache := cache.New[[]*policy.Attribute](ristrettoStore)
+		instance.attributesCache = attributesCache
+
+		subjectMappingCache := cache.New[[]*policy.SubjectMapping](ristrettoStore)
+		instance.subjectMappingCache = subjectMappingCache
 
 		// Try to start the cache
 		if err := instance.Start(ctx); err != nil {

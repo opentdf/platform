@@ -152,7 +152,11 @@ func (s SubjectMappingService) ListSubjectMappings(ctx context.Context,
 		}
 
 		// Get all cached subject mappings
-		cachedSubjectMappings, total := s.cache.ListCachedSubjectMappings(limit, offset)
+		cachedSubjectMappings, total, err := s.cache.ListCachedSubjectMappings(ctx, limit, offset)
+		if err != nil {
+			s.logger.Error("failed to retrieve cached subject mappings", slog.Any("error", err))
+			return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+		}
 
 		// Calculate next offset using the same logic as the DB implementation
 		var nextOffset int32

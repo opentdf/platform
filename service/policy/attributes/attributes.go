@@ -153,7 +153,11 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 		}
 
 		// Get all cached attributes
-		cachedAttrs, total := s.cache.ListCachedAttributes(limit, offset)
+		cachedAttrs, total, err := s.cache.ListCachedAttributes(ctx, limit, offset)
+		if err != nil {
+			s.logger.Error("failed to retrieve cached attributes", slog.Any("error", err))
+			return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+		}
 
 		// Calculate next offset using the same logic as the DB implementation
 		var nextOffset int32

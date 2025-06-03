@@ -412,7 +412,7 @@ func (a Authentication) parseTokenFromHeader(header http.Header) (jwt.Token, str
 		jwt.WithAcceptableSkew(a.oidcConfiguration.TokenSkew),
 	)
 	if err != nil {
-		a.logger.Warn("failed to validate auth token", slog.String("err", err.Error()))
+		a.logger.Warn("failed to validate auth token", slog.String("err", err.Error()), slog.String("issuer", a.oidcConfiguration.Issuer), slog.String("audience", a.oidcConfiguration.Audience))
 		return nil, "", TokenTypeUnknown, err
 	}
 

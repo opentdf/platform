@@ -65,8 +65,15 @@ message Resource {
   }
 
   oneof resource {
-    AttributeValues attribute_values = 2;
-    string registered_resource_value_fqn = 3;
+    AttributeValues attribute_values = 2 [(buf.validate.field).cel = {
+      id: "attribute_values_required"
+      message: "if provided, resource.attribute_values must not be empty"
+      expression: "this.fqns.size() > 0 && this.fqns.all(item, item.isUri())"
+    }];
+    string registered_resource_value_fqn = 3 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
   }
 }
 
@@ -92,18 +99,6 @@ message GetDecisionRequest {
     id: "get_decision_request.action_name_required"
     message: "action.name must be provided"
     expression: "has(this.action.name)"
-  };
-
-  option (buf.validate.message).cel = {
-    id: "get_decision_request.registered_resource_value_fqn_required"
-    message: "if provided, resource.registered_resource_value_fqn must be a valid URI"
-    expression: "!has(this.resource.registered_resource_value_fqn) || this.resource.registered_resource_value_fqn.isUri()"
-  };
-
-  option (buf.validate.message).cel = {
-    id: "get_decision_request.attribute_values_required"
-    message: "if provided, resource.attribute_values must not be empty"
-    expression: "!has(this.resource.attribute_values) || this.resource.attribute_values.fqns.size() > 0"
   };
 }
 message GetDecisionResponse {

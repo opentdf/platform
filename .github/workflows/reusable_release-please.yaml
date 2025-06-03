@@ -49,12 +49,12 @@ jobs:
     steps:
 
       - name: "Validate ref"
-        if: ${{ !github.ref_name == 'main' || !startsWith(github.ref_name, 'release/') }}
+        if: ${{ !github.ref_name == 'main' && !startsWith(github.ref_name, 'release/') }}
         shell: bash
         env:
           REF_NAME: ${{ github.ref_name }}
         run: |
-          echo "Error: invalid github ref ['$REF_NAME'] for release-please action, must be 'main' or 'release/**" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Error: invalid github ref ['$REF_NAME'] for release-please action, must be 'main' or 'release/**'" | tee -a "$GITHUB_STEP_SUMMARY"
           exit 1
 
       - name: Generate a token

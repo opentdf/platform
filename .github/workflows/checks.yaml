@@ -403,6 +403,7 @@ jobs:
             examples/go.sum
       - run: cd service && go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: cd service && go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+      - run: cd service && go install github.com/sudorandom/protoc-gen-connect-openapi@latest
       - run: make proto-generate
       - name: generate connect wrappers
         run: make connect-wrapper-generate

@@ -107,24 +107,19 @@ func validateRegisteredResource(registeredResource *policy.RegisteredResource) e
 	if registeredResource == nil {
 		return fmt.Errorf("registered resource is nil: %w", ErrInvalidRegisteredResource)
 	}
+	if registeredResource.GetName() == "" {
+		return fmt.Errorf("registered resource name is empty: %w", ErrInvalidRegisteredResource)
+	}
 	if len(registeredResource.GetValues()) == 0 {
 		return fmt.Errorf("registered resource values are empty: %w", ErrInvalidRegisteredResource)
 	}
-	return nil
-}
-
-// validateRegisteredResourceValue validates the registered resource value is valid for an entitlement decision
-//
-// registered resource:
-//
-//   - must not be nil
-//   - must have non-empty values
-func validateRegisteredResourceValue(registeredResourceValue *policy.RegisteredResourceValue) error {
-	if registeredResourceValue == nil {
-		return fmt.Errorf("registered resource value is nil: %w", ErrInvalidRegisteredResourceValue)
-	}
-	if registeredResourceValue.GetValue() == "" {
-		return fmt.Errorf("registered resource value is empty: %w", ErrInvalidRegisteredResourceValue)
+	for _, value := range registeredResource.GetValues() {
+		if value == nil {
+			return fmt.Errorf("registered resource value is nil: %w", ErrInvalidRegisteredResource)
+		}
+		if value.GetValue() == "" {
+			return fmt.Errorf("registered resource value is empty: %w", ErrInvalidRegisteredResource)
+		}
 	}
 	return nil
 }

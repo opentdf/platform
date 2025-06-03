@@ -323,12 +323,9 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 	registeredResourceValueFQN string,
 	withComprehensiveHierarchy bool,
 ) ([]*authz.EntityEntitlements, error) {
-	registeredResourceValue := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
+	// todo: validate the registered resource value FQN?
 
-	err := validateRegisteredResourceValue(registeredResourceValue)
-	if err != nil {
-		return nil, fmt.Errorf("invalid registered resource value: %w", err)
-	}
+	registeredResourceValue := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
 
 	l := p.logger.With("withComprehensiveHierarchy", strconv.FormatBool(withComprehensiveHierarchy))
 	l.DebugContext(ctx, "getting entitlements for registered resource value", slog.String("fqn", registeredResourceValueFQN))
@@ -356,7 +353,7 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 		actionsPerAttributeValueFqn[attrValFQN] = actionsList
 
 		if withComprehensiveHierarchy {
-			err = populateLowerValuesIfHierarchy(attrValFQN, p.allEntitleableAttributesByValueFQN, actionsList, actionsPerAttributeValueFqn)
+			err := populateLowerValuesIfHierarchy(attrValFQN, p.allEntitleableAttributesByValueFQN, actionsList, actionsPerAttributeValueFqn)
 			if err != nil {
 				return nil, fmt.Errorf("error populating comprehensive lower hierarchy values of valueFQN [%s] for registered resource value: %w", attrValFQN, err)
 			}

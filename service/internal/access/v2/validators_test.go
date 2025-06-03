@@ -283,6 +283,82 @@ func TestValidateAttribute(t *testing.T) {
 	}
 }
 
+func TestValidateRegisteredResource(t *testing.T) {
+	tests := []struct {
+		name               string
+		registeredResource *policy.RegisteredResource
+		wantErr            error
+	}{
+		{
+			name: "Valid registered resource",
+			registeredResource: &policy.RegisteredResource{
+				Name: "valid-resource",
+				Values: []*policy.RegisteredResourceValue{
+					{
+						Value: "valid-value",
+					},
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name:               "Nil registered resource",
+			registeredResource: nil,
+			wantErr:            ErrInvalidRegisteredResource,
+		},
+		{
+			name: "Empty registered resource name",
+			registeredResource: &policy.RegisteredResource{
+				Name: "",
+			},
+			wantErr: ErrInvalidRegisteredResource,
+		},
+		{
+			name: "Empty registered resource values",
+			registeredResource: &policy.RegisteredResource{
+				Name:   "empty-values",
+				Values: []*policy.RegisteredResourceValue{},
+			},
+			wantErr: ErrInvalidRegisteredResource,
+		},
+		{
+			name: "Nil registered resource values",
+			registeredResource: &policy.RegisteredResource{
+				Name:   "nil-values",
+				Values: nil,
+			},
+			wantErr: ErrInvalidRegisteredResource,
+		},
+		{
+			name: "Nil value in registered resource values",
+			registeredResource: &policy.RegisteredResource{
+				Name:   "nil-value-in-values",
+				Values: []*policy.RegisteredResourceValue{nil},
+			},
+			wantErr: ErrInvalidRegisteredResource,
+		},
+		{
+			name: "Empty value in registered resource values",
+			registeredResource: &policy.RegisteredResource{
+				Name:   "empty-value-in-values",
+				Values: []*policy.RegisteredResourceValue{{Value: ""}},
+			},
+			wantErr: ErrInvalidRegisteredResource,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateRegisteredResource(tt.registeredResource)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestValidateEntityRepresentations(t *testing.T) {
 	tests := []struct {
 		name                  string

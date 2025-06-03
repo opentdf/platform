@@ -19,7 +19,10 @@ toolcheck:
 	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
 	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.1.6'" && exit 1)
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
-	@golangci-lint --version | grep "version v\?1.6[456]" > /dev/null || (echo "golangci-lint version must be v1.64 or later [$$(golangci-lint --version)]" && exit 1)
+	@required_golangci_lint_version="1.64.0"; \
+	current_version=$$(golangci-lint --version | awk '{for(i=1;i<=NF;i++) if($$i ~ /^v?[0-9]+\.[0-9]+\.[0-9]+$$/) {gsub(/^v/,"",$$i); print $$i; exit}}'); \
+	[ "$$(printf '%s\n' "$$required_golangci_lint_version" "$$current_version" | sort -V | head -n1)" = "$$required_golangci_lint_version" ] || \
+		(echo "golangci-lint version must be v$$required_golangci_lint_version or later [found: $$current_version]" && exit 1)
 	@which goimports >/dev/null || (echo "goimports not found, run 'go install golang.org/x/tools/cmd/goimports@latest'")
 	@govulncheck -version >/dev/null || (echo "govulncheck not found, run 'go install golang.org/x/vuln/cmd/govulncheck@latest'")
 

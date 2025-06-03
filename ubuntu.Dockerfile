@@ -27,8 +27,7 @@ RUN make opentdf
 
 FROM builder as tester
 
-RUN apt-get update -y && apt-get install -y opensc openssl
-RUN /scripts/init-temp-keys.sh
+RUN /app/opentdf keys init
 
 RUN make test
 

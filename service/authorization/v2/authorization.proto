@@ -30,12 +30,10 @@ message EntityIdentifier {
 
     // fully qualified name of the registered resource value stored in platform policy, where in
     // this case the resource acts as and represents a single entity for authorization/entitlement decisioning
-    string registered_resource_value_fqn = 2 [
-      (buf.validate.field).string = {
-        min_len: 1
-        uri: true
-      }
-    ];
+    string registered_resource_value_fqn = 2 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
 
     // access token (JWT), which is used to create an entity chain (comprising one or more entities)
     entity.Token token = 3 [(buf.validate.field).cel = {
@@ -94,6 +92,18 @@ message GetDecisionRequest {
     id: "get_decision_request.action_name_required"
     message: "action.name must be provided"
     expression: "has(this.action.name)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "get_decision_request.registered_resource_value_fqn_required"
+    message: "if provided, resource.registered_resource_value_fqn must be a valid URI"
+    expression: "!has(this.resource.registered_resource_value_fqn) || this.resource.registered_resource_value_fqn.isUri()"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "get_decision_request.attribute_values_required"
+    message: "if provided, resource.attribute_values must not be empty"
+    expression: "!has(this.resource.attribute_values) || this.resource.attribute_values.fqns.size() > 0"
   };
 }
 message GetDecisionResponse {

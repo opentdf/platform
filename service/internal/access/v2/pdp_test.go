@@ -1918,7 +1918,7 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 		s.Require().Len(entitlements, 1)
 		entityEntitlement := entitlements[0]
 		s.Equal(resourceValueNoEntitlementsFQN, entityEntitlement.GetEphemeralId())
-		s.Require().Len(entityEntitlement.GetActionsPerAttributeValueFqn(), 0)
+		s.Require().Empty(entityEntitlement.GetActionsPerAttributeValueFqn())
 	})
 
 	s.Run("single entitlement", func() {

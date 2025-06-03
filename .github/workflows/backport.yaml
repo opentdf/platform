@@ -24,3 +24,4 @@ jobs:
         startsWith(github.event.comment.body, '/backport')
       )
     uses: ./.github/workflows/reusable_backport.yaml
+    secrets: inherit

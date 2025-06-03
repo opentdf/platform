@@ -13,3 +13,4 @@ jobs:
     permissions:
       id-token: write
     uses: ./.github/workflows/reusable_create-release-branch.yaml
+    secrets: inherit

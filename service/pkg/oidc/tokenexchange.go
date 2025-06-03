@@ -2,15 +2,18 @@ package oidc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/zitadel/oidc/v3/pkg/client/tokenexchange"
-	"github.com/zitadel/oidc/v3/pkg/oidc"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
 const (
@@ -18,60 +21,103 @@ const (
 	DefaultTokenExchangeTimeout = 30 * time.Second
 )
 
-// ExchangeToken performs OAuth2 token exchange (RFC 8693) using Zitadel's OIDC library.
-// actorToken and actorTokenType may be empty if not used.
-func ExchangeToken(ctx context.Context, issuer, clientID, clientSecret, subjectToken string) (string, error) {
-	// Create a logger for debugging
+// ExchangeToken performs OAuth2 token exchange (RFC 8693) using private_key_jwk and optional DPoP.
+// If dpopJWK is nil, DPoP is not used.
+func ExchangeToken(
+	ctx context.Context,
+	oidcConfig *DiscoveryConfiguration,
+	clientID string,
+	clientPrivateKey []byte,
+	subjectToken string,
+	audience []string,
+	scopes []string,
+) (string, jwk.Key, error) {
+	tokenEndpoint := oidcConfig.TokenEndpoint
+	issuer := oidcConfig.Issuer
+
 	logger := log.New(os.Stderr, "[TOKEN_EXCHANGE] ", log.LstdFlags)
 	logger.Printf("Starting token exchange: issuer=%s, clientID=%s", issuer, clientID)
 
-	// Create a debug client with a custom transport that logs requests and responses
+	dpopJWK, err := GenerateDPoPKey()
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to generate DPoP key: %w", err)
+	}
+
 	httpClient := &http.Client{
 		Timeout: DefaultTokenExchangeTimeout,
 	}
 
-	// Create the token exchanger with our debug client
-	te, err := tokenexchange.NewTokenExchangerClientCredentials(
-		ctx,
-		issuer,
-		clientID,
-		clientSecret,
-		tokenexchange.WithHTTPClient(httpClient),
-	)
+	// Build JWT assertion for private_key_jwk
+	jwtAssertion, err := BuildJWTAssertion(clientID, tokenEndpoint)
 	if err != nil {
-		return "", fmt.Errorf("failed to create token exchanger: %w", err)
+		return "", nil, fmt.Errorf("failed to build private_key_jwt assertion: %w", err)
+	}
+	key, err := ParseJWKFromPEM(clientPrivateKey)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to parse client private key: %w", err)
+	}
+	alg := jwa.RS256
+	signedJWT, err := SignJWTAssertion(jwtAssertion, key, alg)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to sign private_key_jwt assertion: %w", err)
 	}
 
-	// Not needed for client credentials flow
-	actorToken := ""
-	actorTokenType := ""
+	form := url.Values{}
+	form.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
+	form.Set("subject_token", subjectToken)
+	form.Set("subject_token_type", "urn:ietf:params:oauth:token-type:access_token")
+	form.Set("client_id", clientID)
+	form.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
+	form.Set("client_assertion", string(signedJWT))
+	if len(audience) > 0 {
+		for _, a := range audience {
+			form.Add("audience", a)
+		}
+	}
+	if len(scopes) > 0 {
+		form.Set("scope", strings.Join(scopes, " "))
+	}
 
-	resource := []string{}
-	audience := []string{clientID}
-	// Always include "openid" scope for UserInfo requests to work properly with Keycloak
-	scopes := []string{"openid", "profile"}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to create token exchange request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := tokenexchange.ExchangeToken(
-		ctx,
-		te,
-		subjectToken,
-		oidc.AccessTokenType,
-		actorToken,
-		oidc.TokenType(actorTokenType),
-		resource,
-		audience,
-		scopes,
-		oidc.AccessTokenType,
-	)
+	if dpopJWK != nil {
+		dpopProof, err := getDPoPAssertion(dpopJWK, http.MethodPost, tokenEndpoint, "")
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to generate DPoP proof: %w", err)
+		}
+		req.Header.Set("DPoP", dpopProof)
+	}
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		logger.Printf("Token exchange failed: %v", err)
-		return "", fmt.Errorf("token exchange failed: %w", err)
+		return "", nil, fmt.Errorf("token exchange failed: %w", err)
 	}
-	if resp == nil || resp.AccessToken == "" {
-		logger.Printf("No access token in token exchange response")
-		return "", errors.New("no access_token in token exchange response")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		logger.Printf("Token exchange failed: status=%s", resp.Status)
+		body := make([]byte, 1024)
+		resp.Body.Read(body)
+		logger.Printf("response body: %s", body)
+		return "", nil, fmt.Errorf("token exchange failed: %s", resp.Status)
 	}
 
-	logger.Printf("Token exchange successful: scope=%v", resp.Scopes)
-	return resp.AccessToken, nil
+	var respData struct {
+		AccessToken string `json:"access_token"`
+		Scopes      string `json:"scope"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
+		return "", nil, fmt.Errorf("failed to decode token exchange response: %w", err)
+	}
+	if respData.AccessToken == "" {
+		return "", nil, errors.New("no access_token in token exchange response")
+	}
+
+	logger.Printf("Token exchange successful: scope=%v", respData.Scopes)
+	return respData.AccessToken, dpopJWK, nil
 }

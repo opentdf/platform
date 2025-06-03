@@ -90,6 +90,7 @@ type Authentication struct {
 	cachedKeySet jwk.Set
 	// openidConfigurations holds the openid configuration for the issuer
 	oidcConfiguration AuthNConfig
+	oidcDiscovery     *oidc.DiscoveryConfiguration
 	// Casbin enforcer
 	enforcer *Enforcer
 	// Public Routes HTTP & gRPC
@@ -109,9 +110,11 @@ type Authentication struct {
 // Creates new authN which is used to verify tokens for a set of given issuers
 func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, wellknownRegistration func(namespace string, config any) error, oidcConfig *oidc.DiscoveryConfiguration, userInfoCache *oidc.UserInfoCache) (*Authentication, error) {
 	a := &Authentication{
-		enforceDPoP:   cfg.EnforceDPoP,
-		logger:        logger,
-		userInfoCache: userInfoCache,
+		enforceDPoP:       cfg.EnforceDPoP,
+		logger:            logger,
+		oidcConfiguration: cfg.AuthNConfig,
+		oidcDiscovery:     oidcConfig,
+		userInfoCache:     userInfoCache,
 	}
 
 	// validate the configuration
@@ -172,8 +175,6 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 
 	// Combine IPC reauthorization routes
 	a.ipcReauthRoutes = append(ipcReauthRoutes[:], cfg.IPCReauthRoutes...)
-
-	a.oidcConfiguration = cfg.AuthNConfig
 
 	// Try an register oidc issuer to wellknown service but don't return an error if it fails
 	if err := wellknownRegistration("platform_issuer", cfg.Issuer); err != nil {
@@ -346,14 +347,14 @@ func (a *Authentication) GetUserInfoWithExchange(ctx context.Context, tokenIssue
 	}
 
 	// Only exchange the token if the userinfo is not in cache
-	exchangedToken, err := oidc.ExchangeToken(ctx, a.oidcConfiguration.Issuer, a.oidcConfiguration.ClientID, a.oidcConfiguration.ClientPrivateKey, tokenRaw)
+	exchangedToken, dpopJWK, err := oidc.ExchangeToken(ctx, a.oidcDiscovery, a.oidcConfiguration.ClientID, []byte(a.oidcConfiguration.ClientPrivateKey), tokenRaw, []string{a.oidcConfiguration.Audience}, a.oidcConfiguration.ClientScopes)
 	if err != nil {
 		a.logger.Error("failed to exchange token", slog.String("sub", tokenSubject), slog.String("error", err.Error()))
 		return []byte{}, errors.New("failed to exchange token")
 	}
 
 	// Fetch userinfo with the exchanged token
-	_, userInfoRaw, err = a.userInfoCache.Get(ctx, tokenIssuer, tokenSubject, exchangedToken)
+	_, userInfoRaw, err = a.userInfoCache.Get(ctx, tokenIssuer, tokenSubject, exchangedToken, dpopJWK)
 	if err != nil {
 		return nil, errors.New("unauthenticated")
 	}

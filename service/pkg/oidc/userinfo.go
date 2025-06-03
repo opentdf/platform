@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
@@ -38,7 +39,7 @@ func NewUserInfoCache(oidcConfig *oidc.DiscoveryConfiguration, cache *cache.Cach
 }
 
 // Get tries to get userinfo from cache otherwise fetches it from the UserInfo endpoint.
-func (u *UserInfoCache) Get(ctx context.Context, issuer, subject string, tokenRaw string) (*oidc.UserInfo, []byte, error) {
+func (u *UserInfoCache) Get(ctx context.Context, issuer, subject string, tokenRaw string, dpopJWK jwk.Key) (*oidc.UserInfo, []byte, error) {
 	l := u.logger.With("issuer", issuer).With("subject", subject)
 	key := userInfoCacheKey(issuer, subject)
 	userInfo, userInfoRaw, err := u.GetFromCache(ctx, issuer, subject)

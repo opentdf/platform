@@ -1,5 +1,10 @@
 on:
   workflow_call:
+    secrets:
+      APP_ID:
+        required: true
+      AUTOMATION_KEY:
+        required: true
     inputs:
       # https://github.com/korthout/backport-action/#conflict_resolution
       conflict_resolution:

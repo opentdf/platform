@@ -2,6 +2,11 @@
 
 on:
   workflow_call:
+    secrets:
+      APP_ID:
+        required: true
+      AUTOMATION_KEY:
+        required: true
     inputs:
       config-file-main-branch:
         type: string

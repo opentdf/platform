@@ -324,7 +324,7 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 	withComprehensiveHierarchy bool,
 ) ([]*authz.EntityEntitlements, error) {
 	if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN); err != nil {
-		return nil, fmt.Errorf("invalid registered resource value FQN: %s", registeredResourceValueFQN)
+		return nil, err
 	}
 
 	registeredResourceValue := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]

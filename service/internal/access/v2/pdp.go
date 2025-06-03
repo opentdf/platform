@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -244,31 +245,6 @@ func (p *PolicyDecisionPoint) GetDecision(
 	return decision, nil
 }
 
-func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
-	ctx context.Context,
-	registeredResourceValueFQN string,
-	withComprehensiveHierarchy bool,
-) ([]*authz.EntityEntitlements, error) {
-	value := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
-
-	err := validateRegisteredResourceValue(value)
-	if err != nil {
-		return nil, fmt.Errorf("invalid registered resource value: %w", err)
-	}
-
-	l := p.logger.With("withComprehensiveHierarchy", strconv.FormatBool(withComprehensiveHierarchy))
-	l.DebugContext(ctx, "getting entitlements for registered resource value", slog.String("fqn", registeredResourceValueFQN))
-
-	res := &authz.EntityEntitlements{
-		EphemeralId:                 registeredResourceValueFQN,
-		ActionsPerAttributeValueFqn: make(map[string]*authz.EntityEntitlements_ActionsList),
-	}
-
-	// todo: get entitlements for registered resource value
-
-	return []*authz.EntityEntitlements{res}, nil
-}
-
 func (p *PolicyDecisionPoint) GetEntitlements(
 	ctx context.Context,
 	entityRepresentations []*entityresolutionV2.EntityRepresentation,
@@ -339,5 +315,65 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 		"entitlement results",
 		slog.Any("entitlements", result),
 	)
+	return result, nil
+}
+
+func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
+	ctx context.Context,
+	registeredResourceValueFQN string,
+	withComprehensiveHierarchy bool,
+) ([]*authz.EntityEntitlements, error) {
+	registeredResourceValue := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
+
+	err := validateRegisteredResourceValue(registeredResourceValue)
+	if err != nil {
+		return nil, fmt.Errorf("invalid registered resource value: %w", err)
+	}
+
+	l := p.logger.With("withComprehensiveHierarchy", strconv.FormatBool(withComprehensiveHierarchy))
+	l.DebugContext(ctx, "getting entitlements for registered resource value", slog.String("fqn", registeredResourceValueFQN))
+
+	actionsPerAttributeValueFqn := make(map[string]*authz.EntityEntitlements_ActionsList)
+
+	for _, aav := range registeredResourceValue.GetActionAttributeValues() {
+		action := aav.GetAction()
+		attrVal := aav.GetAttributeValue()
+		attrValFQN := attrVal.GetFqn()
+
+		actionsList, ok := actionsPerAttributeValueFqn[attrValFQN]
+		if !ok {
+			actionsList = &authz.EntityEntitlements_ActionsList{
+				Actions: make([]*policy.Action, 0),
+			}
+		}
+
+		if !slices.ContainsFunc(actionsList.GetActions(), func(a *policy.Action) bool {
+			return a.GetName() == action.GetName()
+		}) {
+			actionsList.Actions = append(actionsList.Actions, action)
+		}
+
+		actionsPerAttributeValueFqn[attrValFQN] = actionsList
+
+		if withComprehensiveHierarchy {
+			err = populateLowerValuesIfHierarchy(attrValFQN, p.allEntitleableAttributesByValueFQN, actionsList, actionsPerAttributeValueFqn)
+			if err != nil {
+				return nil, fmt.Errorf("error populating comprehensive lower hierarchy values of valueFQN [%s] for registered resource value: %w", attrValFQN, err)
+			}
+		}
+	}
+
+	result := []*authz.EntityEntitlements{
+		{
+			EphemeralId:                 registeredResourceValueFQN,
+			ActionsPerAttributeValueFqn: actionsPerAttributeValueFqn,
+		},
+	}
+	l.DebugContext(
+		ctx,
+		"entitlement results for registered resource value",
+		slog.Any("entitlements", result),
+	)
+
 	return result, nil
 }

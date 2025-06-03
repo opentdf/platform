@@ -13,3 +13,6 @@ jobs:
     permissions:
       id-token: write
     uses: ./.github/workflows/reusable_create-release-branch.yaml
+    secrets:
+      APP_ID: ${{ secrets.APP_ID }}
+      AUTOMATION_KEY: ${{ secrets.AUTOMATION_KEY }}

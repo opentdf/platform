@@ -1,5 +1,10 @@
 on:
-  workflow_call: {}
+  workflow_call:
+    secrets:
+      APP_ID:
+        required: true
+      AUTOMATION_KEY:
+        required: true
 
 # Default empty permissions for all jobs
 permissions: {}

@@ -116,6 +116,9 @@ type PDPTestSuite struct {
 		adminEntity     *entityresolutionV2.EntityRepresentation
 		developerEntity *entityresolutionV2.EntityRepresentation
 		analystEntity   *entityresolutionV2.EntityRepresentation
+
+		// Test registered resources
+		simpleRegisteredResource *policy.RegisteredResource
 	}
 }
 
@@ -324,6 +327,16 @@ func (s *PDPTestSuite) SetupTest() {
 		"department": "finance",
 		"country":    []any{"uk"},
 	})
+
+	// Initialize test registered resources
+	s.fixtures.simpleRegisteredResource = &policy.RegisteredResource{
+		Name: "simple-resource",
+		Values: []*policy.RegisteredResourceValue{
+			{
+				Value: "test-value",
+			},
+		},
+	}
 }
 
 // TestPDPSuite runs the test suite
@@ -336,16 +349,18 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint() {
 	f := s.fixtures
 
 	tests := []struct {
-		name            string
-		attributes      []*policy.Attribute
-		subjectMappings []*policy.SubjectMapping
-		expectError     bool
+		name                string
+		attributes          []*policy.Attribute
+		subjectMappings     []*policy.SubjectMapping
+		registeredResources []*policy.RegisteredResource
+		expectError         bool
 	}{
 		{
-			name:            "valid initialization",
-			attributes:      []*policy.Attribute{f.classificationAttr, f.departmentAttr, f.countryAttr},
-			subjectMappings: []*policy.SubjectMapping{f.secretMapping, f.confidentialMapping, f.rndMapping},
-			expectError:     false,
+			name:                "valid initialization",
+			attributes:          []*policy.Attribute{f.classificationAttr, f.departmentAttr, f.countryAttr},
+			subjectMappings:     []*policy.SubjectMapping{f.secretMapping, f.confidentialMapping, f.rndMapping},
+			registeredResources: []*policy.RegisteredResource{f.simpleRegisteredResource},
+			expectError:         false,
 		},
 		{
 			name:            "nil attributes and nil subject mappings",
@@ -365,11 +380,18 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint() {
 			subjectMappings: nil,
 			expectError:     true,
 		},
+		{
+			name:                "non-nil attributes and subject mappings but nil registered resources",
+			attributes:          []*policy.Attribute{f.classificationAttr},
+			subjectMappings:     []*policy.SubjectMapping{f.secretMapping},
+			registeredResources: nil,
+			expectError:         false,
+		},
 	}
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			pdp, err := NewPolicyDecisionPoint(s.T().Context(), s.logger, tc.attributes, tc.subjectMappings)
+			pdp, err := NewPolicyDecisionPoint(s.T().Context(), s.logger, tc.attributes, tc.subjectMappings, tc.registeredResources)
 
 			if tc.expectError {
 				s.Require().Error(err)
@@ -392,6 +414,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		s.logger,
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr},
 		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping, f.engineeringMapping, f.financeMapping},
+		[]*policy.RegisteredResource{},
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -587,6 +610,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			f.secretMapping, f.topSecretMapping, printConfidentialMapping, allActionsPublicMapping,
 			f.engineeringMapping, f.financeMapping, viewProjectAlphaMapping,
 		},
+		[]*policy.RegisteredResource{},
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -698,6 +722,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			s.logger,
 			[]*policy.Attribute{f.classificationAttr},
 			[]*policy.SubjectMapping{allActionsPublicMapping, restrictedMapping},
+			[]*policy.RegisteredResource{},
 		)
 		s.Require().NoError(err)
 		s.Require().NotNil(classificationPDP)
@@ -744,6 +769,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 			f.engineeringMapping, f.financeMapping, f.rndMapping,
 			f.usaMapping, f.ukMapping, f.projectAlphaMapping, f.platformCloudMapping,
 		},
+		[]*policy.RegisteredResource{},
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1103,6 +1129,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 			f.platformCloudMapping, onPremMapping, hybridMapping,
 			f.usaMapping,
 		},
+		[]*policy.RegisteredResource{},
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1397,6 +1424,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 			f.engineeringMapping, f.financeMapping, f.rndMapping,
 			f.usaMapping,
 		},
+		[]*policy.RegisteredResource{},
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1695,6 +1723,7 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 			lowerMiddleMapping,
 			bottomMapping,
 		},
+		[]*policy.RegisteredResource{},
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)

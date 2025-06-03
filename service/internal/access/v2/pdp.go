@@ -327,7 +327,10 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 		return nil, err
 	}
 
-	registeredResourceValue := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
+	registeredResourceValue, ok := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
+	if !ok {
+		return nil, fmt.Errorf("registered resource value not found for FQN [%s]", registeredResourceValueFQN)
+	}
 
 	l := p.logger.With("withComprehensiveHierarchy", strconv.FormatBool(withComprehensiveHierarchy))
 	l.DebugContext(ctx, "getting entitlements for registered resource value", slog.String("fqn", registeredResourceValueFQN))

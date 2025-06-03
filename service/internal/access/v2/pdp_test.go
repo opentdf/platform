@@ -41,6 +41,15 @@ func createAttrValueFQN(namespace, name, value string) string {
 	return attr.FQN()
 }
 
+// Helper function to create registered resource value FQNs
+func createRegisteredResourceValueFQN(name, value string) string {
+	resourceValue := &identifier.FullyQualifiedRegisteredResourceValue{
+		Name:  name,
+		Value: value,
+	}
+	return resourceValue.FQN()
+}
+
 // Attribute FQNs using identifier package
 var (
 	// Base attribute FQNs
@@ -1791,6 +1800,177 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 	s.Contains(bottomActionNames, actions.ActionNameDelete, "Bottom level should have delete action")
 	s.Contains(bottomActionNames, actionNameTransmit, "Bottom level should have transmit action")
 	s.Contains(bottomActionNames, customActionGather, "Bottom level should have gather action")
+}
+
+func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
+	resourceValueNoEntitlements := &policy.RegisteredResourceValue{
+		Value:                 "no-entitlements",
+		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{},
+	}
+	resourceValueSingleEntitlement := &policy.RegisteredResourceValue{
+		Value: "single",
+		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+			{
+				Action: testActionCreate,
+				AttributeValue: &policy.Value{
+					Fqn:   testClassSecretFQN,
+					Value: "secret",
+				},
+			},
+		},
+	}
+	resourceValueMultiEntitlements := &policy.RegisteredResourceValue{
+		Value: "multi",
+		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+			{
+				Action: testActionCreate,
+				AttributeValue: &policy.Value{
+					Fqn:   testPlatformCloudFQN,
+					Value: "cloud",
+				},
+			},
+			{
+				Action: testActionRead,
+				AttributeValue: &policy.Value{
+					Fqn:   testPlatformCloudFQN,
+					Value: "cloud",
+				},
+			},
+		},
+	}
+	resourceValueDuplicateEntitlements := &policy.RegisteredResourceValue{
+		Value: "duplicate",
+		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+			{
+				Action: testActionCreate,
+				AttributeValue: &policy.Value{
+					Fqn:   testClassSecretFQN,
+					Value: "secret",
+				},
+			},
+			{
+				Action: testActionCreate,
+				AttributeValue: &policy.Value{
+					Fqn:   testClassSecretFQN,
+					Value: "secret",
+				},
+			},
+		},
+	}
+
+	resource := &policy.RegisteredResource{
+		Name: "test-res",
+		Values: []*policy.RegisteredResourceValue{
+			resourceValueNoEntitlements,
+			resourceValueSingleEntitlement,
+			resourceValueMultiEntitlements,
+			resourceValueDuplicateEntitlements,
+		},
+	}
+
+	resourceValueNoEntitlementsFQN := createRegisteredResourceValueFQN(resource.GetName(), resourceValueNoEntitlements.GetValue())
+	resourceValueSingleEntitlementFQN := createRegisteredResourceValueFQN(resource.GetName(), resourceValueSingleEntitlement.GetValue())
+	resourceValueMultiEntitlementsFQN := createRegisteredResourceValueFQN(resource.GetName(), resourceValueMultiEntitlements.GetValue())
+	resourceValueDuplicateEntitlementsFQN := createRegisteredResourceValueFQN(resource.GetName(), resourceValueDuplicateEntitlements.GetValue())
+
+	pdp, err := NewPolicyDecisionPoint(
+		s.T().Context(),
+		s.logger,
+		[]*policy.Attribute{},
+		[]*policy.SubjectMapping{},
+		[]*policy.RegisteredResource{resource},
+	)
+	s.Require().NoError(err)
+	s.Require().NotNil(pdp)
+
+	s.Run("Invalid registered resource value FQN format", func() {
+		entitlements, err := pdp.GetEntitlementsRegisteredResource(
+			s.T().Context(),
+			"invalid_fqn_format",
+			false,
+		)
+
+		s.Require().Error(err)
+		s.Require().ErrorIs(err, identifier.ErrInvalidFQNFormat)
+		s.Require().Nil(entitlements)
+	})
+
+	s.Run("Valid but non-existent registered resource value FQN", func() {
+		validButNonexistentFQN := createRegisteredResourceValueFQN("test-res-not-exist", "test-value-not-exist")
+		entitlements, err := pdp.GetEntitlementsRegisteredResource(
+			s.T().Context(),
+			validButNonexistentFQN,
+			false,
+		)
+
+		s.Require().EqualError(err, fmt.Sprintf("registered resource value not found for FQN [%s]", validButNonexistentFQN))
+		s.Require().Nil(entitlements)
+	})
+
+	s.Run("no entitlements", func() {
+		entitlements, err := pdp.GetEntitlementsRegisteredResource(
+			s.T().Context(),
+			resourceValueNoEntitlementsFQN,
+			false,
+		)
+		s.Require().NoError(err)
+		s.Require().NotNil(entitlements)
+		s.Require().Len(entitlements, 1)
+		entityEntitlement := entitlements[0]
+		s.Equal(resourceValueNoEntitlementsFQN, entityEntitlement.GetEphemeralId())
+		s.Require().Len(entityEntitlement.GetActionsPerAttributeValueFqn(), 0)
+	})
+
+	s.Run("single entitlement", func() {
+		entitlements, err := pdp.GetEntitlementsRegisteredResource(
+			s.T().Context(),
+			resourceValueSingleEntitlementFQN,
+			false,
+		)
+		s.Require().NoError(err)
+		s.Require().NotNil(entitlements)
+
+		s.Require().Len(entitlements, 1)
+		entityEntitlement := entitlements[0]
+		s.Equal(resourceValueSingleEntitlementFQN, entityEntitlement.GetEphemeralId())
+		actionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassSecretFQN]
+		s.ElementsMatch(actionNames(actionsList.GetActions()), []string{actions.ActionNameCreate})
+	})
+
+	s.Run("multiple entitlements", func() {
+		entitlements, err := pdp.GetEntitlementsRegisteredResource(
+			s.T().Context(),
+			resourceValueMultiEntitlementsFQN,
+			false,
+		)
+		s.Require().NoError(err)
+		s.Require().NotNil(entitlements)
+
+		s.Require().Len(entitlements, 1)
+		entityEntitlement := entitlements[0]
+		s.Equal(resourceValueMultiEntitlementsFQN, entityEntitlement.GetEphemeralId())
+		actionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testPlatformCloudFQN]
+		s.ElementsMatch(actionNames(actionsList.GetActions()), []string{actions.ActionNameCreate, actions.ActionNameRead})
+	})
+
+	// todo: multiple entitlements for multiple attribute values
+
+	s.Run("duplicate entitlements", func() {
+		entitlements, err := pdp.GetEntitlementsRegisteredResource(
+			s.T().Context(),
+			resourceValueDuplicateEntitlementsFQN,
+			false,
+		)
+		s.Require().NoError(err)
+		s.Require().NotNil(entitlements)
+		s.Require().Len(entitlements, 1)
+		entityEntitlement := entitlements[0]
+		s.Equal(resourceValueDuplicateEntitlementsFQN, entityEntitlement.GetEphemeralId())
+		actionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassSecretFQN]
+		s.ElementsMatch(actionNames(actionsList.GetActions()), []string{actions.ActionNameCreate})
+	})
+
+	// todo: comprehensive hierarchy
 }
 
 // Helper functions for all tests

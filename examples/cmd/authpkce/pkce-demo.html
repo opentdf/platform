@@ -182,6 +182,27 @@
   </script>
 </head>
 <body>
+  <script>
+    // Show OAuth2 error from query params if present
+    (function() {
+      const url = new URL(window.location.href);
+      const error = url.searchParams.get('error');
+      const errorDesc = url.searchParams.get('error_description');
+      if (error) {
+        const errorBox = document.createElement('div');
+        errorBox.style.background = '#fed7d7';
+        errorBox.style.color = '#c53030';
+        errorBox.style.padding = '1em';
+        errorBox.style.borderRadius = '0.5em';
+        errorBox.style.marginBottom = '1.5em';
+        errorBox.style.fontWeight = '600';
+        errorBox.style.fontSize = '1.1em';
+        errorBox.style.textAlign = 'center';
+        errorBox.innerHTML = `<b>OAuth2 Error:</b> ${error}<br>${errorDesc ? `<span style='font-weight:400;'>${decodeURIComponent(errorDesc)}</span>` : ''}`;
+        document.body.prepend(errorBox);
+      }
+    })();
+  </script>
   <div class="container mx-auto">
     <h1>PKCE OAuth2 Demo (Keycloak @ localhost:8888)</h1>
 

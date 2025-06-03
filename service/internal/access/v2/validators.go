@@ -102,6 +102,7 @@ func validateAttribute(attribute *policy.Attribute) error {
 // registered resource:
 //
 //   - must not be nil
+//   - must have a non-empty name
 //   - must have non-empty values
 func validateRegisteredResource(registeredResource *policy.RegisteredResource) error {
 	if registeredResource == nil {

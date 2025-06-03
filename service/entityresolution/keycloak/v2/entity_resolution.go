@@ -16,6 +16,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	ent "github.com/opentdf/platform/service/entity"
+	"github.com/opentdf/platform/service/entityresolution/cache"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -43,6 +44,7 @@ type EntityResolutionServiceV2 struct {
 	idpConfig Config
 	logger    *logger.Logger
 	trace.Tracer
+	cache *cache.ResponseCache
 }
 
 type Config struct {
@@ -55,13 +57,13 @@ type Config struct {
 	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty"`
 }
 
-func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger) (*EntityResolutionServiceV2, serviceregistry.HandlerServer) {
+func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger, cache *cache.ResponseCache) (*EntityResolutionServiceV2, serviceregistry.HandlerServer) {
 	var inputIdpConfig Config
 	if err := mapstructure.Decode(config, &inputIdpConfig); err != nil {
 		panic(err)
 	}
 	logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
-	keycloakSVC := &EntityResolutionServiceV2{idpConfig: inputIdpConfig, logger: logger}
+	keycloakSVC := &EntityResolutionServiceV2{idpConfig: inputIdpConfig, logger: logger, cache: cache}
 	return keycloakSVC, nil
 }
 
@@ -69,8 +71,28 @@ func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *con
 	ctx, span := s.Tracer.Start(ctx, "ResolveEntities")
 	defer span.End()
 
+	// If cache is enabled
+	if s.cache.IsEnabled() {
+		cached, err := s.cache.Get(ctx, req.Msg.String())
+		if err != nil {
+			s.logger.WarnContext(ctx, "failed to get cached response, proceeding with direct retrieval", slog.Any("error", err))
+		} else {
+			return connect.NewResponse(cached), nil
+		}
+	}
+
 	resp, err := EntityResolution(ctx, req.Msg, s.idpConfig, s.logger)
-	return connect.NewResponse(&resp), err
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to resolve entities", slog.Any("error", err))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to resolve entities: %w", err))
+	}
+
+	if s.cache.IsEnabled() {
+		if err := s.cache.Set(ctx, req.Msg.String(), &resp); err != nil {
+			s.logger.WarnContext(ctx, "failed to set response in cache, returning without caching", slog.Any("error", err))
+		}
+	}
+	return connect.NewResponse(&resp), nil
 }
 
 func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {

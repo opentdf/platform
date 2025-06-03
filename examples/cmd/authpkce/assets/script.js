@@ -336,7 +336,7 @@ async function sha256B64(str) {
   return btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function signDpopJwt({ htm, htu, accessToken, jwk, keyPair }) {
+async function signDpopJwt({ htm, htu, accessToken, jwk, keyPair, nonce }) {
   // Minimal DPoP JWT implementation for demo
   const header = {
     alg: 'ES256', // Algorithm must match key type
@@ -349,7 +349,8 @@ async function signDpopJwt({ htm, htu, accessToken, jwk, keyPair }) {
     htu, // HTTP URL
     iat,
     jti: randomString(32), // JWT ID for replay protection
-    ...(accessToken ? { ath: await sha256B64(accessToken) } : {}) // Access Token Hash
+    ...(accessToken ? { ath: await sha256B64(accessToken) } : {}), // Access Token Hash
+    ...(nonce ? { nonce } : {}) // DPoP Nonce if provided
   };
 
   function base64url(obj) {
@@ -440,39 +441,48 @@ async function handleRedirect() {
     'redirect_uri=' + encodeURIComponent(config.redirectUri)
   ].join('&');
 
-  const opts = {
+  let opts = {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body
   };
 
-  // DPoP header for token endpoint
-  if (useDpop) {
-    await restoreDpopKeyPair();
-    if (!dpopKeyPair || !dpopPublicKeyJwk) {
-      showMessageBox('DPoP key missing after redirect. Please log in again with DPoP enabled.');
+  let nonce = undefined;
+  let attempt = 0;
+  while (attempt < 2) {
+    if (useDpop) {
+      await restoreDpopKeyPair();
+      if (!dpopKeyPair || !dpopPublicKeyJwk) {
+        showMessageBox('DPoP key missing after redirect. Please log in again with DPoP enabled.');
+        return false;
+      }
+      // Always use the canonical URL for the token endpoint as htu
+      const htu = config.tokenUrl;
+      opts.headers['DPoP'] = await signDpopJwt({ htm: 'POST', htu, jwk: dpopPublicKeyJwk, keyPair: dpopKeyPair, nonce });
+    }
+    try {
+      const resp = await fetch(config.tokenUrl, opts);
+      const data = await resp.json();
+      if (data.access_token) {
+        saveTokens(data);
+        window.history.replaceState({}, '', config.redirectUri);
+        setLoggedIn(true);
+        return true;
+      } else if ((resp.status === 400 || resp.status === 401) && resp.headers.has('DPoP-Nonce') && attempt === 0) {
+        // Retry with nonce from header
+        nonce = resp.headers.get('DPoP-Nonce');
+        attempt++;
+        continue;
+      } else {
+        showMessageBox('Token exchange failed: ' + JSON.stringify(data, null, 2));
+        console.error('Token exchange failed:', data);
+        return false;
+      }
+    } catch (e) {
+      showMessageBox('Token exchange error: ' + e.message);
+      console.error('Token exchange error:', e);
       return false;
     }
-    // Always use the canonical URL for the token endpoint as htu
-    const htu = config.tokenUrl;
-    opts.headers['DPoP'] = await signDpopJwt({ htm: 'POST', htu, jwk: dpopPublicKeyJwk, keyPair: dpopKeyPair });
-  }
-
-  try {
-    const resp = await fetch(config.tokenUrl, opts);
-    const data = await resp.json();
-
-    if (data.access_token) {
-      saveTokens(data);
-      window.history.replaceState({}, '', config.redirectUri);
-      setLoggedIn(true);
-    } else {
-      showMessageBox('Token exchange failed: ' + JSON.stringify(data, null, 2));
-      console.error('Token exchange failed:', data);
-    }
-  } catch (e) {
-    showMessageBox('Token exchange error: ' + e.message);
-    console.error('Token exchange error:', e);
   }
   return true;
 }

@@ -327,8 +327,8 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 		return nil, err
 	}
 
-	registeredResourceValue, ok := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
-	if !ok {
+	registeredResourceValue, found := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
+	if !found {
 		return nil, fmt.Errorf("registered resource value not found for FQN [%s]", registeredResourceValueFQN)
 	}
 

@@ -46,11 +46,11 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	return &serviceregistry.Service[resourcemappingconnect.ResourceMappingServiceHandler]{
 		Close: rmSvc.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[resourcemappingconnect.ResourceMappingServiceHandler]{
-			Namespace:       ns,
-			DB:              dbRegister,
-			ServiceDesc:     &resourcemapping.ResourceMappingService_ServiceDesc,
-			ConnectRPCFunc:  resourcemappingconnect.NewResourceMappingServiceHandler,
-			OnConfigUpdate:  onUpdateConfigHook,
+			Namespace:      ns,
+			DB:             dbRegister,
+			ServiceDesc:    &resourcemapping.ResourceMappingService_ServiceDesc,
+			ConnectRPCFunc: resourcemappingconnect.NewResourceMappingServiceHandler,
+			OnConfigUpdate: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (resourcemappingconnect.ResourceMappingServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)

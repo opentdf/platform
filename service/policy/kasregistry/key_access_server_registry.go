@@ -58,11 +58,11 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	return &serviceregistry.Service[kasregistryconnect.KeyAccessServerRegistryServiceHandler]{
 		Close: kasrSvc.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[kasregistryconnect.KeyAccessServerRegistryServiceHandler]{
-			Namespace:       ns,
-			DB:              dbRegister,
-			ServiceDesc:     &kasr.KeyAccessServerRegistryService_ServiceDesc,
-			ConnectRPCFunc:  kasregistryconnect.NewKeyAccessServerRegistryServiceHandler,
-			OnConfigUpdate:  onUpdateConfigHook,
+			Namespace:      ns,
+			DB:             dbRegister,
+			ServiceDesc:    &kasr.KeyAccessServerRegistryService_ServiceDesc,
+			ConnectRPCFunc: kasregistryconnect.NewKeyAccessServerRegistryServiceHandler,
+			OnConfigUpdate: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasregistryconnect.KeyAccessServerRegistryServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)

@@ -78,5 +78,7 @@ jobs:
         working-directory: platform
   ci-checks:
     permissions:
+      checks: write
       contents: read
+      pull-requests: read
     uses: opentdf/platform/.github/workflows/checks.yaml@main

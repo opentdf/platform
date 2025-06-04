@@ -35,15 +35,6 @@ func (c PlatformConfiguration) TokenEndpoint() (string, error) {
 	return value, nil
 }
 
-func (c PlatformConfiguration) PublicClientID() (string, error) {
-	idpCfg := c.getIdpConfig()
-	value, ok := idpCfg["public_client_id"].(string)
-	if !ok {
-		return "", ErrPlatformPublicClientIDNotFound
-	}
-	return value, nil
-}
-
 func (c PlatformConfiguration) platformEndpoint() (string, error) {
 	value, ok := c["platform_endpoint"].(string)
 	if !ok {

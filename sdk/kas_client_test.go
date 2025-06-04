@@ -131,7 +131,6 @@ func Test_StoreKASKeys(t *testing.T) {
 				"issuer":                 "https://example.org",
 				"authorization_endpoint": "https://example.org/auth",
 				"token_endpoint":         "https://example.org/token",
-				"public_client_id":       "myclient",
 			},
 		}),
 	)

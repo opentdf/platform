@@ -40,6 +40,7 @@ type HelloReply struct {
 	Message string `json:"message"`
 }
 
+var platformEndpointWithProtocol = "http://localhost:8080"
 var platformEndpoint = "localhost:8080"
 
 func encryptString(input string, sdk *otdf.SDK) (string, error) {
@@ -117,7 +118,7 @@ func (trs testReadyService) EncryptNameHandler() func(w http.ResponseWriter, r *
 FIXME: Use the given sdkClient, rather than replacing it.
 */
 func newSdkClientHack(_ *otdf.SDK) (*otdf.SDK, error) {
-	sdkClient, err := otdf.New(platformEndpoint,
+	sdkClient, err := otdf.New(platformEndpointWithProtocol,
 		otdf.WithPlatformConfiguration(otdf.PlatformConfiguration{}),
 		otdf.WithInsecurePlaintextConn(),
 		otdf.WithStoreCollectionHeaders(),

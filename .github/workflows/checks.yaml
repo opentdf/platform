@@ -480,26 +480,33 @@ jobs:
         options: >-
           --health-cmd="pg_isready -U testuser" --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.4.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - name: Install goose
         run: go install github.com/pressly/goose/v3/cmd/goose@latest
       - name: Wait for Postgres
         run: |
           for i in {1..30}; do
-            pg_isready -h localhost -U testuser && break
+            pg_isready -h localhost -U "$POSTGRES_USER" -d "$POSTGRES_DB" && break
             sleep 1
           done
       - name: Run goose up
         env:
-          PGUSER: testuser
-          PGPASSWORD: testpass
+          PGUSER: "$POSTGRES_USER"
+          PGPASSWORD: "$POSTGRES_PASSWORD"
+          PGDB: "$POSTGRES_DB"
         run: |
-          export PATH=$PATH:$(go env GOPATH)/bin
-          goose -dir ./service/policy/db/migrations postgres "host=localhost port=5432 user=testuser password=testpass dbname=testdb sslmode=disable" up
+          GOPATH_BIN=$(go env GOPATH)/bin
+          export PATH="$PATH:$GOPATH_BIN"
+          goose -dir ./service/policy/db/migrations postgres "host=localhost port=5432 user=$PGUSER password=$PGPASSWORD dbname=$PGDB sslmode=disable" up
       - name: Run goose down
         env:
-          PGUSER: testuser
-          PGPASSWORD: testpass
+          PGUSER: "$POSTGRES_USER"
+          PGPASSWORD: "$POSTGRES_PASSWORD"
+          PGDB: "$POSTGRES_DB"
         run: |
-          export PATH=$PATH:$(go env GOPATH)/bin
-          goose -dir ./service/policy/db/migrations postgres "host=localhost port=5432 user=testuser password=testpass dbname=testdb sslmode=disable" down --all
+          GOPATH_BIN=$(go env GOPATH)/bin
+          export PATH="$PATH:$GOPATH_BIN"
+          goose -dir ./service/policy/db/migrations postgres "host=localhost port=5432 user=$PGUSER password=$PGPASSWORD dbname=$PGDB sslmode=disable" down --all

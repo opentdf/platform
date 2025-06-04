@@ -264,7 +264,6 @@ func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
 			},
 		},
 	}
-
 	err := getValidator().Validate(req)
 	require.NoError(t, err)
 
@@ -276,7 +275,6 @@ func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
 			},
 		},
 	}
-
 	err = getValidator().Validate(req)
 	require.NoError(t, err)
 }

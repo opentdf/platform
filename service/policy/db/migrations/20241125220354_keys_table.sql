@@ -312,7 +312,7 @@ DROP TRIGGER IF EXISTS maintain_active_key;
 
 DROP FUNCTION IF EXISTS update_active_key;
 
-DROP FUNCTION IF EXISTS update_was_mapped ();
+DROP FUNCTION IF EXISTS update_was_mapped;
 
 DROP TABLE public_keys;
 

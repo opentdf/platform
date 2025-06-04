@@ -465,3 +465,41 @@ jobs:
           "$(go env GOROOT)"/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
           check --disallowed_types=forbidden --include_tests
           ./examples
+  migrate:
+    name: goose migrate up and down
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U testuser" --health-interval=10s --health-timeout=5s --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install goose
+        run: go install github.com/pressly/goose/v3/cmd/goose@latest
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -U testuser && break
+            sleep 1
+          done
+      - name: Run goose up
+        env:
+          PGUSER: testuser
+          PGPASSWORD: testpass
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+          goose -dir ./service/policy/db/migrations postgres "host=localhost port=5432 user=testuser password=testpass dbname=testdb sslmode=disable" up
+      - name: Run goose down
+        env:
+          PGUSER: testuser
+          PGPASSWORD: testpass
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+          goose -dir ./service/policy/db/migrations postgres "host=localhost port=5432 user=testuser password=testpass dbname=testdb sslmode=disable" down --all

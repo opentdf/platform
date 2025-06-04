@@ -88,6 +88,16 @@ var (
 	testPlatformHybridFQN = createAttrValueFQN(testSecondaryNamespace, "platform", "hybrid")
 )
 
+// Registered resource value FQNs using identifier package
+var (
+	regResValNoActionAttrValFQN                     string
+	regResValSingleActionAttrValFQN                 string
+	regResValDuplicateActionAttrValFQN              string
+	regResValMultiActionSingleAttrValFQN            string
+	regResValMultiActionMultiAttrValFQN             string
+	regResValComprehensiveHierarchyActionAttrValFQN string
+)
+
 // Standard action definitions used across tests
 var (
 	testActionRead   = &policy.Action{Name: actions.ActionNameRead}
@@ -127,7 +137,13 @@ type PDPTestSuite struct {
 		analystEntity   *entityresolutionV2.EntityRepresentation
 
 		// Test registered resources
-		simpleRegisteredResource *policy.RegisteredResource
+		regRes                                       *policy.RegisteredResource
+		regResValNoActionAttrVal                     *policy.RegisteredResourceValue
+		regResValSingleActionAttrVal                 *policy.RegisteredResourceValue
+		regResValDuplicateActionAttrVal              *policy.RegisteredResourceValue
+		regResValMultiActionSingleAttrVal            *policy.RegisteredResourceValue
+		regResValMultiActionMultiAttrVal             *policy.RegisteredResourceValue
+		regResValComprehensiveHierarchyActionAttrVal *policy.RegisteredResourceValue
 	}
 }
 
@@ -338,14 +354,125 @@ func (s *PDPTestSuite) SetupTest() {
 	})
 
 	// Initialize test registered resources
-	s.fixtures.simpleRegisteredResource = &policy.RegisteredResource{
-		Name: "simple-resource",
-		Values: []*policy.RegisteredResourceValue{
+	regResValNoActionAttrVal := &policy.RegisteredResourceValue{
+		Value:                 "no-action-attr-val",
+		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{},
+	}
+	regResValSingleActionAttrVal := &policy.RegisteredResourceValue{
+		Value: "single-action-attr-val",
+		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
 			{
-				Value: "test-value",
+				Action: testActionCreate,
+				AttributeValue: &policy.Value{
+					Fqn:   testClassSecretFQN,
+					Value: "secret",
+				},
 			},
 		},
 	}
+	regResValDuplicateActionAttrVal := &policy.RegisteredResourceValue{
+		Value: "duplicate-action-attr-val",
+		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+			{
+				Action: testActionCreate,
+				AttributeValue: &policy.Value{
+					Fqn:   testClassSecretFQN,
+					Value: "secret",
+				},
+			},
+			{
+				Action: testActionCreate,
+				AttributeValue: &policy.Value{
+					Fqn:   testClassSecretFQN,
+					Value: "secret",
+				},
+			},
+		},
+	}
+	regResValMultiActionSingleAttrVal := &policy.RegisteredResourceValue{
+		Value: "multi-action-single-attr-val",
+		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+			{
+				Action: testActionCreate,
+				AttributeValue: &policy.Value{
+					Fqn:   testPlatformCloudFQN,
+					Value: "cloud",
+				},
+			},
+			{
+				Action: testActionRead,
+				AttributeValue: &policy.Value{
+					Fqn:   testPlatformCloudFQN,
+					Value: "cloud",
+				},
+			},
+		},
+	}
+	regResValMultiActionMultiAttrVal := &policy.RegisteredResourceValue{
+		Value: "multi-action-multi-attr-val",
+		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+			{
+				Action: testActionCreate,
+				AttributeValue: &policy.Value{
+					Fqn:   testClassSecretFQN,
+					Value: "secret",
+				},
+			},
+			{
+				Action: testActionUpdate,
+				AttributeValue: &policy.Value{
+					Fqn:   testPlatformCloudFQN,
+					Value: "cloud",
+				},
+			},
+			{
+				Action: testActionDelete,
+				AttributeValue: &policy.Value{
+					Fqn:   testPlatformCloudFQN,
+					Value: "cloud",
+				},
+			},
+		},
+	}
+	regResValComprehensiveHierarchyActionAttrVal := &policy.RegisteredResourceValue{
+		Value: "comprehensive-hierarchy-action-attr-val",
+		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+			{
+				Action: testActionRead,
+				AttributeValue: &policy.Value{
+					Fqn:   testClassSecretFQN,
+					Value: "secret",
+				},
+			},
+		},
+	}
+
+	regRes := &policy.RegisteredResource{
+		Name: "test-res",
+		Values: []*policy.RegisteredResourceValue{
+			regResValNoActionAttrVal,
+			regResValSingleActionAttrVal,
+			regResValDuplicateActionAttrVal,
+			regResValMultiActionSingleAttrVal,
+			regResValMultiActionMultiAttrVal,
+			regResValComprehensiveHierarchyActionAttrVal,
+		},
+	}
+
+	s.fixtures.regRes = regRes
+	s.fixtures.regResValNoActionAttrVal = regResValNoActionAttrVal
+	s.fixtures.regResValSingleActionAttrVal = regResValSingleActionAttrVal
+	s.fixtures.regResValDuplicateActionAttrVal = regResValDuplicateActionAttrVal
+	s.fixtures.regResValMultiActionSingleAttrVal = regResValMultiActionSingleAttrVal
+	s.fixtures.regResValMultiActionMultiAttrVal = regResValMultiActionMultiAttrVal
+	s.fixtures.regResValComprehensiveHierarchyActionAttrVal = regResValComprehensiveHierarchyActionAttrVal
+
+	regResValNoActionAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValNoActionAttrVal.GetValue())
+	regResValSingleActionAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValSingleActionAttrVal.GetValue())
+	regResValDuplicateActionAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValDuplicateActionAttrVal.GetValue())
+	regResValMultiActionSingleAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValMultiActionSingleAttrVal.GetValue())
+	regResValMultiActionMultiAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValMultiActionMultiAttrVal.GetValue())
+	regResValComprehensiveHierarchyActionAttrValFQN = createRegisteredResourceValueFQN(regRes.GetName(), regResValComprehensiveHierarchyActionAttrVal.GetValue())
 }
 
 // TestPDPSuite runs the test suite
@@ -368,7 +495,7 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint() {
 			name:                "valid initialization",
 			attributes:          []*policy.Attribute{f.classificationAttr, f.departmentAttr, f.countryAttr},
 			subjectMappings:     []*policy.SubjectMapping{f.secretMapping, f.confidentialMapping, f.rndMapping},
-			registeredResources: []*policy.RegisteredResource{f.simpleRegisteredResource},
+			registeredResources: []*policy.RegisteredResource{f.regRes},
 			expectError:         false,
 		},
 		{
@@ -1803,82 +1930,14 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 }
 
 func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
-	resourceValueNoEntitlements := &policy.RegisteredResourceValue{
-		Value:                 "no-entitlements",
-		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{},
-	}
-	resourceValueSingleEntitlement := &policy.RegisteredResourceValue{
-		Value: "single",
-		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
-			{
-				Action: testActionCreate,
-				AttributeValue: &policy.Value{
-					Fqn:   testClassSecretFQN,
-					Value: "secret",
-				},
-			},
-		},
-	}
-	resourceValueMultiEntitlements := &policy.RegisteredResourceValue{
-		Value: "multi",
-		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
-			{
-				Action: testActionCreate,
-				AttributeValue: &policy.Value{
-					Fqn:   testPlatformCloudFQN,
-					Value: "cloud",
-				},
-			},
-			{
-				Action: testActionRead,
-				AttributeValue: &policy.Value{
-					Fqn:   testPlatformCloudFQN,
-					Value: "cloud",
-				},
-			},
-		},
-	}
-	resourceValueDuplicateEntitlements := &policy.RegisteredResourceValue{
-		Value: "duplicate",
-		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
-			{
-				Action: testActionCreate,
-				AttributeValue: &policy.Value{
-					Fqn:   testClassSecretFQN,
-					Value: "secret",
-				},
-			},
-			{
-				Action: testActionCreate,
-				AttributeValue: &policy.Value{
-					Fqn:   testClassSecretFQN,
-					Value: "secret",
-				},
-			},
-		},
-	}
-
-	resource := &policy.RegisteredResource{
-		Name: "test-res",
-		Values: []*policy.RegisteredResourceValue{
-			resourceValueNoEntitlements,
-			resourceValueSingleEntitlement,
-			resourceValueMultiEntitlements,
-			resourceValueDuplicateEntitlements,
-		},
-	}
-
-	resourceValueNoEntitlementsFQN := createRegisteredResourceValueFQN(resource.GetName(), resourceValueNoEntitlements.GetValue())
-	resourceValueSingleEntitlementFQN := createRegisteredResourceValueFQN(resource.GetName(), resourceValueSingleEntitlement.GetValue())
-	resourceValueMultiEntitlementsFQN := createRegisteredResourceValueFQN(resource.GetName(), resourceValueMultiEntitlements.GetValue())
-	resourceValueDuplicateEntitlementsFQN := createRegisteredResourceValueFQN(resource.GetName(), resourceValueDuplicateEntitlements.GetValue())
+	f := s.fixtures
 
 	pdp, err := NewPolicyDecisionPoint(
 		s.T().Context(),
 		s.logger,
-		[]*policy.Attribute{},
+		[]*policy.Attribute{f.classificationAttr},
 		[]*policy.SubjectMapping{},
-		[]*policy.RegisteredResource{resource},
+		[]*policy.RegisteredResource{f.regRes},
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1907,70 +1966,116 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 		s.Require().Nil(entitlements)
 	})
 
-	s.Run("no entitlements", func() {
+	s.Run("no action attribute values", func() {
 		entitlements, err := pdp.GetEntitlementsRegisteredResource(
 			s.T().Context(),
-			resourceValueNoEntitlementsFQN,
+			regResValNoActionAttrValFQN,
 			false,
 		)
+
 		s.Require().NoError(err)
 		s.Require().NotNil(entitlements)
 		s.Require().Len(entitlements, 1)
 		entityEntitlement := entitlements[0]
-		s.Equal(resourceValueNoEntitlementsFQN, entityEntitlement.GetEphemeralId())
+		s.Equal(regResValNoActionAttrValFQN, entityEntitlement.GetEphemeralId())
 		s.Require().Empty(entityEntitlement.GetActionsPerAttributeValueFqn())
 	})
 
-	s.Run("single entitlement", func() {
+	s.Run("single action attribute value", func() {
 		entitlements, err := pdp.GetEntitlementsRegisteredResource(
 			s.T().Context(),
-			resourceValueSingleEntitlementFQN,
+			regResValSingleActionAttrValFQN,
 			false,
 		)
+
 		s.Require().NoError(err)
 		s.Require().NotNil(entitlements)
-
 		s.Require().Len(entitlements, 1)
 		entityEntitlement := entitlements[0]
-		s.Equal(resourceValueSingleEntitlementFQN, entityEntitlement.GetEphemeralId())
+		s.Equal(regResValSingleActionAttrValFQN, entityEntitlement.GetEphemeralId())
 		actionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassSecretFQN]
 		s.ElementsMatch(actionNames(actionsList.GetActions()), []string{actions.ActionNameCreate})
 	})
 
-	s.Run("multiple entitlements", func() {
+	s.Run("duplicate action attribute values", func() {
 		entitlements, err := pdp.GetEntitlementsRegisteredResource(
 			s.T().Context(),
-			resourceValueMultiEntitlementsFQN,
+			regResValDuplicateActionAttrValFQN,
 			false,
 		)
 		s.Require().NoError(err)
 		s.Require().NotNil(entitlements)
-
 		s.Require().Len(entitlements, 1)
 		entityEntitlement := entitlements[0]
-		s.Equal(resourceValueMultiEntitlementsFQN, entityEntitlement.GetEphemeralId())
+		s.Equal(regResValDuplicateActionAttrValFQN, entityEntitlement.GetEphemeralId())
+		actionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassSecretFQN]
+		s.ElementsMatch(actionNames(actionsList.GetActions()), []string{actions.ActionNameCreate})
+	})
+
+	s.Run("multiple actions single attribute value", func() {
+		entitlements, err := pdp.GetEntitlementsRegisteredResource(
+			s.T().Context(),
+			regResValMultiActionSingleAttrValFQN,
+			false,
+		)
+
+		s.Require().NoError(err)
+		s.Require().NotNil(entitlements)
+		s.Require().Len(entitlements, 1)
+		entityEntitlement := entitlements[0]
+		s.Equal(regResValMultiActionSingleAttrValFQN, entityEntitlement.GetEphemeralId())
 		actionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testPlatformCloudFQN]
 		s.ElementsMatch(actionNames(actionsList.GetActions()), []string{actions.ActionNameCreate, actions.ActionNameRead})
 	})
 
-	// todo: multiple entitlements for multiple attribute values
-
-	s.Run("duplicate entitlements", func() {
+	s.Run("multiple actions multiple attribute values", func() {
 		entitlements, err := pdp.GetEntitlementsRegisteredResource(
 			s.T().Context(),
-			resourceValueDuplicateEntitlementsFQN,
+			regResValMultiActionMultiAttrValFQN,
 			false,
 		)
+
 		s.Require().NoError(err)
 		s.Require().NotNil(entitlements)
 		s.Require().Len(entitlements, 1)
 		entityEntitlement := entitlements[0]
-		s.Equal(resourceValueDuplicateEntitlementsFQN, entityEntitlement.GetEphemeralId())
-		actionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassSecretFQN]
-		s.ElementsMatch(actionNames(actionsList.GetActions()), []string{actions.ActionNameCreate})
+		s.Equal(regResValMultiActionMultiAttrValFQN, entityEntitlement.GetEphemeralId())
+		secretActionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassSecretFQN]
+		s.ElementsMatch(actionNames(secretActionsList.GetActions()), []string{actions.ActionNameCreate})
+		cloudActionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testPlatformCloudFQN]
+		s.ElementsMatch(actionNames(cloudActionsList.GetActions()), []string{actions.ActionNameUpdate, actions.ActionNameDelete})
 	})
 
-	// todo: comprehensive hierarchy
+	s.Run(" comprehensive hierarchy action attribute value", func() {
+		entitlements, err := pdp.GetEntitlementsRegisteredResource(
+			s.T().Context(),
+			regResValComprehensiveHierarchyActionAttrValFQN,
+			true, // With comprehensive hierarchy
+		)
+
+		s.Require().NoError(err)
+		s.Require().NotNil(entitlements)
+		s.Require().Len(entitlements, 1)
+		entityEntitlement := entitlements[0]
+		s.Equal(regResValComprehensiveHierarchyActionAttrValFQN, entityEntitlement.GetEphemeralId())
+
+		actionsPerAttributeValueFQN := entityEntitlement.GetActionsPerAttributeValueFqn()
+
+		// secret should give access to all lower classifications (secret > confidential > public))
+		s.Contains(actionsPerAttributeValueFQN, testClassSecretFQN)
+		s.Contains(actionsPerAttributeValueFQN, testClassConfidentialFQN)
+		s.Contains(actionsPerAttributeValueFQN, testClassPublicFQN)
+
+		// but not higher classifications
+		s.NotContains(actionsPerAttributeValueFQN, testClassTopSecretFQN)
+
+		// all actions for secret, confidential, and public should be the same
+		secretActions := actionsPerAttributeValueFQN[testClassSecretFQN]
+		confidentialActions := actionsPerAttributeValueFQN[testClassConfidentialFQN]
+		publicActions := actionsPerAttributeValueFQN[testClassPublicFQN]
+		s.ElementsMatch(actionNames(secretActions.GetActions()), actionNames(confidentialActions.GetActions()))
+		s.ElementsMatch(actionNames(secretActions.GetActions()), actionNames(publicActions.GetActions()))
+	})
 }
 
 // Helper functions for all tests

@@ -57,6 +57,35 @@ To enable distributed tracing with Jaeger:
 
 Note: When using the file provider (`name: file`), traces will be written to local files instead of being sent to Jaeger.
 
+## API Documentation Generation
+
+To generate all protobuf, gRPC, and OpenAPI documentation (including OpenAPI v2 and v3.1 for ConnectRPC), run:
+
+```fish
+make proto-generate
+```
+
+This will output documentation to `docs/openapi` and `docs/grpc`.
+
+### Required Tools
+
+Install the following tools if you haven't already:
+
+```fish
+# Install buf
+brew install bufbuild/buf/buf
+# or
+go install github.com/bufbuild/buf/cmd/buf@latest
+
+# Install protoc-gen-doc
+go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1
+
+# Install protoc-gen-connect-openapi
+go install github.com/sudorandom/protoc-gen-connect-openapi@latest
+```
+
+Make sure your Go bin directory (usually `$HOME/go/bin`) is in your `PATH`.
+
 ## Advice for Code Contributors
 
 * Make sure to run our linters with `make lint`

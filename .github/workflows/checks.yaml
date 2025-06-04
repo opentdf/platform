@@ -284,7 +284,7 @@ jobs:
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
           {
             echo "BENCHMARK_NANO_OUTPUT<<EOO";
-            echo "$OUTPUT";
+            echo "$OUTPUT"
             echo "EOO"
           } >> "$GITHUB_ENV"
       - name: collect the metrics from the benchmark tests
@@ -403,9 +403,12 @@ jobs:
             examples/go.sum
       - run: cd service && go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: cd service && go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+      - run: cd service && go install github.com/sudorandom/protoc-gen-connect-openapi@latest
       - run: make proto-generate
       - name: generate connect wrappers
         run: make connect-wrapper-generate
+      # Ensure all generated files are staged before checking for diffs
+      - run: git add docs/openapi/* docs/grpc/* || true
       - name: Restore go.mod after installing protoc-gen-doc
         run: git restore {service,protocol/go}/go.{mod,sum}
       - name: validate go mod tidy

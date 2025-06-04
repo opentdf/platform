@@ -433,16 +433,13 @@ service AttributesService {
    * Attribute RPCs
    *---------------------------------------*/
   rpc ListAttributes(ListAttributesRequest) returns (ListAttributesResponse) {
-    option (google.api.http) = {get: "/attributes"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc ListAttributeValues(ListAttributeValuesRequest) returns (ListAttributeValuesResponse) {
-    option (google.api.http) = {get: "/attributes/*/values"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc GetAttribute(GetAttributeRequest) returns (GetAttributeResponse) {
-    option (google.api.http) = {get: "/attributes/{id}"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetAttributeValuesByFqns(GetAttributeValuesByFqnsRequest) returns (GetAttributeValuesByFqnsResponse) {
@@ -450,77 +447,35 @@ service AttributesService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  rpc CreateAttribute(CreateAttributeRequest) returns (CreateAttributeResponse) {
-    option (google.api.http) = {
-      post: "/attributes"
-      body: "*"
-    };
-  }
+  rpc CreateAttribute(CreateAttributeRequest) returns (CreateAttributeResponse) {}
 
-  rpc UpdateAttribute(UpdateAttributeRequest) returns (UpdateAttributeResponse) {
-    option (google.api.http) = {
-      patch: "/attributes/{id}"
-      body: "*"
-    };
-  }
+  rpc UpdateAttribute(UpdateAttributeRequest) returns (UpdateAttributeResponse) {}
 
-  rpc DeactivateAttribute(DeactivateAttributeRequest) returns (DeactivateAttributeResponse) {
-    option (google.api.http) = {delete: "/attributes/{id}"};
-  }
+  rpc DeactivateAttribute(DeactivateAttributeRequest) returns (DeactivateAttributeResponse) {}
 
   /*--------------------------------------*
    * Value RPCs
    *---------------------------------------*/
   rpc GetAttributeValue(GetAttributeValueRequest) returns (GetAttributeValueResponse) {
-    option (google.api.http) = {get: "/attributes/*/values/{id}"};
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  rpc CreateAttributeValue(CreateAttributeValueRequest) returns (CreateAttributeValueResponse) {
-    option (google.api.http) = {
-      post: "/attributes/{attribute_id}/values"
-      body: "*"
-    };
-  }
+  rpc CreateAttributeValue(CreateAttributeValueRequest) returns (CreateAttributeValueResponse) {}
 
-  rpc UpdateAttributeValue(UpdateAttributeValueRequest) returns (UpdateAttributeValueResponse) {
-    option (google.api.http) = {
-      patch: "/attributes/*/values/{id}"
-      body: "*"
-    };
-  }
+  rpc UpdateAttributeValue(UpdateAttributeValueRequest) returns (UpdateAttributeValueResponse) {}
 
-  rpc DeactivateAttributeValue(DeactivateAttributeValueRequest) returns (DeactivateAttributeValueResponse) {
-    option (google.api.http) = {delete: "/attributes/*/values/{id}"};
-  }
+  rpc DeactivateAttributeValue(DeactivateAttributeValueRequest) returns (DeactivateAttributeValueResponse) {}
 
   /*--------------------------------------*
    * Attribute <> Key Access Server RPCs
    *---------------------------------------*/
-  rpc AssignKeyAccessServerToAttribute(AssignKeyAccessServerToAttributeRequest) returns (AssignKeyAccessServerToAttributeResponse) {
-    option (google.api.http) = {
-      post: "/attributes/keyaccessserver/grants"
-      body: "attribute_key_access_server"
-    };
-  }
+  rpc AssignKeyAccessServerToAttribute(AssignKeyAccessServerToAttributeRequest) returns (AssignKeyAccessServerToAttributeResponse) {}
 
-  rpc RemoveKeyAccessServerFromAttribute(RemoveKeyAccessServerFromAttributeRequest) returns (RemoveKeyAccessServerFromAttributeResponse) {
-    option (google.api.http) = {
-      delete: "/attributes/keyaccessserver/grants"
-    };
-  }
+  rpc RemoveKeyAccessServerFromAttribute(RemoveKeyAccessServerFromAttributeRequest) returns (RemoveKeyAccessServerFromAttributeResponse) {}
 
-  rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {
-    option (google.api.http) = {
-      post: "/attributes/values/keyaccessserver/grants"
-      body: "value_key_access_server"
-    };
-  }
+  rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {}
 
-  rpc RemoveKeyAccessServerFromValue(RemoveKeyAccessServerFromValueRequest) returns (RemoveKeyAccessServerFromValueResponse) {
-    option (google.api.http) = {
-      delete: "/attributes/values/keyaccessserver/grants"
-    };
-  }
+  rpc RemoveKeyAccessServerFromValue(RemoveKeyAccessServerFromValueRequest) returns (RemoveKeyAccessServerFromValueResponse) {}
 
   /*--------------------------------------*
   * Attribute <> Key RPCs

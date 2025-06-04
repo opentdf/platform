@@ -1,0 +1,100 @@
+openapi: 3.1.0
+info:
+  title: entity
+paths: {}
+components:
+  schemas:
+    entity.Entity.Category:
+      type: string
+      title: Category
+      enum:
+        - CATEGORY_UNSPECIFIED
+        - CATEGORY_SUBJECT
+        - CATEGORY_ENVIRONMENT
+    entity.Entity:
+      type: object
+      oneOf:
+        - properties:
+            claims:
+              title: claims
+              description: used by ERS claims mode
+              $ref: '#/components/schemas/google.protobuf.Any'
+          title: claims
+          required:
+            - claims
+        - properties:
+            clientId:
+              type: string
+              title: client_id
+          title: client_id
+          required:
+            - clientId
+        - properties:
+            emailAddress:
+              type: string
+              title: email_address
+          title: email_address
+          required:
+            - emailAddress
+        - properties:
+            userName:
+              type: string
+              title: user_name
+          title: user_name
+          required:
+            - userName
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
+        category:
+          title: category
+          $ref: '#/components/schemas/entity.Entity.Category'
+      title: Entity
+      additionalProperties: false
+      description: PE (Person Entity) or NPE (Non-Person Entity)
+    entity.EntityChain:
+      type: object
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/entity.Entity'
+          title: entities
+      title: EntityChain
+      additionalProperties: false
+      description: A set of related PE and NPE
+    entity.Token:
+      type: object
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
+        jwt:
+          type: string
+          title: jwt
+          description: the token
+      title: Token
+      required:
+        - jwt
+      additionalProperties: false
+    google.protobuf.Any:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+          format: binary
+        debug:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+security: []

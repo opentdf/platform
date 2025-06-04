@@ -3,7 +3,6 @@ syntax = "proto3";
 package policy.namespaces;
 
 import "buf/validate/validate.proto";
-import "google/api/annotations.proto";
 
 import "common/common.proto";
 import "policy/objects.proto";
@@ -187,46 +186,23 @@ message RemovePublicKeyFromNamespaceResponse {
 
 service NamespaceService {
   rpc GetNamespace(GetNamespaceRequest) returns (GetNamespaceResponse) {
-    option (google.api.http) = {get: "/attributes/namespaces/{id}"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc ListNamespaces(ListNamespacesRequest) returns (ListNamespacesResponse) {
-    option (google.api.http) = {get: "/attributes/namespaces"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  rpc CreateNamespace(CreateNamespaceRequest) returns (CreateNamespaceResponse) {
-    option (google.api.http) = {
-      post: "/attributes/namespaces"
-      body: "*"
-    };
-  }
-  rpc UpdateNamespace(UpdateNamespaceRequest) returns (UpdateNamespaceResponse) {
-    option (google.api.http) = {
-      patch: "/attributes/namespaces/{id}"
-      body: "*"
-    };
-  }
-  rpc DeactivateNamespace(DeactivateNamespaceRequest) returns (DeactivateNamespaceResponse) {
-    option (google.api.http) = {delete: "/attributes/namespaces/{id}"};
-  }
+  rpc CreateNamespace(CreateNamespaceRequest) returns (CreateNamespaceResponse) {}
+  rpc UpdateNamespace(UpdateNamespaceRequest) returns (UpdateNamespaceResponse) {}
+  rpc DeactivateNamespace(DeactivateNamespaceRequest) returns (DeactivateNamespaceResponse) {}
 
    /*--------------------------------------*
    * Namespace <> Key Access Server RPCs
    *---------------------------------------*/
-  rpc AssignKeyAccessServerToNamespace(AssignKeyAccessServerToNamespaceRequest) returns (AssignKeyAccessServerToNamespaceResponse) {
-    option (google.api.http) = {
-      post: "/attributes/namespaces/keyaccessserver/grants"
-      body: "namespace_key_access_server"
-    };
-  }
+  rpc AssignKeyAccessServerToNamespace(AssignKeyAccessServerToNamespaceRequest) returns (AssignKeyAccessServerToNamespaceResponse) {}
 
-  rpc RemoveKeyAccessServerFromNamespace(RemoveKeyAccessServerFromNamespaceRequest) returns (RemoveKeyAccessServerFromNamespaceResponse) {
-    option (google.api.http) = {
-      delete: "/attributes/namespaces/keyaccessserver/grants"
-    };
-  }
+  rpc RemoveKeyAccessServerFromNamespace(RemoveKeyAccessServerFromNamespaceRequest) returns (RemoveKeyAccessServerFromNamespaceResponse) {}
 
   /*--------------------------------------*
    * Namespace <> Key RPCs

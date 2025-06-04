@@ -14,3 +14,6 @@ jobs:
       contents: write
       pull-requests: write
     uses: opentdf/platform/.github/workflows/reusable_release-please.yaml@main
+    secrets:
+      APP_ID: ${{ secrets.APP_ID }}
+      AUTOMATION_KEY: ${{ secrets.AUTOMATION_KEY }}

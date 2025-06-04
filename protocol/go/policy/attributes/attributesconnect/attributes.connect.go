@@ -208,6 +208,7 @@ func NewAttributesServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+AttributesServiceGetAttributeValueProcedure,
 			connect.WithSchema(attributesServiceGetAttributeValueMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createAttributeValue: connect.NewClient[attributes.CreateAttributeValueRequest, attributes.CreateAttributeValueResponse](
@@ -490,6 +491,7 @@ func NewAttributesServiceHandler(svc AttributesServiceHandler, opts ...connect.H
 		AttributesServiceGetAttributeValueProcedure,
 		svc.GetAttributeValue,
 		connect.WithSchema(attributesServiceGetAttributeValueMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceCreateAttributeValueHandler := connect.NewUnaryHandler(

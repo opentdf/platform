@@ -489,24 +489,24 @@ jobs:
       - name: Wait for Postgres
         run: |
           for _ in {1..30}; do
-            pg_isready -h localhost -U "$POSTGRES_USER" -d "$POSTGRES_DB" && break
+            pg_isready -h localhost -U $POSTGRES_USER -d $POSTGRES_DB && break
             sleep 1
           done
       - name: Run goose up
         env:
-          PGUSER: $POSTGRES_USER
-          PGPASSWORD: $POSTGRES_PASSWORD
-          PGDB: $POSTGRES_DB
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
         run: |
           GOPATH_BIN=$(go env GOPATH)/bin
           export PATH="$PATH:$GOPATH_BIN"
-          goose -dir ./service/policy/db/migrations postgres "host=localhost port=5432 user=$PGUSER password=$PGPASSWORD dbname=$PGDB sslmode=disable" up
+          goose -dir ./service/policy/db/migrations postgres "host=localhost port=5432 user=$POSTGRES_USER password=$POSTGRES_PASSWORD dbname=$POSTGRES_DB sslmode=disable" up
       - name: Run goose down
         env:
-          PGUSER: $POSTGRES_USER
-          PGPASSWORD: $POSTGRES_PASSWORD
-          PGDB: $POSTGRES_DB
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
         run: |
           GOPATH_BIN=$(go env GOPATH)/bin
           export PATH="$PATH:$GOPATH_BIN"
-          goose -dir ./service/policy/db/migrations postgres "host=localhost port=5432 user=$PGUSER password=$PGPASSWORD dbname=$PGDB sslmode=disable" down --all
+          goose -dir ./service/policy/db/migrations postgres "host=localhost port=5432 user=$POSTGRES_USER password=$POSTGRES_PASSWORD dbname=$POSTGRES_DB sslmode=disable" down --all

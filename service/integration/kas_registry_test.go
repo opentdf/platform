@@ -768,11 +768,11 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithChildKeys_Fails() {
 		KasId:        createdKas.GetId(),
 		KeyId:        keyID,
 		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P521,
-		KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
-		PublicKeyCtx: &policy.KasPublicKeyCtx{
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{
 			Pem: keyCtx,
 		},
-		PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
 			KeyId:      keyID,
 			WrappedKey: keyCtx,
 		},

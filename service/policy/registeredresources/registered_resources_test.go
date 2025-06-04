@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bufbuild/protovalidate-go"
+	"buf.build/go/protovalidate"
 	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/stretchr/testify/suite"
 )
@@ -42,6 +42,7 @@ const (
 	errMsgOptionalUUID     = "optional_uuid_format"
 	errMsgURI              = "string.uri"
 	errMsgNameFormat       = "rr_name_format"
+	errMsgActionNameFormat = "action_name_format"
 	errMsgValueFormat      = "rr_value_format"
 	errMsgStringPattern    = "string.pattern"
 	errMsgStringMinLen     = "string.min_len"
@@ -368,14 +369,43 @@ func (s *RegisteredResourcesSuite) TestDeleteRegisteredResource_Invalid_Fails() 
 // Create
 
 func (s *RegisteredResourcesSuite) TestCreateRegisteredResourceValue_Valid_Succeeds() {
-	req := &registeredresources.CreateRegisteredResourceValueRequest{
-		ResourceId: validUUID,
-		Value:      validValue,
+	testCases := []struct {
+		name string
+		req  *registeredresources.CreateRegisteredResourceValueRequest
+	}{
+		{
+			name: "Value Only",
+			req: &registeredresources.CreateRegisteredResourceValueRequest{
+				ResourceId: validUUID,
+				Value:      validValue,
+			},
+		},
+		{
+			name: "Value with Action Attribute Values",
+			req: &registeredresources.CreateRegisteredResourceValueRequest{
+				ResourceId: validUUID,
+				Value:      validValue,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
+							ActionId: validUUID,
+						},
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+							AttributeValueId: validUUID,
+						},
+					},
+				},
+			},
+		},
 	}
 
-	err := s.v.Validate(req)
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			err := s.v.Validate(tc.req)
 
-	s.Require().NoError(err)
+			s.Require().NoError(err)
+		})
+	}
 }
 
 func (s *RegisteredResourcesSuite) TestCreateRegisteredResourceValue_Invalid_Succeeds() {
@@ -469,6 +499,119 @@ func (s *RegisteredResourcesSuite) TestCreateRegisteredResourceValue_Invalid_Suc
 				Value:      "invalid-value-",
 			},
 			errMsg: errMsgValueFormat,
+		},
+		{
+			name: "Empty Action Attribute Values Array",
+			req: &registeredresources.CreateRegisteredResourceValueRequest{
+				ResourceId: validUUID,
+				Value:      validValue,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{},
+				},
+			},
+			errMsg: errMsgOneOfRequired,
+		},
+		{
+			name: "Missing Action Attribute Values Action Identifier",
+			req: &registeredresources.CreateRegisteredResourceValueRequest{
+				ResourceId: validUUID,
+				Value:      validValue,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+							AttributeValueId: validUUID,
+						},
+					},
+				},
+			},
+			errMsg: errMsgOneOfRequired,
+		},
+		{
+			name: "Missing Action Attribute Values Attribute Value Identifier",
+			req: &registeredresources.CreateRegisteredResourceValueRequest{
+				ResourceId: validUUID,
+				Value:      validValue,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
+							ActionId: validUUID,
+						},
+					},
+				},
+			},
+			errMsg: errMsgOneOfRequired,
+		},
+		{
+			name: "Invalid Action Attribute Values (invalid Action ID)",
+			req: &registeredresources.CreateRegisteredResourceValueRequest{
+				ResourceId: validUUID,
+				Value:      validValue,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
+							ActionId: invalidUUID,
+						},
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+							AttributeValueId: validUUID,
+						},
+					},
+				},
+			},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Invalid Action Attribute Values (invalid Action Name)",
+			req: &registeredresources.CreateRegisteredResourceValueRequest{
+				ResourceId: validUUID,
+				Value:      validValue,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+							ActionName: invalidName,
+						},
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+							AttributeValueId: validUUID,
+						},
+					},
+				},
+			},
+			errMsg: errMsgActionNameFormat,
+		},
+		{
+			name: "Invalid Action Attribute Values (invalid Attribute Value ID)",
+			req: &registeredresources.CreateRegisteredResourceValueRequest{
+				ResourceId: validUUID,
+				Value:      validValue,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
+							ActionId: validUUID,
+						},
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+							AttributeValueId: invalidUUID,
+						},
+					},
+				},
+			},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Invalid Action Attribute Values (invalid Attribute Value FQN)",
+			req: &registeredresources.CreateRegisteredResourceValueRequest{
+				ResourceId: validUUID,
+				Value:      validValue,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
+							ActionId: validUUID,
+						},
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+							AttributeValueFqn: invalidURI,
+						},
+					},
+				},
+			},
+			errMsg: errMsgURI,
 		},
 	}
 
@@ -682,6 +825,22 @@ func (s *RegisteredResourcesSuite) TestUpdateRegisteredResourceValue_Valid_Succe
 				Value: validValue,
 			},
 		},
+		{
+			name: "ID with Action Attribute Values",
+			req: &registeredresources.UpdateRegisteredResourceValueRequest{
+				Id: validUUID,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
+							ActionId: validUUID,
+						},
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+							AttributeValueId: validUUID,
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -718,6 +877,112 @@ func (s *RegisteredResourcesSuite) TestUpdateRegisteredResourceValue_Invalid_Fai
 				Value: " ",
 			},
 			errMsg: errMsgValueFormat,
+		},
+		{
+			name: "Empty Action Attribute Values Array",
+			req: &registeredresources.UpdateRegisteredResourceValueRequest{
+				Id: validUUID,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{},
+				},
+			},
+			errMsg: errMsgOneOfRequired,
+		},
+		{
+			name: "Missing Action Attribute Values Action Identifier",
+			req: &registeredresources.UpdateRegisteredResourceValueRequest{
+				Id: validUUID,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+							AttributeValueId: validUUID,
+						},
+					},
+				},
+			},
+			errMsg: errMsgOneOfRequired,
+		},
+		{
+			name: "Missing Action Attribute Values Attribute Value Identifier",
+			req: &registeredresources.UpdateRegisteredResourceValueRequest{
+				Id: validUUID,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
+							ActionId: validUUID,
+						},
+					},
+				},
+			},
+			errMsg: errMsgOneOfRequired,
+		},
+		{
+			name: "Invalid Action Attribute Values (invalid Action ID)",
+			req: &registeredresources.UpdateRegisteredResourceValueRequest{
+				Id: validUUID,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
+							ActionId: invalidUUID,
+						},
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+							AttributeValueId: validUUID,
+						},
+					},
+				},
+			},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Invalid Action Attribute Values (invalid Action Name)",
+			req: &registeredresources.UpdateRegisteredResourceValueRequest{
+				Id: validUUID,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+							ActionName: invalidName,
+						},
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+							AttributeValueId: validUUID,
+						},
+					},
+				},
+			},
+			errMsg: errMsgActionNameFormat,
+		},
+		{
+			name: "Invalid Action Attribute Values (invalid Attribute Value ID)",
+			req: &registeredresources.UpdateRegisteredResourceValueRequest{
+				Id: validUUID,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
+							ActionId: validUUID,
+						},
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueId{
+							AttributeValueId: invalidUUID,
+						},
+					},
+				},
+			},
+			errMsg: errMsgUUID,
+		},
+		{
+			name: "Invalid Action Attribute Values (invalid Attribute Value FQN)",
+			req: &registeredresources.UpdateRegisteredResourceValueRequest{
+				Id: validUUID,
+				ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+					{
+						ActionIdentifier: &registeredresources.ActionAttributeValue_ActionId{
+							ActionId: validUUID,
+						},
+						AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+							AttributeValueFqn: invalidURI,
+						},
+					},
+				},
+			},
+			errMsg: errMsgURI,
 		},
 	}
 

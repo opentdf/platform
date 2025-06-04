@@ -21,6 +21,14 @@ const (
 )
 
 func (p *Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
+	if p.KeyDelegator != nil {
+		k, err := p.KeyDelegator.FindKeyByAlgorithm(ctx, algorithm, false)
+		if err == nil {
+			return string(k.ID()), nil
+		}
+		p.Logger.WarnContext(ctx, "KeyIndex.FindKeyByAlgorithm failed", "err", err)
+	}
+
 	if len(p.Keyring) == 0 {
 		p.Logger.WarnContext(ctx, "no default keys found", "algorithm", algorithm)
 		return "", connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("no default keys configured")))
@@ -43,12 +51,6 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 	var pem string
 	var err error
 
-	// Get the security provider
-	idx := p.GetKeyIndex()
-	if idx == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
-	}
-
 	// Find the key ID
 	kid, err := p.lookupKid(ctx, algorithm)
 	if err != nil {
@@ -59,7 +61,7 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 	keyID := trust.KeyIdentifier(kid)
 
 	// Find the key by ID
-	keyDetails, err := idx.FindKeyByID(ctx, keyID)
+	keyDetails, err := p.KeyDelegator.FindKeyByID(ctx, keyID)
 	if err != nil {
 		p.Logger.ErrorContext(ctx, "SecurityProvider.FindKeyByID failed", "err", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
@@ -105,13 +107,6 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 		return nil, err
 	}
 
-	// Get the security provider
-	idx := p.GetKeyIndex()
-	if idx == nil {
-		p.Logger.ErrorContext(ctx, "no security provider available")
-		return nil, connect.NewError(connect.CodeInternal, ErrInternal)
-	}
-
 	// Convert string KID to KeyIdentifier type
 	keyID := trust.KeyIdentifier(kid)
 
@@ -131,7 +126,7 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 	}
 
 	// Find the key by ID
-	keyDetails, err := idx.FindKeyByID(ctx, keyID)
+	keyDetails, err := p.KeyDelegator.FindKeyByID(ctx, keyID)
 	if err != nil {
 		return r("", kid, err)
 	}

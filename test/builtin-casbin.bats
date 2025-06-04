@@ -146,7 +146,10 @@ is_public_endpoint() {
                 [[ "$service" != *"unsafe"* ]] && 
                 is_read_method "$method"]) || 
                [[ "$service/$method" == "authorization.AuthorizationService/GetDecisions" ]] || 
-               [[ "$service/$method" == "authorization.AuthorizationService/GetDecisionsByToken" ]]; then
+               [[ "$service/$method" == "authorization.AuthorizationService/GetDecisionsByToken" ]] || 
+               [[ "$service/$method" == "authorization.v2.AuthorizationService/GetDecision" ]] || 
+               [[ "$service/$method" == "authorization.v2.AuthorizationService/GetDecisionMultiResource" ]] || 
+               [[ "$service/$method" == "authorization.v2.AuthorizationService/GetDecisionBulk" ]]; then
                 
                 if is_unauthenticated "$output"; then
                     log_info $test_name "ERROR: Got unexpected Unauthenticated for $service/$method"

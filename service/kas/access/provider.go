@@ -23,44 +23,13 @@ type Provider struct {
 	URI          url.URL `json:"uri"`
 	SDK          *otdf.SDK
 	AttributeSvc *url.URL
-	KeyIndex     trust.KeyIndex
-	KeyManager   trust.KeyManager
+	KeyDelegator *trust.DelegatingKeyService
 	// Deprecated: Use SecurityProvider instead
-	CryptoProvider security.CryptoProvider // Kept for backward compatibility
+	CryptoProvider *security.StandardCrypto // Kept for backward compatibility
 	Logger         *logger.Logger
 	Config         *config.ServiceConfig
 	KASConfig
 	trace.Tracer
-}
-
-// GetSecurityProvider returns the SecurityProvider
-func (p *Provider) GetSecurityProvider() trust.KeyManager {
-	// If SecurityProvider is explicitly set, use it
-	if p.KeyManager != nil {
-		return p.KeyManager
-	}
-
-	// Otherwise, create an adapter from CryptoProvider if available
-	if p.CryptoProvider != nil {
-		return security.NewSecurityProviderAdapter(p.CryptoProvider)
-	}
-
-	// This shouldn't happen in normal operation
-	p.Logger.Error("no security provider available")
-	return nil
-}
-
-func (p *Provider) GetKeyIndex() trust.KeyIndex {
-	if p.KeyIndex != nil {
-		return p.KeyIndex
-	}
-
-	if p.CryptoProvider != nil {
-		return security.NewSecurityProviderAdapter(p.CryptoProvider)
-	}
-
-	p.Logger.Error("no key index available")
-	return nil
 }
 
 type KASConfig struct {
@@ -71,10 +40,19 @@ type KASConfig struct {
 	// Deprecated
 	RSACertID string `mapstructure:"rsacertid" json:"rsacertid"`
 
+	RootKey string `mapstructure:"root_key" json:"root_key"`
+
+	// Deprecated
 	// Enables experimental EC rewrap support in TDFs
 	// Enabling is required to parse KAOs with the `ec-wrapped` type,
 	// and (currently) also enables responding with ECIES encrypted responses.
-	ECTDFEnabled bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	ECTDFEnabled bool    `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	Preview      Preview `mapstructure:"preview" json:"preview"`
+}
+
+type Preview struct {
+	ECTDFEnabled  bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	KeyManagement bool `mapstructure:"key_management" json:"key_management"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.
@@ -92,7 +70,7 @@ func (p *Provider) IsReady(ctx context.Context) error {
 	return nil
 }
 
-func (kasCfg *KASConfig) UpgradeMapToKeyring(c security.CryptoProvider) {
+func (kasCfg *KASConfig) UpgradeMapToKeyring(c *security.StandardCrypto) {
 	switch {
 	case kasCfg.ECCertID != "" && len(kasCfg.Keyring) > 0:
 		panic("invalid kas cfg: please specify keyring or eccertid, not both")

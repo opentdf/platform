@@ -142,7 +142,9 @@ message SubjectConditionSetCreate {
   common.MetadataMutable metadata = 100;
 }
 message CreateSubjectConditionSetRequest {
-  SubjectConditionSetCreate subject_condition_set = 1;
+  SubjectConditionSetCreate subject_condition_set = 1 [
+    (buf.validate.field).required = true
+  ];
 }
 message CreateSubjectConditionSetResponse {
   SubjectConditionSet subject_condition_set = 1;

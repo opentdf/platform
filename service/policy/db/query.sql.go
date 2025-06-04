@@ -1886,14 +1886,21 @@ SELECT
     JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
     m.terms,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-    COALESCE(m.group_id::TEXT, '')::TEXT as group_id,
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'id', rmg.id,
+            'name', rmg.name,
+            'namespace_id', rmg.namespace_id
+        )
+    ) AS group,
     counted.total
 FROM resource_mappings m 
 CROSS JOIN counted
 LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
-WHERE (NULLIF($1, '') IS NULL OR m.group_id = $1::UUID) 
-GROUP BY av.id, m.id, fqns.fqn, counted.total
+LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
+WHERE (NULLIF($1, '') IS NULL OR m.group_id = $1::UUID)
+GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, counted.total
 LIMIT $3 
 OFFSET $2
 `
@@ -1909,7 +1916,7 @@ type ListResourceMappingsRow struct {
 	AttributeValue []byte   `json:"attribute_value"`
 	Terms          []string `json:"terms"`
 	Metadata       []byte   `json:"metadata"`
-	GroupID        string   `json:"group_id"`
+	Group          []byte   `json:"group"`
 	Total          int64    `json:"total"`
 }
 
@@ -1926,14 +1933,21 @@ type ListResourceMappingsRow struct {
 //	    JSON_BUILD_OBJECT('id', av.id, 'value', av.value, 'fqn', fqns.fqn) as attribute_value,
 //	    m.terms,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', m.metadata -> 'labels', 'created_at', m.created_at, 'updated_at', m.updated_at)) as metadata,
-//	    COALESCE(m.group_id::TEXT, '')::TEXT as group_id,
+//	    JSON_STRIP_NULLS(
+//	        JSON_BUILD_OBJECT(
+//	            'id', rmg.id,
+//	            'name', rmg.name,
+//	            'namespace_id', rmg.namespace_id
+//	        )
+//	    ) AS group,
 //	    counted.total
 //	FROM resource_mappings m
 //	CROSS JOIN counted
 //	LEFT JOIN attribute_values av on m.attribute_value_id = av.id
 //	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
+//	LEFT JOIN resource_mapping_groups rmg ON m.group_id = rmg.id
 //	WHERE (NULLIF($1, '') IS NULL OR m.group_id = $1::UUID)
-//	GROUP BY av.id, m.id, fqns.fqn, counted.total
+//	GROUP BY av.id, m.id, fqns.fqn, rmg.id, rmg.name, rmg.namespace_id, counted.total
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) ListResourceMappings(ctx context.Context, arg ListResourceMappingsParams) ([]ListResourceMappingsRow, error) {
@@ -1950,7 +1964,7 @@ func (q *Queries) ListResourceMappings(ctx context.Context, arg ListResourceMapp
 			&i.AttributeValue,
 			&i.Terms,
 			&i.Metadata,
-			&i.GroupID,
+			&i.Group,
 			&i.Total,
 		); err != nil {
 			return nil, err
@@ -2874,34 +2888,6 @@ func (q *Queries) assignPublicKeyToNamespace(ctx context.Context, arg assignPubl
 	return i, err
 }
 
-const checkIfKeyExists = `-- name: checkIfKeyExists :one
-SELECT EXISTS (
-    SELECT 1
-    FROM key_access_server_keys
-    WHERE key_access_server_id = $1 AND key_status = $2 AND key_algorithm = $3
-)
-`
-
-type checkIfKeyExistsParams struct {
-	KeyAccessServerID string `json:"key_access_server_id"`
-	KeyStatus         int32  `json:"key_status"`
-	KeyAlgorithm      int32  `json:"key_algorithm"`
-}
-
-// checkIfKeyExists
-//
-//	SELECT EXISTS (
-//	    SELECT 1
-//	    FROM key_access_server_keys
-//	    WHERE key_access_server_id = $1 AND key_status = $2 AND key_algorithm = $3
-//	)
-func (q *Queries) checkIfKeyExists(ctx context.Context, arg checkIfKeyExistsParams) (bool, error) {
-	row := q.db.QueryRow(ctx, checkIfKeyExists, arg.KeyAccessServerID, arg.KeyStatus, arg.KeyAlgorithm)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
-}
-
 const createCustomAction = `-- name: createCustomAction :one
 INSERT INTO actions (name, metadata, is_standard)
 VALUES ($1, $2, FALSE)
@@ -2926,30 +2912,10 @@ func (q *Queries) createCustomAction(ctx context.Context, arg createCustomAction
 }
 
 const createKey = `-- name: createKey :one
-WITH inserted AS (
-  INSERT INTO key_access_server_keys
+INSERT INTO key_access_server_keys
     (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id)
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-  RETURNING id, key_id, key_algorithm, key_status, key_mode, public_key_ctx, private_key_ctx, expiration, provider_config_id, metadata, created_at, updated_at, key_access_server_id
-)
-SELECT 
-  id,
-  key_id,
-  key_status,
-  key_mode,
-  key_algorithm,
-  private_key_ctx,
-  public_key_ctx,
-  provider_config_id,
-  key_access_server_id,
-  JSON_STRIP_NULLS(
-    JSON_BUILD_OBJECT(
-      'labels', metadata -> 'labels',         
-      'created_at', created_at,               
-      'updated_at', updated_at                
-    )
-  ) AS metadata
-FROM inserted
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id
 `
 
 type createKeyParams struct {
@@ -2964,48 +2930,15 @@ type createKeyParams struct {
 	ProviderConfigID  pgtype.UUID `json:"provider_config_id"`
 }
 
-type createKeyRow struct {
-	ID                string      `json:"id"`
-	KeyID             string      `json:"key_id"`
-	KeyStatus         int32       `json:"key_status"`
-	KeyMode           int32       `json:"key_mode"`
-	KeyAlgorithm      int32       `json:"key_algorithm"`
-	PrivateKeyCtx     []byte      `json:"private_key_ctx"`
-	PublicKeyCtx      []byte      `json:"public_key_ctx"`
-	ProviderConfigID  pgtype.UUID `json:"provider_config_id"`
-	KeyAccessServerID string      `json:"key_access_server_id"`
-	Metadata          []byte      `json:"metadata"`
-}
-
 // ---------------------------------------------------------------
 // Key Access Server Keys
 // ----------------------------------------------------------------
 //
-//	WITH inserted AS (
-//	  INSERT INTO key_access_server_keys
+//	INSERT INTO key_access_server_keys
 //	    (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id)
-//	  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-//	  RETURNING id, key_id, key_algorithm, key_status, key_mode, public_key_ctx, private_key_ctx, expiration, provider_config_id, metadata, created_at, updated_at, key_access_server_id
-//	)
-//	SELECT
-//	  id,
-//	  key_id,
-//	  key_status,
-//	  key_mode,
-//	  key_algorithm,
-//	  private_key_ctx,
-//	  public_key_ctx,
-//	  provider_config_id,
-//	  key_access_server_id,
-//	  JSON_STRIP_NULLS(
-//	    JSON_BUILD_OBJECT(
-//	      'labels', metadata -> 'labels',
-//	      'created_at', created_at,
-//	      'updated_at', updated_at
-//	    )
-//	  ) AS metadata
-//	FROM inserted
-func (q *Queries) createKey(ctx context.Context, arg createKeyParams) (createKeyRow, error) {
+//	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+//	RETURNING id
+func (q *Queries) createKey(ctx context.Context, arg createKeyParams) (string, error) {
 	row := q.db.QueryRow(ctx, createKey,
 		arg.KeyAccessServerID,
 		arg.KeyAlgorithm,
@@ -3017,20 +2950,9 @@ func (q *Queries) createKey(ctx context.Context, arg createKeyParams) (createKey
 		arg.PublicKeyCtx,
 		arg.ProviderConfigID,
 	)
-	var i createKeyRow
-	err := row.Scan(
-		&i.ID,
-		&i.KeyID,
-		&i.KeyStatus,
-		&i.KeyMode,
-		&i.KeyAlgorithm,
-		&i.PrivateKeyCtx,
-		&i.PublicKeyCtx,
-		&i.ProviderConfigID,
-		&i.KeyAccessServerID,
-		&i.Metadata,
-	)
-	return i, err
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const createOrListActionsByName = `-- name: createOrListActionsByName :many
@@ -3239,6 +3161,12 @@ func (q *Queries) createRegisteredResource(ctx context.Context, arg createRegist
 	return id, err
 }
 
+type createRegisteredResourceActionAttributeValuesParams struct {
+	RegisteredResourceValueID string `json:"registered_resource_value_id"`
+	ActionID                  string `json:"action_id"`
+	AttributeValueID          string `json:"attribute_value_id"`
+}
+
 const createRegisteredResourceValue = `-- name: createRegisteredResourceValue :one
 
 INSERT INTO registered_resource_values (registered_resource_id, value, metadata)
@@ -3322,6 +3250,21 @@ func (q *Queries) createSubjectMapping(ctx context.Context, arg createSubjectMap
 	return id, err
 }
 
+const deleteAllBaseKeys = `-- name: deleteAllBaseKeys :execrows
+DELETE FROM base_keys
+`
+
+// deleteAllBaseKeys
+//
+//	DELETE FROM base_keys
+func (q *Queries) deleteAllBaseKeys(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAllBaseKeys)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteCustomAction = `-- name: deleteCustomAction :execrows
 DELETE FROM actions
 WHERE id = $1
@@ -3382,6 +3325,23 @@ DELETE FROM registered_resources WHERE id = $1
 //	DELETE FROM registered_resources WHERE id = $1
 func (q *Queries) deleteRegisteredResource(ctx context.Context, id string) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteRegisteredResource, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteRegisteredResourceActionAttributeValues = `-- name: deleteRegisteredResourceActionAttributeValues :execrows
+DELETE FROM registered_resource_action_attribute_values
+WHERE registered_resource_value_id = $1
+`
+
+// deleteRegisteredResourceActionAttributeValues
+//
+//	DELETE FROM registered_resource_action_attribute_values
+//	WHERE registered_resource_value_id = $1
+func (q *Queries) deleteRegisteredResourceActionAttributeValues(ctx context.Context, registeredResourceValueID string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteRegisteredResourceActionAttributeValues, registeredResourceValueID)
 	if err != nil {
 		return 0, err
 	}
@@ -3465,6 +3425,45 @@ func (q *Queries) getAction(ctx context.Context, arg getActionParams) (getAction
 	return i, err
 }
 
+const getBaseKey = `-- name: getBaseKey :one
+
+SELECT
+    DISTINCT JSONB_BUILD_OBJECT(
+       'kas_uri', kas.uri,
+       'public_key', JSONB_BUILD_OBJECT(
+            'algorithm', kask.key_algorithm::TEXT,
+            'kid', kask.key_id,
+            'pem', kask.public_key_ctx ->> 'pem'
+       )
+    ) AS base_keys
+FROM base_keys bk
+INNER JOIN key_access_server_keys kask ON bk.key_access_server_key_id = kask.id
+INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+`
+
+// --------------------------------------------------------------
+// Default KAS Keys
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    DISTINCT JSONB_BUILD_OBJECT(
+//	       'kas_uri', kas.uri,
+//	       'public_key', JSONB_BUILD_OBJECT(
+//	            'algorithm', kask.key_algorithm::TEXT,
+//	            'kid', kask.key_id,
+//	            'pem', kask.public_key_ctx ->> 'pem'
+//	       )
+//	    ) AS base_keys
+//	FROM base_keys bk
+//	INNER JOIN key_access_server_keys kask ON bk.key_access_server_key_id = kask.id
+//	INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+func (q *Queries) getBaseKey(ctx context.Context) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getBaseKey)
+	var base_keys []byte
+	err := row.Scan(&base_keys)
+	return base_keys, err
+}
+
 const getKey = `-- name: getKey :one
 SELECT 
   kask.id,
@@ -3476,6 +3475,7 @@ SELECT
   kask.public_key_ctx,
   kask.provider_config_id,
   kask.key_access_server_id,
+  kas.uri AS kas_uri,
   JSON_STRIP_NULLS(
     JSON_BUILD_OBJECT(
       'labels', kask.metadata -> 'labels',         
@@ -3516,6 +3516,7 @@ type getKeyRow struct {
 	PublicKeyCtx      []byte      `json:"public_key_ctx"`
 	ProviderConfigID  pgtype.UUID `json:"provider_config_id"`
 	KeyAccessServerID string      `json:"key_access_server_id"`
+	KasUri            string      `json:"kas_uri"`
 	Metadata          []byte      `json:"metadata"`
 	ProviderName      pgtype.Text `json:"provider_name"`
 	PcConfig          []byte      `json:"pc_config"`
@@ -3534,6 +3535,7 @@ type getKeyRow struct {
 //	  kask.public_key_ctx,
 //	  kask.provider_config_id,
 //	  kask.key_access_server_id,
+//	  kas.uri AS kas_uri,
 //	  JSON_STRIP_NULLS(
 //	    JSON_BUILD_OBJECT(
 //	      'labels', kask.metadata -> 'labels',
@@ -3573,6 +3575,7 @@ func (q *Queries) getKey(ctx context.Context, arg getKeyParams) (getKeyRow, erro
 		&i.PublicKeyCtx,
 		&i.ProviderConfigID,
 		&i.KeyAccessServerID,
+		&i.KasUri,
 		&i.Metadata,
 		&i.ProviderName,
 		&i.PcConfig,
@@ -3692,13 +3695,31 @@ SELECT
     v.id,
     v.registered_resource_id,
     v.value,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+    JSON_AGG(
+    	JSON_BUILD_OBJECT(
+    		'action', JSON_BUILD_OBJECT(
+    			'id', a.id,
+    			'name', a.name
+    		),
+    		'attribute_value', JSON_BUILD_OBJECT(
+    			'id', av.id,
+    			'value', av.value,
+    			'fqn', fqns.fqn
+    		)
+    	)
+    ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values
 FROM registered_resource_values v
 JOIN registered_resources r ON v.registered_resource_id = r.id
+LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
+LEFT JOIN actions a on rav.action_id = a.id
+LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 WHERE
     (NULLIF($1, '') IS NULL OR v.id = $1::UUID) AND
     (NULLIF($2, '') IS NULL OR r.name = $2::VARCHAR) AND
     (NULLIF($3, '') IS NULL OR v.value = $3::VARCHAR)
+GROUP BY v.id
 `
 
 type getRegisteredResourceValueParams struct {
@@ -3708,10 +3729,11 @@ type getRegisteredResourceValueParams struct {
 }
 
 type getRegisteredResourceValueRow struct {
-	ID                   string `json:"id"`
-	RegisteredResourceID string `json:"registered_resource_id"`
-	Value                string `json:"value"`
-	Metadata             []byte `json:"metadata"`
+	ID                    string `json:"id"`
+	RegisteredResourceID  string `json:"registered_resource_id"`
+	Value                 string `json:"value"`
+	Metadata              []byte `json:"metadata"`
+	ActionAttributeValues []byte `json:"action_attribute_values"`
 }
 
 // getRegisteredResourceValue
@@ -3720,13 +3742,31 @@ type getRegisteredResourceValueRow struct {
 //	    v.id,
 //	    v.registered_resource_id,
 //	    v.value,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+//	    JSON_AGG(
+//	    	JSON_BUILD_OBJECT(
+//	    		'action', JSON_BUILD_OBJECT(
+//	    			'id', a.id,
+//	    			'name', a.name
+//	    		),
+//	    		'attribute_value', JSON_BUILD_OBJECT(
+//	    			'id', av.id,
+//	    			'value', av.value,
+//	    			'fqn', fqns.fqn
+//	    		)
+//	    	)
+//	    ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values
 //	FROM registered_resource_values v
 //	JOIN registered_resources r ON v.registered_resource_id = r.id
+//	LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
+//	LEFT JOIN actions a on rav.action_id = a.id
+//	LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+//	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	WHERE
 //	    (NULLIF($1, '') IS NULL OR v.id = $1::UUID) AND
 //	    (NULLIF($2, '') IS NULL OR r.name = $2::VARCHAR) AND
 //	    (NULLIF($3, '') IS NULL OR v.value = $3::VARCHAR)
+//	GROUP BY v.id
 func (q *Queries) getRegisteredResourceValue(ctx context.Context, arg getRegisteredResourceValueParams) (getRegisteredResourceValueRow, error) {
 	row := q.db.QueryRow(ctx, getRegisteredResourceValue, arg.ID, arg.Name, arg.Value)
 	var i getRegisteredResourceValueRow
@@ -3735,6 +3775,7 @@ func (q *Queries) getRegisteredResourceValue(ctx context.Context, arg getRegiste
 		&i.RegisteredResourceID,
 		&i.Value,
 		&i.Metadata,
+		&i.ActionAttributeValues,
 	)
 	return i, err
 }
@@ -3817,53 +3858,6 @@ func (q *Queries) getSubjectMapping(ctx context.Context, id string) (getSubjectM
 		&i.AttributeValue,
 	)
 	return i, err
-}
-
-const isUpdateKeySafe = `-- name: isUpdateKeySafe :one
-WITH keyToUpdate AS (
-    SELECT 
-        kask.key_access_server_id AS kas_id,
-        kask.key_algorithm
-    FROM key_access_server_keys AS kask
-    WHERE kask.id = $1
-)
-SELECT EXISTS (
-    SELECT 1
-    FROM key_access_server_keys AS kask
-    INNER JOIN keyToUpdate ON kask.key_access_server_id = keyToUpdate.kas_id
-    WHERE kask.key_access_server_id = keyToUpdate.kas_id 
-    AND kask.key_status = $2
-    AND kask.key_algorithm = keyToUpdate.key_algorithm
-)
-`
-
-type isUpdateKeySafeParams struct {
-	ID        string `json:"id"`
-	KeyStatus int32  `json:"key_status"`
-}
-
-// isUpdateKeySafe
-//
-//	WITH keyToUpdate AS (
-//	    SELECT
-//	        kask.key_access_server_id AS kas_id,
-//	        kask.key_algorithm
-//	    FROM key_access_server_keys AS kask
-//	    WHERE kask.id = $1
-//	)
-//	SELECT EXISTS (
-//	    SELECT 1
-//	    FROM key_access_server_keys AS kask
-//	    INNER JOIN keyToUpdate ON kask.key_access_server_id = keyToUpdate.kas_id
-//	    WHERE kask.key_access_server_id = keyToUpdate.kas_id
-//	    AND kask.key_status = $2
-//	    AND kask.key_algorithm = keyToUpdate.key_algorithm
-//	)
-func (q *Queries) isUpdateKeySafe(ctx context.Context, arg isUpdateKeySafeParams) (bool, error) {
-	row := q.db.QueryRow(ctx, isUpdateKeySafe, arg.ID, arg.KeyStatus)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
 }
 
 const listActions = `-- name: listActions :many
@@ -4091,6 +4085,29 @@ value_subject_mappings AS (
 	LEFT JOIN subject_condition_set scs ON sm.subject_condition_set_id = scs.id
 	GROUP BY av.id
 ),
+value_resource_mappings AS (
+    SELECT
+        av.id,
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', rm.id,
+                'terms', rm.terms,
+                'group', CASE 
+                            WHEN rm.group_id IS NULL THEN NULL
+                            ELSE JSON_BUILD_OBJECT(
+                                'id', rmg.id,
+                                'name', rmg.name,
+                                'namespace_id', rmg.namespace_id
+                            )
+                         END
+            )
+        ) FILTER (WHERE rm.id IS NOT NULL) AS res_maps
+    FROM target_definition td
+    LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
+    LEFT JOIN resource_mappings rm ON av.id = rm.attribute_value_id
+    LEFT JOIN resource_mapping_groups rmg ON rm.group_id = rmg.id
+    GROUP BY av.id
+),
 values AS (
     SELECT
 		av.attribute_definition_id,
@@ -4102,6 +4119,7 @@ values AS (
 	            'fqn', fqns.fqn,
 	            'grants', avg.grants,
 	            'subject_mappings', avsm.sub_maps,
+                'resource_mappings', avrm.res_maps,
                 'kas_keys', value_keys.keys
 	        -- enforce order of values in response
 	        ) ORDER BY ARRAY_POSITION(td.values_order, av.id)
@@ -4111,6 +4129,7 @@ values AS (
 	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 	LEFT JOIN value_grants avg ON av.id = avg.id
 	LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
+    LEFT JOIN value_resource_mappings avrm ON av.id = avrm.id
     LEFT JOIN (
         SELECT
             k.value_id,
@@ -4312,6 +4331,29 @@ type listAttributesByDefOrValueFqnsRow struct {
 //		LEFT JOIN subject_condition_set scs ON sm.subject_condition_set_id = scs.id
 //		GROUP BY av.id
 //	),
+//	value_resource_mappings AS (
+//	    SELECT
+//	        av.id,
+//	        JSON_AGG(
+//	            JSON_BUILD_OBJECT(
+//	                'id', rm.id,
+//	                'terms', rm.terms,
+//	                'group', CASE
+//	                            WHEN rm.group_id IS NULL THEN NULL
+//	                            ELSE JSON_BUILD_OBJECT(
+//	                                'id', rmg.id,
+//	                                'name', rmg.name,
+//	                                'namespace_id', rmg.namespace_id
+//	                            )
+//	                         END
+//	            )
+//	        ) FILTER (WHERE rm.id IS NOT NULL) AS res_maps
+//	    FROM target_definition td
+//	    LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
+//	    LEFT JOIN resource_mappings rm ON av.id = rm.attribute_value_id
+//	    LEFT JOIN resource_mapping_groups rmg ON rm.group_id = rmg.id
+//	    GROUP BY av.id
+//	),
 //	values AS (
 //	    SELECT
 //			av.attribute_definition_id,
@@ -4323,6 +4365,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //		            'fqn', fqns.fqn,
 //		            'grants', avg.grants,
 //		            'subject_mappings', avsm.sub_maps,
+//	                'resource_mappings', avrm.res_maps,
 //	                'kas_keys', value_keys.keys
 //		        -- enforce order of values in response
 //		        ) ORDER BY ARRAY_POSITION(td.values_order, av.id)
@@ -4332,6 +4375,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //		LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 //		LEFT JOIN value_grants avg ON av.id = avg.id
 //		LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
+//	    LEFT JOIN value_resource_mappings avrm ON av.id = avrm.id
 //	    LEFT JOIN (
 //	        SELECT
 //	            k.value_id,
@@ -4405,7 +4449,8 @@ func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, fqns []str
 const listKeys = `-- name: listKeys :many
 WITH listed AS (
     SELECT
-        kas.id AS kas_id
+        kas.id AS kas_id,
+        kas.uri AS kas_uri
     FROM key_access_servers AS kas
     WHERE ($4::uuid IS NULL OR kas.id = $4::uuid)
             AND ($5::text IS NULL OR kas.name = $5::text)
@@ -4422,6 +4467,7 @@ SELECT
   kask.public_key_ctx,
   kask.provider_config_id,
   kask.key_access_server_id,
+  listed.kas_uri AS kas_uri,
   JSON_STRIP_NULLS(
     JSON_BUILD_OBJECT(
       'labels', kask.metadata -> 'labels',         
@@ -4439,6 +4485,7 @@ LEFT JOIN
     provider_config as pc ON kask.provider_config_id = pc.id
 WHERE
     ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
+ORDER BY kask.created_at DESC
 LIMIT $3 
 OFFSET $2
 `
@@ -4463,6 +4510,7 @@ type listKeysRow struct {
 	PublicKeyCtx      []byte      `json:"public_key_ctx"`
 	ProviderConfigID  pgtype.UUID `json:"provider_config_id"`
 	KeyAccessServerID string      `json:"key_access_server_id"`
+	KasUri            string      `json:"kas_uri"`
 	Metadata          []byte      `json:"metadata"`
 	ProviderName      pgtype.Text `json:"provider_name"`
 	ProviderConfig    []byte      `json:"provider_config"`
@@ -4473,7 +4521,8 @@ type listKeysRow struct {
 //
 //	WITH listed AS (
 //	    SELECT
-//	        kas.id AS kas_id
+//	        kas.id AS kas_id,
+//	        kas.uri AS kas_uri
 //	    FROM key_access_servers AS kas
 //	    WHERE ($4::uuid IS NULL OR kas.id = $4::uuid)
 //	            AND ($5::text IS NULL OR kas.name = $5::text)
@@ -4490,6 +4539,7 @@ type listKeysRow struct {
 //	  kask.public_key_ctx,
 //	  kask.provider_config_id,
 //	  kask.key_access_server_id,
+//	  listed.kas_uri AS kas_uri,
 //	  JSON_STRIP_NULLS(
 //	    JSON_BUILD_OBJECT(
 //	      'labels', kask.metadata -> 'labels',
@@ -4507,6 +4557,7 @@ type listKeysRow struct {
 //	    provider_config as pc ON kask.provider_config_id = pc.id
 //	WHERE
 //	    ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
+//	ORDER BY kask.created_at DESC
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysRow, error) {
@@ -4536,6 +4587,7 @@ func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysR
 			&i.PublicKeyCtx,
 			&i.ProviderConfigID,
 			&i.KeyAccessServerID,
+			&i.KasUri,
 			&i.Metadata,
 			&i.ProviderName,
 			&i.ProviderConfig,
@@ -4631,15 +4683,34 @@ WITH counted AS (
         NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
 )
 SELECT
-    id,
-    registered_resource_id,
-    value,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+    v.id,
+    v.registered_resource_id,
+    v.value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+    JSON_AGG(
+    	JSON_BUILD_OBJECT(
+    		'action', JSON_BUILD_OBJECT(
+    			'id', a.id,
+    			'name', a.name
+    		),
+    		'attribute_value', JSON_BUILD_OBJECT(
+    			'id', av.id,
+    			'value', av.value,
+    			'fqn', fqns.fqn
+    		)
+    	)
+    ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values,
     counted.total
-FROM registered_resource_values
+FROM registered_resource_values v
+JOIN registered_resources r ON v.registered_resource_id = r.id
+LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
+LEFT JOIN actions a on rav.action_id = a.id
+LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id  
 CROSS JOIN counted
 WHERE
-    NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
+    NULLIF($1, '') IS NULL OR v.registered_resource_id = $1::UUID
+GROUP BY v.id, counted.total
 LIMIT $3
 OFFSET $2
 `
@@ -4651,11 +4722,12 @@ type listRegisteredResourceValuesParams struct {
 }
 
 type listRegisteredResourceValuesRow struct {
-	ID                   string `json:"id"`
-	RegisteredResourceID string `json:"registered_resource_id"`
-	Value                string `json:"value"`
-	Metadata             []byte `json:"metadata"`
-	Total                int64  `json:"total"`
+	ID                    string `json:"id"`
+	RegisteredResourceID  string `json:"registered_resource_id"`
+	Value                 string `json:"value"`
+	Metadata              []byte `json:"metadata"`
+	ActionAttributeValues []byte `json:"action_attribute_values"`
+	Total                 int64  `json:"total"`
 }
 
 // listRegisteredResourceValues
@@ -4667,15 +4739,34 @@ type listRegisteredResourceValuesRow struct {
 //	        NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
 //	)
 //	SELECT
-//	    id,
-//	    registered_resource_id,
-//	    value,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) as metadata,
+//	    v.id,
+//	    v.registered_resource_id,
+//	    v.value,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', v.metadata -> 'labels', 'created_at', v.created_at, 'updated_at', v.updated_at)) as metadata,
+//	    JSON_AGG(
+//	    	JSON_BUILD_OBJECT(
+//	    		'action', JSON_BUILD_OBJECT(
+//	    			'id', a.id,
+//	    			'name', a.name
+//	    		),
+//	    		'attribute_value', JSON_BUILD_OBJECT(
+//	    			'id', av.id,
+//	    			'value', av.value,
+//	    			'fqn', fqns.fqn
+//	    		)
+//	    	)
+//	    ) FILTER (WHERE rav.id IS NOT NULL) as action_attribute_values,
 //	    counted.total
-//	FROM registered_resource_values
+//	FROM registered_resource_values v
+//	JOIN registered_resources r ON v.registered_resource_id = r.id
+//	LEFT JOIN registered_resource_action_attribute_values rav ON v.id = rav.registered_resource_value_id
+//	LEFT JOIN actions a on rav.action_id = a.id
+//	LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+//	LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
 //	CROSS JOIN counted
 //	WHERE
-//	    NULLIF($1, '') IS NULL OR registered_resource_id = $1::UUID
+//	    NULLIF($1, '') IS NULL OR v.registered_resource_id = $1::UUID
+//	GROUP BY v.id, counted.total
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) listRegisteredResourceValues(ctx context.Context, arg listRegisteredResourceValuesParams) ([]listRegisteredResourceValuesRow, error) {
@@ -4692,6 +4783,7 @@ func (q *Queries) listRegisteredResourceValues(ctx context.Context, arg listRegi
 			&i.RegisteredResourceID,
 			&i.Value,
 			&i.Metadata,
+			&i.ActionAttributeValues,
 			&i.Total,
 		); err != nil {
 			return nil, err
@@ -4950,11 +5042,8 @@ LEFT JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-WHERE ns.active = true AND ad.active = true and av.active = true AND EXISTS (
-    SELECT 1
-    FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss, JSONB_ARRAY_ELEMENTS(ss->'conditionGroups') AS cg, JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
-    WHERE (each_condition->>'subjectExternalSelectorValue' = ANY($1::TEXT[])) 
-)
+WHERE ns.active = true AND ad.active = true and av.active = true
+AND scs.selector_values && $1::TEXT[]
 GROUP BY av.id, sm.id, scs.id, fqns.fqn
 `
 
@@ -4998,11 +5087,8 @@ type matchSubjectMappingsRow struct {
 //	LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
 //	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 //	LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-//	WHERE ns.active = true AND ad.active = true and av.active = true AND EXISTS (
-//	    SELECT 1
-//	    FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss, JSONB_ARRAY_ELEMENTS(ss->'conditionGroups') AS cg, JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
-//	    WHERE (each_condition->>'subjectExternalSelectorValue' = ANY($1::TEXT[]))
-//	)
+//	WHERE ns.active = true AND ad.active = true and av.active = true
+//	AND scs.selector_values && $1::TEXT[]
 //	GROUP BY av.id, sm.id, scs.id, fqns.fqn
 func (q *Queries) matchSubjectMappings(ctx context.Context, selectors []string) ([]matchSubjectMappingsRow, error) {
 	rows, err := q.db.Query(ctx, matchSubjectMappings, selectors)
@@ -5208,6 +5294,23 @@ func (q *Queries) rotatePublicKeyForNamespace(ctx context.Context, arg rotatePub
 		return nil, err
 	}
 	return items, nil
+}
+
+const setBaseKey = `-- name: setBaseKey :execrows
+INSERT INTO base_keys (key_access_server_key_id)
+VALUES ($1)
+`
+
+// setBaseKey
+//
+//	INSERT INTO base_keys (key_access_server_key_id)
+//	VALUES ($1)
+func (q *Queries) setBaseKey(ctx context.Context, keyAccessServerKeyID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, setBaseKey, keyAccessServerKeyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateCustomAction = `-- name: updateCustomAction :execrows

@@ -345,6 +345,10 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *a
 }
 
 func (c PolicyDBClient) AssignPublicKeyToValue(ctx context.Context, k *attributes.ValueKey) (*attributes.ValueKey, error) {
+	if err := c.verifyKeyIsActive(ctx, k.GetKeyId()); err != nil {
+		return nil, err
+	}
+
 	vk, err := c.Queries.assignPublicKeyToAttributeValue(ctx, assignPublicKeyToAttributeValueParams{
 		ValueID:              k.GetValueId(),
 		KeyAccessServerKeyID: k.GetKeyId(),

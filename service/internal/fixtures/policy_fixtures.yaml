@@ -234,9 +234,6 @@ subject_mappings:
       attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
       # subject_condition_sdk_client
       subject_condition_set_id: 86621a00-b63e-42e9-bea5-40ba52d98ede
-      # actions:
-      #   - standard: create
-      #   - standard: read
 
 subject_condition_set:
   metadata:
@@ -248,116 +245,116 @@ subject_condition_set:
     subject_condition_set1:
       id: b3903282-06f9-41a4-924a-7b8eb43dffe0
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_selector_value: ".attributes.superhero_name[]"
+                  - subjectExternalSelectorValue: ".attributes.superhero_name[]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - thor
                       - captain_america
-                  - subject_external_selector_value: ".attributes.superhero_group[]"
+                  - subjectExternalSelectorValue: ".attributes.superhero_group[]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - avengers
     subject_condition_set2:
       id: 798aacd2-abaf-4623-975e-3bb8ca43e318
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_selector_value: ".org"
+                  - subjectExternalSelectorValue: ".org"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - marketing
                       - sales
-                  - subject_external_selector_value: ".role"
+                  - subjectExternalSelectorValue: ".role"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - senior_vice_president
                       - vice_president
                       - director
     subject_condition_set3:
       id: eaf866c0-327f-4826-846a-5041c3c22f06
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
                   # any index
-                  - subject_external_selector_value: ".data[0].favorite_things[]"
+                  - subjectExternalSelectorValue: ".data[0].favorite_things[]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - futbol
                       - soccer
                   # specific index
-                  - subject_external_selector_value: ".data[0].favorite_things[1]"
+                  - subjectExternalSelectorValue: ".data[0].favorite_things[1]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - ice_cream
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_selector_value: ".department"
+                  - subjectExternalSelectorValue: ".department"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - engineering
-                  - subject_external_selector_value: ".role"
+                  - subjectExternalSelectorValue: ".role"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - manager
                       - director
                       - vice_president
     subject_condition_simple_in:
       id: 3c623ede-df88-4906-8a78-ebdfacadcd57
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_selector_value: ".some_field"
+                  - subjectExternalSelectorValue: ".some_field"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - some_value
     subject_condition_simple_not_in:
       id: cf17ec4c-d206-4b74-b3db-5ce07d6995cc
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_selector_value: ".some_other_field[1]"
+                  - subjectExternalSelectorValue: ".some_other_field[1]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - some_other_value_123
     subject_condition_working_group_blue_scenario:
       id: 10d03422-7eae-43b9-ac3b-d10400171858
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_selector_value: ".team.name"
+                  - subjectExternalSelectorValue: ".team.name"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - CoolTool
                       - RadService
                       - ShinyThing
-                  - subject_external_selector_value: ".org.name"
+                  - subjectExternalSelectorValue: ".org.name"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - marketing
     subject_condition_sdk_client:
       id: 86621a00-b63e-42e9-bea5-40ba52d98ede
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_selector_value: ".clientId"
+                  - subjectExternalSelectorValue: ".clientId"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - opentdf-sdk
 
 ##
@@ -413,6 +410,12 @@ subject_mapping_actions_relation:
     subject_mapping_scenario_blue_read:
       subject_mapping_id: 1748761a-bd8c-4b23-8560-16ba7a181f19
       action_name: read
+    subject_mapping_sdk_attribute1_read:
+      subject_mapping_id: bc28cacb-1687-4c87-9c63-eae55e271320
+      action_name: read
+    subject_mapping_sdk_attribute1_create:
+      subject_mapping_id: bc28cacb-1687-4c87-9c63-eae55e271320
+      action_name: create
 
 ##
 # Resource Mapping Groups
@@ -553,7 +556,7 @@ kas_registry_keys:
       key_algorithm: 1 # ALGORITHM_RSA_2048
       key_id: kas_key_2
       key_mode: 1 # KEY_MODE_LOCAL 
-      key_status: 2 # KEY_STATUS_INACTIVE
+      key_status: 1 # KEY_STATUS_ACTIVE
       private_key_ctx: eyJ3cmFwcGVkS2V5IjoiYTJWNUNnPT0iLCJrZXlJZCI6ImtleSJ9Cg==
       public_key_ctx: eyJwZW0iOiJhMlY1Q2c9PSJ9Cg==
       provider_config_id: 19098106-54a1-4d33-8846-4894b5b6db3e # provider_config_2
@@ -624,3 +627,31 @@ registered_resource_values:
       id: a932ff01-cca6-41f6-a147-7eba7560611b
       registered_resource_id: 39cd944b-d703-4330-936a-83b3d497c8d4
       value: res_with_values2__value1
+
+##
+# Registered Resource Action Attribute Values
+#
+##
+registered_resource_action_attribute_values:
+  metadata:
+    table_name: registered_resource_action_attribute_values
+    columns:
+      - id
+      - registered_resource_value_id
+      - action_id
+      - attribute_value_id
+  data:
+    res_with_values__value1___action_attr_value1:
+      id: 41452356-3b56-494e-950c-b801239bab4a
+      registered_resource_value_id: 1d2c3b4a-5e6f-7a89-0b1c-2d3e4f5a6789
+      # loaded by migration
+      action_name: create
+      # example.com/attr/attr1/value/value1
+      attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
+    res_with_values__value1___action_attr_value2:
+      id: f2492cf7-33a9-4259-b556-1068ee55f043
+      registered_resource_value_id: 1d2c3b4a-5e6f-7a89-0b1c-2d3e4f5a6789
+      # loaded by migration
+      action_name: custom_action_1
+      # example.com/attr/attr1/value/value2  
+      attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3

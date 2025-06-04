@@ -365,6 +365,10 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, 
 }
 
 func (c PolicyDBClient) AssignPublicKeyToNamespace(ctx context.Context, k *namespaces.NamespaceKey) (*namespaces.NamespaceKey, error) {
+	if err := c.verifyKeyIsActive(ctx, k.GetKeyId()); err != nil {
+		return nil, err
+	}
+
 	key, err := c.Queries.assignPublicKeyToNamespace(ctx, assignPublicKeyToNamespaceParams{
 		NamespaceID:          k.GetNamespaceId(),
 		KeyAccessServerKeyID: k.GetKeyId(),

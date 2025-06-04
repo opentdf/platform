@@ -1,3 +1,4 @@
+//nolint:forbidigo,nestif // We use Println here extensively because we are printing markdown.
 package cmd
 
 import (
@@ -22,12 +23,12 @@ func init() {
 		RunE:  runBenchmarkBulk,
 	}
 
-	benchmarkCmd.Flags().IntVar(&config.RequestCount, "count", 100, "Total number of requests")
+	benchmarkCmd.Flags().IntVar(&config.RequestCount, "count", 100, "Total number of requests") //nolint: mnd // This is output to the help with explanation
 	benchmarkCmd.Flags().Var(&config.TDFFormat, "tdf", "TDF format (tdf3 or nanotdf)")
 	ExamplesCmd.AddCommand(benchmarkCmd)
 }
 
-func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
+func runBenchmarkBulk(cmd *cobra.Command, _ []string) error {
 	in := strings.NewReader("Hello, World!")
 
 	// Create new offline client
@@ -55,9 +56,17 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		nanoTDFConfig.SetAttributes(dataAttributes)
+		err = nanoTDFConfig.SetAttributes(dataAttributes)
+		if err != nil {
+			return err
+		}
 		nanoTDFConfig.EnableECDSAPolicyBinding()
-		err = nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", "localhost:8080"))
+		// if plaintext or platform endpoint is http, set kas url to http, otherwise https
+		if insecurePlaintextConn || strings.HasPrefix(platformEndpoint, "http://") {
+			err = nanoTDFConfig.SetKasURL(fmt.Sprintf("http://%s/kas", "localhost:8080"))
+		} else {
+			err = nanoTDFConfig.SetKasURL(fmt.Sprintf("https://%s/kas", "localhost:8080"))
+		}
 		if err != nil {
 			return err
 		}
@@ -74,16 +83,26 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 			}
 		}
 	} else {
-		tdf, err :=
-			client.CreateTDF(
-				out, in,
-				sdk.WithDataAttributes(dataAttributes...),
-				sdk.WithKasInformation(
-					sdk.KASInfo{
-						URL:       fmt.Sprintf("http://%s", "localhost:8080"),
-						PublicKey: "",
-					}),
-				sdk.WithAutoconfigure(false))
+		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...), sdk.WithAutoconfigure(false)}
+		if insecurePlaintextConn || strings.HasPrefix(platformEndpoint, "http://") {
+			opts = append(opts, sdk.WithKasInformation(
+				sdk.KASInfo{
+					URL:       "http://localhost:8080",
+					PublicKey: "",
+				}),
+			)
+		} else {
+			opts = append(opts, sdk.WithKasInformation(
+				sdk.KASInfo{
+					URL:       "https://localhost:8080",
+					PublicKey: "",
+				}),
+			)
+		}
+		tdf, err := client.CreateTDF(
+			out, in,
+			opts...,
+		)
 		if err != nil {
 			return err
 		}
@@ -102,13 +121,16 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 	operation := func() {
 		file, err := os.Open("sensitive.txt.tdf")
 		if err != nil {
-			requestFailure = fmt.Errorf("file open error: %v", err)
+			requestFailure = fmt.Errorf("file open error: %w", err)
 			return
 		}
 		defer file.Close()
 		cipher, _ := io.ReadAll(file)
 
-		file.Seek(0, 0)
+		if _, err := file.Seek(0, 0); err != nil {
+			requestFailure = fmt.Errorf("file seek error: %w", err)
+		}
+
 		format := sdk.Nano
 		var bulkTdfs []*sdk.BulkTDF
 		if config.TDFFormat == "tdf3" {
@@ -125,7 +147,6 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 				requestFailure = err
 			}
 		}
-
 	}
 
 	// Start the benchmark
@@ -134,7 +155,7 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 	totalTime := time.Since(startTime)
 
 	// Count errors and collect error messages
-	errorCount := 0
+	var errorCount int
 	successCount := 0
 	if requestFailure != nil {
 		errorCount = config.RequestCount
@@ -147,7 +168,7 @@ func runBenchmarkBulk(cmd *cobra.Command, args []string) error {
 
 	errorMsgs := make(map[string]int)
 	for _, err := range errors {
-		errorMsgs[err.Error()] += 1
+		errorMsgs[err.Error()]++
 	}
 
 	// Print results

@@ -1,0 +1,171 @@
+syntax = "proto3";
+
+package authorization.v2;
+
+import "buf/validate/validate.proto";
+import "entity/entity.proto";
+import "google/protobuf/wrappers.proto";
+import "policy/objects.proto";
+
+enum Decision {
+  DECISION_UNSPECIFIED = 0;
+  DECISION_DENY = 1;
+  DECISION_PERMIT = 2;
+  // DECISION_OBLIGATED = 3;
+}
+
+// The EntityIdentifier specifies the actor in an entitlement or decision request - the PE, NPE, or PE+NPE being authorized.
+// The abstraction houses the distinct entity types, PE and/or NPE combinations, or a registered resource value
+// being treated as an entity in entitlement/authorization decisioning.
+message EntityIdentifier {
+  oneof identifier {
+    option (buf.validate.oneof).required = true;
+
+    // chain of one or more entities
+    entity.EntityChain entity_chain = 1 [(buf.validate.field).cel = {
+      id: "entity_chain_required"
+      message: "entities must be provided"
+      expression: "has(this.entities) && this.entities.size() > 0"
+    }];
+
+    // fully qualified name of the registered resource value stored in platform policy, where in
+    // this case the resource acts as and represents a single entity for authorization/entitlement decisioning
+    string registered_resource_value_fqn = 2 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
+
+    // access token (JWT), which is used to create an entity chain (comprising one or more entities)
+    entity.Token token = 3 [(buf.validate.field).cel = {
+      id: "token_required"
+      message: "token must be provided"
+      expression: "has(this.jwt) && this.jwt.size() > 0"
+    }];
+  }
+}
+
+// Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]
+message EntityEntitlements {
+  message ActionsList {
+    repeated policy.Action actions = 1;
+  }
+
+  // ephemeral id for tracking between request and response
+  string ephemeral_id = 1;
+  map<string, ActionsList> actions_per_attribute_value_fqn = 2;
+}
+
+// Either a set of attribute values (such as those on a TDF) or a registered resource value
+message Resource {
+  // ephemeral id for tracking between request and response
+  string ephemeral_id = 1;
+
+  message AttributeValues {
+    repeated string fqns = 1;
+  }
+
+  oneof resource {
+    AttributeValues attribute_values = 2 [(buf.validate.field).cel = {
+      id: "attribute_values_required"
+      message: "if provided, resource.attribute_values must not be empty"
+      expression: "this.fqns.size() > 0 && this.fqns.all(item, item.isUri())"
+    }];
+    string registered_resource_value_fqn = 3 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
+  }
+}
+
+message ResourceDecision {
+  // ephemeral id for tracking between request and response
+  string ephemeral_resource_id = 1;
+  // decision result
+  Decision decision = 2;
+}
+
+// Can the identified entity/entities access?
+// 1. one entity reference (actor)
+// 2. one action
+// 3. one resource
+message GetDecisionRequest {
+  // an entity must be identified for authorization decisioning
+  EntityIdentifier entity_identifier = 1 [(buf.validate.field).required = true];
+  // name on action is required
+  policy.Action action = 2 [(buf.validate.field).required = true];
+  Resource resource = 3 [(buf.validate.field).required = true];
+
+  option (buf.validate.message).cel = {
+    id: "get_decision_request.action_name_required"
+    message: "action.name must be provided"
+    expression: "has(this.action.name)"
+  };
+}
+message GetDecisionResponse {
+  // decision on the resource
+  ResourceDecision decision = 1;
+  // optional list of obligations represented in URI format
+  // repeated string obligations = 2;
+}
+
+// Can the identified entity/entities access?
+// 1. one entity reference (actor)
+// 2. one action
+// 3. multiple resources
+// Note: this is a more performant bulk request for multiple resource decisions
+message GetDecisionMultiResourceRequest {
+  // an entity must be identified for authorization decisioning
+  EntityIdentifier entity_identifier = 1 [(buf.validate.field).required = true];
+  // name on action is required
+  policy.Action action = 2 [(buf.validate.field).required = true];
+  repeated Resource resources = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {min_items: 1}
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "get_decision_multi_request.action_name_required"
+    message: "action.name must be provided"
+    expression: "has(this.action.name)"
+  };
+}
+message GetDecisionMultiResourceResponse {
+  // convenience flag indicating global resource decisions result (permit/deny)
+  google.protobuf.BoolValue all_permitted = 1;
+  // individual resource decisions
+  repeated ResourceDecision resource_decisions = 2;
+}
+
+// Is access allowed?
+// 1. Multiplexing of a Decision<EntityIdentifier, Action, repeated Resource> request
+// This is a more performant bulk request for complex decisioning (i.e. multiple entity chains or actions on
+// multiple resources)
+message GetDecisionBulkRequest {
+  repeated GetDecisionMultiResourceRequest decision_requests = 1;
+}
+message GetDecisionBulkResponse {
+  repeated GetDecisionMultiResourceResponse decision_responses = 1;
+}
+
+// What is permitted to the identified entity/entities (actor), broken down as permitted actions on attribute value FQNs?
+//
+// Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use
+// GetDecision if the resource is known
+message GetEntitlementsRequest {
+  // an entity must be identified for entitlement decisioning
+  EntityIdentifier entity_identifier = 1 [(buf.validate.field).required = true];
+  // optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
+  // down the hierarchical values instead of returning solely the value that is directly entitled
+  optional bool with_comprehensive_hierarchy = 2;
+}
+message GetEntitlementsResponse {
+  repeated EntityEntitlements entitlements = 1;
+}
+
+service AuthorizationService {
+  rpc GetDecision(GetDecisionRequest) returns (GetDecisionResponse) {}
+  rpc GetDecisionMultiResource(GetDecisionMultiResourceRequest) returns (GetDecisionMultiResourceResponse) {}
+  rpc GetDecisionBulk(GetDecisionBulkRequest) returns (GetDecisionBulkResponse) {}
+
+  rpc GetEntitlements(GetEntitlementsRequest) returns (GetEntitlementsResponse) {}
+}

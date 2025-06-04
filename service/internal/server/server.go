@@ -19,6 +19,7 @@ import (
 	"connectrpc.com/validate"
 	"github.com/go-chi/cors"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/sdk"
 	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/security"
@@ -27,7 +28,6 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/tracing"
-	"github.com/opentdf/platform/service/trust"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
@@ -57,8 +57,10 @@ type Config struct {
 	CORS                    CORSConfig                               `mapstructure:"cors" json:"cors"`
 	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-" json:"-"`
 	// Port to listen on
-	Port int    `mapstructure:"port" json:"port" default:"8080"`
-	Host string `mapstructure:"host,omitempty" json:"host"`
+	Port           int    `mapstructure:"port" json:"port" default:"8080"`
+	Host           string `mapstructure:"host,omitempty" json:"host"`
+	PublicHostname string `mapstructure:"public_hostname,omitempty" json:"publicHostname"`
+
 	// Enable pprof
 	EnablePprof bool `mapstructure:"enable_pprof" json:"enable_pprof" default:"false"`
 	// Trace is for configuring open telemetry based tracing.
@@ -129,13 +131,13 @@ type OpenTDFServer struct {
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
 
-	TrustKeyIndex   trust.KeyIndex
-	TrustKeyManager trust.KeyManager
-
 	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
-	CryptoProvider security.CryptoProvider
+	CryptoProvider *security.StandardCrypto
+	Listener       net.Listener
 
 	logger *logger.Logger
+
+	PublicHostname string
 }
 
 /*
@@ -227,7 +229,8 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
 			ConnectRPC:         connectRPCIpc,
 		},
-		logger: logger,
+		logger:         logger,
+		PublicHostname: config.PublicHostname,
 	}
 
 	if !config.CryptoProvider.IsEmpty() {
@@ -440,11 +443,13 @@ func (s OpenTDFServer) Start() error {
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1(reflector))
 	s.ConnectRPCInProcess.Mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 
-	// Start Http Server
 	ln, err := s.openHTTPServerPort()
 	if err != nil {
 		return err
 	}
+	s.Listener = ln
+
+	// Start Http Server
 	go s.startHTTPServer(ln)
 
 	return nil
@@ -458,6 +463,10 @@ func (s OpenTDFServer) Stop() {
 		s.logger.Error("failed to shutdown http server", slog.String("error", err.Error()))
 		return
 	}
+	// Close the listener
+	if s.Listener != nil {
+		s.Listener.Close()
+	}
 
 	s.logger.Info("shutting down in process grpc server")
 	if err := s.ConnectRPCInProcess.srv.Shutdown(ctx); err != nil {
@@ -468,7 +477,25 @@ func (s OpenTDFServer) Stop() {
 	s.logger.Info("shutdown complete")
 }
 
-func (s inProcessServer) Conn() *grpc.ClientConn {
+func (s inProcessServer) Conn() *sdk.ConnectRPCConnection {
+	var clientInterceptors []connect.Interceptor
+
+	// Add audit interceptor
+	clientInterceptors = append(clientInterceptors, sdkAudit.MetadataAddingConnectInterceptor())
+
+	conn := sdk.ConnectRPCConnection{
+		Client:   s.srv.Client(),
+		Endpoint: s.srv.Listener.Addr().String(),
+		Options: []connect.ClientOption{
+			connect.WithInterceptors(clientInterceptors...),
+			connect.WithReadMaxBytes(s.maxCallRecvMsgSize),
+			connect.WithSendMaxBytes(s.maxCallSendMsgSize),
+		},
+	}
+	return &conn
+}
+
+func (s inProcessServer) GrpcConn() *grpc.ClientConn {
 	var clientInterceptors []grpc.UnaryClientInterceptor
 
 	// Add audit interceptor

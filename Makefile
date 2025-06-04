@@ -1,7 +1,7 @@
 # make
 # To run all lint checks: `LINT_OPTIONS= make lint`
 
-.PHONY: all build clean docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
+.PHONY: all build clean connect-wrapper-generate docker-build fix fmt go-lint license lint proto-generate proto-lint sdk/sdk test tidy toolcheck
 
 MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
@@ -49,7 +49,7 @@ go-lint:
 	status=0; \
 	for m in $(HAND_MODS); do \
 		echo "Linting module: $$m"; \
-		(cd "$$m" && golangci-lint run $(LINT_OPTIONS) --path-prefix="$$m" ) || status=1; \
+		(cd "$$m" && golangci-lint run $(LINT_OPTIONS) ) || status=1; \
 	done; \
 	exit $$status
 
@@ -70,6 +70,11 @@ proto-generate:
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.grpc.docs.yaml
 	buf generate buf.build/grpc-ecosystem/grpc-gateway -o tmp-gen --template buf.gen.openapi.docs.yaml
+
+	go run ./sdk/codegen
+
+connect-wrapper-generate:
+	go run ./sdk/codegen
 
 policy-sql-gen:
 	@which sqlc > /dev/null || { echo "sqlc not found, please install it: https://docs.sqlc.dev/en/stable/overview/install.html"; exit 1; }
@@ -95,7 +100,7 @@ clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
 	rm -f opentdf examples/examples
 
-build: proto-generate opentdf sdk/sdk examples/examples
+build: proto-generate connect-wrapper-generate opentdf sdk/sdk examples/examples
 
 opentdf: $(shell find service)
 	go build -o opentdf -v service/main.go

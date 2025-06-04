@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"log/slog"
 	"net/http"
 	"testing"
@@ -21,6 +22,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -28,6 +30,101 @@ import (
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"google.golang.org/grpc/metadata"
 )
+
+type fakeKeyDetails struct {
+	id        trust.KeyIdentifier
+	algorithm string
+	legacy    bool
+}
+
+func (f *fakeKeyDetails) ID() trust.KeyIdentifier { return f.id }
+func (f *fakeKeyDetails) Algorithm() string       { return f.algorithm }
+func (f *fakeKeyDetails) IsLegacy() bool          { return f.legacy }
+func (f *fakeKeyDetails) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
+	return &trust.PrivateKey{}, nil
+}
+
+func (f *fakeKeyDetails) ExportPublicKey(context.Context, trust.KeyType) (string, error) {
+	return "", nil
+}
+func (f *fakeKeyDetails) ExportCertificate(context.Context) (string, error) { return "", nil }
+func (f *fakeKeyDetails) System() string                                    { return "" }
+
+type fakeKeyIndex struct {
+	keys []trust.KeyDetails
+	err  error
+}
+
+func (f *fakeKeyIndex) FindKeyByAlgorithm(context.Context, string, bool) (trust.KeyDetails, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (f *fakeKeyIndex) FindKeyByID(context.Context, trust.KeyIdentifier) (trust.KeyDetails, error) {
+	return nil, errors.New("not implemented")
+}
+func (f *fakeKeyIndex) ListKeys(context.Context) ([]trust.KeyDetails, error) { return f.keys, f.err }
+
+func TestListLegacyKeys_KeyringPopulated(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+	// Simulate a Provider with Keyring containing legacy RSA keys
+	p := &Provider{
+		Logger: testLogger,
+		KASConfig: KASConfig{
+			Keyring: []CurrentKeyFor{
+				{KID: "legacy1", Algorithm: "rsa:2048", Legacy: true},
+				{KID: "notlegacy", Algorithm: "rsa:2048", Legacy: false},
+				{KID: "legacy2", Algorithm: "rsa:2048", Legacy: true},
+				{KID: "legacy3", Algorithm: "ec:secp256r1", Legacy: true}, // not RSA
+			},
+		},
+	}
+
+	kids := p.listLegacyKeys(t.Context())
+	assert.ElementsMatch(t, []trust.KeyIdentifier{"legacy1", "legacy2"}, kids)
+}
+
+func TestListLegacyKeys_KeyIndexPopulated(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+	fakeKeys := []trust.KeyDetails{
+		&fakeKeyDetails{id: "id1", algorithm: "rsa:2048", legacy: true},
+		&fakeKeyDetails{id: "id2", algorithm: "rsa:2048", legacy: false},
+		&fakeKeyDetails{id: "id3", algorithm: "ec:secp256r1", legacy: true},
+		&fakeKeyDetails{id: "id4", algorithm: "rsa:2048", legacy: true},
+	}
+	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{
+		keys: fakeKeys,
+	}, logger.CreateTestLogger())
+	p := &Provider{
+		Logger:       testLogger,
+		KeyDelegator: delegator,
+	}
+	kids := p.listLegacyKeys(t.Context())
+	assert.ElementsMatch(t, []trust.KeyIdentifier{"id1", "id4"}, kids)
+}
+
+func TestListLegacyKeys_Empty(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{}, logger.CreateTestLogger())
+	p := &Provider{
+		Logger:       testLogger,
+		KeyDelegator: delegator,
+	}
+	kids := p.listLegacyKeys(t.Context())
+	assert.Empty(t, kids)
+}
+
+func TestListLegacyKeys_KeyIndexError(t *testing.T) {
+	testLogger := logger.CreateTestLogger()
+	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{
+		err: errors.New("fail"),
+	}, logger.CreateTestLogger())
+	p := &Provider{
+		Logger:       testLogger,
+		KeyDelegator: delegator,
+	}
+	kids := p.listLegacyKeys(t.Context())
+	assert.Empty(t, kids)
+}
 
 const (
 	ecCert = `-----BEGIN CERTIFICATE-----

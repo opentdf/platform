@@ -11,13 +11,16 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/kas/kasconnect"
 	"github.com/opentdf/platform/sdk/httputil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,7 +31,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func TestAddingTokensToOutgoingRequest(t *testing.T) {
+func setupTokenAddingInterceptor(t *testing.T) (TokenAddingInterceptor, jwk.Key) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err, "error generating key")
 
@@ -42,28 +45,24 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 		key:         key,
 		accessToken: "thisisafakeaccesstoken",
 	}
-	server := FakeAccessServiceServer{}
+
 	oo := NewTokenAddingInterceptorWithClient(&ts, httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}))
+	return oo, key
+}
 
-	client, stop := runServer(&server, oo)
-	defer stop()
-
-	_, err = client.PublicKey(t.Context(), &kas.PublicKeyRequest{})
-	require.NoError(t, err, "error making call")
-
-	assert.ElementsMatch(t, server.accessToken, []string{"DPoP thisisafakeaccesstoken"})
-	require.Len(t, server.dpopToken, 1, "incorrect dpop token headers")
-
-	dpopToken := server.dpopToken[0]
+func checkAccessAndDpopTokens(t *testing.T, accessToken []string, dpopToken []string, key jwk.Key) {
+	assert.ElementsMatch(t, accessToken, []string{"DPoP thisisafakeaccesstoken"})
+	require.Len(t, dpopToken, 1, "incorrect dpop token headers")
 	alg, ok := key.Algorithm().(jwa.SignatureAlgorithm)
 	assert.True(t, ok, "got a bad signing algorithm")
 
-	_, err = jws.Verify([]byte(dpopToken), jws.WithKey(alg, key))
+	thisDpopToken := dpopToken[0]
+	_, err := jws.Verify([]byte(thisDpopToken), jws.WithKey(alg, key))
 	require.NoError(t, err, "error verifying signature")
 
-	parsedSignature, _ := jws.Parse([]byte(dpopToken))
+	parsedSignature, _ := jws.Parse([]byte(thisDpopToken))
 	require.Len(t, parsedSignature.Signatures(), 1, "incorrect number of signatures")
 
 	sig := parsedSignature.Signatures()[0]
@@ -76,7 +75,7 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 	ktp, _ := key.Thumbprint(crypto.SHA256)
 	assert.Equal(t, tp, ktp, "got the wrong key from the token")
 
-	parsedToken, _ := jwt.Parse([]byte(dpopToken), jwt.WithVerify(false))
+	parsedToken, _ := jwt.Parse([]byte(thisDpopToken), jwt.WithVerify(false))
 
 	method, ok := parsedToken.Get("htm")
 	require.True(t, ok, "error getting htm claim")
@@ -95,18 +94,75 @@ func TestAddingTokensToOutgoingRequest(t *testing.T) {
 	assert.Equal(t, expectedHash, ath, "invalid ath claim in token")
 }
 
+func TestAddingTokensToOutgoingRequest(t *testing.T) {
+	oo, key := setupTokenAddingInterceptor(t)
+
+	serverGrpc := FakeAccessServiceServer{}
+
+	clientGrpc, stopG := runServer(&serverGrpc, oo)
+	defer stopG()
+	_, err := clientGrpc.PublicKey(t.Context(), &kas.PublicKeyRequest{})
+	require.NoError(t, err, "error making call")
+
+	checkAccessAndDpopTokens(t, serverGrpc.accessToken, serverGrpc.dpopToken, key)
+}
+
+func TestAddingTokensToOutgoingRequest_Connect(t *testing.T) {
+	oo, key := setupTokenAddingInterceptor(t)
+
+	serverConnect := FakeAccessServiceServerConnect{}
+	clientConnect, stopC := runConnectServer(&serverConnect, oo)
+	defer stopC()
+	_, err := clientConnect.PublicKey(t.Context(), connect.NewRequest(&kas.PublicKeyRequest{}))
+	require.NoError(t, err, "error making call")
+
+	checkAccessAndDpopTokens(t, serverConnect.accessToken, serverConnect.dpopToken, key)
+}
+
 func Test_InvalidCredentials_DoesNotSendMessage(t *testing.T) {
 	ts := FakeTokenSource{key: nil, accessToken: ""}
-	server := FakeAccessServiceServer{}
+	serverGrpc := FakeAccessServiceServer{}
 	oo := NewTokenAddingInterceptorWithClient(&ts, httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}))
 
-	client, stop := runServer(&server, oo)
-	defer stop()
+	clientGrpc, stopG := runServer(&serverGrpc, oo)
+	defer stopG()
 
-	_, err := client.PublicKey(t.Context(), &kas.PublicKeyRequest{})
+	_, err := clientGrpc.PublicKey(t.Context(), &kas.PublicKeyRequest{})
 	require.Error(t, err, "should not have sent message because the token source returned an error")
+}
+
+func Test_InvalidCredentials_DoesNotSendMessage_Connect(t *testing.T) {
+	ts := FakeTokenSource{key: nil, accessToken: ""}
+	serverConnect := FakeAccessServiceServerConnect{}
+	oo := NewTokenAddingInterceptorWithClient(&ts, httputil.SafeHTTPClientWithTLSConfig(&tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}))
+
+	clientConnect, stopC := runConnectServer(&serverConnect, oo)
+	defer stopC()
+
+	_, err := clientConnect.PublicKey(t.Context(), connect.NewRequest(&kas.PublicKeyRequest{}))
+	require.Error(t, err, "should not have sent message because the token source returned an error")
+}
+
+type FakeAccessServiceServerConnect struct {
+	accessToken []string
+	dpopToken   []string
+	dpopKey     jwk.Key
+	kasconnect.UnimplementedAccessServiceHandler
+}
+
+func (f *FakeAccessServiceServerConnect) PublicKey(ctx context.Context, req *connect.Request[kas.PublicKeyRequest]) (*connect.Response[kas.PublicKeyResponse], error) {
+	f.accessToken = []string{req.Header().Get("authorization")}
+	f.dpopToken = []string{req.Header().Get("dpop")}
+	var ok bool
+	f.dpopKey, ok = ctx.Value("dpop-jwk").(jwk.Key)
+	if !ok {
+		f.dpopKey = nil
+	}
+	return connect.NewResponse(&kas.PublicKeyResponse{}), nil
 }
 
 type FakeAccessServiceServer struct {
@@ -154,6 +210,26 @@ func (fts *FakeTokenSource) MakeToken(f func(jwk.Key) ([]byte, error)) ([]byte, 
 		return nil, errors.New("no such key")
 	}
 	return f(fts.key)
+}
+
+func runConnectServer(
+	f *FakeAccessServiceServerConnect, oo TokenAddingInterceptor,
+) (kasconnect.AccessServiceClient, func()) {
+	mux := http.NewServeMux()
+	path, handler := kasconnect.NewAccessServiceHandler(f)
+	mux.Handle(path, handler)
+
+	server := httptest.NewServer(mux)
+
+	client := kasconnect.NewAccessServiceClient(
+		server.Client(),
+		server.URL,
+		connect.WithInterceptors(oo.AddCredentialsConnect()),
+	)
+
+	return client, func() {
+		server.Close()
+	}
 }
 
 func runServer( //nolint:ireturn // this is pretty concrete

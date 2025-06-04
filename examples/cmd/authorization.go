@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/authorization"
@@ -15,7 +14,7 @@ import (
 var AuthorizationExampleCmd = &cobra.Command{
 	Use:   "authorization",
 	Short: "Example usage for authorization service",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		return authorizationExamples()
 	},
 }
@@ -28,24 +27,27 @@ func authorizationExamples() error {
 	}
 	defer s.Close()
 
-	// request decision on "TRANSMIT" Action
+	// request decision on "read" Action
 	actions := []*policy.Action{{
-		Value: &policy.Action_Standard{Standard: policy.Action_STANDARD_ACTION_TRANSMIT},
+		Name: "read",
 	}}
 
 	// model two groups of entities; user bob and user alice
 	entityChains := []*authorization.EntityChain{{
 		Id: "ec1", // ec1 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"},
-			Category: authorization.Entity_CATEGORY_SUBJECT}},
+		Entities: []*authorization.Entity{{
+			EntityType: &authorization.Entity_EmailAddress{EmailAddress: "bob@example.org"},
+			Category:   authorization.Entity_CATEGORY_SUBJECT,
+		}},
 	}, {
 		Id: "ec2", // ec2 is an arbitrary tracking id to match results to request
-		Entities: []*authorization.Entity{{EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"},
-			Category: authorization.Entity_CATEGORY_SUBJECT}},
+		Entities: []*authorization.Entity{{
+			EntityType: &authorization.Entity_UserName{UserName: "alice@example.org"},
+			Category:   authorization.Entity_CATEGORY_SUBJECT,
+		}},
 	}}
 
-	// TODO Get attribute value ids
-	tradeSecretAttributeValueFqn := "https://namespace.com/attr/attr_name/value/replaceme"
+	tradeSecretAttributeValueFqn := "https://namespace.com/attr/attr_name/value/replaceme" //nolint: gosec // TODO Get attribute value ids
 	openAttributeValueFqn := "https://open.io/attr/attr_name/value/open"
 
 	slog.Info("Getting decision for bob and alice for transmit action on resource set with trade secret and resource" +
@@ -61,21 +63,21 @@ func authorizationExamples() error {
 	})
 
 	decisionRequest := &authorization.GetDecisionsRequest{DecisionRequests: drs}
-	slog.Info(fmt.Sprintf("Submitting decision request: %s", protojson.Format(decisionRequest)))
+	slog.Info("Submitting decision request: " + protojson.Format(decisionRequest))
 	decisionResponse, err := s.Authorization.GetDecisions(context.Background(), decisionRequest)
 	if err != nil {
 		return err
 	}
-	slog.Info(fmt.Sprintf("Received decision response: %s", protojson.Format(decisionResponse)))
+	slog.Info("Received decision response: " + protojson.Format(decisionResponse))
 
 	// map response back to entity chain id
 	decisionsByEntityChain := make(map[string]*authorization.DecisionResponse)
-	for _, dr := range decisionResponse.DecisionResponses {
-		decisionsByEntityChain[dr.EntityChainId] = dr
+	for _, dr := range decisionResponse.GetDecisionResponses() {
+		decisionsByEntityChain[dr.GetEntityChainId()] = dr
 	}
 
-	slog.Info(fmt.Sprintf("decision for bob: %s", protojson.Format(decisionsByEntityChain["ec1"])))
-	slog.Info(fmt.Sprintf("decision for alice: %s", protojson.Format(decisionsByEntityChain["ec2"])))
+	slog.Info("decision for bob: " + protojson.Format(decisionsByEntityChain["ec1"]))
+	slog.Info("decision for alice: " + protojson.Format(decisionsByEntityChain["ec2"]))
 	return nil
 }
 

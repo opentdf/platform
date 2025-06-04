@@ -3,7 +3,7 @@ package namespaces
 import (
 	"testing"
 
-	"github.com/bufbuild/protovalidate-go"
+	"buf.build/go/protovalidate"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/stretchr/testify/require"

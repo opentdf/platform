@@ -28,10 +28,11 @@ import (
 // then those will need to be updated.
 
 type TestConfig struct {
-	PlatformEndpoint string
-	TokenEndpoint    string
-	ClientID         string
-	ClientSecret     string
+	PlatformEndpoint           string
+	PlatformEndpointWithScheme string
+	TokenEndpoint              string
+	ClientID                   string
+	ClientSecret               string
 }
 
 var attributesToMap = []string{
@@ -111,11 +112,14 @@ func (s *RoundtripSuite) SetupSuite() {
 	opts := []sdk.Option{}
 	if os.Getenv("TLS_ENABLED") == "" {
 		opts = append(opts, sdk.WithInsecurePlaintextConn())
+		s.TestConfig.PlatformEndpointWithScheme = "http://" + s.TestConfig.PlatformEndpoint
+	} else {
+		s.TestConfig.PlatformEndpointWithScheme = "https://" + s.TestConfig.PlatformEndpoint
 	}
 
 	opts = append(opts, sdk.WithClientCredentials(s.TestConfig.ClientID, s.TestConfig.ClientSecret, nil))
 
-	sdk, err := sdk.New("http://"+s.TestConfig.PlatformEndpoint, opts...)
+	sdk, err := sdk.New(s.TestConfig.PlatformEndpointWithScheme, opts...)
 	s.Require().NoError(err)
 	s.client = sdk
 
@@ -319,12 +323,34 @@ func (s *RoundtripSuite) CreateTestData() error {
 		}
 	}
 
-	allSubMaps, err := client.SubjectMapping.ListSubjectMappings(context.Background(), &subjectmapping.ListSubjectMappingsRequest{})
-	if err != nil {
-		slog.Error("could not list subject mappings", slog.String("error", err.Error()))
-		return err
+	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
+	var nextOffset int32
+	smList := make([]*policy.SubjectMapping, 0)
+	ctx := s.T().Context()
+
+	for {
+		listed, err := client.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
+			// defer to service default for limit pagination
+			Pagination: &policy.PageRequest{
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to list subject mappings", slog.String("error", err.Error()))
+			return fmt.Errorf("failed to list subject mappings: %w", err)
+		}
+
+		nextOffset = listed.GetPagination().GetNextOffset()
+		smList = append(smList, listed.GetSubjectMappings()...)
+
+		if nextOffset <= 0 {
+			break
+		}
 	}
-	slog.Info("list subject mappings response: " + protojson.Format(allSubMaps))
+	resp := &subjectmapping.ListSubjectMappingsResponse{
+		SubjectMappings: smList,
+	}
+	slog.Info("list all subject mappings: " + protojson.Format(resp))
 
 	return nil
 }
@@ -342,8 +368,7 @@ func encrypt(client *sdk.SDK, testConfig TestConfig, plaintext string, attribute
 		sdk.WithDataAttributes(attributes...),
 		sdk.WithKasInformation(
 			sdk.KASInfo{
-				// examples assume insecure http
-				URL:       "http://" + testConfig.PlatformEndpoint,
+				URL:       testConfig.PlatformEndpointWithScheme,
 				PublicKey: "",
 			}))
 	if err != nil {

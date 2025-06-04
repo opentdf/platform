@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/url"
 	"strconv"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -63,20 +64,44 @@ type PgxIface interface {
 	Ping(context.Context) error
 	Close()
 	Config() *pgxpool.Config
+	CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error)
+}
+
+// PoolConfig holds all connection pool related configuration
+type PoolConfig struct {
+	// Maximum amount of connections to keep in the pool.
+	MaxConns int32 `mapstructure:"max_connection_count" json:"maxConnectionsCount" default:"4"`
+
+	// Minimum amount of connections to keep in the pool.
+	MinConns int32 `mapstructure:"min_connection_count" json:"minConnectionsCount" default:"0"`
+
+	// Minimum amount of idle connections to keep in the pool.
+	MinIdleConns int32 `mapstructure:"min_idle_connections_count" json:"minIdleConnectionsCount" default:"0"`
+
+	// Maximum amount of time a connection may be reused, in seconds. Default: 3600 seconds (1 hour).
+	MaxConnLifetime int `mapstructure:"max_connection_lifetime_seconds" json:"maxConnectionLifetimeSeconds" default:"3600"`
+
+	// Maximum amount of time a connection may be idle before being closed, in seconds. Default: 1800 seconds (30 minutes).
+	MaxConnIdleTime int `mapstructure:"max_connection_idle_seconds" json:"maxConnectionIdleSeconds" default:"1800"`
+
+	// Period at which the pool will check the health of idle connections, in seconds. Default: 60 seconds (1 minute).
+	HealthCheckPeriod int `mapstructure:"health_check_period_seconds" json:"healthCheckPeriodSeconds" default:"60"`
 }
 
 type Config struct {
-	Host          string `mapstructure:"host" json:"host" default:"localhost"`
-	Port          int    `mapstructure:"port" json:"port" default:"5432"`
-	Database      string `mapstructure:"database" json:"database" default:"opentdf"`
-	User          string `mapstructure:"user" json:"user" default:"postgres"`
-	Password      string `mapstructure:"password" json:"password" default:"changeme"`
-	RunMigrations bool   `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
-	SSLMode       string `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
-	Schema        string `mapstructure:"schema" json:"schema" default:"opentdf"`
+	Host           string     `mapstructure:"host" json:"host" default:"localhost"`
+	Port           int        `mapstructure:"port" json:"port" default:"5432"`
+	Database       string     `mapstructure:"database" json:"database" default:"opentdf"`
+	User           string     `mapstructure:"user" json:"user" default:"postgres"`
+	Password       string     `mapstructure:"password" json:"password" default:"changeme"`
+	SSLMode        string     `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
+	Schema         string     `mapstructure:"schema" json:"schema" default:"opentdf"`
+	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connectTimeoutSeconds" default:"15"`
+	Pool           PoolConfig `mapstructure:"pool" json:"pool"`
 
-	VerifyConnection bool      `mapstructure:"verifyConnection" json:"verifyConnection" default:"true"`
+	RunMigrations    bool      `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
 	MigrationsFS     *embed.FS `mapstructure:"-"`
+	VerifyConnection bool      `mapstructure:"verifyConnection" json:"verifyConnection" default:"true"`
 }
 
 func (c Config) LogValue() slog.Value {
@@ -88,6 +113,14 @@ func (c Config) LogValue() slog.Value {
 		slog.String("password", "[REDACTED]"),
 		slog.String("sslmode", c.SSLMode),
 		slog.String("schema", c.Schema),
+		slog.Int("connect_timeout_seconds", c.ConnectTimeout),
+		slog.Group("pool",
+			slog.Int("max_connection_count", int(c.Pool.MaxConns)),
+			slog.Int("min_connection_count", int(c.Pool.MinConns)),
+			slog.Int("max_connection_lifetime_seconds", c.Pool.MaxConnLifetime),
+			slog.Int("max_connection_idle_seconds", c.Pool.MaxConnIdleTime),
+			slog.Int("health_check_period_seconds", c.Pool.HealthCheckPeriod),
+		),
 		slog.Bool("runMigrations", c.RunMigrations),
 		slog.Bool("verifyConnection", c.VerifyConnection),
 	)
@@ -202,6 +235,20 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
 	}
+
+	// Apply connection and pool configurations
+	if c.Pool.MinConns > 0 {
+		parsed.MinConns = c.Pool.MinConns
+	}
+	if c.Pool.MinIdleConns > 0 {
+		parsed.MinIdleConns = c.Pool.MinIdleConns
+	}
+	// Non-zero defaults
+	parsed.ConnConfig.ConnectTimeout = time.Duration(c.ConnectTimeout) * time.Second
+	parsed.MaxConns = c.Pool.MaxConns
+	parsed.MaxConnLifetime = time.Duration(c.Pool.MaxConnLifetime) * time.Second
+	parsed.MaxConnIdleTime = time.Duration(c.Pool.MaxConnIdleTime) * time.Second
+	parsed.HealthCheckPeriod = time.Duration(c.Pool.HealthCheckPeriod) * time.Second
 
 	// Configure the search_path schema immediately on connection opening
 	parsed.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {

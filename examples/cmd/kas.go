@@ -1,7 +1,9 @@
+//nolint:forbidigo // Sample code
 package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -24,7 +26,7 @@ func init() {
 		Use:     "update",
 		Aliases: []string{"add"},
 		Args:    cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return updateKas(cmd)
 		},
 	}
@@ -41,7 +43,7 @@ func init() {
 		Args:    cobra.NoArgs,
 		Aliases: []string{"ls"},
 		Short:   "list stored kas information",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return listKases(cmd)
 		},
 	}
@@ -53,7 +55,7 @@ func init() {
 		Args:    cobra.NoArgs,
 		Aliases: []string{"rm"},
 		Short:   "remove kas by uri",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return removeKas(cmd)
 		},
 	}
@@ -105,7 +107,7 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 			oldpk := ki.GetPublicKey()
 			recreate := false
 			switch {
-			case pk != nil && len(pk.GetCached().Keys) == 0 && len(oldpk.GetCached().Keys) == 0:
+			case pk != nil && len(pk.GetCached().GetKeys()) == 0 && len(oldpk.GetCached().GetKeys()) == 0:
 				recreate = pk.GetRemote() != oldpk.GetRemote()
 			case pk != nil:
 				// previously remote, now local, or local and changed
@@ -138,7 +140,7 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 		slog.Error("CreateKeyAccessServer", "uri", uri, "publicKey", uri+"/v2/kas_public_key")
 		return "", err
 	}
-	return ur.KeyAccessServer.GetId(), nil
+	return ur.GetKeyAccessServer().GetId(), nil
 }
 
 func algString2Proto(a string) policy.KasPublicKeyAlgEnum {
@@ -163,7 +165,7 @@ func updateKas(cmd *cobra.Command) error {
 	switch {
 	case keyIdentifier != "":
 		if key == "" || algorithm == "" {
-			err := fmt.Errorf("if --kid is found, --public-key and --algorithm must also be specified")
+			err := errors.New("if --kid is found, --public-key and --algorithm must also be specified")
 			return err
 		}
 		pk = new(policy.PublicKey)
@@ -226,8 +228,8 @@ func removeKas(cmd *cobra.Command) error {
 	}
 	if !deletedSomething {
 		return fmt.Errorf("nothing deleted; [%s] not found", kas)
-	} else {
-		slog.Info("deleted kas registration", "kas", kas)
 	}
+
+	slog.Info("deleted kas registration", "kas", kas)
 	return nil
 }

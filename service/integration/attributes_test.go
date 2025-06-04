@@ -1335,7 +1335,77 @@ func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Returns_Error_When_
 
 	s.Require().Error(err)
 	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+}
+
+func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_NotActiveKey_Fail() {
+	var kasID string
+	keyIDs := make([]string, 0)
+	defer func() {
+		for _, keyID := range keyIDs {
+			// delete the kas key
+			_, err := s.db.PolicyClient.DeleteKey(s.ctx, keyID)
+			s.Require().NoError(err)
+		}
+
+		if kasID != "" {
+			// delete the kas
+			_, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, kasID)
+			s.Require().NoError(err)
+		}
+	}()
+
+	// create a KAS
+	kas := &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://example.com/kas",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Remote{
+				Remote: "https://example.com/kas/key/1",
+			},
+		},
+		Name: "def_kas-name",
+	}
+	createdKAS, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kas)
+	s.Require().NoError(err)
+	s.NotNil(createdKAS)
+	kasID = createdKAS.GetId()
+
+	// create a key
+	kasKey := &kasregistry.CreateKeyRequest{
+		KasId:        kasID,
+		KeyId:        "kas_key_1",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
+		PublicKeyCtx: &policy.PublicKeyCtx{
+			Pem: keyCtx,
+		},
+	}
+	toBeRotatedKey, err := s.db.PolicyClient.CreateKey(s.ctx, kasKey)
+	s.Require().NoError(err)
+	s.NotNil(toBeRotatedKey)
+	keyIDs = append(keyIDs, toBeRotatedKey.GetKasKey().GetKey().GetId())
+
+	// rotate the key
+	newKey := &kasregistry.RotateKeyRequest_NewKey{
+		KeyId:     "kas_key_1_rotated",
+		Algorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:   policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
+		PublicKeyCtx: &policy.PublicKeyCtx{
+			Pem: keyCtx,
+		},
+	}
+	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, toBeRotatedKey.GetKasKey(), newKey)
+	s.Require().NoError(err)
+	s.NotNil(rotatedInKey)
+	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
+
+	resp, err := s.db.PolicyClient.AssignPublicKeyToAttribute(s.ctx, &attributes.AttributeKey{
+		AttributeId: s.f.GetAttributeKey("example.com/attr/attr1").ID,
+		KeyId:       toBeRotatedKey.GetKasKey().GetKey().GetId(),
+	})
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().Contains(err.Error(), fmt.Sprintf("key with id %s is not active", toBeRotatedKey.GetKasKey().GetKey().GetId()))
 }
 
 func (s *AttributesSuite) Test_AssociatePublicKeyToAttribute_Succeeds() {

@@ -27,7 +27,9 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EntityResolutionServiceClient interface {
+	// Deprecated: use v2 ResolveEntities instead
 	ResolveEntities(ctx context.Context, in *ResolveEntitiesRequest, opts ...grpc.CallOption) (*ResolveEntitiesResponse, error)
+	// Deprecated: use v2 CreateEntityChainsFromTokens instead
 	CreateEntityChainFromJwt(ctx context.Context, in *CreateEntityChainFromJwtRequest, opts ...grpc.CallOption) (*CreateEntityChainFromJwtResponse, error)
 }
 
@@ -61,7 +63,9 @@ func (c *entityResolutionServiceClient) CreateEntityChainFromJwt(ctx context.Con
 // All implementations must embed UnimplementedEntityResolutionServiceServer
 // for forward compatibility
 type EntityResolutionServiceServer interface {
+	// Deprecated: use v2 ResolveEntities instead
 	ResolveEntities(context.Context, *ResolveEntitiesRequest) (*ResolveEntitiesResponse, error)
+	// Deprecated: use v2 CreateEntityChainsFromTokens instead
 	CreateEntityChainFromJwt(context.Context, *CreateEntityChainFromJwtRequest) (*CreateEntityChainFromJwtResponse, error)
 	mustEmbedUnimplementedEntityResolutionServiceServer()
 }

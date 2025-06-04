@@ -367,7 +367,7 @@ func Test_UpdateSubjectMappingRequest_Fails(t *testing.T) {
 					},
 				}
 			},
-			expectedError: "name",
+			expectedError: "action_names_not_empty",
 		},
 	}
 

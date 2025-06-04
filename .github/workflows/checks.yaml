@@ -568,4 +568,4 @@ jobs:
           DB_DSN="host=localhost port=5432 user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} sslmode=disable"
           
           echo "Running goose down migrations (all) using ${GOOSE_EXECUTABLE}..."
-          "$GOOSE_EXECUTABLE" -dir ./service/policy/db/migrations postgres "$DB_DSN" down --down-to 20230101000000
+          "$GOOSE_EXECUTABLE" -dir ./service/policy/db/migrations postgres "$DB_DSN" down -down-to 20230101000000

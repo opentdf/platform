@@ -775,6 +775,7 @@ func (r *Reader) Read(p []byte) (int, error) {
 	return n, err
 }
 
+// Seek updates cursor to `Read` or `WriteTo` at an offset.
 func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 	var newPos int64
 	switch whence {
@@ -791,7 +792,7 @@ func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 	if newPos < 0 || newPos >= r.payloadSize {
 		return 0, fmt.Errorf("reader.Seek failed: index if out of range %d", newPos)
 	}
-	r.cursor += offset
+	r.cursor = newPos
 	return r.cursor, nil
 }
 

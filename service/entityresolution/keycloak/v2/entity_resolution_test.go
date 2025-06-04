@@ -153,18 +153,6 @@ func testServer(t *testing.T, userSearchQueryAndResp map[string]string, groupSea
 	return server
 }
 
-type countingRoundTripper struct {
-	next     http.RoundTripper
-	requests map[string]*int
-}
-
-func (c *countingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	if count, ok := c.requests[req.URL.Path]; ok {
-		*count++
-	}
-	return c.next.RoundTrip(req)
-}
-
 func Test_GetConnectorTokenRefresh(t *testing.T) {
 	tokenRequests := 0
 

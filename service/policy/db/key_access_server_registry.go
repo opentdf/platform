@@ -772,6 +772,11 @@ func (c PolicyDBClient) SetBaseKeyOnWellKnownConfig(ctx context.Context) error {
 		return err
 	}
 
+	algorithm, err := db.FormatAlg(baseKey.GetPublicKey().GetAlgorithm())
+	if err != nil {
+		return fmt.Errorf("failed to format algorithm: %w", err)
+	}
+
 	keyMapBytes, err := json.Marshal(baseKey)
 	if err != nil {
 		return err
@@ -781,6 +786,7 @@ func (c PolicyDBClient) SetBaseKeyOnWellKnownConfig(ctx context.Context) error {
 	if err := json.Unmarshal(keyMapBytes, &keyMap); err != nil {
 		return err
 	}
+	keyMap["algorithm"] = algorithm
 
 	wellknownconfiguration.UpdateConfigurationBaseKey(keyMap)
 	return nil

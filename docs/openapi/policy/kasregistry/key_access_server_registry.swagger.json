@@ -645,7 +645,7 @@
       "type": "object",
       "properties": {
         "algorithm": {
-          "type": "string"
+          "$ref": "#/definitions/policyAlgorithm"
         },
         "kid": {
           "type": "string"

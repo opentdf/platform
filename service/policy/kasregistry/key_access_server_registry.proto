@@ -605,7 +605,7 @@ message SetBaseKeyRequest {
 }
 
 message SimpleKasPublicKey {
-  string algorithm = 1;
+  Algorithm algorithm = 1;
   string kid = 2;
   string pem = 3;
 }

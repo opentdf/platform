@@ -488,7 +488,7 @@ jobs:
         run: go install github.com/pressly/goose/v3/cmd/goose@latest
       - name: Wait for Postgres
         run: |
-          for i in {1..30}; do
+          for _ in {1..30}; do
             pg_isready -h localhost -U "$POSTGRES_USER" -d "$POSTGRES_DB" && break
             sleep 1
           done
@@ -500,7 +500,7 @@ jobs:
         run: |
           GOPATH_BIN=$(go env GOPATH)/bin
           export PATH="$PATH:$GOPATH_BIN"
-          goose -dir ./service/policy/db/migrations postgres "host=localhost port=5432 user=$PGUSER password=$PGPASSWORD dbname=$PGDB sslmode=disable" up
+          goose -dir ./service/policy/db/migrations postgres 'host=localhost port=5432 user=$PGUSER password=$PGPASSWORD dbname=$PGDB sslmode=disable' up
       - name: Run goose down
         env:
           PGUSER: "$POSTGRES_USER"

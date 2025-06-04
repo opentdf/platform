@@ -789,7 +789,7 @@ func (c PolicyDBClient) SetBaseKeyOnWellKnownConfig(ctx context.Context) error {
 		}
 		publicKey, ok := keyMap["public_key"].(map[string]any)
 		if !ok {
-			return fmt.Errorf("failed to cast public_key")
+			return errors.New("failed to cast public_key")
 		}
 		publicKey["algorithm"] = algorithm
 		keyMap["public_key"] = publicKey

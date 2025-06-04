@@ -228,7 +228,10 @@ func runConnectServer(
 	)
 
 	return client, func() {
-		server.Close()
+		// Safely close the server
+		if server != nil {
+			server.Close()
+		}
 	}
 }
 
@@ -240,10 +243,12 @@ func runServer( //nolint:ireturn // this is pretty concrete
 
 	s := grpc.NewServer()
 	kas.RegisterAccessServiceServer(s, f)
+	serverError := make(chan error, 1)
 	go func() {
 		if err := s.Serve(listener); err != nil {
-			panic(err)
+			serverError <- err
 		}
+		close(serverError)
 	}()
 
 	conn, _ := grpc.NewClient("passthrough:///bufconn", grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
@@ -252,5 +257,15 @@ func runServer( //nolint:ireturn // this is pretty concrete
 
 	client := kas.NewAccessServiceClient(conn)
 
-	return client, s.Stop
+	return client, func() {
+		// Gracefully stop the server
+		s.GracefulStop()
+		// Wait for server to complete or stop immediately if already stopped
+		select {
+		case <-serverError:
+			// Server already stopped, nothing to do
+		default:
+			s.Stop()
+		}
+	}
 }

@@ -1,4 +1,4 @@
-package keycloak_test
+package keycloak
 
 import (
 	"encoding/json"
@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/Nerzal/gocloak/v13"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
-	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -75,8 +75,8 @@ const (
 	tokenExchangeJwt      = "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiIsImtpZCI6ImE1NThkYzg0NzYzNDVjY2QyZWFhNjEzNjg4YmI2YTNkIn0.eyJleHAiOjE3MTU3OTA5MTAsImlhdCI6MTcxNTc5MDYxMCwianRpIjoiNjEyOTI2NzQtMDhmOS00ZmQ1LTk3Y2MtZDg3M2RhODRkZjllIiwiaXNzIjoiaHR0cHM6Ly9sb2NhbC1kc3AudmlydHJ1LmNvbTo4NDQzL2F1dGgvcmVhbG1zL29wZW50ZGYiLCJhdWQiOlsiaHR0cDovL2xvY2FsaG9zdDo4MDgwIiwiYWNjb3VudCIsIm9wZW50ZGYtc2RrIl0sInN1YiI6ImU2ZWI0YWU1LThjMDUtNDI3NC04ZmExLTFmMGY1ZmJjY2JkZiIsInR5cCI6IkJlYXJlciIsImF6cCI6Im9wZW50ZGYiLCJzZXNzaW9uX3N0YXRlIjoiZTQ0YzMxNWMtNjk5Yy00NGFkLTk2NDUtNmRkMmIyMjgzN2JlIiwiYWNyIjoiMSIsInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvcGVudGRmLXJlYWRvbmx5IiwiZGVmYXVsdC1yb2xlcy1vcGVudGRmIiwib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJlNDRjMzE1Yy02OTljLTQ0YWQtOTY0NS02ZGQyYjIyODM3YmUiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInByZWZlcnJlZF91c2VybmFtZSI6InNlcnZpY2UtYWNjb3VudC1vcGVudGRmLXNkayJ9.dmAulsUNfdPXVyWmVPsbGqaztshyHTD-m2hh1l2hmhwuNISJZjON0e1kXNxYXRLABr_PJzIpGYQCXz98yxOyiw"
 )
 
-func testConfig(server *httptest.Server) keycloak.Config {
-	return keycloak.Config{
+func testConfig(server *httptest.Server) Config {
+	return Config{
 		URL:            server.URL,
 		ClientID:       "c1",
 		ClientSecret:   "cs",
@@ -85,15 +85,15 @@ func testConfig(server *httptest.Server) keycloak.Config {
 	}
 }
 
-func testConfigInferID(server *httptest.Server) keycloak.Config {
-	return keycloak.Config{
+func testConfigInferID(server *httptest.Server) Config {
+	return Config{
 		URL:            server.URL,
 		ClientID:       "c1",
 		ClientSecret:   "cs",
 		Realm:          "tdf",
 		LegacyKeycloak: false,
-		InferID: keycloak.InferredIdentityConfig{
-			From: keycloak.EntityImpliedFrom{
+		InferID: InferredIdentityConfig{
+			From: EntityImpliedFrom{
 				Email:    true,
 				ClientID: true,
 			},
@@ -157,7 +157,11 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 	defer server.Close()
 	kcconfig := testConfig(server)
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 	_ = json.NewEncoder(os.Stdout).Encode(&resp)
@@ -182,7 +186,11 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -218,7 +226,11 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -258,7 +270,11 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -294,12 +310,16 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
 
 	require.Error(t, reserr)
 	assert.Equal(t, &entityresolutionV2.ResolveEntitiesResponse{}, &resp)
-	entityNotFound := entityresolutionV2.EntityNotFoundError{Code: int32(codes.NotFound), Message: keycloak.ErrGetRetrievalFailed.Error(), Entity: "random@sample.org"}
-	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), keycloak.ErrGetRetrievalFailed)
+	entityNotFound := entityresolutionV2.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrGetRetrievalFailed.Error(), Entity: "random@sample.org"}
+	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), ErrGetRetrievalFailed)
 	assert.Equal(t, expectedError, reserr)
 }
 
@@ -313,8 +333,11 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: clientCredentialsJwt}}
-
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -333,8 +356,11 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: passwordPubClientJwt}}
-
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -353,8 +379,11 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: passwordPrivClientJwt}}
-
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -373,8 +402,11 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: authPubClientJwt}}
-
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -393,8 +425,11 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: authPrivClientJwt}}
-
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -413,8 +448,11 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: implicitPubClientJwt}}
-
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -433,8 +471,11 @@ func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
 	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: implicitPrivClientJwt}}
-
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -456,8 +497,11 @@ func Test_JwtClientAndClientTokenExchange(t *testing.T) {
 	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: tokenExchangeJwt}}
-
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -479,8 +523,11 @@ func Test_JwtMultiple(t *testing.T) {
 	kcconfig := testConfig(server)
 
 	validBody := []*entity.Token{{Jwt: tokenExchangeJwt, EphemeralId: "tok1"}, {Jwt: authPrivClientJwt, EphemeralId: "tok2"}}
-
-	resp, reserr := keycloak.CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -518,7 +565,11 @@ func Test_KCEntityResolutionNotFoundInferEmail(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -548,7 +599,11 @@ func Test_KCEntityResolutionNotFoundInferClientId(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
 
 	require.NoError(t, reserr)
 
@@ -577,11 +632,15 @@ func Test_KCEntityResolutionNotFoundNotInferUsername(t *testing.T) {
 	req := entityresolutionV2.ResolveEntitiesRequest{}
 	req.Entities = validBody
 
-	resp, reserr := keycloak.EntityResolution(t.Context(), &req, kcconfig, logger.CreateTestLogger())
+	connector := &Connector{
+		token:  &gocloak.JWT{AccessToken: "dummy_token"},
+		client: gocloak.NewClient(server.URL),
+	}
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
 
 	require.Error(t, reserr)
 	assert.Equal(t, &entityresolutionV2.ResolveEntitiesResponse{}, &resp)
-	entityNotFound := entityresolutionV2.EntityNotFoundError{Code: int32(codes.NotFound), Message: keycloak.ErrGetRetrievalFailed.Error(), Entity: "randomuser"}
-	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), keycloak.ErrGetRetrievalFailed)
+	entityNotFound := entityresolutionV2.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrGetRetrievalFailed.Error(), Entity: "randomuser"}
+	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), ErrGetRetrievalFailed)
 	assert.Equal(t, expectedError, reserr)
 }

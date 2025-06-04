@@ -4,7 +4,6 @@ package policy.kasregistry;
 
 import "buf/validate/validate.proto";
 import "common/common.proto";
-import "google/api/annotations.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
 
@@ -627,36 +626,21 @@ message SetBaseKeyResponse {
 
 service KeyAccessServerRegistryService {
   rpc ListKeyAccessServers(ListKeyAccessServersRequest) returns (ListKeyAccessServersResponse) {
-    option (google.api.http) = {get: "/key-access-servers"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc GetKeyAccessServer(GetKeyAccessServerRequest) returns (GetKeyAccessServerResponse) {
-    option (google.api.http) = {get: "/key-access-servers/{id}"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {
-    option (google.api.http) = {
-      post: "/key-access-servers"
-      body: "*"
-    };
-  }
+  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {}
 
-  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {
-    option (google.api.http) = {
-      patch: "/key-access-servers/{id}"
-      body: "*"
-    };
-  }
+  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {}
 
-  rpc DeleteKeyAccessServer(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {
-    option (google.api.http) = {delete: "/key-access-servers/{id}"};
-  }
+  rpc DeleteKeyAccessServer(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {}
 
   // Deprecated
   rpc ListKeyAccessServerGrants(ListKeyAccessServerGrantsRequest) returns (ListKeyAccessServerGrantsResponse) {
-    option (google.api.http) = {get: "/key-access-servers/grants"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

@@ -1,11 +1,14 @@
 package db
 
 import (
-	"encoding/base64"
 	"fmt"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
+)
+
+var (
+	errKasInfoIncomplete = fmt.Errorf("kas information is incomplete")
 )
 
 func mapAlgorithmToKasPublicKeyAlg(alg policy.Algorithm) policy.KasPublicKeyAlgEnum {
@@ -14,20 +17,18 @@ func mapAlgorithmToKasPublicKeyAlg(alg policy.Algorithm) policy.KasPublicKeyAlgE
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
 	case policy.Algorithm_ALGORITHM_RSA_4096:
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
-	case policy.Algorithm_ALGORITHM_EC_P256: // ALGORITHM_EC_P256 is an alias
+	case policy.Algorithm_ALGORITHM_EC_P256:
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
 	case policy.Algorithm_ALGORITHM_EC_P384: // ALGORITHM_EC_P384 is an alias
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
 	case policy.Algorithm_ALGORITHM_EC_P521: // ALGORITHM_EC_P521 is an alias
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
-	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
-		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
 	default:
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
 	}
 }
 
-func mapKasKeysToGrants(keys []*policy.KasKey, existingGrants []*policy.KeyAccessServer, l *logger.Logger) ([]*policy.KeyAccessServer, error) {
+func mapKasKeysToGrants(keys []*policy.SimpleKasKey, existingGrants []*policy.KeyAccessServer, l *logger.Logger) ([]*policy.KeyAccessServer, error) {
 	kasMap := make(map[string]*policy.KeyAccessServer)
 
 	// Populate the map with existing grants
@@ -41,33 +42,25 @@ func mapKasKeysToGrants(keys []*policy.KasKey, existingGrants []*policy.KeyAcces
 		if key == nil {
 			continue
 		}
-		kasURI := key.GetKasUri()
-		if kasURI == "" {
-			// Skip keys without a URI, as it's essential for mapping
-			l.Debug("skipping key without URI", "kid", key.GetKey().GetKeyId())
-			continue
+		if key.GetKasUri() == "" || key.GetKasId() == "" {
+			return nil, errKasInfoIncomplete
 		}
 
-		kasKeyInfo := key.GetKey()
+		kasKeyInfo := key.GetPublicKey()
 		if kasKeyInfo == nil {
-			continue
+			return nil, fmt.Errorf("kas key info is nil for a key with kas uri %s", key.GetKasUri())
+		}
+		if kasKeyInfo.GetPem() == "" {
+			return nil, fmt.Errorf("kas key PEM is empty, kid %s", kasKeyInfo.GetKid())
 		}
 
 		newKasPublicKey := &policy.KasPublicKey{
-			Kid: kasKeyInfo.GetKeyId(),
-			Alg: mapAlgorithmToKasPublicKeyAlg(kasKeyInfo.GetKeyAlgorithm()),
+			Kid: kasKeyInfo.GetKid(),
+			Alg: mapAlgorithmToKasPublicKeyAlg(kasKeyInfo.GetAlgorithm()),
+			Pem: kasKeyInfo.GetPem(),
 		}
 
-		if pubKeyCtx := kasKeyInfo.GetPublicKeyCtx(); pubKeyCtx != nil {
-			// PEM content in PublicKeyCtx is base64 encoded; decode it for KasPublicKey.Pem.
-			pem, err := base64.StdEncoding.DecodeString(pubKeyCtx.GetPem())
-			if err != nil {
-				return nil, fmt.Errorf("failed to decode PEM for key %s: %w", newKasPublicKey.GetKid(), err)
-			}
-			newKasPublicKey.Pem = string(pem)
-		}
-
-		existingKas, found := kasMap[kasURI]
+		existingKas, found := kasMap[key.GetKasUri()]
 		if found {
 			// KAS URI already exists, merge/add the public key
 			if existingKas.GetPublicKey().GetCached() == nil {
@@ -92,7 +85,7 @@ func mapKasKeysToGrants(keys []*policy.KasKey, existingGrants []*policy.KeyAcces
 		} else {
 			// New KAS URI, create a new grant
 			grant := &policy.KeyAccessServer{
-				Uri: kasURI,
+				Uri: key.GetKasUri(),
 				Id:  key.GetKasId(),
 				PublicKey: &policy.PublicKey{
 					PublicKey: &policy.PublicKey_Cached{
@@ -100,7 +93,7 @@ func mapKasKeysToGrants(keys []*policy.KasKey, existingGrants []*policy.KeyAcces
 					},
 				},
 			}
-			kasMap[kasURI] = grant
+			kasMap[key.GetKasUri()] = grant
 		}
 	}
 

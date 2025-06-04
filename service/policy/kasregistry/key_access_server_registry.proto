@@ -604,17 +604,6 @@ message SetBaseKeyRequest {
   }
 }
 
-message SimpleKasPublicKey {
-  Algorithm algorithm = 1;
-  string kid = 2;
-  string pem = 3;
-}
-
-message SimpleKasKey {
-    string kas_uri = 1; // The URL of the Key Access Server
-    SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
-};
-
 message GetBaseKeyRequest {}
 message GetBaseKeyResponse {
   SimpleKasKey base_key = 1; // The current base key

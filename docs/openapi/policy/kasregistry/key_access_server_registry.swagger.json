@@ -437,7 +437,7 @@
       "type": "object",
       "properties": {
         "baseKey": {
-          "$ref": "#/definitions/kasregistrySimpleKasKey",
+          "$ref": "#/definitions/policySimpleKasKey",
           "title": "The current base key"
         }
       }
@@ -619,39 +619,12 @@
       "type": "object",
       "properties": {
         "newBaseKey": {
-          "$ref": "#/definitions/kasregistrySimpleKasKey",
+          "$ref": "#/definitions/policySimpleKasKey",
           "title": "The key that was set as base"
         },
         "previousBaseKey": {
-          "$ref": "#/definitions/kasregistrySimpleKasKey",
+          "$ref": "#/definitions/policySimpleKasKey",
           "title": "The previous base key, if any"
-        }
-      }
-    },
-    "kasregistrySimpleKasKey": {
-      "type": "object",
-      "properties": {
-        "kasUri": {
-          "type": "string",
-          "title": "The URL of the Key Access Server"
-        },
-        "publicKey": {
-          "$ref": "#/definitions/kasregistrySimpleKasPublicKey",
-          "title": "The public key of the Key that belongs to the KAS"
-        }
-      }
-    },
-    "kasregistrySimpleKasPublicKey": {
-      "type": "object",
-      "properties": {
-        "algorithm": {
-          "$ref": "#/definitions/policyAlgorithm"
-        },
-        "kid": {
-          "type": "string"
-        },
-        "pem": {
-          "type": "string"
         }
       }
     },
@@ -810,7 +783,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           },
           "title": "Kas keys associated with this KAS"
         },
@@ -937,6 +910,37 @@
           "type": "string",
           "description": "Base64 encoded public key in PEM format",
           "title": "Required"
+        }
+      }
+    },
+    "policySimpleKasKey": {
+      "type": "object",
+      "properties": {
+        "kasUri": {
+          "type": "string",
+          "title": "The URL of the Key Access Server"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policySimpleKasPublicKey",
+          "title": "The public key of the Key that belongs to the KAS"
+        },
+        "kasId": {
+          "type": "string",
+          "title": "The ID of the Key Access Server"
+        }
+      }
+    },
+    "policySimpleKasPublicKey": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "$ref": "#/definitions/policyAlgorithm"
+        },
+        "kid": {
+          "type": "string"
+        },
+        "pem": {
+          "type": "string"
         }
       }
     },

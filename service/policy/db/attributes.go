@@ -43,6 +43,7 @@ func attributesValuesProtojson(valuesJSON []byte) ([]*policy.Value, error) {
 		for _, r := range raw {
 			value := &policy.Value{}
 			err := protojson.Unmarshal(r, value)
+			// Need to format keys
 			if err != nil {
 				return nil, fmt.Errorf("error unmarshaling a value: %w", err)
 			}
@@ -271,9 +272,9 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 		return nil, err
 	}
 
-	var keys []*policy.KasKey
+	var keys []*policy.SimpleKasKey
 	if len(attr.Keys) > 0 {
-		keys, err = db.KasKeysProtoJSON(attr.Keys)
+		keys, err = db.SimpleKasKeysProtoJSON(attr.Keys)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
 		}
@@ -310,9 +311,9 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			}
 		}
 
-		var keys []*policy.KasKey
+		var keys []*policy.SimpleKasKey
 		if len(attr.Keys) > 0 {
-			keys, err = db.KasKeysProtoJSON(attr.Keys)
+			keys, err = db.SimpleKasKeysProtoJSON(attr.Keys)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
 			}

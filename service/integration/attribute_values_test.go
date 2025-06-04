@@ -1078,10 +1078,12 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_Succeeds() {
 	s.NotNil(gotAttrValue)
 	s.Empty(gotAttrValue.GetKasKeys())
 
-	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	kasKeyFixture := s.f.GetKasRegistryServerKeys("kas_key_1")
+	kasKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: kasKeyFixture.ID})
+	s.Require().NoError(err)
 	resp, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
 		ValueId: gotAttrValue.GetId(),
-		KeyId:   kasKey.ID,
+		KeyId:   kasKey.GetKey().GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
@@ -1092,22 +1094,11 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(gotAttrValue)
 	s.Len(gotAttrValue.GetKasKeys(), 1)
-	s.Equal(kasKey.KeyAccessServerID, gotAttrValue.GetKasKeys()[0].GetKasId())
-	s.Equal(kasKey.ID, gotAttrValue.GetKasKeys()[0].GetKey().GetId())
-	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), gotAttrValue.GetKasKeys()[0])
-	s.Empty(gotAttrValue.GetKasKeys()[0].GetKey().GetProviderConfig())
-	s.Empty(gotAttrValue.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
-
-	// Get the kas server information associated with the key
-	kasReg, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, kasKey.KeyAccessServerID)
-	s.Require().NoError(err)
-	s.NotNil(kasReg)
-
-	s.Equal(kasReg.GetUri(), gotAttrValue.GetKasKeys()[0].GetKasUri())
+	validateSimpleKasKey(&s.Suite, kasKey, gotAttrValue.GetKasKeys()[0])
 
 	resp, err = s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{
 		ValueId: gotAttrValue.GetId(),
-		KeyId:   gotAttrValue.GetKasKeys()[0].GetKey().GetId(),
+		KeyId:   kasKey.GetKey().GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)

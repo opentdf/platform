@@ -57,9 +57,9 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 			return nil, err
 		}
 
-		var keys []*policy.KasKey
+		var keys []*policy.SimpleKasKey
 		if len(kas.Keys) > 0 {
-			keys, err = db.KasKeysProtoJSON(kas.Keys)
+			keys, err = db.SimpleKasKeysProtoJSON(kas.Keys)
 			if err != nil {
 				return nil, errors.New("failed to unmarshal keys")
 			}
@@ -147,9 +147,9 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 		return nil, err
 	}
 
-	var keys []*policy.KasKey
+	var keys []*policy.SimpleKasKey
 	if len(kas.Keys) > 0 {
-		keys, err = db.KasKeysProtoJSON(kas.Keys)
+		keys, err = db.SimpleKasKeysProtoJSON(kas.Keys)
 		if err != nil {
 			return nil, errors.New("failed to unmarshal keys")
 		}
@@ -698,7 +698,7 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 	return rotateKeyResp, nil
 }
 
-func (c PolicyDBClient) GetBaseKey(ctx context.Context) (*kasregistry.SimpleKasKey, error) {
+func (c PolicyDBClient) GetBaseKey(ctx context.Context) (*policy.SimpleKasKey, error) {
 	key, err := c.Queries.getBaseKey(ctx)
 	if err != nil && !errors.Is(db.WrapIfKnownInvalidQueryErr(err), db.ErrNotFound) {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

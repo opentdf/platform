@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -797,7 +796,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 
 	isLegacyTDF := r.manifest.TDFVersion == ""
 	defaultSegmentSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
-	start := int(math.Floor(float64(r.cursor) / float64(defaultSegmentSize)))
+	start := r.cursor / defaultSegmentSize
 
 	var totalBytes int64
 	var payloadReadOffset int64
@@ -866,8 +865,8 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	}
 
 	defaultSegmentSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
-	start := math.Floor(float64(offset) / float64(defaultSegmentSize))
-	end := math.Ceil(float64(offset+int64(len(buf))) / float64(defaultSegmentSize))
+	start := offset / defaultSegmentSize
+	end := (offset + int64(len(buf)) + defaultSegmentSize - 1) / defaultSegmentSize // rounds up
 
 	firstSegment := int64(start)
 	lastSegment := int64(end)

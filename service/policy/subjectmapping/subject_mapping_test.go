@@ -223,14 +223,28 @@ func Test_CreateSubjectMappingRequest_EmptyActionsArray_Fails(t *testing.T) {
 	require.Error(t, err)
 }
 
-func Test_CreateSubjectMappingRequest_PopulatedArray_BadValueID_Fails(t *testing.T) {
+func Test_CreateSubjectMappingRequest_NoActionNameProvided_Fails(t *testing.T) {
 	req := &subjectmapping.CreateSubjectMappingRequest{
-		AttributeValueId: "av-test-id",
+		AttributeValueId: fakeID,
 		Actions: []*policy.Action{
 			{
 				Value: &policy.Action_Custom{
 					Custom: "my custom action",
 				},
+			},
+		},
+	}
+
+	err := getValidator().Validate(req)
+	require.Error(t, err)
+}
+
+func Test_CreateSubjectMappingRequest_PopulatedArray_BadValueID_Fails(t *testing.T) {
+	req := &subjectmapping.CreateSubjectMappingRequest{
+		AttributeValueId: "av-test-id",
+		Actions: []*policy.Action{
+			{
+				Name: "read",
 			},
 		},
 	}
@@ -246,9 +260,7 @@ func Test_CreateSubjectMappingRequest_PopulatedArray_Succeeds(t *testing.T) {
 		AttributeValueId: fakeID,
 		Actions: []*policy.Action{
 			{
-				Value: &policy.Action_Custom{
-					Custom: "my custom action",
-				},
+				Name: "create",
 			},
 		},
 	}
@@ -263,9 +275,7 @@ func Test_CreateSubjectMappingRequest_WithExistingSubjectConditionSetID_Succeeds
 		AttributeValueId: fakeID,
 		Actions: []*policy.Action{
 			{
-				Value: &policy.Action_Standard{
-					Standard: policy.Action_STANDARD_ACTION_DECRYPT,
-				},
+				Name: "update",
 			},
 		},
 		ExistingSubjectConditionSetId: fakeID,
@@ -300,6 +310,81 @@ func Test_UpdateSubjectMappingRequest_Succeeds(t *testing.T) {
 	req.SubjectConditionSetId = fakeID
 	err = v.Validate(req)
 	require.NoError(t, err, "valid uuid format for subject_condition_set_id")
+
+	req.Actions = []*policy.Action{
+		{
+			Name: "read",
+		},
+	}
+	err = v.Validate(req)
+	require.NoError(t, err, "valid actions array")
+}
+
+func Test_UpdateSubjectMappingRequest_Fails(t *testing.T) {
+	testCases := []struct {
+		name           string
+		setupRequest   func() *subjectmapping.UpdateSubjectMappingRequest
+		expectedError  string
+		expectedDetail string
+	}{
+		{
+			name: "missing ID",
+			setupRequest: func() *subjectmapping.UpdateSubjectMappingRequest {
+				return &subjectmapping.UpdateSubjectMappingRequest{}
+			},
+			expectedError: errMessageUUID,
+		},
+		{
+			name: "invalid ID format",
+			setupRequest: func() *subjectmapping.UpdateSubjectMappingRequest {
+				return &subjectmapping.UpdateSubjectMappingRequest{
+					Id: "invalid-id-format",
+				}
+			},
+			expectedError: errMessageUUID,
+		},
+		{
+			name: "invalid subject_condition_set_id format",
+			setupRequest: func() *subjectmapping.UpdateSubjectMappingRequest {
+				return &subjectmapping.UpdateSubjectMappingRequest{
+					Id:                    fakeID,
+					SubjectConditionSetId: "invalid-subject-condition-set-id",
+				}
+			},
+			expectedError: errMessageOptionalUUID,
+		},
+		{
+			name: "missing action name",
+			setupRequest: func() *subjectmapping.UpdateSubjectMappingRequest {
+				return &subjectmapping.UpdateSubjectMappingRequest{
+					Id: fakeID,
+					Actions: []*policy.Action{
+						{
+							Value: &policy.Action_Custom{
+								Custom: "my custom action",
+							},
+						},
+					},
+				}
+			},
+			expectedError: "name",
+		},
+	}
+
+	validator := getValidator()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			request := tc.setupRequest()
+			err := validator.Validate(request)
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.expectedError)
+			if tc.expectedDetail != "" {
+				require.Contains(t, err.Error(), tc.expectedDetail)
+			}
+		})
+	}
 }
 
 func Test_MatchSubjectMappingsRequest_MissingSelector_Fails(t *testing.T) {

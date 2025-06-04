@@ -13,6 +13,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/Nerzal/gocloak/v13"
+	"github.com/creasty/defaults"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/entity"
@@ -57,10 +58,16 @@ type Config struct {
 	LegacyKeycloak bool                   `mapstructure:"legacykeycloak" json:"legacykeycloak" default:"false"`
 	SubGroups      bool                   `mapstructure:"subgroups" json:"subgroups" default:"false"`
 	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty"`
+	TokenBuffer    time.Duration          `mapstructure:"token_buffer_seconds" json:"token_buffer_seconds" default:"120s"`
 }
 
 func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger) (*EntityResolutionServiceV2, serviceregistry.HandlerServer) {
 	var inputIdpConfig Config
+
+	if err := defaults.Set(&inputIdpConfig); err != nil {
+		panic(err)
+	}
+
 	if err := mapstructure.Decode(config, &inputIdpConfig); err != nil {
 		panic(err)
 	}
@@ -72,8 +79,9 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger) (*E
 func (s *EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
 	ctx, span := s.Tracer.Start(ctx, "ResolveEntities")
 	defer span.End()
-	connector, err := s.getConnector(ctx)
+	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)
 	if err != nil {
+		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err))
 	}
 	resp, err := EntityResolution(ctx, req.Msg, s.idpConfig, connector, s.logger)
@@ -84,8 +92,9 @@ func (s *EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Con
 	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainsFromTokens")
 	defer span.End()
 
-	connector, err := s.getConnector(ctx)
+	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)
 	if err != nil {
+		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err))
 	}
 	resp, err := CreateEntityChainsFromTokens(ctx, req.Msg, s.idpConfig, connector, s.logger)
@@ -471,15 +480,13 @@ func entityToStructPb(ident *entity.Entity) (*structpb.Struct, error) {
 }
 
 // getConnector ensures a valid Keycloak connector is available, refreshing the token if necessary.
-func (s *EntityResolutionServiceV2) getConnector(ctx context.Context) (*Connector, error) {
+func (s *EntityResolutionServiceV2) getConnector(ctx context.Context, tokenBuffer time.Duration) (*Connector, error) {
 	s.connectorMu.Lock()
 	defer s.connectorMu.Unlock()
 
 	// Refresh token if it's nil, expired, or about to expire.
-	// Define a buffer for token refresh, e.g., 60 seconds before actual expiry.
-	const tokenRefreshBuffer = 60 * time.Second
 
-	if s.connector == nil || s.connector.token == nil || time.Now().After(s.connector.expiresAt.Add(-tokenRefreshBuffer)) {
+	if s.connector == nil || s.connector.token == nil || time.Now().After(s.connector.expiresAt.Add(-tokenBuffer)) {
 		s.logger.InfoContext(ctx, "Keycloak connector is nil or token expired/expiring soon. Fetching new token.")
 
 		var gocloakClient *gocloak.GoCloak

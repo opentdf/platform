@@ -2,12 +2,14 @@ package keycloak
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/Nerzal/gocloak/v13"
@@ -16,6 +18,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 )
 
@@ -25,6 +28,16 @@ const tokenResp string = `
   "token_type": "Bearer",
   "expires_in": 3600,
 }`
+
+// Helper to generate a token response with a custom expiry
+func newTokenResp(expiresIn int) string {
+	return fmt.Sprintf(`
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+  "token_type": "Bearer",
+  "expires_in": %d
+}`, expiresIn)
+}
 
 const byEmailBobResp = `[
 {"id": "bobid", "username":"bob.smith"}
@@ -116,11 +129,15 @@ func testServerResp(t *testing.T, w http.ResponseWriter, r *http.Request, k stri
 
 func testServer(t *testing.T, userSearchQueryAndResp map[string]string, groupSearchQueryAndResp map[string]string,
 	groupByIDAndResponse map[string]string, groupMemberQueryAndResponse map[string]string, clientsSearchQueryAndResp map[string]string,
+	tokenRequests *int, expiresIn int,
 ) *httptest.Server {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/realms/tdf/protocol/openid-connect/token":
-			_, err := io.WriteString(w, tokenResp)
+			if tokenRequests != nil {
+				*tokenRequests++
+			}
+			_, err := io.WriteString(w, newTokenResp(expiresIn))
 			if err != nil {
 				t.Error(err)
 			}
@@ -153,7 +170,7 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 	csqr := map[string]string{
 		"clientId=opentdf": byEmailBobResp,
 	}
-	server := testServer(t, nil, nil, nil, nil, csqr)
+	server := testServer(t, nil, nil, nil, nil, csqr, nil, 3600)
 	defer server.Close()
 	kcconfig := testKeycloakConfig(server)
 	connector := &KeyCloakConnector{
@@ -174,7 +191,7 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 	server := testServer(t, map[string]string{
 		"email=bob%40sample.org&exact=true":   byEmailBobResp,
 		"email=alice%40sample.org&exact=true": byEmailAliceResp,
-	}, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil, 3600)
 	defer server.Close()
 
 	var validBody []*authorization.Entity
@@ -213,7 +230,7 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 	server := testServer(t, map[string]string{
 		"exact=true&username=bob.smith":   byUsernameBobResp,
 		"exact=true&username=alice.smith": byUsernameAliceResp,
-	}, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil, 3600)
 	defer server.Close()
 
 	// validBody := `{"entity_identifiers": [{"type": "username","identifier": "bob.smith"}]}`
@@ -259,7 +276,7 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 	}, map[string]string{
 		"group1-uuid": groupSubmemberResp,
 	},
-		nil)
+		nil, nil, 3600)
 	defer server.Close()
 
 	var validBody []*authorization.Entity
@@ -299,7 +316,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 		"group1-uuid": groupResp,
 	}, map[string]string{
 		"group1-uuid": groupSubmemberResp,
-	}, nil)
+	}, nil, nil, 3600)
 	defer server.Close()
 
 	var validBody []*authorization.Entity
@@ -327,7 +344,7 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 	csqr := map[string]string{
 		"clientId=tdf-entity-resolution": byClientIDTDFEntityResResp,
 	}
-	server := testServer(t, nil, nil, nil, nil, csqr)
+	server := testServer(t, nil, nil, nil, nil, csqr, nil, 3600)
 	defer server.Close()
 
 	kcconfig := testKeycloakConfig(server)
@@ -351,7 +368,7 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 }
 
 func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
-	server := testServer(t, nil, nil, nil, nil, nil)
+	server := testServer(t, nil, nil, nil, nil, nil, nil, 3600)
 	defer server.Close()
 
 	kcconfig := testKeycloakConfig(server)
@@ -375,7 +392,7 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 }
 
 func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
-	server := testServer(t, nil, nil, nil, nil, nil)
+	server := testServer(t, nil, nil, nil, nil, nil, nil, 3600)
 	defer server.Close()
 
 	kcconfig := testKeycloakConfig(server)
@@ -399,7 +416,7 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 }
 
 func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
-	server := testServer(t, nil, nil, nil, nil, nil)
+	server := testServer(t, nil, nil, nil, nil, nil, nil, 3600)
 	defer server.Close()
 
 	kcconfig := testKeycloakConfig(server)
@@ -423,7 +440,7 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 }
 
 func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
-	server := testServer(t, nil, nil, nil, nil, nil)
+	server := testServer(t, nil, nil, nil, nil, nil, nil, 3600)
 	defer server.Close()
 
 	kcconfig := testKeycloakConfig(server)
@@ -447,7 +464,7 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 }
 
 func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
-	server := testServer(t, nil, nil, nil, nil, nil)
+	server := testServer(t, nil, nil, nil, nil, nil, nil, 3600)
 	defer server.Close()
 
 	kcconfig := testKeycloakConfig(server)
@@ -471,7 +488,7 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 }
 
 func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
-	server := testServer(t, nil, nil, nil, nil, nil)
+	server := testServer(t, nil, nil, nil, nil, nil, nil, 3600)
 	defer server.Close()
 
 	kcconfig := testKeycloakConfig(server)
@@ -498,7 +515,7 @@ func Test_JwtClientAndClientTokenExchange(t *testing.T) {
 	csqr := map[string]string{
 		"clientId=opentdf-sdk": byClientIDOpentdfSdkResp,
 	}
-	server := testServer(t, nil, nil, nil, nil, csqr)
+	server := testServer(t, nil, nil, nil, nil, csqr, nil, 3600)
 	defer server.Close()
 
 	kcconfig := testKeycloakConfig(server)
@@ -525,7 +542,7 @@ func Test_JwtMultiple(t *testing.T) {
 	csqr := map[string]string{
 		"clientId=opentdf-sdk": byClientIDOpentdfSdkResp,
 	}
-	server := testServer(t, nil, nil, nil, nil, csqr)
+	server := testServer(t, nil, nil, nil, nil, csqr, nil, 3600)
 	defer server.Close()
 
 	kcconfig := testKeycloakConfig(server)
@@ -563,7 +580,7 @@ func Test_KCEntityResolutionNotFoundInferEmail(t *testing.T) {
 		"group1-uuid": groupResp,
 	}, map[string]string{
 		"group1-uuid": groupSubmemberResp,
-	}, nil)
+	}, nil, nil, 3600)
 	defer server.Close()
 
 	var validBody []*authorization.Entity
@@ -597,7 +614,7 @@ func Test_KCEntityResolutionNotFoundInferClientId(t *testing.T) {
 	csqr := map[string]string{
 		"clientId=random": "[]",
 	}
-	server := testServer(t, nil, nil, nil, nil, csqr)
+	server := testServer(t, nil, nil, nil, nil, csqr, nil, 3600)
 	defer server.Close()
 
 	var validBody []*authorization.Entity
@@ -630,7 +647,7 @@ func Test_KCEntityResolutionNotFoundInferClientId(t *testing.T) {
 func Test_KCEntityResolutionNotFoundNotInferUsername(t *testing.T) {
 	server := testServer(t, map[string]string{
 		"exact=true&username=randomuser": "[]",
-	}, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil, 3600)
 	defer server.Close()
 
 	var validBody []*authorization.Entity
@@ -652,4 +669,42 @@ func Test_KCEntityResolutionNotFoundNotInferUsername(t *testing.T) {
 	entityNotFound := entityresolution.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrGetRetrievalFailed.Error(), Entity: "randomuser"}
 	expectedError := connect.NewError(connect.Code(entityNotFound.GetCode()), ErrGetRetrievalFailed)
 	assert.Equal(t, expectedError, reserr)
+}
+
+func Test_GetConnectorTokenRefresh(t *testing.T) {
+	tokenRequests := 0
+
+	csqr := map[string]string{
+		"clientId=opentdf": byEmailBobResp,
+	}
+
+	server := testServer(t, nil, nil, nil, nil, csqr, &tokenRequests, 1)
+	defer server.Close()
+
+	kcconfig := testKeycloakConfig(server)
+	service := &KeycloakEntityResolutionService{
+		idpConfig: kcconfig,
+		logger:    logger.CreateTestLogger(),
+		Tracer:    trace.NewNoopTracerProvider().Tracer("test"),
+	}
+
+	req := &connect.Request[entityresolution.ResolveEntitiesRequest]{
+		Msg: &entityresolution.ResolveEntitiesRequest{
+			Entities: []*authorization.Entity{
+				{Id: "1234", EntityType: &authorization.Entity_ClientId{ClientId: "opentdf"}},
+			},
+		},
+	}
+	// First call to trigger initial token acquisition
+	_, err := service.ResolveEntities(t.Context(), req)
+	require.NoError(t, err)
+	assert.Equal(t, 1, tokenRequests, "Expected 1 token request after first call")
+
+	// Wait for token to expire
+	time.Sleep(2 * time.Second)
+
+	// Second call to trigger token refresh
+	_, err = service.ResolveEntities(t.Context(), req)
+	require.NoError(t, err)
+	assert.Equal(t, 2, tokenRequests, "Expected 2 token requests after second call (token refresh)")
 }

@@ -5,6 +5,7 @@ on:
     # Run at 12:15 AM UTC (Scheduled actions are not guaranteed during times of high load like the top of the
     # hour or 00:00. See discussion: https://github.com/orgs/community/discussions/27130)
     - cron: "15 0 * * *"
+  workflow_dispatch:
 
 permissions: {}
 

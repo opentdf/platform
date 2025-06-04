@@ -43,7 +43,6 @@ func attributesValuesProtojson(valuesJSON []byte) ([]*policy.Value, error) {
 		for _, r := range raw {
 			value := &policy.Value{}
 			err := protojson.Unmarshal(r, value)
-			// Need to format keys
 			if err != nil {
 				return nil, fmt.Errorf("error unmarshaling a value: %w", err)
 			}

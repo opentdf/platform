@@ -13,7 +13,7 @@ From time-to-time, a service must be embedded into the OpenTDF platform AND test
 a way that an external event triggers the service to perform some action.
 
 This need to invert the control of the test so that an external event can be observed
-is a distinguising factor for the Test-Ready Service (TRS). 
+is a distinguishing factor for the Test-Ready Service (TRS). 
 
 ## Usage
 

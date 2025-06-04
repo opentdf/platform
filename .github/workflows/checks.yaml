@@ -307,14 +307,14 @@ jobs:
           # helper functions
           h2() {
             if [ -z "$1" ]; then
-              echo '## '$2' Skipped or Failed'
+              echo "## ${2} Skipped or Failed"
             else 
               echo "$1"
             fi
           }
 
           {
-            echo "BENCHMARK_MARKDOWN<<EOO
+            echo "BENCHMARK_MARKDOWN<<EOO"
 
             h2 "${BENCHMARK_DECISION_OUTPUT}" "Decision Benchmark"
             h2 "${BENCHMARK_DECISION_V2_OUTPUT}" "Decision Benchmark v2"

@@ -42,6 +42,7 @@ jobs:
         id: backport
         uses: korthout/backport-action@436145e922f9561fc5ea157ff406f21af2d6b363 # v3.2.0
         with:
+          github_token: ${{ steps.generate-token.outputs.token }}
           pull_title: ${{ inputs.pull_title }}
           experimental: >
             {

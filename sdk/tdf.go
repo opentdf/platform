@@ -775,6 +775,9 @@ func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 		r.cursor = 0
 	case io.SeekEnd:
 		r.cursor = 0
+		for _, seg := range r.manifest.EncryptionInformation.Segments {
+			r.cursor += seg.Size
+		}
 	case io.SeekCurrent:
 		break
 	default:
@@ -795,12 +798,16 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	}
 
 	isLegacyTDF := r.manifest.TDFVersion == ""
-	defaultSegmentSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
-	start := r.cursor / defaultSegmentSize
 
 	var totalBytes int64
 	var payloadReadOffset int64
-	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments[start:] {
+	var dataIdx int64
+	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+		if dataIdx+seg.Size < r.cursor {
+			dataIdx += seg.Size
+			continue
+		}
+
 		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
 		if err != nil {
 			return totalBytes, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
@@ -830,6 +837,11 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, fmt.Errorf("splitKey.decrypt failed: %w", err)
 		}
 
+		// special case where segment is in the middle of where cursor is
+		if dataIdx < r.cursor {
+			offset := r.cursor - dataIdx
+			writeBuf = writeBuf[offset:]
+		}
 		n, err := writer.Write(writeBuf)
 		if err != nil {
 			return totalBytes, fmt.Errorf("io.writer.write failed: %w", err)
@@ -842,6 +854,8 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		payloadReadOffset += seg.EncryptedSize
 		totalBytes += int64(n)
 		r.cursor += int64(n)
+		dataIdx += seg.Size
+
 	}
 
 	return totalBytes, nil

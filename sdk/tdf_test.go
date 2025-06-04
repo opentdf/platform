@@ -253,6 +253,9 @@ type TestReadAt struct {
 	dataOffset      int64
 	dataLength      int
 	expectedPayload string
+
+	whence       int
+	writerOffset int
 }
 
 type partialReadTdfTest struct {
@@ -477,6 +480,122 @@ func (s *TDFSuite) Test_SimpleTDF() {
 		s.Equal(expectedPlainTxt, string(buf[:n]))
 
 		_ = os.Remove(tdfFilename)
+	}
+}
+
+func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf
+	for _, test := range []partialReadTdfTest{ //nolint:gochecknoglobals // requires for testing tdf
+		{
+			payload: payload, // len: 62
+			kasInfoList: []KASInfo{
+				{
+					URL:       s.kasTestURLLookup["http://localhost:65432/"],
+					PublicKey: mockRSAPublicKey1,
+				},
+				{
+					URL:       s.kasTestURLLookup["http://localhost:65432/"],
+					PublicKey: mockRSAPublicKey1,
+				},
+			},
+			readAtTests: []TestReadAt{
+				{
+					segmentSize:     2,
+					dataOffset:      26,
+					dataLength:      26,
+					expectedPayload: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+
+					whence:       io.SeekStart,
+					writerOffset: 26,
+				},
+				{
+					segmentSize:     2 * oneMB,
+					dataOffset:      61,
+					dataLength:      1,
+					expectedPayload: "9",
+
+					whence:       io.SeekEnd,
+					writerOffset: -1,
+				},
+				{
+					segmentSize:     2,
+					dataOffset:      0,
+					dataLength:      62,
+					expectedPayload: payload,
+
+					whence:       io.SeekCurrent,
+					writerOffset: 0,
+				},
+				{
+					segmentSize:     int64(len(payload)),
+					dataOffset:      0,
+					dataLength:      len(payload),
+					expectedPayload: payload,
+
+					whence:       io.SeekStart,
+					writerOffset: 0,
+				},
+				{
+					segmentSize:     1,
+					dataOffset:      26,
+					dataLength:      26,
+					expectedPayload: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+
+					whence:       io.SeekCurrent,
+					writerOffset: 26,
+				},
+			},
+		},
+	} { // create .txt file
+		kasInfoList := test.kasInfoList
+
+		// reset public keys so we have to get them from the service
+		for index := range kasInfoList {
+			kasInfoList[index].PublicKey = ""
+		}
+
+		for _, readAtTest := range test.readAtTests {
+			tdfBuf := bytes.Buffer{}
+			readSeeker := bytes.NewReader([]byte(test.payload))
+			_, err := s.sdk.CreateTDF(
+				io.Writer(&tdfBuf),
+				readSeeker,
+				WithKasInformation(kasInfoList...),
+				WithSegmentSize(readAtTest.segmentSize),
+			)
+			s.Require().NoError(err)
+
+			// test reader
+			tdfReadSeeker := bytes.NewReader(tdfBuf.Bytes())
+			r, err := s.sdk.LoadTDF(tdfReadSeeker)
+			s.Require().NoError(err)
+
+			rbuf := make([]byte, readAtTest.dataLength)
+			n, err := r.ReadAt(rbuf, readAtTest.dataOffset)
+			s.Require().NoError(err)
+
+			s.Equal(readAtTest.dataLength, n)
+			s.Equal(readAtTest.expectedPayload, string(rbuf))
+
+			// Test Read
+			{
+				fmt.Println()
+				buf := bytes.NewBuffer(make([]byte, 0))
+
+				pos, err := r.Seek(int64(readAtTest.writerOffset), readAtTest.whence)
+				s.Require().NoError(err)
+				s.Equal(readAtTest.dataOffset, pos)
+
+				n, err := r.WriteTo(buf)
+				s.Require().NoError(err)
+
+				offset := readAtTest.writerOffset
+				if offset < 0 {
+					offset = len(payload) + offset
+				}
+				s.Equal(payload[offset:], string(buf.Bytes()))
+				s.Equal(int64(len(buf.Bytes())), n)
+			}
+		}
 	}
 }
 
@@ -1201,109 +1320,6 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 			s.Require().NotErrorIs(err, io.EOF)
 		}
 		_ = os.Remove(tdfFilename)
-	}
-}
-
-func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing tdf
-	for _, test := range []partialReadTdfTest{ //nolint:gochecknoglobals // requires for testing tdf
-		{
-			payload: payload, // len: 62
-			kasInfoList: []KASInfo{
-				{
-					URL:       s.kasTestURLLookup["http://localhost:65432/"],
-					PublicKey: mockRSAPublicKey1,
-				},
-				{
-					URL:       s.kasTestURLLookup["http://localhost:65432/"],
-					PublicKey: mockRSAPublicKey1,
-				},
-			},
-			readAtTests: []TestReadAt{
-				{
-					segmentSize:     2,
-					dataOffset:      26,
-					dataLength:      26,
-					expectedPayload: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-				},
-				{
-					segmentSize:     2 * oneMB,
-					dataOffset:      61,
-					dataLength:      1,
-					expectedPayload: "9",
-				},
-				{
-					segmentSize:     2,
-					dataOffset:      0,
-					dataLength:      62,
-					expectedPayload: payload,
-				},
-				{
-					segmentSize:     int64(len(payload)),
-					dataOffset:      0,
-					dataLength:      len(payload),
-					expectedPayload: payload,
-				},
-				{
-					segmentSize:     1,
-					dataOffset:      26,
-					dataLength:      26,
-					expectedPayload: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-				},
-			},
-		},
-	} { // create .txt file
-		kasInfoList := test.kasInfoList
-
-		// reset public keys so we have to get them from the service
-		for index := range kasInfoList {
-			kasInfoList[index].PublicKey = ""
-		}
-
-		for _, readAtTest := range test.readAtTests {
-			tdfBuf := bytes.Buffer{}
-			readSeeker := bytes.NewReader([]byte(test.payload))
-			_, err := s.sdk.CreateTDF(
-				io.Writer(&tdfBuf),
-				readSeeker,
-				WithKasInformation(kasInfoList...),
-				WithSegmentSize(readAtTest.segmentSize),
-			)
-			s.Require().NoError(err)
-
-			// test reader
-			tdfReadSeeker := bytes.NewReader(tdfBuf.Bytes())
-			r, err := s.sdk.LoadTDF(tdfReadSeeker)
-			s.Require().NoError(err)
-
-			rbuf := make([]byte, readAtTest.dataLength)
-			n, err := r.ReadAt(rbuf, readAtTest.dataOffset)
-			s.Require().NoError(err)
-
-			s.Equal(readAtTest.dataLength, n)
-			s.Equal(readAtTest.expectedPayload, string(rbuf))
-
-			// Test Read
-			plainTextFile := "text.txt"
-			{
-				fileWriter, err := os.Create(plainTextFile)
-				s.Require().NoError(err)
-
-				defer func(fileWriter *os.File) {
-					err := fileWriter.Close()
-					s.Require().NoError(err)
-				}(fileWriter)
-
-				_, err = io.Copy(fileWriter, r)
-				s.Require().NoError(err)
-			}
-
-			fileData, err := os.ReadFile(plainTextFile)
-			s.Require().NoError(err)
-
-			s.Equal(test.payload, string(fileData))
-
-			_ = os.Remove(plainTextFile)
-		}
 	}
 }
 

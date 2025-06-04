@@ -770,6 +770,21 @@ func (r *Reader) Read(p []byte) (int, error) {
 	return n, err
 }
 
+func (r *Reader) Seek(offset int64, whence int) (int64, error) {
+	switch whence {
+	case io.SeekStart:
+		r.cursor = 0
+	case io.SeekEnd:
+		r.cursor = 0
+	case io.SeekCurrent:
+		break
+	default:
+		return 0, fmt.Errorf("unknown whence: %d", whence)
+	}
+	r.cursor += offset
+	return r.cursor, nil
+}
+
 // WriteTo writes data to writer until there's no more data to write or
 // when an error occurs. This implements the io.WriterTo interface.
 func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
@@ -781,10 +796,12 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	}
 
 	isLegacyTDF := r.manifest.TDFVersion == ""
+	defaultSegmentSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
+	start := int(math.Floor(float64(r.cursor) / float64(defaultSegmentSize)))
 
 	var totalBytes int64
 	var payloadReadOffset int64
-	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments[start:] {
 		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
 		if err != nil {
 			return totalBytes, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
@@ -825,6 +842,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 
 		payloadReadOffset += seg.EncryptedSize
 		totalBytes += int64(n)
+		r.cursor += int64(n)
 	}
 
 	return totalBytes, nil
@@ -865,6 +883,11 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64
 	for index, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
+		// finish segments to decrypt
+		if int64(index) == lastSegment {
+			break
+		}
+
 		if firstSegment > int64(index) {
 			payloadReadOffset += seg.EncryptedSize
 			continue
@@ -910,10 +933,6 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 
 		payloadReadOffset += seg.EncryptedSize
 
-		// finish segments to decrypt
-		if int64(index) == lastSegment {
-			break
-		}
 	}
 
 	var err error

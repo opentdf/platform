@@ -733,6 +733,11 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		return nil, fmt.Errorf("json.Unmarshal failed:%w", err)
 	}
 
+	var payloadSize int64
+	for _, seg := range manifestObj.EncryptionInformation.IntegrityInformation.Segments {
+		payloadSize += seg.Size
+	}
+
 	return &Reader{
 		tokenSource:    s.tokenSource,
 		httpClient:     s.conn.Client,
@@ -741,6 +746,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		manifest:       *manifestObj,
 		kasSessionKey:  config.kasSessionKey,
 		config:         *config,
+		payloadSize:    payloadSize,
 	}, nil
 }
 
@@ -770,18 +776,20 @@ func (r *Reader) Read(p []byte) (int, error) {
 }
 
 func (r *Reader) Seek(offset int64, whence int) (int64, error) {
+	var newPos int64
 	switch whence {
 	case io.SeekStart:
-		r.cursor = 0
+		newPos = 0
 	case io.SeekEnd:
-		r.cursor = 0
-		for _, seg := range r.manifest.EncryptionInformation.Segments {
-			r.cursor += seg.Size
-		}
+		newPos = r.payloadSize
 	case io.SeekCurrent:
-		break
+		newPos = r.cursor
 	default:
-		return 0, fmt.Errorf("unknown whence: %d", whence)
+		return 0, fmt.Errorf("reader.Seek failed: unknown whence: %d", whence)
+	}
+	newPos += offset
+	if newPos < 0 || newPos >= r.payloadSize {
+		return 0, fmt.Errorf("reader.Seek failed: index if out of range %d", newPos)
 	}
 	r.cursor += offset
 	return r.cursor, nil
@@ -801,10 +809,10 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 
 	var totalBytes int64
 	var payloadReadOffset int64
-	var dataIdx int64
+	var decryptedDataOffset int64
 	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
-		if dataIdx+seg.Size < r.cursor {
-			dataIdx += seg.Size
+		if decryptedDataOffset+seg.Size < r.cursor {
+			decryptedDataOffset += seg.Size
 			continue
 		}
 
@@ -838,8 +846,8 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 
 		// special case where segment is in the middle of where cursor is
-		if dataIdx < r.cursor {
-			offset := r.cursor - dataIdx
+		if decryptedDataOffset < r.cursor {
+			offset := r.cursor - decryptedDataOffset
 			writeBuf = writeBuf[offset:]
 		}
 		n, err := writer.Write(writeBuf)
@@ -854,8 +862,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		payloadReadOffset += seg.EncryptedSize
 		totalBytes += int64(n)
 		r.cursor += int64(n)
-		dataIdx += seg.Size
-
+		decryptedDataOffset += seg.Size
 	}
 
 	return totalBytes, nil
@@ -882,8 +889,8 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 	start := offset / defaultSegmentSize
 	end := (offset + int64(len(buf)) + defaultSegmentSize - 1) / defaultSegmentSize // rounds up
 
-	firstSegment := int64(start)
-	lastSegment := int64(end)
+	firstSegment := start
+	lastSegment := end
 	if firstSegment > lastSegment {
 		return 0, ErrTDFPayloadReadFail
 	}
@@ -945,7 +952,6 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		}
 
 		payloadReadOffset += seg.EncryptedSize
-
 	}
 
 	var err error
@@ -1264,17 +1270,11 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 		}
 	}
 
-	var payloadSize int64
-	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
-		payloadSize += seg.Size
-	}
-
 	gcm, err := ocrypto.NewAESGcm(payloadKey[:])
 	if err != nil {
 		return fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
 	}
 
-	r.payloadSize = payloadSize
 	r.unencryptedMetadata = unencryptedMetadata
 	r.payloadKey = payloadKey[:]
 	r.aesGcm = gcm

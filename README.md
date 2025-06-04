@@ -24,6 +24,7 @@
   - [Podman Compose](https://github.com/containers/podman-compose)
 - [Buf](https://buf.build/docs/ecosystem/cli-overview) is used for managing protobuf files.
   - [protoc-gen-doc](https://github.com/pseudomuto/protoc-gen-doc) used for generating documentation from protobuf
+  - [protoc-gen-connect-openapi](https://github.com/sudorandom/protoc-gen-connect-openapi) used for generating OpenAPI v3.1 docs for ConnectRPC
   Required for developing services.
 - [golangci-lint](https://golangci-lint.run/) is used for ensuring good coding practices.
   Use `make go-lint` to run it before submitting a PR
@@ -202,6 +203,35 @@ COPY lib/foo/ lib/foo/
 3. Do the same for any other workflows that should be running on your folder, such as `vuln-check` and `lint`.
 
 ---
+
+## Generating API Documentation
+
+To generate all protobuf, gRPC, and OpenAPI documentation (including OpenAPI v2 and v3.1 for ConnectRPC), run:
+
+```fish
+make proto-generate
+```
+
+This will output documentation to `docs/openapi` and `docs/grpc`.
+
+### Required Tools
+
+Install the following tools if you haven't already:
+
+```fish
+# Install buf
+brew install bufbuild/buf/buf
+# or
+go install github.com/bufbuild/buf/cmd/buf@latest
+
+# Install protoc-gen-doc
+go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1
+
+# Install protoc-gen-connect-openapi
+go install github.com/sudorandom/protoc-gen-connect-openapi@latest
+```
+
+Make sure your Go bin directory (usually `$HOME/go/bin`) is in your `PATH`.
 
 ## Terms and Concepts
 

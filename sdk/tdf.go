@@ -789,7 +789,7 @@ func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 		return 0, fmt.Errorf("reader.Seek failed: unknown whence: %d", whence)
 	}
 	newPos += offset
-	if newPos < 0 || newPos >= r.payloadSize {
+	if newPos < 0 || newPos > r.payloadSize {
 		return 0, fmt.Errorf("reader.Seek failed: index if out of range %d", newPos)
 	}
 	r.cursor = newPos

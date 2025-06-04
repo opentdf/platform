@@ -58,6 +58,13 @@ var (
  *-------------------- SubjectMappings -------------------
  *-------------------------------------------------------*/
 
+func TestSubjectMappingSuite(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping subject_mappings integration tests")
+	}
+	suite.Run(t, new(SubjectMappingsSuite))
+}
+
 func (s *SubjectMappingsSuite) TestCreateSubjectMapping_ExistingSubjectConditionSetId() {
 	fixtureAttrValID := s.f.GetAttributeValueKey("example.net/attr/attr1/value/value2").ID
 	fixtureSCSId := s.f.GetSubjectConditionSetKey("subject_condition_set1").ID
@@ -1769,11 +1776,4 @@ func (s *SubjectMappingsSuite) TestUpdateSubjectConditionSet_MetadataVariations(
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(labels, got.GetMetadata().GetLabels())
-}
-
-func TestSubjectMappingSuite(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping subject_mappings integration tests")
-	}
-	suite.Run(t, new(SubjectMappingsSuite))
 }

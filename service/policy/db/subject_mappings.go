@@ -404,8 +404,20 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 			return nil, err
 		}
 
+		stdActionsBytes, err := json.Marshal(sm.StandardActions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal standard actions from interface{}: %w", err)
+		}
+		// If sm.StandardActions was nil, stdActionsBytes will be []byte("null").
+		// unmarshalAllActionsProto handles this by effectively treating it as an empty list.
+
+		customActionsBytes, err := json.Marshal(sm.CustomActions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal custom actions from interface{}: %w", err)
+		}
+
 		a := []*policy.Action{}
-		if err = unmarshalAllActionsProto(sm.StandardActions, sm.CustomActions, &a); err != nil {
+		if err = unmarshalAllActionsProto(stdActionsBytes, customActionsBytes, &a); err != nil {
 			return nil, err
 		}
 
@@ -556,8 +568,20 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 			return nil, err
 		}
 
+		stdActionsBytes, err := json.Marshal(sm.StandardActions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal standard actions from interface{}: %w", err)
+		}
+		// If sm.StandardActions was nil, stdActionsBytes will be []byte("null").
+		// unmarshalAllActionsProto handles this by effectively treating it as an empty list.
+
+		customActionsBytes, err := json.Marshal(sm.CustomActions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal custom actions from interface{}: %w", err)
+		}
+
 		a := []*policy.Action{}
-		if err = unmarshalAllActionsProto(sm.StandardActions, sm.CustomActions, &a); err != nil {
+		if err = unmarshalAllActionsProto(stdActionsBytes, customActionsBytes, &a); err != nil {
 			return nil, err
 		}
 

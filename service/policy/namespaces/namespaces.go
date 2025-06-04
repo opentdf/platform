@@ -50,7 +50,6 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			DB:              dbRegister,
 			ServiceDesc:     &namespaces.NamespaceService_ServiceDesc,
 			ConnectRPCFunc:  namespacesconnect.NewNamespaceServiceHandler,
-			GRPCGatewayFunc: namespaces.RegisterNamespaceServiceHandler,
 			OnConfigUpdate:  onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (namespacesconnect.NamespaceServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger

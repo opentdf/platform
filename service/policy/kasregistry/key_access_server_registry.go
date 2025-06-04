@@ -62,7 +62,6 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			DB:              dbRegister,
 			ServiceDesc:     &kasr.KeyAccessServerRegistryService_ServiceDesc,
 			ConnectRPCFunc:  kasregistryconnect.NewKeyAccessServerRegistryServiceHandler,
-			GRPCGatewayFunc: kasr.RegisterKeyAccessServerRegistryServiceHandler,
 			OnConfigUpdate:  onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasregistryconnect.KeyAccessServerRegistryServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger

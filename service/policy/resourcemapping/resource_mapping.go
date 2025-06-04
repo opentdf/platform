@@ -50,7 +50,6 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			DB:              dbRegister,
 			ServiceDesc:     &resourcemapping.ResourceMappingService_ServiceDesc,
 			ConnectRPCFunc:  resourcemappingconnect.NewResourceMappingServiceHandler,
-			GRPCGatewayFunc: resourcemapping.RegisterResourceMappingServiceHandler,
 			OnConfigUpdate:  onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (resourcemappingconnect.ResourceMappingServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger

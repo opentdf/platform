@@ -853,6 +853,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 			writeBuf = writeBuf[offset:]
 		}
 		n, err := writer.Write(writeBuf)
+		totalBytes += int64(n)
 		if err != nil {
 			return totalBytes, fmt.Errorf("io.writer.write failed: %w", err)
 		}
@@ -862,7 +863,6 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 
 		payloadReadOffset += seg.EncryptedSize
-		totalBytes += int64(n)
 		r.cursor += int64(n)
 		decryptedDataOffset += seg.Size
 	}

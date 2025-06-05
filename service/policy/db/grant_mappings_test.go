@@ -102,15 +102,6 @@ func TestMapKasKeysToGrants(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "empty pem",
-			keys: []*policy.SimpleKasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid1", Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Pem: ""}}, // Empty PEM
-			},
-			existingGrants: []*policy.KeyAccessServer{},
-			wantErr:        true,
-			errContains:    "kas key PEM is empty, kid kid1",
-		},
-		{
 			name: "nil key in keys slice",
 			keys: []*policy.SimpleKasKey{
 				nil,

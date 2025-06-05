@@ -1,3 +1,5 @@
+//nolint:gofumpt
+
 package server
 
 import (

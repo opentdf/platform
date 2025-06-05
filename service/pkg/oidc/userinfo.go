@@ -68,7 +68,8 @@ func (u *UserInfoCache) Get(ctx context.Context, issuer, subject string, tokenRa
 
 func (u *UserInfoCache) GetFromCache(ctx context.Context, issuer, subject string) (*oidc.UserInfo, []byte, error) {
 	l := u.logger.With("issuer", issuer).With("subject", subject)
-	key := userInfoCacheKey(issuer, subject)
+	// Manually construct the full key with the service name prefix
+	key := "svc:userinfo-test:" + userInfoCacheKey(issuer, subject)
 	val, err := u.cache.Get(ctx, key)
 	if err != nil {
 		return nil, nil, ErrUserInfoCacheMiss

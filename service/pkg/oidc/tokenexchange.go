@@ -5,10 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -37,7 +34,6 @@ func ExchangeToken(
 	scopes []string,
 ) (string, jwk.Key, error) {
 	tokenEndpoint := oidcConfig.TokenEndpoint
-	issuer := oidcConfig.Issuer
 	if len(scopes) == 0 {
 		scopes = []string{"openid", "profile", "email"}
 	}
@@ -46,9 +42,6 @@ func ExchangeToken(
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to obtain client credentials for token exchange: %w", err)
 	}
-
-	logger := log.New(os.Stderr, "[TOKEN_EXCHANGE] ", log.LstdFlags)
-	logger.Printf("Starting token exchange: issuer=%s, clientID=%s", issuer, clientID)
 
 	httpClient, err := newExchangeTokenHTTPClient()
 	if err != nil {
@@ -77,14 +70,11 @@ func ExchangeToken(
 	req := httpClient.NewOAuthFormRequest(ctx, key, tokenEndpoint, params)
 	resp, err := req.Do()
 	if err != nil {
-		logger.Printf("Token exchange failed: %v", err)
 		return "", nil, fmt.Errorf("token exchange failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		logger.Printf("response body: %s", bodyBytes)
 		return "", nil, fmt.Errorf("token exchange failed: %s", resp.Status)
 	}
 
@@ -99,6 +89,5 @@ func ExchangeToken(
 		return "", nil, errors.New("no access_token in token exchange response")
 	}
 
-	logger.Printf("Token exchange successful: scope=%v", respData.Scopes)
 	return respData.AccessToken, httpClient.DPoPJWK, nil
 }

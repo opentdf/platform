@@ -36,10 +36,13 @@ const (
 	modeDPoPResourceRequest
 )
 
+type DPoPHeaderFunc func(req *http.Request, jwkKey jwk.Key, endpoint, nonce string) error
+
 type HTTPClient struct {
 	*http.Client
-	DPoPJWK jwk.Key
-	mode    clientMode
+	DPoPJWK                  jwk.Key
+	mode                     clientMode
+	attachDPoPHeaderOverride DPoPHeaderFunc // optional override for attachDPoPHeader
 }
 
 type HTTPRequestFactory struct {
@@ -84,6 +87,14 @@ func WithGeneratedDPoPKey() HTTPClientOption {
 func WithOAuthFlow() HTTPClientOption {
 	return func(c *HTTPClient) error {
 		c.mode = modeOAuthFlow
+		return nil
+	}
+}
+
+// Option to override attachDPoPHeader (for testing)
+func WithAttachDPoPHeaderOverride(f DPoPHeaderFunc) HTTPClientOption {
+	return func(c *HTTPClient) error {
+		c.attachDPoPHeaderOverride = f
 		return nil
 	}
 }
@@ -196,6 +207,9 @@ func (c *HTTPClient) NewResourceRequest(ctx context.Context, userInfoEndpoint, t
 }
 
 func (c *HTTPClient) attachDPoPHeader(req *http.Request, jwkKey jwk.Key, endpoint, nonce string) error {
+	if c.attachDPoPHeaderOverride != nil {
+		return c.attachDPoPHeaderOverride(req, jwkKey, endpoint, nonce)
+	}
 	if jwkKey == nil {
 		return ErrDPoPJWKNil
 	}

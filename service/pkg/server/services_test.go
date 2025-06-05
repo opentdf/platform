@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/oidc"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/suite"
@@ -275,6 +277,9 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 					"test":         {},
 					"test_with_db": {},
 					"foobar":       {},
+				},
+				Server: server.Config{
+					OIDCDiscovery: &oidc.DiscoveryConfiguration{},
 				},
 			},
 			otdf:        otdf,

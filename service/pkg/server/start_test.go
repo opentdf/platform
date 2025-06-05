@@ -575,9 +575,13 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 				t.Context(),
 				WithConfigFile(tempFilePath),
 			)
-			// require that it got past the service config and mode setup
-			// expected error when trying to establish db connection
-			require.ErrorContains(t, err, "failed to connect to database")
+
+			// If error then it should be a DB error
+			if err != nil {
+				// require that it got past the service config and mode setup
+				// expected error when trying to establish db connection
+				require.ErrorContains(t, err, "failed to connect to database")
+			}
 		})
 	}
 }

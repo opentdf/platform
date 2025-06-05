@@ -294,8 +294,8 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	parsedToken, _ := jwt.Parse([]byte{}, jwt.WithKey(jwa.RS256, s.key))
-	_, err := s.auth.checkToken(context.Background(), parsedToken, "BPOP ", TokenTypeUnknown, receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"BPOP invalidtoken"}}
+	_, _, _, err := s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("not of type bearer or dpop", err.Error())
 }
@@ -580,7 +580,8 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 		MinVersion: tls.VersionTLS12,
 	}))
 	s.Require().NoError(err)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", signedTok))
+	// DPoP Authorization header MUST be DPoP not Bearer (RFC 9449 https://www.rfc-editor.org/rfc/rfc9449.html#name-compatibility-with-the-bear)
+	req.Header.Set("Authorization", fmt.Sprintf("DPoP %s", signedTok))
 	dpopTok, err := addingInterceptor.GetDPoPToken(server.URL+"/attributes", "GET", string(signedTok))
 	s.Require().NoError(err)
 	req.Header.Set("DPoP", dpopTok)
@@ -819,3 +820,5 @@ func (s *AuthSuite) Test_LookupGatewayPaths() {
 		})
 	}
 }
+
+// TODO: Add a test that will ensure we follow strict validation for DPoP headers per https://www.rfc-editor.org/rfc/rfc9449.html

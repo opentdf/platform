@@ -25,7 +25,7 @@ func SetSkipValidationForTest(skip bool) {
 }
 
 // ValidateClientCredentials checks if the provided client credentials are valid by making a request to the token endpoint
-func ValidateClientCredentials(ctx context.Context, oidcConfig *DiscoveryConfiguration, clientID string, clientScopes []string, clientKey []byte, tlsNoVerify bool, timeout time.Duration, dpopJWK jwk.Key) error {
+func ValidateClientCredentials(ctx context.Context, oidcConfig *DiscoveryConfiguration, clientID string, clientScopes []string, clientKey []byte, tlsNoVerify bool, timeout time.Duration, dpopJWK jwk.Key, nonce string) error {
 	if skipValidation {
 		return nil
 	}
@@ -82,7 +82,7 @@ func ValidateClientCredentials(ctx context.Context, oidcConfig *DiscoveryConfigu
 	}
 
 	if dpopJWK != nil {
-		dpopProof, err := getDPoPAssertion(dpopJWK, http.MethodPost, tokenEndpoint, "")
+		dpopProof, err := getDPoPAssertion(dpopJWK, http.MethodPost, tokenEndpoint, nonce)
 		if err != nil {
 			return fmt.Errorf("failed to generate DPoP proof: %w", err)
 		}
@@ -95,12 +95,54 @@ func ValidateClientCredentials(ctx context.Context, oidcConfig *DiscoveryConfigu
 	}
 	defer resp.Body.Close()
 
+	// Check for DPoP-Nonce header if request failed
 	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("token endpoint returned status: %s\n", resp.Status)
+		nonce := resp.Header.Get("DPoP-Nonce")
+		if nonce != "" {
+			// Retry once with the nonce and a fresh client_assertion JWT
+			jwtAssertion2, err := BuildJWTAssertion(clientID, tokenEndpoint)
+			if err != nil {
+				return fmt.Errorf("failed to build private_key_jwt assertion (retry): %w", err)
+			}
+			signedJWT2, err := SignJWTAssertion(jwtAssertion2, key, alg)
+			if err != nil {
+				return fmt.Errorf("failed to sign private_key_jwt assertion (retry): %w", err)
+			}
+			form.Set("client_assertion", string(signedJWT2))
+			dpopProof, err := getDPoPAssertion(dpopJWK, http.MethodPost, tokenEndpoint, nonce)
+			if err != nil {
+				return fmt.Errorf("failed to generate DPoP proof with nonce: %w", err)
+			}
+			req2, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, strings.NewReader(form.Encode()))
+			if err != nil {
+				return fmt.Errorf("failed to create token request (retry): %w", err)
+			}
+			req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req2.Header.Set("DPoP", dpopProof)
+			resp2, err := httpClient.Do(req2)
+			if err != nil {
+				return fmt.Errorf("failed to obtain client credentials (retry): %w", err)
+			}
+			defer resp2.Body.Close()
+			if resp2.StatusCode != http.StatusOK {
+				body := make([]byte, 1024)
+				resp2.Body.Read(body)
+				return fmt.Errorf("token endpoint returned status (retry): %s, body: %s", resp2.Status, body)
+			}
+			var respData struct {
+				AccessToken string `json:"access_token"`
+			}
+			if err := json.NewDecoder(resp2.Body).Decode(&respData); err != nil {
+				return fmt.Errorf("failed to decode token response (retry): %w", err)
+			}
+			if respData.AccessToken == "" {
+				return errors.New("invalid client credentials: no access token received (retry)")
+			}
+			return nil
+		}
 		body := make([]byte, 1024)
 		resp.Body.Read(body)
-		fmt.Printf("response body: %s\n", body)
-		return fmt.Errorf("token endpoint returned status: %s", resp.Status)
+		return fmt.Errorf("token endpoint returned status: %s, body: %s", resp.Status, body)
 	}
 
 	var respData struct {

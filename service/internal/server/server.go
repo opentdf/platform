@@ -200,7 +200,7 @@ func NewOpenTDFServer(ctx context.Context, config Config, logger *logger.Logger,
 	// Add authN interceptor
 	svr.AuthN, err = auth.NewAuthenticator(
 		ctx,
-		config.Auth,
+		&config.Auth,
 		logger,
 		config.WellKnownConfigRegister,
 		config.OIDCDiscovery,

@@ -180,7 +180,7 @@ func (s *AuthSuite) SetupTest() {
 
 	auth, err := NewAuthenticator(
 		context.Background(),
-		Config{
+		&Config{
 			AuthNConfig: AuthNConfig{
 				EnforceDPoP:      true,
 				Issuer:           s.server.URL,
@@ -686,7 +686,7 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	}
 	config := Config{}
 	config.AuthNConfig = authnConfig
-	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
+	auth, err := NewAuthenticator(context.Background(), &config, &logger.Logger{
 		Logger: slog.New(slog.Default().Handler()),
 	},
 		func(_ string, _ any) error { return nil },

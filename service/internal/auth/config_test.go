@@ -5,7 +5,6 @@ import (
 
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/oidc"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -161,7 +160,7 @@ func TestValidateAuthNConfig(t *testing.T) {
 			if tt.expectError {
 				require.Error(t, err)
 				if tt.errorVal != nil {
-					assert.ErrorIs(t, err, tt.errorVal)
+					require.ErrorIs(t, err, tt.errorVal)
 				}
 			} else {
 				require.NoError(t, err)

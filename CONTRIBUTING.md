@@ -1,3 +1,5 @@
+# Contributing to OpenTDF
+
 ## Developer Certificate of Origin (DCO)
 
 To ensure that contributions are properly licensed and that the project has the right to distribute them, this project requires that all contributions adhere to the Developer Certificate of Origin (DCO).
@@ -80,3 +82,9 @@ git rebase -i --signoff HEAD~N # Replace N with the number of commits to rebase
 Follow the instructions during the interactive rebase. You might need to force-push (git push --force-with-lease) your changes if you've already pushed the branch. Be careful when force-pushing, especially on shared branches.
 
 We appreciate your contributions and your adherence to this process ensures the legal integrity of the project for everyone involved. If you have any questions about the DCO, please don't hesitate to ask.
+
+## Technical Style Guidelines
+
+### Errors
+
+* Define all custom errors as package-level variables using errors.New (e.g., ErrMyError = errors.New("...")) so that errors.Is can be used for error comparison in tests and libraries. Avoid wrapping these errors with fmt.Errorf unless necessary for additional context.

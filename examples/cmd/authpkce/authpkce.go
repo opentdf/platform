@@ -4,7 +4,8 @@ package authpkce
 
 import (
 	"bytes"
-	_ "embed"
+	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -13,8 +14,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	"embed"
 
 	"github.com/spf13/cobra"
 )
@@ -54,11 +53,11 @@ type platformWellKnownConfig struct {
 }
 
 type configInjector struct {
-	AuthUrl          string `json:"authUrl"`
-	TokenUrl         string `json:"tokenUrl"`
-	UserinfoUrl      string `json:"userinfoUrl"`
-	EndSessionUrl    string `json:"endSessionUrl"`
-	ClientId         string `json:"clientId"`
+	AuthURL          string `json:"authUrl"`
+	TokenURL         string `json:"tokenUrl"`
+	UserinfoURL      string `json:"userinfoUrl"`
+	EndSessionURL    string `json:"endSessionUrl"`
+	ClientID         string `json:"clientId"`
 	Scope            string `json:"scope"`
 	PlatformEndpoint string `json:"platformEndpoint"`
 }
@@ -69,19 +68,18 @@ func init() {
 	Cmd.Flags().StringVar(&scope, "scope", "openid profile email", "Scope to request in the PKCE demo")
 }
 
-func servePKCEDemo(cmd *cobra.Command, args []string) error {
-
-	platformConfig, err := processPlatformWellKnown(platformEndpoint)
+func servePKCEDemo(cmd *cobra.Command, _ []string) error {
+	platformConfig, err := processPlatformWellKnown(cmd.Context(), platformEndpoint)
 	if err != nil {
 		log.Fatalf("Failed to process platform well-known configuration: %v", err)
 	}
 
 	config := configInjector{
-		AuthUrl:          html.EscapeString(platformConfig.Configuration.IDP.AuthorizationEndpoint),
-		TokenUrl:         html.EscapeString(platformConfig.Configuration.IDP.TokenEndpoint),
-		UserinfoUrl:      html.EscapeString(platformConfig.Configuration.IDP.UserinfoEndpoint),
-		EndSessionUrl:    html.EscapeString(platformConfig.Configuration.IDP.EndSessionEndpoint),
-		ClientId:         html.EscapeString(clientID),
+		AuthURL:          html.EscapeString(platformConfig.Configuration.IDP.AuthorizationEndpoint),
+		TokenURL:         html.EscapeString(platformConfig.Configuration.IDP.TokenEndpoint),
+		UserinfoURL:      html.EscapeString(platformConfig.Configuration.IDP.UserinfoEndpoint),
+		EndSessionURL:    html.EscapeString(platformConfig.Configuration.IDP.EndSessionEndpoint),
+		ClientID:         html.EscapeString(clientID),
 		Scope:            html.EscapeString(scope),
 		PlatformEndpoint: html.EscapeString(platformEndpoint),
 	}
@@ -100,7 +98,7 @@ func servePKCEDemo(cmd *cobra.Command, args []string) error {
 	}
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assetsFS))))
-	http.HandleFunc("/pkce-demo", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/pkce-demo", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if _, err = w.Write([]byte(html)); err != nil {
 			log.Printf("Error writing response: %v\n", err)
@@ -120,7 +118,7 @@ func servePKCEDemo(cmd *cobra.Command, args []string) error {
 	return server.ListenAndServe()
 }
 
-func processPlatformWellKnown(platformEndpoint string) (platformWellKnownConfig, error) {
+func processPlatformWellKnown(ctx context.Context, platformEndpoint string) (platformWellKnownConfig, error) {
 	httpClient := &http.Client{
 		Timeout: timeoutDuration,
 	}
@@ -134,7 +132,7 @@ func processPlatformWellKnown(platformEndpoint string) (platformWellKnownConfig,
 	if err != nil {
 		return platformWellKnownConfig{}, fmt.Errorf("error creating request: %w", err)
 	}
-
+	req = req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := httpClient.Do(req)

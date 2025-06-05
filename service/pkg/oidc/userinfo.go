@@ -55,7 +55,7 @@ func (u *UserInfoCache) Get(ctx context.Context, issuer, subject string, tokenRa
 
 	// Fetch the userinfo
 	l.Debug("fetching userinfo from UserInfo endpoint")
-	userInfo, userInfoRaw, err = FetchUserInfo(ctx, u.oidcConfig.UserinfoEndpoint, tokenRaw)
+	userInfo, userInfoRaw, err = FetchUserInfo(ctx, u.oidcConfig.UserinfoEndpoint, tokenRaw, dpopJWK)
 	if err != nil {
 		l.Error("failed to fetch userinfo from UserInfo endpoint", "error", err)
 		return nil, nil, err
@@ -104,7 +104,7 @@ func userInfoCacheKey(issuer, subject string) string {
 }
 
 // fetchUserInfo performs a GET request to the UserInfo endpoint to fetch user information.
-func FetchUserInfo(ctx context.Context, userInfoEndpoint string, tokenRaw string) (*oidc.UserInfo, []byte, error) {
+func FetchUserInfo(ctx context.Context, userInfoEndpoint string, tokenRaw string, dpopJWK jwk.Key) (*oidc.UserInfo, []byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, userInfoEndpoint, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create userinfo request: %w", err)
@@ -112,7 +112,10 @@ func FetchUserInfo(ctx context.Context, userInfoEndpoint string, tokenRaw string
 
 	req.Header.Set("Authorization", "Bearer "+tokenRaw)
 
-	// Use our debug transport for the user info request
+	if err := AttachDPoPHeader(req, dpopJWK, userInfoEndpoint, ""); err != nil {
+		return nil, nil, err
+	}
+
 	client := &http.Client{
 		Timeout: DefaultUserInfoTimeout,
 	}

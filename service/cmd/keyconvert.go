@@ -47,20 +47,19 @@ var keyconvertCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("failed to marshal JWK to JSON: %w", err)
 			}
-			fmt.Println(string(jsonbuf))
+			cmd.Print(string(jsonbuf) + "\n")
 			return nil
 		} else if outFormat == "pem" {
 			pemOut, err := jwk.Pem(key)
 			if err != nil {
 				// fallback: print original PEM if conversion fails
-				fmt.Print(string(pemBytes))
+				cmd.Print(string(pemBytes))
 				return nil
 			}
-			fmt.Print(string(pemOut))
+			cmd.Print(string(pemOut))
 			return nil
-		} else {
-			return fmt.Errorf("unsupported output format: %s", outFormat)
 		}
+		return fmt.Errorf("unsupported output format: %s", outFormat)
 	},
 }
 

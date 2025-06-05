@@ -17,6 +17,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	defaultRSAKeySize = 2048
+	defaultECCurve    = "P-256"
+)
+
 var keygenCategories = []string{
 	"auth", // Authentication keys
 }
@@ -120,10 +125,10 @@ var keygenCmd = &cobra.Command{
 		if err := os.WriteFile(privPath, privJWKJSON, 0o600); err != nil {
 			return fmt.Errorf("failed to write private JWK: %w", err)
 		}
-		if err := os.WriteFile(pubPath, pubJWKJSON, 0o644); err != nil {
+		if err := os.WriteFile(pubPath, pubJWKJSON, 0o600); err != nil {
 			return fmt.Errorf("failed to write public JWK: %w", err)
 		}
-		fmt.Printf("Private JWK: %s\nPublic JWK: %s\n", privPath, pubPath)
+		cmd.Printf("Private JWK: %s\nPublic JWK: %s\n", privPath, pubPath)
 		return nil
 	},
 }
@@ -131,7 +136,7 @@ var keygenCmd = &cobra.Command{
 func init() {
 	keygenCmd.Flags().String("out-dir", "keys", "Directory to output key files")
 	keygenCmd.Flags().String("type", "", "Key type: rsa|ecc (default: based on category)")
-	keygenCmd.Flags().Int("size", 2048, "RSA key size in bits")
-	keygenCmd.Flags().String("curve", "P-256", "ECC curve: P-256|P-384|P-521")
+	keygenCmd.Flags().Int("size", defaultRSAKeySize, "RSA key size in bits")
+	keygenCmd.Flags().String("curve", defaultECCurve, "ECC curve: P-256|P-384|P-521")
 	rootCmd.AddCommand(keygenCmd)
 }

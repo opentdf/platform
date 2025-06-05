@@ -103,35 +103,47 @@ func (c *AuthNConfig) validateAuthNConfig(logger *logger.Logger) error {
 		logger.Warn("config Auth.EnforceDPoP is false. DPoP will not be enforced.")
 	}
 
-	if c.EnrichUserInfo {
-		if c.Issuer == "" {
-			return errIssuerRequired
-		}
-		if c.Audience == "" {
-			return errAudienceRequired
-		}
-		if c.ClientID == "" {
-			return errClientIDRequired
-		}
-		if len(c.ClientScopes) == 0 {
-			logger.Warn("clientScopes are empty; disregard if expected")
-		}
-		if c.ClientPrivateKey == "" && c.ClientPrivateKeyPath == "" {
-			return errPrivateKeyRequired
-		} else if c.ClientPrivateKey != "" && c.ClientPrivateKeyPath != "" {
-			return errMutuallyExclusive
-		}
-		// Read in the private key if provided as a path and save it to ClientPrivateKey
-		if c.ClientPrivateKeyPath != "" {
-			privateKeyBytes, err := readConfigFile(c.ClientPrivateKeyPath)
-			if err != nil {
-				return errors.New("failed to read client private key from path: " + c.ClientPrivateKeyPath + ": " + err.Error())
-			}
-			c.ClientPrivateKey = string(privateKeyBytes)
-		}
-	} else {
-		logger.Warn("config Auth.EnrichUserInfo is false. UserInfo enrichment is disabled and token exchange will be skipped.")
+	if c.Issuer == "" {
+		return errIssuerRequired
 	}
 
+	if c.Audience == "" {
+		return errAudienceRequired
+	}
+
+	if err := c.featureEnrichUserInfo(logger); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *AuthNConfig) featureEnrichUserInfo(logger *logger.Logger) error {
+	if !c.EnrichUserInfo {
+		logger.Warn("config Auth.EnrichUserInfo is false. UserInfo enrichment is disabled and token exchange will be skipped.")
+		return nil
+	}
+
+	if c.ClientID == "" {
+		return errClientIDRequired
+	}
+
+	if len(c.ClientScopes) == 0 {
+		logger.Warn("clientScopes are empty; disregard if expected")
+	}
+
+	if c.ClientPrivateKey == "" && c.ClientPrivateKeyPath == "" {
+		return errPrivateKeyRequired
+	} else if c.ClientPrivateKey != "" && c.ClientPrivateKeyPath != "" {
+		return errMutuallyExclusive
+	}
+	// Read in the private key if provided as a path and save it to ClientPrivateKey
+	if c.ClientPrivateKeyPath != "" {
+		privateKeyBytes, err := readConfigFile(c.ClientPrivateKeyPath)
+		if err != nil {
+			return errors.New("failed to read client private key from path: " + c.ClientPrivateKeyPath + ": " + err.Error())
+		}
+		c.ClientPrivateKey = string(privateKeyBytes)
+	}
 	return nil
 }

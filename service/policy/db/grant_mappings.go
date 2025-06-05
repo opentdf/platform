@@ -52,9 +52,6 @@ func mapKasKeysToGrants(keys []*policy.SimpleKasKey, existingGrants []*policy.Ke
 		if kasKeyInfo == nil {
 			return nil, fmt.Errorf("kas key info is nil for a key with kas uri %s", key.GetKasUri())
 		}
-		if kasKeyInfo.GetPem() == "" {
-			return nil, fmt.Errorf("kas key PEM is empty, kid %s", kasKeyInfo.GetKid())
-		}
 
 		newKasPublicKey := &policy.KasPublicKey{
 			Kid: kasKeyInfo.GetKid(),

@@ -153,18 +153,6 @@ func TestMapKasKeysToGrants(t *testing.T) {
 			errContains:    "kas key info is nil for a key with kas uri http://kas1.example.com",
 		},
 		{
-			name: "key with nil pem",
-			keys: []*policy.SimpleKasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid1", Algorithm: policy.Algorithm_ALGORITHM_RSA_2048}}, // No PEM
-			},
-			existingGrants: []*policy.KeyAccessServer{},
-			expectedGrants: []*policy.KeyAccessServer{
-				{Id: "kas1", Uri: "http://kas1.example.com", PublicKey: &policy.PublicKey{PublicKey: &policy.PublicKey_Cached{Cached: &policy.KasPublicKeySet{Keys: []*policy.KasPublicKey{{Kid: "kid1", Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048, Pem: ""}}}}}},
-			},
-			wantErr:     true,
-			errContains: "kas key PEM is empty, kid kid1",
-		},
-		{
 			name: "existing grant with nil PublicKey",
 			keys: []*policy.SimpleKasKey{
 				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid_new", Algorithm: policy.Algorithm_ALGORITHM_EC_P256, Pem: validPem}},

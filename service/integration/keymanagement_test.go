@@ -47,20 +47,24 @@ func (s *KeyManagementSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
+func (s *KeyManagementSuite) deleteTestProviderConfigs(ids []string) {
+	for _, id := range ids {
+		pc, err := s.db.PolicyClient.DeleteProviderConfig(s.ctx, id)
+		s.Require().NoError(err)
+		s.NotNil(pc)
+	}
+}
+
 func (s *KeyManagementSuite) Test_CreateProviderConfig_NoMetada_Succeeds() {
-	s.createTestProviderConfig()
+	pcIDs := make([]string, 0)
+	s.deleteTestProviderConfigs(append(pcIDs, s.createTestProviderConfig(testProvider, validProviderConfig, nil).GetId()))
 }
 
 func (s *KeyManagementSuite) Test_CreateProviderConfig_Metadata_Succeeds() {
-	pc, err := s.db.PolicyClient.CreateProviderConfig(s.ctx, &keymanagement.CreateProviderConfigRequest{
-		Name:       testProvider,
-		ConfigJson: validProviderConfig,
-		Metadata: &common.MetadataMutable{
-			Labels: validLabels,
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(pc)
+	pcIDs := make([]string, 0)
+	s.deleteTestProviderConfigs(append(pcIDs, s.createTestProviderConfig(testProvider, validProviderConfig, &common.MetadataMutable{
+		Labels: validLabels,
+	}).GetId()))
 }
 
 func (s *KeyManagementSuite) Test_CreateProviderConfig_EmptyConfig_Fails() {
@@ -82,15 +86,32 @@ func (s *KeyManagementSuite) Test_CreateProviderConfig_InvalidConfig_Fails() {
 	s.Nil(pc)
 }
 
-func (s *KeyManagementSuite) Test_GetProviderConfig_WithId_Succeeds() {
+func (s *KeyManagementSuite) Test_CreateProviderConfig_DuplicateName_Fails() {
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc.GetId())
+
 	pc, err := s.db.PolicyClient.CreateProviderConfig(s.ctx, &keymanagement.CreateProviderConfigRequest{
-		Name:       testProvider,
+		Name:       pc.GetName(),
 		ConfigJson: validProviderConfig,
 	})
-	s.Require().NoError(err)
-	s.NotNil(pc)
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, db.ErrUniqueConstraintViolation.Error())
+	s.Nil(pc)
+}
 
-	pc, err = s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Id{
+func (s *KeyManagementSuite) Test_GetProviderConfig_WithId_Succeeds() {
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc.GetId())
+
+	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Id{
 		Id: pc.GetId(),
 	})
 	s.Require().NoError(err)
@@ -98,15 +119,15 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_WithId_Succeeds() {
 }
 
 func (s *KeyManagementSuite) Test_GetProviderConfig_WithName_Succeeds() {
-	pc, err := s.db.PolicyClient.CreateProviderConfig(s.ctx, &keymanagement.CreateProviderConfigRequest{
-		Name:       testProvider2,
-		ConfigJson: validProviderConfig,
-	})
-	s.Require().NoError(err)
-	s.NotNil(pc)
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc.GetId())
 
-	pc, err = s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
-		Name: testProvider2,
+	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
+		Name: pc.GetName(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
@@ -120,7 +141,12 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_InvalidIdentifier_Fails() {
 
 // Finish List/Update/Delete tests
 func (s *KeyManagementSuite) Test_ListProviderConfig_No_Pagination_Succeeds() {
-	s.createTestProviderConfig()
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc.GetId())
 
 	resp, err := s.db.PolicyClient.ListProviderConfigs(s.ctx, &policy.PageRequest{})
 	s.Require().NoError(err)
@@ -129,22 +155,37 @@ func (s *KeyManagementSuite) Test_ListProviderConfig_No_Pagination_Succeeds() {
 }
 
 func (s *KeyManagementSuite) Test_ListProviderConfig_PaginationLimit_Succeeds() {
-	s.createTestProviderConfig()
-	s.createTestProviderConfig()
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc.GetId())
+	pc2 := s.createTestProviderConfig(testProvider2, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc2.GetId())
 
-	resp, err := s.db.PolicyClient.ListProviderConfigs(s.ctx, &policy.PageRequest{
+	respOne, err := s.db.PolicyClient.ListProviderConfigs(s.ctx, &policy.PageRequest{
 		Limit: 1,
 	})
 	s.Require().NoError(err)
-	s.NotNil(resp)
-	s.NotEmpty(resp.GetProviderConfigs())
-	s.Len(resp.GetProviderConfigs(), 1)
-	s.GreaterOrEqual(resp.GetPagination().GetTotal(), int32(1))
+	s.NotNil(respOne)
+	s.NotEmpty(respOne.GetProviderConfigs())
+	s.Len(respOne.GetProviderConfigs(), 1)
+	s.GreaterOrEqual(respOne.GetPagination().GetTotal(), int32(1))
+
+	respTwo, err := s.db.PolicyClient.ListProviderConfigs(s.ctx, &policy.PageRequest{
+		Limit:  1,
+		Offset: 1,
+	})
+	s.Require().NoError(err)
+	s.NotNil(respTwo)
+	s.NotEmpty(respTwo.GetProviderConfigs())
+	s.Len(respTwo.GetProviderConfigs(), 1)
+	s.GreaterOrEqual(respTwo.GetPagination().GetTotal(), int32(1))
+	s.NotEqual(respOne.GetProviderConfigs()[0].GetId(), respTwo.GetProviderConfigs()[0].GetId())
 }
 
 func (s *KeyManagementSuite) Test_ListProviderConfig_PaginationLimitExceeded_Fails() {
-	s.createTestProviderConfig()
-
 	resp, err := s.db.PolicyClient.ListProviderConfigs(s.ctx, &policy.PageRequest{
 		Limit: s.db.LimitMax + 1,
 	})
@@ -153,20 +194,20 @@ func (s *KeyManagementSuite) Test_ListProviderConfig_PaginationLimitExceeded_Fai
 }
 
 func (s *KeyManagementSuite) Test_UpdateProviderConfig_ExtendsMetadata_Succeeds() {
-	pc, err := s.db.PolicyClient.CreateProviderConfig(s.ctx, &keymanagement.CreateProviderConfigRequest{
-		Name:       testProvider,
-		ConfigJson: validProviderConfig,
-		Metadata: &common.MetadataMutable{
-			Labels: validLabels,
-		},
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, &common.MetadataMutable{
+		Labels: validLabels,
 	})
-	s.Require().NoError(err)
+	pcIDs = append(pcIDs, pc.GetId())
 	s.NotNil(pc)
 	s.Equal(testProvider, pc.GetName())
 	s.Equal(validProviderConfig, pc.GetConfigJson())
 	s.Equal(validLabels, pc.GetMetadata().GetLabels())
 
-	pc, err = s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
+	pc, err := s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
 		Id:         pc.GetId(),
 		Name:       testProvider2,
 		ConfigJson: validProviderConfig2,
@@ -191,20 +232,20 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ExtendsMetadata_Succeeds(
 }
 
 func (s *KeyManagementSuite) Test_UpdateProviderConfig_ReplaceMetadata_Succeeds() {
-	pc, err := s.db.PolicyClient.CreateProviderConfig(s.ctx, &keymanagement.CreateProviderConfigRequest{
-		Name:       testProvider,
-		ConfigJson: validProviderConfig,
-		Metadata: &common.MetadataMutable{
-			Labels: validLabels,
-		},
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, &common.MetadataMutable{
+		Labels: validLabels,
 	})
-	s.Require().NoError(err)
+	pcIDs = append(pcIDs, pc.GetId())
 	s.NotNil(pc)
 	s.Equal(testProvider, pc.GetName())
 	s.Equal(validProviderConfig, pc.GetConfigJson())
 	s.Equal(validLabels, pc.GetMetadata().GetLabels())
 
-	pc, err = s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
+	pc, err := s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
 		Id:         pc.GetId(),
 		Name:       testProvider2,
 		ConfigJson: validProviderConfig2,
@@ -260,7 +301,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ConfigNotFound_Fails() {
 }
 
 func (s *KeyManagementSuite) Test_DeleteProviderConfig_Succeeds() {
-	pc := s.createTestProviderConfig()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
 	s.NotNil(pc)
 	pc, err := s.db.PolicyClient.DeleteProviderConfig(s.ctx, pc.GetId())
 	s.Require().NoError(err)
@@ -273,10 +314,11 @@ func (s *KeyManagementSuite) Test_DeleteProviderConfig_InvalidUUID_Fails() {
 	s.Nil(pc)
 }
 
-func (s *KeyManagementSuite) createTestProviderConfig() *policy.KeyProviderConfig {
+func (s *KeyManagementSuite) createTestProviderConfig(providerName string, config []byte, metadata *common.MetadataMutable) *policy.KeyProviderConfig {
 	pc, err := s.db.PolicyClient.CreateProviderConfig(s.ctx, &keymanagement.CreateProviderConfigRequest{
-		Name:       testProvider,
-		ConfigJson: validProviderConfig,
+		Name:       providerName,
+		ConfigJson: config,
+		Metadata:   metadata,
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)

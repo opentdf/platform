@@ -104,3 +104,52 @@ func AttachDPoPHeader(req *http.Request, dpopJWK jwk.Key, endpoint, nonce string
 	req.Header.Set("DPoP", dpopProof)
 	return nil
 }
+
+// DoWithDPoPNonceRetry executes the given requestFunc, checks for a DPoP nonce-required response, and retries once with the nonce if needed.
+// requestFunc should accept a nonce string and return (*http.Response, error).
+func DoWithDPoPNonceRetry(requestFunc func(nonce string) (*http.Response, error)) (*http.Response, error) {
+	resp, err := requestFunc("")
+	if err != nil {
+		return resp, err
+	}
+	if resp.StatusCode == 400 {
+		// Check for DPoP nonce required in response headers (RFC 9449)
+		nonce := resp.Header.Get("DPoP-Nonce")
+		if nonce != "" {
+			resp.Body.Close()
+			return requestFunc(nonce)
+		}
+	}
+	return resp, err
+}
+
+// DoWithDPoPNonceRetrySimple executes the request with DPoP, handling nonce retries. It calls reqFactory to get a new *http.Request for each attempt.
+func DoWithDPoPNonceRetrySimple(httpClient *http.Client, reqFactory func(nonce string) (*http.Request, error), dpopJWK jwk.Key, endpoint string) (*http.Response, error) {
+	// First attempt
+	req, err := reqFactory("")
+	if err != nil {
+		return nil, err
+	}
+	if err := AttachDPoPHeader(req, dpopJWK, endpoint, ""); err != nil {
+		return nil, fmt.Errorf("failed to attach DPoP header: %w", err)
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return resp, err
+	}
+	if resp.StatusCode == 400 {
+		nonce := resp.Header.Get("DPoP-Nonce")
+		if nonce != "" {
+			resp.Body.Close()
+			req, err := reqFactory(nonce)
+			if err != nil {
+				return nil, err
+			}
+			if err := AttachDPoPHeader(req, dpopJWK, endpoint, nonce); err != nil {
+				return nil, fmt.Errorf("failed to attach DPoP header: %w", err)
+			}
+			return httpClient.Do(req)
+		}
+	}
+	return resp, err
+}

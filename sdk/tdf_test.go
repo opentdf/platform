@@ -20,6 +20,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -478,6 +479,63 @@ func (s *TDFSuite) Test_SimpleTDF() {
 
 		_ = os.Remove(tdfFilename)
 	}
+}
+
+func (s *TDFSuite) Test_DefaultAssertions() {
+	attributes := []string{
+		"https://example.com/attr/Classification/value/S",
+		"https://example.com/attr/Classification/value/X",
+	}
+
+	// Configure TDF options with default assertions
+	tdfOptions := []TDFOption{
+		WithKasInformation(KASInfo{
+			URL:       "https://a.kas/",
+			PublicKey: "",
+		}),
+		WithDefaultAssertion(),
+		WithDataAttributes(attributes...),
+	}
+
+	tdfReadOptions := []TDFReaderOption{
+		WithKasAllowlist([]string{"https://a.kas/"}),
+	}
+
+	// Create TDF
+	var buf bytes.Buffer
+	plainText := "Test Data"
+
+	inBuf := bytes.NewReader([]byte(plainText))
+	tdfObj, err := s.sdk.CreateTDF(&buf, inBuf, tdfOptions...)
+	s.Require().NoError(err)
+	s.Require().NotNil(tdfObj)
+
+	// Load TDF
+	r, err := s.sdk.LoadTDF(bytes.NewReader(buf.Bytes()), tdfReadOptions...)
+	s.Require().NoError(err)
+
+	// Verify default assertion
+	assertions := r.Manifest().Assertions
+	s.Require().NoError(err)
+	s.Require().NotEmpty(assertions)
+
+	found := false
+	for _, assertion := range assertions {
+		if assertion.ID == "default-assertion" { // Ensure `ID` exists
+			found = true
+
+			// Validate JSON in Statement.Value
+			var metadata map[string]interface{}
+			err := json.Unmarshal([]byte(assertion.Statement.Value), &metadata) // Ensure `Statement.Value` exists
+			s.Require().NoError(err, "Statement Value is not valid JSON")
+
+			// Check JSON fields
+			s.Equal(TDFSpecVersion, metadata["TDFSpecVersion"], "TDFSpecVersion mismatch")
+			s.Equal(runtime.GOOS, metadata["OS"], "OS mismatch")
+			s.Equal("Go-"+Version, metadata["sdkVersion"], "SDKVersion mismatch")
+		}
+	}
+	s.True(found, "Default assertion not found")
 }
 
 func (s *TDFSuite) Test_TDF_KAS_Allowlist() {

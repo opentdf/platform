@@ -128,6 +128,7 @@ func NewAuthenticator(ctx context.Context, cfg *Config, logger *logger.Logger, w
 
 	// If userinfo enrichment is enabled, validate the client credentials with the IdP
 	if cfg.EnrichUserInfo {
+		// TODO when we no longer need to toggle enrich userinfo we should move this to the NewOpenTDFServer
 		logger.Info("validating client credentials with IdP", slog.String("issuer", oidcConfig.Issuer), slog.String("client_id", cfg.ClientID), slog.Bool("tls_no_verify", cfg.AuthNConfig.TLSNoVerify))
 		if err := oidc.ValidateClientCredentials(ctx, oidcConfig, cfg.ClientID, cfg.ClientScopes, []byte(cfg.ClientPrivateKey), cfg.AuthNConfig.TLSNoVerify, clientVerificationTimeout, nil, ""); err != nil {
 			logger.Error("failed to validate client credentials with IdP", slog.String("error", err.Error()))

@@ -280,7 +280,7 @@ func (e *Enforcer) extractRolesFromToken(token jwt.Token) []string {
 // extractRolesFromUserInfo extracts roles from a userInfo JSON ([]byte) based on the configured claim path
 func (e *Enforcer) extractRolesFromUserInfo(userInfo []byte) []string {
 	roles := make([]string, 0, defaultRolesCapacity)
-	if userInfo == nil {
+	if userInfo == nil || len(userInfo) == 0 {
 		return roles
 	}
 	var userInfoMap map[string]interface{}

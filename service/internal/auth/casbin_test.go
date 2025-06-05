@@ -757,6 +757,22 @@ func (s *AuthnCasbinSuite) Test_Casbin_Claims_Matrix() {
 			shouldAllow: false,
 			description: "Should deny if both token and userInfo are empty",
 		},
+		{
+			name:        "UserInfo nil or empty length",
+			groupsClaim: GroupsClaimList{"realm_access.roles"},
+			tokenClaims: map[string]interface{}{},
+			userInfo:    nil,
+			shouldAllow: false,
+			description: "Should deny if userInfo is nil",
+		},
+		{
+			name:        "UserInfo empty slice",
+			groupsClaim: GroupsClaimList{"realm_access.roles"},
+			tokenClaims: map[string]interface{}{},
+			userInfo:    []byte{},
+			shouldAllow: false,
+			description: "Should deny if userInfo is empty slice",
+		},
 	}
 
 	for _, tc := range testMatrix {

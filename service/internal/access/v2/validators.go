@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opentdf/platform/lib/identifier"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -26,6 +27,28 @@ var (
 func validateGetDecision(entityRepresentation *entityresolutionV2.EntityRepresentation, action *policy.Action, resources []*authzV2.Resource) error {
 	if err := validateEntityRepresentations([]*entityresolutionV2.EntityRepresentation{entityRepresentation}); err != nil {
 		return fmt.Errorf("invalid entity representation: %w", err)
+	}
+	if action.GetName() == "" {
+		return fmt.Errorf("action required with name: %w", ErrInvalidAction)
+	}
+	if len(resources) == 0 {
+		return fmt.Errorf("resources are empty: %w", ErrInvalidResource)
+	}
+	for _, resource := range resources {
+		if resource == nil {
+			return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
+		}
+	}
+	return nil
+}
+
+// validateGetDecisionRegisteredResource validates the input parameters for GetDecisionRegisteredResource:
+//   - registeredResourceValueFQN: must be a valid registered resource value FQN
+//   - action: must not be nil
+//   - resources: must not be nil and must contain at least one resource
+func validateGetDecisionRegisteredResource(registeredResourceValueFQN string, action *policy.Action, resources []*authzV2.Resource) error {
+	if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN); err != nil {
+		return err
 	}
 	if action.GetName() == "" {
 		return fmt.Errorf("action required with name: %w", ErrInvalidAction)

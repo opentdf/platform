@@ -65,13 +65,14 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				as.logger = logger
 				as.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				as.config = cfg
+
 				return as, nil
 			},
 		},
 	}
 }
 
-// Close gracefully shuts down the service, closing the database client.
+// Close gracefully shuts down the attributes service's database client.
 func (s *AttributesService) Close() {
 	s.logger.Info("gracefully shutting down attributes service")
 	s.dbClient.Close()
@@ -365,7 +366,6 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Value = updated
-
 	return connect.NewResponse(rsp), nil
 }
 

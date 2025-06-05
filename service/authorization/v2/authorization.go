@@ -7,6 +7,8 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/creasty/defaults"
+	"github.com/go-viper/mapstructure/v2"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	authzV2Connect "github.com/opentdf/platform/protocol/go/authorization/v2/authorizationv2connect"
 	otdf "github.com/opentdf/platform/sdk"
@@ -24,21 +26,56 @@ type Service struct {
 	config *Config
 	logger *logger.Logger
 	trace.Tracer
+	cache *EntitlementPolicyCache
 }
 
-type Config struct{}
+type Config struct {
+	// Interval in seconds to refresh the in-memory policy entitlement cache (attributes and subject mappings)
+	// Default: cache is disabled with refresh interval set to 0.
+	CacheRefreshIntervalSeconds int `mapstructure:"cache_refresh_interval_seconds" default:"0"` // Cache disabled by default
+}
+
+func OnServicesStarted(svc *Service) serviceregistry.OnServicesStartedHook {
+	return func(ctx context.Context) error {
+		if svc.config.CacheRefreshIntervalSeconds > 0 {
+			c, err := NewEntitlementPolicyCache(ctx, svc.sdk, svc.logger, svc.config)
+			if err != nil {
+				svc.logger.ErrorContext(ctx, "failed to create entitlement policy cache", slog.Any("error", err))
+				return fmt.Errorf("failed to create entitlement policy cache: %w", err)
+			}
+
+			svc.cache = c
+		}
+
+		return nil
+	}
+}
 
 func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler] {
 	as := new(Service)
+	startHook := OnServicesStarted(as)
 
 	return &serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler]{
+		Close: as.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[authzV2Connect.AuthorizationServiceHandler]{
-			Namespace:      "authorization",
-			Version:        "v2",
-			ServiceDesc:    &authzV2.AuthorizationService_ServiceDesc,
-			ConnectRPCFunc: authzV2Connect.NewAuthorizationServiceHandler,
+			Namespace:         "authorization",
+			Version:           "v2",
+			ServiceDesc:       &authzV2.AuthorizationService_ServiceDesc,
+			OnServicesStarted: startHook,
+			ConnectRPCFunc:    authzV2Connect.NewAuthorizationServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authzV2Connect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				authZCfg := new(Config)
+
+				if err := defaults.Set(authZCfg); err != nil {
+					panic(fmt.Errorf("failed to set defaults for policy service config: %w", err))
+				}
+
+				// Only decode config if it exists
+				if srp.Config != nil {
+					if err := mapstructure.Decode(srp.Config, &authZCfg); err != nil {
+						panic(fmt.Errorf("invalid policy svc cfg [%v] %w", srp.Config, err))
+					}
+				}
 
 				logger := srp.Logger
 
@@ -56,6 +93,14 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				return as, nil
 			},
 		},
+	}
+}
+
+// Close gracefully shuts down the authorization service, closing the entitlement policy cache.
+func (as *Service) Close() {
+	as.logger.Info("gracefully shutting down authorization service")
+	if as.cache != nil {
+		as.cache.Stop()
 	}
 }
 
@@ -80,7 +125,7 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 	withComprehensiveHierarchy := req.Msg.GetWithComprehensiveHierarchy()
 
 	// When authorization service can consume cached policy, switch to the other PDP (process based on policy passed in)
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -92,7 +137,6 @@ func (as *Service) GetEntitlements(ctx context.Context, req *connect.Request[aut
 		as.logger.ErrorContext(ctx, "failed to get entitlements", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-
 	rsp := &authzV2.GetEntitlementsResponse{
 		Entitlements: entitlements,
 	}
@@ -111,7 +155,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	propagator := otel.GetTextMapPropagator()
 	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -146,7 +190,7 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 	propagator := otel.GetTextMapPropagator()
 	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
 	if err != nil {
 		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, err)

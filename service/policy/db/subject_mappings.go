@@ -439,6 +439,34 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 	}, nil
 }
 
+// Loads all subject mappings into memory by making iterative db roundtrip requests of defaultObjectListAllLimit size
+func (c PolicyDBClient) ListAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
+	var nextOffset int32
+	smList := make([]*policy.SubjectMapping, 0)
+
+	for {
+		listed, err := c.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
+			Pagination: &policy.PageRequest{
+				Limit:  c.listCfg.limitMax,
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list all attributes: %w", err)
+		}
+
+		nextOffset = listed.GetPagination().GetNextOffset()
+		smList = append(smList, listed.GetSubjectMappings()...)
+
+		// offset becomes zero when list is exhausted
+		if nextOffset <= 0 {
+			break
+		}
+	}
+
+	return smList, nil
+}
+
 // Mutates provided fields and returns the updated subject mapping
 func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapping.UpdateSubjectMappingRequest) (*policy.SubjectMapping, error) {
 	id := r.GetId()

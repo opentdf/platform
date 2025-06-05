@@ -62,6 +62,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				smSvc.logger = logger
 				smSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				smSvc.config = cfg
+
 				return smSvc, nil
 			},
 		},
@@ -71,6 +72,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 // Close gracefully shuts down the service, closing the database client.
 func (s *SubjectMappingService) Close() {
 	s.logger.Info("gracefully shutting down subject mapping service")
+
 	s.dbClient.Close()
 }
 
@@ -108,6 +110,7 @@ func (s SubjectMappingService) CreateSubjectMapping(ctx context.Context,
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("subjectMapping", req.Msg.String()))
 	}
+
 	return connect.NewResponse(rsp), nil
 }
 
@@ -179,6 +182,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
 	return connect.NewResponse(rsp), nil
 }
 

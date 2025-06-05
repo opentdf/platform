@@ -814,6 +814,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
 		if decryptedDataOffset+seg.Size < r.cursor {
 			decryptedDataOffset += seg.Size
+			payloadReadOffset += seg.EncryptedSize
 			continue
 		}
 

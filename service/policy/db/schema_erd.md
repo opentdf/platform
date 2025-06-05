@@ -137,7 +137,7 @@ erDiagram
         timestamp_with_time_zone created_at "Timestamp when the provider configuration was created"
         uuid id PK "Unique identifier for the provider configuration"
         jsonb metadata "Additional metadata for the provider configuration"
-        character_varying provider_name "Name of the key provider"
+        character_varying provider_name UK "Unique name for the key provider."
         timestamp_with_time_zone updated_at "Timestamp when the provider configuration was last updated"
     }
 
@@ -191,6 +191,7 @@ erDiagram
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
         jsonb metadata "Metadata for the condition set (see protos for structure)"
+        ARRAY selector_values "Array of cached selector values extracted from the condition JSONB and maintained via trigger."
         timestamp_with_time_zone updated_at 
     }
 

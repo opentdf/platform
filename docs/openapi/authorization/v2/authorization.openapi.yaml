@@ -405,6 +405,12 @@ components:
         - properties:
             attributeValues:
               title: attribute_values
+              description: |+
+                if provided, resource.attribute_values must not be empty:
+                ```
+                this.fqns.size() > 0 && this.fqns.all(item, item.isUri())
+                ```
+
               $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'
           title: attribute_values
           required:
@@ -413,6 +419,8 @@ components:
             registeredResourceValueFqn:
               type: string
               title: registered_resource_value_fqn
+              minLength: 1
+              format: uri
           title: registered_resource_value_fqn
           required:
             - registeredResourceValueFqn
@@ -571,9 +579,6 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
-
-         Not recommended for use in new APIs, but still useful for legacy APIs and
-         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       format: date-time

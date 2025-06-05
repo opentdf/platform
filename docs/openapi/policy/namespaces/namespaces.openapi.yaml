@@ -2,109 +2,27 @@ openapi: 3.1.0
 info:
   title: policy.namespaces
 paths:
-  /attributes/namespaces/{id}:
-    get:
+  /policy.namespaces.NamespaceService/GetNamespace:
+    post:
       tags:
         - policy.namespaces.NamespaceService
       summary: GetNamespace
       operationId: policy.namespaces.NamespaceService.GetNamespace
       parameters:
-        - name: id
-          in: path
-          description: Deprecated
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Deprecated
-            deprecated: true
-        - name: namespaceId
-          in: query
-          description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: namespace_id
-            format: uuid
-            description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
-        - name: fqn
-          in: query
-          schema:
-            type: string
-            title: fqn
-            minLength: 1
-            format: uri
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.namespaces.GetNamespaceResponse'
-    delete:
-      tags:
-        - policy.namespaces.NamespaceService
-      summary: DeactivateNamespace
-      operationId: policy.namespaces.NamespaceService.DeactivateNamespace
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.namespaces.DeactivateNamespaceResponse'
-    patch:
-      tags:
-        - policy.namespaces.NamespaceService
-      summary: UpdateNamespace
-      operationId: policy.namespaces.NamespaceService.UpdateNamespace
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                metadata:
-                  title: metadata
-                  description: Optional
-                  $ref: '#/components/schemas/common.MetadataMutable'
-                metadataUpdateBehavior:
-                  title: metadata_update_behavior
-                  $ref: '#/components/schemas/common.MetadataUpdateEnum'
-              title: UpdateNamespaceRequest
-              additionalProperties: false
+              $ref: '#/components/schemas/policy.namespaces.GetNamespaceRequest'
         required: true
       responses:
         default:
@@ -118,51 +36,29 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.namespaces.UpdateNamespaceResponse'
-  /attributes/namespaces:
-    get:
+                $ref: '#/components/schemas/policy.namespaces.GetNamespaceResponse'
+  /policy.namespaces.NamespaceService/ListNamespaces:
+    post:
       tags:
         - policy.namespaces.NamespaceService
       summary: ListNamespaces
       operationId: policy.namespaces.NamespaceService.ListNamespaces
       parameters:
-        - name: state
-          in: query
-          description: |-
-            Optional
-             ACTIVE by default when not specified
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            title: state
-            description: |-
-              Optional
-               ACTIVE by default when not specified
-            $ref: '#/components/schemas/common.ActiveStateEnum'
-        - name: pagination.limit
-          in: query
-          description: |-
-            Optional
-             Set to configured default limit if not provided
-             Maximum limit set in platform config and enforced by services
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: integer
-            title: limit
-            format: int32
-            description: |-
-              Optional
-               Set to configured default limit if not provided
-               Maximum limit set in platform config and enforced by services
-        - name: pagination.offset
-          in: query
-          description: |-
-            Optional
-             Defaulted if not provided
-          schema:
-            type: integer
-            title: offset
-            format: int32
-            description: |-
-              Optional
-               Defaulted if not provided
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.ListNamespacesRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -176,11 +72,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.ListNamespacesResponse'
+  /policy.namespaces.NamespaceService/CreateNamespace:
     post:
       tags:
         - policy.namespaces.NamespaceService
       summary: CreateNamespace
       operationId: policy.namespaces.NamespaceService.CreateNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
@@ -200,7 +107,77 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.CreateNamespaceResponse'
-  /attributes/namespaces/keyaccessserver/grants:
+  /policy.namespaces.NamespaceService/UpdateNamespace:
+    post:
+      tags:
+        - policy.namespaces.NamespaceService
+      summary: UpdateNamespace
+      operationId: policy.namespaces.NamespaceService.UpdateNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.UpdateNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.namespaces.UpdateNamespaceResponse'
+  /policy.namespaces.NamespaceService/DeactivateNamespace:
+    post:
+      tags:
+        - policy.namespaces.NamespaceService
+      summary: DeactivateNamespace
+      operationId: policy.namespaces.NamespaceService.DeactivateNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.DeactivateNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.namespaces.DeactivateNamespaceResponse'
+  /policy.namespaces.NamespaceService/AssignKeyAccessServerToNamespace:
     post:
       tags:
         - policy.namespaces.NamespaceService
@@ -210,12 +187,22 @@ paths:
          Namespace <> Key Access Server RPCs
         ---------------------------------------
       operationId: policy.namespaces.NamespaceService.AssignKeyAccessServerToNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
             schema:
-              title: namespace_key_access_server
-              $ref: '#/components/schemas/policy.namespaces.NamespaceKeyAccessServer'
+              $ref: '#/components/schemas/policy.namespaces.AssignKeyAccessServerToNamespaceRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -229,28 +216,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.AssignKeyAccessServerToNamespaceResponse'
-    delete:
+  /policy.namespaces.NamespaceService/RemoveKeyAccessServerFromNamespace:
+    post:
       tags:
         - policy.namespaces.NamespaceService
       summary: RemoveKeyAccessServerFromNamespace
       operationId: policy.namespaces.NamespaceService.RemoveKeyAccessServerFromNamespace
       parameters:
-        - name: namespaceKeyAccessServer.namespaceId
-          in: query
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: string
-            title: namespace_id
-            format: uuid
-            description: Required
-        - name: namespaceKeyAccessServer.keyAccessServerId
-          in: query
-          description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: key_access_server_id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -377,24 +364,6 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
-    policy.KeyMode:
-      type: string
-      title: KeyMode
-      enum:
-        - KEY_MODE_UNSPECIFIED
-        - KEY_MODE_CONFIG_ROOT_KEY
-        - KEY_MODE_PROVIDER_ROOT_KEY
-        - KEY_MODE_REMOTE
-        - KEY_MODE_PUBLIC_KEY_ONLY
-      description: Describes the management and operational mode of a cryptographic key.
-    policy.KeyStatus:
-      type: string
-      title: KeyStatus
-      enum:
-        - KEY_STATUS_UNSPECIFIED
-        - KEY_STATUS_ACTIVE
-        - KEY_STATUS_ROTATED
-      description: The status of the key
     policy.SourceType:
       type: string
       title: SourceType
@@ -467,9 +436,6 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
-
-         Not recommended for use in new APIs, but still useful for legacy APIs and
-         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       format: date-time
@@ -563,61 +529,6 @@ components:
          the Joda Time's [`ISODateTimeFormat.dateTime()`](
          http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
          ) to obtain a formatter capable of generating timestamps in this format.
-    policy.AsymmetricKey:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          description: Required
-        keyId:
-          type: string
-          title: key_id
-          description: Required
-        keyAlgorithm:
-          title: key_algorithm
-          description: Required
-          $ref: '#/components/schemas/policy.Algorithm'
-        keyStatus:
-          title: key_status
-          description: Required
-          $ref: '#/components/schemas/policy.KeyStatus'
-        keyMode:
-          title: key_mode
-          description: Required Specifies how the key is managed (local or remote)
-          $ref: '#/components/schemas/policy.KeyMode'
-        publicKeyCtx:
-          title: public_key_ctx
-          description: Required Specific structure based on key provider implementation
-          $ref: '#/components/schemas/policy.PublicKeyCtx'
-        privateKeyCtx:
-          title: private_key_ctx
-          description: Optional Specific structure based on key provider implementation
-          $ref: '#/components/schemas/policy.PrivateKeyCtx'
-        providerConfig:
-          title: provider_config
-          description: Optional Configuration for the key provider
-          $ref: '#/components/schemas/policy.KeyProviderConfig'
-        metadata:
-          title: metadata
-          description: Common metadata fields
-          $ref: '#/components/schemas/common.Metadata'
-      title: AsymmetricKey
-      additionalProperties: false
-    policy.KasKey:
-      type: object
-      properties:
-        kasId:
-          type: string
-          title: kas_id
-        key:
-          title: key
-          $ref: '#/components/schemas/policy.AsymmetricKey'
-        kasUri:
-          type: string
-          title: kas_uri
-      title: KasKey
-      additionalProperties: false
     policy.KasPublicKey:
       type: object
       properties:
@@ -688,7 +599,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Kas keys associated with this KAS
         name:
@@ -704,25 +615,6 @@ components:
       title: KeyAccessServer
       additionalProperties: false
       description: Key Access Server Registry
-    policy.KeyProviderConfig:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-        name:
-          type: string
-          title: name
-        configJson:
-          type: string
-          title: config_json
-          format: byte
-        metadata:
-          title: metadata
-          description: Common metadata
-          $ref: '#/components/schemas/common.Metadata'
-      title: KeyProviderConfig
-      additionalProperties: false
     policy.Namespace:
       type: object
       properties:
@@ -755,7 +647,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys for the namespace
       title: Namespace
@@ -802,20 +694,6 @@ components:
           description: Total count of entire list
       title: PageResponse
       additionalProperties: false
-    policy.PrivateKeyCtx:
-      type: object
-      properties:
-        keyId:
-          type: string
-          title: key_id
-          minLength: 1
-          description: Required Key ID for the symmetric key wrapping this key.
-        wrappedKey:
-          type: string
-          title: wrapped_key
-          description: Optional Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.
-      title: PrivateKeyCtx
-      additionalProperties: false
     policy.PublicKey:
       type: object
       oneOf:
@@ -844,15 +722,36 @@ components:
       title: PublicKey
       additionalProperties: false
       description: Deprecated
-    policy.PublicKeyCtx:
+    policy.SimpleKasKey:
       type: object
       properties:
+        kasUri:
+          type: string
+          title: kas_uri
+          description: The URL of the Key Access Server
+        publicKey:
+          title: public_key
+          description: The public key of the Key that belongs to the KAS
+          $ref: '#/components/schemas/policy.SimpleKasPublicKey'
+        kasId:
+          type: string
+          title: kas_id
+          description: The ID of the Key Access Server
+      title: SimpleKasKey
+      additionalProperties: false
+    policy.SimpleKasPublicKey:
+      type: object
+      properties:
+        algorithm:
+          title: algorithm
+          $ref: '#/components/schemas/policy.Algorithm'
+        kid:
+          type: string
+          title: kid
         pem:
           type: string
           title: pem
-          minLength: 1
-          description: Required Base64 encoded public key in PEM format
-      title: PublicKeyCtx
+      title: SimpleKasPublicKey
       additionalProperties: false
     policy.namespaces.AssignKeyAccessServerToNamespaceRequest:
       type: object

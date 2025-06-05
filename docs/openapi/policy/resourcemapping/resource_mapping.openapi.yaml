@@ -2,52 +2,28 @@ openapi: 3.1.0
 info:
   title: policy.resourcemapping
 paths:
-  /resource-mapping-groups:
-    get:
+  /policy.resourcemapping.ResourceMappingService/ListResourceMappingGroups:
+    post:
       tags:
         - policy.resourcemapping.ResourceMappingService
       summary: ListResourceMappingGroups
       operationId: policy.resourcemapping.ResourceMappingService.ListResourceMappingGroups
       parameters:
-        - name: namespaceId
-          in: query
-          description: Optional
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: string
-            title: namespace_id
-            description: |+
-              Optional
-              Optional field must be a valid UUID:
-              ```
-              size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
-              ```
-
-        - name: pagination.limit
-          in: query
-          description: |-
-            Optional
-             Set to configured default limit if not provided
-             Maximum limit set in platform config and enforced by services
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: integer
-            title: limit
-            format: int32
-            description: |-
-              Optional
-               Set to configured default limit if not provided
-               Maximum limit set in platform config and enforced by services
-        - name: pagination.offset
-          in: query
-          description: |-
-            Optional
-             Defaulted if not provided
-          schema:
-            type: integer
-            title: offset
-            format: int32
-            description: |-
-              Optional
-               Defaulted if not provided
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.resourcemapping.ListResourceMappingGroupsRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -61,11 +37,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.resourcemapping.ListResourceMappingGroupsResponse'
+  /policy.resourcemapping.ResourceMappingService/GetResourceMappingGroup:
+    post:
+      tags:
+        - policy.resourcemapping.ResourceMappingService
+      summary: GetResourceMappingGroup
+      operationId: policy.resourcemapping.ResourceMappingService.GetResourceMappingGroup
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.resourcemapping.GetResourceMappingGroupRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.resourcemapping.GetResourceMappingGroupResponse'
+  /policy.resourcemapping.ResourceMappingService/CreateResourceMappingGroup:
     post:
       tags:
         - policy.resourcemapping.ResourceMappingService
       summary: CreateResourceMappingGroup
       operationId: policy.resourcemapping.ResourceMappingService.CreateResourceMappingGroup
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
@@ -85,114 +107,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.resourcemapping.CreateResourceMappingGroupResponse'
-  /resource-mapping-groups/{id}:
-    get:
-      tags:
-        - policy.resourcemapping.ResourceMappingService
-      summary: GetResourceMappingGroup
-      operationId: policy.resourcemapping.ResourceMappingService.GetResourceMappingGroup
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.resourcemapping.GetResourceMappingGroupResponse'
-    delete:
-      tags:
-        - policy.resourcemapping.ResourceMappingService
-      summary: DeleteResourceMappingGroup
-      operationId: policy.resourcemapping.ResourceMappingService.DeleteResourceMappingGroup
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.resourcemapping.DeleteResourceMappingGroupResponse'
-    patch:
+  /policy.resourcemapping.ResourceMappingService/UpdateResourceMappingGroup:
+    post:
       tags:
         - policy.resourcemapping.ResourceMappingService
       summary: UpdateResourceMappingGroup
       operationId: policy.resourcemapping.ResourceMappingService.UpdateResourceMappingGroup
       parameters:
-        - name: id
-          in: path
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                namespaceId:
-                  type: string
-                  title: namespace_id
-                  description: |+
-                    Optional
-                    Optional field must be a valid UUID:
-                    ```
-                    size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
-                    ```
-
-                name:
-                  type: string
-                  title: name
-                  maxLength: 253
-                  description: |+
-                    Optional
-                    Optional field must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored group name will be normalized to lower case.:
-                    ```
-                    size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
-                    ```
-
-                metadata:
-                  title: metadata
-                  description: Common metadata
-                  $ref: '#/components/schemas/common.MetadataMutable'
-                metadataUpdateBehavior:
-                  title: metadata_update_behavior
-                  $ref: '#/components/schemas/common.MetadataUpdateEnum'
-              title: UpdateResourceMappingGroupRequest
-              additionalProperties: false
+              $ref: '#/components/schemas/policy.resourcemapping.UpdateResourceMappingGroupRequest'
         required: true
       responses:
         default:
@@ -207,52 +142,63 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.resourcemapping.UpdateResourceMappingGroupResponse'
-  /resource-mappings:
-    get:
+  /policy.resourcemapping.ResourceMappingService/DeleteResourceMappingGroup:
+    post:
+      tags:
+        - policy.resourcemapping.ResourceMappingService
+      summary: DeleteResourceMappingGroup
+      operationId: policy.resourcemapping.ResourceMappingService.DeleteResourceMappingGroup
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.resourcemapping.DeleteResourceMappingGroupRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.resourcemapping.DeleteResourceMappingGroupResponse'
+  /policy.resourcemapping.ResourceMappingService/ListResourceMappings:
+    post:
       tags:
         - policy.resourcemapping.ResourceMappingService
       summary: ListResourceMappings
       operationId: policy.resourcemapping.ResourceMappingService.ListResourceMappings
       parameters:
-        - name: groupId
-          in: query
-          description: Optional
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: string
-            title: group_id
-            description: |+
-              Optional
-              Optional field must be a valid UUID:
-              ```
-              size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
-              ```
-
-        - name: pagination.limit
-          in: query
-          description: |-
-            Optional
-             Set to configured default limit if not provided
-             Maximum limit set in platform config and enforced by services
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: integer
-            title: limit
-            format: int32
-            description: |-
-              Optional
-               Set to configured default limit if not provided
-               Maximum limit set in platform config and enforced by services
-        - name: pagination.offset
-          in: query
-          description: |-
-            Optional
-             Defaulted if not provided
-          schema:
-            type: integer
-            title: offset
-            format: int32
-            description: |-
-              Optional
-               Defaulted if not provided
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.resourcemapping.ListResourceMappingsRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -266,11 +212,92 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.resourcemapping.ListResourceMappingsResponse'
+  /policy.resourcemapping.ResourceMappingService/ListResourceMappingsByGroupFqns:
+    post:
+      tags:
+        - policy.resourcemapping.ResourceMappingService
+      summary: ListResourceMappingsByGroupFqns
+      operationId: policy.resourcemapping.ResourceMappingService.ListResourceMappingsByGroupFqns
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.resourcemapping.ListResourceMappingsByGroupFqnsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse'
+  /policy.resourcemapping.ResourceMappingService/GetResourceMapping:
+    post:
+      tags:
+        - policy.resourcemapping.ResourceMappingService
+      summary: GetResourceMapping
+      operationId: policy.resourcemapping.ResourceMappingService.GetResourceMapping
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.resourcemapping.GetResourceMappingRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.resourcemapping.GetResourceMappingResponse'
+  /policy.resourcemapping.ResourceMappingService/CreateResourceMapping:
     post:
       tags:
         - policy.resourcemapping.ResourceMappingService
       summary: CreateResourceMapping
       operationId: policy.resourcemapping.ResourceMappingService.CreateResourceMapping
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
@@ -290,158 +317,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.resourcemapping.CreateResourceMappingResponse'
-  /resource-mappings/group-fqns:
-    get:
-      tags:
-        - policy.resourcemapping.ResourceMappingService
-      summary: ListResourceMappingsByGroupFqns
-      operationId: policy.resourcemapping.ResourceMappingService.ListResourceMappingsByGroupFqns
-      parameters:
-        - name: fqns
-          in: query
-          description: |-
-            Required
-             Structure of the RM Group FQN is 'https://<namespace>/resm/<group name>'
-          schema:
-            type: array
-            items:
-              type: string
-              minItems: 1
-            title: fqns
-            minItems: 1
-            description: |-
-              Required
-               Structure of the RM Group FQN is 'https://<namespace>/resm/<group name>'
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.resourcemapping.ListResourceMappingsByGroupFqnsResponse'
-  /resource-mappings/{id}:
-    get:
-      tags:
-        - policy.resourcemapping.ResourceMappingService
-      summary: GetResourceMapping
-      operationId: policy.resourcemapping.ResourceMappingService.GetResourceMapping
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.resourcemapping.GetResourceMappingResponse'
-    delete:
-      tags:
-        - policy.resourcemapping.ResourceMappingService
-      summary: DeleteResourceMapping
-      operationId: policy.resourcemapping.ResourceMappingService.DeleteResourceMapping
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.resourcemapping.DeleteResourceMappingResponse'
-    patch:
+  /policy.resourcemapping.ResourceMappingService/UpdateResourceMapping:
+    post:
       tags:
         - policy.resourcemapping.ResourceMappingService
       summary: UpdateResourceMapping
       operationId: policy.resourcemapping.ResourceMappingService.UpdateResourceMapping
       parameters:
-        - name: id
-          in: path
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                attributeValueId:
-                  type: string
-                  title: attribute_value_id
-                  description: |+
-                    Optional
-                    Optional field must be a valid UUID:
-                    ```
-                    size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
-                    ```
-
-                terms:
-                  type: array
-                  items:
-                    type: string
-                    maxItems: 1000
-                  title: terms
-                  maxItems: 1000
-                  description: Optional
-                groupId:
-                  type: string
-                  title: group_id
-                  description: |+
-                    Optional
-                    Optional field must be a valid UUID:
-                    ```
-                    size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
-                    ```
-
-                metadata:
-                  title: metadata
-                  description: |-
-                    Optional
-                     Common Metadata
-                  $ref: '#/components/schemas/common.MetadataMutable'
-                metadataUpdateBehavior:
-                  title: metadata_update_behavior
-                  $ref: '#/components/schemas/common.MetadataUpdateEnum'
-              title: UpdateResourceMappingRequest
-              additionalProperties: false
+              $ref: '#/components/schemas/policy.resourcemapping.UpdateResourceMappingRequest'
         required: true
       responses:
         default:
@@ -456,6 +352,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.resourcemapping.UpdateResourceMappingResponse'
+  /policy.resourcemapping.ResourceMappingService/DeleteResourceMapping:
+    post:
+      tags:
+        - policy.resourcemapping.ResourceMappingService
+      summary: DeleteResourceMapping
+      operationId: policy.resourcemapping.ResourceMappingService.DeleteResourceMapping
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.resourcemapping.DeleteResourceMappingRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.resourcemapping.DeleteResourceMappingResponse'
 components:
   schemas:
     common.MetadataUpdateEnum:
@@ -508,24 +439,6 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
-    policy.KeyMode:
-      type: string
-      title: KeyMode
-      enum:
-        - KEY_MODE_UNSPECIFIED
-        - KEY_MODE_CONFIG_ROOT_KEY
-        - KEY_MODE_PROVIDER_ROOT_KEY
-        - KEY_MODE_REMOTE
-        - KEY_MODE_PUBLIC_KEY_ONLY
-      description: Describes the management and operational mode of a cryptographic key.
-    policy.KeyStatus:
-      type: string
-      title: KeyStatus
-      enum:
-        - KEY_STATUS_UNSPECIFIED
-        - KEY_STATUS_ACTIVE
-        - KEY_STATUS_ROTATED
-      description: The status of the key
     policy.SourceType:
       type: string
       title: SourceType
@@ -606,9 +519,6 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
-
-         Not recommended for use in new APIs, but still useful for legacy APIs and
-         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       format: date-time
@@ -735,47 +645,6 @@ components:
       title: Action
       additionalProperties: false
       description: An action an entity can take
-    policy.AsymmetricKey:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          description: Required
-        keyId:
-          type: string
-          title: key_id
-          description: Required
-        keyAlgorithm:
-          title: key_algorithm
-          description: Required
-          $ref: '#/components/schemas/policy.Algorithm'
-        keyStatus:
-          title: key_status
-          description: Required
-          $ref: '#/components/schemas/policy.KeyStatus'
-        keyMode:
-          title: key_mode
-          description: Required Specifies how the key is managed (local or remote)
-          $ref: '#/components/schemas/policy.KeyMode'
-        publicKeyCtx:
-          title: public_key_ctx
-          description: Required Specific structure based on key provider implementation
-          $ref: '#/components/schemas/policy.PublicKeyCtx'
-        privateKeyCtx:
-          title: private_key_ctx
-          description: Optional Specific structure based on key provider implementation
-          $ref: '#/components/schemas/policy.PrivateKeyCtx'
-        providerConfig:
-          title: provider_config
-          description: Optional Configuration for the key provider
-          $ref: '#/components/schemas/policy.KeyProviderConfig'
-        metadata:
-          title: metadata
-          description: Common metadata fields
-          $ref: '#/components/schemas/common.Metadata'
-      title: AsymmetricKey
-      additionalProperties: false
     policy.Attribute:
       type: object
       properties:
@@ -815,7 +684,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys associated with the attribute
         metadata:
@@ -877,20 +746,6 @@ components:
         - booleanOperator
       additionalProperties: false
       description: A collection of Conditions evaluated by the boolean_operator provided
-    policy.KasKey:
-      type: object
-      properties:
-        kasId:
-          type: string
-          title: kas_id
-        key:
-          title: key
-          $ref: '#/components/schemas/policy.AsymmetricKey'
-        kasUri:
-          type: string
-          title: kas_uri
-      title: KasKey
-      additionalProperties: false
     policy.KasPublicKey:
       type: object
       properties:
@@ -961,7 +816,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Kas keys associated with this KAS
         name:
@@ -977,25 +832,6 @@ components:
       title: KeyAccessServer
       additionalProperties: false
       description: Key Access Server Registry
-    policy.KeyProviderConfig:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-        name:
-          type: string
-          title: name
-        configJson:
-          type: string
-          title: config_json
-          format: byte
-        metadata:
-          title: metadata
-          description: Common metadata
-          $ref: '#/components/schemas/common.Metadata'
-      title: KeyProviderConfig
-      additionalProperties: false
     policy.Namespace:
       type: object
       properties:
@@ -1028,7 +864,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys for the namespace
       title: Namespace
@@ -1075,20 +911,6 @@ components:
           description: Total count of entire list
       title: PageResponse
       additionalProperties: false
-    policy.PrivateKeyCtx:
-      type: object
-      properties:
-        keyId:
-          type: string
-          title: key_id
-          minLength: 1
-          description: Required Key ID for the symmetric key wrapping this key.
-        wrappedKey:
-          type: string
-          title: wrapped_key
-          description: Optional Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.
-      title: PrivateKeyCtx
-      additionalProperties: false
     policy.PublicKey:
       type: object
       oneOf:
@@ -1117,16 +939,6 @@ components:
       title: PublicKey
       additionalProperties: false
       description: Deprecated
-    policy.PublicKeyCtx:
-      type: object
-      properties:
-        pem:
-          type: string
-          title: pem
-          minLength: 1
-          description: Required Base64 encoded public key in PEM format
-      title: PublicKeyCtx
-      additionalProperties: false
     policy.ResourceMapping:
       type: object
       properties:
@@ -1182,6 +994,37 @@ components:
       description: |-
         Resource Mapping Groups are namespaced collections of Resource Mappings
         associated under a common group name.
+    policy.SimpleKasKey:
+      type: object
+      properties:
+        kasUri:
+          type: string
+          title: kas_uri
+          description: The URL of the Key Access Server
+        publicKey:
+          title: public_key
+          description: The public key of the Key that belongs to the KAS
+          $ref: '#/components/schemas/policy.SimpleKasPublicKey'
+        kasId:
+          type: string
+          title: kas_id
+          description: The ID of the Key Access Server
+      title: SimpleKasKey
+      additionalProperties: false
+    policy.SimpleKasPublicKey:
+      type: object
+      properties:
+        algorithm:
+          title: algorithm
+          $ref: '#/components/schemas/policy.Algorithm'
+        kid:
+          type: string
+          title: kid
+        pem:
+          type: string
+          title: pem
+      title: SimpleKasPublicKey
+      additionalProperties: false
     policy.SubjectConditionSet:
       type: object
       properties:
@@ -1283,7 +1126,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
         resourceMappings:
           type: array

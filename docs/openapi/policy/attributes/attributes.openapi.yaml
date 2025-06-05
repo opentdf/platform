@@ -2,8 +2,8 @@ openapi: 3.1.0
 info:
   title: policy.attributes
 paths:
-  /attributes:
-    get:
+  /policy.attributes.AttributesService/ListAttributes:
+    post:
       tags:
         - policy.attributes.AttributesService
       summary: ListAttributes
@@ -13,54 +13,21 @@ paths:
         ---------------------------------------
       operationId: policy.attributes.AttributesService.ListAttributes
       parameters:
-        - name: state
-          in: query
-          description: |-
-            Optional
-             ACTIVE by default when not specified
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            title: state
-            description: |-
-              Optional
-               ACTIVE by default when not specified
-            $ref: '#/components/schemas/common.ActiveStateEnum'
-        - name: namespace
-          in: query
-          description: |-
-            Optional
-             Namespace ID or name
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: namespace
-            description: |-
-              Optional
-               Namespace ID or name
-        - name: pagination.limit
-          in: query
-          description: |-
-            Optional
-             Set to configured default limit if not provided
-             Maximum limit set in platform config and enforced by services
-          schema:
-            type: integer
-            title: limit
-            format: int32
-            description: |-
-              Optional
-               Set to configured default limit if not provided
-               Maximum limit set in platform config and enforced by services
-        - name: pagination.offset
-          in: query
-          description: |-
-            Optional
-             Defaulted if not provided
-          schema:
-            type: integer
-            title: offset
-            format: int32
-            description: |-
-              Optional
-               Defaulted if not provided
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.ListAttributesRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -74,82 +41,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.ListAttributesResponse'
+  /policy.attributes.AttributesService/ListAttributeValues:
     post:
-      tags:
-        - policy.attributes.AttributesService
-      summary: CreateAttribute
-      operationId: policy.attributes.AttributesService.CreateAttribute
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.attributes.CreateAttributeRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.attributes.CreateAttributeResponse'
-  /attributes/*/values:
-    get:
       tags:
         - policy.attributes.AttributesService
       summary: ListAttributeValues
       operationId: policy.attributes.AttributesService.ListAttributeValues
       parameters:
-        - name: attributeId
-          in: query
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: string
-            title: attribute_id
-            format: uuid
-            description: Required
-        - name: state
-          in: query
-          description: |-
-            Optional
-             ACTIVE by default when not specified
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            title: state
-            description: |-
-              Optional
-               ACTIVE by default when not specified
-            $ref: '#/components/schemas/common.ActiveStateEnum'
-        - name: pagination.limit
-          in: query
-          description: |-
-            Optional
-             Set to configured default limit if not provided
-             Maximum limit set in platform config and enforced by services
-          schema:
-            type: integer
-            title: limit
-            format: int32
-            description: |-
-              Optional
-               Set to configured default limit if not provided
-               Maximum limit set in platform config and enforced by services
-        - name: pagination.offset
-          in: query
-          description: |-
-            Optional
-             Defaulted if not provided
-          schema:
-            type: integer
-            title: offset
-            format: int32
-            description: |-
-              Optional
-               Defaulted if not provided
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.ListAttributeValuesRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -163,109 +76,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.ListAttributeValuesResponse'
-  /attributes/{id}:
-    get:
+  /policy.attributes.AttributesService/GetAttribute:
+    post:
       tags:
         - policy.attributes.AttributesService
       summary: GetAttribute
       operationId: policy.attributes.AttributesService.GetAttribute
       parameters:
-        - name: id
-          in: path
-          description: Deprecated
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Deprecated
-            deprecated: true
-        - name: attributeId
-          in: query
-          description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: attribute_id
-            format: uuid
-            description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
-        - name: fqn
-          in: query
-          schema:
-            type: string
-            title: fqn
-            minLength: 1
-            format: uri
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.attributes.GetAttributeResponse'
-    delete:
-      tags:
-        - policy.attributes.AttributesService
-      summary: DeactivateAttribute
-      operationId: policy.attributes.AttributesService.DeactivateAttribute
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.attributes.DeactivateAttributeResponse'
-    patch:
-      tags:
-        - policy.attributes.AttributesService
-      summary: UpdateAttribute
-      operationId: policy.attributes.AttributesService.UpdateAttribute
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                metadata:
-                  title: metadata
-                  description: Optional
-                  $ref: '#/components/schemas/common.MetadataMutable'
-                metadataUpdateBehavior:
-                  title: metadata_update_behavior
-                  $ref: '#/components/schemas/common.MetadataUpdateEnum'
-              title: UpdateAttributeRequest
-              additionalProperties: false
+              $ref: '#/components/schemas/policy.attributes.GetAttributeRequest'
         required: true
       responses:
         default:
@@ -279,7 +110,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.attributes.UpdateAttributeResponse'
+                $ref: '#/components/schemas/policy.attributes.GetAttributeResponse'
   /attributes/*/fqn:
     get:
       tags:
@@ -337,115 +168,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.GetAttributeValuesByFqnsResponse'
-  /attributes/*/values/{id}:
-    get:
+  /policy.attributes.AttributesService/CreateAttribute:
+    post:
       tags:
         - policy.attributes.AttributesService
-      summary: GetAttributeValue
-      description: |-
-        --------------------------------------*
-         Value RPCs
-        ---------------------------------------
-      operationId: policy.attributes.AttributesService.GetAttributeValue
+      summary: CreateAttribute
+      operationId: policy.attributes.AttributesService.CreateAttribute
       parameters:
-        - name: id
-          in: path
-          description: Deprecated
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Deprecated
-            deprecated: true
-        - name: valueId
-          in: query
-          description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: value_id
-            format: uuid
-            description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
-        - name: fqn
-          in: query
-          schema:
-            type: string
-            title: fqn
-            minLength: 1
-            format: uri
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.attributes.GetAttributeValueResponse'
-    delete:
-      tags:
-        - policy.attributes.AttributesService
-      summary: DeactivateAttributeValue
-      operationId: policy.attributes.AttributesService.DeactivateAttributeValue
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.attributes.DeactivateAttributeValueResponse'
-    patch:
-      tags:
-        - policy.attributes.AttributesService
-      summary: UpdateAttributeValue
-      operationId: policy.attributes.AttributesService.UpdateAttributeValue
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                metadata:
-                  title: metadata
-                  description: |-
-                    Optional
-                     Common metadata
-                  $ref: '#/components/schemas/common.MetadataMutable'
-                metadataUpdateBehavior:
-                  title: metadata_update_behavior
-                  $ref: '#/components/schemas/common.MetadataUpdateEnum'
-              title: UpdateAttributeValueRequest
-              additionalProperties: false
+              $ref: '#/components/schemas/policy.attributes.CreateAttributeRequest'
         required: true
       responses:
         default:
@@ -459,50 +202,137 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.attributes.UpdateAttributeValueResponse'
-  /attributes/{attribute_id}/values:
+                $ref: '#/components/schemas/policy.attributes.CreateAttributeResponse'
+  /policy.attributes.AttributesService/UpdateAttribute:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: UpdateAttribute
+      operationId: policy.attributes.AttributesService.UpdateAttribute
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.UpdateAttributeRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.UpdateAttributeResponse'
+  /policy.attributes.AttributesService/DeactivateAttribute:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: DeactivateAttribute
+      operationId: policy.attributes.AttributesService.DeactivateAttribute
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.DeactivateAttributeRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.DeactivateAttributeResponse'
+  /policy.attributes.AttributesService/GetAttributeValue:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: GetAttributeValue
+      description: |-
+        --------------------------------------*
+         Value RPCs
+        ---------------------------------------
+      operationId: policy.attributes.AttributesService.GetAttributeValue
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.GetAttributeValueRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.GetAttributeValueResponse'
+  /policy.attributes.AttributesService/CreateAttributeValue:
     post:
       tags:
         - policy.attributes.AttributesService
       summary: CreateAttributeValue
       operationId: policy.attributes.AttributesService.CreateAttributeValue
       parameters:
-        - name: attribute_id
-          in: path
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: attribute_id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                value:
-                  type: string
-                  title: value
-                  maxLength: 253
-                  description: |+
-                    Required
-                    Attribute value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case.:
-                    ```
-                    this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
-                    ```
-
-                metadata:
-                  title: metadata
-                  description: |-
-                    Optional
-                     Common metadata
-                  $ref: '#/components/schemas/common.MetadataMutable'
-              title: CreateAttributeValueRequest
-              required:
-                - value
-              additionalProperties: false
+              $ref: '#/components/schemas/policy.attributes.CreateAttributeValueRequest'
         required: true
       responses:
         default:
@@ -517,7 +347,77 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.CreateAttributeValueResponse'
-  /attributes/keyaccessserver/grants:
+  /policy.attributes.AttributesService/UpdateAttributeValue:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: UpdateAttributeValue
+      operationId: policy.attributes.AttributesService.UpdateAttributeValue
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.UpdateAttributeValueRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.UpdateAttributeValueResponse'
+  /policy.attributes.AttributesService/DeactivateAttributeValue:
+    post:
+      tags:
+        - policy.attributes.AttributesService
+      summary: DeactivateAttributeValue
+      operationId: policy.attributes.AttributesService.DeactivateAttributeValue
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.DeactivateAttributeValueRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.attributes.DeactivateAttributeValueResponse'
+  /policy.attributes.AttributesService/AssignKeyAccessServerToAttribute:
     post:
       tags:
         - policy.attributes.AttributesService
@@ -527,14 +427,22 @@ paths:
          Attribute <> Key Access Server RPCs
         ---------------------------------------
       operationId: policy.attributes.AttributesService.AssignKeyAccessServerToAttribute
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
-        description: Required
         content:
           application/json:
             schema:
-              title: attribute_key_access_server
-              description: Required
-              $ref: '#/components/schemas/policy.attributes.AttributeKeyAccessServer'
+              $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToAttributeRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -548,28 +456,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToAttributeResponse'
-    delete:
+  /policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute:
+    post:
       tags:
         - policy.attributes.AttributesService
       summary: RemoveKeyAccessServerFromAttribute
       operationId: policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute
       parameters:
-        - name: attributeKeyAccessServer.attributeId
-          in: query
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: string
-            title: attribute_id
-            format: uuid
-            description: Required
-        - name: attributeKeyAccessServer.keyAccessServerId
-          in: query
-          description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: key_access_server_id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.RemoveKeyAccessServerFromAttributeRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -583,20 +491,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.RemoveKeyAccessServerFromAttributeResponse'
-  /attributes/values/keyaccessserver/grants:
+  /policy.attributes.AttributesService/AssignKeyAccessServerToValue:
     post:
       tags:
         - policy.attributes.AttributesService
       summary: AssignKeyAccessServerToValue
       operationId: policy.attributes.AttributesService.AssignKeyAccessServerToValue
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
-        description: Required
         content:
           application/json:
             schema:
-              title: value_key_access_server
-              description: Required
-              $ref: '#/components/schemas/policy.attributes.ValueKeyAccessServer'
+              $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToValueRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -610,28 +526,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToValueResponse'
-    delete:
+  /policy.attributes.AttributesService/RemoveKeyAccessServerFromValue:
+    post:
       tags:
         - policy.attributes.AttributesService
       summary: RemoveKeyAccessServerFromValue
       operationId: policy.attributes.AttributesService.RemoveKeyAccessServerFromValue
       parameters:
-        - name: valueKeyAccessServer.valueId
-          in: query
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: string
-            title: value_id
-            format: uuid
-            description: Required
-        - name: valueKeyAccessServer.keyAccessServerId
-          in: query
-          description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: key_access_server_id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.attributes.RemoveKeyAccessServerFromValueRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -846,24 +762,6 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
-    policy.KeyMode:
-      type: string
-      title: KeyMode
-      enum:
-        - KEY_MODE_UNSPECIFIED
-        - KEY_MODE_CONFIG_ROOT_KEY
-        - KEY_MODE_PROVIDER_ROOT_KEY
-        - KEY_MODE_REMOTE
-        - KEY_MODE_PUBLIC_KEY_ONLY
-      description: Describes the management and operational mode of a cryptographic key.
-    policy.KeyStatus:
-      type: string
-      title: KeyStatus
-      enum:
-        - KEY_STATUS_UNSPECIFIED
-        - KEY_STATUS_ACTIVE
-        - KEY_STATUS_ROTATED
-      description: The status of the key
     policy.SourceType:
       type: string
       title: SourceType
@@ -944,9 +842,6 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
-
-         Not recommended for use in new APIs, but still useful for legacy APIs and
-         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       format: date-time
@@ -1073,47 +968,6 @@ components:
       title: Action
       additionalProperties: false
       description: An action an entity can take
-    policy.AsymmetricKey:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          description: Required
-        keyId:
-          type: string
-          title: key_id
-          description: Required
-        keyAlgorithm:
-          title: key_algorithm
-          description: Required
-          $ref: '#/components/schemas/policy.Algorithm'
-        keyStatus:
-          title: key_status
-          description: Required
-          $ref: '#/components/schemas/policy.KeyStatus'
-        keyMode:
-          title: key_mode
-          description: Required Specifies how the key is managed (local or remote)
-          $ref: '#/components/schemas/policy.KeyMode'
-        publicKeyCtx:
-          title: public_key_ctx
-          description: Required Specific structure based on key provider implementation
-          $ref: '#/components/schemas/policy.PublicKeyCtx'
-        privateKeyCtx:
-          title: private_key_ctx
-          description: Optional Specific structure based on key provider implementation
-          $ref: '#/components/schemas/policy.PrivateKeyCtx'
-        providerConfig:
-          title: provider_config
-          description: Optional Configuration for the key provider
-          $ref: '#/components/schemas/policy.KeyProviderConfig'
-        metadata:
-          title: metadata
-          description: Common metadata fields
-          $ref: '#/components/schemas/common.Metadata'
-      title: AsymmetricKey
-      additionalProperties: false
     policy.Attribute:
       type: object
       properties:
@@ -1153,7 +1007,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys associated with the attribute
         metadata:
@@ -1247,20 +1101,6 @@ components:
         - booleanOperator
       additionalProperties: false
       description: A collection of Conditions evaluated by the boolean_operator provided
-    policy.KasKey:
-      type: object
-      properties:
-        kasId:
-          type: string
-          title: kas_id
-        key:
-          title: key
-          $ref: '#/components/schemas/policy.AsymmetricKey'
-        kasUri:
-          type: string
-          title: kas_uri
-      title: KasKey
-      additionalProperties: false
     policy.KasPublicKey:
       type: object
       properties:
@@ -1331,7 +1171,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Kas keys associated with this KAS
         name:
@@ -1347,25 +1187,6 @@ components:
       title: KeyAccessServer
       additionalProperties: false
       description: Key Access Server Registry
-    policy.KeyProviderConfig:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-        name:
-          type: string
-          title: name
-        configJson:
-          type: string
-          title: config_json
-          format: byte
-        metadata:
-          title: metadata
-          description: Common metadata
-          $ref: '#/components/schemas/common.Metadata'
-      title: KeyProviderConfig
-      additionalProperties: false
     policy.Namespace:
       type: object
       properties:
@@ -1398,7 +1219,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys for the namespace
       title: Namespace
@@ -1445,20 +1266,6 @@ components:
           description: Total count of entire list
       title: PageResponse
       additionalProperties: false
-    policy.PrivateKeyCtx:
-      type: object
-      properties:
-        keyId:
-          type: string
-          title: key_id
-          minLength: 1
-          description: Required Key ID for the symmetric key wrapping this key.
-        wrappedKey:
-          type: string
-          title: wrapped_key
-          description: Optional Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.
-      title: PrivateKeyCtx
-      additionalProperties: false
     policy.PublicKey:
       type: object
       oneOf:
@@ -1487,16 +1294,6 @@ components:
       title: PublicKey
       additionalProperties: false
       description: Deprecated
-    policy.PublicKeyCtx:
-      type: object
-      properties:
-        pem:
-          type: string
-          title: pem
-          minLength: 1
-          description: Required Base64 encoded public key in PEM format
-      title: PublicKeyCtx
-      additionalProperties: false
     policy.ResourceMapping:
       type: object
       properties:
@@ -1552,6 +1349,37 @@ components:
       description: |-
         Resource Mapping Groups are namespaced collections of Resource Mappings
         associated under a common group name.
+    policy.SimpleKasKey:
+      type: object
+      properties:
+        kasUri:
+          type: string
+          title: kas_uri
+          description: The URL of the Key Access Server
+        publicKey:
+          title: public_key
+          description: The public key of the Key that belongs to the KAS
+          $ref: '#/components/schemas/policy.SimpleKasPublicKey'
+        kasId:
+          type: string
+          title: kas_id
+          description: The ID of the Key Access Server
+      title: SimpleKasKey
+      additionalProperties: false
+    policy.SimpleKasPublicKey:
+      type: object
+      properties:
+        algorithm:
+          title: algorithm
+          $ref: '#/components/schemas/policy.Algorithm'
+        kid:
+          type: string
+          title: kid
+        pem:
+          type: string
+          title: pem
+      title: SimpleKasPublicKey
+      additionalProperties: false
     policy.SubjectConditionSet:
       type: object
       properties:
@@ -1653,7 +1481,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
         resourceMappings:
           type: array

@@ -88,18 +88,17 @@ LEFT JOIN (
             kask.key_access_server_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'kas_id', kask.key_access_server_id,
-                    'key', JSONB_BUILD_OBJECT(
-                        'id', kask.id,
-                        'key_id', kask.key_id,
-                        'key_status', kask.key_status,
-                        'key_mode', kask.key_mode,
-                        'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', kask.public_key_ctx
+                    'kas_uri', kas.uri,
+                    'kas_id', kas.id,
+                    'public_key', JSONB_BUILD_OBJECT(
+                         'algorithm', kask.key_algorithm::INTEGER,
+                         'kid', kask.key_id,
+                         'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM key_access_server_keys kask
+        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
 LIMIT @limit_ 
@@ -126,18 +125,17 @@ LEFT JOIN (
             kask.key_access_server_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'kas_id', kask.key_access_server_id,
-                    'key', JSONB_BUILD_OBJECT(
-                        'id', kask.id,
-                        'key_id', kask.key_id,
-                        'key_status', kask.key_status,
-                        'key_mode', kask.key_mode,
-                        'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', kask.public_key_ctx
+                    'kas_uri', kas.uri,
+                    'kas_id', kas.id,
+                    'public_key', JSONB_BUILD_OBJECT(
+                         'algorithm', kask.key_algorithm::INTEGER,
+                         'kid', kask.key_id,
+                         'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM key_access_server_keys kask
+        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
 WHERE (sqlc.narg('id')::uuid IS NULL OR kas.id = sqlc.narg('id')::uuid)
@@ -488,15 +486,12 @@ WITH target_definition AS (
             k.definition_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'kas_id', kask.key_access_server_id,
                     'kas_uri', kas.uri,
-                    'key', JSONB_BUILD_OBJECT(
-                        'id', kask.id,
-                        'key_id', kask.key_id,
-                        'key_status', kask.key_status,
-                        'key_mode', kask.key_mode,
-                        'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', kask.public_key_ctx
+                    'kas_id', kas.id,
+                    'public_key', JSONB_BUILD_OBJECT(
+                         'algorithm', kask.key_algorithm::INTEGER,
+                         'kid', kask.key_id,
+                         'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -537,15 +532,12 @@ namespaces AS (
             k.namespace_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'kas_id', kask.key_access_server_id,
                     'kas_uri', kas.uri,
-                    'key', JSONB_BUILD_OBJECT(
-                        'id', kask.id,
-                        'key_id', kask.key_id,
-                        'key_status', kask.key_status,
-                        'key_mode', kask.key_mode,
-                        'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', kask.public_key_ctx
+                    'kas_id', kas.id,
+                    'public_key', JSONB_BUILD_OBJECT(
+                         'algorithm', kask.key_algorithm::INTEGER,
+                         'kid', kask.key_id,
+                         'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -657,15 +649,12 @@ values AS (
             k.value_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'kas_id', kask.key_access_server_id,
                     'kas_uri', kas.uri,
-                    'key', JSONB_BUILD_OBJECT(
-                        'id', kask.id,
-                        'key_id', kask.key_id,
-                        'key_status', kask.key_status,
-                        'key_mode', kask.key_mode,
-                        'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', kask.public_key_ctx
+                    'kas_id', kas.id,
+                    'public_key', JSONB_BUILD_OBJECT(
+                         'algorithm', kask.key_algorithm::INTEGER,
+                         'kid', kask.key_id,
+                         'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -742,16 +731,13 @@ LEFT JOIN (
         k.definition_id,
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
-                'key', JSONB_BUILD_OBJECT(
-                    'id', kask.id,
-                    'key_id', kask.key_id,
-                    'key_status', kask.key_status,
-                    'key_mode', kask.key_mode,
-                    'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', kask.public_key_ctx
-                ),
-                'kas_id', kask.key_access_server_id,
-                'kas_uri', kas.uri
+                'kas_uri', kas.uri,
+                'kas_id', kas.id,
+                'public_key', JSONB_BUILD_OBJECT(
+                     'algorithm', kask.key_algorithm::INTEGER,
+                     'kid', kask.key_id,
+                     'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
+                )
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_definition_public_key_map k
@@ -858,15 +844,12 @@ LEFT JOIN (
         k.value_id,
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
-                'kas_id', kask.key_access_server_id,
                 'kas_uri', kas.uri,
-                'key', JSONB_BUILD_OBJECT(
-                    'id', kask.id,
-                    'key_id', kask.key_id,
-                    'key_status', kask.key_status,
-                    'key_mode', kask.key_mode,
-                    'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', kask.public_key_ctx
+                'kas_id', kas.id,
+                'public_key', JSONB_BUILD_OBJECT(
+                     'algorithm', kask.key_algorithm::INTEGER,
+                     'kid', kask.key_id,
+                     'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                 )
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -1098,15 +1081,12 @@ LEFT JOIN (
         k.namespace_id,
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
-                'kas_id', kask.key_access_server_id,
                 'kas_uri', kas.uri,
-                'key', JSONB_BUILD_OBJECT(
-                    'id', kask.id,
-                    'key_id', kask.key_id,
-                    'key_status', kask.key_status,
-                    'key_mode', kask.key_mode,
-                    'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', kask.public_key_ctx
+                'kas_id', kas.id,
+                'public_key', JSONB_BUILD_OBJECT(
+                     'algorithm', kask.key_algorithm::INTEGER,
+                     'kid', kask.key_id,
+                     'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                 )
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -1726,10 +1706,11 @@ WHERE id = $1;
 SELECT
     DISTINCT JSONB_BUILD_OBJECT(
        'kas_uri', kas.uri,
+       'kas_id', kas.id,
        'public_key', JSONB_BUILD_OBJECT(
-            'algorithm', kask.key_algorithm::TEXT,
+            'algorithm', kask.key_algorithm::INTEGER,
             'kid', kask.key_id,
-            'pem', kask.public_key_ctx ->> 'pem'
+            'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
        )
     ) AS base_keys
 FROM base_keys bk

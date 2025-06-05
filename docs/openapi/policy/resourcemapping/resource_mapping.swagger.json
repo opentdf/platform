@@ -109,51 +109,6 @@
       "default": "ALGORITHM_UNSPECIFIED",
       "description": "Supported key algorithms."
     },
-    "policyAsymmetricKey": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "title": "Required"
-        },
-        "keyId": {
-          "type": "string",
-          "title": "Required"
-        },
-        "keyAlgorithm": {
-          "$ref": "#/definitions/policyAlgorithm",
-          "title": "Required"
-        },
-        "keyStatus": {
-          "$ref": "#/definitions/policyKeyStatus",
-          "title": "Required"
-        },
-        "keyMode": {
-          "$ref": "#/definitions/policyKeyMode",
-          "description": "Specifies how the key is managed (local or remote)",
-          "title": "Required"
-        },
-        "publicKeyCtx": {
-          "$ref": "#/definitions/policyPublicKeyCtx",
-          "description": "Specific structure based on key provider implementation",
-          "title": "Required"
-        },
-        "privateKeyCtx": {
-          "$ref": "#/definitions/policyPrivateKeyCtx",
-          "description": "Specific structure based on key provider implementation",
-          "title": "Optional"
-        },
-        "providerConfig": {
-          "$ref": "#/definitions/policyKeyProviderConfig",
-          "description": "Configuration for the key provider",
-          "title": "Optional"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata",
-          "title": "Common metadata fields"
-        }
-      }
-    },
     "policyAttribute": {
       "type": "object",
       "properties": {
@@ -198,7 +153,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           },
           "title": "Keys associated with the attribute"
         },
@@ -265,20 +220,6 @@
       },
       "title": "A collection of Conditions evaluated by the boolean_operator provided"
     },
-    "policyKasKey": {
-      "type": "object",
-      "properties": {
-        "kasId": {
-          "type": "string"
-        },
-        "key": {
-          "$ref": "#/definitions/policyAsymmetricKey"
-        },
-        "kasUri": {
-          "type": "string"
-        }
-      }
-    },
     "policyKasPublicKey": {
       "type": "object",
       "properties": {
@@ -344,7 +285,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           },
           "title": "Kas keys associated with this KAS"
         },
@@ -358,47 +299,6 @@
         }
       },
       "title": "Key Access Server Registry"
-    },
-    "policyKeyMode": {
-      "type": "string",
-      "enum": [
-        "KEY_MODE_UNSPECIFIED",
-        "KEY_MODE_CONFIG_ROOT_KEY",
-        "KEY_MODE_PROVIDER_ROOT_KEY",
-        "KEY_MODE_REMOTE",
-        "KEY_MODE_PUBLIC_KEY_ONLY"
-      ],
-      "default": "KEY_MODE_UNSPECIFIED",
-      "description": "Describes the management and operational mode of a cryptographic key.\n\n - KEY_MODE_UNSPECIFIED: KEY_MODE_UNSPECIFIED: Default, unspecified key mode. Indicates an uninitialized or error state.\n - KEY_MODE_CONFIG_ROOT_KEY: KEY_MODE_CONFIG_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nsourced from local configuration. Unwrapping and all cryptographic operations are performed locally.\n - KEY_MODE_PROVIDER_ROOT_KEY: KEY_MODE_PROVIDER_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nmanaged by an external provider (e.g., a Hardware Security Module or Cloud KMS).\nKey unwrapping is delegated to the external provider; subsequent cryptographic operations\nare performed locally using the unwrapped key.\n - KEY_MODE_REMOTE: KEY_MODE_REMOTE: Remote key management where the private key is stored in, and all cryptographic\noperations are performed by, a remote Key Management Service (KMS) or HSM.\nThe private key material never leaves the secure boundary of the remote system.\n - KEY_MODE_PUBLIC_KEY_ONLY: KEY_MODE_PUBLIC_KEY_ONLY: Public key only mode. Used when only a public key is available or required,\ntypically for wrapping operations (e.g., encrypting a Data Encryption Key (DEK) for an external KAS).\nThe corresponding private key is not managed or accessible by this system."
-    },
-    "policyKeyProviderConfig": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "configJson": {
-          "type": "string",
-          "format": "byte"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata",
-          "title": "Common metadata"
-        }
-      }
-    },
-    "policyKeyStatus": {
-      "type": "string",
-      "enum": [
-        "KEY_STATUS_UNSPECIFIED",
-        "KEY_STATUS_ACTIVE",
-        "KEY_STATUS_ROTATED"
-      ],
-      "default": "KEY_STATUS_UNSPECIFIED",
-      "title": "The status of the key"
     },
     "policyNamespace": {
       "type": "object",
@@ -433,7 +333,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           },
           "title": "Keys for the namespace"
         }
@@ -474,21 +374,6 @@
         }
       }
     },
-    "policyPrivateKeyCtx": {
-      "type": "object",
-      "properties": {
-        "keyId": {
-          "type": "string",
-          "description": "Key ID for the symmetric key wrapping this key.",
-          "title": "Required"
-        },
-        "wrappedKey": {
-          "type": "string",
-          "description": "Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.",
-          "title": "Optional"
-        }
-      }
-    },
     "policyPublicKey": {
       "type": "object",
       "properties": {
@@ -502,16 +387,6 @@
         }
       },
       "title": "Deprecated"
-    },
-    "policyPublicKeyCtx": {
-      "type": "object",
-      "properties": {
-        "pem": {
-          "type": "string",
-          "description": "Base64 encoded public key in PEM format",
-          "title": "Required"
-        }
-      }
     },
     "policyResourceMapping": {
       "type": "object",
@@ -557,6 +432,37 @@
         }
       },
       "description": "Resource Mapping Groups are namespaced collections of Resource Mappings\nassociated under a common group name."
+    },
+    "policySimpleKasKey": {
+      "type": "object",
+      "properties": {
+        "kasUri": {
+          "type": "string",
+          "title": "The URL of the Key Access Server"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policySimpleKasPublicKey",
+          "title": "The public key of the Key that belongs to the KAS"
+        },
+        "kasId": {
+          "type": "string",
+          "title": "The ID of the Key Access Server"
+        }
+      }
+    },
+    "policySimpleKasPublicKey": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "$ref": "#/definitions/policyAlgorithm"
+        },
+        "kid": {
+          "type": "string"
+        },
+        "pem": {
+          "type": "string"
+        }
+      }
     },
     "policySourceType": {
       "type": "string",
@@ -680,7 +586,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           }
         },
         "resourceMappings": {

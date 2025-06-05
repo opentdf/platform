@@ -57,9 +57,9 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 			return nil, err
 		}
 
-		var keys []*policy.KasKey
+		var keys []*policy.SimpleKasKey
 		if len(kas.Keys) > 0 {
-			keys, err = db.KasKeysProtoJSON(kas.Keys)
+			keys, err = db.SimpleKasKeysProtoJSON(kas.Keys)
 			if err != nil {
 				return nil, errors.New("failed to unmarshal keys")
 			}
@@ -147,9 +147,9 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 		return nil, err
 	}
 
-	var keys []*policy.KasKey
+	var keys []*policy.SimpleKasKey
 	if len(kas.Keys) > 0 {
-		keys, err = db.KasKeysProtoJSON(kas.Keys)
+		keys, err = db.SimpleKasKeysProtoJSON(kas.Keys)
 		if err != nil {
 			return nil, errors.New("failed to unmarshal keys")
 		}
@@ -698,7 +698,7 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 	return rotateKeyResp, nil
 }
 
-func (c PolicyDBClient) GetBaseKey(ctx context.Context) (*kasregistry.SimpleKasKey, error) {
+func (c PolicyDBClient) GetBaseKey(ctx context.Context) (*policy.SimpleKasKey, error) {
 	key, err := c.Queries.getBaseKey(ctx)
 	if err != nil && !errors.Is(db.WrapIfKnownInvalidQueryErr(err), db.ErrNotFound) {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -780,6 +780,19 @@ func (c PolicyDBClient) SetBaseKeyOnWellKnownConfig(ctx context.Context) error {
 	var keyMap map[string]any
 	if err := json.Unmarshal(keyMapBytes, &keyMap); err != nil {
 		return err
+	}
+
+	if baseKey != nil {
+		algorithm, err := db.FormatAlg(baseKey.GetPublicKey().GetAlgorithm())
+		if err != nil {
+			return fmt.Errorf("failed to format algorithm: %w", err)
+		}
+		publicKey, ok := keyMap["public_key"].(map[string]any)
+		if !ok {
+			return errors.New("failed to cast public_key")
+		}
+		publicKey["algorithm"] = algorithm
+		keyMap["public_key"] = publicKey
 	}
 
 	wellknownconfiguration.UpdateConfigurationBaseKey(keyMap)

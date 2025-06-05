@@ -1263,10 +1263,14 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
 	s.NotNil(gotNS)
 	s.Empty(gotNS.GetKasKeys())
 
-	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	kasKeyFixture := s.f.GetKasRegistryServerKeys("kas_key_1")
+	kasKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
+		Id: kasKeyFixture.ID,
+	})
+	s.Require().NoError(err)
 	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
 		NamespaceId: namespaceFix.ID,
-		KeyId:       kasKey.ID,
+		KeyId:       kasKey.GetKey().GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
@@ -1277,11 +1281,7 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(gotNS)
 	s.Len(gotNS.GetKasKeys(), 1)
-	s.Equal(kasKey.KeyAccessServerID, gotNS.GetKasKeys()[0].GetKasId())
-	s.Equal(kasKey.ID, gotNS.GetKasKeys()[0].GetKey().GetId())
-	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), gotNS.GetKasKeys()[0])
-	s.Empty(gotNS.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
-	s.Empty(gotNS.GetKasKeys()[0].GetKey().GetProviderConfig())
+	validateSimpleKasKey(&s.Suite, kasKey, gotNS.GetKasKeys()[0])
 
 	resp, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
 		NamespaceId: resp.GetNamespaceId(),

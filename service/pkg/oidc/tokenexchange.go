@@ -20,7 +20,7 @@ const (
 )
 
 // Package-level variables for testability
-var newExchangeTokenHTTPClient = func() (*httpClient, error) {
+var newExchangeTokenHTTPClient = func() (*HTTPClient, error) {
 	return NewHTTPClient(&http.Client{Timeout: DefaultTokenExchangeTimeout}, WithGeneratedDPoPKey(), WithOAuthFlow())
 }
 

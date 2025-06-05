@@ -23,7 +23,7 @@ func SetSkipValidationForTest(skip bool) {
 }
 
 // ClientCredentialsToken fetches a client credentials access token for the given client
-func ClientCredentialsToken(ctx context.Context, oidcConfig *DiscoveryConfiguration, clientID string, clientScopes []string, clientKey []byte, tlsNoVerify bool, timeout time.Duration, dpopJWK jwk.Key) (string, error) {
+func ClientCredentialsToken(ctx context.Context, oidcConfig *DiscoveryConfiguration, clientID string, clientScopes []string, clientKey []byte, tlsNoVerify bool, timeout time.Duration, _ jwk.Key) (string, error) {
 	baseClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{

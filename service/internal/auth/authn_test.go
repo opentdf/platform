@@ -295,6 +295,7 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
 	hdr := http.Header{"Authorization": []string{"BPOP invalidtoken"}}
+	//nolint:dogsled // We are testing the error case here, so we don't need to check the token
 	_, _, _, err := s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("not of type bearer or dpop", err.Error())

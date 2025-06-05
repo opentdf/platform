@@ -27,6 +27,7 @@ func (m *mockOAuthFormRequest) Do() (*http.Response, error) {
 // TestExchangeToken_Success tests a successful token exchange
 func TestExchangeToken_Success(t *testing.T) {
 	// Patch parseKey for this test by using a local function and shadowing
+	//nolint:nilnil // Test
 	parseKeyLocal := func([]byte) (jwk.Key, error) { return nil, nil }
 
 	mockResp := &http.Response{
@@ -37,19 +38,16 @@ func TestExchangeToken_Success(t *testing.T) {
 
 	// Use a wrapper for ExchangeToken that takes parseKey as a parameter for test only
 	accessToken, dpopKey, err := func(
-		ctx context.Context,
-		parseKey func([]byte) (jwk.Key, error),
+		_ context.Context,
+		_ func([]byte) (jwk.Key, error),
 		cfg *DiscoveryConfiguration,
 		clientID string,
-		clientPrivateKey []byte,
-		subjectToken string,
-		audience []string,
-		scopes []string,
+		_ []byte,
+		_ string,
+		_ []string,
+		_ []string,
 	) (string, jwk.Key, error) {
 		issuer := cfg.Issuer
-		if len(scopes) == 0 {
-			scopes = []string{"openid", "profile", "email"}
-		}
 		logger := log.New(os.Stderr, "[TOKEN_EXCHANGE] ", log.LstdFlags)
 		logger.Printf("Starting token exchange: issuer=%s, clientID=%s", issuer, clientID)
 
@@ -77,11 +75,10 @@ func TestExchangeToken_Success(t *testing.T) {
 		}
 		logger.Printf("Token exchange successful: scope=%v", respData.Scopes)
 		return respData.AccessToken, nil, nil
-	}(context.Background(), parseKeyLocal, &DiscoveryConfiguration{
+	}(t.Context(), parseKeyLocal, &DiscoveryConfiguration{
 		TokenEndpoint: "http://example.com/token",
 		Issuer:        "http://example.com/",
 	}, "clientid", []byte("key"), "subjecttoken", []string{"aud"}, nil)
-
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -98,7 +95,7 @@ func TestExchangeToken_HTTPClientError(t *testing.T) {
 	origNewHTTPClient := newExchangeTokenHTTPClient
 	defer func() { newExchangeTokenHTTPClient = origNewHTTPClient }()
 
-	newExchangeTokenHTTPClient = func() (*httpClient, error) {
+	newExchangeTokenHTTPClient = func() (*HTTPClient, error) {
 		return nil, errors.New("fail client")
 	}
 	_, err := newExchangeTokenHTTPClient()

@@ -36,34 +36,34 @@ const (
 	modeDPoPResourceRequest
 )
 
-type httpClient struct {
+type HTTPClient struct {
 	*http.Client
 	DPoPJWK jwk.Key
 	mode    clientMode
 }
 
-type httpRequestFactory struct {
-	httpClient *httpClient
+type HTTPRequestFactory struct {
+	httpClient *HTTPClient
 	endpoint   string
 
-	// requestFactory generates a new *http.Request for each attempt. The string parameter is for internal use (e.g., DPoP nonce).
-	requestFactory func(string) (*http.Request, error)
+	// requestFactory generates a new *http.Request for each attempt.
+	requestFactory func() (*http.Request, error)
 }
 
-type httpClientOption func(*httpClient) error
+type HTTPClientOption func(*HTTPClient) error
 
-func WithDPoPKey(dpopJWK jwk.Key) httpClientOption {
-	return func(c *httpClient) error {
+func WithDPoPKey(dpopJWK jwk.Key) HTTPClientOption {
+	return func(c *HTTPClient) error {
 		if dpopJWK == nil {
-			return fmt.Errorf("DPoP key cannot be nil")
+			return errors.New("DPoP key cannot be nil")
 		}
 		c.DPoPJWK = dpopJWK
 		return nil
 	}
 }
 
-func WithGeneratedDPoPKey() httpClientOption {
-	return func(c *httpClient) error {
+func WithGeneratedDPoPKey() HTTPClientOption {
+	return func(c *HTTPClient) error {
 		var err error
 		ecdsaKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
@@ -81,18 +81,18 @@ func WithGeneratedDPoPKey() httpClientOption {
 	}
 }
 
-func WithOAuthFlow() httpClientOption {
-	return func(c *httpClient) error {
+func WithOAuthFlow() HTTPClientOption {
+	return func(c *HTTPClient) error {
 		c.mode = modeOAuthFlow
 		return nil
 	}
 }
 
-func NewHTTPClient(client *http.Client, options ...httpClientOption) (*httpClient, error) {
+func NewHTTPClient(client *http.Client, options ...HTTPClientOption) (*HTTPClient, error) {
 	if client == nil {
 		client = &http.Client{}
 	}
-	c := &httpClient{Client: client, mode: modeDefault}
+	c := &HTTPClient{Client: client, mode: modeDefault}
 
 	for _, opt := range options {
 		if err := opt(c); err != nil {
@@ -103,8 +103,8 @@ func NewHTTPClient(client *http.Client, options ...httpClientOption) (*httpClien
 	return c, nil
 }
 
-func (f *httpRequestFactory) Do() (*http.Response, error) {
-	req, err := f.requestFactory("")
+func (f *HTTPRequestFactory) Do() (*http.Response, error) {
+	req, err := f.requestFactory()
 	if err != nil {
 		return nil, err
 	}
@@ -125,16 +125,16 @@ func (f *httpRequestFactory) Do() (*http.Response, error) {
 
 	// Check for DPoP nonce error (400 Bad Request)
 	nonce := resp.Header.Get("DPoP-Nonce")
-	if resp.StatusCode == 400 && nonce != "" {
+	if resp.StatusCode == http.StatusBadRequest && nonce != "" {
 		resp.Body.Close()
-		req, err := f.requestFactory(nonce)
+		reqWithNonce, err := f.requestFactory()
 		if err != nil {
 			return nil, err
 		}
-		if err := f.httpClient.attachDPoPHeader(req, f.httpClient.DPoPJWK, f.endpoint, nonce); err != nil {
+		if err := f.httpClient.attachDPoPHeader(reqWithNonce, f.httpClient.DPoPJWK, f.endpoint, nonce); err != nil {
 			return nil, fmt.Errorf("failed to attach DPoP header: %w", err)
 		}
-		return f.httpClient.Do(req)
+		return f.httpClient.Do(reqWithNonce)
 	}
 	return resp, err
 }
@@ -143,11 +143,11 @@ type OAuthFormRequest interface {
 	Do() (*http.Response, error)
 }
 
-func (c *httpClient) NewOAuthFormRequest(ctx context.Context, key jwk.Key, endpoint string, params OAuthFormParams) *httpRequestFactory {
-	return &httpRequestFactory{
+func (c *HTTPClient) NewOAuthFormRequest(ctx context.Context, key jwk.Key, endpoint string, params OAuthFormParams) *HTTPRequestFactory {
+	return &HTTPRequestFactory{
 		httpClient: c,
 		endpoint:   endpoint,
-		requestFactory: func(nonce string) (*http.Request, error) {
+		requestFactory: func() (*http.Request, error) {
 			// Always copy params to avoid mutating the original and to ensure a fresh JWT per request
 			localParams := params
 			jwtAssertion, err := c.buildSignedJWTAssertion(key, localParams.ClientID, endpoint)
@@ -170,10 +170,10 @@ type ResourceRequest interface {
 	Do() (*http.Response, error)
 }
 
-func (c *httpClient) NewResourceRequest(ctx context.Context, userInfoEndpoint, tokenRaw string) ResourceRequest {
-	return &httpRequestFactory{
+func (c *HTTPClient) NewResourceRequest(ctx context.Context, userInfoEndpoint, tokenRaw string) ResourceRequest {
+	return &HTTPRequestFactory{
 		httpClient: c,
-		requestFactory: func(nonce string) (*http.Request, error) {
+		requestFactory: func() (*http.Request, error) {
 			if c.mode != modeDPoPResourceRequest {
 				panic("NewResourceRequestFactory called in non-resource-request mode; use WithDPoPResourceRequest when constructing httpClient for resource/userinfo requests")
 			}
@@ -195,7 +195,7 @@ func (c *httpClient) NewResourceRequest(ctx context.Context, userInfoEndpoint, t
 	}
 }
 
-func (c *httpClient) attachDPoPHeader(req *http.Request, jwkKey jwk.Key, endpoint, nonce string) error {
+func (c *HTTPClient) attachDPoPHeader(req *http.Request, jwkKey jwk.Key, endpoint, nonce string) error {
 	if jwkKey == nil {
 		return ErrDPoPJWKNil
 	}
@@ -245,7 +245,7 @@ func (c *httpClient) attachDPoPHeader(req *http.Request, jwkKey jwk.Key, endpoin
 	return nil
 }
 
-func (c *httpClient) buildSignedJWTAssertion(key jwk.Key, clientID, endpoint string) (string, error) {
+func (c *HTTPClient) buildSignedJWTAssertion(key jwk.Key, clientID, endpoint string) (string, error) {
 	// Create JWT assertion for private_key_jwt
 	now := time.Now()
 	jwtBuilder := jwt.NewBuilder().

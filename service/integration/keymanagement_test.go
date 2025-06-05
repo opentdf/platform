@@ -47,14 +47,6 @@ func (s *KeyManagementSuite) TearDownSuite() {
 	s.f.TearDown()
 }
 
-func (s *KeyManagementSuite) deleteTestProviderConfigs(ids []string) {
-	for _, id := range ids {
-		pc, err := s.db.PolicyClient.DeleteProviderConfig(s.ctx, id)
-		s.Require().NoError(err)
-		s.NotNil(pc)
-	}
-}
-
 func (s *KeyManagementSuite) Test_CreateProviderConfig_NoMetada_Succeeds() {
 	pcIDs := make([]string, 0)
 	s.deleteTestProviderConfigs(append(pcIDs, s.createTestProviderConfig(testProvider, validProviderConfig, nil).GetId()))
@@ -323,6 +315,14 @@ func (s *KeyManagementSuite) createTestProviderConfig(providerName string, confi
 	s.Require().NoError(err)
 	s.NotNil(pc)
 	return pc
+}
+
+func (s *KeyManagementSuite) deleteTestProviderConfigs(ids []string) {
+	for _, id := range ids {
+		pc, err := s.db.PolicyClient.DeleteProviderConfig(s.ctx, id)
+		s.Require().NoError(err)
+		s.NotNil(pc)
+	}
 }
 
 func TestKeyManagementSuite(t *testing.T) {

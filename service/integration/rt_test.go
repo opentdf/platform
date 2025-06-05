@@ -1,4 +1,4 @@
-package rttests
+package integration
 
 import (
 	"context"

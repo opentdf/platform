@@ -328,7 +328,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys associated with the attribute
         metadata:
@@ -499,7 +499,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Kas keys associated with this KAS
         name:
@@ -566,7 +566,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Keys for the namespace
       title: Namespace
@@ -739,6 +739,37 @@ components:
       description: |-
         Resource Mapping Groups are namespaced collections of Resource Mappings
         associated under a common group name.
+    policy.SimpleKasKey:
+      type: object
+      properties:
+        kasUri:
+          type: string
+          title: kas_uri
+          description: The URL of the Key Access Server
+        publicKey:
+          title: public_key
+          description: The public key of the Key that belongs to the KAS
+          $ref: '#/components/schemas/policy.SimpleKasPublicKey'
+        kasId:
+          type: string
+          title: kas_id
+          description: The ID of the Key Access Server
+      title: SimpleKasKey
+      additionalProperties: false
+    policy.SimpleKasPublicKey:
+      type: object
+      properties:
+        algorithm:
+          title: algorithm
+          $ref: '#/components/schemas/policy.Algorithm'
+        kid:
+          type: string
+          title: kid
+        pem:
+          type: string
+          title: pem
+      title: SimpleKasPublicKey
+      additionalProperties: false
     policy.SubjectConditionSet:
       type: object
       properties:
@@ -896,7 +927,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
         resourceMappings:
           type: array

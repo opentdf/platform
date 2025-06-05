@@ -841,7 +841,7 @@ components:
         kasKeys:
           type: array
           items:
-            $ref: '#/components/schemas/policy.KasKey'
+            $ref: '#/components/schemas/policy.SimpleKasKey'
           title: kas_keys
           description: Kas keys associated with this KAS
         name:
@@ -969,6 +969,37 @@ components:
           minLength: 1
           description: Required Base64 encoded public key in PEM format
       title: PublicKeyCtx
+      additionalProperties: false
+    policy.SimpleKasKey:
+      type: object
+      properties:
+        kasUri:
+          type: string
+          title: kas_uri
+          description: The URL of the Key Access Server
+        publicKey:
+          title: public_key
+          description: The public key of the Key that belongs to the KAS
+          $ref: '#/components/schemas/policy.SimpleKasPublicKey'
+        kasId:
+          type: string
+          title: kas_id
+          description: The ID of the Key Access Server
+      title: SimpleKasKey
+      additionalProperties: false
+    policy.SimpleKasPublicKey:
+      type: object
+      properties:
+        algorithm:
+          title: algorithm
+          $ref: '#/components/schemas/policy.Algorithm'
+        kid:
+          type: string
+          title: kid
+        pem:
+          type: string
+          title: pem
+      title: SimpleKasPublicKey
       additionalProperties: false
     policy.kasregistry.ActivatePublicKeyRequest:
       type: object
@@ -1200,7 +1231,7 @@ components:
         baseKey:
           title: base_key
           description: The current base key
-          $ref: '#/components/schemas/policy.kasregistry.SimpleKasKey'
+          $ref: '#/components/schemas/policy.SimpleKasKey'
       title: GetBaseKeyResponse
       additionalProperties: false
     policy.kasregistry.GetKeyAccessServerRequest:
@@ -1864,39 +1895,12 @@ components:
         newBaseKey:
           title: new_base_key
           description: The key that was set as base
-          $ref: '#/components/schemas/policy.kasregistry.SimpleKasKey'
+          $ref: '#/components/schemas/policy.SimpleKasKey'
         previousBaseKey:
           title: previous_base_key
           description: The previous base key, if any
-          $ref: '#/components/schemas/policy.kasregistry.SimpleKasKey'
+          $ref: '#/components/schemas/policy.SimpleKasKey'
       title: SetBaseKeyResponse
-      additionalProperties: false
-    policy.kasregistry.SimpleKasKey:
-      type: object
-      properties:
-        kasUri:
-          type: string
-          title: kas_uri
-          description: The URL of the Key Access Server
-        publicKey:
-          title: public_key
-          description: The public key of the Key that belongs to the KAS
-          $ref: '#/components/schemas/policy.kasregistry.SimpleKasPublicKey'
-      title: SimpleKasKey
-      additionalProperties: false
-    policy.kasregistry.SimpleKasPublicKey:
-      type: object
-      properties:
-        algorithm:
-          title: algorithm
-          $ref: '#/components/schemas/policy.Algorithm'
-        kid:
-          type: string
-          title: kid
-        pem:
-          type: string
-          title: pem
-      title: SimpleKasPublicKey
       additionalProperties: false
     policy.kasregistry.UpdateKeyAccessServerRequest:
       type: object

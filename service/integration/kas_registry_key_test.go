@@ -469,13 +469,15 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	updatedNs, err := s.db.PolicyClient.GetNamespace(s.ctx, namespaceMap[rotateKey][0].GetId())
 	s.Require().NoError(err)
 	s.Len(updatedNs.GetKasKeys(), 1)
-	s.Equal(rotatedInKey.GetKasKey().GetKey().GetId(), updatedNs.GetKasKeys()[0].GetKey().GetId())
+	s.Equal(rotatedInKey.GetKasKey().GetKey().GetKeyId(), updatedNs.GetKasKeys()[0].GetPublicKey().GetKid())
+	s.Equal(rotatedInKey.GetKasKey().GetKasUri(), updatedNs.GetKasKeys()[0].GetKasUri())
 
 	// Verify that namespace which was assigned a key that was not rotated is still intact
 	nonUpdatedNs, err := s.db.PolicyClient.GetNamespace(s.ctx, namespaceMap[nonRotateKey][0].GetId())
 	s.Require().NoError(err)
 	s.Len(nonUpdatedNs.GetKasKeys(), 1)
-	s.Equal(keyMap[nonRotateKey].GetKey().GetId(), nonUpdatedNs.GetKasKeys()[0].GetKey().GetId())
+	s.Equal(keyMap[nonRotateKey].GetKey().GetKeyId(), nonUpdatedNs.GetKasKeys()[0].GetPublicKey().GetKid())
+	s.Equal(keyMap[nonRotateKey].GetKasUri(), nonUpdatedNs.GetKasKeys()[0].GetKasUri())
 
 	// Verify that attribute has the new key
 	updatedAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, &attributes.GetAttributeRequest_AttributeId{
@@ -483,7 +485,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	})
 	s.Require().NoError(err)
 	s.Len(updatedAttr.GetKasKeys(), 1)
-	s.Equal(rotatedInKey.GetKasKey().GetKey().GetId(), updatedAttr.GetKasKeys()[0].GetKey().GetId())
+	s.Equal(rotatedInKey.GetKasKey().GetKey().GetKeyId(), updatedAttr.GetKasKeys()[0].GetPublicKey().GetKid())
+	s.Equal(rotatedInKey.GetKasKey().GetKasUri(), updatedAttr.GetKasKeys()[0].GetKasUri())
 
 	// Verify that attribute definition which was assigned a key that was not rotated is still intact
 	nonUpdatedAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, &attributes.GetAttributeRequest_AttributeId{
@@ -491,7 +494,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	})
 	s.Require().NoError(err)
 	s.Len(nonUpdatedAttr.GetKasKeys(), 1)
-	s.Equal(keyMap[nonRotateKey].GetKey().GetId(), nonUpdatedAttr.GetKasKeys()[0].GetKey().GetId())
+	s.Equal(keyMap[nonRotateKey].GetKey().GetKeyId(), nonUpdatedAttr.GetKasKeys()[0].GetPublicKey().GetKid())
+	s.Equal(keyMap[nonRotateKey].GetKasUri(), nonUpdatedAttr.GetKasKeys()[0].GetKasUri())
 
 	// Verify that attribute value has the new key
 	attrValue, err := s.db.PolicyClient.GetAttributeValue(s.ctx, &attributes.GetAttributeValueRequest_ValueId{
@@ -499,7 +503,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	})
 	s.Require().NoError(err)
 	s.Len(attrValue.GetKasKeys(), 1)
-	s.Equal(rotatedInKey.GetKasKey().GetKey().GetId(), attrValue.GetKasKeys()[0].GetKey().GetId())
+	s.Equal(rotatedInKey.GetKasKey().GetKey().GetKeyId(), attrValue.GetKasKeys()[0].GetPublicKey().GetKid())
+	s.Equal(rotatedInKey.GetKasKey().GetKasUri(), attrValue.GetKasKeys()[0].GetKasUri())
 
 	// Verify that attribute value which was assigned a key that was not rotated is still intact
 	nonUpdatedAttrValue, err := s.db.PolicyClient.GetAttributeValue(s.ctx, &attributes.GetAttributeValueRequest_ValueId{
@@ -507,7 +512,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	})
 	s.Require().NoError(err)
 	s.Len(nonUpdatedAttrValue.GetKasKeys(), 1)
-	s.Equal(keyMap[nonRotateKey].GetKey().GetId(), nonUpdatedAttrValue.GetKasKeys()[0].GetKey().GetId())
+	s.Equal(keyMap[nonRotateKey].GetKey().GetKeyId(), nonUpdatedAttrValue.GetKasKeys()[0].GetPublicKey().GetKid())
+	s.Equal(keyMap[nonRotateKey].GetKasUri(), nonUpdatedAttrValue.GetKasKeys()[0].GetKasUri())
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_AttributeValue_Success() {
@@ -604,7 +610,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 		updatedNs, err := s.db.PolicyClient.GetNamespace(s.ctx, ns.GetId())
 		s.Require().NoError(err)
 		s.Len(updatedNs.GetKasKeys(), 1)
-		s.Equal(rotatedInKey.GetKasKey().GetKey().GetId(), updatedNs.GetKasKeys()[0].GetKey().GetId())
+		s.Equal(rotatedInKey.GetKasKey().GetKey().GetKeyId(), updatedNs.GetKasKeys()[0].GetPublicKey().GetKid())
+		s.Equal(rotatedInKey.GetKasKey().GetKasUri(), updatedNs.GetKasKeys()[0].GetKasUri())
 	}
 
 	// Verify that namespace which was assigned a key that was not rotated is still intact
@@ -612,7 +619,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 		nonUpdatedNs, err := s.db.PolicyClient.GetNamespace(s.ctx, ns.GetId())
 		s.Require().NoError(err)
 		s.Len(nonUpdatedNs.GetKasKeys(), 1)
-		s.Equal(keyMap[nonRotateKey].GetKey().GetId(), nonUpdatedNs.GetKasKeys()[0].GetKey().GetId())
+		s.Equal(keyMap[nonRotateKey].GetKey().GetKeyId(), nonUpdatedNs.GetKasKeys()[0].GetPublicKey().GetKid())
+		s.Equal(keyMap[nonRotateKey].GetKasUri(), nonUpdatedNs.GetKasKeys()[0].GetKasUri())
 	}
 
 	// Verify that attribute has the new key
@@ -622,7 +630,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 		})
 		s.Require().NoError(err)
 		s.Len(updatedAttr.GetKasKeys(), 1)
-		s.Equal(rotatedInKey.GetKasKey().GetKey().GetId(), updatedAttr.GetKasKeys()[0].GetKey().GetId())
+		s.Equal(rotatedInKey.GetKasKey().GetKey().GetKeyId(), updatedAttr.GetKasKeys()[0].GetPublicKey().GetKid())
+		s.Equal(rotatedInKey.GetKasKey().GetKasUri(), updatedAttr.GetKasKeys()[0].GetKasUri())
 	}
 
 	// Verify that attribute definition which was assigned a key that was not rotated is still intact
@@ -632,7 +641,8 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 		})
 		s.Require().NoError(err)
 		s.Len(nonUpdatedAttr.GetKasKeys(), 1)
-		s.Equal(keyMap[nonRotateKey].GetKey().GetId(), nonUpdatedAttr.GetKasKeys()[0].GetKey().GetId())
+		s.Equal(keyMap[nonRotateKey].GetKey().GetKeyId(), nonUpdatedAttr.GetKasKeys()[0].GetPublicKey().GetKid())
+		s.Equal(keyMap[nonRotateKey].GetKasUri(), nonUpdatedAttr.GetKasKeys()[0].GetKasUri())
 	}
 }
 
@@ -1347,14 +1357,14 @@ func (s *KasRegistryKeySuite) validateListKeysResponse(resp *kasregistry.ListKey
 	}
 }
 
-func validatePublicKeyCtx(s *suite.Suite, expectedPubCtx []byte, actual *policy.KasKey) {
+func validatePublicKeyCtx(s *suite.Suite, expectedPubCtx []byte, actual *policy.SimpleKasKey) {
 	decodedExpectedPubCtx, err := base64.StdEncoding.DecodeString(string(expectedPubCtx))
 	s.Require().NoError(err)
 
 	var expectedPub policy.PublicKeyCtx
 	err = protojson.Unmarshal(decodedExpectedPubCtx, &expectedPub)
 	s.Require().NoError(err)
-	s.Equal(expectedPub.GetPem(), actual.GetKey().GetPublicKeyCtx().GetPem())
+	s.Equal(expectedPub.GetPem(), actual.GetPublicKey().GetPem())
 }
 
 func validatePrivatePublicCtx(s *suite.Suite, expectedPrivCtx, expectedPubCtx []byte, actual *policy.KasKey) {
@@ -1367,5 +1377,10 @@ func validatePrivatePublicCtx(s *suite.Suite, expectedPrivCtx, expectedPubCtx []
 
 	s.Equal(expectedPriv.GetKeyId(), actual.GetKey().GetPrivateKeyCtx().GetKeyId())
 	s.Equal(expectedPriv.GetWrappedKey(), actual.GetKey().GetPrivateKeyCtx().GetWrappedKey())
-	validatePublicKeyCtx(s, expectedPubCtx, actual)
+	validatePublicKeyCtx(s, expectedPubCtx, &policy.SimpleKasKey{
+		KasUri: actual.GetKasUri(),
+		PublicKey: &policy.SimpleKasPublicKey{
+			Pem: actual.GetKey().GetPublicKeyCtx().GetPem(),
+		},
+	})
 }

@@ -142,10 +142,30 @@ func FormatAlg(alg policy.Algorithm) (string, error) {
 	}
 }
 
-func UnmarshalSimpleKasKey(keysJSON []byte) (*kasregistry.SimpleKasKey, error) {
-	var key *kasregistry.SimpleKasKey
+func SimpleKasKeysProtoJSON(keysJSON []byte) ([]*policy.SimpleKasKey, error) {
+	var (
+		keys []*policy.SimpleKasKey
+		raw  []json.RawMessage
+	)
+	if err := json.Unmarshal(keysJSON, &raw); err != nil {
+		return nil, err
+	}
+	for _, r := range raw {
+		k, err := UnmarshalSimpleKasKey([]byte(r))
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal simple kas key: %w", err)
+		}
+		if k != nil {
+			keys = append(keys, k)
+		}
+	}
+	return keys, nil
+}
+
+func UnmarshalSimpleKasKey(keysJSON []byte) (*policy.SimpleKasKey, error) {
+	var key *policy.SimpleKasKey
 	if keysJSON != nil {
-		key = &kasregistry.SimpleKasKey{}
+		key = &policy.SimpleKasKey{}
 		if err := protojson.Unmarshal(keysJSON, key); err != nil {
 			return nil, err
 		}

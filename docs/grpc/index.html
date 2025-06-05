@@ -294,6 +294,14 @@
                 </li>
               
                 <li>
+                  <a href="#policy.SimpleKasKey"><span class="badge">M</span>SimpleKasKey</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.SimpleKasPublicKey"><span class="badge">M</span>SimpleKasPublicKey</a>
+                </li>
+              
+                <li>
                   <a href="#policy.SubjectConditionSet"><span class="badge">M</span>SubjectConditionSet</a>
                 </li>
               
@@ -1185,14 +1193,6 @@
               
                 <li>
                   <a href="#policy.kasregistry.SetBaseKeyResponse"><span class="badge">M</span>SetBaseKeyResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.kasregistry.SimpleKasKey"><span class="badge">M</span>SimpleKasKey</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.kasregistry.SimpleKasPublicKey"><span class="badge">M</span>SimpleKasPublicKey</a>
                 </li>
               
                 <li>
@@ -2264,7 +2264,7 @@ Configuration for the key provider </p></td>
               
                 <tr>
                   <td>kas_keys</td>
-                  <td><a href="#policy.KasKey">KasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">SimpleKasKey</a></td>
                   <td>repeated</td>
                   <td><p>Keys associated with the attribute </p></td>
                 </tr>
@@ -2556,7 +2556,7 @@ To start, these may be `rsa:2048` for encrypting ZTDF files and
               
                 <tr>
                   <td>kas_keys</td>
-                  <td><a href="#policy.KasKey">KasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">SimpleKasKey</a></td>
                   <td>repeated</td>
                   <td><p>Kas keys associated with this KAS </p></td>
                 </tr>
@@ -2683,7 +2683,7 @@ enable federation </p></td>
               
                 <tr>
                   <td>kas_keys</td>
-                  <td><a href="#policy.KasKey">KasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">SimpleKasKey</a></td>
                   <td>repeated</td>
                   <td><p>Keys for the namespace </p></td>
                 </tr>
@@ -3027,6 +3027,82 @@ per namespace </p></td>
 
         
       
+        <h3 id="policy.SimpleKasKey">SimpleKasKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The URL of the Key Access Server </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key</td>
+                  <td><a href="#policy.SimpleKasPublicKey">SimpleKasPublicKey</a></td>
+                  <td></td>
+                  <td><p>The public key of the Key that belongs to the KAS </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The ID of the Key Access Server </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.SimpleKasPublicKey">SimpleKasPublicKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>algorithm</td>
+                  <td><a href="#policy.Algorithm">Algorithm</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pem</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.SubjectConditionSet">SubjectConditionSet</h3>
         <p>A container for multiple Subject Sets, each containing Condition Groups, each</p><p>containing Conditions. Multiple Subject Sets in a SubjectConditionSet are</p><p>evaluated with AND logic. As each Subject Mapping has only one Attribute</p><p>Value, the SubjectConditionSet is reusable across multiple Subject Mappings /</p><p>Attribute Values and is an independent unit.</p>
 
@@ -3300,7 +3376,7 @@ list of key access servers </p></td>
               
                 <tr>
                   <td>kas_keys</td>
-                  <td><a href="#policy.KasKey">KasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">SimpleKasKey</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -8982,7 +9058,7 @@ Mutable metadata for the key </p></td>
               
                 <tr>
                   <td>base_key</td>
-                  <td><a href="#policy.kasregistry.SimpleKasKey">SimpleKasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">policy.SimpleKasKey</a></td>
                   <td></td>
                   <td><p>The current base key </p></td>
                 </tr>
@@ -10059,85 +10135,16 @@ Validation handled by message-level CEL </p></td>
               
                 <tr>
                   <td>new_base_key</td>
-                  <td><a href="#policy.kasregistry.SimpleKasKey">SimpleKasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">policy.SimpleKasKey</a></td>
                   <td></td>
                   <td><p>The key that was set as base </p></td>
                 </tr>
               
                 <tr>
                   <td>previous_base_key</td>
-                  <td><a href="#policy.kasregistry.SimpleKasKey">SimpleKasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">policy.SimpleKasKey</a></td>
                   <td></td>
                   <td><p>The previous base key, if any </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.kasregistry.SimpleKasKey">SimpleKasKey</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>kas_uri</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>The URL of the Key Access Server </p></td>
-                </tr>
-              
-                <tr>
-                  <td>public_key</td>
-                  <td><a href="#policy.kasregistry.SimpleKasPublicKey">SimpleKasPublicKey</a></td>
-                  <td></td>
-                  <td><p>The public key of the Key that belongs to the KAS </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.kasregistry.SimpleKasPublicKey">SimpleKasPublicKey</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>algorithm</td>
-                  <td><a href="#policy.Algorithm">policy.Algorithm</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>kid</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>pem</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
                 </tr>
               
             </tbody>

@@ -1,7 +1,6 @@
 package db
 
 import (
-	"encoding/base64"
 	"sort"
 	"testing"
 
@@ -13,11 +12,10 @@ import (
 
 func TestMapKasKeysToGrants(t *testing.T) {
 	validPem := "VALID_PEM_CONTENT"
-	validPemB64 := base64.StdEncoding.EncodeToString([]byte(validPem))
 
 	tests := []struct {
 		name           string
-		keys           []*policy.KasKey
+		keys           []*policy.SimpleKasKey
 		existingGrants []*policy.KeyAccessServer
 		expectedGrants []*policy.KeyAccessServer
 		wantErr        bool
@@ -25,16 +23,16 @@ func TestMapKasKeysToGrants(t *testing.T) {
 	}{
 		{
 			name:           "empty keys and empty existing grants",
-			keys:           []*policy.KasKey{},
+			keys:           []*policy.SimpleKasKey{},
 			existingGrants: []*policy.KeyAccessServer{},
 			expectedGrants: []*policy.KeyAccessServer{},
 			wantErr:        false,
 		},
 		{
 			name: "new keys only, no existing grants",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid1", KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
-				{KasId: "kas2", KasUri: "http://kas2.example.com", Key: &policy.AsymmetricKey{KeyId: "kid2", KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
+			keys: []*policy.SimpleKasKey{
+				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid1", Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Pem: validPem}},
+				{KasId: "kas2", KasUri: "http://kas2.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid2", Algorithm: policy.Algorithm_ALGORITHM_EC_P256, Pem: validPem}},
 			},
 			existingGrants: []*policy.KeyAccessServer{},
 			expectedGrants: []*policy.KeyAccessServer{
@@ -45,7 +43,7 @@ func TestMapKasKeysToGrants(t *testing.T) {
 		},
 		{
 			name: "existing grants only, no new keys",
-			keys: []*policy.KasKey{},
+			keys: []*policy.SimpleKasKey{},
 			existingGrants: []*policy.KeyAccessServer{
 				{Id: "kas1", Uri: "http://kas1.example.com", PublicKey: &policy.PublicKey{PublicKey: &policy.PublicKey_Cached{Cached: &policy.KasPublicKeySet{Keys: []*policy.KasPublicKey{{Kid: "kid_existing", Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048, Pem: "existing_pem"}}}}}},
 			},
@@ -56,8 +54,8 @@ func TestMapKasKeysToGrants(t *testing.T) {
 		},
 		{
 			name: "add new public key to existing grant",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid_new", KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
+			keys: []*policy.SimpleKasKey{
+				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid_new", Algorithm: policy.Algorithm_ALGORITHM_EC_P256, Pem: validPem}},
 			},
 			existingGrants: []*policy.KeyAccessServer{
 				{Id: "kas1", Uri: "http://kas1.example.com", PublicKey: &policy.PublicKey{PublicKey: &policy.PublicKey_Cached{Cached: &policy.KasPublicKeySet{Keys: []*policy.KasPublicKey{{Kid: "kid_existing", Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048, Pem: "existing_pem"}}}}}},
@@ -72,9 +70,9 @@ func TestMapKasKeysToGrants(t *testing.T) {
 		},
 		{
 			name: "add new grant and new public key to existing grant",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid_new_for_kas1", KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
-				{KasId: "kas2", KasUri: "http://kas2.example.com", Key: &policy.AsymmetricKey{KeyId: "kid_for_kas2", KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
+			keys: []*policy.SimpleKasKey{
+				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid_new_for_kas1", Algorithm: policy.Algorithm_ALGORITHM_EC_P256, Pem: validPem}},
+				{KasId: "kas2", KasUri: "http://kas2.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid_for_kas2", Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Pem: validPem}},
 			},
 			existingGrants: []*policy.KeyAccessServer{
 				{Id: "kas1", Uri: "http://kas1.example.com", PublicKey: &policy.PublicKey{PublicKey: &policy.PublicKey_Cached{Cached: &policy.KasPublicKeySet{Keys: []*policy.KasPublicKey{{Kid: "kid_existing_for_kas1", Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048, Pem: "existing_pem"}}}}}},
@@ -90,8 +88,8 @@ func TestMapKasKeysToGrants(t *testing.T) {
 		},
 		{
 			name: "deduplicate public key by KID",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid_existing", KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}}, // Same KID as existing
+			keys: []*policy.SimpleKasKey{
+				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid_existing", Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Pem: validPem}}, // Same KID as existing
 			},
 			existingGrants: []*policy.KeyAccessServer{
 				{Id: "kas1", Uri: "http://kas1.example.com", PublicKey: &policy.PublicKey{PublicKey: &policy.PublicKey_Cached{Cached: &policy.KasPublicKeySet{Keys: []*policy.KasPublicKey{{Kid: "kid_existing", Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048, Pem: "existing_pem"}}}}}},
@@ -104,19 +102,10 @@ func TestMapKasKeysToGrants(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "invalid base64 PEM",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid1", KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048, PublicKeyCtx: &policy.PublicKeyCtx{Pem: "invalid-b64"}}},
-			},
-			existingGrants: []*policy.KeyAccessServer{},
-			wantErr:        true,
-			errContains:    "failed to decode PEM for key kid1",
-		},
-		{
 			name: "nil key in keys slice",
-			keys: []*policy.KasKey{
+			keys: []*policy.SimpleKasKey{
 				nil,
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid1", KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
+				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid1", Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Pem: validPem}},
 			},
 			existingGrants: []*policy.KeyAccessServer{},
 			expectedGrants: []*policy.KeyAccessServer{
@@ -125,38 +114,39 @@ func TestMapKasKeysToGrants(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "key with nil KasKeyInfo",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: nil},
+			name: "key with nil kas uri",
+			keys: []*policy.SimpleKasKey{
+				{KasId: "kas1", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid1", Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Pem: validPem}}, // Nil URI
 			},
 			existingGrants: []*policy.KeyAccessServer{},
 			expectedGrants: []*policy.KeyAccessServer{},
-			wantErr:        false,
+			wantErr:        true,
+			errContains:    errKasInfoIncomplete.Error(),
 		},
 		{
-			name: "key with nil PublicKeyCtx",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid1", KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048, PublicKeyCtx: nil}},
-			},
-			existingGrants: []*policy.KeyAccessServer{},
-			expectedGrants: []*policy.KeyAccessServer{
-				{Id: "kas1", Uri: "http://kas1.example.com", PublicKey: &policy.PublicKey{PublicKey: &policy.PublicKey_Cached{Cached: &policy.KasPublicKeySet{Keys: []*policy.KasPublicKey{{Kid: "kid1", Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048, Pem: ""}}}}}},
-			},
-			wantErr: false,
-		},
-		{
-			name: "key with empty KasUri",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "", Key: &policy.AsymmetricKey{KeyId: "kid1", KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
+			name: "key with nil kas id",
+			keys: []*policy.SimpleKasKey{
+				{KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid1", Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Pem: validPem}},
 			},
 			existingGrants: []*policy.KeyAccessServer{},
 			expectedGrants: []*policy.KeyAccessServer{},
-			wantErr:        false,
+			wantErr:        true,
+			errContains:    errKasInfoIncomplete.Error(),
+		},
+		{
+			name: "key with nil public key",
+			keys: []*policy.SimpleKasKey{
+				{KasUri: "http://kas1.example.com", KasId: "kas1"},
+			},
+			existingGrants: []*policy.KeyAccessServer{},
+			expectedGrants: []*policy.KeyAccessServer{},
+			wantErr:        true,
+			errContains:    "kas key info is nil for a key with kas uri http://kas1.example.com",
 		},
 		{
 			name: "existing grant with nil PublicKey",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid_new", KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
+			keys: []*policy.SimpleKasKey{
+				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid_new", Algorithm: policy.Algorithm_ALGORITHM_EC_P256, Pem: validPem}},
 			},
 			existingGrants: []*policy.KeyAccessServer{
 				{Id: "kas1", Uri: "http://kas1.example.com", PublicKey: nil},
@@ -170,8 +160,8 @@ func TestMapKasKeysToGrants(t *testing.T) {
 		},
 		{
 			name: "existing grant with PublicKey but nil Cached part",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid_new", KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
+			keys: []*policy.SimpleKasKey{
+				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid_new", Algorithm: policy.Algorithm_ALGORITHM_EC_P256, Pem: validPem}},
 			},
 			existingGrants: []*policy.KeyAccessServer{
 				{Id: "kas1", Uri: "http://kas1.example.com", PublicKey: &policy.PublicKey{PublicKey: nil}}, // Simulates PublicKey_Cached being nil
@@ -185,8 +175,8 @@ func TestMapKasKeysToGrants(t *testing.T) {
 		},
 		{
 			name: "nil grant in existingGrants slice",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid1", KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
+			keys: []*policy.SimpleKasKey{
+				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid1", Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Pem: validPem}},
 			},
 			existingGrants: []*policy.KeyAccessServer{
 				nil,
@@ -200,8 +190,8 @@ func TestMapKasKeysToGrants(t *testing.T) {
 		},
 		{
 			name: "existing grant with empty URI",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid1", KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
+			keys: []*policy.SimpleKasKey{
+				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid1", Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Pem: validPem}},
 			},
 			existingGrants: []*policy.KeyAccessServer{
 				{Id: "kas_empty_uri", Uri: "", PublicKey: &policy.PublicKey{PublicKey: &policy.PublicKey_Cached{Cached: &policy.KasPublicKeySet{Keys: []*policy.KasPublicKey{{Kid: "kid_empty", Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048, Pem: "empty_pem"}}}}}},
@@ -213,9 +203,9 @@ func TestMapKasKeysToGrants(t *testing.T) {
 		},
 		{
 			name: "multiple keys for the same new KAS URI",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid1_kas1", KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid2_kas1", KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
+			keys: []*policy.SimpleKasKey{
+				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid1_kas1", Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Pem: validPem}},
+				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid2_kas1", Algorithm: policy.Algorithm_ALGORITHM_EC_P256, Pem: validPem}},
 			},
 			existingGrants: []*policy.KeyAccessServer{},
 			expectedGrants: []*policy.KeyAccessServer{
@@ -228,9 +218,9 @@ func TestMapKasKeysToGrants(t *testing.T) {
 		},
 		{
 			name: "multiple keys for the same existing KAS URI, one new, one duplicate KID",
-			keys: []*policy.KasKey{
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid_existing", KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}}, // Duplicate KID
-				{KasId: "kas1", KasUri: "http://kas1.example.com", Key: &policy.AsymmetricKey{KeyId: "kid_new_for_existing", KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256, PublicKeyCtx: &policy.PublicKeyCtx{Pem: validPemB64}}},
+			keys: []*policy.SimpleKasKey{
+				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid_existing", Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Pem: validPem}}, // Duplicate KID
+				{KasId: "kas1", KasUri: "http://kas1.example.com", PublicKey: &policy.SimpleKasPublicKey{Kid: "kid_new_for_existing", Algorithm: policy.Algorithm_ALGORITHM_EC_P256, Pem: validPem}},
 			},
 			existingGrants: []*policy.KeyAccessServer{
 				{Id: "kas1", Uri: "http://kas1.example.com", PublicKey: &policy.PublicKey{PublicKey: &policy.PublicKey_Cached{Cached: &policy.KasPublicKeySet{Keys: []*policy.KasPublicKey{{Kid: "kid_existing", Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048, Pem: "existing_pem"}}}}}},

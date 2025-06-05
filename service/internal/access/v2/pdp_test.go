@@ -1993,7 +1993,9 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 		s.Require().Len(entitlements, 1)
 		entityEntitlement := entitlements[0]
 		s.Equal(regResValSingleActionAttrValFQN, entityEntitlement.GetEphemeralId())
-		actionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassSecretFQN]
+		actionsPerAttrValueFQN := entityEntitlement.GetActionsPerAttributeValueFqn()
+		s.Require().Len(actionsPerAttrValueFQN, 1)
+		actionsList := actionsPerAttrValueFQN[testClassSecretFQN]
 		s.ElementsMatch(actionNames(actionsList.GetActions()), []string{actions.ActionNameCreate})
 	})
 
@@ -2008,7 +2010,9 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 		s.Require().Len(entitlements, 1)
 		entityEntitlement := entitlements[0]
 		s.Equal(regResValDuplicateActionAttrValFQN, entityEntitlement.GetEphemeralId())
-		actionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassSecretFQN]
+		actionsPerAttrValueFQN := entityEntitlement.GetActionsPerAttributeValueFqn()
+		s.Require().Len(actionsPerAttrValueFQN, 1)
+		actionsList := actionsPerAttrValueFQN[testClassSecretFQN]
 		s.ElementsMatch(actionNames(actionsList.GetActions()), []string{actions.ActionNameCreate})
 	})
 
@@ -2024,7 +2028,9 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 		s.Require().Len(entitlements, 1)
 		entityEntitlement := entitlements[0]
 		s.Equal(regResValMultiActionSingleAttrValFQN, entityEntitlement.GetEphemeralId())
-		actionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testPlatformCloudFQN]
+		actionsPerAttrValueFQN := entityEntitlement.GetActionsPerAttributeValueFqn()
+		s.Require().Len(actionsPerAttrValueFQN, 1)
+		actionsList := actionsPerAttrValueFQN[testPlatformCloudFQN]
 		s.ElementsMatch(actionNames(actionsList.GetActions()), []string{actions.ActionNameCreate, actions.ActionNameRead})
 	})
 
@@ -2040,13 +2046,15 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 		s.Require().Len(entitlements, 1)
 		entityEntitlement := entitlements[0]
 		s.Equal(regResValMultiActionMultiAttrValFQN, entityEntitlement.GetEphemeralId())
-		secretActionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testClassSecretFQN]
+		actionsPerAttrValueFQN := entityEntitlement.GetActionsPerAttributeValueFqn()
+		s.Require().Len(actionsPerAttrValueFQN, 2)
+		secretActionsList := actionsPerAttrValueFQN[testClassSecretFQN]
 		s.ElementsMatch(actionNames(secretActionsList.GetActions()), []string{actions.ActionNameCreate})
-		cloudActionsList := entityEntitlement.GetActionsPerAttributeValueFqn()[testPlatformCloudFQN]
+		cloudActionsList := actionsPerAttrValueFQN[testPlatformCloudFQN]
 		s.ElementsMatch(actionNames(cloudActionsList.GetActions()), []string{actions.ActionNameUpdate, actions.ActionNameDelete})
 	})
 
-	s.Run(" comprehensive hierarchy action attribute value", func() {
+	s.Run("comprehensive hierarchy action attribute value", func() {
 		entitlements, err := pdp.GetEntitlementsRegisteredResource(
 			s.T().Context(),
 			regResValComprehensiveHierarchyActionAttrValFQN,
@@ -2061,7 +2069,8 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 
 		actionsPerAttributeValueFQN := entityEntitlement.GetActionsPerAttributeValueFqn()
 
-		// secret should give access to all lower classifications (secret > confidential > public))
+		// secret should give access to all lower classifications (secret > confidential > public)
+		s.Require().Len(actionsPerAttributeValueFQN, 3)
 		s.Contains(actionsPerAttributeValueFQN, testClassSecretFQN)
 		s.Contains(actionsPerAttributeValueFQN, testClassConfidentialFQN)
 		s.Contains(actionsPerAttributeValueFQN, testClassPublicFQN)
@@ -2073,8 +2082,10 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 		secretActions := actionsPerAttributeValueFQN[testClassSecretFQN]
 		confidentialActions := actionsPerAttributeValueFQN[testClassConfidentialFQN]
 		publicActions := actionsPerAttributeValueFQN[testClassPublicFQN]
-		s.ElementsMatch(actionNames(secretActions.GetActions()), actionNames(confidentialActions.GetActions()))
-		s.ElementsMatch(actionNames(secretActions.GetActions()), actionNames(publicActions.GetActions()))
+		expectedActionNames := []string{actions.ActionNameRead}
+		s.ElementsMatch(actionNames(secretActions.GetActions()), expectedActionNames)
+		s.ElementsMatch(actionNames(confidentialActions.GetActions()), expectedActionNames)
+		s.ElementsMatch(actionNames(publicActions.GetActions()), expectedActionNames)
 	})
 }
 

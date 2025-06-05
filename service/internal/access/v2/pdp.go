@@ -323,17 +323,17 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 	registeredResourceValueFQN string,
 	withComprehensiveHierarchy bool,
 ) ([]*authz.EntityEntitlements, error) {
+	l := p.logger.With("withComprehensiveHierarchy", strconv.FormatBool(withComprehensiveHierarchy))
+	l.DebugContext(ctx, "getting entitlements for registered resource value", slog.String("fqn", registeredResourceValueFQN))
+
 	if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN); err != nil {
 		return nil, err
 	}
 
-	registeredResourceValue, found := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
-	if !found {
-		return nil, fmt.Errorf("registered resource value not found for FQN [%s]", registeredResourceValueFQN)
+	registeredResourceValue := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
+	if err := validateRegisteredResourceValue(registeredResourceValue); err != nil {
+		return nil, err
 	}
-
-	l := p.logger.With("withComprehensiveHierarchy", strconv.FormatBool(withComprehensiveHierarchy))
-	l.DebugContext(ctx, "getting entitlements for registered resource value", slog.String("fqn", registeredResourceValueFQN))
 
 	actionsPerAttributeValueFqn := make(map[string]*authz.EntityEntitlements_ActionsList)
 

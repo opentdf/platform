@@ -1962,7 +1962,8 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 			false,
 		)
 
-		s.Require().EqualError(err, fmt.Sprintf("registered resource value not found for FQN [%s]", validButNonexistentFQN))
+		s.Require().Error(err)
+		s.Require().ErrorIs(err, ErrInvalidRegisteredResourceValue)
 		s.Require().Nil(entitlements)
 	})
 

@@ -54,8 +54,6 @@ server:
   auth:
     enabled: true
     enforceDPoP: false
-    public_client_id: "opentdf-public"
-    cache_refresh_interval: "5m"
     audience: "http://localhost:8080"
     issuer: http://localhost:8888/auth/realms/opentdf
     clientPrivateKeyPath: "./keys/client-credentials-private.jwk"

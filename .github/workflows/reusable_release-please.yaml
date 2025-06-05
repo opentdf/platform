@@ -2,6 +2,11 @@
 
 on:
   workflow_call:
+    secrets:
+      APP_ID:
+        required: true
+      AUTOMATION_KEY:
+        required: true
     inputs:
       config-file-main-branch:
         type: string
@@ -49,12 +54,12 @@ jobs:
     steps:
 
       - name: "Validate ref"
-        if: ${{ !github.ref_name == 'main' || !startsWith(github.ref_name, 'release/') }}
+        if: ${{ !github.ref_name == 'main' && !startsWith(github.ref_name, 'release/') }}
         shell: bash
         env:
-          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          echo "Error: invalid github ref ['$REF'] for release-please action, must be main or 'release/**" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Error: invalid github ref ['$REF_NAME'] for release-please action, must be 'main' or 'release/**'" | tee -a "$GITHUB_STEP_SUMMARY"
           exit 1
 
       - name: Generate a token
@@ -65,7 +70,7 @@ jobs:
           private-key: ${{ secrets.AUTOMATION_KEY }}
 
       - name: "Run release-please"
-        uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f # v4.1.3
+        uses: googleapis/release-please-action@a02a34c4d625f9be7cb89156071d8567266a2445 # v4.2.0
         id: release-please
         with:
           token: ${{ steps.generate_token.outputs.token }}

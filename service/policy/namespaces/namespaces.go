@@ -42,14 +42,15 @@ func OnConfigUpdate(ns *NamespacesService) serviceregistry.OnConfigUpdateHook {
 func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[namespacesconnect.NamespaceServiceHandler] {
 	nsService := new(NamespacesService)
 	onUpdateConfigHook := OnConfigUpdate(nsService)
+
 	return &serviceregistry.Service[namespacesconnect.NamespaceServiceHandler]{
+		Close: nsService.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[namespacesconnect.NamespaceServiceHandler]{
-			Namespace:       ns,
-			DB:              dbRegister,
-			ServiceDesc:     &namespaces.NamespaceService_ServiceDesc,
-			ConnectRPCFunc:  namespacesconnect.NewNamespaceServiceHandler,
-			GRPCGatewayFunc: namespaces.RegisterNamespaceServiceHandler,
-			OnConfigUpdate:  onUpdateConfigHook,
+			Namespace:      ns,
+			DB:             dbRegister,
+			ServiceDesc:    &namespaces.NamespaceService_ServiceDesc,
+			ConnectRPCFunc: namespacesconnect.NewNamespaceServiceHandler,
+			OnConfigUpdate: onUpdateConfigHook,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (namespacesconnect.NamespaceServiceHandler, serviceregistry.HandlerServer) {
 				logger := srp.Logger
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
@@ -61,6 +62,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				nsService.logger = logger
 				nsService.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				nsService.config = cfg
+
 				return nsService, nil
 			},
 		},
@@ -76,6 +78,12 @@ func (ns NamespacesService) IsReady(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// Close gracefully shuts down the service, closing the database client.
+func (ns *NamespacesService) Close() {
+	ns.logger.Info("gracefully shutting down namespaces service")
+	ns.dbClient.Close()
 }
 
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *connect.Request[namespaces.ListNamespacesRequest]) (*connect.Response[namespaces.ListNamespacesResponse], error) {

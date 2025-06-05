@@ -3,7 +3,7 @@ syntax = "proto3";
 package policy.unsafe;
 
 import "buf/validate/validate.proto";
-import "google/api/annotations.proto";
+
 import "policy/objects.proto";
 
 // Namespaces Unsafe RPCs
@@ -179,47 +179,28 @@ message UnsafeDeleteKasKeyResponse {
 
 ///
 /// Unsafe Service
-/// IN FLIGHT AND NOT YET IMPLEMENTED!
 ///
 service UnsafeService {
   /*--------------------------------------*
    * Namespace RPCs
    *---------------------------------------*/
-  rpc UnsafeUpdateNamespace(UnsafeUpdateNamespaceRequest) returns (UnsafeUpdateNamespaceResponse) {
-    option (google.api.http) = {patch: "/unsafe/namespaces/{id}"};
-  }
-  rpc UnsafeReactivateNamespace(UnsafeReactivateNamespaceRequest) returns (UnsafeReactivateNamespaceResponse) {
-    option (google.api.http) = {post: "/unsafe/namespaces/{id}/reactivate"};
-  }
-  rpc UnsafeDeleteNamespace(UnsafeDeleteNamespaceRequest) returns (UnsafeDeleteNamespaceResponse) {
-    option (google.api.http) = {delete: "/unsafe/namespaces/{id}"};
-  }
+  rpc UnsafeUpdateNamespace(UnsafeUpdateNamespaceRequest) returns (UnsafeUpdateNamespaceResponse) {}
+  rpc UnsafeReactivateNamespace(UnsafeReactivateNamespaceRequest) returns (UnsafeReactivateNamespaceResponse) {}
+  rpc UnsafeDeleteNamespace(UnsafeDeleteNamespaceRequest) returns (UnsafeDeleteNamespaceResponse) {}
 
   /*--------------------------------------*
    * Attribute RPCs
    *---------------------------------------*/
-  rpc UnsafeUpdateAttribute(UnsafeUpdateAttributeRequest) returns (UnsafeUpdateAttributeResponse) {
-    option (google.api.http) = {patch: "/unsafe/attributes/{id}"};
-  }
-  rpc UnsafeReactivateAttribute(UnsafeReactivateAttributeRequest) returns (UnsafeReactivateAttributeResponse) {
-    option (google.api.http) = {post: "/unsafe/attributes/{id}/reactivate"};
-  }
-  rpc UnsafeDeleteAttribute(UnsafeDeleteAttributeRequest) returns (UnsafeDeleteAttributeResponse) {
-    option (google.api.http) = {delete: "/unsafe/attributes/{id}"};
-  }
+  rpc UnsafeUpdateAttribute(UnsafeUpdateAttributeRequest) returns (UnsafeUpdateAttributeResponse) {}
+  rpc UnsafeReactivateAttribute(UnsafeReactivateAttributeRequest) returns (UnsafeReactivateAttributeResponse) {}
+  rpc UnsafeDeleteAttribute(UnsafeDeleteAttributeRequest) returns (UnsafeDeleteAttributeResponse) {}
 
   /*--------------------------------------*
    * Value RPCs
    *---------------------------------------*/
-  rpc UnsafeUpdateAttributeValue(UnsafeUpdateAttributeValueRequest) returns (UnsafeUpdateAttributeValueResponse) {
-    option (google.api.http) = {patch: "/unsafe/attributes/values/{id}"};
-  }
-  rpc UnsafeReactivateAttributeValue(UnsafeReactivateAttributeValueRequest) returns (UnsafeReactivateAttributeValueResponse) {
-    option (google.api.http) = {post: "/unsafe/attributes/values/{id}/reactivate"};
-  }
-  rpc UnsafeDeleteAttributeValue(UnsafeDeleteAttributeValueRequest) returns (UnsafeDeleteAttributeValueResponse) {
-    option (google.api.http) = {delete: "/unsafe/attributes/values/{id}"};
-  }
+  rpc UnsafeUpdateAttributeValue(UnsafeUpdateAttributeValueRequest) returns (UnsafeUpdateAttributeValueResponse) {}
+  rpc UnsafeReactivateAttributeValue(UnsafeReactivateAttributeValueRequest) returns (UnsafeReactivateAttributeValueResponse) {}
+  rpc UnsafeDeleteAttributeValue(UnsafeDeleteAttributeValueRequest) returns (UnsafeDeleteAttributeValueResponse) {}
 
   /*--------------------------------------*
    * Kas Key RPCs

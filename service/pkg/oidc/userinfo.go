@@ -110,18 +110,9 @@ func FetchUserInfo(ctx context.Context, userInfoEndpoint string, tokenRaw string
 		return nil, nil, fmt.Errorf("failed to create http client: %w", err)
 	}
 
-	factory := httpClient.NewOAuthFormRequestFactory(ctx, nil, userInfoEndpoint, OAuthFormParams{})
-	// Use a custom requestFactory for GET with Authorization and DPoP
-	factory.requestFactory = func(_ string) (*http.Request, error) {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, userInfoEndpoint, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create userinfo request: %w", err)
-		}
-		req.Header.Set("Authorization", "Bearer "+tokenRaw)
-		return req, nil
-	}
+	req := httpClient.NewResourceRequest(ctx, userInfoEndpoint, tokenRaw)
 
-	resp, err := factory.Do(userInfoEndpoint)
+	resp, err := req.Do()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to execute userinfo request: %w", err)
 	}

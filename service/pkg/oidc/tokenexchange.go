@@ -19,8 +19,14 @@ const (
 	DefaultTokenExchangeTimeout = 30 * time.Second
 )
 
+// Package-level variables for testability
+var newExchangeTokenHTTPClient = func() (*httpClient, error) {
+	return NewHTTPClient(&http.Client{Timeout: DefaultTokenExchangeTimeout}, WithGeneratedDPoPKey(), WithOAuthFlow())
+}
+
 // ExchangeToken performs OAuth2 token exchange (RFC 8693) using private_key_jwk and optional DPoP.
 // If dpopJWK is nil, DPoP is not used.
+// If actorToken is required, pass a non-empty value (typically a client credentials access token).
 func ExchangeToken(
 	ctx context.Context,
 	oidcConfig *DiscoveryConfiguration,
@@ -36,30 +42,40 @@ func ExchangeToken(
 		scopes = []string{"openid", "profile", "email"}
 	}
 
+	actorToken, err := ClientCredentialsToken(ctx, oidcConfig, clientID, []string{"okta.users.read"}, clientPrivateKey, false, DefaultTokenExchangeTimeout, nil)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to obtain client credentials for token exchange: %w", err)
+	}
+
 	logger := log.New(os.Stderr, "[TOKEN_EXCHANGE] ", log.LstdFlags)
 	logger.Printf("Starting token exchange: issuer=%s, clientID=%s", issuer, clientID)
 
-	httpClient, err := NewHTTPClient(&http.Client{Timeout: DefaultTokenExchangeTimeout}, WithGeneratedDPoPKey())
+	httpClient, err := newExchangeTokenHTTPClient()
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to create HTTP client: %w", err)
 	}
 
-	key, err := ParseJWKFromPEM(clientPrivateKey)
+	key, err := parseKey(clientPrivateKey)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to parse client private key: %w", err)
 	}
 
 	params := OAuthFormParams{
-		FormType:     OAuthFormTokenExchange,
-		ClientID:     clientID,
-		Scopes:       scopes,
-		SubjectToken: subjectToken,
-		Audience:     audience,
-
+		FormType:       OAuthFormTokenExchange,
+		ClientID:       clientID,
+		Scopes:         scopes,
+		SubjectToken:   subjectToken,
+		Audience:       audience,
+		ActorToken:     actorToken, // Use the provided actor token (should be a client credentials access token)
 		ActorTokenType: "urn:ietf:params:oauth:token-type:access_token",
 	}
-	req := httpClient.NewOAuthFormRequestFactory(ctx, key, tokenEndpoint, params)
-	resp, err := req.Do(tokenEndpoint)
+
+	// Only set ActorToken fields if an actor token is provided (non-empty)
+	// If you want to support actor tokens, add them as function parameters and set here.
+	// params.ActorToken = ...
+	// params.ActorTokenType = ...
+	req := httpClient.NewOAuthFormRequest(ctx, key, tokenEndpoint, params)
+	resp, err := req.Do()
 	if err != nil {
 		logger.Printf("Token exchange failed: %v", err)
 		return "", nil, fmt.Errorf("token exchange failed: %w", err)
@@ -84,5 +100,5 @@ func ExchangeToken(
 	}
 
 	logger.Printf("Token exchange successful: scope=%v", respData.Scopes)
-	return respData.AccessToken, httpClient.dpopJWK, nil
+	return respData.AccessToken, httpClient.DPoPJWK, nil
 }

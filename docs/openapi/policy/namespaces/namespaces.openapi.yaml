@@ -2,109 +2,27 @@ openapi: 3.1.0
 info:
   title: policy.namespaces
 paths:
-  /attributes/namespaces/{id}:
-    get:
+  /policy.namespaces.NamespaceService/GetNamespace:
+    post:
       tags:
         - policy.namespaces.NamespaceService
       summary: GetNamespace
       operationId: policy.namespaces.NamespaceService.GetNamespace
       parameters:
-        - name: id
-          in: path
-          description: Deprecated
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Deprecated
-            deprecated: true
-        - name: namespaceId
-          in: query
-          description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: namespace_id
-            format: uuid
-            description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
-        - name: fqn
-          in: query
-          schema:
-            type: string
-            title: fqn
-            minLength: 1
-            format: uri
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.namespaces.GetNamespaceResponse'
-    delete:
-      tags:
-        - policy.namespaces.NamespaceService
-      summary: DeactivateNamespace
-      operationId: policy.namespaces.NamespaceService.DeactivateNamespace
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.namespaces.DeactivateNamespaceResponse'
-    patch:
-      tags:
-        - policy.namespaces.NamespaceService
-      summary: UpdateNamespace
-      operationId: policy.namespaces.NamespaceService.UpdateNamespace
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                metadata:
-                  title: metadata
-                  description: Optional
-                  $ref: '#/components/schemas/common.MetadataMutable'
-                metadataUpdateBehavior:
-                  title: metadata_update_behavior
-                  $ref: '#/components/schemas/common.MetadataUpdateEnum'
-              title: UpdateNamespaceRequest
-              additionalProperties: false
+              $ref: '#/components/schemas/policy.namespaces.GetNamespaceRequest'
         required: true
       responses:
         default:
@@ -118,51 +36,29 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.namespaces.UpdateNamespaceResponse'
-  /attributes/namespaces:
-    get:
+                $ref: '#/components/schemas/policy.namespaces.GetNamespaceResponse'
+  /policy.namespaces.NamespaceService/ListNamespaces:
+    post:
       tags:
         - policy.namespaces.NamespaceService
       summary: ListNamespaces
       operationId: policy.namespaces.NamespaceService.ListNamespaces
       parameters:
-        - name: state
-          in: query
-          description: |-
-            Optional
-             ACTIVE by default when not specified
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            title: state
-            description: |-
-              Optional
-               ACTIVE by default when not specified
-            $ref: '#/components/schemas/common.ActiveStateEnum'
-        - name: pagination.limit
-          in: query
-          description: |-
-            Optional
-             Set to configured default limit if not provided
-             Maximum limit set in platform config and enforced by services
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: integer
-            title: limit
-            format: int32
-            description: |-
-              Optional
-               Set to configured default limit if not provided
-               Maximum limit set in platform config and enforced by services
-        - name: pagination.offset
-          in: query
-          description: |-
-            Optional
-             Defaulted if not provided
-          schema:
-            type: integer
-            title: offset
-            format: int32
-            description: |-
-              Optional
-               Defaulted if not provided
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.ListNamespacesRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -176,11 +72,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.ListNamespacesResponse'
+  /policy.namespaces.NamespaceService/CreateNamespace:
     post:
       tags:
         - policy.namespaces.NamespaceService
       summary: CreateNamespace
       operationId: policy.namespaces.NamespaceService.CreateNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
@@ -200,7 +107,77 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.CreateNamespaceResponse'
-  /attributes/namespaces/keyaccessserver/grants:
+  /policy.namespaces.NamespaceService/UpdateNamespace:
+    post:
+      tags:
+        - policy.namespaces.NamespaceService
+      summary: UpdateNamespace
+      operationId: policy.namespaces.NamespaceService.UpdateNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.UpdateNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.namespaces.UpdateNamespaceResponse'
+  /policy.namespaces.NamespaceService/DeactivateNamespace:
+    post:
+      tags:
+        - policy.namespaces.NamespaceService
+      summary: DeactivateNamespace
+      operationId: policy.namespaces.NamespaceService.DeactivateNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.DeactivateNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.namespaces.DeactivateNamespaceResponse'
+  /policy.namespaces.NamespaceService/AssignKeyAccessServerToNamespace:
     post:
       tags:
         - policy.namespaces.NamespaceService
@@ -210,12 +187,22 @@ paths:
          Namespace <> Key Access Server RPCs
         ---------------------------------------
       operationId: policy.namespaces.NamespaceService.AssignKeyAccessServerToNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
             schema:
-              title: namespace_key_access_server
-              $ref: '#/components/schemas/policy.namespaces.NamespaceKeyAccessServer'
+              $ref: '#/components/schemas/policy.namespaces.AssignKeyAccessServerToNamespaceRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -229,28 +216,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.AssignKeyAccessServerToNamespaceResponse'
-    delete:
+  /policy.namespaces.NamespaceService/RemoveKeyAccessServerFromNamespace:
+    post:
       tags:
         - policy.namespaces.NamespaceService
       summary: RemoveKeyAccessServerFromNamespace
       operationId: policy.namespaces.NamespaceService.RemoveKeyAccessServerFromNamespace
       parameters:
-        - name: namespaceKeyAccessServer.namespaceId
-          in: query
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: string
-            title: namespace_id
-            format: uuid
-            description: Required
-        - name: namespaceKeyAccessServer.keyAccessServerId
-          in: query
-          description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: key_access_server_id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -467,9 +454,6 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
-
-         Not recommended for use in new APIs, but still useful for legacy APIs and
-         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       format: date-time

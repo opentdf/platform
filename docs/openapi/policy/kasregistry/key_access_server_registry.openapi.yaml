@@ -48,11 +48,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.kasregistry.ListKeyAccessServersResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/GetKeyAccessServer:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: GetKeyAccessServer
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.GetKeyAccessServer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.GetKeyAccessServerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.GetKeyAccessServerResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/CreateKeyAccessServer:
     post:
       tags:
         - policy.kasregistry.KeyAccessServerRegistryService
       summary: CreateKeyAccessServer
       operationId: policy.kasregistry.KeyAccessServerRegistryService.CreateKeyAccessServer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
@@ -72,153 +118,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.kasregistry.CreateKeyAccessServerResponse'
-  /key-access-servers/{id}:
-    get:
-      tags:
-        - policy.kasregistry.KeyAccessServerRegistryService
-      summary: GetKeyAccessServer
-      operationId: policy.kasregistry.KeyAccessServerRegistryService.GetKeyAccessServer
-      parameters:
-        - name: id
-          in: path
-          description: Deprecated
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Deprecated
-            deprecated: true
-        - name: kasId
-          in: query
-          description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
-          schema:
-            type: string
-            title: kas_id
-            format: uuid
-            description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
-        - name: name
-          in: query
-          schema:
-            type: string
-            title: name
-            minLength: 1
-        - name: uri
-          in: query
-          schema:
-            type: string
-            title: uri
-            minLength: 1
-            format: uri
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.kasregistry.GetKeyAccessServerResponse'
-    delete:
-      tags:
-        - policy.kasregistry.KeyAccessServerRegistryService
-      summary: DeleteKeyAccessServer
-      operationId: policy.kasregistry.KeyAccessServerRegistryService.DeleteKeyAccessServer
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.kasregistry.DeleteKeyAccessServerResponse'
-    patch:
+  /policy.kasregistry.KeyAccessServerRegistryService/UpdateKeyAccessServer:
+    post:
       tags:
         - policy.kasregistry.KeyAccessServerRegistryService
       summary: UpdateKeyAccessServer
       operationId: policy.kasregistry.KeyAccessServerRegistryService.UpdateKeyAccessServer
       parameters:
-        - name: id
-          in: path
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                uri:
-                  type: string
-                  title: uri
-                  description: |+
-                    Optional
-                    Optional URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
-                    ```
-                    size(this) == 0 || this.isUri()
-                    ```
-
-                publicKey:
-                  title: public_key
-                  description: |-
-                    Deprecated
-                     Optional
-                  $ref: '#/components/schemas/policy.PublicKey'
-                sourceType:
-                  title: source_type
-                  description: |-
-                    Optional
-                     Using UNSPECIFIED will result in a successful update,
-                     but will not actually update the underlying source.
-                     You should not update KAS's from INTERNAL/EXTERNAL
-                     to unspecified.
-                  $ref: '#/components/schemas/policy.SourceType'
-                name:
-                  type: string
-                  title: name
-                  maxLength: 253
-                  description: |+
-                    Optional
-                    Registered KAS name must be an alphanumeric string, allowing hyphens, and underscores but not as the first or last character. The stored KAS name will be normalized to lower case.:
-                    ```
-                    size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
-                    ```
-
-                metadata:
-                  title: metadata
-                  description: |-
-                    Optional
-                     Common metadata
-                  $ref: '#/components/schemas/common.MetadataMutable'
-                metadataUpdateBehavior:
-                  title: metadata_update_behavior
-                  $ref: '#/components/schemas/common.MetadataUpdateEnum'
-              title: UpdateKeyAccessServerRequest
-              additionalProperties: false
+              $ref: '#/components/schemas/policy.kasregistry.UpdateKeyAccessServerRequest'
         required: true
       responses:
         default:
@@ -233,101 +153,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.kasregistry.UpdateKeyAccessServerResponse'
-  /key-access-servers/grants:
-    get:
+  /policy.kasregistry.KeyAccessServerRegistryService/DeleteKeyAccessServer:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: DeleteKeyAccessServer
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.DeleteKeyAccessServer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.DeleteKeyAccessServerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.DeleteKeyAccessServerResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServerGrants:
+    post:
       tags:
         - policy.kasregistry.KeyAccessServerRegistryService
       summary: ListKeyAccessServerGrants
       description: Deprecated
       operationId: policy.kasregistry.KeyAccessServerRegistryService.ListKeyAccessServerGrants
       parameters:
-        - name: kasId
-          in: query
-          description: |-
-            Optional
-             Filter LIST by ID of a registered Key Access Server.
-             If neither is provided, grants from all registered KASs to policy attribute
-             objects are returned.
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: string
-            title: kas_id
-            description: |+
-              Optional
-               Filter LIST by ID of a registered Key Access Server.
-               If neither is provided, grants from all registered KASs to policy attribute
-               objects are returned.
-              Optional field must be a valid UUID:
-              ```
-              size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
-              ```
-
-        - name: kasUri
-          in: query
-          description: |-
-            Optional
-             Filter LIST by URI of a registered Key Access Server.
-             If none is provided, grants from all registered KASs to policy attribute
-             objects are returned.
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: kas_uri
-            description: |+
-              Optional
-               Filter LIST by URI of a registered Key Access Server.
-               If none is provided, grants from all registered KASs to policy attribute
-               objects are returned.
-              Optional URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
-              ```
-              size(this) == 0 || this.isUri()
-              ```
-
-        - name: kasName
-          in: query
-          description: |-
-            Optional
-             Filter LIST by name of a registered Key Access Server.
-             If none are provided, grants from all registered KASs to policy attribute
-             objects are returned.
-          schema:
-            type: string
-            title: kas_name
-            maxLength: 253
-            description: |+
-              Optional
-               Filter LIST by name of a registered Key Access Server.
-               If none are provided, grants from all registered KASs to policy attribute
-               objects are returned.
-              Registered KAS name must be an alphanumeric string, allowing hyphens, and underscores but not as the first or last character. The stored KAS name will be normalized to lower case.:
-              ```
-              size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
-              ```
-
-        - name: pagination.limit
-          in: query
-          description: |-
-            Optional
-             Set to configured default limit if not provided
-             Maximum limit set in platform config and enforced by services
-          schema:
-            type: integer
-            title: limit
-            format: int32
-            description: |-
-              Optional
-               Set to configured default limit if not provided
-               Maximum limit set in platform config and enforced by services
-        - name: pagination.offset
-          in: query
-          description: |-
-            Optional
-             Defaulted if not provided
-          schema:
-            type: integer
-            title: offset
-            format: int32
-            description: |-
-              Optional
-               Defaulted if not provided
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.ListKeyAccessServerGrantsRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -715,9 +598,6 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
-
-         Not recommended for use in new APIs, but still useful for legacy APIs and
-         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       format: date-time
@@ -2008,8 +1888,8 @@ components:
       type: object
       properties:
         algorithm:
-          type: string
           title: algorithm
+          $ref: '#/components/schemas/policy.Algorithm'
         kid:
           type: string
           title: kid

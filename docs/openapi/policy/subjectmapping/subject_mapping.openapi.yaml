@@ -2,22 +2,29 @@ openapi: 3.1.0
 info:
   title: policy.subjectmapping
 paths:
-  /subject-mappings/match:
+  /policy.subjectmapping.SubjectMappingService/MatchSubjectMappings:
     post:
       tags:
         - policy.subjectmapping.SubjectMappingService
       summary: MatchSubjectMappings
       description: Find matching Subject Mappings for a given Subject
       operationId: policy.subjectmapping.SubjectMappingService.MatchSubjectMappings
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
             schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/policy.SubjectProperty'
-              title: subject_properties
-              minItems: 1
+              $ref: '#/components/schemas/policy.subjectmapping.MatchSubjectMappingsRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -31,39 +38,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.subjectmapping.MatchSubjectMappingsResponse'
-  /subject-mappings:
-    get:
+  /policy.subjectmapping.SubjectMappingService/ListSubjectMappings:
+    post:
       tags:
         - policy.subjectmapping.SubjectMappingService
       summary: ListSubjectMappings
       operationId: policy.subjectmapping.SubjectMappingService.ListSubjectMappings
       parameters:
-        - name: pagination.limit
-          in: query
-          description: |-
-            Optional
-             Set to configured default limit if not provided
-             Maximum limit set in platform config and enforced by services
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: integer
-            title: limit
-            format: int32
-            description: |-
-              Optional
-               Set to configured default limit if not provided
-               Maximum limit set in platform config and enforced by services
-        - name: pagination.offset
-          in: query
-          description: |-
-            Optional
-             Defaulted if not provided
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: integer
-            title: offset
-            format: int32
-            description: |-
-              Optional
-               Defaulted if not provided
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.ListSubjectMappingsRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -77,11 +73,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.subjectmapping.ListSubjectMappingsResponse'
+  /policy.subjectmapping.SubjectMappingService/GetSubjectMapping:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: GetSubjectMapping
+      operationId: policy.subjectmapping.SubjectMappingService.GetSubjectMapping
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.GetSubjectMappingRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.GetSubjectMappingResponse'
+  /policy.subjectmapping.SubjectMappingService/CreateSubjectMapping:
     post:
       tags:
         - policy.subjectmapping.SubjectMappingService
       summary: CreateSubjectMapping
       operationId: policy.subjectmapping.SubjectMappingService.CreateSubjectMapping
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
@@ -101,112 +143,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.subjectmapping.CreateSubjectMappingResponse'
-  /subject-mappings/{id}:
-    get:
-      tags:
-        - policy.subjectmapping.SubjectMappingService
-      summary: GetSubjectMapping
-      operationId: policy.subjectmapping.SubjectMappingService.GetSubjectMapping
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.subjectmapping.GetSubjectMappingResponse'
-    delete:
-      tags:
-        - policy.subjectmapping.SubjectMappingService
-      summary: DeleteSubjectMapping
-      operationId: policy.subjectmapping.SubjectMappingService.DeleteSubjectMapping
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectMappingResponse'
-    patch:
+  /policy.subjectmapping.SubjectMappingService/UpdateSubjectMapping:
+    post:
       tags:
         - policy.subjectmapping.SubjectMappingService
       summary: UpdateSubjectMapping
       operationId: policy.subjectmapping.SubjectMappingService.UpdateSubjectMapping
       parameters:
-        - name: id
-          in: path
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                subjectConditionSetId:
-                  type: string
-                  title: subject_condition_set_id
-                  description: |+
-                    Optional
-                     Replaces the existing SubjectConditionSet id with a new one
-                    Optional field must be a valid UUID:
-                    ```
-                    size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
-                    ```
-
-                actions:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/policy.Action'
-                  title: actions
-                  description: |-
-                    Optional
-                     Replaces entire list of actions permitted by subjects
-                metadata:
-                  title: metadata
-                  description: Common metadata
-                  $ref: '#/components/schemas/common.MetadataMutable'
-                metadataUpdateBehavior:
-                  title: metadata_update_behavior
-                  $ref: '#/components/schemas/common.MetadataUpdateEnum'
-              title: UpdateSubjectMappingRequest
-              additionalProperties: false
+              $ref: '#/components/schemas/policy.subjectmapping.UpdateSubjectMappingRequest'
         required: true
       responses:
         default:
@@ -221,39 +178,63 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.subjectmapping.UpdateSubjectMappingResponse'
-  /subject-condition-sets:
-    get:
+  /policy.subjectmapping.SubjectMappingService/DeleteSubjectMapping:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: DeleteSubjectMapping
+      operationId: policy.subjectmapping.SubjectMappingService.DeleteSubjectMapping
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectMappingRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectMappingResponse'
+  /policy.subjectmapping.SubjectMappingService/ListSubjectConditionSets:
+    post:
       tags:
         - policy.subjectmapping.SubjectMappingService
       summary: ListSubjectConditionSets
       operationId: policy.subjectmapping.SubjectMappingService.ListSubjectConditionSets
       parameters:
-        - name: pagination.limit
-          in: query
-          description: |-
-            Optional
-             Set to configured default limit if not provided
-             Maximum limit set in platform config and enforced by services
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
           schema:
-            type: integer
-            title: limit
-            format: int32
-            description: |-
-              Optional
-               Set to configured default limit if not provided
-               Maximum limit set in platform config and enforced by services
-        - name: pagination.offset
-          in: query
-          description: |-
-            Optional
-             Defaulted if not provided
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: integer
-            title: offset
-            format: int32
-            description: |-
-              Optional
-               Defaulted if not provided
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.ListSubjectConditionSetsRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -267,11 +248,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.subjectmapping.ListSubjectConditionSetsResponse'
+  /policy.subjectmapping.SubjectMappingService/GetSubjectConditionSet:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: GetSubjectConditionSet
+      operationId: policy.subjectmapping.SubjectMappingService.GetSubjectConditionSet
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.GetSubjectConditionSetRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.GetSubjectConditionSetResponse'
+  /policy.subjectmapping.SubjectMappingService/CreateSubjectConditionSet:
     post:
       tags:
         - policy.subjectmapping.SubjectMappingService
       summary: CreateSubjectConditionSet
       operationId: policy.subjectmapping.SubjectMappingService.CreateSubjectConditionSet
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
@@ -291,101 +318,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.subjectmapping.CreateSubjectConditionSetResponse'
-  /subject-condition-sets/{id}:
-    get:
-      tags:
-        - policy.subjectmapping.SubjectMappingService
-      summary: GetSubjectConditionSet
-      operationId: policy.subjectmapping.SubjectMappingService.GetSubjectConditionSet
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.subjectmapping.GetSubjectConditionSetResponse'
-    delete:
-      tags:
-        - policy.subjectmapping.SubjectMappingService
-      summary: DeleteSubjectConditionSet
-      operationId: policy.subjectmapping.SubjectMappingService.DeleteSubjectConditionSet
-      parameters:
-        - name: id
-          in: path
-          description: Required
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectConditionSetResponse'
-    patch:
+  /policy.subjectmapping.SubjectMappingService/UpdateSubjectConditionSet:
+    post:
       tags:
         - policy.subjectmapping.SubjectMappingService
       summary: UpdateSubjectConditionSet
       operationId: policy.subjectmapping.SubjectMappingService.UpdateSubjectConditionSet
       parameters:
-        - name: id
-          in: path
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
       requestBody:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                subjectSets:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/policy.SubjectSet'
-                  title: subject_sets
-                  description: |-
-                    Optional
-                     If provided, replaces entire existing structure of Subject Sets, Condition Groups, & Conditions
-                metadata:
-                  title: metadata
-                  description: Common metadata
-                  $ref: '#/components/schemas/common.MetadataMutable'
-                metadataUpdateBehavior:
-                  title: metadata_update_behavior
-                  $ref: '#/components/schemas/common.MetadataUpdateEnum'
-              title: UpdateSubjectConditionSetRequest
-              additionalProperties: false
+              $ref: '#/components/schemas/policy.subjectmapping.UpdateSubjectConditionSetRequest'
         required: true
       responses:
         default:
@@ -400,12 +353,63 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.subjectmapping.UpdateSubjectConditionSetResponse'
-  /subject-condition-sets/unmapped:
-    delete:
+  /policy.subjectmapping.SubjectMappingService/DeleteSubjectConditionSet:
+    post:
+      tags:
+        - policy.subjectmapping.SubjectMappingService
+      summary: DeleteSubjectConditionSet
+      operationId: policy.subjectmapping.SubjectMappingService.DeleteSubjectConditionSet
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectConditionSetRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.subjectmapping.DeleteSubjectConditionSetResponse'
+  /policy.subjectmapping.SubjectMappingService/DeleteAllUnmappedSubjectConditionSets:
+    post:
       tags:
         - policy.subjectmapping.SubjectMappingService
       summary: DeleteAllUnmappedSubjectConditionSets
       operationId: policy.subjectmapping.SubjectMappingService.DeleteAllUnmappedSubjectConditionSets
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -569,9 +573,6 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
-
-         Not recommended for use in new APIs, but still useful for legacy APIs and
-         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       format: date-time
@@ -1318,9 +1319,14 @@ components:
             $ref: '#/components/schemas/policy.Action'
           title: actions
           minItems: 1
-          description: |-
+          description: |+
             Required
              The actions permitted by subjects in this mapping
+            Action name or ID must not be empty if provided:
+            ```
+            this.all(item, item.name != '' || item.id != '')
+            ```
+
         existingSubjectConditionSetId:
           type: string
           title: existing_subject_condition_set_id
@@ -1590,9 +1596,14 @@ components:
           items:
             $ref: '#/components/schemas/policy.Action'
           title: actions
-          description: |-
+          description: |+
             Optional
              Replaces entire list of actions permitted by subjects
+            Action name or ID must not be empty if provided:
+            ```
+            this.size() == 0 || this.all(item, item.name != '' || item.id != '')
+            ```
+
         metadata:
           title: metadata
           description: Common metadata

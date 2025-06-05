@@ -1727,9 +1727,9 @@ SELECT
     DISTINCT JSONB_BUILD_OBJECT(
        'kas_uri', kas.uri,
        'public_key', JSONB_BUILD_OBJECT(
-            'algorithm', kask.key_algorithm::TEXT,
+            'algorithm', kask.key_algorithm::INTEGER,
             'kid', kask.key_id,
-            'pem', kask.public_key_ctx ->> 'pem'
+            'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
        )
     ) AS base_keys
 FROM base_keys bk

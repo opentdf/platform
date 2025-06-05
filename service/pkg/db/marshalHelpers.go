@@ -1,11 +1,9 @@
 package db
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -125,7 +123,7 @@ func KasKeysProtoJSON(keysJSON []byte) ([]*policy.KasKey, error) {
 	return keys, nil
 }
 
-func formatAlg(alg policy.Algorithm) (string, error) {
+func FormatAlg(alg policy.Algorithm) (string, error) {
 	switch alg {
 	case policy.Algorithm_ALGORITHM_RSA_2048:
 		return "rsa:2048", nil
@@ -151,24 +149,6 @@ func UnmarshalSimpleKasKey(keysJSON []byte) (*kasregistry.SimpleKasKey, error) {
 		if err := protojson.Unmarshal(keysJSON, key); err != nil {
 			return nil, err
 		}
-
-		// In the db, this is stored as an integer, which is parsed to a string
-		// and then converted to the correct algorithm format.
-		alg, err := strconv.ParseInt(key.GetPublicKey().GetAlgorithm(), 10, 32)
-		if err != nil {
-			return nil, err
-		}
-		algorithm, err := formatAlg(policy.Algorithm(alg))
-		if err != nil {
-			return nil, err
-		}
-		// The pem should always be present and base64 encoded, as it is required for creating a key.
-		pem, err := base64.StdEncoding.DecodeString(key.GetPublicKey().GetPem())
-		if err != nil {
-			return nil, err
-		}
-		key.PublicKey.Pem = string(pem)
-		key.PublicKey.Algorithm = algorithm
 	}
 	return key, nil
 }

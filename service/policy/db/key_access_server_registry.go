@@ -782,6 +782,19 @@ func (c PolicyDBClient) SetBaseKeyOnWellKnownConfig(ctx context.Context) error {
 		return err
 	}
 
+	if baseKey != nil {
+		algorithm, err := db.FormatAlg(baseKey.GetPublicKey().GetAlgorithm())
+		if err != nil {
+			return fmt.Errorf("failed to format algorithm: %w", err)
+		}
+		publicKey, ok := keyMap["public_key"].(map[string]any)
+		if !ok {
+			return errors.New("failed to cast public_key")
+		}
+		publicKey["algorithm"] = algorithm
+		keyMap["public_key"] = publicKey
+	}
+
 	wellknownconfiguration.UpdateConfigurationBaseKey(keyMap)
 	return nil
 }

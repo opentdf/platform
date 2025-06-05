@@ -2,52 +2,8 @@ openapi: 3.1.0
 info:
   title: policy.unsafe
 paths:
-  /unsafe/namespaces/{id}:
-    delete:
-      tags:
-        - policy.unsafe.UnsafeService
-      summary: UnsafeDeleteNamespace
-      operationId: policy.unsafe.UnsafeService.UnsafeDeleteNamespace
-      parameters:
-        - name: id
-          in: path
-          description: |-
-            Required
-             UUID of the Namespace
-          required: true
-          schema:
-            type: string
-            title: id
-            format: uuid
-            description: |-
-              Required
-               UUID of the Namespace
-        - name: fqn
-          in: query
-          description: |-
-            Required
-             Fully Qualified Name (FQN) of Namespace (i.e. https://<namespace>), normalized to lower case.
-          required: true
-          schema:
-            type: string
-            title: fqn
-            description: |-
-              Required
-               Fully Qualified Name (FQN) of Namespace (i.e. https://<namespace>), normalized to lower case.
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteNamespaceResponse'
-    patch:
+  /policy.unsafe.UnsafeService/UnsafeUpdateNamespace:
+    post:
       tags:
         - policy.unsafe.UnsafeService
       summary: UnsafeUpdateNamespace
@@ -57,29 +13,21 @@ paths:
         ---------------------------------------
       operationId: policy.unsafe.UnsafeService.UnsafeUpdateNamespace
       parameters:
-        - name: id
-          in: path
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-        - name: name
-          in: query
-          description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: name
-            maxLength: 253
-            description: |+
-              Required
-              Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. The stored namespace will be normalized to lower case.:
-              ```
-              this.matches('^([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$')
-              ```
-
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateNamespaceRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -93,22 +41,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateNamespaceResponse'
-  /unsafe/namespaces/{id}/reactivate:
+  /policy.unsafe.UnsafeService/UnsafeReactivateNamespace:
     post:
       tags:
         - policy.unsafe.UnsafeService
       summary: UnsafeReactivateNamespace
       operationId: policy.unsafe.UnsafeService.UnsafeReactivateNamespace
       parameters:
-        - name: id
-          in: path
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateNamespaceRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -122,38 +76,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateNamespaceResponse'
-  /unsafe/attributes/{id}:
-    delete:
+  /policy.unsafe.UnsafeService/UnsafeDeleteNamespace:
+    post:
       tags:
         - policy.unsafe.UnsafeService
-      summary: UnsafeDeleteAttribute
-      operationId: policy.unsafe.UnsafeService.UnsafeDeleteAttribute
+      summary: UnsafeDeleteNamespace
+      operationId: policy.unsafe.UnsafeService.UnsafeDeleteNamespace
       parameters:
-        - name: id
-          in: path
-          description: |-
-            Required
-             UUID of the Attribute
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: |-
-              Required
-               UUID of the Attribute
-        - name: fqn
-          in: query
-          description: |-
-            Required
-             Fully Qualified Name (FQN) of Attribute Definition (i.e. https://<namespace>/attr/<attribute name>), normalized to lower case.
-          required: true
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: fqn
-            description: |-
-              Required
-               Fully Qualified Name (FQN) of Attribute Definition (i.e. https://<namespace>/attr/<attribute name>), normalized to lower case.
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteNamespaceRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -166,8 +110,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeResponse'
-    patch:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteNamespaceResponse'
+  /policy.unsafe.UnsafeService/UnsafeUpdateAttribute:
+    post:
       tags:
         - policy.unsafe.UnsafeService
       summary: UnsafeUpdateAttribute
@@ -177,66 +122,21 @@ paths:
         ---------------------------------------
       operationId: policy.unsafe.UnsafeService.UnsafeUpdateAttribute
       parameters:
-        - name: id
-          in: path
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-        - name: name
-          in: query
-          description: |-
-            Optional
-             WARNING!!
-             Updating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: name
-            maxLength: 253
-            description: |+
-              Optional
-               WARNING!!
-               Updating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.
-              Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case.:
-              ```
-              size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true
-              ```
-
-        - name: rule
-          in: query
-          description: |-
-            Optional
-             WARNING!!
-             Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.
-          schema:
-            title: rule
-            description: |-
-              Optional
-               WARNING!!
-               Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.
-            $ref: '#/components/schemas/policy.AttributeRuleTypeEnum'
-        - name: valuesOrder
-          in: query
-          description: |-
-            Optional
-             WARNING!!
-             Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition
-             will retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted
-             deleted, created, and unsafely re-ordered as necessary.
-          schema:
-            type: array
-            items:
-              type: string
-            title: values_order
-            description: |-
-              Optional
-               WARNING!!
-               Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition
-               will retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted
-               deleted, created, and unsafely re-ordered as necessary.
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateAttributeRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -250,22 +150,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateAttributeResponse'
-  /unsafe/attributes/{id}/reactivate:
+  /policy.unsafe.UnsafeService/UnsafeReactivateAttribute:
     post:
       tags:
         - policy.unsafe.UnsafeService
       summary: UnsafeReactivateAttribute
       operationId: policy.unsafe.UnsafeService.UnsafeReactivateAttribute
       parameters:
-        - name: id
-          in: path
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateAttributeRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -279,38 +185,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateAttributeResponse'
-  /unsafe/attributes/values/{id}:
-    delete:
+  /policy.unsafe.UnsafeService/UnsafeDeleteAttribute:
+    post:
       tags:
         - policy.unsafe.UnsafeService
-      summary: UnsafeDeleteAttributeValue
-      operationId: policy.unsafe.UnsafeService.UnsafeDeleteAttributeValue
+      summary: UnsafeDeleteAttribute
+      operationId: policy.unsafe.UnsafeService.UnsafeDeleteAttribute
       parameters:
-        - name: id
-          in: path
-          description: |-
-            Required
-             UUID of the Attribute Value
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: |-
-              Required
-               UUID of the Attribute Value
-        - name: fqn
-          in: query
-          description: |-
-            Required
-             Fully Qualified Name (FQN) of Attribute Value (i.e. https://<namespace>/attr/<attribute name>/value/<value>), normalized to lower case.
-          required: true
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: fqn
-            description: |-
-              Required
-               Fully Qualified Name (FQN) of Attribute Value (i.e. https://<namespace>/attr/<attribute name>/value/<value>), normalized to lower case.
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -323,8 +219,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeValueResponse'
-    patch:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeResponse'
+  /policy.unsafe.UnsafeService/UnsafeUpdateAttributeValue:
+    post:
       tags:
         - policy.unsafe.UnsafeService
       summary: UnsafeUpdateAttributeValue
@@ -334,29 +231,21 @@ paths:
         ---------------------------------------
       operationId: policy.unsafe.UnsafeService.UnsafeUpdateAttributeValue
       parameters:
-        - name: id
-          in: path
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
-        - name: value
-          in: query
-          description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
           schema:
-            type: string
-            title: value
-            maxLength: 253
-            description: |+
-              Required
-              Attribute Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case.:
-              ```
-              this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
-              ```
-
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateAttributeValueRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -370,22 +259,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateAttributeValueResponse'
-  /unsafe/attributes/values/{id}/reactivate:
+  /policy.unsafe.UnsafeService/UnsafeReactivateAttributeValue:
     post:
       tags:
         - policy.unsafe.UnsafeService
       summary: UnsafeReactivateAttributeValue
       operationId: policy.unsafe.UnsafeService.UnsafeReactivateAttributeValue
       parameters:
-        - name: id
-          in: path
-          description: Required
+        - name: Connect-Protocol-Version
+          in: header
           required: true
           schema:
-            type: string
-            title: id
-            format: uuid
-            description: Required
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateAttributeValueRequest'
+        required: true
       responses:
         default:
           description: Error
@@ -399,6 +294,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateAttributeValueResponse'
+  /policy.unsafe.UnsafeService/UnsafeDeleteAttributeValue:
+    post:
+      tags:
+        - policy.unsafe.UnsafeService
+      summary: UnsafeDeleteAttributeValue
+      operationId: policy.unsafe.UnsafeService.UnsafeDeleteAttributeValue
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeValueRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeValueResponse'
   /policy.unsafe.UnsafeService/UnsafeDeleteKasKey:
     post:
       tags:
@@ -558,9 +488,6 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
-
-         Not recommended for use in new APIs, but still useful for legacy APIs and
-         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       format: date-time
@@ -1594,5 +1521,4 @@ tags:
     description: |-
       /
       / Unsafe Service
-      / IN FLIGHT AND NOT YET IMPLEMENTED!
       /

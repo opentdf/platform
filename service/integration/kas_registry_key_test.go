@@ -28,7 +28,7 @@ const (
 	validKeyID3              = "key_id_3"
 	keyID4                   = "key_id_4"
 	notFoundKasUUID          = "123e4567-e89b-12d3-a456-426614174000"
-	keyCtx                   = `eyJrZXkiOiJ2YWx1ZSJ9Cg==`
+	keyCtx                   = `YS1wZW0K`
 	providerConfigID         = "123e4567-e89b-12d3-a456-426614174000"
 	rotateKey                = "rotate_key"
 	nonRotateKey             = "non_rotate_key"
@@ -903,6 +903,10 @@ func (s *KasRegistryKeySuite) Test_SetBaseKey_Insert_Success() {
 	s.NotNil(newBaseKey)
 	s.Nil(newBaseKey.GetPreviousBaseKey())
 	s.Equal(key.GetKasKey().GetKey().GetKeyId(), newBaseKey.GetNewBaseKey().GetPublicKey().GetKid())
+	s.Equal(key.GetKasKey().GetKey().GetKeyAlgorithm(), newBaseKey.GetNewBaseKey().GetPublicKey().GetAlgorithm())
+	decodedKeyCtx, err := base64.StdEncoding.DecodeString(keyCtx)
+	s.Require().NoError(err)
+	s.Equal(string(decodedKeyCtx), newBaseKey.GetNewBaseKey().GetPublicKey().GetPem())
 }
 
 func (s *KasRegistryKeySuite) Test_SetBaseKey_CannotSetPublicKeyOnlyKey_Fails() {

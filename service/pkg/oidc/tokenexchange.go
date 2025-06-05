@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
@@ -41,59 +39,27 @@ func ExchangeToken(
 	logger := log.New(os.Stderr, "[TOKEN_EXCHANGE] ", log.LstdFlags)
 	logger.Printf("Starting token exchange: issuer=%s, clientID=%s", issuer, clientID)
 
-	dpopJWK, err := GenerateDPoPKey()
+	httpClient, err := NewHTTPClient(&http.Client{Timeout: DefaultTokenExchangeTimeout}, WithGeneratedDPoPKey())
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to generate DPoP key: %w", err)
+		return "", nil, fmt.Errorf("failed to create HTTP client: %w", err)
 	}
 
-	httpClient := &http.Client{
-		Timeout: DefaultTokenExchangeTimeout,
-	}
-
-	// Build JWT assertion for private_key_jwk
-	jwtAssertion, err := BuildJWTAssertion(clientID, tokenEndpoint)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to build private_key_jwt assertion: %w", err)
-	}
 	key, err := ParseJWKFromPEM(clientPrivateKey)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to parse client private key: %w", err)
 	}
-	alg := jwa.RS256
-	signedJWT, err := SignJWTAssertion(jwtAssertion, key, alg)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to sign private_key_jwt assertion: %w", err)
-	}
 
-	// Okta: Token exchange requires actor_token to be set to the private_key_jwk of the client app
-	form := url.Values{}
-	form.Set("grant_type", "urn:ietf:params:oauth:grant-type:token-exchange")
-	form.Set("subject_token", subjectToken)
-	form.Set("subject_token_type", "urn:ietf:params:oauth:token-type:access_token")
-	form.Set("client_id", clientID)
-	form.Set("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer")
-	form.Set("client_assertion", string(signedJWT))
-	// Add actor_token and actor_token_type for Okta
-	form.Set("actor_token", string(signedJWT))
-	form.Set("actor_token_type", "urn:ietf:params:oauth:token-type:access_token")
-	form.Set("scope", strings.Join(scopes, " "))
-	if len(audience) > 0 {
-		for _, a := range audience {
-			form.Add("audience", a)
-		}
-	}
+	params := OAuthFormParams{
+		FormType:     OAuthFormTokenExchange,
+		ClientID:     clientID,
+		Scopes:       scopes,
+		SubjectToken: subjectToken,
+		Audience:     audience,
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenEndpoint, strings.NewReader(form.Encode()))
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to create token exchange request: %w", err)
+		ActorTokenType: "urn:ietf:params:oauth:token-type:access_token",
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	if err := AttachDPoPHeader(req, dpopJWK, tokenEndpoint, ""); err != nil {
-		return "", nil, err
-	}
-
-	resp, err := httpClient.Do(req)
+	req := httpClient.NewOAuthFormRequestFactory(ctx, key, tokenEndpoint, params)
+	resp, err := req.Do(tokenEndpoint)
 	if err != nil {
 		logger.Printf("Token exchange failed: %v", err)
 		return "", nil, fmt.Errorf("token exchange failed: %w", err)
@@ -101,12 +67,8 @@ func ExchangeToken(
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		var body []byte
-		if _, err := resp.Body.Read(body); err != nil {
-			logger.Printf("failed to read error response body: %v", err)
-			return "", nil, fmt.Errorf("token exchange failed: %s", resp.Status)
-		}
-		logger.Printf("response body: %s", body)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		logger.Printf("response body: %s", bodyBytes)
 		return "", nil, fmt.Errorf("token exchange failed: %s", resp.Status)
 	}
 
@@ -122,5 +84,5 @@ func ExchangeToken(
 	}
 
 	logger.Printf("Token exchange successful: scope=%v", respData.Scopes)
-	return respData.AccessToken, dpopJWK, nil
+	return respData.AccessToken, httpClient.dpopJWK, nil
 }

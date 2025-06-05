@@ -105,28 +105,28 @@ func userInfoCacheKey(issuer, subject string) string {
 
 // fetchUserInfo performs a GET request to the UserInfo endpoint to fetch user information.
 func FetchUserInfo(ctx context.Context, userInfoEndpoint string, tokenRaw string, dpopJWK jwk.Key) (*oidc.UserInfo, []byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, userInfoEndpoint, nil)
+	httpClient, err := NewHTTPClient(&http.Client{Timeout: DefaultUserInfoTimeout}, WithDPoPKey(dpopJWK))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create userinfo request: %w", err)
+		return nil, nil, fmt.Errorf("failed to create http client: %w", err)
 	}
 
-	req.Header.Set("Authorization", "Bearer "+tokenRaw)
-
-	if err := AttachDPoPHeader(req, dpopJWK, userInfoEndpoint, ""); err != nil {
-		return nil, nil, err
+	factory := httpClient.NewOAuthFormRequestFactory(ctx, nil, userInfoEndpoint, OAuthFormParams{})
+	// Use a custom requestFactory for GET with Authorization and DPoP
+	factory.requestFactory = func(_ string) (*http.Request, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, userInfoEndpoint, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create userinfo request: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+tokenRaw)
+		return req, nil
 	}
 
-	client := &http.Client{
-		Timeout: DefaultUserInfoTimeout,
-	}
-
-	resp, err := client.Do(req)
+	resp, err := factory.Do(userInfoEndpoint)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to execute userinfo request: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		// Try to read the error response body
 		errorBody, _ := io.ReadAll(resp.Body)
 		return nil, nil, fmt.Errorf("failed to fetch userinfo: status %d, details: %s", resp.StatusCode, string(errorBody))
 	}

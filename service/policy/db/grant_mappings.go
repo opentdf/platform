@@ -1,15 +1,14 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
 )
 
-var (
-	errKasInfoIncomplete = fmt.Errorf("kas information is incomplete")
-)
+var errKasInfoIncomplete = errors.New("kas information is incomplete")
 
 func mapAlgorithmToKasPublicKeyAlg(alg policy.Algorithm) policy.KasPublicKeyAlgEnum {
 	switch alg {
@@ -42,6 +41,7 @@ func mapKasKeysToGrants(keys []*policy.SimpleKasKey, existingGrants []*policy.Ke
 
 	for _, key := range keys {
 		if key == nil {
+			l.Debug("Skipping nil key when mapping keys to grants")
 			continue
 		}
 		if key.GetKasUri() == "" || key.GetKasId() == "" {

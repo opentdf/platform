@@ -1,5 +1,3 @@
-//nolint:gofumpt
-
 package server
 
 import (
@@ -577,7 +575,6 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 				t.Context(),
 				WithConfigFile(tempFilePath),
 			)
-
 			// If error then it should be a DB error
 			if err != nil {
 				// require that it got past the service config and mode setup

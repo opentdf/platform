@@ -1,4 +1,3 @@
-//nolint:revive,usestdlibvars,unused,usetesting,gofumpt
 package oidc
 
 import (
@@ -6,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -32,19 +32,19 @@ func newTestJWK() jwk.Key {
 
 func TestHTTPRequestFactory_Do_NoDPoP(t *testing.T) {
 	called := false
-	client := newTestClient(func(req *http.Request) (*http.Response, error) {
+	client := newTestClient(func(_ *http.Request) (*http.Response, error) {
 		called = true
-		return &http.Response{StatusCode: 200, Body: ioutil.NopCloser(bytes.NewBufferString("ok")), Header: http.Header{}}, nil
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString("ok")), Header: http.Header{}}, nil
 	})
 	hc, _ := NewHTTPClient(client)
 	factory := &HTTPRequestFactory{
 		httpClient: hc,
 		requestFactory: func() (*http.Request, error) {
-			return http.NewRequest("GET", "http://example.com", nil)
+			return http.NewRequest(http.MethodGet, "http://example.com", nil)
 		},
 	}
 	resp, err := factory.Do()
-	if err != nil || resp.StatusCode != 200 || !called {
+	if err != nil || resp.StatusCode != http.StatusOK || !called {
 		t.Errorf("expected 200 OK, got %v, called=%v", err, called)
 	}
 }
@@ -65,7 +65,7 @@ func TestHTTPRequestFactory_Do_DPoPNonceRetry(t *testing.T) {
 			}, nil
 		}
 		nonces = append(nonces, req.Header.Get("DPoP"))
-		return &http.Response{StatusCode: 200, Body: ioutil.NopCloser(bytes.NewBufferString("ok")), Header: http.Header{}}, nil
+		return &http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(bytes.NewBufferString("ok")), Header: http.Header{}}, nil
 	})
 	hc, _ := NewHTTPClient(client, WithAttachDPoPHeaderOverride(
 		func(req *http.Request, _ jwk.Key, _ string, nonce string) error {
@@ -82,11 +82,11 @@ func TestHTTPRequestFactory_Do_DPoPNonceRetry(t *testing.T) {
 		httpClient: hc,
 		endpoint:   "http://example.com",
 		requestFactory: func() (*http.Request, error) {
-			req, _ := http.NewRequest("GET", "http://example.com", nil)
+			req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
 			return req, nil
 		},
 	}).Do()
-	if err != nil || resp.StatusCode != 200 {
+	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 OK, got err=%v, resp=%v", err, resp)
 	}
 	if calls != 2 {
@@ -95,8 +95,4 @@ func TestHTTPRequestFactory_Do_DPoPNonceRetry(t *testing.T) {
 	if len(dpopHeaders) != 2 || dpopHeaders[0] != "first" || dpopHeaders[1] != "nonce:nonce123" {
 		t.Errorf("expected DPoP header to be set on retry, got %v", dpopHeaders)
 	}
-}
-
-func TestHTTPRequestFactory_Do_AttachDPoPHeaderError(t *testing.T) {
-	// This test is not valid unless attachDPoPHeader can be injected or patched, so remove it for now.
 }

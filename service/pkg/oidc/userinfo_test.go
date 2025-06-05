@@ -1,4 +1,3 @@
-//nolint:revive,usestdlibvars,unused,usetesting,gofumpt
 package oidc
 
 import (
@@ -28,12 +27,6 @@ func newTestUserInfoCache(t *testing.T, logger *logger.Logger) *UserInfoCache {
 	return &UserInfoCache{cache: c, logger: logger}
 }
 
-func setUserInfoCacheDirect(uc *UserInfoCache, issuer, subject string, value []byte) error {
-	// Replicate the key logic from cache.Cache.getKey
-	key := "svc:userinfo-test:" + userInfoCacheKey(issuer, subject)
-	return uc.cache.Set(context.Background(), key, value, nil)
-}
-
 // Test helper: set raw userinfo bytes in the cache using the correct key logic
 func (u *UserInfoCache) setRawForTest(ctx context.Context, issuer, subject string, raw []byte) error {
 	key := "svc:userinfo-test:" + userInfoCacheKey(issuer, subject)
@@ -47,11 +40,11 @@ func TestUserInfoCache_GetFromCache_Hit(t *testing.T) {
 	userInfo := &oidc.UserInfo{Subject: "subject"}
 	userInfoRaw, _ := json.Marshal(userInfo)
 	// Use the test helper to set the value
-	err := uc.setRawForTest(context.Background(), "issuer", "subject", userInfoRaw)
+	err := uc.setRawForTest(t.Context(), "issuer", "subject", userInfoRaw)
 	if err != nil {
 		t.Fatalf("failed to set cache: %v", err)
 	}
-	got, raw, err := uc.GetFromCache(context.Background(), "issuer", "subject")
+	got, raw, err := uc.GetFromCache(t.Context(), "issuer", "subject")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -66,7 +59,7 @@ func TestUserInfoCache_GetFromCache_Hit(t *testing.T) {
 func TestUserInfoCache_GetFromCache_Miss(t *testing.T) {
 	logger := logger.CreateTestLogger()
 	uc := newTestUserInfoCache(t, logger)
-	_, _, err := uc.GetFromCache(context.Background(), "issuer", "subject")
+	_, _, err := uc.GetFromCache(t.Context(), "issuer", "subject")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -77,11 +70,11 @@ func TestUserInfoCache_GetFromCache_BadType(t *testing.T) {
 	logger := logger.CreateTestLogger()
 	uc := newTestUserInfoCache(t, logger)
 	cacheKey := userInfoCacheKey("issuer", "subject")
-	err := uc.cache.Set(context.Background(), cacheKey, 12345, nil) // not []byte
+	err := uc.cache.Set(t.Context(), cacheKey, 12345, nil) // not []byte
 	if err != nil {
 		t.Fatalf("failed to set cache: %v", err)
 	}
-	_, _, err = uc.GetFromCache(context.Background(), "issuer", "subject")
+	_, _, err = uc.GetFromCache(t.Context(), "issuer", "subject")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -91,11 +84,11 @@ func TestUserInfoCache_Invalidate(t *testing.T) {
 	t.Skip("Skipping due to known flakiness or async cache invalidation issues. See issue tracker.")
 	logger := logger.CreateTestLogger()
 	uc := newTestUserInfoCache(t, logger)
-	err := uc.cache.Set(context.Background(), userInfoCacheKey("foo", "bar"), []byte("bar"), nil)
+	err := uc.cache.Set(t.Context(), userInfoCacheKey("foo", "bar"), []byte("bar"), nil)
 	if err != nil {
 		t.Fatalf("failed to set cache: %v", err)
 	}
-	err = uc.Invalidate(context.Background())
+	err = uc.Invalidate(t.Context())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -105,7 +98,7 @@ func TestUserInfoCache_Invalidate(t *testing.T) {
 		tries int
 	)
 	for tries = 0; tries < 10; tries++ {
-		_, err = uc.cache.Get(context.Background(), userInfoCacheKey("foo", "bar"))
+		_, err = uc.cache.Get(t.Context(), userInfoCacheKey("foo", "bar"))
 		if err != nil {
 			found = false
 			break

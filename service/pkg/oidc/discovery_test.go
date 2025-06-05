@@ -1,4 +1,3 @@
-//nolint:revive,usetesting,gofumpt,unused-parameter
 package oidc
 
 import (
@@ -20,18 +19,17 @@ func mockClientDiscover(_ context.Context, issuer string, _ *http.Client) (*oidc
 }
 
 func TestDiscover_Success(t *testing.T) {
-	ctx := context.Background()
 	log := logger.CreateTestLogger()
 
 	// Patch client.Discover
 	oldDiscover := Discover
-	Discover = func(ctx context.Context, issuer string, logger *logger.Logger) (*DiscoveryConfiguration, error) {
+	Discover = func(ctx context.Context, issuer string, _ *logger.Logger) (*DiscoveryConfiguration, error) {
 		return mockClientDiscover(ctx, issuer, nil)
 	}
 	defer func() { Discover = oldDiscover }()
 
 	issuer := "https://good-issuer"
-	conf, err := Discover(ctx, issuer, log)
+	conf, err := Discover(t.Context(), issuer, log)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -41,17 +39,16 @@ func TestDiscover_Success(t *testing.T) {
 }
 
 func TestDiscover_Failure(t *testing.T) {
-	ctx := context.Background()
 	log := logger.CreateTestLogger()
 
 	oldDiscover := Discover
-	Discover = func(ctx context.Context, issuer string, logger *logger.Logger) (*DiscoveryConfiguration, error) {
+	Discover = func(ctx context.Context, issuer string, _ *logger.Logger) (*DiscoveryConfiguration, error) {
 		return mockClientDiscover(ctx, issuer, nil)
 	}
 	defer func() { Discover = oldDiscover }()
 
 	issuer := "https://bad-issuer"
-	conf, err := Discover(ctx, issuer, log)
+	conf, err := Discover(t.Context(), issuer, log)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

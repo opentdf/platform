@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.8](https://github.com/opentdf/platform/compare/sdk/v0.4.7...sdk/v0.4.8) (2025-06-05)
+
+
+### Features
+
+* **core:** DSPX-608 - Deprecate public_client_id ([#2185](https://github.com/opentdf/platform/issues/2185)) ([0f58efa](https://github.com/opentdf/platform/commit/0f58efab4e99005b73041444d31b1c348b9e2834))
+
+
+### Bug Fixes
+
+* **ci:** Fix intermittent failures from auth tests ([#2345](https://github.com/opentdf/platform/issues/2345)) ([395988a](https://github.com/opentdf/platform/commit/395988acf615d722638efd2ceb234c38aec03821))
+
 ## [0.4.7](https://github.com/opentdf/platform/compare/sdk/v0.4.6...sdk/v0.4.7) (2025-05-29)
 
 

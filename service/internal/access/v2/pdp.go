@@ -245,6 +245,15 @@ func (p *PolicyDecisionPoint) GetDecision(
 	return decision, nil
 }
 
+func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
+	ctx context.Context,
+	registeredResourceValueFQN string,
+	action *policy.Action,
+	resources []*authz.Resource,
+) (*Decision, error) {
+	return nil, fmt.Errorf("GetDecisionRegisteredResource not yet implemented")
+}
+
 func (p *PolicyDecisionPoint) GetEntitlements(
 	ctx context.Context,
 	entityRepresentations []*entityresolutionV2.EntityRepresentation,

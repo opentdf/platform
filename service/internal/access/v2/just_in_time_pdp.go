@@ -100,10 +100,17 @@ func (p *JustInTimePDP) GetDecision(
 	case *authzV2.EntityIdentifier_Token:
 		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
 
-	// TODO: implement this case
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
-		p.logger.DebugContext(ctx, "getting decision - resolving registered resource value FQN")
-		return nil, false, errors.New("registered resources not yet implemented")
+		valueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
+		// registered resources do not have entity representations, so only one decision to make and we can skip the remaining logic
+		decision, err := p.pdp.GetDecisionRegisteredResource(ctx, valueFQN, action, resources)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to get decision for registered resource value FQN [%s]: %w", valueFQN, err)
+		}
+		if decision == nil {
+			return nil, false, fmt.Errorf("decision is nil for registered resource value FQN [%s]", valueFQN)
+		}
+		return []*Decision{decision}, decision.Access, nil
 
 	default:
 		return nil, false, ErrInvalidEntityType

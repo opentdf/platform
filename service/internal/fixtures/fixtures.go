@@ -144,15 +144,15 @@ type FixtureDataRegisteredResourceActionAttributeValue struct {
 }
 
 type FixtureDataKasRegistryKey struct {
-	ID                string `yaml:"id"`
-	KeyAccessServerID string `yaml:"key_access_server_id"`
-	KeyAlgorithm      string `yaml:"key_algorithm"`
-	KeyID             string `yaml:"key_id"`
-	KeyMode           string `yaml:"key_mode"`
-	KeyStatus         string `yaml:"key_status"`
-	PrivateKeyCtx     string `yaml:"private_key_ctx"`
-	PublicKeyCtx      string `yaml:"public_key_ctx"`
-	ProviderConfigID  string `yaml:"provider_config_id"`
+	ID                string  `yaml:"id"`
+	KeyAccessServerID string  `yaml:"key_access_server_id"`
+	KeyAlgorithm      string  `yaml:"key_algorithm"`
+	KeyID             string  `yaml:"key_id"`
+	KeyMode           string  `yaml:"key_mode"`
+	KeyStatus         string  `yaml:"key_status"`
+	PrivateKeyCtx     string  `yaml:"private_key_ctx"`
+	PublicKeyCtx      string  `yaml:"public_key_ctx"`
+	ProviderConfigID  *string `yaml:"provider_config_id"`
 }
 
 type FixtureDataProviderConfig struct {
@@ -702,10 +702,13 @@ func (f *Fixtures) provisionKasRegistryKeys() int64 {
 			f.db.StringWrap(d.KeyStatus),
 			f.db.StringWrap(string(privateCtx)),
 			f.db.StringWrap(string(pubCtx)),
-			f.db.StringWrap(d.ProviderConfigID),
 		})
+		providerConfigIDSQL := "NULL"
+		if d.ProviderConfigID != nil {
+			providerConfigIDSQL = f.db.StringWrap(*d.ProviderConfigID)
+		}
+		values[len(values)-1] = append(values[len(values)-1], providerConfigIDSQL)
 	}
-
 	return f.provision(fixtureData.KasRegistryKeys.Metadata.TableName, fixtureData.KasRegistryKeys.Metadata.Columns, values)
 }
 

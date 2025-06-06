@@ -19,6 +19,10 @@ logger:
 #     health_check_period_seconds: 60
 services:
   kas:
+    preview:
+      ec_tdf_enabled: false
+      key_management: false
+    root_key: a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1
     keyring:
       - kid: e1
         alg: ec:secp256r1
@@ -92,20 +96,20 @@ server:
       file:
         path: "./traces/traces.log"
         prettyPrint: true # Optional, default is compact JSON
-        maxSize: 50    # Optional, default 20MB
-        maxBackups: 5    # Optional, default 10
-        maxAge: 14    # Optional, default 30 days
-        compress: true   # Optional, default false
+        maxSize: 50 # Optional, default 20MB
+        maxBackups: 5 # Optional, default 10
+        maxAge: 14 # Optional, default 30 days
+        compress: true # Optional, default false
       # otlp:
-        # protocol: grpc # Optional, defaults to grpc
-        # endpoint: "localhost:4317"
-        # insecure: true # Set to false if Jaeger requires TLS
-        # headers: {} # Add if authentication is needed
-        # HTTP
-        #        protocol: "http/protobuf"
-        #        endpoint: "http://localhost:4318" # Default OTLP HTTP port
-        #        insecure: true # If collector is just HTTP, not HTTPS
-        # headers: {} # Add if authentication is needed
+      # protocol: grpc # Optional, defaults to grpc
+      # endpoint: "localhost:4317"
+      # insecure: true # Set to false if Jaeger requires TLS
+      # headers: {} # Add if authentication is needed
+      # HTTP
+      #        protocol: "http/protobuf"
+      #        endpoint: "http://localhost:4318" # Default OTLP HTTP port
+      #        insecure: true # If collector is just HTTP, not HTTPS
+      # headers: {} # Add if authentication is needed
   cors:
     # "*" to allow any origin or a specific domain like "https://yourdomain.com"
     allowedorigins:

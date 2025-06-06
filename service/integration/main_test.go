@@ -70,7 +70,7 @@ func TestMain(m *testing.M) {
 	}
 
 	randomSuffix := uuid.NewString()[:8]
-	containerName := fmt.Sprintf("testcontainer-postgres-%s", randomSuffix)
+	containerName := "testcontainer-postgres-" + randomSuffix
 
 	req := tc.GenericContainerRequest{
 		ProviderType: providerType,

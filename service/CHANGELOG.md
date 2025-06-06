@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.7.0](https://github.com/opentdf/platform/compare/service/v0.6.0...service/v0.7.0) (2025-06-06)
+
+
+### Features
+
+* **core:** DSPX-609 - add cli-client to keycloak provisioning ([#2396](https://github.com/opentdf/platform/issues/2396)) ([48e7489](https://github.com/opentdf/platform/commit/48e74899ffc1b68a9e8adb5717e84649125271ec))
+
+
+### Bug Fixes
+
+* only request a token when near expiration ([#2370](https://github.com/opentdf/platform/issues/2370)) ([556d95e](https://github.com/opentdf/platform/commit/556d95ea6a7e61f9428754550c181c19e2f91747))
+* **policy:** fix casing bug and get provider config on update. ([#2403](https://github.com/opentdf/platform/issues/2403)) ([a52b8f9](https://github.com/opentdf/platform/commit/a52b8f940c8e523d40275310be581e3383411717))
+
 ## [0.6.0](https://github.com/opentdf/platform/compare/service/v0.5.5...service/v0.6.0) (2025-06-06)
 
 

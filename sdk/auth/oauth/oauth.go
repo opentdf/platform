@@ -291,7 +291,7 @@ func getTokenExchangeRequest(ctx context.Context, tokenEndpoint, dpopNonce strin
 	}
 
 	if len(scopes) > 0 {
-		data.Set("scopes", strings.Join(scopes, " "))
+		data.Set("scope", strings.Join(scopes, " "))
 	}
 
 	body := strings.NewReader(data.Encode())

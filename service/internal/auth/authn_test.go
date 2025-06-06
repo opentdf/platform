@@ -33,6 +33,8 @@ import (
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/cache"
+	"github.com/opentdf/platform/service/pkg/oidc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -134,7 +136,7 @@ func (s *AuthSuite) SetupTest() {
 	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if r.URL.Path == "/.well-known/openid-configuration" {
-			_, err := w.Write([]byte(fmt.Sprintf(`{"issuer":"%s","jwks_uri": "%s/jwks"}`, s.server.URL, s.server.URL)))
+			_, err := w.Write([]byte(fmt.Sprintf(`{"issuer":"%s","jwks_uri": "%s/jwks", "userinfo_endpoint": "%s/userinfo"}`, s.server.URL, s.server.URL, s.server.URL)))
 			if err != nil {
 				panic(err)
 			}
@@ -145,6 +147,15 @@ func (s *AuthSuite) SetupTest() {
 			if err != nil {
 				panic(err)
 			}
+			return
+		}
+		if r.URL.Path == "/userinfo" {
+			w.Header().Set("Content-Type", "application/json")
+			_, err := w.Write([]byte(`{"sub": "test-user"}`))
+			if err != nil {
+				panic(err)
+			}
+			return
 		}
 	}))
 
@@ -152,16 +163,33 @@ func (s *AuthSuite) SetupTest() {
 	err = defaults.Set(&policyCfg)
 	s.Require().NoError(err)
 
+	// Setup a real OIDC DiscoveryConfiguration and UserInfoCache for tests
+	oidcConfig := &oidc.DiscoveryConfiguration{
+		Issuer:           s.server.URL,
+		JwksURI:          s.server.URL + "/jwks",
+		UserinfoEndpoint: s.server.URL + "/userinfo",
+	}
+	cacheManager, _ := cache.NewCacheManager(1 << 20)
+	cache, err := cacheManager.NewCache("userinfo", &logger.Logger{Logger: slog.New(slog.Default().Handler())}, cache.Options{Expiration: time.Minute, Cost: 1})
+	s.Require().NoError(err)
+	userInfoCache, _ := oidc.NewUserInfoCache(
+		oidcConfig,
+		cache,
+		&logger.Logger{Logger: slog.New(slog.Default().Handler())},
+	)
+
 	auth, err := NewAuthenticator(
 		context.Background(),
-		Config{
+		&Config{
 			AuthNConfig: AuthNConfig{
-				EnforceDPoP: true,
-				Issuer:      s.server.URL,
-				Audience:    "test",
-				DPoPSkew:    time.Hour,
-				TokenSkew:   time.Minute,
-				Policy:      policyCfg,
+				EnforceDPoP:      true,
+				Issuer:           s.server.URL,
+				Audience:         "test",
+				DPoPSkew:         time.Hour,
+				TokenSkew:        time.Minute,
+				Policy:           policyCfg,
+				ClientID:         "dummy-client-id", // Added dummy ClientID for test config
+				ClientPrivateKey: "",
 			},
 			PublicRoutes: []string{
 				"/public",
@@ -179,6 +207,8 @@ func (s *AuthSuite) SetupTest() {
 			Logger: slog.New(slog.Default().Handler()),
 		},
 		func(_ string, _ any) error { return nil },
+		oidcConfig,
+		userInfoCache,
 	)
 
 	s.Require().NoError(err)
@@ -191,6 +221,10 @@ func (s *AuthSuite) TearDownTest() {
 }
 
 func TestAuthSuite(t *testing.T) {
+	// Skip client credentials validation during tests
+	oidc.SetSkipValidationForTest(true)
+	defer oidc.SetSkipValidationForTest(false)
+
 	suite.Run(t, new(AuthSuite))
 }
 
@@ -211,49 +245,6 @@ func TestNormalizeUrl(t *testing.T) {
 	}
 }
 
-func (s *AuthSuite) Test_IPCUnaryServerInterceptor() {
-	// Mock the checkToken method to return a valid token and context
-	mockToken := jwt.New()
-	type contextKey string
-	mockCtx := context.WithValue(context.Background(), contextKey("mockKey"), "mockValue")
-	s.auth._testCheckTokenFunc = func(_ context.Context, authHeader []string, _ receiverInfo, _ []string) (jwt.Token, context.Context, error) {
-		if len(authHeader) == 0 {
-			return nil, nil, errors.New("missing authorization header")
-		}
-		if authHeader[0] != "Bearer valid" {
-			return nil, nil, errors.New("unauthenticated")
-		}
-		return mockToken, mockCtx, nil
-	}
-
-	// Test ipcReauthCheck directly
-	validAuthHeader := http.Header{}
-	validAuthHeader.Add("Authorization", "Bearer valid")
-	t1Path := "/kas.AccessService/Rewrap"
-	nextCtx, err := s.auth.ipcReauthCheck(context.Background(), t1Path, validAuthHeader)
-	s.Require().NoError(err)
-	s.Require().NotNil(nextCtx)
-	s.Equal("mockValue", nextCtx.Value(contextKey("mockKey")))
-
-	// Test with a route not requiring reauthorization
-	nextCtx, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/PublicKey", nil)
-	s.Require().NoError(err)
-	s.Require().NotNil(nextCtx)
-	s.Nil(nextCtx.Value(contextKey("mockKey")))
-
-	// Test with missing authorization header
-	_, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/Rewrap", nil)
-	s.Require().Error(err)
-	s.Contains(err.Error(), "missing authorization header")
-
-	// Test with invalid token
-	unauthHeader := http.Header{}
-	unauthHeader.Add("Authorization", "Bearer invalid")
-	_, err = s.auth.ipcReauthCheck(context.Background(), "/kas.AccessService/Rewrap", unauthHeader)
-	s.Require().Error(err)
-	s.Contains(err.Error(), "unauthenticated")
-}
-
 func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	tok := jwt.New()
 	s.Require().NoError(tok.Set(jwt.ExpirationKey, time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC)))
@@ -263,7 +254,9 @@ func (s *AuthSuite) Test_CheckToken_When_JWT_Expired_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
+	//nolint:dogsled // We are testing the error case here, so we don't need to check the token
+	_, _, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("\"exp\" not satisfied", err.Error())
 }
@@ -301,7 +294,9 @@ func (s *AuthSuite) Test_UnaryServerInterceptor_When_Authorization_Header_Missin
 }
 
 func (s *AuthSuite) Test_CheckToken_When_Authorization_Header_Invalid_Expect_Error() {
-	_, _, err := s.auth.checkToken(context.Background(), []string{"BPOP "}, receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"BPOP invalidtoken"}}
+	//nolint:dogsled // We are testing the error case here, so we don't need to check the token
+	_, _, _, err := s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("not of type bearer or dpop", err.Error())
 }
@@ -315,7 +310,9 @@ func (s *AuthSuite) Test_CheckToken_When_Missing_Issuer_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
+	//nolint:dogsled // We are testing the error case here, so we don't need to check the token
+	_, _, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("\"iss\" not satisfied: claim \"iss\" does not exist", err.Error())
 }
@@ -330,7 +327,9 @@ func (s *AuthSuite) Test_CheckToken_When_Invalid_Issuer_Value_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
+	//nolint:dogsled // We are testing the error case here, so we don't need to check the token
+	_, _, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "\"iss\" not satisfied: values do not match")
 }
@@ -344,7 +343,9 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Missing_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
+	//nolint:dogsled // We are testing the error case here, so we don't need to check the token
+	_, _, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("claim \"aud\" not found", err.Error())
 }
@@ -359,7 +360,9 @@ func (s *AuthSuite) Test_CheckToken_When_Audience_Invalid_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
+	//nolint:dogsled // We are testing the error case here, so we don't need to check the token
+	_, _, _, err = s.auth.parseTokenFromHeader(hdr)
 	s.Require().Error(err)
 	s.Equal("\"aud\" not satisfied", err.Error())
 }
@@ -375,7 +378,10 @@ func (s *AuthSuite) Test_CheckToken_When_Valid_No_DPoP_Expect_Error() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, _, err = s.auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
+	hdr := http.Header{"Authorization": []string{"Bearer " + string(signedTok)}}
+	token, _, tokenType, err := s.auth.parseTokenFromHeader(hdr)
+	s.Require().NoError(err)
+	_, err = s.auth.checkToken(context.Background(), token, "Bearer "+string(signedTok), tokenType, receiverInfo{}, nil)
 	s.Require().Error(err)
 	s.Require().Contains(err.Error(), "dpop")
 }
@@ -394,6 +400,10 @@ type dpopTestCase struct {
 }
 
 func (s *AuthSuite) TestInvalid_DPoP_Cases() {
+	if !s.auth.enforceDPoP {
+		s.T().Skip("DPoP enforcement is disabled; skipping DPoP error tests")
+	}
+
 	dpopRaw, err := rsa.GenerateKey(rand.Reader, 2048)
 	s.Require().NoError(err)
 	dpopKey, err := jwk.FromRaw(dpopRaw)
@@ -448,23 +458,24 @@ func (s *AuthSuite) TestInvalid_DPoP_Cases() {
 		},
 		{
 			dpopPublic, dpopKey, signedTokWithNoCNF, jwa.RS256, "dpop+jwt", http.MethodPost, "/a/path", "", time.Now(),
-			"missing `cnf` claim in access token",
+			"missing `cnf` claim in DPoP access token",
 		},
 	}
 
 	for _, testCase := range testCases {
 		s.Run(testCase.errorMessage, func() {
 			dpopToken := makeDPoPToken(s.T(), testCase)
-			_, _, err = s.auth.checkToken(
-				context.Background(),
-				[]string{"DPoP " + string(testCase.accessToken)},
-				receiverInfo{
-					u: []string{"/a/path"},
-					m: []string{http.MethodPost},
-				},
-				[]string{dpopToken},
-			)
-
+			hdr := http.Header{"Authorization": []string{"DPoP " + string(testCase.accessToken)}, "Dpop": []string{dpopToken}}
+			token, _, tokenType, err := s.auth.parseTokenFromHeader(hdr)
+			if err != nil {
+				s.Require().Error(err)
+				s.Contains(err.Error(), testCase.errorMessage)
+				return
+			}
+			_, err = s.auth.checkToken(context.Background(), token, "DPoP "+string(testCase.accessToken), tokenType, receiverInfo{
+				u: []string{"/a/path"},
+				m: []string{http.MethodPost},
+			}, []string{dpopToken})
 			s.Require().Error(err)
 			s.Contains(err.Error(), testCase.errorMessage)
 		})
@@ -570,7 +581,8 @@ func (s *AuthSuite) TestDPoPEndToEnd_HTTP() {
 		MinVersion: tls.VersionTLS12,
 	}))
 	s.Require().NoError(err)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", signedTok))
+	// DPoP Authorization header MUST be DPoP not Bearer (RFC 9449 https://www.rfc-editor.org/rfc/rfc9449.html#name-compatibility-with-the-bear)
+	req.Header.Set("Authorization", fmt.Sprintf("DPoP %s", signedTok))
 	dpopTok, err := addingInterceptor.GetDPoPToken(server.URL+"/attributes", "GET", string(signedTok))
 	s.Require().NoError(err)
 	req.Header.Set("DPoP", dpopTok)
@@ -656,6 +668,19 @@ func makeDPoPToken(t *testing.T, tc dpopTestCase) string {
 }
 
 func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
+	s.SetupTest() // Ensure OIDC config and test server are set up
+
+	// Recreate the OIDC config and user info cache as in SetupTest
+	oidcConfig := &oidc.DiscoveryConfiguration{
+		Issuer:           s.server.URL,
+		JwksURI:          s.server.URL + "/jwks",
+		UserinfoEndpoint: s.server.URL + "/userinfo",
+	}
+	cacheManager, _ := cache.NewCacheManager(1 << 20)
+	cache, err := cacheManager.NewCache("userinfo", &logger.Logger{Logger: slog.New(slog.Default().Handler())}, cache.Options{Expiration: time.Minute, Cost: 1})
+	s.Require().NoError(err)
+	userInfoCache, _ := oidc.NewUserInfoCache(oidcConfig, cache, &logger.Logger{Logger: slog.New(slog.Default().Handler())})
+
 	authnConfig := AuthNConfig{
 		EnforceDPoP: false,
 		Issuer:      s.server.URL,
@@ -663,10 +688,12 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	}
 	config := Config{}
 	config.AuthNConfig = authnConfig
-	auth, err := NewAuthenticator(context.Background(), config, &logger.Logger{
+	auth, err := NewAuthenticator(context.Background(), &config, &logger.Logger{
 		Logger: slog.New(slog.Default().Handler()),
 	},
 		func(_ string, _ any) error { return nil },
+		oidcConfig,
+		userInfoCache,
 	)
 
 	s.Require().NoError(err)
@@ -681,9 +708,10 @@ func (s *AuthSuite) Test_Allowing_Auth_With_No_DPoP() {
 	s.NotNil(signedTok)
 	s.Require().NoError(err)
 
-	_, ctx, err := auth.checkToken(context.Background(), []string{"Bearer " + string(signedTok)}, receiverInfo{}, nil)
-	s.Require().NoError(err)
-	s.Require().Nil(ctxAuth.GetJWKFromContext(ctx, logger.CreateTestLogger()))
+	parsedToken, _ := jwt.Parse(signedTok, jwt.WithKey(jwa.RS256, s.key))
+	jwtKey, err := auth.checkToken(context.Background(), parsedToken, "Bearer "+string(signedTok), TokenTypeBearer, receiverInfo{}, nil)
+	s.Require().ErrorIs(err, ErrNoDPoPSkipCheck)
+	s.Require().Nil(jwtKey)
 }
 
 func (s *AuthSuite) Test_PublicPath_Matches() {
@@ -793,3 +821,5 @@ func (s *AuthSuite) Test_LookupGatewayPaths() {
 		})
 	}
 }
+
+// TODO: Add a test that will ensure we follow strict validation for DPoP headers per https://www.rfc-editor.org/rfc/rfc9449.html

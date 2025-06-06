@@ -16,7 +16,6 @@ import (
 
 	"connectrpc.com/connect"
 	"connectrpc.com/grpcreflect"
-	"connectrpc.com/validate"
 	"github.com/go-chi/cors"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentdf/platform/sdk"
@@ -25,8 +24,9 @@ import (
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/internal/server/memhttp"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/cache"
+	"github.com/opentdf/platform/service/pkg/oidc"
 	"github.com/opentdf/platform/service/tracing"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -50,7 +50,13 @@ func (e Error) Error() string {
 // Configurations for the server
 type Config struct {
 	Auth auth.Config `mapstructure:"auth" json:"auth"`
-	GRPC GRPCConfig  `mapstructure:"grpc" json:"grpc"`
+
+	Cache CacheConfig `mapstructure:"cache" json:"cache"`
+
+	// OIDC Discovery configuration
+	OIDCDiscovery *oidc.DiscoveryConfiguration
+
+	GRPC GRPCConfig `mapstructure:"grpc" json:"grpc"`
 	// To Deprecate: Use the WithKey[X]Provider StartOptions to register trust providers.
 	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider" json:"cryptoProvider"`
 	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
@@ -84,6 +90,17 @@ func (c Config) LogValue() slog.Value {
 	}
 
 	return slog.GroupValue(group...)
+}
+
+type CacheRistrettoConfig struct {
+	// MaxCost is the maximum cost of the cache (default: 100MB)
+	MaxCost int64 `mapstructure:"maxCost" json:"maxCost" default:"100000000"`
+}
+
+type CacheConfig struct {
+	Driver           string               `mapstructure:"driver" json:"driver" default:"ristretto"`
+	RistrettoCache   CacheRistrettoConfig `mapstructure:"ristretto" json:"ristretto"`
+	UserInfoCacheTTL time.Duration        `mapstructure:"userInfoCacheTTL" json:"userInfoCacheTTL" default:"5m"`
 }
 
 // GRPC Server specific configurations
@@ -130,6 +147,9 @@ type OpenTDFServer struct {
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
+	CacheManager        *cache.Manager
+
+	UserInfoCache *oidc.UserInfoCache
 
 	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
 	CryptoProvider *security.StandardCrypto
@@ -153,41 +173,63 @@ type inProcessServer struct {
 	*ConnectRPC
 }
 
-func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, error) {
-	var (
-		authN *auth.Authentication
-		err   error
-	)
+// UserInfoCacheCost is the cost of the user info cache
+const userInfoCacheCost = 10
 
-	// Add authN interceptor
-	// TODO Remove this conditional once we move to the hardening phase (https://github.com/opentdf/platform/issues/381)
-	if config.Auth.Enabled {
-		authN, err = auth.NewAuthenticator(
-			context.Background(),
-			config.Auth,
-			logger,
-			config.WellKnownConfigRegister,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
-		}
-		logger.Debug("authentication interceptor enabled")
-	} else {
-		logger.Warn("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP set `enforceDPoP = false`")
+func NewOpenTDFServer(ctx context.Context, config Config, logger *logger.Logger, cacheManager *cache.Manager) (*OpenTDFServer, error) {
+	var err error
+	svr := &OpenTDFServer{
+		logger:         logger,
+		CacheManager:   cacheManager,
+		PublicHostname: config.PublicHostname,
 	}
 
-	connectRPCIpc, err := newConnectRPCIPC(config, authN, logger)
+	// Create userinfo cache for enriched claims
+	userInfoCache, err := cacheManager.NewCache("essential:"+oidc.UserInfoCacheService, logger, cache.Options{
+		Expiration: config.Cache.UserInfoCacheTTL,
+		Cost:       userInfoCacheCost,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create userinfo cache: %w", err)
+	}
+	svr.UserInfoCache, err = oidc.NewUserInfoCache(config.OIDCDiscovery, userInfoCache, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create userinfo cache: %w", err)
+	}
+
+	// Add authN interceptor
+	svr.AuthN, err = auth.NewAuthenticator(
+		ctx,
+		&config.Auth,
+		logger,
+		config.WellKnownConfigRegister,
+		config.OIDCDiscovery,
+		svr.UserInfoCache,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create authentication interceptor: %w", err)
+	}
+
+	// Setup IPC
+	ipc, err := newConnectRPCIPC(config, svr.AuthN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc ipc server: %w", err)
 	}
+	svr.ConnectRPCInProcess = &inProcessServer{
+		srv:                memhttp.New(ipc.Mux),
+		maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
+		maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
+		ConnectRPC:         ipc,
+	}
 
-	connectRPC, err := newConnectRPC(config, authN, logger)
+	// Setup Connect RPC
+	svr.ConnectRPC, err = newConnectRPC(config, svr.AuthN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connect rpc server: %w", err)
 	}
 
 	// GRPC Gateway Mux
-	grpcGatewayMux := runtime.NewServeMux(
+	svr.GRPCGatewayMux = runtime.NewServeMux(
 		runtime.WithIncomingHeaderMatcher(
 			func(key string) (string, bool) {
 				if k, ok := runtime.DefaultHeaderMatcher(key); ok {
@@ -213,36 +255,21 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 	)
 
 	// Create http server
-	httpServer, err := newHTTPServer(config, connectRPC.Mux, grpcGatewayMux, authN, logger)
+	svr.HTTPServer, err = newHTTPServer(config, svr.ConnectRPC.Mux, svr.GRPCGatewayMux, svr.AuthN, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http server: %w", err)
 	}
 
-	o := OpenTDFServer{
-		AuthN:          authN,
-		GRPCGatewayMux: grpcGatewayMux,
-		HTTPServer:     httpServer,
-		ConnectRPC:     connectRPC,
-		ConnectRPCInProcess: &inProcessServer{
-			srv:                memhttp.New(connectRPCIpc.Mux),
-			maxCallRecvMsgSize: config.GRPC.MaxCallRecvMsgSizeBytes,
-			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
-			ConnectRPC:         connectRPCIpc,
-		},
-		logger:         logger,
-		PublicHostname: config.PublicHostname,
-	}
-
+	// Create crypto provider
 	if !config.CryptoProvider.IsEmpty() {
-		// Create crypto provider
-		logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
-		o.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
+		svr.logger.Info("creating crypto provider", slog.String("type", config.CryptoProvider.Type))
+		svr.CryptoProvider, err = security.NewCryptoProvider(config.CryptoProvider)
 		if err != nil {
 			return nil, fmt.Errorf("security.NewCryptoProvider: %w", err)
 		}
 	}
 
-	return &o, nil
+	return svr, nil
 }
 
 // Custom response writer to add deprecation header
@@ -385,52 +412,6 @@ func pprofHandler(h http.Handler) http.Handler {
 	})
 }
 
-func newConnectRPCIPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
-	interceptors := make([]connect.HandlerOption, 0)
-
-	if c.Auth.Enabled {
-		interceptors = append(interceptors, connect.WithInterceptors(a.IPCUnaryServerInterceptor()))
-	} else {
-		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
-	}
-
-	// Add protovalidate interceptor
-	vaidationInterceptor, err := validate.NewInterceptor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
-	}
-
-	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor()))
-
-	return &ConnectRPC{
-		Interceptors: interceptors,
-		Mux:          http.NewServeMux(),
-	}, nil
-}
-
-func newConnectRPC(c Config, a *auth.Authentication, logger *logger.Logger) (*ConnectRPC, error) {
-	interceptors := make([]connect.HandlerOption, 0)
-
-	if c.Auth.Enabled {
-		interceptors = append(interceptors, connect.WithInterceptors(a.ConnectUnaryServerInterceptor()))
-	} else {
-		logger.Error("disabling authentication. this is deprecated and will be removed. if you are using an IdP without DPoP you can set `enforceDpop = false`")
-	}
-
-	// Add protovalidate interceptor
-	vaidationInterceptor, err := validate.NewInterceptor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create validation interceptor: %w", err)
-	}
-
-	interceptors = append(interceptors, connect.WithInterceptors(vaidationInterceptor, audit.ContextServerInterceptor()))
-
-	return &ConnectRPC{
-		Interceptors: interceptors,
-		Mux:          http.NewServeMux(),
-	}, nil
-}
-
 func (s OpenTDFServer) Start() error {
 	// Add reflection api to connect-rpc
 	reflector := grpcreflect.NewStaticReflector(
@@ -455,9 +436,9 @@ func (s OpenTDFServer) Start() error {
 	return nil
 }
 
-func (s OpenTDFServer) Stop() {
+func (s OpenTDFServer) Stop(ctx context.Context) {
 	s.logger.Info("shutting down http server")
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	ctx, cancel := context.WithTimeout(ctx, shutdownTimeout)
 	defer cancel()
 	if err := s.HTTPServer.Shutdown(ctx); err != nil {
 		s.logger.Error("failed to shutdown http server", slog.String("error", err.Error()))

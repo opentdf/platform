@@ -1,4 +1,4 @@
-package rttests
+package integration
 
 import (
 	"context"
@@ -117,7 +117,7 @@ func (s *RoundtripSuite) SetupSuite() {
 		s.TestConfig.PlatformEndpointWithScheme = "https://" + s.TestConfig.PlatformEndpoint
 	}
 
-	opts = append(opts, sdk.WithClientCredentials(s.TestConfig.ClientID, s.TestConfig.ClientSecret, nil))
+	opts = append(opts, sdk.WithClientCredentials(s.TestConfig.ClientID, s.TestConfig.ClientSecret, []string{"openid", "profile", "email"}))
 
 	sdk, err := sdk.New(s.TestConfig.PlatformEndpointWithScheme, opts...)
 	s.Require().NoError(err)

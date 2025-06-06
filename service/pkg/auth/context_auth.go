@@ -13,16 +13,18 @@ var authnContextKey = authContextKey{}
 type authContextKey struct{}
 
 type authContext struct {
-	key         jwk.Key
-	accessToken jwt.Token
-	rawToken    string
+	key      jwk.Key
+	token    jwt.Token
+	tokenRaw string
+	userInfo []byte
 }
 
-func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, accessToken jwt.Token, raw string) context.Context {
+func ContextWithAuthNInfo(ctx context.Context, key jwk.Key, token jwt.Token, tokenRaw string, userInfo []byte) context.Context {
 	return context.WithValue(ctx, authnContextKey, &authContext{
 		key,
-		accessToken,
-		raw,
+		token,
+		tokenRaw,
+		userInfo,
 	})
 }
 
@@ -49,14 +51,21 @@ func GetJWKFromContext(ctx context.Context, l *logger.Logger) jwk.Key {
 
 func GetAccessTokenFromContext(ctx context.Context, l *logger.Logger) jwt.Token {
 	if c := getContextDetails(ctx, l); c != nil {
-		return c.accessToken
+		return c.token
 	}
 	return nil
 }
 
 func GetRawAccessTokenFromContext(ctx context.Context, l *logger.Logger) string {
 	if c := getContextDetails(ctx, l); c != nil {
-		return c.rawToken
+		return c.tokenRaw
 	}
 	return ""
+}
+
+func GetUserInfoFromContext(ctx context.Context, l *logger.Logger) []byte {
+	if c := getContextDetails(ctx, l); c != nil {
+		return c.userInfo
+	}
+	return nil
 }

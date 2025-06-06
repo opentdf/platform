@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PKCE Demo - Keycloak Localhost</title>
+  <link href="/assets/style.css" rel="stylesheet">
+  <!-- CONFIG DIRECTIVE -->
+  <script defer src="/assets/script.js"></script>
+</head>
+<body>
+  <div class="container mx-auto">
+    <h1>PKCE OAuth2 Demo (Keycloak @ localhost:8888)</h1>
+
+    <div class="section">
+      <div class="flex items-center mb-2">
+        <button id="login" class="bg-blue-500 hover:bg-blue-600">Login</button>
+        <label class="ml-4">
+          <input type="checkbox" id="with-dpop" class="mr-2"> With DPoP
+        </label>
+        <span id="login-status" class="status-text"></span>
+      </div>
+      <div class="flex items-center mt-2">
+        <span id="token-expiry-timer" class="status-text"></span>
+        <label class="ml-4">
+          <input type="checkbox" id="auto-refresh-token" checked class="mr-2"> Auto-refresh token
+        </label>
+        <button id="logout" class="bg-red-500 hover:bg-red-600 ml-4" style="display:none;">Logout</button>
+        <button id="refresh-token" class="bg-teal-500 hover:bg-teal-600 ml-4" style="display:none">Refresh Token</button>
+      </div>
+      <div class="mt-2">
+        <span id="user-info" class="status-text"></span>
+      </div>
+    </div>
+
+    <div class="section" id="userinfo-section" style="display:none">
+      <h2>UserInfo</h2>
+      <button id="fetch-userinfo" class="bg-orange-500 hover:bg-orange-600">Fetch UserInfo</button>
+      <pre id="userinfo-pre" class="mt-4"></pre>
+    </div>
+
+    <div class="section" id="dpop-keys-section" style="display:none">
+      <h2>DPoP Key Information (Public JWK)</h2>
+      <pre id="dpop-key-info-pre" class="mt-4"></pre>
+    </div>
+
+    <div class="section" id="endpoints-section" style="display:none">
+      <h2>Quick Endpoint Tests</h2>
+      <div class="flex flex-wrap items-center mb-4">
+        <button class="endpoint-btn bg-indigo-500 hover:bg-indigo-600" id="write-namespace-btn" data-url="__PLATFORM_ENDPOINT__/policy.namespaces.NamespaceService/CreateNamespace" data-method="POST">Admin Role: Create Random Namespace</button>
+        <button class="endpoint-btn bg-indigo-500 hover:bg-indigo-600" id="read-namespaces-btn" data-url="__PLATFORM_ENDPOINT__/policy.namespaces.NamespaceService/ListNamespaces" data-method="POST" data-body="{}">Standard Role: List Namespaces</button>
+        <button class="endpoint-btn bg-indigo-500 hover:bg-indigo-600" id="rewrap-unknown-btn" data-url="__PLATFORM_ENDPOINT__/kas.AccessService/Rewrap" data-method="POST" data-body="{}">Unknown Role: Read KAS ReWrap</button>
+      </div>
+      <pre id="endpoint-result" class="mt-4"></pre>
+    </div>
+
+    <div class="section" id="tokens-section">
+      <h2>Tokens</h2>
+      <pre id="tokens-pre" class="mt-4"></pre>
+    </div>
+  </div>
+</body>
+</html>

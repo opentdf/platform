@@ -120,7 +120,7 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_WithName_Succeeds() {
 	pcIDs = append(pcIDs, pc.GetId())
 
 	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
-		Name: pc.GetName(),
+		Name: testProvider,
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)

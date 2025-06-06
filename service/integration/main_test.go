@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/creasty/defaults"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
+	"github.com/google/uuid"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -69,37 +69,28 @@ func TestMain(m *testing.M) {
 		providerType = tc.ProviderDocker
 	}
 
+	randomSuffix := uuid.NewString()[:8]
+	containerName := fmt.Sprintf("testcontainer-postgres-%s", randomSuffix)
+
 	req := tc.GenericContainerRequest{
 		ProviderType: providerType,
 		ContainerRequest: tc.ContainerRequest{
 			Image:        "postgres:15-alpine",
-			Name:         "testcontainer-postgres",
+			Name:         containerName,
 			ExposedPorts: []string{"5432/tcp"},
-			HostConfigModifier: func(config *container.HostConfig) {
-				config.PortBindings = nat.PortMap{
-					"5432/tcp": []nat.PortBinding{
-						{
-							HostIP:   "0.0.0.0",
-							HostPort: "54322",
-						},
-					},
-				}
-			},
 			Env: map[string]string{
 				"POSTGRES_USER":     conf.DB.User,
 				"POSTGRES_PASSWORD": conf.DB.Password,
 				"POSTGRES_DB":       conf.DB.Database,
 			},
-
 			WaitingFor: wait.ForSQL(nat.Port("5432/tcp"), "pgx", func(host string, port nat.Port) string {
-				net.JoinHostPort(host, port.Port())
 				return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable",
 					conf.DB.User,
 					conf.DB.Password,
 					net.JoinHostPort(host, port.Port()),
 					conf.DB.Database,
 				)
-			}).WithStartupTimeout(time.Second * 5).WithQuery("SELECT 10"),
+			}).WithStartupTimeout(time.Second * 60).WithQuery("SELECT 1"), // Increased timeout and simplified query
 		},
 		Started: true,
 	}

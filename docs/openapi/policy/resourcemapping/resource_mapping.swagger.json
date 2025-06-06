@@ -15,432 +15,7 @@
   "produces": [
     "application/json"
   ],
-  "paths": {
-    "/resource-mapping-groups": {
-      "get": {
-        "operationId": "ResourceMappingService_ListResourceMappingGroups",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingListResourceMappingGroupsResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "namespaceId",
-            "description": "Optional",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "pagination.limit",
-            "description": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "pagination.offset",
-            "description": "Optional\nDefaulted if not provided",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      },
-      "post": {
-        "operationId": "ResourceMappingService_CreateResourceMappingGroup",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingCreateResourceMappingGroupResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/resourcemappingCreateResourceMappingGroupRequest"
-            }
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      }
-    },
-    "/resource-mapping-groups/{id}": {
-      "get": {
-        "operationId": "ResourceMappingService_GetResourceMappingGroup",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingGetResourceMappingGroupResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      },
-      "delete": {
-        "operationId": "ResourceMappingService_DeleteResourceMappingGroup",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingDeleteResourceMappingGroupResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      },
-      "patch": {
-        "operationId": "ResourceMappingService_UpdateResourceMappingGroup",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingUpdateResourceMappingGroupResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "namespaceId": {
-                  "type": "string",
-                  "title": "Optional"
-                },
-                "name": {
-                  "type": "string",
-                  "title": "Optional"
-                },
-                "metadata": {
-                  "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Common metadata"
-                },
-                "metadataUpdateBehavior": {
-                  "$ref": "#/definitions/commonMetadataUpdateEnum"
-                }
-              }
-            }
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      }
-    },
-    "/resource-mappings": {
-      "get": {
-        "operationId": "ResourceMappingService_ListResourceMappings",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingListResourceMappingsResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "groupId",
-            "description": "Optional",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "pagination.limit",
-            "description": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "pagination.offset",
-            "description": "Optional\nDefaulted if not provided",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      },
-      "post": {
-        "operationId": "ResourceMappingService_CreateResourceMapping",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingCreateResourceMappingResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/resourcemappingCreateResourceMappingRequest"
-            }
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      }
-    },
-    "/resource-mappings/group-fqns": {
-      "get": {
-        "operationId": "ResourceMappingService_ListResourceMappingsByGroupFqns",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingListResourceMappingsByGroupFqnsResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "fqns",
-            "description": "Required\nStructure of the RM Group FQN is 'https://\u003cnamespace\u003e/resm/\u003cgroup name\u003e'",
-            "in": "query",
-            "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      }
-    },
-    "/resource-mappings/{id}": {
-      "get": {
-        "operationId": "ResourceMappingService_GetResourceMapping",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingGetResourceMappingResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      },
-      "delete": {
-        "operationId": "ResourceMappingService_DeleteResourceMapping",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingDeleteResourceMappingResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      },
-      "patch": {
-        "operationId": "ResourceMappingService_UpdateResourceMapping",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourcemappingUpdateResourceMappingResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "attributeValueId": {
-                  "type": "string",
-                  "title": "Optional"
-                },
-                "terms": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  },
-                  "title": "Optional"
-                },
-                "groupId": {
-                  "type": "string",
-                  "title": "Optional"
-                },
-                "metadata": {
-                  "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Optional\nCommon Metadata"
-                },
-                "metadataUpdateBehavior": {
-                  "$ref": "#/definitions/commonMetadataUpdateEnum"
-                }
-              }
-            }
-          }
-        ],
-        "tags": [
-          "ResourceMappingService"
-        ]
-      }
-    }
-  },
+  "paths": {},
   "definitions": {
     "ActionStandardAction": {
       "type": "string",
@@ -534,51 +109,6 @@
       "default": "ALGORITHM_UNSPECIFIED",
       "description": "Supported key algorithms."
     },
-    "policyAsymmetricKey": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "title": "Required"
-        },
-        "keyId": {
-          "type": "string",
-          "title": "Required"
-        },
-        "keyAlgorithm": {
-          "$ref": "#/definitions/policyAlgorithm",
-          "title": "Required"
-        },
-        "keyStatus": {
-          "$ref": "#/definitions/policyKeyStatus",
-          "title": "Required"
-        },
-        "keyMode": {
-          "$ref": "#/definitions/policyKeyMode",
-          "description": "Specifies how the key is managed (local or remote)",
-          "title": "Required"
-        },
-        "publicKeyCtx": {
-          "$ref": "#/definitions/policyPublicKeyCtx",
-          "description": "Specific structure based on key provider implementation",
-          "title": "Required"
-        },
-        "privateKeyCtx": {
-          "$ref": "#/definitions/policyPrivateKeyCtx",
-          "description": "Specific structure based on key provider implementation",
-          "title": "Optional"
-        },
-        "providerConfig": {
-          "$ref": "#/definitions/policyKeyProviderConfig",
-          "description": "Configuration for the key provider",
-          "title": "Optional"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata",
-          "title": "Common metadata fields"
-        }
-      }
-    },
     "policyAttribute": {
       "type": "object",
       "properties": {
@@ -623,7 +153,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           },
           "title": "Keys associated with the attribute"
         },
@@ -690,20 +220,6 @@
       },
       "title": "A collection of Conditions evaluated by the boolean_operator provided"
     },
-    "policyKasKey": {
-      "type": "object",
-      "properties": {
-        "kasId": {
-          "type": "string"
-        },
-        "key": {
-          "$ref": "#/definitions/policyAsymmetricKey"
-        },
-        "kasUri": {
-          "type": "string"
-        }
-      }
-    },
     "policyKasPublicKey": {
       "type": "object",
       "properties": {
@@ -769,7 +285,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           },
           "title": "Kas keys associated with this KAS"
         },
@@ -783,47 +299,6 @@
         }
       },
       "title": "Key Access Server Registry"
-    },
-    "policyKeyMode": {
-      "type": "string",
-      "enum": [
-        "KEY_MODE_UNSPECIFIED",
-        "KEY_MODE_CONFIG_ROOT_KEY",
-        "KEY_MODE_PROVIDER_ROOT_KEY",
-        "KEY_MODE_REMOTE",
-        "KEY_MODE_PUBLIC_KEY_ONLY"
-      ],
-      "default": "KEY_MODE_UNSPECIFIED",
-      "description": "Describes the management and operational mode of a cryptographic key.\n\n - KEY_MODE_UNSPECIFIED: KEY_MODE_UNSPECIFIED: Default, unspecified key mode. Indicates an uninitialized or error state.\n - KEY_MODE_CONFIG_ROOT_KEY: KEY_MODE_CONFIG_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nsourced from local configuration. Unwrapping and all cryptographic operations are performed locally.\n - KEY_MODE_PROVIDER_ROOT_KEY: KEY_MODE_PROVIDER_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nmanaged by an external provider (e.g., a Hardware Security Module or Cloud KMS).\nKey unwrapping is delegated to the external provider; subsequent cryptographic operations\nare performed locally using the unwrapped key.\n - KEY_MODE_REMOTE: KEY_MODE_REMOTE: Remote key management where the private key is stored in, and all cryptographic\noperations are performed by, a remote Key Management Service (KMS) or HSM.\nThe private key material never leaves the secure boundary of the remote system.\n - KEY_MODE_PUBLIC_KEY_ONLY: KEY_MODE_PUBLIC_KEY_ONLY: Public key only mode. Used when only a public key is available or required,\ntypically for wrapping operations (e.g., encrypting a Data Encryption Key (DEK) for an external KAS).\nThe corresponding private key is not managed or accessible by this system."
-    },
-    "policyKeyProviderConfig": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "configJson": {
-          "type": "string",
-          "format": "byte"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata",
-          "title": "Common metadata"
-        }
-      }
-    },
-    "policyKeyStatus": {
-      "type": "string",
-      "enum": [
-        "KEY_STATUS_UNSPECIFIED",
-        "KEY_STATUS_ACTIVE",
-        "KEY_STATUS_ROTATED"
-      ],
-      "default": "KEY_STATUS_UNSPECIFIED",
-      "title": "The status of the key"
     },
     "policyNamespace": {
       "type": "object",
@@ -858,7 +333,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           },
           "title": "Keys for the namespace"
         }
@@ -899,21 +374,6 @@
         }
       }
     },
-    "policyPrivateKeyCtx": {
-      "type": "object",
-      "properties": {
-        "keyId": {
-          "type": "string",
-          "description": "Key ID for the symmetric key wrapping this key.",
-          "title": "Required"
-        },
-        "wrappedKey": {
-          "type": "string",
-          "description": "Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.",
-          "title": "Optional"
-        }
-      }
-    },
     "policyPublicKey": {
       "type": "object",
       "properties": {
@@ -927,16 +387,6 @@
         }
       },
       "title": "Deprecated"
-    },
-    "policyPublicKeyCtx": {
-      "type": "object",
-      "properties": {
-        "pem": {
-          "type": "string",
-          "description": "Base64 encoded public key in PEM format",
-          "title": "Required"
-        }
-      }
     },
     "policyResourceMapping": {
       "type": "object",
@@ -982,6 +432,37 @@
         }
       },
       "description": "Resource Mapping Groups are namespaced collections of Resource Mappings\nassociated under a common group name."
+    },
+    "policySimpleKasKey": {
+      "type": "object",
+      "properties": {
+        "kasUri": {
+          "type": "string",
+          "title": "The URL of the Key Access Server"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policySimpleKasPublicKey",
+          "title": "The public key of the Key that belongs to the KAS"
+        },
+        "kasId": {
+          "type": "string",
+          "title": "The ID of the Key Access Server"
+        }
+      }
+    },
+    "policySimpleKasPublicKey": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "$ref": "#/definitions/policyAlgorithm"
+        },
+        "kid": {
+          "type": "string"
+        },
+        "pem": {
+          "type": "string"
+        }
+      }
     },
     "policySourceType": {
       "type": "string",
@@ -1105,7 +586,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           }
         },
         "resourceMappings": {
@@ -1132,52 +613,11 @@
       "additionalProperties": {},
       "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
     },
-    "resourcemappingCreateResourceMappingGroupRequest": {
-      "type": "object",
-      "properties": {
-        "namespaceId": {
-          "type": "string",
-          "title": "Required"
-        },
-        "name": {
-          "type": "string",
-          "title": "Required"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable",
-          "title": "Common metadata"
-        }
-      }
-    },
     "resourcemappingCreateResourceMappingGroupResponse": {
       "type": "object",
       "properties": {
         "resourceMappingGroup": {
           "$ref": "#/definitions/policyResourceMappingGroup"
-        }
-      }
-    },
-    "resourcemappingCreateResourceMappingRequest": {
-      "type": "object",
-      "properties": {
-        "attributeValueId": {
-          "type": "string",
-          "title": "Required"
-        },
-        "terms": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "Required"
-        },
-        "groupId": {
-          "type": "string",
-          "title": "Optional"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable",
-          "title": "Optional"
         }
       }
     },

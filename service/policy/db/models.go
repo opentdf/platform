@@ -373,10 +373,11 @@ type SubjectConditionSet struct {
 	// Conditions that must be met for the subject entity to be entitled to the attribute value (see protos for JSON structure)
 	Condition []byte `json:"condition"`
 	// Metadata for the condition set (see protos for structure)
-	Metadata       []byte             `json:"metadata"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	SelectorValues []string           `json:"selector_values"`
+	Metadata  []byte             `json:"metadata"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	// Array of cached selector values extracted from the condition JSONB and maintained via trigger.
+	SelectorValues []string `json:"selector_values"`
 }
 
 // Table to store conditions that logically entitle subject entity representations to attribute values

@@ -30,12 +30,10 @@ message EntityIdentifier {
 
     // fully qualified name of the registered resource value stored in platform policy, where in
     // this case the resource acts as and represents a single entity for authorization/entitlement decisioning
-    string registered_resource_value_fqn = 2 [
-      (buf.validate.field).string = {
-        min_len: 1
-        uri: true
-      }
-    ];
+    string registered_resource_value_fqn = 2 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
 
     // access token (JWT), which is used to create an entity chain (comprising one or more entities)
     entity.Token token = 3 [(buf.validate.field).cel = {
@@ -67,8 +65,15 @@ message Resource {
   }
 
   oneof resource {
-    AttributeValues attribute_values = 2;
-    string registered_resource_value_fqn = 3;
+    AttributeValues attribute_values = 2 [(buf.validate.field).cel = {
+      id: "attribute_values_required"
+      message: "if provided, resource.attribute_values must not be empty"
+      expression: "this.fqns.size() > 0 && this.fqns.all(item, item.isUri())"
+    }];
+    string registered_resource_value_fqn = 3 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
   }
 }
 

@@ -14,3 +14,7 @@ managed:
 plugins:
   - remote: buf.build/grpc-ecosystem/openapiv2:v2.18.1
     out: docs/openapi
+  - local: protoc-gen-connect-openapi
+    out: docs/openapi
+    opt:
+      - format=yaml

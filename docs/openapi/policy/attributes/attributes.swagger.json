@@ -16,98 +16,6 @@
     "application/json"
   ],
   "paths": {
-    "/attributes": {
-      "get": {
-        "summary": "--------------------------------------*\nAttribute RPCs\n---------------------------------------",
-        "operationId": "AttributesService_ListAttributes",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesListAttributesResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "state",
-            "description": "Optional\nACTIVE by default when not specified",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "ACTIVE_STATE_ENUM_UNSPECIFIED",
-              "ACTIVE_STATE_ENUM_ACTIVE",
-              "ACTIVE_STATE_ENUM_INACTIVE",
-              "ACTIVE_STATE_ENUM_ANY"
-            ],
-            "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
-          },
-          {
-            "name": "namespace",
-            "description": "Optional\nNamespace ID or name",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "pagination.limit",
-            "description": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "pagination.offset",
-            "description": "Optional\nDefaulted if not provided",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      },
-      "post": {
-        "operationId": "AttributesService_CreateAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesCreateAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesCreateAttributeRequest"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
     "/attributes/*/fqn": {
       "get": {
         "operationId": "AttributesService_GetAttributeValuesByFqns",
@@ -160,494 +68,6 @@
             "in": "query",
             "required": false,
             "type": "boolean"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/*/values": {
-      "get": {
-        "operationId": "AttributesService_ListAttributeValues",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesListAttributeValuesResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "attributeId",
-            "description": "Required",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "state",
-            "description": "Optional\nACTIVE by default when not specified",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "ACTIVE_STATE_ENUM_UNSPECIFIED",
-              "ACTIVE_STATE_ENUM_ACTIVE",
-              "ACTIVE_STATE_ENUM_INACTIVE",
-              "ACTIVE_STATE_ENUM_ANY"
-            ],
-            "default": "ACTIVE_STATE_ENUM_UNSPECIFIED"
-          },
-          {
-            "name": "pagination.limit",
-            "description": "Optional\nSet to configured default limit if not provided\nMaximum limit set in platform config and enforced by services",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          },
-          {
-            "name": "pagination.offset",
-            "description": "Optional\nDefaulted if not provided",
-            "in": "query",
-            "required": false,
-            "type": "integer",
-            "format": "int32"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/*/values/{id}": {
-      "get": {
-        "summary": "--------------------------------------*\nValue RPCs\n---------------------------------------",
-        "operationId": "AttributesService_GetAttributeValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesGetAttributeValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Deprecated",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "valueId",
-            "description": "option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "fqn",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      },
-      "delete": {
-        "operationId": "AttributesService_DeactivateAttributeValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesDeactivateAttributeValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      },
-      "patch": {
-        "operationId": "AttributesService_UpdateAttributeValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesUpdateAttributeValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "metadata": {
-                  "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Optional\nCommon metadata"
-                },
-                "metadataUpdateBehavior": {
-                  "$ref": "#/definitions/commonMetadataUpdateEnum"
-                }
-              }
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/keyaccessserver/grants": {
-      "delete": {
-        "operationId": "AttributesService_RemoveKeyAccessServerFromAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "attributeKeyAccessServer.attributeId",
-            "description": "Required",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "attributeKeyAccessServer.keyAccessServerId",
-            "description": "Required",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      },
-      "post": {
-        "summary": "--------------------------------------*\nAttribute \u003c\u003e Key Access Server RPCs\n---------------------------------------",
-        "operationId": "AttributesService_AssignKeyAccessServerToAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesAssignKeyAccessServerToAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "attributeKeyAccessServer",
-            "description": "Required",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesAttributeKeyAccessServer"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/values/keyaccessserver/grants": {
-      "delete": {
-        "operationId": "AttributesService_RemoveKeyAccessServerFromValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesRemoveKeyAccessServerFromValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "valueKeyAccessServer.valueId",
-            "description": "Required",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "valueKeyAccessServer.keyAccessServerId",
-            "description": "Required",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      },
-      "post": {
-        "operationId": "AttributesService_AssignKeyAccessServerToValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesAssignKeyAccessServerToValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "valueKeyAccessServer",
-            "description": "Required",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/attributesValueKeyAccessServer"
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/{attributeId}/values": {
-      "post": {
-        "operationId": "AttributesService_CreateAttributeValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesCreateAttributeValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "attributeId",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "value": {
-                  "type": "string",
-                  "title": "Required"
-                },
-                "metadata": {
-                  "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Optional\nCommon metadata"
-                }
-              }
-            }
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      }
-    },
-    "/attributes/{id}": {
-      "get": {
-        "operationId": "AttributesService_GetAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesGetAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Deprecated",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "attributeId",
-            "description": "option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "fqn",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      },
-      "delete": {
-        "operationId": "AttributesService_DeactivateAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesDeactivateAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "AttributesService"
-        ]
-      },
-      "patch": {
-        "operationId": "AttributesService_UpdateAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/attributesUpdateAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "metadata": {
-                  "$ref": "#/definitions/commonMetadataMutable",
-                  "title": "Optional"
-                },
-                "metadataUpdateBehavior": {
-                  "$ref": "#/definitions/commonMetadataUpdateEnum"
-                }
-              }
-            }
           }
         ],
         "tags": [
@@ -738,34 +158,6 @@
         "keyAccessServerId": {
           "type": "string",
           "title": "Required"
-        }
-      }
-    },
-    "attributesCreateAttributeRequest": {
-      "type": "object",
-      "properties": {
-        "namespaceId": {
-          "type": "string",
-          "title": "Required"
-        },
-        "name": {
-          "type": "string",
-          "title": "Required"
-        },
-        "rule": {
-          "$ref": "#/definitions/policyAttributeRuleTypeEnum",
-          "title": "Required"
-        },
-        "values": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Optional \nAttribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.\nThe stored attribute value will be normalized to lower case."
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadataMutable",
-          "title": "Optional"
         }
       }
     },
@@ -1028,51 +420,6 @@
       "default": "ALGORITHM_UNSPECIFIED",
       "description": "Supported key algorithms."
     },
-    "policyAsymmetricKey": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "title": "Required"
-        },
-        "keyId": {
-          "type": "string",
-          "title": "Required"
-        },
-        "keyAlgorithm": {
-          "$ref": "#/definitions/policyAlgorithm",
-          "title": "Required"
-        },
-        "keyStatus": {
-          "$ref": "#/definitions/policyKeyStatus",
-          "title": "Required"
-        },
-        "keyMode": {
-          "$ref": "#/definitions/policyKeyMode",
-          "description": "Specifies how the key is managed (local or remote)",
-          "title": "Required"
-        },
-        "publicKeyCtx": {
-          "$ref": "#/definitions/policyPublicKeyCtx",
-          "description": "Specific structure based on key provider implementation",
-          "title": "Required"
-        },
-        "privateKeyCtx": {
-          "$ref": "#/definitions/policyPrivateKeyCtx",
-          "description": "Specific structure based on key provider implementation",
-          "title": "Optional"
-        },
-        "providerConfig": {
-          "$ref": "#/definitions/policyKeyProviderConfig",
-          "description": "Configuration for the key provider",
-          "title": "Optional"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata",
-          "title": "Common metadata fields"
-        }
-      }
-    },
     "policyAttribute": {
       "type": "object",
       "properties": {
@@ -1117,7 +464,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           },
           "title": "Keys associated with the attribute"
         },
@@ -1212,20 +559,6 @@
       },
       "title": "A collection of Conditions evaluated by the boolean_operator provided"
     },
-    "policyKasKey": {
-      "type": "object",
-      "properties": {
-        "kasId": {
-          "type": "string"
-        },
-        "key": {
-          "$ref": "#/definitions/policyAsymmetricKey"
-        },
-        "kasUri": {
-          "type": "string"
-        }
-      }
-    },
     "policyKasPublicKey": {
       "type": "object",
       "properties": {
@@ -1291,7 +624,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           },
           "title": "Kas keys associated with this KAS"
         },
@@ -1305,47 +638,6 @@
         }
       },
       "title": "Key Access Server Registry"
-    },
-    "policyKeyMode": {
-      "type": "string",
-      "enum": [
-        "KEY_MODE_UNSPECIFIED",
-        "KEY_MODE_CONFIG_ROOT_KEY",
-        "KEY_MODE_PROVIDER_ROOT_KEY",
-        "KEY_MODE_REMOTE",
-        "KEY_MODE_PUBLIC_KEY_ONLY"
-      ],
-      "default": "KEY_MODE_UNSPECIFIED",
-      "description": "Describes the management and operational mode of a cryptographic key.\n\n - KEY_MODE_UNSPECIFIED: KEY_MODE_UNSPECIFIED: Default, unspecified key mode. Indicates an uninitialized or error state.\n - KEY_MODE_CONFIG_ROOT_KEY: KEY_MODE_CONFIG_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nsourced from local configuration. Unwrapping and all cryptographic operations are performed locally.\n - KEY_MODE_PROVIDER_ROOT_KEY: KEY_MODE_PROVIDER_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nmanaged by an external provider (e.g., a Hardware Security Module or Cloud KMS).\nKey unwrapping is delegated to the external provider; subsequent cryptographic operations\nare performed locally using the unwrapped key.\n - KEY_MODE_REMOTE: KEY_MODE_REMOTE: Remote key management where the private key is stored in, and all cryptographic\noperations are performed by, a remote Key Management Service (KMS) or HSM.\nThe private key material never leaves the secure boundary of the remote system.\n - KEY_MODE_PUBLIC_KEY_ONLY: KEY_MODE_PUBLIC_KEY_ONLY: Public key only mode. Used when only a public key is available or required,\ntypically for wrapping operations (e.g., encrypting a Data Encryption Key (DEK) for an external KAS).\nThe corresponding private key is not managed or accessible by this system."
-    },
-    "policyKeyProviderConfig": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "configJson": {
-          "type": "string",
-          "format": "byte"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata",
-          "title": "Common metadata"
-        }
-      }
-    },
-    "policyKeyStatus": {
-      "type": "string",
-      "enum": [
-        "KEY_STATUS_UNSPECIFIED",
-        "KEY_STATUS_ACTIVE",
-        "KEY_STATUS_ROTATED"
-      ],
-      "default": "KEY_STATUS_UNSPECIFIED",
-      "title": "The status of the key"
     },
     "policyNamespace": {
       "type": "object",
@@ -1380,7 +672,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           },
           "title": "Keys for the namespace"
         }
@@ -1421,21 +713,6 @@
         }
       }
     },
-    "policyPrivateKeyCtx": {
-      "type": "object",
-      "properties": {
-        "keyId": {
-          "type": "string",
-          "description": "Key ID for the symmetric key wrapping this key.",
-          "title": "Required"
-        },
-        "wrappedKey": {
-          "type": "string",
-          "description": "Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.",
-          "title": "Optional"
-        }
-      }
-    },
     "policyPublicKey": {
       "type": "object",
       "properties": {
@@ -1449,16 +726,6 @@
         }
       },
       "title": "Deprecated"
-    },
-    "policyPublicKeyCtx": {
-      "type": "object",
-      "properties": {
-        "pem": {
-          "type": "string",
-          "description": "Base64 encoded public key in PEM format",
-          "title": "Required"
-        }
-      }
     },
     "policyResourceMapping": {
       "type": "object",
@@ -1504,6 +771,37 @@
         }
       },
       "description": "Resource Mapping Groups are namespaced collections of Resource Mappings\nassociated under a common group name."
+    },
+    "policySimpleKasKey": {
+      "type": "object",
+      "properties": {
+        "kasUri": {
+          "type": "string",
+          "title": "The URL of the Key Access Server"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policySimpleKasPublicKey",
+          "title": "The public key of the Key that belongs to the KAS"
+        },
+        "kasId": {
+          "type": "string",
+          "title": "The ID of the Key Access Server"
+        }
+      }
+    },
+    "policySimpleKasPublicKey": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "$ref": "#/definitions/policyAlgorithm"
+        },
+        "kid": {
+          "type": "string"
+        },
+        "pem": {
+          "type": "string"
+        }
+      }
     },
     "policySourceType": {
       "type": "string",
@@ -1627,7 +925,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           }
         },
         "resourceMappings": {

@@ -3,8 +3,9 @@ syntax = "proto3";
 package policy.kasregistry;
 
 import "buf/validate/validate.proto";
-import "common/common.proto";
 import "google/api/annotations.proto";
+
+import "common/common.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
 
@@ -604,17 +605,6 @@ message SetBaseKeyRequest {
   }
 }
 
-message SimpleKasPublicKey {
-  string algorithm = 1;
-  string kid = 2;
-  string pem = 3;
-}
-
-message SimpleKasKey {
-    string kas_uri = 1; // The URL of the Key Access Server
-    SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
-};
-
 message GetBaseKeyRequest {}
 message GetBaseKeyResponse {
   SimpleKasKey base_key = 1; // The current base key
@@ -632,31 +622,17 @@ service KeyAccessServerRegistryService {
   }
 
   rpc GetKeyAccessServer(GetKeyAccessServerRequest) returns (GetKeyAccessServerResponse) {
-    option (google.api.http) = {get: "/key-access-servers/{id}"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {
-    option (google.api.http) = {
-      post: "/key-access-servers"
-      body: "*"
-    };
-  }
+  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {}
 
-  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {
-    option (google.api.http) = {
-      patch: "/key-access-servers/{id}"
-      body: "*"
-    };
-  }
+  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {}
 
-  rpc DeleteKeyAccessServer(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {
-    option (google.api.http) = {delete: "/key-access-servers/{id}"};
-  }
+  rpc DeleteKeyAccessServer(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {}
 
   // Deprecated
   rpc ListKeyAccessServerGrants(ListKeyAccessServerGrantsRequest) returns (ListKeyAccessServerGrantsResponse) {
-    option (google.api.http) = {get: "/key-access-servers/grants"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

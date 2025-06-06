@@ -1,5 +1,10 @@
 on:
-  workflow_call: {}
+  workflow_call:
+    secrets:
+      APP_ID:
+        required: true
+      AUTOMATION_KEY:
+        required: true
 
 # Default empty permissions for all jobs
 permissions: {}
@@ -22,7 +27,7 @@ jobs:
 
       - name: "Generate a token"
         id: generate-token
-        uses: actions/create-github-app-token@30bf6253fa41bdc8d1501d202ad15287582246b4 # v2.0.3
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.AUTOMATION_KEY }}

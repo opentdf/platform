@@ -1,5 +1,10 @@
 on:
   workflow_call:
+    secrets:
+      APP_ID:
+        required: true
+      AUTOMATION_KEY:
+        required: true
     inputs:
       # https://github.com/korthout/backport-action/#conflict_resolution
       conflict_resolution:
@@ -21,22 +26,25 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
+
+      - name: "Generate a GitHub app token"
+        id: generate-token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_KEY }}
+
       - name: "Checkout"
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: true
-
-      - name: "Generate a GitHub app token"
-        id: generate-token
-        uses: actions/create-github-app-token@30bf6253fa41bdc8d1501d202ad15287582246b4 # v2.0.3
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.AUTOMATION_KEY }}
+          token: ${{ steps.generate-token.outputs.token }}
 
       - name: "Create backport pull requests"
         id: backport
         uses: korthout/backport-action@436145e922f9561fc5ea157ff406f21af2d6b363 # v3.2.0
         with:
+          github_token: ${{ steps.generate-token.outputs.token }}
           pull_title: ${{ inputs.pull_title }}
           experimental: >
             {

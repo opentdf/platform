@@ -253,6 +253,9 @@ type TestReadAt struct {
 	dataOffset      int64
 	dataLength      int
 	expectedPayload string
+
+	whence       int
+	writerOffset int
 }
 
 type partialReadTdfTest struct {
@@ -1224,30 +1227,45 @@ func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing 
 					dataOffset:      26,
 					dataLength:      26,
 					expectedPayload: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+
+					whence:       io.SeekStart,
+					writerOffset: 26,
 				},
 				{
 					segmentSize:     2 * oneMB,
 					dataOffset:      61,
 					dataLength:      1,
 					expectedPayload: "9",
+
+					whence:       io.SeekEnd,
+					writerOffset: -1,
 				},
 				{
 					segmentSize:     2,
 					dataOffset:      0,
 					dataLength:      62,
 					expectedPayload: payload,
+
+					whence:       io.SeekCurrent,
+					writerOffset: 0,
 				},
 				{
 					segmentSize:     int64(len(payload)),
 					dataOffset:      0,
 					dataLength:      len(payload),
 					expectedPayload: payload,
+
+					whence:       io.SeekStart,
+					writerOffset: 0,
 				},
 				{
 					segmentSize:     1,
 					dataOffset:      26,
 					dataLength:      26,
 					expectedPayload: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+
+					whence:       io.SeekCurrent,
+					writerOffset: 26,
 				},
 			},
 		},
@@ -1283,26 +1301,23 @@ func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing 
 			s.Equal(readAtTest.expectedPayload, string(rbuf))
 
 			// Test Read
-			plainTextFile := "text.txt"
 			{
-				fileWriter, err := os.Create(plainTextFile)
+				buf := bytes.NewBuffer(make([]byte, 0))
+
+				pos, err := r.Seek(int64(readAtTest.writerOffset), readAtTest.whence)
+				s.Require().NoError(err)
+				s.Equal(readAtTest.dataOffset, pos)
+
+				n, err := r.WriteTo(buf)
 				s.Require().NoError(err)
 
-				defer func(fileWriter *os.File) {
-					err := fileWriter.Close()
-					s.Require().NoError(err)
-				}(fileWriter)
-
-				_, err = io.Copy(fileWriter, r)
-				s.Require().NoError(err)
+				offset := readAtTest.writerOffset
+				if offset < 0 {
+					offset = len(payload) + offset
+				}
+				s.Equal(payload[offset:], string(buf.Bytes()))
+				s.Equal(int64(len(buf.Bytes())), n)
 			}
-
-			fileData, err := os.ReadFile(plainTextFile)
-			s.Require().NoError(err)
-
-			s.Equal(test.payload, string(fileData))
-
-			_ = os.Remove(plainTextFile)
 		}
 	}
 }

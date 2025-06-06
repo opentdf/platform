@@ -15,351 +15,7 @@
   "produces": [
     "application/json"
   ],
-  "paths": {
-    "/unsafe/attributes/values/{id}": {
-      "delete": {
-        "operationId": "UnsafeService_UnsafeDeleteAttributeValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/unsafeUnsafeDeleteAttributeValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required\nUUID of the Attribute Value",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "fqn",
-            "description": "Required\nFully Qualified Name (FQN) of Attribute Value (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute name\u003e/value/\u003cvalue\u003e), normalized to lower case.",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "UnsafeService"
-        ]
-      },
-      "patch": {
-        "summary": "--------------------------------------*\nValue RPCs\n---------------------------------------",
-        "operationId": "UnsafeService_UnsafeUpdateAttributeValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/unsafeUnsafeUpdateAttributeValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "value",
-            "description": "Required",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "UnsafeService"
-        ]
-      }
-    },
-    "/unsafe/attributes/values/{id}/reactivate": {
-      "post": {
-        "operationId": "UnsafeService_UnsafeReactivateAttributeValue",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/unsafeUnsafeReactivateAttributeValueResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "UnsafeService"
-        ]
-      }
-    },
-    "/unsafe/attributes/{id}": {
-      "delete": {
-        "operationId": "UnsafeService_UnsafeDeleteAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/unsafeUnsafeDeleteAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required\nUUID of the Attribute",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "fqn",
-            "description": "Required\nFully Qualified Name (FQN) of Attribute Definition (i.e. https://\u003cnamespace\u003e/attr/\u003cattribute name\u003e), normalized to lower case.",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "UnsafeService"
-        ]
-      },
-      "patch": {
-        "summary": "--------------------------------------*\nAttribute RPCs\n---------------------------------------",
-        "operationId": "UnsafeService_UnsafeUpdateAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/unsafeUnsafeUpdateAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "name",
-            "description": "Optional\nWARNING!!\nUpdating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "rule",
-            "description": "Optional\nWARNING!!\nUpdating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED",
-              "ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF",
-              "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
-              "ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY"
-            ],
-            "default": "ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED"
-          },
-          {
-            "name": "valuesOrder",
-            "description": "Optional\nWARNING!!\nUnsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition\nwill retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted\ndeleted, created, and unsafely re-ordered as necessary.",
-            "in": "query",
-            "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
-          }
-        ],
-        "tags": [
-          "UnsafeService"
-        ]
-      }
-    },
-    "/unsafe/attributes/{id}/reactivate": {
-      "post": {
-        "operationId": "UnsafeService_UnsafeReactivateAttribute",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/unsafeUnsafeReactivateAttributeResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "UnsafeService"
-        ]
-      }
-    },
-    "/unsafe/namespaces/{id}": {
-      "delete": {
-        "operationId": "UnsafeService_UnsafeDeleteNamespace",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/unsafeUnsafeDeleteNamespaceResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required\nUUID of the Namespace",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "fqn",
-            "description": "Required\nFully Qualified Name (FQN) of Namespace (i.e. https://\u003cnamespace\u003e), normalized to lower case.",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "UnsafeService"
-        ]
-      },
-      "patch": {
-        "summary": "--------------------------------------*\nNamespace RPCs\n---------------------------------------",
-        "operationId": "UnsafeService_UnsafeUpdateNamespace",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/unsafeUnsafeUpdateNamespaceResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "name",
-            "description": "Required",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "UnsafeService"
-        ]
-      }
-    },
-    "/unsafe/namespaces/{id}/reactivate": {
-      "post": {
-        "operationId": "UnsafeService_UnsafeReactivateNamespace",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/unsafeUnsafeReactivateNamespaceResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "id",
-            "description": "Required",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "UnsafeService"
-        ]
-      }
-    }
-  },
+  "paths": {},
   "definitions": {
     "ActionStandardAction": {
       "type": "string",
@@ -431,51 +87,6 @@
       "default": "ALGORITHM_UNSPECIFIED",
       "description": "Supported key algorithms."
     },
-    "policyAsymmetricKey": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "title": "Required"
-        },
-        "keyId": {
-          "type": "string",
-          "title": "Required"
-        },
-        "keyAlgorithm": {
-          "$ref": "#/definitions/policyAlgorithm",
-          "title": "Required"
-        },
-        "keyStatus": {
-          "$ref": "#/definitions/policyKeyStatus",
-          "title": "Required"
-        },
-        "keyMode": {
-          "$ref": "#/definitions/policyKeyMode",
-          "description": "Specifies how the key is managed (local or remote)",
-          "title": "Required"
-        },
-        "publicKeyCtx": {
-          "$ref": "#/definitions/policyPublicKeyCtx",
-          "description": "Specific structure based on key provider implementation",
-          "title": "Required"
-        },
-        "privateKeyCtx": {
-          "$ref": "#/definitions/policyPrivateKeyCtx",
-          "description": "Specific structure based on key provider implementation",
-          "title": "Optional"
-        },
-        "providerConfig": {
-          "$ref": "#/definitions/policyKeyProviderConfig",
-          "description": "Configuration for the key provider",
-          "title": "Optional"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata",
-          "title": "Common metadata fields"
-        }
-      }
-    },
     "policyAttribute": {
       "type": "object",
       "properties": {
@@ -520,7 +131,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           },
           "title": "Keys associated with the attribute"
         },
@@ -586,20 +197,6 @@
         }
       },
       "title": "A collection of Conditions evaluated by the boolean_operator provided"
-    },
-    "policyKasKey": {
-      "type": "object",
-      "properties": {
-        "kasId": {
-          "type": "string"
-        },
-        "key": {
-          "$ref": "#/definitions/policyAsymmetricKey"
-        },
-        "kasUri": {
-          "type": "string"
-        }
-      }
     },
     "policyKasPublicKey": {
       "type": "object",
@@ -691,7 +288,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           },
           "title": "Kas keys associated with this KAS"
         },
@@ -705,47 +302,6 @@
         }
       },
       "title": "Key Access Server Registry"
-    },
-    "policyKeyMode": {
-      "type": "string",
-      "enum": [
-        "KEY_MODE_UNSPECIFIED",
-        "KEY_MODE_CONFIG_ROOT_KEY",
-        "KEY_MODE_PROVIDER_ROOT_KEY",
-        "KEY_MODE_REMOTE",
-        "KEY_MODE_PUBLIC_KEY_ONLY"
-      ],
-      "default": "KEY_MODE_UNSPECIFIED",
-      "description": "Describes the management and operational mode of a cryptographic key.\n\n - KEY_MODE_UNSPECIFIED: KEY_MODE_UNSPECIFIED: Default, unspecified key mode. Indicates an uninitialized or error state.\n - KEY_MODE_CONFIG_ROOT_KEY: KEY_MODE_CONFIG_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nsourced from local configuration. Unwrapping and all cryptographic operations are performed locally.\n - KEY_MODE_PROVIDER_ROOT_KEY: KEY_MODE_PROVIDER_ROOT_KEY: Local key management where the private key is wrapped by a Key Encryption Key (KEK)\nmanaged by an external provider (e.g., a Hardware Security Module or Cloud KMS).\nKey unwrapping is delegated to the external provider; subsequent cryptographic operations\nare performed locally using the unwrapped key.\n - KEY_MODE_REMOTE: KEY_MODE_REMOTE: Remote key management where the private key is stored in, and all cryptographic\noperations are performed by, a remote Key Management Service (KMS) or HSM.\nThe private key material never leaves the secure boundary of the remote system.\n - KEY_MODE_PUBLIC_KEY_ONLY: KEY_MODE_PUBLIC_KEY_ONLY: Public key only mode. Used when only a public key is available or required,\ntypically for wrapping operations (e.g., encrypting a Data Encryption Key (DEK) for an external KAS).\nThe corresponding private key is not managed or accessible by this system."
-    },
-    "policyKeyProviderConfig": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "configJson": {
-          "type": "string",
-          "format": "byte"
-        },
-        "metadata": {
-          "$ref": "#/definitions/commonMetadata",
-          "title": "Common metadata"
-        }
-      }
-    },
-    "policyKeyStatus": {
-      "type": "string",
-      "enum": [
-        "KEY_STATUS_UNSPECIFIED",
-        "KEY_STATUS_ACTIVE",
-        "KEY_STATUS_ROTATED"
-      ],
-      "default": "KEY_STATUS_UNSPECIFIED",
-      "title": "The status of the key"
     },
     "policyNamespace": {
       "type": "object",
@@ -780,24 +336,9 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           },
           "title": "Keys for the namespace"
-        }
-      }
-    },
-    "policyPrivateKeyCtx": {
-      "type": "object",
-      "properties": {
-        "keyId": {
-          "type": "string",
-          "description": "Key ID for the symmetric key wrapping this key.",
-          "title": "Required"
-        },
-        "wrappedKey": {
-          "type": "string",
-          "description": "Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.",
-          "title": "Optional"
         }
       }
     },
@@ -814,16 +355,6 @@
         }
       },
       "title": "Deprecated"
-    },
-    "policyPublicKeyCtx": {
-      "type": "object",
-      "properties": {
-        "pem": {
-          "type": "string",
-          "description": "Base64 encoded public key in PEM format",
-          "title": "Required"
-        }
-      }
     },
     "policyResourceMapping": {
       "type": "object",
@@ -869,6 +400,37 @@
         }
       },
       "description": "Resource Mapping Groups are namespaced collections of Resource Mappings\nassociated under a common group name."
+    },
+    "policySimpleKasKey": {
+      "type": "object",
+      "properties": {
+        "kasUri": {
+          "type": "string",
+          "title": "The URL of the Key Access Server"
+        },
+        "publicKey": {
+          "$ref": "#/definitions/policySimpleKasPublicKey",
+          "title": "The public key of the Key that belongs to the KAS"
+        },
+        "kasId": {
+          "type": "string",
+          "title": "The ID of the Key Access Server"
+        }
+      }
+    },
+    "policySimpleKasPublicKey": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "$ref": "#/definitions/policyAlgorithm"
+        },
+        "kid": {
+          "type": "string"
+        },
+        "pem": {
+          "type": "string"
+        }
+      }
     },
     "policySourceType": {
       "type": "string",
@@ -992,7 +554,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/policyKasKey"
+            "$ref": "#/definitions/policySimpleKasKey"
           }
         },
         "resourceMappings": {

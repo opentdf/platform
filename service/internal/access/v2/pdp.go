@@ -245,6 +245,111 @@ func (p *PolicyDecisionPoint) GetDecision(
 	return decision, nil
 }
 
+func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
+	ctx context.Context,
+	entityRegisteredResourceValueFQN string,
+	action *policy.Action,
+	resources []*authz.Resource,
+) (*Decision, error) {
+	l := p.logger.With("entityRegisteredResourceValueFQN", entityRegisteredResourceValueFQN)
+	l = l.With("action", action.GetName())
+	l.DebugContext(ctx, "getting decision", slog.Int("resourcesCount", len(resources)))
+
+	if err := validateGetDecisionRegisteredResource(entityRegisteredResourceValueFQN, action, resources); err != nil {
+		return nil, err
+	}
+
+	registeredResourceValue := p.allRegisteredResourceValuesByFQN[entityRegisteredResourceValueFQN]
+	if err := validateRegisteredResourceValue(registeredResourceValue); err != nil {
+		return nil, err
+	}
+
+	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
+	decisionableAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+
+	for idx, resource := range resources {
+		// Assign indexed ephemeral ID for resource if not already set
+		if resource.GetEphemeralId() == "" {
+			resource.EphemeralId = "resource-" + strconv.Itoa(idx)
+		}
+
+		for idx, valueFQN := range resource.GetAttributeValues().GetFqns() {
+			// lowercase each resource attribute value FQN for case consistent map key lookups
+			valueFQN = strings.ToLower(valueFQN)
+			resource.GetAttributeValues().Fqns[idx] = valueFQN
+
+			// If same value FQN more than once, skip
+			if _, ok := decisionableAttributes[valueFQN]; ok {
+				continue
+			}
+
+			attributeAndValue, ok := p.allEntitleableAttributesByValueFQN[valueFQN]
+			if !ok {
+				return nil, fmt.Errorf("resource value FQN not found in memory [%s]: %w", valueFQN, ErrInvalidResource)
+			}
+
+			decisionableAttributes[valueFQN] = attributeAndValue
+			err := populateHigherValuesIfHierarchy(ctx, p.logger, valueFQN, attributeAndValue.GetAttribute(), p.allEntitleableAttributesByValueFQN, decisionableAttributes)
+			if err != nil {
+				return nil, fmt.Errorf("error populating higher hierarchy attribute values: %w", err)
+			}
+		}
+	}
+	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionableAttributeValuesCount", len(decisionableAttributes)))
+
+	entitledFQNsToActions := make(map[string][]*policy.Action)
+	for _, aav := range registeredResourceValue.GetActionAttributeValues() {
+		aavAction := aav.GetAction()
+		if action.GetName() != aavAction.GetName() {
+			l.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("actionName", aavAction.GetName()))
+			continue
+		}
+
+		attrVal := aav.GetAttributeValue()
+		attrValFQN := attrVal.GetFqn()
+		actionsList, ok := entitledFQNsToActions[attrValFQN]
+		if !ok {
+			actionsList = make([]*policy.Action, 0)
+		}
+
+		if !slices.ContainsFunc(actionsList, func(a *policy.Action) bool {
+			return a.GetName() == aavAction.GetName()
+		}) {
+			actionsList = append(actionsList, aavAction)
+		}
+
+		entitledFQNsToActions[attrValFQN] = actionsList
+
+		// todo: does hierarchy (low or high) need to be populated here?
+	}
+
+	decision := &Decision{
+		Access:  true,
+		Results: make([]ResourceDecision, len(resources)),
+	}
+
+	for idx, resource := range resources {
+		resourceDecision, err := getResourceDecision(ctx, p.logger, decisionableAttributes, entitledFQNsToActions, action, resource)
+		if err != nil || resourceDecision == nil {
+			return nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
+		}
+		if !resourceDecision.Passed {
+			decision.Access = false
+		}
+
+		l.DebugContext(
+			ctx,
+			"resourceDecision result",
+			slog.Bool("passed", resourceDecision.Passed),
+			slog.String("resourceID", resourceDecision.ResourceID),
+			slog.Int("dataRuleResultsCount", len(resourceDecision.DataRuleResults)),
+		)
+		decision.Results[idx] = *resourceDecision
+	}
+
+	return decision, nil
+}
+
 func (p *PolicyDecisionPoint) GetEntitlements(
 	ctx context.Context,
 	entityRepresentations []*entityresolutionV2.EntityRepresentation,

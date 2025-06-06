@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -15,7 +16,7 @@ import (
 )
 
 var (
-	testProvider          = "test-provider"
+	testProvider          = "test-PROVIDER"
 	testProvider2         = "test-provider-2"
 	validProviderConfig   = []byte(`{"key": "value"}`)
 	validProviderConfig2  = []byte(`{"key2": "value2"}`)
@@ -123,6 +124,8 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_WithName_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
+	s.Equal(strings.ToLower(testProvider), pc.GetName())
+	s.Equal(validProviderConfig, pc.GetConfigJson())
 }
 
 func (s *KeyManagementSuite) Test_GetProviderConfig_InvalidIdentifier_Fails() {
@@ -195,7 +198,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ExtendsMetadata_Succeeds(
 	})
 	pcIDs = append(pcIDs, pc.GetId())
 	s.NotNil(pc)
-	s.Equal(testProvider, pc.GetName())
+	s.Equal(strings.ToLower(testProvider), pc.GetName())
 	s.Equal(validProviderConfig, pc.GetConfigJson())
 	s.Equal(validLabels, pc.GetMetadata().GetLabels())
 
@@ -210,7 +213,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ExtendsMetadata_Succeeds(
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
-	s.Equal(testProvider2, pc.GetName())
+	s.Equal(strings.ToLower(testProvider2), pc.GetName())
 	s.Equal(validProviderConfig2, pc.GetConfigJson())
 
 	mixedLabels := make(map[string]string, 2)
@@ -233,7 +236,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ReplaceMetadata_Succeeds(
 	})
 	pcIDs = append(pcIDs, pc.GetId())
 	s.NotNil(pc)
-	s.Equal(testProvider, pc.GetName())
+	s.Equal(strings.ToLower(testProvider), pc.GetName())
 	s.Equal(validProviderConfig, pc.GetConfigJson())
 	s.Equal(validLabels, pc.GetMetadata().GetLabels())
 
@@ -290,6 +293,48 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ConfigNotFound_Fails() {
 	})
 	s.Require().Error(err)
 	s.Nil(pc)
+}
+
+func (s *KeyManagementSuite) Test_UpdateProviderConfig_UpdatesConfigJson_Succeeds() {
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc.GetId())
+	s.NotNil(pc)
+	s.Equal(strings.ToLower(testProvider), pc.GetName())
+	s.Equal(validProviderConfig, pc.GetConfigJson())
+
+	pc, err := s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
+		Id:         pc.GetId(),
+		ConfigJson: validProviderConfig2,
+	})
+	s.Require().NoError(err)
+	s.NotNil(pc)
+	s.Equal(strings.ToLower(testProvider), pc.GetName())
+	s.Equal(validProviderConfig2, pc.GetConfigJson())
+}
+
+func (s *KeyManagementSuite) Test_UpdateProviderConfig_UpdatesConfigName_Succeeds() {
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc.GetId())
+	s.NotNil(pc)
+	s.Equal(strings.ToLower(testProvider), pc.GetName())
+	s.Equal(validProviderConfig, pc.GetConfigJson())
+
+	pc, err := s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
+		Id:   pc.GetId(),
+		Name: testProvider2,
+	})
+	s.Require().NoError(err)
+	s.NotNil(pc)
+	s.Equal(strings.ToLower(testProvider2), pc.GetName())
+	s.Equal(validProviderConfig, pc.GetConfigJson())
 }
 
 func (s *KeyManagementSuite) Test_DeleteProviderConfig_Succeeds() {

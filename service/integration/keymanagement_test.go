@@ -333,7 +333,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ConfigNotFound_Fails() {
 	s.Nil(pc)
 }
 
-func (s *KeyManagementSuite) Test_UpdateProviderConfig_UpdatesConfigJson_Succeeds() {
+func (s *KeyManagementSuite) Test_UpdateProviderConfig_UpdatesConfigJson_And_Name_Succeeds() {
 	pcIDs := make([]string, 0)
 	defer func() {
 		s.deleteTestProviderConfigs(pcIDs)
@@ -347,10 +347,11 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_UpdatesConfigJson_Succeed
 	pc, err := s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
 		Id:         pc.GetId(),
 		ConfigJson: validProviderConfig2,
+		Name:       testProvider2,
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
-	s.Equal(testProvider, pc.GetName())
+	s.Equal(testProvider2, pc.GetName())
 	s.Equal(validProviderConfig2, pc.GetConfigJson())
 }
 

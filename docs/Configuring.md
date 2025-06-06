@@ -317,7 +317,7 @@ server:
   auth:
     enabled: true
     enforceDPoP: false
-    public_client_id: 'opentdf-public' # DEPRECATED
+    # public_client_id: 'opentdf-public' # DEPRECATED
     audience: 'http://localhost:8080'
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:

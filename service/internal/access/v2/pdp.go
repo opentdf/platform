@@ -247,19 +247,19 @@ func (p *PolicyDecisionPoint) GetDecision(
 
 func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	ctx context.Context,
-	registeredResourceValueFQN string,
+	entityRegisteredResourceValueFQN string,
 	action *policy.Action,
 	resources []*authz.Resource,
 ) (*Decision, error) {
-	l := p.logger.With("registeredResourceValueFQN", registeredResourceValueFQN)
+	l := p.logger.With("entityRegisteredResourceValueFQN", entityRegisteredResourceValueFQN)
 	l = l.With("action", action.GetName())
 	l.DebugContext(ctx, "getting decision", slog.Int("resourcesCount", len(resources)))
 
-	if err := validateGetDecisionRegisteredResource(registeredResourceValueFQN, action, resources); err != nil {
+	if err := validateGetDecisionRegisteredResource(entityRegisteredResourceValueFQN, action, resources); err != nil {
 		return nil, err
 	}
 
-	registeredResourceValue := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
+	registeredResourceValue := p.allRegisteredResourceValuesByFQN[entityRegisteredResourceValueFQN]
 	if err := validateRegisteredResourceValue(registeredResourceValue); err != nil {
 		return nil, err
 	}

@@ -101,14 +101,14 @@ func (p *JustInTimePDP) GetDecision(
 		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
-		valueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
+		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// registered resources do not have entity representations, so only one decision to make and we can skip the remaining logic
-		decision, err := p.pdp.GetDecisionRegisteredResource(ctx, valueFQN, action, resources)
+		decision, err := p.pdp.GetDecisionRegisteredResource(ctx, regResValueFQN, action, resources)
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to get decision for registered resource value FQN [%s]: %w", valueFQN, err)
+			return nil, false, fmt.Errorf("failed to get decision for registered resource value FQN [%s]: %w", regResValueFQN, err)
 		}
 		if decision == nil {
-			return nil, false, fmt.Errorf("decision is nil for registered resource value FQN [%s]", valueFQN)
+			return nil, false, fmt.Errorf("decision is nil for registered resource value FQN [%s]", regResValueFQN)
 		}
 		return []*Decision{decision}, decision.Access, nil
 
@@ -163,9 +163,9 @@ func (p *JustInTimePDP) GetEntitlements(
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting decision - resolving registered resource value FQN")
-		valueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
+		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// registered resources do not have entity representations, so we can skip the remaining logic
-		return p.pdp.GetEntitlementsRegisteredResource(ctx, valueFQN, withComprehensiveHierarchy)
+		return p.pdp.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
 
 	default:
 		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)

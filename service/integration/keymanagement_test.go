@@ -13,10 +13,12 @@ import (
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
-	testProvider          = "test-PROVIDER"
+	testProvider          = "test-provider"
 	testProvider2         = "test-provider-2"
 	validProviderConfig   = []byte(`{"key": "value"}`)
 	validProviderConfig2  = []byte(`{"key2": "value2"}`)
@@ -96,6 +98,24 @@ func (s *KeyManagementSuite) Test_CreateProviderConfig_DuplicateName_Fails() {
 	s.Nil(pc)
 }
 
+func (s *KeyManagementSuite) Test_CreateProviderConfig_CapitalizedName_Succeeds() {
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	providerName := strings.ToUpper(testProvider)
+	pc := s.createTestProviderConfig(providerName, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc.GetId())
+
+	pcGet, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
+		Name: testProvider,
+	})
+	s.Require().NoError(err)
+	s.NotNil(pcGet)
+	s.Equal(testProvider, pcGet.GetName()) // Expect name to be lowercased
+	s.Equal(validProviderConfig, pcGet.GetConfigJson())
+}
+
 func (s *KeyManagementSuite) Test_GetProviderConfig_WithId_Succeeds() {
 	pcIDs := make([]string, 0)
 	defer func() {
@@ -124,8 +144,26 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_WithName_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
-	s.Equal(strings.ToLower(testProvider), pc.GetName())
+	s.Equal(testProvider, pc.GetName())
 	s.Equal(validProviderConfig, pc.GetConfigJson())
+}
+
+func (s *KeyManagementSuite) Test_GetProviderConfig_MixedCaseName_Succeeds() {
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	mixedCaseName := cases.Title(language.English).String(testProvider) // "Test-provider"
+	pc := s.createTestProviderConfig(mixedCaseName, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc.GetId())
+
+	pcGet, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
+		Name: testProvider, // search with lowercase name
+	})
+	s.Require().NoError(err)
+	s.NotNil(pcGet)
+	s.Equal(testProvider, pcGet.GetName()) // Expect name to be lowercased
+	s.Equal(validProviderConfig, pcGet.GetConfigJson())
 }
 
 func (s *KeyManagementSuite) Test_GetProviderConfig_InvalidIdentifier_Fails() {
@@ -213,7 +251,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ExtendsMetadata_Succeeds(
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
-	s.Equal(strings.ToLower(testProvider2), pc.GetName())
+	s.Equal(testProvider2, pc.GetName())
 	s.Equal(validProviderConfig2, pc.GetConfigJson())
 
 	mixedLabels := make(map[string]string, 2)
@@ -236,7 +274,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ReplaceMetadata_Succeeds(
 	})
 	pcIDs = append(pcIDs, pc.GetId())
 	s.NotNil(pc)
-	s.Equal(strings.ToLower(testProvider), pc.GetName())
+	s.Equal(testProvider, pc.GetName())
 	s.Equal(validProviderConfig, pc.GetConfigJson())
 	s.Equal(validLabels, pc.GetMetadata().GetLabels())
 
@@ -303,7 +341,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_UpdatesConfigJson_Succeed
 	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 	s.NotNil(pc)
-	s.Equal(strings.ToLower(testProvider), pc.GetName())
+	s.Equal(testProvider, pc.GetName())
 	s.Equal(validProviderConfig, pc.GetConfigJson())
 
 	pc, err := s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
@@ -312,7 +350,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_UpdatesConfigJson_Succeed
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
-	s.Equal(strings.ToLower(testProvider), pc.GetName())
+	s.Equal(testProvider, pc.GetName())
 	s.Equal(validProviderConfig2, pc.GetConfigJson())
 }
 
@@ -324,16 +362,16 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_UpdatesConfigName_Succeed
 	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
 	pcIDs = append(pcIDs, pc.GetId())
 	s.NotNil(pc)
-	s.Equal(strings.ToLower(testProvider), pc.GetName())
+	s.Equal(testProvider, pc.GetName())
 	s.Equal(validProviderConfig, pc.GetConfigJson())
 
 	pc, err := s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
 		Id:   pc.GetId(),
-		Name: testProvider2,
+		Name: strings.ToUpper(testProvider2),
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
-	s.Equal(strings.ToLower(testProvider2), pc.GetName())
+	s.Equal(testProvider2, pc.GetName())
 	s.Equal(validProviderConfig, pc.GetConfigJson())
 }
 

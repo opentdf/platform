@@ -179,7 +179,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 				}
 
 				decisionableAttributes[valueFQN] = attributeAndValue
-				err := populateHigherValuesIfHierarchy(ctx, p.logger, valueFQN, attributeAndValue.GetAttribute(), p.allEntitleableAttributesByValueFQN, decisionableAttributes)
+				err := populateHigherValuesIfHierarchy(ctx, l, valueFQN, attributeAndValue.GetAttribute(), p.allEntitleableAttributesByValueFQN, decisionableAttributes)
 				if err != nil {
 					return nil, fmt.Errorf("error populating higher hierarchy attribute values: %w", err)
 				}
@@ -205,7 +205,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	}
 
 	for idx, resource := range resources {
-		resourceDecision, err := getResourceDecision(ctx, p.logger, decisionableAttributes, entitledFQNsToActions, action, resource)
+		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, entitledFQNsToActions, action, resource)
 		if err != nil || resourceDecision == nil {
 			return nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}

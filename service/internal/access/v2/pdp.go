@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/opentdf/platform/lib/identifier"
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -47,7 +49,7 @@ type EntitlementFailure struct {
 type PolicyDecisionPoint struct {
 	logger                             *logger.Logger
 	allEntitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
-	// allRegisteredResourcesByValueFQN map[string]*policy.RegisteredResourceValue
+	allRegisteredResourceValuesByFQN   map[string]*policy.RegisteredResourceValue
 }
 
 var (
@@ -67,8 +69,7 @@ func NewPolicyDecisionPoint(
 	l *logger.Logger,
 	allAttributeDefinitions []*policy.Attribute,
 	allSubjectMappings []*policy.SubjectMapping,
-	// TODO: take in all registered resources and store them in memory by value FQN
-	// allRegisteredResources []*policy.RegisteredResource,
+	allRegisteredResources []*policy.RegisteredResource,
 ) (*PolicyDecisionPoint, error) {
 	var err error
 
@@ -126,9 +127,26 @@ func NewPolicyDecisionPoint(
 		allEntitleableAttributesByValueFQN[mappedValueFQN] = mapped
 	}
 
+	allRegisteredResourceValuesByFQN := make(map[string]*policy.RegisteredResourceValue)
+	for _, rr := range allRegisteredResources {
+		if err := validateRegisteredResource(rr); err != nil {
+			return nil, fmt.Errorf("invalid registered resource: %w", err)
+		}
+		rrName := rr.GetName()
+
+		for _, v := range rr.GetValues() {
+			fullyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
+				Name:  rrName,
+				Value: v.GetValue(),
+			}
+			allRegisteredResourceValuesByFQN[fullyQualifiedValue.FQN()] = v
+		}
+	}
+
 	pdp := &PolicyDecisionPoint{
 		l,
 		allEntitleableAttributesByValueFQN,
+		allRegisteredResourceValuesByFQN,
 	}
 	return pdp, nil
 }
@@ -297,5 +315,67 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 		"entitlement results",
 		slog.Any("entitlements", result),
 	)
+	return result, nil
+}
+
+func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
+	ctx context.Context,
+	registeredResourceValueFQN string,
+	withComprehensiveHierarchy bool,
+) ([]*authz.EntityEntitlements, error) {
+	l := p.logger.With("withComprehensiveHierarchy", strconv.FormatBool(withComprehensiveHierarchy))
+	l.DebugContext(ctx, "getting entitlements for registered resource value", slog.String("fqn", registeredResourceValueFQN))
+
+	if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN); err != nil {
+		return nil, err
+	}
+
+	registeredResourceValue := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
+	if err := validateRegisteredResourceValue(registeredResourceValue); err != nil {
+		return nil, err
+	}
+
+	actionsPerAttributeValueFqn := make(map[string]*authz.EntityEntitlements_ActionsList)
+
+	for _, aav := range registeredResourceValue.GetActionAttributeValues() {
+		action := aav.GetAction()
+		attrVal := aav.GetAttributeValue()
+		attrValFQN := attrVal.GetFqn()
+
+		actionsList, ok := actionsPerAttributeValueFqn[attrValFQN]
+		if !ok {
+			actionsList = &authz.EntityEntitlements_ActionsList{
+				Actions: make([]*policy.Action, 0),
+			}
+		}
+
+		if !slices.ContainsFunc(actionsList.GetActions(), func(a *policy.Action) bool {
+			return a.GetName() == action.GetName()
+		}) {
+			actionsList.Actions = append(actionsList.Actions, action)
+		}
+
+		actionsPerAttributeValueFqn[attrValFQN] = actionsList
+
+		if withComprehensiveHierarchy {
+			err := populateLowerValuesIfHierarchy(attrValFQN, p.allEntitleableAttributesByValueFQN, actionsList, actionsPerAttributeValueFqn)
+			if err != nil {
+				return nil, fmt.Errorf("error populating comprehensive lower hierarchy values for registered resource value FQN [%s]: %w", attrValFQN, err)
+			}
+		}
+	}
+
+	result := []*authz.EntityEntitlements{
+		{
+			EphemeralId:                 registeredResourceValueFQN,
+			ActionsPerAttributeValueFqn: actionsPerAttributeValueFqn,
+		},
+	}
+	l.DebugContext(
+		ctx,
+		"entitlement results for registered resource value",
+		slog.Any("entitlements", result),
+	)
+
 	return result, nil
 }

@@ -97,6 +97,38 @@ func validateAttribute(attribute *policy.Attribute) error {
 	return nil
 }
 
+// validateRegisteredResource validates the registered resource is valid for an entitlement decision
+//
+// registered resource:
+//
+//   - must not be nil
+//   - must have a non-empty name
+func validateRegisteredResource(registeredResource *policy.RegisteredResource) error {
+	if registeredResource == nil {
+		return fmt.Errorf("registered resource is nil: %w", ErrInvalidRegisteredResource)
+	}
+	if registeredResource.GetName() == "" {
+		return fmt.Errorf("registered resource name is empty: %w", ErrInvalidRegisteredResource)
+	}
+	return nil
+}
+
+// validateRegisteredResourceValue validates the registered resource value is valid for an entitlement decision
+//
+// registered resource value:
+//
+//   - must not be nil
+//   - must have a non-empty name
+func validateRegisteredResourceValue(registeredResourceValue *policy.RegisteredResourceValue) error {
+	if registeredResourceValue == nil {
+		return fmt.Errorf("registered resource value is nil: %w", ErrInvalidRegisteredResourceValue)
+	}
+	if registeredResourceValue.GetValue() == "" {
+		return fmt.Errorf("registered resource value is empty: %w", ErrInvalidRegisteredResourceValue)
+	}
+	return nil
+}
+
 // validateEntityRepresentations validates the entity representations are valid for an entitlement decision
 //
 //   - entityRepresentations: must have at least one non-nil entity representation

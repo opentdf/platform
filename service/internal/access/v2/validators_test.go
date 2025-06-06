@@ -283,6 +283,84 @@ func TestValidateAttribute(t *testing.T) {
 	}
 }
 
+func TestValidateRegisteredResource(t *testing.T) {
+	tests := []struct {
+		name               string
+		registeredResource *policy.RegisteredResource
+		wantErr            error
+	}{
+		{
+			name: "Valid registered resource",
+			registeredResource: &policy.RegisteredResource{
+				Name: "valid-resource",
+			},
+			wantErr: nil,
+		},
+		{
+			name:               "Nil registered resource",
+			registeredResource: nil,
+			wantErr:            ErrInvalidRegisteredResource,
+		},
+		{
+			name: "Empty registered resource name",
+			registeredResource: &policy.RegisteredResource{
+				Name: "",
+			},
+			wantErr: ErrInvalidRegisteredResource,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateRegisteredResource(tt.registeredResource)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestValidateRegisteredResourceValue(t *testing.T) {
+	tests := []struct {
+		name                    string
+		registeredResourceValue *policy.RegisteredResourceValue
+		wantErr                 error
+	}{
+		{
+			name: "Valid registered resource value",
+			registeredResourceValue: &policy.RegisteredResourceValue{
+				Value: "valid-value",
+			},
+			wantErr: nil,
+		},
+		{
+			name:                    "Nil registered resource value",
+			registeredResourceValue: nil,
+			wantErr:                 ErrInvalidRegisteredResourceValue,
+		},
+		{
+			name: "Empty registered resource value",
+			registeredResourceValue: &policy.RegisteredResourceValue{
+				Value: "",
+			},
+			wantErr: ErrInvalidRegisteredResourceValue,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateRegisteredResourceValue(tt.registeredResourceValue)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestValidateEntityRepresentations(t *testing.T) {
 	tests := []struct {
 		name                  string

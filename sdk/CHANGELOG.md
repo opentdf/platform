@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.8](https://github.com/opentdf/platform/compare/sdk/v0.4.7...sdk/v0.4.8) (2025-06-06)
+
+
+### Features
+
+* **core:** DSPX-608 - Deprecate public_client_id ([#2185](https://github.com/opentdf/platform/issues/2185)) ([0f58efa](https://github.com/opentdf/platform/commit/0f58efab4e99005b73041444d31b1c348b9e2834))
+* **sdk:** adds seeker interface to TDF Reader ([#2385](https://github.com/opentdf/platform/issues/2385)) ([63ccd9a](https://github.com/opentdf/platform/commit/63ccd9aa89060209ca0bb3911bc092af9467e986))
+
+
+### Bug Fixes
+
+* **ci:** Fix intermittent failures from auth tests ([#2345](https://github.com/opentdf/platform/issues/2345)) ([395988a](https://github.com/opentdf/platform/commit/395988acf615d722638efd2ceb234c38aec03821))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.3.6 to 0.4.0 in /sdk ([#2397](https://github.com/opentdf/platform/issues/2397)) ([99e3aa4](https://github.com/opentdf/platform/commit/99e3aa4600ae503142ed81c9a483b1b75d950713))
+* **deps:** bump the external group across 1 directory with 5 updates ([#2400](https://github.com/opentdf/platform/issues/2400)) ([0b7ea79](https://github.com/opentdf/platform/commit/0b7ea79516352923f291047074ec27bcae74381d))
+
 ## [0.4.7](https://github.com/opentdf/platform/compare/sdk/v0.4.6...sdk/v0.4.7) (2025-05-29)
 
 

@@ -78,7 +78,7 @@ realms:
           serviceAccountsEnabled: false
           publicClient: true
           redirectUris:
-            - 'http://localhost:*/*'
+            - 'http://localhost:*'
           protocolMappers:
             - *customAudMapper
       - client:

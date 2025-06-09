@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "go",
+  "versioning": "always-bump-patch",
+  "separate-pull-requests": true,
+  "include-component-in-tag": true,
+  "tag-separator": "/",
+  "packages": {
+    "service": {
+      "component": "service",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "cmd/version.go"
+        }
+      ]
+    }
+  }
+}

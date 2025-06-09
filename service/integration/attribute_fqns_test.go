@@ -479,7 +479,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definition
 		if g.GetId() == key2.KeyAccessServerID {
 			decodedPubKey, err := base64.StdEncoding.DecodeString(key2.PublicKeyCtx)
 			s.Require().NoError(err)
-			s.Equal(
+			s.JSONEq(
 				strings.TrimRight(string(decodedPubKey), "\n"),
 				fmt.Sprintf("{\"pem\":\"%s\"}", base64.StdEncoding.EncodeToString([]byte(g.GetPublicKey().GetCached().GetKeys()[0].GetPem()))),
 			)

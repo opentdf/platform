@@ -79,7 +79,7 @@ jobs:
         # Extract the package name from the triggered branch name.
         # This assumes branch format 'release/<package>/vX.Y.Z'
         # <package> is e.g. 'service' or 'protocol/go'
-      - name: "Output package name"
+      - name: "Output package config file name"
         id: package-config
         env:
           BRANCH_NAME: ${{ github.ref_name }}

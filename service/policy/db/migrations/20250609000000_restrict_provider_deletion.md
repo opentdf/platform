@@ -18,4 +18,3 @@ erDiagram
 
     key_access_server_keys }o--|| provider_config : "provider_config_id"
 ```
-<style>div.mermaid{overflow-x:scroll;}div.mermaid>svg{width:250rem;}</style>

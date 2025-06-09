@@ -43,7 +43,7 @@ func runDecisionBenchmark(_ *cobra.Command, _ []string) error {
 				}}},
 				EntityChains: []*authorization.EntityChain{
 					{Id: "rewrap-tok", Entities: []*authorization.Entity{
-						{Id: "jwtentity-0-clientid-opentdf-public", EntityType: &authorization.Entity_ClientId{ClientId: "opentdf-public"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT},
+						{Id: "jwtentity-0-clientid-cli-client", EntityType: &authorization.Entity_ClientId{ClientId: "cli-client"}, Category: authorization.Entity_CATEGORY_ENVIRONMENT},
 						{Id: "jwtentity-1-username-sample-user", EntityType: &authorization.Entity_UserName{UserName: "sample-user"}, Category: authorization.Entity_CATEGORY_SUBJECT},
 					}},
 				},

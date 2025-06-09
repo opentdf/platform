@@ -97,7 +97,7 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_ProviderConfigInvalid_Fail() {
 	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
 	s.Require().Error(err)
 	s.Nil(resp)
-	s.Require().ErrorContains(err, db.ErrTextNotFound)
+	s.Require().ErrorContains(err, db.ErrForeignKeyViolation.Error())
 }
 
 func (s *KasRegistryKeySuite) Test_CreateKasKey_NonBase64Ctx_Fail() {

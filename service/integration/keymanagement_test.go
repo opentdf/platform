@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -382,6 +383,69 @@ func (s *KeyManagementSuite) Test_DeleteProviderConfig_Succeeds() {
 	pc, err := s.db.PolicyClient.DeleteProviderConfig(s.ctx, pc.GetId())
 	s.Require().NoError(err)
 	s.NotNil(pc)
+}
+
+func (s *KeyManagementSuite) Test_DeleteProviderConfig_InUse_Fails() {
+	// Create a provider config
+	pcIDs := make([]string, 0)
+	var kasID string
+	var keyID string
+	defer func() {
+		if keyID != "" {
+			_, err := s.db.PolicyClient.DeleteKey(s.ctx, keyID)
+			s.Require().NoError(err)
+		}
+		if kasID != "" {
+			_, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, kasID)
+			s.Require().NoError(err)
+		}
+
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
+	s.NotNil(pc)
+	pcIDs = append(pcIDs, pc.GetId())
+
+	// Create a key access server that uses the provider config
+	uri := "provider-config-test-kas.com"
+	pubKey := &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Remote{
+			Remote: "https://acmecorp.somewhere/key",
+		},
+	}
+	name := "1MiXEDCASEkas-name"
+	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
+		Uri:       uri,
+		Name:      name,
+		PublicKey: pubKey,
+	}
+	kasCreateResp, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
+	s.Require().NoError(err)
+	s.NotNil(kasCreateResp)
+	kasID = kasCreateResp.GetId()
+
+	// Create a key that uses the provider config
+	key, err := s.db.PolicyClient.CreateKey(s.ctx, &kasregistry.CreateKeyRequest{
+		KasId:        kasID,
+		KeyId:        "test-key-provider-config",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{
+			Pem: keyCtx,
+		},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      "test-wrapping-kid",
+		},
+		ProviderConfigId: pc.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(key)
+	keyID = key.GetKasKey().GetKey().GetId()
+
+	_, err = s.db.PolicyClient.DeleteProviderConfig(s.ctx, pc.GetId())
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, db.ErrForeignKeyViolation.Error())
 }
 
 func (s *KeyManagementSuite) Test_DeleteProviderConfig_InvalidUUID_Fails() {

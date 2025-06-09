@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"

@@ -1712,9 +1712,9 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 			KasId:        kas.GetId(),
 			KeyId:        "big_test_key",
 			KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
-			KeyMode:      policy.KeyMode_KEY_MODE_LOCAL,
-			PublicKeyCtx: &policy.KasPublicKeyCtx{Pem: keyCtx},
-			PrivateKeyCtx: &policy.KasPrivateKeyCtx{
+			KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+			PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+			PrivateKeyCtx: &policy.PrivateKeyCtx{
 				WrappedKey: keyCtx,
 			},
 		}

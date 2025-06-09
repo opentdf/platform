@@ -279,7 +279,7 @@ type KeyAccessServerKey struct {
 type ProviderConfig struct {
 	// Unique identifier for the provider configuration
 	ID string `json:"id"`
-	// Name of the key provider
+	// Unique name for the key provider.
 	ProviderName string `json:"provider_name"`
 	// Configuration details for the key provider
 	Config []byte `json:"config"`

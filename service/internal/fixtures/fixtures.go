@@ -682,9 +682,8 @@ func (f *Fixtures) provisionProviderConfigs() int64 {
 
 func (f *Fixtures) provisionKasRegistryKeys() int64 {
 	values := make([][]string, 0, len(fixtureData.KasRegistryKeys.Data))
-	// Create a local copy of columns to avoid modifying the global fixtureData
-	columns := make([]string, len(fixtureData.KasRegistryKeys.Metadata.Columns))
-	copy(columns, fixtureData.KasRegistryKeys.Metadata.Columns)
+	// Start with a copy of the base columns, ensuring 'columns' is a new slice instance.
+	columns := append([]string(nil), fixtureData.KasRegistryKeys.Metadata.Columns...)
 
 	// Check if provider_config_id needs to be added to the columns
 	// This should only happen once, not inside the loop

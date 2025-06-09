@@ -222,7 +222,7 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connec
 	return connect.NewResponse(rsp), nil
 }
 
-func (ns NamespacesService) AssignKeyAccessServerToNamespace(ctx context.Context, req *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error) {
+func (ns NamespacesService) AssignKeyAccessServerToNamespace(_ context.Context, _ *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("method AssignKeyAccessServerToNamespace is deprecated"))
 }
 

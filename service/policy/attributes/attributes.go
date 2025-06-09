@@ -370,7 +370,7 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context, req *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error) {
+func (s *AttributesService) AssignKeyAccessServerToAttribute(_ context.Context, _ *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("method AssignKeyAccessServerToAttribute is deprecated"))
 }
 
@@ -398,7 +398,7 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, req *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error) {
+func (s *AttributesService) AssignKeyAccessServerToValue(_ context.Context, _ *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("method AssignKeyAccessServerToValue is deprecated"))
 }
 

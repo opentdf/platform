@@ -24,6 +24,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Deprecated
 type AttributeKeyAccessServer struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

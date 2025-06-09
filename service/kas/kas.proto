@@ -132,6 +132,10 @@ service AccessService {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
+  // This is a legacy endpoint for accessing the KAS public key (deprecated).
+  //
+  // This endpoint is not recommended for use in new applications.
+  //
   // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
   rpc LegacyPublicKey(LegacyPublicKeyRequest) returns (google.protobuf.StringValue) {
     option (google.api.http) = {get: "/kas/kas_public_key"};

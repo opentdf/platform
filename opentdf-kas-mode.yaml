@@ -13,6 +13,10 @@ logger:
   output: stdout
 services:
   kas:
+    preview:
+      ec_tdf_enabled: false
+      key_management: false
+    # root_key: # create key `openssl rand 32 -hex`
     keyring:
       - kid: e1
         alg: ec:secp256r1
@@ -25,6 +29,7 @@ services:
         alg: rsa:2048
         legacy: true
 server:
+  public_hostname: localhost
   tls:
     enabled: false
     cert: ./keys/platform.crt
@@ -32,7 +37,7 @@ server:
   auth:
     enabled: true
     enforceDPoP: false
-    audience: 'http://localhost:8080'
+    audience: "http://localhost:8080"
     issuer: http://localhost:8888/auth/realms/opentdf
     policy:
       ## Default policy for all requests
@@ -69,7 +74,7 @@ server:
     enabled: false
     # "*" to allow any origin or a specific domain like "https://yourdomain.com"
     allowedorigins:
-      - '*'
+      - "*"
     # List of methods. Examples: "GET,POST,PUT"
     allowedmethods:
       - GET

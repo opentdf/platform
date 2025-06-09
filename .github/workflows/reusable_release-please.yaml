@@ -91,11 +91,17 @@ jobs:
           # Remove everything from '/v' to the end
           PACKAGE_NAME=${WITHOUT_PREFIX%/v*}
           
-          # Replace any slashes in package name with underscores
-          SANITIZED_PACKAGE=${PACKAGE_NAME//\//_}
-          
-          # Replace 'main' in the config filename with the sanitized package name
-          config_file=${MAIN_CONFIG/main/$SANITIZED_PACKAGE}
+          # Check if PACKAGE_NAME is empty or equals to WITHOUT_PREFIX (meaning no "/v" was found)
+          if [[ -z "$PACKAGE_NAME" || "$PACKAGE_NAME" == "$WITHOUT_PREFIX" ]]; then
+            # This handles the case of "release/v1.20" - use main config
+            config_file="$MAIN_CONFIG"
+          else
+            # Replace any slashes in package name with underscores
+            SANITIZED_PACKAGE=${PACKAGE_NAME//\//_}
+            
+            # Replace 'main' in the config filename with the sanitized package name
+            config_file=${MAIN_CONFIG/main/$SANITIZED_PACKAGE}
+          fi
 
           # Check if package config file exists
           if [ ! -f "$config_file" ]; then

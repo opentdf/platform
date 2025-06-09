@@ -83,15 +83,6 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		return nil, err
 	}
 
-	var grants []*policy.KeyAccessServer
-	if av.Grants != nil {
-		grants, err = db.KeyAccessServerProtoJSON(av.Grants)
-		if err != nil {
-			c.logger.ErrorContext(ctx, "could not unmarshal key access grants", slog.String("error", err.Error()))
-			return nil, err
-		}
-	}
-
 	var keys []*policy.SimpleKasKey
 	if av.Keys != nil {
 		keys, err = db.SimpleKasKeysProtoJSON(av.Keys)

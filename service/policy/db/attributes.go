@@ -290,15 +290,8 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			return nil, fmt.Errorf("failed to unmarshal values [%s]: %w", string(attr.Values), err)
 		}
 
-		var grants []*policy.KeyAccessServer
-		if attr.Grants != nil {
-			grants, err = db.KeyAccessServerProtoJSON(attr.Grants)
-			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal grants [%s]: %w", string(attr.Grants), err)
-			}
-		}
-
 		var keys []*policy.SimpleKasKey
+		var grants []*policy.KeyAccessServer
 		if len(attr.Keys) > 0 {
 			keys, err = db.SimpleKasKeysProtoJSON(attr.Keys)
 			if err != nil {
@@ -336,7 +329,7 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			Fqn:       attr.Fqn,
 			Active:    &wrapperspb.BoolValue{Value: attr.Active},
 			Namespace: ns,
-			Grants:    attrGrants,
+			Grants:    grants,
 			Values:    values,
 			KasKeys:   keys,
 		}

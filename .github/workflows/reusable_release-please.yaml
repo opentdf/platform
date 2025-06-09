@@ -93,8 +93,8 @@ jobs:
           
           # Check if PACKAGE_NAME is empty or equals to WITHOUT_PREFIX (meaning no "/v" was found)
           if [[ -z "$PACKAGE_NAME" || "$PACKAGE_NAME" == "$WITHOUT_PREFIX" ]]; then
-            # This handles the case of "release/v1.20" - use main config
-            config_file="$MAIN_CONFIG"
+            # This handles the case of only single package in repo - use release_branches config
+            config_file="${MAIN_CONFIG/main/release_branches}"
           else
             # Replace any slashes in package name with underscores
             SANITIZED_PACKAGE=${PACKAGE_NAME//\//_}

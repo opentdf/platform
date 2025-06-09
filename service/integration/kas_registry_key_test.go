@@ -180,7 +180,11 @@ func (s *KasRegistryKeySuite) Test_GetKasKeyById_Success() {
 	s.NotNil(resp)
 	s.Equal(s.kasKeys[0].KeyAccessServerID, resp.GetKasId())
 	s.Equal(s.kasKeys[0].ID, resp.GetKey().GetId())
-	s.Equal(*s.kasKeys[0].ProviderConfigID, resp.GetKey().GetProviderConfig().GetId())
+	if s.kasKeys[0].ProviderConfigID == nil {
+		s.Nil(resp.GetKey().GetProviderConfig())
+	} else {
+		s.Equal(*s.kasKeys[0].ProviderConfigID, resp.GetKey().GetProviderConfig().GetId())
+	}
 }
 
 func (s *KasRegistryKeySuite) Test_GetKasKeyByKey_WrongKas_Fail() {
@@ -255,7 +259,11 @@ func (s *KasRegistryKeySuite) Test_GetKasKey_WithKasName_Success() {
 	s.Equal(s.kasKeys[0].KeyAccessServerID, resp.GetKasId())
 	s.Equal(s.kasKeys[0].ID, resp.GetKey().GetId())
 	validatePrivatePublicCtx(&s.Suite, []byte(s.kasKeys[0].PrivateKeyCtx), []byte(s.kasKeys[0].PublicKeyCtx), resp)
-	s.Equal(*s.kasKeys[0].ProviderConfigID, resp.GetKey().GetProviderConfig().GetId())
+	if s.kasKeys[0].ProviderConfigID == nil {
+		s.Nil(resp.GetKey().GetProviderConfig())
+	} else {
+		s.Equal(*s.kasKeys[0].ProviderConfigID, resp.GetKey().GetProviderConfig().GetId())
+	}
 }
 
 func (s *KasRegistryKeySuite) Test_GetKasKey_WithKasUri_Success() {

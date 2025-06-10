@@ -393,6 +393,18 @@ jobs:
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts
 
+  platform-xtest-lts-clients:
+    if: github.event_name == 'merge_group' || github.event_name == 'workflow_call'
+    permissions:
+      contents: read
+      packages: read
+    uses: opentdf/tests/.github/workflows/xtest.yml@main
+    with:
+      platform-ref: ${{ github.sha }}
+      otdfctl-ref: lts
+      js-ref: lts
+      java-ref: lts
+
   # test latest otdfctl CLI 'main' against platform PR branch
   otdfctl-test:
     permissions:

@@ -498,32 +498,9 @@ jobs:
       - name: Check that make proto-generate and connect-wrapper-generate have run before PR submission; see above for error details
         run: git diff-files --quiet --ignore-submodules
 
-  ci:
-    permissions: {}
-    needs:
-      - buflint
-      - go
-      - image
-      - integration
-      - benchmark
-      - license
-      - platform-xtest
-      - otdfctl-test
-      - skip-checks-files
-    runs-on: ubuntu-22.04
-    if: ${{ !cancelled() }}
-    steps:
-      - name: "All jobs succeeded"
-        id: success
-        if: ${{ contains(needs.*.result, 'success') }}
-        run: |
-          :
-      - name: "One or more jobs failed"
-        if: ${{ contains(needs.*.result, 'failure') }}
-        run: |
-          exit 1
-
   license:
+    needs: skip-checks-files
+    if: ${{ needs.skip-checks-files.outputs.skip_tests == 'true' }}
     permissions:
       contents: read
     name: license check
@@ -552,3 +529,28 @@ jobs:
           "$(go env GOROOT)"/bin/go run github.com/google/go-licenses@5348b744d0983d85713295ea08a20cca1654a45e
           check --disallowed_types=forbidden --include_tests
           ./examples
+
+  ci:
+    permissions: {}
+    needs:
+      - buflint
+      - go
+      - image
+      - integration
+      - benchmark
+      - license
+      - platform-xtest
+      - otdfctl-test
+      - skip-checks-files
+    runs-on: ubuntu-22.04
+    if: ${{ !cancelled() }}
+    steps:
+      - name: "All jobs succeeded"
+        id: success
+        if: ${{ contains(needs.*.result, 'success') }}
+        run: |
+          :
+      - name: "One or more jobs failed"
+        if: ${{ contains(needs.*.result, 'failure') }}
+        run: |
+          exit 1

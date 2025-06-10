@@ -116,6 +116,60 @@ func (rl ResourceLocator) GetURL() (string, error) {
 	}
 }
 
+func (rl ResourceLocator) Less(y *ResourceLocator) bool {
+	pa := rl.protocol & 0xF
+	pb := y.protocol & 0xF
+	if pa != pb {
+		return pa < pb
+	}
+	if rl.body < y.body {
+		return true
+	}
+	if rl.identifier < y.identifier {
+		return true
+	}
+	return false
+}
+
+func (rl ResourceLocator) KASURI() string {
+	if rl.body == "" {
+		return ""
+	}
+	switch rl.protocol & 0xF {
+	case urlProtocolHTTPS, identifier2Byte, identifier8Byte, identifier32Byte:
+		return kPrefixHTTPS + rl.body
+	case urlProtocolHTTP:
+		return kPrefixHTTP + rl.body
+	default:
+		return "unspecified://" + rl.body
+	}
+}
+
+func (rl ResourceLocator) String() string {
+	url := rl.KASURI()
+	if rl.identifier == "" {
+		return url
+	}
+	return fmt.Sprintf("%s#%s", url, rl.identifier)
+}
+
+func (r1 ResourceLocator) Equals(r2 ResourceLocator) bool {
+	if r1.protocol != r2.protocol {
+		return false
+	}
+	if r1.body != r2.body {
+		return false
+	}
+	if r1.identifier != r2.identifier {
+		return false
+	}
+	return true
+}
+
+func (rl ResourceLocator) ID() string {
+	return rl.identifier
+}
+
 const protocolSharedRes = 0x4
 
 // readResourceLocator - read the encoded protocol and body string into a ResourceLocator

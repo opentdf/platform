@@ -31,6 +31,11 @@ type keySplitStep struct {
 	KAS, SplitID string
 }
 
+type kaoTpl struct {
+	keySplitStep
+	kid string
+}
+
 // AttributeNameFQN is a utility type to represent an FQN for an attribute.
 type AttributeNameFQN struct {
 	url, key string
@@ -184,8 +189,14 @@ func (a AttributeValueFQN) Name() string {
 
 // Structure capable of generating a split plan from a given set of data tags.
 type granter struct {
-	policy []AttributeValueFQN
-	grants map[string]*keyAccessGrant
+	// The data attributes (tags) that this granter is responsible for.
+	tags []AttributeValueFQN
+
+	// Older map of attribute values to associated KASes. Replaced by mapTable.
+	grantTable map[string]*keyAccessGrant
+
+	// Map from attribute values to KAS and key identifier.
+	mapTable map[string][]*ResourceLocator
 }
 
 type keyAccessGrant struct {
@@ -194,31 +205,110 @@ type keyAccessGrant struct {
 }
 
 func (r granter) addGrant(fqn AttributeValueFQN, kas string, attr *policy.Attribute) {
-	if _, ok := r.grants[fqn.key]; ok {
-		r.grants[fqn.key].kases = append(r.grants[fqn.key].kases, kas)
+	if _, ok := r.grantTable[fqn.key]; ok {
+		r.grantTable[fqn.key].kases = append(r.grantTable[fqn.key].kases, kas)
 	} else {
-		r.grants[fqn.key] = &keyAccessGrant{attr, []string{kas}}
+		r.grantTable[fqn.key] = &keyAccessGrant{attr, []string{kas}}
 	}
 }
 
+func (r granter) addMappedKey(fqn AttributeValueFQN, sk *policy.SimpleKasKey) error {
+	key := sk.GetPublicKey()
+	if key == nil || key.GetKid() == "" || key.GetPem() == "" {
+		slog.Debug("invalid cached key in policy service", "kas", sk.GetKasUri(), "value", fqn)
+		return fmt.Errorf("invalid cached key in policy service associated with [%s]", fqn)
+	}
+	if r.mapTable == nil {
+		r.mapTable = make(map[string][]*ResourceLocator)
+	}
+	rls := r.mapTable[fqn.key]
+	if rls == nil {
+		rls = make([]*ResourceLocator, 0)
+		r.mapTable[fqn.key] = rls
+	}
+
+	rl, err := NewResourceLocator(sk.GetKasUri())
+	if err != nil {
+		slog.Debug("invalid KAS URL in policy service", "kas", sk.GetKasUri(), "value", fqn, "error", err)
+		return fmt.Errorf("invalid KAS URL in policy service associated with [%s]: %w", fqn, err)
+	}
+	rl.identifier = key.GetKid()
+	slog.Debug("added mapped key", "fqn", fqn, "kas", sk.GetKasUri(), "kid", key.GetKid(), "alg", algProto2String(policy.KasPublicKeyAlgEnum(key.GetAlgorithm())))
+	rls = append(rls, rl)
+	r.mapTable[fqn.key] = rls
+	return nil
+}
+
+func convertAlgEnum2Simple(a policy.KasPublicKeyAlgEnum) policy.Algorithm {
+	switch a {
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1:
+		return policy.Algorithm_ALGORITHM_EC_P256
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1:
+		return policy.Algorithm_ALGORITHM_EC_P384
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1:
+		return policy.Algorithm_ALGORITHM_EC_P521
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048:
+		return policy.Algorithm_ALGORITHM_RSA_2048
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
+		return policy.Algorithm_ALGORITHM_RSA_4096
+	default:
+		return policy.Algorithm_ALGORITHM_UNSPECIFIED
+	}
+}
+
+// addAllGrants adds all grants from a list of KASes to the granter.
 func (r granter) addAllGrants(fqn AttributeValueFQN, gs []*policy.KeyAccessServer, attr *policy.Attribute) bool {
 	ok := false
 	for _, g := range gs {
-		if g != nil {
-			r.addGrant(fqn, g.GetUri(), attr)
-			ok = true
+		if g != nil && g.GetUri() != "" {
+			kasUri := g.GetUri()
+			r.addGrant(fqn, kasUri, attr)
+			if len(g.GetKasKeys()) != 0 {
+				for _, k := range g.GetKasKeys() {
+					err := r.addMappedKey(fqn, k)
+					if err != nil {
+						slog.Warn("failed to add mapped key", "fqn", fqn, "kas", kasUri, "error", err)
+					}
+				}
+				continue
+			}
+			ks := g.GetPublicKey().GetCached().GetKeys()
+			if len(ks) == 0 {
+				slog.Debug("no cached key in policy service", "kas", kasUri, "value", fqn)
+				continue
+			}
+			for _, k := range ks {
+				if k.GetKid() == "" || k.GetPem() == "" {
+					slog.Debug("invalid cached key in policy service", "kas", kasUri, "value", fqn, "key", k)
+					continue
+				}
+				sk := &policy.SimpleKasKey{
+					KasUri: kasUri,
+					PublicKey: &policy.SimpleKasPublicKey{
+						Algorithm: convertAlgEnum2Simple(k.GetAlg()),
+						Pem:       k.GetPem(),
+						Kid:       k.GetKid(),
+					},
+					KasId: g.GetId(),
+				}
+				err := r.addMappedKey(fqn, sk)
+				if err != nil {
+					slog.Warn("failed to add mapped key", "fqn", fqn, "kas", kasUri, "error", err)
+				}
+				ok = true
+			}
 		}
 	}
 	if len(gs) == 0 {
-		if _, present := r.grants[fqn.key]; !present {
-			r.grants[fqn.key] = &keyAccessGrant{attr, []string{}}
+		if _, present := r.grantTable[fqn.key]; !present {
+			r.grantTable[fqn.key] = &keyAccessGrant{attr, []string{}}
 		}
 	}
 	return ok
 }
 
 func (r granter) byAttribute(fqn AttributeValueFQN) *keyAccessGrant {
-	return r.grants[fqn.key]
+	return r.grantTable[fqn.key]
 }
 
 // Gets a list of directory of KAS grants for a list of attribute FQNs
@@ -239,8 +329,8 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkcon
 	}
 
 	grants := granter{
-		policy: fqns,
-		grants: make(map[string]*keyAccessGrant),
+		tags:       fqns,
+		grantTable: make(map[string]*keyAccessGrant),
 	}
 	for fqnstr, pair := range av.GetFqnAttributeValues() {
 		fqn, err := NewAttributeValueFQN(fqnstr)
@@ -254,11 +344,12 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkcon
 		}
 		v := pair.GetValue()
 		valuesGranted := false
-		attributesGranted := false
 		if v != nil {
 			valuesGranted = grants.addAllGrants(fqn, v.GetGrants(), def)
 			storeKeysToCache(v.GetGrants(), keyCache)
 		}
+
+		attributesGranted := false
 		// If no more specific grant was found, then add the value grants
 		if !valuesGranted && def != nil {
 			attributesGranted = grants.addAllGrants(fqn, def.GetGrants(), def)
@@ -314,15 +405,15 @@ func storeKeysToCache(kases []*policy.KeyAccessServer, c *kasKeyCache) {
 // Unlike `newGranterFromService`, this works offline.
 func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (granter, error) {
 	grants := granter{
-		grants: make(map[string]*keyAccessGrant),
-		policy: make([]AttributeValueFQN, len(attrs)),
+		grantTable: make(map[string]*keyAccessGrant),
+		tags:       make([]AttributeValueFQN, len(attrs)),
 	}
 	for i, v := range attrs {
 		fqn, err := NewAttributeValueFQN(v.GetFqn())
 		if err != nil {
 			return grants, err
 		}
-		grants.policy[i] = fqn
+		grants.tags[i] = fqn
 		def := v.GetAttribute()
 		if def == nil {
 			return granter{}, fmt.Errorf("no associated definition with value [%s]", fqn)
@@ -417,7 +508,32 @@ func (r granter) plan(defaultKas []string, genSplitID func() string) ([]keySplit
 			splitID = genSplitID()
 		}
 		for _, o := range v.values {
-			p = append(p, keySplitStep{KAS: o.kas, SplitID: splitID})
+			p = append(p, keySplitStep{KAS: o.KASURI(), SplitID: splitID})
+		}
+	}
+	return p, nil
+}
+
+func (r granter) resolveTemplate(genSplitID func() string) ([]kaoTpl, error) {
+	b := r.constructAttributeBoolean()
+	k, err := r.assignKeysTo(*b)
+	if err != nil {
+		return nil, err
+	}
+
+	k = k.reduce()
+	l := k.Len()
+	if l == 0 {
+		return []kaoTpl{}, nil
+	}
+	p := make([]kaoTpl, 0, l)
+	for _, v := range k.values {
+		splitID := ""
+		if l > 1 {
+			splitID = genSplitID()
+		}
+		for _, o := range v.values {
+			p = append(p, kaoTpl{keySplitStep{KAS: o.KASURI(), SplitID: splitID}, o.ID()})
 		}
 	}
 	return p, nil
@@ -426,7 +542,7 @@ func (r granter) plan(defaultKas []string, genSplitID func() string) ([]keySplit
 func (r granter) constructAttributeBoolean() *attributeBooleanExpression {
 	prefixes := make(map[string]*singleAttributeClause)
 	sortedPrefixes := make([]string, 0)
-	for _, aP := range r.policy {
+	for _, aP := range r.tags {
 		a := aP
 		p := strings.ToLower(a.Prefix().String())
 		if clause, ok := prefixes[p]; ok {
@@ -443,21 +559,17 @@ func (r granter) constructAttributeBoolean() *attributeBooleanExpression {
 	return &attributeBooleanExpression{must}
 }
 
-type publicKeyInfo struct {
-	kas string
-}
-
 type keyClause struct {
 	operator string
-	values   []publicKeyInfo
+	values   []*ResourceLocator
 }
 
 func (e keyClause) String() string {
-	if len(e.values) == 1 && e.values[0].kas == emptyTerm {
+	if len(e.values) == 1 && e.values[0].KASURI() == "" {
 		return "[" + emptyTerm + "]"
 	}
 	if len(e.values) == 1 {
-		return "(" + e.values[0].kas + ")"
+		return "(" + e.values[0].String() + ")"
 	}
 	var sb strings.Builder
 	sb.WriteString("(")
@@ -469,7 +581,7 @@ func (e keyClause) String() string {
 		if i > 0 {
 			sb.WriteString(op)
 		}
-		sb.WriteString(v.kas)
+		sb.WriteString(v.String())
 	}
 	sb.WriteString(")")
 	return sb.String()
@@ -504,10 +616,11 @@ func ruleToOperator(e policy.AttributeRuleTypeEnum) string {
 	return ""
 }
 
+// Old version of plan, without KIDs in resource locators.
 func (r *granter) insertKeysForAttribute(e attributeBooleanExpression) (booleanKeyExpression, error) {
 	kcs := make([]keyClause, 0, len(e.must))
 	for _, clause := range e.must {
-		kcv := make([]publicKeyInfo, 0, len(clause.values))
+		kcv := make([]*ResourceLocator, 0, len(clause.values))
 		for _, term := range clause.values {
 			grant := r.byAttribute(term)
 			if grant == nil {
@@ -518,7 +631,19 @@ func (r *granter) insertKeysForAttribute(e attributeBooleanExpression) (booleanK
 				kases = []string{emptyTerm}
 			}
 			for _, kas := range kases {
-				kcv = append(kcv, publicKeyInfo{kas})
+				var rl *ResourceLocator
+				if kas == emptyTerm {
+					// Default term, no KAS associated
+					rl = &ResourceLocator{}
+				} else {
+					var err error
+					rl, err = NewResourceLocator(kas)
+					if err != nil {
+						slog.Warn("invalid KAS URL in policy service", "kas", kas, "value", term, "error", err)
+						return booleanKeyExpression{}, fmt.Errorf("invalid KAS URL in policy service associated with [%s]: %w", term, err)
+					}
+				}
+				kcv = append(kcv, rl)
 			}
 		}
 		op := ruleToOperator(clause.def.GetRule())
@@ -536,30 +661,66 @@ func (r *granter) insertKeysForAttribute(e attributeBooleanExpression) (booleanK
 	}, nil
 }
 
+func (r *granter) assignKeysTo(e attributeBooleanExpression) (booleanKeyExpression, error) {
+	anyAssignmentsFound := false
+	kcs := make([]keyClause, 0, len(e.must))
+	for _, clause := range e.must {
+		kcv := make([]*ResourceLocator, 0, len(clause.values))
+		for _, term := range clause.values {
+			mv, ok := r.mapTable[term.String()]
+			if ok {
+				for _, rl := range mv {
+					kcv = append(kcv, rl)
+					anyAssignmentsFound = true
+				}
+			}
+		}
+		op := ruleToOperator(clause.def.GetRule())
+		if op == unspecified {
+			slog.Warn("unknown attribute rule type", "rule", clause)
+		}
+		kc := keyClause{
+			operator: op,
+			values:   kcv,
+		}
+		kcs = append(kcs, kc)
+	}
+	if !anyAssignmentsFound {
+		// No assignments found, fall back to grants
+		return r.insertKeysForAttribute(e)
+	}
+
+	return booleanKeyExpression{
+		values: kcs,
+	}, nil
+}
+
 // remove duplicates, sort a set of strings
-func sortedNoDupes(l []publicKeyInfo) disjunction {
+func sortedNoDupes(l []*ResourceLocator) disjunction {
 	set := map[string]bool{}
-	list := make([]string, 0)
+	list := make([]*ResourceLocator, 0)
 	for _, e := range l {
-		kas := e.kas
-		if kas != emptyTerm && !set[kas] {
+		kas := e.KASURI()
+		if kas != "" && !set[kas] {
 			set[kas] = true
-			list = append(list, kas)
+			list = append(list, e)
 		}
 	}
-	sort.Strings(list)
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].Less(list[j])
+	})
 	return list
 }
 
-type disjunction []string
+type disjunction []*ResourceLocator
 
 func (l disjunction) Less(r disjunction) bool {
 	m := min(len(l), len(r))
 	for i := 1; i <= m; i++ {
-		if l[i] < r[i] {
+		if l[i].Less(r[i]) {
 			return true
 		}
-		if l[i] > r[i] {
+		if r[i].Less(l[i]) {
 			return false
 		}
 	}
@@ -571,7 +732,7 @@ func (l disjunction) Equal(r disjunction) bool {
 		return false
 	}
 	for i, v := range l {
-		if v != r[i] {
+		if !v.Equals(*r[i]) {
 			return false
 		}
 	}
@@ -606,10 +767,10 @@ func (e booleanKeyExpression) reduce() booleanKeyExpression {
 			}
 		default:
 			for _, k := range v.values {
-				if k.kas == emptyTerm {
+				if k.KASURI() == "" {
 					continue
 				}
-				terms := []string{k.kas}
+				terms := []*ResourceLocator{k}
 				if !within(conjunction, terms) {
 					conjunction = append(conjunction, terms)
 				}
@@ -621,9 +782,9 @@ func (e booleanKeyExpression) reduce() booleanKeyExpression {
 	}
 	values := make([]keyClause, len(conjunction))
 	for i, d := range conjunction {
-		pki := make([]publicKeyInfo, len(d))
+		pki := make([]*ResourceLocator, len(d))
 		for j, k := range d {
-			pki[j] = publicKeyInfo{k}
+			pki[j] = k
 		}
 		values[i] = keyClause{
 			operator: anyOf,

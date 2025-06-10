@@ -30,7 +30,8 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      skip_tests: ${{ steps.changed-files.outputs.files-to-be-skipped }}
+      skip_tests: |
+        ${{ steps.changed-files.outputs.files-to-be-skipped == 'true' && needs.skip-checks-files.outputs.all-other-files == 'false' }}
 
     steps:
 
@@ -47,16 +48,11 @@ jobs:
           list-files: json
           filters: |
             files-to-be-skipped: &files-to-be-skipped
-              - '.github/reusable_*.yaml'
-              - '.github/release.yaml'
-            all-files:
+              - '.github/workflows/reusable_*.yaml'
+              - '.github/workflows/release.yaml'
+            all-other-files:
               - '!*files-to-be-skipped'
-      
-      - name: "Output skip_tests"
-        run: |
-          echo "files-to-be-skipped=${{ steps.changed-files.outputs.files-to-be-skipped }}"
-          echo "all-files=${{ steps.changed-files.outputs.all-files }}"
-
+  
   go:
     needs: skip-checks-files
     if: ${{ needs.skip-checks-files.outputs.skip_tests == 'true' }}

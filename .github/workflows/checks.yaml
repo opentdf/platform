@@ -174,7 +174,6 @@ jobs:
   benchmark:
     permissions:
       contents: read
-      pull-requests: write
     name: benchmark tests
     outputs:
       markdown: ${{ steps.save-benchmark.outputs.BENCHMARK_MARKDOWN }}

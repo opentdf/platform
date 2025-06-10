@@ -77,14 +77,13 @@ func (s SDK) getBaseKey(ctx context.Context) (*policy.SimpleKasKey, error) {
 		return nil, errors.New("base key is empty")
 	}
 
-	return nil, fmt.Errorf("The base key structure returned is: %s", configMap)
-
 	publicKey, ok := configMap["public_key"].(map[string]interface{})
 	if !ok {
 		return nil, errors.New("public key structure not found in base key configuration")
 	}
 
-	configMap["algorithm"] = getKasKeyAlg(publicKey["algorithm"].(string))
+	publicKey["algorithm"] = getKasKeyAlg(publicKey["algorithm"].(string))
+	configMap["public_key"] = publicKey
 	configJSON, err := json.Marshal(configMap)
 	if err != nil {
 		return nil, errors.Join(errors.New("base key marshal failed"), err)

@@ -49,9 +49,8 @@ jobs:
           filters: |
             files-to-be-skipped: &files-to-be-skipped
               - '.github/workflows/**.yaml'
-            # Any file EXCEPT those in files-to-be-skipped
             all-other-files:
-              - '!*files-to-be-skipped'
+              - '!(*files-to-be-skipped)'
 
       - run: |
           echo "true"

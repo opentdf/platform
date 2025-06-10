@@ -180,12 +180,40 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, err
 		}
 
-		dk := s.defaultKases(tdfConfig)
-		tdfConfig.splitPlan, err = g.plan(dk, func() string {
-			return uuid.New().String()
-		})
-		if err != nil {
-			return nil, err
+		if !tdfConfig.isBaseKeyEnabled {
+			dk := s.defaultKases(tdfConfig)
+			tdfConfig.splitPlan, err = g.plan(dk, func() string {
+				return uuid.New().String()
+			})
+			if err != nil {
+				return nil, err
+			}
+		} else if tdfConfig.isBaseKeyEnabled && len(g.grants) == 0 {
+			// Handle base key case.
+			if len(tdfConfig.kasInfoList) > 0 {
+				return nil, fmt.Errorf("base key is enabled, but kasInfoList is not empty: %w", errInvalidKasInfo)
+			}
+			// Get base key from the well-known configuration
+			key, err := s.getBaseKey(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get base key: %w", err)
+			}
+
+			algoString, err := formatAlg(key.GetPublicKey().GetAlgorithm())
+			if err != nil {
+				return nil, fmt.Errorf("formatAlg failed: %w", err)
+			}
+
+			// ? Maybe we shouldn't overwrite the key type
+			tdfConfig.keyType = ocrypto.KeyType(algoString)
+			tdfConfig.kasInfoList = []KASInfo{
+				{
+					URL:       key.GetKasUri(),
+					PublicKey: key.GetPublicKey().GetPem(),
+					KID:       key.GetPublicKey().GetKid(),
+					Algorithm: algoString,
+				},
+			}
 		}
 	}
 

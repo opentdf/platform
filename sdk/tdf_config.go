@@ -79,6 +79,7 @@ type TDFConfig struct {
 	keyType                    ocrypto.KeyType
 	useHex                     bool
 	excludeVersionFromManifest bool
+	isBaseKeyEnabled           bool
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -90,6 +91,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
 		keyType:                   ocrypto.RSA2048Key, // default to RSA
+		isBaseKeyEnabled:          true,               // Default to true.
 	}
 
 	for _, o := range opt {
@@ -261,6 +263,13 @@ func WithTargetMode(mode string) TDFOption {
 			c.useHex = false
 			c.excludeVersionFromManifest = false
 		}
+		return nil
+	}
+}
+
+func WithBaseKeyEnabled(enabled bool) TDFOption {
+	return func(c *TDFConfig) error {
+		c.isBaseKeyEnabled = enabled
 		return nil
 	}
 }

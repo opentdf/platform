@@ -65,7 +65,9 @@ func getResourceDecisionRegisteredResource(
 	action *policy.Action,
 	resource *authz.Resource,
 ) (*ResourceDecision, error) {
-	// todo: add validation
+	if err := validateGetResourceDecisionRegisteredResource(accessibleAttributeValues, accessibleRegisteredResourceValues, entitlements, action, resource); err != nil {
+		return nil, err
+	}
 
 	logger.DebugContext(
 		ctx,

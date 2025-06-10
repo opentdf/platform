@@ -19,10 +19,39 @@ on:
       - checks_requested
   workflow_call:
 
+# Default empty permissions for all jobs
 permissions: {}
 
 jobs:
+
+  skip-checks-files:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      skip_tests: ${{ steps.changed-files.outputs.files-to-be-skipped }}
+
+    steps:
+
+      - name: "Checkout repository"
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          persist-credentials: true
+
+      - name: "Check for changed files in clusters folder"
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changed-files
+        with:
+          list-files: json
+          filters: |
+            files-to-be-skipped:
+              - '.github/reusable_*.yaml'
+              - '.github/release.yaml'
+
   go:
+    needs: skip-checks-files
+    if: ${{ needs.skip-checks-files.outputs.skip_tests == 'true' }}
     runs-on: ubuntu-22.04
     permissions:
       checks: write
@@ -96,6 +125,8 @@ jobs:
         if: env.IS_RELEASE_BRANCH == 'false'
 
   integration:
+    needs: skip-checks-files
+    if: ${{ needs.skip-checks-files.outputs.skip_tests == 'true' }}
     permissions:
       contents: read
     name: integration tests
@@ -172,6 +203,8 @@ jobs:
         run: test/rego/custom-entity.bats
 
   benchmark:
+    needs: skip-checks-files
+    if: ${{ needs.skip-checks-files.outputs.skip_tests == 'true' }}
     permissions:
       contents: read
     name: benchmark tests
@@ -337,12 +370,13 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryContent + '\n');
 
   comment-benchmark:
-    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
+    if: |
+      (github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork) && needs.skip-checks-files.outputs.skip_tests == 'true'
     permissions:
       contents: read
       pull-requests: write
     name: benchmark tests
-    needs: benchmark
+    needs: [benchmark, skip-checks-files]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.4.2
@@ -366,6 +400,8 @@ jobs:
           BENCHMARK_MARKDOWN: ${{ needs.benchmark.outputs.markdown }}
 
   image:
+    needs: skip-checks-files
+    if: ${{ needs.skip-checks-files.outputs.skip_tests == 'true' }}
     permissions:
       contents: read
     name: image build
@@ -384,6 +420,8 @@ jobs:
           push: false
 
   platform-xtest:
+    needs: skip-checks-files
+    if: ${{ needs.skip-checks-files.outputs.skip_tests == 'true' }}
     permissions:
       contents: read
       packages: read
@@ -395,6 +433,8 @@ jobs:
 
   # test latest otdfctl CLI 'main' against platform PR branch
   otdfctl-test:
+    needs: skip-checks-files
+    if: ${{ needs.skip-checks-files.outputs.skip_tests == 'true' }}
     permissions:
       contents: read
     name: otdfctl e2e tests
@@ -408,6 +448,8 @@ jobs:
           otdfctl-ref: "main"
 
   buflint:
+    needs: skip-checks-files
+    if: ${{ needs.skip-checks-files.outputs.skip_tests == 'true' }}
     permissions:
       contents: read
     name: Protocol Buffer Lint and Gencode Up-to-date check
@@ -466,6 +508,7 @@ jobs:
       - license
       - platform-xtest
       - otdfctl-test
+      - skip-checks-files
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}
     steps:

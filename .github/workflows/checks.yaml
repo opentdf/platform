@@ -50,7 +50,7 @@ jobs:
             files-to-be-skipped:
               - '.github/reusable_*.yaml'
               - '.github/release.yaml'
-              - !'**/*'
+              - '!**/*'
 
   go:
     needs: skip-checks-files

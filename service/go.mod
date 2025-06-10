@@ -13,7 +13,7 @@ require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/Nerzal/gocloak/v13 v13.9.0
 	github.com/bmatcuk/doublestar v1.3.4
-	github.com/casbin/casbin/v2 v2.106.0
+	github.com/casbin/casbin/v2 v2.107.0
 	github.com/creasty/defaults v1.8.0
 	github.com/dgraph-io/ristretto v0.2.0
 	github.com/docker/go-connections v0.5.0

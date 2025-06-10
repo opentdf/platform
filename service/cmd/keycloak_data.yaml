@@ -72,6 +72,16 @@ realms:
           protocolMappers:
             - *customAudMapper
       - client:
+          clientID: cli-client
+          enabled: true
+          name: cli-client
+          serviceAccountsEnabled: false
+          publicClient: true
+          redirectUris:
+            - 'http://localhost:*'
+          protocolMappers:
+            - *customAudMapper
+      - client:
           clientID: opentdf-public
           enabled: true
           name: opentdf-public

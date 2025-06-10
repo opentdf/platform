@@ -61,9 +61,9 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 		}
 	}
 
-	var keys []*policy.KasKey
+	var keys []*policy.SimpleKasKey
 	if len(ns.Keys) > 0 {
-		keys, err = db.KasKeysProtoJSON(ns.Keys)
+		keys, err = db.SimpleKasKeysProtoJSON(ns.Keys)
 		if err != nil {
 			c.logger.Error("could not unmarshal keys", slog.String("error", err.Error()))
 			return nil, err

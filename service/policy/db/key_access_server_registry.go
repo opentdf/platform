@@ -12,7 +12,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
-	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/wellknownconfiguration"
@@ -57,9 +56,9 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 			return nil, err
 		}
 
-		var keys []*policy.KasKey
+		var keys []*policy.SimpleKasKey
 		if len(kas.Keys) > 0 {
-			keys, err = db.KasKeysProtoJSON(kas.Keys)
+			keys, err = db.SimpleKasKeysProtoJSON(kas.Keys)
 			if err != nil {
 				return nil, errors.New("failed to unmarshal keys")
 			}
@@ -147,9 +146,9 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 		return nil, err
 	}
 
-	var keys []*policy.KasKey
+	var keys []*policy.SimpleKasKey
 	if len(kas.Keys) > 0 {
-		keys, err = db.KasKeysProtoJSON(kas.Keys)
+		keys, err = db.SimpleKasKeysProtoJSON(kas.Keys)
 		if err != nil {
 			return nil, errors.New("failed to unmarshal keys")
 		}
@@ -374,17 +373,6 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		return nil, errors.Join(errors.New("private key ctx"), db.ErrExpectedBase64EncodedValue)
 	}
 
-	// Especially if we need to verify the connection and get the public key.
-	// Need provider logic to validate connection to remote provider.
-	var pc *policy.KeyProviderConfig
-	var err error
-	if providerConfigID != "" {
-		pc, err = c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest_Id{Id: providerConfigID})
-		if err != nil {
-			return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, kasID)
-		}
-	}
-
 	// Marshal private key and public key context
 	pubCtx, err := json.Marshal(r.GetPublicKeyCtx())
 	if err != nil {
@@ -412,7 +400,7 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		Metadata:          metadataJSON,
 		PrivateKeyCtx:     privateCtx,
 		PublicKeyCtx:      pubCtx,
-		ProviderConfigID:  pgtypeUUID(pc.GetId()),
+		ProviderConfigID:  pgtypeUUID(providerConfigID),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -698,7 +686,7 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 	return rotateKeyResp, nil
 }
 
-func (c PolicyDBClient) GetBaseKey(ctx context.Context) (*kasregistry.SimpleKasKey, error) {
+func (c PolicyDBClient) GetBaseKey(ctx context.Context) (*policy.SimpleKasKey, error) {
 	key, err := c.Queries.getBaseKey(ctx)
 	if err != nil && !errors.Is(db.WrapIfKnownInvalidQueryErr(err), db.ErrNotFound) {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -780,6 +768,19 @@ func (c PolicyDBClient) SetBaseKeyOnWellKnownConfig(ctx context.Context) error {
 	var keyMap map[string]any
 	if err := json.Unmarshal(keyMapBytes, &keyMap); err != nil {
 		return err
+	}
+
+	if baseKey != nil {
+		algorithm, err := db.FormatAlg(baseKey.GetPublicKey().GetAlgorithm())
+		if err != nil {
+			return fmt.Errorf("failed to format algorithm: %w", err)
+		}
+		publicKey, ok := keyMap["public_key"].(map[string]any)
+		if !ok {
+			return errors.New("failed to cast public_key")
+		}
+		publicKey["algorithm"] = algorithm
+		keyMap["public_key"] = publicKey
 	}
 
 	wellknownconfiguration.UpdateConfigurationBaseKey(keyMap)

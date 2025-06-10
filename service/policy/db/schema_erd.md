@@ -116,7 +116,7 @@ erDiagram
         integer key_status 
         jsonb metadata 
         jsonb private_key_ctx 
-        uuid provider_config_id 
+        uuid provider_config_id FK 
         jsonb public_key_ctx 
         timestamp_with_time_zone updated_at 
     }
@@ -137,7 +137,7 @@ erDiagram
         timestamp_with_time_zone created_at "Timestamp when the provider configuration was created"
         uuid id PK "Unique identifier for the provider configuration"
         jsonb metadata "Additional metadata for the provider configuration"
-        character_varying provider_name "Name of the key provider"
+        character_varying provider_name UK "Unique name for the key provider."
         timestamp_with_time_zone updated_at "Timestamp when the provider configuration was last updated"
     }
 
@@ -191,6 +191,7 @@ erDiagram
         timestamp_with_time_zone created_at 
         uuid id PK "Primary key for the table"
         jsonb metadata "Metadata for the condition set (see protos for structure)"
+        ARRAY selector_values "Array of cached selector values extracted from the condition JSONB and maintained via trigger."
         timestamp_with_time_zone updated_at 
     }
 
@@ -248,6 +249,7 @@ erDiagram
     subject_mappings }o--|| attribute_values : "attribute_value_id"
     base_keys }o--|| key_access_server_keys : "key_access_server_key_id"
     key_access_server_keys }o--|| key_access_servers : "key_access_server_id"
+    key_access_server_keys }o--|| provider_config : "provider_config_id"
     sym_key }o--|| provider_config : "provider_config_id"
     registered_resource_action_attribute_values }o--|| registered_resource_values : "registered_resource_value_id"
     registered_resource_values }o--|| registered_resources : "registered_resource_id"

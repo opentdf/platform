@@ -8,7 +8,7 @@ on:
     inputs:
       # https://github.com/korthout/backport-action/#conflict_resolution
       conflict_resolution:
-        default: "fail"
+        default: "draft_commit_conflicts"
         type: string
       # https://github.com/korthout/backport-action/#pull_title
       pull_title:
@@ -26,10 +26,6 @@ jobs:
       id-token: write
     runs-on: ubuntu-latest
     steps:
-      - name: "Checkout"
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: true
 
       - name: "Generate a GitHub app token"
         id: generate-token
@@ -37,6 +33,12 @@ jobs:
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.AUTOMATION_KEY }}
+
+      - name: "Checkout"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: true
+          token: ${{ steps.generate-token.outputs.token }}
 
       - name: "Create backport pull requests"
         id: backport

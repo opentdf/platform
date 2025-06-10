@@ -167,11 +167,47 @@ func (p *PolicyDecisionPoint) GetDecision(
 	}
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
-	decisionableAttributes, err := p.getResourceDecisionableAttributes(ctx, action, resources)
-	if err != nil {
-		return nil, fmt.Errorf("error determining decisionable attributes for resources: %w", err)
-	}
+	decisionableAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 
+	for idx, resource := range resources {
+		// Assign indexed ephemeral ID for resource if not already set
+		if resource.GetEphemeralId() == "" {
+			resource.EphemeralId = "resource-" + strconv.Itoa(idx)
+		}
+
+		switch resource.GetResource().(type) {
+		// TODO: handle gathering decisionable attributes of registered resources
+		case *authz.Resource_RegisteredResourceValueFqn:
+			return nil, fmt.Errorf("registered resource value FQN not supported: %w", ErrInvalidResource)
+
+		case *authz.Resource_AttributeValues_:
+			for idx, valueFQN := range resource.GetAttributeValues().GetFqns() {
+				// lowercase each resource attribute value FQN for case consistent map key lookups
+				valueFQN = strings.ToLower(valueFQN)
+				resource.GetAttributeValues().Fqns[idx] = valueFQN
+
+				// If same value FQN more than once, skip
+				if _, ok := decisionableAttributes[valueFQN]; ok {
+					continue
+				}
+
+				attributeAndValue, ok := p.allEntitleableAttributesByValueFQN[valueFQN]
+				if !ok {
+					return nil, fmt.Errorf("resource value FQN not found in memory [%s]: %w", valueFQN, ErrInvalidResource)
+				}
+
+				decisionableAttributes[valueFQN] = attributeAndValue
+				err := populateHigherValuesIfHierarchy(ctx, p.logger, valueFQN, attributeAndValue.GetAttribute(), p.allEntitleableAttributesByValueFQN, decisionableAttributes)
+				if err != nil {
+					return nil, fmt.Errorf("error populating higher hierarchy attribute values: %w", err)
+				}
+			}
+
+		default:
+			// default should never happen as we validate above
+			return nil, fmt.Errorf("invalid resource type [%T]: %w", resource.GetResource(), ErrInvalidResource)
+		}
+	}
 	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionableAttributeValuesCount", len(decisionableAttributes)))
 
 	// Resolve them to their entitled FQNs and the actions available on each
@@ -229,9 +265,35 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	}
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
-	decisionableAttributes, err := p.getResourceDecisionableAttributes(ctx, action, resources)
-	if err != nil {
-		return nil, fmt.Errorf("error determining decisionable attributes for resources: %w", err)
+	decisionableAttributes := make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
+
+	for idx, resource := range resources {
+		// Assign indexed ephemeral ID for resource if not already set
+		if resource.GetEphemeralId() == "" {
+			resource.EphemeralId = "resource-" + strconv.Itoa(idx)
+		}
+
+		for idx, valueFQN := range resource.GetAttributeValues().GetFqns() {
+			// lowercase each resource attribute value FQN for case consistent map key lookups
+			valueFQN = strings.ToLower(valueFQN)
+			resource.GetAttributeValues().Fqns[idx] = valueFQN
+
+			// If same value FQN more than once, skip
+			if _, ok := decisionableAttributes[valueFQN]; ok {
+				continue
+			}
+
+			attributeAndValue, ok := p.allEntitleableAttributesByValueFQN[valueFQN]
+			if !ok {
+				return nil, fmt.Errorf("resource value FQN not found in memory [%s]: %w", valueFQN, ErrInvalidResource)
+			}
+
+			decisionableAttributes[valueFQN] = attributeAndValue
+			err := populateHigherValuesIfHierarchy(ctx, p.logger, valueFQN, attributeAndValue.GetAttribute(), p.allEntitleableAttributesByValueFQN, decisionableAttributes)
+			if err != nil {
+				return nil, fmt.Errorf("error populating higher hierarchy attribute values: %w", err)
+			}
+		}
 	}
 	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionableAttributeValuesCount", len(decisionableAttributes)))
 
@@ -257,6 +319,8 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 		}
 
 		entitledFQNsToActions[attrValFQN] = actionsList
+
+		// todo: does hierarchy (low or high) need to be populated here?
 	}
 
 	decision := &Decision{
@@ -419,76 +483,4 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 	)
 
 	return result, nil
-}
-
-func (p *PolicyDecisionPoint) getResourceDecisionableAttributes(ctx context.Context, action *policy.Action, resources []*authz.Resource) (
-	map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
-	error,
-) {
-	var (
-		// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
-		decisionableAttributes = make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
-		attrValFQNs            = make([]string, 0)
-	)
-
-	for idx, resource := range resources {
-		// Assign indexed ephemeral ID for resource if not already set
-		if resource.GetEphemeralId() == "" {
-			resource.EphemeralId = "resource-" + strconv.Itoa(idx)
-		}
-
-		switch resource.GetResource().(type) {
-		case *authz.Resource_RegisteredResourceValueFqn:
-			regResValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
-
-			regResValue := p.allRegisteredResourceValuesByFQN[regResValueFQN]
-			if err := validateRegisteredResourceValue(regResValue); err != nil {
-				return nil, fmt.Errorf("invalid registered resource value FQN [%s]: %w", regResValueFQN, err)
-			}
-
-			for _, aav := range regResValue.GetActionAttributeValues() {
-				aavAction := aav.GetAction()
-				if aavAction.GetName() != action.GetName() {
-					p.logger.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("actionName", aavAction.GetName()))
-					continue
-				}
-
-				attrVal := aav.GetAttributeValue()
-				attrValFQN := strings.ToLower(attrVal.GetFqn())
-				attrValFQNs = append(attrValFQNs, attrValFQN)
-			}
-		case *authz.Resource_AttributeValues_:
-			for idx, attrValueFQN := range resource.GetAttributeValues().GetFqns() {
-				// lowercase each resource attribute value FQN for case consistent map key lookups
-				attrValueFQN = strings.ToLower(attrValueFQN)
-				resource.GetAttributeValues().Fqns[idx] = attrValueFQN
-				attrValFQNs = append(attrValFQNs, attrValueFQN)
-			}
-
-		default:
-			// default should never happen as we validate above
-			return nil, fmt.Errorf("invalid resource type [%T]: %w", resource.GetResource(), ErrInvalidResource)
-		}
-	}
-
-	for _, valueFQN := range attrValFQNs {
-		// If same value FQN more than once, skip
-		if _, ok := decisionableAttributes[valueFQN]; ok {
-			continue
-		}
-
-		attributeAndValue, ok := p.allEntitleableAttributesByValueFQN[valueFQN]
-		if !ok {
-			return nil, fmt.Errorf("resource value FQN not found in memory [%s]: %w", valueFQN, ErrInvalidResource)
-		}
-
-		decisionableAttributes[valueFQN] = attributeAndValue
-
-		err := populateHigherValuesIfHierarchy(ctx, p.logger, valueFQN, attributeAndValue.GetAttribute(), p.allEntitleableAttributesByValueFQN, decisionableAttributes)
-		if err != nil {
-			return nil, fmt.Errorf("error populating higher hierarchy attribute values: %w", err)
-		}
-	}
-
-	return decisionableAttributes, nil
 }

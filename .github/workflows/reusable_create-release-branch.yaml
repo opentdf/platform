@@ -6,7 +6,7 @@ on:
       AUTOMATION_KEY:
         required: true
 
-# Default empty permissions for all jobs
+# Default empty permissions for all jobs 
 permissions: {}
 
 jobs:

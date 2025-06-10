@@ -48,8 +48,9 @@ jobs:
           list-files: json
           filters: |
             files-to-be-skipped: &files-to-be-skipped
-              - '.github/workflows/reusable_*.yaml'
+              - '.github/workflows/reusable**.yaml'
               - '.github/workflows/release.yaml'
+              - '.github/workflows/checks.yaml'
             # Any file EXCEPT those in files-to-be-skipped
             all-other-files:
               - '!*files-to-be-skipped'

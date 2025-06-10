@@ -191,7 +191,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		} else if tdfConfig.isBaseKeyEnabled && len(g.grants) == 0 {
 			// Handle base key case.
 			if len(tdfConfig.kasInfoList) > 0 {
-				return nil, fmt.Errorf("base key is enabled, but kasInfoList is not empty: %w", errInvalidKasInfo)
+				return nil, fmt.Errorf("base key is enabled, but kasInfoList is not empty")
 			}
 			// Get base key from the well-known configuration
 			key, err := s.getBaseKey(ctx)

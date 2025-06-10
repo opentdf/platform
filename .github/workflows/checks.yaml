@@ -39,7 +39,8 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: "Check for changed files in clusters folder"
+      # If changes are made to these files, it's OK to skip checks/test
+      - name: "Check for changes to specific files"
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         id: changed-files
         with:

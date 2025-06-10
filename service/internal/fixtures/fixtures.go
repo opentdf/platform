@@ -682,36 +682,8 @@ func (f *Fixtures) provisionProviderConfigs() int64 {
 
 func (f *Fixtures) provisionKasRegistryKeys() int64 {
 	values := make([][]string, 0, len(fixtureData.KasRegistryKeys.Data))
-	// Start with a copy of the base columns, ensuring 'columns' is a new slice instance.
-	columns := append([]string(nil), fixtureData.KasRegistryKeys.Metadata.Columns...)
-
-	// Check if provider_config_id needs to be added to the columns
-	// This should only happen once, not inside the loop
-	providerConfigIDColumnPresent := false
-	for _, d := range fixtureData.KasRegistryKeys.Data {
-		if d.ProviderConfigID != "" {
-			providerConfigIDColumnPresent = true
-			break
-		}
-	}
-	if providerConfigIDColumnPresent {
-		// Ensure "provider_config_id" is not already in the base columns from YAML
-		exists := false
-		for _, colName := range columns {
-			if colName == "provider_config_id" {
-				exists = true
-				break
-			}
-		}
-		if !exists {
-			columns = append(columns, "provider_config_id")
-		}
-	}
-
 	for _, d := range fixtureData.KasRegistryKeys.Data {
 		pubCtx, err := base64.StdEncoding.DecodeString(d.PublicKeyCtx)
-		values := make([][]string, 0, len(fixtureData.KasRegistryKeys.Data))
-
 		if err != nil {
 			slog.Error("⛔️ 📦 issue with kas registry public key context - check policy_fixtures.yaml for issues")
 			panic("issue with kas registry public key context")
@@ -721,7 +693,6 @@ func (f *Fixtures) provisionKasRegistryKeys() int64 {
 			slog.Error("⛔️ 📦 issue with kas registry private key context - check policy_fixtures.yaml for issues")
 			panic("issue with kas registry private key context")
 		}
-
 		values = append(values, []string{
 			f.db.StringWrap(d.ID),
 			f.db.StringWrap(d.KeyAccessServerID),

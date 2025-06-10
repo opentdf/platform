@@ -45,11 +45,17 @@ jobs:
         id: changed-files
         with:
           list-files: json
-          predicate-quantifier: 'every'
           filters: |
-            files-to-be-skipped:
+            files-to-be-skipped: &files-to-be-skipped
               - '.github/reusable_*.yaml'
               - '.github/release.yaml'
+            all-files:
+              - '!*files-to-be-skipped'
+      
+      - name: "Output skip_tests"
+        run: |
+          echo "files-to-be-skipped=${{ steps.changed-files.outputs.files-to-be-skipped }}"
+          echo "all-files=${{ steps.changed-files.outputs.all-files }}"
 
   go:
     needs: skip-checks-files

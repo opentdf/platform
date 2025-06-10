@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -53,6 +54,47 @@ func getResourceDecision(
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %w", ErrInvalidResource)
 	}
+}
+
+func getResourceDecisionRegisteredResource(
+	ctx context.Context,
+	logger *logger.Logger,
+	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue,
+	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
+	action *policy.Action,
+	resource *authz.Resource,
+) (*ResourceDecision, error) {
+	// todo: add validation
+
+	logger.DebugContext(
+		ctx,
+		"getting decision on one registered resource",
+		slog.Any("resource", resource.GetResource()),
+	)
+
+	regResValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
+
+	regResValue, ok := accessibleRegisteredResourceValues[regResValueFQN]
+	if !ok {
+		return nil, fmt.Errorf("%w: %s", ErrFQNNotFound, regResValueFQN)
+	}
+
+	resourceAttributeValues := &authz.Resource_AttributeValues{
+		Fqns: make([]string, 0),
+	}
+	for _, aav := range regResValue.GetActionAttributeValues() {
+		if aav.GetAction().GetName() != action.GetName() {
+			continue
+		}
+
+		aavAttrValueFQN := aav.GetAttributeValue().GetFqn()
+		if !slices.Contains(resourceAttributeValues.Fqns, aavAttrValueFQN) {
+			resourceAttributeValues.Fqns = append(resourceAttributeValues.Fqns, aavAttrValueFQN)
+		}
+	}
+
+	return evaluateResourceAttributeValues(ctx, logger, resourceAttributeValues, resource.GetEphemeralId(), action, entitlements, accessibleAttributeValues)
 }
 
 // evaluateResourceAttributeValues evaluates a list of attribute values against the action and entitlements

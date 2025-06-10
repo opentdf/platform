@@ -277,23 +277,33 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 			resource.EphemeralId = "resource-" + strconv.Itoa(idx)
 		}
 
-		for idx, valueFQN := range resource.GetAttributeValues().GetFqns() {
-			// lowercase each resource attribute value FQN for case consistent map key lookups
-			valueFQN = strings.ToLower(valueFQN)
-			resource.GetAttributeValues().Fqns[idx] = valueFQN
+		resourceRegResValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
+		resourceRegResValue, found := p.allRegisteredResourceValuesByFQN[resourceRegResValueFQN]
+		if !found {
+			return nil, fmt.Errorf("resource registered resource value FQN not found in memory [%s]: %w", resourceRegResValueFQN, ErrInvalidResource)
+		}
 
-			// If same value FQN more than once, skip
-			if _, ok := decisionableAttributes[valueFQN]; ok {
+		for _, aav := range resourceRegResValue.GetActionAttributeValues() {
+			aavAction := aav.GetAction()
+			if aavAction.GetName() != action.GetName() {
+				l.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("action", aavAction.GetName()))
 				continue
 			}
 
-			attributeAndValue, ok := p.allEntitleableAttributesByValueFQN[valueFQN]
-			if !ok {
-				return nil, fmt.Errorf("resource value FQN not found in memory [%s]: %w", valueFQN, ErrInvalidResource)
+			aavAttrValFQN := aav.GetAttributeValue().GetFqn()
+
+			// If same value FQN more than once, skip
+			if _, ok := decisionableAttributes[aavAttrValFQN]; ok {
+				continue
 			}
 
-			decisionableAttributes[valueFQN] = attributeAndValue
-			err := populateHigherValuesIfHierarchy(ctx, p.logger, valueFQN, attributeAndValue.GetAttribute(), p.allEntitleableAttributesByValueFQN, decisionableAttributes)
+			attributeAndValue, ok := p.allEntitleableAttributesByValueFQN[aavAttrValFQN]
+			if !ok {
+				return nil, fmt.Errorf("resource value FQN not found in memory [%s]: %w", aavAttrValFQN, ErrInvalidResource)
+			}
+
+			decisionableAttributes[aavAttrValFQN] = attributeAndValue
+			err := populateHigherValuesIfHierarchy(ctx, p.logger, aavAttrValFQN, attributeAndValue.GetAttribute(), p.allEntitleableAttributesByValueFQN, decisionableAttributes)
 			if err != nil {
 				return nil, fmt.Errorf("error populating higher hierarchy attribute values: %w", err)
 			}
@@ -323,8 +333,6 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 		}
 
 		entitledFQNsToActions[attrValFQN] = actionsList
-
-		// todo: does hierarchy (low or high) need to be populated here?
 	}
 
 	decision := &Decision{
@@ -333,7 +341,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	}
 
 	for idx, resource := range resources {
-		resourceDecision, err := getResourceDecision(ctx, p.logger, decisionableAttributes, entitledFQNsToActions, action, resource)
+		resourceDecision, err := getResourceDecisionRegisteredResource(ctx, p.logger, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource)
 		if err != nil || resourceDecision == nil {
 			return nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}

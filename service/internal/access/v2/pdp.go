@@ -135,6 +135,10 @@ func NewPolicyDecisionPoint(
 		rrName := rr.GetName()
 
 		for _, v := range rr.GetValues() {
+			if err := validateRegisteredResourceValue(v); err != nil {
+				return nil, fmt.Errorf("invalid registered resource value: %w", err)
+			}
+
 			fullyQualifiedValue := identifier.FullyQualifiedRegisteredResourceValue{
 				Name:  rrName,
 				Value: v.GetValue(),
@@ -259,9 +263,9 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 		return nil, err
 	}
 
-	registeredResourceValue := p.allRegisteredResourceValuesByFQN[entityRegisteredResourceValueFQN]
-	if err := validateRegisteredResourceValue(registeredResourceValue); err != nil {
-		return nil, err
+	entityRegisteredResourceValue, ok := p.allRegisteredResourceValuesByFQN[entityRegisteredResourceValueFQN]
+	if !ok {
+		return nil, fmt.Errorf("registered resource value FQN not found in memory [%s]: %w", entityRegisteredResourceValueFQN, ErrInvalidResource)
 	}
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
@@ -298,7 +302,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionableAttributeValuesCount", len(decisionableAttributes)))
 
 	entitledFQNsToActions := make(map[string][]*policy.Action)
-	for _, aav := range registeredResourceValue.GetActionAttributeValues() {
+	for _, aav := range entityRegisteredResourceValue.GetActionAttributeValues() {
 		aavAction := aav.GetAction()
 		if action.GetName() != aavAction.GetName() {
 			l.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("actionName", aavAction.GetName()))
@@ -435,9 +439,9 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 		return nil, err
 	}
 
-	registeredResourceValue := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
-	if err := validateRegisteredResourceValue(registeredResourceValue); err != nil {
-		return nil, err
+	registeredResourceValue, ok := p.allRegisteredResourceValuesByFQN[registeredResourceValueFQN]
+	if !ok {
+		return nil, fmt.Errorf("registered resource value FQN not found in memory [%s]: %w", registeredResourceValueFQN, ErrInvalidResource)
 	}
 
 	actionsPerAttributeValueFqn := make(map[string]*authz.EntityEntitlements_ActionsList)

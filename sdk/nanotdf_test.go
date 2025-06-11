@@ -410,7 +410,7 @@ type mockWellKnownServiceClient struct {
 	mockResponse func() (*wellknownconfiguration.GetWellKnownConfigurationResponse, error)
 }
 
-func (m *mockWellKnownServiceClient) GetWellKnownConfiguration(ctx context.Context, req *wellknownconfiguration.GetWellKnownConfigurationRequest) (*wellknownconfiguration.GetWellKnownConfigurationResponse, error) {
+func (m *mockWellKnownServiceClient) GetWellKnownConfiguration(_ context.Context, _ *wellknownconfiguration.GetWellKnownConfigurationRequest) (*wellknownconfiguration.GetWellKnownConfigurationResponse, error) {
 	if m.mockResponse != nil {
 		return m.mockResponse()
 	}
@@ -423,10 +423,9 @@ func (s *NanoSuite) Test_CreateNanoTDF_BaseKey() {
 		URL:       "https://kas.example.com",
 		PublicKey: mockECPublicKey1,
 		KID:       "key-p256",
-		Algorithm: "ec:secp256r1",
 	}
 
-	baseKey := createTestBaseKeyMap(&s.Suite, policy.Algorithm_ALGORITHM_EC_P256, mockKASInfo.KID, mockECPublicKey1, mockKASInfo.URL)
+	baseKey := createTestBaseKeyMap(&s.Suite, policy.Algorithm_ALGORITHM_EC_P256, mockKASInfo.KID, mockKASInfo.PublicKey, mockKASInfo.URL)
 	wellKnown := createWellKnown(baseKey)
 	mockClient := createMockWellKnownServiceClient(&s.Suite, wellKnown, nil)
 
@@ -439,7 +438,8 @@ func (s *NanoSuite) Test_CreateNanoTDF_BaseKey() {
 	s.Require().NoError(err)
 
 	config.EnableBaseKey()
-	config.SetKasURL("http://should-change.com")
+	err = config.SetKasURL("http://should-change.com")
+	s.Require().NoError(err)
 
 	// Mock writer and reader
 	writer := new(bytes.Buffer)
@@ -534,7 +534,8 @@ func (s *NanoSuite) Test_GetKasInfoForNanoTDF_BaseKey() {
 			config := NanoTDFConfig{
 				baseKeyEnabled: tt.baseKeyEnabled,
 			}
-			config.SetKasURL("http://should-change.com")
+			err := config.SetKasURL("http://should-change.com")
+			s.Require().NoError(err)
 
 			// Call the getKasInfoForNanoTDF function
 			info, err := getKasInfoForNanoTDF(sdk, &config)

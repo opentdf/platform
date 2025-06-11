@@ -170,7 +170,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	g := granter{}
-	if tdfConfig.autoconfigure {
+	if tdfConfig.autoconfigure { //nolint:nestif // Will refactor in the future
 		if len(tdfConfig.attributeValues) > 0 {
 			g, err = newGranterFromAttributes(s.kasKeyCache, tdfConfig.attributeValues...)
 		} else if len(tdfConfig.attributes) > 0 {
@@ -189,13 +189,14 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			if err != nil {
 				return nil, err
 			}
-		} else {
-			// Calls Dave's plan function
 		}
 	}
 
 	if tdfConfig.isBaseKeyEnabled && len(g.grants) == 0 {
-		populateKasInfoFromBaseKey(ctx, s, tdfConfig)
+		err = populateKasInfoFromBaseKey(ctx, s, tdfConfig)
+		if err != nil {
+			return nil, fmt.Errorf("populateKasInfoFromBaseKey failed: %w", err)
+		}
 	}
 
 	tdfObject := &TDFObject{}
@@ -1396,7 +1397,7 @@ func isLessThanSemver(version, target string) (bool, error) {
 
 func populateKasInfoFromBaseKey(ctx context.Context, s SDK, tdfConfig *TDFConfig) error {
 	if len(tdfConfig.kasInfoList) > 0 {
-		return fmt.Errorf("base key is enabled, but kasInfoList is not empty")
+		return errors.New("base key is enabled, but kasInfoList is not empty")
 	}
 	// Get base key from the well-known configuration
 	key, err := getBaseKey(ctx, s)

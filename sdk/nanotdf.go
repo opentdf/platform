@@ -1099,7 +1099,10 @@ func getKasInfoForNanoTDF(s *SDK, config *NanoTDFConfig) (*KASInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		config.kasURL.setURLWithIdentifier(ki.URL, ki.KID)
+		err = config.kasURL.setURLWithIdentifier(ki.URL, ki.KID)
+		if err != nil {
+			return nil, fmt.Errorf("config.kasURL setURLWithIdentifier failed:%w", err)
+		}
 		config.bindCfg.eccMode, err = ocrypto.ECKeyTypeToMode(ocrypto.KeyType(ki.Algorithm))
 		if err != nil {
 			return nil, fmt.Errorf("ocrypto.ECKeyTypeToMode failed: %w", err)

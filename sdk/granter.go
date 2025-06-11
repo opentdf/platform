@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/sdk/sdkconnect"
@@ -276,13 +277,13 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkcon
 func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 	switch e {
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1:
-		return "ec:secp256r1"
+		return string(ocrypto.EC256Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1:
-		return "ec:secp384r1"
+		return string(ocrypto.EC384Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1:
-		return "ec:secp521r1"
+		return string(ocrypto.EC521Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048:
-		return "rsa:2048"
+		return string(ocrypto.RSA2048Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
 		return "rsa:4096"
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:

@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	wellknownpb "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -42,8 +43,8 @@ func newMockWellKnownService(configMap map[string]interface{}, err error) *mockW
 }
 
 func (m *mockWellKnownService) GetWellKnownConfiguration(
-	ctx context.Context,
-	req *wellknownpb.GetWellKnownConfigurationRequest,
+	_ context.Context,
+	_ *wellknownpb.GetWellKnownConfigurationRequest,
 ) (*wellknownpb.GetWellKnownConfigurationResponse, error) {
 	m.called = true
 
@@ -168,10 +169,10 @@ func TestFormatAlg(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			result, err := formatAlg(test.alg)
 			if test.expectError {
-				assert.Error(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, test.expected, result, "Algorithm string mismatch")
+				require.NoError(t, err)
+				require.Equal(t, test.expected, result, "Algorithm string mismatch")
 			}
 		})
 	}
@@ -208,14 +209,14 @@ func (s *BaseKeyTestSuite) TestGetBaseKeySuccess() {
 	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
 
 	// Validate result
-	s.NoError(err)
-	s.True(mockService.called)
-	s.NotNil(baseKey)
-	s.Equal(testKasURI, baseKey.GetKasUri())
-	s.NotNil(baseKey.GetPublicKey())
-	s.Equal(testKid, baseKey.GetPublicKey().GetKid())
-	s.Equal(policy.Algorithm_ALGORITHM_RSA_2048, baseKey.GetPublicKey().GetAlgorithm())
-	s.Equal(testPem, baseKey.GetPublicKey().GetPem())
+	s.Require().NoError(err)
+	s.Require().True(mockService.called)
+	s.Require().NotNil(baseKey)
+	s.Require().Equal(testKasURI, baseKey.GetKasUri())
+	s.Require().NotNil(baseKey.GetPublicKey())
+	s.Require().Equal(testKid, baseKey.GetPublicKey().GetKid())
+	s.Require().Equal(policy.Algorithm_ALGORITHM_RSA_2048, baseKey.GetPublicKey().GetAlgorithm())
+	s.Require().Equal(testPem, baseKey.GetPublicKey().GetPem())
 }
 
 func (s *BaseKeyTestSuite) TestGetBaseKeyServiceError() {
@@ -227,11 +228,11 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyServiceError() {
 	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
 
 	// Validate result
-	s.True(mockService.called)
-	s.Error(err)
-	s.Nil(baseKey)
-	s.Contains(err.Error(), "unable to retrieve config information")
-	s.Contains(err.Error(), "service unavailable")
+	s.Require().True(mockService.called)
+	s.Require().Error(err)
+	s.Require().Nil(baseKey)
+	s.Require().Contains(err.Error(), "unable to retrieve config information")
+	s.Require().Contains(err.Error(), "service unavailable")
 }
 
 func (s *BaseKeyTestSuite) TestGetBaseKeyMissingBaseKey() {
@@ -249,10 +250,10 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyMissingBaseKey() {
 	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
 
 	// Validate result
-	s.True(mockService.called)
-	s.Error(err)
-	s.Nil(baseKey)
-	s.Contains(err.Error(), errBaseKeyNotFound.Error())
+	s.Require().True(mockService.called)
+	s.Require().Error(err)
+	s.Require().Nil(baseKey)
+	s.Require().Contains(err.Error(), errBaseKeyNotFound.Error())
 }
 
 func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidBaseKeyFormat() {
@@ -269,10 +270,10 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidBaseKeyFormat() {
 	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
 
 	// Validate result
-	s.True(mockService.called)
-	s.Error(err)
-	s.Nil(baseKey)
-	s.ErrorContains(err, errBaseKeyInvalidFormat.Error())
+	s.Require().True(mockService.called)
+	s.Require().Error(err)
+	s.Require().Nil(baseKey)
+	s.Require().ErrorContains(err, errBaseKeyInvalidFormat.Error())
 }
 
 func (s *BaseKeyTestSuite) TestGetBaseKeyEmptyBaseKey() {
@@ -290,10 +291,10 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyEmptyBaseKey() {
 	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
 
 	// Validate result
-	s.True(mockService.called)
-	s.Error(err)
-	s.Nil(baseKey)
-	s.ErrorContains(err, errBaseKeyEmpty.Error())
+	s.Require().True(mockService.called)
+	s.Require().Error(err)
+	s.Require().Nil(baseKey)
+	s.Require().ErrorContains(err, errBaseKeyEmpty.Error())
 }
 
 func (s *BaseKeyTestSuite) TestGetBaseKeyMissingPublicKey() {
@@ -314,10 +315,10 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyMissingPublicKey() {
 	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
 
 	// Validate result
-	s.True(mockService.called)
-	s.Error(err)
-	s.Nil(baseKey)
-	s.ErrorContains(err, errBaseKeyInvalidFormat.Error())
+	s.Require().True(mockService.called)
+	s.Require().Error(err)
+	s.Require().Nil(baseKey)
+	s.Require().ErrorContains(err, errBaseKeyInvalidFormat.Error())
 }
 
 func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidPublicKey() {
@@ -338,8 +339,8 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidPublicKey() {
 	baseKey, err := getBaseKey(s.T().Context(), s.sdk)
 
 	// Validate result
-	s.True(mockService.called)
-	s.Error(err)
-	s.Nil(baseKey)
-	s.ErrorContains(err, errBaseKeyInvalidFormat.Error())
+	s.Require().True(mockService.called)
+	s.Require().Error(err)
+	s.Require().Nil(baseKey)
+	s.Require().ErrorContains(err, errBaseKeyInvalidFormat.Error())
 }

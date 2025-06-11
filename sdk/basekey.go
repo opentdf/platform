@@ -35,7 +35,7 @@ func getKasKeyAlg(alg string) policy.Algorithm {
 	switch alg {
 	case string(ocrypto.RSA2048Key):
 		return policy.Algorithm_ALGORITHM_RSA_2048
-	case "rsa:4096":
+	case "rsa:4096": //nolint:goconst // Will move to ocrypto
 		return policy.Algorithm_ALGORITHM_RSA_4096
 	case string(ocrypto.EC256Key):
 		return policy.Algorithm_ALGORITHM_EC_P256
@@ -69,8 +69,6 @@ func formatAlg(alg policy.Algorithm) (string, error) {
 }
 
 func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
-	simpleKasKey := &policy.SimpleKasKey{}
-
 	req := &wellknownconfiguration.GetWellKnownConfigurationRequest{}
 	response, err := s.wellknownConfiguration.GetWellKnownConfiguration(ctx, req)
 	if err != nil {
@@ -90,7 +88,7 @@ func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 		return nil, errWellKnownConfigFormat
 	}
 
-	simpleKasKey, err = parseSimpleKasKey(configMap)
+	simpleKasKey, err := parseSimpleKasKey(configMap)
 	if err != nil {
 		return nil, err
 	}

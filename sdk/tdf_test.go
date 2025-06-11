@@ -1810,15 +1810,15 @@ func (s *TDFSuite) Test_PopulateBaseKey_Success() {
 
 	// Call populateBaseKey, should succeed
 	err := populateKasInfoFromBaseKey(ctx, *s.sdk, tdfConfig)
-	s.NoError(err, "populateBaseKey should succeed with valid base key")
+	s.Require().NoError(err, "populateBaseKey should succeed with valid base key")
 
 	// Verify KAS info list has been populated correctly
-	s.Equal(1, len(tdfConfig.kasInfoList), "KAS info list should have one entry")
-	s.Equal(s.baseKeyURI, tdfConfig.kasInfoList[0].URL, "KAS URL should match")
-	s.Equal(baseKeyKID, tdfConfig.kasInfoList[0].KID, "KAS KID should match")
-	s.Equal(string(ocrypto.RSA2048Key), tdfConfig.kasInfoList[0].Algorithm, "Algorithm should match")
-	s.Equal(mockRSAPublicKey1, tdfConfig.kasInfoList[0].PublicKey, "Public key should match")
-	s.Equal(ocrypto.KeyType("rsa:2048"), tdfConfig.keyType, "Key type should be set")
+	s.Require().Len(tdfConfig.kasInfoList, 1, "KAS info list should have one entry")
+	s.Require().Equal(s.baseKeyURI, tdfConfig.kasInfoList[0].URL, "KAS URL should match")
+	s.Require().Equal(baseKeyKID, tdfConfig.kasInfoList[0].KID, "KAS KID should match")
+	s.Require().Equal(string(ocrypto.RSA2048Key), tdfConfig.kasInfoList[0].Algorithm, "Algorithm should match")
+	s.Require().Equal(mockRSAPublicKey1, tdfConfig.kasInfoList[0].PublicKey, "Public key should match")
+	s.Require().Equal(ocrypto.KeyType("rsa:2048"), tdfConfig.keyType, "Key type should be set")
 }
 
 func (s *TDFSuite) Test_PopulateBaseKey_KasInfoPassIn_Fail() {
@@ -1970,7 +1970,6 @@ func (s *TDFSuite) createFileName(buf []byte, filename string, size int64) {
 }
 
 func createWellKnown(baseKey map[string]interface{}) map[string]interface{} {
-
 	// Create a stub for wellknown
 	return map[string]interface{}{
 		"configuration": map[string]interface{}{

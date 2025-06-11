@@ -215,7 +215,7 @@ func mockGrant(kas, kid string) *policy.KeyAccessServer {
 		panic("invalid kas URI")
 	}
 	if kid == "" {
-		return mockGrant(kas, "r1")
+		return mockGrant(kas, "r0")
 	}
 	return &policy.KeyAccessServer{
 		Uri: kas,

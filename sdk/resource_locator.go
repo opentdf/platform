@@ -117,8 +117,8 @@ func (rl ResourceLocator) GetURL() (string, error) {
 }
 
 func (rl ResourceLocator) Less(y *ResourceLocator) bool {
-	pa := rl.protocol & 0xF
-	pb := y.protocol & 0xF
+	pa := rl.protocol & 0xF //nolint:mnd // We don't care about id length
+	pb := y.protocol & 0xF  //nolint:mnd // We don't care about id length
 	if pa != pb {
 		return pa < pb
 	}
@@ -153,14 +153,14 @@ func (rl ResourceLocator) String() string {
 	return fmt.Sprintf("%s#%s", url, rl.identifier)
 }
 
-func (r1 ResourceLocator) Equals(r2 ResourceLocator) bool {
-	if r1.protocol != r2.protocol {
+func (rl ResourceLocator) Equals(r2 ResourceLocator) bool {
+	if rl.protocol != r2.protocol {
 		return false
 	}
-	if r1.body != r2.body {
+	if rl.body != r2.body {
 		return false
 	}
-	if r1.identifier != r2.identifier {
+	if rl.identifier != r2.identifier {
 		return false
 	}
 	return true

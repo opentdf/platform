@@ -31,12 +31,15 @@ type keySplitStep struct {
 	KAS, SplitID string
 }
 
+// Template for a KAS Access Object (KAO).
+// It is filled in during manifest creation by splitting the key material (DEK) across each split ID,
+// then wrapping each split with the KAS public key identified by the KID at each element.
 type kaoTpl struct {
 	keySplitStep
 	kid string
 }
 
-// AttributeNameFQN is a utility type to represent an FQN for an attribute.
+// AttributeNameFQN represents the FQN for an attribute.
 type AttributeNameFQN struct {
 	url, key string
 }
@@ -254,6 +257,8 @@ func convertAlgEnum2Simple(a policy.KasPublicKeyAlgEnum) policy.Algorithm {
 		return policy.Algorithm_ALGORITHM_RSA_2048
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
 		return policy.Algorithm_ALGORITHM_RSA_4096
+	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
+		return policy.Algorithm_ALGORITHM_UNSPECIFIED
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
 	}
@@ -281,14 +286,17 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 			slog.Debug("invalid KAS key in policy service", "simpleKasKey", k, "value", fqn)
 			continue
 		}
-		kasUri := k.GetKasUri()
+		kasURI := k.GetKasUri()
 		r.typ |= mappedFound
 		ok |= mappedFound
-		r.addMappedKey(fqn, k)
+		err := r.addMappedKey(fqn, k)
+		if err != nil {
+			slog.Debug("failed to add mapped key", "fqn", fqn, "kas", kasURI, "error", err)
+		}
 		if _, present := r.grantTable[fqn.key]; !present {
-			r.grantTable[fqn.key] = &keyAccessGrant{attr, []string{kasUri}}
+			r.grantTable[fqn.key] = &keyAccessGrant{attr, []string{kasURI}}
 		} else {
-			r.grantTable[fqn.key].kases = append(r.grantTable[fqn.key].kases, kasUri)
+			r.grantTable[fqn.key].kases = append(r.grantTable[fqn.key].kases, kasURI)
 		}
 	}
 	if ok != noKeysFound {
@@ -296,33 +304,32 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 	}
 
 	for _, g := range ag.GetGrants() {
-		if g != nil && g.GetUri() != "" {
-			kasUri := g.GetUri()
+		if g != nil && g.GetUri() != "" { //nolint:nestif // Simplify after grant removal
+			kasURI := g.GetUri()
 			r.typ |= grantsFound
 			ok |= grantsFound
-			r.addGrant(fqn, kasUri, attr)
+			r.addGrant(fqn, kasURI, attr)
 			if len(g.GetKasKeys()) != 0 {
 				for _, k := range g.GetKasKeys() {
 					err := r.addMappedKey(fqn, k)
 					if err != nil {
-						slog.Warn("failed to add mapped key", "fqn", fqn, "kas", kasUri, "error", err)
+						slog.Warn("failed to add mapped key", "fqn", fqn, "kas", kasURI, "error", err)
 					}
-					r.typ |= mappedFound
 				}
 				continue
 			}
 			ks := g.GetPublicKey().GetCached().GetKeys()
 			if len(ks) == 0 {
-				slog.Debug("no cached key in policy service", "kas", kasUri, "value", fqn)
+				slog.Debug("no cached key in policy service", "kas", kasURI, "value", fqn)
 				continue
 			}
 			for _, k := range ks {
 				if k.GetKid() == "" || k.GetPem() == "" {
-					slog.Debug("invalid cached key in policy service", "kas", kasUri, "value", fqn, "key", k)
+					slog.Debug("invalid cached key in policy service", "kas", kasURI, "value", fqn, "key", k)
 					continue
 				}
 				sk := &policy.SimpleKasKey{
-					KasUri: kasUri,
+					KasUri: kasURI,
 					PublicKey: &policy.SimpleKasPublicKey{
 						Algorithm: convertAlgEnum2Simple(k.GetAlg()),
 						Pem:       k.GetPem(),
@@ -332,11 +339,8 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 				}
 				err := r.addMappedKey(fqn, sk)
 				if err != nil {
-					slog.Warn("failed to add mapped key", "fqn", fqn, "kas", kasUri, "error", err)
+					slog.Warn("failed to add mapped key", "fqn", fqn, "kas", kasURI, "error", err)
 				}
-				// Should we count this as a mapped key? Probably not, as it indicates the policy service
-				// has not yet upgraded to use explicit KAS key values.
-				// r.typ |= mappedFound
 			}
 		}
 	}
@@ -396,7 +400,7 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkcon
 			storeKeysToCache(def.GetGrants(), keyCache)
 		}
 		if grantType == noKeysFound && def.GetNamespace() != nil {
-			grantType |= grants.addAllGrants(fqn, def.GetNamespace(), def)
+			grants.addAllGrants(fqn, def.GetNamespace(), def)
 			storeKeysToCache(def.GetNamespace().GetGrants(), keyCache)
 		}
 	}

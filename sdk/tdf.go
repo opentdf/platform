@@ -185,7 +185,6 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			if err != nil {
 				slog.Info("Failed to resolve kao template, using split plan / grant behavior", "error", err)
 			}
-			// TODO insert base key here
 		}
 		if g.typ == noKeysFound || g.typ == grantsFound {
 			dk := s.defaultKases(tdfConfig)

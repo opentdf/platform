@@ -35,7 +35,7 @@ func getKasKeyAlg(alg string) policy.Algorithm {
 	switch alg {
 	case string(ocrypto.RSA2048Key):
 		return policy.Algorithm_ALGORITHM_RSA_2048
-	case rsa4096: //nolint:goconst // Will move to ocrypto
+	case rsa4096:
 		return policy.Algorithm_ALGORITHM_RSA_4096
 	case string(ocrypto.EC256Key):
 		return policy.Algorithm_ALGORITHM_EC_P256

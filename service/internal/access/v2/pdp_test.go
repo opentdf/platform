@@ -1963,7 +1963,7 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 		)
 
 		s.Require().Error(err)
-		s.Require().ErrorIs(err, ErrInvalidRegisteredResourceValue)
+		s.Require().ErrorIs(err, ErrInvalidResource)
 		s.Require().Nil(entitlements)
 	})
 

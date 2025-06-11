@@ -116,7 +116,7 @@ erDiagram
         integer key_status 
         jsonb metadata 
         jsonb private_key_ctx 
-        uuid provider_config_id 
+        uuid provider_config_id FK 
         jsonb public_key_ctx 
         timestamp_with_time_zone updated_at 
     }
@@ -249,6 +249,7 @@ erDiagram
     subject_mappings }o--|| attribute_values : "attribute_value_id"
     base_keys }o--|| key_access_server_keys : "key_access_server_key_id"
     key_access_server_keys }o--|| key_access_servers : "key_access_server_id"
+    key_access_server_keys }o--|| provider_config : "provider_config_id"
     sym_key }o--|| provider_config : "provider_config_id"
     registered_resource_action_attribute_values }o--|| registered_resource_values : "registered_resource_value_id"
     registered_resource_values }o--|| registered_resources : "registered_resource_id"

@@ -50,7 +50,7 @@ jobs:
             files-to-be-skipped: &files-to-be-skipped
               - '.github/workflows/reusable_*.yaml'
             all-other-files:
-              - '!(*files-to-be-skipped)**'
+              - '!(*files-to-be-skipped)'
 
       - run: |
           echo "true"

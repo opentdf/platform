@@ -195,7 +195,7 @@ func validateGetResourceDecision(
 	return nil
 }
 
-// validateOneResourceDecision validates the parameters for an access decision on a resource
+// validateGetResourceDecisionRegisteredResource validates the parameters for an access decision on a registered resource
 //
 //   - accessibleAttributeValues: must not be nil
 //   - accessibleRegisteredResourceValues: must not be nil

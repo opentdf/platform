@@ -173,6 +173,17 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
 	}
 
+	// At most one of the following should be true:
+	// - autoconfigure is true
+	// - splitPlan is set
+	// - kaoTemplate is set
+	if len(tdfConfig.splitPlan) > 0 && len(tdfConfig.kaoTemplate) > 0 {
+		return nil, fmt.Errorf("cannot set both splitPlan and kaoTemplate")
+	}
+	if tdfConfig.autoconfigure && (len(tdfConfig.splitPlan) > 0 || len(tdfConfig.kaoTemplate) > 0) {
+		return nil, fmt.Errorf("cannot set autoconfigure and splitPlan or kaoTemplate")
+	}
+
 	if tdfConfig.autoconfigure { //nolint:nestif // simplify after removing support for splitPlan
 		var g granter
 		g, err = s.newGranter(ctx, tdfConfig, err)
@@ -188,6 +199,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		}
 		if g.typ == noKeysFound || g.typ == grantsFound {
 			dk := s.defaultKases(tdfConfig)
+			tdfConfig.kaoTemplate = nil
 			tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
 		}
 		if err != nil {
@@ -430,10 +442,10 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	}
 
 	base64PolicyObject := ocrypto.Base64Encode(policyObjectAsStr)
-	symKeys := make([][]byte, 0)
 	switch {
 	case len(tdfConfig.kaoTemplate) > 0:
 		// use the kao template to create the split plan
+		// This is the preferred behavior; the following options upgrade deprecated behaviors
 	case len(tdfConfig.splitPlan) > 0:
 		// upgrade split plan to kao template
 		tdfConfig.kaoTemplate = make([]kaoTpl, len(tdfConfig.splitPlan))
@@ -446,8 +458,10 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 				latestKASInfo[splitInfo.KAS].KID,
 			}
 		}
+		tdfConfig.splitPlan = nil // clear split plan as we are using kaoTemplate now
 	case len(tdfConfig.kasInfoList) > 0:
 		// Default to split based on kasInfoList
+		// To remove. This has been deprecated for some time.
 		tdfConfig.kaoTemplate = make([]kaoTpl, len(tdfConfig.kasInfoList))
 		for i, kasInfo := range tdfConfig.kasInfoList {
 			splitID := ""
@@ -489,6 +503,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		}
 	}
 
+	symKeys := make([][]byte, 0, len(splitIDs))
 	for _, splitID := range splitIDs {
 		symKey, err := ocrypto.RandomBytes(kKeySize)
 		if err != nil {

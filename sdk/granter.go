@@ -197,6 +197,9 @@ type granter struct {
 
 	// Map from attribute values to KAS and key identifier.
 	mapTable map[string][]*ResourceLocator
+
+	// The types of grants or mapped keys found.
+	typ grantTypeMask
 }
 
 type keyAccessGrant struct {
@@ -204,7 +207,7 @@ type keyAccessGrant struct {
 	kases []string
 }
 
-func (r granter) addGrant(fqn AttributeValueFQN, kas string, attr *policy.Attribute) {
+func (r *granter) addGrant(fqn AttributeValueFQN, kas string, attr *policy.Attribute) {
 	if _, ok := r.grantTable[fqn.key]; ok {
 		r.grantTable[fqn.key].kases = append(r.grantTable[fqn.key].kases, kas)
 	} else {
@@ -212,7 +215,7 @@ func (r granter) addGrant(fqn AttributeValueFQN, kas string, attr *policy.Attrib
 	}
 }
 
-func (r granter) addMappedKey(fqn AttributeValueFQN, sk *policy.SimpleKasKey) error {
+func (r *granter) addMappedKey(fqn AttributeValueFQN, sk *policy.SimpleKasKey) error {
 	key := sk.GetPublicKey()
 	if key == nil || key.GetKid() == "" || key.GetPem() == "" {
 		slog.Debug("invalid cached key in policy service", "kas", sk.GetKasUri(), "value", fqn)
@@ -256,12 +259,47 @@ func convertAlgEnum2Simple(a policy.KasPublicKeyAlgEnum) policy.Algorithm {
 	}
 }
 
+type grantTypeMask int
+
+const (
+	noKeysFound grantTypeMask = 0
+	grantsFound               = 1 << iota
+	mappedFound
+)
+
+type grantableObject interface {
+	GetGrants() []*policy.KeyAccessServer
+	GetKasKeys() []*policy.SimpleKasKey
+}
+
 // addAllGrants adds all grants from a list of KASes to the granter.
-func (r granter) addAllGrants(fqn AttributeValueFQN, gs []*policy.KeyAccessServer, attr *policy.Attribute) bool {
-	ok := false
-	for _, g := range gs {
+// It returns a mask indicating whether grants or mapped keys were found.
+func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *policy.Attribute) grantTypeMask {
+	ok := noKeysFound
+	for _, k := range ag.GetKasKeys() {
+		if k == nil || k.GetKasUri() == "" {
+			slog.Debug("invalid KAS key in policy service", "simpleKasKey", k, "value", fqn)
+			continue
+		}
+		kasUri := k.GetKasUri()
+		r.typ |= mappedFound
+		ok |= mappedFound
+		r.addMappedKey(fqn, k)
+		if _, present := r.grantTable[fqn.key]; !present {
+			r.grantTable[fqn.key] = &keyAccessGrant{attr, []string{kasUri}}
+		} else {
+			r.grantTable[fqn.key].kases = append(r.grantTable[fqn.key].kases, kasUri)
+		}
+	}
+	if ok != noKeysFound {
+		return ok
+	}
+
+	for _, g := range ag.GetGrants() {
 		if g != nil && g.GetUri() != "" {
 			kasUri := g.GetUri()
+			r.typ |= grantsFound
+			ok |= grantsFound
 			r.addGrant(fqn, kasUri, attr)
 			if len(g.GetKasKeys()) != 0 {
 				for _, k := range g.GetKasKeys() {
@@ -269,6 +307,7 @@ func (r granter) addAllGrants(fqn AttributeValueFQN, gs []*policy.KeyAccessServe
 					if err != nil {
 						slog.Warn("failed to add mapped key", "fqn", fqn, "kas", kasUri, "error", err)
 					}
+					r.typ |= mappedFound
 				}
 				continue
 			}
@@ -295,11 +334,13 @@ func (r granter) addAllGrants(fqn AttributeValueFQN, gs []*policy.KeyAccessServe
 				if err != nil {
 					slog.Warn("failed to add mapped key", "fqn", fqn, "kas", kasUri, "error", err)
 				}
-				ok = true
+				// Should we count this as a mapped key? Probably not, as it indicates the policy service
+				// has not yet upgraded to use explicit KAS key values.
+				// r.typ |= mappedFound
 			}
 		}
 	}
-	if len(gs) == 0 {
+	if ok == noKeysFound {
 		if _, present := r.grantTable[fqn.key]; !present {
 			r.grantTable[fqn.key] = &keyAccessGrant{attr, []string{}}
 		}
@@ -343,20 +384,19 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkcon
 			storeKeysToCache(def.GetGrants(), keyCache)
 		}
 		v := pair.GetValue()
-		valuesGranted := false
+		grantType := noKeysFound
 		if v != nil {
-			valuesGranted = grants.addAllGrants(fqn, v.GetGrants(), def)
+			grantType |= grants.addAllGrants(fqn, v, def)
 			storeKeysToCache(v.GetGrants(), keyCache)
 		}
 
-		attributesGranted := false
 		// If no more specific grant was found, then add the value grants
-		if !valuesGranted && def != nil {
-			attributesGranted = grants.addAllGrants(fqn, def.GetGrants(), def)
+		if grantType == noKeysFound && def != nil {
+			grantType |= grants.addAllGrants(fqn, def, def)
 			storeKeysToCache(def.GetGrants(), keyCache)
 		}
-		if !valuesGranted && !attributesGranted && def.GetNamespace() != nil {
-			grants.addAllGrants(fqn, def.GetNamespace().GetGrants(), def)
+		if grantType == noKeysFound && def.GetNamespace() != nil {
+			grantType |= grants.addAllGrants(fqn, def.GetNamespace(), def)
 			storeKeysToCache(def.GetNamespace().GetGrants(), keyCache)
 		}
 	}
@@ -406,6 +446,7 @@ func storeKeysToCache(kases []*policy.KeyAccessServer, c *kasKeyCache) {
 func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (granter, error) {
 	grants := granter{
 		grantTable: make(map[string]*keyAccessGrant),
+		mapTable:   make(map[string][]*ResourceLocator),
 		tags:       make([]AttributeValueFQN, len(attrs)),
 	}
 	for i, v := range attrs {
@@ -423,16 +464,16 @@ func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (gr
 			return granter{}, fmt.Errorf("no associated namespace with definition [%s] from value [%s]", def.GetFqn(), fqn)
 		}
 
-		if grants.addAllGrants(fqn, v.GetGrants(), def) {
+		if grants.addAllGrants(fqn, v, def) != noKeysFound {
 			storeKeysToCache(v.GetGrants(), keyCache)
 			continue
 		}
 		// If no more specific grant was found, then add the attr grants
-		if grants.addAllGrants(fqn, def.GetGrants(), def) {
+		if grants.addAllGrants(fqn, def, def) != noKeysFound {
 			storeKeysToCache(def.GetGrants(), keyCache)
 			continue
 		}
-		grants.addAllGrants(fqn, namespace.GetGrants(), def)
+		grants.addAllGrants(fqn, namespace, def)
 		storeKeysToCache(namespace.GetGrants(), keyCache)
 	}
 
@@ -700,7 +741,7 @@ func sortedNoDupes(l []*ResourceLocator) disjunction {
 	set := map[string]bool{}
 	list := make([]*ResourceLocator, 0)
 	for _, e := range l {
-		kas := e.KASURI()
+		kas := e.String()
 		if kas != "" && !set[kas] {
 			set[kas] = true
 			list = append(list, e)

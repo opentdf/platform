@@ -150,9 +150,7 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 			Name:      "Mapped",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Fqn:       fqn.String(),
-			KasKeys: []*policy.SimpleKasKey{
-				{KasUri: specifiedKas, PublicKey: &policy.SimpleKasPublicKey{Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Kid: "r1"}},
-			},
+			KasKeys:   []*policy.SimpleKasKey{mockSimpleKasKey(specifiedKas, "r1")},
 		}
 	case N2K.key:
 		return &policy.Attribute{
@@ -235,6 +233,34 @@ func mockGrant(kas, kid string) *policy.KeyAccessServer {
 	}
 }
 
+func mockSimpleKasKey(kas, kid string) *policy.SimpleKasKey {
+	if kas == "" {
+		panic("invalid kas URI")
+	}
+	if kid == "" {
+		panic("invalid kas kid")
+	}
+	var alg policy.Algorithm
+	switch kid {
+	case "r1":
+		alg = policy.Algorithm_ALGORITHM_RSA_2048
+	case "r2":
+		alg = policy.Algorithm_ALGORITHM_RSA_4096
+	case "e1":
+		alg = policy.Algorithm_ALGORITHM_EC_P256
+	default:
+		panic("invalid kas kid: " + kid)
+	}
+	return &policy.SimpleKasKey{
+		KasUri: kas,
+		PublicKey: &policy.SimpleKasPublicKey{
+			Algorithm: alg,
+			Kid:       kid,
+			Pem:       "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQ...\n-----END PUBLIC KEY-----\n",
+		},
+	}
+}
+
 func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 	an := fqn.Prefix()
 	a := mockAttributeFor(an)
@@ -291,10 +317,10 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 		switch strings.ToLower(fqn.Value()) {
 		case "a":
 			p.KasKeys = make([]*policy.SimpleKasKey, 1)
-			p.KasKeys[0] = &policy.SimpleKasKey{KasUri: specifiedKas, PublicKey: &policy.SimpleKasPublicKey{Algorithm: policy.Algorithm_ALGORITHM_RSA_4096, Kid: "r2"}}
+			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "r2")
 		case "b":
 			p.KasKeys = make([]*policy.SimpleKasKey, 1)
-			p.KasKeys[0] = &policy.SimpleKasKey{KasUri: specifiedKas, PublicKey: &policy.SimpleKasPublicKey{Algorithm: policy.Algorithm_ALGORITHM_EC_P256, Kid: "e1"}}
+			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "e1")
 		case "unspecified":
 			// defaults only
 		default:
@@ -554,14 +580,43 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			},
 		},
 		{
-			"mappings only",
+			"mappings at attr value",
+			[]AttributeValueFQN{mpa, mpb},
+			[]string{emptyTerm},
+			"https://virtru.com/attr/mapped/value/{a,b}",
+			"(https://value.kas.com/⋁https://value.kas.com/)",
+			"(https://value.kas.com/)",
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
+			[]kaoTpl{
+				{keySplitStep{evenMoreSpecificKas, "1"}, "e1"},
+				{keySplitStep{evenMoreSpecificKas, "1"}, "r2"},
+			},
+		},
+		{
+			"mappings at attr definition",
+			[]AttributeValueFQN{mpu},
+			[]string{emptyTerm},
+			"https://virtru.com/attr/mapped/value/unspecified",
+			"(https://attr.kas.com/)",
+			"(https://attr.kas.com/)",
+			[]keySplitStep{{specifiedKas, ""}},
+			[]kaoTpl{
+				{keySplitStep{specifiedKas, ""}, "r1"},
+			},
+		},
+		{
+			"mappings all",
 			[]AttributeValueFQN{mpa, mpb, mpu},
 			[]string{emptyTerm},
 			"https://virtru.com/attr/mapped/value/{a,b,unspecified}",
-			"(⋁⋁)", // FIXME Reduce called on 'grants only' code will fail on 'maps only' code; probably should be empty or [DEFAULT]?
-			"",
-			[]keySplitStep{{emptyTerm, ""}},
-			[]kaoTpl{},
+			"(https://value.kas.com/⋁https://value.kas.com/⋁https://attr.kas.com/)",
+			"(https://attr.kas.com/⋁https://value.kas.com/)",
+			[]keySplitStep{{specifiedKas, "1"}, {evenMoreSpecificKas, "1"}},
+			[]kaoTpl{
+				{keySplitStep{specifiedKas, "1"}, "r1"},
+				{keySplitStep{evenMoreSpecificKas, "1"}, "e1"},
+				{keySplitStep{evenMoreSpecificKas, "1"}, "r2"},
+			},
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {

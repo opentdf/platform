@@ -43,7 +43,6 @@ type config struct {
 	entityResolutionConn               *ConnectRPCConnection
 	collectionStore                    *collectionStore
 	shouldValidatePlatformConnectivity bool
-	isBaseKeyEnabled                   bool
 }
 
 // Options specific to TDF protocol features

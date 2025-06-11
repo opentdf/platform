@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -787,24 +788,9 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, errors.New("exceeds max size for nano tdf")
 	}
 
-	kasURL, err := config.kasURL.GetURL()
+	ki, err := getKasInfoForNanoTDF(&s, &config)
 	if err != nil {
-		return 0, fmt.Errorf("config.kasURL failed:%w", err)
-	}
-	if kasURL == "https://" || kasURL == "http://" {
-		return 0, errors.New("config.kasUrl is empty")
-	}
-	ki, err := s.getPublicKey(context.Background(), kasURL, config.bindCfg.eccMode.String())
-	if err != nil {
-		return 0, fmt.Errorf("getECPublicKey failed:%w", err)
-	}
-
-	// update KAS URL with kid if set
-	if ki.KID != "" && !s.nanoFeatures.noKID {
-		err = config.kasURL.setURLWithIdentifier(kasURL, ki.KID)
-		if err != nil {
-			return 0, fmt.Errorf("getECPublicKey setURLWithIdentifier failed:%w", err)
-		}
+		return 0, fmt.Errorf("getKasInfoForNanoTDF failed: %w", err)
 	}
 
 	config.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(ki.PublicKey))
@@ -1105,4 +1091,68 @@ func createNanoTDFSymmetricKey(config NanoTDFConfig) ([]byte, error) {
 	}
 
 	return symmetricKey, nil
+}
+
+func getKasInfoForNanoTDF(s *SDK, config *NanoTDFConfig) (*KASInfo, error) {
+	if config.baseKeyEnabled {
+		ki, err := getNanoKasInfoFromBaseKey(s)
+		if err != nil {
+			return nil, err
+		}
+		config.kasURL.setURLWithIdentifier(ki.URL, ki.KID)
+		config.bindCfg.eccMode, err = ocrypto.ECKeyTypeToMode(ocrypto.KeyType(ki.Algorithm))
+		if err != nil {
+			return nil, fmt.Errorf("ocrypto.ECKeyTypeToMode failed: %w", err)
+		}
+		return ki, nil
+	}
+
+	kasURL, err := config.kasURL.GetURL()
+	if err != nil {
+		return nil, fmt.Errorf("config.kasURL failed:%w", err)
+	}
+	if kasURL == "https://" || kasURL == "http://" {
+		return nil, errors.New("config.kasUrl is empty")
+	}
+	ki, err := s.getPublicKey(context.Background(), kasURL, config.bindCfg.eccMode.String())
+	if err != nil {
+		return nil, fmt.Errorf("getECPublicKey failed:%w", err)
+	}
+
+	// update KAS URL with kid if set
+	if ki.KID != "" && !s.nanoFeatures.noKID {
+		err = config.kasURL.setURLWithIdentifier(kasURL, ki.KID)
+		if err != nil {
+			return nil, fmt.Errorf("getECPublicKey setURLWithIdentifier failed:%w", err)
+		}
+	}
+
+	return ki, nil
+}
+
+func getNanoKasInfoFromBaseKey(s *SDK) (*KASInfo, error) {
+	baseKey, err := getBaseKey(context.Background(), *s)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if algorithm is one of the supported EC algorithms
+	algorithm := baseKey.GetPublicKey().GetAlgorithm()
+	if algorithm != policy.Algorithm_ALGORITHM_EC_P256 &&
+		algorithm != policy.Algorithm_ALGORITHM_EC_P384 &&
+		algorithm != policy.Algorithm_ALGORITHM_EC_P521 {
+		return nil, fmt.Errorf("base key algorithm is not supported for nano: %s", algorithm)
+	}
+
+	alg, err := formatAlg(baseKey.GetPublicKey().GetAlgorithm())
+	if err != nil {
+		return nil, fmt.Errorf("formatAlg failed: %w", err)
+	}
+
+	return &KASInfo{
+		URL:       baseKey.GetKasUri(),
+		PublicKey: baseKey.GetPublicKey().GetPem(),
+		KID:       baseKey.GetPublicKey().GetKid(),
+		Algorithm: alg,
+	}, nil
 }

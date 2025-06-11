@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -13,20 +14,34 @@ import (
 
 // Should match:
 // https://github.com/opentdf/platform/blob/main/service/wellknownconfiguration/wellknown_configuration.go#L25
-const baseKeyWellKnown = "base_key"
+const (
+	baseKeyWellKnown   = "base_key"
+	baseKeyAlg         = "algorithm"
+	baseKeyPublicKey   = "public_key"
+	wellKnownConfigKey = "configuration"
+)
+
+var (
+	errWellKnownConfigFormat  = errors.New("well-known configuration has invalid format")
+	errBaseKeyNotFound        = errors.New("base key not found in well-known configuration")
+	errBaseKeyInvalidFormat   = errors.New("base key has invalid format")
+	errBaseKeyEmpty           = errors.New("base key is empty or not provided")
+	errMarshalBaseKeyFailed   = errors.New("failed to marshal base key configuration")
+	errUnmarshalBaseKeyFailed = errors.New("failed to unmarshal base key configuration")
+)
 
 // TODO: Move this function to ocrypto?
 func getKasKeyAlg(alg string) policy.Algorithm {
 	switch alg {
-	case "rsa:2048":
+	case string(ocrypto.RSA2048Key):
 		return policy.Algorithm_ALGORITHM_RSA_2048
 	case "rsa:4096":
 		return policy.Algorithm_ALGORITHM_RSA_4096
-	case "ec:secp256r1":
+	case string(ocrypto.EC256Key):
 		return policy.Algorithm_ALGORITHM_EC_P256
-	case "ec:secp384r1":
+	case string(ocrypto.EC384Key):
 		return policy.Algorithm_ALGORITHM_EC_P384
-	case "ec:secp521r1":
+	case string(ocrypto.EC521Key):
 		return policy.Algorithm_ALGORITHM_EC_P521
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
@@ -37,15 +52,15 @@ func getKasKeyAlg(alg string) policy.Algorithm {
 func formatAlg(alg policy.Algorithm) (string, error) {
 	switch alg {
 	case policy.Algorithm_ALGORITHM_RSA_2048:
-		return "rsa:2048", nil
+		return string(ocrypto.RSA2048Key), nil
 	case policy.Algorithm_ALGORITHM_RSA_4096:
 		return "rsa:4096", nil
 	case policy.Algorithm_ALGORITHM_EC_P256:
-		return "ec:secp256r1", nil
+		return string(ocrypto.EC256Key), nil
 	case policy.Algorithm_ALGORITHM_EC_P384:
-		return "ec:secp384r1", nil
+		return string(ocrypto.EC384Key), nil
 	case policy.Algorithm_ALGORITHM_EC_P521:
-		return "ec:secp512r1", nil
+		return string(ocrypto.EC521Key), nil
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:
@@ -53,7 +68,7 @@ func formatAlg(alg policy.Algorithm) (string, error) {
 	}
 }
 
-func (s SDK) getBaseKey(ctx context.Context) (*policy.SimpleKasKey, error) {
+func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 	simpleKasKey := &policy.SimpleKasKey{}
 
 	req := &wellknownconfiguration.GetWellKnownConfigurationRequest{}
@@ -65,34 +80,58 @@ func (s SDK) getBaseKey(ctx context.Context) (*policy.SimpleKasKey, error) {
 	if configuration == nil {
 		return nil, ErrWellKnowConfigEmpty
 	}
-	configStructure, ok := configuration.AsMap()[baseKeyWellKnown]
+	configStructure, ok := configuration.AsMap()[wellKnownConfigKey]
 	if !ok {
-		return nil, errors.New("base key not found in well-known configuration")
+		return nil, err
 	}
+
 	configMap, ok := configStructure.(map[string]interface{})
 	if !ok {
-		return nil, errors.New("invalid base key format")
-	}
-	if len(configMap) == 0 {
-		return nil, errors.New("base key is empty")
+		return nil, errWellKnownConfigFormat
 	}
 
-	publicKey, ok := configMap["public_key"].(map[string]interface{})
-	if !ok {
-		return nil, errors.New("public key structure not found in base key configuration")
-	}
-
-	publicKey["algorithm"] = getKasKeyAlg(publicKey["algorithm"].(string))
-	configMap["public_key"] = publicKey
-	configJSON, err := json.Marshal(configMap)
+	simpleKasKey, err = parseSimpleKasKey(configMap)
 	if err != nil {
-		return nil, errors.Join(errors.New("base key marshal failed"), err)
+		return nil, err
+	}
+
+	return simpleKasKey, nil
+}
+
+func parseSimpleKasKey(configMap map[string]interface{}) (*policy.SimpleKasKey, error) {
+	simpleKasKey := &policy.SimpleKasKey{}
+	baseKey, ok := configMap[baseKeyWellKnown]
+	if !ok {
+		return nil, errBaseKeyNotFound
+	}
+
+	baseKeyMap, ok := baseKey.(map[string]interface{})
+	if !ok {
+		return nil, errBaseKeyInvalidFormat
+	}
+	if len(baseKeyMap) == 0 {
+		return nil, errBaseKeyEmpty
+	}
+
+	publicKey, ok := baseKeyMap[baseKeyPublicKey].(map[string]interface{})
+	if !ok {
+		return nil, errBaseKeyInvalidFormat
+	}
+
+	alg, ok := publicKey[baseKeyAlg].(string)
+	if !ok {
+		return nil, errBaseKeyInvalidFormat
+	}
+	publicKey[baseKeyAlg] = getKasKeyAlg(alg)
+	baseKeyMap[baseKeyPublicKey] = publicKey
+	configJSON, err := json.Marshal(baseKey)
+	if err != nil {
+		return nil, errors.Join(errMarshalBaseKeyFailed, err)
 	}
 
 	err = protojson.Unmarshal(configJSON, simpleKasKey)
 	if err != nil {
-		return nil, errors.Join(errors.New("unable to unmarshal base key"), err)
+		return nil, errors.Join(errUnmarshalBaseKeyFailed, err)
 	}
-
 	return simpleKasKey, nil
 }

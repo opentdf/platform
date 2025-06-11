@@ -25,6 +25,7 @@ const (
 	anyOf       = "anyOf"
 	unspecified = "unspecified"
 	emptyTerm   = "DEFAULT"
+	rsa4096     = "rsa:4096"
 )
 
 // keySplitStep represents a which KAS a split with the associated ID should be shared with.
@@ -285,7 +286,7 @@ func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048:
 		return string(ocrypto.RSA2048Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
-		return "rsa:4096"
+		return rsa4096
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return ""
 	}

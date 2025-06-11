@@ -169,7 +169,7 @@ func TestFormatAlg(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			result, err := formatAlg(test.alg)
 			if test.expectError {
-				require.NoError(t, err)
+				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, test.expected, result, "Algorithm string mismatch")

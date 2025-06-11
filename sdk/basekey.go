@@ -54,7 +54,7 @@ func formatAlg(alg policy.Algorithm) (string, error) {
 	case policy.Algorithm_ALGORITHM_RSA_2048:
 		return string(ocrypto.RSA2048Key), nil
 	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return "rsa:4096", nil
+		return rsa4096, nil
 	case policy.Algorithm_ALGORITHM_EC_P256:
 		return string(ocrypto.EC256Key), nil
 	case policy.Algorithm_ALGORITHM_EC_P384:

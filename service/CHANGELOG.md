@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/opentdf/platform/compare/service/v0.6.0...service/v0.6.1) (2025-06-11)
+
+
+### Bug Fixes
+
+* only request a token when near expiration [backport to release/service/v0.6] ([#2408](https://github.com/opentdf/platform/issues/2408)) ([e6d5de3](https://github.com/opentdf/platform/commit/e6d5de3052d092c964d2b8edc9509c1e31c5295e))
+
 ## [0.6.0](https://github.com/opentdf/platform/compare/service/v0.5.5...service/v0.6.0) (2025-06-06)
 
 

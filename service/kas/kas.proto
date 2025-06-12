@@ -134,7 +134,7 @@ service AccessService {
 
   // Endpoint intended for gRPC Gateway's REST endpoint to provide v1 compatibility with older TDF clients
   //
-  // This endpoint is not recommended for use in new applications.
+  // This endpoint is not recommended for use in new applications, prefer the v2 endpoint ('PublicKey') instead.
   //
   // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
   rpc LegacyPublicKey(LegacyPublicKeyRequest) returns (google.protobuf.StringValue) {

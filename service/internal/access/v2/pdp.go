@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/opentdf/platform/lib/identifier"
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -171,7 +170,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	}
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
-	decisionableAttributes, err := p.getResourceDecisionableAttributes(ctx, l, action, resources)
+	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN, action, resources)
 	if err != nil {
 		return nil, fmt.Errorf("error getting decisionable attributes: %w", err)
 	}
@@ -232,7 +231,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	}
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
-	decisionableAttributes, err := p.getResourceDecisionableAttributes(ctx, l, action, resources)
+	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN, action, resources)
 	if err != nil {
 		return nil, fmt.Errorf("error getting decisionable attributes: %w", err)
 	}
@@ -422,72 +421,4 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 	)
 
 	return result, nil
-}
-
-func (p *PolicyDecisionPoint) getResourceDecisionableAttributes(ctx context.Context, logger *logger.Logger, action *policy.Action, resources []*authz.Resource) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
-	var (
-		decisionableAttributes = make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
-		attrValueFQNs          = make([]string, 0)
-	)
-
-	// Parse attribute value FQNs from various resource types
-	for idx, resource := range resources {
-		// Assign indexed ephemeral ID for resource if not already set
-		if resource.GetEphemeralId() == "" {
-			resource.EphemeralId = "resource-" + strconv.Itoa(idx)
-		}
-
-		switch resource.GetResource().(type) {
-		case *authz.Resource_RegisteredResourceValueFqn:
-			regResValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
-			regResValue, found := p.allRegisteredResourceValuesByFQN[regResValueFQN]
-			if !found {
-				return nil, fmt.Errorf("resource registered resource value FQN not found in memory [%s]: %w", regResValueFQN, ErrInvalidResource)
-			}
-
-			for _, aav := range regResValue.GetActionAttributeValues() {
-				aavAction := aav.GetAction()
-				if aavAction.GetName() != action.GetName() {
-					logger.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("action", aavAction.GetName()))
-					continue
-				}
-
-				attrValueFQNs = append(attrValueFQNs, aav.GetAttributeValue().GetFqn())
-			}
-
-		case *authz.Resource_AttributeValues_:
-			for idx, attrValueFQN := range resource.GetAttributeValues().GetFqns() {
-				// lowercase each resource attribute value FQN for case consistent map key lookups
-				attrValueFQN = strings.ToLower(attrValueFQN)
-				resource.GetAttributeValues().Fqns[idx] = attrValueFQN
-
-				attrValueFQNs = append(attrValueFQNs, attrValueFQN)
-			}
-
-		default:
-			// default should never happen as we validate above
-			return nil, fmt.Errorf("invalid resource type [%T]: %w", resource.GetResource(), ErrInvalidResource)
-		}
-	}
-
-	// determine decisionable attributes based on the attribute value FQNs
-	for _, attrValueFQN := range attrValueFQNs {
-		// If same value FQN more than once, skip (dedupe)
-		if _, ok := decisionableAttributes[attrValueFQN]; ok {
-			continue
-		}
-
-		attributeAndValue, ok := p.allEntitleableAttributesByValueFQN[attrValueFQN]
-		if !ok {
-			return nil, fmt.Errorf("resource attribute value FQN not found in memory [%s]: %w", attrValueFQN, ErrInvalidResource)
-		}
-
-		decisionableAttributes[attrValueFQN] = attributeAndValue
-		err := populateHigherValuesIfHierarchy(ctx, logger, attrValueFQN, attributeAndValue.GetAttribute(), p.allEntitleableAttributesByValueFQN, decisionableAttributes)
-		if err != nil {
-			return nil, fmt.Errorf("error populating higher hierarchy attribute values: %w", err)
-		}
-	}
-
-	return decisionableAttributes, nil
 }

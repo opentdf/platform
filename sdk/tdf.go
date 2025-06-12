@@ -148,6 +148,10 @@ func (s SDK) defaultKases(c *TDFConfig) []string {
 	return defk
 }
 
+func uuidSplitIDGenerator() string {
+	return uuid.New().String()
+}
+
 // CreateTDFContext reads plain text from the given reader and saves it to the writer, subject to the given options
 func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
 	inputSize, err := reader.Seek(0, io.SeekEnd)
@@ -169,30 +173,43 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
 	}
 
-	g := granter{}
-	if tdfConfig.autoconfigure { //nolint:nestif // Will refactor in the future
-		if len(tdfConfig.attributeValues) > 0 {
-			g, err = newGranterFromAttributes(s.kasKeyCache, tdfConfig.attributeValues...)
-		} else if len(tdfConfig.attributes) > 0 {
-			g, err = newGranterFromService(ctx, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
-		}
+	// At most one of the following should be true:
+	// - autoconfigure is true
+	// - splitPlan is set
+	// - kaoTemplate is set
+	if len(tdfConfig.splitPlan) > 0 && len(tdfConfig.kaoTemplate) > 0 {
+		return nil, errors.New("cannot set both splitPlan and kaoTemplate")
+	}
+	if tdfConfig.autoconfigure && (len(tdfConfig.splitPlan) > 0 || len(tdfConfig.kaoTemplate) > 0) {
+		return nil, errors.New("cannot set autoconfigure and splitPlan or kaoTemplate")
+	}
+
+	if tdfConfig.autoconfigure { //nolint:nestif // simplify after removing support for splitPlan
+		var g granter
+		g, err = s.newGranter(ctx, tdfConfig, err)
 		if err != nil {
 			return nil, err
 		}
 
-		// * Bug, if base key is enabled we need to do split plan with no default kases
-		if !tdfConfig.isBaseKeyEnabled {
-			dk := s.defaultKases(tdfConfig)
-			tdfConfig.splitPlan, err = g.plan(dk, func() string {
-				return uuid.New().String()
-			})
+		if g.typ&mappedFound == mappedFound {
+			tdfConfig.kaoTemplate, err = g.resolveTemplate(uuidSplitIDGenerator)
 			if err != nil {
-				return nil, err
+				slog.Info("Failed to resolve kao template, using split plan / grant behavior", "error", err)
 			}
+		}
+		if g.typ == noKeysFound || g.typ == grantsFound && !tdfConfig.isBaseKeyEnabled {
+			dk := s.defaultKases(tdfConfig)
+			tdfConfig.kaoTemplate = nil
+			tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("populateKasInfoFromBaseKey failed: %w", err)
 		}
 	}
 
-	if tdfConfig.isBaseKeyEnabled && len(g.grants) == 0 {
+	// * Expresses the use case where no attributes were passed in or found.
+	// * Replaces the defaultKases behavior.
+	if tdfConfig.isBaseKeyEnabled && len(tdfConfig.kaoTemplate) == 0 {
 		err = populateKasInfoFromBaseKey(ctx, s, tdfConfig)
 		if err != nil {
 			return nil, fmt.Errorf("populateKasInfoFromBaseKey failed: %w", err)
@@ -383,6 +400,16 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	return tdfObject, nil
 }
 
+func (s SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig, err error) (granter, error) {
+	var g granter
+	if len(tdfConfig.attributeValues) > 0 {
+		g, err = newGranterFromAttributes(s.kasKeyCache, tdfConfig.attributeValues...)
+	} else if len(tdfConfig.attributes) > 0 {
+		g, err = newGranterFromService(ctx, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
+	}
+	return g, err
+}
+
 func (t *TDFObject) Manifest() Manifest {
 	return t.manifest
 }
@@ -399,8 +426,16 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		manifest.TDFVersion = TDFSpecVersion
 	}
 
-	if len(tdfConfig.splitPlan) == 0 && len(tdfConfig.kasInfoList) == 0 {
+	if len(tdfConfig.splitPlan) == 0 && len(tdfConfig.kasInfoList) == 0 && len(tdfConfig.kaoTemplate) == 0 {
 		return fmt.Errorf("%w: no key access template specified or inferred", errInvalidKasInfo)
+	}
+
+	// Seed anything passed in manually
+	latestKASInfo := make(map[string]KASInfo)
+	for _, kasInfo := range tdfConfig.kasInfoList {
+		if kasInfo.PublicKey != "" {
+			latestKASInfo[kasInfo.URL] = kasInfo
+		}
 	}
 
 	manifest.EncryptionInformation.KeyAccessType = kSplitKeyType
@@ -416,54 +451,68 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	}
 
 	base64PolicyObject := ocrypto.Base64Encode(policyObjectAsStr)
-	symKeys := make([][]byte, 0)
-	latestKASInfo := make(map[string]KASInfo)
-	if len(tdfConfig.splitPlan) == 0 {
-		// Default split plan: Split keys across all kases
-		tdfConfig.splitPlan = make([]keySplitStep, len(tdfConfig.kasInfoList))
-		for i, kasInfo := range tdfConfig.kasInfoList {
-			tdfConfig.splitPlan[i].KAS = kasInfo.URL
-			if len(tdfConfig.kasInfoList) > 1 {
-				tdfConfig.splitPlan[i].SplitID = fmt.Sprintf("s-%d", i)
-			}
-			if kasInfo.PublicKey != "" {
-				latestKASInfo[kasInfo.URL] = kasInfo
+	switch {
+	case len(tdfConfig.kaoTemplate) > 0:
+		// use the kao template to create the split plan
+		// This is the preferred behavior; the following options upgrade deprecated behaviors
+	case len(tdfConfig.splitPlan) > 0:
+		// upgrade split plan to kao template
+		tdfConfig.kaoTemplate = make([]kaoTpl, len(tdfConfig.splitPlan))
+		for i, splitInfo := range tdfConfig.splitPlan {
+			tdfConfig.kaoTemplate[i] = kaoTpl{
+				keySplitStep{
+					KAS:     splitInfo.KAS,
+					SplitID: splitInfo.SplitID,
+				},
+				latestKASInfo[splitInfo.KAS].KID,
 			}
 		}
-	}
-	// Seed anything passed in manually
-	for _, kasInfo := range tdfConfig.kasInfoList {
-		if kasInfo.PublicKey != "" {
-			latestKASInfo[kasInfo.URL] = kasInfo
+		tdfConfig.splitPlan = nil // clear split plan as we are using kaoTemplate now
+	case len(tdfConfig.kasInfoList) > 0:
+		// Default to split based on kasInfoList
+		// To remove. This has been deprecated for some time.
+		tdfConfig.kaoTemplate = make([]kaoTpl, len(tdfConfig.kasInfoList))
+		for i, kasInfo := range tdfConfig.kasInfoList {
+			splitID := ""
+			if len(tdfConfig.kasInfoList) > 1 {
+				splitID = fmt.Sprintf("s-%d", i)
+			}
+			tdfConfig.kaoTemplate[i] = kaoTpl{
+				keySplitStep{
+					KAS:     kasInfo.URL,
+					SplitID: splitID,
+				},
+				kasInfo.KID,
+			}
 		}
 	}
 
-	// split plan: restructure by conjunctions
 	conjunction := make(map[string][]KASInfo)
 	var splitIDs []string
 
 	keyAlgorithm := string(tdfConfig.keyType)
 
-	for _, splitInfo := range tdfConfig.splitPlan {
+	for _, tpl := range tdfConfig.kaoTemplate {
 		// Public key was passed in with kasInfoList
 		// TODO first look up in attribute information / add to split plan?
-		ki, ok := latestKASInfo[splitInfo.KAS]
+		ki, ok := latestKASInfo[tpl.KAS]
 		if !ok || ki.PublicKey == "" {
-			k, err := s.getPublicKey(ctx, splitInfo.KAS, keyAlgorithm)
+			k, err := s.getPublicKey(ctx, tpl.KAS, keyAlgorithm)
 			if err != nil {
-				return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", splitInfo.KAS, err)
+				return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", tpl.KAS, err)
 			}
-			latestKASInfo[splitInfo.KAS] = *k
+			latestKASInfo[tpl.KAS] = *k
 			ki = *k
 		}
-		if _, ok = conjunction[splitInfo.SplitID]; ok {
-			conjunction[splitInfo.SplitID] = append(conjunction[splitInfo.SplitID], ki)
+		if _, ok = conjunction[tpl.SplitID]; ok {
+			conjunction[tpl.SplitID] = append(conjunction[tpl.SplitID], ki)
 		} else {
-			conjunction[splitInfo.SplitID] = []KASInfo{ki}
-			splitIDs = append(splitIDs, splitInfo.SplitID)
+			conjunction[tpl.SplitID] = []KASInfo{ki}
+			splitIDs = append(splitIDs, tpl.SplitID)
 		}
 	}
 
+	symKeys := make([][]byte, 0, len(splitIDs))
 	for _, splitID := range splitIDs {
 		symKey, err := ocrypto.RandomBytes(kKeySize)
 		if err != nil {

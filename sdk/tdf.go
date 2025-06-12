@@ -178,10 +178,10 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	// - splitPlan is set
 	// - kaoTemplate is set
 	if len(tdfConfig.splitPlan) > 0 && len(tdfConfig.kaoTemplate) > 0 {
-		return nil, fmt.Errorf("cannot set both splitPlan and kaoTemplate")
+		return nil, errors.New("cannot set both splitPlan and kaoTemplate")
 	}
 	if tdfConfig.autoconfigure && (len(tdfConfig.splitPlan) > 0 || len(tdfConfig.kaoTemplate) > 0) {
-		return nil, fmt.Errorf("cannot set autoconfigure and splitPlan or kaoTemplate")
+		return nil, errors.New("cannot set autoconfigure and splitPlan or kaoTemplate")
 	}
 
 	if tdfConfig.autoconfigure { //nolint:nestif // simplify after removing support for splitPlan

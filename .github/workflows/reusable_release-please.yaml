@@ -61,6 +61,11 @@ jobs:
           echo "Error: invalid github ref ['$REF_NAME'] for release-please action, must be 'main' or 'release/**'" | tee -a "$GITHUB_STEP_SUMMARY"
           exit 1
 
+      - name: "Checkout"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
       - name: "Validate release-please folder"
         env:
           MAIN_CONFIG: ${{ env.MAIN_CONFIG }}
@@ -85,22 +90,27 @@ jobs:
           BRANCH_NAME: ${{ github.ref_name }}
           MAIN_CONFIG: ${{ env.MAIN_CONFIG }}
         run: |
-          # Remove 'release/' prefix
-          WITHOUT_PREFIX=${BRANCH_NAME#release/}
-          
-          # Remove everything from '/v' to the end
-          PACKAGE_NAME=${WITHOUT_PREFIX%/v*}
-          
-          # Check if PACKAGE_NAME is empty or equals to WITHOUT_PREFIX (meaning no "/v" was found)
-          if [[ -z "$PACKAGE_NAME" || "$PACKAGE_NAME" == "$WITHOUT_PREFIX" ]]; then
-            # This handles the case of only single package in repo - use release_branches config file
-            config_file="${MAIN_CONFIG/main/release_branches}"
+          # Check if branch is main first
+          if [[ "$BRANCH_NAME" == "main" ]]; then
+            config_file="$MAIN_CONFIG"
           else
-            # Replace any slashes in package name with underscores
-            SANITIZED_PACKAGE=${PACKAGE_NAME//\//_}
+            # Remove 'release/' prefix
+            WITHOUT_PREFIX=${BRANCH_NAME#release/}
             
-            # Replace 'main' in the config filename with the sanitized package name
-            config_file=${MAIN_CONFIG/main/$SANITIZED_PACKAGE}
+            # Remove everything from '/v' to the end
+            PACKAGE_NAME=${WITHOUT_PREFIX%/v*}
+            
+            # Check if PACKAGE_NAME is empty or equals to WITHOUT_PREFIX (meaning no "/v" was found)
+            if [[ -z "$PACKAGE_NAME" || "$PACKAGE_NAME" == "$WITHOUT_PREFIX" ]]; then
+              # This handles the case of "release/v1.20" - use release_branches config
+              config_file="${MAIN_CONFIG/main/release_branches}"
+            else
+              # Replace any slashes in package name with underscores
+              SANITIZED_PACKAGE=${PACKAGE_NAME//\//_}
+              
+              # Replace 'main' in the config filename with the sanitized package name
+              config_file=${MAIN_CONFIG/main/$SANITIZED_PACKAGE}
+            fi
           fi
 
           # Check if package config file exists

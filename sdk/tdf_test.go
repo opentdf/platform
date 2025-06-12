@@ -77,6 +77,13 @@ type tdfTest struct {
 	expectedPlanSize int
 }
 
+type baseKeyTest struct {
+	tdfTest
+	encryptOpts []TDFOption
+	expectedKID string
+	expectedURL string
+}
+
 const (
 	mockRSAPublicKey1 = `-----BEGIN CERTIFICATE-----
 MIICmDCCAYACCQC3BCaSANRhYzANBgkqhkiG9w0BAQsFADAOMQwwCgYDVQQDDANr
@@ -297,15 +304,13 @@ type TDFSuite struct {
 	kases            []FakeKas
 	kasTestURLLookup map[string]string
 	fakeWellKnown    map[string]interface{}
-	baseKeyURI       string
 }
 
 func (s *TDFSuite) SetupSuite() {
 	// Set up the test environment
 	s.startBackend()
 	// Update well-known with the server URL
-	s.baseKeyURI = s.kasTestURLLookup[baseKeyURL]
-	baseKey := createTestBaseKeyMap(&s.Suite, policy.Algorithm_ALGORITHM_RSA_2048, baseKeyKID, mockRSAPublicKey1, s.baseKeyURI)
+	baseKey := createTestBaseKeyMap(&s.Suite, policy.Algorithm_ALGORITHM_RSA_2048, baseKeyKID, mockRSAPublicKey1, s.kasTestURLLookup[baseKeyURL])
 	s.fakeWellKnown = createWellKnown(baseKey)
 }
 
@@ -1616,12 +1621,28 @@ func (s *TDFSuite) Test_TDF() {
 }
 
 func (s *TDFSuite) Test_EncryptWithBaseKey() {
-	for index, test := range []tdfTest{
+	for index, test := range []baseKeyTest{
 		{
-			n:           "medium",
-			fileSize:    hundredMB,
-			tdfFileSize: 104866427,
-			checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
+			tdfTest: tdfTest{
+				n:           "medium",
+				fileSize:    hundredMB,
+				tdfFileSize: 104866427,
+				checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
+			},
+			encryptOpts: []TDFOption{WithBaseKeyEnabled()},
+			expectedKID: baseKeyKID,
+			expectedURL: baseKeyURL,
+		},
+		{
+			tdfTest: tdfTest{
+				n:           "medium_attributes_skip_base_key",
+				fileSize:    hundredMB,
+				tdfFileSize: 104866427,
+				checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
+			},
+			encryptOpts: []TDFOption{WithDataAttributes(rel2aus.key), WithBaseKeyEnabled()},
+			expectedKID: defaultKID,
+			expectedURL: kasAu,
 		},
 	} {
 		s.Run(test.n, func() {
@@ -1636,11 +1657,14 @@ func (s *TDFSuite) Test_EncryptWithBaseKey() {
 				_ = os.Remove(tdfFileName)
 			}()
 
+			expectedServerURL := s.kasTestURLLookup[test.expectedURL]
+			s.Require().NotEmpty(expectedServerURL, "Expected server URL should not be empty")
+
 			// test encrypt
-			tdfObj := s.testEncrypt(s.sdk, []TDFOption{WithBaseKeyEnabled()}, plaintTextFileName, tdfFileName, test)
-			s.Require().Equal(baseKeyKID, tdfObj.manifest.KeyAccessObjs[0].KID, "Base key KID should match")
-			s.Require().Equal(s.baseKeyURI, tdfObj.manifest.KeyAccessObjs[0].KasURL, "KAS URI should match")
-			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, test)
+			tdfObj := s.testEncrypt(s.sdk, test.encryptOpts, plaintTextFileName, tdfFileName, test.tdfTest)
+			s.Require().Equal(test.expectedKID, tdfObj.manifest.KeyAccessObjs[0].KID, "Base key KID should match")
+			s.Require().Equal(expectedServerURL, tdfObj.manifest.KeyAccessObjs[0].KasURL, "KAS URI should match")
+			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, test.tdfTest)
 		})
 	}
 }
@@ -1812,9 +1836,12 @@ func (s *TDFSuite) Test_PopulateBaseKey_Success() {
 	err := populateKasInfoFromBaseKey(ctx, *s.sdk, tdfConfig)
 	s.Require().NoError(err, "populateBaseKey should succeed with valid base key")
 
+	expectedURL := s.kasTestURLLookup[baseKeyURL]
+	s.Require().NotEmpty(expectedURL, "Expected KAS URL should not be empty")
+
 	// Verify KAS info list has been populated correctly
 	s.Require().Len(tdfConfig.kasInfoList, 1, "KAS info list should have one entry")
-	s.Require().Equal(s.baseKeyURI, tdfConfig.kasInfoList[0].URL, "KAS URL should match")
+	s.Require().Equal(expectedURL, tdfConfig.kasInfoList[0].URL, "KAS URL should match")
 	s.Require().Equal(baseKeyKID, tdfConfig.kasInfoList[0].KID, "KAS KID should match")
 	s.Require().Equal(string(ocrypto.RSA2048Key), tdfConfig.kasInfoList[0].Algorithm, "Algorithm should match")
 	s.Require().Equal(mockRSAPublicKey1, tdfConfig.kasInfoList[0].PublicKey, "Public key should match")

@@ -194,35 +194,3 @@ func validateGetResourceDecision(
 	}
 	return nil
 }
-
-// validateGetResourceDecisionRegisteredResource validates the parameters for an access decision on a registered resource
-//
-//   - accessibleAttributeValues: must not be nil
-//   - accessibleRegisteredResourceValues: must not be nil
-//   - entitlements: must not be nil
-//   - action: must not be nil
-//   - resource: must not be nil
-func validateGetResourceDecisionRegisteredResource(
-	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
-	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue,
-	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
-	action *policy.Action,
-	resource *authzV2.Resource,
-) error {
-	if entitlements == nil {
-		return fmt.Errorf("entitled FQNs to actions are nil: %w", ErrInvalidEntitledFQNsToActions)
-	}
-	if action.GetName() == "" {
-		return fmt.Errorf("action name required: %w", ErrInvalidAction)
-	}
-	if resource.GetResource() == nil {
-		return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
-	}
-	if len(accessibleAttributeValues) == 0 {
-		return fmt.Errorf("accessible attribute values are empty: %w", ErrMissingRequiredPolicy)
-	}
-	if len(accessibleRegisteredResourceValues) == 0 {
-		return fmt.Errorf("accessible registered resource values are empty: %w", ErrMissingRequiredPolicy)
-	}
-	return nil
-}

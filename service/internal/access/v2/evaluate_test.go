@@ -54,10 +54,11 @@ type EvaluateTestSuite struct {
 	action *policy.Action
 
 	// Common test data
-	hierarchicalClassAttr *policy.Attribute
-	allOfProjectAttr      *policy.Attribute
-	anyOfDepartmentAttr   *policy.Attribute
-	accessibleAttrValues  map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
+	hierarchicalClassAttr              *policy.Attribute
+	allOfProjectAttr                   *policy.Attribute
+	anyOfDepartmentAttr                *policy.Attribute
+	accessibleAttrValues               map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
+	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue
 }
 
 func (s *EvaluateTestSuite) SetupTest() {
@@ -152,6 +153,10 @@ func (s *EvaluateTestSuite) SetupTest() {
 			Value:     &policy.Value{Fqn: projectFantasicFourFQN},
 		},
 	}
+
+	// Setup accessible registered resource values map
+	// TODO: revisit
+	s.accessibleRegisteredResourceValues = map[string]*policy.RegisteredResourceValue{}
 }
 
 func TestEvaluateSuite(t *testing.T) {
@@ -780,6 +785,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				s.T().Context(),
 				s.logger,
 				s.accessibleAttrValues,
+				s.accessibleRegisteredResourceValues,
 				tc.entitlements,
 				s.action,
 				tc.resource,

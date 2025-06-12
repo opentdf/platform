@@ -706,6 +706,7 @@ func (f *Fixtures) provisionKasRegistryKeys() int64 {
 		providerConfigIDSQL := "NULL"
 		if d.ProviderConfigID != nil {
 			providerConfigIDSQL = f.db.StringWrap(*d.ProviderConfigID)
+			fixtureData.KasRegistryKeys.Metadata.Columns = append(fixtureData.KasRegistryKeys.Metadata.Columns, "provider_config_id")
 		}
 		values[len(values)-1] = append(values[len(values)-1], providerConfigIDSQL)
 	}

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/logger/audit"
 )
 
@@ -22,10 +23,10 @@ func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {
 	// Only add context attributes if RequestID is present, indicating this is part of a request
 	if contextData.RequestID != uuid.Nil {
 		r.AddAttrs(
-			slog.String("request-id", contextData.RequestID.String()),
-			slog.String("user-agent", contextData.UserAgent),
-			slog.String("request-ip", contextData.RequestIP),
-			slog.String("actor-id", contextData.ActorID),
+			slog.String(string(sdkAudit.RequestIDContextKey), contextData.RequestID.String()),
+			slog.String(string(sdkAudit.UserAgentContextKey), contextData.UserAgent),
+			slog.String(string(sdkAudit.RequestIPContextKey), contextData.RequestIP),
+			slog.String(string(sdkAudit.ActorIDContextKey), contextData.ActorID),
 		)
 	}
 

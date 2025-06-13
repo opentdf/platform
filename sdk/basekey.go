@@ -88,6 +88,8 @@ func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 		return nil, errWellKnownConfigFormat
 	}
 
+	return nil, fmt.Errorf("well-known configuration does not contain base key: %v", configMap)
+
 	simpleKasKey, err := parseSimpleKasKey(configMap)
 	if err != nil {
 		return nil, err
@@ -97,7 +99,6 @@ func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 }
 
 func parseSimpleKasKey(configMap map[string]interface{}) (*policy.SimpleKasKey, error) {
-	return nil, fmt.Errorf("base key algorithm %s is not supported", configMap[baseKeyAlg])
 	simpleKasKey := &policy.SimpleKasKey{}
 	baseKey, ok := configMap[baseKeyWellKnown]
 	if !ok {

@@ -88,14 +88,14 @@ func (ns *NamespacesService) Close() {
 
 func (ns NamespacesService) ListNamespaces(ctx context.Context, req *connect.Request[namespaces.ListNamespacesRequest]) (*connect.Response[namespaces.ListNamespacesResponse], error) {
 	state := req.Msg.GetState().String()
-	ns.logger.Debug("listing namespaces", slog.String("state", state))
+	ns.logger.DebugContext(ctx, "listing namespaces", slog.String("state", state))
 
 	rsp, err := ns.dbClient.ListNamespaces(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
 	}
 
-	ns.logger.Debug("listed namespaces")
+	ns.logger.DebugContext(ctx, "listed namespaces")
 
 	return connect.NewResponse(rsp), nil
 }
@@ -111,7 +111,7 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *connect.Reque
 		identifier = req.Msg.GetIdentifier()
 	}
 
-	ns.logger.Debug("getting namespace", slog.Any("id", identifier))
+	ns.logger.DebugContext(ctx, "getting namespace", slog.Any("id", identifier))
 
 	namespace, err := ns.dbClient.GetNamespace(ctx, identifier)
 	if err != nil {
@@ -124,7 +124,7 @@ func (ns NamespacesService) GetNamespace(ctx context.Context, req *connect.Reque
 }
 
 func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Request[namespaces.CreateNamespaceRequest]) (*connect.Response[namespaces.CreateNamespaceResponse], error) {
-	ns.logger.Debug("creating new namespace", slog.String("name", req.Msg.GetName()))
+	ns.logger.DebugContext(ctx, "creating new namespace", slog.String("name", req.Msg.GetName()))
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
 		ObjectType: audit.ObjectTypeNamespace,
@@ -142,7 +142,7 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 		auditParams.Original = n
 		ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-		ns.logger.Debug("created new namespace", slog.String("name", req.Msg.GetName()))
+		ns.logger.DebugContext(ctx, "created new namespace", slog.String("name", req.Msg.GetName()))
 		rsp.Namespace = n
 
 		return nil
@@ -156,7 +156,7 @@ func (ns NamespacesService) CreateNamespace(ctx context.Context, req *connect.Re
 
 func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *connect.Request[namespaces.UpdateNamespaceRequest]) (*connect.Response[namespaces.UpdateNamespaceResponse], error) {
 	namespaceID := req.Msg.GetId()
-	ns.logger.Debug("updating namespace", slog.String("name", namespaceID))
+	ns.logger.DebugContext(ctx, "updating namespace", slog.String("name", namespaceID))
 	rsp := &namespaces.UpdateNamespaceResponse{}
 
 	auditParams := audit.PolicyEventParams{
@@ -181,7 +181,7 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *connect.Re
 	auditParams.Updated = updated
 
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-	ns.logger.Debug("updated namespace", slog.String("id", namespaceID))
+	ns.logger.DebugContext(ctx, "updated namespace", slog.String("id", namespaceID))
 
 	rsp.Namespace = &policy.Namespace{
 		Id: namespaceID,
@@ -192,7 +192,7 @@ func (ns NamespacesService) UpdateNamespace(ctx context.Context, req *connect.Re
 func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connect.Request[namespaces.DeactivateNamespaceRequest]) (*connect.Response[namespaces.DeactivateNamespaceResponse], error) {
 	namespaceID := req.Msg.GetId()
 
-	ns.logger.Debug("deactivating namespace", slog.String("id", namespaceID))
+	ns.logger.DebugContext(ctx, "deactivating namespace", slog.String("id", namespaceID))
 	rsp := &namespaces.DeactivateNamespaceResponse{}
 
 	auditParams := audit.PolicyEventParams{
@@ -216,7 +216,7 @@ func (ns NamespacesService) DeactivateNamespace(ctx context.Context, req *connec
 	auditParams.Original = original
 	auditParams.Updated = updated
 	ns.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-	ns.logger.Debug("soft-deleted namespace", slog.String("id", namespaceID))
+	ns.logger.DebugContext(ctx, "soft-deleted namespace", slog.String("id", namespaceID))
 
 	return connect.NewResponse(rsp), nil
 }

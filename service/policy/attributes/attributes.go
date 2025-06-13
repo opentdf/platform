@@ -80,7 +80,7 @@ func (s *AttributesService) Close() {
 func (s *AttributesService) CreateAttribute(ctx context.Context,
 	req *connect.Request[attributes.CreateAttributeRequest],
 ) (*connect.Response[attributes.CreateAttributeResponse], error) {
-	s.logger.Debug("creating new attribute definition", slog.String("name", req.Msg.GetName()))
+	s.logger.DebugContext(ctx, "creating new attribute definition", slog.String("name", req.Msg.GetName()))
 	rsp := &attributes.CreateAttributeResponse{}
 
 	auditParams := audit.PolicyEventParams{
@@ -95,7 +95,7 @@ func (s *AttributesService) CreateAttribute(ctx context.Context,
 			return err
 		}
 
-		s.logger.Debug("created new attribute definition", slog.String("name", req.Msg.GetName()))
+		s.logger.DebugContext(ctx, "created new attribute definition", slog.String("name", req.Msg.GetName()))
 
 		auditParams.ObjectID = item.GetId()
 		auditParams.Original = item
@@ -118,7 +118,7 @@ func (s *AttributesService) ListAttributes(ctx context.Context,
 	defer span.End()
 
 	state := req.Msg.GetState().String()
-	s.logger.Debug("listing attribute definitions", slog.String("state", state))
+	s.logger.DebugContext(ctx, "listing attribute definitions", slog.String("state", state))
 
 	rsp, err := s.dbClient.ListAttributes(ctx, req.Msg)
 	if err != nil {
@@ -275,7 +275,7 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *connect.Request[attributes.ListAttributeValuesRequest]) (*connect.Response[attributes.ListAttributeValuesResponse], error) {
 	state := req.Msg.GetState().String()
-	s.logger.Debug("listing attribute values", slog.String("attributeId", req.Msg.GetAttributeId()), slog.String("state", state))
+	s.logger.DebugContext(ctx, "listing attribute values", slog.String("attributeId", req.Msg.GetAttributeId()), slog.String("state", state))
 	rsp, err := s.dbClient.ListAttributeValues(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.String("attributeId", req.Msg.GetAttributeId()))

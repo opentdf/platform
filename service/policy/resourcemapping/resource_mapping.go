@@ -234,7 +234,7 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 ) (*connect.Response[resourcemapping.CreateResourceMappingResponse], error) {
 	rsp := &resourcemapping.CreateResourceMappingResponse{}
 
-	s.logger.Debug("creating resource mapping")
+	s.logger.DebugContext(ctx, "creating resource mapping")
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,

@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.7.0](https://github.com/opentdf/platform/compare/service/v0.6.0...service/v0.7.0) (2025-06-13)
+
+
+### Features
+
+* **core:** DSPX-609 - add cli-client to keycloak provisioning ([#2396](https://github.com/opentdf/platform/issues/2396)) ([48e7489](https://github.com/opentdf/platform/commit/48e74899ffc1b68a9e8adb5717e84649125271ec))
+* **policy:** Restrict deletion of pc with used key. ([#2414](https://github.com/opentdf/platform/issues/2414)) ([3b40a46](https://github.com/opentdf/platform/commit/3b40a46919e4c5b4f2e86dcd63e0f3d8a27d5d27))
+* **sdk:** allow Connect-Protocol-Version RPC header for cors ([#2437](https://github.com/opentdf/platform/issues/2437)) ([4bf241e](https://github.com/opentdf/platform/commit/4bf241e15537da406019959b2062133f75171e0a))
+
+
+### Bug Fixes
+
+* **core:** replace opentdf-public client with cli-client ([#2422](https://github.com/opentdf/platform/issues/2422)) ([fb18525](https://github.com/opentdf/platform/commit/fb18525049405e558f70ae77b075b9e75306d81e))
+* **deps:** bump github.com/casbin/casbin/v2 from 2.106.0 to 2.107.0 in /service in the external group ([#2416](https://github.com/opentdf/platform/issues/2416)) ([43afd48](https://github.com/opentdf/platform/commit/43afd48a5338efecc1790f22a533e6d681af510d))
+* only request a token when near expiration ([#2370](https://github.com/opentdf/platform/issues/2370)) ([556d95e](https://github.com/opentdf/platform/commit/556d95ea6a7e61f9428754550c181c19e2f91747))
+* **policy:** fix casing bug and get provider config on update. ([#2403](https://github.com/opentdf/platform/issues/2403)) ([a52b8f9](https://github.com/opentdf/platform/commit/a52b8f940c8e523d40275310be581e3383411717))
+* **policy:** properly formatted pem in test fixtures ([#2409](https://github.com/opentdf/platform/issues/2409)) ([54ffd23](https://github.com/opentdf/platform/commit/54ffd2334b91b38c51a4b56e3b5e124f04bb2478))
+
 ## [0.6.0](https://github.com/opentdf/platform/compare/service/v0.5.5...service/v0.6.0) (2025-06-06)
 
 

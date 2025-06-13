@@ -145,9 +145,21 @@ func evaluateDefinition(
 	}
 
 	passed := len(entitlementFailures) == 0
+	simpleAttribute := &policy.Attribute{
+		Id:   attrDefinition.GetId(),
+		Fqn:  attrDefinition.GetFqn(),
+		Rule: attrDefinition.GetRule(),
+	}
+	simpleAttribute.Values = make([]*policy.Value, len(attrDefinition.GetValues()))
+	for idx, value := range attrDefinition.GetValues() {
+		simpleAttribute.Values[idx] = &policy.Value{
+			Value: value.GetValue(),
+		}
+	}
 	result := &DataRuleResult{
-		Passed:         passed,
-		RuleDefinition: attrDefinition,
+		Passed:            passed,
+		Attribute:         simpleAttribute,
+		ResourceValueFQNs: resourceValueFQNs,
 	}
 	l.DebugContext(ctx, "definition evaluation result", slog.Bool("passed", passed))
 	if !passed {

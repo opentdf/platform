@@ -1621,6 +1621,26 @@ func (s *TDFSuite) Test_TDF() {
 }
 
 func (s *TDFSuite) Test_EncryptWithBaseKey() {
+	attrVal := mockValueFor(rel2aus)
+	cachedPublicKeySet := &policy.KasPublicKeySet{
+		Keys: []*policy.KasPublicKey{
+			{
+				Kid: defaultKID,
+				Pem: mockRSAPublicKey1,
+				Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
+			},
+		},
+	}
+	attrVal.Grants = []*policy.KeyAccessServer{
+		{
+			Uri: s.kasTestURLLookup[kasAu],
+			PublicKey: &policy.PublicKey{
+				PublicKey: &policy.PublicKey_Cached{
+					Cached: cachedPublicKeySet,
+				},
+			},
+		},
+	}
 	for index, test := range []baseKeyTest{
 		{
 			tdfTest: tdfTest{
@@ -1631,7 +1651,7 @@ func (s *TDFSuite) Test_EncryptWithBaseKey() {
 			},
 			encryptOpts: []TDFOption{WithBaseKeyEnabled()},
 			expectedKID: baseKeyKID,
-			expectedURL: baseKeyURL,
+			expectedURL: s.kasTestURLLookup[baseKeyURL],
 		},
 		{
 			tdfTest: tdfTest{
@@ -1640,9 +1660,9 @@ func (s *TDFSuite) Test_EncryptWithBaseKey() {
 				tdfFileSize: 104866427,
 				checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
 			},
-			encryptOpts: []TDFOption{WithDataAttributes(rel2aus.key), WithBaseKeyEnabled()},
+			encryptOpts: []TDFOption{WithDataAttributeValues(attrVal), WithBaseKeyEnabled()},
 			expectedKID: defaultKID,
-			expectedURL: kasAu,
+			expectedURL: s.kasTestURLLookup[kasAu],
 		},
 	} {
 		s.Run(test.n, func() {
@@ -1657,13 +1677,10 @@ func (s *TDFSuite) Test_EncryptWithBaseKey() {
 				_ = os.Remove(tdfFileName)
 			}()
 
-			expectedServerURL := s.kasTestURLLookup[test.expectedURL]
-			s.Require().NotEmpty(expectedServerURL, "Expected server URL should not be empty")
-
 			// test encrypt
 			tdfObj := s.testEncrypt(s.sdk, test.encryptOpts, plaintTextFileName, tdfFileName, test.tdfTest)
 			s.Require().Equal(test.expectedKID, tdfObj.manifest.KeyAccessObjs[0].KID, "Base key KID should match")
-			s.Require().Equal(expectedServerURL, tdfObj.manifest.KeyAccessObjs[0].KasURL, "KAS URI should match")
+			s.Require().Equal(test.expectedURL, tdfObj.manifest.KeyAccessObjs[0].KasURL, "KAS URI should match")
 			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, test.tdfTest)
 		})
 	}

@@ -191,25 +191,21 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, err
 		}
 
-		if g.typ&mappedFound == mappedFound {
-			tdfConfig.kaoTemplate, err = g.resolveTemplate(uuidSplitIDGenerator)
-			if err != nil {
-				slog.Info("Failed to resolve kao template, using split plan / grant behavior", "error", err)
-			}
-		}
-		if g.typ == noKeysFound || g.typ == grantsFound && !tdfConfig.isBaseKeyEnabled {
+		if (g.typ == noKeysFound || g.typ == grantsFound) && !tdfConfig.isBaseKeyEnabled {
 			dk := s.defaultKases(tdfConfig)
 			tdfConfig.kaoTemplate = nil
 			tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
+		} else if g.typ&grantsFound == grantsFound && tdfConfig.isBaseKeyEnabled {
+			tdfConfig.kaoTemplate, err = g.resolveTemplate(uuidSplitIDGenerator)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("populateKasInfoFromBaseKey failed: %w", err)
+			return nil, fmt.Errorf("failed generate plan: %w", err)
 		}
 	}
 
 	// * Expresses the use case where no attributes were passed in or found.
 	// * Replaces the defaultKases behavior.
-	if tdfConfig.isBaseKeyEnabled && len(tdfConfig.kaoTemplate) == 0 {
+	if tdfConfig.isBaseKeyEnabled && len(tdfConfig.attributeValues) == 0 && len(tdfConfig.attributes) == 0 {
 		err = populateKasInfoFromBaseKey(ctx, s, tdfConfig)
 		if err != nil {
 			return nil, fmt.Errorf("populateKasInfoFromBaseKey failed: %w", err)
@@ -471,20 +467,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	case len(tdfConfig.kasInfoList) > 0:
 		// Default to split based on kasInfoList
 		// To remove. This has been deprecated for some time.
-		tdfConfig.kaoTemplate = make([]kaoTpl, len(tdfConfig.kasInfoList))
-		for i, kasInfo := range tdfConfig.kasInfoList {
-			splitID := ""
-			if len(tdfConfig.kasInfoList) > 1 {
-				splitID = fmt.Sprintf("s-%d", i)
-			}
-			tdfConfig.kaoTemplate[i] = kaoTpl{
-				keySplitStep{
-					KAS:     kasInfo.URL,
-					SplitID: splitID,
-				},
-				kasInfo.KID,
-			}
-		}
+		tdfConfig.kaoTemplate = createKaoTemplateFromKasInfo(tdfConfig.kasInfoList)
 	}
 
 	conjunction := make(map[string][]KASInfo)
@@ -1464,6 +1447,7 @@ func populateKasInfoFromBaseKey(ctx context.Context, s SDK, tdfConfig *TDFConfig
 		slog.Warn("Base key is enabled, setting key type", "keyType", algoString)
 	}
 	tdfConfig.keyType = ocrypto.KeyType(algoString)
+	tdfConfig.splitPlan = nil
 	tdfConfig.kasInfoList = []KASInfo{
 		{
 			URL:       key.GetKasUri(),
@@ -1472,6 +1456,24 @@ func populateKasInfoFromBaseKey(ctx context.Context, s SDK, tdfConfig *TDFConfig
 			Algorithm: algoString,
 		},
 	}
-
 	return nil
+}
+
+func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
+	kaoTemplate := make([]kaoTpl, len(kasInfoArr))
+	for i, kasInfo := range kasInfoArr {
+		splitID := ""
+		if len(kasInfoArr) > 1 {
+			splitID = fmt.Sprintf("s-%d", i)
+		}
+		kaoTemplate[i] = kaoTpl{
+			keySplitStep{
+				KAS:     kasInfo.URL,
+				SplitID: splitID,
+			},
+			kasInfo.KID,
+		}
+	}
+
+	return kaoTemplate
 }

@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/sdk/sdkconnect"
@@ -283,43 +282,12 @@ type grantableObject interface {
 // It returns a mask indicating whether grants or mapped keys were found.
 func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *policy.Attribute) grantTypeMask {
 	ok := noKeysFound
-	for _, k := range ag.GetKasKeys() {
-		if k == nil || k.GetKasUri() == "" {
-			slog.Debug("invalid KAS key in policy service", "simpleKasKey", k, "value", fqn)
-			continue
-		}
-		kasURI := k.GetKasUri()
-		r.typ |= mappedFound
-		ok |= mappedFound
-		err := r.addMappedKey(fqn, k)
-		if err != nil {
-			slog.Debug("failed to add mapped key", "fqn", fqn, "kas", kasURI, "error", err)
-		}
-		if _, present := r.grantTable[fqn.key]; !present {
-			r.grantTable[fqn.key] = &keyAccessGrant{attr, []string{kasURI}}
-		} else {
-			r.grantTable[fqn.key].kases = append(r.grantTable[fqn.key].kases, kasURI)
-		}
-	}
-	if ok != noKeysFound {
-		return ok
-	}
-
 	for _, g := range ag.GetGrants() {
 		if g != nil && g.GetUri() != "" { //nolint:nestif // Simplify after grant removal
 			kasURI := g.GetUri()
 			r.typ |= grantsFound
 			ok |= grantsFound
 			r.addGrant(fqn, kasURI, attr)
-			if len(g.GetKasKeys()) != 0 {
-				for _, k := range g.GetKasKeys() {
-					err := r.addMappedKey(fqn, k)
-					if err != nil {
-						slog.Warn("failed to add mapped key", "fqn", fqn, "kas", kasURI, "error", err)
-					}
-				}
-				continue
-			}
 			ks := g.GetPublicKey().GetCached().GetKeys()
 			if len(ks) == 0 {
 				slog.Debug("no cached key in policy service", "kas", kasURI, "value", fqn)
@@ -413,15 +381,15 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkcon
 func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 	switch e {
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1:
-		return string(ocrypto.EC256Key)
+		return "ec:secp256r1"
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1:
-		return string(ocrypto.EC384Key)
+		return "ec:secp384r1"
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1:
-		return string(ocrypto.EC521Key)
+		return "ec:secp521r1"
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048:
-		return string(ocrypto.RSA2048Key)
+		return "rsa:2048"
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
-		return rsa4096
+		return "rsa:4096"
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return ""
 	}

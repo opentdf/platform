@@ -30,6 +30,7 @@ const (
 	specifiedKas        = "https://attr.kas.com/"
 	evenMoreSpecificKas = "https://value.kas.com/"
 	lessSpecificKas     = "https://namespace.kas.com/"
+	fakePem             = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQ...\n-----END PUBLIC KEY-----\n"
 )
 
 var (
@@ -144,12 +145,16 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 			Fqn:       fqn.String(),
 		}
 	case MP.key:
+		g := make([]*policy.KeyAccessServer, 1)
+		g[0] = mockGrant(specifiedKas, "r1")
+		g[0].PublicKey = createPublicKey("r1", fakePem, policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048)
 		return &policy.Attribute{
 			Id:        "MP",
 			Namespace: &nsOne,
 			Name:      "Mapped",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 			Fqn:       fqn.String(),
+			Grants:    g,
 			KasKeys:   []*policy.SimpleKasKey{mockSimpleKasKey(specifiedKas, "r1")},
 		}
 	case N2K.key:
@@ -217,6 +222,7 @@ func mockGrant(kas, kid string) *policy.KeyAccessServer {
 	if kid == "" {
 		return mockGrant(kas, "r0")
 	}
+
 	return &policy.KeyAccessServer{
 		Uri: kas,
 		Id:  kas,
@@ -226,7 +232,7 @@ func mockGrant(kas, kid string) *policy.KeyAccessServer {
 				PublicKey: &policy.SimpleKasPublicKey{
 					Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
 					Kid:       kid,
-					Pem:       "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQ...\n-----END PUBLIC KEY-----\n",
+					Pem:       fakePem,
 				},
 			},
 		},
@@ -257,6 +263,22 @@ func mockSimpleKasKey(kas, kid string) *policy.SimpleKasKey {
 			Algorithm: alg,
 			Kid:       kid,
 			Pem:       "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQ...\n-----END PUBLIC KEY-----\n",
+		},
+	}
+}
+
+func createPublicKey(kid, pem string, algorithm policy.KasPublicKeyAlgEnum) *policy.PublicKey {
+	return &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Cached{
+			Cached: &policy.KasPublicKeySet{
+				Keys: []*policy.KasPublicKey{
+					{
+						Kid: kid,
+						Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
+						Pem: pem,
+					},
+				},
+			},
 		},
 	}
 }
@@ -317,10 +339,17 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 		switch strings.ToLower(fqn.Value()) {
 		case "a":
 			p.KasKeys = make([]*policy.SimpleKasKey, 1)
+			p.Grants = make([]*policy.KeyAccessServer, 1)
 			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "r2")
+			p.Grants[0] = mockGrant(evenMoreSpecificKas, "r2")
+			p.Grants[0].PublicKey = createPublicKey("r2", fakePem, policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048)
+
 		case "b":
 			p.KasKeys = make([]*policy.SimpleKasKey, 1)
+			p.Grants = make([]*policy.KeyAccessServer, 1)
 			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "e1")
+			p.Grants[0] = mockGrant(evenMoreSpecificKas, "e1")
+			p.Grants[0].PublicKey = createPublicKey("e1", fakePem, policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048)
 		case "unspecified":
 			// defaults only
 		default:

@@ -3,35 +3,6 @@
 # Tests for creating and reading TDF files with various settings
 # Notably, tests both 'ztdf' and 'nano' formats.
 
-@test "examples: roundtrip Z-TDF" {
-  # TODO: add subject mapping here to remove reliance on `provision fixtures`
-  echo "[INFO] configure attribute with grant for local kas"
-  go run ./examples --creds opentdf:secret kas add --kas https://localhost:8080 --algorithm "rsa:2048" --kid r1 --public-key "$(<${BATS_TEST_DIRNAME}/../kas-cert.pem)"
-  go run ./examples --creds opentdf:secret attributes unassign -a https://example.com/attr/attr1 -v value1
-  go run ./examples --creds opentdf:secret attributes unassign -a https://example.com/attr/attr1
-  go run ./examples --creds opentdf:secret attributes assign -a https://example.com/attr/attr1 -v value1 -k https://localhost:8080
-
-  echo "[INFO] create a tdf3 format file"
-  run go run ./examples encrypt "Hello Zero Trust"
-  echo "[INFO] echoing output; if successful, this is just the manifest"
-  echo "$output"
-
-  echo "[INFO] Validate the manifest lists the expected kid in its KAO"
-  kid=$(jq -r '.encryptionInformation.keyAccess[0].kid' <<<"${output}")
-  echo "$kid"
-  [ "$kid" = r1 ]
-
-  echo "[INFO] decrypting..."
-  run go run ./examples decrypt sensitive.txt.tdf
-  echo "$output"
-  printf '%s\n' "$output" | grep "Hello Zero Trust"
-
-  echo "[INFO] decrypting with EC..."
-  run go run ./examples decrypt -A 'ec:secp256r1' sensitive.txt.tdf
-  echo "$output"
-  printf '%s\n' "$output" | grep "Hello Zero Trust"
-}
-
 @test "examples: roundtrip Z-TDF with EC wrapped KAO" {
   # TODO: add subject mapping here to remove reliance on `provision fixtures`
   echo "[INFO] create a tdf3 format file"

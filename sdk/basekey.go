@@ -83,6 +83,8 @@ func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 		return nil, ErrWellKnowConfigEmpty
 	}
 
+	return nil, fmt.Errorf("configMap: %v", configMap)
+
 	baseKeyStructure, ok := configMap[baseKeyWellKnown]
 	if !ok {
 		return nil, errBaseKeyNotFound

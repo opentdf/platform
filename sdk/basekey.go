@@ -74,11 +74,11 @@ func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 	if err != nil {
 		return nil, errors.Join(errors.New("unable to retrieve config information, and none was provided"), err)
 	}
-	return nil, fmt.Errorf("well-known configuration does not contain base key: %s", "something")
 	configuration := response.GetConfiguration()
 	if configuration == nil {
 		return nil, ErrWellKnowConfigEmpty
 	}
+	return nil, fmt.Errorf("well-known configuration does not contain base key: %s", "something")
 	configStructure, ok := configuration.AsMap()[wellKnownConfigKey]
 	if !ok {
 		return nil, err

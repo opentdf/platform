@@ -127,6 +127,7 @@ server:
     allowedheaders:
       - ACCEPT
       - Authorization
+      - Connect-Protocol-Version
       - Content-Type
       - X-CSRF-Token
       - X-Request-ID

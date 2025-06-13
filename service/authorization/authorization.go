@@ -543,7 +543,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			}
 			return response, nil
 		}
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("fqns", strings.Join(allPertinentFQNS.GetAttributeValueFqns(), ", ")))
+		return nil, db.StatusifyError(ctx, as.logger, err, db.ErrTextGetRetrievalFailed, slog.String("fqns", strings.Join(allPertinentFQNS.GetAttributeValueFqns(), ", ")))
 	}
 
 	var allAttrDefs []*policy.Attribute
@@ -579,7 +579,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 		ecEntitlements, err := as.GetEntitlements(ctx, &req)
 		if err != nil {
 			// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-			return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
+			return nil, db.StatusifyError(ctx, as.logger, err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
 		}
 		ecChainEntitlementsResponse = append(ecChainEntitlementsResponse, ecEntitlements)
 	}
@@ -662,7 +662,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 				)
 				if err != nil {
 					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-					return nil, db.StatusifyError(errors.New("could not determine access"), "could not determine access", slog.String("error", err.Error()))
+					return nil, db.StatusifyError(ctx, as.logger, errors.New("could not determine access"), "could not determine access", slog.String("error", err.Error()))
 				}
 				// check the decisions
 				decision = authorization.DecisionResponse_DECISION_PERMIT

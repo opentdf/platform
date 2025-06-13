@@ -1,4 +1,4 @@
-//nolint:forbidigo,nestif // We use Println here extensively because we are printing markdown.
+//nolint:forbidigo // We use Println here extensively because we are printing markdown.
 package cmd
 
 import (

@@ -78,11 +78,12 @@ func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 	if configuration == nil {
 		return nil, ErrWellKnowConfigEmpty
 	}
-	return nil, fmt.Errorf("well-known configuration does not contain base key: %s", "something else")
 	configStructure, ok := configuration.AsMap()[wellKnownConfigKey]
 	if !ok {
 		return nil, err
 	}
+
+	return nil, fmt.Errorf("well-known configuration does not contain base key: %s", "something else 2")
 
 	configMap, ok := configStructure.(map[string]interface{})
 	if !ok {

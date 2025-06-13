@@ -101,17 +101,9 @@ func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 	return simpleKasKey, nil
 }
 
-func parseSimpleKasKey(configMap map[string]interface{}) (*policy.SimpleKasKey, error) {
+func parseSimpleKasKey(baseKeyMap map[string]interface{}) (*policy.SimpleKasKey, error) {
 	simpleKasKey := &policy.SimpleKasKey{}
-	baseKey, ok := configMap[baseKeyWellKnown]
-	if !ok {
-		return nil, errBaseKeyNotFound
-	}
 
-	baseKeyMap, ok := baseKey.(map[string]interface{})
-	if !ok {
-		return nil, errBaseKeyInvalidFormat
-	}
 	if len(baseKeyMap) == 0 {
 		return nil, errBaseKeyEmpty
 	}
@@ -121,15 +113,13 @@ func parseSimpleKasKey(configMap map[string]interface{}) (*policy.SimpleKasKey, 
 		return nil, errBaseKeyInvalidFormat
 	}
 
-	return nil, fmt.Errorf("base key algorithm %s is not supported", publicKey[baseKeyAlg])
-
 	alg, ok := publicKey[baseKeyAlg].(string)
 	if !ok {
 		return nil, errBaseKeyInvalidFormat
 	}
 	publicKey[baseKeyAlg] = getKasKeyAlg(alg)
 	baseKeyMap[baseKeyPublicKey] = publicKey
-	configJSON, err := json.Marshal(baseKey)
+	configJSON, err := json.Marshal(baseKeyMap)
 	if err != nil {
 		return nil, errors.Join(errMarshalBaseKeyFailed, err)
 	}

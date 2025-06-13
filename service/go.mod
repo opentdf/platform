@@ -28,7 +28,6 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/lestrrat-go/jwx/v2 v2.1.6
-	github.com/oklog/ulid/v2 v2.1.0
 	github.com/open-policy-agent/opa v1.5.1
 	github.com/opentdf/platform/lib/fixtures v0.3.0
 	github.com/opentdf/platform/lib/flattening v0.1.3

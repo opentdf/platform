@@ -387,7 +387,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    uses: opentdf/tests/.github/workflows/xtest.yml@dspx-501/key-management
+    uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go
       # use commit instead of ref so we can "go get" specific sdk version

@@ -22,7 +22,6 @@ import (
 var (
 	ns         string
 	attr       string
-	kases      []string
 	longformat bool
 	rule       string
 	values     []string

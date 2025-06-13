@@ -2,11 +2,11 @@ module github.com/opentdf/platform/examples
 
 go 1.24.0
 
-toolchain go1.24.2
+toolchain go1.24.4
 
 require (
 	github.com/opentdf/platform/lib/ocrypto v0.2.0
-	github.com/opentdf/platform/protocol/go v0.3.6
+	github.com/opentdf/platform/protocol/go v0.4.0
 	github.com/opentdf/platform/sdk v0.4.7
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0

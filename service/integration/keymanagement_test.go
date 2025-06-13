@@ -3,15 +3,19 @@ package integration
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -95,6 +99,24 @@ func (s *KeyManagementSuite) Test_CreateProviderConfig_DuplicateName_Fails() {
 	s.Nil(pc)
 }
 
+func (s *KeyManagementSuite) Test_CreateProviderConfig_CapitalizedName_Succeeds() {
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	providerName := strings.ToUpper(testProvider)
+	pc := s.createTestProviderConfig(providerName, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc.GetId())
+
+	pcGet, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
+		Name: testProvider,
+	})
+	s.Require().NoError(err)
+	s.NotNil(pcGet)
+	s.Equal(testProvider, pcGet.GetName()) // Expect name to be lowercased
+	s.Equal(validProviderConfig, pcGet.GetConfigJson())
+}
+
 func (s *KeyManagementSuite) Test_GetProviderConfig_WithId_Succeeds() {
 	pcIDs := make([]string, 0)
 	defer func() {
@@ -119,10 +141,30 @@ func (s *KeyManagementSuite) Test_GetProviderConfig_WithName_Succeeds() {
 	pcIDs = append(pcIDs, pc.GetId())
 
 	pc, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
-		Name: pc.GetName(),
+		Name: testProvider,
 	})
 	s.Require().NoError(err)
 	s.NotNil(pc)
+	s.Equal(testProvider, pc.GetName())
+	s.Equal(validProviderConfig, pc.GetConfigJson())
+}
+
+func (s *KeyManagementSuite) Test_GetProviderConfig_MixedCaseName_Succeeds() {
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	mixedCaseName := cases.Title(language.English).String(testProvider) // "Test-provider"
+	pc := s.createTestProviderConfig(mixedCaseName, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc.GetId())
+
+	pcGet, err := s.db.PolicyClient.GetProviderConfig(s.ctx, &keymanagement.GetProviderConfigRequest_Name{
+		Name: testProvider, // search with lowercase name
+	})
+	s.Require().NoError(err)
+	s.NotNil(pcGet)
+	s.Equal(testProvider, pcGet.GetName()) // Expect name to be lowercased
+	s.Equal(validProviderConfig, pcGet.GetConfigJson())
 }
 
 func (s *KeyManagementSuite) Test_GetProviderConfig_InvalidIdentifier_Fails() {
@@ -195,7 +237,7 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ExtendsMetadata_Succeeds(
 	})
 	pcIDs = append(pcIDs, pc.GetId())
 	s.NotNil(pc)
-	s.Equal(testProvider, pc.GetName())
+	s.Equal(strings.ToLower(testProvider), pc.GetName())
 	s.Equal(validProviderConfig, pc.GetConfigJson())
 	s.Equal(validLabels, pc.GetMetadata().GetLabels())
 
@@ -292,12 +334,118 @@ func (s *KeyManagementSuite) Test_UpdateProviderConfig_ConfigNotFound_Fails() {
 	s.Nil(pc)
 }
 
+func (s *KeyManagementSuite) Test_UpdateProviderConfig_UpdatesConfigJson_And_Name_Succeeds() {
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc.GetId())
+	s.NotNil(pc)
+	s.Equal(testProvider, pc.GetName())
+	s.Equal(validProviderConfig, pc.GetConfigJson())
+
+	pc, err := s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
+		Id:         pc.GetId(),
+		ConfigJson: validProviderConfig2,
+		Name:       testProvider2,
+	})
+	s.Require().NoError(err)
+	s.NotNil(pc)
+	s.Equal(testProvider2, pc.GetName())
+	s.Equal(validProviderConfig2, pc.GetConfigJson())
+}
+
+func (s *KeyManagementSuite) Test_UpdateProviderConfig_UpdatesConfigName_Succeeds() {
+	pcIDs := make([]string, 0)
+	defer func() {
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
+	pcIDs = append(pcIDs, pc.GetId())
+	s.NotNil(pc)
+	s.Equal(testProvider, pc.GetName())
+	s.Equal(validProviderConfig, pc.GetConfigJson())
+
+	pc, err := s.db.PolicyClient.UpdateProviderConfig(s.ctx, &keymanagement.UpdateProviderConfigRequest{
+		Id:   pc.GetId(),
+		Name: strings.ToUpper(testProvider2),
+	})
+	s.Require().NoError(err)
+	s.NotNil(pc)
+	s.Equal(testProvider2, pc.GetName())
+	s.Equal(validProviderConfig, pc.GetConfigJson())
+}
+
 func (s *KeyManagementSuite) Test_DeleteProviderConfig_Succeeds() {
 	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
 	s.NotNil(pc)
 	pc, err := s.db.PolicyClient.DeleteProviderConfig(s.ctx, pc.GetId())
 	s.Require().NoError(err)
 	s.NotNil(pc)
+}
+
+func (s *KeyManagementSuite) Test_DeleteProviderConfig_InUse_Fails() {
+	// Create a provider config
+	pcIDs := make([]string, 0)
+	var kasID string
+	var keyID string
+	defer func() {
+		if keyID != "" {
+			_, err := s.db.PolicyClient.DeleteKey(s.ctx, keyID)
+			s.Require().NoError(err)
+		}
+		if kasID != "" {
+			_, err := s.db.PolicyClient.DeleteKeyAccessServer(s.ctx, kasID)
+			s.Require().NoError(err)
+		}
+
+		s.deleteTestProviderConfigs(pcIDs)
+	}()
+	pc := s.createTestProviderConfig(testProvider, validProviderConfig, nil)
+	s.NotNil(pc)
+	pcIDs = append(pcIDs, pc.GetId())
+
+	// Create a key access server that uses the provider config
+	uri := "provider-config-test-kas.com"
+	pubKey := &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Remote{
+			Remote: "https://acmecorp.somewhere/key",
+		},
+	}
+	name := "1MiXEDCASEkas-name"
+	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
+		Uri:       uri,
+		Name:      name,
+		PublicKey: pubKey,
+	}
+	kasCreateResp, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
+	s.Require().NoError(err)
+	s.NotNil(kasCreateResp)
+	kasID = kasCreateResp.GetId()
+
+	// Create a key that uses the provider config
+	key, err := s.db.PolicyClient.CreateKey(s.ctx, &kasregistry.CreateKeyRequest{
+		KasId:        kasID,
+		KeyId:        "test-key-provider-config",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{
+			Pem: keyCtx,
+		},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      "test-wrapping-kid",
+		},
+		ProviderConfigId: pc.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(key)
+	keyID = key.GetKasKey().GetKey().GetId()
+
+	_, err = s.db.PolicyClient.DeleteProviderConfig(s.ctx, pc.GetId())
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, db.ErrForeignKeyViolation.Error())
 }
 
 func (s *KeyManagementSuite) Test_DeleteProviderConfig_InvalidUUID_Fails() {

@@ -12,7 +12,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
-	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/wellknownconfiguration"
@@ -374,17 +373,6 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		return nil, errors.Join(errors.New("private key ctx"), db.ErrExpectedBase64EncodedValue)
 	}
 
-	// Especially if we need to verify the connection and get the public key.
-	// Need provider logic to validate connection to remote provider.
-	var pc *policy.KeyProviderConfig
-	var err error
-	if providerConfigID != "" {
-		pc, err = c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest_Id{Id: providerConfigID})
-		if err != nil {
-			return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, kasID)
-		}
-	}
-
 	// Marshal private key and public key context
 	pubCtx, err := json.Marshal(r.GetPublicKeyCtx())
 	if err != nil {
@@ -412,7 +400,7 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		Metadata:          metadataJSON,
 		PrivateKeyCtx:     privateCtx,
 		PublicKeyCtx:      pubCtx,
-		ProviderConfigID:  pgtypeUUID(pc.GetId()),
+		ProviderConfigID:  pgtypeUUID(providerConfigID),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

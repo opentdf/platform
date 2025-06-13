@@ -69,6 +69,7 @@ func formatAlg(alg policy.Algorithm) (string, error) {
 }
 
 func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
+	return nil, fmt.Errorf("getBaseKey is not implemented for SDK type %T", s)
 	req := &wellknownconfiguration.GetWellKnownConfigurationRequest{}
 	response, err := s.wellknownConfiguration.GetWellKnownConfiguration(ctx, req)
 	if err != nil {

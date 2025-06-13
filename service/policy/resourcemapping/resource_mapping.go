@@ -81,7 +81,7 @@ func (s *ResourceMappingService) Close() {
 func (s ResourceMappingService) ListResourceMappingGroups(ctx context.Context, req *connect.Request[resourcemapping.ListResourceMappingGroupsRequest]) (*connect.Response[resourcemapping.ListResourceMappingGroupsResponse], error) {
 	rsp, err := s.dbClient.ListResourceMappingGroups(ctx, req.Msg)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -92,7 +92,7 @@ func (s ResourceMappingService) GetResourceMappingGroup(ctx context.Context, req
 
 	rmGroup, err := s.dbClient.GetResourceMappingGroup(ctx, req.Msg.GetId())
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.Msg.GetId()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", req.Msg.GetId()))
 	}
 
 	rsp.ResourceMappingGroup = rmGroup
@@ -111,7 +111,7 @@ func (s ResourceMappingService) CreateResourceMappingGroup(ctx context.Context, 
 	rmGroup, err := s.dbClient.CreateResourceMappingGroup(ctx, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("resourceMappingGroup", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("resourceMappingGroup", req.Msg.String()))
 	}
 
 	auditParams.ObjectID = rmGroup.GetId()
@@ -137,13 +137,13 @@ func (s ResourceMappingService) UpdateResourceMappingGroup(ctx context.Context, 
 	originalRmGroup, err := s.dbClient.GetResourceMappingGroup(ctx, id)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
 	}
 
 	updatedRmGroup, err := s.dbClient.UpdateResourceMappingGroup(ctx, id, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("id", id))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", id))
 	}
 
 	auditParams.Original = originalRmGroup
@@ -172,7 +172,7 @@ func (s ResourceMappingService) DeleteResourceMappingGroup(ctx context.Context, 
 	_, err := s.dbClient.DeleteResourceMappingGroup(ctx, id)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", id))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
@@ -193,7 +193,7 @@ func (s ResourceMappingService) ListResourceMappings(ctx context.Context,
 ) (*connect.Response[resourcemapping.ListResourceMappingsResponse], error) {
 	rsp, err := s.dbClient.ListResourceMappings(ctx, req.Msg)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -206,7 +206,7 @@ func (s ResourceMappingService) ListResourceMappingsByGroupFqns(ctx context.Cont
 
 	fqnRmGroupMap, err := s.dbClient.ListResourceMappingsByGroupFqns(ctx, fqns)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed, slog.Any("fqns", fqns))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed, slog.Any("fqns", fqns))
 	}
 
 	rsp.FqnResourceMappingGroups = fqnRmGroupMap
@@ -221,7 +221,7 @@ func (s ResourceMappingService) GetResourceMapping(ctx context.Context,
 
 	rm, err := s.dbClient.GetResourceMapping(ctx, req.Msg.GetId())
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", req.Msg.GetId()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", req.Msg.GetId()))
 	}
 
 	rsp.ResourceMapping = rm
@@ -234,7 +234,7 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 ) (*connect.Response[resourcemapping.CreateResourceMappingResponse], error) {
 	rsp := &resourcemapping.CreateResourceMappingResponse{}
 
-	s.logger.Debug("creating resource mapping")
+	s.logger.DebugContext(ctx, "creating resource mapping")
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
@@ -244,7 +244,7 @@ func (s ResourceMappingService) CreateResourceMapping(ctx context.Context,
 	rm, err := s.dbClient.CreateResourceMapping(ctx, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("resourceMapping", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("resourceMapping", req.Msg.String()))
 	}
 
 	auditParams.ObjectID = rm.GetId()
@@ -272,13 +272,13 @@ func (s ResourceMappingService) UpdateResourceMapping(ctx context.Context,
 	originalRM, err := s.dbClient.GetResourceMapping(ctx, resourceMappingID)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
 	}
 
 	updatedRM, err := s.dbClient.UpdateResourceMapping(ctx, resourceMappingID, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed,
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed,
 			slog.String("id", req.Msg.GetId()),
 			slog.String("resourceMapping", req.Msg.String()),
 		)
@@ -311,7 +311,7 @@ func (s ResourceMappingService) DeleteResourceMapping(ctx context.Context,
 	_, err := s.dbClient.DeleteResourceMapping(ctx, resourceMappingID)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("id", resourceMappingID))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", resourceMappingID))
 	}
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)

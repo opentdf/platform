@@ -68,6 +68,12 @@ var (
 	spk2uns2spk, _  = NewAttributeValueFQN("https://hasgrants.com/attr/unspecified/value/specked")
 	spk2spk2uns, _  = NewAttributeValueFQN("https://hasgrants.com/attr/specified/value/unspecked")
 	spk2spk2spk, _  = NewAttributeValueFQN("https://hasgrants.com/attr/specified/value/specked")
+
+	// Attributes for testing specific key mapping
+	MP, _  = NewAttributeNameFQN("https://virtru.com/attr/mapped")
+	mpa, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/a")
+	mpb, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/b")
+	mpu, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/unspecified")
 )
 
 func spongeCase(s string) string {
@@ -121,7 +127,7 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 		Fqn:  "https://other.com",
 	}
 	// h := make([]*policy.KeyAccessServer, 1)
-	// h[0] = &policy.KeyAccessServer{Uri: lessSpecificKas}
+	// h[0] = mockGrant(lessSpecificKas, "r1")
 	nsThree := policy.Namespace{
 		Id:     "h",
 		Name:   "hasgrants.com",
@@ -136,6 +142,15 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 			Name:      "Classification",
 			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY,
 			Fqn:       fqn.String(),
+		}
+	case MP.key:
+		return &policy.Attribute{
+			Id:        "MP",
+			Namespace: &nsOne,
+			Name:      "Mapped",
+			Rule:      policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+			Fqn:       fqn.String(),
+			KasKeys:   []*policy.SimpleKasKey{mockSimpleKasKey(specifiedKas, "r1")},
 		}
 	case N2K.key:
 		return &policy.Attribute{
@@ -155,7 +170,7 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 		}
 	case SPECKED.key:
 		g := make([]*policy.KeyAccessServer, 1)
-		g[0] = &policy.KeyAccessServer{Uri: specifiedKas}
+		g[0] = mockGrant(specifiedKas, "r1")
 		return &policy.Attribute{
 			Id:        "SPK",
 			Namespace: &nsTwo,
@@ -174,7 +189,7 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 		}
 	case SPKSPECKED.key:
 		g := make([]*policy.KeyAccessServer, 1)
-		g[0] = &policy.KeyAccessServer{Uri: specifiedKas}
+		g[0] = mockGrant(specifiedKas, "r1")
 		return &policy.Attribute{
 			Id:        "SPK",
 			Namespace: &nsThree,
@@ -195,6 +210,57 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 	return nil
 }
 
+func mockGrant(kas, kid string) *policy.KeyAccessServer {
+	if kas == "" {
+		panic("invalid kas URI")
+	}
+	if kid == "" {
+		return mockGrant(kas, "r0")
+	}
+	return &policy.KeyAccessServer{
+		Uri: kas,
+		Id:  kas,
+		KasKeys: []*policy.SimpleKasKey{
+			{
+				KasUri: kas,
+				PublicKey: &policy.SimpleKasPublicKey{
+					Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+					Kid:       kid,
+					Pem:       "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQ...\n-----END PUBLIC KEY-----\n",
+				},
+			},
+		},
+	}
+}
+
+func mockSimpleKasKey(kas, kid string) *policy.SimpleKasKey {
+	if kas == "" {
+		panic("invalid kas URI")
+	}
+	if kid == "" {
+		panic("invalid kas kid")
+	}
+	var alg policy.Algorithm
+	switch kid {
+	case "r1":
+		alg = policy.Algorithm_ALGORITHM_RSA_2048
+	case "r2":
+		alg = policy.Algorithm_ALGORITHM_RSA_4096
+	case "e1":
+		alg = policy.Algorithm_ALGORITHM_EC_P256
+	default:
+		panic("invalid kas kid: " + kid)
+	}
+	return &policy.SimpleKasKey{
+		KasUri: kas,
+		PublicKey: &policy.SimpleKasPublicKey{
+			Algorithm: alg,
+			Kid:       kid,
+			Pem:       "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQ...\n-----END PUBLIC KEY-----\n",
+		},
+	}
+}
+
 func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 	an := fqn.Prefix()
 	a := mockAttributeFor(an)
@@ -211,55 +277,69 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 		switch strings.ToUpper(fqn.Value()) {
 		case "INT":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUk}
+			p.Grants[0] = mockGrant(kasUk, "r1")
 		case "HCS":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUsHCS}
+			p.Grants[0] = mockGrant(kasUsHCS, "r1")
 		case "SI":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUsSA}
+			p.Grants[0] = mockGrant(kasUsSA, "r1")
 		}
 
 	case REL.key:
 		switch strings.ToUpper(fqn.Value()) {
 		case "FVEY":
 			p.Grants = make([]*policy.KeyAccessServer, 5)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasAu}
-			p.Grants[1] = &policy.KeyAccessServer{Uri: kasCa}
-			p.Grants[2] = &policy.KeyAccessServer{Uri: kasUk}
-			p.Grants[3] = &policy.KeyAccessServer{Uri: kasNz}
-			p.Grants[4] = &policy.KeyAccessServer{Uri: kasUs}
+			p.Grants[0] = mockGrant(kasAu, "r1")
+			p.Grants[1] = mockGrant(kasCa, "r1")
+			p.Grants[2] = mockGrant(kasUk, "r1")
+			p.Grants[3] = mockGrant(kasNz, "r1")
+			p.Grants[4] = mockGrant(kasUs, "r1")
 		case "AUS":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasAu}
+			p.Grants[0] = mockGrant(kasAu, "r1")
 		case "CAN":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasCa}
+			p.Grants[0] = mockGrant(kasCa, "r1")
 		case "GBR":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUk}
+			p.Grants[0] = mockGrant(kasUk, "r1")
 		case "NZL":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasNz}
+			p.Grants[0] = mockGrant(kasNz, "r1")
 		case "USA":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: kasUs}
+			p.Grants[0] = mockGrant(kasUs, "r1")
 		}
 	case CLS.key:
 		// defaults only
+	case MP.key:
+		switch strings.ToLower(fqn.Value()) {
+		case "a":
+			p.KasKeys = make([]*policy.SimpleKasKey, 1)
+			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "r2")
+		case "b":
+			p.KasKeys = make([]*policy.SimpleKasKey, 1)
+			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "e1")
+		case "unspecified":
+			// defaults only
+		default:
+			// defaults only
+		}
+
 	case SPECKED.key:
 		fallthrough
 	case UNSPECKED.key:
 		if strings.ToLower(fqn.Value()) == "specked" {
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: evenMoreSpecificKas}
+			p.Grants[0] = mockGrant(evenMoreSpecificKas, "r1")
 		}
 	case SPKSPECKED.key:
 		fallthrough
 	case SPKUNSPECKED.key:
 		if strings.ToLower(fqn.Value()) == "specked" {
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = &policy.KeyAccessServer{Uri: evenMoreSpecificKas}
+			p.Grants[0] = mockGrant(evenMoreSpecificKas, "r1")
 		}
 	}
 	return &p
@@ -380,10 +460,10 @@ func TestConfigurationServicePutGet(t *testing.T) {
 			v := valuesToPolicy(tc.policy...)
 			grants, err := newGranterFromAttributes(newKasKeyCache(), v...)
 			require.NoError(t, err)
-			assert.Len(t, grants.grants, tc.size)
-			assert.Subset(t, policyToStringKeys(tc.policy), slices.Collect(maps.Keys(grants.grants)))
+			assert.Len(t, grants.grantTable, tc.size)
+			assert.Subset(t, policyToStringKeys(tc.policy), slices.Collect(maps.Keys(grants.grantTable)))
 			actualKases := make(map[string]bool)
-			for _, g := range grants.grants {
+			for _, g := range grants.grantTable {
 				require.NotNil(t, g)
 				for _, k := range g.kases {
 					actualKases[k] = true
@@ -401,6 +481,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		defaults            []string
 		ats, keyed, reduced string
 		plan                []keySplitStep
+		tpl                 []kaoTpl
 	}{
 		{
 			"one actual with default",
@@ -410,6 +491,9 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"[DEFAULT]&(https://kas.ca/)",
 			"(https://kas.ca/)",
 			[]keySplitStep{{kasCa, ""}},
+			[]kaoTpl{
+				{keySplitStep{kasCa, ""}, ""},
+			},
 		},
 		{
 			"one defaulted attr",
@@ -419,6 +503,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"[DEFAULT]",
 			"",
 			[]keySplitStep{{kasUs, ""}},
+			[]kaoTpl{},
 		},
 		{
 			"empty policy",
@@ -428,6 +513,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"",
 			"",
 			[]keySplitStep{{kasUs, ""}},
+			[]kaoTpl{},
 		},
 		{
 			"old school splits",
@@ -437,6 +523,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"",
 			"",
 			[]keySplitStep{{kasAu, "1"}, {kasCa, "2"}, {kasUs, "3"}},
+			[]kaoTpl{},
 		},
 		{
 			"simple with all three ops",
@@ -446,6 +533,9 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"[DEFAULT]&(https://kas.uk/)&(https://kas.uk/)",
 			"(https://kas.uk/)",
 			[]keySplitStep{{kasUk, ""}},
+			[]kaoTpl{
+				{keySplitStep{kasUk, ""}, ""},
+			},
 		},
 		{
 			"simple with namespace",
@@ -455,6 +545,9 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"[DEFAULT]&(https://namespace.kas.com/)",
 			"(https://namespace.kas.com/)",
 			[]keySplitStep{{lessSpecificKas, ""}},
+			[]kaoTpl{
+				{keySplitStep{lessSpecificKas, ""}, ""},
+			},
 		},
 		{
 			"compartments",
@@ -464,6 +557,12 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"[DEFAULT]&(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/⋀https://si.kas.us/)",
 			"(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/)&(https://si.kas.us/)",
 			[]keySplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
+			[]kaoTpl{
+				{keySplitStep{kasUk, "1"}, ""},
+				{keySplitStep{kasUs, "1"}, ""},
+				{keySplitStep{kasUsHCS, "2"}, ""},
+				{keySplitStep{kasUsSA, "3"}, ""},
+			},
 		},
 		{
 			"compartments - case insensitive",
@@ -473,6 +572,51 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"[DEFAULT]&(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/⋀https://si.kas.us/)",
 			"(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/)&(https://si.kas.us/)",
 			[]keySplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
+			[]kaoTpl{
+				{keySplitStep{kasUk, "1"}, ""},
+				{keySplitStep{kasUs, "1"}, ""},
+				{keySplitStep{kasUsHCS, "2"}, ""},
+				{keySplitStep{kasUsSA, "3"}, ""},
+			},
+		},
+		{
+			"mappings at attr value",
+			[]AttributeValueFQN{mpa, mpb},
+			[]string{emptyTerm},
+			"https://virtru.com/attr/mapped/value/{a,b}",
+			"(https://value.kas.com/⋁https://value.kas.com/)",
+			"(https://value.kas.com/)",
+			[]keySplitStep{{evenMoreSpecificKas, ""}},
+			[]kaoTpl{
+				{keySplitStep{evenMoreSpecificKas, "1"}, "e1"},
+				{keySplitStep{evenMoreSpecificKas, "1"}, "r2"},
+			},
+		},
+		{
+			"mappings at attr definition",
+			[]AttributeValueFQN{mpu},
+			[]string{emptyTerm},
+			"https://virtru.com/attr/mapped/value/unspecified",
+			"(https://attr.kas.com/)",
+			"(https://attr.kas.com/)",
+			[]keySplitStep{{specifiedKas, ""}},
+			[]kaoTpl{
+				{keySplitStep{specifiedKas, ""}, "r1"},
+			},
+		},
+		{
+			"mappings all",
+			[]AttributeValueFQN{mpa, mpb, mpu},
+			[]string{emptyTerm},
+			"https://virtru.com/attr/mapped/value/{a,b,unspecified}",
+			"(https://value.kas.com/⋁https://value.kas.com/⋁https://attr.kas.com/)",
+			"(https://attr.kas.com/⋁https://value.kas.com/)",
+			[]keySplitStep{{specifiedKas, "1"}, {evenMoreSpecificKas, "1"}},
+			[]kaoTpl{
+				{keySplitStep{specifiedKas, "1"}, "r1"},
+				{keySplitStep{evenMoreSpecificKas, "1"}, "e1"},
+				{keySplitStep{evenMoreSpecificKas, "1"}, "r2"},
+			},
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
@@ -496,6 +640,14 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			})
 			require.NoError(t, err)
 			assert.Equal(t, tc.plan, plan)
+
+			j := 0
+			tpl, err := reasoner.resolveTemplate(func() string {
+				j++
+				return strconv.Itoa(j)
+			})
+			require.NoError(t, err)
+			assert.Equal(t, tc.tpl, tpl)
 		})
 	}
 }

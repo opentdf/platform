@@ -75,6 +75,7 @@ type TDFConfig struct {
 	attributes                 []AttributeValueFQN
 	attributeValues            []*policy.Value
 	kasInfoList                []KASInfo
+	kaoTemplate                []kaoTpl
 	splitPlan                  []keySplitStep
 	keyType                    ocrypto.KeyType
 	useHex                     bool

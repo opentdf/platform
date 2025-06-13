@@ -78,24 +78,22 @@ func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 	if configuration == nil {
 		return nil, ErrWellKnowConfigEmpty
 	}
-
-	configStructureMap := configuration.AsMap()
-	if len(configStructureMap) == 0 {
+	configMap := configuration.AsMap()
+	if len(configMap) == 0 {
 		return nil, ErrWellKnowConfigEmpty
 	}
-	jsonBytes, err := json.Marshal(configStructureMap)
-	return nil, fmt.Errorf("configuration map is not a valid map: %v", string(jsonBytes))
-	configStructure, ok := configStructureMap[wellKnownConfigKey]
+
+	baseKeyStructure, ok := configMap[baseKeyWellKnown]
 	if !ok {
-		return nil, errWellKnownConfigFormat
+		return nil, errBaseKeyNotFound
 	}
 
-	configMap, ok := configStructure.(map[string]interface{})
+	baseKeyMap, ok := baseKeyStructure.(map[string]interface{})
 	if !ok {
-		return nil, errWellKnownConfigFormat
+		return nil, errBaseKeyInvalidFormat
 	}
 
-	simpleKasKey, err := parseSimpleKasKey(configMap)
+	simpleKasKey, err := parseSimpleKasKey(baseKeyMap)
 	if err != nil {
 		return nil, err
 	}

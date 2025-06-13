@@ -116,11 +116,12 @@ func parseSimpleKasKey(configMap map[string]interface{}) (*policy.SimpleKasKey, 
 		return nil, errBaseKeyInvalidFormat
 	}
 
+	return nil, fmt.Errorf("base key algorithm %s is not supported", publicKey[baseKeyAlg])
+
 	alg, ok := publicKey[baseKeyAlg].(string)
 	if !ok {
 		return nil, errBaseKeyInvalidFormat
 	}
-	return nil, fmt.Errorf("base key algorithm %s is not supported", alg)
 	publicKey[baseKeyAlg] = getKasKeyAlg(alg)
 	baseKeyMap[baseKeyPublicKey] = publicKey
 	configJSON, err := json.Marshal(baseKey)

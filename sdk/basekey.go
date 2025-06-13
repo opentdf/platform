@@ -78,17 +78,23 @@ func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 	if configuration == nil {
 		return nil, ErrWellKnowConfigEmpty
 	}
-	configStructure, ok := configuration.AsMap()[wellKnownConfigKey]
-	if !ok {
-		return nil, err
+
+	configMap := configuration.AsMap()
+	if len(configMap) == 0 {
+		return nil, ErrWellKnowConfigEmpty
 	}
 
-	configMap, ok := configStructure.(map[string]interface{})
+	baseKeyStructure, ok := configMap[baseKeyWellKnown]
 	if !ok {
-		return nil, errWellKnownConfigFormat
+		return nil, errBaseKeyNotFound
 	}
 
-	simpleKasKey, err := parseSimpleKasKey(configMap)
+	baseKeyMap, ok := baseKeyStructure.(map[string]interface{})
+	if !ok {
+		return nil, errBaseKeyInvalidFormat
+	}
+
+	simpleKasKey, err := parseSimpleKasKey(baseKeyMap)
 	if err != nil {
 		return nil, err
 	}
@@ -96,17 +102,9 @@ func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 	return simpleKasKey, nil
 }
 
-func parseSimpleKasKey(configMap map[string]interface{}) (*policy.SimpleKasKey, error) {
+func parseSimpleKasKey(baseKeyMap map[string]interface{}) (*policy.SimpleKasKey, error) {
 	simpleKasKey := &policy.SimpleKasKey{}
-	baseKey, ok := configMap[baseKeyWellKnown]
-	if !ok {
-		return nil, errBaseKeyNotFound
-	}
 
-	baseKeyMap, ok := baseKey.(map[string]interface{})
-	if !ok {
-		return nil, errBaseKeyInvalidFormat
-	}
 	if len(baseKeyMap) == 0 {
 		return nil, errBaseKeyEmpty
 	}
@@ -122,7 +120,7 @@ func parseSimpleKasKey(configMap map[string]interface{}) (*policy.SimpleKasKey, 
 	}
 	publicKey[baseKeyAlg] = getKasKeyAlg(alg)
 	baseKeyMap[baseKeyPublicKey] = publicKey
-	configJSON, err := json.Marshal(baseKey)
+	configJSON, err := json.Marshal(baseKeyMap)
 	if err != nil {
 		return nil, errors.Join(errMarshalBaseKeyFailed, err)
 	}

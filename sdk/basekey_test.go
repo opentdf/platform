@@ -189,14 +189,12 @@ func TestBaseKeySuite(t *testing.T) {
 func (s *BaseKeyTestSuite) TestGetBaseKeySuccess() {
 	// Create a valid base key configuration
 	wellknownConfig := map[string]interface{}{
-		wellKnownConfigKey: map[string]interface{}{
-			baseKeyWellKnown: map[string]interface{}{
-				"kas_uri": "https://test-kas.example.com",
-				baseKeyPublicKey: map[string]interface{}{
-					baseKeyAlg: testRSAAlgorithm,
-					"kid":      testKid,
-					"pem":      testPem,
-				},
+		baseKeyWellKnown: map[string]interface{}{
+			"kas_uri": "https://test-kas.example.com",
+			baseKeyPublicKey: map[string]interface{}{
+				baseKeyAlg: testRSAAlgorithm,
+				"kid":      testKid,
+				"pem":      testPem,
 			},
 		},
 	}
@@ -238,9 +236,7 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyServiceError() {
 func (s *BaseKeyTestSuite) TestGetBaseKeyMissingBaseKey() {
 	// Create wellknown configuration without base key
 	wellknownConfig := map[string]interface{}{
-		wellKnownConfigKey: map[string]interface{}{
-			"some_other_config": "value",
-		},
+		"some_other_config": "value",
 	}
 
 	mockService := newMockWellKnownService(wellknownConfig, nil)
@@ -258,9 +254,7 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyMissingBaseKey() {
 
 func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidBaseKeyFormat() {
 	wellknownConfig := map[string]interface{}{
-		wellKnownConfigKey: map[string]interface{}{
-			baseKeyWellKnown: "invalid-base-key",
-		},
+		baseKeyWellKnown: "invalid-base-key",
 	}
 
 	mockService := newMockWellKnownService(wellknownConfig, nil)
@@ -279,9 +273,7 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidBaseKeyFormat() {
 func (s *BaseKeyTestSuite) TestGetBaseKeyEmptyBaseKey() {
 	// Create empty base key map
 	wellknownConfig := map[string]interface{}{
-		wellKnownConfigKey: map[string]interface{}{
-			baseKeyWellKnown: map[string]interface{}{},
-		},
+		baseKeyWellKnown: map[string]interface{}{},
 	}
 
 	mockService := newMockWellKnownService(wellknownConfig, nil)
@@ -300,11 +292,9 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyEmptyBaseKey() {
 func (s *BaseKeyTestSuite) TestGetBaseKeyMissingPublicKey() {
 	// Create base key without public_key field
 	wellknownConfig := map[string]interface{}{
-		wellKnownConfigKey: map[string]interface{}{
-			baseKeyWellKnown: map[string]interface{}{
-				"kas_uri": "https://test-kas.example.com",
-				// Missing public_key field
-			},
+		baseKeyWellKnown: map[string]interface{}{
+			"kas_uri": "https://test-kas.example.com",
+			// Missing public_key field
 		},
 	}
 
@@ -324,11 +314,9 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyMissingPublicKey() {
 func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidPublicKey() {
 	// Create base key with invalid public_key (string instead of map)
 	wellknownConfig := map[string]interface{}{
-		wellKnownConfigKey: map[string]interface{}{
-			baseKeyWellKnown: map[string]interface{}{
-				"kas_uri":        "https://test-kas.example.com",
-				baseKeyPublicKey: "invalid-public-key", // Should be a map
-			},
+		baseKeyWellKnown: map[string]interface{}{
+			"kas_uri":        "https://test-kas.example.com",
+			baseKeyPublicKey: "invalid-public-key", // Should be a map
 		},
 	}
 

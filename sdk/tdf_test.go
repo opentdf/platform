@@ -2016,15 +2016,13 @@ func (s *TDFSuite) createFileName(buf []byte, filename string, size int64) {
 func createWellKnown(baseKey map[string]interface{}) map[string]interface{} {
 	// Create a stub for wellknown
 	return map[string]interface{}{
-		"configuration": map[string]interface{}{
-			"health": map[string]interface{}{
-				"endpoint": "/healthz",
-			},
-			"idp": map[string]interface{}{
-				"issuer": "http://localhost:65432/auth",
-			},
-			"base_key": baseKey,
+		"health": map[string]interface{}{
+			"endpoint": "/healthz",
 		},
+		"idp": map[string]interface{}{
+			"issuer": "http://localhost:65432/auth",
+		},
+		"base_key": baseKey,
 	}
 }
 

@@ -274,7 +274,7 @@ func createPublicKey(kid, pem string, algorithm policy.KasPublicKeyAlgEnum) *pol
 				Keys: []*policy.KasPublicKey{
 					{
 						Kid: kid,
-						Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
+						Alg: algorithm,
 						Pem: pem,
 					},
 				},

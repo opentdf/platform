@@ -184,7 +184,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, errors.New("cannot set autoconfigure and splitPlan or kaoTemplate")
 	}
 
-	if tdfConfig.autoconfigure { //nolint:nestif // simplify after removing support for splitPlan
+	if tdfConfig.autoconfigure {
 		var g granter
 		g, err = s.newGranter(ctx, tdfConfig, err)
 		if err != nil {

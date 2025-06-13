@@ -283,7 +283,7 @@ type grantableObject interface {
 func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *policy.Attribute) grantTypeMask {
 	ok := noKeysFound
 	for _, g := range ag.GetGrants() {
-		if g != nil && g.GetUri() != "" { //nolint:nestif // Simplify after grant removal
+		if g != nil && g.GetUri() != "" {
 			kasURI := g.GetUri()
 			r.typ |= grantsFound
 			ok |= grantsFound

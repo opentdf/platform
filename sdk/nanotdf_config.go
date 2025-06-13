@@ -17,17 +17,17 @@ import (
 // ============================================================================================================
 
 type NanoTDFConfig struct {
-	keyPair        ocrypto.ECKeyPair
-	kasPublicKey   *ecdh.PublicKey
-	attributes     []AttributeValueFQN
-	cipher         CipherMode
-	kasURL         ResourceLocator
-	sigCfg         signatureConfig
-	policy         policyInfo
-	bindCfg        bindingConfig
-	collectionCfg  *collectionConfig
-	policyMode     PolicyType // Added field for policy mode
-	baseKeyEnabled bool
+	keyPair          ocrypto.ECKeyPair
+	kasPublicKey     *ecdh.PublicKey
+	attributes       []AttributeValueFQN
+	cipher           CipherMode
+	kasURL           ResourceLocator
+	sigCfg           signatureConfig
+	policy           policyInfo
+	bindCfg          bindingConfig
+	collectionCfg    *collectionConfig
+	policyMode       PolicyType // Added field for policy mode
+	isBaseKeyEnabled bool       // Added field to enable base key usage
 }
 
 type NanoTDFOption func(*NanoTDFConfig) error
@@ -57,8 +57,7 @@ func (s SDK) NewNanoTDFConfig() (*NanoTDFConfig, error) {
 			useCollection: false,
 			header:        []byte{},
 		},
-		policyMode:     NanoTDFPolicyModeDefault,
-		baseKeyEnabled: false,
+		policyMode: NanoTDFPolicyModeDefault,
 	}
 
 	return c, nil
@@ -106,7 +105,7 @@ func (config *NanoTDFConfig) SetPolicyMode(mode PolicyType) error {
 // ! Enabling this option will cause the SDK to ignore any KAS information passed in
 // ! and instead use the base key from the well-known configuration.
 func (config *NanoTDFConfig) EnableBaseKey() {
-	config.baseKeyEnabled = true
+	config.isBaseKeyEnabled = true
 }
 
 // WithNanoDataAttributes appends the given data attributes to the bound policy

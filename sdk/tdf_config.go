@@ -92,7 +92,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
 		keyType:                   ocrypto.RSA2048Key, // default to RSA
-		isBaseKeyEnabled:          false,              // Default to true.
+		isBaseKeyEnabled:          false,
 	}
 
 	for _, o := range opt {

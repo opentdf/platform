@@ -1094,7 +1094,7 @@ func createNanoTDFSymmetricKey(config NanoTDFConfig) ([]byte, error) {
 }
 
 func getKasInfoForNanoTDF(s *SDK, config *NanoTDFConfig) (*KASInfo, error) {
-	if config.baseKeyEnabled {
+	if config.isBaseKeyEnabled {
 		ki, err := getNanoKasInfoFromBaseKey(s)
 		if err != nil {
 			return nil, err

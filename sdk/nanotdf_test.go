@@ -532,7 +532,7 @@ func (s *NanoSuite) Test_GetKasInfoForNanoTDF_BaseKey() {
 
 			// Create a NanoTDFConfig
 			config := NanoTDFConfig{
-				baseKeyEnabled: tt.baseKeyEnabled,
+				isBaseKeyEnabled: tt.baseKeyEnabled,
 			}
 			err := config.SetKasURL("http://should-change.com")
 			s.Require().NoError(err)

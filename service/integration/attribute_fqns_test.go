@@ -469,10 +469,14 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definition
 	s.NotNil(got)
 
 	// ensure the attribute has the grants
-	s.Len(got.GetGrants(), 2)
+	s.Len(got.GetGrants(), 1)
+	// Ensure we get 2 public keys because it's the same KAS
+	s.Len(got.GetGrants()[0].GetPublicKey().GetCached().GetKeys(), 2)
+	keyIDs := []string{key.KeyID, key2.KeyID}
+	s.Contains(keyIDs, got.GetGrants()[0].GetPublicKey().GetCached().GetKeys()[0].GetKid())
+	s.Contains(keyIDs, got.GetGrants()[0].GetPublicKey().GetCached().GetKeys()[1].GetKid())
 	grantIDs := []string{key.KeyAccessServerID, key2.KeyAccessServerID}
 	s.Contains(grantIDs, got.GetGrants()[0].GetId())
-	s.Contains(grantIDs, got.GetGrants()[1].GetId())
 	pemIsPresent := false
 
 	for _, g := range got.GetGrants() {
@@ -493,7 +497,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definition
 	got, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, "https://example.org/attr/attr_with_grants/value/value1")
 	s.Require().NoError(err)
 	s.NotNil(got)
-	s.Len(got.GetGrants(), 2)
+	s.Len(got.GetGrants(), 1)
 
 	// assign a KAS to the value and make sure it is not granted to the definition
 	grant3, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
@@ -506,7 +510,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Definition
 	got, err = s.db.PolicyClient.GetAttributeByFqn(s.ctx, "https://example.org/attr/attr_with_grants/value/value1")
 	s.Require().NoError(err)
 	s.NotNil(got)
-	s.Len(got.GetGrants(), 2)
+	s.Len(got.GetGrants(), 1)
 }
 
 func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_Values() {

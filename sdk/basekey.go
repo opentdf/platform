@@ -22,7 +22,6 @@ const (
 )
 
 var (
-	errWellKnownConfigFormat  = errors.New("well-known configuration has invalid format")
 	errBaseKeyNotFound        = errors.New("base key not found in well-known configuration")
 	errBaseKeyInvalidFormat   = errors.New("base key has invalid format")
 	errBaseKeyEmpty           = errors.New("base key is empty or not provided")

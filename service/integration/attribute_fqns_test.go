@@ -682,7 +682,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithKeyAccessGrants_DefAndValu
 	s.NotNil(got)
 	s.Len(got.GetValues(), 2)
 	s.Len(got.GetGrants(), 1)
-	s.Equal(key.KeyAccessServerID, got.GetGrants()[0].GetId())
+	s.Equal(key3.KeyAccessServerID, got.GetGrants()[0].GetId())
 
 	for _, v := range got.GetValues() {
 		switch v.GetId() {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 )
 
 type DecisionResult int
@@ -41,6 +43,15 @@ type GetDecisionEventParams struct {
 	FQNs                    []string
 }
 
+type GetDecisionV2EventParams struct {
+	EntityID     string
+	ActionName   string
+	Decision     DecisionResult
+	Entitlements subjectmappingbuiltin.AttributeValueFQNsToActions
+	// Allow ResourceDecisions to be typed by the caller as structure is in-flight
+	ResourceDecisions interface{}
+}
+
 func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) (*EventObject, error) {
 	auditDataFromContext := GetAuditDataFromContext(ctx)
 
@@ -69,6 +80,48 @@ func CreateGetDecisionEvent(ctx context.Context, params GetDecisionEventParams) 
 		EventMetaData: buildEventMetadata(params.EntityDecisions),
 		ClientInfo: eventClientInfo{
 			Platform:  "authorization",
+			UserAgent: auditDataFromContext.UserAgent,
+			RequestIP: auditDataFromContext.RequestIP,
+		},
+		RequestID: auditDataFromContext.RequestID,
+		Timestamp: time.Now().Format(time.RFC3339),
+	}, nil
+}
+
+func CreateV2GetDecisionEvent(ctx context.Context, params GetDecisionV2EventParams) (*EventObject, error) {
+	auditDataFromContext := GetAuditDataFromContext(ctx)
+
+	// Get result from decision
+	result := ActionResultSuccess
+	if params.Decision == GetDecisionResultDeny {
+		result = ActionResultFailure
+	}
+
+	actorAttributes := []interface{}{
+		struct {
+			Entitlements subjectmappingbuiltin.AttributeValueFQNsToActions `json:"entitlements"`
+		}{
+			Entitlements: params.Entitlements,
+		},
+	}
+
+	return &EventObject{
+		Object: auditEventObject{
+			ID:   params.EntityID + "-" + params.ActionName,
+			Type: ObjectTypeEntityObject,
+			Name: "decisionRequest-" + params.ActionName,
+		},
+		Action: eventAction{
+			Type:   ActionTypeRead,
+			Result: result,
+		},
+		Actor: auditEventActor{
+			ID:         params.EntityID,
+			Attributes: actorAttributes,
+		},
+		EventMetaData: params.ResourceDecisions,
+		ClientInfo: eventClientInfo{
+			Platform:  "authorization.v2",
 			UserAgent: auditDataFromContext.UserAgent,
 			RequestIP: auditDataFromContext.RequestIP,
 		},

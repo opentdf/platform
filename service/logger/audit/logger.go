@@ -80,6 +80,15 @@ func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventPa
 	a.logger.Log(ctx, LevelAudit, "decision", "audit", *auditEvent)
 }
 
+func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2EventParams) {
+	event, err := CreateV2GetDecisionEvent(ctx, eventParams)
+	if err != nil {
+		a.logger.ErrorContext(ctx, "error creating v2 get decision audit event", "err", err)
+		return
+	}
+	a.logger.Log(ctx, LevelAudit, "decision", "audit", *event)
+}
+
 func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventParams) {
 	auditEvent, err := CreateRewrapAuditEvent(ctx, eventParams)
 	if err != nil {

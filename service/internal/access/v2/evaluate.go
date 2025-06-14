@@ -150,12 +150,6 @@ func evaluateDefinition(
 		Fqn:  attrDefinition.GetFqn(),
 		Rule: attrDefinition.GetRule(),
 	}
-	simpleAttribute.Values = make([]*policy.Value, len(attrDefinition.GetValues()))
-	for idx, value := range attrDefinition.GetValues() {
-		simpleAttribute.Values[idx] = &policy.Value{
-			Value: value.GetValue(),
-		}
-	}
 	result := &DataRuleResult{
 		Passed:            passed,
 		Attribute:         simpleAttribute,

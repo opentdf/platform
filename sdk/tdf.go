@@ -186,10 +186,9 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	// * Get base key before autoconfigure to condition off of.
-	baseKey, baseKeyErr := getBaseKeyFromWellKnown(ctx, s)
-	isPlatformPre205 := errors.Is(baseKeyErr, errBaseKeyNotFound)
-	if tdfConfig.autoconfigure { //nolint:nestif // refactor when grants are removed
+	if tdfConfig.autoconfigure {
 		var g granter
+		var err error
 		g, err = s.newGranter(ctx, tdfConfig, err)
 		if err != nil {
 			return nil, err
@@ -202,16 +201,14 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			tdfConfig.kaoTemplate = nil
 			tdfConfig.splitPlan, err = g.plan(make([]string, 0), uuidSplitIDGenerator)
 		case g.typ == noKeysFound:
-			if isPlatformPre205 {
+			var baseKey *policy.SimpleKasKey
+			baseKey, err = getBaseKeyFromWellKnown(ctx, s)
+			if err == nil {
+				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
+			} else {
 				dk := s.defaultKases(tdfConfig)
 				tdfConfig.kaoTemplate = nil
 				tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
-			} else {
-				if baseKeyErr != nil {
-					return nil, err
-				}
-
-				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
 			}
 		}
 		if err != nil {

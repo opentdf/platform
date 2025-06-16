@@ -17,7 +17,7 @@ informed: '@strantalis @jrschumacher @c-r33d @damorris25'
 
 1. v2.0.5 of SDK should work with < v2.0.4 of platform
 2. < v2.0.5 of SDK should work with >= v2.0.5 of plaform
-3. We should not have a WithBaseKeyEnabled option, instead the platform version should be derived from the well-known. For v2.0.5 of the SDK we will prefer to use the base key if present and set properly. If it is not, we will fallback to using the default kases.
+3. We should not have a WithBaseKeyEnabled option, instead the platform version should be derived from the well-known. For v2.0.5 of the SDK we will prefer to use the base key if present and set properly. If it is not, we will fallback to using the default kases. In v2.0.6 the plan would be to error if the platform is >= v2.0.5 and the base key is not set.
 4. When creating a split plan if the SDK notices that there are key mappings it will **only** use those key mappings instead of grants. If no key mappings are present, the sdk will fallback to grants.
 
 <!-- This is an optional element. Feel free to remove. -->

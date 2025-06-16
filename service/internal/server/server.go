@@ -27,6 +27,8 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/cache"
+	"github.com/opentdf/platform/service/pkg/util"
 	"github.com/opentdf/platform/service/tracing"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -50,7 +52,10 @@ func (e Error) Error() string {
 // Configurations for the server
 type Config struct {
 	Auth auth.Config `mapstructure:"auth" json:"auth"`
-	GRPC GRPCConfig  `mapstructure:"grpc" json:"grpc"`
+
+	Cache CacheConfig `mapstructure:"cache" json:"cache"`
+
+	GRPC GRPCConfig `mapstructure:"grpc" json:"grpc"`
 	// To Deprecate: Use the WithKey[X]Provider StartOptions to register trust providers.
 	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider" json:"cryptoProvider"`
 	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
@@ -84,6 +89,23 @@ func (c Config) LogValue() slog.Value {
 	}
 
 	return slog.GroupValue(group...)
+}
+
+// CacheRistrettoConfig supports human-friendly size strings like "1gb", "512mb", etc.
+type CacheRistrettoConfig struct {
+	// MaxCost is the maximum cost of the cache, can be a number (bytes) or a string like "1gb"
+	MaxCost string `mapstructure:"maxCost" json:"maxCost" default:"8gb"`
+}
+
+// MaxCostBytes parses MaxCost and returns the value in bytes.
+// Supports suffixes: b, kb, mb, gb, tb (case-insensitive).
+func (c CacheRistrettoConfig) MaxCostBytes() int64 {
+	return util.RelativeFileSizeToBytes(c.MaxCost, 8*1024*1024*1024) // Default to 8GB if parsing fails
+}
+
+type CacheConfig struct {
+	Driver         string               `mapstructure:"driver" json:"driver" default:"ristretto"`
+	RistrettoCache CacheRistrettoConfig `mapstructure:"ristretto" json:"ristretto"`
 }
 
 // GRPC Server specific configurations
@@ -130,6 +152,7 @@ type OpenTDFServer struct {
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
+	CacheManager        *cache.Manager
 
 	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
 	CryptoProvider *security.StandardCrypto
@@ -153,7 +176,7 @@ type inProcessServer struct {
 	*ConnectRPC
 }
 
-func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, error) {
+func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.Manager) (*OpenTDFServer, error) {
 	var (
 		authN *auth.Authentication
 		err   error
@@ -222,6 +245,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		AuthN:          authN,
 		GRPCGatewayMux: grpcGatewayMux,
 		HTTPServer:     httpServer,
+		CacheManager:   cacheManager,
 		ConnectRPC:     connectRPC,
 		ConnectRPCInProcess: &inProcessServer{
 			srv:                memhttp.New(connectRPCIpc.Mux),

@@ -21,6 +21,7 @@ The platform leverages [viper](https://github.com/spf13/viper) to help load conf
       - [Configuration in opentdf-example.yaml](#configuration-in-opentdf-exampleyaml)
       - [Role Permissions](#role-permissions)
       - [Managing Authorization Policy](#managing-authorization-policy)
+  - [Cache Configuration](#cache-configuration)
 
 ## Deployment Mode
 
@@ -387,3 +388,23 @@ server:
 #### Managing Authorization Policy
 
 Admins can manage the authorization policy directly in the YAML configuration file. For detailed configuration options, refer to the [Casbin documentation](https://casbin.org/docs/en/syntax-for-models).
+
+## Cache Configuration
+
+The platform supports a cache manager to improve performance for frequently accessed data. You can configure the cache backend and its resource usage.
+
+Root level key `cache`
+
+| Field                    | Description                                                      | Default      |
+|--------------------------|------------------------------------------------------------------|--------------|
+| `driver`                 | Type of cache backend (`ristretto`)                              | `ristretto`  |
+| `ristretto.maxCost`      | Maximum cost for the cache (e.g. 100mb, 1gb)                     | `8gb`        |
+
+Example:
+
+```yaml
+cache:
+  driver: ristretto           # Type of cache backend (currently only 'ristretto' is supported)
+  ristretto:
+    maxCost: 1gb              # Maximum cost (in bytes) for the cache (default: 8GB)
+```

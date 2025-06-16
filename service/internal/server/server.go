@@ -100,7 +100,8 @@ type CacheRistrettoConfig struct {
 // MaxCostBytes parses MaxCost and returns the value in bytes.
 // Supports suffixes: b, kb, mb, gb, tb (case-insensitive).
 func (c CacheRistrettoConfig) MaxCostBytes() int64 {
-	return util.RelativeFileSizeToBytes(c.MaxCost, 8*1024*1024*1024) // Default to 8GB if parsing fails
+	const defaultCacheMaxCostBytes int64 = 8 * 1024 * 1024 * 1024            // 8GB
+	return util.RelativeFileSizeToBytes(c.MaxCost, defaultCacheMaxCostBytes) // Default to 8GB if parsing fails
 }
 
 type CacheConfig struct {

@@ -11,7 +11,7 @@ const (
 	// maxCostFactor is the maximum cost factor for Ristretto cache
 	maxCostFactor = 10 // 10x max items
 	// maxAllowedCost is the maximum allowed cost for Ristretto cache (8GB)
-	maxAllowedCost = 8 * (1 << 30) // 8GB
+	maxAllowedCost = 8 * 1024 * 1024 * 1024 // 8GB
 )
 
 // EstimateRistrettoConfigParams estimates Ristretto cache config parameters
@@ -30,6 +30,7 @@ func EstimateRistrettoConfigParams(maxCost int64) (int64, int64, error) {
 	}
 	// Set bufferItems dynamically based on number of CPUs (concurrent writers)
 	numWriters := int64(runtime.NumCPU())
-	bufferItems = 64 * numWriters
+	const bufferItemsPerWriter = 64
+	bufferItems = bufferItemsPerWriter * numWriters
 	return numCounters, bufferItems, nil
 }

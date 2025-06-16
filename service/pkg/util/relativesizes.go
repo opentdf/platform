@@ -14,18 +14,25 @@ func RelativeFileSizeToBytes(size string, defaultSize int64) int64 {
 	s := strings.TrimSpace(strings.ToLower(size))
 	multiplier := int64(1)
 
+	const (
+		kb = 1024
+		mb = kb * 1024
+		gb = mb * 1024
+		tb = gb * 1024
+	)
+
 	switch {
 	case strings.HasSuffix(s, "tb"):
-		multiplier = 1024 * 1024 * 1024 * 1024
+		multiplier = tb
 		s = strings.TrimSuffix(s, "tb")
 	case strings.HasSuffix(s, "gb"):
-		multiplier = 1024 * 1024 * 1024
+		multiplier = gb
 		s = strings.TrimSuffix(s, "gb")
 	case strings.HasSuffix(s, "mb"):
-		multiplier = 1024 * 1024
+		multiplier = mb
 		s = strings.TrimSuffix(s, "mb")
 	case strings.HasSuffix(s, "kb"):
-		multiplier = 1024
+		multiplier = kb
 		s = strings.TrimSuffix(s, "kb")
 	case strings.HasSuffix(s, "b"):
 		multiplier = 1

@@ -21,18 +21,12 @@ func TestRelativeFileSizeToBytes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := RelativeFileSizeToBytes(tt.input)
+		got := RelativeFileSizeToBytes(tt.input, 1024*1024*1024)
 		if tt.shouldErr {
-			if err == nil {
-				t.Errorf("expected error for input %q, got none", tt.input)
-			}
 			if got != 1024*1024*1024 {
 				t.Errorf("expected fallback value for input %q, got %d", tt.input, got)
 			}
 			continue
-		}
-		if err != nil {
-			t.Errorf("unexpected error for input %q: %v", tt.input, err)
 		}
 		if got != tt.expected {
 			t.Errorf("for input %q, expected %d, got %d", tt.input, tt.expected, got)

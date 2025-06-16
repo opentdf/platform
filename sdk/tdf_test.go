@@ -1641,6 +1641,16 @@ func (s *TDFSuite) Test_EncryptWithBaseKey() {
 			},
 		},
 	}
+	attrVal.KasKeys = []*policy.SimpleKasKey{
+		{
+			KasUri: s.kasTestURLLookup[kasAu],
+			PublicKey: &policy.SimpleKasPublicKey{
+				Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+				Kid:       defaultKID,
+				Pem:       mockRSAPublicKey1,
+			},
+		},
+	}
 	for index, test := range []baseKeyTest{
 		{
 			tdfTest: tdfTest{

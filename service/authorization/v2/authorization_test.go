@@ -12,6 +12,7 @@ import (
 	access "github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -774,18 +775,20 @@ func Test_GetDecisionBulkRequest_Succeeds(t *testing.T) {
 
 		reqs := make([]*authzV2.GetDecisionMultiResourceRequest, firstCount+secondCount)
 		for j := range firstCount {
-			req := goodMultiResourceRequests[firstReq].request
-			req.Action = &policy.Action{
+			originalReq := goodMultiResourceRequests[firstReq].request
+			clonedReq := proto.Clone(originalReq).(*authzV2.GetDecisionMultiResourceRequest)
+			clonedReq.Action = &policy.Action{
 				Name: actions[rand.Intn(len(actions))],
 			}
-			reqs[j] = req
+			reqs[j] = clonedReq
 		}
 		for j := firstCount; j < firstCount+secondCount; j++ {
-			req := goodMultiResourceRequests[secondReq].request
-			req.Action = &policy.Action{
+			originalReq := goodMultiResourceRequests[secondReq].request
+			clonedReq := proto.Clone(originalReq).(*authzV2.GetDecisionMultiResourceRequest)
+			clonedReq.Action = &policy.Action{
 				Name: actions[rand.Intn(len(actions))],
 			}
-			reqs[j] = req
+			reqs[j] = clonedReq
 		}
 
 		cases[i] = &authzV2.GetDecisionBulkRequest{

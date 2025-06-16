@@ -178,7 +178,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	// - autoconfigure is true
 	// - splitPlan is set
 	// - kaoTemplate is set
-	if len(tdfConfig.splitPlan) > 0 && len(tdfConfig.kaoTemplate) > 0 {
+	if len(tdfConfig.splitPlan) > 0 && len(tdfConfig.kaoTemplate) > 0 { //nolint:nestif // refactor when grants are removed
 		return nil, errors.New("cannot set both splitPlan and kaoTemplate")
 	}
 	if tdfConfig.autoconfigure && (len(tdfConfig.splitPlan) > 0 || len(tdfConfig.kaoTemplate) > 0) {
@@ -195,36 +195,27 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, err
 		}
 
-		if g.typ&mappedFound == mappedFound {
+		switch {
+		case g.typ&mappedFound == mappedFound:
 			tdfConfig.kaoTemplate, err = g.resolveTemplate(uuidSplitIDGenerator)
-		} else if g.typ&grantsFound == grantsFound {
+		case g.typ&grantsFound == grantsFound:
 			tdfConfig.kaoTemplate = nil
 			tdfConfig.splitPlan, err = g.plan(make([]string, 0), uuidSplitIDGenerator)
-		} else if g.typ&noKeysFound == noKeysFound && isPlatformPre205 {
-			dk := s.defaultKases(tdfConfig)
-			tdfConfig.kaoTemplate = nil
-			tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
+		case g.typ == noKeysFound:
+			if isPlatformPre205 {
+				dk := s.defaultKases(tdfConfig)
+				tdfConfig.kaoTemplate = nil
+				tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
+			} else {
+				if baseKeyErr != nil {
+					return nil, err
+				}
+
+				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
+			}
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed generate plan: %w", err)
-		}
-	}
-
-	// * Expresses the use case where no grants or mappings were found,
-	// * and if the intended behavior of noKeyFound is to use the base
-	// * key or the default KAS.
-	// ! This is implicitly derived from whether or not the base_key
-	// ! k/v pair is present in the well-known configuration.
-	// ! The presence of the var means that we are at least using
-	// ! v2.0.5 of the platform.
-	if len(tdfConfig.kaoTemplate) == 0 && len(tdfConfig.splitPlan) == 0 && !isPlatformPre205 {
-		if baseKeyErr != nil {
-			return nil, err
-		}
-
-		err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
-		if err != nil && !errors.Is(err, errBaseKeyNotFound) {
-			return nil, fmt.Errorf("populateKasInfoFromBaseKey failed: %w", err)
 		}
 	}
 
@@ -1454,7 +1445,7 @@ func getBaseKeyFromWellKnown(ctx context.Context, s SDK) (*policy.SimpleKasKey, 
 
 func populateKasInfoFromBaseKey(key *policy.SimpleKasKey, tdfConfig *TDFConfig) error {
 	if key == nil {
-		return fmt.Errorf("populateKasInfoFromBaseKey failed: key is nil")
+		return errors.New("populateKasInfoFromBaseKey failed: key is nil")
 	}
 
 	algoString, err := formatAlg(key.GetPublicKey().GetAlgorithm())

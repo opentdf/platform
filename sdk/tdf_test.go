@@ -695,7 +695,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -706,7 +706,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -724,7 +724,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -735,7 +735,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -754,7 +754,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -766,7 +766,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -787,7 +787,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -802,7 +802,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -836,7 +836,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -851,7 +851,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -876,7 +876,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -1101,7 +1101,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -1113,7 +1113,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -1130,7 +1130,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -1145,7 +1145,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -1178,7 +1178,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -1193,7 +1193,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",

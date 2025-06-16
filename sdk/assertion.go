@@ -197,8 +197,8 @@ func (at AssertionType) String() string {
 type Scope string
 
 const (
-	TrustedDataObj Scope = "tdo"
-	Paylaod        Scope = "payload"
+	TrustedDataObjScope Scope = "tdo"
+	PayloadScope        Scope = "payload"
 )
 
 // String returns the string representation of the scope.
@@ -288,7 +288,7 @@ func (k AssertionVerificationKeys) IsEmpty() bool {
 }
 
 // GetSystemMetadataAssertionConfig returns a default assertion configuration with predefined values.
-func GetSystemMetadataAssertionConfig() AssertionConfig {
+func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 	// Define the JSON structure
 	type Metadata struct {
 		TDFSpecVersion string `json:"tdf_spec_version,omitempty"`
@@ -306,26 +306,30 @@ func GetSystemMetadataAssertionConfig() AssertionConfig {
 		CreationDate:   time.Now().Format(time.RFC3339),
 		OS:             runtime.GOOS,
 		SDKVersion:     "Go-" + Version,
-		Hostname:       func() string { h, _ := os.Hostname(); return h }(),
 		GoVersion:      runtime.Version(),
 		Architecture:   runtime.GOARCH,
+	}
+
+	// Get hostname if possible
+	if h, err := os.Hostname(); err == nil {
+		metadata.Hostname = h
 	}
 
 	// Marshal the metadata to JSON
 	metadataJSON, err := json.Marshal(metadata)
 	if err != nil {
-		panic(err)
+		return AssertionConfig{}, fmt.Errorf("failed to marshal system metadata: %w", err)
 	}
 
 	return AssertionConfig{
 		ID:             "default-assertion",
 		Type:           BaseAssertion,
-		Scope:          Paylaod,
+		Scope:          PayloadScope,
 		AppliesToState: Unencrypted,
 		Statement: Statement{
 			Format: "json",
 			Schema: "metadata",
 			Value:  string(metadataJSON),
 		},
-	}
+	}, nil
 }

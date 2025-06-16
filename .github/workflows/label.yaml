@@ -58,6 +58,35 @@ jobs:
 
             const authorAssociation = pr.author_association;
             const isExternal = !internalAssociations.includes(authorAssociation);
+            
+            // Get all teams for the org (paginated)
+            let teams = [];
+            let page = 1;
+            while (true) {
+              const { data } = await github.rest.teams.list({
+                context.repo.owner,
+                per_page: 100,
+                page
+              });
+              if (data.length === 0) break;
+              teams.push(...data);
+              page++;
+            }
+            
+            // Check if the user is a member of any team
+            let isTeamMember = false;
+            for (const team of teams) {
+              try {
+                await github.rest.teams.getMembershipForUserInOrg({ context.repo.owner, team_slug: team.slug, username: pr.user.login });
+                isTeamMember = true;
+                break;
+              } catch (error) {
+                if (error.status !== 404) throw error; // only ignore 404s
+              }
+            }
+            
+            // Now use isTeamMember to decide if they're "internal"
+            const isExternal = !isTeamMember;
 
             const prLabels = pr.labels.map(label => label.name);
             const hasExternalLabel = prLabels.includes(externalLabel);

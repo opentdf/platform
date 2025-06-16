@@ -205,7 +205,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 	// * Expresses the use case where no attributes were passed in or found.
 	// * Replaces the defaultKases behavior.
-	if tdfConfig.isBaseKeyEnabled && len(tdfConfig.attributeValues) == 0 && len(tdfConfig.attributes) == 0 {
+	if tdfConfig.isBaseKeyEnabled && len(tdfConfig.kaoTemplate) == 0 {
 		err = populateKasInfoFromBaseKey(ctx, s, tdfConfig)
 		if err != nil {
 			return nil, fmt.Errorf("populateKasInfoFromBaseKey failed: %w", err)

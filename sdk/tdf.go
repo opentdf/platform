@@ -324,7 +324,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 	var signedAssertion []Assertion
 	if tdfConfig.addDefaultAssertion {
-		tdfConfig.assertions = append(tdfConfig.assertions, GetDefaultAssertionConfig())
+		tdfConfig.assertions = append(tdfConfig.assertions, GetSystemMetadataAssertionConfig())
 	}
 
 	for _, assertion := range tdfConfig.assertions {

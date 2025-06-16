@@ -221,7 +221,7 @@ func WithSegmentSize(size int64) TDFOption {
 }
 
 // WithDefaultAssertion returns an Option that adds a default assertion to the TDF.
-func WithDefaultAssertion() TDFOption {
+func WithSystemMetadataAssertion() TDFOption {
 	return func(c *TDFConfig) error {
 		c.addDefaultAssertion = true
 		return nil

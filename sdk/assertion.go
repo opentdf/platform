@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
 	"time"
 
@@ -286,14 +287,17 @@ func (k AssertionVerificationKeys) IsEmpty() bool {
 	return k.DefaultKey.IsEmpty() && len(k.Keys) == 0
 }
 
-// GetDefaultAssertionConfig returns a default assertion configuration with predefined values.
-func GetDefaultAssertionConfig() AssertionConfig {
+// GetSystemMetadataAssertionConfig returns a default assertion configuration with predefined values.
+func GetSystemMetadataAssertionConfig() AssertionConfig {
 	// Define the JSON structure
 	type Metadata struct {
-		TDFSpecVersion string `json:"TDFSpecVersion"`
-		CreationDate   string `json:"creationDate"`
-		OS             string `json:"OS"`
-		SDKVersion     string `json:"sdkVersion"`
+		TDFSpecVersion string `json:"tdf_spec_version,omitempty"`
+		CreationDate   string `json:"creation_date,omitempty"`
+		OS             string `json:"operating_system,omitempty"`
+		SDKVersion     string `json:"sdk_version,omitempty"`
+		Hostname       string `json:"hostname,omitempty"`
+		GoVersion      string `json:"go_version,omitempty"`
+		Architecture   string `json:"architecture,omitempty"`
 	}
 
 	// Populate the metadata
@@ -302,10 +306,16 @@ func GetDefaultAssertionConfig() AssertionConfig {
 		CreationDate:   time.Now().Format(time.RFC3339),
 		OS:             runtime.GOOS,
 		SDKVersion:     "Go-" + Version,
+		Hostname:       func() string { h, _ := os.Hostname(); return h }(),
+		GoVersion:      runtime.Version(),
+		Architecture:   runtime.GOARCH,
 	}
 
 	// Marshal the metadata to JSON
-	metadataJSON, _ := json.Marshal(metadata)
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		panic(err)
+	}
 
 	return AssertionConfig{
 		ID:             "default-assertion",

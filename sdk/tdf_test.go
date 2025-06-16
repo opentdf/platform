@@ -484,7 +484,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	}
 }
 
-func (s *TDFSuite) Test_DefaultAssertions() {
+func (s *TDFSuite) Test_SystemMetadataAssertions() {
 	attributes := []string{
 		"https://example.com/attr/Classification/value/S",
 		"https://example.com/attr/Classification/value/X",
@@ -496,7 +496,7 @@ func (s *TDFSuite) Test_DefaultAssertions() {
 			URL:       "https://a.kas/",
 			PublicKey: "",
 		}),
-		WithDefaultAssertion(),
+		WithSystemMetadataAssertion(),
 		WithDataAttributes(attributes...),
 	}
 
@@ -533,9 +533,11 @@ func (s *TDFSuite) Test_DefaultAssertions() {
 			s.Require().NoError(err, "Statement Value is not valid JSON")
 
 			// Check JSON fields
-			s.Equal(TDFSpecVersion, metadata["TDFSpecVersion"], "TDFSpecVersion mismatch")
-			s.Equal(runtime.GOOS, metadata["OS"], "OS mismatch")
-			s.Equal("Go-"+Version, metadata["sdkVersion"], "SDKVersion mismatch")
+			s.Equal(TDFSpecVersion, metadata["tdf_spec_version"], "tdf_spec_version mismatch")
+			s.Equal(runtime.GOOS, metadata["operating_system"], "operating_system mismatch")
+			s.Equal("Go-"+Version, metadata["sdk_version"], "sdk_version mismatch")
+			s.Equal(runtime.GOARCH, metadata["architecture"], "architecture mismatch")
+			s.Equal(runtime.Version(), metadata["go_version"], "go_version mismatch")
 		}
 	}
 	s.True(found, "Default assertion not found")

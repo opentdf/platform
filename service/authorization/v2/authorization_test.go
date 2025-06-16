@@ -776,7 +776,7 @@ func Test_GetDecisionBulkRequest_Succeeds(t *testing.T) {
 		reqs := make([]*authzV2.GetDecisionMultiResourceRequest, firstCount+secondCount)
 		for j := range firstCount {
 			originalReq := goodMultiResourceRequests[firstReq].request
-			clonedReq := proto.Clone(originalReq).(*authzV2.GetDecisionMultiResourceRequest)
+			clonedReq, _ := proto.Clone(originalReq).(*authzV2.GetDecisionMultiResourceRequest)
 			clonedReq.Action = &policy.Action{
 				Name: actions[rand.Intn(len(actions))],
 			}
@@ -784,7 +784,7 @@ func Test_GetDecisionBulkRequest_Succeeds(t *testing.T) {
 		}
 		for j := firstCount; j < firstCount+secondCount; j++ {
 			originalReq := goodMultiResourceRequests[secondReq].request
-			clonedReq := proto.Clone(originalReq).(*authzV2.GetDecisionMultiResourceRequest)
+			clonedReq, _ := proto.Clone(originalReq).(*authzV2.GetDecisionMultiResourceRequest)
 			clonedReq.Action = &policy.Action{
 				Name: actions[rand.Intn(len(actions))],
 			}

@@ -493,7 +493,7 @@ func (s *TDFSuite) Test_SystemMetadataAssertions() {
 	// Configure TDF options with default assertions
 	tdfOptions := []TDFOption{
 		WithKasInformation(KASInfo{
-			URL:       "https://a.kas/",
+			URL:       s.kasTestURLLookup["https://a.kas/"],
 			PublicKey: "",
 		}),
 		WithSystemMetadataAssertion(),
@@ -501,7 +501,7 @@ func (s *TDFSuite) Test_SystemMetadataAssertions() {
 	}
 
 	tdfReadOptions := []TDFReaderOption{
-		WithKasAllowlist([]string{"https://a.kas/"}),
+		WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}),
 	}
 
 	// Create TDF

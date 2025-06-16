@@ -86,6 +86,10 @@ var (
 	testPlatformCloudFQN  = createAttrValueFQN(testSecondaryNamespace, "platform", "cloud")
 	testPlatformOnPremFQN = createAttrValueFQN(testSecondaryNamespace, "platform", "onprem")
 	testPlatformHybridFQN = createAttrValueFQN(testSecondaryNamespace, "platform", "hybrid")
+
+	// Registered resource value FQNs
+	testNetworkPrivateFQN = createRegisteredResourceValueFQN("network", "private")
+	testNetworkPublicFQN  = createRegisteredResourceValueFQN("network", "public")
 )
 
 // Registered resource value FQNs using identifier package
@@ -137,6 +141,9 @@ type PDPTestSuite struct {
 		analystEntity   *entityresolutionV2.EntityRepresentation
 
 		// Test registered resources
+		networkRegRes *policy.RegisteredResource
+
+		// Test registered resources (todo: replace with above real use cases)
 		regRes                                       *policy.RegisteredResource
 		regResValNoActionAttrVal                     *policy.RegisteredResourceValue
 		regResValSingleActionAttrVal                 *policy.RegisteredResourceValue
@@ -354,6 +361,44 @@ func (s *PDPTestSuite) SetupTest() {
 	})
 
 	// Initialize test registered resources
+	s.fixtures.networkRegRes = &policy.RegisteredResource{
+		Name: "network",
+		Values: []*policy.RegisteredResourceValue{
+			{
+				Value: "private",
+				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+					{
+						Action: testActionRead,
+						AttributeValue: &policy.Value{
+							Fqn:   testClassSecretFQN,
+							Value: "secret",
+						},
+					},
+					{
+						Action: testActionUpdate,
+						AttributeValue: &policy.Value{
+							Fqn:   testClassPublicFQN,
+							Value: "public",
+						},
+					},
+				},
+			},
+			{
+				Value: "public",
+				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+					{
+						Action: testActionRead,
+						AttributeValue: &policy.Value{
+							Fqn:   testClassPublicFQN,
+							Value: "public",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Initialize test registered resources (todo: replace with above real use cases)
 	regResValNoActionAttrVal := &policy.RegisteredResourceValue{
 		Value:                 "no-action-attr-val",
 		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{},
@@ -549,8 +594,8 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		s.T().Context(),
 		s.logger,
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr},
-		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping, f.engineeringMapping, f.financeMapping},
-		[]*policy.RegisteredResource{},
+		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping, f.publicMapping, f.engineeringMapping, f.financeMapping},
+		[]*policy.RegisteredResource{f.networkRegRes},
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -561,18 +606,20 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "engineering",
 		})
 
-		resources := createResourcePerFqn(testClassSecretFQN, testDeptEngineeringFQN)
+		resources := createResourcePerFqn(testClassSecretFQN, testDeptEngineeringFQN, testNetworkPrivateFQN, testNetworkPublicFQN)
 
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access)
-		s.Len(decision.Results, 2)
+		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{
 			testClassSecretFQN:     true,
 			testDeptEngineeringFQN: true,
+			testNetworkPrivateFQN:  true,
+			testNetworkPublicFQN:   true,
 		}
 		s.assertAllDecisionResults(decision, expectedResults)
 		for _, result := range decision.Results {
@@ -588,19 +635,22 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "engineering",
 		})
 		secretFQN := strings.ToUpper(testClassSecretFQN)
+		networkPrivateFQN := strings.ToUpper(testNetworkPrivateFQN)
 
-		resources := createResourcePerFqn(secretFQN, testDeptEngineeringFQN)
+		resources := createResourcePerFqn(secretFQN, testDeptEngineeringFQN, networkPrivateFQN, testNetworkPublicFQN)
 
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access)
-		s.Len(decision.Results, 2)
+		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{
 			secretFQN:              true,
 			testDeptEngineeringFQN: true,
+			networkPrivateFQN:      true,
+			testNetworkPublicFQN:   true,
 		}
 		s.assertAllDecisionResults(decision, expectedResults)
 		for _, result := range decision.Results {
@@ -616,18 +666,19 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "finance",      // Not engineering
 		})
 
-		resources := createResourcePerFqn(testClassSecretFQN, testDeptEngineeringFQN)
+		resources := createResourcePerFqn(testClassSecretFQN, testDeptEngineeringFQN, testNetworkPrivateFQN)
 
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionUpdate, resources)
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)
-		s.Len(decision.Results, 2)
+		s.Len(decision.Results, 3)
 
 		expectedResults := map[string]bool{
 			testClassSecretFQN:     false,
 			testDeptEngineeringFQN: false,
+			testNetworkPrivateFQN:  false,
 		}
 
 		s.assertAllDecisionResults(decision, expectedResults)
@@ -644,7 +695,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "engineering",
 		})
 
-		resources := createResourcePerFqn(testDeptEngineeringFQN, testClassSecretFQN)
+		resources := createResourcePerFqn(testDeptEngineeringFQN, testClassSecretFQN, testNetworkPrivateFQN, testNetworkPublicFQN)
 
 		// Get decision for delete action (not allowed by either attribute's subject mappings)
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionDelete, resources)
@@ -652,11 +703,13 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)
-		s.Len(decision.Results, 2)
+		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{
 			testDeptEngineeringFQN: false,
 			testClassSecretFQN:     false,
+			testNetworkPrivateFQN:  false,
+			testNetworkPublicFQN:   false,
 		}
 		s.assertAllDecisionResults(decision, expectedResults)
 	})
@@ -667,18 +720,20 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			"department": "engineering", // not finance
 		})
 
-		resources := createResourcePerFqn(testClassSecretFQN, testDeptFinanceFQN)
+		resources := createResourcePerFqn(testClassSecretFQN, testDeptFinanceFQN, testNetworkPrivateFQN, testNetworkPublicFQN)
 
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // False because one resource is denied
-		s.Len(decision.Results, 2)
+		s.Len(decision.Results, 4)
 
 		expectedResults := map[string]bool{
-			testClassSecretFQN: true,
-			testDeptFinanceFQN: false,
+			testClassSecretFQN:    true,
+			testDeptFinanceFQN:    false,
+			testNetworkPrivateFQN: true,
+			testNetworkPublicFQN:  true,
 		}
 		s.assertAllDecisionResults(decision, expectedResults)
 
@@ -746,7 +801,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			f.secretMapping, f.topSecretMapping, printConfidentialMapping, allActionsPublicMapping,
 			f.engineeringMapping, f.financeMapping, viewProjectAlphaMapping,
 		},
-		[]*policy.RegisteredResource{},
+		[]*policy.RegisteredResource{f.networkRegRes},
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -758,7 +813,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		})
 
 		// Resource to evaluate
-		resources := createResourcePerFqn(testClassSecretFQN)
+		resources := createResourcePerFqn(testClassSecretFQN, testNetworkPrivateFQN)
 
 		decision, err := pdp.GetDecision(s.T().Context(), entity, actionRead, resources)
 
@@ -766,14 +821,14 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access) // Should be true because read is allowed
-		s.Len(decision.Results, 1)
+		s.Len(decision.Results, 2)
 
 		// Create should fail
 		decision, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // Should be false because create is not allowed
-		s.Len(decision.Results, 1)
+		s.Len(decision.Results, 2)
 	})
 
 	s.Run("Scenario 2: User has overlapping action sets", func() {
@@ -783,7 +838,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			"department": "finance",
 		})
 
-		combinedResource := createResource("combined-attr-resource", testClassConfidentialFQN, testDeptFinanceFQN)
+		combinedResource := createAttributeValueResource("combined-attr-resource", testClassConfidentialFQN, testDeptFinanceFQN)
 
 		// Test read access - should be allowed by both attributes
 		decision, err := pdp.GetDecision(s.T().Context(), entity, actionRead, []*authz.Resource{combinedResource})
@@ -918,7 +973,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		})
 
 		// Single resource with both HIERARCHY (classification) and ANY_OF (department) attributes
-		combinedResource := createResource("secret-engineering-resource", testClassSecretFQN, testDeptEngineeringFQN)
+		combinedResource := createAttributeValueResource("secret-engineering-resource", testClassSecretFQN, testDeptEngineeringFQN)
 
 		// Test read access (both allow)
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
@@ -947,7 +1002,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		})
 
 		// Single resource with both HIERARCHY and ALL_OF attributes
-		combinedResource := createResource("secret-usa-resource", testClassSecretFQN, testCountryUSAFQN)
+		combinedResource := createAttributeValueResource("secret-usa-resource", testClassSecretFQN, testCountryUSAFQN)
 
 		// Test read access (both allow)
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
@@ -970,7 +1025,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		})
 
 		// Single resource with both ANY_OF and ALL_OF attributes
-		combinedResource := createResource("engineering-usa-uk-resource", testDeptEngineeringFQN, testCountryUSAFQN, testCountryUKFQN)
+		combinedResource := createAttributeValueResource("engineering-usa-uk-resource", testDeptEngineeringFQN, testCountryUSAFQN, testCountryUKFQN)
 
 		// Test read access (both allow)
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
@@ -994,7 +1049,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		})
 
 		// Single resource with all three attribute rule types, but missing one ALL_OF value FQN
-		combinedResource := createResource("secret-engineering-usa-uk-resource", testClassSecretFQN, testDeptEngineeringFQN, testCountryUKFQN, testCountryUSAFQN)
+		combinedResource := createAttributeValueResource("secret-engineering-usa-uk-resource", testClassSecretFQN, testDeptEngineeringFQN, testCountryUKFQN, testCountryUSAFQN)
 
 		// Test read access (all three allow)
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
@@ -1029,7 +1084,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		})
 
 		// Single resource with all three attribute rule types
-		combinedResource := createResource("secret-engineering-usa-resource", testClassSecretFQN, testDeptEngineeringFQN, testCountryUSAFQN)
+		combinedResource := createAttributeValueResource("secret-engineering-usa-resource", testClassSecretFQN, testDeptEngineeringFQN, testCountryUSAFQN)
 
 		// Test read access (all three allow)
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
@@ -1055,7 +1110,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		})
 
 		// Resource with all three attribute types
-		combinedResource := createResource("secret-engineering-usa-resource", testClassSecretFQN, testDeptEngineeringFQN, testCountryUSAFQN)
+		combinedResource := createAttributeValueResource("secret-engineering-usa-resource", testClassSecretFQN, testDeptEngineeringFQN, testCountryUSAFQN)
 
 		// Test read access - should fail because department doesn't match
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{combinedResource})
@@ -1094,7 +1149,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		})
 
 		// Resource with attributes from different namespaces and with different rules
-		complexResource := createResource("complex-multi-ns-resource",
+		complexResource := createAttributeValueResource("complex-multi-ns-resource",
 			testClassSecretFQN,   // HIERARCHY rule
 			testCountryUSAFQN,    // ALL_OF rule
 			testProjectAlphaFQN,  // ANY_OF rule
@@ -1180,7 +1235,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 
 	s.Run("Multiple HIERARCHY of different levels", func() {
 		// Create a resource with multiple classifications (hierarchy rule)
-		cascadingResource := createResource("classification-cascade-resource",
+		cascadingResource := createAttributeValueResource("classification-cascade-resource",
 			testClassSecretFQN,       // Secret classification
 			testClassConfidentialFQN, // Confidential classification (lower than Secret)
 		)
@@ -1303,7 +1358,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		})
 
 		// Resource with attribute values from two different namespaces
-		resource := createResource("secret-alpha-cloud-fqn", testClassSecretFQN, testProjectAlphaFQN, testPlatformCloudFQN)
+		resource := createAttributeValueResource("secret-alpha-cloud-fqn", testClassSecretFQN, testProjectAlphaFQN, testPlatformCloudFQN)
 
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, []*authz.Resource{resource})
 
@@ -1489,7 +1544,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		})
 
 		// A single resource with attribute values from different namespaces
-		combinedResource := createResource("combined-multi-ns-resource",
+		combinedResource := createAttributeValueResource("combined-multi-ns-resource",
 			testClassConfidentialFQN, // base namespace
 			testCountryUSAFQN,        // base namespace
 			testProjectBetaFQN,       // secondary namespace
@@ -2134,8 +2189,8 @@ func (s *PDPTestSuite) createEntityWithProps(entityID string, props map[string]i
 	}
 }
 
-// createResource creates a resource with attribute values
-func createResource(ephemeralID string, attributeValueFQNs ...string) *authz.Resource {
+// createAttributeValueResource creates a resource with attribute values
+func createAttributeValueResource(ephemeralID string, attributeValueFQNs ...string) *authz.Resource {
 	return &authz.Resource{
 		EphemeralId: ephemeralID,
 		Resource: &authz.Resource_AttributeValues_{
@@ -2146,12 +2201,32 @@ func createResource(ephemeralID string, attributeValueFQNs ...string) *authz.Res
 	}
 }
 
+// createRegisteredResource creates a resource with registered resource value FQN
+func createRegisteredResource(ephemeralID string, registeredResourceValueFQN string) *authz.Resource {
+	return &authz.Resource{
+		EphemeralId: ephemeralID,
+		Resource: &authz.Resource_RegisteredResourceValueFqn{
+			RegisteredResourceValueFqn: registeredResourceValueFQN,
+		},
+	}
+}
+
 // createResourcePerFqn creates multiple resources, one for each attribute value FQN
 func createResourcePerFqn(attributeValueFQNs ...string) []*authz.Resource {
 	resources := make([]*authz.Resource, len(attributeValueFQNs))
 	for i, fqn := range attributeValueFQNs {
 		// Use the FQN itself as the resource ID instead of a generic "ephemeral-id-X"
-		resources[i] = createResource(fqn, fqn)
+		resourceID := fqn
+
+		// todo: identifier lib does not do case-insensitive parsing, so we need to ensure FQNs are lowercased
+		// should maybe be fixed in the identifier library?
+		if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](strings.ToLower(fqn)); err == nil {
+			// FQN is a registered resource value
+			resources[i] = createRegisteredResource(resourceID, fqn)
+		} else {
+			// FQN is an attribute value
+			resources[i] = createAttributeValueResource(resourceID, fqn)
+		}
 	}
 	return resources
 }

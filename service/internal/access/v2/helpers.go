@@ -215,11 +215,14 @@ func getResourceDecisionableAttributes(
 			}
 
 			for _, aav := range regResValue.GetActionAttributeValues() {
-				aavAction := aav.GetAction()
-				if aavAction.GetName() != action.GetName() {
-					logger.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("action", aavAction.GetName()))
-					continue
-				}
+				slog.Info("processing action attribute value", slog.Any("aav", aav))
+
+				// todo: revist this logic, bc it is causing failures for attributes with missing actions
+				// aavAction := aav.GetAction()
+				// if aavAction.GetName() != action.GetName() {
+				// 	logger.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("action", aavAction.GetName()))
+				// 	continue
+				// }
 
 				attrValueFQNs = append(attrValueFQNs, aav.GetAttributeValue().GetFqn())
 			}

@@ -23,6 +23,17 @@ func EstimateRistrettoConfigParams(maxCost int64) (int64, int64, error) {
 	if maxCost > maxAllowedCost {
 		return 0, 0, fmt.Errorf("maxCost is unreasonably high (>%d): %d", maxAllowedCost, maxCost)
 	}
+	numCounters := ristrettoComputeNumCounters(maxCost)
+	bufferItems := ristrettoComputeBufferItems()
+	return numCounters, bufferItems, nil
+}
+
+// ristrettoComputeNumCounters calculates the recommended number of counters for the Ristretto cache
+// based on the provided maximum cache cost (maxCost). It estimates the number of items by dividing
+// maxCost by a default average item cost (1KB), then multiplies by a factor to determine the number
+// of counters. The function ensures that the returned value is not less than a predefined minimum.
+// This helps optimize cache performance and accuracy in eviction policies.
+func ristrettoComputeNumCounters(maxCost int64) int64 {
 	const defaultAvgItemCost = 1024 // 1KB
 	numItems := maxCost / defaultAvgItemCost
 	if numItems < 1 {
@@ -30,11 +41,15 @@ func EstimateRistrettoConfigParams(maxCost int64) (int64, int64, error) {
 	}
 	numCounters := numItems * maxCostFactor
 	if numCounters < minimumNumCounters {
-		numCounters = minimumNumCounters
+		return minimumNumCounters
 	}
-	// Set bufferItems dynamically based on number of CPUs (concurrent writers)
-	numWriters := int64(runtime.NumCPU())
+	return numCounters
+}
+
+// ristrettoComputeBufferItems calculates the number of buffer items for the Ristretto cache.
+// It multiplies a constant number of buffer items per writer by the number of CPUs available.
+// This helps optimize throughput for concurrent cache writes.
+func ristrettoComputeBufferItems() int64 {
 	const bufferItemsPerWriter = 64
-	bufferItems := bufferItemsPerWriter * numWriters
-	return numCounters, bufferItems, nil
+	return bufferItemsPerWriter * int64(runtime.NumCPU())
 }

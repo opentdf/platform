@@ -391,18 +391,18 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkcon
 			storeKeysToCache(def.GetGrants(), keyCache)
 		}
 		v := pair.GetValue()
-		grantType := noKeysFound
+		gType := noKeysFound
 		if v != nil {
-			grantType |= grants.addAllGrants(fqn, v, def)
+			gType = grants.addAllGrants(fqn, v, def)
 			storeKeysToCache(v.GetGrants(), keyCache)
 		}
 
 		// If no more specific grant was found, then add the value grants
-		if grantType == noKeysFound && def != nil {
-			grantType |= grants.addAllGrants(fqn, def, def)
+		if gType == noKeysFound && def != nil {
+			gType = grants.addAllGrants(fqn, def, def)
 			storeKeysToCache(def.GetGrants(), keyCache)
 		}
-		if grantType == noKeysFound && def.GetNamespace() != nil {
+		if gType == noKeysFound && def.GetNamespace() != nil {
 			grants.addAllGrants(fqn, def.GetNamespace(), def)
 			storeKeysToCache(def.GetNamespace().GetGrants(), keyCache)
 		}

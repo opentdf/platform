@@ -194,13 +194,13 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, err
 		}
 
-		switch {
-		case g.typ&mappedFound == mappedFound:
+		switch g.typ {
+		case mappedFound:
 			tdfConfig.kaoTemplate, err = g.resolveTemplate(uuidSplitIDGenerator)
-		case g.typ&grantsFound == grantsFound:
+		case grantsFound:
 			tdfConfig.kaoTemplate = nil
 			tdfConfig.splitPlan, err = g.plan(make([]string, 0), uuidSplitIDGenerator)
-		case g.typ == noKeysFound:
+		case noKeysFound:
 			var baseKey *policy.SimpleKasKey
 			baseKey, err = getBaseKeyFromWellKnown(ctx, s)
 			if err == nil {

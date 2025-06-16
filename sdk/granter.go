@@ -203,7 +203,7 @@ type granter struct {
 	mapTable map[string][]*ResourceLocator
 
 	// The types of grants or mapped keys found.
-	typ grantTypeMask
+	typ grantType
 }
 
 type keyAccessGrant struct {
@@ -265,12 +265,12 @@ func convertAlgEnum2Simple(a policy.KasPublicKeyAlgEnum) policy.Algorithm {
 	}
 }
 
-type grantTypeMask int
+type grantType int
 
 const (
-	noKeysFound grantTypeMask = 0
-	grantsFound               = 1 << iota
-	mappedFound
+	noKeysFound grantType = iota // No keys found
+	grantsFound                  // Only grants found
+	mappedFound                  // Only mapped keys found
 )
 
 type grantableObject interface {
@@ -279,17 +279,19 @@ type grantableObject interface {
 }
 
 // addAllGrants adds all grants from a list of KASes to the granter.
-// It returns a mask indicating whether grants or mapped keys were found.
-func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *policy.Attribute) grantTypeMask {
-	ok := noKeysFound
+// It returns an enum value indicating what types of keys were found.
+func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *policy.Attribute) grantType {
+	result := noKeysFound
+
+	// Check for mapped keys
 	for _, k := range ag.GetKasKeys() {
 		if k == nil || k.GetKasUri() == "" {
 			slog.Debug("invalid KAS key in policy service", "simpleKasKey", k, "value", fqn)
 			continue
 		}
 		kasURI := k.GetKasUri()
-		r.typ |= mappedFound
-		ok |= mappedFound
+		r.typ = mappedFound
+		result = r.typ
 		err := r.addMappedKey(fqn, k)
 		if err != nil {
 			slog.Debug("failed to add mapped key", "fqn", fqn, "kas", kasURI, "error", err)
@@ -300,15 +302,15 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 			r.grantTable[fqn.key].kases = append(r.grantTable[fqn.key].kases, kasURI)
 		}
 	}
-	if ok != noKeysFound {
-		return ok
+	if result != noKeysFound {
+		return result
 	}
 
 	for _, g := range ag.GetGrants() {
 		if g != nil && g.GetUri() != "" { //nolint:nestif // Simplify after grant removal
 			kasURI := g.GetUri()
-			r.typ |= grantsFound
-			ok |= grantsFound
+			r.typ = grantsFound
+			result = grantsFound
 			r.addGrant(fqn, kasURI, attr)
 			if len(g.GetKasKeys()) != 0 {
 				for _, k := range g.GetKasKeys() {
@@ -345,12 +347,12 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 			}
 		}
 	}
-	if ok == noKeysFound {
+	if result == noKeysFound {
 		if _, present := r.grantTable[fqn.key]; !present {
 			r.grantTable[fqn.key] = &keyAccessGrant{attr, []string{}}
 		}
 	}
-	return ok
+	return result
 }
 
 func (r granter) byAttribute(fqn AttributeValueFQN) *keyAccessGrant {

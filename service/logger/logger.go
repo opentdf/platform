@@ -58,22 +58,23 @@ func NewLogger(config Config) (*Logger, error) {
 		return nil, err
 	}
 
+	var handler slog.Handler
 	switch config.Type {
 	case "json":
-		j := slog.NewJSONHandler(w, &slog.HandlerOptions{
+		handler = slog.NewJSONHandler(w, &slog.HandlerOptions{
 			Level:       level,
 			ReplaceAttr: logger.replaceAttrChain,
 		})
-		sLogger = slog.New(j)
 	case "text":
-		t := slog.NewTextHandler(w, &slog.HandlerOptions{
+		handler = slog.NewTextHandler(w, &slog.HandlerOptions{
 			Level:       level,
 			ReplaceAttr: logger.replaceAttrChain,
 		})
-		sLogger = slog.New(t)
 	default:
 		return nil, fmt.Errorf("invalid logger type: %s", config.Type)
 	}
+
+	sLogger = slog.New(&ContextHandler{handler})
 
 	// Audit logger will always log at the AUDIT level and be JSON formatted
 	auditLoggerHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{

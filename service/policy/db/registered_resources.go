@@ -325,7 +325,7 @@ func (c PolicyDBClient) GetRegisteredResourceValuesByFQNs(ctx context.Context, r
 			},
 		})
 		if err != nil {
-			c.logger.Error("registered resource value for FQN not found", slog.String("fqn", fqn), slog.Any("err", err))
+			c.logger.ErrorContext(ctx, "registered resource value for FQN not found", slog.String("fqn", fqn), slog.Any("err", err))
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}
 

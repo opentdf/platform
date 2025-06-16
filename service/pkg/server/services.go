@@ -141,7 +141,7 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 			continue
 		}
 
-		var svcLogger *logging.Logger = logger.With("namespace", ns)
+		svcLogger := logger.With("namespace", ns)
 		extractedLogLevel, err := extractServiceLoggerConfig(cfg.Services[ns])
 
 		// If ns has log_level in config, create new logger with that level

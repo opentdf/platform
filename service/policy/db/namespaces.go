@@ -56,7 +56,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 	if ns.Grants != nil {
 		grants, err = db.KeyAccessServerProtoJSON(ns.Grants)
 		if err != nil {
-			c.logger.Error("could not unmarshal grants", slog.String("error", err.Error()))
+			c.logger.ErrorContext(ctx, "could not unmarshal grants", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
@@ -65,7 +65,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 	if len(ns.Keys) > 0 {
 		keys, err = db.SimpleKasKeysProtoJSON(ns.Keys)
 		if err != nil {
-			c.logger.Error("could not unmarshal keys", slog.String("error", err.Error()))
+			c.logger.ErrorContext(ctx, "could not unmarshal keys", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}

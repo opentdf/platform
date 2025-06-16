@@ -94,14 +94,14 @@ func (c Config) LogValue() slog.Value {
 // CacheRistrettoConfig supports human-friendly size strings like "1gb", "512mb", etc.
 type CacheRistrettoConfig struct {
 	// MaxCost is the maximum cost of the cache, can be a number (bytes) or a string like "1gb"
-	MaxCost string `mapstructure:"maxCost" json:"maxCost" default:"8gb"`
+	MaxCost string `mapstructure:"maxCost" json:"maxCost" default:"1gb"`
 }
 
 // MaxCostBytes parses MaxCost and returns the value in bytes.
 // Supports suffixes: b, kb, mb, gb, tb (case-insensitive).
 func (c CacheRistrettoConfig) MaxCostBytes() int64 {
-	const defaultCacheMaxCostBytes int64 = 8 * 1024 * 1024 * 1024            // 8GB
-	return util.RelativeFileSizeToBytes(c.MaxCost, defaultCacheMaxCostBytes) // Default to 8GB if parsing fails
+	const defaultCacheMaxCostBytes int64 = 1 * 1024 * 1024 * 1024            // 1GB
+	return util.RelativeFileSizeToBytes(c.MaxCost, defaultCacheMaxCostBytes) // Default to 1GB if parsing fails
 }
 
 type CacheConfig struct {

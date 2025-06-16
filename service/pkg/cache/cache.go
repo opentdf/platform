@@ -14,8 +14,7 @@ import (
 )
 
 type Manager struct {
-	Config interface{}
-	cache  *cache.Cache[interface{}]
+	cache *cache.Cache[interface{}]
 }
 
 // Cache is a cache implementation using gocache
@@ -48,8 +47,7 @@ func NewCacheManager(maxCost int64) (*Manager, error) {
 	}
 	ristrettoStore := ristretto_store.NewRistretto(store)
 	return &Manager{
-		Config: config,
-		cache:  cache.New[interface{}](ristrettoStore),
+		cache: cache.New[interface{}](ristrettoStore),
 	}, nil
 }
 

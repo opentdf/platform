@@ -106,7 +106,12 @@ func userInfoCacheKey(issuer, subject string) string {
 
 // fetchUserInfo performs a GET request to the UserInfo endpoint to fetch user information.
 func FetchUserInfo(ctx context.Context, userInfoEndpoint string, tokenRaw string, dpopJWK jwk.Key) (*oidc.UserInfo, []byte, error) {
-	httpClient, err := NewHTTPClient(&http.Client{Timeout: DefaultUserInfoTimeout}, WithDPoPKey(dpopJWK))
+	httpOptions := []HTTPClientOption{}
+	if dpopJWK != nil {
+		httpOptions = append(httpOptions, WithDPoPKey(dpopJWK))
+	}
+
+	httpClient, err := NewHTTPClient(&http.Client{Timeout: DefaultUserInfoTimeout}, httpOptions...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create http client: %w", err)
 	}

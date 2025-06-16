@@ -26,7 +26,6 @@ import (
 
 	"github.com/opentdf/platform/service/pkg/oidc"
 
-	sdkAudit "github.com/opentdf/platform/sdk/audit"
 	"github.com/opentdf/platform/service/logger"
 
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
@@ -67,7 +66,10 @@ var (
 	}
 
 	// ErrNoDPoPSkipCheck is returned when DPoP checking is intentionally skipped (e.g., for Bearer tokens)
-	ErrNoDPoPSkipCheck = errors.New("dpop check skipped")
+	ErrNoDPoPSkipCheck  = errors.New("dpop check skipped")
+	ErrTokenTypeUnknown = errors.New("unknown token type: must be Bearer or DPoP")
+	ErrDPoPRequired     = errors.New("dpop required but not provided")
+	ErrBearerRequired   = errors.New("bearer token required but not provided")
 )
 
 const (
@@ -352,22 +354,26 @@ func (a *Authentication) GetUserInfoWithExchange(ctx context.Context, tokenIssue
 	}
 
 	// Only exchange the token if the userinfo is not in cache
-	exchangedToken, dpopJWK, err := oidc.ExchangeToken(
-		ctx,
-		a.oidcDiscovery,
-		a.oidcConfiguration.ClientID,
-		[]byte(a.config.ClientPrivateKey),
-		tokenRaw,
-		[]string{a.oidcConfiguration.Audience},
-		[]string{"openid", "profile", "email"},
-	)
-	if err != nil {
-		a.logger.Error("failed to exchange token", slog.String("sub", tokenSubject), slog.String("error", err.Error()))
-		return []byte{}, errors.New("failed to exchange token")
+	subjectToken := tokenRaw
+	var dpopJWK jwk.Key
+	if a.config.EnforceDPoP {
+		subjectToken, dpopJWK, err = oidc.ExchangeToken(
+			ctx,
+			a.oidcDiscovery,
+			a.oidcConfiguration.ClientID,
+			[]byte(a.config.ClientPrivateKey),
+			tokenRaw,
+			[]string{a.oidcConfiguration.Audience},
+			[]string{"openid", "profile", "email"},
+		)
+		if err != nil {
+			a.logger.Error("failed to exchange token", slog.String("sub", tokenSubject), slog.String("error", err.Error()))
+			return []byte{}, errors.New("failed to exchange token")
+		}
 	}
 
 	// Fetch userinfo with the exchanged token
-	_, userInfoRaw, err = a.userInfoCache.Get(ctx, tokenIssuer, tokenSubject, exchangedToken, dpopJWK)
+	_, userInfoRaw, err = a.userInfoCache.Get(ctx, tokenIssuer, tokenSubject, subjectToken, dpopJWK)
 	if err != nil {
 		return nil, errors.New("unauthenticated")
 	}
@@ -445,31 +451,22 @@ func (a *Authentication) checkToken(ctx context.Context, token jwt.Token, tokenR
 		return nil, errors.New("invalid or missing token: token is nil (possible parse/validation error)")
 	}
 
-	// Get actor ID (sub) from unverified token for audit and add to context
-	// Only set the actor ID if it is not already defined
-	existingActorID := ctx.Value(sdkAudit.ActorIDContextKey)
-	if existingActorID == nil {
-		// We create the context with the actor ID but don't use it since it's not needed
-		// in this method's scope. The actor ID is added for audit purposes.
-		_ = token.Subject()
-	}
-
-	// Use tokenType for logic
-	if tokenType == TokenTypeBearer {
+	// Validate the token type
+	// We won't support fallback to Bearer if DPoP is provided which meets the RFC 8628 spec.
+	switch tokenType {
+	case TokenTypeBearer:
 		if a.enforceDPoP {
-			return nil, errors.New("dpop required but not provided")
+			return nil, ErrDPoPRequired
 		}
-		// For Bearer tokens, skip DPoP validation entirely
+		// Skip DPoP check for Bearer tokens
 		return nil, ErrNoDPoPSkipCheck
-	}
-
-	// Check for cnf claim in the DPoP token
-	if _, tokenHasCNF := token.Get("cnf"); !tokenHasCNF {
+	case TokenTypeDPoP:
 		if !a.enforceDPoP {
-			// If DPoP is not enforced and the token does not have a cnf claim, allow it (legacy or non-DPoP case)
-			return nil, ErrNoDPoPSkipCheck
+			return nil, ErrBearerRequired
 		}
-		return nil, errors.New("missing `cnf` claim in DPoP access token")
+	case TokenTypeUnknown:
+	default:
+		return nil, ErrTokenTypeUnknown
 	}
 
 	// Validate the DPoP token

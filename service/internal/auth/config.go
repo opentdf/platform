@@ -21,6 +21,9 @@ type Config struct {
 
 // AuthNConfig is the configuration need for the platform to validate tokens
 type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
+	// EnforceDPoP indicates whether DPoP (Demonstrating Proof of Possession) is enforced.
+	// When true, the server will require DPoP tokens for all requests.
+	// When false, the server will require Bearer tokens.
 	EnforceDPoP    bool          `mapstructure:"enforceDPoP" json:"enforceDPoP" default:"false"`
 	EnrichUserInfo bool          `mapstructure:"enrichUserInfo" json:"enrichUserInfo" default:"false"`
 	TLSNoVerify    bool          `mapstructure:"tls_no_verify" json:"tls_no_verify" default:"false"`

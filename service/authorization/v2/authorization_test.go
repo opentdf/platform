@@ -2,6 +2,7 @@ package authorization
 
 import (
 	"errors"
+	"math/rand"
 	"testing"
 
 	"buf.build/go/protovalidate"
@@ -20,6 +21,337 @@ var (
 	sampleResourceFQN           = "https://example.com/attr/hier/value/highest"
 	sampleResourceFQN2          = "https://example.com/attr/hier/value/lowest"
 	sampleRegisteredResourceFQN = "https://example.com/reg_res/system/value/internal"
+
+	// Good multi-resource requests that should pass validation
+	goodMultiResourceRequests = []struct {
+		name    string
+		request *authzV2.GetDecisionMultiResourceRequest
+	}{
+		{
+			name: "entity: token, action: create, multiple resources: attribute values",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_Token{
+						Token: &entity.Token{
+							EphemeralId: "123",
+							Jwt:         "sample-jwt-token",
+						},
+					},
+				},
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{sampleResourceFQN},
+							},
+						},
+					},
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{sampleResourceFQN2},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "entity: chain, action: create, multiple resources: mixed types",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_EntityChain{
+						EntityChain: &entity.EntityChain{
+							EphemeralId: "1234",
+							Entities: []*entity.Entity{
+								{
+									EphemeralId: "chained-1",
+									EntityType:  &entity.Entity_EmailAddress{EmailAddress: "test@test.com"},
+									Category:    entity.Entity_CATEGORY_SUBJECT,
+								},
+							},
+						},
+					},
+				},
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{sampleResourceFQN},
+							},
+						},
+					},
+					{
+						Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+							RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "entity: registered resource, action: create, multiple resources: registered",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+					},
+				},
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+							RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
+						},
+					},
+					{
+						Resource: &authzV2.Resource_RegisteredResourceValueFqn{
+							RegisteredResourceValueFqn: "https://example.com/another/registered/resource",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Bad multi-resource requests that should fail validation
+	badMultiResourceRequests = []struct {
+		name                    string
+		request                 *authzV2.GetDecisionMultiResourceRequest
+		expectedValidationError string
+	}{
+		{
+			name: "missing entity identifier",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{sampleResourceFQN},
+							},
+						},
+					},
+				},
+			},
+			expectedValidationError: "entity_identifier",
+		},
+		{
+			name: "missing action",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_Token{
+						Token: &entity.Token{
+							EphemeralId: "123",
+							Jwt:         "sample-jwt-token",
+						},
+					},
+				},
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{sampleResourceFQN},
+							},
+						},
+					},
+				},
+			},
+			expectedValidationError: "action",
+		},
+		{
+			name: "action missing name",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_Token{
+						Token: &entity.Token{
+							EphemeralId: "123",
+							Jwt:         "sample-jwt-token",
+						},
+					},
+				},
+				Action: &policy.Action{},
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{sampleResourceFQN},
+							},
+						},
+					},
+				},
+			},
+			expectedValidationError: "name",
+		},
+		{
+			name: "missing resources",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_Token{
+						Token: &entity.Token{
+							EphemeralId: "123",
+							Jwt:         "sample-jwt-token",
+						},
+					},
+				},
+				Action: sampleActionCreate,
+			},
+			expectedValidationError: "resources",
+		},
+		{
+			name: "empty resources array",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_Token{
+						Token: &entity.Token{
+							EphemeralId: "123",
+							Jwt:         "sample-jwt-token",
+						},
+					},
+				},
+				Action:    sampleActionCreate,
+				Resources: []*authzV2.Resource{},
+			},
+			expectedValidationError: "resources",
+		},
+		{
+			name: "invalid resource - registered resource FQN is empty",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_Token{
+						Token: &entity.Token{
+							EphemeralId: "123",
+							Jwt:         "sample-jwt-token",
+						},
+					},
+				},
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_RegisteredResourceValueFqn{},
+					},
+				},
+			},
+			expectedValidationError: "resource",
+		},
+		{
+			name: "invalid resource - empty attribute values",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_Token{
+						Token: &entity.Token{
+							EphemeralId: "123",
+							Jwt:         "sample-jwt-token",
+						},
+					},
+				},
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{},
+							},
+						},
+					},
+				},
+			},
+			expectedValidationError: "resource",
+		},
+		{
+			name: "invalid resource - invalid attribute values",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_Token{
+						Token: &entity.Token{
+							EphemeralId: "123",
+							Jwt:         "sample-jwt-token",
+						},
+					},
+				},
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{"invalid-format"},
+							},
+						},
+					},
+				},
+			},
+			expectedValidationError: "resource",
+		},
+		{
+			name: "token entity with empty JWT",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_Token{
+						Token: &entity.Token{
+							EphemeralId: "123",
+						},
+					},
+				},
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{sampleResourceFQN},
+							},
+						},
+					},
+				},
+			},
+			expectedValidationError: "jwt",
+		},
+		{
+			name: "entity chain with no entities",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_EntityChain{
+						EntityChain: &entity.EntityChain{
+							EphemeralId: "1234",
+						},
+					},
+				},
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{sampleResourceFQN},
+							},
+						},
+					},
+				},
+			},
+			expectedValidationError: "entities",
+		},
+		{
+			name: "registered resource as entity with invalid URI",
+			request: &authzV2.GetDecisionMultiResourceRequest{
+				EntityIdentifier: &authzV2.EntityIdentifier{
+					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
+						RegisteredResourceValueFqn: "invalid uri",
+					},
+				},
+				Action: sampleActionCreate,
+				Resources: []*authzV2.Resource{
+					{
+						Resource: &authzV2.Resource_AttributeValues_{
+							AttributeValues: &authzV2.Resource_AttributeValues{
+								Fqns: []string{sampleResourceFQN},
+							},
+						},
+					},
+				},
+			},
+			expectedValidationError: "registered_resource_value_fqn",
+		},
+	}
 )
 
 func getValidator() protovalidate.Validator {
@@ -402,100 +734,7 @@ func Test_GetDecisionRequest_Fails(t *testing.T) {
 func Test_GetDecisionMultiResourceRequest_Succeeds(t *testing.T) {
 	v := getValidator()
 
-	cases := []struct {
-		name    string
-		request *authzV2.GetDecisionMultiResourceRequest
-	}{
-		{
-			name: "entity: token, action: create, multiple resources: attribute values",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_Token{
-						Token: &entity.Token{
-							EphemeralId: "123",
-							Jwt:         "sample-jwt-token",
-						},
-					},
-				},
-				Action: sampleActionCreate,
-				Resources: []*authzV2.Resource{
-					{
-						Resource: &authzV2.Resource_AttributeValues_{
-							AttributeValues: &authzV2.Resource_AttributeValues{
-								Fqns: []string{sampleResourceFQN},
-							},
-						},
-					},
-					{
-						Resource: &authzV2.Resource_AttributeValues_{
-							AttributeValues: &authzV2.Resource_AttributeValues{
-								Fqns: []string{sampleResourceFQN2},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "entity: chain, action: create, multiple resources: mixed types",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_EntityChain{
-						EntityChain: &entity.EntityChain{
-							EphemeralId: "1234",
-							Entities: []*entity.Entity{
-								{
-									EphemeralId: "chained-1",
-									EntityType:  &entity.Entity_EmailAddress{EmailAddress: "test@test.com"},
-									Category:    entity.Entity_CATEGORY_SUBJECT,
-								},
-							},
-						},
-					},
-				},
-				Action: sampleActionCreate,
-				Resources: []*authzV2.Resource{
-					{
-						Resource: &authzV2.Resource_AttributeValues_{
-							AttributeValues: &authzV2.Resource_AttributeValues{
-								Fqns: []string{sampleResourceFQN},
-							},
-						},
-					},
-					{
-						Resource: &authzV2.Resource_RegisteredResourceValueFqn{
-							RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "entity: registered resource, action: create, multiple resources: registered",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
-						RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
-					},
-				},
-				Action: sampleActionCreate,
-				Resources: []*authzV2.Resource{
-					{
-						Resource: &authzV2.Resource_RegisteredResourceValueFqn{
-							RegisteredResourceValueFqn: sampleRegisteredResourceFQN,
-						},
-					},
-					{
-						Resource: &authzV2.Resource_RegisteredResourceValueFqn{
-							RegisteredResourceValueFqn: "https://example.com/another/registered/resource",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	for _, tc := range cases {
+	for _, tc := range goodMultiResourceRequests {
 		t.Run(tc.name, func(t *testing.T) {
 			err := v.Validate(tc.request)
 			require.NoError(t, err, "validation should succeed for request: %s", tc.name)
@@ -506,243 +745,7 @@ func Test_GetDecisionMultiResourceRequest_Succeeds(t *testing.T) {
 func Test_GetDecisionMultiResourceRequest_Fails(t *testing.T) {
 	v := getValidator()
 
-	cases := []struct {
-		name                    string
-		request                 *authzV2.GetDecisionMultiResourceRequest
-		expectedValidationError string
-	}{
-		{
-			name: "missing entity identifier",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				Action: sampleActionCreate,
-				Resources: []*authzV2.Resource{
-					{
-						Resource: &authzV2.Resource_AttributeValues_{
-							AttributeValues: &authzV2.Resource_AttributeValues{
-								Fqns: []string{sampleResourceFQN},
-							},
-						},
-					},
-				},
-			},
-			expectedValidationError: "entity_identifier",
-		},
-		{
-			name: "missing action",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_Token{
-						Token: &entity.Token{
-							EphemeralId: "123",
-							Jwt:         "sample-jwt-token",
-						},
-					},
-				},
-				Resources: []*authzV2.Resource{
-					{
-						Resource: &authzV2.Resource_AttributeValues_{
-							AttributeValues: &authzV2.Resource_AttributeValues{
-								Fqns: []string{sampleResourceFQN},
-							},
-						},
-					},
-				},
-			},
-			expectedValidationError: "action",
-		},
-		{
-			name: "action missing name",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_Token{
-						Token: &entity.Token{
-							EphemeralId: "123",
-							Jwt:         "sample-jwt-token",
-						},
-					},
-				},
-				Action: &policy.Action{},
-				Resources: []*authzV2.Resource{
-					{
-						Resource: &authzV2.Resource_AttributeValues_{
-							AttributeValues: &authzV2.Resource_AttributeValues{
-								Fqns: []string{sampleResourceFQN},
-							},
-						},
-					},
-				},
-			},
-			expectedValidationError: "name",
-		},
-		{
-			name: "missing resources",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_Token{
-						Token: &entity.Token{
-							EphemeralId: "123",
-							Jwt:         "sample-jwt-token",
-						},
-					},
-				},
-				Action: sampleActionCreate,
-			},
-			expectedValidationError: "resources",
-		},
-		{
-			name: "empty resources array",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_Token{
-						Token: &entity.Token{
-							EphemeralId: "123",
-							Jwt:         "sample-jwt-token",
-						},
-					},
-				},
-				Action:    sampleActionCreate,
-				Resources: []*authzV2.Resource{},
-			},
-			expectedValidationError: "resources",
-		},
-		{
-			name: "invalid resource - registered resource FQN is empty",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_Token{
-						Token: &entity.Token{
-							EphemeralId: "123",
-							Jwt:         "sample-jwt-token",
-						},
-					},
-				},
-				Action: sampleActionCreate,
-				Resources: []*authzV2.Resource{
-					{
-						Resource: &authzV2.Resource_RegisteredResourceValueFqn{},
-					},
-				},
-			},
-			expectedValidationError: "resource",
-		},
-		{
-			name: "invalid resource - empty attribute values",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_Token{
-						Token: &entity.Token{
-							EphemeralId: "123",
-							Jwt:         "sample-jwt-token",
-						},
-					},
-				},
-				Action: sampleActionCreate,
-				Resources: []*authzV2.Resource{
-					{
-						Resource: &authzV2.Resource_AttributeValues_{
-							AttributeValues: &authzV2.Resource_AttributeValues{
-								Fqns: []string{},
-							},
-						},
-					},
-				},
-			},
-			expectedValidationError: "resource",
-		},
-		{
-			name: "invalid resource - invalid attribute values",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_Token{
-						Token: &entity.Token{
-							EphemeralId: "123",
-							Jwt:         "sample-jwt-token",
-						},
-					},
-				},
-				Action: sampleActionCreate,
-				Resources: []*authzV2.Resource{
-					{
-						Resource: &authzV2.Resource_AttributeValues_{
-							AttributeValues: &authzV2.Resource_AttributeValues{
-								Fqns: []string{"invalid-format"},
-							},
-						},
-					},
-				},
-			},
-			expectedValidationError: "resource",
-		},
-		{
-			name: "token entity with empty JWT",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_Token{
-						Token: &entity.Token{
-							EphemeralId: "123",
-						},
-					},
-				},
-				Action: sampleActionCreate,
-				Resources: []*authzV2.Resource{
-					{
-						Resource: &authzV2.Resource_AttributeValues_{
-							AttributeValues: &authzV2.Resource_AttributeValues{
-								Fqns: []string{sampleResourceFQN},
-							},
-						},
-					},
-				},
-			},
-			expectedValidationError: "jwt",
-		},
-		{
-			name: "entity chain with no entities",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_EntityChain{
-						EntityChain: &entity.EntityChain{
-							EphemeralId: "1234",
-						},
-					},
-				},
-				Action: sampleActionCreate,
-				Resources: []*authzV2.Resource{
-					{
-						Resource: &authzV2.Resource_AttributeValues_{
-							AttributeValues: &authzV2.Resource_AttributeValues{
-								Fqns: []string{sampleResourceFQN},
-							},
-						},
-					},
-				},
-			},
-			expectedValidationError: "entities",
-		},
-		{
-			name: "registered resource as entity with invalid URI",
-			request: &authzV2.GetDecisionMultiResourceRequest{
-				EntityIdentifier: &authzV2.EntityIdentifier{
-					Identifier: &authzV2.EntityIdentifier_RegisteredResourceValueFqn{
-						RegisteredResourceValueFqn: "invalid uri",
-					},
-				},
-				Action: sampleActionCreate,
-				Resources: []*authzV2.Resource{
-					{
-						Resource: &authzV2.Resource_AttributeValues_{
-							AttributeValues: &authzV2.Resource_AttributeValues{
-								Fqns: []string{sampleResourceFQN},
-							},
-						},
-					},
-				},
-			},
-			expectedValidationError: "registered_resource_value_fqn",
-		},
-	}
-
-	for _, tc := range cases {
+	for _, tc := range badMultiResourceRequests {
 		t.Run(tc.name, func(t *testing.T) {
 			err := v.Validate(tc.request)
 			if err == nil {
@@ -751,6 +754,83 @@ func Test_GetDecisionMultiResourceRequest_Fails(t *testing.T) {
 				assert.Contains(t, err.Error(), tc.expectedValidationError, "validation error should contain expected message")
 			}
 		})
+	}
+}
+
+func Test_GetDecisionBulkRequest_Succeeds(t *testing.T) {
+	v := getValidator()
+
+	cases := make([]*authzV2.GetDecisionBulkRequest, 5)
+
+	for i := range 5 {
+		// Randomly pick two good multi-resource requests, repeated at least one time each, and combine into a bulk request
+		firstReq := rand.Intn(len(goodMultiResourceRequests))
+		firstCount := rand.Intn(10) + 1
+
+		secondReq := rand.Intn(len(goodMultiResourceRequests))
+		secondCount := rand.Intn(10) + 1
+
+		actions := []string{"create", "read", "update", "delete", "custom_1", "CUSTOM-2"}
+
+		reqs := make([]*authzV2.GetDecisionMultiResourceRequest, firstCount+secondCount)
+		for j := range firstCount {
+			req := goodMultiResourceRequests[firstReq].request
+			req.Action = &policy.Action{
+				Name: actions[rand.Intn(len(actions))],
+			}
+			reqs[j] = req
+		}
+		for j := firstCount; j < firstCount+secondCount; j++ {
+			req := goodMultiResourceRequests[secondReq].request
+			req.Action = &policy.Action{
+				Name: actions[rand.Intn(len(actions))],
+			}
+			reqs[j] = req
+		}
+
+		cases[i] = &authzV2.GetDecisionBulkRequest{
+			DecisionRequests: reqs,
+		}
+	}
+
+	for _, testReq := range cases {
+		err := v.Validate(testReq)
+		require.NoError(t, err)
+	}
+}
+
+func Test_GetDecisionBulkRequest_Fails(t *testing.T) {
+	v := getValidator()
+
+	cases := make([]struct {
+		name    string
+		request *authzV2.GetDecisionBulkRequest
+	}, len(badMultiResourceRequests))
+
+	goodRequests := make([]*authzV2.GetDecisionMultiResourceRequest, len(goodMultiResourceRequests))
+	for i, goodReq := range goodMultiResourceRequests {
+		goodRequests[i] = goodReq.request
+	}
+
+	for i, badReq := range badMultiResourceRequests {
+		requests := make([]*authzV2.GetDecisionMultiResourceRequest, 0, len(goodRequests)+1)
+		requests = append(requests, goodRequests...)
+		requests = append(requests, badReq.request)
+
+		cases[i] = struct {
+			name    string
+			request *authzV2.GetDecisionBulkRequest
+		}{
+			badReq.name,
+			&authzV2.GetDecisionBulkRequest{
+				DecisionRequests: requests,
+			},
+		}
+	}
+
+	for _, testReq := range cases {
+		err := v.Validate(testReq.request)
+		require.Error(t, err, "validation should fail for request: %s", testReq.name)
 	}
 }
 

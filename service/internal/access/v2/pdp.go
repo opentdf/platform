@@ -195,7 +195,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 
 				attributeAndValue, ok := p.allEntitleableAttributesByValueFQN[valueFQN]
 				if !ok {
-					return nil, fmt.Errorf("resource value FQN not found in memory [%s]: %w", valueFQN, ErrInvalidResource)
+					return nil, fmt.Errorf("%w [%s]: %w", ErrFQNNotFound, valueFQN, ErrInvalidResource)
 				}
 
 				decisionableAttributes[valueFQN] = attributeAndValue

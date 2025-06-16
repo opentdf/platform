@@ -123,8 +123,10 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 
 	decisions, permitted, err := pdp.GetDecision(ctx, entityIdentifier, action, []*authzV2.Resource{resource})
 	if err != nil {
-		// TODO: any bad request errors that aren't 500s?
 		as.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))
+		if errors.Is(err, access.ErrFQNNotFound) || errors.Is(err, access.ErrDefinitionNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	resp, err := rollupSingleResourceDecision(permitted, decisions)
@@ -158,8 +160,10 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 
 	decisions, allPermitted, err := pdp.GetDecision(ctx, entityIdentifier, action, resources)
 	if err != nil {
-		// TODO: any bad request errors that aren't 500s?
 		as.logger.ErrorContext(ctx, "failed to get decision", slog.String("error", err.Error()))
+		if errors.Is(err, access.ErrFQNNotFound) || errors.Is(err, access.ErrDefinitionNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 

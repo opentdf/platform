@@ -16,7 +16,7 @@ import (
 
 var (
 	ErrInvalidResource              = errors.New("access: invalid resource")
-	ErrFQNNotFound                  = errors.New("access: attribute value FQN not found in memory")
+	ErrFQNNotFound                  = errors.New("access: attribute value FQN not found")
 	ErrDefinitionNotFound           = errors.New("access: definition not found for FQN")
 	ErrFailedEvaluation             = errors.New("access: failed to evaluate definition")
 	ErrMissingRequiredSpecifiedRule = errors.New("access: AttributeDefinition rule cannot be unspecified")

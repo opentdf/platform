@@ -310,12 +310,12 @@ func (s *TDFSuite) SetupSuite() {
 	// Set up the test environment
 	s.startBackend()
 	// Update well-known with the server URL
-	baseKey := createTestBaseKeyMap(&s.Suite, policy.Algorithm_ALGORITHM_RSA_2048, baseKeyKID, mockRSAPublicKey1, s.kasTestURLLookup[baseKeyURL])
-	s.fakeWellKnown = createWellKnown(baseKey)
+	s.fakeWellKnown = createWellKnown(nil)
 }
 
 func (s *TDFSuite) SetupTest() {
 	s.sdk.kasKeyCache.clear()
+	s.fakeWellKnown = createWellKnown(nil)
 }
 
 func TestTDF(t *testing.T) {
@@ -1563,7 +1563,7 @@ func (s *TDFSuite) Test_ValidateSchema() {
 	}
 }
 
-func (s *TDFSuite) Test_TDF() {
+func (s *TDFSuite) Test_DefaultTDF() {
 	for index, test := range []tdfTest{
 		{
 			n:           "small",
@@ -1620,7 +1620,9 @@ func (s *TDFSuite) Test_TDF() {
 	}
 }
 
-func (s *TDFSuite) Test_EncryptWithBaseKey() {
+func (s *TDFSuite) Test_MixedBaseKeyTest() {
+	baseKey := createTestBaseKeyMap(&s.Suite, policy.Algorithm_ALGORITHM_RSA_2048, baseKeyKID, mockRSAPublicKey1, s.kasTestURLLookup[baseKeyURL])
+	s.fakeWellKnown = createWellKnown(baseKey)
 	attrVal := mockValueFor(rel2aus)
 	cachedPublicKeySet := &policy.KasPublicKeySet{
 		Keys: []*policy.KasPublicKey{
@@ -1659,7 +1661,7 @@ func (s *TDFSuite) Test_EncryptWithBaseKey() {
 				tdfFileSize: 104866427,
 				checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
 			},
-			encryptOpts: []TDFOption{WithBaseKeyEnabled()},
+			encryptOpts: []TDFOption{},
 			expectedKID: baseKeyKID,
 			expectedURL: s.kasTestURLLookup[baseKeyURL],
 		},
@@ -1670,7 +1672,7 @@ func (s *TDFSuite) Test_EncryptWithBaseKey() {
 				tdfFileSize: 104866427,
 				checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
 			},
-			encryptOpts: []TDFOption{WithDataAttributeValues(attrVal), WithBaseKeyEnabled()},
+			encryptOpts: []TDFOption{WithDataAttributeValues(attrVal)},
 			expectedKID: defaultKID,
 			expectedURL: s.kasTestURLLookup[kasAu],
 		},
@@ -1695,8 +1697,6 @@ func (s *TDFSuite) Test_EncryptWithBaseKey() {
 		})
 	}
 }
-
-// Need another test for when base key is enabled but attributes are provided, so a split plan is created.
 
 func (s *TDFSuite) Test_KeyRotation() {
 	for index, test := range []tdfTest{
@@ -1853,14 +1853,22 @@ func (s *TDFSuite) Test_Autoconfigure() {
 }
 
 func (s *TDFSuite) Test_PopulateBaseKey_Success() {
-	ctx := s.T().Context()
 	tdfConfig := &TDFConfig{
 		keyType:     ocrypto.RSA2048Key,
 		kasInfoList: []KASInfo{},
 	}
 
+	baseKey := policy.SimpleKasKey{
+		KasUri: s.kasTestURLLookup[baseKeyURL],
+		PublicKey: &policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			Kid:       baseKeyKID,
+			Pem:       mockRSAPublicKey1,
+		},
+	}
+
 	// Call populateBaseKey, should succeed
-	err := populateKasInfoFromBaseKey(ctx, *s.sdk, tdfConfig)
+	err := populateKasInfoFromBaseKey(&baseKey, tdfConfig)
 	s.Require().NoError(err, "populateBaseKey should succeed with valid base key")
 
 	expectedURL := s.kasTestURLLookup[baseKeyURL]
@@ -1873,25 +1881,6 @@ func (s *TDFSuite) Test_PopulateBaseKey_Success() {
 	s.Require().Equal(string(ocrypto.RSA2048Key), tdfConfig.kasInfoList[0].Algorithm, "Algorithm should match")
 	s.Require().Equal(mockRSAPublicKey1, tdfConfig.kasInfoList[0].PublicKey, "Public key should match")
 	s.Require().Equal(ocrypto.KeyType("rsa:2048"), tdfConfig.keyType, "Key type should be set")
-}
-
-func (s *TDFSuite) Test_PopulateBaseKey_KasInfoPassIn_Fail() {
-	ctx := s.T().Context()
-	tdfConfig := &TDFConfig{
-		keyType: ocrypto.RSA2048Key,
-		kasInfoList: []KASInfo{
-			{
-				URL:       "http://localhost:65432/",
-				KID:       baseKeyKID,
-				Algorithm: string(ocrypto.RSA2048Key),
-				PublicKey: mockRSAPublicKey1,
-			},
-		},
-	}
-
-	// Call populateBaseKey, should succeed
-	err := populateKasInfoFromBaseKey(ctx, *s.sdk, tdfConfig)
-	s.Require().ErrorContains(err, "base key is enabled, but kasInfoList is not empty")
 }
 
 func rotateKey(k *FakeKas, kid, private, public string) func() {
@@ -2024,16 +2013,21 @@ func (s *TDFSuite) createFileName(buf []byte, filename string, size int64) {
 }
 
 func createWellKnown(baseKey map[string]interface{}) map[string]interface{} {
-	// Create a stub for wellknown
-	return map[string]interface{}{
+	wellKnown := map[string]interface{}{
 		"health": map[string]interface{}{
 			"endpoint": "/healthz",
 		},
 		"idp": map[string]interface{}{
 			"issuer": "http://localhost:65432/auth",
 		},
-		"base_key": baseKey,
 	}
+
+	if baseKey != nil {
+		wellKnown[baseKeyWellKnown] = baseKey
+	}
+
+	// Create a stub for wellknown
+	return wellKnown
 }
 
 func (s *TDFSuite) startBackend() {

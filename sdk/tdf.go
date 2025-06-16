@@ -17,6 +17,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/Masterminds/semver/v3"
 	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 
 	"github.com/google/uuid"
@@ -184,6 +185,9 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, errors.New("cannot set autoconfigure and splitPlan or kaoTemplate")
 	}
 
+	// * Get base key before autoconfigure to condition off of.
+	baseKey, baseKeyErr := getBaseKeyFromWellKnown(ctx, s)
+	isPlatformPre205 := errors.Is(baseKeyErr, errBaseKeyNotFound)
 	if tdfConfig.autoconfigure {
 		var g granter
 		g, err = s.newGranter(ctx, tdfConfig, err)
@@ -193,7 +197,10 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 		if g.typ&mappedFound == mappedFound {
 			tdfConfig.kaoTemplate, err = g.resolveTemplate(uuidSplitIDGenerator)
-		} else if (g.typ == noKeysFound || g.typ == grantsFound) && !tdfConfig.isBaseKeyEnabled {
+		} else if g.typ&grantsFound == grantsFound {
+			tdfConfig.kaoTemplate = nil
+			tdfConfig.splitPlan, err = g.plan(make([]string, 0), uuidSplitIDGenerator)
+		} else if g.typ&noKeysFound == noKeysFound && isPlatformPre205 {
 			dk := s.defaultKases(tdfConfig)
 			tdfConfig.kaoTemplate = nil
 			tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
@@ -203,11 +210,20 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		}
 	}
 
-	// * Expresses the use case where no attributes were passed in or found.
-	// * Replaces the defaultKases behavior.
-	if tdfConfig.isBaseKeyEnabled && len(tdfConfig.kaoTemplate) == 0 {
-		err = populateKasInfoFromBaseKey(ctx, s, tdfConfig)
-		if err != nil {
+	// * Expresses the use case where no grants or mappings were found,
+	// * and if the intended behavior of noKeyFound is to use the base
+	// * key or the default KAS.
+	// ! This is implicitly derived from whether or not the base_key
+	// ! k/v pair is present in the well-known configuration.
+	// ! The presence of the var means that we are at least using
+	// ! v2.0.5 of the platform.
+	if len(tdfConfig.kaoTemplate) == 0 && len(tdfConfig.splitPlan) == 0 && !isPlatformPre205 {
+		if baseKeyErr != nil {
+			return nil, err
+		}
+
+		err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
+		if err != nil && !errors.Is(err, errBaseKeyNotFound) {
 			return nil, fmt.Errorf("populateKasInfoFromBaseKey failed: %w", err)
 		}
 	}
@@ -1427,14 +1443,18 @@ func isLessThanSemver(version, target string) (bool, error) {
 	return v1.LessThan(v2), nil
 }
 
-func populateKasInfoFromBaseKey(ctx context.Context, s SDK, tdfConfig *TDFConfig) error {
-	if len(tdfConfig.kasInfoList) > 0 {
-		return errors.New("base key is enabled, but kasInfoList is not empty")
-	}
-	// Get base key from the well-known configuration
+func getBaseKeyFromWellKnown(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 	key, err := getBaseKey(ctx, s)
 	if err != nil {
-		return fmt.Errorf("failed to get base key: %w", err)
+		return nil, err
+	}
+
+	return key, nil
+}
+
+func populateKasInfoFromBaseKey(key *policy.SimpleKasKey, tdfConfig *TDFConfig) error {
+	if key == nil {
+		return fmt.Errorf("populateKasInfoFromBaseKey failed: key is nil")
 	}
 
 	algoString, err := formatAlg(key.GetPublicKey().GetAlgorithm())
@@ -1448,6 +1468,9 @@ func populateKasInfoFromBaseKey(ctx context.Context, s SDK, tdfConfig *TDFConfig
 	}
 	tdfConfig.keyType = ocrypto.KeyType(algoString)
 	tdfConfig.splitPlan = nil
+	if len(tdfConfig.kasInfoList) > 0 {
+		slog.Warn("Base key is enabled, overwriting kasInfoList with base key info")
+	}
 	tdfConfig.kasInfoList = []KASInfo{
 		{
 			URL:       key.GetKasUri(),

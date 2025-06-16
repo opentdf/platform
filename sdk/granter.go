@@ -282,12 +282,43 @@ type grantableObject interface {
 // It returns a mask indicating whether grants or mapped keys were found.
 func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *policy.Attribute) grantTypeMask {
 	ok := noKeysFound
+	for _, k := range ag.GetKasKeys() {
+		if k == nil || k.GetKasUri() == "" {
+			slog.Debug("invalid KAS key in policy service", "simpleKasKey", k, "value", fqn)
+			continue
+		}
+		kasURI := k.GetKasUri()
+		r.typ |= mappedFound
+		ok |= mappedFound
+		err := r.addMappedKey(fqn, k)
+		if err != nil {
+			slog.Debug("failed to add mapped key", "fqn", fqn, "kas", kasURI, "error", err)
+		}
+		if _, present := r.grantTable[fqn.key]; !present {
+			r.grantTable[fqn.key] = &keyAccessGrant{attr, []string{kasURI}}
+		} else {
+			r.grantTable[fqn.key].kases = append(r.grantTable[fqn.key].kases, kasURI)
+		}
+	}
+	if ok != noKeysFound {
+		return ok
+	}
+
 	for _, g := range ag.GetGrants() {
-		if g != nil && g.GetUri() != "" {
+		if g != nil && g.GetUri() != "" { //nolint:nestif // Simplify after grant removal
 			kasURI := g.GetUri()
 			r.typ |= grantsFound
 			ok |= grantsFound
 			r.addGrant(fqn, kasURI, attr)
+			if len(g.GetKasKeys()) != 0 {
+				for _, k := range g.GetKasKeys() {
+					err := r.addMappedKey(fqn, k)
+					if err != nil {
+						slog.Warn("failed to add mapped key", "fqn", fqn, "kas", kasURI, "error", err)
+					}
+				}
+				continue
+			}
 			ks := g.GetPublicKey().GetCached().GetKeys()
 			if len(ks) == 0 {
 				slog.Debug("no cached key in policy service", "kas", kasURI, "value", fqn)
@@ -313,9 +344,6 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 				}
 			}
 		}
-	}
-	if ag.GetKasKeys() != nil && len(ag.GetKasKeys()) > 0 {
-		r.typ |= mappedFound
 	}
 	if ok == noKeysFound {
 		if _, present := r.grantTable[fqn.key]; !present {

@@ -1,0 +1,37 @@
+---
+# Required
+status: 'accepted'
+date: '2025-06-16'
+tags:
+ - sdk:v2.0.5
+ - key management
+# Optional
+driver: '@strantalis @jrschumacher @c-r33d @damorris25'
+deciders: '@strantalis @jrschumacher @c-r33d @damorris25'
+consulted: '@strantalis @jrschumacher @c-r33d @damorris25'
+informed: '@strantalis @jrschumacher @c-r33d @damorris25'
+---
+# SDK backwards/forward compatibility v2.0.5
+
+## Decision Outcome
+
+1. v2.0.5 of SDK should work with < v2.0.4 of platform
+2. < v2.0.5 of SDK should work with >= v2.0.5 of plaform
+3. We should not have a WithBaseKeyEnabled option, instead the platform version should be derived from the well-known.
+4. After an admin has created their first key-mapping the SDK will **only** use mappings and not any previous grants.
+
+<!-- This is an optional element. Feel free to remove. -->
+### Consequences
+
+- 🟩 **Good**, maintains backwards/forward compatibility
+- 🟩 **Good**, allows us to not add another TDFOption
+- 🟨 **Neutral**: Wellknown needs to be updated with platform version information.
+- 🟨 **Neutral**: After an admin creates their first key mapping the SDK will ignore previously created grants.
+
+<!-- This is an optional element. Feel free to remove. -->
+## Validation
+
+- **Unit Tests:** SDK conditions for no base key functionality based on platform version
+- **Integration Tests:** Mix of tests using new and old platform/sdk. *Should be covered in existing XTests*
+- **Manual Testing:** Deploy different versions of the SDK/Platform.
+- **Documentation:** Update SDK and platform documentation to reflect the new configuration option and its usage.

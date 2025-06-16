@@ -193,7 +193,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 		if g.typ&mappedFound == mappedFound {
 			tdfConfig.kaoTemplate, err = g.resolveTemplate(uuidSplitIDGenerator)
-		} else if g.typ == noKeysFound || g.typ == grantsFound {
+		} else if (g.typ == noKeysFound || g.typ == grantsFound) && !tdfConfig.isBaseKeyEnabled {
 			dk := s.defaultKases(tdfConfig)
 			tdfConfig.kaoTemplate = nil
 			tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)

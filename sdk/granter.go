@@ -314,6 +314,9 @@ func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *
 			}
 		}
 	}
+	if ag.GetKasKeys() != nil && len(ag.GetKasKeys()) > 0 {
+		r.typ |= mappedFound
+	}
 	if ok == noKeysFound {
 		if _, present := r.grantTable[fqn.key]; !present {
 			r.grantTable[fqn.key] = &keyAccessGrant{attr, []string{}}

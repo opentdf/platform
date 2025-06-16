@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"runtime"
 	"time"
 
@@ -295,7 +294,6 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 		CreationDate   string `json:"creation_date,omitempty"`
 		OS             string `json:"operating_system,omitempty"`
 		SDKVersion     string `json:"sdk_version,omitempty"`
-		Hostname       string `json:"hostname,omitempty"`
 		GoVersion      string `json:"go_version,omitempty"`
 		Architecture   string `json:"architecture,omitempty"`
 	}
@@ -308,11 +306,6 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 		SDKVersion:     "Go-" + Version,
 		GoVersion:      runtime.Version(),
 		Architecture:   runtime.GOARCH,
-	}
-
-	// Get hostname if possible
-	if h, err := os.Hostname(); err == nil {
-		metadata.Hostname = h
 	}
 
 	// Marshal the metadata to JSON

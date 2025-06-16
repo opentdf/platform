@@ -178,7 +178,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	// - autoconfigure is true
 	// - splitPlan is set
 	// - kaoTemplate is set
-	if len(tdfConfig.splitPlan) > 0 && len(tdfConfig.kaoTemplate) > 0 { //nolint:nestif // refactor when grants are removed
+	if len(tdfConfig.splitPlan) > 0 && len(tdfConfig.kaoTemplate) > 0 {
 		return nil, errors.New("cannot set both splitPlan and kaoTemplate")
 	}
 	if tdfConfig.autoconfigure && (len(tdfConfig.splitPlan) > 0 || len(tdfConfig.kaoTemplate) > 0) {
@@ -188,7 +188,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	// * Get base key before autoconfigure to condition off of.
 	baseKey, baseKeyErr := getBaseKeyFromWellKnown(ctx, s)
 	isPlatformPre205 := errors.Is(baseKeyErr, errBaseKeyNotFound)
-	if tdfConfig.autoconfigure {
+	if tdfConfig.autoconfigure { //nolint:nestif // refactor when grants are removed
 		var g granter
 		g, err = s.newGranter(ctx, tdfConfig, err)
 		if err != nil {

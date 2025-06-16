@@ -477,8 +477,7 @@ jobs:
           POSTGRES_DB: testdb
         ports:
           - "5432:5432"
-        options: >
-          --health-cmd="pg_isready -U testuser -d testdb" --health-interval=10s --health-timeout=5s --health-retries=5
+        options: --health-cmd="pg_isready -U testuser -d testdb" --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.4.2
         with:

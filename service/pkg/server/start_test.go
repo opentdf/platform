@@ -153,7 +153,7 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 		&logger.Logger{
 			Logger: slog.New(slog.Default().Handler()),
 		},
-		&cache.Manager{},
+		&cache.Manager[any]{},
 	)
 }
 
@@ -367,7 +367,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 				keyManagers:  []trust.KeyManager{},
 				logger:       logger,
 				reg:          registry,
-				cacheManager: &cache.Manager{},
+				cacheManager: &cache.Manager[any]{},
 			})
 			require.NoError(t, err)
 			defer cleanup()

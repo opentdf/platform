@@ -45,7 +45,7 @@ type RegistrationParams struct {
 	trace.Tracer
 
 	// Cache is the cache that can be used to cache data. This cache is scoped to the service
-	Cache *cache.Cache
+	Cache *cache.Cache[any]
 
 	KeyManagers []trust.KeyManager
 

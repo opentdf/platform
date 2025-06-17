@@ -290,7 +290,7 @@ func TestKasKeyCache_NoKID(t *testing.T) {
 	retrievedKey := cache.get(testURL, testAlgorithm, "")
 	require.NotNil(t, retrievedKey, "Failed to retrieve key with empty KID")
 	assert.Equal(t, testPubKey, retrievedKey.PublicKey, "Retrieved key has incorrect public key")
-	assert.Empty(t, "", retrievedKey.KID, "Retrieved key should have empty KID")
+	assert.Empty(t, retrievedKey.KID, "Retrieved key should have empty KID")
 	assert.Equal(t, testAlgorithm, retrievedKey.Algorithm, "Retrieved key has incorrect algorithm")
 	assert.Equal(t, testURL, retrievedKey.URL, "Retrieved key has incorrect URL")
 

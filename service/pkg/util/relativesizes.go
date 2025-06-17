@@ -7,7 +7,7 @@ import (
 
 // RelativeFileSizeToBytes converts a human-readable file size string (e.g., "10MB", "2GB")
 // into its equivalent size in bytes as an int64. Supported units are "TB", "GB", "MB", "KB", and "B" (case-insensitive).
-// If the input string cannot be parsed, the function returns the size of 1GB and the parsing error.
+// If the input string cannot be parsed, the function returns the provided `defaultSize`.
 //
 // Example inputs: "10MB", "2 gb", "512kb", "100b"
 func RelativeFileSizeToBytes(size string, defaultSize int64) int64 {

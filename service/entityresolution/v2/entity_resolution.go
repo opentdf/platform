@@ -1,17 +1,22 @@
 package entityresolution
 
 import (
+	"time"
+
 	"github.com/go-viper/mapstructure/v2"
 	ersV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/entityresolution/v2/entityresolutionv2connect"
 	claims "github.com/opentdf/platform/service/entityresolution/claims/v2"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
 )
 
 type ERSConfig struct {
-	Mode string `mapstructure:"mode" json:"mode"`
+	Mode            string        `mapstructure:"mode" json:"mode"`
+	cacheExpiration time.Duration `mapstructure:"cache_expiration" json:"cache_expiration" default:"5m"`
+	cacheCost       int64         `mapstructure:"cache_cost" json:"cache_cost" default:"100"`
 }
 
 const (
@@ -43,8 +48,17 @@ func NewRegistration() *serviceregistry.Service[entityresolutionv2connect.Entity
 					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
 				}
 
+				ersCache, err := srp.NewCacheFunc(cache.Options{
+					Expiration: inputConfig.cacheExpiration,
+					Cost:       inputConfig.cacheCost,
+				})
+				if err != nil {
+					srp.Logger.Error("Failed to create cache for Entity Resolution Service", "error", err)
+					panic(err)
+				}
+
 				// Default to keycloak ERS
-				kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger)
+				kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)
 				kcSVC.Tracer = srp.Tracer
 
 				return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler

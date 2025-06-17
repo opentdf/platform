@@ -1,17 +1,22 @@
 package entityresolution
 
 import (
+	"time"
+
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/protocol/go/entityresolution/entityresolutionconnect"
 	claims "github.com/opentdf/platform/service/entityresolution/claims"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
 )
 
 type ERSConfig struct {
-	Mode string `mapstructure:"mode" json:"mode"`
+	Mode            string `mapstructure:"mode" json:"mode"`
+	CacheExpiration string `mapstructure:"cacheexpiration" json:"cacheexpiration" default:"5m"`
+	CacheCost       int    `mapstructure:"cachecost" json:"cachecost" default:"100"`
 }
 
 const (
@@ -32,6 +37,7 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 			ConnectRPCFunc:  entityresolutionconnect.NewEntityResolutionServiceHandler,
 			GRPCGatewayFunc: entityresolution.RegisterEntityResolutionServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (entityresolutionconnect.EntityResolutionServiceHandler, serviceregistry.HandlerServer) {
+				srp.Logger.Info("Registering Entity Resolution Service")
 				var inputConfig ERSConfig
 
 				if err := mapstructure.Decode(srp.Config, &inputConfig); err != nil {
@@ -42,9 +48,22 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 					claimsSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
 				}
+				exp, err := time.ParseDuration(inputConfig.CacheExpiration)
+				if err != nil {
+					srp.Logger.Error("Failed to parse cache expiration duration", "error", err)
+					panic(err)
+				}
+				ersCache, err := srp.NewCacheFunc(cache.Options{
+					Expiration: exp,
+					Cost:       int64(inputConfig.CacheCost),
+				})
+				if err != nil {
+					srp.Logger.Error("Failed to create cache for Entity Resolution Service", "error", err)
+					panic(err)
+				}
 
 				// Default to keycloak ERS
-				kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger)
+				kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)
 				kcSVC.Tracer = srp.Tracer
 
 				return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler

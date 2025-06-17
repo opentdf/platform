@@ -134,7 +134,7 @@ type OpenTDFServer struct {
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
-	CacheManager        *cache.Manager[any]
+	CacheManager        *cache.Manager
 
 	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
 	CryptoProvider *security.StandardCrypto
@@ -158,7 +158,7 @@ type inProcessServer struct {
 	*ConnectRPC
 }
 
-func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.Manager[any]) (*OpenTDFServer, error) {
+func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.Manager) (*OpenTDFServer, error) {
 	var (
 		authN *auth.Authentication
 		err   error

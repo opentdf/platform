@@ -29,8 +29,8 @@ type Service struct {
 	trace.Tracer
 	cache *EntitlementPolicyCache
 
-	// provided by service registration params
-	platformCacheClient *cache.Cache[EntitlementPolicy]
+	// client managed and provided by service registration params
+	platformCacheClient *cache.Cache
 }
 
 type Config struct {
@@ -245,7 +245,7 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 	propagator := otel.GetTextMapPropagator()
 	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk)
+	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
 	if err != nil {
 		return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to create JIT PDP"), err))
 	}

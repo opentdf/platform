@@ -15,7 +15,9 @@ import (
 )
 
 const (
-	entitlementPolicyCacheKey = "entitlement_policy"
+	attributesCacheKey          = "attributes_cache_key"
+	subjectMappingsCacheKey     = "subject_mappings_cache_key"
+	registeredResourcesCacheKey = "registered_resources_cache_key"
 )
 
 var (
@@ -34,9 +36,9 @@ var (
 
 // EntitlementPolicyCache caches attributes and subject mappings with periodic refresh
 type EntitlementPolicyCache struct {
-	sdk         *otdfSDK.SDK
 	logger      *logger.Logger
-	cacheClient *cache.Cache[EntitlementPolicy]
+	cacheClient *cache.Cache
+
 	// SDK-connected retriever to fetch fresh data from policy services
 	retriever                 *access.EntitlementPolicyRetriever
 	configuredRefreshInterval time.Duration
@@ -58,7 +60,7 @@ func NewEntitlementPolicyCache(
 	ctx context.Context,
 	l *logger.Logger,
 	sdk *otdfSDK.SDK,
-	cacheClient *cache.Cache[EntitlementPolicy],
+	cacheClient *cache.Cache,
 	cacheRefreshIntervalSeconds int,
 ) (*EntitlementPolicyCache, error) {
 	if cacheRefreshIntervalSeconds == 0 {
@@ -153,24 +155,25 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	err = c.cacheClient.Set(ctx, attributesCacheKey, attributes, authzCacheTags)
+	if err != nil {
+		return errors.Join(ErrFailedToSet, err)
+	}
 
 	subjectMappings, err := c.retriever.ListAllSubjectMappings(ctx)
 	if err != nil {
 		return err
+	}
+	err = c.cacheClient.Set(ctx, subjectMappingsCacheKey, subjectMappings, authzCacheTags)
+	if err != nil {
+		return errors.Join(ErrFailedToSet, err)
 	}
 
 	registeredResources, err := c.ListAllRegisteredResources(ctx)
 	if err != nil {
 		return err
 	}
-
-	policy := EntitlementPolicy{
-		Attributes:          attributes,
-		SubjectMappings:     subjectMappings,
-		RegisteredResources: registeredResources,
-	}
-
-	err = c.cacheClient.Set(ctx, entitlementPolicyCacheKey, policy, authzCacheTags)
+	err = c.cacheClient.Set(ctx, registeredResourcesCacheKey, registeredResources, authzCacheTags)
 	if err != nil {
 		return errors.Join(ErrFailedToSet, err)
 	}
@@ -186,29 +189,41 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 
 // ListAllAttributes returns the cached attributes
 func (c *EntitlementPolicyCache) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
-	cached, err := c.cacheClient.Get(ctx, entitlementPolicyCacheKey)
+	cached, err := c.cacheClient.Get(ctx, attributesCacheKey)
 	if err != nil {
 		return nil, fmt.Errorf("%w, attributes: %w", ErrFailedToGet, err)
 	}
-	return cached.Attributes, nil
+	attrs, ok := cached.([]*policy.Attribute)
+	if !ok {
+		return nil, fmt.Errorf("cached data is not of type EntitlementPolicy")
+	}
+	return attrs, nil
 }
 
 // ListAllSubjectMappings returns the cached subject mappings
 func (c *EntitlementPolicyCache) ListAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
-	cached, err := c.cacheClient.Get(ctx, entitlementPolicyCacheKey)
+	cached, err := c.cacheClient.Get(ctx, subjectMappingsCacheKey)
 	if err != nil {
-		return nil, fmt.Errorf(", subject mappings: %w", ErrFailedToGet, err)
+		return nil, fmt.Errorf("%w, subject mappings: %w", ErrFailedToGet, err)
 	}
-	return cached.SubjectMappings, nil
+	subjectMappings, ok := cached.([]*policy.SubjectMapping)
+	if !ok {
+		return nil, fmt.Errorf("cached data is not of type EntitlementPolicy")
+	}
+	return subjectMappings, nil
 }
 
 // ListAllRegisteredResources returns the cached registered resources
 func (c *EntitlementPolicyCache) ListAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error) {
-	cached, err := c.cacheClient.Get(ctx, entitlementPolicyCacheKey)
+	cached, err := c.cacheClient.Get(ctx, registeredResourcesCacheKey)
 	if err != nil {
 		return nil, fmt.Errorf("%w, registered resources: %w", ErrFailedToGet, err)
 	}
-	return cached.RegisteredResources, nil
+	registeredResources, ok := cached.([]*policy.RegisteredResource)
+	if !ok {
+		return nil, fmt.Errorf("cached data is not of type EntitlementPolicy")
+	}
+	return registeredResources, nil
 }
 
 // periodicRefresh refreshes the cache at the specified interval

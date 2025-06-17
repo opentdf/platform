@@ -13,9 +13,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 )
 
-var (
-	ErrCacheMiss = errors.New("cache miss")
-)
+var ErrCacheMiss = errors.New("cache miss")
 
 // Manager is a generic cache manager for any value type T.
 type Manager[T any] struct {

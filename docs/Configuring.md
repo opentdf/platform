@@ -404,7 +404,6 @@ Example:
 
 ```yaml
 cache:
-  driver: ristretto           # Type of cache backend (currently only 'ristretto' is supported)
   ristretto:
-    maxCost: 1gb              # Maximum cost (in bytes) for the cache (default: 8GB)
+    max_cost: 1gb              # Maximum cost (i.e. 1mb, 1gb) for the cache (default: 1gb)
 ```

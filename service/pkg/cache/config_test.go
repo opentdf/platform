@@ -17,7 +17,7 @@ func TestRistrettoConfig_MaxCostBytes(t *testing.T) {
 	t.Run("returns default when value is empty", func(t *testing.T) {
 		cfg := RistrettoConfig{MaxCost: ""}
 		got := cfg.MaxCostBytes()
-		want := int64(1 * 1024 * 1024 * 1024) // 1GB default
+		want := defaultCacheMaxCostBytes
 		if got != want {
 			t.Errorf("expected default %d, got %d", want, got)
 		}
@@ -26,7 +26,7 @@ func TestRistrettoConfig_MaxCostBytes(t *testing.T) {
 	t.Run("returns default when value is invalid", func(t *testing.T) {
 		cfg := RistrettoConfig{MaxCost: "notasize"}
 		got := cfg.MaxCostBytes()
-		want := int64(1 * 1024 * 1024 * 1024) // 1GB default
+		want := defaultCacheMaxCostBytes
 		if got != want {
 			t.Errorf("expected default %d, got %d", want, got)
 		}

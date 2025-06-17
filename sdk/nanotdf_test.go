@@ -437,7 +437,6 @@ func (s *NanoSuite) Test_CreateNanoTDF_BaseKey() {
 	config, err := sdk.NewNanoTDFConfig()
 	s.Require().NoError(err)
 
-	config.EnableBaseKey()
 	err = config.SetKasURL("http://should-change.com")
 	s.Require().NoError(err)
 
@@ -456,7 +455,6 @@ func (s *NanoSuite) Test_CreateNanoTDF_BaseKey() {
 func (s *NanoSuite) Test_GetKasInfoForNanoTDF_BaseKey() {
 	tests := []struct {
 		name           string
-		baseKeyEnabled bool
 		algorithm      policy.Algorithm
 		kasURI         string
 		publicKeyPem   string
@@ -466,12 +464,11 @@ func (s *NanoSuite) Test_GetKasInfoForNanoTDF_BaseKey() {
 		expectedError  string
 	}{
 		{
-			name:           "Base Key Enabled - EC P256 - Success",
-			baseKeyEnabled: true,
-			algorithm:      policy.Algorithm_ALGORITHM_EC_P256,
-			kasURI:         "https://kas.example.com",
-			publicKeyPem:   nanoFakePem,
-			kid:            "key-p256",
+			name:         "Base Key Enabled - EC P256 - Success",
+			algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
+			kasURI:       "https://kas.example.com",
+			publicKeyPem: nanoFakePem,
+			kid:          "key-p256",
 			expectedInfo: &KASInfo{
 				URL:       "https://kas.example.com",
 				PublicKey: nanoFakePem,
@@ -480,12 +477,11 @@ func (s *NanoSuite) Test_GetKasInfoForNanoTDF_BaseKey() {
 			},
 		},
 		{
-			name:           "Base Key Enabled - EC P384 - Success",
-			baseKeyEnabled: true,
-			algorithm:      policy.Algorithm_ALGORITHM_EC_P384,
-			kasURI:         "https://kas.example.com",
-			publicKeyPem:   nanoFakePem,
-			kid:            "key-p384",
+			name:         "Base Key Enabled - EC P384 - Success",
+			algorithm:    policy.Algorithm_ALGORITHM_EC_P384,
+			kasURI:       "https://kas.example.com",
+			publicKeyPem: nanoFakePem,
+			kid:          "key-p384",
 			expectedInfo: &KASInfo{
 				URL:       "https://kas.example.com",
 				PublicKey: nanoFakePem,
@@ -494,27 +490,17 @@ func (s *NanoSuite) Test_GetKasInfoForNanoTDF_BaseKey() {
 			},
 		},
 		{
-			name:           "Base Key Enabled - EC P521 - Success",
-			baseKeyEnabled: true,
-			algorithm:      policy.Algorithm_ALGORITHM_EC_P521,
-			kasURI:         "https://kas.example.com",
-			publicKeyPem:   nanoFakePem,
-			kid:            "key-p521",
+			name:         "Base Key Enabled - EC P521 - Success",
+			algorithm:    policy.Algorithm_ALGORITHM_EC_P521,
+			kasURI:       "https://kas.example.com",
+			publicKeyPem: nanoFakePem,
+			kid:          "key-p521",
 			expectedInfo: &KASInfo{
 				URL:       "https://kas.example.com",
 				PublicKey: nanoFakePem,
 				KID:       "key-p521",
 				Algorithm: "ec:secp521r1",
 			},
-		},
-		{
-			name:           "Base Key Enabled - Unsupported algorithm RSA 2048",
-			baseKeyEnabled: true,
-			algorithm:      policy.Algorithm_ALGORITHM_RSA_2048,
-			kasURI:         "https://kas.example.com",
-			publicKeyPem:   nanoFakePem,
-			kid:            "key-rsa",
-			expectedError:  "base key algorithm is not supported for nano",
 		},
 	}
 
@@ -532,9 +518,12 @@ func (s *NanoSuite) Test_GetKasInfoForNanoTDF_BaseKey() {
 
 			// Create a NanoTDFConfig
 			config := NanoTDFConfig{
-				isBaseKeyEnabled: tt.baseKeyEnabled,
+				bindCfg: bindingConfig{
+					eccMode: ocrypto.ECCModeSecp384r1,
+				},
 			}
-			err := config.SetKasURL("http://should-change.com")
+			kasURL := "https://should-not-change.com"
+			err := config.SetKasURL(kasURL)
 			s.Require().NoError(err)
 
 			// Call the getKasInfoForNanoTDF function
@@ -543,7 +532,6 @@ func (s *NanoSuite) Test_GetKasInfoForNanoTDF_BaseKey() {
 			// Check for expected errors
 			if tt.expectedError != "" {
 				s.Require().Error(err)
-				s.Require().Contains(err.Error(), tt.expectedError)
 				s.Require().Nil(info)
 				return
 			}
@@ -627,7 +615,7 @@ func (s *NanoSuite) Test_PopulateNanoBaseKeyWithMockWellKnown() {
 		{
 			name:          "Unsupported algorithm RSA 2048",
 			algorithm:     policy.Algorithm_ALGORITHM_RSA_2048,
-			kasURI:        "https://kas.example.com",
+			kasURI:        "https://localhost:8080",
 			publicKeyPem:  nanoFakePem,
 			kid:           "key-rsa",
 			expectedError: "base key algorithm is not supported for nano",

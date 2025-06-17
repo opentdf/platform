@@ -206,6 +206,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			if err == nil {
 				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
 			} else {
+				slog.Debug("Error getting base key, falling back to default kas.", "error", err)
 				dk := s.defaultKases(tdfConfig)
 				tdfConfig.kaoTemplate = nil
 				tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)

@@ -1094,21 +1094,17 @@ func createNanoTDFSymmetricKey(config NanoTDFConfig) ([]byte, error) {
 }
 
 func getKasInfoForNanoTDF(s *SDK, config *NanoTDFConfig) (*KASInfo, error) {
-	if config.isBaseKeyEnabled {
-		ki, err := getNanoKasInfoFromBaseKey(s)
-		if err != nil {
-			return nil, err
+	var err error
+	// * Attempt to use base key if present and ECC.
+	ki, err := getNanoKasInfoFromBaseKey(s)
+	if err == nil {
+		err = updateConfigWithBaseKey(ki, config)
+		if err == nil {
+			return ki, nil
 		}
-		err = config.kasURL.setURLWithIdentifier(ki.URL, ki.KID)
-		if err != nil {
-			return nil, fmt.Errorf("config.kasURL setURLWithIdentifier failed:%w", err)
-		}
-		config.bindCfg.eccMode, err = ocrypto.ECKeyTypeToMode(ocrypto.KeyType(ki.Algorithm))
-		if err != nil {
-			return nil, fmt.Errorf("ocrypto.ECKeyTypeToMode failed: %w", err)
-		}
-		return ki, nil
 	}
+
+	slog.Debug("getNanoKasInfoFromBaseKey failed, falling back to default kas", slog.String("error", err.Error()))
 
 	kasURL, err := config.kasURL.GetURL()
 	if err != nil {
@@ -1117,7 +1113,7 @@ func getKasInfoForNanoTDF(s *SDK, config *NanoTDFConfig) (*KASInfo, error) {
 	if kasURL == "https://" || kasURL == "http://" {
 		return nil, errors.New("config.kasUrl is empty")
 	}
-	ki, err := s.getPublicKey(context.Background(), kasURL, config.bindCfg.eccMode.String())
+	ki, err = s.getPublicKey(context.Background(), kasURL, config.bindCfg.eccMode.String())
 	if err != nil {
 		return nil, fmt.Errorf("getECPublicKey failed:%w", err)
 	}
@@ -1131,6 +1127,20 @@ func getKasInfoForNanoTDF(s *SDK, config *NanoTDFConfig) (*KASInfo, error) {
 	}
 
 	return ki, nil
+}
+
+func updateConfigWithBaseKey(ki *KASInfo, config *NanoTDFConfig) error {
+	ecMode, err := ocrypto.ECKeyTypeToMode(ocrypto.KeyType(ki.Algorithm))
+	if err != nil {
+		return fmt.Errorf("ocrypto.ECKeyTypeToMode failed: %w", err)
+	}
+	err = config.kasURL.setURLWithIdentifier(ki.URL, ki.KID)
+	if err != nil {
+		return fmt.Errorf("config.kasURL setURLWithIdentifier failed: %w", err)
+	}
+	config.bindCfg.eccMode = ecMode
+
+	return nil
 }
 
 func getNanoKasInfoFromBaseKey(s *SDK) (*KASInfo, error) {

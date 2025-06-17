@@ -24,7 +24,6 @@ services:
     rsacertid: r1
   entityresolution:
     url: http://keycloak:8888/auth
-    cache_response_lifetime_seconds: 60
     clientid: "tdf-entity-resolution"
     clientsecret: "secret"
     realm: "opentdf"

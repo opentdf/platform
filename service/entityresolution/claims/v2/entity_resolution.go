@@ -11,7 +11,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	ent "github.com/opentdf/platform/service/entity"
-	"github.com/opentdf/platform/service/entityresolution/cache"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -25,38 +24,16 @@ type EntityResolutionServiceV2 struct {
 	entityresolutionV2.UnimplementedEntityResolutionServiceServer
 	logger *logger.Logger
 	trace.Tracer
-	cache *cache.ResponseCache
 }
 
-func RegisterClaimsERS(_ config.ServiceConfig, logger *logger.Logger, cache *cache.ResponseCache) (EntityResolutionServiceV2, serviceregistry.HandlerServer) {
-	claimsSVC := EntityResolutionServiceV2{logger: logger, cache: cache}
+func RegisterClaimsERS(_ config.ServiceConfig, logger *logger.Logger) (EntityResolutionServiceV2, serviceregistry.HandlerServer) {
+	claimsSVC := EntityResolutionServiceV2{logger: logger}
 	return claimsSVC, nil
 }
 
 func (s EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
-	// Check if the response is cached
-	if s.cache.IsEnabled() {
-		cached, err := s.cache.Get(ctx, req.Msg.String())
-		if err != nil {
-			s.logger.WarnContext(ctx, "failed to get cached response, proceeding with direct retrieval", slog.Any("error", err))
-		} else {
-			return connect.NewResponse(cached), nil
-		}
-	}
-
 	resp, err := EntityResolution(ctx, req.Msg, s.logger)
-	if err != nil {
-		s.logger.ErrorContext(ctx, "failed to resolve entities", slog.Any("error", err))
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to resolve entities: %w", err))
-	}
-
-	if s.cache.IsEnabled() {
-		if err := s.cache.Set(ctx, req.Msg.String(), &resp); err != nil {
-			s.logger.WarnContext(ctx, "failed to cache response, returning without caching", slog.Any("error", err))
-		}
-	}
-
-	return connect.NewResponse(&resp), nil
+	return connect.NewResponse(&resp), err
 }
 
 func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {

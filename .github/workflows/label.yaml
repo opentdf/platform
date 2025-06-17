@@ -50,49 +50,29 @@ jobs:
               return;
             }
 
-            // Define associations considered "internal"
-            const internalAssociations = ["MEMBER"];
-
             // Label to add if the author is external
             const externalLabel = "external-contributor";
 
-            const authorAssociation = pr.author_association;
-            const isExternal = !internalAssociations.includes(authorAssociation);
-            
-            // Get all teams for the org (paginated)
-            let teams = [];
-            let page = 1;
-            while (true) {
-              const { data } = await github.rest.teams.list({
-                context.repo.owner,
-                per_page: 100,
-                page
+            // Check if the user is a member of the org using the GitHub API
+            let isOrgMember = false;
+            try {
+              const { data } = await github.rest.orgs.getMembershipForUser({
+                org: context.repo.owner,
+                username: pr.user.login
               });
-              if (data.length === 0) break;
-              teams.push(...data);
-              page++;
-            }
-            
-            // Check if the user is a member of any team
-            let isTeamMember = false;
-            for (const team of teams) {
-              try {
-                await github.rest.teams.getMembershipForUserInOrg({ context.repo.owner, team_slug: team.slug, username: pr.user.login });
-                isTeamMember = true;
-                break;
-              } catch (error) {
-                if (error.status !== 404) throw error; // only ignore 404s
+              if (data && data.state === "active") {
+                isOrgMember = true;
               }
+            } catch (error) {
+              if (error.status !== 404) throw error; // only ignore 404s
             }
-            
-            // Now use isTeamMember to decide if they're "internal"
-            const isExternal = !isTeamMember;
 
+            const isExternal = !isOrgMember;
             const prLabels = pr.labels.map(label => label.name);
             const hasExternalLabel = prLabels.includes(externalLabel);
 
             core.info(`Event: ${context.eventName}, Action: ${context.payload.action}`);
-            core.info(`Author: ${pr.user.login}, Association: ${authorAssociation}, Is External: ${isExternal}`);
+            core.info(`Author: ${pr.user.login}, Is Org Member: ${isOrgMember}, Is External: ${isExternal}`);
             core.info(`Current PR Labels: ${prLabels.join(', ')}`);
 
             // Logic for 'unlabeled' event: only re-add if *our* label was removed and author is still external
@@ -115,7 +95,7 @@ jobs:
             // Logic for 'opened' or 'reopened' events: add label if external and not already present
             else if (['opened', 'reopened'].includes(context.payload.action)) {
               if (isExternal && !hasExternalLabel) {
-                core.info(`Author association "${authorAssociation}" is external and label is missing. Adding label: ${externalLabel}`);
+                core.info(`Author is external and label is missing. Adding label: ${externalLabel}`);
                 await github.rest.issues.addLabels({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -127,9 +107,9 @@ jobs:
                  core.info(`Author is external, but label "${externalLabel}" is already present.`);
               } else {
                 if (hasExternalLabel) {
-                  core.warning(`Author association "${authorAssociation}" is internal. However, external contributor label is present.`)
+                  core.warning(`Author is internal. However, external contributor label is present.`)
                 } else {
-                  core.info(`Author association "${authorAssociation}" is internal. No label added.`)
+                  core.info(`Author is internal. No label added.`)
                 }
               }
             }

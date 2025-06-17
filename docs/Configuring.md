@@ -397,7 +397,6 @@ Root level key `cache`
 
 | Field                    | Description                                                      | Default      |
 |--------------------------|------------------------------------------------------------------|--------------|
-| `driver`                 | Type of cache backend (`ristretto`)                              | `ristretto`  |
 | `ristretto.maxCost`      | Maximum cost for the cache (e.g. 100mb, 1gb)                     | `1gb`        |
 
 Example:

@@ -3,6 +3,7 @@ package authorization
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"connectrpc.com/connect"
@@ -13,6 +14,7 @@ import (
 	otdf "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -26,6 +28,9 @@ type Service struct {
 	logger *logger.Logger
 	trace.Tracer
 	cache *EntitlementPolicyCache
+
+	// provided by service registration params
+	platformCacheClient *cache.Cache[EntitlementPolicy]
 }
 
 type Config struct {
@@ -37,7 +42,7 @@ type Config struct {
 func OnServicesStarted(svc *Service) serviceregistry.OnServicesStartedHook {
 	return func(ctx context.Context) error {
 		if svc.config.CacheRefreshIntervalSeconds > 0 {
-			c, err := NewEntitlementPolicyCache(ctx, svc.sdk, svc.logger, svc.config)
+			c, err := NewEntitlementPolicyCache(ctx, svc.logger, svc.sdk, svc.platformCacheClient, svc.config.CacheRefreshIntervalSeconds)
 			if err != nil {
 				svc.logger.ErrorContext(ctx, "failed to create entitlement policy cache", slog.Any("error", err))
 				return fmt.Errorf("failed to create entitlement policy cache: %w", err)
@@ -81,6 +86,8 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				as.sdk = srp.SDK
 				as.logger = logger
 
+				as.platformCacheClient = srp.Cache
+
 				// if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 				// 	logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 				// }
@@ -101,6 +108,12 @@ func (as *Service) Close() {
 	if as.cache != nil {
 		as.cache.Stop()
 	}
+}
+
+// Satisfy the interface to receive a cache client from global platform cache, but let auth service drive its own refresh
+// behavior rather than setting lifetime on individual keys, which have unknown size (cost) depending on underlying policy.
+func (as *Service) CacheOptions() *cache.Options {
+	return &cache.Options{}
 }
 
 // TODO: uncomment after v1 is deprecated, as cannot have more than one readiness check under a namespace

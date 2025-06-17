@@ -98,8 +98,12 @@ func (c *Cache[T]) Set(ctx context.Context, key string, object T, tags []string)
 	tags = append(tags, c.getServiceTag())
 	opts := []store.Option{
 		store.WithTags(tags),
-		store.WithExpiration(c.cacheOptions.Expiration),
-		store.WithCost(c.cacheOptions.Cost),
+	}
+	if c.cacheOptions.Expiration > 0 {
+		opts = append(opts, store.WithExpiration(c.cacheOptions.Expiration))
+	}
+	if c.cacheOptions.Cost > 0 {
+		opts = append(opts, store.WithCost(c.cacheOptions.Cost))
 	}
 
 	err := c.manager.cache.Set(ctx, c.getKey(key), object, opts...)

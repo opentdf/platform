@@ -87,6 +87,7 @@ type IService interface {
 	IsStarted() bool
 	Shutdown() error
 	RegisterConfigUpdateHook(ctx context.Context, hookAppender func(config.ChangeHook)) error
+	// Experimental
 	RegisterOnServicesStartedHook(ctx context.Context, hookAppender func(config.ServicesStartedHook)) error
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
@@ -122,7 +123,7 @@ type ServiceOptions[S any] struct {
 	ServiceDesc *grpc.ServiceDesc
 	// OnConfigUpdate is a hook to handle in-service actions when config changes
 	OnConfigUpdate OnConfigUpdateHook
-	// OnServicesStarted is a hook to handle in-service actions that should run when all services are registered
+	// Experimental: OnServicesStarted is a hook to handle in-service actions that should run when all registered services have started
 	OnServicesStarted OnServicesStartedHook
 	// RegisterFunc is the function that will be called to register the service
 	RegisterFunc RegisterFunc[S]
@@ -206,7 +207,7 @@ func (s Service[S]) RegisterConfigUpdateHook(ctx context.Context, hookAppender f
 	return nil
 }
 
-// RegisterOnServicesStartedHook appends a registered service's onServicesStartedHook to any watching services.
+// Experimental: RegisterOnServicesStartedHook appends a registered service's onServicesStartedHook to any watching services.
 func (s Service[S]) RegisterOnServicesStartedHook(_ context.Context, hookAppender func(config.ServicesStartedHook)) error {
 	// If no hook is registered, exit
 	if s.OnServicesStarted != nil {

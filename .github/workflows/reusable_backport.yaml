@@ -8,7 +8,7 @@ on:
     inputs:
       # https://github.com/korthout/backport-action/#conflict_resolution
       conflict_resolution:
-        default: "fail"
+        default: "draft_commit_conflicts"
         type: string
       # https://github.com/korthout/backport-action/#pull_title
       pull_title:

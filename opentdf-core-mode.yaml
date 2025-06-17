@@ -40,6 +40,7 @@ server:
     allowedheaders:
       - ACCEPT
       - Authorization
+      - Connect-Protocol-Version
       - Content-Type
       - X-CSRF-Token
     # List of response headers that browsers are allowed to access

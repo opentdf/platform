@@ -1,4 +1,9 @@
 # Generate release PRs, and follow up with update PRs
+name: "Reusable workflow: release-please"
+
+defaults:
+  run:
+    shell: bash
 
 on:
   workflow_call:
@@ -7,16 +12,6 @@ on:
         required: true
       AUTOMATION_KEY:
         required: true
-    inputs:
-      config-file-main-branch:
-        type: string
-        default: "release-please_main-branch.json"
-      config-file-release-branches:
-        type: string
-        default: "release-please_release-branches.json"
-      manifest-file:
-        type: string
-        default: ".release-please-manifest.json"
     outputs:
       major:
         description: "Major version number"
@@ -36,6 +31,8 @@ on:
       tag_name:
         description: "Tag name of the release"
         value: ${{ jobs.release-please.outputs.tag_name }}
+
+# Default empty permissions for all jobs
 permissions: {}
 
 jobs:
@@ -51,18 +48,80 @@ jobs:
       sha: ${{ steps.release-please.outputs.sha }}
       release_created: ${{ steps.release-please.outputs.release_created }}
       tag_name: ${{ steps.release-please.outputs.tag_name }}
+    env:
+      MAIN_CONFIG: ".github/release-please/release-please-config.main.json"
+      MANIFEST_FILE: ".github/release-please/release-please-manifest.json"
     steps:
 
       - name: "Validate ref"
         if: ${{ !github.ref_name == 'main' && !startsWith(github.ref_name, 'release/') }}
-        shell: bash
         env:
           REF_NAME: ${{ github.ref_name }}
         run: |
           echo "Error: invalid github ref ['$REF_NAME'] for release-please action, must be 'main' or 'release/**'" | tee -a "$GITHUB_STEP_SUMMARY"
           exit 1
 
-      - name: Generate a token
+      - name: "Checkout"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: "Validate release-please folder"
+        env:
+          MAIN_CONFIG: ${{ env.MAIN_CONFIG }}
+        run: |
+          if [ ! -d ".github/release-please" ]; then
+            echo "Error: release-please directory does not exist." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          
+          if [ ! -f "$MAIN_CONFIG" ]; then
+            echo "Error: $MAIN_CONFIG does not exist." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+
+        # Extract the package name from the triggered branch name.
+        # This assumes branch format 'release/<package>/vX.Y.Z'
+        # <package> is e.g. 'service' or 'protocol/go'
+      - name: "Output package config file name"
+        id: package-config
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+          MAIN_CONFIG: ${{ env.MAIN_CONFIG }}
+        run: |
+          # Check if branch is main first
+          if [[ "$BRANCH_NAME" == "main" ]]; then
+            config_file="$MAIN_CONFIG"
+          else
+            # Remove 'release/' prefix
+            WITHOUT_PREFIX=${BRANCH_NAME#release/}
+            
+            # Remove everything from '/v' to the end
+            PACKAGE_NAME=${WITHOUT_PREFIX%/v*}
+            
+            # Check if PACKAGE_NAME is empty or equals to WITHOUT_PREFIX (meaning no "/v" was found)
+            if [[ -z "$PACKAGE_NAME" || "$PACKAGE_NAME" == "$WITHOUT_PREFIX" ]]; then
+              # This handles the case of "release/v1.20" - use release_branches config
+              config_file="${MAIN_CONFIG/main/release_branches}"
+            else
+              # Replace any slashes in package name with underscores
+              SANITIZED_PACKAGE=${PACKAGE_NAME//\//_}
+              
+              # Replace 'main' in the config filename with the sanitized package name
+              config_file=${MAIN_CONFIG/main/$SANITIZED_PACKAGE}
+            fi
+          fi
+
+          # Check if package config file exists
+          if [ ! -f "$config_file" ]; then
+            echo "Error: $config_file does not exist." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "config_file=$config_file" >> "$GITHUB_OUTPUT"
+
+      - name: "Generate GitHub app token"
         id: generate_token
         uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
         with:
@@ -74,6 +133,6 @@ jobs:
         id: release-please
         with:
           token: ${{ steps.generate_token.outputs.token }}
-          config-file: ${{ github.ref_name == 'main' && inputs.config-file-main-branch || startsWith(github.ref_name, 'release/') && inputs.config-file-release-branches }}
-          manifest-file: ${{ inputs.manifest-file }}
+          config-file: ${{ github.ref_name == 'main' && env.MAIN_CONFIG || startsWith(github.ref_name, 'release/') && steps.package-config.outputs.config_file }}
+          manifest-file: ${{ env.MANIFEST_FILE }}
           target-branch: ${{ github.ref_name }}

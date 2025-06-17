@@ -19,6 +19,7 @@ import (
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
@@ -152,6 +153,7 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 		&logger.Logger{
 			Logger: slog.New(slog.Default().Handler()),
 		},
+		&cache.Manager[any]{},
 	)
 }
 
@@ -353,12 +355,20 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			require.NoError(t, err)
 
 			// Start services with test service
-			cleanup, err := startServices(context.Background(), &config.Config{
-				Mode: tc.mode,
-				Services: map[string]config.ServiceConfig{
-					"test": {},
+			cleanup, err := startServices(context.Background(), startServicesParams{
+				cfg: &config.Config{
+					Mode: tc.mode,
+					Services: map[string]config.ServiceConfig{
+						"test": {},
+					},
 				},
-			}, s, nil, []trust.KeyManager{}, logger, registry)
+				otdf:         s,
+				client:       nil,
+				keyManagers:  []trust.KeyManager{},
+				logger:       logger,
+				reg:          registry,
+				cacheManager: &cache.Manager[any]{},
+			})
 			require.NoError(t, err)
 			defer cleanup()
 

@@ -75,10 +75,12 @@ type TDFConfig struct {
 	attributes                 []AttributeValueFQN
 	attributeValues            []*policy.Value
 	kasInfoList                []KASInfo
+	kaoTemplate                []kaoTpl
 	splitPlan                  []keySplitStep
 	keyType                    ocrypto.KeyType
 	useHex                     bool
 	excludeVersionFromManifest bool
+	addDefaultAssertion        bool
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -90,6 +92,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
 		keyType:                   ocrypto.RSA2048Key, // default to RSA
+		addDefaultAssertion:       false,
 	}
 
 	for _, o := range opt {
@@ -213,6 +216,14 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 	return func(c *TDFConfig) error {
 		c.defaultSegmentSize = size
+		return nil
+	}
+}
+
+// WithDefaultAssertion returns an Option that adds a default assertion to the TDF.
+func WithSystemMetadataAssertion() TDFOption {
+	return func(c *TDFConfig) error {
+		c.addDefaultAssertion = true
 		return nil
 	}
 }

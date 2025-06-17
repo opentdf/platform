@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/opentdf/platform/lib/flattening"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -13,6 +14,7 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
 
@@ -86,8 +88,11 @@ func NewJustInTimePDP(
 			return nil, fmt.Errorf("failed to fetch all subject mappings: %w", err)
 		}
 	}
-
-	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings)
+	allRegisteredResources, err := p.fetchAllRegisteredResources(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch all registered resources: %w", err)
+	}
+	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings, allRegisteredResources)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
 	}
@@ -174,8 +179,10 @@ func (p *JustInTimePDP) GetEntitlements(
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting decision - resolving registered resource value FQN")
-		return nil, errors.New("registered resources not yet implemented")
-		// TODO: implement this case
+		valueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
+		// registered resources do not have entity representations, so we can skip the remaining logic
+		return p.pdp.GetEntitlementsRegisteredResource(ctx, valueFQN, withComprehensiveHierarchy)
+
 	default:
 		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
 	}
@@ -291,6 +298,34 @@ func (p *JustInTimePDP) fetchAllSubjectMappings(ctx context.Context) ([]*policy.
 		}
 	}
 	return smList, nil
+}
+
+// fetchAllRegisteredResources retrieves all registered resources within policy
+func (p *JustInTimePDP) fetchAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error) {
+	// If quantity of registered resources exceeds maximum list pagination, all are needed to determine entitlements
+	var nextOffset int32
+	rrList := make([]*policy.RegisteredResource, 0)
+
+	for {
+		listed, err := p.sdk.RegisteredResources.ListRegisteredResources(ctx, &registeredresources.ListRegisteredResourcesRequest{
+			// defer to service default for limit pagination
+			Pagination: &policy.PageRequest{
+				Offset: nextOffset,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list registered resources: %w", err)
+		}
+
+		nextOffset = listed.GetPagination().GetNextOffset()
+		rrList = append(rrList, listed.GetResources()...)
+
+		if nextOffset <= 0 {
+			break
+		}
+	}
+
+	return rrList, nil
 }
 
 // resolveEntitiesFromEntityChain roundtrips to ERS to resolve the provided entity chain

@@ -524,7 +524,7 @@ func (s *TDFSuite) Test_SystemMetadataAssertions() {
 
 	found := false
 	for _, assertion := range assertions {
-		if assertion.ID == "default-assertion" { // Ensure `ID` exists
+		if assertion.ID == SystemMetadataAssertionID { // Ensure `ID` exists
 			found = true
 
 			// Validate JSON in Statement.Value
@@ -540,7 +540,7 @@ func (s *TDFSuite) Test_SystemMetadataAssertions() {
 			s.Equal(runtime.Version(), metadata["go_version"], "go_version mismatch")
 		}
 	}
-	s.True(found, "Default assertion not found")
+	s.True(found, "System metadata assertion not found")
 }
 
 func (s *TDFSuite) Test_TDF_KAS_Allowlist() {

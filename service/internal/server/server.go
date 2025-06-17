@@ -28,7 +28,6 @@ import (
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
 	"github.com/opentdf/platform/service/pkg/cache"
-	"github.com/opentdf/platform/service/pkg/util"
 	"github.com/opentdf/platform/service/tracing"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -53,7 +52,7 @@ func (e Error) Error() string {
 type Config struct {
 	Auth auth.Config `mapstructure:"auth" json:"auth"`
 
-	Cache CacheConfig `mapstructure:"cache" json:"cache"`
+	Cache cache.Config `mapstructure:"cache" json:"cache"`
 
 	GRPC GRPCConfig `mapstructure:"grpc" json:"grpc"`
 	// To Deprecate: Use the WithKey[X]Provider StartOptions to register trust providers.
@@ -89,24 +88,6 @@ func (c Config) LogValue() slog.Value {
 	}
 
 	return slog.GroupValue(group...)
-}
-
-// CacheRistrettoConfig supports human-friendly size strings like "1gb", "512mb", etc.
-type CacheRistrettoConfig struct {
-	// MaxCost is the maximum cost of the cache, can be a number (bytes) or a string like "1gb"
-	MaxCost string `mapstructure:"maxCost" json:"maxCost" default:"1gb"`
-}
-
-// MaxCostBytes parses MaxCost and returns the value in bytes.
-// Supports suffixes: b, kb, mb, gb, tb (case-insensitive).
-func (c CacheRistrettoConfig) MaxCostBytes() int64 {
-	const defaultCacheMaxCostBytes int64 = 1 * 1024 * 1024 * 1024            // 1GB
-	return util.RelativeFileSizeToBytes(c.MaxCost, defaultCacheMaxCostBytes) // Default to 1GB if parsing fails
-}
-
-type CacheConfig struct {
-	Driver         string               `mapstructure:"driver" json:"driver" default:"ristretto"`
-	RistrettoCache CacheRistrettoConfig `mapstructure:"ristretto" json:"ristretto"`
 }
 
 // GRPC Server specific configurations

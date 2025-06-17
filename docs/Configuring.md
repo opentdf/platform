@@ -397,7 +397,7 @@ Root level key `cache`
 
 | Field                    | Description                                                      | Default      |
 |--------------------------|------------------------------------------------------------------|--------------|
-| `ristretto.maxCost`      | Maximum cost for the cache (e.g. 100mb, 1gb)                     | `1gb`        |
+| `ristretto.max_cost`      | Maximum cost for the cache (e.g. 100mb, 1gb)                     | `1gb`        |
 
 Example:
 

@@ -15,12 +15,12 @@ import (
 
 var ErrCacheMiss = errors.New("cache miss")
 
-// Manager is a generic cache manager for any value type T.
+// Manager is a cache manager for any value.
 type Manager struct {
 	cache *cache.Cache[any]
 }
 
-// Cache is a generic cache implementation using gocache for any value type T.
+// Cache is a cache implementation using gocache for any value type.
 type Cache struct {
 	manager      *Manager
 	serviceName  string
@@ -33,7 +33,7 @@ type Options struct {
 	Cost       int64
 }
 
-// NewCacheManager creates a new generic cache manager using Ristretto as the backend.
+// NewCacheManager creates a new cache manager using Ristretto as the backend.
 func NewCacheManager(maxCost int64) (*Manager, error) {
 	numCounters, bufferItems, err := EstimateRistrettoConfigParams(maxCost)
 	if err != nil {
@@ -54,7 +54,7 @@ func NewCacheManager(maxCost int64) (*Manager, error) {
 	}, nil
 }
 
-// NewCache creates a new generic Cache instance with the given service name and options.
+// NewCache creates a new Cache client instance with the given service name and options.
 // The purpose of this function is to create a new cache for a specific service.
 // Because caching can be expensive we want to make sure there are some strict controls with
 // how it is used.
@@ -76,14 +76,13 @@ func (c *Manager) NewCache(serviceName string, log *logger.Logger, options Optio
 	return cache, nil
 }
 
-// Get retrieves a value from the cache and type asserts it to T.
+// Get retrieves a value from the cache
 func (c *Cache) Get(ctx context.Context, key string) (any, error) {
-	var zero any
 	val, err := c.manager.cache.Get(ctx, c.getKey(key))
 	if err != nil {
 		// All errors are a cache miss in the gocache library.
 		c.logger.Debug("cache miss", "key", key, "error", err)
-		return zero, ErrCacheMiss
+		return nil, ErrCacheMiss
 	}
 	c.logger.Debug("cache hit", "key", key)
 	return val, nil

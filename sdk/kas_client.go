@@ -378,7 +378,7 @@ func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolic
 }
 
 type kasKeyRequest struct {
-	url, algorithm string
+	url, algorithm, kid string
 }
 
 type timeStampedKASInfo struct {
@@ -399,8 +399,8 @@ func (c *kasKeyCache) clear() {
 	c.c = make(map[kasKeyRequest]timeStampedKASInfo)
 }
 
-func (c *kasKeyCache) get(url, algorithm string) *KASInfo {
-	cacheKey := kasKeyRequest{url, algorithm}
+func (c *kasKeyCache) get(url, algorithm, kid string) *KASInfo {
+	cacheKey := kasKeyRequest{url, algorithm, kid}
 	now := time.Now()
 	cv, ok := c.c[cacheKey]
 	if !ok {
@@ -415,13 +415,13 @@ func (c *kasKeyCache) get(url, algorithm string) *KASInfo {
 }
 
 func (c *kasKeyCache) store(ki KASInfo) {
-	cacheKey := kasKeyRequest{ki.URL, ki.Algorithm}
+	cacheKey := kasKeyRequest{ki.URL, ki.Algorithm, ki.KID}
 	c.c[cacheKey] = timeStampedKASInfo{ki, time.Now()}
 }
 
-func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm string) (*KASInfo, error) {
+func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind string) (*KASInfo, error) {
 	if s.kasKeyCache != nil {
-		if cachedValue := s.kasKeyCache.get(kasurl, algorithm); nil != cachedValue {
+		if cachedValue := s.kasKeyCache.get(kasurl, algorithm, kidToFind); nil != cachedValue {
 			return cachedValue, nil
 		}
 	}

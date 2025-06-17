@@ -483,8 +483,8 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		// Public key was passed in with kasInfoList
 		// TODO first look up in attribute information / add to split plan?
 		ki, ok := latestKASInfo[tpl.KAS]
-		if !ok || ki.PublicKey == "" {
-			k, err := s.getPublicKey(ctx, tpl.KAS, keyAlgorithm)
+		if !ok || ki.PublicKey == "" || ki.KID != tpl.kid {
+			k, err := s.getPublicKey(ctx, tpl.KAS, keyAlgorithm, tpl.kid)
 			if err != nil {
 				return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", tpl.KAS, err)
 			}

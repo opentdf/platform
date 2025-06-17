@@ -388,23 +388,23 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkcon
 		def := pair.GetAttribute()
 
 		if def != nil {
-			storeKeysToCache(def.GetGrants(), keyCache)
+			storeKeysToCache(def.GetGrants(), def.GetKasKeys(), keyCache)
 		}
 		v := pair.GetValue()
 		gType := noKeysFound
 		if v != nil {
 			gType = grants.addAllGrants(fqn, v, def)
-			storeKeysToCache(v.GetGrants(), keyCache)
+			storeKeysToCache(v.GetGrants(), v.GetKasKeys(), keyCache)
 		}
 
 		// If no more specific grant was found, then add the value grants
 		if gType == noKeysFound && def != nil {
 			gType = grants.addAllGrants(fqn, def, def)
-			storeKeysToCache(def.GetGrants(), keyCache)
+			storeKeysToCache(def.GetGrants(), def.GetKasKeys(), keyCache)
 		}
 		if gType == noKeysFound && def.GetNamespace() != nil {
 			grants.addAllGrants(fqn, def.GetNamespace(), def)
-			storeKeysToCache(def.GetNamespace().GetGrants(), keyCache)
+			storeKeysToCache(def.GetNamespace().GetGrants(), def.GetNamespace().GetKasKeys(), keyCache)
 		}
 	}
 
@@ -429,7 +429,19 @@ func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 	return ""
 }
 
-func storeKeysToCache(kases []*policy.KeyAccessServer, c *kasKeyCache) {
+func storeKeysToCache(kases []*policy.KeyAccessServer, keys []*policy.SimpleKasKey, c *kasKeyCache) {
+	for _, key := range keys {
+		alg, err := formatAlg(key.GetPublicKey().GetAlgorithm())
+		if err != nil {
+			continue
+		}
+		c.store(KASInfo{
+			URL:       key.GetKasUri(),
+			KID:       key.GetPublicKey().GetKid(),
+			Algorithm: alg,
+			PublicKey: key.GetPublicKey().GetPem(),
+		})
+	}
 	for _, kas := range kases {
 		keys := kas.GetPublicKey().GetCached().GetKeys()
 		if len(keys) == 0 {
@@ -472,16 +484,16 @@ func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (gr
 		}
 
 		if grants.addAllGrants(fqn, v, def) != noKeysFound {
-			storeKeysToCache(v.GetGrants(), keyCache)
+			storeKeysToCache(v.GetGrants(), v.GetKasKeys(), keyCache)
 			continue
 		}
 		// If no more specific grant was found, then add the attr grants
 		if grants.addAllGrants(fqn, def, def) != noKeysFound {
-			storeKeysToCache(def.GetGrants(), keyCache)
+			storeKeysToCache(def.GetGrants(), def.GetKasKeys(), keyCache)
 			continue
 		}
 		grants.addAllGrants(fqn, namespace, def)
-		storeKeysToCache(namespace.GetGrants(), keyCache)
+		storeKeysToCache(namespace.GetGrants(), namespace.GetKasKeys(), keyCache)
 	}
 
 	return grants, nil

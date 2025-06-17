@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -136,8 +137,8 @@ func Test_StoreKASKeys(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "ec:secp256r1"))
-	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "rsa:2048"))
+	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "ec:secp256r1", "e1"))
+	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "rsa:2048", "r1"))
 
 	require.NoError(t, s.StoreKASKeys("https://localhost:8080", &policy.KasPublicKeySet{
 		Keys: []*policy.KasPublicKey{
@@ -145,12 +146,16 @@ func Test_StoreKASKeys(t *testing.T) {
 			{Pem: "sample", Kid: "r1", Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048},
 		},
 	}))
-	assert.Nil(t, s.kasKeyCache.get("https://nowhere", "alg:unknown"))
-	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "alg:unknown"))
-	assert.Equal(t, "e1", s.kasKeyCache.get("https://localhost:8080", "ec:secp256r1").KID)
-	assert.Equal(t, "r1", s.kasKeyCache.get("https://localhost:8080", "rsa:2048").KID)
+	assert.Nil(t, s.kasKeyCache.get("https://nowhere", "alg:unknown", ""))
+	assert.Nil(t, s.kasKeyCache.get("https://localhost:8080", "alg:unknown", ""))
+	ecKey := s.kasKeyCache.get("https://localhost:8080", "ec:secp256r1", "e1")
+	rsaKey := s.kasKeyCache.get("https://localhost:8080", "rsa:2048", "r1")
+	require.NotNil(t, ecKey)
+	require.Equal(t, "e1", ecKey.KID)
+	require.NotNil(t, rsaKey)
+	require.Equal(t, "r1", rsaKey.KID)
 
-	k1, err := s.getPublicKey(t.Context(), "https://localhost:8080", "ec:secp256r1")
+	k1, err := s.getPublicKey(t.Context(), "https://localhost:8080", "ec:secp256r1", "e1")
 	require.NoError(t, err)
 	assert.Equal(t, &KASInfo{
 		URL:       "https://localhost:8080",
@@ -161,7 +166,7 @@ func Test_StoreKASKeys(t *testing.T) {
 	}, k1)
 
 	s.kasKeyCache = nil
-	k2, err := s.getPublicKey(t.Context(), "https://localhost:54321", "ec:secp256r1")
+	k2, err := s.getPublicKey(t.Context(), "https://localhost:54321", "ec:secp256r1", "")
 	assert.Nil(t, k2)
 	require.ErrorContains(t, err, "error making request")
 }
@@ -258,4 +263,90 @@ func TestParseBaseUrl(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestKasKeyCache_NoKID(t *testing.T) {
+	// Create a new KAS key cache
+	cache := newKasKeyCache()
+	require.NotNil(t, cache, "Failed to create KAS key cache")
+
+	// Define test data
+	const (
+		testURL       = "https://kas.example.org"
+		testAlgorithm = "ec:secp256r1"
+		testPubKey    = "test-public-key"
+	)
+
+	// Store a key with no KID
+	keyInfo := KASInfo{
+		URL:       testURL,
+		Algorithm: testAlgorithm,
+		KID:       "", // Empty KID
+		PublicKey: testPubKey,
+	}
+	cache.store(keyInfo)
+
+	// Test 1: Check if we can retrieve the key when querying with an empty KID
+	retrievedKey := cache.get(testURL, testAlgorithm, "")
+	require.NotNil(t, retrievedKey, "Failed to retrieve key with empty KID")
+	assert.Equal(t, testPubKey, retrievedKey.PublicKey, "Retrieved key has incorrect public key")
+	assert.Empty(t, "", retrievedKey.KID, "Retrieved key should have empty KID")
+	assert.Equal(t, testAlgorithm, retrievedKey.Algorithm, "Retrieved key has incorrect algorithm")
+	assert.Equal(t, testURL, retrievedKey.URL, "Retrieved key has incorrect URL")
+
+	// Test 2: Check that querying with a specific KID does not return the key with empty KID
+	retrievedKey = cache.get(testURL, testAlgorithm, "specific-kid")
+	assert.Nil(t, retrievedKey, "Should not retrieve a key when querying with a specific KID")
+
+	// Test 3: Store a key with the same URL and algorithm but with a specific KID
+	keyInfoWithKID := KASInfo{
+		URL:       testURL,
+		Algorithm: testAlgorithm,
+		KID:       "specific-kid",
+		PublicKey: "another-public-key",
+	}
+	cache.store(keyInfoWithKID)
+
+	// Verify both keys can be retrieved with their respective KIDs
+	emptyKIDKey := cache.get(testURL, testAlgorithm, "")
+	specificKIDKey := cache.get(testURL, testAlgorithm, "specific-kid")
+
+	require.NotNil(t, emptyKIDKey, "Failed to retrieve key with empty KID after storing a key with specific KID")
+	require.NotNil(t, specificKIDKey, "Failed to retrieve key with specific KID")
+
+	assert.Equal(t, testPubKey, emptyKIDKey.PublicKey, "Retrieved key with empty KID has incorrect public key")
+	assert.Equal(t, "another-public-key", specificKIDKey.PublicKey, "Retrieved key with specific KID has incorrect public key")
+}
+
+func TestKasKeyCache_Expiration(t *testing.T) {
+	// Create a new KAS key cache
+	cache := newKasKeyCache()
+	require.NotNil(t, cache, "Failed to create KAS key cache")
+
+	// Store a key
+	keyInfo := KASInfo{
+		URL:       "https://kas.example.org",
+		Algorithm: "ec:secp256r1",
+		KID:       "",
+		PublicKey: "test-public-key",
+	}
+	cache.store(keyInfo)
+
+	// Verify key is in cache
+	retrievedKey := cache.get("https://kas.example.org", "ec:secp256r1", "")
+	require.NotNil(t, retrievedKey, "Key should be in cache")
+
+	// Manually modify the time to simulate expiration (beyond 5 minutes)
+	cacheKey := kasKeyRequest{"https://kas.example.org", "ec:secp256r1", ""}
+	cachedValue := cache.c[cacheKey]
+	cachedValue.Time = time.Now().Add(-6 * time.Minute)
+	cache.c[cacheKey] = cachedValue
+
+	// Try to retrieve the expired key
+	retrievedKey = cache.get("https://kas.example.org", "ec:secp256r1", "")
+	assert.Nil(t, retrievedKey, "Expired key should not be returned")
+
+	// Verify the entry was actually removed from the cache
+	_, exists := cache.c[cacheKey]
+	assert.False(t, exists, "Expired key should be removed from cache")
 }

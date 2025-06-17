@@ -1104,7 +1104,7 @@ func Test_RollupSingleResourceDecision(t *testing.T) {
 	}
 }
 
-func Test_RollupMultiResourceDecision(t *testing.T) {
+func Test_RollupMultiResourceDecisions(t *testing.T) {
 	tests := []struct {
 		name            string
 		decisions       []*access.Decision
@@ -1280,7 +1280,7 @@ func Test_RollupMultiResourceDecision(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := rollupMultiResourceDecision(tc.decisions)
+			result, err := rollupMultiResourceDecisions(tc.decisions)
 
 			if tc.expectedError != nil {
 				require.Error(t, err)
@@ -1294,7 +1294,7 @@ func Test_RollupMultiResourceDecision(t *testing.T) {
 	}
 }
 
-func Test_RollupMultiResourceDecision_Simple(t *testing.T) {
+func Test_RollupMultiResourceDecisions_Simple(t *testing.T) {
 	// This test checks the minimal viable structure to pass through rollupMultiResourceDecision
 	decision := &access.Decision{
 		Results: []access.ResourceDecision{
@@ -1307,7 +1307,7 @@ func Test_RollupMultiResourceDecision_Simple(t *testing.T) {
 
 	decisions := []*access.Decision{decision}
 
-	result, err := rollupMultiResourceDecision(decisions)
+	result, err := rollupMultiResourceDecisions(decisions)
 
 	require.NoError(t, err)
 	assert.Len(t, result, 1)
@@ -1315,17 +1315,17 @@ func Test_RollupMultiResourceDecision_Simple(t *testing.T) {
 	assert.Equal(t, authzV2.Decision_DECISION_PERMIT, result[0].GetDecision())
 }
 
-func Test_RollupMultiResourceDecision_WithNilChecks(t *testing.T) {
+func Test_RollupMultiResourceDecisions_WithNilChecks(t *testing.T) {
 	t.Run("nil decisions array", func(t *testing.T) {
 		var decisions []*access.Decision
-		_, err := rollupMultiResourceDecision(decisions)
+		_, err := rollupMultiResourceDecisions(decisions)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no decisions returned")
 	})
 
 	t.Run("nil decision in array", func(t *testing.T) {
 		decisions := []*access.Decision{nil}
-		_, err := rollupMultiResourceDecision(decisions)
+		_, err := rollupMultiResourceDecisions(decisions)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "nil decision at index 0")
 	})
@@ -1337,7 +1337,7 @@ func Test_RollupMultiResourceDecision_WithNilChecks(t *testing.T) {
 				Results: nil,
 			},
 		}
-		_, err := rollupMultiResourceDecision(decisions)
+		_, err := rollupMultiResourceDecisions(decisions)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no decision results returned")
 	})

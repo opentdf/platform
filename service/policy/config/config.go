@@ -15,10 +15,6 @@ type Config struct {
 	ListRequestLimitDefault int `mapstructure:"list_request_limit_default" default:"1000"`
 	// Maximum pagination list limit allowed by policy services
 	ListRequestLimitMax int `mapstructure:"list_request_limit_max" default:"2500"`
-
-	// Interval in seconds to refresh the in-memory policy entitlement cache (attributes and subject mappings)
-	// Default: cache is disabled with refresh interval set to 0.
-	CacheRefreshIntervalSeconds int `mapstructure:"cache_refresh_interval_seconds" default:"0"` // Cache disabled by default
 }
 
 func (c Config) Validate() error {

@@ -315,13 +315,13 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 	}
 
 	return AssertionConfig{
-		ID:             "default-assertion",
+		ID:             "system-metadata",
 		Type:           BaseAssertion,
 		Scope:          PayloadScope,
 		AppliesToState: Unencrypted,
 		Statement: Statement{
 			Format: "json",
-			Schema: "metadata",
+			Schema: "system-metadata-v1",
 			Value:  string(metadataJSON),
 		},
 	}, nil

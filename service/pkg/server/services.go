@@ -124,7 +124,7 @@ type startServicesParams struct {
 	client       *sdk.SDK
 	logger       *logging.Logger
 	reg          serviceregistry.Registry
-	cacheManager *cache.Manager[any]
+	cacheManager *cache.Manager
 	keyManagers  []trust.KeyManager
 }
 
@@ -195,7 +195,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 			}
 
 			// Check if the service supports and needs a cache
-			var cacheClient *cache.Cache[any]
+			var cacheClient *cache.Cache
 			if cacheSvc, ok := svc.(serviceregistry.CacheSupportedService); ok {
 				cacheClient, err = cacheManager.NewCache(ns, svcLogger, *cacheSvc.CacheOptions())
 				if err != nil {

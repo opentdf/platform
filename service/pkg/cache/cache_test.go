@@ -10,7 +10,7 @@ import (
 
 func TestNewCacheManager_ValidMaxCost(t *testing.T) {
 	maxCost := int64(1024 * 1024) // 1MB
-	manager, err := NewCacheManager[any](maxCost)
+	manager, err := NewCacheManager(maxCost)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 	require.NotNil(t, manager.cache)
@@ -18,16 +18,16 @@ func TestNewCacheManager_ValidMaxCost(t *testing.T) {
 
 func TestNewCacheManager_InvalidMaxCost(t *testing.T) {
 	// Ristretto requires MaxCost > 0, so use 0 or negative
-	_, err := NewCacheManager[any](0)
+	_, err := NewCacheManager(0)
 	require.Error(t, err)
 
-	_, err = NewCacheManager[any](-100)
+	_, err = NewCacheManager(-100)
 	require.Error(t, err)
 }
 
 func TestNewCacheManager_NewCacheIntegration(t *testing.T) {
 	maxCost := int64(1024 * 1024)
-	manager, err := NewCacheManager[any](maxCost)
+	manager, err := NewCacheManager(maxCost)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 

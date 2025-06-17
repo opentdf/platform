@@ -20,6 +20,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -497,6 +498,65 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	}
 }
 
+func (s *TDFSuite) Test_SystemMetadataAssertions() {
+	attributes := []string{
+		"https://example.com/attr/Classification/value/S",
+		"https://example.com/attr/Classification/value/X",
+	}
+
+	// Configure TDF options with default assertions
+	tdfOptions := []TDFOption{
+		WithKasInformation(KASInfo{
+			URL:       s.kasTestURLLookup["https://a.kas/"],
+			PublicKey: "",
+		}),
+		WithSystemMetadataAssertion(),
+		WithDataAttributes(attributes...),
+	}
+
+	tdfReadOptions := []TDFReaderOption{
+		WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}),
+	}
+
+	// Create TDF
+	var buf bytes.Buffer
+	plainText := "Test Data"
+
+	inBuf := bytes.NewReader([]byte(plainText))
+	tdfObj, err := s.sdk.CreateTDF(&buf, inBuf, tdfOptions...)
+	s.Require().NoError(err)
+	s.Require().NotNil(tdfObj)
+
+	// Load TDF
+	r, err := s.sdk.LoadTDF(bytes.NewReader(buf.Bytes()), tdfReadOptions...)
+	s.Require().NoError(err)
+
+	// Verify default assertion
+	assertions := r.Manifest().Assertions
+	s.Require().NoError(err)
+	s.Require().NotEmpty(assertions)
+
+	found := false
+	for _, assertion := range assertions {
+		if assertion.ID == SystemMetadataAssertionID { // Ensure `ID` exists
+			found = true
+
+			// Validate JSON in Statement.Value
+			var metadata map[string]interface{}
+			err := json.Unmarshal([]byte(assertion.Statement.Value), &metadata) // Ensure `Statement.Value` exists
+			s.Require().NoError(err, "Statement Value is not valid JSON")
+
+			// Check JSON fields
+			s.Equal(TDFSpecVersion, metadata["tdf_spec_version"], "tdf_spec_version mismatch")
+			s.Equal(runtime.GOOS, metadata["operating_system"], "operating_system mismatch")
+			s.Equal("Go-"+Version, metadata["sdk_version"], "sdk_version mismatch")
+			s.Equal(runtime.GOARCH, metadata["architecture"], "architecture mismatch")
+			s.Equal(runtime.Version(), metadata["go_version"], "go_version mismatch")
+		}
+	}
+	s.True(found, "System metadata assertion not found")
+}
+
 func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
 	type TestConfig struct {
 		tdfOptions     []TDFOption
@@ -649,7 +709,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -660,7 +720,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -678,7 +738,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -689,7 +749,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -708,7 +768,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -720,7 +780,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -741,7 +801,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -756,7 +816,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -790,7 +850,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -805,7 +865,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -830,7 +890,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -1055,7 +1115,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -1067,7 +1127,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -1084,7 +1144,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -1099,7 +1159,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -1132,7 +1192,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -1147,7 +1207,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",

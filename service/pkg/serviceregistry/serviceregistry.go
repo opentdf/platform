@@ -17,6 +17,7 @@ import (
 
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/trust"
@@ -42,6 +43,9 @@ type RegistrationParams struct {
 	// Logger is the logger that can be used to log messages. This logger is scoped to the service
 	Logger *logger.Logger
 	trace.Tracer
+
+	// Cache is the cache that can be used to cache data. This cache is scoped to the service
+	Cache *cache.Cache[any]
 
 	KeyManagers []trust.KeyManager
 
@@ -84,6 +88,11 @@ type IService interface {
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
+}
+
+// CacheSupportedService is implemented by services that support caching.
+type CacheSupportedService interface {
+	CacheOptions() *cache.Options
 }
 
 // Service is a struct that holds the registration information for a service as well as the state

@@ -524,7 +524,7 @@ func (s *TDFSuite) Test_SystemMetadataAssertions() {
 
 	found := false
 	for _, assertion := range assertions {
-		if assertion.ID == "system-metadata" { // Ensure `ID` exists
+		if assertion.ID == SystemMetadataAssertionID { // Ensure `ID` exists
 			found = true
 
 			// Validate JSON in Statement.Value

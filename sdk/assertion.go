@@ -13,6 +13,11 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 )
 
+const (
+	SystemMetadataAssertionID = "system-metadata"
+	SystemMetadataSchemaV1    = "system-metadata-v1"
+)
+
 // AssertionConfig is a shadow of Assertion with the addition of the signing key.
 // It is used on creation
 type AssertionConfig struct {
@@ -315,13 +320,13 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 	}
 
 	return AssertionConfig{
-		ID:             "system-metadata",
+		ID:             SystemMetadataAssertionID,
 		Type:           BaseAssertion,
 		Scope:          PayloadScope,
 		AppliesToState: Unencrypted,
 		Statement: Statement{
 			Format: "json",
-			Schema: "system-metadata-v1",
+			Schema: SystemMetadataSchemaV1,
 			Value:  string(metadataJSON),
 		},
 	}, nil

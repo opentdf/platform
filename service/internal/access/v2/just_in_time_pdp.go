@@ -38,11 +38,7 @@ func NewJustInTimePDP(
 	sdk *otdfSDK.SDK,
 	store EntitlementPolicyStore,
 ) (*JustInTimePDP, error) {
-	var (
-		err                error
-		allAttributes      []*policy.Attribute
-		allSubjectMappings []*policy.SubjectMapping
-	)
+	var err error
 
 	if sdk == nil {
 		return nil, ErrMissingRequiredSDK
@@ -63,11 +59,11 @@ func NewJustInTimePDP(
 		l.DebugContext(ctx, "no EntitlementPolicyStore provided, will retrieve directly from policy services")
 		store = NewEntitlementPolicyRetriever(sdk)
 	}
-	allAttributes, err = store.ListAllAttributes(ctx)
+	allAttributes, err := store.ListAllAttributes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list cached attributes: %w", err)
 	}
-	allSubjectMappings, err = store.ListAllSubjectMappings(ctx)
+	allSubjectMappings, err := store.ListAllSubjectMappings(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list cached subject mappings: %w", err)
 	}

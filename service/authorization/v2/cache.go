@@ -27,11 +27,12 @@ var (
 	// stopTimeout is the maximum time to wait for the periodic refresh goroutine to stop
 	stopTimeout = 5 * time.Second
 
-	ErrFailedToStartCache   = errors.New("failed to start EntitlementPolicyCache")
-	ErrFailedToRefreshCache = errors.New("failed to refresh EntitlementPolicyCache")
-	ErrFailedToSet          = errors.New("failed to set cache with fresh EntitlementPolicy")
-	ErrFailedToGet          = errors.New("failed to get cached EntitlementPolicy")
-	ErrCacheDisabled        = errors.New("EntitlementPolicyCache is disabled (refresh interval is 0 seconds)")
+	ErrFailedToStartCache       = errors.New("failed to start EntitlementPolicyCache")
+	ErrFailedToRefreshCache     = errors.New("failed to refresh EntitlementPolicyCache")
+	ErrFailedToSet              = errors.New("failed to set cache with fresh EntitlementPolicy")
+	ErrFailedToGet              = errors.New("failed to get cached EntitlementPolicy")
+	ErrCacheDisabled            = errors.New("EntitlementPolicyCache is disabled (refresh interval is 0 seconds)")
+	ErrTypeNotEntitlementPolicy = errors.New("cached data is not of type EntitlementPolicy")
 )
 
 // EntitlementPolicyCache caches attributes and subject mappings with periodic refresh
@@ -195,7 +196,7 @@ func (c *EntitlementPolicyCache) ListAllAttributes(ctx context.Context) ([]*poli
 	}
 	attrs, ok := cached.([]*policy.Attribute)
 	if !ok {
-		return nil, fmt.Errorf("cached data is not of type EntitlementPolicy")
+		return nil, ErrTypeNotEntitlementPolicy
 	}
 	return attrs, nil
 }
@@ -208,7 +209,7 @@ func (c *EntitlementPolicyCache) ListAllSubjectMappings(ctx context.Context) ([]
 	}
 	subjectMappings, ok := cached.([]*policy.SubjectMapping)
 	if !ok {
-		return nil, fmt.Errorf("cached data is not of type EntitlementPolicy")
+		return nil, ErrTypeNotEntitlementPolicy
 	}
 	return subjectMappings, nil
 }
@@ -221,7 +222,7 @@ func (c *EntitlementPolicyCache) ListAllRegisteredResources(ctx context.Context)
 	}
 	registeredResources, ok := cached.([]*policy.RegisteredResource)
 	if !ok {
-		return nil, fmt.Errorf("cached data is not of type EntitlementPolicy")
+		return nil, ErrTypeNotEntitlementPolicy
 	}
 	return registeredResources, nil
 }

@@ -27,13 +27,12 @@ import (
 
 // MockKeyDetails is a test implementation of KeyDetails
 type MockKeyDetails struct {
-	id             trust.KeyIdentifier
-	algorithm      string
-	legacy         bool
-	certData       string
-	pemData        string
-	jwkData        string
-	providerConfig policy.KeyProviderConfig
+	id        trust.KeyIdentifier
+	algorithm string
+	legacy    bool
+	certData  string
+	pemData   string
+	jwkData   string
 }
 
 // Mode is a mock implementation of the Mode method required by the trust.KeyDetails interface.

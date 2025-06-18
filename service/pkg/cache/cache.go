@@ -3,7 +3,6 @@ package cache
 import (
 	"context"
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -30,7 +29,6 @@ type Cache struct {
 
 type Options struct {
 	Expiration time.Duration
-	Cost       int64
 }
 
 // NewCacheManager creates a new cache manager using Ristretto as the backend.
@@ -41,7 +39,7 @@ func NewCacheManager(maxCost int64) (*Manager, error) {
 	}
 	config := &ristretto.Config{
 		NumCounters: numCounters, // number of keys to track frequency of (10x max items)
-		MaxCost:     maxCost,     // maximum cost of cache (e.g., 1<<20 for 1MB)
+		// MaxCost:     maxCost,     // maximum cost of cache (e.g., 1<<20 for 1MB)
 		BufferItems: bufferItems, // number of keys per Get buffer.
 	}
 	store, err := ristretto.NewCache(config)
@@ -70,8 +68,7 @@ func (c *Manager) NewCache(serviceName string, log *logger.Logger, options Optio
 	cache.logger = log.
 		With("subsystem", "cache").
 		With("serviceTag", cache.getServiceTag()).
-		With("expiration", options.Expiration.String()).
-		With("cost", strconv.FormatInt(options.Cost, 10))
+		With("expiration", options.Expiration.String())
 	cache.logger.Info("created cache")
 	return cache, nil
 }
@@ -92,9 +89,6 @@ func (c *Cache) Get(ctx context.Context, key string) (any, error) {
 func (c *Cache) Set(ctx context.Context, key string, object any, tags []string) error {
 	tags = append(tags, c.getServiceTag())
 	opts := []store.Option{store.WithTags(tags)}
-	if c.cacheOptions.Cost > 0 {
-		opts = append(opts, store.WithCost(c.cacheOptions.Cost))
-	}
 
 	err := c.manager.cache.Set(ctx, c.getKey(key), object, opts...)
 	if err != nil {

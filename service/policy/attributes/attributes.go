@@ -371,7 +371,7 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 }
 
 func (s *AttributesService) AssignKeyAccessServerToAttribute(_ context.Context, _ *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("method AssignKeyAccessServerToAttribute is deprecated"))
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("This compatibility stub will be removed entirely in the following release."))
 }
 
 func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error) {
@@ -399,7 +399,7 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 }
 
 func (s *AttributesService) AssignKeyAccessServerToValue(_ context.Context, _ *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("method AssignKeyAccessServerToValue is deprecated"))
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("This compatibility stub will be removed entirely in the following release."))
 }
 
 func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error) {

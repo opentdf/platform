@@ -41,7 +41,7 @@ type Config struct {
 
 func OnServicesStarted(svc *Service) serviceregistry.OnServicesStartedHook {
 	return func(ctx context.Context) error {
-		if svc.config.CacheRefreshIntervalSeconds > 0 {
+		if svc.platformCacheClient != nil {
 			c, err := NewEntitlementPolicyCache(ctx, svc.logger, svc.sdk, svc.platformCacheClient, svc.config.CacheRefreshIntervalSeconds)
 			if err != nil {
 				svc.logger.ErrorContext(ctx, "failed to create entitlement policy cache", slog.Any("error", err))
@@ -70,7 +70,8 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authzV2Connect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				authZCfg := new(Config)
 
-				if err := defaults.Set(authZCfg); err != nil {
+				err := defaults.Set(authZCfg)
+				if err != nil {
 					panic(fmt.Errorf("failed to set defaults for policy service config: %w", err))
 				}
 
@@ -86,7 +87,15 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				as.sdk = srp.SDK
 				as.logger = logger
 
-				as.platformCacheClient = srp.Cache
+				if authZCfg.CacheRefreshIntervalSeconds > 0 {
+					as.platformCacheClient, err = srp.NewCacheClient(cache.Options{})
+					if err != nil {
+						logger.Error("failed to create platform cache client", slog.Any("error", err))
+						panic(fmt.Errorf("failed to create platform cache client: %w", err))
+					}
+				} else {
+					logger.Debug("entitlement policy cache is disabled")
+				}
 
 				// if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 				// 	logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
@@ -94,7 +103,6 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 
 				as.config = authZCfg
 				as.Tracer = srp.Tracer
-				logger.Debug("authorization v2 service register func")
 
 				return as, nil
 			},
@@ -108,12 +116,6 @@ func (as *Service) Close() {
 	if as.cache != nil {
 		as.cache.Stop()
 	}
-}
-
-// Satisfy the interface to receive a cache client from global platform cache, but let auth service drive its own refresh
-// behavior rather than setting lifetime on individual keys, which have unknown size (cost) depending on underlying policy.
-func (as *Service) CacheOptions() *cache.Options {
-	return &cache.Options{}
 }
 
 // TODO: uncomment after v1 is deprecated, as cannot have more than one readiness check under a namespace

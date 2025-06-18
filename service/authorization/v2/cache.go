@@ -69,7 +69,7 @@ func NewEntitlementPolicyCache(
 	}
 	l = l.With("component", "EntitlementPolicyCache")
 
-	l.DebugContext(ctx, "Initializing cache...", slog.Int("refresh_interval_seconds", cacheRefreshIntervalSeconds))
+	l.DebugContext(ctx, "Initializing cache", slog.Int("refresh_interval_seconds", cacheRefreshIntervalSeconds))
 
 	instance := &EntitlementPolicyCache{
 		logger:                    l,
@@ -86,7 +86,7 @@ func NewEntitlementPolicyCache(
 	}
 
 	// Only set the instance if Start() succeeds
-	l.DebugContext(ctx, "Shared EntitlementPolicyCache initialized")
+	l.DebugContext(ctx, "EntitlementPolicyCache initialized")
 	return instance, nil
 }
 
@@ -170,7 +170,7 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 		return errors.Join(ErrFailedToSet, err)
 	}
 
-	registeredResources, err := c.ListAllRegisteredResources(ctx)
+	registeredResources, err := c.retriever.ListAllRegisteredResources(ctx)
 	if err != nil {
 		return err
 	}
@@ -183,6 +183,7 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 		"EntitlementPolicyCache refreshed",
 		"attributes_count", len(attributes),
 		"subject_mappings_count", len(subjectMappings),
+		"registered_resources_count", len(registeredResources),
 	)
 
 	return nil

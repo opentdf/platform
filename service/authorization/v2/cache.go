@@ -45,10 +45,15 @@ type EntitlementPolicyCache struct {
 	cacheClient *cache.Cache
 
 	// SDK-connected retriever to fetch fresh data from policy services
-	retriever                 *access.EntitlementPolicyRetriever
+	retriever *access.EntitlementPolicyRetriever
+
+	// Refresh state
 	configuredRefreshInterval time.Duration
 	stopRefresh               chan struct{}
 	refreshCompleted          chan struct{}
+
+	// isCacheFilled indicates if the cache has been filled
+	isCacheFilled bool
 }
 
 // The EntitlementPolicy struct holds all the cached entitlement policy, as generics allow one
@@ -96,6 +101,16 @@ func NewEntitlementPolicyCache(
 
 func (c *EntitlementPolicyCache) IsEnabled() bool {
 	return c != nil
+}
+
+func (c *EntitlementPolicyCache) IsReady(ctx context.Context) bool {
+	if !c.isCacheFilled {
+		if err := c.Refresh(ctx); err != nil {
+			c.logger.ErrorContext(ctx, "Cache is not ready", "error", err)
+			return false
+		}
+	}
+	return true
 }
 
 // Start initiates the cache and begins periodic refresh
@@ -181,6 +196,9 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 		"subject_mappings_count", len(subjectMappings),
 		"registered_resources_count", len(registeredResources),
 	)
+
+	// Mark the cache as filled after a successful refresh
+	c.isCacheFilled = true
 
 	return nil
 }

@@ -56,8 +56,8 @@ func NewJustInTimePDP(
 	}
 
 	// If no store is provided, have EntitlementPolicyRetriever fetch from policy services
-	if !store.IsEnabled() {
-		l.DebugContext(ctx, "no EntitlementPolicyStore provided, will retrieve directly from policy services")
+	if !store.IsEnabled() || !store.IsReady(ctx) {
+		l.DebugContext(ctx, "no EntitlementPolicyStore provided or not yet ready, will retrieve directly from policy services")
 		store = NewEntitlementPolicyRetriever(sdk)
 	}
 

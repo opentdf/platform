@@ -257,8 +257,7 @@ func (c *EntitlementPolicyCache) ListAllRegisteredResources(ctx context.Context)
 
 // periodicRefresh refreshes the cache at the specified interval
 func (c *EntitlementPolicyCache) periodicRefresh(ctx context.Context) {
-	//nolint:mnd // Half the refresh interval for the context timeout
-	waitTimeout := c.configuredRefreshInterval / 2
+	waitTimeout := c.configuredRefreshInterval
 
 	ticker := time.NewTicker(c.configuredRefreshInterval)
 	defer func() {

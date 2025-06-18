@@ -72,7 +72,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 	}
 }
 
-// Close gracefully shuts down the attributes service's database client.
+// Close gracefully shuts down the service, closing the database client.
 func (s *AttributesService) Close() {
 	s.logger.Info("gracefully shutting down attributes service")
 	s.dbClient.Close()

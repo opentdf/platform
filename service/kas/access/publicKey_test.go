@@ -16,6 +16,7 @@ import (
 
 	"connectrpc.com/connect"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/trust"
@@ -78,6 +79,10 @@ func (m *MockKeyDetails) ExportCertificate(_ context.Context) (string, error) {
 		return "", errors.New("certificate not available")
 	}
 	return m.certData, nil
+}
+
+func (m *MockKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
+	return nil
 }
 
 // MockSecurityProvider is a test implementation of SecurityProvider

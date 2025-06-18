@@ -191,34 +191,6 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 	}, nil
 }
 
-// Loads all attributes into memory by making iterative db roundtrip requests of defaultObjectListAllLimit size
-func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
-	var nextOffset int32
-	attrsList := make([]*policy.Attribute, 0)
-
-	for {
-		listed, err := c.ListAttributes(ctx, &attributes.ListAttributesRequest{
-			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
-			Pagination: &policy.PageRequest{
-				Limit:  c.listCfg.limitMax,
-				Offset: nextOffset,
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to list all attributes: %w", err)
-		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
-		attrsList = append(attrsList, listed.GetAttributes()...)
-
-		// offset becomes zero when list is exhausted
-		if nextOffset <= 0 {
-			break
-		}
-	}
-	return attrsList, nil
-}
-
 func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*policy.Attribute, error) {
 	var (
 		attr   GetAttributeRow

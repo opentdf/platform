@@ -29,7 +29,7 @@ type Service struct {
 	trace.Tracer
 	cache *EntitlementPolicyCache
 
-	// client managed and provided by service registration params
+	// client managed by platform, provided by registration params
 	platformCacheClient *cache.Cache
 }
 

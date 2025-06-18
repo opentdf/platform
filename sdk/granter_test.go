@@ -284,22 +284,6 @@ func createPublicKey(kid, pem string, algorithm policy.KasPublicKeyAlgEnum) *pol
 	}
 }
 
-func createPublicKey(kid, pem string, algorithm policy.KasPublicKeyAlgEnum) *policy.PublicKey {
-	return &policy.PublicKey{
-		PublicKey: &policy.PublicKey_Cached{
-			Cached: &policy.KasPublicKeySet{
-				Keys: []*policy.KasPublicKey{
-					{
-						Kid: kid,
-						Alg: algorithm,
-						Pem: pem,
-					},
-				},
-			},
-		},
-	}
-}
-
 func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 	an := fqn.Prefix()
 	a := mockAttributeFor(an)
@@ -356,12 +340,10 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 		switch strings.ToLower(fqn.Value()) {
 		case "a":
 			p.KasKeys = make([]*policy.SimpleKasKey, 1)
-			p.Grants = make([]*policy.KeyAccessServer, 1)
 			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "r2")
 
 		case "b":
 			p.KasKeys = make([]*policy.SimpleKasKey, 1)
-			p.Grants = make([]*policy.KeyAccessServer, 1)
 			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "e1")
 
 		case "c":

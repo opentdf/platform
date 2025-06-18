@@ -77,12 +77,12 @@ func getBaseKey(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
 
 	baseKeyStructure, ok := configMap[baseKeyWellKnown]
 	if !ok {
-		return nil, errBaseKeyNotFound
+		return nil, ErrBaseKeyNotFound
 	}
 
 	baseKeyMap, ok := baseKeyStructure.(map[string]interface{})
 	if !ok {
-		return nil, errBaseKeyInvalidFormat
+		return nil, ErrBaseKeyInvalidFormat
 	}
 
 	simpleKasKey, err := parseSimpleKasKey(baseKeyMap)
@@ -97,28 +97,28 @@ func parseSimpleKasKey(baseKeyMap map[string]interface{}) (*policy.SimpleKasKey,
 	simpleKasKey := &policy.SimpleKasKey{}
 
 	if len(baseKeyMap) == 0 {
-		return nil, errBaseKeyEmpty
+		return nil, ErrBaseKeyEmpty
 	}
 
 	publicKey, ok := baseKeyMap[baseKeyPublicKey].(map[string]interface{})
 	if !ok {
-		return nil, errBaseKeyInvalidFormat
+		return nil, ErrBaseKeyInvalidFormat
 	}
 
 	alg, ok := publicKey[baseKeyAlg].(string)
 	if !ok {
-		return nil, errBaseKeyInvalidFormat
+		return nil, ErrBaseKeyInvalidFormat
 	}
 	publicKey[baseKeyAlg] = getKasKeyAlg(alg)
 	baseKeyMap[baseKeyPublicKey] = publicKey
 	configJSON, err := json.Marshal(baseKeyMap)
 	if err != nil {
-		return nil, errors.Join(errMarshalBaseKeyFailed, err)
+		return nil, errors.Join(ErrMarshalBaseKeyFailed, err)
 	}
 
 	err = protojson.Unmarshal(configJSON, simpleKasKey)
 	if err != nil {
-		return nil, errors.Join(errUnmarshalBaseKeyFailed, err)
+		return nil, errors.Join(ErrUnmarshalBaseKeyFailed, err)
 	}
 	return simpleKasKey, nil
 }

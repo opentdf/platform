@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"testing"
 
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -123,6 +124,14 @@ func (m *MockKeyDetails) ExportCertificate(ctx context.Context) (string, error) 
 func (m *MockKeyDetails) System() string {
 	args := m.Called()
 	return args.String(0)
+}
+
+func (m *MockKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
+	args := m.Called()
+	if a0, ok := args.Get(0).(*policy.KeyProviderConfig); ok {
+		return a0
+	}
+	return nil
 }
 
 type MockProtectedKey struct {

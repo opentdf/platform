@@ -11,6 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/trust"
 )
 
@@ -177,6 +178,10 @@ func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error)
 		return k.cryptoProvider.ECCertificate(kid)
 	}
 	return "", errors.New("certificates only available for EC keys")
+}
+
+func (k *KeyDetailsAdapter) ProviderConfig() *policy.KeyProviderConfig {
+	return nil
 }
 
 // NewSecurityProviderAdapter creates a new adapter that implements SecurityProvider using a CryptoProvider

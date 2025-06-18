@@ -2,6 +2,8 @@ package trust
 
 import (
 	"context"
+
+	"github.com/opentdf/platform/protocol/go/policy"
 )
 
 // KeyType represents the format in which a key can be exported
@@ -47,6 +49,9 @@ type KeyDetails interface {
 
 	// Gets the mode indicator for the key; this is used to lookup the appropriate KeyManager.
 	System() string
+
+	// Get the provider configutaiton for the key
+	ProviderConfig() *policy.KeyProviderConfig
 }
 
 // KeyIndex provides methods to locate keys by various criteria

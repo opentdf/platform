@@ -163,6 +163,10 @@ func (p *KeyAdapter) System() string {
 	return mode
 }
 
+func (p *KeyAdapter) ProviderConfig() *policy.KeyProviderConfig {
+	return p.key.GetKey().GetProviderConfig()
+}
+
 func pemToPublicKey(publicPEM string) (*rsa.PublicKey, error) {
 	// Decode the PEM data
 	block, _ := pem.Decode([]byte(publicPEM))

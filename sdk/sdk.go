@@ -40,6 +40,7 @@ const (
 	ErrPlatformTokenEndpointNotFound = Error("token_endpoint not found in well-known idp configuration")
 	ErrPlatformEndpointNotFound      = Error("platform_endpoint not found in well-known configuration")
 	ErrAccessTokenInvalid            = Error("access token is invalid")
+	ErrWellKnowConfigEmpty           = Error("well-known configuration is empty")
 )
 
 type Error string

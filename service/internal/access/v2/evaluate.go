@@ -17,7 +17,7 @@ import (
 
 var (
 	ErrInvalidResource              = errors.New("access: invalid resource")
-	ErrFQNNotFound                  = errors.New("access: attribute value FQN not found in memory")
+	ErrFQNNotFound                  = errors.New("access: attribute value FQN not found")
 	ErrDefinitionNotFound           = errors.New("access: definition not found for FQN")
 	ErrFailedEvaluation             = errors.New("access: failed to evaluate definition")
 	ErrMissingRequiredSpecifiedRule = errors.New("access: AttributeDefinition rule cannot be unspecified")
@@ -28,7 +28,7 @@ var (
 // between entitlement checks for the different types of resources
 func getResourceDecision(
 	ctx context.Context,
-	logger *logger.Logger,
+	l *logger.Logger,
 	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
 	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
@@ -39,7 +39,7 @@ func getResourceDecision(
 		return nil, err
 	}
 
-	logger.DebugContext(
+	l.DebugContext(
 		ctx,
 		"getting decision on one resource",
 		slog.Any("resource", resource.GetResource()),
@@ -82,7 +82,7 @@ func getResourceDecision(
 		return nil, fmt.Errorf("unsupported resource type: %w", ErrInvalidResource)
 	}
 
-	return evaluateResourceAttributeValues(ctx, logger, resourceAttributeValues, resourceID, action, entitlements, accessibleAttributeValues)
+	return evaluateResourceAttributeValues(ctx, l, resourceAttributeValues, resourceID, action, entitlements, accessibleAttributeValues)
 }
 
 // evaluateResourceAttributeValues evaluates a list of attribute values against the action and entitlements
@@ -151,7 +151,6 @@ func evaluateDefinition(
 
 	l = l.With("definitionRule", attrDefinition.GetRule().String())
 	l = l.With("definitionFQN", attrDefinition.GetFqn())
-	l = l.With("action", action.GetName())
 
 	l.DebugContext(
 		ctx,
@@ -176,9 +175,15 @@ func evaluateDefinition(
 	}
 
 	passed := len(entitlementFailures) == 0
+	simpleAttribute := &policy.Attribute{
+		Id:   attrDefinition.GetId(),
+		Fqn:  attrDefinition.GetFqn(),
+		Rule: attrDefinition.GetRule(),
+	}
 	result := &DataRuleResult{
-		Passed:         passed,
-		RuleDefinition: attrDefinition,
+		Passed:            passed,
+		Attribute:         simpleAttribute,
+		ResourceValueFQNs: resourceValueFQNs,
 	}
 	l.DebugContext(ctx, "definition evaluation result", slog.Bool("passed", passed))
 	if !passed {
@@ -282,8 +287,8 @@ func anyOfRule(
 // 3. If the highest value FQN or any higher value has the required entitlement, the rule passes with no failures
 // 4. If no hierarchically relevant FQN has the required entitlement, the rule fails with all missing entitlements
 func hierarchyRule(
-	_ context.Context,
-	_ *logger.Logger,
+	ctx context.Context,
+	l *logger.Logger,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resourceValueFQNs []string,
@@ -295,15 +300,16 @@ func hierarchyRule(
 	}
 
 	actionName := action.GetName()
+	attrValues := attrDefinition.GetValues()
 
 	// Create a lookup map for the attribute value indices - O(n) where n is the number of values in the attribute
-	valueFQNToIndex := make(map[string]int, len(attrDefinition.GetValues()))
-	for idx, value := range attrDefinition.GetValues() {
+	valueFQNToIndex := make(map[string]int, len(attrValues))
+	for idx, value := range attrValues {
 		valueFQNToIndex[value.GetFqn()] = idx
 	}
 
 	// Find the lowest indexed value FQN (highest in hierarchy) - O(m) where m is the number of resource values
-	lowestValueFQNIndex := len(attrDefinition.GetValues())
+	lowestValueFQNIndex := len(attrValues)
 	for _, valueFQN := range resourceValueFQNs {
 		if idx, exists := valueFQNToIndex[valueFQN]; exists && idx < lowestValueFQNIndex {
 			lowestValueFQNIndex = idx
@@ -318,6 +324,16 @@ func hierarchyRule(
 			// Check if the required action is entitled
 			for _, entitledAction := range entitledActions {
 				if strings.EqualFold(entitledAction.GetName(), actionName) {
+					l.DebugContext(ctx, "hierarchy rule satisfied",
+						slog.Group("entitled_by_value",
+							slog.String("FQN", entitlementFQN),
+							slog.Int("index", idx),
+						),
+						slog.Group("resource_highest_hierarchy_value",
+							slog.String("FQN", attrValues[lowestValueFQNIndex].GetFqn()),
+							slog.Int("index", lowestValueFQNIndex),
+						),
+					)
 					return nil // Found an entitled action at or above the hierarchy level, no failures
 				}
 			}

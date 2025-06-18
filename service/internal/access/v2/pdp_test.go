@@ -1462,7 +1462,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 		s.Equal("secret-engineering-usa-uk-resource", resourceDecision.ResourceID)
 		s.Len(resourceDecision.DataRuleResults, 3)
 		for _, ruleResult := range resourceDecision.DataRuleResults {
-			switch ruleResult.RuleDefinition.GetFqn() {
+			switch ruleResult.Attribute.GetFqn() {
 			case testClassificationFQN:
 				s.True(ruleResult.Passed)
 			case testDepartmentFQN:
@@ -1530,7 +1530,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 			} else {
 				failCount++
 				// Check that failure is for country attribute
-				s.Contains(dataRule.RuleDefinition.GetFqn(), "department")
+				s.Contains(dataRule.Attribute.GetFqn(), "department")
 			}
 		}
 		s.Equal(2, passCount, "Two attributes should pass")
@@ -1575,7 +1575,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 			if dataRule.Passed {
 				passCount++
 				// Only the platform attribute should pass for delete
-				s.Contains(dataRule.RuleDefinition.GetFqn(), "platform")
+				s.Contains(dataRule.Attribute.GetFqn(), "platform")
 			} else {
 				failCount++
 			}
@@ -1768,10 +1768,10 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 		s.Len(onlyDecision.DataRuleResults, 3)
 		for _, dataRule := range onlyDecision.DataRuleResults {
 			if dataRule.Passed {
-				isExpected := dataRule.RuleDefinition.GetFqn() == testPlatformFQN || dataRule.RuleDefinition.GetFqn() == testClassificationFQN
+				isExpected := dataRule.Attribute.GetFqn() == testPlatformFQN || dataRule.Attribute.GetFqn() == testClassificationFQN
 				s.True(isExpected, "Platform and classification should pass")
 			} else {
-				s.Equal(testProjectFQN, dataRule.RuleDefinition.GetFqn(), "Project should fail")
+				s.Equal(testProjectFQN, dataRule.Attribute.GetFqn(), "Project should fail")
 				s.Len(dataRule.EntitlementFailures, 1)
 				s.Equal(testProjectAlphaFQN, dataRule.EntitlementFailures[0].AttributeValueFQN)
 			}

@@ -2,18 +2,28 @@ package sdk
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdh"
 	"crypto/rand"
 	"encoding/gob"
+	"errors"
 	"io"
 	"os"
 	"testing"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/structpb"
+)
+
+const (
+	nanoFakePem = "pem"
 )
 
 // nanotdfEqual compares two nanoTdf structures for equality.
@@ -384,5 +394,281 @@ func TestDataSet(t *testing.T) {
 	header, _ := getHeaderAndSymKey(conf)
 	if bytes.Equal(header, header1) {
 		t.Fatal("header did not reset")
+	}
+}
+
+type NanoSuite struct {
+	suite.Suite
+}
+
+func TestNanoTDF(t *testing.T) {
+	suite.Run(t, new(NanoSuite))
+}
+
+// mockWellKnownServiceClient is a mock implementation of sdkconnect.WellKnownServiceClient
+type mockWellKnownServiceClient struct {
+	mockResponse func() (*wellknownconfiguration.GetWellKnownConfigurationResponse, error)
+}
+
+func (m *mockWellKnownServiceClient) GetWellKnownConfiguration(_ context.Context, _ *wellknownconfiguration.GetWellKnownConfigurationRequest) (*wellknownconfiguration.GetWellKnownConfigurationResponse, error) {
+	if m.mockResponse != nil {
+		return m.mockResponse()
+	}
+	return nil, errors.New("no mock response configured")
+}
+
+func (s *NanoSuite) Test_CreateNanoTDF_BaseKey() {
+	// Mock KAS Info
+	mockKASInfo := &KASInfo{
+		URL:       "https://kas.example.com",
+		PublicKey: mockECPublicKey1,
+		KID:       "key-p256",
+	}
+
+	baseKey := createTestBaseKeyMap(&s.Suite, policy.Algorithm_ALGORITHM_EC_P256, mockKASInfo.KID, mockKASInfo.PublicKey, mockKASInfo.URL)
+	wellKnown := createWellKnown(baseKey)
+	mockClient := createMockWellKnownServiceClient(&s.Suite, wellKnown, nil)
+
+	// Create SDK
+	sdk := &SDK{
+		wellknownConfiguration: mockClient,
+	}
+
+	config, err := sdk.NewNanoTDFConfig()
+	s.Require().NoError(err)
+
+	err = config.SetKasURL("http://should-change.com")
+	s.Require().NoError(err)
+
+	// Mock writer and reader
+	writer := new(bytes.Buffer)
+	reader := bytes.NewReader([]byte("test data"))
+
+	// Call CreateNanoTDF
+	_, err = sdk.CreateNanoTDF(writer, reader, *config)
+	s.Require().NoError(err)
+
+	// Check that writer is not empty
+	s.Require().NotEmpty(writer.Bytes())
+}
+
+func (s *NanoSuite) Test_GetKasInfoForNanoTDF_BaseKey() {
+	tests := []struct {
+		name           string
+		algorithm      policy.Algorithm
+		kasURI         string
+		publicKeyPem   string
+		kid            string
+		wellKnownError error
+		expectedInfo   *KASInfo
+		expectedError  string
+	}{
+		{
+			name:         "Base Key Enabled - EC P256 - Success",
+			algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
+			kasURI:       "https://kas.example.com",
+			publicKeyPem: nanoFakePem,
+			kid:          "key-p256",
+			expectedInfo: &KASInfo{
+				URL:       "https://kas.example.com",
+				PublicKey: nanoFakePem,
+				KID:       "key-p256",
+				Algorithm: "ec:secp256r1",
+			},
+		},
+		{
+			name:         "Base Key Enabled - EC P384 - Success",
+			algorithm:    policy.Algorithm_ALGORITHM_EC_P384,
+			kasURI:       "https://kas.example.com",
+			publicKeyPem: nanoFakePem,
+			kid:          "key-p384",
+			expectedInfo: &KASInfo{
+				URL:       "https://kas.example.com",
+				PublicKey: nanoFakePem,
+				KID:       "key-p384",
+				Algorithm: "ec:secp384r1",
+			},
+		},
+		{
+			name:         "Base Key Enabled - EC P521 - Success",
+			algorithm:    policy.Algorithm_ALGORITHM_EC_P521,
+			kasURI:       "https://kas.example.com",
+			publicKeyPem: nanoFakePem,
+			kid:          "key-p521",
+			expectedInfo: &KASInfo{
+				URL:       "https://kas.example.com",
+				PublicKey: nanoFakePem,
+				KID:       "key-p521",
+				Algorithm: "ec:secp521r1",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			// Create a mock wellknown configuration response
+			baseKey := createTestBaseKeyMap(&s.Suite, tt.algorithm, tt.kid, tt.publicKeyPem, tt.kasURI)
+			wellKnown := createWellKnown(baseKey)
+			mockClient := createMockWellKnownServiceClient(&s.Suite, wellKnown, tt.wellKnownError)
+
+			// Create SDK with mocked wellknown client
+			sdk := &SDK{
+				wellknownConfiguration: mockClient,
+			}
+
+			// Create a NanoTDFConfig
+			config := NanoTDFConfig{
+				bindCfg: bindingConfig{
+					eccMode: ocrypto.ECCModeSecp384r1,
+				},
+			}
+			kasURL := "https://should-not-change.com"
+			err := config.SetKasURL(kasURL)
+			s.Require().NoError(err)
+
+			// Call the getKasInfoForNanoTDF function
+			info, err := getKasInfoForNanoTDF(sdk, &config)
+
+			// Check for expected errors
+			if tt.expectedError != "" {
+				s.Require().Error(err)
+				s.Require().Nil(info)
+				return
+			}
+
+			// Check success case
+			s.Require().NoError(err)
+			s.Require().NotNil(info)
+			s.Require().Equal(tt.expectedInfo.URL, info.URL)
+			s.Require().Equal(tt.expectedInfo.PublicKey, info.PublicKey)
+			s.Require().Equal(tt.expectedInfo.KID, info.KID)
+			s.Require().Equal(tt.expectedInfo.Algorithm, info.Algorithm)
+			// Ensure the config was updated.
+			actualURL, err := config.kasURL.GetURL()
+			s.Require().NoError(err)
+			s.Require().Equal(tt.kasURI, actualURL)
+			expectedEcMode, err := ocrypto.ECKeyTypeToMode(ocrypto.KeyType(tt.expectedInfo.Algorithm))
+			s.Require().NoError(err)
+			s.Require().Equal(expectedEcMode, config.bindCfg.eccMode)
+		})
+	}
+}
+
+func (s *NanoSuite) Test_PopulateNanoBaseKeyWithMockWellKnown() {
+	// Define test cases
+	tests := []struct {
+		name           string
+		algorithm      policy.Algorithm
+		kasURI         string
+		publicKeyPem   string
+		kid            string
+		wellKnownError error
+		expectedInfo   *KASInfo
+		expectedError  string
+	}{
+		{
+			name:         "EC P256 - Success",
+			algorithm:    policy.Algorithm_ALGORITHM_EC_P256,
+			kasURI:       "https://kas.example.com",
+			publicKeyPem: nanoFakePem,
+			kid:          "key-p256",
+			expectedInfo: &KASInfo{
+				URL:       "https://kas.example.com",
+				PublicKey: nanoFakePem,
+				KID:       "key-p256",
+				Algorithm: "ec:secp256r1",
+			},
+		},
+		{
+			name:         "EC P384 - Success",
+			algorithm:    policy.Algorithm_ALGORITHM_EC_P384,
+			kasURI:       "https://kas.example.com",
+			publicKeyPem: nanoFakePem,
+			kid:          "key-p384",
+			expectedInfo: &KASInfo{
+				URL:       "https://kas.example.com",
+				PublicKey: nanoFakePem,
+				KID:       "key-p384",
+				Algorithm: "ec:secp384r1",
+			},
+		},
+		{
+			name:         "EC P521 - Success",
+			algorithm:    policy.Algorithm_ALGORITHM_EC_P521,
+			kasURI:       "https://kas.example.com",
+			publicKeyPem: nanoFakePem,
+			kid:          "key-p521",
+			expectedInfo: &KASInfo{
+				URL:       "https://kas.example.com",
+				PublicKey: nanoFakePem,
+				KID:       "key-p521",
+				Algorithm: "ec:secp521r1",
+			},
+		},
+		{
+			name:           "Error from WellKnown Config",
+			algorithm:      policy.Algorithm_ALGORITHM_EC_P256,
+			kasURI:         "https://kas.example.com",
+			wellKnownError: errors.New("failed to get configuration"),
+			expectedError:  "unable to retrieve config information",
+		},
+		{
+			name:          "Unsupported algorithm RSA 2048",
+			algorithm:     policy.Algorithm_ALGORITHM_RSA_2048,
+			kasURI:        "https://localhost:8080",
+			publicKeyPem:  nanoFakePem,
+			kid:           "key-rsa",
+			expectedError: "base key algorithm is not supported for nano",
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			// Create a mock wellknown configuration response
+			baseKey := createTestBaseKeyMap(&s.Suite, tt.algorithm, tt.kid, tt.publicKeyPem, tt.kasURI)
+			wellKnown := createWellKnown(baseKey)
+			mockClient := createMockWellKnownServiceClient(&s.Suite, wellKnown, tt.wellKnownError)
+
+			// Create SDK with mocked wellknown client
+			sdk := &SDK{
+				wellknownConfiguration: mockClient,
+			}
+
+			// Call the real populateNanoBaseKey function
+			info, err := getNanoKasInfoFromBaseKey(sdk)
+
+			// Check for expected errors
+			if tt.expectedError != "" {
+				s.Require().Error(err)
+				s.Require().Contains(err.Error(), tt.expectedError)
+				s.Require().Nil(info)
+				return
+			}
+
+			// Check success case
+			s.Require().NoError(err)
+			s.Require().NotNil(info)
+			s.Require().Equal(tt.expectedInfo.URL, info.URL)
+			s.Require().Equal(tt.expectedInfo.PublicKey, info.PublicKey)
+			s.Require().Equal(tt.expectedInfo.KID, info.KID)
+			s.Require().Equal(tt.expectedInfo.Algorithm, info.Algorithm)
+		})
+	}
+}
+
+func createMockWellKnownServiceClient(s *suite.Suite, wellKnownConfig map[string]interface{}, wellKnownError error) *mockWellKnownServiceClient {
+	return &mockWellKnownServiceClient{
+		mockResponse: func() (*wellknownconfiguration.GetWellKnownConfigurationResponse, error) {
+			if wellKnownError != nil {
+				return nil, wellKnownError
+			}
+
+			cfg, err := structpb.NewStruct(wellKnownConfig)
+			s.Require().NoError(err, "Failed to create struct from well-known configuration")
+
+			return &wellknownconfiguration.GetWellKnownConfigurationResponse{
+				Configuration: cfg,
+			}, nil
+		},
 	}
 }

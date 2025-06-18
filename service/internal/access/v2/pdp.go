@@ -15,6 +15,7 @@ import (
 	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/service/internal/subjectmappingbuiltin"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 )
 
 // Decision represents the overall access decision for an entity.
@@ -33,7 +34,8 @@ type ResourceDecision struct {
 // DataRuleResult represents the result of evaluating one rule for an entity.
 type DataRuleResult struct {
 	Passed              bool                 `json:"passed" example:"false"`
-	RuleDefinition      *policy.Attribute    `json:"rule_definition"`
+	ResourceValueFQNs   []string             `json:"resource_value_fqns"`
+	Attribute           *policy.Attribute    `json:"attribute"`
 	EntitlementFailures []EntitlementFailure `json:"entitlement_failures"`
 }
 
@@ -189,7 +191,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	}
 
 	for idx, resource := range resources {
-		resourceDecision, err := getResourceDecision(ctx, p.logger, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource)
+		resourceDecision, err := getResourceDecision(ctx, l, decisionableAttributes, p.allRegisteredResourceValuesByFQN, entitledFQNsToActions, action, resource)
 		if err != nil || resourceDecision == nil {
 			return nil, fmt.Errorf("error evaluating a decision on resource [%v]: %w", resource, err)
 		}
@@ -207,6 +209,19 @@ func (p *PolicyDecisionPoint) GetDecision(
 		)
 		decision.Results[idx] = *resourceDecision
 	}
+
+	auditDecision := audit.GetDecisionResultDeny
+	if decision.Access {
+		auditDecision = audit.GetDecisionResultPermit
+	}
+
+	l.Audit.GetDecisionV2(ctx, audit.GetDecisionV2EventParams{
+		EntityID:          entityRepresentation.GetOriginalId(),
+		ActionName:        action.GetName(),
+		Decision:          auditDecision,
+		Entitlements:      entitledFQNsToActions,
+		ResourceDecisions: decision.Results,
+	})
 
 	return decision, nil
 }

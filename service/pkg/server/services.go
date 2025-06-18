@@ -194,13 +194,14 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				svcLogger = svcLogger.With("version", svc.GetVersion())
 			}
 
-			// Check if the service supports and needs a cache
-			var cacheClient *cache.Cache
-			if cacheSvc, ok := svc.(serviceregistry.CacheSupportedService); ok {
-				cacheClient, err = cacheManager.NewCache(ns, svcLogger, *cacheSvc.CacheOptions())
+			// Function to create a cache given cache options
+			var createCacheClient func(cache.Options) (*cache.Cache, error) = func(options cache.Options) (*cache.Cache, error) {
+				slog.Info("creating cache client for", slog.String("namespace", ns), slog.String("service", svc.GetServiceDesc().ServiceName))
+				cacheClient, err := cacheManager.NewCache(ns, svcLogger, options)
 				if err != nil {
-					return func() {}, fmt.Errorf("issue creating cache client for %s: %w", ns, err)
+					return nil, fmt.Errorf("issue creating cache client for %s: %w", ns, err)
 				}
+				return cacheClient, nil
 			}
 
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
@@ -212,7 +213,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				RegisterReadinessCheck: health.RegisterReadinessCheck,
 				OTDF:                   otdf, // TODO: REMOVE THIS
 				Tracer:                 tracer,
-				Cache:                  cacheClient,
+				NewCacheClient:         createCacheClient,
 				KeyManagers:            keyManagers,
 			})
 			if err != nil {

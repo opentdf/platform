@@ -44,8 +44,8 @@ type RegistrationParams struct {
 	Logger *logger.Logger
 	trace.Tracer
 
-	// Cache is the cache that can be used to cache data. This cache is scoped to the service
-	Cache *cache.Cache
+	// NewCacheClient is a function that can be used to create a new cache instance for the service
+	NewCacheClient func(cache.Options) (*cache.Cache, error)
 
 	KeyManagers []trust.KeyManager
 
@@ -88,11 +88,6 @@ type IService interface {
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
-}
-
-// CacheSupportedService is implemented by services that support caching.
-type CacheSupportedService interface {
-	CacheOptions() *cache.Options
 }
 
 // Service is a struct that holds the registration information for a service as well as the state

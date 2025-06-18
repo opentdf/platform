@@ -3,7 +3,6 @@ package cache
 import (
 	"context"
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -30,7 +29,7 @@ type Cache struct {
 
 type Options struct {
 	Expiration time.Duration
-	Cost       int64
+	// Cost       int64 // TODO
 }
 
 // NewCacheManager creates a new cache manager using Ristretto as the backend.
@@ -70,8 +69,7 @@ func (c *Manager) NewCache(serviceName string, log *logger.Logger, options Optio
 	cache.logger = log.
 		With("subsystem", "cache").
 		With("serviceTag", cache.getServiceTag()).
-		With("expiration", options.Expiration.String()).
-		With("cost", strconv.FormatInt(options.Cost, 10))
+		With("expiration", options.Expiration.String())
 	cache.logger.Info("created cache")
 	return cache, nil
 }
@@ -91,10 +89,9 @@ func (c *Cache) Get(ctx context.Context, key string) (any, error) {
 // Set stores a value of type T in the cache.
 func (c *Cache) Set(ctx context.Context, key string, object any, tags []string) error {
 	tags = append(tags, c.getServiceTag())
-	opts := []store.Option{
-		store.WithTags(tags),
-		store.WithExpiration(c.cacheOptions.Expiration),
-		store.WithCost(c.cacheOptions.Cost),
+	opts := []store.Option{store.WithTags(tags)}
+	if c.cacheOptions.Expiration > 0 {
+		opts = append(opts, store.WithExpiration(c.cacheOptions.Expiration))
 	}
 
 	err := c.manager.cache.Set(ctx, c.getKey(key), object, opts...)

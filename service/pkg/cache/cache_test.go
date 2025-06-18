@@ -36,7 +36,6 @@ func TestNewCacheManager_NewCacheIntegration(t *testing.T) {
 
 	options := Options{
 		Expiration: 1 * time.Minute,
-		Cost:       1,
 	}
 	cache, err := manager.NewCache("testService", log, options)
 	require.NoError(t, err)

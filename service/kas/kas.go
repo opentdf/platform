@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/access"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
@@ -91,6 +92,16 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 
 				if kasCfg.Preview.KeyManagement {
 					srp.Logger.Info("Preview Feature: Key management is enabled")
+
+					var cacheClient *cache.Cache
+					if kasCfg.KeyCacheExpiration != 0 {
+						cacheClient, err := srp.NewCacheClient(cache.Options{
+							Expiration: kasCfg.KeyCacheExpiration,
+						})
+						if err != nil {
+							panic(err)
+						}
+					}
 
 					// Configure new delegation service
 					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURLString, srp.Logger), srp.Logger)

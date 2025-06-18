@@ -43,17 +43,14 @@ type KASConfig struct {
 
 	RootKey string `mapstructure:"root_key" json:"root_key"`
 
+	KeyCacheExpiration time.Duration `mapstructure:"key_cache_expiration" json:"key_cache_expiration"`
+
 	// Deprecated
 	// Enables experimental EC rewrap support in TDFs
 	// Enabling is required to parse KAOs with the `ec-wrapped` type,
 	// and (currently) also enables responding with ECIES encrypted responses.
 	ECTDFEnabled bool    `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
 	Preview      Preview `mapstructure:"preview" json:"preview"`
-}
-
-type KeyCache struct {
-	TTL  time.Duration `mapstructure:"ttl" json:"ttl" default:"15s"`
-	Cost int           `mapstructure:"cost" json:"cost" default:"100"`
 }
 
 type Preview struct {

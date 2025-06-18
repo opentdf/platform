@@ -181,6 +181,7 @@ func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error)
 }
 
 func (k *KeyDetailsAdapter) ProviderConfig() *policy.KeyProviderConfig {
+	// Provider config is not supported for this adapter.
 	return nil
 }
 

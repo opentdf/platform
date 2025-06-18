@@ -182,7 +182,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 
 	decisions, permitted, err := pdp.GetDecision(ctx, entityIdentifier, action, []*authzV2.Resource{resource})
 	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to get decision", slog.Any("error", err), slog.Any("request", request))
+		as.logger.ErrorContext(ctx, "failed to get decision", slog.Any("error", err))
 		if errors.Is(err, access.ErrFQNNotFound) || errors.Is(err, access.ErrDefinitionNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
 		}
@@ -190,7 +190,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	}
 	resp, err := rollupSingleResourceDecision(permitted, decisions)
 	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to rollup single-resource decision", slog.Any("error", err), slog.Any("request", request))
+		as.logger.ErrorContext(ctx, "failed to rollup single-resource decision", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(resp), nil
@@ -218,12 +218,12 @@ func (as *Service) GetDecisionMultiResource(ctx context.Context, req *connect.Re
 
 	decisions, allPermitted, err := pdp.GetDecision(ctx, entityIdentifier, action, resources)
 	if err != nil {
-		return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to get decision"), err), slog.Any("request", request))
+		return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to get decision"), err))
 	}
 
 	resourceDecisions, err := rollupMultiResourceDecisions(decisions)
 	if err != nil {
-		return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to rollup multi-resource decision"), err), slog.Any("request", request))
+		return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to rollup multi-resource decision"), err))
 	}
 
 	resp := &authzV2.GetDecisionMultiResourceResponse{
@@ -264,12 +264,12 @@ func (as *Service) GetDecisionBulk(ctx context.Context, req *connect.Request[aut
 
 		decisions, allPermitted, err := pdp.GetDecision(ctx, entityIdentifier, action, resources)
 		if err != nil {
-			return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to get bulk decision"), err), slog.Any("request", request))
+			return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to get bulk decision"), err))
 		}
 
 		resourceDecisions, err := rollupMultiResourceDecisions(decisions)
 		if err != nil {
-			return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to rollup bulk multi-resource decision"), err), slog.Any("request", request), slog.Int("index", idx))
+			return nil, statusifyError(ctx, as.logger, errors.Join(errors.New("failed to rollup bulk multi-resource decision"), err), slog.Int("index", idx))
 		}
 
 		decisionResponse := &authzV2.GetDecisionMultiResourceResponse{

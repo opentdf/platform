@@ -124,6 +124,7 @@ var (
 )
 
 // Registered resource value FQNs using identifier package
+// TODO: remove these and use the other ones above
 var (
 	regResValNoActionAttrValFQN                     string
 	regResValSingleActionAttrValFQN                 string
@@ -174,12 +175,12 @@ type PDPTestSuite struct {
 		// Test registered resources
 		classificationRegRes *policy.RegisteredResource
 		deptRegRes           *policy.RegisteredResource
-		networkRegRes        *policy.RegisteredResource
+		networkRegRes        *policy.RegisteredResource // todo: remove this and use the others that match test attributes
 		countryRegRes        *policy.RegisteredResource
 		projectRegRes        *policy.RegisteredResource
 		platformRegRes       *policy.RegisteredResource
 
-		// Test registered resources (todo: replace with above real use cases)
+		// Test registered resources (todo: remove these and use the ones above)
 		regRes                                       *policy.RegisteredResource
 		regResValNoActionAttrVal                     *policy.RegisteredResourceValue
 		regResValSingleActionAttrVal                 *policy.RegisteredResourceValue
@@ -1356,7 +1357,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			s.logger,
 			[]*policy.Attribute{f.classificationAttr},
 			[]*policy.SubjectMapping{allActionsPublicMapping, restrictedMapping},
-			[]*policy.RegisteredResource{f.classificationRegRes,allActionsPublicRegRes, restrictedRegRes},
+			[]*policy.RegisteredResource{f.classificationRegRes, allActionsPublicRegRes, restrictedRegRes},
 		)
 		s.Require().NoError(err)
 		s.Require().NotNil(classificationPDP)

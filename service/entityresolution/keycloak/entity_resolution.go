@@ -21,6 +21,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/service/entity"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
@@ -49,6 +50,7 @@ type KeycloakEntityResolutionService struct { //nolint:revive // Too late! Alrea
 	trace.Tracer
 	connector   *KeyCloakConnector
 	connectorMu sync.Mutex
+	svcCache    *cache.Cache
 }
 
 type KeycloakConfig struct { //nolint:revive // yeah but what if we want to embed multiple configs?
@@ -62,7 +64,7 @@ type KeycloakConfig struct { //nolint:revive // yeah but what if we want to embe
 	TokenBuffer    time.Duration          `mapstructure:"token_buffer_seconds" json:"token_buffer_seconds" default:"120s"`
 }
 
-func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger) (*KeycloakEntityResolutionService, serviceregistry.HandlerServer) {
+func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger, svcCache *cache.Cache) (*KeycloakEntityResolutionService, serviceregistry.HandlerServer) {
 	var inputIdpConfig KeycloakConfig
 
 	if err := defaults.Set(&inputIdpConfig); err != nil {
@@ -73,7 +75,7 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger) (*K
 		panic(err)
 	}
 	logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
-	keycloakSVC := &KeycloakEntityResolutionService{idpConfig: inputIdpConfig, logger: logger}
+	keycloakSVC := &KeycloakEntityResolutionService{idpConfig: inputIdpConfig, logger: logger, svcCache: svcCache}
 	return keycloakSVC, nil
 }
 

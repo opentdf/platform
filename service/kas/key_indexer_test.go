@@ -45,7 +45,7 @@ func (s *KeyIndexTestSuite) TestKeyDetails() {
 	s.Equal("ALGORITHM_RSA_2048", s.rsaKey.Algorithm())
 	s.False(s.rsaKey.IsLegacy())
 	s.Equal("openbao", s.rsaKey.System())
-	s.Equal("config", string(s.rsaKey.ProviderConfig().ConfigJson))
+	s.Equal("config", string(s.rsaKey.ProviderConfig().GetConfigJson()))
 }
 
 func (s *KeyIndexTestSuite) TestKeyExportPublicKey_JWKFormat() {

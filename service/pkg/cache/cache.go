@@ -29,6 +29,7 @@ type Cache struct {
 
 type Options struct {
 	Expiration time.Duration
+	// Cost       int64 // TODO
 }
 
 // NewCacheManager creates a new cache manager using Ristretto as the backend.
@@ -39,7 +40,7 @@ func NewCacheManager(maxCost int64) (*Manager, error) {
 	}
 	config := &ristretto.Config{
 		NumCounters: numCounters, // number of keys to track frequency of (10x max items)
-		// MaxCost:     maxCost,     // maximum cost of cache (e.g., 1<<20 for 1MB)
+		MaxCost:     maxCost,     // maximum cost of cache (e.g., 1<<20 for 1MB)
 		BufferItems: bufferItems, // number of keys per Get buffer.
 	}
 	store, err := ristretto.NewCache(config)
@@ -89,6 +90,9 @@ func (c *Cache) Get(ctx context.Context, key string) (any, error) {
 func (c *Cache) Set(ctx context.Context, key string, object any, tags []string) error {
 	tags = append(tags, c.getServiceTag())
 	opts := []store.Option{store.WithTags(tags)}
+	if c.cacheOptions.Expiration > 0 {
+		opts = append(opts, store.WithExpiration(c.cacheOptions.Expiration))
+	}
 
 	err := c.manager.cache.Set(ctx, c.getKey(key), object, opts...)
 	if err != nil {

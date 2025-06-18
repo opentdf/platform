@@ -81,6 +81,14 @@ func (m *MockKeyDetails) System() string {
 	return args.String(0)
 }
 
+func (m *MockKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
+	args := m.Called()
+	if pk, ok := args.Get(0).(*policy.KeyProviderConfig); ok {
+		return pk
+	}
+	return nil
+}
+
 type MockEncapsulator struct {
 	mock.Mock
 }

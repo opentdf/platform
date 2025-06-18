@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"net/url"
+	"time"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	otdf "github.com/opentdf/platform/sdk"
@@ -48,6 +49,11 @@ type KASConfig struct {
 	// and (currently) also enables responding with ECIES encrypted responses.
 	ECTDFEnabled bool    `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
 	Preview      Preview `mapstructure:"preview" json:"preview"`
+}
+
+type KeyCache struct {
+	TTL  time.Duration `mapstructure:"ttl" json:"ttl" default:"15s"`
+	Cost int           `mapstructure:"cost" json:"cost" default:"100"`
 }
 
 type Preview struct {

@@ -1082,6 +1082,31 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		[]string{"confidential"},
 	)
 
+	printConfidentialRegRes := &policy.RegisteredResource{
+		Name: "classification-print",
+		Values: []*policy.RegisteredResourceValue{
+			{
+				Value: "confidential-print",
+				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+					{
+						Action: testActionRead,
+						AttributeValue: &policy.Value{
+							Fqn:   testClassConfidentialFQN,
+							Value: "confidential",
+						},
+					},
+					{
+						Action: testActionPrint,
+						AttributeValue: &policy.Value{
+							Fqn:   testClassConfidentialFQN,
+							Value: "confidential",
+						},
+					},
+				},
+			},
+		},
+	}
+
 	// Create a mapping with a comprehensive set of actions instead of using a wildcard
 	allActionsPublicMapping := createSimpleSubjectMapping(
 		testClassPublicFQN,
@@ -1094,6 +1119,73 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		[]string{"public"},
 	)
 
+	allActionsPublicRegRes := &policy.RegisteredResource{
+		Name: "classification-all-actions",
+		Values: []*policy.RegisteredResourceValue{
+			{
+				Value: "public-all-actions",
+				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+					{
+						Action: testActionRead,
+						AttributeValue: &policy.Value{
+							Fqn:   testClassPublicFQN,
+							Value: "public",
+						},
+					},
+					{
+						Action: testActionCreate,
+						AttributeValue: &policy.Value{
+							Fqn:   testClassPublicFQN,
+							Value: "public",
+						},
+					},
+					{
+						Action: testActionUpdate,
+						AttributeValue: &policy.Value{
+							Fqn:   testClassPublicFQN,
+							Value: "public",
+						},
+					},
+					{
+						Action: testActionDelete,
+						AttributeValue: &policy.Value{
+							Fqn:   testClassPublicFQN,
+							Value: "public",
+						},
+					},
+					{
+						Action: testActionPrint,
+						AttributeValue: &policy.Value{
+							Fqn:   testClassPublicFQN,
+							Value: "public",
+						},
+					},
+					{
+						Action: testActionView,
+						AttributeValue: &policy.Value{
+							Fqn:   testClassPublicFQN,
+							Value: "public",
+						},
+					},
+					{
+						Action: testActionList,
+						AttributeValue: &policy.Value{
+							Fqn:   testClassPublicFQN,
+							Value: "public",
+						},
+					},
+					{
+						Action: testActionSearch,
+						AttributeValue: &policy.Value{
+							Fqn:   testClassPublicFQN,
+							Value: "public",
+						},
+					},
+				},
+			},
+		},
+	}
+
 	// Create a view mapping for Project Alpha with view being a parent action of read and list
 	viewProjectAlphaMapping := createSimpleSubjectMapping(
 		testProjectAlphaFQN,
@@ -1102,6 +1194,24 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		".properties.project",
 		[]string{"alpha"},
 	)
+
+	viewProjectAlphaRegRes := &policy.RegisteredResource{
+		Name: "project-view",
+		Values: []*policy.RegisteredResourceValue{
+			{
+				Value: "alpha-view",
+				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+					{
+						Action: testActionView,
+						AttributeValue: &policy.Value{
+							Fqn:   testProjectAlphaFQN,
+							Value: "alpha",
+						},
+					},
+				},
+			},
+		},
+	}
 
 	// Create a PDP with relevant attributes and mappings
 	pdp, err := NewPolicyDecisionPoint(
@@ -1112,7 +1222,10 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			f.secretMapping, f.topSecretMapping, printConfidentialMapping, allActionsPublicMapping,
 			f.engineeringMapping, f.financeMapping, viewProjectAlphaMapping,
 		},
-		[]*policy.RegisteredResource{f.classificationRegRes, f.deptRegRes, f.projectRegRes},
+		[]*policy.RegisteredResource{
+			f.classificationRegRes, f.deptRegRes, f.projectRegRes,
+			printConfidentialRegRes, allActionsPublicRegRes, viewProjectAlphaRegRes,
+		},
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1124,7 +1237,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		})
 
 		// Resource to evaluate
-		resources := createResourcePerFqn(testClassSecretFQN, testNetworkPrivateFQN)
+		resources := createResourcePerFqn(testClassSecretFQN, testClassSecretRegResFQN)
 
 		decision, err := pdp.GetDecision(s.T().Context(), entity, actionRead, resources)
 
@@ -1150,35 +1263,36 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		})
 
 		combinedResource := createAttributeValueResource("combined-attr-resource", testClassConfidentialFQN, testDeptFinanceFQN)
-		networkConfidentialResource := createRegisteredResource("confidential-network-regres-resource", testNetworkConfidentialFQN)
+		testClassConfidentialRegResResource := createRegisteredResource(testClassConfidentialRegResFQN, testClassConfidentialRegResFQN)
+		testDeptFinanceRegResResource := createRegisteredResource(testDeptFinanceRegResFQN, testDeptFinanceRegResFQN)
 
 		// Test read access - should be allowed by all attributes
-		decision, err := pdp.GetDecision(s.T().Context(), entity, actionRead, []*authz.Resource{combinedResource, networkConfidentialResource})
+		decision, err := pdp.GetDecision(s.T().Context(), entity, actionRead, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.True(decision.Access)
-		s.Len(decision.Results, 2)
+		s.Len(decision.Results, 3)
 
 		// Test create access - should be denied (confidential doesn't allow it)
-		decision, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, []*authz.Resource{combinedResource, networkConfidentialResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // Overall access is denied
 
 		// Test print access - allowed by confidential but not by finance
-		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionPrint, []*authz.Resource{combinedResource, networkConfidentialResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionPrint, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // Overall access is denied because one rule fails
 
 		// Test update access - allowed by finance but not by confidential
-		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionUpdate, []*authz.Resource{combinedResource, networkConfidentialResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionUpdate, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access) // Overall access is denied because one rule fails
 
 		// Test delete access - denied by both
-		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionDelete, []*authz.Resource{combinedResource, networkConfidentialResource})
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionDelete, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)
@@ -1189,7 +1303,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			"project": "alpha",
 		})
 
-		resources := createResourcePerFqn(testProjectAlphaFQN, testNetworkAlphaFQN)
+		resources := createResourcePerFqn(testProjectAlphaFQN, testProjectAlphaRegResFQN)
 
 		// Test view access - should be allowed
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionView, resources)
@@ -1219,78 +1333,11 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			".properties.clearance",
 			[]string{"restricted"},
 		)
-
-		allActionPublicRegRes := &policy.RegisteredResource{
-			Name: "all-actions",
-			Values: []*policy.RegisteredResourceValue{
-				{
-					Value: "public",
-					ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
-						{
-							Action: testActionRead,
-							AttributeValue: &policy.Value{
-								Fqn:   testClassPublicFQN,
-								Value: "public",
-							},
-						},
-						{
-							Action: testActionCreate,
-							AttributeValue: &policy.Value{
-								Fqn:   testClassPublicFQN,
-								Value: "public",
-							},
-						},
-						{
-							Action: testActionUpdate,
-							AttributeValue: &policy.Value{
-								Fqn:   testClassPublicFQN,
-								Value: "public",
-							},
-						},
-						{
-							Action: testActionDelete,
-							AttributeValue: &policy.Value{
-								Fqn:   testClassPublicFQN,
-								Value: "public",
-							},
-						},
-						{
-							Action: testActionPrint,
-							AttributeValue: &policy.Value{
-								Fqn:   testClassPublicFQN,
-								Value: "public",
-							},
-						},
-						{
-							Action: testActionView,
-							AttributeValue: &policy.Value{
-								Fqn:   testClassPublicFQN,
-								Value: "public",
-							},
-						},
-						{
-							Action: testActionList,
-							AttributeValue: &policy.Value{
-								Fqn:   testClassPublicFQN,
-								Value: "public",
-							},
-						},
-						{
-							Action: testActionSearch,
-							AttributeValue: &policy.Value{
-								Fqn:   testClassPublicFQN,
-								Value: "public",
-							},
-						},
-					},
-				},
-			},
-		}
 		restrictedRegRes := &policy.RegisteredResource{
-			Name: "restricted",
+			Name: "confidential-restricted",
 			Values: []*policy.RegisteredResourceValue{
 				{
-					Value: "restricted",
+					Value: "restricted-read",
 					ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
 						{
 							Action: testActionRead,
@@ -1309,7 +1356,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			s.logger,
 			[]*policy.Attribute{f.classificationAttr},
 			[]*policy.SubjectMapping{allActionsPublicMapping, restrictedMapping},
-			[]*policy.RegisteredResource{allActionPublicRegRes, restrictedRegRes},
+			[]*policy.RegisteredResource{f.classificationRegRes,allActionsPublicRegRes, restrictedRegRes},
 		)
 		s.Require().NoError(err)
 		s.Require().NotNil(classificationPDP)
@@ -1319,10 +1366,8 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			"clearance": "restricted",
 		})
 
-		testRestrictedRegResFQN := createRegisteredResourceValueFQN("restricted", "restricted")
-
 		// Resource with restricted classification
-		restrictedResources := createResourcePerFqn(testClassConfidentialFQN, testRestrictedRegResFQN)
+		restrictedResources := createResourcePerFqn(testClassConfidentialFQN, testClassConfidentialRegResFQN)
 
 		// Test read access - should be allowed for restricted
 		decision, err := classificationPDP.GetDecision(s.T().Context(), entity, actionRead, restrictedResources)

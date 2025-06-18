@@ -111,11 +111,6 @@ func (c *EntitlementPolicyCache) Start(ctx context.Context) error {
 		// Channel is still open, do nothing
 	}
 
-	// Initial refresh
-	// if err := c.Refresh(ctx); err != nil {
-	// 	return errors.Join(ErrFailedToRefreshCache, err)
-	// }
-
 	c.logger.DebugContext(ctx,
 		"Starting periodic cache refresh",
 		"seconds", c.configuredRefreshInterval.Seconds(),

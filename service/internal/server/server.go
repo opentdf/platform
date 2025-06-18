@@ -27,6 +27,7 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/tracing"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -50,7 +51,10 @@ func (e Error) Error() string {
 // Configurations for the server
 type Config struct {
 	Auth auth.Config `mapstructure:"auth" json:"auth"`
-	GRPC GRPCConfig  `mapstructure:"grpc" json:"grpc"`
+
+	Cache cache.Config `mapstructure:"cache" json:"cache"`
+
+	GRPC GRPCConfig `mapstructure:"grpc" json:"grpc"`
 	// To Deprecate: Use the WithKey[X]Provider StartOptions to register trust providers.
 	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider" json:"cryptoProvider"`
 	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
@@ -111,7 +115,7 @@ type CORSConfig struct {
 	Enabled          bool     `mapstructure:"enabled" json:"enabled" default:"true"`
 	AllowedOrigins   []string `mapstructure:"allowedorigins" json:"allowedorigins"`
 	AllowedMethods   []string `mapstructure:"allowedmethods" json:"allowedmethods" default:"[\"GET\",\"POST\",\"PATCH\",\"DELETE\",\"OPTIONS\"]"`
-	AllowedHeaders   []string `mapstructure:"allowedheaders" json:"allowedheaders" default:"[\"Accept\",\"Content-Type\",\"Content-Length\",\"Accept-Encoding\",\"X-CSRF-Token\",\"Authorization\",\"X-Requested-With\",\"Dpop\"]"`
+	AllowedHeaders   []string `mapstructure:"allowedheaders" json:"allowedheaders" default:"[\"Accept\",\"Content-Type\",\"Content-Length\",\"Accept-Encoding\",\"X-CSRF-Token\",\"Authorization\",\"X-Requested-With\",\"Dpop\",\"Connect-Protocol-Version\"]"`
 	ExposedHeaders   []string `mapstructure:"exposedheaders" json:"exposedheaders"`
 	AllowCredentials bool     `mapstructure:"allowcredentials" json:"allowedcredentials" default:"true"`
 	MaxAge           int      `mapstructure:"maxage" json:"maxage" default:"3600"`
@@ -130,6 +134,7 @@ type OpenTDFServer struct {
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
+	CacheManager        *cache.Manager
 
 	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
 	CryptoProvider *security.StandardCrypto
@@ -153,7 +158,7 @@ type inProcessServer struct {
 	*ConnectRPC
 }
 
-func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, error) {
+func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.Manager) (*OpenTDFServer, error) {
 	var (
 		authN *auth.Authentication
 		err   error
@@ -222,6 +227,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		AuthN:          authN,
 		GRPCGatewayMux: grpcGatewayMux,
 		HTTPServer:     httpServer,
+		CacheManager:   cacheManager,
 		ConnectRPC:     connectRPC,
 		ConnectRPCInProcess: &inProcessServer{
 			srv:                memhttp.New(connectRPCIpc.Mux),

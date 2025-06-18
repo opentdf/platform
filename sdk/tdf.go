@@ -206,6 +206,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			if err == nil {
 				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
 			} else {
+				slog.Debug("Error getting base key, falling back to default kas.", "error", err)
 				dk := s.defaultKases(tdfConfig)
 				tdfConfig.kaoTemplate = nil
 				tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
@@ -332,6 +333,14 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.Payload.IsEncrypted = true
 
 	var signedAssertion []Assertion
+	if tdfConfig.addDefaultAssertion {
+		systemMeta, err := GetSystemMetadataAssertionConfig()
+		if err != nil {
+			return nil, err
+		}
+		tdfConfig.assertions = append(tdfConfig.assertions, systemMeta)
+	}
+
 	for _, assertion := range tdfConfig.assertions {
 		// Store a temporary assertion
 		tmpAssertion := Assertion{}

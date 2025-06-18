@@ -17,6 +17,7 @@ type EntitlementPolicyStore interface {
 	ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error)
 	ListAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error)
 	ListAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error)
+	IsEnabled() bool
 }
 
 var (
@@ -35,6 +36,10 @@ func NewEntitlementPolicyRetriever(sdk *otdfSDK.SDK) *EntitlementPolicyRetriever
 	return &EntitlementPolicyRetriever{
 		SDK: sdk,
 	}
+}
+
+func (p *EntitlementPolicyRetriever) IsEnabled() bool {
+	return p.SDK != nil
 }
 
 func (p *EntitlementPolicyRetriever) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {

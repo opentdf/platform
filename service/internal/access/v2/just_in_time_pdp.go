@@ -55,10 +55,12 @@ func NewJustInTimePDP(
 		logger: l,
 	}
 
-	if store == nil {
+	// If no store is provided, have EntitlementPolicyRetriever fetch from policy services
+	if !store.IsEnabled() {
 		l.DebugContext(ctx, "no EntitlementPolicyStore provided, will retrieve directly from policy services")
 		store = NewEntitlementPolicyRetriever(sdk)
 	}
+
 	allAttributes, err := store.ListAllAttributes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list cached attributes: %w", err)

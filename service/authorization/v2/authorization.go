@@ -29,13 +29,10 @@ type Service struct {
 	logger *logger.Logger
 	trace.Tracer
 	cache *EntitlementPolicyCache
-
-	// client managed by platform, provided by registration params
-	// platformCacheClient *cache.Cache
 }
 
 // Manage config for EntitlementPolicyCache: attributes, subject mappings, and registered resources
-// Default: caching disabled, and if enabled, refresh interval set to 30 seconds.
+// Default: caching disabled, and if enabled, refresh interval defaulted to 30 seconds.
 type EntitlementPolicyCacheConfig struct {
 	Enabled         bool   `mapstructure:"enabled" json:"enabled" default:"false"`
 	RefreshInterval string `mapstructure:"refresh_interval" json:"refresh_interval" default:"30s"`
@@ -45,18 +42,28 @@ type Config struct {
 	Cache EntitlementPolicyCacheConfig `mapstructure:"entitlement_policy_cache" json:"entitlement_policy_cache"`
 }
 
+// Validate tests for a sensible configuration
 func (c *Config) Validate() error {
 	duration, err := time.ParseDuration(c.Cache.RefreshInterval)
 	if err != nil {
 		return fmt.Errorf("failed to parse entitlement policy cache refresh interval [%s]: %w", c.Cache.RefreshInterval, err)
 	}
 
-	if c.Cache.Enabled && duration < minRefreshInterval {
-		return fmt.Errorf("entitlement policy cache enabled, but refresh interval [%f seconds] less than required minimum [%f seconds]: %w",
-			duration.Seconds(),
-			minRefreshInterval.Seconds(),
-			ErrInvalidCacheConfig,
-		)
+	if c.Cache.Enabled {
+		if duration < minRefreshInterval {
+			return fmt.Errorf("entitlement policy cache enabled, but refresh interval [%f seconds] less than required minimum [%f seconds]: %w",
+				duration.Seconds(),
+				minRefreshInterval.Seconds(),
+				ErrInvalidCacheConfig,
+			)
+		}
+		if duration > maxRefreshInterval {
+			return fmt.Errorf("entitlement policy cache enabled, but refresh interval [%f seconds] exceeds maximum [%f seconds]: %w",
+				duration.Seconds(),
+				maxRefreshInterval.Seconds(),
+				ErrInvalidCacheConfig,
+			)
+		}
 	}
 	return nil
 }
@@ -72,33 +79,15 @@ func (c *Config) LogValue() slog.Value {
 	)
 }
 
-// func OnServicesStarted(svc *Service) serviceregistry.OnServicesStartedHook {
-// 	return func(ctx context.Context) error {
-// 		if svc.platformCacheClient != nil {
-// 			c, err := NewEntitlementPolicyCache(ctx, svc.logger, svc.sdk, svc.platformCacheClient, svc.config.CacheRefreshIntervalSeconds)
-// 			if err != nil {
-// 				svc.logger.ErrorContext(ctx, "failed to create entitlement policy cache", slog.Any("error", err))
-// 				return fmt.Errorf("failed to create entitlement policy cache: %w", err)
-// 			}
-
-// 			svc.cache = c
-// 		}
-
-// 		return nil
-// 	}
-// }
-
 func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler] {
 	as := new(Service)
-	// startHook := OnServicesStarted(as)
 
 	return &serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler]{
 		Close: as.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[authzV2Connect.AuthorizationServiceHandler]{
-			Namespace:   "authorization",
-			Version:     "v2",
-			ServiceDesc: &authzV2.AuthorizationService_ServiceDesc,
-			// OnServicesStarted: startHook,
+			Namespace:      "authorization",
+			Version:        "v2",
+			ServiceDesc:    &authzV2.AuthorizationService_ServiceDesc,
 			ConnectRPCFunc: authzV2Connect.NewAuthorizationServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authzV2Connect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				authZCfg := new(Config)

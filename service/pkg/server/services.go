@@ -224,10 +224,6 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				return func() {}, fmt.Errorf("failed to register config update hook: %w", err)
 			}
 
-			// if err := svc.RegisterOnServicesStartedHook(ctx, cfg.AddOnServicesStartedHook); err != nil {
-			// 	return func() {}, fmt.Errorf("failed to register on complete service registration hook: %w", err)
-			// }
-
 			// Register Connect RPC Services
 			if err := svc.RegisterConnectRPCServiceHandler(ctx, otdf.ConnectRPC); err != nil {
 				logger.Info("service did not register a connect-rpc handler", slog.String("namespace", ns))

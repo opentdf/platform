@@ -14,9 +14,6 @@ import (
 // ChangeHook is a function invoked when the configuration changes.
 type ChangeHook func(configServices ServicesMap) error
 
-// ServicesStartedHook is a function invoked when all service registrations are complete.
-type ServicesStartedHook func(context.Context) error
-
 // Config structure holding all services.
 type ServicesMap map[string]ServiceConfig
 
@@ -50,8 +47,6 @@ type Config struct {
 	// Trace is for configuring open telemetry based tracing.
 	Trace tracing.Config `mapstructure:"trace"`
 
-	// onServicesStartedHooks is a list of functions to call when all service registrations are complete.
-	// onServicesStartedHooks []ServicesStartedHook
 	// onConfigChangeHooks is a list of functions to call when the configuration changes.
 	onConfigChangeHooks []ChangeHook
 	// loaders is a list of configuration loaders.
@@ -115,11 +110,6 @@ func (c *Config) AddOnConfigChangeHook(hook ChangeHook) {
 	c.onConfigChangeHooks = append(c.onConfigChangeHooks, hook)
 }
 
-// AddOnServicesStartedHook adds a hook to the list of hooks to call when all service registrations are complete.
-// func (c *Config) AddOnServicesStartedHook(hook ServicesStartedHook) {
-// 	c.onServicesStartedHooks = append(c.onServicesStartedHooks, hook)
-// }
-
 // Watch starts watching the configuration for changes in all config loaders.
 func (c *Config) Watch(ctx context.Context) error {
 	if len(c.loaders) == 0 {
@@ -132,19 +122,6 @@ func (c *Config) Watch(ctx context.Context) error {
 	}
 	return nil
 }
-
-// RunServicesStartedHooks triggers the service hooks that run once all services are live.
-// func (c *Config) RunServicesStartedHooks(ctx context.Context) error {
-// 	if len(c.onServicesStartedHooks) == 0 {
-// 		return nil
-// 	}
-// 	for _, hook := range c.onServicesStartedHooks {
-// 		if err := hook(ctx); err != nil {
-// 			return err
-// 		}
-// 	}
-// 	return nil
-// }
 
 // Close invokes close method on all config loaders.
 func (c *Config) Close(_ context.Context) error {

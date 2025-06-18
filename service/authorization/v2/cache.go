@@ -28,6 +28,7 @@ var (
 
 	// valid minimum refresh interval for the cache (too frequently may overload policy services)
 	minRefreshInterval = 15 * time.Second
+	maxRefreshInterval = 1 * time.Hour
 
 	ErrInvalidCacheConfig    = errors.New("invalid cache configuration")
 	ErrFailedToStartCache    = errors.New("failed to start EntitlementPolicyCache")

@@ -63,8 +63,6 @@ type (
 	RegisterFunc[S any] func(RegistrationParams) (impl S, HandlerServer HandlerServer)
 	// Allow services to implement handling for config changes as direced by caller
 	OnConfigUpdateHook func(context.Context, config.ServiceConfig) error
-	// Allow services to implement a callback to run when all services are registered
-	OnServicesStartedHook func(context.Context) error
 )
 
 // DBRegister is a struct that holds the information needed to register a service with a database
@@ -87,8 +85,6 @@ type IService interface {
 	IsStarted() bool
 	Shutdown() error
 	RegisterConfigUpdateHook(ctx context.Context, hookAppender func(config.ChangeHook)) error
-	// Experimental
-	RegisterOnServicesStartedHook(ctx context.Context, hookAppender func(config.ServicesStartedHook)) error
 	RegisterConnectRPCServiceHandler(context.Context, *server.ConnectRPC) error
 	RegisterGRPCGatewayHandler(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 	RegisterHTTPHandlers(context.Context, *runtime.ServeMux) error
@@ -118,8 +114,6 @@ type ServiceOptions[S any] struct {
 	ServiceDesc *grpc.ServiceDesc
 	// OnConfigUpdate is a hook to handle in-service actions when config changes
 	OnConfigUpdate OnConfigUpdateHook
-	// Experimental: OnServicesStarted is a hook to handle in-service actions that should run when all registered services have started
-	OnServicesStarted OnServicesStartedHook
 	// RegisterFunc is the function that will be called to register the service
 	RegisterFunc RegisterFunc[S]
 	// HTTPHandlerFunc is the function that will be called to register extra http handlers
@@ -196,22 +190,6 @@ func (s Service[S]) RegisterConfigUpdateHook(ctx context.Context, hookAppender f
 				slog.String("service", s.GetServiceDesc().ServiceName),
 			)
 			return s.OnConfigUpdate(ctx, cfg[s.GetNamespace()])
-		}
-		hookAppender(onChange)
-	}
-	return nil
-}
-
-// Experimental: RegisterOnServicesStartedHook appends a registered service's onServicesStartedHook to any watching services.
-func (s Service[S]) RegisterOnServicesStartedHook(_ context.Context, hookAppender func(config.ServicesStartedHook)) error {
-	// If no hook is registered, exit
-	if s.OnServicesStarted != nil {
-		var onChange config.ServicesStartedHook = func(ctx context.Context) error {
-			slog.Debug("OnServicesStarted hook called",
-				slog.String("namespace", s.GetNamespace()),
-				slog.String("service", s.GetServiceDesc().ServiceName),
-			)
-			return s.OnServicesStarted(ctx)
 		}
 		hookAppender(onChange)
 	}

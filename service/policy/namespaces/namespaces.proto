@@ -13,6 +13,7 @@ import "policy/selectors.proto";
 
 // Deprecated
 message NamespaceKeyAccessServer {
+  option deprecated = true;
   // Required
   string namespace_id = 1 [(buf.validate.field).string.uuid = true];
   // Required
@@ -183,9 +184,13 @@ service NamespaceService {
   /*--------------------------------------*
    * Namespace <> Key Access Server RPCs
    *---------------------------------------*/
-  rpc AssignKeyAccessServerToNamespace(AssignKeyAccessServerToNamespaceRequest) returns (AssignKeyAccessServerToNamespaceResponse) {}
+  rpc AssignKeyAccessServerToNamespace(AssignKeyAccessServerToNamespaceRequest) returns (AssignKeyAccessServerToNamespaceResponse) {
+    option deprecated = true;
+  }
 
-  rpc RemoveKeyAccessServerFromNamespace(RemoveKeyAccessServerFromNamespaceRequest) returns (RemoveKeyAccessServerFromNamespaceResponse) {}
+  rpc RemoveKeyAccessServerFromNamespace(RemoveKeyAccessServerFromNamespaceRequest) returns (RemoveKeyAccessServerFromNamespaceResponse) {
+    option deprecated = true;
+  }
 
   /*--------------------------------------*
    * Namespace <> Key RPCs

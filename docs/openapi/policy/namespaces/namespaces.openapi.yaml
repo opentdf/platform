@@ -216,6 +216,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.AssignKeyAccessServerToNamespaceResponse'
+      deprecated: true
   /policy.namespaces.NamespaceService/RemoveKeyAccessServerFromNamespace:
     post:
       tags:
@@ -251,6 +252,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse'
+      deprecated: true
   /policy.namespaces.NamespaceService/AssignPublicKeyToNamespace:
     post:
       tags:

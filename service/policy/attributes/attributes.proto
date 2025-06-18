@@ -13,6 +13,7 @@ import "policy/selectors.proto";
 */
 // Deprecated
 message AttributeKeyAccessServer {
+  option deprecated = true;
   // Required
   string attribute_id = 1 [(buf.validate.field).string.uuid = true];
   // Required
@@ -24,6 +25,7 @@ message AttributeKeyAccessServer {
 */
 
 message ValueKeyAccessServer {
+  option deprecated = true;
   // Required
   string value_id = 1 [(buf.validate.field).string.uuid = true];
   // Required
@@ -300,38 +302,47 @@ message GetAttributeValuesByFqnsResponse {
 */
 
 message AssignKeyAccessServerToAttributeRequest {
+  option deprecated = true;
+
   // Required
   AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
 message AssignKeyAccessServerToAttributeResponse {
+  option deprecated = true;
   AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
 message RemoveKeyAccessServerFromAttributeRequest {
+  option deprecated = true;
   // Required
   AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
 message RemoveKeyAccessServerFromAttributeResponse {
+  option deprecated = true;
   AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
 message AssignKeyAccessServerToValueRequest {
+  option deprecated = true;
   // Required
   ValueKeyAccessServer value_key_access_server = 1;
 }
 
 message AssignKeyAccessServerToValueResponse {
+  option deprecated = true;
   ValueKeyAccessServer value_key_access_server = 1;
 }
 
 message RemoveKeyAccessServerFromValueRequest {
+  option deprecated = true;
   // Required
   ValueKeyAccessServer value_key_access_server = 1;
 }
 
 message RemoveKeyAccessServerFromValueResponse {
+  option deprecated = true;
   ValueKeyAccessServer value_key_access_server = 1;
 }
 
@@ -423,13 +434,21 @@ service AttributesService {
   /*--------------------------------------*
    * Attribute <> Key Access Server RPCs
    *---------------------------------------*/
-  rpc AssignKeyAccessServerToAttribute(AssignKeyAccessServerToAttributeRequest) returns (AssignKeyAccessServerToAttributeResponse) {}
+  rpc AssignKeyAccessServerToAttribute(AssignKeyAccessServerToAttributeRequest) returns (AssignKeyAccessServerToAttributeResponse) {
+    option deprecated = true;
+  }
 
-  rpc RemoveKeyAccessServerFromAttribute(RemoveKeyAccessServerFromAttributeRequest) returns (RemoveKeyAccessServerFromAttributeResponse) {}
+  rpc RemoveKeyAccessServerFromAttribute(RemoveKeyAccessServerFromAttributeRequest) returns (RemoveKeyAccessServerFromAttributeResponse) {
+    option deprecated = true;
+  }
 
-  rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {}
+  rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {
+    option deprecated = true;
+  }
 
-  rpc RemoveKeyAccessServerFromValue(RemoveKeyAccessServerFromValueRequest) returns (RemoveKeyAccessServerFromValueResponse) {}
+  rpc RemoveKeyAccessServerFromValue(RemoveKeyAccessServerFromValueRequest) returns (RemoveKeyAccessServerFromValueResponse) {
+    option deprecated = true;
+  }
 
   /*--------------------------------------*
    * Attribute <> Key RPCs

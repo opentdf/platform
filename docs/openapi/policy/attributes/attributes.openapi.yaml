@@ -460,6 +460,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToAttributeResponse'
+      deprecated: true
   /policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute:
     post:
       tags:
@@ -495,6 +496,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.RemoveKeyAccessServerFromAttributeResponse'
+      deprecated: true
   /policy.attributes.AttributesService/AssignKeyAccessServerToValue:
     post:
       tags:
@@ -530,6 +532,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToValueResponse'
+      deprecated: true
   /policy.attributes.AttributesService/RemoveKeyAccessServerFromValue:
     post:
       tags:
@@ -565,6 +568,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.RemoveKeyAccessServerFromValueResponse'
+      deprecated: true
   /policy.attributes.AttributesService/AssignPublicKeyToAttribute:
     post:
       tags:

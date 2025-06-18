@@ -61,7 +61,6 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				unsafeSvc.logger = logger
 				unsafeSvc.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				unsafeSvc.config = cfg
-
 				return unsafeSvc, nil
 			},
 		},

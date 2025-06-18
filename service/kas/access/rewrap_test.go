@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/uuid"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -49,6 +50,9 @@ func (f *fakeKeyDetails) ExportPublicKey(context.Context, trust.KeyType) (string
 }
 func (f *fakeKeyDetails) ExportCertificate(context.Context) (string, error) { return "", nil }
 func (f *fakeKeyDetails) System() string                                    { return "" }
+func (f *fakeKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
+	return &policy.KeyProviderConfig{}
+}
 
 type fakeKeyIndex struct {
 	keys []trust.KeyDetails

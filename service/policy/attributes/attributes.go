@@ -65,7 +65,6 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				as.logger = logger
 				as.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
 				as.config = cfg
-
 				return as, nil
 			},
 		},
@@ -366,6 +365,7 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
 	rsp.Value = updated
+
 	return connect.NewResponse(rsp), nil
 }
 

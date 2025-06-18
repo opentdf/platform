@@ -15,8 +15,8 @@ import (
 
 type ERSConfig struct {
 	Mode            string `mapstructure:"mode" json:"mode"`
-	CacheExpiration string `mapstructure:"cacheexpiration" json:"cacheexpiration" default:"5m"`
-	CacheCost       int    `mapstructure:"cachecost" json:"cachecost" default:"100"`
+	CacheExpiration string `mapstructure:"cacheexpiration" json:"cacheexpiration"`
+	CacheCost       int64  `mapstructure:"cachecost" json:"cachecost"`
 }
 
 const (
@@ -48,6 +48,12 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 					claimsSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
 				}
+				if inputConfig.CacheExpiration == "" {
+					inputConfig.CacheExpiration = "5m" // Default cache expiration
+				}
+				if inputConfig.CacheCost == 0 {
+					inputConfig.CacheCost = 100 // Default cache cost
+				}
 				exp, err := time.ParseDuration(inputConfig.CacheExpiration)
 				if err != nil {
 					srp.Logger.Error("Failed to parse cache expiration duration", "error", err)
@@ -55,7 +61,7 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 				}
 				ersCache, err := srp.NewCacheFunc(cache.Options{
 					Expiration: exp,
-					Cost:       int64(inputConfig.CacheCost),
+					Cost:       inputConfig.CacheCost,
 				})
 				if err != nil {
 					srp.Logger.Error("Failed to create cache for Entity Resolution Service", "error", err)

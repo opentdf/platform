@@ -17,6 +17,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/Masterminds/semver/v3"
 	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 
 	"github.com/google/uuid"
@@ -184,26 +185,35 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, errors.New("cannot set autoconfigure and splitPlan or kaoTemplate")
 	}
 
-	if tdfConfig.autoconfigure { //nolint:nestif // simplify after removing support for splitPlan
+	// * Get base key before autoconfigure to condition off of.
+	if tdfConfig.autoconfigure {
 		var g granter
+		var err error
 		g, err = s.newGranter(ctx, tdfConfig, err)
 		if err != nil {
 			return nil, err
 		}
 
-		if g.typ&mappedFound == mappedFound {
+		switch g.typ {
+		case mappedFound:
 			tdfConfig.kaoTemplate, err = g.resolveTemplate(uuidSplitIDGenerator)
-			if err != nil {
-				slog.Info("Failed to resolve kao template, using split plan / grant behavior", "error", err)
+		case grantsFound:
+			tdfConfig.kaoTemplate = nil
+			tdfConfig.splitPlan, err = g.plan(make([]string, 0), uuidSplitIDGenerator)
+		case noKeysFound:
+			var baseKey *policy.SimpleKasKey
+			baseKey, err = getBaseKeyFromWellKnown(ctx, s)
+			if err == nil {
+				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
+			} else {
+				slog.Debug("Error getting base key, falling back to default kas.", "error", err)
+				dk := s.defaultKases(tdfConfig)
+				tdfConfig.kaoTemplate = nil
+				tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
 			}
 		}
-		if g.typ == noKeysFound || g.typ == grantsFound {
-			dk := s.defaultKases(tdfConfig)
-			tdfConfig.kaoTemplate = nil
-			tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
-		}
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed generate plan: %w", err)
 		}
 	}
 
@@ -323,6 +333,14 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	tdfObject.manifest.Payload.IsEncrypted = true
 
 	var signedAssertion []Assertion
+	if tdfConfig.addDefaultAssertion {
+		systemMeta, err := GetSystemMetadataAssertionConfig()
+		if err != nil {
+			return nil, err
+		}
+		tdfConfig.assertions = append(tdfConfig.assertions, systemMeta)
+	}
+
 	for _, assertion := range tdfConfig.assertions {
 		// Store a temporary assertion
 		tmpAssertion := Assertion{}
@@ -462,20 +480,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 	case len(tdfConfig.kasInfoList) > 0:
 		// Default to split based on kasInfoList
 		// To remove. This has been deprecated for some time.
-		tdfConfig.kaoTemplate = make([]kaoTpl, len(tdfConfig.kasInfoList))
-		for i, kasInfo := range tdfConfig.kasInfoList {
-			splitID := ""
-			if len(tdfConfig.kasInfoList) > 1 {
-				splitID = fmt.Sprintf("s-%d", i)
-			}
-			tdfConfig.kaoTemplate[i] = kaoTpl{
-				keySplitStep{
-					KAS:     kasInfo.URL,
-					SplitID: splitID,
-				},
-				kasInfo.KID,
-			}
-		}
+		tdfConfig.kaoTemplate = createKaoTemplateFromKasInfo(tdfConfig.kasInfoList)
 	}
 
 	conjunction := make(map[string][]KASInfo)
@@ -1433,4 +1438,62 @@ func isLessThanSemver(version, target string) (bool, error) {
 	}
 	// Check if the provided version is less than the target version based on semantic versioning rules.
 	return v1.LessThan(v2), nil
+}
+
+func getBaseKeyFromWellKnown(ctx context.Context, s SDK) (*policy.SimpleKasKey, error) {
+	key, err := getBaseKey(ctx, s)
+	if err != nil {
+		return nil, err
+	}
+
+	return key, nil
+}
+
+func populateKasInfoFromBaseKey(key *policy.SimpleKasKey, tdfConfig *TDFConfig) error {
+	if key == nil {
+		return errors.New("populateKasInfoFromBaseKey failed: key is nil")
+	}
+
+	algoString, err := formatAlg(key.GetPublicKey().GetAlgorithm())
+	if err != nil {
+		return fmt.Errorf("formatAlg failed: %w", err)
+	}
+
+	// ? Maybe we shouldn't overwrite the key type
+	if tdfConfig.keyType != ocrypto.KeyType(algoString) {
+		slog.Warn("Base key is enabled, setting key type", "keyType", algoString)
+	}
+	tdfConfig.keyType = ocrypto.KeyType(algoString)
+	tdfConfig.splitPlan = nil
+	if len(tdfConfig.kasInfoList) > 0 {
+		slog.Warn("Base key is enabled, overwriting kasInfoList with base key info")
+	}
+	tdfConfig.kasInfoList = []KASInfo{
+		{
+			URL:       key.GetKasUri(),
+			PublicKey: key.GetPublicKey().GetPem(),
+			KID:       key.GetPublicKey().GetKid(),
+			Algorithm: algoString,
+		},
+	}
+	return nil
+}
+
+func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
+	kaoTemplate := make([]kaoTpl, len(kasInfoArr))
+	for i, kasInfo := range kasInfoArr {
+		splitID := ""
+		if len(kasInfoArr) > 1 {
+			splitID = fmt.Sprintf("s-%d", i)
+		}
+		kaoTemplate[i] = kaoTpl{
+			keySplitStep{
+				KAS:     kasInfo.URL,
+				SplitID: splitID,
+			},
+			kasInfo.KID,
+		}
+	}
+
+	return kaoTemplate
 }

@@ -20,6 +20,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -56,6 +57,9 @@ const (
 	hundredMB = 100 * oneMB
 	oneGB     = 10 * hundredMB
 	// tenGB     = 10 * oneGB
+	baseKeyKID = "base-key-kid"
+	baseKeyURL = "http://base-key.com/"
+	defaultKID = "r1"
 )
 
 const (
@@ -72,6 +76,13 @@ type tdfTest struct {
 	splitPlan        []keySplitStep
 	policy           []AttributeValueFQN
 	expectedPlanSize int
+}
+
+type baseKeyTest struct {
+	tdfTest
+	encryptOpts []TDFOption
+	expectedKID string
+	expectedURL string
 }
 
 const (
@@ -293,15 +304,19 @@ type TDFSuite struct {
 	sdk              *SDK
 	kases            []FakeKas
 	kasTestURLLookup map[string]string
+	fakeWellKnown    map[string]interface{}
 }
 
 func (s *TDFSuite) SetupSuite() {
 	// Set up the test environment
 	s.startBackend()
+	// Update well-known with the server URL
+	s.fakeWellKnown = createWellKnown(nil)
 }
 
 func (s *TDFSuite) SetupTest() {
 	s.sdk.kasKeyCache.clear()
+	s.fakeWellKnown = createWellKnown(nil)
 }
 
 func TestTDF(t *testing.T) {
@@ -483,6 +498,65 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	}
 }
 
+func (s *TDFSuite) Test_SystemMetadataAssertions() {
+	attributes := []string{
+		"https://example.com/attr/Classification/value/S",
+		"https://example.com/attr/Classification/value/X",
+	}
+
+	// Configure TDF options with default assertions
+	tdfOptions := []TDFOption{
+		WithKasInformation(KASInfo{
+			URL:       s.kasTestURLLookup["https://a.kas/"],
+			PublicKey: "",
+		}),
+		WithSystemMetadataAssertion(),
+		WithDataAttributes(attributes...),
+	}
+
+	tdfReadOptions := []TDFReaderOption{
+		WithKasAllowlist([]string{s.kasTestURLLookup["https://a.kas/"]}),
+	}
+
+	// Create TDF
+	var buf bytes.Buffer
+	plainText := "Test Data"
+
+	inBuf := bytes.NewReader([]byte(plainText))
+	tdfObj, err := s.sdk.CreateTDF(&buf, inBuf, tdfOptions...)
+	s.Require().NoError(err)
+	s.Require().NotNil(tdfObj)
+
+	// Load TDF
+	r, err := s.sdk.LoadTDF(bytes.NewReader(buf.Bytes()), tdfReadOptions...)
+	s.Require().NoError(err)
+
+	// Verify default assertion
+	assertions := r.Manifest().Assertions
+	s.Require().NoError(err)
+	s.Require().NotEmpty(assertions)
+
+	found := false
+	for _, assertion := range assertions {
+		if assertion.ID == SystemMetadataAssertionID { // Ensure `ID` exists
+			found = true
+
+			// Validate JSON in Statement.Value
+			var metadata map[string]interface{}
+			err := json.Unmarshal([]byte(assertion.Statement.Value), &metadata) // Ensure `Statement.Value` exists
+			s.Require().NoError(err, "Statement Value is not valid JSON")
+
+			// Check JSON fields
+			s.Equal(TDFSpecVersion, metadata["tdf_spec_version"], "tdf_spec_version mismatch")
+			s.Equal(runtime.GOOS, metadata["operating_system"], "operating_system mismatch")
+			s.Equal("Go-"+Version, metadata["sdk_version"], "sdk_version mismatch")
+			s.Equal(runtime.GOARCH, metadata["architecture"], "architecture mismatch")
+			s.Equal(runtime.Version(), metadata["go_version"], "go_version mismatch")
+		}
+	}
+	s.True(found, "System metadata assertion not found")
+}
+
 func (s *TDFSuite) Test_TDF_KAS_Allowlist() {
 	type TestConfig struct {
 		tdfOptions     []TDFOption
@@ -635,7 +709,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -646,7 +720,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -664,7 +738,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -675,7 +749,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -694,7 +768,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -706,7 +780,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -727,7 +801,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -742,7 +816,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -776,7 +850,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -791,7 +865,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -816,7 +890,7 @@ func (s *TDFSuite) Test_TDFWithAssertion() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -1041,7 +1115,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -1053,7 +1127,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -1070,7 +1144,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -1085,7 +1159,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -1118,7 +1192,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion1",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "base64binary",
@@ -1133,7 +1207,7 @@ func (s *TDFSuite) Test_TDFWithAssertionNegativeTests() {
 				{
 					ID:             "assertion2",
 					Type:           BaseAssertion,
-					Scope:          TrustedDataObj,
+					Scope:          TrustedDataObjScope,
 					AppliesToState: Unencrypted,
 					Statement: Statement{
 						Format: "json",
@@ -1549,7 +1623,7 @@ func (s *TDFSuite) Test_ValidateSchema() {
 	}
 }
 
-func (s *TDFSuite) Test_TDF() {
+func (s *TDFSuite) Test_DefaultTDF() {
 	for index, test := range []tdfTest{
 		{
 			n:           "small",
@@ -1598,10 +1672,88 @@ func (s *TDFSuite) Test_TDF() {
 			}()
 
 			// test encrypt
-			s.testEncrypt(s.sdk, kasInfoList, plaintTextFileName, tdfFileName, test)
+			s.testEncrypt(s.sdk, []TDFOption{WithKasInformation(kasInfoList...)}, plaintTextFileName, tdfFileName, test)
 
 			// test decrypt with reader
 			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, test)
+		})
+	}
+}
+
+func (s *TDFSuite) Test_MixedBaseKeyTest() {
+	baseKey := createTestBaseKeyMap(&s.Suite, policy.Algorithm_ALGORITHM_RSA_2048, baseKeyKID, mockRSAPublicKey1, s.kasTestURLLookup[baseKeyURL])
+	s.fakeWellKnown = createWellKnown(baseKey)
+	attrVal := mockValueFor(rel2aus)
+	cachedPublicKeySet := &policy.KasPublicKeySet{
+		Keys: []*policy.KasPublicKey{
+			{
+				Kid: defaultKID,
+				Pem: mockRSAPublicKey1,
+				Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
+			},
+		},
+	}
+	attrVal.Grants = []*policy.KeyAccessServer{
+		{
+			Uri: s.kasTestURLLookup[kasAu],
+			PublicKey: &policy.PublicKey{
+				PublicKey: &policy.PublicKey_Cached{
+					Cached: cachedPublicKeySet,
+				},
+			},
+		},
+	}
+	attrVal.KasKeys = []*policy.SimpleKasKey{
+		{
+			KasUri: s.kasTestURLLookup[kasAu],
+			PublicKey: &policy.SimpleKasPublicKey{
+				Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+				Kid:       defaultKID,
+				Pem:       mockRSAPublicKey1,
+			},
+		},
+	}
+	for index, test := range []baseKeyTest{
+		{
+			tdfTest: tdfTest{
+				n:           "medium",
+				fileSize:    hundredMB,
+				tdfFileSize: 104866427,
+				checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
+			},
+			encryptOpts: []TDFOption{},
+			expectedKID: baseKeyKID,
+			expectedURL: s.kasTestURLLookup[baseKeyURL],
+		},
+		{
+			tdfTest: tdfTest{
+				n:           "medium_attributes_skip_base_key",
+				fileSize:    hundredMB,
+				tdfFileSize: 104866427,
+				checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
+			},
+			encryptOpts: []TDFOption{WithDataAttributeValues(attrVal)},
+			expectedKID: defaultKID,
+			expectedURL: s.kasTestURLLookup[kasAu],
+		},
+	} {
+		s.Run(test.n, func() {
+			// create .txt file
+			plaintTextFileName := test.n + "-" + strconv.Itoa(index) + ".txt"
+			tdfFileName := plaintTextFileName + ".tdf"
+			decryptedTdfFileName := tdfFileName + ".txt"
+
+			defer func() {
+				// Remove the test files
+				_ = os.Remove(plaintTextFileName)
+				_ = os.Remove(tdfFileName)
+			}()
+
+			// test encrypt
+			tdfObj := s.testEncrypt(s.sdk, test.encryptOpts, plaintTextFileName, tdfFileName, test.tdfTest)
+			s.Require().Equal(test.expectedKID, tdfObj.manifest.KeyAccessObjs[0].KID, "Base key KID should match")
+			s.Require().Equal(test.expectedURL, tdfObj.manifest.KeyAccessObjs[0].KasURL, "KAS URI should match")
+			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, test.tdfTest)
 		})
 	}
 }
@@ -1632,7 +1784,7 @@ func (s *TDFSuite) Test_KeyRotation() {
 				_ = os.Remove(tdf2Name)
 			}()
 
-			tdo := s.testEncrypt(s.sdk, kasInfoList, plainTextFileName, tdfFileName, test)
+			tdo := s.testEncrypt(s.sdk, []TDFOption{WithKasInformation(kasInfoList...)}, plainTextFileName, tdfFileName, test)
 			s.Equal("r1", tdo.manifest.EncryptionInformation.KeyAccessObjs[0].KID)
 
 			defer rotateKey(&s.kases[0], "r2", mockRSAPrivateKey2, mockRSAPublicKey2)()
@@ -1641,7 +1793,7 @@ func (s *TDFSuite) Test_KeyRotation() {
 			kasInfoList[0].PublicKey = ""
 			kasInfoList[0].KID = ""
 			s.sdk.kasKeyCache.clear()
-			tdo2 := s.testEncrypt(s.sdk, kasInfoList, tdf2Name, tdfFileName, test)
+			tdo2 := s.testEncrypt(s.sdk, []TDFOption{WithKasInformation(kasInfoList...)}, tdf2Name, tdfFileName, test)
 			s.Equal("r2", tdo2.manifest.EncryptionInformation.KeyAccessObjs[0].KID)
 
 			defer rotateKey(&s.kases[0], "r3", mockRSAPrivateKey3, mockRSAPublicKey3)()
@@ -1705,7 +1857,7 @@ func (s *TDFSuite) Test_KeySplits() {
 			}()
 
 			// test encrypt
-			tdo := s.testEncrypt(s.sdk, kasInfoList, plaintTextFileName, tdfFileName, test)
+			tdo := s.testEncrypt(s.sdk, []TDFOption{WithKasInformation(kasInfoList...)}, plaintTextFileName, tdfFileName, test)
 			s.Equal(test.splitPlan[0].KAS, tdo.manifest.EncryptionInformation.KeyAccessObjs[0].KasURL)
 			s.Len(tdo.manifest.EncryptionInformation.KeyAccessObjs, len(test.splitPlan))
 
@@ -1751,13 +1903,44 @@ func (s *TDFSuite) Test_Autoconfigure() {
 			s.sdk.kasKeyCache.store(KASInfo{})
 
 			// test encrypt
-			tdo := s.testEncrypt(s.sdk, kasInfoList, plaintTextFileName, tdfFileName, test)
+			tdo := s.testEncrypt(s.sdk, []TDFOption{WithKasInformation(kasInfoList...)}, plaintTextFileName, tdfFileName, test)
 			s.Len(tdo.manifest.EncryptionInformation.KeyAccessObjs, test.expectedPlanSize)
 
 			// test decrypt with reader
 			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, test)
 		})
 	}
+}
+
+func (s *TDFSuite) Test_PopulateBaseKey_Success() {
+	tdfConfig := &TDFConfig{
+		keyType:     ocrypto.RSA2048Key,
+		kasInfoList: []KASInfo{},
+	}
+
+	baseKey := policy.SimpleKasKey{
+		KasUri: s.kasTestURLLookup[baseKeyURL],
+		PublicKey: &policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			Kid:       baseKeyKID,
+			Pem:       mockRSAPublicKey1,
+		},
+	}
+
+	// Call populateBaseKey, should succeed
+	err := populateKasInfoFromBaseKey(&baseKey, tdfConfig)
+	s.Require().NoError(err, "populateBaseKey should succeed with valid base key")
+
+	expectedURL := s.kasTestURLLookup[baseKeyURL]
+	s.Require().NotEmpty(expectedURL, "Expected KAS URL should not be empty")
+
+	// Verify KAS info list has been populated correctly
+	s.Require().Len(tdfConfig.kasInfoList, 1, "KAS info list should have one entry")
+	s.Require().Equal(expectedURL, tdfConfig.kasInfoList[0].URL, "KAS URL should match")
+	s.Require().Equal(baseKeyKID, tdfConfig.kasInfoList[0].KID, "KAS KID should match")
+	s.Require().Equal(string(ocrypto.RSA2048Key), tdfConfig.kasInfoList[0].Algorithm, "Algorithm should match")
+	s.Require().Equal(mockRSAPublicKey1, tdfConfig.kasInfoList[0].PublicKey, "Public key should match")
+	s.Require().Equal(ocrypto.KeyType("rsa:2048"), tdfConfig.keyType, "Key type should be set")
 }
 
 func rotateKey(k *FakeKas, kid, private, public string) func() {
@@ -1775,7 +1958,7 @@ func rotateKey(k *FakeKas, kid, private, public string) func() {
 }
 
 // create tdf
-func (s *TDFSuite) testEncrypt(sdk *SDK, kasInfoList []KASInfo, plainTextFilename, tdfFileName string, test tdfTest) *TDFObject {
+func (s *TDFSuite) testEncrypt(sdk *SDK, encryptOpts []TDFOption, plainTextFilename, tdfFileName string, test tdfTest) *TDFObject {
 	// create a plain text file
 	s.createFileName(buffer, plainTextFilename, test.fileSize)
 
@@ -1796,7 +1979,6 @@ func (s *TDFSuite) testEncrypt(sdk *SDK, kasInfoList []KASInfo, plainTextFilenam
 		s.Require().NoError(err)
 	}(fileWriter) // CreateTDF TDFConfig
 
-	encryptOpts := []TDFOption{WithKasInformation(kasInfoList...)}
 	if test.mimeType != "" {
 		encryptOpts = append(encryptOpts, WithMimeType(test.mimeType))
 	}
@@ -1890,45 +2072,55 @@ func (s *TDFSuite) createFileName(buf []byte, filename string, size int64) {
 	s.Require().NoError(err)
 }
 
+func createWellKnown(baseKey map[string]interface{}) map[string]interface{} {
+	wellKnown := map[string]interface{}{
+		"health": map[string]interface{}{
+			"endpoint": "/healthz",
+		},
+		"idp": map[string]interface{}{
+			"issuer": "http://localhost:65432/auth",
+		},
+	}
+
+	if baseKey != nil {
+		wellKnown[baseKeyWellKnown] = baseKey
+	}
+
+	// Create a stub for wellknown
+	return wellKnown
+}
+
 func (s *TDFSuite) startBackend() {
 	defer resolver.SetDefaultScheme(resolver.GetDefaultScheme())
 	resolver.SetDefaultScheme("passthrough")
 
-	// Create a stub for wellknown
-	wellknownCfg := map[string]interface{}{
-		"configuration": map[string]interface{}{
-			"health": map[string]interface{}{
-				"endpoint": "/healthz",
-			},
-			"idp": map[string]interface{}{
-				"issuer": "http://localhost:65432/auth",
-			},
-		},
-	}
-
-	fwk := &FakeWellKnown{v: wellknownCfg}
+	baseKey := createTestBaseKeyMap(&s.Suite, policy.Algorithm_ALGORITHM_RSA_2048, baseKeyKID, mockRSAPublicKey1, "")
+	s.fakeWellKnown = createWellKnown(baseKey)
+	fwk := &FakeWellKnown{s: s}
 	fa := &FakeAttributes{s: s}
+
 	kasesToMake := []struct {
-		url, private, public string
+		url, private, public, kid string
 	}{
-		{"http://localhost:65432/", mockRSAPrivateKey1, mockRSAPublicKey1},
-		{"http://[::1]:65432/", mockRSAPrivateKey1, mockRSAPublicKey1},
-		{"https://a.kas/", mockRSAPrivateKey1, mockRSAPublicKey1},
-		{"https://b.kas/", mockRSAPrivateKey2, mockRSAPublicKey2},
-		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3},
-		{"https://d.kas/", mockECPrivateKey1, mockECPublicKey1},
-		{"https://e.kas/", mockECPrivateKey2, mockECPublicKey2},
-		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1},
-		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2},
-		{kasUk, mockRSAPrivateKey2, mockRSAPublicKey2},
-		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3},
-		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1},
+		{"http://localhost:65432/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
+		{"http://[::1]:65432/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
+		{"https://a.kas/", mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
+		{"https://b.kas/", mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID},
+		{"https://c.kas/", mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID},
+		{"https://d.kas/", mockECPrivateKey1, mockECPublicKey1, defaultKID},
+		{"https://e.kas/", mockECPrivateKey2, mockECPublicKey2, defaultKID},
+		{kasAu, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
+		{kasCa, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID},
+		{kasUk, mockRSAPrivateKey2, mockRSAPublicKey2, defaultKID},
+		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID},
+		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
+		{baseKeyURL, mockRSAPrivateKey1, mockRSAPublicKey1, baseKeyKID},
 	}
 	fkar := &FakeKASRegistry{kases: kasesToMake, s: s}
 
-	s.kases = make([]FakeKas, 12)
+	s.kases = make([]FakeKas, len(kasesToMake))
 
-	s.kasTestURLLookup = make(map[string]string, 12)
+	s.kasTestURLLookup = make(map[string]string, len(kasesToMake))
 
 	var sdkPlatformURL string
 
@@ -1937,7 +2129,7 @@ func (s *TDFSuite) startBackend() {
 
 		s.kases[i] = FakeKas{
 			s: s, privateKey: ki.private, KASInfo: KASInfo{
-				URL: ki.url, PublicKey: ki.public, KID: "r1", Algorithm: "rsa:2048",
+				URL: ki.url, PublicKey: ki.public, KID: ki.kid, Algorithm: "rsa:2048",
 			},
 			legakeys: map[string]keyInfo{},
 		}
@@ -1975,11 +2167,11 @@ func (s *TDFSuite) startBackend() {
 
 type FakeWellKnown struct {
 	wellknownconnect.UnimplementedWellKnownServiceHandler
-	v map[string]interface{}
+	s *TDFSuite
 }
 
 func (f *FakeWellKnown) GetWellKnownConfiguration(_ context.Context, _ *connect.Request[wellknownpb.GetWellKnownConfigurationRequest]) (*connect.Response[wellknownpb.GetWellKnownConfigurationResponse], error) {
-	cfg, err := structpb.NewStruct(f.v)
+	cfg, err := structpb.NewStruct(f.s.fakeWellKnown)
 	if err != nil {
 		return nil, err
 	}
@@ -2018,7 +2210,7 @@ type FakeKASRegistry struct {
 	kasregistryconnect.UnimplementedKeyAccessServerRegistryServiceHandler
 	s     *TDFSuite
 	kases []struct {
-		url, private, public string
+		url, private, public, kid string
 	}
 }
 
@@ -2187,6 +2379,31 @@ func (s *TDFSuite) checkIdentical(file, checksum string) bool {
 
 	c := h.Sum(nil)
 	return checksum == hex.EncodeToString(c)
+}
+
+func createTestBaseKeyMap(s *suite.Suite, algorithm policy.Algorithm, kid string, pem string, kasURI string) map[string]any {
+	baseKey := &policy.SimpleKasKey{
+		KasUri: kasURI,
+		PublicKey: &policy.SimpleKasPublicKey{
+			Algorithm: algorithm,
+			Kid:       kid,
+			Pem:       pem,
+		},
+		KasId: "",
+	}
+	keyMapBytes, err := json.Marshal(baseKey)
+	s.Require().NoError(err)
+	var keyMap map[string]any
+	err = json.Unmarshal(keyMapBytes, &keyMap)
+	s.Require().NoError(err)
+	algoStr, err := formatAlg(baseKey.GetPublicKey().GetAlgorithm())
+	s.Require().NoError(err)
+	publicKey, ok := keyMap[baseKeyPublicKey].(map[string]any)
+	s.Require().True(ok)
+	publicKey[baseKeyAlg] = algoStr
+	keyMap[baseKeyPublicKey] = publicKey
+
+	return keyMap
 }
 
 func TestIsLessThanSemver(t *testing.T) {

@@ -58,7 +58,9 @@ func unverifiedBase64Bytes(str string) []byte {
 }
 
 func FuzzLoadTDF(f *testing.F) {
+	mockWellKnown := newMockWellKnownService(createWellKnown(nil), nil)
 	sdk := newSDK()
+	sdk.wellknownConfiguration = mockWellKnown
 	f.Add(writeBytes(func(writer io.Writer) error {
 		reader := bytes.NewReader([]byte("AAA"))
 		_, err := sdk.CreateTDF(writer, reader, func(tdfConfig *TDFConfig) error {

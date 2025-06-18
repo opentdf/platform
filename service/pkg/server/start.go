@@ -320,9 +320,9 @@ func Start(f ...StartOptions) error {
 	defer cfg.Close(ctx)
 
 	// Run the services started hooks
-	if err := cfg.RunServicesStartedHooks(ctx); err != nil {
-		return fmt.Errorf("failed to run service registration complete hooks: %w", err)
-	}
+	// if err := cfg.RunServicesStartedHooks(ctx); err != nil {
+	// 	return fmt.Errorf("failed to run service registration complete hooks: %w", err)
+	// }
 
 	// Start the server
 	logger.Info("starting opentdf")

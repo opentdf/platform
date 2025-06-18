@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -27,6 +26,10 @@ var (
 	// stopTimeout is the maximum time to wait for the periodic refresh goroutine to stop
 	stopTimeout = 5 * time.Second
 
+	// valid minimum refresh interval for the cache (too frequently may overload policy services)
+	minRefreshInterval = 15 * time.Second
+
+	ErrInvalidCacheConfig    = errors.New("invalid cache configuration")
 	ErrFailedToStartCache    = errors.New("failed to start EntitlementPolicyCache")
 	ErrFailedToRefreshCache  = errors.New("failed to refresh EntitlementPolicyCache")
 	ErrFailedToSet           = errors.New("failed to set cache with fresh entitlement policy")
@@ -62,20 +65,20 @@ func NewEntitlementPolicyCache(
 	l *logger.Logger,
 	sdk *otdfSDK.SDK,
 	cacheClient *cache.Cache,
-	cacheRefreshIntervalSeconds int,
+	cacheRefreshInterval time.Duration,
 ) (*EntitlementPolicyCache, error) {
-	if cacheRefreshIntervalSeconds == 0 {
+	if cacheRefreshInterval == 0 {
 		return nil, ErrCacheDisabled
 	}
 	l = l.With("component", "EntitlementPolicyCache")
 
-	l.DebugContext(ctx, "Initializing cache", slog.Int("refresh_interval_seconds", cacheRefreshIntervalSeconds))
+	l.DebugContext(ctx, "Initializing cache")
 
 	instance := &EntitlementPolicyCache{
 		logger:                    l,
 		cacheClient:               cacheClient,
 		retriever:                 access.NewEntitlementPolicyRetriever(sdk),
-		configuredRefreshInterval: time.Duration(cacheRefreshIntervalSeconds) * time.Second,
+		configuredRefreshInterval: cacheRefreshInterval,
 		stopRefresh:               make(chan struct{}),
 		refreshCompleted:          make(chan struct{}),
 	}
@@ -108,18 +111,15 @@ func (c *EntitlementPolicyCache) Start(ctx context.Context) error {
 	}
 
 	// Initial refresh
-	if err := c.Refresh(ctx); err != nil {
-		return errors.Join(ErrFailedToRefreshCache, err)
-	}
+	// if err := c.Refresh(ctx); err != nil {
+	// 	return errors.Join(ErrFailedToRefreshCache, err)
+	// }
 
-	// Begin periodic refresh if an interval is set
-	if c.configuredRefreshInterval > 0 {
-		c.logger.DebugContext(ctx, "Starting periodic cache refresh",
-			"seconds", c.configuredRefreshInterval.Seconds())
-		go c.periodicRefresh(ctx)
-	} else {
-		c.logger.DebugContext(ctx, "Periodic cache refresh is disabled (interval <= 0)")
-	}
+	c.logger.DebugContext(ctx,
+		"Starting periodic cache refresh",
+		"seconds", c.configuredRefreshInterval.Seconds(),
+	)
+	go c.periodicRefresh(ctx)
 
 	return nil
 }

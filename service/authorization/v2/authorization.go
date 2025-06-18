@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/creasty/defaults"
@@ -30,79 +31,131 @@ type Service struct {
 	cache *EntitlementPolicyCache
 
 	// client managed by platform, provided by registration params
-	platformCacheClient *cache.Cache
+	// platformCacheClient *cache.Cache
+}
+
+// Manage config for EntitlementPolicyCache: attributes, subject mappings, and registered resources
+// Default: caching disabled, and if enabled, refresh interval set to 30 seconds.
+type EntitlementPolicyCacheConfig struct {
+	Enabled         bool   `mapstructure:"enabled" json:"enabled" default:"false"`
+	RefreshInterval string `mapstructure:"refresh_interval" json:"refresh_interval" default:"30s"`
 }
 
 type Config struct {
-	// Interval in seconds to refresh the in-memory policy entitlement cache (attributes and subject mappings)
-	// Default: cache is disabled with refresh interval set to 0.
-	CacheRefreshIntervalSeconds int `mapstructure:"cache_refresh_interval_seconds" default:"0"` // Cache disabled by default
+	Cache EntitlementPolicyCacheConfig `mapstructure:"entitlement_policy_cache" json:"entitlement_policy_cache"`
 }
 
-func OnServicesStarted(svc *Service) serviceregistry.OnServicesStartedHook {
-	return func(ctx context.Context) error {
-		if svc.platformCacheClient != nil {
-			c, err := NewEntitlementPolicyCache(ctx, svc.logger, svc.sdk, svc.platformCacheClient, svc.config.CacheRefreshIntervalSeconds)
-			if err != nil {
-				svc.logger.ErrorContext(ctx, "failed to create entitlement policy cache", slog.Any("error", err))
-				return fmt.Errorf("failed to create entitlement policy cache: %w", err)
-			}
-
-			svc.cache = c
-		}
-
-		return nil
+func (c *Config) Validate() error {
+	duration, err := time.ParseDuration(c.Cache.RefreshInterval)
+	if err != nil {
+		return fmt.Errorf("failed to parse entitlement policy cache refresh interval [%s]: %w", c.Cache.RefreshInterval, err)
 	}
+
+	if c.Cache.Enabled && duration < minRefreshInterval {
+		return fmt.Errorf("entitlement policy cache enabled, but refresh interval [%f seconds] less than required minimum [%f seconds]: %w",
+			duration.Seconds(),
+			minRefreshInterval.Seconds(),
+			ErrInvalidCacheConfig,
+		)
+	}
+	return nil
 }
+
+func (c *Config) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Any("entitlement_policy_cache",
+			slog.GroupValue(
+				slog.Bool("enabled", c.Cache.Enabled),
+				slog.String("refresh_interval", c.Cache.RefreshInterval),
+			),
+		),
+	)
+}
+
+// func OnServicesStarted(svc *Service) serviceregistry.OnServicesStartedHook {
+// 	return func(ctx context.Context) error {
+// 		if svc.platformCacheClient != nil {
+// 			c, err := NewEntitlementPolicyCache(ctx, svc.logger, svc.sdk, svc.platformCacheClient, svc.config.CacheRefreshIntervalSeconds)
+// 			if err != nil {
+// 				svc.logger.ErrorContext(ctx, "failed to create entitlement policy cache", slog.Any("error", err))
+// 				return fmt.Errorf("failed to create entitlement policy cache: %w", err)
+// 			}
+
+// 			svc.cache = c
+// 		}
+
+// 		return nil
+// 	}
+// }
 
 func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler] {
 	as := new(Service)
-	startHook := OnServicesStarted(as)
+	// startHook := OnServicesStarted(as)
 
 	return &serviceregistry.Service[authzV2Connect.AuthorizationServiceHandler]{
 		Close: as.Close,
 		ServiceOptions: serviceregistry.ServiceOptions[authzV2Connect.AuthorizationServiceHandler]{
-			Namespace:         "authorization",
-			Version:           "v2",
-			ServiceDesc:       &authzV2.AuthorizationService_ServiceDesc,
-			OnServicesStarted: startHook,
-			ConnectRPCFunc:    authzV2Connect.NewAuthorizationServiceHandler,
+			Namespace:   "authorization",
+			Version:     "v2",
+			ServiceDesc: &authzV2.AuthorizationService_ServiceDesc,
+			// OnServicesStarted: startHook,
+			ConnectRPCFunc: authzV2Connect.NewAuthorizationServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (authzV2Connect.AuthorizationServiceHandler, serviceregistry.HandlerServer) {
 				authZCfg := new(Config)
+				l := srp.Logger
+
+				as.sdk = srp.SDK
+				as.logger = l
+				as.config = authZCfg
+				as.Tracer = srp.Tracer
 
 				err := defaults.Set(authZCfg)
 				if err != nil {
-					panic(fmt.Errorf("failed to set defaults for policy service config: %w", err))
+					l.Error("failed to set defaults for authorization service config", slog.Any("error", err))
+					panic(fmt.Errorf("failed to set defaults for authorization service config: %w", err))
 				}
 
 				// Only decode config if it exists
 				if srp.Config != nil {
 					if err := mapstructure.Decode(srp.Config, &authZCfg); err != nil {
-						panic(fmt.Errorf("invalid policy svc cfg [%v] %w", srp.Config, err))
+						l.Error("failed to decode authorization service config", slog.Any("error", err))
+						panic(fmt.Errorf("invalid authorization svc config [%v] %w", srp.Config, err))
 					}
 				}
 
-				logger := srp.Logger
+				if err := authZCfg.Validate(); err != nil {
+					l.Error("invalid authorization service config", slog.Any("error", err), slog.Any("config", authZCfg.LogValue()))
+					panic(fmt.Errorf("invalid authorization svc config %w", err))
+				}
+				l.Debug("authorization service config", slog.Any("config", authZCfg.LogValue()))
 
-				as.sdk = srp.SDK
-				as.logger = logger
+				if !authZCfg.Cache.Enabled {
+					l.Debug("entitlement policy cache is disabled")
+					return as, nil
+				}
 
-				if authZCfg.CacheRefreshIntervalSeconds > 0 {
-					as.platformCacheClient, err = srp.NewCacheClient(cache.Options{})
-					if err != nil {
-						logger.Error("failed to create platform cache client", slog.Any("error", err))
-						panic(fmt.Errorf("failed to create platform cache client: %w", err))
-					}
-				} else {
-					logger.Debug("entitlement policy cache is disabled")
+				// as.platformCacheClient, err = srp.NewCacheClient(cache.Options{})
+				cacheClient, err := srp.NewCacheClient(cache.Options{})
+				if err != nil {
+					l.Error("failed to create platform cache client", slog.Any("error", err))
+					panic(fmt.Errorf("failed to create platform cache client: %w", err))
+				}
+
+				refreshInterval, err := time.ParseDuration(authZCfg.Cache.RefreshInterval)
+				if err != nil {
+					l.Error("failed to parse entitlement policy cache refresh interval", slog.Any("error", err))
+					panic(fmt.Errorf("failed to parse entitlement policy cache refresh interval [%s]: %w", authZCfg.Cache.RefreshInterval, err))
+				}
+
+				as.cache, err = NewEntitlementPolicyCache(context.Background(), l, as.sdk, cacheClient, refreshInterval)
+				if err != nil {
+					l.Error("failed to create entitlement policy cache", slog.Any("error", err))
+					panic(fmt.Errorf("failed to create entitlement policy cache: %w", err))
 				}
 
 				// if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {
 				// 	logger.Error("failed to register authorization readiness check", slog.String("error", err.Error()))
 				// }
-
-				as.config = authZCfg
-				as.Tracer = srp.Tracer
 
 				return as, nil
 			},

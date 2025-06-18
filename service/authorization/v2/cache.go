@@ -29,8 +29,8 @@ var (
 
 	ErrFailedToStartCache    = errors.New("failed to start EntitlementPolicyCache")
 	ErrFailedToRefreshCache  = errors.New("failed to refresh EntitlementPolicyCache")
-	ErrFailedToSet           = errors.New("failed to set cache with fresh EntitlementPolicy")
-	ErrFailedToGet           = errors.New("failed to get cached EntitlementPolicy")
+	ErrFailedToSet           = errors.New("failed to set cache with fresh entitlement policy")
+	ErrFailedToGet           = errors.New("failed to get cached entitlement policy")
 	ErrCacheDisabled         = errors.New("EntitlementPolicyCache is disabled (refresh interval is 0 seconds)")
 	ErrCachedTypeNotExpected = errors.New("cached data is not of expected type")
 )
@@ -191,39 +191,66 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 
 // ListAllAttributes returns the cached attributes
 func (c *EntitlementPolicyCache) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
+	var (
+		attributes []*policy.Attribute
+		ok         bool
+	)
+
 	cached, err := c.cacheClient.Get(ctx, attributesCacheKey)
 	if err != nil {
+		if errors.Is(err, cache.ErrCacheMiss) {
+			return attributes, nil
+		}
 		return nil, fmt.Errorf("%w, attributes: %w", ErrFailedToGet, err)
 	}
-	attrs, ok := cached.([]*policy.Attribute)
+
+	attributes, ok = cached.([]*policy.Attribute)
 	if !ok {
-		return nil, fmt.Errorf("%w: []*policy.Attribute", ErrCachedTypeNotExpected)
+		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, attributes)
 	}
-	return attrs, nil
+	return attributes, nil
 }
 
 // ListAllSubjectMappings returns the cached subject mappings
 func (c *EntitlementPolicyCache) ListAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
+	var (
+		subjectMappings []*policy.SubjectMapping
+		ok              bool
+	)
+
 	cached, err := c.cacheClient.Get(ctx, subjectMappingsCacheKey)
 	if err != nil {
+		if errors.Is(err, cache.ErrCacheMiss) {
+			return subjectMappings, nil
+		}
 		return nil, fmt.Errorf("%w, subject mappings: %w", ErrFailedToGet, err)
 	}
-	subjectMappings, ok := cached.([]*policy.SubjectMapping)
+
+	subjectMappings, ok = cached.([]*policy.SubjectMapping)
 	if !ok {
-		return nil, fmt.Errorf("%w: []*policy.SubjectMapping", ErrCachedTypeNotExpected)
+		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, subjectMappings)
 	}
 	return subjectMappings, nil
 }
 
-// ListAllRegisteredResources returns the cached registered resources
+// ListAllRegisteredResources returns the cached registered resources, or none in the event of a cache miss
 func (c *EntitlementPolicyCache) ListAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error) {
+	var (
+		registeredResources []*policy.RegisteredResource
+		ok                  bool
+	)
+
 	cached, err := c.cacheClient.Get(ctx, registeredResourcesCacheKey)
 	if err != nil {
+		if errors.Is(err, cache.ErrCacheMiss) {
+			return registeredResources, nil
+		}
 		return nil, fmt.Errorf("%w, registered resources: %w", ErrFailedToGet, err)
 	}
-	registeredResources, ok := cached.([]*policy.RegisteredResource)
+
+	registeredResources, ok = cached.([]*policy.RegisteredResource)
 	if !ok {
-		return nil, fmt.Errorf("%w: []*policy.RegisteredResource", ErrCachedTypeNotExpected)
+		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, registeredResources)
 	}
 	return registeredResources, nil
 }

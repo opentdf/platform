@@ -44,8 +44,8 @@ type RegistrationParams struct {
 	Logger *logger.Logger
 	trace.Tracer
 
-	// NewCacheFunc is a function that can be used to create a new cache instance for the service
-	NewCacheFunc func(cache.Options) (*cache.Cache, error)
+	// NewCacheClient is a function that can be used to create a new cache instance for the service
+	NewCacheClient func(cache.Options) (*cache.Cache, error)
 
 	KeyManagers []trust.KeyManager
 

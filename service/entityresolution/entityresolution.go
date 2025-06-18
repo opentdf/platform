@@ -15,8 +15,8 @@ import (
 
 type ERSConfig struct {
 	Mode            string `mapstructure:"mode" json:"mode"`
-	CacheExpiration string `mapstructure:"cacheexpiration" json:"cacheexpiration"`
-	CacheCost       int64  `mapstructure:"cachecost" json:"cachecost"`
+	CacheExpiration string `mapstructure:"cache_expiration" json:"cache_expiration"`
+	CacheCost       int64  `mapstructure:"cache_cost" json:"cache_cost"`
 }
 
 const (
@@ -59,7 +59,7 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 					srp.Logger.Error("Failed to parse cache expiration duration", "error", err)
 					panic(err)
 				}
-				ersCache, err := srp.NewCacheFunc(cache.Options{
+				ersCache, err := srp.NewCacheClient(cache.Options{
 					Expiration: exp,
 					Cost:       inputConfig.CacheCost,
 				})

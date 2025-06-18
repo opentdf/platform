@@ -197,9 +197,9 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 			// Function to create a cache given cache options
 			var createCacheClient func(cache.Options) (*cache.Cache, error) = func(options cache.Options) (*cache.Cache, error) {
 				slog.Info("creating cache client for", slog.String("namespace", ns), slog.String("service", svc.GetServiceDesc().ServiceName))
-				cacheClient, err := cacheManager.NewCache(fmt.Sprintf("%s-%s", ns, svc.GetServiceDesc().ServiceName), svcLogger, options)
+				cacheClient, err := cacheManager.NewCache(ns, svcLogger, options)
 				if err != nil {
-					return nil, fmt.Errorf("issue creating cache client for %s: %w", fmt.Sprintf("%s-%s", ns, svc.GetServiceDesc().ServiceName), err)
+					return nil, fmt.Errorf("issue creating cache client for %s: %w", ns, err)
 				}
 				return cacheClient, nil
 			}
@@ -213,7 +213,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				RegisterReadinessCheck: health.RegisterReadinessCheck,
 				OTDF:                   otdf, // TODO: REMOVE THIS
 				Tracer:                 tracer,
-				NewCacheFunc:           createCacheClient,
+				NewCacheClient:         createCacheClient,
 				KeyManagers:            keyManagers,
 			})
 			if err != nil {

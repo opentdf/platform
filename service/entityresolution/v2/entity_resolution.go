@@ -58,7 +58,7 @@ func NewRegistration() *serviceregistry.Service[entityresolutionv2connect.Entity
 					srp.Logger.Error("Failed to parse cache expiration duration", "error", err)
 					panic(err)
 				}
-				ersCache, err := srp.NewCacheFunc(cache.Options{
+				ersCache, err := srp.NewCacheClient(cache.Options{
 					Expiration: exp,
 					Cost:       int64(inputConfig.CacheCost),
 				})

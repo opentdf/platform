@@ -91,10 +91,12 @@ func (c *Cache) Get(ctx context.Context, key string) (any, error) {
 // Set stores a value of type T in the cache.
 func (c *Cache) Set(ctx context.Context, key string, object any, tags []string) error {
 	tags = append(tags, c.getServiceTag())
-	opts := []store.Option{
-		store.WithTags(tags),
-		store.WithExpiration(c.cacheOptions.Expiration),
-		store.WithCost(c.cacheOptions.Cost),
+	opts := []store.Option{store.WithTags(tags)}
+	if c.cacheOptions.Expiration > 0 {
+		opts = append(opts, store.WithExpiration(c.cacheOptions.Expiration))
+	}
+	if c.cacheOptions.Cost > 0 {
+		opts = append(opts, store.WithCost(c.cacheOptions.Cost))
 	}
 
 	err := c.manager.cache.Set(ctx, c.getKey(key), object, opts...)

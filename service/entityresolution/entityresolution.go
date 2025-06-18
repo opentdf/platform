@@ -36,7 +36,6 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 			ConnectRPCFunc:  entityresolutionconnect.NewEntityResolutionServiceHandler,
 			GRPCGatewayFunc: entityresolution.RegisterEntityResolutionServiceHandler,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (entityresolutionconnect.EntityResolutionServiceHandler, serviceregistry.HandlerServer) {
-				srp.Logger.Info("Registering Entity Resolution Service")
 				var inputConfig ERSConfig
 
 				if err := mapstructure.Decode(srp.Config, &inputConfig); err != nil {

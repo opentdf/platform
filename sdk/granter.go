@@ -432,6 +432,7 @@ func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 func storeKeysToCache(kases []*policy.KeyAccessServer, keys []*policy.SimpleKasKey, c *kasKeyCache) {
 	for _, key := range keys {
 		alg, err := formatAlg(key.GetPublicKey().GetAlgorithm())
+		// ? Should we continue here or throw. Means that a key is invalid.
 		if err != nil {
 			continue
 		}

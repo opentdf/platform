@@ -415,8 +415,15 @@ func (c *kasKeyCache) get(url, algorithm, kid string) *KASInfo {
 }
 
 func (c *kasKeyCache) store(ki KASInfo) {
-	cacheKey := kasKeyRequest{ki.URL, ki.Algorithm, ki.KID}
-	c.c[cacheKey] = timeStampedKASInfo{ki, time.Now()}
+	cacheKeyWoKid := kasKeyRequest{ki.URL, ki.Algorithm, ""}
+	// * With grants a split plan is generated without a KID, for key mappings we always have a KID
+	// * so create a version of both in the cache.
+	// * Prefer this in regard to iterating over the cache for efficiency.
+	if ki.KID != "" {
+		cacheKeyWithKid := kasKeyRequest{ki.URL, ki.Algorithm, ki.KID}
+		c.c[cacheKeyWithKid] = timeStampedKASInfo{ki, time.Now()}
+	}
+	c.c[cacheKeyWoKid] = timeStampedKASInfo{ki, time.Now()}
 }
 
 func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind string) (*KASInfo, error) {

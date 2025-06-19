@@ -88,39 +88,39 @@ var (
 	testPlatformHybridFQN = createAttrValueFQN(testSecondaryNamespace, "platform", "hybrid")
 
 	// Registered resource value FQNs (todo: remove)
-	testNetworkPrivateFQN      = createRegisteredResourceValueFQN("network", "private")
-	testNetworkPublicFQN       = createRegisteredResourceValueFQN("network", "public")
-	testNetworkConfidentialFQN = createRegisteredResourceValueFQN("network", "confidential")
-	testNetworkAlphaFQN        = createRegisteredResourceValueFQN("network", "alpha")
+	testNetworkPrivateFQN = createRegisteredResourceValueFQN("network", "private")
+	testNetworkPublicFQN  = createRegisteredResourceValueFQN("network", "public")
+	// testNetworkConfidentialFQN = createRegisteredResourceValueFQN("network", "confidential")
+	// testNetworkAlphaFQN        = createRegisteredResourceValueFQN("network", "alpha")
 )
 
 // registered resource value FQNs using identifier package
 var (
 	// Classification values
-	testClassTopSecretRegResFQN    = createRegisteredResourceValueFQN("classification", "topsecret")
+	// testClassTopSecretRegResFQN    = createRegisteredResourceValueFQN("classification", "topsecret")
 	testClassSecretRegResFQN       = createRegisteredResourceValueFQN("classification", "secret")
 	testClassConfidentialRegResFQN = createRegisteredResourceValueFQN("classification", "confidential")
-	testClassPublicRegResFQN       = createRegisteredResourceValueFQN("classification", "public")
+	// testClassPublicRegResFQN       = createRegisteredResourceValueFQN("classification", "public")
 
 	// Department values
-	testDeptRnDRegResFQN         = createRegisteredResourceValueFQN("department", "rnd")
+	// testDeptRnDRegResFQN         = createRegisteredResourceValueFQN("department", "rnd")
 	testDeptEngineeringRegResFQN = createRegisteredResourceValueFQN("department", "engineering")
-	testDeptSalesRegResFQN       = createRegisteredResourceValueFQN("department", "sales")
-	testDeptFinanceRegResFQN     = createRegisteredResourceValueFQN("department", "finance")
+	// testDeptSalesRegResFQN       = createRegisteredResourceValueFQN("department", "sales")
+	testDeptFinanceRegResFQN = createRegisteredResourceValueFQN("department", "finance")
 
 	// Country values
-	testCountryUSARegResFQN = createRegisteredResourceValueFQN("country", "usa")
-	testCountryUKRegResFQN  = createRegisteredResourceValueFQN("country", "uk")
+	// testCountryUSARegResFQN = createRegisteredResourceValueFQN("country", "usa")
+	// testCountryUKRegResFQN  = createRegisteredResourceValueFQN("country", "uk")
 
 	// Project values in secondary namespace
 	testProjectAlphaRegResFQN = createRegisteredResourceValueFQN("project", "alpha")
-	testProjectBetaRegResFQN  = createRegisteredResourceValueFQN("project", "beta")
-	testProjectGammaRegResFQN = createRegisteredResourceValueFQN("project", "gamma")
+	// testProjectBetaRegResFQN  = createRegisteredResourceValueFQN("project", "beta")
+	// testProjectGammaRegResFQN = createRegisteredResourceValueFQN("project", "gamma")
 
 	// Platform values in secondary namespace
-	testPlatformCloudRegResFQN  = createRegisteredResourceValueFQN("platform", "cloud")
-	testPlatformOnPremRegResFQN = createRegisteredResourceValueFQN("platform", "onprem")
-	testPlatformHybridRegResFQN = createRegisteredResourceValueFQN("platform", "hybrid")
+	// testPlatformCloudRegResFQN  = createRegisteredResourceValueFQN("platform", "cloud")
+	// testPlatformOnPremRegResFQN = createRegisteredResourceValueFQN("platform", "onprem")
+	// testPlatformHybridRegResFQN = createRegisteredResourceValueFQN("platform", "hybrid")
 )
 
 // Registered resource value FQNs using identifier package

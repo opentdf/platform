@@ -191,7 +191,7 @@ func getResourceDecisionableAttributes(
 	logger *logger.Logger,
 	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue,
 	entitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
-	action *policy.Action,
+	// action *policy.Action,
 	resources []*authz.Resource,
 ) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	var (

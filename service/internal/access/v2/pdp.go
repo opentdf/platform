@@ -262,8 +262,8 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 
 		attrVal := aav.GetAttributeValue()
 		attrValFQN := attrVal.GetFqn()
-		actionsList, ok := entitledFQNsToActions[attrValFQN]
-		if !ok {
+		actionsList, actionsAreOK := entitledFQNsToActions[attrValFQN]
+		if !actionsAreOK {
 			actionsList = make([]*policy.Action, 0)
 		}
 
@@ -400,8 +400,8 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 		attrVal := aav.GetAttributeValue()
 		attrValFQN := attrVal.GetFqn()
 
-		actionsList, ok := actionsPerAttributeValueFqn[attrValFQN]
-		if !ok {
+		actionsList, actionsAreOK := actionsPerAttributeValueFqn[attrValFQN]
+		if !actionsAreOK {
 			actionsList = &authz.EntityEntitlements_ActionsList{
 				Actions: make([]*policy.Action, 0),
 			}

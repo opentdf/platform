@@ -70,7 +70,7 @@ func getResourceDecision(
 			// }
 
 			aavAttrValueFQN := aav.GetAttributeValue().GetFqn()
-			if !slices.Contains(resourceAttributeValues.Fqns, aavAttrValueFQN) {
+			if !slices.Contains(resourceAttributeValues.GetFqns(), aavAttrValueFQN) {
 				resourceAttributeValues.Fqns = append(resourceAttributeValues.Fqns, aavAttrValueFQN)
 			}
 		}

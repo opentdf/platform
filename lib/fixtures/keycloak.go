@@ -84,7 +84,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	if err != nil {
 		switch kcErrCode(err) {
 		case http.StatusConflict:
-			slog.Info(fmt.Sprintf("⏭️ %s realm already exists, skipping create", kcConnectParams.Realm))
+			slog.Info("realm already exists, skipping create", slog.String("realm", kcConnectParams.Realm))
 		case http.StatusNotFound:
 			// yay!
 		default:
@@ -102,7 +102,8 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		if _, err := client.CreateRealm(ctx, token.AccessToken, realm); err != nil {
 			return err
 		}
-		slog.Info("✅ Realm created", slog.String("realm", kcConnectParams.Realm))
+		//nolint:sloglint // allow existing emojis
+		slog.Info("✅ realm created", slog.String("realm", kcConnectParams.Realm))
 
 		// update realm users profile via upconfig
 		realmProfileURL := fmt.Sprintf("%s/admin/realms/%s/users/profile", kcConnectParams.BasePath, kcConnectParams.Realm)
@@ -120,9 +121,11 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		if err != nil {
 			return err
 		}
-		slog.Info("✅ Realm Users Profile Updated", slog.String("realm", kcConnectParams.Realm))
+		//nolint:sloglint // allow existing emojis
+		slog.Info("✅ realm users profile updated", slog.String("realm", kcConnectParams.Realm))
 	} else {
-		slog.Info("⏭️  Realm already exists", slog.String("realm", kcConnectParams.Realm))
+		//nolint:sloglint // allow existing emojis
+		slog.Info("⏭️ realm already exists", slog.String("realm", kcConnectParams.Realm))
 	}
 
 	opentdfClientID := "opentdf"
@@ -169,12 +172,14 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		if err != nil {
 			switch kcErrCode(err) {
 			case http.StatusConflict:
-				slog.Warn(fmt.Sprintf("⏭️  role %s already exists", role))
+				//nolint:sloglint // allow existing emojis
+				slog.Warn("⏭️ role already exists", slog.String("role", role))
 			default:
 				return err
 			}
 		} else {
-			slog.Info("✅ Role created: role = " + role)
+			//nolint:sloglint // allow existing emojis
+			slog.Info("✅ role created", slog.String("role", role))
 		}
 	}
 
@@ -189,7 +194,8 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 		return err
 	}
 
-	slog.Info(fmt.Sprintf("✅ Roles found: %d", len(realmRoles))) // , slog.String("roles", fmt.Sprintf("%v", realmRoles))
+	//nolint:sloglint // allow existing emojis
+	slog.Info("✅ roles found", slog.Int("count", len(realmRoles)))
 	for _, role := range realmRoles {
 		switch *role.Name {
 		case opentdfAdminRoleName:
@@ -261,13 +267,13 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 
 	err = client.AddOptionalScopeToClient(ctx, token.AccessToken, kcConnectParams.Realm, sdkNumericID, testScopeID)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error adding scope to client: %s", err))
+		slog.Error("error adding scope to client", slog.Any("error", err))
 		return err
 	}
 
 	err = client.CreateClientScopesScopeMappingsRealmRoles(ctx, token.AccessToken, kcConnectParams.Realm, testScopeID, []gocloak.Role{*testingOnlyRole})
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error creating a client scope mapping: %s", err))
+		slog.Error("error creating a client scope mapping", slog.Any("error", err))
 		return err
 	}
 
@@ -278,7 +284,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 	}
 	clientRolesToAdd, addErr := getClientRolesByList(ctx, &kcConnectParams, client, token, *realmManagementClientID, []string{"view-clients", "query-clients", "view-users", "query-users"})
 	if addErr != nil {
-		slog.Error(fmt.Sprintf("Error getting client roles : %s", err))
+		slog.Error("error getting client roles", slog.Any("error", err))
 		return err
 	}
 	_, err = createClient(ctx, client, token, &kcConnectParams, gocloak.Client{
@@ -310,7 +316,7 @@ func SetupKeycloak(ctx context.Context, kcConnectParams KeycloakConnectParams) e
 
 	// opentdfSdkClientNumericId, err := getIDOfClient(ctx, client, token, &kcConnectParams, &opentdfClientId)
 	// if err != nil {
-	// 	slog.Error(fmt.Sprintf("Error getting the SDK id: %s", err))
+	// 	slog.Error("error getting the sdk id", slog.Any("error", err))
 	// 	return err
 	// }
 
@@ -485,7 +491,7 @@ func keycloakLogin(ctx context.Context, connectParams *KeycloakConnectParams) (*
 	// Get Token from master
 	token, err := client.LoginAdmin(ctx, connectParams.Username, connectParams.Password, "master")
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error logging into keycloak: %s", err))
+		slog.Error("error logging into keycloak", slog.Any("error", err))
 	}
 	return client, token, err
 }
@@ -505,13 +511,13 @@ func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, rea
 		case http.StatusNotFound:
 			// yes
 		case http.StatusConflict:
-			slog.Info(fmt.Sprintf("⏭️ %s realm already exists, skipping create", *realm.Realm))
+			slog.Info("realm already exists, skipping create", slog.String("realm", *realm.Realm))
 		default:
 			return err
 		}
 	} else if err != nil {
 		if kcErr.Code == http.StatusConflict {
-			slog.Info(fmt.Sprintf("⏭️ %s realm already exists, skipping create", *realm.Realm))
+			slog.Info("realm already exists, skipping create", slog.String("realm", *realm.Realm))
 		} else if kcErr.Code != http.StatusNotFound {
 			return err
 		}
@@ -521,16 +527,18 @@ func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, rea
 		if _, err := client.CreateRealm(ctx, token.AccessToken, realm); err != nil {
 			return err
 		}
-		slog.Info("✅ Realm created", slog.String("realm", *realm.Realm))
+		//nolint:sloglint // allow existing emojis
+		slog.Info("✅ realm created", slog.String("realm", *realm.Realm))
 	} else {
-		slog.Info("⏭️  Realm already exists", slog.String("realm", *realm.Realm))
+		//nolint:sloglint // allow existing emojis
+		slog.Info("⏭️ realm already exists", slog.String("realm", *realm.Realm))
 	}
 
 	// update realm users profile via upconfig
 	realmProfileURL := fmt.Sprintf("%s/admin/realms/%s/users/profile", kcConnectParams.BasePath, *realm.Realm)
 	realmUserProfileResp, err := client.GetRequestWithBearerAuth(ctx, token.AccessToken).Get(realmProfileURL)
 	if err != nil {
-		slog.Error("Error retrieving realm users profile ", slog.String("realm", *realm.Realm))
+		slog.Error("error retrieving realm users profile", slog.String("realm", *realm.Realm))
 		return err
 	}
 	var upConfig map[string]interface{}
@@ -543,7 +551,8 @@ func createRealm(ctx context.Context, kcConnectParams KeycloakConnectParams, rea
 	if err != nil {
 		return err
 	}
-	slog.Info("✅ Realm Users Profile Updated", slog.String("realm", *realm.Realm))
+	//nolint:sloglint // allow existing emojis
+	slog.Info("✅ realm users profile updated", slog.String("realm", *realm.Realm))
 
 	return nil
 }
@@ -556,12 +565,14 @@ func createGroup(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JW
 	if err != nil {
 		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == http.StatusConflict {
-			slog.Warn(fmt.Sprintf("⏭️  group %s already exists", *group.Name))
+			//nolint:sloglint // allow existing emojis
+			slog.Warn("⏭️ group already exists", slog.String("group", *group.Name))
 		} else {
 			return err
 		}
 	} else {
-		slog.Info("✅ Group created: group = " + *group.Name)
+		//nolint:sloglint // allow existing emojis
+		slog.Info("✅ group created", slog.String("group", *group.Name))
 	}
 	return nil
 }
@@ -574,12 +585,14 @@ func createRealmRole(ctx context.Context, client *gocloak.GoCloak, token *gocloa
 	if err != nil {
 		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == http.StatusConflict {
-			slog.Warn(fmt.Sprintf("⏭️  role %s already exists", *role.Name))
+			//nolint:sloglint // allow existing emojis
+			slog.Warn("⏭️ role already exists", slog.String("role", *role.Name))
 		} else {
 			return err
 		}
 	} else {
-		slog.Info("✅ Role created: role = " + *role.Name)
+		//nolint:sloglint // allow existing emojis
+		slog.Info("✅ role created", slog.String("role", *role.Name))
 	}
 	return nil
 }
@@ -590,7 +603,9 @@ func createClientRole(ctx context.Context, client *gocloak.GoCloak, token *goclo
 	}
 	results, err := client.GetClients(ctx, token.AccessToken, realmName, gocloak.GetClientsParams{ClientID: &clientID})
 	if err != nil || len(results) == 0 {
-		slog.Error(fmt.Sprintf("Error getting %s's client: %s", clientID, err))
+		slog.Error("error getting client",
+			slog.String("client_id", clientID),
+			slog.Any("error", err))
 		return err
 	}
 	idOfClient := results[0].ID
@@ -599,12 +614,18 @@ func createClientRole(ctx context.Context, client *gocloak.GoCloak, token *goclo
 	if err != nil {
 		kcErr := err.(*gocloak.APIError) //nolint:errcheck,errorlint,forcetypeassert // kc error checked below
 		if kcErr.Code == http.StatusConflict {
-			slog.Warn(fmt.Sprintf("⏭️  role %s already exists for client %s", *role.Name, clientID))
+			//nolint:sloglint // allow existing emojis
+			slog.Warn("⏭️ role already exists for client",
+				slog.String("role", *role.Name),
+				slog.String("client_id", clientID))
 		} else {
 			return err
 		}
 	} else {
-		slog.Info(fmt.Sprintf("✅ Client role created for client %s: role = %s", clientID, *role.Name))
+		//nolint:sloglint // allow existing emojis
+		slog.Info("✅ client role created",
+			slog.String("client_id", clientID),
+			slog.String("role", *role.Name))
 	}
 	return nil
 }
@@ -617,7 +638,8 @@ func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.J
 	if err != nil {
 		switch kcErrCode(err) {
 		case http.StatusConflict:
-			slog.Warn(fmt.Sprintf("⏭️  client %s already exists", clientID))
+			//nolint:sloglint // allow existing emojis
+			slog.Warn("⏭️ client already exists", slog.String("client_id", clientID))
 			clients, err := client.GetClients(ctx, token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: newClient.ClientID})
 			if err != nil {
 				return "", err
@@ -629,11 +651,16 @@ func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.J
 				return "", err
 			}
 		default:
-			slog.Error(fmt.Sprintf("❗️  Error creating client %s : %s", clientID, err))
+			slog.Error("error creating client",
+				slog.String("client_id", clientID),
+				slog.Any("error", err))
 			return "", err
 		}
 	} else {
-		slog.Info(fmt.Sprintf("✅ Client created: client id = %s, client identifier=%s", clientID, longClientID))
+		//nolint:sloglint // allow existing emojis
+		slog.Info("✅ client created",
+			slog.String("client_id", clientID),
+			slog.String("client_identifier", longClientID))
 	}
 
 	// if the client is not public
@@ -641,34 +668,50 @@ func createClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.J
 		// Get service account user
 		user, err := client.GetClientServiceAccount(ctx, token.AccessToken, connectParams.Realm, longClientID)
 		if err != nil {
-			slog.Error(fmt.Sprintf("Error getting service account user for client %s : %s", clientID, err))
+			slog.Error("error getting service account user for client",
+				slog.String("client_id", clientID),
+				slog.Any("error", err))
 			return "", err
 		}
-		slog.Info(fmt.Sprintf("ℹ️  Service account user for client %s : %s", clientID, *user.Username))
+		slog.Info("ℹ️ service account user for client",
+			slog.String("client_id", clientID),
+			slog.String("username", *user.Username))
 
 		if realmRoles != nil {
-			slog.Info(fmt.Sprintf("Adding realm roles to client %s via service account %s", longClientID, *user.Username))
+			//nolint:sloglint // allow existing emojis
+			slog.Info("⏭️ adding realm roles to client via service account",
+				slog.String("client_id", longClientID),
+				slog.String("username", *user.Username))
 			if err := client.AddRealmRoleToUser(ctx, token.AccessToken, connectParams.Realm, *user.ID, realmRoles); err != nil {
 				for _, role := range realmRoles {
-					slog.Warn("Error adding role " + *role.Name)
+					slog.Warn("error adding role", slog.String("role", *role.Name))
 				}
 				return "", err
 			}
 			for _, role := range realmRoles {
-				slog.Info(fmt.Sprintf("✅ Realm Role %s added to client %s", *role.Name, longClientID))
+				//nolint:sloglint // allow existing emojis
+				slog.Info("✅ realm role added to client",
+					slog.String("role", *role.Name),
+					slog.String("client_id", longClientID))
 			}
 		}
 		if clientRoles != nil {
-			slog.Info(fmt.Sprintf("Adding client roles to client %s via service account %s", longClientID, *user.Username))
+			//nolint:sloglint // allow existing emojis
+			slog.Info("⏭️ adding client roles to client via service account",
+				slog.String("client_id", longClientID),
+				slog.String("username", *user.Username))
 			for clientIDRole, roles := range clientRoles {
 				if err := client.AddClientRolesToUser(ctx, token.AccessToken, connectParams.Realm, clientIDRole, *user.ID, roles); err != nil {
 					for _, role := range roles {
-						slog.Warn("Error adding role " + *role.Name)
+						slog.Warn("error adding role", slog.String("role", *role.Name))
 					}
 					return "", err
 				}
 				for _, role := range roles {
-					slog.Info(fmt.Sprintf("✅ Client Role %s added to client %s", *role.Name, longClientID))
+					//nolint:sloglint // allow existing emojis
+					slog.Info("✅ client role added to client",
+						slog.String("role", *role.Name),
+						slog.String("client_id", longClientID))
 				}
 			}
 		}
@@ -682,7 +725,7 @@ func createUser(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT
 	if err != nil {
 		switch kcErrCode(err) {
 		case http.StatusConflict:
-			slog.Warn(fmt.Sprintf("user %s already exists", username))
+			slog.Warn("user already exists", slog.String("username", username))
 			users, err := client.GetUsers(ctx, token.AccessToken, connectParams.Realm, gocloak.GetUsersParams{Username: newUser.Username})
 			if err != nil {
 				return nil, err
@@ -694,11 +737,16 @@ func createUser(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT
 				return nil, err
 			}
 		default:
-			slog.Error(fmt.Sprintf("Error creating user %s : %s", username, err))
+			slog.Error("error creating user",
+				slog.String("username", username),
+				slog.Any("error", err))
 			return nil, err
 		}
 	} else {
-		slog.Info(fmt.Sprintf("✅ User created: username = %s, user identifier=%s", username, longUserID))
+		//nolint:sloglint // allow existing emojis
+		slog.Info("✅ user created",
+			slog.String("username", username),
+			slog.String("user_identifier", longUserID))
 	}
 	// assign realm roles to user
 	// retrieve the roles by name
@@ -709,7 +757,9 @@ func createUser(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT
 		}
 		err = client.AddRealmRoleToUser(ctx, token.AccessToken, connectParams.Realm, longUserID, roles)
 		if err != nil {
-			slog.Error(fmt.Sprintf("Error adding realm roles to user %s : %s", *newUser.RealmRoles, connectParams.Realm))
+			slog.Error("error adding realm roles to user",
+				slog.Any("roles", *newUser.RealmRoles),
+				slog.String("realm", connectParams.Realm))
 			return nil, err
 		}
 	}
@@ -718,25 +768,30 @@ func createUser(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT
 		for clientID, roles := range *newUser.ClientRoles {
 			results, err := client.GetClients(ctx, token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: &clientID})
 			if err != nil || len(results) == 0 {
-				slog.Error(fmt.Sprintf("Error getting %s's client: %s", clientID, err))
+				slog.Error("error getting client",
+					slog.String("client_id", clientID),
+					slog.Any("error", err))
 				return nil, err
 			}
 			idOfClient := results[0].ID
 
 			clientRoles, err := getClientRolesByList(ctx, connectParams, client, token, *idOfClient, roles)
 			if err != nil {
-				slog.Error(fmt.Sprintf("Error getting client roles: %s", err))
+				slog.Error("error getting client roles", slog.Any("error", err))
 				return nil, err
 			}
 
 			if err := client.AddClientRolesToUser(ctx, token.AccessToken, connectParams.Realm, *idOfClient, longUserID, clientRoles); err != nil {
 				for _, role := range clientRoles {
-					slog.Warn("Error adding role " + *role.Name)
+					slog.Warn("error adding role", slog.String("role", *role.Name))
 				}
 				return nil, err
 			}
 			for _, role := range clientRoles {
-				slog.Info(fmt.Sprintf("✅ Client Role %s added to user %s", *role.Name, longUserID))
+				//nolint:sloglint // allow existing emojis
+				slog.Info("✅ client role added to user",
+					slog.String("role", *role.Name),
+					slog.String("user_id", longUserID))
 			}
 		}
 	}
@@ -753,7 +808,9 @@ func getRealmRolesByList(ctx context.Context, realmName string, client *gocloak.
 			realmName,
 			roleName)
 		if err != nil {
-			slog.Error(fmt.Sprintf("Error getting realm role for realm %s : %s", roleName, realmName))
+			slog.Error("error getting realm role for realm",
+				slog.String("role", roleName),
+				slog.String("realm", realmName))
 			return nil, err
 		}
 		roles = append(roles, *role)
@@ -791,7 +848,7 @@ searchRole:
 func getIDOfClient(ctx context.Context, client *gocloak.GoCloak, token *gocloak.JWT, connectParams *KeycloakConnectParams, clientName *string) (*string, error) {
 	results, err := client.GetClients(ctx, token.AccessToken, connectParams.Realm, gocloak.GetClientsParams{ClientID: clientName})
 	if err != nil || len(results) == 0 {
-		slog.Error(fmt.Sprintf("Error getting realm management client: %s", err))
+		slog.Error("error getting realm management client", slog.Any("error", err))
 		return nil, err
 	}
 	clientID := results[0].ID
@@ -813,23 +870,27 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 		connectParams.Realm, *idForTargetClientID,
 		gocloak.ManagementPermissionRepresentation{Enabled: &enabled})
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error creating management permissions : %s", err))
+		slog.Error("error creating management permissions", slog.Any("error", err))
 		return err
 	}
 	tokenExchangePolicyPermissionResourceID := mgmtPermissionsRepr.Resource
 	scopePermissions := *mgmtPermissionsRepr.ScopePermissions
 	tokenExchangePolicyScopePermissionID := scopePermissions["token-exchange"]
-	slog.Debug(fmt.Sprintf("Creating management permission: resource = %s , scope permission id = %s", *tokenExchangePolicyPermissionResourceID, tokenExchangePolicyScopePermissionID))
+	slog.Debug("creating management permission",
+		slog.String("resource", *tokenExchangePolicyPermissionResourceID),
+		slog.String("scope_permission_id", tokenExchangePolicyScopePermissionID))
 
-	slog.Debug("Step 2 - Get realm mgmt client id")
+	slog.Debug("step 2 - get realm mgmt client id")
 	realmMangementClientName := "realm-management"
 	realmManagementClientID, err := getIDOfClient(ctx, client, token, connectParams, &realmMangementClientName)
 	if err != nil {
 		return err
 	}
-	slog.Debug(fmt.Sprintf("%s client id=%s", realmMangementClientName, *realmManagementClientID))
+	slog.Debug("client information",
+		slog.String("client_name", realmMangementClientName),
+		slog.String("client_id", *realmManagementClientID))
 
-	slog.Debug("Step 3 - Add policy for token exchange")
+	slog.Debug("step 3 - add policy for token exchange")
 	policyType := "client"
 	policyName := fmt.Sprintf("%s-%s-exchange-policy", targetClientID, startClientID)
 	realmMgmtExchangePolicyRepresentation := gocloak.PolicyRepresentation{
@@ -845,20 +906,22 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 	if err != nil {
 		switch kcErrCode(err) {
 		case http.StatusConflict:
-			slog.Warn(fmt.Sprintf("⏭️  policy %s already exists; skipping remainder of token exchange creation", *realmMgmtExchangePolicyRepresentation.Name))
+			//nolint:sloglint // allow existing emojis
+			slog.Warn("⏭️ policy already exists; skipping remainder of token exchange creation", slog.String("policy", *realmMgmtExchangePolicyRepresentation.Name))
 			return nil
 		default:
-			slog.Error(fmt.Sprintf("Error create realm management policy: %s", err))
+			slog.Error("error creating realm management policy", slog.Any("error", err))
 			return err
 		}
 	}
 	tokenExchangePolicyID := realmMgmtPolicy.ID
-	slog.Info("✅ Created Token Exchange Policy " + *tokenExchangePolicyID)
+	//nolint:sloglint // allow existing emojis
+	slog.Info("✅ created token exchange policy", slog.String("policy_id", *tokenExchangePolicyID))
 
-	slog.Debug("Step 4 - Get Token Exchange Scope Identifier")
+	slog.Debug("step 4 - get token exchange scope identifier")
 	resourceRep, err := client.GetResource(ctx, token.AccessToken, connectParams.Realm, *realmManagementClientID, *tokenExchangePolicyPermissionResourceID)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error getting resource : %s", err))
+		slog.Error("error getting resource", slog.Any("error", err))
 		return err
 	}
 	var tokenExchangeScopeID *string
@@ -871,7 +934,8 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 	if tokenExchangeScopeID == nil {
 		return errors.New("no token exchange scope found")
 	}
-	slog.Debug("Token exchange scope id =" + *tokenExchangeScopeID)
+	slog.Debug("token exchange scope information",
+		slog.String("scope_id", *tokenExchangeScopeID))
 
 	clientPermissionName := "token-exchange.permission.client." + *idForTargetClientID
 	clientType := "Scope"
@@ -890,7 +954,7 @@ func createTokenExchange(ctx context.Context, connectParams *KeycloakConnectPara
 	}
 	if err := client.UpdatePermissionScope(ctx, token.AccessToken, connectParams.Realm,
 		*realmManagementClientID, tokenExchangePolicyScopePermissionID, permissionScopePolicyRepresentation); err != nil {
-		slog.Error("Error creating permission scope", "error", err)
+		slog.Error("error creating permission scope", slog.Any("error", err))
 		return err
 	}
 	return nil
@@ -917,10 +981,11 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 		}); err != nil {
 		switch kcErrCode(err) {
 		case http.StatusConflict:
-			slog.Warn(fmt.Sprintf("⏭️  authentication flow %s already exists; skipping remainder of cert exchange creation", topLevelFlowName))
+			//nolint:sloglint // allow existing emojis
+			slog.Warn("⏭️ authentication flow already exists; skipping remainder of cert exchange creation", slog.String("flow_name", topLevelFlowName))
 			return nil
 		default:
-			slog.Error(fmt.Sprintf("Error create realm certificate authentication flow: %s", err))
+			slog.Error("error creating realm certificate authentication flow", slog.Any("error", err))
 			return err
 		}
 	}
@@ -930,18 +995,18 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 		topLevelFlowName, gocloak.CreateAuthenticationExecutionRepresentation{
 			Provider: &provider,
 		}); err != nil {
-		slog.Error(fmt.Sprintf("Error create realm management policy: %s", err))
+		slog.Error("error creating realm management policy", slog.Any("error", err))
 		return err
 	}
 
 	authExecutions, err := client.GetAuthenticationExecutions(ctx, token.AccessToken, connectParams.Realm, topLevelFlowName)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error gettings executions %s", err))
+		slog.Error("error gettings executions", slog.Any("error", err))
 		return err
 	}
 	if len(authExecutions) != 1 {
 		err = fmt.Errorf("expected a single flow execution for %s", topLevelFlowName)
-		slog.Error("Error setting up authentication flow", "error", err)
+		slog.Error("error setting up authentication flow", slog.Any("error", err))
 		return err
 	}
 
@@ -970,13 +1035,19 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 	config["x509-cert-auth.certificate-policy-mode"] = "All"
 	executionConfig["config"] = config
 	if err := updateExecutionConfig(ctx, client, execution, connectParams, token.AccessToken, executionConfig); err != nil {
-		slog.Error(fmt.Sprintf("Error updating x509 auth flow configs %s : %s", clientID, err))
+		slog.Error("error updating x509 auth flow configs",
+			slog.String("client_id", clientID),
+			slog.Any("error", err),
+		)
 		return err
 	}
 
 	execution.Requirement = &requiredRequirement
 	if err := client.UpdateAuthenticationExecution(ctx, token.AccessToken, connectParams.Realm, topLevelFlowName, *execution); err != nil {
-		slog.Error(fmt.Sprintf("Error updating x509 auth flow requjirement %s : %s", clientID, err))
+		slog.Error("error updating x509 auth flow requjirement",
+			slog.String("client_id", clientID),
+			slog.Any("error", err),
+		)
 		return err
 	}
 
@@ -1008,11 +1079,17 @@ func createCertExchange(ctx context.Context, connectParams *KeycloakConnectParam
 	flowBindings["direct_grant"] = *flowID
 	updatedClient.AuthenticationFlowBindingOverrides = &flowBindings
 	if err := client.UpdateClient(ctx, token.AccessToken, connectParams.Realm, *updatedClient); err != nil {
-		slog.Error(fmt.Sprintf("Error updating client auth flow binding overrides %s : %s", clientID, err))
+		slog.Error("error updating client auth flow binding overrides",
+			slog.String("client_id", clientID),
+			slog.Any("error", err),
+		)
 		return err
 	}
 
-	slog.Info("✅ Created Cert Exchange Authentication " + *flowID)
+	//nolint:sloglint // allow existing emojis
+	slog.Info("✅ created Cert Exchange Authentication",
+		slog.String("flow_id", *flowID),
+	)
 
 	return nil
 }

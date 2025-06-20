@@ -24,6 +24,7 @@ func (c Config) Validate() error {
 	return nil
 }
 
+// GetSharedPolicyConfig retrieves the shared policy configuration, applying defaults and validating it.
 func GetSharedPolicyConfig(cfg config.ServiceConfig) (*Config, error) {
 	policyCfg := new(Config)
 

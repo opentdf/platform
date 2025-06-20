@@ -47,7 +47,7 @@ type RegistrationParams struct {
 	// NewCacheClient is a function that can be used to create a new cache instance for the service
 	NewCacheClient func(cache.Options) (*cache.Cache, error)
 
-	KeyManagers []trust.KeyManager
+	KeyManagerFactories []trust.NamedKeyManagerFactory
 
 	////// The following functions are optional and intended to be called by the service //////
 

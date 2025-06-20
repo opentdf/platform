@@ -14,6 +14,7 @@ import (
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/kas/access"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
@@ -89,28 +90,37 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config, err))
 				} // kasURLString will be used for p.URI
 
+				var cacheClient *cache.Cache
+				if kasCfg.KeyCacheExpiration != 0 {
+					cacheClient, err = srp.NewCacheClient(cache.Options{
+						Expiration: kasCfg.KeyCacheExpiration,
+					})
+					if err != nil {
+						panic(err)
+					}
+				}
+
 				if kasCfg.Preview.KeyManagement {
 					srp.Logger.Info("Preview Feature: Key management is enabled")
 
 					// Configure new delegation service
-					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURLString, srp.Logger), srp.Logger)
-					for _, manager := range srp.KeyManagers {
-						p.KeyDelegator.RegisterKeyManager(manager.Name(), func() (trust.KeyManager, error) {
-							return manager, nil
-						})
+					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURLString, srp.Logger), srp.Logger, cacheClient)
+					for _, manager := range srp.KeyManagerFactories {
+						p.KeyDelegator.RegisterKeyManager(manager.Name, manager.Factory)
 					}
 
 					// Register Basic Key Manager
-					bm, err := security.NewBasicManager(srp.Logger.With("process", "basic-key-manager"), kasCfg.RootKey)
-					if err != nil {
-						panic(err)
-					}
-					p.KeyDelegator.RegisterKeyManager(bm.Name(), func() (trust.KeyManager, error) {
+
+					p.KeyDelegator.RegisterKeyManager(security.BasicManagerName, func(opts *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+						bm, err := security.NewBasicManager(opts.Logger, opts.Cache, kasCfg.RootKey)
+						if err != nil {
+							return nil, err
+						}
 						return bm, nil
 					})
 					// Explicitly set the default manager for session key generation.
 					// This should be configurable, e.g., defaulting to BasicManager or an HSM if available.
-					p.KeyDelegator.SetDefaultMode(bm.Name()) // Example: default to BasicManager
+					p.KeyDelegator.SetDefaultMode(security.BasicManagerName) // Example: default to BasicManager
 				} else {
 					// Set up both the legacy CryptoProvider and the new SecurityProvider
 					kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)
@@ -118,8 +128,8 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 
 					inProcessService := initSecurityProviderAdapter(p.CryptoProvider, kasCfg, srp.Logger)
 
-					p.KeyDelegator = trust.NewDelegatingKeyService(inProcessService, srp.Logger)
-					p.KeyDelegator.RegisterKeyManager(inProcessService.Name(), func() (trust.KeyManager, error) {
+					p.KeyDelegator = trust.NewDelegatingKeyService(inProcessService, srp.Logger, nil)
+					p.KeyDelegator.RegisterKeyManager(inProcessService.Name(), func(*trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
 						return inProcessService, nil
 					})
 					// Set default for non-key-management mode

@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"net/url"
+	"time"
 
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	otdf "github.com/opentdf/platform/sdk"
@@ -41,6 +42,8 @@ type KASConfig struct {
 	RSACertID string `mapstructure:"rsacertid" json:"rsacertid"`
 
 	RootKey string `mapstructure:"root_key" json:"root_key"`
+
+	KeyCacheExpiration time.Duration `mapstructure:"key_cache_expiration" json:"key_cache_expiration"`
 
 	// Deprecated
 	// Enables experimental EC rewrap support in TDFs

@@ -276,11 +276,11 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 				"foobar":       {},
 			},
 		},
-		otdf:        otdf,
-		client:      nil,
-		keyManagers: []trust.KeyManager{},
-		logger:      newLogger,
-		reg:         registry,
+		otdf:                otdf,
+		client:              nil,
+		keyManagerFactories: []trust.NamedKeyManagerFactory{},
+		logger:              newLogger,
+		reg:                 registry,
 	})
 
 	// call cleanup function

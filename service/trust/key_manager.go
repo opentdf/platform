@@ -57,3 +57,9 @@ type KeyService interface {
 	KeyIndex
 	KeyManager
 }
+
+// NamedKeyManagerFactory pairs a KeyManagerFactory with its intended registration name.
+type NamedKeyManagerFactory struct {
+	Name    string
+	Factory KeyManagerFactory
+}

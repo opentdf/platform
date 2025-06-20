@@ -86,7 +86,10 @@ type NamespaceServiceClient interface {
 	// --------------------------------------*
 	// Namespace <> Key Access Server RPCs
 	// ---------------------------------------
+	//
+	// Deprecated: do not use.
 	AssignKeyAccessServerToNamespace(context.Context, *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error)
+	// Deprecated: do not use.
 	RemoveKeyAccessServerFromNamespace(context.Context, *connect.Request[namespaces.RemoveKeyAccessServerFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyAccessServerFromNamespaceResponse], error)
 	// --------------------------------------*
 	// Namespace <> Key RPCs
@@ -204,12 +207,16 @@ func (c *namespaceServiceClient) DeactivateNamespace(ctx context.Context, req *c
 
 // AssignKeyAccessServerToNamespace calls
 // policy.namespaces.NamespaceService.AssignKeyAccessServerToNamespace.
+//
+// Deprecated: do not use.
 func (c *namespaceServiceClient) AssignKeyAccessServerToNamespace(ctx context.Context, req *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error) {
 	return c.assignKeyAccessServerToNamespace.CallUnary(ctx, req)
 }
 
 // RemoveKeyAccessServerFromNamespace calls
 // policy.namespaces.NamespaceService.RemoveKeyAccessServerFromNamespace.
+//
+// Deprecated: do not use.
 func (c *namespaceServiceClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, req *connect.Request[namespaces.RemoveKeyAccessServerFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyAccessServerFromNamespaceResponse], error) {
 	return c.removeKeyAccessServerFromNamespace.CallUnary(ctx, req)
 }
@@ -235,7 +242,10 @@ type NamespaceServiceHandler interface {
 	// --------------------------------------*
 	// Namespace <> Key Access Server RPCs
 	// ---------------------------------------
+	//
+	// Deprecated: do not use.
 	AssignKeyAccessServerToNamespace(context.Context, *connect.Request[namespaces.AssignKeyAccessServerToNamespaceRequest]) (*connect.Response[namespaces.AssignKeyAccessServerToNamespaceResponse], error)
+	// Deprecated: do not use.
 	RemoveKeyAccessServerFromNamespace(context.Context, *connect.Request[namespaces.RemoveKeyAccessServerFromNamespaceRequest]) (*connect.Response[namespaces.RemoveKeyAccessServerFromNamespaceResponse], error)
 	// --------------------------------------*
 	// Namespace <> Key RPCs

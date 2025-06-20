@@ -2245,7 +2245,7 @@ Configuration for the key provider </p></td>
                   <td>grants</td>
                   <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
                   <td>repeated</td>
-                  <td><p>Deprecated </p></td>
+                  <td><p>Deprecated KAS grants for the attribute. Use kas_keys instead. </p></td>
                 </tr>
               
                 <tr>
@@ -2678,7 +2678,7 @@ enable federation </p></td>
                   <td>grants</td>
                   <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
                   <td>repeated</td>
-                  <td><p>KAS grants for the namespace </p></td>
+                  <td><p>Deprecated KAS grants for the namespace. Use kas_keys instead. </p></td>
                 </tr>
               
                 <tr>
@@ -3349,8 +3349,7 @@ per namespace </p></td>
                   <td>grants</td>
                   <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
                   <td>repeated</td>
-                  <td><p>Deprecated
-list of key access servers </p></td>
+                  <td><p>Deprecated KAS grants for the value. Use kas_keys instead. </p></td>
                 </tr>
               
                 <tr>
@@ -6418,7 +6417,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -6463,7 +6462,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -6525,7 +6524,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -6556,7 +6555,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -6594,7 +6593,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -6639,7 +6638,7 @@ buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -7332,7 +7331,7 @@ Custom actions only: replaces the existing action name </p></td>
         
       
         <h3 id="policy.attributes.AttributeKeyAccessServer">AttributeKeyAccessServer</h3>
-        <p></p>
+        <p>Deprecated</p>
 
         
           <table class="field-table">
@@ -7397,7 +7396,7 @@ Custom actions only: replaces the existing action name </p></td>
                   <td>values</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p>Optional 
+                  <td><p>Optional
 Attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
 The stored attribute value will be normalized to lower case. </p></td>
                 </tr>
@@ -8560,6 +8559,42 @@ Attribute &lt;&gt; Key Access Server RPCs
           </tbody>
         </table>
 
+        
+          
+          
+          <h4>Methods with deprecated option</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Option</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              <tr>
+                <td>AssignKeyAccessServerToAttribute</td>
+                <td><p>true</p></td>
+              </tr>
+            
+              <tr>
+                <td>RemoveKeyAccessServerFromAttribute</td>
+                <td><p>true</p></td>
+              </tr>
+            
+              <tr>
+                <td>AssignKeyAccessServerToValue</td>
+                <td><p>true</p></td>
+              </tr>
+            
+              <tr>
+                <td>RemoveKeyAccessServerFromValue</td>
+                <td><p>true</p></td>
+              </tr>
+            
+            </tbody>
+          </table>
+          
         
           
           
@@ -10517,6 +10552,27 @@ Request to create a new key in the Key Access Service.</p></td>
         
           
           
+          <h4>Methods with deprecated option</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Option</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              <tr>
+                <td>ListKeyAccessServerGrants</td>
+                <td><p>true</p></td>
+              </tr>
+            
+            </tbody>
+          </table>
+          
+        
+          
+          
           <h4>Methods with HTTP bindings</h4>
           <table>
             <thead>
@@ -11303,7 +11359,7 @@ ACTIVE by default when not specified </p></td>
         
       
         <h3 id="policy.namespaces.NamespaceKeyAccessServer">NamespaceKeyAccessServer</h3>
-        <p></p>
+        <p>Deprecated</p>
 
         
           <table class="field-table">
@@ -11575,6 +11631,32 @@ Namespace &lt;&gt; Key RPCs
           </tbody>
         </table>
 
+        
+          
+          
+          <h4>Methods with deprecated option</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Option</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              <tr>
+                <td>AssignKeyAccessServerToNamespace</td>
+                <td><p>true</p></td>
+              </tr>
+            
+              <tr>
+                <td>RemoveKeyAccessServerFromNamespace</td>
+                <td><p>true</p></td>
+              </tr>
+            
+            </tbody>
+          </table>
+          
         
           
           

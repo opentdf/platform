@@ -3,9 +3,8 @@ syntax = "proto3";
 package policy.kasregistry;
 
 import "buf/validate/validate.proto";
-import "google/api/annotations.proto";
-
 import "common/common.proto";
+import "google/api/annotations.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
 
@@ -314,6 +313,7 @@ message ActivatePublicKeyResponse {
 // attribute tree relation. If grants to a known namespace, attribute, or value
 // are needed, use the respective GET request to the specific policy object.
 message ListKeyAccessServerGrantsRequest {
+  option deprecated = true;
   // Optional
   // Filter LIST by ID of a registered Key Access Server.
   // If neither is provided, grants from all registered KASs to policy attribute
@@ -365,6 +365,8 @@ message ListKeyAccessServerGrantsRequest {
 
 // Deprecated
 message ListKeyAccessServerGrantsResponse {
+  option deprecated = true;
+
   repeated KeyAccessServerGrants grants = 1 [deprecated = true];
 
   policy.PageResponse pagination = 10;
@@ -633,6 +635,7 @@ service KeyAccessServerRegistryService {
 
   // Deprecated
   rpc ListKeyAccessServerGrants(ListKeyAccessServerGrantsRequest) returns (ListKeyAccessServerGrantsResponse) {
+    option deprecated = true;
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

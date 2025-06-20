@@ -61,12 +61,16 @@ type AttributesServiceClient interface {
 	CreateAttributeValue(ctx context.Context, in *CreateAttributeValueRequest, opts ...grpc.CallOption) (*CreateAttributeValueResponse, error)
 	UpdateAttributeValue(ctx context.Context, in *UpdateAttributeValueRequest, opts ...grpc.CallOption) (*UpdateAttributeValueResponse, error)
 	DeactivateAttributeValue(ctx context.Context, in *DeactivateAttributeValueRequest, opts ...grpc.CallOption) (*DeactivateAttributeValueResponse, error)
+	// Deprecated: Do not use.
 	// --------------------------------------*
 	// Attribute <> Key Access Server RPCs
 	// ---------------------------------------
 	AssignKeyAccessServerToAttribute(ctx context.Context, in *AssignKeyAccessServerToAttributeRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToAttributeResponse, error)
+	// Deprecated: Do not use.
 	RemoveKeyAccessServerFromAttribute(ctx context.Context, in *RemoveKeyAccessServerFromAttributeRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromAttributeResponse, error)
+	// Deprecated: Do not use.
 	AssignKeyAccessServerToValue(ctx context.Context, in *AssignKeyAccessServerToValueRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToValueResponse, error)
+	// Deprecated: Do not use.
 	RemoveKeyAccessServerFromValue(ctx context.Context, in *RemoveKeyAccessServerFromValueRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromValueResponse, error)
 	AssignPublicKeyToAttribute(ctx context.Context, in *AssignPublicKeyToAttributeRequest, opts ...grpc.CallOption) (*AssignPublicKeyToAttributeResponse, error)
 	RemovePublicKeyFromAttribute(ctx context.Context, in *RemovePublicKeyFromAttributeRequest, opts ...grpc.CallOption) (*RemovePublicKeyFromAttributeResponse, error)
@@ -181,6 +185,7 @@ func (c *attributesServiceClient) DeactivateAttributeValue(ctx context.Context, 
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *attributesServiceClient) AssignKeyAccessServerToAttribute(ctx context.Context, in *AssignKeyAccessServerToAttributeRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToAttributeResponse, error) {
 	out := new(AssignKeyAccessServerToAttributeResponse)
 	err := c.cc.Invoke(ctx, AttributesService_AssignKeyAccessServerToAttribute_FullMethodName, in, out, opts...)
@@ -190,6 +195,7 @@ func (c *attributesServiceClient) AssignKeyAccessServerToAttribute(ctx context.C
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *attributesServiceClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, in *RemoveKeyAccessServerFromAttributeRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromAttributeResponse, error) {
 	out := new(RemoveKeyAccessServerFromAttributeResponse)
 	err := c.cc.Invoke(ctx, AttributesService_RemoveKeyAccessServerFromAttribute_FullMethodName, in, out, opts...)
@@ -199,6 +205,7 @@ func (c *attributesServiceClient) RemoveKeyAccessServerFromAttribute(ctx context
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *attributesServiceClient) AssignKeyAccessServerToValue(ctx context.Context, in *AssignKeyAccessServerToValueRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToValueResponse, error) {
 	out := new(AssignKeyAccessServerToValueResponse)
 	err := c.cc.Invoke(ctx, AttributesService_AssignKeyAccessServerToValue_FullMethodName, in, out, opts...)
@@ -208,6 +215,7 @@ func (c *attributesServiceClient) AssignKeyAccessServerToValue(ctx context.Conte
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *attributesServiceClient) RemoveKeyAccessServerFromValue(ctx context.Context, in *RemoveKeyAccessServerFromValueRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromValueResponse, error) {
 	out := new(RemoveKeyAccessServerFromValueResponse)
 	err := c.cc.Invoke(ctx, AttributesService_RemoveKeyAccessServerFromValue_FullMethodName, in, out, opts...)
@@ -274,12 +282,16 @@ type AttributesServiceServer interface {
 	CreateAttributeValue(context.Context, *CreateAttributeValueRequest) (*CreateAttributeValueResponse, error)
 	UpdateAttributeValue(context.Context, *UpdateAttributeValueRequest) (*UpdateAttributeValueResponse, error)
 	DeactivateAttributeValue(context.Context, *DeactivateAttributeValueRequest) (*DeactivateAttributeValueResponse, error)
+	// Deprecated: Do not use.
 	// --------------------------------------*
 	// Attribute <> Key Access Server RPCs
 	// ---------------------------------------
 	AssignKeyAccessServerToAttribute(context.Context, *AssignKeyAccessServerToAttributeRequest) (*AssignKeyAccessServerToAttributeResponse, error)
+	// Deprecated: Do not use.
 	RemoveKeyAccessServerFromAttribute(context.Context, *RemoveKeyAccessServerFromAttributeRequest) (*RemoveKeyAccessServerFromAttributeResponse, error)
+	// Deprecated: Do not use.
 	AssignKeyAccessServerToValue(context.Context, *AssignKeyAccessServerToValueRequest) (*AssignKeyAccessServerToValueResponse, error)
+	// Deprecated: Do not use.
 	RemoveKeyAccessServerFromValue(context.Context, *RemoveKeyAccessServerFromValueRequest) (*RemoveKeyAccessServerFromValueResponse, error)
 	AssignPublicKeyToAttribute(context.Context, *AssignPublicKeyToAttributeRequest) (*AssignPublicKeyToAttributeResponse, error)
 	RemovePublicKeyFromAttribute(context.Context, *RemovePublicKeyFromAttributeRequest) (*RemovePublicKeyFromAttributeResponse, error)

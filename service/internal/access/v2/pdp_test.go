@@ -87,7 +87,7 @@ var (
 	testPlatformOnPremFQN = createAttrValueFQN(testSecondaryNamespace, "platform", "onprem")
 	testPlatformHybridFQN = createAttrValueFQN(testSecondaryNamespace, "platform", "hybrid")
 
-	// Registered resource value FQNs (todo: remove)
+	// Registered resource value FQNs (TODO: DSPX-1295 - remove)
 	testNetworkPrivateFQN = createRegisteredResourceValueFQN("network", "private")
 	testNetworkPublicFQN  = createRegisteredResourceValueFQN("network", "public")
 	// testNetworkConfidentialFQN = createRegisteredResourceValueFQN("network", "confidential")
@@ -124,7 +124,7 @@ var (
 )
 
 // Registered resource value FQNs using identifier package
-// TODO: remove these and use the other ones above
+// TODO: DSPX-1295 - remove these and use the other ones above
 var (
 	regResValNoActionAttrValFQN                     string
 	regResValSingleActionAttrValFQN                 string
@@ -175,12 +175,12 @@ type PDPTestSuite struct {
 		// Test registered resources
 		classificationRegRes *policy.RegisteredResource
 		deptRegRes           *policy.RegisteredResource
-		networkRegRes        *policy.RegisteredResource // todo: remove this and use the others that match test attributes
+		networkRegRes        *policy.RegisteredResource // TODO: DSPX-1295 - remove this and use the others that match test attributes
 		countryRegRes        *policy.RegisteredResource
 		projectRegRes        *policy.RegisteredResource
 		platformRegRes       *policy.RegisteredResource
 
-		// Test registered resources (todo: remove these and use the ones above)
+		// Test registered resources (TODO: DSPX-1295 - remove these and use the ones above)
 		regRes                                       *policy.RegisteredResource
 		regResValNoActionAttrVal                     *policy.RegisteredResourceValue
 		regResValSingleActionAttrVal                 *policy.RegisteredResourceValue
@@ -698,7 +698,7 @@ func (s *PDPTestSuite) SetupTest() {
 		},
 	}
 
-	// Initialize test registered resources (todo: replace with above real use cases)
+	// Initialize test registered resources (TODO: DSPX-1295: replace with above real use cases)
 	regResValNoActionAttrVal := &policy.RegisteredResourceValue{
 		Value:                 "no-action-attr-val",
 		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{},
@@ -2876,7 +2876,7 @@ func createResourcePerFqn(attributeValueFQNs ...string) []*authz.Resource {
 		// Use the FQN itself as the resource ID instead of a generic "ephemeral-id-X"
 		resourceID := fqn
 
-		// todo: identifier lib does not do case-insensitive parsing, so we need to ensure FQNs are lowercased
+		// TODO: DSPX-1295 - identifier lib does not do case-insensitive parsing, so we need to ensure FQNs are lowercased
 		// should maybe be fixed in the identifier library?
 		if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](strings.ToLower(fqn)); err == nil {
 			// FQN is a registered resource value

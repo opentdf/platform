@@ -155,7 +155,7 @@ func (s *EvaluateTestSuite) SetupTest() {
 	}
 
 	// Setup accessible registered resource values map
-	// TODO: revisit
+	// TODO: DSPX-1295
 	s.accessibleRegisteredResourceValues = map[string]*policy.RegisteredResourceValue{}
 }
 

@@ -1113,7 +1113,7 @@ func getKasInfoForNanoTDF(s *SDK, config *NanoTDFConfig) (*KASInfo, error) {
 	if kasURL == "https://" || kasURL == "http://" {
 		return nil, errors.New("config.kasUrl is empty")
 	}
-	ki, err = s.getPublicKey(context.Background(), kasURL, config.bindCfg.eccMode.String())
+	ki, err = s.getPublicKey(context.Background(), kasURL, config.bindCfg.eccMode.String(), "")
 	if err != nil {
 		return nil, fmt.Errorf("getECPublicKey failed:%w", err)
 	}

@@ -249,7 +249,7 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyMissingBaseKey() {
 	s.Require().True(mockService.called)
 	s.Require().Error(err)
 	s.Require().Nil(baseKey)
-	s.Require().Contains(err.Error(), errBaseKeyNotFound.Error())
+	s.Require().ErrorIs(err, ErrBaseKeyNotFound)
 }
 
 func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidBaseKeyFormat() {
@@ -267,7 +267,7 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidBaseKeyFormat() {
 	s.Require().True(mockService.called)
 	s.Require().Error(err)
 	s.Require().Nil(baseKey)
-	s.Require().ErrorContains(err, errBaseKeyInvalidFormat.Error())
+	s.Require().ErrorIs(err, ErrBaseKeyInvalidFormat)
 }
 
 func (s *BaseKeyTestSuite) TestGetBaseKeyEmptyBaseKey() {
@@ -286,7 +286,7 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyEmptyBaseKey() {
 	s.Require().True(mockService.called)
 	s.Require().Error(err)
 	s.Require().Nil(baseKey)
-	s.Require().ErrorContains(err, errBaseKeyEmpty.Error())
+	s.Require().ErrorIs(err, ErrBaseKeyEmpty)
 }
 
 func (s *BaseKeyTestSuite) TestGetBaseKeyMissingPublicKey() {
@@ -308,7 +308,7 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyMissingPublicKey() {
 	s.Require().True(mockService.called)
 	s.Require().Error(err)
 	s.Require().Nil(baseKey)
-	s.Require().ErrorContains(err, errBaseKeyInvalidFormat.Error())
+	s.Require().ErrorIs(err, ErrBaseKeyInvalidFormat)
 }
 
 func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidPublicKey() {
@@ -330,5 +330,5 @@ func (s *BaseKeyTestSuite) TestGetBaseKeyInvalidPublicKey() {
 	s.Require().True(mockService.called)
 	s.Require().Error(err)
 	s.Require().Nil(baseKey)
-	s.Require().ErrorContains(err, errBaseKeyInvalidFormat.Error())
+	s.Require().ErrorIs(err, ErrBaseKeyInvalidFormat)
 }

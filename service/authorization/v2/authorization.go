@@ -124,7 +124,7 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				}
 
 				cacheClient, err := srp.NewCacheClient(cache.Options{})
-				if err != nil {
+				if err != nil || cacheClient == nil {
 					l.Error("failed to create platform cache client", slog.Any("error", err))
 					panic(fmt.Errorf("failed to create platform cache client: %w", err))
 				}

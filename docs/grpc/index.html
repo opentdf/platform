@@ -6283,7 +6283,11 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                 <td>LegacyPublicKey</td>
                 <td><a href="#kas.LegacyPublicKeyRequest">LegacyPublicKeyRequest</a></td>
                 <td><a href="#google.protobuf.StringValue">.google.protobuf.StringValue</a></td>
-                <td><p>buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
+                <td><p>Endpoint intended for gRPC Gateway&#39;s REST endpoint to provide v1 compatibility with older TDF clients
+
+This endpoint is not recommended for use in new applications, prefer the v2 endpoint (&#39;PublicKey&#39;) instead.
+
+buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
               </tr>
             
               <tr>
@@ -6296,6 +6300,27 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
           </tbody>
         </table>
 
+        
+          
+          
+          <h4>Methods with deprecated option</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Option</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              <tr>
+                <td>LegacyPublicKey</td>
+                <td><p>true</p></td>
+              </tr>
+            
+            </tbody>
+          </table>
+          
         
           
           

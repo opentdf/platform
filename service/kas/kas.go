@@ -116,11 +116,11 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 						if err != nil {
 							return nil, err
 						}
-						// Explicitly set the default manager for session key generation.
-						// This should be configurable, e.g., defaulting to BasicManager or an HSM if available.
-						p.KeyDelegator.SetDefaultMode(security.BasicManagerName) // Example: default to BasicManager
 						return bm, nil
 					})
+					// Explicitly set the default manager for session key generation.
+					// This should be configurable, e.g., defaulting to BasicManager or an HSM if available.
+					p.KeyDelegator.SetDefaultMode(security.BasicManagerName) // Example: default to BasicManager
 				} else {
 					// Set up both the legacy CryptoProvider and the new SecurityProvider
 					kasCfg.UpgradeMapToKeyring(srp.OTDF.CryptoProvider)

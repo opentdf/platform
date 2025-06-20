@@ -145,7 +145,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 	rsp := &sm.UpdateSubjectMappingResponse{}
 	subjectMappingID := req.Msg.GetId()
 
-	s.logger.DebugContext(ctx, "updating subject mapping", slog.String("subjectMapping", req.Msg.String()))
+	s.logger.DebugContext(ctx, "updating subject mapping", slog.Any("subject_mapping_update", req.Msg))
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,
@@ -164,7 +164,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 		updated, err := txClient.UpdateSubjectMapping(ctx, req.Msg)
 		if err != nil {
 			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-			return db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("subjectMapping fields", req.Msg.String()))
+			return db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("id", req.Msg.GetId()), slog.String("subject_mapping_fields", req.Msg.String()))
 		}
 
 		auditParams.Original = original

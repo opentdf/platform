@@ -161,32 +161,39 @@ func (c *EntitlementPolicyCache) Stop() {
 	}
 }
 
-// Refresh manually refreshes the cache by reaching out to policy services
+// Refresh manually refreshes the cache by reaching out to policy services. In the event of an error,
+// the cache is marked as not filled, and the error is returned.
 func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
+	// Retrieve fresh data from the policy services
 	attributes, err := c.retriever.ListAllAttributes(ctx)
 	if err != nil {
 		return err
 	}
-	err = c.cacheClient.Set(ctx, attributesCacheKey, attributes, authzCacheTags)
-	if err != nil {
-		return errors.Join(ErrFailedToSet, err)
-	}
-
 	subjectMappings, err := c.retriever.ListAllSubjectMappings(ctx)
 	if err != nil {
 		return err
 	}
-	err = c.cacheClient.Set(ctx, subjectMappingsCacheKey, subjectMappings, authzCacheTags)
-	if err != nil {
-		return errors.Join(ErrFailedToSet, err)
-	}
-
 	registeredResources, err := c.retriever.ListAllRegisteredResources(ctx)
 	if err != nil {
 		return err
 	}
+
+	// If there is an error when Setting with fresh data, mark not filled so IsReady() will re-attempt refresh
+	err = c.cacheClient.Set(ctx, attributesCacheKey, attributes, authzCacheTags)
+	if err != nil {
+		c.isCacheFilled = false
+		return errors.Join(ErrFailedToSet, err)
+	}
+
+	err = c.cacheClient.Set(ctx, subjectMappingsCacheKey, subjectMappings, authzCacheTags)
+	if err != nil {
+		c.isCacheFilled = false
+		return errors.Join(ErrFailedToSet, err)
+	}
+
 	err = c.cacheClient.Set(ctx, registeredResourcesCacheKey, registeredResources, authzCacheTags)
 	if err != nil {
+		c.isCacheFilled = false
 		return errors.Join(ErrFailedToSet, err)
 	}
 

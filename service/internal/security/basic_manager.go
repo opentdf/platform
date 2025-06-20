@@ -148,15 +148,20 @@ func (b *BasicManager) Close() {
 }
 
 func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string) ([]byte, error) {
-	if privKey, err := b.cache.Get(ctx, kid); err == nil {
-		b.l.DebugContext(ctx, "found private key in cache", slog.String("kid", kid))
-		if privKeyBytes, ok := privKey.([]byte); ok {
-			return privKeyBytes, nil
+	cacheEnabled := b.cache != nil
+	if cacheEnabled {
+		if privKey, err := b.cache.Get(ctx, kid); err == nil {
+			b.l.DebugContext(ctx, "found private key in cache", slog.String("kid", kid))
+			if privKeyBytes, ok := privKey.([]byte); ok {
+				return privKeyBytes, nil
+			}
+			b.l.ErrorContext(ctx, "private key in cache is not of type []byte", slog.String("kid", kid), slog.Any("type", fmt.Sprintf("%T", privKey)))
+			return nil, errors.New("private key in cache is not of type []byte")
 		}
-		b.l.ErrorContext(ctx, "private key in cache is not of type []byte", slog.String("kid", kid), slog.Any("type", fmt.Sprintf("%T", privKey)))
-		return nil, errors.New("private key in cache is not of type []byte")
+		b.l.DebugContext(ctx, "private key not found in cache", slog.String("kid", kid))
+	} else {
+		b.l.DebugContext(ctx, "cache not configured, skipping cache lookup", slog.String("kid", kid))
 	}
-	b.l.DebugContext(ctx, "private key not found in cache", slog.String("kid", kid))
 
 	// base64 decode
 	wk, err := base64.StdEncoding.DecodeString(wrappedKey)
@@ -174,8 +179,10 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 		return nil, fmt.Errorf("failed to decrypt wrapped key: %w", err)
 	}
 
-	if err := b.cache.Set(ctx, kid, privKey, nil); err != nil {
-		b.l.ErrorContext(ctx, "failed to cache private key", slog.String("kid", kid), slog.String("error", err.Error()))
+	if cacheEnabled {
+		if err := b.cache.Set(ctx, kid, privKey, nil); err != nil {
+			b.l.ErrorContext(ctx, "failed to cache private key", slog.String("kid", kid), slog.String("error", err.Error()))
+		}
 	}
 
 	return privKey, nil

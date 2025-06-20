@@ -145,7 +145,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 	rsp := &sm.UpdateSubjectMappingResponse{}
 	subjectMappingID := req.Msg.GetId()
 
-	s.logger.DebugContext(ctx, "updating subject mapping", slog.String("subjectMapping", req.Msg.String()))
+	s.logger.DebugContext(ctx, "updating subject mapping", slog.String("subject_mapping", req.Msg.String()))
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,
@@ -213,7 +213,7 @@ func (s SubjectMappingService) MatchSubjectMappings(ctx context.Context,
 	req *connect.Request[sm.MatchSubjectMappingsRequest],
 ) (*connect.Response[sm.MatchSubjectMappingsResponse], error) {
 	rsp := &sm.MatchSubjectMappingsResponse{}
-	s.logger.DebugContext(ctx, "matching subject mappings", slog.Any("subjectProperties", req.Msg.GetSubjectProperties()))
+	s.logger.DebugContext(ctx, "matching subject mappings", slog.Any("subject_properties", req.Msg.GetSubjectProperties()))
 
 	smList, err := s.dbClient.GetMatchedSubjectMappings(ctx, req.Msg.GetSubjectProperties())
 	if err != nil {
@@ -260,7 +260,7 @@ func (s SubjectMappingService) CreateSubjectConditionSet(ctx context.Context,
 	req *connect.Request[sm.CreateSubjectConditionSetRequest],
 ) (*connect.Response[sm.CreateSubjectConditionSetResponse], error) {
 	rsp := &sm.CreateSubjectConditionSetResponse{}
-	s.logger.DebugContext(ctx, "creating subject condition set", slog.String("subjectConditionSet", req.Msg.String()))
+	s.logger.DebugContext(ctx, "creating subject condition set", slog.Any("subject_condition_set", req.Msg))
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
@@ -285,7 +285,7 @@ func (s SubjectMappingService) UpdateSubjectConditionSet(ctx context.Context,
 	req *connect.Request[sm.UpdateSubjectConditionSetRequest],
 ) (*connect.Response[sm.UpdateSubjectConditionSetResponse], error) {
 	rsp := &sm.UpdateSubjectConditionSetResponse{}
-	s.logger.DebugContext(ctx, "updating subject condition set", slog.String("subjectConditionSet", req.Msg.String()))
+	s.logger.DebugContext(ctx, "updating subject condition set", slog.Any("subject_condition_set", req.Msg))
 
 	subjectConditionSetID := req.Msg.GetId()
 	auditParams := audit.PolicyEventParams{

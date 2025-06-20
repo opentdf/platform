@@ -227,7 +227,7 @@ func (s KeyAccessServerRegistry) ListKeyAccessServerGrants(ctx context.Context,
 }
 
 func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Request[kasr.CreateKeyRequest]) (*connect.Response[kasr.CreateKeyResponse], error) {
-	s.logger.DebugContext(ctx, "creating key", slog.String("key_access_server_keys", r.Msg.GetKasId()))
+	s.logger.DebugContext(ctx, "creating key", slog.String("keyAccessServer Keys", r.Msg.GetKasId()))
 
 	resp := &kasr.CreateKeyResponse{}
 	auditParams := audit.PolicyEventParams{
@@ -275,7 +275,7 @@ func (s KeyAccessServerRegistry) CreateKey(ctx context.Context, r *connect.Reque
 
 func (s KeyAccessServerRegistry) UpdateKey(ctx context.Context, req *connect.Request[kasr.UpdateKeyRequest]) (*connect.Response[kasr.UpdateKeyResponse], error) {
 	rsp := &kasr.UpdateKeyResponse{}
-	s.logger.DebugContext(ctx, "updating key", slog.String("key_access_server_keys", req.Msg.GetId()))
+	s.logger.DebugContext(ctx, "updating key", slog.String("keyAccessServer Keys", req.Msg.GetId()))
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,
@@ -326,9 +326,9 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 
 	switch i := r.Msg.GetIdentifier().(type) {
 	case *kasr.GetKeyRequest_Id:
-		s.logger.DebugContext(ctx, "getting keyAccessServer key by ID", slog.String("id", i.Id))
+		s.logger.DebugContext(ctx, "Getting keyAccessServer key by ID", slog.String("ID", i.Id))
 	case *kasr.GetKeyRequest_Key:
-		s.logger.DebugContext(ctx, "getting keyAccessServer by key", slog.String("key_id", i.Key.GetKid()))
+		s.logger.DebugContext(ctx, "Getting keyAccessServer by Key", slog.String("Key Id", i.Key.GetKid()))
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, nil)
 	}
@@ -353,7 +353,7 @@ func (s KeyAccessServerRegistry) GetKey(ctx context.Context, r *connect.Request[
 }
 
 func (s KeyAccessServerRegistry) ListKeys(ctx context.Context, r *connect.Request[kasr.ListKeysRequest]) (*connect.Response[kasr.ListKeysResponse], error) {
-	s.logger.DebugContext(ctx, "listing KAS keys")
+	s.logger.DebugContext(ctx, "Listing KAS Keys")
 	resp, err := s.dbClient.ListKeys(ctx, r.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed, slog.String("keyAccessServer Keys", r.Msg.String()))
@@ -369,16 +369,16 @@ func (s KeyAccessServerRegistry) RotateKey(ctx context.Context, r *connect.Reque
 
 	switch i := r.Msg.GetActiveKey().(type) {
 	case *kasr.RotateKeyRequest_Id:
-		s.logger.DebugContext(ctx, "rotating key by ID", slog.String("id", i.Id))
+		s.logger.DebugContext(ctx, "Rotating key by ID", slog.String("ID", i.Id))
 		objectID = i.Id
 		identifier = &kasr.GetKeyRequest_Id{
 			Id: i.Id,
 		}
 	case *kasr.RotateKeyRequest_Key:
 		s.logger.DebugContext(ctx,
-			"rotating key by KAS key",
-			slog.String("active_key_id", i.Key.GetKid()),
-			slog.String("new_key_id", r.Msg.GetNewKey().GetKeyId()),
+			"Rotating key by Kas Key",
+			slog.String("Active Key ID", i.Key.GetKid()),
+			slog.String("New Key ID", r.Msg.GetNewKey().GetKeyId()),
 		)
 		objectID = i.Key.GetKid()
 		identifier = &kasr.GetKeyRequest_Key{
@@ -454,10 +454,10 @@ func (s KeyAccessServerRegistry) SetBaseKey(ctx context.Context, r *connect.Requ
 	var objectID string
 	switch i := r.Msg.GetActiveKey().(type) {
 	case *kasr.SetBaseKeyRequest_Id:
-		s.logger.DebugContext(ctx, "setting base key by ID", slog.String("id", i.Id))
+		s.logger.DebugContext(ctx, "Setting base key by ID", slog.String("ID", i.Id))
 		objectID = i.Id
 	case *kasr.SetBaseKeyRequest_Key:
-		s.logger.DebugContext(ctx, "setting base key by key ID", slog.String("active_key_id", i.Key.GetKid()))
+		s.logger.DebugContext(ctx, "Setting base key by Key ID", slog.String("Active Key ID", i.Key.GetKid()))
 		objectID = i.Key.GetKid()
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, nil)
@@ -492,7 +492,7 @@ func (s KeyAccessServerRegistry) SetBaseKey(ctx context.Context, r *connect.Requ
 }
 
 func (s KeyAccessServerRegistry) GetBaseKey(ctx context.Context, _ *connect.Request[kasr.GetBaseKeyRequest]) (*connect.Response[kasr.GetBaseKeyResponse], error) {
-	s.logger.DebugContext(ctx, "getting base key")
+	s.logger.DebugContext(ctx, "Getting Base Key")
 	resp := &kasr.GetBaseKeyResponse{}
 
 	key, err := s.dbClient.GetBaseKey(ctx)

@@ -145,7 +145,7 @@ func (s SubjectMappingService) UpdateSubjectMapping(ctx context.Context,
 	rsp := &sm.UpdateSubjectMappingResponse{}
 	subjectMappingID := req.Msg.GetId()
 
-	s.logger.DebugContext(ctx, "updating subject mapping", slog.String("subject_mapping", req.Msg.String()))
+	s.logger.DebugContext(ctx, "updating subject mapping", slog.String("subjectMapping", req.Msg.String()))
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,

@@ -277,7 +277,7 @@ func (s *AttributesService) ListAttributeValues(ctx context.Context, req *connec
 	state := req.Msg.GetState().String()
 	s.logger.DebugContext(ctx,
 		"listing attribute values",
-		slog.String("attribute_id", req.Msg.GetAttributeId()),
+		slog.String("attributeId", req.Msg.GetAttributeId()),
 		slog.String("state", state),
 	)
 	rsp, err := s.dbClient.ListAttributeValues(ctx, req.Msg)

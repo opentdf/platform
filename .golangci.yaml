@@ -56,7 +56,7 @@ linters:
     - revive
     # - recvcheck
     - rowserrcheck
-    # - sloglint
+    - sloglint
     - spancheck
     - sqlclosecheck
     # - staticcheck

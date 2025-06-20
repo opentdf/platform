@@ -60,7 +60,7 @@ func (k *InProcessAESKey) Export(encapsulator trust.Encapsulator) ([]byte, error
 	encryptedKey, err := encapsulator.Encrypt(k.rawKey)
 	if err != nil {
 		if k.logger != nil {
-			k.logger.Warn("failed to encrypt key data for export", "err", err)
+			k.logger.Warn("failed to encrypt key data for export", slog.Any("err", err))
 		}
 		return nil, err
 	}
@@ -267,7 +267,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 }
 
 // ListKeys lists all available keys
-func (a *InProcessProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, error) {
+func (a *InProcessProvider) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
 	// This is a limited implementation as CryptoProvider doesn't expose a list of all keys
 	var keys []trust.KeyDetails
 
@@ -284,7 +284,11 @@ func (a *InProcessProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, err
 			}
 		} else if err != nil {
 			if a.logger != nil {
-				a.logger.Warn("failed to list keys by algorithm", "algorithm", alg, "error", err)
+				a.logger.WarnContext(ctx,
+					"failed to list keys by algorithm",
+					slog.String("algorithm", alg),
+					slog.Any("error", err),
+				)
 			}
 		}
 	}

@@ -552,15 +552,15 @@ func (s OpenTDFServer) openHTTPServerPort() (net.Listener, error) {
 func (s OpenTDFServer) startHTTPServer(ln net.Listener) {
 	var err error
 	if s.HTTPServer.TLSConfig != nil {
-		s.logger.Info("starting https server", "address", s.HTTPServer.Addr)
+		s.logger.Info("starting https server", slog.String("address", s.HTTPServer.Addr))
 		err = s.HTTPServer.ServeTLS(ln, "", "")
 	} else {
-		s.logger.Info("starting http server", "address", s.HTTPServer.Addr)
+		s.logger.Info("starting http server", slog.String("address", s.HTTPServer.Addr))
 		err = s.HTTPServer.Serve(ln)
 	}
 
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		s.logger.Error("failed to serve http", slog.String("error", err.Error()))
+		s.logger.Error("failed to serve http", slog.Any("error", err))
 	}
 }
 

@@ -25,7 +25,7 @@ func SubjectMappingBuiltin() {
 		Memoize:          true,
 		Nondeterministic: true,
 	}, func(_ rego.BuiltinContext, a, b *ast.Term) (*ast.Term, error) {
-		slog.Debug("Subject mapping plugin invoked")
+		slog.Debug("subject mapping plugin invoked")
 
 		// input handling
 		var attributeMappingsMap map[string]string

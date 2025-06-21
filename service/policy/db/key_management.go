@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/common"
@@ -162,7 +163,7 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 	if count == 0 {
 		return nil, db.ErrNotFound
 	} else if count > 1 {
-		c.logger.Warn("UpdateProviderConfig updated more than one row", "count", count)
+		c.logger.Warn("updateProviderConfig updated more than one row", slog.Int64("count", count))
 	}
 
 	return c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest_Id{

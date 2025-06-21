@@ -156,7 +156,10 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 
 		// Skip the namespace if the mode is not enabled
 		if !modeEnabled {
-			logger.Info("skipping namespace", slog.String("namespace", ns), slog.String("mode", namespace.Mode))
+			logger.Info("skipping namespace",
+				slog.String("namespace", ns),
+				slog.String("mode", namespace.Mode),
+			)
 			continue
 		}
 
@@ -196,7 +199,10 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 
 			// Function to create a cache given cache options
 			var createCacheClient func(cache.Options) (*cache.Cache, error) = func(options cache.Options) (*cache.Cache, error) {
-				slog.Info("creating cache client for", slog.String("namespace", ns), slog.String("service", svc.GetServiceDesc().ServiceName))
+				slog.Info("creating cache client for",
+					slog.String("namespace", ns),
+					slog.String("service", svc.GetServiceDesc().ServiceName),
+				)
 				cacheClient, err := cacheManager.NewCache(ns, svcLogger, options)
 				if err != nil {
 					return nil, fmt.Errorf("issue creating cache client for %s: %w", ns, err)

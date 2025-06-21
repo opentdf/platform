@@ -382,7 +382,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 				if err == nil {
 					break
 				}
-				slog.Info("not yet ready", "err", err)
+				slog.Error("not yet ready", slog.Any("err", err))
 				// retry after a blip
 				time.Sleep(100 * time.Millisecond)
 			}

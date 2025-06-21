@@ -21,7 +21,7 @@ func NewCryptoProvider(cfg Config) (*StandardCrypto, error) {
 		return NewStandardCrypto(cfg.StandardConfig)
 	default:
 		if cfg.Type != "" {
-			slog.Warn("unsupported crypto type", "crypto.type", cfg.Type)
+			slog.Warn("unsupported crypto type", slog.String("crypto_type", cfg.Type))
 		}
 		return NewStandardCrypto(cfg.StandardConfig)
 	}

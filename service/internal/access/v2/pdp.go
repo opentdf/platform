@@ -107,7 +107,11 @@ func NewPolicyDecisionPoint(
 
 	for _, sm := range allSubjectMappings {
 		if err := validateSubjectMapping(sm); err != nil {
-			l.WarnContext(ctx, "invalid subject mapping - skipping", slog.Any("error", err), slog.Any("subject mapping", sm))
+			l.WarnContext(ctx,
+				"invalid subject mapping - skipping",
+				slog.Any("subject_mapping", sm),
+				slog.Any("error", err),
+			)
 			continue
 		}
 		mappedValue := sm.GetAttributeValue()
@@ -162,7 +166,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 ) (*Decision, error) {
 	l := p.logger.With("entityID", entityRepresentation.GetOriginalId())
 	l = l.With("action", action.GetName())
-	l.DebugContext(ctx, "getting decision", slog.Int("resourcesCount", len(resources)))
+	l.DebugContext(ctx, "getting decision", slog.Int("resources_count", len(resources)))
 
 	if err := validateGetDecision(entityRepresentation, action, resources); err != nil {
 		return nil, err
@@ -210,14 +214,14 @@ func (p *PolicyDecisionPoint) GetDecision(
 			return nil, fmt.Errorf("invalid resource type [%T]: %w", resource.GetResource(), ErrInvalidResource)
 		}
 	}
-	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionableAttributeValuesCount", len(decisionableAttributes)))
+	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionable_attribute_values_count", len(decisionableAttributes)))
 
 	// Resolve them to their entitled FQNs and the actions available on each
 	entitledFQNsToActions, err := subjectmappingbuiltin.EvaluateSubjectMappingsWithActions(decisionableAttributes, entityRepresentation)
 	if err != nil {
 		return nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}
-	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitledValueFqnsToActions", entitledFQNsToActions))
+	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitled_value_fqns_to_actions", entitledFQNsToActions))
 
 	decision := &Decision{
 		Access:  true,
@@ -272,13 +276,13 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 	}
 
 	l := p.logger.With("withComprehensiveHierarchy", strconv.FormatBool(withComprehensiveHierarchy))
-	l.DebugContext(ctx, "getting entitlements", slog.Int("entityRepresentationsCount", len(entityRepresentations)))
+	l.DebugContext(ctx, "getting entitlements", slog.Int("entity_representations_count", len(entityRepresentations)))
 
 	var entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
 
 	// Check entitlement only against the filtered matched subject mappings if provided
 	if optionalMatchedSubjectMappings != nil {
-		l.DebugContext(ctx, "filtering to provided matched subject mappings", slog.Int("matchedSubjectMappingsCount", len(optionalMatchedSubjectMappings)))
+		l.DebugContext(ctx, "filtering to provided matched subject mappings", slog.Int("matched_subject_mappings_count", len(optionalMatchedSubjectMappings)))
 		entitleableAttributes, err = getFilteredEntitleableAttributes(optionalMatchedSubjectMappings, p.allEntitleableAttributesByValueFQN)
 		if err != nil {
 			return nil, fmt.Errorf("error filtering entitleable attributes from matched subject mappings: %w", err)
@@ -294,7 +298,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 	if err != nil {
 		return nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}
-	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitlementsByEntityID", entityIDsToFQNsToActions))
+	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitlements_by_entity_id", entityIDsToFQNsToActions))
 
 	var result []*authz.EntityEntitlements
 	for entityID, fqnsToActions := range entityIDsToFQNsToActions {

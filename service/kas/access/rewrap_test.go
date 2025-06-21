@@ -344,10 +344,10 @@ func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) kaspb.Unsigne
 
 type RSAPublicKey rsa.PublicKey
 
-func (publicKey *RSAPublicKey) VerifySignature(_ context.Context, raw string) ([]byte, error) {
+func (publicKey *RSAPublicKey) VerifySignature(ctx context.Context, raw string) ([]byte, error) {
 	tok, err := jws.Verify([]byte(raw), jws.WithKey(jwa.RS256, rsa.PublicKey(*publicKey)))
 	if err != nil {
-		slog.Error("jws.Verify fail", "raw", raw)
+		slog.ErrorContext(ctx, "jws.Verify fail", slog.String("raw", raw))
 		return nil, err
 	}
 	return tok, nil

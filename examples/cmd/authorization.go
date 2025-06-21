@@ -63,12 +63,13 @@ func authorizationExamples() error {
 	})
 
 	decisionRequest := &authorization.GetDecisionsRequest{DecisionRequests: drs}
-	slog.Info("Submitting decision request: " + protojson.Format(decisionRequest))
+	//nolint:sloglint // safe to log request in example code
+	slog.Info("submitting decision", slog.String("request", protojson.Format(decisionRequest)))
 	decisionResponse, err := s.Authorization.GetDecisions(context.Background(), decisionRequest)
 	if err != nil {
 		return err
 	}
-	slog.Info("Received decision response: " + protojson.Format(decisionResponse))
+	slog.Info("received decision response", slog.String("response", protojson.Format(decisionResponse)))
 
 	// map response back to entity chain id
 	decisionsByEntityChain := make(map[string]*authorization.DecisionResponse)
@@ -76,8 +77,8 @@ func authorizationExamples() error {
 		decisionsByEntityChain[dr.GetEntityChainId()] = dr
 	}
 
-	slog.Info("decision for bob: " + protojson.Format(decisionsByEntityChain["ec1"]))
-	slog.Info("decision for alice: " + protojson.Format(decisionsByEntityChain["ec2"]))
+	slog.Info("decision for bob", slog.String("decision", protojson.Format(decisionsByEntityChain["ec1"])))
+	slog.Info("decision for alice", slog.String("decision", protojson.Format(decisionsByEntityChain["ec2"])))
 	return nil
 }
 

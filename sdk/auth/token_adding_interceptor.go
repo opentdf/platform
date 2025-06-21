@@ -60,7 +60,7 @@ func (i TokenAddingInterceptor) AddCredentials(
 	if err == nil {
 		newMetadata = append(newMetadata, "Authorization", fmt.Sprintf("DPoP %s", accessToken))
 	} else {
-		slog.ErrorContext(ctx, "error getting access token", "error", err)
+		slog.ErrorContext(ctx, "error getting access token", slog.Any("error", err))
 		return status.Error(codes.Unauthenticated, err.Error())
 	}
 
@@ -71,7 +71,7 @@ func (i TokenAddingInterceptor) AddCredentials(
 		// since we don't have a setting about whether DPoP is in use on the client and this request _could_ succeed if
 		// they are talking to a server where DPoP is not required we will just let this through. this method is extremely
 		// unlikely to fail so hopefully this isn't confusing
-		slog.ErrorContext(ctx, "error getting DPoP token for outgoing request. Request will not have DPoP token", "error", err)
+		slog.ErrorContext(ctx, "error getting DPoP token for outgoing request. Request will not have DPoP token", slog.Any("error", err))
 	}
 
 	newCtx := metadata.AppendToOutgoingContext(ctx, newMetadata...)
@@ -91,7 +91,7 @@ func (i TokenAddingInterceptor) AddCredentialsConnect() connect.UnaryInterceptor
 		) (connect.AnyResponse, error) {
 			accessToken, err := i.tokenSource.AccessToken(ctx, i.httpClient)
 			if err != nil {
-				slog.ErrorContext(ctx, "error getting access token", "error", err)
+				slog.ErrorContext(ctx, "error getting access token", slog.Any("error", err))
 				return nil, connect.NewError(connect.CodeUnauthenticated, err)
 			}
 
@@ -106,7 +106,7 @@ func (i TokenAddingInterceptor) AddCredentialsConnect() connect.UnaryInterceptor
 				// since we don't have a setting about whether DPoP is in use on the client and this request _could_ succeed if
 				// they are talking to a server where DPoP is not required we will just let this through. this method is extremely
 				// unlikely to fail so hopefully this isn't confusing
-				slog.ErrorContext(ctx, "error getting DPoP token for outgoing request. Request will not have DPoP token", "error", err)
+				slog.ErrorContext(ctx, "error getting DPoP token for outgoing request. Request will not have DPoP token", slog.Any("error", err))
 			}
 
 			// Proceed with the RPC

@@ -124,11 +124,11 @@ func (c *Config) Watch(ctx context.Context) error {
 }
 
 // Close invokes close method on all config loaders.
-func (c *Config) Close(_ context.Context) error {
+func (c *Config) Close(ctx context.Context) error {
 	if len(c.loaders) == 0 {
 		return nil
 	}
-	slog.Debug("Closing config loaders")
+	slog.DebugContext(ctx, "closing config loaders")
 	for _, loader := range c.loaders {
 		if err := loader.Close(); err != nil {
 			return err

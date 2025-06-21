@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/opentdf/platform/service/logger"
@@ -188,6 +189,9 @@ func (d *DelegatingKeyService) getKeyManager(name string) (KeyManager, error) {
 		return nil, fmt.Errorf("configured default key manager '%s' not found (no factory/cache entry)", name)
 	}
 
-	d.l.Debug("Key manager not found by name, falling back to default", "requestedName", name, "configuredDefaultName", currentDefaultMode)
+	d.l.Debug("key manager not found by name, falling back to default",
+		slog.String("requested_name", name),
+		slog.String("configured_default_mode", currentDefaultMode),
+	)
 	return d._defKM()
 }

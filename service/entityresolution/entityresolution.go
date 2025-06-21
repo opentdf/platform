@@ -1,3 +1,4 @@
+//nolint:sloglint // v1 entityresolution will be deprecated soon
 package entityresolution
 
 import (

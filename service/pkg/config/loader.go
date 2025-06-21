@@ -93,9 +93,9 @@ func (l *EnvironmentLoader) Load(cfg *Config) error {
 }
 
 // Watch starts watching the config file for configuration changes
-func (l *EnvironmentLoader) Watch(_ context.Context, cfg *Config, onChange func(context.Context) error) error {
+func (l *EnvironmentLoader) Watch(ctx context.Context, cfg *Config, onChange func(context.Context) error) error {
 	if len(cfg.onConfigChangeHooks) == 0 {
-		slog.Debug("No config change hooks registered. Skipping environment config watch.")
+		slog.DebugContext(ctx, "no config change hooks registered. Skipping environment config watch")
 		return nil
 	}
 
@@ -104,28 +104,32 @@ func (l *EnvironmentLoader) Watch(_ context.Context, cfg *Config, onChange func(
 	// If config changes, reload it and invoke all hooks
 	//nolint:contextcheck // false positive with external library function signature
 	l.viper.OnConfigChange(func(e fsnotify.Event) {
-		slog.Debug("Environment config file changed", "file", e.Name)
+		slog.DebugContext(ctx, "environment config file changed", slog.String("file", e.Name))
 
 		// First reload and validate the config
 		if err := l.Load(cfg); err != nil {
-			slog.Error("Error reloading environment config", "error", err)
+			slog.ErrorContext(ctx, "error reloading environment config", slog.Any("error", err))
 			return
 		}
 
-		slog.Info("Environment config successfully reloaded",
+		slog.InfoContext(ctx,
+			"environment config successfully reloaded",
 			slog.Any("config", cfg.LogValue()),
-			slog.String("config loader changed", l.Name()),
+			slog.String("config_loader_changed", l.Name()),
 		)
 
 		// Then execute all registered hooks with the event
 		if err := onChange(context.Background()); err != nil {
-			slog.Error(
-				"Error executing config change hooks",
-				slog.String("error", err.Error()),
-				slog.String("config loader changed", l.Name()),
+			slog.ErrorContext(ctx,
+				"error executing config change hooks",
+				slog.Any("error", err),
+				slog.String("config_loader_changed", l.Name()),
 			)
 		} else {
-			slog.Debug("Config change hooks executed successfully", slog.String("config loader changed", l.Name()))
+			slog.DebugContext(ctx,
+				"config change hooks executed successfully",
+				slog.String("config_loader_changed", l.Name()),
+			)
 		}
 	})
 

@@ -56,7 +56,7 @@ linters:
     - revive
     # - recvcheck
     - rowserrcheck
-    # - sloglint
+    - sloglint
     - spancheck
     - sqlclosecheck
     # - staticcheck
@@ -127,11 +127,11 @@ linters:
       packages:
         - github.com/jackc/pgx/v5
     sloglint:
-      kv-only: true
+      kv-only: false
       no-mixed-args: true
       static-msg: true
-      attr-only: false
-      no-raw-keys: true
+      attr-only: true
+      no-raw-keys: false
       msg-style: lowercased
       key-naming-case: snake
       forbidden-keys:
@@ -139,6 +139,11 @@ linters:
         - level
         - msg
         - source
+        - request
+        - req
+        - auth
+        - authorization
+        - token
       args-on-sep-lines: true
     tagliatelle:
       case:

@@ -81,7 +81,11 @@ func (s HealthService) Check(ctx context.Context, req *grpchealth.CheckRequest) 
 	case "all":
 		for service, check := range serviceHealthChecks {
 			if err := check(ctx); err != nil {
-				s.logger.ErrorContext(ctx, "service is not ready", slog.String("service", service), slog.String("error", err.Error()))
+				s.logger.ErrorContext(ctx,
+					"service is not ready",
+					slog.String("service", service),
+					slog.Any("error", err),
+				)
 				return &grpchealth.CheckResponse{
 					Status: grpchealth.StatusNotServing,
 				}, nil
@@ -90,7 +94,11 @@ func (s HealthService) Check(ctx context.Context, req *grpchealth.CheckRequest) 
 	default:
 		if check, ok := serviceHealthChecks[req.Service]; ok {
 			if err := check(ctx); err != nil {
-				s.logger.ErrorContext(ctx, "service is not ready", slog.String("service", req.Service), slog.String("error", err.Error()))
+				s.logger.ErrorContext(ctx,
+					"service is not ready",
+					slog.String("service", req.Service),
+					slog.Any("error", err),
+				)
 				return &grpchealth.CheckResponse{
 					Status: grpchealth.StatusNotServing,
 				}, nil

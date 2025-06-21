@@ -73,7 +73,7 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger, svc
 	if err := mapstructure.Decode(config, &inputIdpConfig); err != nil {
 		panic(err)
 	}
-	logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
+	logger.Debug("entity_resolution configuration", slog.Any("config", inputIdpConfig))
 	keycloakSVC := &EntityResolutionServiceV2{idpConfig: inputIdpConfig, logger: logger, svcCache: svcCache}
 	return keycloakSVC, nil
 }
@@ -159,13 +159,22 @@ func EntityResolution(ctx context.Context,
 	var resolvedEntities []*entityresolutionV2.EntityRepresentation
 
 	for idx, ident := range payload {
-		logger.Debug("lookup", "entity", ident.GetEntityType())
+		logger.DebugContext(ctx,
+			"lookup",
+			slog.Any("entity", ident.GetEntityType()),
+		)
+
 		var keycloakEntities []*gocloak.User
 		var getUserParams gocloak.GetUsersParams
 		exactMatch := true
 		switch ident.GetEntityType().(type) {
 		case *entity.Entity_ClientId:
-			logger.Debug("looking up", slog.Any("type", ident.GetEntityType()), slog.String("client_id", ident.GetClientId()))
+			logger.DebugContext(ctx,
+				"looking up",
+				slog.Any("type", ident.GetEntityType()),
+				slog.String("client_id", ident.GetClientId()),
+			)
+
 			clientID := ident.GetClientId()
 			clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
 				ClientID: &clientID,
@@ -223,17 +232,19 @@ func EntityResolution(ctx context.Context,
 		users, err := connector.client.GetUsers(ctx, connector.token.AccessToken, kcConfig.Realm, getUserParams)
 		switch {
 		case err != nil:
-			logger.Error(err.Error())
+			logger.ErrorContext(ctx, "error getting users", slog.Any("error", err))
 			return entityresolutionV2.ResolveEntitiesResponse{},
 				connect.NewError(connect.CodeInternal, ErrGetRetrievalFailed)
 		case len(users) == 1:
 			user := users[0]
-			logger.Debug("user found", slog.String("user", *user.ID), slog.String("entity", ident.String()))
-			logger.Debug("user", slog.Any("details", user))
-			logger.Debug("user", slog.Any("attributes", user.Attributes))
+			logger.DebugContext(ctx,
+				"user",
+				slog.Any("details", user),
+				slog.String("entity", ident.String()),
+			)
 			keycloakEntities = append(keycloakEntities, user)
 		default:
-			logger.Error("no user found for", slog.Any("entity", ident))
+			logger.ErrorContext(ctx, "no user found", slog.Any("entity", ident))
 			if ident.GetEmailAddress() != "" { //nolint:nestif // this case has many possible outcomes to handle
 				// try by group
 				groups, groupErr := connector.client.GetGroups(
@@ -257,7 +268,7 @@ func EntityResolution(ctx context.Context,
 					}
 					keycloakEntities = expandedRepresentations
 				default:
-					logger.Error("no group found for", slog.String("entity", ident.String()))
+					logger.ErrorContext(ctx, "no group found for", slog.String("entity", ident.String()))
 					var entityNotFoundErr entityresolutionV2.EntityNotFoundError
 					switch ident.GetEntityType().(type) {
 					case *entity.Entity_EmailAddress:
@@ -268,10 +279,11 @@ func EntityResolution(ctx context.Context,
 					// 	return &entityresolutionV2.IdpPluginResponse{},
 					// 		status.Error(codes.InvalidArgument, db.ErrTextNotFound)
 					default:
-						logger.Error("unsupported/unknown type for", slog.String("entity", ident.String()))
+						logger.ErrorContext(ctx, "unsupported/unknown type for", slog.String("entity", ident.String()))
 						entityNotFoundErr = entityresolutionV2.EntityNotFoundError{Code: int32(codes.NotFound), Message: ErrGetRetrievalFailed.Error(), Entity: ident.String()}
 					}
-					logger.Error(entityNotFoundErr.String())
+					logger.ErrorContext(ctx, "entity not found", slog.String("error", entityNotFoundErr.String()))
+
 					if kcConfig.InferID.From.Email || kcConfig.InferID.From.Username {
 						// user not found -- add json entity to resp instead
 						entityStruct, err := entityToStructPb(ident)
@@ -354,7 +366,7 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable, logger *logg
 }
 
 func expandGroup(ctx context.Context, groupID string, kcConnector *Connector, kcConfig *Config, logger *logger.Logger) ([]*gocloak.User, error) {
-	logger.Info("expanding group", slog.String("groupID", groupID))
+	logger.Info("expanding group", slog.String("group_id", groupID))
 	var entityRepresentations []*gocloak.User
 
 	grp, err := kcConnector.client.GetGroup(ctx, kcConnector.token.AccessToken, kcConfig.Realm, groupID)
@@ -362,16 +374,20 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *Connector, kc
 		grpMembers, memberErr := kcConnector.client.GetGroupMembers(ctx, kcConnector.token.AccessToken, kcConfig.Realm,
 			*grp.ID, gocloak.GetGroupsParams{})
 		if memberErr == nil {
-			logger.Debug("adding members", slog.Int("amount", len(grpMembers)), slog.String("from group", *grp.Name))
+			logger.DebugContext(ctx,
+				"adding members",
+				slog.Int("amount", len(grpMembers)),
+				slog.String("from group", *grp.Name),
+			)
 			for i := 0; i < len(grpMembers); i++ {
 				user := grpMembers[i]
 				entityRepresentations = append(entityRepresentations, user)
 			}
 		} else {
-			logger.Error("error getting group members", slog.String("error", memberErr.Error()))
+			logger.ErrorContext(ctx, "error getting group members", slog.String("error", memberErr.Error()))
 		}
 	} else {
-		logger.Error("error getting group", slog.String("error", err.Error()))
+		logger.ErrorContext(ctx, "error getting group", slog.String("error", err.Error()))
 		return nil, err
 	}
 	return entityRepresentations, nil
@@ -453,16 +469,16 @@ func getServiceAccountClient(ctx context.Context, username string, kcConfig Conf
 	})
 	switch {
 	case err != nil:
-		logger.Error(err.Error())
+		logger.ErrorContext(ctx, "connector client error", slog.Any("error", err))
 		return "", err
 	case len(clients) == 1:
 		client := clients[0]
-		logger.Debug("client found", slog.String("client", *client.ClientID))
+		logger.DebugContext(ctx, "client found", slog.String("client", *client.ClientID))
 		return *client.ClientID, nil
 	case len(clients) > 1:
-		logger.Error("more than one client found for ", slog.String("clientid", expectedClientName))
+		logger.ErrorContext(ctx, "more than one client found for ", slog.String("clientid", expectedClientName))
 	default:
-		logger.Debug("no client found, likely not a service account", slog.String("clientid", expectedClientName))
+		logger.DebugContext(ctx, "no client found, likely not a service account", slog.String("clientid", expectedClientName))
 	}
 
 	return "", nil
@@ -489,11 +505,11 @@ func (s *EntityResolutionServiceV2) getConnector(ctx context.Context, tokenBuffe
 	// Refresh token if it's nil, expired, or about to expire.
 
 	if s.connector == nil || s.connector.token == nil || time.Now().After(s.connector.expiresAt.Add(-tokenBuffer)) {
-		s.logger.InfoContext(ctx, "Keycloak connector is nil or token expired/expiring soon. Fetching new token.")
+		s.logger.InfoContext(ctx, "keycloak connector is nil or token expired/expiring soon - fetching new token")
 
 		var gocloakClient *gocloak.GoCloak
 		if s.idpConfig.LegacyKeycloak {
-			s.logger.WarnContext(ctx, "Using legacy connection mode for Keycloak < 17.x.x")
+			s.logger.WarnContext(ctx, "using legacy connection mode for Keycloak < 17.x.x")
 			gocloakClient = gocloak.NewClient(s.idpConfig.URL)
 		} else {
 			gocloakClient = gocloak.NewClient(s.idpConfig.URL, gocloak.SetAuthAdminRealms("admin/realms"), gocloak.SetAuthRealms("realms"))
@@ -501,7 +517,7 @@ func (s *EntityResolutionServiceV2) getConnector(ctx context.Context, tokenBuffe
 
 		token, err := gocloakClient.LoginClient(ctx, s.idpConfig.ClientID, s.idpConfig.ClientSecret, s.idpConfig.Realm)
 		if err != nil {
-			s.logger.ErrorContext(ctx, "Error connecting to Keycloak or logging in", slog.String("error", err.Error()))
+			s.logger.ErrorContext(ctx, "error connecting to Keycloak or logging in", slog.Any("error", err))
 			return nil, fmt.Errorf("failed to login to Keycloak: %w", err)
 		}
 
@@ -510,9 +526,9 @@ func (s *EntityResolutionServiceV2) getConnector(ctx context.Context, tokenBuffe
 			client:    gocloakClient,
 			expiresAt: time.Now().Add(time.Duration(token.ExpiresIn) * time.Second),
 		}
-		s.logger.InfoContext(ctx, "Successfully fetched new Keycloak token.", "expires_in_seconds", token.ExpiresIn)
+		s.logger.InfoContext(ctx, "successfully fetched new Keycloak token", slog.Int("expires_in_seconds", token.ExpiresIn))
 	} else {
-		s.logger.DebugContext(ctx, "Using existing Keycloak token.")
+		s.logger.DebugContext(ctx, "using existing Keycloak token")
 	}
 	return s.connector, nil
 }

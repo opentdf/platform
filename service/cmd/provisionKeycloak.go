@@ -69,7 +69,7 @@ var provisionKeycloakCmd = &cobra.Command{
 var deprecatedProvisionKeycloakFromConfigCmd = &cobra.Command{
 	Use: "keycloak-from-config",
 	RunE: func(_ *cobra.Command, _ []string) error {
-		slog.Info("Command keycloak-from-config has been deprecated. Please use command 'keycloak' instead.")
+		slog.Info("command keycloak-from-config has been deprecated. Please use command 'keycloak' instead.")
 		return nil
 	},
 }

@@ -123,7 +123,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 
 	decisions, permitted, err := pdp.GetDecision(ctx, entityIdentifier, action, []*authzV2.Resource{resource})
 	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to get decision", slog.Any("error", err), slog.Any("request", request))
+		as.logger.ErrorContext(ctx, "failed to get decision", slog.Any("error", err))
 		if errors.Is(err, access.ErrFQNNotFound) || errors.Is(err, access.ErrDefinitionNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
 		}
@@ -131,7 +131,7 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	}
 	resp, err := rollupSingleResourceDecision(permitted, decisions)
 	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to rollup single-resource decision", slog.Any("error", err), slog.Any("request", request))
+		as.logger.ErrorContext(ctx, "failed to rollup single-resource decision", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(resp), nil

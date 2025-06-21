@@ -188,7 +188,11 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 	}
 
 	if err := b.cache.Set(ctx, kid, privKey, store.WithExpiration(time.Second*ristrettoCacheTTL)); err != nil {
-		b.l.ErrorContext(ctx, "failed to cache private key", slog.String("kid", kid), slog.String("error", err.Error()))
+		b.l.ErrorContext(ctx,
+			"failed to cache private key",
+			slog.String("kid", kid),
+			slog.Any("error", err),
+		)
 	}
 
 	return privKey, nil

@@ -362,7 +362,7 @@ func Test_GetDecisions_AllOf_Fail(t *testing.T) {
 	// NOTE: there should be two decision responses, one for each data attribute value, but authorization service
 	// only responds with one permit/deny at the moment
 	// entitlements only contain the first FQN, so we have a deny decision
-	as.logger.Debug(resp.Msg.String())
+	as.logger.Debug("response", slog.String("response", resp.Msg.String()))
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 1)
 	assert.Equal(t, authorization.DecisionResponse_DECISION_DENY, resp.Msg.GetDecisionResponses()[0].GetDecision())
 }
@@ -1327,7 +1327,7 @@ func Test_GetDecisionsAllOf_Pass_EC_RA_Length_Mismatch(t *testing.T) {
 	assert.NotNil(t, resp)
 
 	// one entitlement, one attribute value throughout
-	slog.Debug(resp.Msg.String())
+	slog.Debug("response", slog.String("response", resp.Msg.String()))
 	assert.Len(t, resp.Msg.GetDecisionResponses(), 3)
 	assert.Equal(t, "ec1", resp.Msg.GetDecisionResponses()[0].GetEntityChainId())
 	assert.Equal(t, "ec2", resp.Msg.GetDecisionResponses()[1].GetEntityChainId())

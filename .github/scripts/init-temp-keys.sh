@@ -61,6 +61,7 @@ openssl x509 -req -in keys/sampleuser.req -CA keys/keycloak-ca.pem -CAkey keys/k
 
 openssl pkcs12 -export -in keys/keycloak-ca.pem -inkey keys/keycloak-ca-private.pem -out keys/ca.p12 -nodes -passout pass:password
 docker run \
+  -e JAVA_TOOL_OPTIONS="-XX:UseSVE=0" \
   -v $(pwd)/keys:/keys \
   --entrypoint keytool \
   --user $(id -u):$(id -g) \

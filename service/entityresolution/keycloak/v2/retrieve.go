@@ -83,9 +83,8 @@ func retrieveWithKey[T any](ctx context.Context, cacheKey string, svcCache *cach
 		if err == nil {
 			if retrieved, ok := cachedData.(T); ok {
 				return retrieved, nil
-			} else {
-				logger.Error("cache data type assertion failed")
 			}
+			logger.Error("cache data type assertion failed")
 		} else if !errors.Is(err, cache.ErrCacheMiss) {
 			var zero T
 			return zero, err

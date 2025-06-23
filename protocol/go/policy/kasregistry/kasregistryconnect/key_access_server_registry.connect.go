@@ -102,6 +102,8 @@ type KeyAccessServerRegistryServiceClient interface {
 	UpdateKeyAccessServer(context.Context, *connect.Request[kasregistry.UpdateKeyAccessServerRequest]) (*connect.Response[kasregistry.UpdateKeyAccessServerResponse], error)
 	DeleteKeyAccessServer(context.Context, *connect.Request[kasregistry.DeleteKeyAccessServerRequest]) (*connect.Response[kasregistry.DeleteKeyAccessServerResponse], error)
 	// Deprecated
+	//
+	// Deprecated: do not use.
 	ListKeyAccessServerGrants(context.Context, *connect.Request[kasregistry.ListKeyAccessServerGrantsRequest]) (*connect.Response[kasregistry.ListKeyAccessServerGrantsResponse], error)
 	// KAS Key Management
 	// Request to create a new key in the Key Access Service.
@@ -263,6 +265,8 @@ func (c *keyAccessServerRegistryServiceClient) DeleteKeyAccessServer(ctx context
 
 // ListKeyAccessServerGrants calls
 // policy.kasregistry.KeyAccessServerRegistryService.ListKeyAccessServerGrants.
+//
+// Deprecated: do not use.
 func (c *keyAccessServerRegistryServiceClient) ListKeyAccessServerGrants(ctx context.Context, req *connect.Request[kasregistry.ListKeyAccessServerGrantsRequest]) (*connect.Response[kasregistry.ListKeyAccessServerGrantsResponse], error) {
 	return c.listKeyAccessServerGrants.CallUnary(ctx, req)
 }
@@ -311,6 +315,8 @@ type KeyAccessServerRegistryServiceHandler interface {
 	UpdateKeyAccessServer(context.Context, *connect.Request[kasregistry.UpdateKeyAccessServerRequest]) (*connect.Response[kasregistry.UpdateKeyAccessServerResponse], error)
 	DeleteKeyAccessServer(context.Context, *connect.Request[kasregistry.DeleteKeyAccessServerRequest]) (*connect.Response[kasregistry.DeleteKeyAccessServerResponse], error)
 	// Deprecated
+	//
+	// Deprecated: do not use.
 	ListKeyAccessServerGrants(context.Context, *connect.Request[kasregistry.ListKeyAccessServerGrantsRequest]) (*connect.Response[kasregistry.ListKeyAccessServerGrantsResponse], error)
 	// KAS Key Management
 	// Request to create a new key in the Key Access Service.

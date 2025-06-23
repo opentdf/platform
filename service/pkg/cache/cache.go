@@ -88,14 +88,14 @@ func (c *Cache) Get(ctx context.Context, key string) (any, error) {
 	val, err := c.manager.cache.Get(ctx, c.getKey(key))
 	if err != nil {
 		// All errors are a cache miss in the gocache library.
-		c.logger.DebugContext(ctx,
+		c.logger.TraceContext(ctx,
 			"cache miss",
 			slog.Any("key", key),
 			slog.Any("error", err),
 		)
 		return nil, ErrCacheMiss
 	}
-	c.logger.DebugContext(ctx,
+	c.logger.TraceContext(ctx,
 		"cache hit",
 		slog.Any("key", key),
 	)
@@ -118,7 +118,7 @@ func (c *Cache) Set(ctx context.Context, key string, object any, tags []string) 
 		)
 		return err
 	}
-	c.logger.DebugContext(ctx, "set cache", slog.Any("key", key))
+	c.logger.TraceContext(ctx, "set cache", slog.Any("key", key))
 	return nil
 }
 

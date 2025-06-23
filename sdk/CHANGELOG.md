@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.5.0](https://github.com/opentdf/platform/compare/sdk/v0.4.7...sdk/v0.5.0) (2025-06-23)
+
+
+### Features
+
+* add system metadata assertions to TDFConfig ([#2446](https://github.com/opentdf/platform/issues/2446)) ([4eb9fff](https://github.com/opentdf/platform/commit/4eb9fff910ff5b3dd267b9017a1f2ca12133a264))
+* **core:** DSPX-608 - Deprecate public_client_id ([#2185](https://github.com/opentdf/platform/issues/2185)) ([0f58efa](https://github.com/opentdf/platform/commit/0f58efab4e99005b73041444d31b1c348b9e2834))
+* **sdk:** adds seeker interface to TDF Reader ([#2385](https://github.com/opentdf/platform/issues/2385)) ([63ccd9a](https://github.com/opentdf/platform/commit/63ccd9aa89060209ca0bb3911bc092af9467e986))
+* **sdk:** Allow key splits with same algo ([#2454](https://github.com/opentdf/platform/issues/2454)) ([7422b15](https://github.com/opentdf/platform/commit/7422b15d529bd9a32cccbb67c47d7a25a41b9bde))
+* **sdk:** autoconfig kaos with kids ([#2438](https://github.com/opentdf/platform/issues/2438)) ([c272016](https://github.com/opentdf/platform/commit/c2720163957dbbc4ddb79222fb8ed6883e830e69))
+* **sdk:** Enable base key support. ([#2425](https://github.com/opentdf/platform/issues/2425)) ([9ff3806](https://github.com/opentdf/platform/commit/9ff38064abf4c62f929c53bbed7acf3ad1d751fe))
+
+
+### Bug Fixes
+
+* **ci:** Fix intermittent failures from auth tests ([#2345](https://github.com/opentdf/platform/issues/2345)) ([395988a](https://github.com/opentdf/platform/commit/395988acf615d722638efd2ceb234c38aec03821))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.3.6 to 0.4.0 in /sdk ([#2397](https://github.com/opentdf/platform/issues/2397)) ([99e3aa4](https://github.com/opentdf/platform/commit/99e3aa4600ae503142ed81c9a483b1b75d950713))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.4.0 to 0.5.0 in /sdk ([#2471](https://github.com/opentdf/platform/issues/2471)) ([e8f97e0](https://github.com/opentdf/platform/commit/e8f97e083fdd08c6cea24e6cf0c2b4f32309b6bf))
+* **deps:** bump the external group across 1 directory with 5 updates ([#2400](https://github.com/opentdf/platform/issues/2400)) ([0b7ea79](https://github.com/opentdf/platform/commit/0b7ea79516352923f291047074ec27bcae74381d))
+* set consistent system metadata id and schema ([#2451](https://github.com/opentdf/platform/issues/2451)) ([5db3cf2](https://github.com/opentdf/platform/commit/5db3cf2c8ba3ef187e64740c183a8d5ec3c2397b))
+
 ## [0.4.7](https://github.com/opentdf/platform/compare/sdk/v0.4.6...sdk/v0.4.7) (2025-05-29)
 
 

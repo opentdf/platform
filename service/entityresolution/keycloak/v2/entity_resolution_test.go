@@ -207,7 +207,7 @@ func Test_KCEntityResolutionByClientId(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 	_ = json.NewEncoder(os.Stdout).Encode(&resp)
@@ -236,7 +236,7 @@ func Test_KCEntityResolutionByEmail(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -276,7 +276,7 @@ func Test_KCEntityResolutionByUsername(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -321,7 +321,7 @@ func Test_KCEntityResolutionByGroupEmail(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -362,7 +362,7 @@ func Test_KCEntityResolutionNotFoundError(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.Error(t, reserr)
 	assert.Equal(t, &entityresolutionV2.ResolveEntitiesResponse{}, &resp)
@@ -385,7 +385,7 @@ func Test_JwtClientAndUsernameClientCredentials(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -408,7 +408,7 @@ func Test_JwtClientAndUsernamePasswordPub(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -431,7 +431,7 @@ func Test_JwtClientAndUsernamePasswordPriv(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -454,7 +454,7 @@ func Test_JwtClientAndUsernameAuthPub(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -477,7 +477,7 @@ func Test_JwtClientAndUsernameAuthPriv(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -500,7 +500,7 @@ func Test_JwtClientAndUsernameImplicitPub(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -523,7 +523,7 @@ func Test_JwtClientAndUsernameImplicitPriv(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -549,7 +549,7 @@ func Test_JwtClientAndClientTokenExchange(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -575,7 +575,7 @@ func Test_JwtMultiple(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := CreateEntityChainsFromTokens(t.Context(), &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: validBody}, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -617,7 +617,7 @@ func Test_KCEntityResolutionNotFoundInferEmail(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -651,7 +651,7 @@ func Test_KCEntityResolutionNotFoundInferClientId(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.NoError(t, reserr)
 
@@ -684,7 +684,7 @@ func Test_KCEntityResolutionNotFoundNotInferUsername(t *testing.T) {
 		token:  &gocloak.JWT{AccessToken: "dummy_token"},
 		client: gocloak.NewClient(server.URL),
 	}
-	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger())
+	resp, reserr := EntityResolution(t.Context(), &req, kcconfig, connector, logger.CreateTestLogger(), nil)
 
 	require.Error(t, reserr)
 	assert.Equal(t, &entityresolutionV2.ResolveEntitiesResponse{}, &resp)

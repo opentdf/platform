@@ -313,6 +313,8 @@ func Start(f ...StartOptions) error {
 	}
 	defer gatewayCleanup()
 
+	defer cacheManager.Close()
+
 	// Start watching the configuration for changes with registered config change service hooks
 	if err := cfg.Watch(ctx); err != nil {
 		return fmt.Errorf("failed to watch configuration: %w", err)

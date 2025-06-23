@@ -17,6 +17,7 @@ var ErrCacheMiss = errors.New("cache miss")
 // Manager is a cache manager for any value.
 type Manager struct {
 	cache *cache.Cache[any]
+	raw   *ristretto.Cache
 }
 
 // Cache is a cache implementation using gocache for any value type.
@@ -50,6 +51,7 @@ func NewCacheManager(maxCost int64) (*Manager, error) {
 	ristrettoStore := ristretto_store.NewRistretto(store)
 	return &Manager{
 		cache: cache.New[any](ristrettoStore),
+		raw:   store,
 	}, nil
 }
 
@@ -72,6 +74,12 @@ func (c *Manager) NewCache(serviceName string, log *logger.Logger, options Optio
 		With("expiration", options.Expiration.String())
 	cache.logger.Info("created cache")
 	return cache, nil
+}
+
+func (m *Manager) Close() {
+	if m.raw != nil {
+		m.raw.Close()
+	}
 }
 
 // Get retrieves a value from the cache

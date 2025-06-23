@@ -21,7 +21,7 @@ type StartConfig struct {
 	casbinAdapter         persist.Adapter
 	configLoaders         []config.Loader
 
-	trustKeyManagers []trust.KeyManager
+	trustKeyManagers []trust.NamedKeyManagerFactory
 }
 
 // Deprecated: Use WithConfigKey
@@ -127,10 +127,10 @@ func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
 	}
 }
 
-// WithTrustKeyManagers option sets the trust key manager to be used for the server.
-func WithTrustKeyManagers(managers ...trust.KeyManager) StartOptions {
+// WithTrustKeyManagerFactories option provides factories for creating trust key managers.
+func WithTrustKeyManagerFactories(factories ...trust.NamedKeyManagerFactory) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.trustKeyManagers = append(c.trustKeyManagers, managers...)
+		c.trustKeyManagers = append(c.trustKeyManagers, factories...)
 		return c
 	}
 }

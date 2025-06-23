@@ -224,6 +224,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.kasregistry.ListKeyAccessServerGrantsResponse'
+      deprecated: true
   /policy.kasregistry.KeyAccessServerRegistryService/CreateKey:
     post:
       tags:

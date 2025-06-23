@@ -3,45 +3,50 @@ syntax = "proto3";
 package policy;
 
 message AttributeNamespaceSelector {
-	message AttributeSelector {
-		bool with_key_access_grants = 1;
-
-		message ValueSelector {
-			bool with_key_access_grants = 1;
-			bool with_subject_maps = 2;
-			bool with_resource_maps = 3;
-	    }
-		ValueSelector with_values = 10;
-	}
-	AttributeSelector with_attributes = 10;
+  message AttributeSelector {
+    // Deprecated
+    bool with_key_access_grants = 1;
+    message ValueSelector {
+      // Deprecated
+      bool with_key_access_grants = 1;
+      bool with_subject_maps = 2;
+      bool with_resource_maps = 3;
+    }
+    ValueSelector with_values = 10;
+  }
+  AttributeSelector with_attributes = 10;
 }
 
 message AttributeDefinitionSelector {
-	bool with_key_access_grants = 1;
+  // Deprecated
+  bool with_key_access_grants = 1;
 
-	message NamespaceSelector {}
-	NamespaceSelector with_namespace = 10;
+  message NamespaceSelector {}
+  NamespaceSelector with_namespace = 10;
 
-	message ValueSelector {
-		bool with_key_access_grants = 1;
-		bool with_subject_maps = 2;
-		bool with_resource_maps = 3;
-    }
-	ValueSelector with_values = 11;
+  message ValueSelector {
+    // Deprecated
+    bool with_key_access_grants = 1;
+    bool with_subject_maps = 2;
+    bool with_resource_maps = 3;
+  }
+  ValueSelector with_values = 11;
 }
 
 message AttributeValueSelector {
-	bool with_key_access_grants = 1;
-	bool with_subject_maps = 2;
-	bool with_resource_maps = 3;
+  // Deprecated
+  bool with_key_access_grants = 1;
+  bool with_subject_maps = 2;
+  bool with_resource_maps = 3;
 
-	message AttributeSelector {
-		bool with_key_access_grants = 1;
+  message AttributeSelector {
+    // Deprecated
+    bool with_key_access_grants = 1;
 
-		message NamespaceSelector {}
-		NamespaceSelector with_namespace = 10;
-    }
-	AttributeSelector with_attribute = 10;
+    message NamespaceSelector {}
+    NamespaceSelector with_namespace = 10;
+  }
+  AttributeSelector with_attribute = 10;
 }
 
 message PageRequest {

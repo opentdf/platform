@@ -292,11 +292,11 @@ func TestKasKeyCache_NoKID(t *testing.T) {
 	assert.Equal(t, testPubKey, retrievedKey.PublicKey, "Retrieved key has incorrect public key")
 	assert.Equal(t, "specific-kid", retrievedKey.KID, "Retrieved key has incorrect KID")
 
-	// Check that we can also retrieve the same key with an empty KID due to the new store behavior
+	// Check that with empty KID we can find a match through iteration
 	retrievedWithEmptyKID := cache.get(testURL, testAlgorithm, "")
-	require.NotNil(t, retrievedWithEmptyKID, "Failed to retrieve key with empty KID (should get the same key)")
+	require.NotNil(t, retrievedWithEmptyKID, "Failed to retrieve key with empty KID (should find through iteration)")
 	assert.Equal(t, testPubKey, retrievedWithEmptyKID.PublicKey, "Retrieved key has incorrect public key")
-	assert.Equal(t, "specific-kid", retrievedWithEmptyKID.KID, "Retrieved key should have the original KID")
+	assert.Equal(t, keyInfoWithKID.KID, retrievedWithEmptyKID.KID, "Retrieved key should have the original KID")
 
 	// Test 2: Store a key with a different KID but same URL and algorithm
 	keyInfoWithDifferentKID := KASInfo{
@@ -317,11 +317,11 @@ func TestKasKeyCache_NoKID(t *testing.T) {
 	assert.Equal(t, testPubKey, specificKIDKey.PublicKey, "Retrieved key with specific KID has incorrect public key")
 	assert.Equal(t, keyInfoWithDifferentKID.PublicKey, differentKIDKey.PublicKey, "Retrieved key with different KID has incorrect public key")
 
-	// Empty KID lookup should return the most recently stored key
+	// Empty KID lookup should find a key through iteration
+	// Note: The implementation may return any key that matches URL and algorithm
 	emptyKIDLookup := cache.get(testURL, testAlgorithm, "")
 	require.NotNil(t, emptyKIDLookup, "Failed to retrieve key with empty KID")
-	assert.Equal(t, keyInfoWithDifferentKID.PublicKey, emptyKIDLookup.PublicKey, "Empty KID should return the most recently stored key")
-	assert.Equal(t, keyInfoWithDifferentKID.KID, emptyKIDLookup.KID, "Empty KID should return the most recently stored key with its KID")
+	// We don't assert which key is returned as that depends on map iteration order
 
 	// Test 3: Store a key with empty KID
 	keyInfoWithEmptyKID := KASInfo{
@@ -353,37 +353,32 @@ func TestKasKeyCache_Expiration(t *testing.T) {
 	}
 	cache.store(keyInfo)
 
-	// Verify both entries (with KID and without KID) are in cache
+	// Verify the entry is in cache
 	retrievedKeyWithKID := cache.get(keyInfo.URL, keyInfo.Algorithm, keyInfo.KID)
 	require.NotNil(t, retrievedKeyWithKID, "Key with specific KID should be in cache")
 
+	// Verify we can retrieve the key with empty KID through iteration
 	retrievedKeyNoKID := cache.get(keyInfo.URL, keyInfo.Algorithm, "")
-	require.NotNil(t, retrievedKeyNoKID, "Key with empty KID lookup should be in cache")
+	require.NotNil(t, retrievedKeyNoKID, "Key with empty KID lookup should be found through iteration")
 	assert.Equal(t, keyInfo.KID, retrievedKeyNoKID.KID, "Empty KID lookup should return the key with the specific KID")
 
 	// Manually modify the time to simulate expiration (beyond 5 minutes)
-	// We need to check both cache keys: with KID and without KID
-	cacheKeyWithKID := kasKeyRequest{keyInfo.URL, keyInfo.Algorithm, keyInfo.KID}
-	cacheKeyNoKID := kasKeyRequest{keyInfo.URL, keyInfo.Algorithm, ""}
+	cacheKey := kasKeyRequest{keyInfo.URL, keyInfo.Algorithm, keyInfo.KID}
 
-	// Update both entries to be expired
-	for _, key := range []kasKeyRequest{cacheKeyWithKID, cacheKeyNoKID} {
-		cachedValue := cache.c[key]
-		cachedValue.Time = time.Now().Add(-6 * time.Minute)
-		cache.c[key] = cachedValue
-	}
+	// Update entry to be expired
+	cachedValue := cache.c[cacheKey]
+	cachedValue.Time = time.Now().Add(-6 * time.Minute)
+	cache.c[cacheKey] = cachedValue
 
-	// Try to retrieve the expired keys
+	// Try to retrieve the expired key with specific KID
 	retrievedKeyWithKID = cache.get(keyInfo.URL, keyInfo.Algorithm, keyInfo.KID)
 	assert.Nil(t, retrievedKeyWithKID, "Expired key with specific KID should not be returned")
 
+	// Try to retrieve with empty KID (should also find nothing since the key is expired)
 	retrievedKeyNoKID = cache.get(keyInfo.URL, keyInfo.Algorithm, "")
-	assert.Nil(t, retrievedKeyNoKID, "Expired key with empty KID lookup should not be returned")
+	assert.Nil(t, retrievedKeyNoKID, "Expired key should not be found with empty KID lookup")
 
-	// Verify both entries were actually removed from the cache
-	_, existsWithKID := cache.c[cacheKeyWithKID]
-	assert.False(t, existsWithKID, "Expired key with specific KID should be removed from cache")
-
-	_, existsNoKID := cache.c[cacheKeyNoKID]
-	assert.False(t, existsNoKID, "Expired key with empty KID entry should be removed from cache")
+	// Verify the entry was actually removed from the cache
+	_, exists := cache.c[cacheKey]
+	assert.False(t, exists, "Expired key should be removed from cache")
 }

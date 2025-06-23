@@ -341,7 +341,7 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 		switch strings.ToLower(fqn.Value()) {
 		case "a":
 			p.KasKeys = make([]*policy.SimpleKasKey, 1)
-			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "r1")
+			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "r2")
 
 		case "b":
 			p.KasKeys = make([]*policy.SimpleKasKey, 1)

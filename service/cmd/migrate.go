@@ -62,7 +62,7 @@ var (
 			for _, s := range status {
 				slog.Info("migration",
 					slog.String("state", string(s.State)),
-					slog.String("source", s.Source.Path),
+					slog.String("source_path", s.Source.Path),
 					slog.String("applied_on",
 						s.AppliedAt.String()),
 				)

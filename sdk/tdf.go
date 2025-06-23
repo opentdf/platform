@@ -206,7 +206,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			if err == nil {
 				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
 			} else {
-				slog.Debug("Error getting base key, falling back to default kas.", "error", err)
+				slog.DebugContext(ctx, "error getting base key, falling back to default kas", slog.Any("error", err))
 				dk := s.defaultKases(tdfConfig)
 				tdfConfig.kaoTemplate = nil
 				tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
@@ -724,7 +724,7 @@ func allowListFromKASRegistry(ctx context.Context, kasRegistryClient sdkconnect.
 		}
 	}
 	// grpc target does not have a scheme
-	slog.Debug("Adding platform URL to KAS allowlist", "platformURL", platformURL)
+	slog.Debug("adding platform URL to KAS allowlist", slog.String("platform_url", platformURL))
 	err = kasAllowlist.Add(platformURL)
 	if err != nil {
 		return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
@@ -762,7 +762,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 			}
 			config.kasAllowlist = allowList
 		} else {
-			slog.Error("No KAS allowlist provided and no KeyAccessServerRegistry available")
+			slog.Error("no KAS allowlist provided and no KeyAccessServerRegistry available")
 			return nil, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
 		}
 	}
@@ -1361,7 +1361,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error { //nolint:gocogn
 		// if ignoreing allowlist then warn
 		// if kas url is not allowed then return error
 		if r.config.ignoreAllowList {
-			slog.Warn(fmt.Sprintf("KasAllowlist is ignored, kas url %s is allowed", kasurl))
+			slog.WarnContext(ctx, "kasAllowlist is ignored, kas url is allowed", slog.String("kas_url", kasurl))
 		} else if !r.config.kasAllowlist.IsAllowed(kasurl) {
 			reqFail(fmt.Errorf("KasAllowlist: kas url %s is not allowed", kasurl), req)
 			continue
@@ -1461,12 +1461,12 @@ func populateKasInfoFromBaseKey(key *policy.SimpleKasKey, tdfConfig *TDFConfig) 
 
 	// ? Maybe we shouldn't overwrite the key type
 	if tdfConfig.keyType != ocrypto.KeyType(algoString) {
-		slog.Warn("Base key is enabled, setting key type", "keyType", algoString)
+		slog.Warn("base key is enabled, setting key type", slog.String("key_type", algoString))
 	}
 	tdfConfig.keyType = ocrypto.KeyType(algoString)
 	tdfConfig.splitPlan = nil
 	if len(tdfConfig.kasInfoList) > 0 {
-		slog.Warn("Base key is enabled, overwriting kasInfoList with base key info")
+		slog.Warn("base key is enabled, overwriting kasInfoList with base key info")
 	}
 	tdfConfig.kasInfoList = []KASInfo{
 		{

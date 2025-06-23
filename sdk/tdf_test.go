@@ -2227,7 +2227,10 @@ func (f *FakeAttributes) GetAttributeValuesByFqns(_ context.Context, in *connect
 	for _, fqn := range in.Msg.GetFqns() {
 		av, err := NewAttributeValueFQN(fqn)
 		if err != nil {
-			slog.Error("invalid fqn", "notfqn", fqn, "error", err)
+			slog.Error("invalid fqn",
+				slog.String("fqn", fqn),
+				slog.Any("error", err),
+			)
 			return nil, status.New(codes.InvalidArgument, fmt.Sprintf("invalid attribute fqn [%s]", fqn)).Err()
 		}
 		v := mockValueFor(av)

@@ -13,12 +13,23 @@ import (
 var (
 	mockCacheExpiry = 5 * time.Minute
 	mockCache, _    = cache.TestCacheClient(mockCacheExpiry)
+	l               = logger.CreateTestLogger()
 )
 
-func TestEntitlementPolicyCache_RefreshInterval(t *testing.T) {
+func Test_NewEntitlementPolicyCache(t *testing.T) {
+	ctx := t.Context()
+	refreshInterval := 10 * time.Second
+
+	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval)
+	assert.NoError(t, err)
+	assert.NotNil(t, c)
+	assert.Equal(t, refreshInterval, c.configuredRefreshInterval)
+	assert.False(t, c.isCacheFilled)
+}
+
+func Test_EntitlementPolicyCache_RefreshInterval(t *testing.T) {
 	var refreshInterval time.Duration
 	ctx := t.Context()
-	l := logger.CreateTestLogger()
 	_, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval)
 	assert.ErrorIs(t, err, ErrCacheDisabled)
 
@@ -28,12 +39,11 @@ func TestEntitlementPolicyCache_RefreshInterval(t *testing.T) {
 	assert.NotNil(t, c)
 }
 
-func TestEntitlementPolicyCache_Enabled(t *testing.T) {
+func Test_EntitlementPolicyCache_Enabled(t *testing.T) {
 	var (
 		c               *EntitlementPolicyCache
 		err             error
 		ctx             = t.Context()
-		l               = logger.CreateTestLogger()
 		refreshInterval = 10 * time.Second
 	)
 	assert.False(t, c.IsEnabled())
@@ -47,9 +57,8 @@ func TestEntitlementPolicyCache_Enabled(t *testing.T) {
 	assert.False(t, c.IsReady(ctx))
 }
 
-func TestEntitlementPolicyCache_CacheMiss(t *testing.T) {
+func Test_EntitlementPolicyCache_CacheMiss(t *testing.T) {
 	ctx := t.Context()
-	l := logger.CreateTestLogger()
 
 	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour)
 	assert.NoError(t, err)
@@ -68,9 +77,8 @@ func TestEntitlementPolicyCache_CacheMiss(t *testing.T) {
 	assert.Len(t, registeredResources, 0)
 }
 
-func TestEntitlementPolicyCache_CacheHits(t *testing.T) {
+func Test_EntitlementPolicyCache_CacheHits(t *testing.T) {
 	ctx := t.Context()
-	l := logger.CreateTestLogger()
 
 	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour)
 	assert.NoError(t, err)

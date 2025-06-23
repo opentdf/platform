@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 
 	authz "github.com/opentdf/platform/protocol/go/authorization/v2"
@@ -29,6 +30,7 @@ func getResourceDecision(
 	ctx context.Context,
 	l *logger.Logger,
 	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	action *policy.Action,
 	resource *authz.Resource,
@@ -43,16 +45,44 @@ func getResourceDecision(
 		slog.Any("resource", resource.GetResource()),
 	)
 
+	var (
+		resourceID              = resource.GetEphemeralId()
+		resourceAttributeValues *authz.Resource_AttributeValues
+	)
+
 	switch resource.GetResource().(type) {
-	// TODO: handle registered resources
 	case *authz.Resource_RegisteredResourceValueFqn:
-		return nil, fmt.Errorf("registered resources not supported yet: %w", ErrInvalidResource)
+		regResValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
+		regResValue, found := accessibleRegisteredResourceValues[regResValueFQN]
+		if !found {
+			return nil, fmt.Errorf("%w: %s", ErrFQNNotFound, regResValueFQN)
+		}
+
+		resourceAttributeValues = &authz.Resource_AttributeValues{
+			Fqns: make([]string, 0),
+		}
+		for _, aav := range regResValue.GetActionAttributeValues() {
+			// TODO: DSPX-1295 - revisit this logic -- reg res' are different from attr values since they can be both entity and resource
+			// and are tied to actions and attribute values
+			//
+			// if aav.GetAction().GetName() != action.GetName() {
+			// 	continue
+			// }
+
+			aavAttrValueFQN := aav.GetAttributeValue().GetFqn()
+			if !slices.Contains(resourceAttributeValues.GetFqns(), aavAttrValueFQN) {
+				resourceAttributeValues.Fqns = append(resourceAttributeValues.Fqns, aavAttrValueFQN)
+			}
+		}
+
 	case *authz.Resource_AttributeValues_:
-		return evaluateResourceAttributeValues(ctx, l, resource.GetAttributeValues(), resource.GetEphemeralId(), action, entitlements, accessibleAttributeValues)
+		resourceAttributeValues = resource.GetAttributeValues()
 
 	default:
 		return nil, fmt.Errorf("unsupported resource type: %w", ErrInvalidResource)
 	}
+
+	return evaluateResourceAttributeValues(ctx, l, resourceAttributeValues, resourceID, action, entitlements, accessibleAttributeValues)
 }
 
 // evaluateResourceAttributeValues evaluates a list of attribute values against the action and entitlements

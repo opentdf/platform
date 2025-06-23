@@ -75,7 +75,7 @@ func (c *Manager) NewCache(serviceName string, log *logger.Logger, options Optio
 	}
 	cache.logger = log.
 		With("subsystem", "cache").
-		With("serviceTag", cache.getServiceTag())
+		With("service_tag", cache.getServiceTag())
 
 	if options.Expiration > 0 {
 		cache.logger = cache.logger.

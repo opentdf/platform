@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_ValidateConfig_ValidConfig(t *testing.T) {
@@ -27,7 +28,7 @@ func Test_ValidateConfig_InvalidRefreshInterval(t *testing.T) {
 	}
 
 	err := config.Validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	config = &Config{
 		Cache: EntitlementPolicyCacheConfig{
@@ -37,7 +38,7 @@ func Test_ValidateConfig_InvalidRefreshInterval(t *testing.T) {
 	}
 
 	err = config.Validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func Test_ValidateConfig_DisabledCache(t *testing.T) {

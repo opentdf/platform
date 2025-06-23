@@ -43,3 +43,20 @@ func TestNewCacheManager_NewCacheIntegration(t *testing.T) {
 	require.Equal(t, "testService", cache.serviceName)
 	require.Equal(t, options, cache.cacheOptions)
 }
+
+func TestCacheManagerClose(t *testing.T) {
+	// Create a cache manager
+	manager, err := NewCacheManager(1024 * 1024) // 1 MB max cost
+	require.NoError(t, err)
+	require.NotNil(t, manager)
+
+	// Ensure Close does not panic
+	require.NotPanics(t, func() {
+		manager.Close()
+	})
+
+	// Calling Close twice should also be safe (defensive test)
+	require.NotPanics(t, func() {
+		manager.Close()
+	})
+}

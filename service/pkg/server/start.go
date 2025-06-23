@@ -96,6 +96,7 @@ func Start(f ...StartOptions) error {
 	if err != nil {
 		return fmt.Errorf("could not create cache manager: %w", err)
 	}
+	defer cacheManager.Close()
 
 	logger.Info("starting opentdf services")
 

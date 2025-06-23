@@ -13,13 +13,13 @@ import (
 
 var (
 	mockCacheExpiry = 5 * time.Minute
-	mockCache, _    = cache.TestCacheClient(mockCacheExpiry)
 	l               = logger.CreateTestLogger()
 )
 
 func Test_NewEntitlementPolicyCache(t *testing.T) {
 	ctx := t.Context()
 	refreshInterval := 10 * time.Second
+	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
 
 	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval)
 	require.NoError(t, err)
@@ -31,6 +31,8 @@ func Test_NewEntitlementPolicyCache(t *testing.T) {
 func Test_EntitlementPolicyCache_RefreshInterval(t *testing.T) {
 	var refreshInterval time.Duration
 	ctx := t.Context()
+	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
+
 	_, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, refreshInterval)
 	require.ErrorIs(t, err, ErrCacheDisabled)
 
@@ -46,6 +48,7 @@ func Test_EntitlementPolicyCache_Enabled(t *testing.T) {
 		err             error
 		ctx             = t.Context()
 		refreshInterval = 10 * time.Second
+		mockCache, _    = cache.TestCacheClient(mockCacheExpiry)
 	)
 	assert.False(t, c.IsEnabled())
 	assert.False(t, c.IsReady(ctx))
@@ -60,6 +63,7 @@ func Test_EntitlementPolicyCache_Enabled(t *testing.T) {
 
 func Test_EntitlementPolicyCache_CacheMiss(t *testing.T) {
 	ctx := t.Context()
+	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
 
 	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour)
 	require.NoError(t, err)
@@ -80,9 +84,7 @@ func Test_EntitlementPolicyCache_CacheMiss(t *testing.T) {
 
 func Test_EntitlementPolicyCache_CacheHits(t *testing.T) {
 	ctx := t.Context()
-
-	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour)
-	require.NoError(t, err)
+	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
 
 	attrsList := []*policy.Attribute{{Name: "attr1"}}
 	subjMappingsList := []*policy.SubjectMapping{{Id: "id-123"}}
@@ -90,6 +92,12 @@ func Test_EntitlementPolicyCache_CacheHits(t *testing.T) {
 	_ = mockCache.Set(ctx, attributesCacheKey, attrsList, nil)
 	_ = mockCache.Set(ctx, subjectMappingsCacheKey, subjMappingsList, nil)
 	_ = mockCache.Set(ctx, registeredResourcesCacheKey, resourcesList, nil)
+
+	c, err := NewEntitlementPolicyCache(ctx, l, nil, mockCache, 1*time.Hour)
+	require.NoError(t, err)
+
+	// Allow for some concurrency overhead in cache library to prevent flakiness in tests
+	time.Sleep(10 * time.Millisecond)
 
 	attrs, err := c.ListAllAttributes(ctx)
 	require.NoError(t, err)

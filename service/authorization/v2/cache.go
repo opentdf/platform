@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -77,7 +78,7 @@ func NewEntitlementPolicyCache(
 	}
 	l = l.With("component", "EntitlementPolicyCache")
 
-	l.DebugContext(ctx, "Initializing cache")
+	l.DebugContext(ctx, "initializing cache")
 
 	instance := &EntitlementPolicyCache{
 		logger:                    l,
@@ -94,7 +95,7 @@ func NewEntitlementPolicyCache(
 	}
 
 	// Only set the instance if Start() succeeds
-	l.DebugContext(ctx, "EntitlementPolicyCache initialized")
+	l.DebugContext(ctx, "initialized EntitlementPolicyCache and started periodic refresh")
 	return instance, nil
 }
 
@@ -108,7 +109,7 @@ func (c *EntitlementPolicyCache) IsReady(ctx context.Context) bool {
 	}
 	if !c.isCacheFilled {
 		if err := c.Refresh(ctx); err != nil {
-			c.logger.ErrorContext(ctx, "Cache is not ready", "error", err)
+			c.logger.ErrorContext(ctx, "cache is not ready", slog.Any("error", err))
 			return false
 		}
 	}
@@ -129,8 +130,8 @@ func (c *EntitlementPolicyCache) Start(ctx context.Context) error {
 	}
 
 	c.logger.DebugContext(ctx,
-		"Starting periodic cache refresh",
-		"seconds", c.configuredRefreshInterval.Seconds(),
+		"starting periodic cache refresh",
+		slog.Float64("seconds", c.configuredRefreshInterval.Seconds()),
 	)
 	go c.periodicRefresh(ctx)
 
@@ -145,7 +146,7 @@ func (c *EntitlementPolicyCache) Stop() {
 		select {
 		case <-c.stopRefresh:
 			// Channel is already closed, nothing to do
-			c.logger.DebugContext(context.Background(), "Stop called on already stopped cache")
+			c.logger.DebugContext(context.Background(), "stop called on already stopped cache")
 			return
 		default:
 			// Channel is still open, proceed with closing
@@ -157,7 +158,7 @@ func (c *EntitlementPolicyCache) Stop() {
 				// Goroutine completed successfully
 			case <-time.After(stopTimeout):
 				// Timeout as a safety mechanism in case the goroutine is stuck
-				c.logger.WarnContext(context.Background(), "Timed out waiting for refresh goroutine to complete")
+				c.logger.WarnContext(context.Background(), "timed out waiting for refresh goroutine to complete")
 			}
 		}
 	}
@@ -200,10 +201,10 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 	}
 
 	c.logger.DebugContext(ctx,
-		"EntitlementPolicyCache refreshed",
-		"attributes_count", len(attributes),
-		"subject_mappings_count", len(subjectMappings),
-		"registered_resources_count", len(registeredResources),
+		"refreshed EntitlementPolicyCache",
+		slog.Int("attributes_count", len(attributes)),
+		slog.Int("subject_mappings_count", len(subjectMappings)),
+		slog.Int("registered_resources_count", len(registeredResources)),
 	)
 
 	// Mark the cache as filled after a successful refresh
@@ -297,12 +298,12 @@ func (c *EntitlementPolicyCache) periodicRefresh(ctx context.Context) {
 			err := c.Refresh(refreshCtx)
 			cancel() // Always cancel the context to prevent leaks
 			if err != nil {
-				c.logger.ErrorContext(ctx, "Failed to refresh cache", "error", err)
+				c.logger.ErrorContext(ctx, "failed to refresh cache", slog.Any("error", err))
 			}
 		case <-c.stopRefresh:
 			return
 		case <-ctx.Done():
-			c.logger.DebugContext(ctx, "Context canceled, stopping periodic refresh")
+			c.logger.DebugContext(ctx, "context canceled, stopping periodic refresh")
 			return
 		}
 	}

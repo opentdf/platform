@@ -50,7 +50,8 @@ func TestRetrieveClients_CacheIntegration(t *testing.T) {
 		client: gocloak.NewClient(server.URL),
 	}
 	l := logger.CreateTestLogger()
-	_, c := newTestCache(t)
+	cm, c := newTestCache(t)
+	cm.Close() // Ensure cache manager is closed after test
 
 	// First call: cache miss, should hit server
 	got, err := retrieveClients(t.Context(), l, clientID, realm, c, kc)
@@ -101,7 +102,8 @@ func TestRetrieveUsers_CacheIntegration(t *testing.T) {
 		client: gocloak.NewClient(server.URL),
 	}
 	l := logger.CreateTestLogger()
-	_, c := newTestCache(t)
+	cm, c := newTestCache(t)
+	cm.Close() // Ensure cache manager is closed after test
 
 	// First call: cache miss, should hit server
 	params := gocloak.GetUsersParams{Email: &email}
@@ -153,7 +155,8 @@ func TestRetrieveGroupsByEmail_CacheIntegration(t *testing.T) {
 		client: gocloak.NewClient(server.URL),
 	}
 	l := logger.CreateTestLogger()
-	_, c := newTestCache(t)
+	cm, c := newTestCache(t)
+	cm.Close() // Ensure cache manager is closed after test
 
 	// First call: cache miss, should hit server
 	got, err := retrieveGroupsByEmail(t.Context(), l, groupEmail, realm, c, kc)
@@ -203,7 +206,8 @@ func TestRetrieveGroupByID_CacheIntegration(t *testing.T) {
 		client: gocloak.NewClient(server.URL),
 	}
 	l := logger.CreateTestLogger()
-	_, c := newTestCache(t)
+	cm, c := newTestCache(t)
+	cm.Close() // Ensure cache manager is closed after test
 
 	// First call: cache miss, should hit server
 	got, err := retrieveGroupByID(t.Context(), l, groupID, realm, c, kc)
@@ -253,7 +257,8 @@ func TestRetrieveGroupMembers_CacheIntegration(t *testing.T) {
 		client: gocloak.NewClient(server.URL),
 	}
 	l := logger.CreateTestLogger()
-	_, c := newTestCache(t)
+	cm, c := newTestCache(t)
+	cm.Close() // Ensure cache manager is closed after test
 
 	// First call: cache miss, should hit server
 	got, err := retrieveGroupMembers(t.Context(), l, groupID, realm, c, kc)

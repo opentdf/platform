@@ -1415,16 +1415,41 @@ SELECT
     r.id,
     r.name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+    -- Aggregate all values for this resource into a JSON array, filtering NULL entries
     JSON_AGG(
         JSON_BUILD_OBJECT(
             'id', v.id,
-            'value', v.value
+            'value', v.value,
+            'action_attribute_values', action_attrs.values
         )
     ) FILTER (WHERE v.id IS NOT NULL) as values,
     counted.total
 FROM registered_resources r
 CROSS JOIN counted
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+-- Build a JSON array of action/attribute pairs for each resource value
+LEFT JOIN LATERAL (
+    SELECT JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'action', JSON_BUILD_OBJECT(
+                'id', a.id,
+                'name', a.name
+            ),
+            'attribute_value', JSON_BUILD_OBJECT(
+                'id', av.id,
+                'value', av.value,
+                'fqn', fqns.fqn
+            )
+        )
+    ) AS values
+    -- Join to get all action-attribute relationships for this resource value
+    FROM registered_resource_action_attribute_values rav
+    LEFT JOIN actions a on rav.action_id = a.id
+    LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+    LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
+    -- Correlate to the outer query's resource value
+    WHERE rav.registered_resource_value_id = v.id
+) action_attrs ON true  -- required syntax for LATERAL joins
 GROUP BY r.id, counted.total
 LIMIT @limit_ 
 OFFSET @offset_;

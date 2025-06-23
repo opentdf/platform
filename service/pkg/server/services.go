@@ -119,13 +119,13 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 }
 
 type startServicesParams struct {
-	cfg          *config.Config
-	otdf         *server.OpenTDFServer
-	client       *sdk.SDK
-	logger       *logging.Logger
-	reg          serviceregistry.Registry
-	cacheManager *cache.Manager
-	keyManagers  []trust.KeyManager
+	cfg                 *config.Config
+	otdf                *server.OpenTDFServer
+	client              *sdk.SDK
+	logger              *logging.Logger
+	reg                 serviceregistry.Registry
+	cacheManager        *cache.Manager
+	keyManagerFactories []trust.NamedKeyManagerFactory
 }
 
 // startServices iterates through the registered namespaces and starts the services
@@ -141,7 +141,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	logger := params.logger
 	reg := params.reg
 	cacheManager := params.cacheManager
-	keyManagers := params.keyManagers
+	keyManagerFactories := params.keyManagerFactories
 
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
@@ -220,7 +220,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				OTDF:                   otdf, // TODO: REMOVE THIS
 				Tracer:                 tracer,
 				NewCacheClient:         createCacheClient,
-				KeyManagers:            keyManagers,
+				KeyManagerFactories:    keyManagerFactories,
 			})
 			if err != nil {
 				return func() {}, err

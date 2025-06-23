@@ -430,19 +430,6 @@ func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 }
 
 func storeKeysToCache(kases []*policy.KeyAccessServer, keys []*policy.SimpleKasKey, c *kasKeyCache) {
-	for _, key := range keys {
-		alg, err := formatAlg(key.GetPublicKey().GetAlgorithm())
-		// ? Should we continue here or throw. Means that a key is invalid.
-		if err != nil {
-			continue
-		}
-		c.store(KASInfo{
-			URL:       key.GetKasUri(),
-			KID:       key.GetPublicKey().GetKid(),
-			Algorithm: alg,
-			PublicKey: key.GetPublicKey().GetPem(),
-		})
-	}
 	for _, kas := range kases {
 		keys := kas.GetPublicKey().GetCached().GetKeys()
 		if len(keys) == 0 {
@@ -457,6 +444,18 @@ func storeKeysToCache(kases []*policy.KeyAccessServer, keys []*policy.SimpleKasK
 				PublicKey: ki.GetPem(),
 			})
 		}
+	}
+	for _, key := range keys {
+		alg, err := formatAlg(key.GetPublicKey().GetAlgorithm())
+		if err != nil {
+			continue
+		}
+		c.store(KASInfo{
+			URL:       key.GetKasUri(),
+			KID:       key.GetPublicKey().GetKid(),
+			Algorithm: alg,
+			PublicKey: key.GetPublicKey().GetPem(),
+		})
 	}
 }
 

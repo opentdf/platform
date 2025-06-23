@@ -403,7 +403,7 @@ func (c *kasKeyCache) get(url, algorithm, kid string) *KASInfo {
 	cacheKey := kasKeyRequest{url, algorithm, kid}
 	now := time.Now()
 	cv, ok := c.c[cacheKey]
-	if !ok {
+	if !ok && kid == "" {
 		for k, v := range c.c {
 			if k.url == url && k.algorithm == algorithm {
 				cv = v
@@ -411,9 +411,9 @@ func (c *kasKeyCache) get(url, algorithm, kid string) *KASInfo {
 				break
 			}
 		}
-		if !ok {
-			return nil
-		}
+	}
+	if !ok {
+		return nil
 	}
 	ago := now.Add(-5 * time.Minute)
 	if ago.After(cv.Time) {

@@ -305,10 +305,14 @@ func TestKasKeyCache_NoKID(t *testing.T) {
 		KID:       "different-kid",
 		PublicKey: "another-public-key",
 	}
+	// First try to get the key with same URL and algo as pre-existing key to ensure it doesn't iterate over the map.
+	specificKIDKey := cache.get(testURL, testAlgorithm, keyInfoWithDifferentKID.KID)
+	require.Nil(t, specificKIDKey, "Should not retrieve key with different KID using specific KID lookup")
+
 	cache.store(keyInfoWithDifferentKID)
 
 	// Both keys should be retrievable with their specific KIDs
-	specificKIDKey := cache.get(testURL, testAlgorithm, "specific-kid")
+	specificKIDKey = cache.get(testURL, testAlgorithm, "specific-kid")
 	differentKIDKey := cache.get(testURL, testAlgorithm, "different-kid")
 
 	require.NotNil(t, specificKIDKey, "Failed to retrieve original key with specific KID")

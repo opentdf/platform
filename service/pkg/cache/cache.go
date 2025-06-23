@@ -12,7 +12,11 @@ import (
 	"github.com/opentdf/platform/service/logger"
 )
 
-var ErrCacheMiss = errors.New("cache miss")
+var (
+	ErrCacheMiss = errors.New("cache miss")
+	//nolint:mnd // 1MB, used for testing purposes
+	testMaxCost = int64(1024 * 1024)
+)
 
 // Manager is a cache manager for any value.
 type Manager struct {
@@ -125,14 +129,13 @@ func (c *Cache) getServiceTag() string {
 
 // TestCacheClient creates a test cache client with predefined options.
 func TestCacheClient(expiration time.Duration) (*Cache, error) {
-	maxCost := int64(1024 * 1024) // 1MB
-	numCounters, bufferItems, err := EstimateRistrettoConfigParams(maxCost)
+	numCounters, bufferItems, err := EstimateRistrettoConfigParams(testMaxCost)
 	if err != nil {
 		return nil, err
 	}
 	config := &ristretto.Config{
 		NumCounters: numCounters,
-		MaxCost:     maxCost,
+		MaxCost:     testMaxCost,
 		BufferItems: bufferItems,
 	}
 	store, err := ristretto.NewCache(config)

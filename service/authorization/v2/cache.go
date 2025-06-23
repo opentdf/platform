@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/opentdf/platform/protocol/go/policy"
-	otdfSDK "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
@@ -69,7 +68,7 @@ type EntitlementPolicy struct {
 func NewEntitlementPolicyCache(
 	ctx context.Context,
 	l *logger.Logger,
-	sdk *otdfSDK.SDK,
+	retriever *access.EntitlementPolicyRetriever,
 	cacheClient *cache.Cache,
 	cacheRefreshInterval time.Duration,
 ) (*EntitlementPolicyCache, error) {
@@ -83,7 +82,7 @@ func NewEntitlementPolicyCache(
 	instance := &EntitlementPolicyCache{
 		logger:                    l,
 		cacheClient:               cacheClient,
-		retriever:                 access.NewEntitlementPolicyRetriever(sdk),
+		retriever:                 retriever,
 		configuredRefreshInterval: cacheRefreshInterval,
 		stopRefresh:               make(chan struct{}),
 		refreshCompleted:          make(chan struct{}),
@@ -104,6 +103,9 @@ func (c *EntitlementPolicyCache) IsEnabled() bool {
 }
 
 func (c *EntitlementPolicyCache) IsReady(ctx context.Context) bool {
+	if !c.IsEnabled() || c.retriever == nil {
+		return false
+	}
 	if !c.isCacheFilled {
 		if err := c.Refresh(ctx); err != nil {
 			c.logger.ErrorContext(ctx, "Cache is not ready", "error", err)

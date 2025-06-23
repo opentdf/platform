@@ -135,7 +135,8 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 					panic(fmt.Errorf("failed to parse entitlement policy cache refresh interval [%s]: %w", authZCfg.Cache.RefreshInterval, err))
 				}
 
-				as.cache, err = NewEntitlementPolicyCache(context.Background(), l, as.sdk, cacheClient, refreshInterval)
+				retriever := access.NewEntitlementPolicyRetriever(as.sdk)
+				as.cache, err = NewEntitlementPolicyCache(context.Background(), l, retriever, cacheClient, refreshInterval)
 				if err != nil {
 					l.Error("failed to create entitlement policy cache", slog.Any("error", err))
 					panic(fmt.Errorf("failed to create entitlement policy cache: %w", err))

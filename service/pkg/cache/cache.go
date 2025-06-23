@@ -122,3 +122,31 @@ func (c *Cache) getKey(key string) string {
 func (c *Cache) getServiceTag() string {
 	return "svc:" + c.serviceName
 }
+
+// TestCacheClient creates a test cache client with predefined options.
+func TestCacheClient() (*Cache, error) {
+	maxCost := int64(1024 * 1024) // 1MB
+	numCounters, bufferItems, err := EstimateRistrettoConfigParams(maxCost)
+	if err != nil {
+		return nil, err
+	}
+	config := &ristretto.Config{
+		NumCounters: numCounters,
+		MaxCost:     maxCost,
+		BufferItems: bufferItems,
+	}
+	store, err := ristretto.NewCache(config)
+	if err != nil {
+		return nil, err
+	}
+	cacheStore := ristretto_store.NewRistretto(store)
+	manager := &Manager{
+		cache: cache.New[any](cacheStore),
+	}
+	return &Cache{
+		manager:      manager,
+		serviceName:  "testService",
+		cacheOptions: Options{Expiration: 5 * time.Minute},
+		logger:       logger.CreateTestLogger(),
+	}, nil
+}

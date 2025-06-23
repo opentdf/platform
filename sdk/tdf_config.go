@@ -149,6 +149,7 @@ func WithDataAttributes(attributes ...string) TDFOption {
 // during autoconfigure. That is, to use autoconfigure in an 'offline' context,
 // you must first store the relevant attribute information locally and load
 // it to the `CreateTDF` method with this option.
+// DEPRECATION: This option is deprecated and will be removed in a future release.
 func WithDataAttributeValues(attributes ...*policy.Value) TDFOption {
 	return func(c *TDFConfig) error {
 		c.attributes = make([]AttributeValueFQN, len(attributes))

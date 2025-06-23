@@ -39,10 +39,12 @@ type NamespaceServiceClient interface {
 	CreateNamespace(ctx context.Context, in *CreateNamespaceRequest, opts ...grpc.CallOption) (*CreateNamespaceResponse, error)
 	UpdateNamespace(ctx context.Context, in *UpdateNamespaceRequest, opts ...grpc.CallOption) (*UpdateNamespaceResponse, error)
 	DeactivateNamespace(ctx context.Context, in *DeactivateNamespaceRequest, opts ...grpc.CallOption) (*DeactivateNamespaceResponse, error)
+	// Deprecated: Do not use.
 	// --------------------------------------*
 	// Namespace <> Key Access Server RPCs
 	// ---------------------------------------
 	AssignKeyAccessServerToNamespace(ctx context.Context, in *AssignKeyAccessServerToNamespaceRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToNamespaceResponse, error)
+	// Deprecated: Do not use.
 	RemoveKeyAccessServerFromNamespace(ctx context.Context, in *RemoveKeyAccessServerFromNamespaceRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromNamespaceResponse, error)
 	// --------------------------------------*
 	// Namespace <> Key RPCs
@@ -104,6 +106,7 @@ func (c *namespaceServiceClient) DeactivateNamespace(ctx context.Context, in *De
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *namespaceServiceClient) AssignKeyAccessServerToNamespace(ctx context.Context, in *AssignKeyAccessServerToNamespaceRequest, opts ...grpc.CallOption) (*AssignKeyAccessServerToNamespaceResponse, error) {
 	out := new(AssignKeyAccessServerToNamespaceResponse)
 	err := c.cc.Invoke(ctx, NamespaceService_AssignKeyAccessServerToNamespace_FullMethodName, in, out, opts...)
@@ -113,6 +116,7 @@ func (c *namespaceServiceClient) AssignKeyAccessServerToNamespace(ctx context.Co
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *namespaceServiceClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, in *RemoveKeyAccessServerFromNamespaceRequest, opts ...grpc.CallOption) (*RemoveKeyAccessServerFromNamespaceResponse, error) {
 	out := new(RemoveKeyAccessServerFromNamespaceResponse)
 	err := c.cc.Invoke(ctx, NamespaceService_RemoveKeyAccessServerFromNamespace_FullMethodName, in, out, opts...)
@@ -149,10 +153,12 @@ type NamespaceServiceServer interface {
 	CreateNamespace(context.Context, *CreateNamespaceRequest) (*CreateNamespaceResponse, error)
 	UpdateNamespace(context.Context, *UpdateNamespaceRequest) (*UpdateNamespaceResponse, error)
 	DeactivateNamespace(context.Context, *DeactivateNamespaceRequest) (*DeactivateNamespaceResponse, error)
+	// Deprecated: Do not use.
 	// --------------------------------------*
 	// Namespace <> Key Access Server RPCs
 	// ---------------------------------------
 	AssignKeyAccessServerToNamespace(context.Context, *AssignKeyAccessServerToNamespaceRequest) (*AssignKeyAccessServerToNamespaceResponse, error)
+	// Deprecated: Do not use.
 	RemoveKeyAccessServerFromNamespace(context.Context, *RemoveKeyAccessServerFromNamespaceRequest) (*RemoveKeyAccessServerFromNamespaceResponse, error)
 	// --------------------------------------*
 	// Namespace <> Key RPCs

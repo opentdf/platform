@@ -627,7 +627,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.KeyAccessServer'
           title: grants
-          description: Deprecated
+          description: Deprecated KAS grants for the attribute. Use kas_keys instead.
         fqn:
           type: string
           title: fqn
@@ -839,7 +839,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.KeyAccessServer'
           title: grants
-          description: KAS grants for the namespace
+          description: Deprecated KAS grants for the namespace. Use kas_keys instead.
         kasKeys:
           type: array
           items:
@@ -1044,9 +1044,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.KeyAccessServer'
           title: grants
-          description: |-
-            Deprecated
-             list of key access servers
+          description: Deprecated KAS grants for the value. Use kas_keys instead.
         fqn:
           type: string
           title: fqn

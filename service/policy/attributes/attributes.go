@@ -2,6 +2,7 @@ package attributes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -369,27 +370,8 @@ func (s *AttributesService) DeactivateAttributeValue(ctx context.Context, req *c
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *AttributesService) AssignKeyAccessServerToAttribute(ctx context.Context, req *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error) {
-	rsp := &attributes.AssignKeyAccessServerToAttributeResponse{}
-
-	auditParams := audit.PolicyEventParams{
-		ActionType: audit.ActionTypeCreate,
-		ObjectType: audit.ObjectTypeKasAttributeDefinitionAssignment,
-	}
-
-	attributeKas, err := s.dbClient.AssignKeyAccessServerToAttribute(ctx, req.Msg.GetAttributeKeyAccessServer())
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("attributeKas", req.Msg.GetAttributeKeyAccessServer().String()))
-	}
-
-	auditParams.ObjectID = attributeKas.GetAttributeId()
-	auditParams.Original = attributeKas
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.AttributeKeyAccessServer = attributeKas
-
-	return connect.NewResponse(rsp), nil
+func (s *AttributesService) AssignKeyAccessServerToAttribute(_ context.Context, _ *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("this compatibility stub will be removed entirely in the following release"))
 }
 
 func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error) {
@@ -416,27 +398,8 @@ func (s *AttributesService) RemoveKeyAccessServerFromAttribute(ctx context.Conte
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *AttributesService) AssignKeyAccessServerToValue(ctx context.Context, req *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error) {
-	rsp := &attributes.AssignKeyAccessServerToValueResponse{}
-
-	auditParams := audit.PolicyEventParams{
-		ActionType: audit.ActionTypeCreate,
-		ObjectType: audit.ObjectTypeKasAttributeValueAssignment,
-	}
-
-	valueKas, err := s.dbClient.AssignKeyAccessServerToValue(ctx, req.Msg.GetValueKeyAccessServer())
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("attributeValueKas", req.Msg.GetValueKeyAccessServer().String()))
-	}
-
-	auditParams.ObjectID = valueKas.GetValueId()
-	auditParams.Original = valueKas
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.ValueKeyAccessServer = valueKas
-
-	return connect.NewResponse(rsp), nil
+func (s *AttributesService) AssignKeyAccessServerToValue(_ context.Context, _ *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("this compatibility stub will be removed entirely in the following release"))
 }
 
 func (s *AttributesService) RemoveKeyAccessServerFromValue(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error) {

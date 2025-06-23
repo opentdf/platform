@@ -279,47 +279,6 @@ func Test_DeactivateNamespaceRequest_Succeeds(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_NamespaceKeyAccessServer_Succeeds(t *testing.T) {
-	validNamespaceKas := &namespaces.NamespaceKeyAccessServer{
-		NamespaceId:       validUUID,
-		KeyAccessServerId: validUUID,
-	}
-
-	err := getValidator().Validate(validNamespaceKas)
-	require.NoError(t, err)
-}
-
-func Test_NamespaceKeyAccessServer_Fails(t *testing.T) {
-	bad := []struct {
-		nsID  string
-		kasID string
-	}{
-		{
-			"",
-			validUUID,
-		},
-		{
-			validUUID,
-			"",
-		},
-		{
-			"",
-			"",
-		},
-		{},
-	}
-
-	for _, test := range bad {
-		invalidNamespaceKAS := &namespaces.NamespaceKeyAccessServer{
-			NamespaceId:       test.nsID,
-			KeyAccessServerId: test.kasID,
-		}
-		err := getValidator().Validate(invalidNamespaceKAS)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), errMessageUUID)
-	}
-}
-
 func Test_AssignPublicKeyToNamespace(t *testing.T) {
 	testCases := []struct {
 		name         string

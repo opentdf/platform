@@ -155,7 +155,7 @@ func evaluateDefinition(
 	l.DebugContext(
 		ctx,
 		"evaluating definition",
-		slog.Any("resourceValueFQNs", resourceValueFQNs),
+		slog.Any("resource_value_fqns", resourceValueFQNs),
 	)
 
 	switch attrDefinition.GetRule() {

@@ -319,7 +319,11 @@ func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
 	entityChain *entity.EntityChain,
 	skipEnvironmentEntities bool,
 ) ([]*entityresolutionV2.EntityRepresentation, error) {
-	p.logger.DebugContext(ctx, "resolving entities from entity chain", slog.String("entityChain ID", entityChain.GetEphemeralId()), slog.Bool("skipEnvironmentEntities", skipEnvironmentEntities))
+	p.logger.DebugContext(ctx,
+		"resolving entities from entity chain",
+		slog.String("entity_chain_id", entityChain.GetEphemeralId()),
+		slog.Bool("skip_environment_entities", skipEnvironmentEntities),
+	)
 
 	var filteredEntities []*entity.Entity
 	if skipEnvironmentEntities {
@@ -355,7 +359,7 @@ func (p *JustInTimePDP) resolveEntitiesFromToken(
 	skipEnvironmentEntities bool,
 ) ([]*entityresolutionV2.EntityRepresentation, error) {
 	// WARNING: do not log the token JWT, just its ID
-	p.logger.DebugContext(ctx, "resolving entities from token", slog.String("token ephemeral id", token.GetEphemeralId()))
+	p.logger.DebugContext(ctx, "resolving entities from token", slog.String("token_ephemeral_id", token.GetEphemeralId()))
 	ersResp, err := p.sdk.EntityResolutionV2.CreateEntityChainsFromTokens(ctx, &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: []*entity.Token{token}})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create entity chains from token: %w", err)

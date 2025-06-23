@@ -107,7 +107,7 @@ type RoundtripSuite struct {
 
 func (s *RoundtripSuite) SetupSuite() {
 	s.TestConfig = newTestConfig()
-	slog.Info("Test config", "", s.TestConfig)
+	slog.Info("test config", slog.Any("config", s.TestConfig))
 
 	opts := []sdk.Option{}
 	if os.Getenv("TLS_ENABLED") == "" {
@@ -174,9 +174,13 @@ func (s *RoundtripSuite) CreateTestData() error {
 	if err != nil {
 		return err
 	}
-	slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.GetNamespaces())))
+	slog.Info("found namespaces", slog.Int("count", len(listResp.GetNamespaces())))
 	for _, ns := range listResp.GetNamespaces() {
-		slog.Info(fmt.Sprintf("existing namespace; name: %s, id: %s", ns.GetName(), ns.GetId()))
+		slog.Info("existing namespace",
+			slog.String("name", ns.GetName()),
+			slog.String("id", ns.GetId()),
+		)
+
 		if ns.GetName() == "example.com" {
 			exampleNamespace = ns
 		}
@@ -269,7 +273,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 		slog.Error("could not list attributes", slog.String("error", err.Error()))
 		return err
 	}
-	slog.Info("list attributes response: " + protojson.Format(allAttr))
+	slog.Info("list attributes", slog.String("response", protojson.Format(allAttr)))
 
 	slog.Info("##################################\n#######################################")
 
@@ -288,7 +292,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 	}
 
 	// create subject mappings
-	slog.Info("creating subject mappings for client " + s.TestConfig.ClientID)
+	slog.Info("creating subject mappings", slog.String("client_id", s.TestConfig.ClientID))
 	for _, attributeID := range attributeValueIDs {
 		_, err = client.SubjectMapping.CreateSubjectMapping(context.Background(), &subjectmapping.CreateSubjectMappingRequest{
 			AttributeValueId: attributeID,
@@ -350,7 +354,7 @@ func (s *RoundtripSuite) CreateTestData() error {
 	resp := &subjectmapping.ListSubjectMappingsResponse{
 		SubjectMappings: smList,
 	}
-	slog.Info("list all subject mappings: " + protojson.Format(resp))
+	slog.InfoContext(ctx, "list all subject mappings", slog.String("subject_mappings", protojson.Format(resp)))
 
 	return nil
 }
@@ -461,7 +465,7 @@ func bulk(client *sdk.SDK, tdfSuccess []string, tdfFail []string, plaintext stri
 		if tdf.Error == nil {
 			return errors.New("no expected err")
 		}
-		slog.Error("pass tdf error", "error", tdf.Error.Error())
+		slog.Error("pass tdf error", slog.Any("error", tdf.Error))
 		if !strings.Contains(tdf.Error.Error(), "KasAllowlist") {
 			return errors.New("did not receive kas allowlist error")
 		}

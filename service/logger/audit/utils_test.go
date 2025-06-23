@@ -2,7 +2,6 @@ package audit
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net"
 	"testing"
@@ -25,7 +24,7 @@ func TestGetAuditDataFromContextHappyPath(t *testing.T) {
 	ctx = context.WithValue(ctx, realip.ClientIP{}, testRequestIP)
 	ctx = context.WithValue(ctx, sdkAudit.ActorIDContextKey, testActorID)
 
-	slog.Info(fmt.Sprintf("Test: %v", ctx.Value(sdkAudit.RequestIDContextKey)))
+	slog.Info("test", slog.Any("test", ctx.Value(sdkAudit.RequestIDContextKey)))
 
 	auditData := GetAuditDataFromContext(ctx)
 

@@ -68,14 +68,14 @@ func init() {
 func listKases(cmd *cobra.Command) error {
 	s, err := newSDK()
 	if err != nil {
-		slog.Error("could not connect", "err", err)
+		slog.Error("could not connect", slog.Any("error", err))
 		return err
 	}
 	defer s.Close()
 
 	r, err := s.KeyAccessServerRegistry.ListKeyAccessServers(cmd.Context(), &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
-		slog.Error("ListKeyAccessServers", "error", err)
+		slog.Error("failed to ListKeyAccessServers", slog.Any("error", err))
 		return err
 	}
 
@@ -99,7 +99,7 @@ func listKases(cmd *cobra.Command) error {
 func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *policy.PublicKey) (string, error) {
 	r, err := s.KeyAccessServerRegistry.ListKeyAccessServers(ctx, &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
-		slog.Error("ListKeyAccessServers", "err", err)
+		slog.Error("failed to ListKeyAccessServers", slog.Any("error", err))
 		return "", err
 	}
 	for _, ki := range r.GetKeyAccessServers() {
@@ -118,7 +118,7 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 			}
 			_, err := s.KeyAccessServerRegistry.DeleteKeyAccessServer(ctx, &kasregistry.DeleteKeyAccessServerRequest{Id: ki.GetId()})
 			if err != nil {
-				slog.Error("DeleteKeyAccessServer", "err", err)
+				slog.Error("failed to DeleteKeyAccessServer", slog.Any("error", err))
 				return "", err
 			}
 			// Do we have a unique constraint on kas uri?
@@ -137,7 +137,11 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 		PublicKey: pk,
 	})
 	if err != nil {
-		slog.Error("CreateKeyAccessServer", "uri", uri, "publicKey", uri+"/v2/kas_public_key")
+		slog.Error("failed to CreateKeyAccessServer",
+			slog.String("uri", uri),
+			slog.String("public_key", uri+"/v2/kas_public_key"),
+			slog.Any("error", err),
+		)
 		return "", err
 	}
 	return ur.GetKeyAccessServer().GetId(), nil
@@ -156,7 +160,7 @@ func algString2Proto(a string) policy.KasPublicKeyAlgEnum {
 func updateKas(cmd *cobra.Command) error {
 	s, err := newSDK()
 	if err != nil {
-		slog.Error("could not connect", "err", err)
+		slog.Error("could not connect", slog.Any("error", err))
 		return err
 	}
 	defer s.Close()
@@ -198,21 +202,25 @@ func updateKas(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	slog.Info("registered kas", "passedin", attr, "id", kasid, "kas", kas)
+	slog.Info("registered kas",
+		slog.String("passedin", attr),
+		slog.String("id", kasid),
+		slog.String("kas", kas),
+	)
 	return nil
 }
 
 func removeKas(cmd *cobra.Command) error {
 	s, err := newSDK()
 	if err != nil {
-		slog.Error("could not connect", "err", err)
+		slog.Error("could not connect", slog.Any("error", err))
 		return err
 	}
 	defer s.Close()
 
 	r, err := s.KeyAccessServerRegistry.ListKeyAccessServers(cmd.Context(), &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
-		slog.Error("ListKeyAccessServers", "err", err)
+		slog.Error("failed to ListKeyAccessServers", slog.Any("error", err))
 		return err
 	}
 	deletedSomething := false
@@ -220,7 +228,7 @@ func removeKas(cmd *cobra.Command) error {
 		if strings.ToLower(kas) == strings.ToLower(ki.GetUri()) {
 			_, err := s.KeyAccessServerRegistry.DeleteKeyAccessServer(cmd.Context(), &kasregistry.DeleteKeyAccessServerRequest{Id: ki.GetId()})
 			if err != nil {
-				slog.Error("DeleteKeyAccessServer", "err", err)
+				slog.Error("failed to DeleteKeyAccessServer", slog.Any("error", err))
 				return err
 			}
 			deletedSomething = true
@@ -230,6 +238,6 @@ func removeKas(cmd *cobra.Command) error {
 		return fmt.Errorf("nothing deleted; [%s] not found", kas)
 	}
 
-	slog.Info("deleted kas registration", "kas", kas)
+	slog.Info("deleted kas registration", slog.String("kas", kas))
 	return nil
 }

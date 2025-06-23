@@ -155,7 +155,11 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 			if privKeyBytes, ok := privKey.([]byte); ok {
 				return privKeyBytes, nil
 			}
-			b.l.ErrorContext(ctx, "private key in cache is not of type []byte", slog.String("kid", kid), slog.Any("type", fmt.Sprintf("%T", privKey)))
+			b.l.ErrorContext(ctx,
+				"private key in cache is not of type []byte",
+				slog.String("kid", kid),
+				slog.Any("type", fmt.Sprintf("%T", privKey)),
+			)
 			return nil, errors.New("private key in cache is not of type []byte")
 		}
 		b.l.DebugContext(ctx, "private key not found in cache", slog.String("kid", kid))
@@ -181,7 +185,11 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 
 	if cacheEnabled {
 		if err := b.cache.Set(ctx, kid, privKey, nil); err != nil {
-			b.l.ErrorContext(ctx, "failed to cache private key", slog.String("kid", kid), slog.String("error", err.Error()))
+			b.l.ErrorContext(ctx,
+				"failed to cache private key",
+				slog.String("kid", kid),
+				slog.Any("error", err),
+			)
 		}
 	}
 

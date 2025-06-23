@@ -101,7 +101,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				}
 
 				if kasCfg.Preview.KeyManagement {
-					srp.Logger.Info("Preview Feature: Key management is enabled")
+					srp.Logger.Info("preview feature: key management is enabled")
 
 					// Configure new delegation service
 					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURLString, srp.Logger), srp.Logger, cacheClient)
@@ -142,7 +142,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 				p.KASConfig = kasCfg
 				p.Tracer = srp.Tracer
 
-				srp.Logger.Debug("kas config", "config", kasCfg)
+				srp.Logger.Debug("kas config", slog.Any("config", kasCfg))
 
 				if err := srp.RegisterReadinessCheck("kas", p.IsReady); err != nil {
 					srp.Logger.Error("failed to register kas readiness check", slog.String("error", err.Error()))
@@ -170,7 +170,7 @@ func initSecurityProviderAdapter(cryptoProvider *security.StandardCrypto, kasCfg
 			if kid != "" {
 				defaults = append(defaults, kid)
 			} else {
-				l.Warn("no default key found for algorithm", "algorithm", alg)
+				l.Warn("no default key found for algorithm", slog.String("algorithm", alg))
 			}
 		}
 	}

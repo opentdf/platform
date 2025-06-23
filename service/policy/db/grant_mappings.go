@@ -41,7 +41,7 @@ func mapKasKeysToGrants(keys []*policy.SimpleKasKey, existingGrants []*policy.Ke
 
 	for _, key := range keys {
 		if key == nil {
-			l.Debug("Skipping nil key when mapping keys to grants")
+			l.Debug("skipping nil key when mapping keys to grants")
 			continue
 		}
 		if key.GetKasUri() == "" || key.GetKasId() == "" {

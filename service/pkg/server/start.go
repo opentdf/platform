@@ -172,7 +172,10 @@ func Start(f ...StartOptions) error {
 		for _, service := range startConfig.extraServices {
 			err := svcRegistry.RegisterService(service, service.GetNamespace())
 			if err != nil {
-				logger.Error("could not register extra service", slog.String("namespace", service.GetNamespace()), slog.String("error", err.Error()))
+				logger.Error("could not register extra service",
+					slog.String("namespace", service.GetNamespace()),
+					slog.Any("error", err),
+				)
 				return fmt.Errorf("could not register extra service: %w", err)
 			}
 		}
@@ -273,12 +276,12 @@ func Start(f ...StartOptions) error {
 			ersConnectRPCConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
 
 			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(&ersConnectRPCConn))
-			logger.Info("added with custom ers connection for ", "", ersConnectRPCConn.Endpoint)
+			logger.Info("added with custom ers connection", slog.String("ers_connection_endpoint", ersConnectRPCConn.Endpoint))
 		}
 
 		client, err = sdk.New("", sdkOptions...)
 		if err != nil {
-			logger.Error("issue creating sdk client", slog.String("error", err.Error()))
+			logger.Error("issue creating sdk client", slog.Any("error", err))
 			return fmt.Errorf("issue creating sdk client: %w", err)
 		}
 	} else {

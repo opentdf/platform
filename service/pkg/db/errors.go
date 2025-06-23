@@ -40,7 +40,7 @@ var (
 // Get helpful error message for PostgreSQL violation
 func WrapIfKnownInvalidQueryErr(err error) error {
 	if e := isPgError(err); e != nil {
-		slog.Error("Encountered database error", slog.String("error", e.Error()))
+		slog.Error("encountered database error", slog.Any("error", e))
 		switch e.Code {
 		case pgerrcode.UniqueViolation:
 			return errors.Join(ErrUniqueConstraintViolation, e)
@@ -58,7 +58,10 @@ func WrapIfKnownInvalidQueryErr(err error) error {
 			}
 			return errors.Join(ErrEnumValueInvalid, e)
 		default:
-			slog.Error("Unknown error code", slog.String("error", e.Message), slog.String("code", e.Code))
+			slog.Error("unknown error code",
+				slog.String("error", e.Message),
+				slog.String("code", e.Code),
+			)
 			return e
 		}
 	}
@@ -176,6 +179,6 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 		l.ErrorContext(ctx, ErrorTextMarshalFailed, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextMarshalFailed))
 	}
-	l.ErrorContext(ctx, err.Error(), logs...)
+	l.ErrorContext(ctx, "request error", append(logs, slog.Any("error", err))...)
 	return connect.NewError(connect.CodeInternal, errors.New(fallbackErr))
 }

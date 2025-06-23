@@ -1,3 +1,4 @@
+//nolint:sloglint // v1 PDP will be deprecated soon
 package access
 
 import (

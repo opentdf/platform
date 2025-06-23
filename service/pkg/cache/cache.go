@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -87,10 +88,17 @@ func (c *Cache) Get(ctx context.Context, key string) (any, error) {
 	val, err := c.manager.cache.Get(ctx, c.getKey(key))
 	if err != nil {
 		// All errors are a cache miss in the gocache library.
-		c.logger.Debug("cache miss", "key", key, "error", err)
+		c.logger.DebugContext(ctx,
+			"cache miss",
+			slog.Any("key", key),
+			slog.Any("error", err),
+		)
 		return nil, ErrCacheMiss
 	}
-	c.logger.Debug("cache hit", "key", key)
+	c.logger.DebugContext(ctx,
+		"cache hit",
+		slog.Any("key", key),
+	)
 	return val, nil
 }
 
@@ -104,10 +112,13 @@ func (c *Cache) Set(ctx context.Context, key string, object any, tags []string) 
 
 	err := c.manager.cache.Set(ctx, c.getKey(key), object, opts...)
 	if err != nil {
-		c.logger.Error("set error", "key", key, "error", err)
+		c.logger.ErrorContext(ctx, "set error",
+			slog.Any("key", key),
+			slog.Any("error", err),
+		)
 		return err
 	}
-	c.logger.Debug("set cache", "key", key)
+	c.logger.DebugContext(ctx, "set cache", slog.Any("key", key))
 	return nil
 }
 

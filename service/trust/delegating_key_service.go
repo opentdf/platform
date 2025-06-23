@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/opentdf/platform/service/logger"
@@ -202,6 +203,9 @@ func (d *DelegatingKeyService) getKeyManager(name string) (KeyManager, error) {
 	// Factory for 'name' not found.
 	// If 'name' was the defaultMode, _defKM will error if its factory is also missing.
 	// If 'name' was not the defaultMode, we fall back to the default manager.
-	d.l.Debug("Key manager factory not found for name, attempting to use/load default", "requestedName", name, "configuredDefaultName", currentDefaultMode)
+	d.l.Debug("key manager factory not found for name, attempting to use/load default",
+		slog.String("requested_name", name),
+		slog.String("configured_default_mode", currentDefaultMode),
+	)
 	return d._defKM() // _defKM handles erroring if the default manager itself cannot be loaded.
 }

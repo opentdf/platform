@@ -14,20 +14,26 @@ on:
         required: true
     outputs:
       major:
-        description: "Major version number"
+        description: "Number representing major semver value"
         value: ${{ jobs.release-please.outputs.major }}
       minor:
-        description: "Minor version number"
+        description: "Number representing minor semver value"
         value: ${{ jobs.release-please.outputs.minor }}
       patch:
-        description: "Patch version number"
+        description: "Number representing patch semver value"
         value: ${{ jobs.release-please.outputs.patch }}
       sha:
-        description: "Commit SHA of the release"
+        description: "SHA that a GitHub release was tagged at"
         value: ${{ jobs.release-please.outputs.sha }}
       release_created:
-        description: "Indicates if a release was created"
+        description: "true if a root component release was created, false otherwise"
         value: ${{ jobs.release-please.outputs.release_created }}
+      prs_created:
+        description: "true if any pull request was created or updated"
+        value: ${{ jobs.release-please.outputs.prs_created }}
+      prs:
+        description: "A JSON string of the array of PullRequest objects (unset if no release created)"
+        value: ${{ jobs.release-please.outputs.prs }}
       tag_name:
         description: "Tag name of the release"
         value: ${{ jobs.release-please.outputs.tag_name }}

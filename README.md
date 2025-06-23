@@ -38,7 +38,7 @@ brew install buf go golangci-lint
 #### Optional tools
 
 - _Optional_ [Air](https://github.com/cosmtrek/air) is used for hot-reload development
-  - install with `go install github.com/cosmtrek/air@latest`
+  - install with `go install github.com/air-verse/air@latest`
 - _Optional_ [grpcurl](https://github.com/fullstorydev/grpcurl) is used for testing gRPC services
   - install with `brew install grpcurl`
 - _Optional_ [openssl](https://www.openssl.org/) is used for generating certificates
@@ -52,7 +52,7 @@ There are two primary audiences for this project. Consumers and Contributors
 Consumers of the OpenTDF platform should begin their journey [here](./docs/Consuming.md).
 
 2. Contributing
-To contribute to the OpenTDF platform, you'll need bit more set setup and should start [here](./docs/Contributing.md).
+To contribute to the OpenTDF platform, you'll need a bit more set setup and should start [here](./docs/Contributing.md).
 
 ## Additional info for Project Consumers & Contributors
 

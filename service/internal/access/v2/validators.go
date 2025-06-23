@@ -46,6 +46,8 @@ func validateGetDecision(entityRepresentation *entityresolutionV2.EntityRepresen
 //   - registeredResourceValueFQN: must be a valid registered resource value FQN
 //   - action: must not be nil
 //   - resources: must not be nil and must contain at least one resource
+//
+// TODO: DSPX-1295 - add unit tests to detect regressions
 func validateGetDecisionRegisteredResource(registeredResourceValueFQN string, action *policy.Action, resources []*authzV2.Resource) error {
 	if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN); err != nil {
 		return err

@@ -167,7 +167,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	action *policy.Action,
 	resources []*authz.Resource,
 ) (*Decision, error) {
-	l := p.logger.With("entityID", entityRepresentation.GetOriginalId())
+	l := p.logger.With("entity_id", entityRepresentation.GetOriginalId())
 	l = l.With("action", action.GetName())
 	l.DebugContext(ctx, "getting decision", slog.Int("resources_count", len(resources)))
 
@@ -208,8 +208,8 @@ func (p *PolicyDecisionPoint) GetDecision(
 			ctx,
 			"resourceDecision result",
 			slog.Bool("passed", resourceDecision.Passed),
-			slog.String("resourceID", resourceDecision.ResourceID),
-			slog.Int("dataRuleResultsCount", len(resourceDecision.DataRuleResults)),
+			slog.String("resource_id", resourceDecision.ResourceID),
+			slog.Int("data_rule_results_count", len(resourceDecision.DataRuleResults)),
 		)
 		decision.Results[idx] = *resourceDecision
 	}
@@ -236,9 +236,9 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	action *policy.Action,
 	resources []*authz.Resource,
 ) (*Decision, error) {
-	l := p.logger.With("entityRegisteredResourceValueFQN", entityRegisteredResourceValueFQN)
+	l := p.logger.With("entity_registered_resource_value_fqn", entityRegisteredResourceValueFQN)
 	l = l.With("action", action.GetName())
-	l.DebugContext(ctx, "getting decision", slog.Int("resourcesCount", len(resources)))
+	l.DebugContext(ctx, "getting decision", slog.Int("resources_count", len(resources)))
 
 	if err := validateGetDecisionRegisteredResource(entityRegisteredResourceValueFQN, action, resources); err != nil {
 		return nil, err
@@ -254,13 +254,13 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	if err != nil {
 		return nil, fmt.Errorf("error getting decisionable attributes: %w", err)
 	}
-	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionableAttributeValuesCount", len(decisionableAttributes)))
+	l.DebugContext(ctx, "filtered to only entitlements relevant to decisioning", slog.Int("decisionable_attribute_values_count", len(decisionableAttributes)))
 
 	entitledFQNsToActions := make(map[string][]*policy.Action)
 	for _, aav := range entityRegisteredResourceValue.GetActionAttributeValues() {
 		aavAction := aav.GetAction()
 		if action.GetName() != aavAction.GetName() {
-			l.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("actionName", aavAction.GetName()))
+			l.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("action_name", aavAction.GetName()))
 			continue
 		}
 
@@ -298,8 +298,8 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 			ctx,
 			"resourceDecision result",
 			slog.Bool("passed", resourceDecision.Passed),
-			slog.String("resourceID", resourceDecision.ResourceID),
-			slog.Int("dataRuleResultsCount", len(resourceDecision.DataRuleResults)),
+			slog.String("resource_id", resourceDecision.ResourceID),
+			slog.Int("data_rule_results_count", len(resourceDecision.DataRuleResults)),
 		)
 		decision.Results[idx] = *resourceDecision
 	}
@@ -318,7 +318,7 @@ func (p *PolicyDecisionPoint) GetEntitlements(
 		return nil, fmt.Errorf("invalid input parameters: %w", err)
 	}
 
-	l := p.logger.With("withComprehensiveHierarchy", strconv.FormatBool(withComprehensiveHierarchy))
+	l := p.logger.With("with_comprehensive_hierarchy", strconv.FormatBool(withComprehensiveHierarchy))
 	l.DebugContext(ctx, "getting entitlements", slog.Int("entity_representations_count", len(entityRepresentations)))
 
 	var entitleableAttributes map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
@@ -385,7 +385,7 @@ func (p *PolicyDecisionPoint) GetEntitlementsRegisteredResource(
 	registeredResourceValueFQN string,
 	withComprehensiveHierarchy bool,
 ) ([]*authz.EntityEntitlements, error) {
-	l := p.logger.With("withComprehensiveHierarchy", strconv.FormatBool(withComprehensiveHierarchy))
+	l := p.logger.With("with_comprehensive_hierarchy", strconv.FormatBool(withComprehensiveHierarchy))
 	l.DebugContext(ctx, "getting entitlements for registered resource value", slog.String("fqn", registeredResourceValueFQN))
 
 	if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN); err != nil {

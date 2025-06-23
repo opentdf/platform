@@ -30,7 +30,7 @@ const (
 	specifiedKas        = "https://attr.kas.com/"
 	evenMoreSpecificKas = "https://value.kas.com/"
 	lessSpecificKas     = "https://namespace.kas.com/"
-	fakePem             = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQ...\n-----END PUBLIC KEY-----\n"
+	fakePem             = mockRSAPublicKey1
 )
 
 var (
@@ -74,6 +74,8 @@ var (
 	MP, _  = NewAttributeNameFQN("https://virtru.com/attr/mapped")
 	mpa, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/a")
 	mpb, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/b")
+	mpc, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/c")
+	mpd, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/d")
 	mpu, _ = NewAttributeValueFQN("https://virtru.com/attr/mapped/value/unspecified")
 )
 
@@ -248,7 +250,7 @@ func mockSimpleKasKey(kas, kid string) *policy.SimpleKasKey {
 	}
 	var alg policy.Algorithm
 	switch kid {
-	case "r1":
+	case "r0", "r1", "r3":
 		alg = policy.Algorithm_ALGORITHM_RSA_2048
 	case "r2":
 		alg = policy.Algorithm_ALGORITHM_RSA_4096
@@ -262,7 +264,7 @@ func mockSimpleKasKey(kas, kid string) *policy.SimpleKasKey {
 		PublicKey: &policy.SimpleKasPublicKey{
 			Algorithm: alg,
 			Kid:       kid,
-			Pem:       "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQ...\n-----END PUBLIC KEY-----\n",
+			Pem:       fakePem,
 		},
 	}
 }
@@ -339,17 +341,20 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 		switch strings.ToLower(fqn.Value()) {
 		case "a":
 			p.KasKeys = make([]*policy.SimpleKasKey, 1)
-			p.Grants = make([]*policy.KeyAccessServer, 1)
 			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "r2")
-			p.Grants[0] = mockGrant(evenMoreSpecificKas, "r2")
-			p.Grants[0].PublicKey = createPublicKey("r2", fakePem, policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048)
 
 		case "b":
 			p.KasKeys = make([]*policy.SimpleKasKey, 1)
-			p.Grants = make([]*policy.KeyAccessServer, 1)
 			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "e1")
-			p.Grants[0] = mockGrant(evenMoreSpecificKas, "e1")
-			p.Grants[0].PublicKey = createPublicKey("e1", fakePem, policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048)
+
+		case "c":
+			p.KasKeys = make([]*policy.SimpleKasKey, 1)
+			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "r0")
+
+		case "d":
+			p.KasKeys = make([]*policy.SimpleKasKey, 1)
+			p.KasKeys[0] = mockSimpleKasKey(evenMoreSpecificKas, "r3")
+
 		case "unspecified":
 			// defaults only
 		default:

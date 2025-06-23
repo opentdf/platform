@@ -91,6 +91,7 @@ func NewLogger(config Config) (*Logger, error) {
 	return logger, nil
 }
 
+//nolint:sloglint // explicitly add key/value pairs to propagate to both loggers
 func (l *Logger) With(key string, value string) *Logger {
 	return &Logger{
 		Logger: l.Logger.With(key, value),
@@ -123,10 +124,12 @@ func getLevel(config Config) (slog.Leveler, error) {
 }
 
 func (l *Logger) Trace(msg string, args ...any) {
+	//nolint:sloglint // explicitly match the signature of slog.Log
 	l.Log(context.Background(), LevelTrace, msg, args...)
 }
 
 func (l *Logger) TraceContext(ctx context.Context, msg string, args ...any) {
+	//nolint:sloglint // explicitly match the signature of slog.Log
 	l.Log(ctx, LevelTrace, msg, args...)
 }
 

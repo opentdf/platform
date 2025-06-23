@@ -141,7 +141,7 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 			bulkReq.NanoTDFDecryptOptions = append(bulkReq.NanoTDFDecryptOptions, withNanoKasAllowlist(bulkReq.kasAllowlist))
 			bulkReq.TDF3DecryptOptions = append(bulkReq.TDF3DecryptOptions, withKasAllowlist(bulkReq.kasAllowlist))
 		} else {
-			slog.Error("No KAS allowlist provided and no KeyAccessServerRegistry available")
+			slog.Error("no KAS allowlist provided and no KeyAccessServerRegistry available")
 			return errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
 		}
 	}
@@ -172,7 +172,7 @@ func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error {
 	var err error
 	for kasurl, rewrapRequests := range kasRewrapRequests {
 		if bulkReq.ignoreAllowList {
-			slog.Warn(fmt.Sprintf("KasAllowlist is ignored, kas url %s is allowed", kasurl))
+			slog.Warn("kasAllowlist is ignored, kas url is allowed", slog.String("kas_url", kasurl))
 		} else if !bulkReq.kasAllowlist.IsAllowed(kasurl) {
 			// if kas url is not allowed, the result for each kao in each rewrap request is set to error
 			for _, req := range rewrapRequests {

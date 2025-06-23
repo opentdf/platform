@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/dgraph-io/ristretto"
@@ -16,7 +17,8 @@ var ErrCacheMiss = errors.New("cache miss")
 
 // Manager is a cache manager for any value.
 type Manager struct {
-	cache *cache.Cache[any]
+	cache           *cache.Cache[any]
+	underlyingStore *ristretto.Cache
 }
 
 // Cache is a cache implementation using gocache for any value type.
@@ -49,7 +51,8 @@ func NewCacheManager(maxCost int64) (*Manager, error) {
 	}
 	ristrettoStore := ristretto_store.NewRistretto(store)
 	return &Manager{
-		cache: cache.New[any](ristrettoStore),
+		cache:           cache.New[any](ristrettoStore),
+		underlyingStore: store,
 	}, nil
 }
 
@@ -74,15 +77,28 @@ func (c *Manager) NewCache(serviceName string, log *logger.Logger, options Optio
 	return cache, nil
 }
 
+func (c *Manager) Close() {
+	if c.underlyingStore != nil {
+		c.underlyingStore.Close()
+	}
+}
+
 // Get retrieves a value from the cache
 func (c *Cache) Get(ctx context.Context, key string) (any, error) {
 	val, err := c.manager.cache.Get(ctx, c.getKey(key))
 	if err != nil {
 		// All errors are a cache miss in the gocache library.
-		c.logger.Debug("cache miss", "key", key, "error", err)
+		c.logger.DebugContext(ctx,
+			"cache miss",
+			slog.Any("key", key),
+			slog.Any("error", err),
+		)
 		return nil, ErrCacheMiss
 	}
-	c.logger.Debug("cache hit", "key", key)
+	c.logger.DebugContext(ctx,
+		"cache hit",
+		slog.Any("key", key),
+	)
 	return val, nil
 }
 
@@ -96,10 +112,13 @@ func (c *Cache) Set(ctx context.Context, key string, object any, tags []string) 
 
 	err := c.manager.cache.Set(ctx, c.getKey(key), object, opts...)
 	if err != nil {
-		c.logger.Error("set error", "key", key, "error", err)
+		c.logger.ErrorContext(ctx, "set error",
+			slog.Any("key", key),
+			slog.Any("error", err),
+		)
 		return err
 	}
-	c.logger.Debug("set cache", "key", key)
+	c.logger.DebugContext(ctx, "set cache", slog.Any("key", key))
 	return nil
 }
 

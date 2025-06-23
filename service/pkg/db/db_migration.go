@@ -35,12 +35,12 @@ func migrationInit(ctx context.Context, c *Client, migrations *embed.FS) (*goose
 	if e != nil {
 		return nil, 0, nil, errors.Join(errors.New("failed to get current version"), e)
 	}
-	slog.Info("migration db info", slog.Any("current version", v))
+	slog.Info("migration db info", slog.Int64("current_version", v))
 
 	// Return the provider, version, and close function
 	return provider, v, func() {
 		if err := conn.Close(); err != nil {
-			slog.Error("failed to close connection", "err", err)
+			slog.Error("failed to close connection", slog.Any("err", err))
 		}
 	}, nil
 }
@@ -51,20 +51,27 @@ func (c *Client) RunMigrations(ctx context.Context, migrations *embed.FS) (int, 
 	if migrations == nil {
 		return 0, errors.New("migrations FS is required to run migrations")
 	}
-	slog.Info("running migration up", slog.String("schema", c.config.Schema), slog.String("database", c.config.Database))
+	slog.Info("running migration up",
+		slog.String("schema", c.config.Schema),
+		slog.String("database", c.config.Database),
+	)
 
 	// Create schema if it doesn't exist
 	q := "CREATE SCHEMA IF NOT EXISTS " + c.config.Schema
 	tag, err := c.Pgx.Exec(ctx, q)
 	if err != nil {
-		slog.ErrorContext(ctx, "Error while running command", slog.String("command", q), slog.String("error", err.Error()))
+		slog.ErrorContext(ctx,
+			"error while running command",
+			slog.String("command", q),
+			slog.Any("error", err),
+		)
 		return 0, err
 	}
 	applied := int(tag.RowsAffected())
 
 	provider, version, closeProvider, err := migrationInit(ctx, c, migrations)
 	if err != nil {
-		slog.Error("failed to create goose provider", "err", err)
+		slog.Error("failed to create goose provider", slog.Any("err", err))
 		return 0, err
 	}
 	defer closeProvider()
@@ -87,15 +94,18 @@ func (c *Client) RunMigrations(ctx context.Context, migrations *embed.FS) (int, 
 		}
 	}
 	c.ranMigrations = true
-	slog.Info("migration up complete", slog.Any("post-op version", version))
+	slog.Info("migration up complete", slog.Int64("post_op_version", version))
 	return applied, nil
 }
 
 func (c *Client) MigrationStatus(ctx context.Context) ([]*goose.MigrationStatus, error) {
-	slog.Info("running migrations status", slog.String("schema", c.config.Schema), slog.String("database", c.config.Database))
+	slog.Info("running migrations status",
+		slog.String("schema", c.config.Schema),
+		slog.String("database", c.config.Database),
+	)
 	provider, _, closeProvider, err := migrationInit(ctx, c, nil)
 	if err != nil {
-		slog.Error("failed to create goose provider", "err", err)
+		slog.Error("failed to create goose provider", slog.Any("err", err))
 		return nil, err
 	}
 	defer closeProvider()
@@ -104,10 +114,13 @@ func (c *Client) MigrationStatus(ctx context.Context) ([]*goose.MigrationStatus,
 }
 
 func (c *Client) MigrationDown(ctx context.Context, migrations *embed.FS) error {
-	slog.Info("running migration down", slog.String("schema", c.config.Schema), slog.String("database", c.config.Database))
+	slog.Info("running migration down",
+		slog.String("schema", c.config.Schema),
+		slog.String("database", c.config.Database),
+	)
 	provider, _, closeProvider, err := migrationInit(ctx, c, migrations)
 	if err != nil {
-		slog.Error("failed to create goose provider", "err", err)
+		slog.Error("failed to create goose provider", slog.Any("err", err))
 		return err
 	}
 	defer closeProvider()
@@ -120,7 +133,7 @@ func (c *Client) MigrationDown(ctx context.Context, migrations *embed.FS) error 
 		return errors.Join(errors.New("failed to run migrations"), res.Error)
 	}
 
-	slog.Info("migration down complete ", slog.Any("post-op version", res.Source.Version))
+	slog.Info("migration down complete", slog.Int64("post_op_version", res.Source.Version))
 	return nil
 }
 

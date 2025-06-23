@@ -276,7 +276,11 @@ func (s *AttributesService) CreateAttributeValue(ctx context.Context, req *conne
 
 func (s *AttributesService) ListAttributeValues(ctx context.Context, req *connect.Request[attributes.ListAttributeValuesRequest]) (*connect.Response[attributes.ListAttributeValuesResponse], error) {
 	state := req.Msg.GetState().String()
-	s.logger.DebugContext(ctx, "listing attribute values", slog.String("attributeId", req.Msg.GetAttributeId()), slog.String("state", state))
+	s.logger.DebugContext(ctx,
+		"listing attribute values",
+		slog.String("attribute_id", req.Msg.GetAttributeId()),
+		slog.String("state", state),
+	)
 	rsp, err := s.dbClient.ListAttributeValues(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed, slog.String("attributeId", req.Msg.GetAttributeId()))

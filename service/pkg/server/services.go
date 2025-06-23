@@ -119,13 +119,13 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 }
 
 type startServicesParams struct {
-	cfg          *config.Config
-	otdf         *server.OpenTDFServer
-	client       *sdk.SDK
-	logger       *logging.Logger
-	reg          serviceregistry.Registry
-	cacheManager *cache.Manager
-	keyManagers  []trust.KeyManager
+	cfg                 *config.Config
+	otdf                *server.OpenTDFServer
+	client              *sdk.SDK
+	logger              *logging.Logger
+	reg                 serviceregistry.Registry
+	cacheManager        *cache.Manager
+	keyManagerFactories []trust.NamedKeyManagerFactory
 }
 
 // startServices iterates through the registered namespaces and starts the services
@@ -141,7 +141,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	logger := params.logger
 	reg := params.reg
 	cacheManager := params.cacheManager
-	keyManagers := params.keyManagers
+	keyManagerFactories := params.keyManagerFactories
 
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
@@ -156,7 +156,10 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 
 		// Skip the namespace if the mode is not enabled
 		if !modeEnabled {
-			logger.Info("skipping namespace", slog.String("namespace", ns), slog.String("mode", namespace.Mode))
+			logger.Info("skipping namespace",
+				slog.String("namespace", ns),
+				slog.String("mode", namespace.Mode),
+			)
 			continue
 		}
 
@@ -196,7 +199,10 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 
 			// Function to create a cache given cache options
 			var createCacheClient func(cache.Options) (*cache.Cache, error) = func(options cache.Options) (*cache.Cache, error) {
-				slog.Info("creating cache client for", slog.String("namespace", ns), slog.String("service", svc.GetServiceDesc().ServiceName))
+				slog.Info("creating cache client for",
+					slog.String("namespace", ns),
+					slog.String("service", svc.GetServiceDesc().ServiceName),
+				)
 				cacheClient, err := cacheManager.NewCache(ns, svcLogger, options)
 				if err != nil {
 					return nil, fmt.Errorf("issue creating cache client for %s: %w", ns, err)
@@ -214,7 +220,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				OTDF:                   otdf, // TODO: REMOVE THIS
 				Tracer:                 tracer,
 				NewCacheClient:         createCacheClient,
-				KeyManagers:            keyManagers,
+				KeyManagerFactories:    keyManagerFactories,
 			})
 			if err != nil {
 				return func() {}, err

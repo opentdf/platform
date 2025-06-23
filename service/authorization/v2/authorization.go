@@ -65,7 +65,10 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				}
 
 				if err := authZCfg.Validate(); err != nil {
-					l.Error("invalid authorization service config", slog.Any("error", err), slog.Any("config", authZCfg.LogValue()))
+					l.Error("invalid authorization service config",
+						slog.Any("config", authZCfg.LogValue()),
+						slog.Any("error", err),
+					)
 					panic(fmt.Errorf("invalid authorization svc config %w", err))
 				}
 				l.Debug("authorization service config", slog.Any("config", authZCfg.LogValue()))

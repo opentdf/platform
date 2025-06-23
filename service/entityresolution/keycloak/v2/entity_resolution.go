@@ -86,7 +86,7 @@ func (s *EntityResolutionServiceV2) ResolveEntities(ctx context.Context, req *co
 		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err))
 	}
-	resp, err := EntityResolution(ctx, req.Msg, s.idpConfig, connector, s.logger)
+	resp, err := EntityResolution(ctx, req.Msg, s.idpConfig, connector, s.logger, s.svcCache)
 	return connect.NewResponse(&resp), err
 }
 
@@ -99,7 +99,7 @@ func (s *EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Con
 		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err))
 	}
-	resp, err := CreateEntityChainsFromTokens(ctx, req.Msg, s.idpConfig, connector, s.logger)
+	resp, err := CreateEntityChainsFromTokens(ctx, req.Msg, s.idpConfig, connector, s.logger, s.svcCache)
 	return connect.NewResponse(&resp), err
 }
 
@@ -137,11 +137,12 @@ func CreateEntityChainsFromTokens(
 	kcConfig Config,
 	connector *Connector,
 	logger *logger.Logger,
+	svcCache *cache.Cache,
 ) (entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
 	entityChains := []*entity.EntityChain{}
 	// for each token in the tokens form an entity chain
 	for _, tok := range req.GetTokens() {
-		entities, err := getEntitiesFromToken(ctx, kcConfig, connector, tok.GetJwt(), logger)
+		entities, err := getEntitiesFromToken(ctx, kcConfig, connector, tok.GetJwt(), logger, svcCache)
 		if err != nil {
 			return entityresolutionV2.CreateEntityChainsFromTokensResponse{}, err
 		}
@@ -152,7 +153,7 @@ func CreateEntityChainsFromTokens(
 }
 
 func EntityResolution(ctx context.Context,
-	req *entityresolutionV2.ResolveEntitiesRequest, kcConfig Config, connector *Connector, logger *logger.Logger,
+	req *entityresolutionV2.ResolveEntitiesRequest, kcConfig Config, connector *Connector, logger *logger.Logger, svcCache *cache.Cache,
 ) (entityresolutionV2.ResolveEntitiesResponse, error) {
 	payload := req.GetEntities() // connector is now passed in
 
@@ -167,9 +168,7 @@ func EntityResolution(ctx context.Context,
 		case *entity.Entity_ClientId:
 			logger.Debug("looking up", slog.Any("type", ident.GetEntityType()), slog.String("client_id", ident.GetClientId()))
 			clientID := ident.GetClientId()
-			clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
-				ClientID: &clientID,
-			})
+			clients, err := retrieveClients(ctx, logger, clientID, kcConfig.Realm, svcCache, connector)
 			if err != nil {
 				logger.Error("error getting client info", slog.String("error", err.Error()))
 				return entityresolutionV2.ResolveEntitiesResponse{},
@@ -220,7 +219,7 @@ func EntityResolution(ctx context.Context,
 		}
 
 		var jsonEntities []*structpb.Struct
-		users, err := connector.client.GetUsers(ctx, connector.token.AccessToken, kcConfig.Realm, getUserParams)
+		users, err := retrieveUsers(ctx, logger, getUserParams, kcConfig.Realm, svcCache, connector)
 		switch {
 		case err != nil:
 			logger.Error(err.Error())
@@ -236,12 +235,7 @@ func EntityResolution(ctx context.Context,
 			logger.Error("no user found for", slog.Any("entity", ident))
 			if ident.GetEmailAddress() != "" { //nolint:nestif // this case has many possible outcomes to handle
 				// try by group
-				groups, groupErr := connector.client.GetGroups(
-					ctx,
-					connector.token.AccessToken,
-					kcConfig.Realm,
-					gocloak.GetGroupsParams{Search: func() *string { t := ident.GetEmailAddress(); return &t }()},
-				)
+				groups, groupErr := retrieveGroupsByEmail(ctx, logger, ident.GetEmailAddress(), kcConfig.Realm, svcCache, connector)
 				switch {
 				case groupErr != nil:
 					logger.Error("error getting group", slog.String("group", groupErr.Error()))
@@ -250,7 +244,7 @@ func EntityResolution(ctx context.Context,
 				case len(groups) == 1:
 					logger.Info("group found for", slog.String("entity", ident.String()))
 					group := groups[0]
-					expandedRepresentations, exErr := expandGroup(ctx, *group.ID, connector, &kcConfig, logger)
+					expandedRepresentations, exErr := expandGroup(ctx, *group.ID, connector, &kcConfig, logger, svcCache)
 					if exErr != nil {
 						return entityresolutionV2.ResolveEntitiesResponse{},
 							connect.NewError(connect.CodeNotFound, ErrNotFound)
@@ -353,14 +347,13 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable, logger *logg
 	return genericMap, nil
 }
 
-func expandGroup(ctx context.Context, groupID string, kcConnector *Connector, kcConfig *Config, logger *logger.Logger) ([]*gocloak.User, error) {
+func expandGroup(ctx context.Context, groupID string, kcConnector *Connector, kcConfig *Config, logger *logger.Logger, svcCache *cache.Cache) ([]*gocloak.User, error) {
 	logger.Info("expanding group", slog.String("groupID", groupID))
 	var entityRepresentations []*gocloak.User
 
-	grp, err := kcConnector.client.GetGroup(ctx, kcConnector.token.AccessToken, kcConfig.Realm, groupID)
+	grp, err := retrieveGroupByID(ctx, logger, groupID, kcConfig.Realm, svcCache, kcConnector)
 	if err == nil {
-		grpMembers, memberErr := kcConnector.client.GetGroupMembers(ctx, kcConnector.token.AccessToken, kcConfig.Realm,
-			*grp.ID, gocloak.GetGroupsParams{})
+		grpMembers, memberErr := retrieveGroupMembers(ctx, logger, *grp.ID, kcConfig.Realm, svcCache, kcConnector)
 		if memberErr == nil {
 			logger.Debug("adding members", slog.Int("amount", len(grpMembers)), slog.String("from group", *grp.Name))
 			for i := 0; i < len(grpMembers); i++ {
@@ -377,7 +370,7 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *Connector, kc
 	return entityRepresentations, nil
 }
 
-func getEntitiesFromToken(ctx context.Context, kcConfig Config, connector *Connector, jwtString string, logger *logger.Logger) ([]*entity.Entity, error) {
+func getEntitiesFromToken(ctx context.Context, kcConfig Config, connector *Connector, jwtString string, logger *logger.Logger, svcCache *cache.Cache) ([]*entity.Entity, error) {
 	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
 		return nil, errors.New("error parsing jwt " + err.Error())
@@ -416,7 +409,7 @@ func getEntitiesFromToken(ctx context.Context, kcConfig Config, connector *Conne
 
 	// double check for service account
 	if strings.HasPrefix(extractedValueUsernameCasted, serviceAccountUsernamePrefix) {
-		clientid, err := getServiceAccountClient(ctx, extractedValueUsernameCasted, kcConfig, connector, logger)
+		clientid, err := getServiceAccountClient(ctx, extractedValueUsernameCasted, kcConfig, connector, logger, svcCache)
 		if err != nil {
 			return nil, err
 		}
@@ -445,7 +438,7 @@ func getEntitiesFromToken(ctx context.Context, kcConfig Config, connector *Conne
 	return entities, nil
 }
 
-func getServiceAccountClient(ctx context.Context, username string, kcConfig Config, connector *Connector, logger *logger.Logger) (string, error) {
+func getServiceAccountClient(ctx context.Context, username string, kcConfig Config, connector *Connector, logger *logger.Logger, svcCache *cache.Cache) (string, error) {
 	expectedClientName := strings.TrimPrefix(username, serviceAccountUsernamePrefix)
 
 	clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{

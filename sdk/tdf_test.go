@@ -57,9 +57,13 @@ const (
 	hundredMB = 100 * oneMB
 	oneGB     = 10 * hundredMB
 	// tenGB     = 10 * oneGB
-	baseKeyKID = "base-key-kid"
-	baseKeyURL = "http://base-key.com/"
-	defaultKID = "r1"
+	baseKeyKID         = "base-key-kid"
+	baseKeyURL         = "http://base-key.com/"
+	multipleKeysKID1   = "multiple-keys-kid1"
+	multipleKeysKID2   = "multiple-keys-kid2"
+	multipleKeysKasURL = "http://multiple-keys-kas.com/"
+	defaultKID         = "r1"
+	r3KID              = "r3"
 )
 
 const (
@@ -1684,35 +1688,6 @@ func (s *TDFSuite) Test_MixedBaseKeyTest() {
 	baseKey := createTestBaseKeyMap(&s.Suite, policy.Algorithm_ALGORITHM_RSA_2048, baseKeyKID, mockRSAPublicKey1, s.kasTestURLLookup[baseKeyURL])
 	s.fakeWellKnown = createWellKnown(baseKey)
 	attrVal := mockValueFor(rel2aus)
-	cachedPublicKeySet := &policy.KasPublicKeySet{
-		Keys: []*policy.KasPublicKey{
-			{
-				Kid: defaultKID,
-				Pem: mockRSAPublicKey1,
-				Alg: policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048,
-			},
-		},
-	}
-	attrVal.Grants = []*policy.KeyAccessServer{
-		{
-			Uri: s.kasTestURLLookup[kasAu],
-			PublicKey: &policy.PublicKey{
-				PublicKey: &policy.PublicKey_Cached{
-					Cached: cachedPublicKeySet,
-				},
-			},
-		},
-	}
-	attrVal.KasKeys = []*policy.SimpleKasKey{
-		{
-			KasUri: s.kasTestURLLookup[kasAu],
-			PublicKey: &policy.SimpleKasPublicKey{
-				Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-				Kid:       defaultKID,
-				Pem:       mockRSAPublicKey1,
-			},
-		},
-	}
 	for index, test := range []baseKeyTest{
 		{
 			tdfTest: tdfTest{
@@ -1732,7 +1707,7 @@ func (s *TDFSuite) Test_MixedBaseKeyTest() {
 				tdfFileSize: 104866427,
 				checksum:    "cee41e98d0a6ad65cc0ec77a2ba50bf26d64dc9007f7f1c7d7df68b8b71291a6",
 			},
-			encryptOpts: []TDFOption{WithDataAttributeValues(attrVal)},
+			encryptOpts: []TDFOption{WithDataAttributes(attrVal.GetFqn())},
 			expectedKID: defaultKID,
 			expectedURL: s.kasTestURLLookup[kasAu],
 		},
@@ -1754,6 +1729,66 @@ func (s *TDFSuite) Test_MixedBaseKeyTest() {
 			s.Require().Equal(test.expectedKID, tdfObj.manifest.KeyAccessObjs[0].KID, "Base key KID should match")
 			s.Require().Equal(test.expectedURL, tdfObj.manifest.KeyAccessObjs[0].KasURL, "KAS URI should match")
 			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, test.tdfTest)
+		})
+	}
+}
+
+/*
+The context for this test is that we want to be able to encrypt a TDF with multiple keys
+of the same KAS with the same algorithm, but of different KIDs.
+
+The test creates mocks of attribute values which are then pulled from
+granter_test.go, which return the simple kas key mappings. (r0, r2)
+Both are of type RSA 2048, and the KAS is the same for both.
+*/
+func (s *TDFSuite) Test_KeySplit_SameKas_SameAlgorithm() {
+	attrVal1 := mockValueFor(mpc)
+	attrVal2 := mockValueFor(mpd)
+
+	// Add a key to the kas for proper decryption.
+	// * Note: This is a hack to get around having to handle multiple
+	// * keys within our testing structure. Ultimately we should
+	// * modify the test infra to handle multiple active keys
+	for _, fakeKas := range s.kases {
+		if fakeKas.KASInfo.URL == s.kasTestURLLookup[evenMoreSpecificKas] {
+			old := &fakeKas
+			fakeKas.privateKey = mockRSAPrivateKey1
+			fakeKas.KASInfo.KID = "r0"
+			fakeKas.KASInfo.PublicKey = mockRSAPublicKey1
+			fakeKas.legakeys[old.KID] = keyInfo{old.KID, old.privateKey, old.KASInfo.PublicKey}
+		}
+	}
+
+	for index, test := range []tdfTest{
+		{
+			n:           "multiple-keys-same-kas-same-algorithm",
+			fileSize:    5,
+			tdfFileSize: 2581,
+			checksum:    "ed968e840d10d2d313a870bc131a4e2c311d7ad09bdf32b3418147221f51a6e2",
+		},
+	} {
+		s.Run(test.n, func() {
+			// create .txt file
+			plainTextFileName := test.n + "-" + strconv.Itoa(index) + ".txt"
+			tdfFileName := plainTextFileName + ".tdf"
+			decryptedTdfFileName := tdfFileName + ".txt"
+
+			defer func() {
+				// Remove the test files
+				_ = os.Remove(plainTextFileName)
+				_ = os.Remove(tdfFileName)
+			}()
+
+			// test encrypt
+			tdo := s.testEncrypt(s.sdk, []TDFOption{WithDataAttributes(attrVal1.GetFqn(), attrVal2.GetFqn())}, plainTextFileName, tdfFileName, test)
+			s.Len(tdo.manifest.EncryptionInformation.KeyAccessObjs, 2, "Should have two key access objects")
+			s.Equal("r0", tdo.manifest.EncryptionInformation.KeyAccessObjs[0].KID)
+			s.Equal("r3", tdo.manifest.EncryptionInformation.KeyAccessObjs[1].KID)
+			s.Equal(s.kasTestURLLookup[evenMoreSpecificKas], tdo.manifest.EncryptionInformation.KeyAccessObjs[0].KasURL)
+			s.Equal(s.kasTestURLLookup[evenMoreSpecificKas], tdo.manifest.EncryptionInformation.KeyAccessObjs[1].KasURL)
+
+			// test decrypt with reader
+			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, test)
 		})
 	}
 }
@@ -2115,6 +2150,7 @@ func (s *TDFSuite) startBackend() {
 		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID},
 		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
 		{baseKeyURL, mockRSAPrivateKey1, mockRSAPublicKey1, baseKeyKID},
+		{evenMoreSpecificKas, mockRSAPrivateKey1, mockRSAPublicKey1, r3KID},
 	}
 	fkar := &FakeKASRegistry{kases: kasesToMake, s: s}
 
@@ -2197,6 +2233,9 @@ func (f *FakeAttributes) GetAttributeValuesByFqns(_ context.Context, in *connect
 		v := mockValueFor(av)
 		for i := range v.GetGrants() {
 			v.Grants[i].Uri = f.s.kasTestURLLookup[v.GetGrants()[i].GetUri()]
+		}
+		for i := range v.GetKasKeys() {
+			v.KasKeys[i].KasUri = f.s.kasTestURLLookup[v.GetKasKeys()[i].GetKasUri()]
 		}
 		r[fqn] = &attributespb.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 			Attribute: v.GetAttribute(),

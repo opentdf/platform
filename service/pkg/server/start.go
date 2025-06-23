@@ -96,6 +96,7 @@ func Start(f ...StartOptions) error {
 	if err != nil {
 		return fmt.Errorf("could not create cache manager: %w", err)
 	}
+	defer cacheManager.Close()
 
 	logger.Info("starting opentdf services")
 
@@ -299,13 +300,13 @@ func Start(f ...StartOptions) error {
 
 	logger.Info("starting services")
 	gatewayCleanup, err := startServices(ctx, startServicesParams{
-		cfg:          cfg,
-		otdf:         otdf,
-		client:       client,
-		keyManagers:  startConfig.trustKeyManagers,
-		logger:       logger,
-		reg:          svcRegistry,
-		cacheManager: cacheManager,
+		cfg:                 cfg,
+		otdf:                otdf,
+		client:              client,
+		keyManagerFactories: startConfig.trustKeyManagers,
+		logger:              logger,
+		reg:                 svcRegistry,
+		cacheManager:        cacheManager,
 	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))

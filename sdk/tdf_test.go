@@ -63,7 +63,7 @@ const (
 	multipleKeysKID2   = "multiple-keys-kid2"
 	multipleKeysKasURL = "http://multiple-keys-kas.com/"
 	defaultKID         = "r1"
-	r2KID              = "r2"
+	r3KID              = "r3"
 )
 
 const (
@@ -1742,8 +1742,8 @@ granter_test.go, which return the simple kas key mappings. (r0, r2)
 Both are of type RSA 2048, and the KAS is the same for both.
 */
 func (s *TDFSuite) Test_KeySplit_SameKas_SameAlgorithm() {
-	attrVal1 := mockValueFor(mpa)
-	attrVal2 := mockValueFor(mpc)
+	attrVal1 := mockValueFor(mpc)
+	attrVal2 := mockValueFor(mpd)
 
 	// Add a key to the kas for proper decryption.
 	// * Note: This is a hack to get around having to handle multiple
@@ -1783,7 +1783,7 @@ func (s *TDFSuite) Test_KeySplit_SameKas_SameAlgorithm() {
 			tdo := s.testEncrypt(s.sdk, []TDFOption{WithDataAttributes(attrVal1.GetFqn(), attrVal2.GetFqn())}, plainTextFileName, tdfFileName, test)
 			s.Len(tdo.manifest.EncryptionInformation.KeyAccessObjs, 2, "Should have two key access objects")
 			s.Equal("r0", tdo.manifest.EncryptionInformation.KeyAccessObjs[0].KID)
-			s.Equal("r2", tdo.manifest.EncryptionInformation.KeyAccessObjs[1].KID)
+			s.Equal("r3", tdo.manifest.EncryptionInformation.KeyAccessObjs[1].KID)
 			s.Equal(s.kasTestURLLookup[evenMoreSpecificKas], tdo.manifest.EncryptionInformation.KeyAccessObjs[0].KasURL)
 			s.Equal(s.kasTestURLLookup[evenMoreSpecificKas], tdo.manifest.EncryptionInformation.KeyAccessObjs[1].KasURL)
 
@@ -2150,7 +2150,7 @@ func (s *TDFSuite) startBackend() {
 		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID},
 		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
 		{baseKeyURL, mockRSAPrivateKey1, mockRSAPublicKey1, baseKeyKID},
-		{evenMoreSpecificKas, mockRSAPrivateKey1, mockRSAPublicKey1, r2KID},
+		{evenMoreSpecificKas, mockRSAPrivateKey1, mockRSAPublicKey1, r3KID},
 	}
 	fkar := &FakeKASRegistry{kases: kasesToMake, s: s}
 

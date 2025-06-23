@@ -76,9 +76,9 @@ func (c *Manager) NewCache(serviceName string, log *logger.Logger, options Optio
 	return cache, nil
 }
 
-func (m *Manager) Close() {
-	if m.raw != nil {
-		m.raw.Close()
+func (c *Manager) Close() {
+	if c.raw != nil {
+		c.raw.Close()
 	}
 }
 

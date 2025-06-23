@@ -13,7 +13,11 @@ import (
 	"github.com/opentdf/platform/service/logger"
 )
 
-var ErrCacheMiss = errors.New("cache miss")
+var (
+	ErrCacheMiss = errors.New("cache miss")
+	//nolint:mnd // 1MB, used for testing purposes
+	testMaxCost = int64(1024 * 1024)
+)
 
 // Manager is a cache manager for any value.
 type Manager struct {
@@ -71,8 +75,12 @@ func (c *Manager) NewCache(serviceName string, log *logger.Logger, options Optio
 	}
 	cache.logger = log.
 		With("subsystem", "cache").
-		With("serviceTag", cache.getServiceTag()).
-		With("expiration", options.Expiration.String())
+		With("serviceTag", cache.getServiceTag())
+
+	if options.Expiration > 0 {
+		cache.logger = cache.logger.
+			With("expiration", options.Expiration.String())
+	}
 	cache.logger.Info("created cache")
 	return cache, nil
 }
@@ -136,4 +144,31 @@ func (c *Cache) getKey(key string) string {
 
 func (c *Cache) getServiceTag() string {
 	return "svc:" + c.serviceName
+}
+
+// TestCacheClient creates a test cache client with predefined options.
+func TestCacheClient(expiration time.Duration) (*Cache, error) {
+	numCounters, bufferItems, err := EstimateRistrettoConfigParams(testMaxCost)
+	if err != nil {
+		return nil, err
+	}
+	config := &ristretto.Config{
+		NumCounters: numCounters,
+		MaxCost:     testMaxCost,
+		BufferItems: bufferItems,
+	}
+	store, err := ristretto.NewCache(config)
+	if err != nil {
+		return nil, err
+	}
+	cacheStore := ristretto_store.NewRistretto(store)
+	manager := &Manager{
+		cache: cache.New[any](cacheStore),
+	}
+	return &Cache{
+		manager:      manager,
+		serviceName:  "testService",
+		cacheOptions: Options{Expiration: expiration},
+		logger:       logger.CreateTestLogger(),
+	}, nil
 }

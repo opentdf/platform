@@ -137,8 +137,6 @@ func (s *RegisteredResourcesService) ListRegisteredResources(ctx context.Context
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
 	}
 
-	s.logger.DebugContext(ctx, "listed registered resources")
-
 	return connect.NewResponse(rsp), nil
 }
 

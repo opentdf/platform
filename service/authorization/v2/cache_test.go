@@ -10,7 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var mockCache, _ = cache.TestCacheClient()
+var (
+	mockCacheExpiry = 5 * time.Minute
+	mockCache, _    = cache.TestCacheClient(mockCacheExpiry)
+)
 
 func TestEntitlementPolicyCache_RefreshInterval(t *testing.T) {
 	var refreshInterval time.Duration

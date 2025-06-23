@@ -124,7 +124,7 @@ func (c *Cache) getServiceTag() string {
 }
 
 // TestCacheClient creates a test cache client with predefined options.
-func TestCacheClient() (*Cache, error) {
+func TestCacheClient(expiration time.Duration) (*Cache, error) {
 	maxCost := int64(1024 * 1024) // 1MB
 	numCounters, bufferItems, err := EstimateRistrettoConfigParams(maxCost)
 	if err != nil {
@@ -146,7 +146,7 @@ func TestCacheClient() (*Cache, error) {
 	return &Cache{
 		manager:      manager,
 		serviceName:  "testService",
-		cacheOptions: Options{Expiration: 5 * time.Minute},
+		cacheOptions: Options{Expiration: expiration},
 		logger:       logger.CreateTestLogger(),
 	}, nil
 }

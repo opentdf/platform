@@ -45,11 +45,7 @@ func retrieveUsers(ctx context.Context, logger *logger.Logger, getUserParams goc
 	retrievalFunc := func() ([]*gocloak.User, error) {
 		return connector.client.GetUsers(ctx, connector.token.AccessToken, realm, getUserParams)
 	}
-	users, err := retrieveWithKey[[]*gocloak.User](ctx, cacheKey, svcCache, logger, retrievalFunc)
-	if err != nil {
-		return nil, err
-	}
-	return users, nil
+	return retrieveWithKey[[]*gocloak.User](ctx, cacheKey, svcCache, logger, retrievalFunc)
 }
 
 func retrieveGroupsByEmail(ctx context.Context, logger *logger.Logger, groupEmail string, realm string, svcCache *cache.Cache, connector *Connector) ([]*gocloak.Group, error) {
@@ -62,11 +58,7 @@ func retrieveGroupsByEmail(ctx context.Context, logger *logger.Logger, groupEmai
 			gocloak.GetGroupsParams{Search: func() *string { t := groupEmail; return &t }()},
 		)
 	}
-	group, err := retrieveWithKey[[]*gocloak.Group](ctx, cacheKey, svcCache, logger, retrievalFunc)
-	if err != nil {
-		return nil, err
-	}
-	return group, nil
+	return retrieveWithKey[[]*gocloak.Group](ctx, cacheKey, svcCache, logger, retrievalFunc)
 }
 
 func retrieveGroupByID(ctx context.Context, logger *logger.Logger, groupID string, realm string, svcCache *cache.Cache, connector *Connector) (*gocloak.Group, error) {
@@ -74,11 +66,7 @@ func retrieveGroupByID(ctx context.Context, logger *logger.Logger, groupID strin
 	retrievalFunc := func() (*gocloak.Group, error) {
 		return connector.client.GetGroup(ctx, connector.token.AccessToken, realm, groupID)
 	}
-	group, err := retrieveWithKey[*gocloak.Group](ctx, cacheKey, svcCache, logger, retrievalFunc)
-	if err != nil {
-		return nil, err
-	}
-	return group, nil
+	return retrieveWithKey[*gocloak.Group](ctx, cacheKey, svcCache, logger, retrievalFunc)
 }
 
 func retrieveGroupMembers(ctx context.Context, logger *logger.Logger, groupID string, realm string, svcCache *cache.Cache, connector *Connector) ([]*gocloak.User, error) {
@@ -86,25 +74,19 @@ func retrieveGroupMembers(ctx context.Context, logger *logger.Logger, groupID st
 	retrievalFunc := func() ([]*gocloak.User, error) {
 		return connector.client.GetGroupMembers(ctx, connector.token.AccessToken, realm, groupID, gocloak.GetGroupsParams{})
 	}
-	members, err := retrieveWithKey[[]*gocloak.User](ctx, cacheKey, svcCache, logger, retrievalFunc)
-	if err != nil {
-		return nil, err
-	}
-	return members, nil
+	return retrieveWithKey[[]*gocloak.User](ctx, cacheKey, svcCache, logger, retrievalFunc)
 }
 
 func retrieveWithKey[T any](ctx context.Context, cacheKey string, svcCache *cache.Cache, logger *logger.Logger, retrieveFunc func() (T, error)) (T, error) {
 	if svcCache != nil {
 		cachedData, err := svcCache.Get(ctx, cacheKey)
-		switch {
-		case err == nil:
+		if err == nil {
 			if retrieved, ok := cachedData.(T); ok {
 				return retrieved, nil
+			} else {
+				logger.Error("cache data type assertion failed")
 			}
-			logger.Error("cache data type assertion failed")
-		case errors.Is(err, cache.ErrCacheMiss):
-			logger.Debug("cache miss", slog.String("key", cacheKey))
-		default:
+		} else if !errors.Is(err, cache.ErrCacheMiss) {
 			var zero T
 			return zero, err
 		}

@@ -54,18 +54,20 @@ jobs:
       sha: ${{ steps.release-please.outputs.sha }}
       release_created: ${{ steps.release-please.outputs.release_created }}
       tag_name: ${{ steps.release-please.outputs.tag_name }}
+      prs_created: ${{ steps.release-please.outputs.prs_created }}
+      prs: ${{ steps.release-please.outputs.prs }}
     env:
       MAIN_CONFIG: ".github/release-please/release-please-config.main.json"
       MANIFEST_FILE: ".github/release-please/release-please-manifest.json"
     steps:
 
-      # - name: "Validate ref"
-      #   if: ${{ !github.ref_name == 'main' && !startsWith(github.ref_name, 'release/') }}
-      #   env:
-      #     REF_NAME: ${{ github.ref_name }}
-      #   run: |
-      #     echo "Error: invalid github ref ['$REF_NAME'] for release-please action, must be 'main' or 'release/**'" | tee -a "$GITHUB_STEP_SUMMARY"
-      #     exit 1
+      - name: "Validate ref"
+        if: ${{ !github.ref_name == 'main' && !startsWith(github.ref_name, 'release/') }}
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          echo "Error: invalid github ref ['$REF_NAME'] for release-please action, must be 'main' or 'release/**'" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit 1
 
       - name: "Checkout"
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -139,6 +141,6 @@ jobs:
         id: release-please
         with:
           token: ${{ steps.generate_token.outputs.token }}
-          config-file: ${{ github.ref_name == 'build-fix1' && env.MAIN_CONFIG || startsWith(github.ref_name, 'release/') && steps.package-config.outputs.config_file }}
+          config-file: ${{ github.ref_name == 'main' && env.MAIN_CONFIG || startsWith(github.ref_name, 'release/') && steps.package-config.outputs.config_file }}
           manifest-file: ${{ env.MANIFEST_FILE }}
           target-branch: ${{ github.ref_name }}

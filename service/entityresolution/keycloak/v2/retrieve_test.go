@@ -1,7 +1,6 @@
 package keycloak
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -16,12 +15,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var cacheTime = 2 * time.Second
+
 func newTestCache(t *testing.T) (*cache.Manager, *cache.Cache) {
 	// Use a short expiration for test
 	cacheManager, err := cache.NewCacheManager(1000)
 	require.NoError(t, err, "Failed to create cache manager")
 	c, err := cacheManager.NewCache("test", logger.CreateTestLogger(), cache.Options{
-		Expiration: 5 * time.Second,
+		Expiration: cacheTime,
 	})
 	require.NoError(t, err, "Failed to create test cache")
 	return cacheManager, c
@@ -52,7 +53,7 @@ func TestRetrieveClients_CacheIntegration(t *testing.T) {
 	_, c := newTestCache(t)
 
 	// First call: cache miss, should hit server
-	got, err := retrieveClients(context.Background(), l, clientID, realm, c, kc)
+	got, err := retrieveClients(t.Context(), l, clientID, realm, c, kc)
 	require.NoError(t, err)
 	assert.Equal(t, clientsResp, got)
 	assert.Equal(t, 1, called)
@@ -62,20 +63,20 @@ func TestRetrieveClients_CacheIntegration(t *testing.T) {
 
 	// Second call: cache hit, should NOT hit server
 	called = 0
-	got2, err := retrieveClients(context.Background(), l, clientID, realm, c, kc)
+	got2, err := retrieveClients(t.Context(), l, clientID, realm, c, kc)
 	require.NoError(t, err)
 	assert.Equal(t, clientsResp, got2)
 	assert.Equal(t, 0, called, "server should not be called on cache hit")
 
 	// Optionally, check cache directly
-	val, err := c.Get(context.Background(), cacheKey)
+	val, err := c.Get(t.Context(), cacheKey)
 	require.NoError(t, err)
 	assert.Equal(t, clientsResp, val)
 
 	// Wait for cache expiration
-	time.Sleep(6 * time.Second)
+	time.Sleep(cacheTime)
 	// After expiration, cache should be empty
-	_, err = c.Get(context.Background(), cacheKey)
+	_, err = c.Get(t.Context(), cacheKey)
 	require.Error(t, err, "Cache should be empty after expiration")
 }
 
@@ -104,7 +105,7 @@ func TestRetrieveUsers_CacheIntegration(t *testing.T) {
 
 	// First call: cache miss, should hit server
 	params := gocloak.GetUsersParams{Email: &email}
-	got, err := retrieveUsers(context.Background(), l, params, realm, c, kc)
+	got, err := retrieveUsers(t.Context(), l, params, realm, c, kc)
 	require.NoError(t, err)
 	assert.Equal(t, usersResp, got)
 	assert.Equal(t, 1, called)
@@ -114,20 +115,20 @@ func TestRetrieveUsers_CacheIntegration(t *testing.T) {
 
 	called = 0
 	// Second call: cache hit, should NOT hit server
-	got2, err := retrieveUsers(context.Background(), l, params, realm, c, kc)
+	got2, err := retrieveUsers(t.Context(), l, params, realm, c, kc)
 	require.NoError(t, err)
 	assert.Equal(t, usersResp, got2)
 	assert.Equal(t, 0, called)
 
 	// Optionally, check cache directly
-	val, err := c.Get(context.Background(), cacheKey)
+	val, err := c.Get(t.Context(), cacheKey)
 	require.NoError(t, err)
 	assert.Equal(t, usersResp, val)
 
 	// Wait for cache expiration
-	time.Sleep(6 * time.Second)
+	time.Sleep(cacheTime)
 	// After expiration, cache should be empty
-	_, err = c.Get(context.Background(), cacheKey)
+	_, err = c.Get(t.Context(), cacheKey)
 	require.Error(t, err, "Cache should be empty after expiration")
 }
 
@@ -155,7 +156,7 @@ func TestRetrieveGroupsByEmail_CacheIntegration(t *testing.T) {
 	_, c := newTestCache(t)
 
 	// First call: cache miss, should hit server
-	got, err := retrieveGroupsByEmail(context.Background(), l, groupEmail, realm, c, kc)
+	got, err := retrieveGroupsByEmail(t.Context(), l, groupEmail, realm, c, kc)
 	require.NoError(t, err)
 	assert.Equal(t, groupsResp, got)
 	assert.Equal(t, 1, called)
@@ -165,20 +166,20 @@ func TestRetrieveGroupsByEmail_CacheIntegration(t *testing.T) {
 
 	// Second call: cache hit, should NOT hit server
 	called = 0
-	got2, err := retrieveGroupsByEmail(context.Background(), l, groupEmail, realm, c, kc)
+	got2, err := retrieveGroupsByEmail(t.Context(), l, groupEmail, realm, c, kc)
 	require.NoError(t, err)
 	assert.Equal(t, groupsResp, got2)
 	assert.Equal(t, 0, called)
 
 	// Optionally, check cache directly
-	val, err := c.Get(context.Background(), cacheKey)
+	val, err := c.Get(t.Context(), cacheKey)
 	require.NoError(t, err)
 	assert.Equal(t, groupsResp, val)
 
 	// Wait for cache expiration
-	time.Sleep(6 * time.Second)
+	time.Sleep(cacheTime)
 	// After expiration, cache should be empty
-	_, err = c.Get(context.Background(), cacheKey)
+	_, err = c.Get(t.Context(), cacheKey)
 	require.Error(t, err, "Cache should be empty after expiration")
 }
 
@@ -205,7 +206,7 @@ func TestRetrieveGroupByID_CacheIntegration(t *testing.T) {
 	_, c := newTestCache(t)
 
 	// First call: cache miss, should hit server
-	got, err := retrieveGroupByID(context.Background(), l, groupID, realm, c, kc)
+	got, err := retrieveGroupByID(t.Context(), l, groupID, realm, c, kc)
 	require.NoError(t, err)
 	assert.Equal(t, groupResp, got)
 	assert.Equal(t, 1, called)
@@ -215,20 +216,20 @@ func TestRetrieveGroupByID_CacheIntegration(t *testing.T) {
 
 	// Second call: cache hit, should NOT hit server
 	called = 0
-	got2, err := retrieveGroupByID(context.Background(), l, groupID, realm, c, kc)
+	got2, err := retrieveGroupByID(t.Context(), l, groupID, realm, c, kc)
 	require.NoError(t, err)
 	assert.Equal(t, groupResp, got2)
 	assert.Equal(t, 0, called)
 
 	// Optionally, check cache directly
-	val, err := c.Get(context.Background(), cacheKey)
+	val, err := c.Get(t.Context(), cacheKey)
 	require.NoError(t, err)
 	assert.Equal(t, groupResp, val)
 
 	// Wait for cache expiration
-	time.Sleep(6 * time.Second)
+	time.Sleep(cacheTime)
 	// After expiration, cache should be empty
-	_, err = c.Get(context.Background(), cacheKey)
+	_, err = c.Get(t.Context(), cacheKey)
 	require.Error(t, err, "Cache should be empty after expiration")
 }
 
@@ -255,7 +256,7 @@ func TestRetrieveGroupMembers_CacheIntegration(t *testing.T) {
 	_, c := newTestCache(t)
 
 	// First call: cache miss, should hit server
-	got, err := retrieveGroupMembers(context.Background(), l, groupID, realm, c, kc)
+	got, err := retrieveGroupMembers(t.Context(), l, groupID, realm, c, kc)
 	require.NoError(t, err)
 	assert.Equal(t, membersResp, got)
 	assert.Equal(t, 1, called)
@@ -265,19 +266,19 @@ func TestRetrieveGroupMembers_CacheIntegration(t *testing.T) {
 
 	// Second call: cache hit, should NOT hit server
 	called = 0
-	got2, err := retrieveGroupMembers(context.Background(), l, groupID, realm, c, kc)
+	got2, err := retrieveGroupMembers(t.Context(), l, groupID, realm, c, kc)
 	require.NoError(t, err)
 	assert.Equal(t, membersResp, got2)
 	assert.Equal(t, 0, called)
 
 	// Optionally, check cache directly
-	val, err := c.Get(context.Background(), cacheKey)
+	val, err := c.Get(t.Context(), cacheKey)
 	require.NoError(t, err)
 	assert.Equal(t, membersResp, val)
 
 	// Wait for cache expiration
-	time.Sleep(6 * time.Second)
+	time.Sleep(cacheTime)
 	// After expiration, cache should be empty
-	_, err = c.Get(context.Background(), cacheKey)
+	_, err = c.Get(t.Context(), cacheKey)
 	require.Error(t, err, "Cache should be empty after expiration")
 }

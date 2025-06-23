@@ -441,9 +441,7 @@ func getEntitiesFromToken(ctx context.Context, kcConfig Config, connector *Conne
 func getServiceAccountClient(ctx context.Context, username string, kcConfig Config, connector *Connector, logger *logger.Logger, svcCache *cache.Cache) (string, error) {
 	expectedClientName := strings.TrimPrefix(username, serviceAccountUsernamePrefix)
 
-	clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
-		ClientID: &expectedClientName,
-	})
+	clients, err := retrieveClients(ctx, logger, expectedClientName, kcConfig.Realm, svcCache, connector)
 	switch {
 	case err != nil:
 		logger.Error(err.Error())

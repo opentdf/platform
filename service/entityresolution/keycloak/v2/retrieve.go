@@ -28,16 +28,17 @@ func retrieveClients(ctx context.Context, logger *logger.Logger, clientID string
 	if err != nil {
 		return nil, err
 	}
-	return clients.([]*gocloak.Client), nil
+	return clients, nil
 }
 
 func retrieveUsers(ctx context.Context, logger *logger.Logger, getUserParams gocloak.GetUsersParams, realm string, svcCache *cache.Cache, connector *Connector) ([]*gocloak.User, error) {
 	var cacheKey string
-	if getUserParams.Email != nil {
+	switch {
+	case getUserParams.Email != nil:
 		cacheKey = fmt.Sprintf("%s::user::%s", realm, *getUserParams.Email)
-	} else if getUserParams.Username != nil {
+	case getUserParams.Username != nil:
 		cacheKey = fmt.Sprintf("%s::user::%s", realm, *getUserParams.Username)
-	} else {
+	default:
 		return nil, errors.New("either email or username must be provided")
 	}
 
@@ -48,7 +49,7 @@ func retrieveUsers(ctx context.Context, logger *logger.Logger, getUserParams goc
 	if err != nil {
 		return nil, err
 	}
-	return users.([]*gocloak.User), nil
+	return users, nil
 }
 
 func retrieveGroupsByEmail(ctx context.Context, logger *logger.Logger, groupEmail string, realm string, svcCache *cache.Cache, connector *Connector) ([]*gocloak.Group, error) {
@@ -65,7 +66,7 @@ func retrieveGroupsByEmail(ctx context.Context, logger *logger.Logger, groupEmai
 	if err != nil {
 		return nil, err
 	}
-	return group.([]*gocloak.Group), nil
+	return group, nil
 }
 
 func retrieveGroupByID(ctx context.Context, logger *logger.Logger, groupID string, realm string, svcCache *cache.Cache, connector *Connector) (*gocloak.Group, error) {
@@ -77,7 +78,7 @@ func retrieveGroupByID(ctx context.Context, logger *logger.Logger, groupID strin
 	if err != nil {
 		return nil, err
 	}
-	return group.(*gocloak.Group), nil
+	return group, nil
 }
 
 func retrieveGroupMembers(ctx context.Context, logger *logger.Logger, groupID string, realm string, svcCache *cache.Cache, connector *Connector) ([]*gocloak.User, error) {
@@ -89,23 +90,23 @@ func retrieveGroupMembers(ctx context.Context, logger *logger.Logger, groupID st
 	if err != nil {
 		return nil, err
 	}
-	return members.([]*gocloak.User), nil
+	return members, nil
 }
 
-func retrieveWithKey[T any](ctx context.Context, cacheKey string, svcCache *cache.Cache, logger *logger.Logger, retrieveFunc func() (T, error)) (any, error) {
+func retrieveWithKey[T any](ctx context.Context, cacheKey string, svcCache *cache.Cache, logger *logger.Logger, retrieveFunc func() (T, error)) (T, error) {
 	if svcCache != nil {
 		cachedData, err := svcCache.Get(ctx, cacheKey)
 		switch {
 		case err == nil:
 			if retrieved, ok := cachedData.(T); ok {
 				return retrieved, nil
-			} else {
-				logger.Error("cache data type assertion failed")
 			}
+			logger.Error("cache data type assertion failed")
 		case errors.Is(err, cache.ErrCacheMiss):
 			logger.Debug("cache miss", slog.String("key", cacheKey))
 		default:
-			return nil, err
+			var zero T
+			return zero, err
 		}
 	}
 	retrieved, err := retrieveFunc()

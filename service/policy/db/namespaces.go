@@ -52,15 +52,6 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 		return nil, err
 	}
 
-	var grants []*policy.KeyAccessServer
-	if ns.Grants != nil {
-		grants, err = db.KeyAccessServerProtoJSON(ns.Grants)
-		if err != nil {
-			c.logger.ErrorContext(ctx, "could not unmarshal grants", slog.String("error", err.Error()))
-			return nil, err
-		}
-	}
-
 	var keys []*policy.SimpleKasKey
 	if len(ns.Keys) > 0 {
 		keys, err = db.SimpleKasKeysProtoJSON(ns.Keys)
@@ -74,7 +65,6 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 		Id:       ns.ID,
 		Name:     ns.Name,
 		Active:   &wrapperspb.BoolValue{Value: ns.Active},
-		Grants:   grants,
 		Metadata: metadata,
 		Fqn:      ns.Fqn.String,
 		KasKeys:  keys,
@@ -335,18 +325,6 @@ func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *pol
 	return &policy.Namespace{
 		Id: id,
 	}, nil
-}
-
-func (c PolicyDBClient) AssignKeyAccessServerToNamespace(ctx context.Context, k *namespaces.NamespaceKeyAccessServer) (*namespaces.NamespaceKeyAccessServer, error) {
-	_, err := c.Queries.AssignKeyAccessServerToNamespace(ctx, AssignKeyAccessServerToNamespaceParams{
-		NamespaceID:       k.GetNamespaceId(),
-		KeyAccessServerID: k.GetKeyAccessServerId(),
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return k, nil
 }
 
 func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, k *namespaces.NamespaceKeyAccessServer) (*namespaces.NamespaceKeyAccessServer, error) {

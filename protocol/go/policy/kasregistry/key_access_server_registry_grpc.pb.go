@@ -43,6 +43,7 @@ type KeyAccessServerRegistryServiceClient interface {
 	CreateKeyAccessServer(ctx context.Context, in *CreateKeyAccessServerRequest, opts ...grpc.CallOption) (*CreateKeyAccessServerResponse, error)
 	UpdateKeyAccessServer(ctx context.Context, in *UpdateKeyAccessServerRequest, opts ...grpc.CallOption) (*UpdateKeyAccessServerResponse, error)
 	DeleteKeyAccessServer(ctx context.Context, in *DeleteKeyAccessServerRequest, opts ...grpc.CallOption) (*DeleteKeyAccessServerResponse, error)
+	// Deprecated: Do not use.
 	// Deprecated
 	ListKeyAccessServerGrants(ctx context.Context, in *ListKeyAccessServerGrantsRequest, opts ...grpc.CallOption) (*ListKeyAccessServerGrantsResponse, error)
 	// KAS Key Management
@@ -115,6 +116,7 @@ func (c *keyAccessServerRegistryServiceClient) DeleteKeyAccessServer(ctx context
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *keyAccessServerRegistryServiceClient) ListKeyAccessServerGrants(ctx context.Context, in *ListKeyAccessServerGrantsRequest, opts ...grpc.CallOption) (*ListKeyAccessServerGrantsResponse, error) {
 	out := new(ListKeyAccessServerGrantsResponse)
 	err := c.cc.Invoke(ctx, KeyAccessServerRegistryService_ListKeyAccessServerGrants_FullMethodName, in, out, opts...)
@@ -196,6 +198,7 @@ type KeyAccessServerRegistryServiceServer interface {
 	CreateKeyAccessServer(context.Context, *CreateKeyAccessServerRequest) (*CreateKeyAccessServerResponse, error)
 	UpdateKeyAccessServer(context.Context, *UpdateKeyAccessServerRequest) (*UpdateKeyAccessServerResponse, error)
 	DeleteKeyAccessServer(context.Context, *DeleteKeyAccessServerRequest) (*DeleteKeyAccessServerResponse, error)
+	// Deprecated: Do not use.
 	// Deprecated
 	ListKeyAccessServerGrants(context.Context, *ListKeyAccessServerGrantsRequest) (*ListKeyAccessServerGrantsResponse, error)
 	// KAS Key Management

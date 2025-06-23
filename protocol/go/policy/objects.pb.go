@@ -735,7 +735,7 @@ type Namespace struct {
 	// active by default until explicitly deactivated
 	Active   *wrapperspb.BoolValue `protobuf:"bytes,4,opt,name=active,proto3" json:"active,omitempty"`
 	Metadata *common.Metadata      `protobuf:"bytes,5,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	// KAS grants for the namespace
+	// Deprecated KAS grants for the namespace. Use kas_keys instead.
 	Grants []*KeyAccessServer `protobuf:"bytes,6,rep,name=grants,proto3" json:"grants,omitempty"`
 	// Keys for the namespace
 	KasKeys []*SimpleKasKey `protobuf:"bytes,7,rep,name=kas_keys,json=kasKeys,proto3" json:"kas_keys,omitempty"`
@@ -835,7 +835,7 @@ type Attribute struct {
 	// attribute rule enum
 	Rule   AttributeRuleTypeEnum `protobuf:"varint,4,opt,name=rule,proto3,enum=policy.AttributeRuleTypeEnum" json:"rule,omitempty"`
 	Values []*Value              `protobuf:"bytes,5,rep,name=values,proto3" json:"values,omitempty"`
-	// Deprecated
+	// Deprecated KAS grants for the attribute. Use kas_keys instead.
 	Grants []*KeyAccessServer `protobuf:"bytes,6,rep,name=grants,proto3" json:"grants,omitempty"`
 	Fqn    string             `protobuf:"bytes,7,opt,name=fqn,proto3" json:"fqn,omitempty"`
 	// active by default until explicitly deactivated
@@ -957,8 +957,7 @@ type Value struct {
 	Id        string     `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Attribute *Attribute `protobuf:"bytes,2,opt,name=attribute,proto3" json:"attribute,omitempty"`
 	Value     string     `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
-	// Deprecated
-	// list of key access servers
+	// Deprecated KAS grants for the value. Use kas_keys instead.
 	Grants []*KeyAccessServer `protobuf:"bytes,5,rep,name=grants,proto3" json:"grants,omitempty"`
 	Fqn    string             `protobuf:"bytes,6,opt,name=fqn,proto3" json:"fqn,omitempty"`
 	// active by default until explicitly deactivated

@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/sdk/sdkconnect"
@@ -36,13 +37,20 @@ type keySplitStep struct {
 // It is filled in during manifest creation by splitting the key material (DEK) across each split ID,
 // then wrapping each split with the KAS public key identified by the KID at each element.
 type kaoTpl struct {
-	keySplitStep
-	kid string
+	KAS, SplitID string
+	kid          string
+	pem          string
+	algorithm    ocrypto.KeyType
 }
 
 // AttributeNameFQN represents the FQN for an attribute.
 type AttributeNameFQN struct {
 	url, key string
+}
+
+// Lookup Table for KAS keys, indexed by ResourceLocator.
+type rlKeyCache struct {
+	c map[ResourceLocator]*policy.SimpleKasKey
 }
 
 func attributeURLPartsValid(parts []string) error {
@@ -204,6 +212,12 @@ type granter struct {
 
 	// The types of grants or mapped keys found.
 	typ grantType
+
+	// The key cache to store KAS keys.
+	keyCache *rlKeyCache
+
+	// Key lookup for keys without a KID.
+	keyInfoFetcher KASKeyFetcher
 }
 
 type keyAccessGrant struct {
@@ -255,6 +269,7 @@ func (r *granter) addMappedKey(fqn AttributeValueFQN, sk *policy.SimpleKasKey) e
 	)
 	rls = append(rls, rl)
 	r.mapTable[fqn.key] = rls
+	r.keyCache.c[*rl] = sk
 	return nil
 }
 
@@ -272,6 +287,24 @@ func convertAlgEnum2Simple(a policy.KasPublicKeyAlgEnum) policy.Algorithm {
 		return policy.Algorithm_ALGORITHM_RSA_4096
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
+	default:
+		return policy.Algorithm_ALGORITHM_UNSPECIFIED
+	}
+}
+
+// convertStringToAlgorithm converts a string algorithm representation to policy.Algorithm
+func convertStringToAlgorithm(alg string) policy.Algorithm {
+	switch strings.ToLower(alg) {
+	case "ec:secp256r1":
+		return policy.Algorithm_ALGORITHM_EC_P256
+	case "ec:secp384r1":
+		return policy.Algorithm_ALGORITHM_EC_P384
+	case "ec:secp521r1":
+		return policy.Algorithm_ALGORITHM_EC_P521
+	case "rsa:2048":
+		return policy.Algorithm_ALGORITHM_RSA_2048
+	case "rsa:4096":
+		return policy.Algorithm_ALGORITHM_RSA_4096
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
 	}
@@ -413,6 +446,7 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkcon
 	grants := granter{
 		tags:       fqns,
 		grantTable: make(map[string]*keyAccessGrant),
+		keyCache:   &rlKeyCache{c: make(map[ResourceLocator]*policy.SimpleKasKey)},
 	}
 	for fqnstr, pair := range av.GetFqnAttributeValues() {
 		fqn, err := NewAttributeValueFQN(fqnstr)
@@ -422,23 +456,23 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkcon
 		def := pair.GetAttribute()
 
 		if def != nil {
-			storeKeysToCache(def.GetGrants(), def.GetKasKeys(), keyCache)
+			storeKeysToCache(def.GetGrants(), def.GetKasKeys(), keyCache, grants.keyCache)
 		}
 		v := pair.GetValue()
 		gType := noKeysFound
 		if v != nil {
 			gType = grants.addAllGrants(fqn, v, def)
-			storeKeysToCache(v.GetGrants(), v.GetKasKeys(), keyCache)
+			storeKeysToCache(v.GetGrants(), v.GetKasKeys(), keyCache, grants.keyCache)
 		}
 
 		// If no more specific grant was found, then add the value grants
 		if gType == noKeysFound && def != nil {
 			gType = grants.addAllGrants(fqn, def, def)
-			storeKeysToCache(def.GetGrants(), def.GetKasKeys(), keyCache)
+			storeKeysToCache(def.GetGrants(), def.GetKasKeys(), keyCache, grants.keyCache)
 		}
 		if gType == noKeysFound && def.GetNamespace() != nil {
 			grants.addAllGrants(fqn, def.GetNamespace(), def)
-			storeKeysToCache(def.GetNamespace().GetGrants(), def.GetNamespace().GetKasKeys(), keyCache)
+			storeKeysToCache(def.GetNamespace().GetGrants(), def.GetNamespace().GetKasKeys(), keyCache, grants.keyCache)
 		}
 	}
 
@@ -463,7 +497,26 @@ func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 	return ""
 }
 
-func storeKeysToCache(kases []*policy.KeyAccessServer, keys []*policy.SimpleKasKey, c *kasKeyCache) {
+func algProto2OcryptoKeyType(e policy.Algorithm) ocrypto.KeyType {
+	switch e {
+	case policy.Algorithm_ALGORITHM_EC_P256:
+		return ocrypto.EC256Key
+	case policy.Algorithm_ALGORITHM_EC_P384:
+		return ocrypto.EC384Key
+	case policy.Algorithm_ALGORITHM_EC_P521:
+		return ocrypto.EC521Key
+	case policy.Algorithm_ALGORITHM_RSA_2048:
+		return ocrypto.RSA2048Key
+	case policy.Algorithm_ALGORITHM_RSA_4096:
+		return ocrypto.KeyType("rsa:4096")
+	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
+		return ocrypto.KeyType("")
+	default:
+		return ocrypto.KeyType("")
+	}
+}
+
+func storeKeysToCache(kases []*policy.KeyAccessServer, keys []*policy.SimpleKasKey, c *kasKeyCache, kc *rlKeyCache) {
 	for _, kas := range kases {
 		keys := kas.GetPublicKey().GetCached().GetKeys()
 		if len(keys) == 0 {
@@ -477,6 +530,29 @@ func storeKeysToCache(kases []*policy.KeyAccessServer, keys []*policy.SimpleKasK
 				Algorithm: algProto2String(ki.GetAlg()),
 				PublicKey: ki.GetPem(),
 			})
+
+			// Store in rlKeyCache if sufficient information is available
+			// (KID and PEM must not be empty)
+			if kc != nil && ki.GetKid() != "" && ki.GetPem() != "" {
+				rl, err := NewResourceLocator(kas.GetUri())
+				if err != nil {
+					slog.Debug("failed to create ResourceLocator",
+						slog.String("kas", kas.GetUri()),
+						slog.Any("error", err),
+					)
+					continue
+				}
+				rl.identifier = ki.GetKid()
+				kc.c[*rl] = &policy.SimpleKasKey{
+					KasUri: kas.GetUri(),
+					PublicKey: &policy.SimpleKasPublicKey{
+						Algorithm: convertAlgEnum2Simple(ki.GetAlg()),
+						Pem:       ki.GetPem(),
+						Kid:       ki.GetKid(),
+					},
+					KasId: kas.GetId(),
+				}
+			}
 		}
 	}
 	for _, key := range keys {
@@ -490,6 +566,20 @@ func storeKeysToCache(kases []*policy.KeyAccessServer, keys []*policy.SimpleKasK
 			Algorithm: alg,
 			PublicKey: key.GetPublicKey().GetPem(),
 		})
+
+		// Store in rlKeyCache if provided
+		if kc != nil && key.GetPublicKey().GetKid() != "" && key.GetPublicKey().GetPem() != "" {
+			rl, err := NewResourceLocator(key.GetKasUri())
+			if err != nil {
+				slog.Debug("failed to create ResourceLocator",
+					slog.String("kas", key.GetKasUri()),
+					slog.Any("error", err),
+				)
+				continue
+			}
+			rl.identifier = key.GetPublicKey().GetKid()
+			kc.c[*rl] = key
+		}
 	}
 }
 
@@ -501,6 +591,7 @@ func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (gr
 		grantTable: make(map[string]*keyAccessGrant),
 		mapTable:   make(map[string][]*ResourceLocator),
 		tags:       make([]AttributeValueFQN, len(attrs)),
+		keyCache:   &rlKeyCache{c: make(map[ResourceLocator]*policy.SimpleKasKey)},
 	}
 	for i, v := range attrs {
 		fqn, err := NewAttributeValueFQN(v.GetFqn())
@@ -518,16 +609,16 @@ func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (gr
 		}
 
 		if grants.addAllGrants(fqn, v, def) != noKeysFound {
-			storeKeysToCache(v.GetGrants(), v.GetKasKeys(), keyCache)
+			storeKeysToCache(v.GetGrants(), v.GetKasKeys(), keyCache, grants.keyCache)
 			continue
 		}
 		// If no more specific grant was found, then add the attr grants
 		if grants.addAllGrants(fqn, def, def) != noKeysFound {
-			storeKeysToCache(def.GetGrants(), def.GetKasKeys(), keyCache)
+			storeKeysToCache(def.GetGrants(), def.GetKasKeys(), keyCache, grants.keyCache)
 			continue
 		}
 		grants.addAllGrants(fqn, namespace, def)
-		storeKeysToCache(namespace.GetGrants(), namespace.GetKasKeys(), keyCache)
+		storeKeysToCache(namespace.GetGrants(), namespace.GetKasKeys(), keyCache, grants.keyCache)
 	}
 
 	return grants, nil
@@ -608,7 +699,7 @@ func (r granter) plan(defaultKas []string, genSplitID func() string) ([]keySplit
 	return p, nil
 }
 
-func (r granter) resolveTemplate(genSplitID func() string) ([]kaoTpl, error) {
+func (r granter) resolveTemplate(ctx context.Context, genSplitID func() string) ([]kaoTpl, error) {
 	b := r.constructAttributeBoolean()
 	k, err := r.assignKeysTo(*b)
 	if err != nil {
@@ -627,7 +718,30 @@ func (r granter) resolveTemplate(genSplitID func() string) ([]kaoTpl, error) {
 			splitID = genSplitID()
 		}
 		for _, o := range v.values {
-			p = append(p, kaoTpl{keySplitStep{KAS: o.KASURI(), SplitID: splitID}, o.ID()})
+			if o.ID() == "" && r.keyInfoFetcher != nil {
+				// No Key ID, guess what it should be.
+				kpub, err := r.keyInfoFetcher.getPublicKey(ctx, o.KASURI(), "", "")
+				if err != nil {
+					return nil, fmt.Errorf("failed to fetch public key for resource locator [%s]: %w", o, err)
+				}
+				o.identifier = kpub.KID
+				// Convert the string algorithm to the appropriate enum
+				algEnum := convertStringToAlgorithm(kpub.Algorithm)
+				r.keyCache.c[*o] = &policy.SimpleKasKey{
+					KasUri: o.KASURI(),
+					PublicKey: &policy.SimpleKasPublicKey{
+						Algorithm: algEnum,
+						Pem:       kpub.PublicKey,
+						Kid:       kpub.KID,
+					},
+				}
+			}
+			kpub, ok := r.keyCache.c[*o]
+			if !ok || kpub.GetPublicKey() == nil || kpub.GetPublicKey().GetPem() == "" {
+				return nil, fmt.Errorf("no key found for resource locator [%s]", o)
+			}
+			algorithm := algProto2OcryptoKeyType(kpub.GetPublicKey().GetAlgorithm())
+			p = append(p, kaoTpl{o.KASURI(), splitID, o.ID(), kpub.GetPublicKey().GetPem(), algorithm})
 		}
 	}
 	return p, nil
@@ -765,7 +879,7 @@ func (r *granter) assignKeysTo(e attributeBooleanExpression) (booleanKeyExpressi
 	for _, clause := range e.must {
 		kcv := make([]*ResourceLocator, 0, len(clause.values))
 		for _, term := range clause.values {
-			mv, ok := r.mapTable[term.String()]
+			mv, ok := r.mapTable[term.key]
 			if ok {
 				for _, rl := range mv {
 					kcv = append(kcv, rl)
@@ -881,9 +995,7 @@ func (e booleanKeyExpression) reduce() booleanKeyExpression {
 	values := make([]keyClause, len(conjunction))
 	for i, d := range conjunction {
 		pki := make([]*ResourceLocator, len(d))
-		for j, k := range d {
-			pki[j] = k
-		}
+		copy(pki, d)
 		values[i] = keyClause{
 			operator: anyOf,
 			values:   pki,

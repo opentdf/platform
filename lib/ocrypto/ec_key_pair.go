@@ -23,6 +23,7 @@ type KeyType string
 
 const (
 	RSA2048Key KeyType = "rsa:2048"
+	RSA4096Key KeyType = "rsa:4096"
 	EC256Key   KeyType = "ec:secp256r1"
 	EC384Key   KeyType = "ec:secp384r1"
 	EC521Key   KeyType = "ec:secp521r1"
@@ -347,7 +348,7 @@ func ECPrivateKeyFromPem(privateECKeyInPem []byte) (*ecdh.PrivateKey, error) {
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("x509.ParsePKCS8PrivateKey failed: %w", err)
+		return nil, fmt.Errorf("ec x509.ParsePKCS8PrivateKey failed: %w", err)
 	}
 
 	switch privateKey := priv.(type) {

@@ -293,16 +293,16 @@ func convertAlgEnum2Simple(a policy.KasPublicKeyAlgEnum) policy.Algorithm {
 
 // convertStringToAlgorithm converts a string algorithm representation to policy.Algorithm
 func convertStringToAlgorithm(alg string) policy.Algorithm {
-	switch strings.ToLower(alg) {
-	case "ec:secp256r1":
+	switch ocrypto.KeyType(strings.ToLower(alg)) {
+	case ocrypto.EC256Key:
 		return policy.Algorithm_ALGORITHM_EC_P256
-	case "ec:secp384r1":
+	case ocrypto.EC384Key:
 		return policy.Algorithm_ALGORITHM_EC_P384
-	case "ec:secp521r1":
+	case ocrypto.EC521Key:
 		return policy.Algorithm_ALGORITHM_EC_P521
-	case "rsa:2048":
+	case ocrypto.RSA2048Key:
 		return policy.Algorithm_ALGORITHM_RSA_2048
-	case "rsa:4096":
+	case RSA4096Key:
 		return policy.Algorithm_ALGORITHM_RSA_4096
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
@@ -481,15 +481,15 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkcon
 func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 	switch e {
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1:
-		return "ec:secp256r1"
+		return string(ocrypto.EC256Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1:
-		return "ec:secp384r1"
+		return string(ocrypto.EC384Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1:
-		return "ec:secp521r1"
+		return string(ocrypto.EC521Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048:
-		return "rsa:2048"
+		return string(ocrypto.RSA2048Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096:
-		return "rsa:4096"
+		return string(RSA4096Key)
 	case policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED:
 		return ""
 	}
@@ -507,7 +507,7 @@ func algProto2OcryptoKeyType(e policy.Algorithm) ocrypto.KeyType {
 	case policy.Algorithm_ALGORITHM_RSA_2048:
 		return ocrypto.RSA2048Key
 	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return ocrypto.KeyType("rsa:4096")
+		return RSA4096Key
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		return ocrypto.KeyType("")
 	default:

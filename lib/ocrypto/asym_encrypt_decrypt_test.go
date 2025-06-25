@@ -19,7 +19,8 @@ func TestAsymEncryptionAndDecryption(t *testing.T) {
 		salt       []byte
 		info       []byte
 	}{
-		{"Test 2048 key",
+		{
+			"Test 2048 key",
 			`-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCu8piKYWnESnnx
 kZOCJo9FgTOuKRNncY/QqFYhitAUBtZ0TSq9JL7wvFxQNCiKwWTW7HUI72K5SXJl

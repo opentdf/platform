@@ -51,7 +51,7 @@ type KeyPair interface {
 
 func NewKeyPair(kt KeyType) (KeyPair, error) {
 	switch kt {
-	case RSA2048Key:
+	case RSA2048Key, RSA4096Key:
 		bits, err := RSAKeyTypeToBits(kt)
 		if err != nil {
 			return nil, err

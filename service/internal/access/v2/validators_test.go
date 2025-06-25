@@ -3,6 +3,7 @@ package access
 import (
 	"testing"
 
+	"github.com/opentdf/platform/lib/identifier"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -552,7 +553,7 @@ func TestValidateGetDecisionRegisteredResource(t *testing.T) {
 			registeredResourceValueFQN: "invalid-fqn",
 			action:                     validAction,
 			resources:                  validResources,
-			wantErr:                    nil, // The actual error is from identifier.Parse
+			wantErr:                    identifier.ErrInvalidFQNFormat,
 		},
 		{
 			name:                       "Empty action name",
@@ -582,9 +583,6 @@ func TestValidateGetDecisionRegisteredResource(t *testing.T) {
 			err := validateGetDecisionRegisteredResource(tt.registeredResourceValueFQN, tt.action, tt.resources)
 			if tt.wantErr != nil {
 				require.ErrorIs(t, err, tt.wantErr)
-			} else if tt.name == "Invalid registered resource value FQN" {
-				// For the invalid FQN case, we expect an error but don't check the specific error type
-				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
 			}

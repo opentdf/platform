@@ -424,7 +424,9 @@ func (t *TDFObject) Manifest() Manifest {
 }
 
 func (t *TDFObject) PayloadKey() []byte {
-	return t.payloadKey[:]
+	key := make([]byte, len(t.payloadKey))
+	copy(key, t.payloadKey[:])
+	return key
 }
 
 func (r *Reader) Manifest() Manifest {

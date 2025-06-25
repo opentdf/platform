@@ -176,7 +176,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	}
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
-	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN /* action, */, resources)
+	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN, action, resources)
 	if err != nil {
 		return nil, fmt.Errorf("error getting decisionable attributes: %w", err)
 	}
@@ -250,7 +250,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	}
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
-	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN /*action, */, resources)
+	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN, action, resources)
 	if err != nil {
 		return nil, fmt.Errorf("error getting decisionable attributes: %w", err)
 	}

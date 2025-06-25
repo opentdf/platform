@@ -7,7 +7,7 @@ services:
     - ./keys/localhost.crt:/etc/x509/tls/localhost.crt
     - ./keys/localhost.key:/etc/x509/tls/localhost.key
     - ./keys/ca.jks:/truststore/truststore.jks
-    image: keycloak/keycloak:25.0
+    image: keycloak/keycloak:26.2
     restart: always
     command:
     - "start-dev"

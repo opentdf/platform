@@ -517,7 +517,11 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 			Algorithm: string(tpl.algorithm),
 		}
 		if ki.PublicKey == "" {
-			k, err := s.getPublicKey(ctx, tpl.KAS, ki.Algorithm, tpl.kid)
+			a := ki.Algorithm
+			if a == "" {
+				a = string(tdfConfig.preferredKeyWrapAlg)
+			}
+			k, err := s.getPublicKey(ctx, tpl.KAS, a, tpl.kid)
 			if err != nil {
 				return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", tpl.KAS, err)
 			}

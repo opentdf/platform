@@ -102,22 +102,6 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	return c, nil
 }
 
-func generateKeyPair(kt ocrypto.KeyType) (string, string, error) {
-	keyPair, err := ocrypto.NewKeyPair(kt)
-	if err != nil {
-		return "", "", fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
-	}
-	publicKey, err := keyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return "", "", fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
-	}
-	privateKey, err := keyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		return "", "", fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
-	}
-	return publicKey, privateKey, nil
-}
-
 // WithDataAttributes appends the given data attributes to the bound policy
 func WithDataAttributes(attributes ...string) TDFOption {
 	return func(c *TDFConfig) error {
@@ -238,7 +222,7 @@ func WithAutoconfigure(enable bool) TDFOption {
 	}
 }
 
-// DEPRECATED: WithWrappingKeyAlg sets the key type for the TDF wrapping key for both storage and transit.
+// Deprecated: WithWrappingKeyAlg sets the key type for the TDF wrapping key for both storage and transit.
 func WithWrappingKeyAlg(keyType ocrypto.KeyType) TDFOption {
 	return func(c *TDFConfig) error {
 		if keyType == "" {

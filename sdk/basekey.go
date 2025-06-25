@@ -26,7 +26,7 @@ func getKasKeyAlg(alg string) policy.Algorithm {
 	switch alg {
 	case string(ocrypto.RSA2048Key):
 		return policy.Algorithm_ALGORITHM_RSA_2048
-	case rsa4096:
+	case "rsa:4096":
 		return policy.Algorithm_ALGORITHM_RSA_4096
 	case string(ocrypto.EC256Key):
 		return policy.Algorithm_ALGORITHM_EC_P256
@@ -45,7 +45,7 @@ func formatAlg(alg policy.Algorithm) (string, error) {
 	case policy.Algorithm_ALGORITHM_RSA_2048:
 		return string(ocrypto.RSA2048Key), nil
 	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return rsa4096, nil
+		return "rsa:4096", nil
 	case policy.Algorithm_ALGORITHM_EC_P256:
 		return string(ocrypto.EC256Key), nil
 	case policy.Algorithm_ALGORITHM_EC_P384:

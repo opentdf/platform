@@ -698,7 +698,7 @@ func (r granter) plan(defaultKas []string, genSplitID func() string) ([]keySplit
 	return p, nil
 }
 
-func (r granter) resolveTemplate(ctx context.Context, genSplitID func() string) ([]kaoTpl, error) {
+func (r granter) resolveTemplate(ctx context.Context, kaoKeyAlg string, genSplitID func() string) ([]kaoTpl, error) {
 	b := r.constructAttributeBoolean()
 	k, err := r.assignKeysTo(*b)
 	if err != nil {
@@ -719,7 +719,7 @@ func (r granter) resolveTemplate(ctx context.Context, genSplitID func() string) 
 		for _, o := range v.values {
 			if o.ID() == "" && r.keyInfoFetcher != nil {
 				// No Key ID, guess what it should be.
-				kpub, err := r.keyInfoFetcher.getPublicKey(ctx, o.KASURI(), "", "")
+				kpub, err := r.keyInfoFetcher.getPublicKey(ctx, o.KASURI(), kaoKeyAlg, "")
 				if err != nil {
 					return nil, fmt.Errorf("failed to fetch public key for resource locator [%s]: %w", o, err)
 				}

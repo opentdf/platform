@@ -395,7 +395,7 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 
 		switch g.typ {
 		case mappedFound:
-			tdfConfig.kaoTemplate, err = g.resolveTemplate(ctx, uuidSplitIDGenerator)
+			tdfConfig.kaoTemplate, err = g.resolveTemplate(ctx, string(tdfConfig.preferredKeyWrapAlg), uuidSplitIDGenerator)
 		case grantsFound:
 			tdfConfig.kaoTemplate = nil
 			tdfConfig.splitPlan, err = g.plan(make([]string, 0), uuidSplitIDGenerator)
@@ -433,7 +433,7 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 		for i, splitInfo := range tdfConfig.splitPlan {
 			kasInfo, ok := latestKASInfo[splitInfo.KAS]
 			if !ok {
-				k, err := s.getPublicKey(ctx, splitInfo.KAS, "", "")
+				k, err := s.getPublicKey(ctx, splitInfo.KAS, string(tdfConfig.preferredKeyWrapAlg), "")
 				if err != nil {
 					return fmt.Errorf("unable to retrieve public key from KAS at [%s]: %w", splitInfo.KAS, err)
 				}
@@ -1484,10 +1484,10 @@ func populateKasInfoFromBaseKey(key *policy.SimpleKasKey, tdfConfig *TDFConfig) 
 	}
 
 	// ? Maybe we shouldn't overwrite the key type
-	if tdfConfig.keyType != ocrypto.KeyType(algoString) {
+	if tdfConfig.wrappingKeyAlg != ocrypto.KeyType(algoString) {
 		slog.Warn("base key is enabled, setting key type", slog.String("key_type", algoString))
 	}
-	tdfConfig.keyType = ocrypto.KeyType(algoString)
+	tdfConfig.wrappingKeyAlg = ocrypto.KeyType(algoString)
 	tdfConfig.splitPlan = nil
 	if len(tdfConfig.kasInfoList) > 0 {
 		slog.Warn("base key is enabled, overwriting kasInfoList with base key info")

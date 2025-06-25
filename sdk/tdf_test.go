@@ -1948,8 +1948,8 @@ func (s *TDFSuite) Test_Autoconfigure() {
 
 func (s *TDFSuite) Test_PopulateBaseKey_Success() {
 	tdfConfig := &TDFConfig{
-		keyType:     ocrypto.RSA2048Key,
-		kasInfoList: []KASInfo{},
+		wrappingKeyAlg: ocrypto.RSA2048Key,
+		kasInfoList:    []KASInfo{},
 	}
 
 	baseKey := policy.SimpleKasKey{
@@ -1974,7 +1974,7 @@ func (s *TDFSuite) Test_PopulateBaseKey_Success() {
 	s.Require().Equal(baseKeyKID, tdfConfig.kasInfoList[0].KID, "KAS KID should match")
 	s.Require().Equal(string(ocrypto.RSA2048Key), tdfConfig.kasInfoList[0].Algorithm, "Algorithm should match")
 	s.Require().Equal(mockRSAPublicKey1, tdfConfig.kasInfoList[0].PublicKey, "Public key should match")
-	s.Require().Equal(ocrypto.KeyType("rsa:2048"), tdfConfig.keyType, "Key type should be set")
+	s.Require().Equal(ocrypto.KeyType("rsa:2048"), tdfConfig.wrappingKeyAlg, "Key type should be set")
 }
 
 func rotateKey(k *FakeKas, kid, private, public string) func() {

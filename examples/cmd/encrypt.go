@@ -99,7 +99,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
 		if !autoconfigure {
 			opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
-			opts = append(opts, sdk.WithWrappingKeyAlg(ocrypto.EC256Key))
 			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{
 					URL:       baseKasURL,
@@ -111,7 +110,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			opts = append(opts, sdk.WithWrappingKeyAlg(kt))
+			opts = append(opts, sdk.WithPreferredKeyWrapAlg(kt))
 		}
 		tdf, err := client.CreateTDF(out, in, opts...)
 		if err != nil {

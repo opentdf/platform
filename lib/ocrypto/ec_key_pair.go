@@ -41,6 +41,7 @@ const (
 	ECCurveP384Size = 384
 	ECCurveP521Size = 521
 	RSA2048Size     = 2048
+	RSA4096Size     = 4096
 )
 
 type KeyPair interface {
@@ -83,7 +84,7 @@ func IsECKeyType(kt KeyType) bool {
 
 func IsRSAKeyType(kt KeyType) bool {
 	switch kt { //nolint:exhaustive // only handle rsa types
-	case RSA2048Key:
+	case RSA2048Key, RSA4096Key:
 		return true
 	default:
 		return false
@@ -156,6 +157,8 @@ func RSAKeyTypeToBits(kt KeyType) (int, error) {
 	switch kt { //nolint:exhaustive // only handle rsa types
 	case RSA2048Key:
 		return RSA2048Size, nil
+	case RSA4096Key:
+		return RSA4096Size, nil
 	default:
 		return 0, fmt.Errorf("unsupported type: %v", kt)
 	}

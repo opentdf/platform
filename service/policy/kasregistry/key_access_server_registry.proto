@@ -403,7 +403,7 @@ message CreateKeyRequest {
   Algorithm key_algorithm = 3 [(buf.validate.field).cel = {
     id: "key_algorithm_defined"
     message: "The key_algorithm must be one of the defined values."
-    expression: "this in [1, 2, 3, 4]" // Allow ALGORITHM_EC_P256, ALGORITHM_RSA_2048, ALGORITHM_X25519, ALGORITHM_AES_256_GCM
+    expression: "this in [1, 2, 3, 4, 5]" // Allow ALGORITHM_EC_P256, ALGORITHM_RSA_2048, ALGORITHM_X25519, ALGORITHM_AES_256_GCM
   }]; // The algorithm to be used for the key
   // Required
   KeyMode key_mode = 4 [(buf.validate.field).cel = {
@@ -545,7 +545,7 @@ message RotateKeyRequest {
     Algorithm algorithm = 2 [(buf.validate.field).cel = {
       id: "key_algorithm_defined"
       message: "The key_algorithm must be one of the defined values."
-      expression: "this in [1, 2, 3, 4]" // Allow ALGORITHM_EC_P256, ALGORITHM_RSA_2048, ALGORITHM_X25519, ALGORITHM_AES_256_GCM
+      expression: "this in [1, 2, 3, 4, 5]" // Allow ALGORITHM_EC_P256, ALGORITHM_RSA_2048, ALGORITHM_X25519, ALGORITHM_AES_256_GCM
     }];
     // Required
     KeyMode key_mode = 3 [
@@ -553,7 +553,7 @@ message RotateKeyRequest {
       (buf.validate.field).cel = {
         id: "new_key_mode_defined"
         message: "The new key_mode must be one of the defined values (1-4)."
-        expression: "this in [1, 2, 3, 4]" // Allow all defined modes
+        expression: "this in [1, 2, 3, 4, 5]" // Allow all defined modes
       }
     ];
     // Required

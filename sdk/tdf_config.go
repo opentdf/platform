@@ -77,7 +77,8 @@ type TDFConfig struct {
 	kasInfoList                []KASInfo
 	kaoTemplate                []kaoTpl
 	splitPlan                  []keySplitStep
-	keyType                    ocrypto.KeyType
+	preferredKeyWrapAlg        ocrypto.KeyType
+	wrappingKeyAlg             ocrypto.KeyType
 	useHex                     bool
 	excludeVersionFromManifest bool
 	addDefaultAssertion        bool
@@ -91,7 +92,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		tdfFormat:                 JSONFormat,
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
-		keyType:                   ocrypto.RSA2048Key, // default to RSA
+		wrappingKeyAlg:            ocrypto.RSA2048Key, // default to RSA
 		addDefaultAssertion:       false,
 	}
 
@@ -102,7 +103,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		}
 	}
 
-	publicKey, privateKey, err := generateKeyPair(c.keyType)
+	publicKey, privateKey, err := generateKeyPair(c.wrappingKeyAlg)
 	if err != nil {
 		return nil, err
 	}
@@ -249,12 +250,19 @@ func WithAutoconfigure(enable bool) TDFOption {
 	}
 }
 
+func WithPreferredKeyWrapAlg(keyType ocrypto.KeyType) TDFOption {
+	return func(c *TDFConfig) error {
+		c.preferredKeyWrapAlg = keyType
+		return nil
+	}
+}
+
 func WithWrappingKeyAlg(keyType ocrypto.KeyType) TDFOption {
 	return func(c *TDFConfig) error {
-		if c.keyType == "" {
+		if keyType == "" {
 			return errors.New("key type missing")
 		}
-		c.keyType = keyType
+		c.wrappingKeyAlg = keyType
 		return nil
 	}
 }

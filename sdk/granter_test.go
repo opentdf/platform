@@ -757,6 +757,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			j := 0
 			tpl, err := reasoner.resolveTemplate(
 				t.Context(),
+				"",
 				func() string {
 					j++
 					return strconv.Itoa(j)

@@ -65,8 +65,6 @@ type TDFConfig struct {
 	defaultSegmentSize         int64
 	enableEncryption           bool
 	tdfFormat                  TDFFormat
-	tdfPublicKey               string // TODO: Remove it
-	tdfPrivateKey              string
 	metaData                   string
 	mimeType                   string
 	integrityAlgorithm         IntegrityAlgorithm
@@ -78,7 +76,6 @@ type TDFConfig struct {
 	kaoTemplate                []kaoTpl
 	splitPlan                  []keySplitStep
 	preferredKeyWrapAlg        ocrypto.KeyType
-	wrappingKeyAlg             ocrypto.KeyType
 	useHex                     bool
 	excludeVersionFromManifest bool
 	addDefaultAssertion        bool
@@ -92,7 +89,6 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		tdfFormat:                 JSONFormat,
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
-		wrappingKeyAlg:            ocrypto.RSA2048Key, // default to RSA
 		addDefaultAssertion:       false,
 	}
 
@@ -102,14 +98,6 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 			return nil, err
 		}
 	}
-
-	publicKey, privateKey, err := generateKeyPair(c.wrappingKeyAlg)
-	if err != nil {
-		return nil, err
-	}
-
-	c.tdfPrivateKey = privateKey
-	c.tdfPublicKey = publicKey
 
 	return c, nil
 }
@@ -250,19 +238,13 @@ func WithAutoconfigure(enable bool) TDFOption {
 	}
 }
 
-func WithPreferredKeyWrapAlg(keyType ocrypto.KeyType) TDFOption {
-	return func(c *TDFConfig) error {
-		c.preferredKeyWrapAlg = keyType
-		return nil
-	}
-}
-
+// DEPRECATED: WithWrappingKeyAlg sets the key type for the TDF wrapping key for both storage and transit.
 func WithWrappingKeyAlg(keyType ocrypto.KeyType) TDFOption {
 	return func(c *TDFConfig) error {
 		if keyType == "" {
 			return errors.New("key type missing")
 		}
-		c.wrappingKeyAlg = keyType
+		c.preferredKeyWrapAlg = keyType
 		return nil
 	}
 }

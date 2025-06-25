@@ -25,7 +25,6 @@ const (
 	anyOf       = "anyOf"
 	unspecified = "unspecified"
 	emptyTerm   = "DEFAULT"
-	rsa4096     = "rsa:4096"
 )
 
 // keySplitStep represents a which KAS a split with the associated ID should be shared with.

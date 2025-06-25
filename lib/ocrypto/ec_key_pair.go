@@ -273,7 +273,7 @@ func ConvertToECDHPrivateKey(key interface{}) (*ecdh.PrivateKey, error) {
 func CalculateHKDF(salt []byte, secret []byte) ([]byte, error) {
 	hkdfObj := hkdf.New(sha256.New, secret, salt, nil)
 
-	derivedKey := make([]byte, len(secret))
+	derivedKey := make([]byte, 32) //nolint:mnd // AES-256 requires a 32-byte key
 	_, err := io.ReadFull(hkdfObj, derivedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive hkdf key: %w", err)

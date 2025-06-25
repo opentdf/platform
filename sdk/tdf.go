@@ -562,7 +562,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 				return fmt.Errorf("splitID:[%s], kas:[%s]: %w", splitID, kasInfo.URL, errKasPubKeyMissing)
 			}
 
-			keyAccess, err := createKeyAccess(tdfConfig, kasInfo, symKey, policyBinding, encryptedMetadata, splitID)
+			keyAccess, err := createKeyAccess(kasInfo, symKey, policyBinding, encryptedMetadata, splitID)
 			if err != nil {
 				return err
 			}
@@ -615,7 +615,7 @@ func encryptMetadata(symKey []byte, metaData string) (string, error) {
 	return string(ocrypto.Base64Encode(metadataJSON)), nil
 }
 
-func createKeyAccess(tdfConfig TDFConfig, kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding, encryptedMetadata, splitID string) (KeyAccess, error) {
+func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding, encryptedMetadata, splitID string) (KeyAccess, error) {
 	keyAccess := KeyAccess{
 		KeyType:           kWrapped,
 		KasURL:            kasInfo.URL,
@@ -627,8 +627,9 @@ func createKeyAccess(tdfConfig TDFConfig, kasInfo KASInfo, symKey []byte, policy
 		SchemaVersion:     keyAccessSchemaVersion,
 	}
 
-	if ocrypto.IsECKeyType(tdfConfig.keyType) {
-		mode, err := ocrypto.ECKeyTypeToMode(tdfConfig.keyType)
+	ktype := ocrypto.KeyType(kasInfo.Algorithm)
+	if ocrypto.IsECKeyType(ktype) {
+		mode, err := ocrypto.ECKeyTypeToMode(ktype)
 		if err != nil {
 			return KeyAccess{}, err
 		}

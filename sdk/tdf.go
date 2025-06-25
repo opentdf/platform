@@ -1484,10 +1484,10 @@ func populateKasInfoFromBaseKey(key *policy.SimpleKasKey, tdfConfig *TDFConfig) 
 	}
 
 	// ? Maybe we shouldn't overwrite the key type
-	if tdfConfig.wrappingKeyAlg != ocrypto.KeyType(algoString) {
+	if tdfConfig.preferredKeyWrapAlg != ocrypto.KeyType(algoString) {
 		slog.Warn("base key is enabled, setting key type", slog.String("key_type", algoString))
 	}
-	tdfConfig.wrappingKeyAlg = ocrypto.KeyType(algoString)
+	tdfConfig.preferredKeyWrapAlg = ocrypto.KeyType(algoString)
 	tdfConfig.splitPlan = nil
 	if len(tdfConfig.kasInfoList) > 0 {
 		slog.Warn("base key is enabled, overwriting kasInfoList with base key info")

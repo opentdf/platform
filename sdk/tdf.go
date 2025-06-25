@@ -169,7 +169,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, fmt.Errorf("readSeeker.Seek failed: %w", err)
 	}
 
-	tdfConfig, err := newTDFConfig(opts...)
+	tdfConfig, err := NewTDFConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("NewTDFConfig failed: %w", err)
 	}
@@ -218,7 +218,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	tdfObject := &TDFObject{}
-	err = s.prepareManifest(ctx, tdfObject, *tdfConfig)
+	err = s.PrepareManifest(ctx, tdfObject, *tdfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}
@@ -423,12 +423,16 @@ func (t *TDFObject) Manifest() Manifest {
 	return t.manifest
 }
 
+func (t *TDFObject) PayloadKey() []byte {
+	return t.payloadKey[:]
+}
+
 func (r *Reader) Manifest() Manifest {
 	return r.manifest
 }
 
 // prepare the manifest for TDF
-func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
+func (s SDK) PrepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFConfig) error { //nolint:funlen,gocognit // Better readability keeping it as is
 	manifest := Manifest{}
 
 	if !tdfConfig.excludeVersionFromManifest {

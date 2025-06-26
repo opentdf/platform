@@ -1807,7 +1807,7 @@ components:
             Required
             The new key_mode must be one of the defined values (1-4).:
             ```
-            this in [1, 2, 3, 4, 5]
+            this in [1, 2, 3, 4]
             ```
 
           $ref: '#/components/schemas/policy.KeyMode'

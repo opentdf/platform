@@ -63,6 +63,7 @@ jobs:
             kas
             authz
             examples
+            release
       # - name: "Issue Accociated with Pull Request"
       #   id: issue-associated
       #   if: contains(fromJSON('["pull_request", "pull_request_target"]'), github.event_name) && !contains(fromJSON('["dependabot[bot]", "opentdf-automation[bot]"]'), github.actor)

@@ -85,7 +85,7 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt, info []byte) (PublicKeyE
 		break
 	}
 
-	return nil, errors.New("not an supported type of public key")
+	return nil, errors.New("unsupported type of public key")
 }
 
 func newECIES(pub *ecdh.PublicKey, salt, info []byte) (ECEncryptor, error) {
@@ -108,7 +108,7 @@ func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 		break
 	}
 
-	return AsymEncryption{}, errors.New("not an supported type of public key")
+	return AsymEncryption{}, fmt.Errorf("unsupported public key type: %T", pub)
 }
 
 func getPublicPart(publicKeyInPem string) (any, error) {
@@ -211,7 +211,7 @@ func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
 
 	hkdfObj := hkdf.New(sha256.New, ikm, e.salt, e.info)
 
-	derivedKey := make([]byte, len(ikm))
+	derivedKey := make([]byte, 32) //nolint:mnd // AES-256 requires a 32-byte key
 	if _, err := io.ReadFull(hkdfObj, derivedKey); err != nil {
 		return nil, fmt.Errorf("hkdf failure: %w", err)
 	}

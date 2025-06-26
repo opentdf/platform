@@ -86,12 +86,12 @@ func (d *DelegatingKeyService) Name() string {
 func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error) {
 	keyDetails, err := d.index.FindKeyByID(ctx, keyID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to find key by ID '%s': %w", keyID, err)
 	}
 
 	manager, err := d.getKeyManager(keyDetails.System())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get key manager for system '%s': %w", keyDetails.System(), err)
 	}
 
 	return manager.Decrypt(ctx, keyDetails, ciphertext, ephemeralPublicKey)
@@ -100,12 +100,12 @@ func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier,
 func (d *DelegatingKeyService) DeriveKey(ctx context.Context, keyID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error) {
 	keyDetails, err := d.index.FindKeyByID(ctx, keyID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to find key by ID '%s': %w", keyID, err)
 	}
 
 	manager, err := d.getKeyManager(keyDetails.System())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get key manager for system '%s': %w", keyDetails.System(), err)
 	}
 
 	return manager.DeriveKey(ctx, keyDetails, ephemeralPublicKeyBytes, curve)
@@ -115,7 +115,7 @@ func (d *DelegatingKeyService) GenerateECSessionKey(ctx context.Context, ephemer
 	// Assuming a default manager for session key generation
 	manager, err := d._defKM()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get default key manager: %w", err)
 	}
 
 	return manager.GenerateECSessionKey(ctx, ephemeralPublicKey)

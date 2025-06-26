@@ -63,7 +63,6 @@ const (
 	multipleKeysKID2   = "multiple-keys-kid2"
 	multipleKeysKasURL = "http://multiple-keys-kas.com/"
 	defaultKID         = "r1"
-	r3KID              = "r3"
 )
 
 const (
@@ -1393,7 +1392,7 @@ func (s *TDFSuite) Test_TDFReader() { //nolint:gocognit // requires for testing 
 				if offset < 0 {
 					offset = len(payload) + offset
 				}
-				s.Equal(payload[offset:], string(buf.Bytes()))
+				s.Equal(payload[offset:], buf.String())
 				s.Equal(int64(len(buf.Bytes())), n)
 			}
 		}
@@ -1820,7 +1819,7 @@ func (s *TDFSuite) Test_KeyRotation() {
 			}()
 
 			tdo := s.testEncrypt(s.sdk, []TDFOption{WithKasInformation(kasInfoList...)}, plainTextFileName, tdfFileName, test)
-			s.Equal("r1", tdo.manifest.EncryptionInformation.KeyAccessObjs[0].KID)
+			s.Equal(defaultKID, tdo.manifest.EncryptionInformation.KeyAccessObjs[0].KID)
 
 			defer rotateKey(&s.kases[0], "r2", mockRSAPrivateKey2, mockRSAPublicKey2)()
 			s.testDecryptWithReader(s.sdk, tdfFileName, decryptedTdfFileName, test)
@@ -1949,8 +1948,8 @@ func (s *TDFSuite) Test_Autoconfigure() {
 
 func (s *TDFSuite) Test_PopulateBaseKey_Success() {
 	tdfConfig := &TDFConfig{
-		keyType:     ocrypto.RSA2048Key,
-		kasInfoList: []KASInfo{},
+		preferredKeyWrapAlg: ocrypto.RSA2048Key,
+		kasInfoList:         []KASInfo{},
 	}
 
 	baseKey := policy.SimpleKasKey{
@@ -1975,7 +1974,7 @@ func (s *TDFSuite) Test_PopulateBaseKey_Success() {
 	s.Require().Equal(baseKeyKID, tdfConfig.kasInfoList[0].KID, "KAS KID should match")
 	s.Require().Equal(string(ocrypto.RSA2048Key), tdfConfig.kasInfoList[0].Algorithm, "Algorithm should match")
 	s.Require().Equal(mockRSAPublicKey1, tdfConfig.kasInfoList[0].PublicKey, "Public key should match")
-	s.Require().Equal(ocrypto.KeyType("rsa:2048"), tdfConfig.keyType, "Key type should be set")
+	s.Require().Equal(ocrypto.KeyType("rsa:2048"), tdfConfig.preferredKeyWrapAlg, "Key type should be set")
 }
 
 func rotateKey(k *FakeKas, kid, private, public string) func() {
@@ -2150,7 +2149,7 @@ func (s *TDFSuite) startBackend() {
 		{kasNz, mockRSAPrivateKey3, mockRSAPublicKey3, defaultKID},
 		{kasUs, mockRSAPrivateKey1, mockRSAPublicKey1, defaultKID},
 		{baseKeyURL, mockRSAPrivateKey1, mockRSAPublicKey1, baseKeyKID},
-		{evenMoreSpecificKas, mockRSAPrivateKey1, mockRSAPublicKey1, r3KID},
+		{evenMoreSpecificKas, mockRSAPrivateKey3, mockRSAPublicKey3, "r3"},
 	}
 	fkar := &FakeKASRegistry{kases: kasesToMake, s: s}
 
@@ -2388,7 +2387,7 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 				asymDecrypt, err := ocrypto.NewAsymDecryption(kasPrivateKey)
 				f.s.Require().NoError(err, "ocrypto.NewAsymDecryption failed")
 				symmetricKey, err := asymDecrypt.Decrypt(wrappedKey)
-				f.s.Require().NoError(err, "ocrypto.Decrypt failed")
+				f.s.Require().NoError(err, "ocrypto.Decrypt failed for kao:[%s # %s (%s)] kas:[%s # %s (%s)]", kao.GetKasUrl(), kao.GetKid(), kao.GetSplitId(), f.URL, f.KID, f.Algorithm)
 				asymEncrypt, err := ocrypto.NewAsymEncryption(bodyData.GetClientPublicKey())
 				f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
 				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)

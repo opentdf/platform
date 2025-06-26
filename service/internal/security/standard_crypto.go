@@ -149,13 +149,13 @@ func loadKey(k KeyPairInfo) (any, error) {
 		}
 	}
 	switch k.Algorithm {
-	case AlgorithmECP256R1:
+	case AlgorithmECP256R1, AlgorithmECP384R1, AlgorithmECP521R1:
 		return StandardECCrypto{
 			KeyPairInfo:      k,
 			ecPrivateKeyPem:  string(privatePEM),
 			ecCertificatePEM: string(certPEM),
 		}, nil
-	case AlgorithmRSA2048:
+	case AlgorithmRSA2048, AlgorithmRSA4096:
 		asymDecryption, err := ocrypto.NewAsymDecryption(string(privatePEM))
 		if err != nil {
 			return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)

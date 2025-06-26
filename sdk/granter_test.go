@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"regexp"
 	"slices"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/sdk/sdkconnect"
@@ -149,7 +151,7 @@ func mockAttributeFor(fqn AttributeNameFQN) *policy.Attribute {
 	case MP.key:
 		g := make([]*policy.KeyAccessServer, 1)
 		g[0] = mockGrant(specifiedKas, "r1")
-		g[0].PublicKey = createPublicKey("r1", fakePem, policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048)
+		g[0].PublicKey = createPublicKey("r1", mockRSAPublicKey1, policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048)
 		return &policy.Attribute{
 			Id:        "MP",
 			Namespace: &nsOne,
@@ -225,20 +227,89 @@ func mockGrant(kas, kid string) *policy.KeyAccessServer {
 		return mockGrant(kas, "r0")
 	}
 
+	var k policy.SimpleKasPublicKey
+	switch kid {
+	case "r0":
+		k = policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			Kid:       kid,
+			Pem:       fakePem,
+		}
+	case "r1":
+		k = policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			Kid:       kid,
+			Pem:       mockRSAPublicKey1,
+		}
+	case "r2":
+		k = policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_4096,
+			Kid:       kid,
+			Pem:       mockRSAPublicKey2,
+		}
+	case "r3":
+		k = policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			Kid:       kid,
+			Pem:       mockRSAPublicKey3,
+		}
+	case "e1":
+		k = policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_EC_P256,
+			Kid:       kid,
+			Pem:       mockECPublicKey1,
+		}
+	case "e2":
+		k = policy.SimpleKasPublicKey{
+			Algorithm: policy.Algorithm_ALGORITHM_EC_P256,
+			Kid:       kid,
+			Pem:       mockECPublicKey2,
+		}
+	default:
+		panic("invalid kas kid: " + kid)
+	}
+
 	return &policy.KeyAccessServer{
 		Uri: kas,
 		Id:  kas,
 		KasKeys: []*policy.SimpleKasKey{
 			{
-				KasUri: kas,
-				PublicKey: &policy.SimpleKasPublicKey{
-					Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
-					Kid:       kid,
-					Pem:       fakePem,
-				},
+				KasUri:    kas,
+				PublicKey: &k,
 			},
 		},
 	}
+}
+
+type fakeKeyInfoFetcher struct{}
+
+func (f *fakeKeyInfoFetcher) getPublicKey(_ context.Context, kasurl, _, _ string) (*KASInfo, error) {
+	if kasurl == "" {
+		return nil, errors.New("kas URI is empty")
+	}
+
+	k := KASInfo{
+		URL: kasurl,
+	}
+
+	switch kasurl {
+	case kasAu, kasCa, kasUk, kasNz, kasUs:
+		k.PublicKey = mockRSAPublicKey1
+		k.KID = "r1"
+		k.Algorithm = "rsa:2048"
+	case kasUsHCS, kasUsSA:
+		k.PublicKey = mockRSAPublicKey2
+		k.KID = "r2"
+		k.Algorithm = "rsa:4096"
+	case lessSpecificKas:
+		k.PublicKey = mockRSAPublicKey3
+		k.KID = "r3"
+		k.Algorithm = "rsa:2048"
+	default:
+		return nil, errors.New("unexpected kas URL: " + kasurl)
+	}
+
+	return &k, nil
 }
 
 func mockSimpleKasKey(kas, kid string) *policy.SimpleKasKey {
@@ -249,13 +320,23 @@ func mockSimpleKasKey(kas, kid string) *policy.SimpleKasKey {
 		panic("invalid kas kid")
 	}
 	var alg policy.Algorithm
+	var pem string
 	switch kid {
-	case "r0", "r1", "r3":
+	case "r0":
 		alg = policy.Algorithm_ALGORITHM_RSA_2048
+		pem = fakePem
+	case "r1":
+		alg = policy.Algorithm_ALGORITHM_RSA_2048
+		pem = mockRSAPublicKey1
 	case "r2":
 		alg = policy.Algorithm_ALGORITHM_RSA_4096
+		pem = mockRSAPublicKey2
+	case "r3":
+		alg = policy.Algorithm_ALGORITHM_RSA_2048
+		pem = mockRSAPublicKey3
 	case "e1":
 		alg = policy.Algorithm_ALGORITHM_EC_P256
+		pem = mockECPublicKey1
 	default:
 		panic("invalid kas kid: " + kid)
 	}
@@ -264,7 +345,7 @@ func mockSimpleKasKey(kas, kid string) *policy.SimpleKasKey {
 		PublicKey: &policy.SimpleKasPublicKey{
 			Algorithm: alg,
 			Kid:       kid,
-			Pem:       fakePem,
+			Pem:       pem,
 		},
 	}
 }
@@ -304,10 +385,10 @@ func mockValueFor(fqn AttributeValueFQN) *policy.Value {
 			p.Grants[0] = mockGrant(kasUk, "r1")
 		case "HCS":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = mockGrant(kasUsHCS, "r1")
+			p.Grants[0] = mockGrant(kasUsHCS, "r2")
 		case "SI":
 			p.Grants = make([]*policy.KeyAccessServer, 1)
-			p.Grants[0] = mockGrant(kasUsSA, "r1")
+			p.Grants[0] = mockGrant(kasUsSA, "r2")
 		}
 
 	case REL.key:
@@ -525,9 +606,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"[DEFAULT]&(https://kas.ca/)",
 			"(https://kas.ca/)",
 			[]keySplitStep{{kasCa, ""}},
-			[]kaoTpl{
-				{keySplitStep{kasCa, ""}, ""},
-			},
+			[]kaoTpl{{kasCa, "", "r1", mockRSAPublicKey1, ocrypto.RSA2048Key}},
 		},
 		{
 			"one defaulted attr",
@@ -567,9 +646,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"[DEFAULT]&(https://kas.uk/)&(https://kas.uk/)",
 			"(https://kas.uk/)",
 			[]keySplitStep{{kasUk, ""}},
-			[]kaoTpl{
-				{keySplitStep{kasUk, ""}, ""},
-			},
+			[]kaoTpl{{kasUk, "", "r1", mockRSAPublicKey1, ocrypto.RSA2048Key}},
 		},
 		{
 			"simple with namespace",
@@ -580,7 +657,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"(https://namespace.kas.com/)",
 			[]keySplitStep{{lessSpecificKas, ""}},
 			[]kaoTpl{
-				{keySplitStep{lessSpecificKas, ""}, ""},
+				{lessSpecificKas, "", "r3", mockRSAPublicKey3, ocrypto.RSA2048Key},
 			},
 		},
 		{
@@ -592,10 +669,10 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/)&(https://si.kas.us/)",
 			[]keySplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
 			[]kaoTpl{
-				{keySplitStep{kasUk, "1"}, ""},
-				{keySplitStep{kasUs, "1"}, ""},
-				{keySplitStep{kasUsHCS, "2"}, ""},
-				{keySplitStep{kasUsSA, "3"}, ""},
+				{kasUk, "1", "r1", mockRSAPublicKey1, ocrypto.RSA2048Key},
+				{kasUs, "1", "r1", mockRSAPublicKey1, ocrypto.RSA2048Key},
+				{kasUsHCS, "2", "r2", mockRSAPublicKey2, ocrypto.KeyType("rsa:4096")},
+				{kasUsSA, "3", "r2", mockRSAPublicKey2, ocrypto.KeyType("rsa:4096")},
 			},
 		},
 		{
@@ -607,10 +684,10 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"(https://kas.uk/⋁https://kas.us/)&(https://hcs.kas.us/)&(https://si.kas.us/)",
 			[]keySplitStep{{kasUk, "1"}, {kasUs, "1"}, {kasUsHCS, "2"}, {kasUsSA, "3"}},
 			[]kaoTpl{
-				{keySplitStep{kasUk, "1"}, ""},
-				{keySplitStep{kasUs, "1"}, ""},
-				{keySplitStep{kasUsHCS, "2"}, ""},
-				{keySplitStep{kasUsSA, "3"}, ""},
+				{kasUk, "1", "r1", mockRSAPublicKey1, ocrypto.RSA2048Key},
+				{kasUs, "1", "r1", mockRSAPublicKey1, ocrypto.RSA2048Key},
+				{kasUsHCS, "2", "r2", mockRSAPublicKey2, ocrypto.KeyType("rsa:4096")},
+				{kasUsSA, "3", "r2", mockRSAPublicKey2, ocrypto.KeyType("rsa:4096")},
 			},
 		},
 		{
@@ -622,8 +699,8 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"(https://value.kas.com/)",
 			[]keySplitStep{{evenMoreSpecificKas, ""}},
 			[]kaoTpl{
-				{keySplitStep{evenMoreSpecificKas, "1"}, "e1"},
-				{keySplitStep{evenMoreSpecificKas, "1"}, "r2"},
+				{evenMoreSpecificKas, "1", "e1", mockECPublicKey1, ocrypto.EC256Key},
+				{evenMoreSpecificKas, "1", "r2", mockRSAPublicKey2, ocrypto.KeyType("rsa:4096")},
 			},
 		},
 		{
@@ -635,7 +712,7 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"(https://attr.kas.com/)",
 			[]keySplitStep{{specifiedKas, ""}},
 			[]kaoTpl{
-				{keySplitStep{specifiedKas, ""}, "r1"},
+				{specifiedKas, "", "r1", mockRSAPublicKey1, ocrypto.RSA2048Key},
 			},
 		},
 		{
@@ -647,15 +724,17 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			"(https://attr.kas.com/⋁https://value.kas.com/)",
 			[]keySplitStep{{specifiedKas, "1"}, {evenMoreSpecificKas, "1"}},
 			[]kaoTpl{
-				{keySplitStep{specifiedKas, "1"}, "r1"},
-				{keySplitStep{evenMoreSpecificKas, "1"}, "e1"},
-				{keySplitStep{evenMoreSpecificKas, "1"}, "r2"},
+				{specifiedKas, "1", "r1", mockRSAPublicKey1, ocrypto.RSA2048Key},
+				{evenMoreSpecificKas, "1", "e1", mockECPublicKey1, ocrypto.EC256Key},
+				{evenMoreSpecificKas, "1", "r2", mockRSAPublicKey2, ocrypto.KeyType("rsa:4096")},
 			},
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
 			reasoner, err := newGranterFromAttributes(newKasKeyCache(), valuesToPolicy(tc.policy...)...)
 			require.NoError(t, err)
+
+			reasoner.keyInfoFetcher = &fakeKeyInfoFetcher{}
 
 			actualAB := reasoner.constructAttributeBoolean()
 			assert.Equal(t, strings.ToLower(tc.ats), strings.ToLower(actualAB.String()))
@@ -676,10 +755,13 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 			assert.Equal(t, tc.plan, plan)
 
 			j := 0
-			tpl, err := reasoner.resolveTemplate(func() string {
-				j++
-				return strconv.Itoa(j)
-			})
+			tpl, err := reasoner.resolveTemplate(
+				t.Context(),
+				"",
+				func() string {
+					j++
+					return strconv.Itoa(j)
+				})
 			require.NoError(t, err)
 			assert.Equal(t, tc.tpl, tpl)
 		})

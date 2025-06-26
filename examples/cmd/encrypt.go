@@ -99,7 +99,6 @@ func encrypt(cmd *cobra.Command, args []string) error {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
 		if !autoconfigure {
 			opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
-			opts = append(opts, sdk.WithWrappingKeyAlg(ocrypto.EC256Key))
 			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{
 					URL:       baseKasURL,

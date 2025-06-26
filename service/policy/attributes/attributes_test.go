@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bufbuild/protovalidate-go"
+	"buf.build/go/protovalidate"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/stretchr/testify/require"
@@ -199,47 +199,6 @@ func TestCreateAttribute_ValueInvalid_Fails(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "values")
 	require.Contains(t, err.Error(), "[string.pattern]")
-}
-
-func TestAttributeKeyAccessServer_Succeeds(t *testing.T) {
-	validAttrKAS := &attributes.AttributeKeyAccessServer{
-		AttributeId:       validUUID,
-		KeyAccessServerId: validUUID,
-	}
-
-	err := getValidator().Validate(validAttrKAS)
-	require.NoError(t, err)
-}
-
-func TestAttributeKeyAccessServer_Fails(t *testing.T) {
-	bad := []struct {
-		attrID string
-		kasID  string
-	}{
-		{
-			"",
-			validUUID,
-		},
-		{
-			validUUID,
-			"",
-		},
-		{
-			"",
-			"",
-		},
-		{},
-	}
-
-	for _, test := range bad {
-		invalidAttrKAS := &attributes.AttributeKeyAccessServer{
-			AttributeId:       test.attrID,
-			KeyAccessServerId: test.kasID,
-		}
-		err := getValidator().Validate(invalidAttrKAS)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), errMessageUUID)
-	}
 }
 
 func Test_GetAttributeRequest(t *testing.T) {
@@ -468,47 +427,6 @@ func TestCreateAttributeValue_ValueMissing_Fails(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "value")
 	require.Contains(t, err.Error(), errMessageRequired)
-}
-
-func TestValueKeyAccessServer_Succeeds(t *testing.T) {
-	validValueKAS := &attributes.ValueKeyAccessServer{
-		ValueId:           validUUID,
-		KeyAccessServerId: validUUID,
-	}
-
-	err := getValidator().Validate(validValueKAS)
-	require.NoError(t, err)
-}
-
-func TestValueKeyAccessServer_Fails(t *testing.T) {
-	bad := []struct {
-		valID string
-		kasID string
-	}{
-		{
-			"",
-			validUUID,
-		},
-		{
-			validUUID,
-			"",
-		},
-		{
-			"",
-			"",
-		},
-		{},
-	}
-
-	for _, test := range bad {
-		invalidValKAS := &attributes.ValueKeyAccessServer{
-			ValueId:           test.valID,
-			KeyAccessServerId: test.kasID,
-		}
-		err := getValidator().Validate(invalidValKAS)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), errMessageUUID)
-	}
 }
 
 func Test_GetAttributeValueRequest(t *testing.T) {

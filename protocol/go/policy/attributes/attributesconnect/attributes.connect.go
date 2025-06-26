@@ -138,9 +138,14 @@ type AttributesServiceClient interface {
 	// --------------------------------------*
 	// Attribute <> Key Access Server RPCs
 	// ---------------------------------------
+	//
+	// Deprecated: do not use.
 	AssignKeyAccessServerToAttribute(context.Context, *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error)
+	// Deprecated: do not use.
 	RemoveKeyAccessServerFromAttribute(context.Context, *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error)
+	// Deprecated: do not use.
 	AssignKeyAccessServerToValue(context.Context, *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error)
+	// Deprecated: do not use.
 	RemoveKeyAccessServerFromValue(context.Context, *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error)
 	AssignPublicKeyToAttribute(context.Context, *connect.Request[attributes.AssignPublicKeyToAttributeRequest]) (*connect.Response[attributes.AssignPublicKeyToAttributeResponse], error)
 	RemovePublicKeyFromAttribute(context.Context, *connect.Request[attributes.RemovePublicKeyFromAttributeRequest]) (*connect.Response[attributes.RemovePublicKeyFromAttributeResponse], error)
@@ -208,6 +213,7 @@ func NewAttributesServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+AttributesServiceGetAttributeValueProcedure,
 			connect.WithSchema(attributesServiceGetAttributeValueMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createAttributeValue: connect.NewClient[attributes.CreateAttributeValueRequest, attributes.CreateAttributeValueResponse](
@@ -359,24 +365,32 @@ func (c *attributesServiceClient) DeactivateAttributeValue(ctx context.Context, 
 
 // AssignKeyAccessServerToAttribute calls
 // policy.attributes.AttributesService.AssignKeyAccessServerToAttribute.
+//
+// Deprecated: do not use.
 func (c *attributesServiceClient) AssignKeyAccessServerToAttribute(ctx context.Context, req *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error) {
 	return c.assignKeyAccessServerToAttribute.CallUnary(ctx, req)
 }
 
 // RemoveKeyAccessServerFromAttribute calls
 // policy.attributes.AttributesService.RemoveKeyAccessServerFromAttribute.
+//
+// Deprecated: do not use.
 func (c *attributesServiceClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error) {
 	return c.removeKeyAccessServerFromAttribute.CallUnary(ctx, req)
 }
 
 // AssignKeyAccessServerToValue calls
 // policy.attributes.AttributesService.AssignKeyAccessServerToValue.
+//
+// Deprecated: do not use.
 func (c *attributesServiceClient) AssignKeyAccessServerToValue(ctx context.Context, req *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error) {
 	return c.assignKeyAccessServerToValue.CallUnary(ctx, req)
 }
 
 // RemoveKeyAccessServerFromValue calls
 // policy.attributes.AttributesService.RemoveKeyAccessServerFromValue.
+//
+// Deprecated: do not use.
 func (c *attributesServiceClient) RemoveKeyAccessServerFromValue(ctx context.Context, req *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error) {
 	return c.removeKeyAccessServerFromValue.CallUnary(ctx, req)
 }
@@ -424,9 +438,14 @@ type AttributesServiceHandler interface {
 	// --------------------------------------*
 	// Attribute <> Key Access Server RPCs
 	// ---------------------------------------
+	//
+	// Deprecated: do not use.
 	AssignKeyAccessServerToAttribute(context.Context, *connect.Request[attributes.AssignKeyAccessServerToAttributeRequest]) (*connect.Response[attributes.AssignKeyAccessServerToAttributeResponse], error)
+	// Deprecated: do not use.
 	RemoveKeyAccessServerFromAttribute(context.Context, *connect.Request[attributes.RemoveKeyAccessServerFromAttributeRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromAttributeResponse], error)
+	// Deprecated: do not use.
 	AssignKeyAccessServerToValue(context.Context, *connect.Request[attributes.AssignKeyAccessServerToValueRequest]) (*connect.Response[attributes.AssignKeyAccessServerToValueResponse], error)
+	// Deprecated: do not use.
 	RemoveKeyAccessServerFromValue(context.Context, *connect.Request[attributes.RemoveKeyAccessServerFromValueRequest]) (*connect.Response[attributes.RemoveKeyAccessServerFromValueResponse], error)
 	AssignPublicKeyToAttribute(context.Context, *connect.Request[attributes.AssignPublicKeyToAttributeRequest]) (*connect.Response[attributes.AssignPublicKeyToAttributeResponse], error)
 	RemovePublicKeyFromAttribute(context.Context, *connect.Request[attributes.RemovePublicKeyFromAttributeRequest]) (*connect.Response[attributes.RemovePublicKeyFromAttributeResponse], error)
@@ -490,6 +509,7 @@ func NewAttributesServiceHandler(svc AttributesServiceHandler, opts ...connect.H
 		AttributesServiceGetAttributeValueProcedure,
 		svc.GetAttributeValue,
 		connect.WithSchema(attributesServiceGetAttributeValueMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
 	attributesServiceCreateAttributeValueHandler := connect.NewUnaryHandler(

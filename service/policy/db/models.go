@@ -279,7 +279,7 @@ type KeyAccessServerKey struct {
 type ProviderConfig struct {
 	// Unique identifier for the provider configuration
 	ID string `json:"id"`
-	// Name of the key provider
+	// Unique name for the key provider.
 	ProviderName string `json:"provider_name"`
 	// Configuration details for the key provider
 	Config []byte `json:"config"`
@@ -376,6 +376,8 @@ type SubjectConditionSet struct {
 	Metadata  []byte             `json:"metadata"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	// Array of cached selector values extracted from the condition JSONB and maintained via trigger.
+	SelectorValues []string `json:"selector_values"`
 }
 
 // Table to store conditions that logically entitle subject entity representations to attribute values

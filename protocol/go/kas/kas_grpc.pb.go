@@ -30,6 +30,11 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AccessServiceClient interface {
 	PublicKey(ctx context.Context, in *PublicKeyRequest, opts ...grpc.CallOption) (*PublicKeyResponse, error)
+	// Deprecated: Do not use.
+	// Endpoint intended for gRPC Gateway's REST endpoint to provide v1 compatibility with older TDF clients
+	//
+	// This endpoint is not recommended for use in new applications, prefer the v2 endpoint ('PublicKey') instead.
+	//
 	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	LegacyPublicKey(ctx context.Context, in *LegacyPublicKeyRequest, opts ...grpc.CallOption) (*wrapperspb.StringValue, error)
 	Rewrap(ctx context.Context, in *RewrapRequest, opts ...grpc.CallOption) (*RewrapResponse, error)
@@ -52,6 +57,7 @@ func (c *accessServiceClient) PublicKey(ctx context.Context, in *PublicKeyReques
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *accessServiceClient) LegacyPublicKey(ctx context.Context, in *LegacyPublicKeyRequest, opts ...grpc.CallOption) (*wrapperspb.StringValue, error) {
 	out := new(wrapperspb.StringValue)
 	err := c.cc.Invoke(ctx, AccessService_LegacyPublicKey_FullMethodName, in, out, opts...)
@@ -75,6 +81,11 @@ func (c *accessServiceClient) Rewrap(ctx context.Context, in *RewrapRequest, opt
 // for forward compatibility
 type AccessServiceServer interface {
 	PublicKey(context.Context, *PublicKeyRequest) (*PublicKeyResponse, error)
+	// Deprecated: Do not use.
+	// Endpoint intended for gRPC Gateway's REST endpoint to provide v1 compatibility with older TDF clients
+	//
+	// This endpoint is not recommended for use in new applications, prefer the v2 endpoint ('PublicKey') instead.
+	//
 	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	LegacyPublicKey(context.Context, *LegacyPublicKeyRequest) (*wrapperspb.StringValue, error)
 	Rewrap(context.Context, *RewrapRequest) (*RewrapResponse, error)

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 )
@@ -95,7 +96,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	size += uint32(resource.getLength())
 	header.kasURL = *resource
 
-	slog.Debug("NewNanoTDFHeaderFromReader", slog.Uint64("resource locator", uint64(resource.getLength())))
+	slog.Debug("checkpoint NewNanoTDFHeaderFromReader", slog.Uint64("resource_locator", uint64(resource.getLength())))
 
 	// Read ECC and Binding Mode
 	oneBytes := make([]byte, 1)
@@ -140,7 +141,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	}
 	size += uint32(l)
 	policyLength := binary.BigEndian.Uint16(twoBytes)
-	slog.Debug("NewNanoTDFHeaderFromReader", slog.Uint64("policyLength", uint64(policyLength)))
+	slog.Debug("checkpoint NewNanoTDFHeaderFromReader", slog.Uint64("policy_length", uint64(policyLength)))
 
 	// Read policy body
 	header.PolicyMode = policyMode
@@ -203,7 +204,7 @@ func NewNanoTDFHeaderFromReader(reader io.Reader) (NanoTDFHeader, uint32, error)
 	size += uint32(l)
 	header.EphemeralKey = ephemeralKey
 
-	slog.Debug("NewNanoTDFHeaderFromReader", slog.Uint64("header size", uint64(size)))
+	slog.Debug("checkpoint NewNanoTDFHeaderFromReader", slog.Uint64("header_size", uint64(size)))
 
 	return header, size, nil
 }
@@ -274,12 +275,12 @@ func (ep embeddedPolicy) writeEmbeddedPolicy(writer io.Writer) error {
 	if _, err := writer.Write(buf); err != nil {
 		return err
 	}
-	slog.Debug("writeEmbeddedPolicy", slog.Uint64("policy length", uint64(ep.lengthBody)))
+	slog.Debug("writeEmbeddedPolicy", slog.Uint64("policy_length", uint64(ep.lengthBody)))
 
 	if _, err := writer.Write(ep.body); err != nil {
 		return err
 	}
-	slog.Debug("writeEmbeddedPolicy", slog.Uint64("policy body", uint64(len(ep.body))))
+	slog.Debug("writeEmbeddedPolicy", slog.Uint64("policy_body", uint64(len(ep.body))))
 
 	return nil
 }
@@ -616,7 +617,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 	}
 	totalBytes += uint32(l)
 
-	slog.Debug("writeNanoTDFHeader", slog.Uint64("magic number", uint64(len(kNanoTDFMagicStringAndVersion))))
+	slog.Debug("writeNanoTDFHeader", slog.Uint64("magic_number", uint64(len(kNanoTDFMagicStringAndVersion))))
 
 	// Write the kas url
 	err = config.kasURL.writeResourceLocator(writer)
@@ -624,7 +625,7 @@ func writeNanoTDFHeader(writer io.Writer, config NanoTDFConfig) ([]byte, uint32,
 		return nil, 0, 0, err
 	}
 	totalBytes += uint32(config.kasURL.getLength())
-	slog.Debug("writeNanoTDFHeader", slog.Uint64("resource locator number", uint64(config.kasURL.getLength())))
+	slog.Debug("writeNanoTDFHeader", slog.Uint64("resource_locator_number", uint64(config.kasURL.getLength())))
 
 	// Write ECC And Binding Mode
 	l, err = writer.Write([]byte{serializeBindingCfg(config.bindCfg)})
@@ -787,24 +788,9 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, errors.New("exceeds max size for nano tdf")
 	}
 
-	kasURL, err := config.kasURL.GetURL()
+	ki, err := getKasInfoForNanoTDF(&s, &config)
 	if err != nil {
-		return 0, fmt.Errorf("config.kasURL failed:%w", err)
-	}
-	if kasURL == "https://" || kasURL == "http://" {
-		return 0, errors.New("config.kasUrl is empty")
-	}
-	ki, err := s.getPublicKey(context.Background(), kasURL, config.bindCfg.eccMode.String())
-	if err != nil {
-		return 0, fmt.Errorf("getECPublicKey failed:%w", err)
-	}
-
-	// update KAS URL with kid if set
-	if ki.KID != "" && !s.nanoFeatures.noKID {
-		err = config.kasURL.setURLWithIdentifier(kasURL, ki.KID)
-		if err != nil {
-			return 0, fmt.Errorf("getECPublicKey setURLWithIdentifier failed:%w", err)
-		}
+		return 0, fmt.Errorf("getKasInfoForNanoTDF failed: %w", err)
 	}
 
 	config.kasPublicKey, err = ocrypto.ECPubKeyFromPem([]byte(ki.PublicKey))
@@ -818,7 +804,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 		return 0, fmt.Errorf("writeNanoTDFHeader failed:%w", err)
 	}
 
-	slog.Debug("CreateNanoTDF", slog.Uint64("Header", uint64(totalSize)))
+	slog.Debug("checkpoint CreateNanoTDF", slog.Uint64("header", uint64(totalSize)))
 
 	aesGcm, err := ocrypto.NewAESGcm(key)
 	if err != nil {
@@ -860,7 +846,7 @@ func (s SDK) CreateNanoTDF(writer io.Writer, reader io.Reader, config NanoTDFCon
 	}
 	totalSize += uint32(l)
 
-	slog.Debug("CreateNanoTDF", slog.Uint64("payloadLength", uint64(len(cipherDataWithoutPadding))))
+	slog.Debug("checkpoint CreateNanoTDF", slog.Uint64("payload_length", uint64(len(cipherDataWithoutPadding))))
 
 	// write cipher data
 	l, err = writer.Write(cipherDataWithoutPadding)
@@ -898,7 +884,7 @@ func createNanoTDFDecryptHandler(reader io.ReadSeeker, writer io.Writer, opts ..
 	}, nil
 }
 
-func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
+func (n *NanoTDFDecryptHandler) CreateRewrapRequest(ctx context.Context) (map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest, error) {
 	var err error
 	var headerSize uint32
 	n.header, headerSize, err = NewNanoTDFHeaderFromReader(n.reader)
@@ -921,7 +907,7 @@ func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[stri
 	}
 
 	if n.config.ignoreAllowList {
-		slog.Warn(fmt.Sprintf("KasAllowlist is ignored, kas url %s is allowed", kasURL))
+		slog.WarnContext(ctx, "kasAllowlist is ignored, kas url is allowed", slog.String("kas_url", kasURL))
 	} else if !n.config.kasAllowlist.IsAllowed(kasURL) {
 		return nil, fmt.Errorf("KasAllowlist: kas url %s is not allowed", kasURL)
 	}
@@ -941,7 +927,7 @@ func (n *NanoTDFDecryptHandler) CreateRewrapRequest(_ context.Context) (map[stri
 	return map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest{kasURL: req}, nil
 }
 
-func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []kaoResult) (int, error) {
+func (n *NanoTDFDecryptHandler) Decrypt(ctx context.Context, result []kaoResult) (int, error) {
 	var err error
 	if len(result) != 1 {
 		return 0, errors.New("improper result from kas")
@@ -962,7 +948,7 @@ func (n *NanoTDFDecryptHandler) Decrypt(_ context.Context, result []kaoResult) (
 	}
 
 	payloadLength := binary.BigEndian.Uint32(payloadLengthBuf)
-	slog.Debug("ReadNanoTDF", slog.Uint64("payloadLength", uint64(payloadLength)))
+	slog.DebugContext(ctx, "decrypt", slog.Uint64("payload_length", uint64(payloadLength)))
 
 	cipherData := make([]byte, payloadLength)
 	_, err = n.reader.Read(cipherData)
@@ -1028,7 +1014,7 @@ func (s SDK) ReadNanoTDFContext(ctx context.Context, writer io.Writer, reader io
 			}
 			handler.config.kasAllowlist = allowList
 		} else {
-			slog.Error("No KAS allowlist provided and no KeyAccessServerRegistry available")
+			slog.ErrorContext(ctx, "no KAS allowlist provided and no KeyAccessServerRegistry available")
 			return 0, errors.New("no KAS allowlist provided and no KeyAccessServerRegistry available")
 		}
 	}
@@ -1105,4 +1091,81 @@ func createNanoTDFSymmetricKey(config NanoTDFConfig) ([]byte, error) {
 	}
 
 	return symmetricKey, nil
+}
+
+func getKasInfoForNanoTDF(s *SDK, config *NanoTDFConfig) (*KASInfo, error) {
+	var err error
+	// * Attempt to use base key if present and ECC.
+	ki, err := getNanoKasInfoFromBaseKey(s)
+	if err == nil {
+		err = updateConfigWithBaseKey(ki, config)
+		if err == nil {
+			return ki, nil
+		}
+	}
+
+	slog.Debug("getNanoKasInfoFromBaseKey failed, falling back to default kas", slog.String("error", err.Error()))
+
+	kasURL, err := config.kasURL.GetURL()
+	if err != nil {
+		return nil, fmt.Errorf("config.kasURL failed:%w", err)
+	}
+	if kasURL == "https://" || kasURL == "http://" {
+		return nil, errors.New("config.kasUrl is empty")
+	}
+	ki, err = s.getPublicKey(context.Background(), kasURL, config.bindCfg.eccMode.String(), "")
+	if err != nil {
+		return nil, fmt.Errorf("getECPublicKey failed:%w", err)
+	}
+
+	// update KAS URL with kid if set
+	if ki.KID != "" && !s.nanoFeatures.noKID {
+		err = config.kasURL.setURLWithIdentifier(kasURL, ki.KID)
+		if err != nil {
+			return nil, fmt.Errorf("getECPublicKey setURLWithIdentifier failed:%w", err)
+		}
+	}
+
+	return ki, nil
+}
+
+func updateConfigWithBaseKey(ki *KASInfo, config *NanoTDFConfig) error {
+	ecMode, err := ocrypto.ECKeyTypeToMode(ocrypto.KeyType(ki.Algorithm))
+	if err != nil {
+		return fmt.Errorf("ocrypto.ECKeyTypeToMode failed: %w", err)
+	}
+	err = config.kasURL.setURLWithIdentifier(ki.URL, ki.KID)
+	if err != nil {
+		return fmt.Errorf("config.kasURL setURLWithIdentifier failed: %w", err)
+	}
+	config.bindCfg.eccMode = ecMode
+
+	return nil
+}
+
+func getNanoKasInfoFromBaseKey(s *SDK) (*KASInfo, error) {
+	baseKey, err := getBaseKey(context.Background(), *s)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if algorithm is one of the supported EC algorithms
+	algorithm := baseKey.GetPublicKey().GetAlgorithm()
+	if algorithm != policy.Algorithm_ALGORITHM_EC_P256 &&
+		algorithm != policy.Algorithm_ALGORITHM_EC_P384 &&
+		algorithm != policy.Algorithm_ALGORITHM_EC_P521 {
+		return nil, fmt.Errorf("base key algorithm is not supported for nano: %s", algorithm)
+	}
+
+	alg, err := formatAlg(baseKey.GetPublicKey().GetAlgorithm())
+	if err != nil {
+		return nil, fmt.Errorf("formatAlg failed: %w", err)
+	}
+
+	return &KASInfo{
+		URL:       baseKey.GetKasUri(),
+		PublicKey: baseKey.GetPublicKey().GetPem(),
+		KID:       baseKey.GetPublicKey().GetKid(),
+		Algorithm: alg,
+	}, nil
 }

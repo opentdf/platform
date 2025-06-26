@@ -238,15 +238,7 @@
                 </li>
               
                 <li>
-                  <a href="#policy.KasPrivateKeyCtx"><span class="badge">M</span>KasPrivateKeyCtx</a>
-                </li>
-              
-                <li>
                   <a href="#policy.KasPublicKey"><span class="badge">M</span>KasPublicKey</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.KasPublicKeyCtx"><span class="badge">M</span>KasPublicKeyCtx</a>
                 </li>
               
                 <li>
@@ -270,7 +262,15 @@
                 </li>
               
                 <li>
+                  <a href="#policy.PrivateKeyCtx"><span class="badge">M</span>PrivateKeyCtx</a>
+                </li>
+              
+                <li>
                   <a href="#policy.PublicKey"><span class="badge">M</span>PublicKey</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.PublicKeyCtx"><span class="badge">M</span>PublicKeyCtx</a>
                 </li>
               
                 <li>
@@ -291,6 +291,14 @@
               
                 <li>
                   <a href="#policy.ResourceMappingGroup"><span class="badge">M</span>ResourceMappingGroup</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.SimpleKasKey"><span class="badge">M</span>SimpleKasKey</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.SimpleKasPublicKey"><span class="badge">M</span>SimpleKasPublicKey</a>
                 </li>
               
                 <li>
@@ -1185,14 +1193,6 @@
               
                 <li>
                   <a href="#policy.kasregistry.SetBaseKeyResponse"><span class="badge">M</span>SetBaseKeyResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.kasregistry.SimpleKasKey"><span class="badge">M</span>SimpleKasKey</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.kasregistry.SimpleKasPublicKey"><span class="badge">M</span>SimpleKasPublicKey</a>
                 </li>
               
                 <li>
@@ -2157,7 +2157,7 @@ Specifies how the key is managed (local or remote) </p></td>
               
                 <tr>
                   <td>public_key_ctx</td>
-                  <td><a href="#policy.KasPublicKeyCtx">KasPublicKeyCtx</a></td>
+                  <td><a href="#policy.PublicKeyCtx">PublicKeyCtx</a></td>
                   <td></td>
                   <td><p>Required
 
@@ -2166,7 +2166,7 @@ Specific structure based on key provider implementation </p></td>
               
                 <tr>
                   <td>private_key_ctx</td>
-                  <td><a href="#policy.KasPrivateKeyCtx">KasPrivateKeyCtx</a></td>
+                  <td><a href="#policy.PrivateKeyCtx">PrivateKeyCtx</a></td>
                   <td></td>
                   <td><p>Optional
 
@@ -2245,7 +2245,7 @@ Configuration for the key provider </p></td>
                   <td>grants</td>
                   <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
                   <td>repeated</td>
-                  <td><p>Deprecated </p></td>
+                  <td><p>Deprecated KAS grants for the attribute. Use kas_keys instead. </p></td>
                 </tr>
               
                 <tr>
@@ -2264,7 +2264,7 @@ Configuration for the key provider </p></td>
               
                 <tr>
                   <td>kas_keys</td>
-                  <td><a href="#policy.KasKey">KasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">SimpleKasKey</a></td>
                   <td>repeated</td>
                   <td><p>Keys associated with the attribute </p></td>
                 </tr>
@@ -2393,41 +2393,6 @@ subject_external_selector_value on a flattened Entity Representation
 
         
       
-        <h3 id="policy.KasPrivateKeyCtx">KasPrivateKeyCtx</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Required
-
-Key ID for the symmetric key wrapping this key. </p></td>
-                </tr>
-              
-                <tr>
-                  <td>wrapped_key</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Optional
-
-Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE. </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="policy.KasPublicKey">KasPublicKey</h3>
         <p>Deprecated</p><p>A KAS public key and some associated metadata for further identifcation</p>
 
@@ -2459,32 +2424,6 @@ Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should 
                   <td><p>A known algorithm type with any additional parameters encoded.
 To start, these may be `rsa:2048` for encrypting ZTDF files and
 `ec:secp256r1` for nanoTDF, but more formats may be added as needed. </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.KasPublicKeyCtx">KasPublicKeyCtx</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>pem</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Required
-
-Base64 encoded public key in PEM format </p></td>
                 </tr>
               
             </tbody>
@@ -2617,7 +2556,7 @@ Base64 encoded public key in PEM format </p></td>
               
                 <tr>
                   <td>kas_keys</td>
-                  <td><a href="#policy.KasKey">KasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">SimpleKasKey</a></td>
                   <td>repeated</td>
                   <td><p>Kas keys associated with this KAS </p></td>
                 </tr>
@@ -2739,14 +2678,49 @@ enable federation </p></td>
                   <td>grants</td>
                   <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
                   <td>repeated</td>
-                  <td><p>KAS grants for the namespace </p></td>
+                  <td><p>Deprecated KAS grants for the namespace. Use kas_keys instead. </p></td>
                 </tr>
               
                 <tr>
                   <td>kas_keys</td>
-                  <td><a href="#policy.KasKey">KasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">SimpleKasKey</a></td>
                   <td>repeated</td>
                   <td><p>Keys for the namespace </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.PrivateKeyCtx">PrivateKeyCtx</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+
+Key ID for the symmetric key wrapping this key. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>wrapped_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional
+
+Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE. </p></td>
                 </tr>
               
             </tbody>
@@ -2778,6 +2752,32 @@ enable federation </p></td>
                   <td><a href="#policy.KasPublicKeySet">KasPublicKeySet</a></td>
                   <td></td>
                   <td><p>public key with additional information. Current preferred version </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.PublicKeyCtx">PublicKeyCtx</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>pem</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+
+Base64 encoded public key in PEM format </p></td>
                 </tr>
               
             </tbody>
@@ -3018,6 +3018,82 @@ per namespace </p></td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
                   <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.SimpleKasKey">SimpleKasKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The URL of the Key Access Server </p></td>
+                </tr>
+              
+                <tr>
+                  <td>public_key</td>
+                  <td><a href="#policy.SimpleKasPublicKey">SimpleKasPublicKey</a></td>
+                  <td></td>
+                  <td><p>The public key of the Key that belongs to the KAS </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The ID of the Key Access Server </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.SimpleKasPublicKey">SimpleKasPublicKey</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>algorithm</td>
+                  <td><a href="#policy.Algorithm">Algorithm</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pem</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -3273,8 +3349,7 @@ per namespace </p></td>
                   <td>grants</td>
                   <td><a href="#policy.KeyAccessServer">KeyAccessServer</a></td>
                   <td>repeated</td>
-                  <td><p>Deprecated
-list of key access servers </p></td>
+                  <td><p>Deprecated KAS grants for the value. Use kas_keys instead. </p></td>
                 </tr>
               
                 <tr>
@@ -3300,7 +3375,7 @@ list of key access servers </p></td>
               
                 <tr>
                   <td>kas_keys</td>
-                  <td><a href="#policy.KasKey">KasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">SimpleKasKey</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -3587,14 +3662,8 @@ The corresponding private key is not managed or accessible by this system.</p></
               </tr>
             
               <tr>
-                <td>KEY_STATUS_INACTIVE</td>
+                <td>KEY_STATUS_ROTATED</td>
                 <td>2</td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>KEY_STATUS_COMPROMISED</td>
-                <td>3</td>
                 <td><p></p></td>
               </tr>
             
@@ -6213,7 +6282,11 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                 <td>LegacyPublicKey</td>
                 <td><a href="#kas.LegacyPublicKeyRequest">LegacyPublicKeyRequest</a></td>
                 <td><a href="#google.protobuf.StringValue">.google.protobuf.StringValue</a></td>
-                <td><p>buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
+                <td><p>Endpoint intended for gRPC Gateway&#39;s REST endpoint to provide v1 compatibility with older TDF clients
+
+This endpoint is not recommended for use in new applications, prefer the v2 endpoint (&#39;PublicKey&#39;) instead.
+
+buf:lint:ignore RPC_RESPONSE_STANDARD_NAME</p></td>
               </tr>
             
               <tr>
@@ -6226,6 +6299,27 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
           </tbody>
         </table>
 
+        
+          
+          
+          <h4>Methods with deprecated option</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Option</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              <tr>
+                <td>LegacyPublicKey</td>
+                <td><p>true</p></td>
+              </tr>
+            
+            </tbody>
+          </table>
+          
         
           
           
@@ -6323,7 +6417,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -6368,7 +6462,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -6430,7 +6524,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -6461,7 +6555,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -6499,7 +6593,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -6544,7 +6638,7 @@ Should be a PEM-encoded PKCS#8 (asn.1) value. </p></td>
                   <td>with_key_access_grants</td>
                   <td><a href="#bool">bool</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Deprecated </p></td>
                 </tr>
               
                 <tr>
@@ -7237,7 +7331,7 @@ Custom actions only: replaces the existing action name </p></td>
         
       
         <h3 id="policy.attributes.AttributeKeyAccessServer">AttributeKeyAccessServer</h3>
-        <p></p>
+        <p>Deprecated</p>
 
         
           <table class="field-table">
@@ -7302,7 +7396,7 @@ Custom actions only: replaces the existing action name </p></td>
                   <td>values</td>
                   <td><a href="#string">string</a></td>
                   <td>repeated</td>
-                  <td><p>Optional 
+                  <td><p>Optional
 Attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
 The stored attribute value will be normalized to lower case. </p></td>
                 </tr>
@@ -8468,6 +8562,42 @@ Attribute &lt;&gt; Key Access Server RPCs
         
           
           
+          <h4>Methods with deprecated option</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Option</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              <tr>
+                <td>AssignKeyAccessServerToAttribute</td>
+                <td><p>true</p></td>
+              </tr>
+            
+              <tr>
+                <td>RemoveKeyAccessServerFromAttribute</td>
+                <td><p>true</p></td>
+              </tr>
+            
+              <tr>
+                <td>AssignKeyAccessServerToValue</td>
+                <td><p>true</p></td>
+              </tr>
+            
+              <tr>
+                <td>RemoveKeyAccessServerFromValue</td>
+                <td><p>true</p></td>
+              </tr>
+            
+            </tbody>
+          </table>
+          
+        
+          
+          
           <h4>Methods with HTTP bindings</h4>
           <table>
             <thead>
@@ -8483,149 +8613,9 @@ Attribute &lt;&gt; Key Access Server RPCs
               
               
               <tr>
-                <td>ListAttributes</td>
-                <td>GET</td>
-                <td>/attributes</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>ListAttributeValues</td>
-                <td>GET</td>
-                <td>/attributes/*/values</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>GetAttribute</td>
-                <td>GET</td>
-                <td>/attributes/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
                 <td>GetAttributeValuesByFqns</td>
                 <td>GET</td>
                 <td>/attributes/*/fqn</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>CreateAttribute</td>
-                <td>POST</td>
-                <td>/attributes</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UpdateAttribute</td>
-                <td>PATCH</td>
-                <td>/attributes/{id}</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>DeactivateAttribute</td>
-                <td>DELETE</td>
-                <td>/attributes/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>GetAttributeValue</td>
-                <td>GET</td>
-                <td>/attributes/*/values/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>CreateAttributeValue</td>
-                <td>POST</td>
-                <td>/attributes/{attribute_id}/values</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UpdateAttributeValue</td>
-                <td>PATCH</td>
-                <td>/attributes/*/values/{id}</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>DeactivateAttributeValue</td>
-                <td>DELETE</td>
-                <td>/attributes/*/values/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>AssignKeyAccessServerToAttribute</td>
-                <td>POST</td>
-                <td>/attributes/keyaccessserver/grants</td>
-                <td>attribute_key_access_server</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>RemoveKeyAccessServerFromAttribute</td>
-                <td>DELETE</td>
-                <td>/attributes/keyaccessserver/grants</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>AssignKeyAccessServerToValue</td>
-                <td>POST</td>
-                <td>/attributes/values/keyaccessserver/grants</td>
-                <td>value_key_access_server</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>RemoveKeyAccessServerFromValue</td>
-                <td>DELETE</td>
-                <td>/attributes/values/keyaccessserver/grants</td>
                 <td></td>
               </tr>
               
@@ -8663,6 +8653,11 @@ Attribute &lt;&gt; Key Access Server RPCs
             
               <tr>
                 <td>GetAttributeValuesByFqns</td>
+                <td><p>NO_SIDE_EFFECTS</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetAttributeValue</td>
                 <td><p>NO_SIDE_EFFECTS</p></td>
               </tr>
             
@@ -8881,7 +8876,7 @@ The mode of the key (e.g., local or external) </p></td>
               
                 <tr>
                   <td>public_key_ctx</td>
-                  <td><a href="#policy.KasPublicKeyCtx">policy.KasPublicKeyCtx</a></td>
+                  <td><a href="#policy.PublicKeyCtx">policy.PublicKeyCtx</a></td>
                   <td></td>
                   <td><p>Required
 
@@ -8890,9 +8885,9 @@ Context or additional data specific to the public key, based on the key provider
               
                 <tr>
                   <td>private_key_ctx</td>
-                  <td><a href="#policy.KasPrivateKeyCtx">policy.KasPrivateKeyCtx</a></td>
+                  <td><a href="#policy.PrivateKeyCtx">policy.PrivateKeyCtx</a></td>
                   <td></td>
-                  <td><p>Required
+                  <td><p>Conditionally Required
 
 Context or additional data specific to the private key, based on the key provider implementation </p></td>
                 </tr>
@@ -9123,7 +9118,7 @@ Mutable metadata for the key </p></td>
               
                 <tr>
                   <td>base_key</td>
-                  <td><a href="#policy.kasregistry.SimpleKasKey">SimpleKasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">policy.SimpleKasKey</a></td>
                   <td></td>
                   <td><p>The current base key </p></td>
                 </tr>
@@ -10046,14 +10041,14 @@ Pagination request for the list of keys </p></td>
               
                 <tr>
                   <td>public_key_ctx</td>
-                  <td><a href="#policy.KasPublicKeyCtx">policy.KasPublicKeyCtx</a></td>
+                  <td><a href="#policy.PublicKeyCtx">policy.PublicKeyCtx</a></td>
                   <td></td>
                   <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>private_key_ctx</td>
-                  <td><a href="#policy.KasPrivateKeyCtx">policy.KasPrivateKeyCtx</a></td>
+                  <td><a href="#policy.PrivateKeyCtx">policy.PrivateKeyCtx</a></td>
                   <td></td>
                   <td><p>Required </p></td>
                 </tr>
@@ -10200,85 +10195,16 @@ Validation handled by message-level CEL </p></td>
               
                 <tr>
                   <td>new_base_key</td>
-                  <td><a href="#policy.kasregistry.SimpleKasKey">SimpleKasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">policy.SimpleKasKey</a></td>
                   <td></td>
                   <td><p>The key that was set as base </p></td>
                 </tr>
               
                 <tr>
                   <td>previous_base_key</td>
-                  <td><a href="#policy.kasregistry.SimpleKasKey">SimpleKasKey</a></td>
+                  <td><a href="#policy.SimpleKasKey">policy.SimpleKasKey</a></td>
                   <td></td>
                   <td><p>The previous base key, if any </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.kasregistry.SimpleKasKey">SimpleKasKey</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>kas_uri</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>The URL of the Key Access Server </p></td>
-                </tr>
-              
-                <tr>
-                  <td>public_key</td>
-                  <td><a href="#policy.kasregistry.SimpleKasPublicKey">SimpleKasPublicKey</a></td>
-                  <td></td>
-                  <td><p>The public key of the Key that belongs to the KAS </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.kasregistry.SimpleKasPublicKey">SimpleKasPublicKey</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>algorithm</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>kid</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>pem</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -10401,15 +10327,6 @@ Common metadata </p></td>
                   <td><p>Required
 
 The unique identifier of the key to update </p></td>
-                </tr>
-              
-                <tr>
-                  <td>key_status</td>
-                  <td><a href="#policy.KeyStatus">policy.KeyStatus</a></td>
-                  <td></td>
-                  <td><p>Optional
-
-The new status of the key (e.g., active, inactive) </p></td>
                 </tr>
               
                 <tr>
@@ -10635,6 +10552,27 @@ Request to create a new key in the Key Access Service.</p></td>
         
           
           
+          <h4>Methods with deprecated option</h4>
+          <table>
+            <thead>
+              <tr>
+                <td>Method Name</td>
+                <td>Option</td>
+              </tr>
+            </thead>
+            <tbody>
+            
+              <tr>
+                <td>ListKeyAccessServerGrants</td>
+                <td><p>true</p></td>
+              </tr>
+            
+            </tbody>
+          </table>
+          
+        
+          
+          
           <h4>Methods with HTTP bindings</h4>
           <table>
             <thead>
@@ -10653,56 +10591,6 @@ Request to create a new key in the Key Access Service.</p></td>
                 <td>ListKeyAccessServers</td>
                 <td>GET</td>
                 <td>/key-access-servers</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>GetKeyAccessServer</td>
-                <td>GET</td>
-                <td>/key-access-servers/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>CreateKeyAccessServer</td>
-                <td>POST</td>
-                <td>/key-access-servers</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UpdateKeyAccessServer</td>
-                <td>PATCH</td>
-                <td>/key-access-servers/{id}</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>DeleteKeyAccessServer</td>
-                <td>DELETE</td>
-                <td>/key-access-servers/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>ListKeyAccessServerGrants</td>
-                <td>GET</td>
-                <td>/key-access-servers/grants</td>
                 <td></td>
               </tr>
               
@@ -11471,7 +11359,7 @@ ACTIVE by default when not specified </p></td>
         
       
         <h3 id="policy.namespaces.NamespaceKeyAccessServer">NamespaceKeyAccessServer</h3>
-        <p></p>
+        <p>Deprecated</p>
 
         
           <table class="field-table">
@@ -11746,87 +11634,25 @@ Namespace &lt;&gt; Key RPCs
         
           
           
-          <h4>Methods with HTTP bindings</h4>
+          <h4>Methods with deprecated option</h4>
           <table>
             <thead>
               <tr>
                 <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
+                <td>Option</td>
               </tr>
             </thead>
             <tbody>
             
-              
-              
-              <tr>
-                <td>GetNamespace</td>
-                <td>GET</td>
-                <td>/attributes/namespaces/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>ListNamespaces</td>
-                <td>GET</td>
-                <td>/attributes/namespaces</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>CreateNamespace</td>
-                <td>POST</td>
-                <td>/attributes/namespaces</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UpdateNamespace</td>
-                <td>PATCH</td>
-                <td>/attributes/namespaces/{id}</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>DeactivateNamespace</td>
-                <td>DELETE</td>
-                <td>/attributes/namespaces/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
               <tr>
                 <td>AssignKeyAccessServerToNamespace</td>
-                <td>POST</td>
-                <td>/attributes/namespaces/keyaccessserver/grants</td>
-                <td>namespace_key_access_server</td>
+                <td><p>true</p></td>
               </tr>
-              
             
-              
-              
               <tr>
                 <td>RemoveKeyAccessServerFromNamespace</td>
-                <td>DELETE</td>
-                <td>/attributes/namespaces/keyaccessserver/grants</td>
-                <td></td>
+                <td><p>true</p></td>
               </tr>
-              
             
             </tbody>
           </table>
@@ -13516,134 +13342,6 @@ Common Metadata </p></td>
         
           
           
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>ListResourceMappingGroups</td>
-                <td>GET</td>
-                <td>/resource-mapping-groups</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>GetResourceMappingGroup</td>
-                <td>GET</td>
-                <td>/resource-mapping-groups/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>CreateResourceMappingGroup</td>
-                <td>POST</td>
-                <td>/resource-mapping-groups</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UpdateResourceMappingGroup</td>
-                <td>PATCH</td>
-                <td>/resource-mapping-groups/{id}</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>DeleteResourceMappingGroup</td>
-                <td>DELETE</td>
-                <td>/resource-mapping-groups/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>ListResourceMappings</td>
-                <td>GET</td>
-                <td>/resource-mappings</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>ListResourceMappingsByGroupFqns</td>
-                <td>GET</td>
-                <td>/resource-mappings/group-fqns</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>GetResourceMapping</td>
-                <td>GET</td>
-                <td>/resource-mappings/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>CreateResourceMapping</td>
-                <td>POST</td>
-                <td>/resource-mappings</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UpdateResourceMapping</td>
-                <td>PATCH</td>
-                <td>/resource-mappings/{id}</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>DeleteResourceMapping</td>
-                <td>DELETE</td>
-                <td>/resource-mappings/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
-        
-          
-          
           <h4>Methods with idempotency_level option</h4>
           <table>
             <thead>
@@ -14490,144 +14188,6 @@ Replaces entire list of actions permitted by subjects </p></td>
         
           
           
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>MatchSubjectMappings</td>
-                <td>POST</td>
-                <td>/subject-mappings/match</td>
-                <td>subject_properties</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>ListSubjectMappings</td>
-                <td>GET</td>
-                <td>/subject-mappings</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>GetSubjectMapping</td>
-                <td>GET</td>
-                <td>/subject-mappings/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>CreateSubjectMapping</td>
-                <td>POST</td>
-                <td>/subject-mappings</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UpdateSubjectMapping</td>
-                <td>PATCH</td>
-                <td>/subject-mappings/{id}</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>DeleteSubjectMapping</td>
-                <td>DELETE</td>
-                <td>/subject-mappings/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>ListSubjectConditionSets</td>
-                <td>GET</td>
-                <td>/subject-condition-sets</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>GetSubjectConditionSet</td>
-                <td>GET</td>
-                <td>/subject-condition-sets/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>CreateSubjectConditionSet</td>
-                <td>POST</td>
-                <td>/subject-condition-sets</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UpdateSubjectConditionSet</td>
-                <td>PATCH</td>
-                <td>/subject-condition-sets/{id}</td>
-                <td>*</td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>DeleteSubjectConditionSet</td>
-                <td>DELETE</td>
-                <td>/subject-condition-sets/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>DeleteAllUnmappedSubjectConditionSets</td>
-                <td>DELETE</td>
-                <td>/subject-condition-sets/unmapped</td>
-                <td></td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
-        
-          
-          
           <h4>Methods with idempotency_level option</h4>
           <table>
             <thead>
@@ -15228,7 +14788,7 @@ deleted, created, and unsafely re-ordered as necessary. </p></td>
 
       
         <h3 id="policy.unsafe.UnsafeService">UnsafeService</h3>
-        <p>Unsafe Service</p><p>/ IN FLIGHT AND NOT YET IMPLEMENTED!</p><p>/</p>
+        <p>Unsafe Service</p><p>/</p>
         <table class="enum-table">
           <thead>
             <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
@@ -15316,114 +14876,6 @@ Kas Key RPCs
           </tbody>
         </table>
 
-        
-          
-          
-          <h4>Methods with HTTP bindings</h4>
-          <table>
-            <thead>
-              <tr>
-                <td>Method Name</td>
-                <td>Method</td>
-                <td>Pattern</td>
-                <td>Body</td>
-              </tr>
-            </thead>
-            <tbody>
-            
-              
-              
-              <tr>
-                <td>UnsafeUpdateNamespace</td>
-                <td>PATCH</td>
-                <td>/unsafe/namespaces/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UnsafeReactivateNamespace</td>
-                <td>POST</td>
-                <td>/unsafe/namespaces/{id}/reactivate</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UnsafeDeleteNamespace</td>
-                <td>DELETE</td>
-                <td>/unsafe/namespaces/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UnsafeUpdateAttribute</td>
-                <td>PATCH</td>
-                <td>/unsafe/attributes/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UnsafeReactivateAttribute</td>
-                <td>POST</td>
-                <td>/unsafe/attributes/{id}/reactivate</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UnsafeDeleteAttribute</td>
-                <td>DELETE</td>
-                <td>/unsafe/attributes/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UnsafeUpdateAttributeValue</td>
-                <td>PATCH</td>
-                <td>/unsafe/attributes/values/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UnsafeReactivateAttributeValue</td>
-                <td>POST</td>
-                <td>/unsafe/attributes/values/{id}/reactivate</td>
-                <td></td>
-              </tr>
-              
-            
-              
-              
-              <tr>
-                <td>UnsafeDeleteAttributeValue</td>
-                <td>DELETE</td>
-                <td>/unsafe/attributes/values/{id}</td>
-                <td></td>
-              </tr>
-              
-            
-            </tbody>
-          </table>
-          
         
     
       

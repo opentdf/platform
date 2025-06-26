@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"log/slog"
 
 	"connectrpc.com/connect"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -21,17 +22,16 @@ const (
 )
 
 func (p *Provider) lookupKid(ctx context.Context, algorithm string) (string, error) {
-	keyIdx := p.GetKeyIndex()
-	if keyIdx != nil {
-		k, err := keyIdx.FindKeyByAlgorithm(ctx, algorithm, false)
+	if p.KeyDelegator != nil {
+		k, err := p.KeyDelegator.FindKeyByAlgorithm(ctx, algorithm, false)
 		if err == nil {
 			return string(k.ID()), nil
 		}
-		p.Logger.WarnContext(ctx, "KeyIndex.FindKeyByAlgorithm failed", "err", err)
+		p.Logger.WarnContext(ctx, "checkpoint KeyIndex.FindKeyByAlgorithm failed", slog.Any("error", err))
 	}
 
 	if len(p.Keyring) == 0 {
-		p.Logger.WarnContext(ctx, "no default keys found", "algorithm", algorithm)
+		p.Logger.WarnContext(ctx, "no default keys found", slog.String("algorithm", algorithm))
 		return "", connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("no default keys configured")))
 	}
 
@@ -40,7 +40,7 @@ func (p *Provider) lookupKid(ctx context.Context, algorithm string) (string, err
 			return k.KID, nil
 		}
 	}
-	p.Logger.WarnContext(ctx, "no (non-legacy) key for requested algorithm", "algorithm", algorithm)
+	p.Logger.WarnContext(ctx, "no (non-legacy) key for requested algorithm", slog.String("algorithm", algorithm))
 	return "", connect.NewError(connect.CodeNotFound, errors.Join(ErrConfig, errors.New("no default key for algorithm")))
 }
 
@@ -52,12 +52,6 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 	var pem string
 	var err error
 
-	// Get the security provider
-	idx := p.GetKeyIndex()
-	if idx == nil {
-		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
-	}
-
 	// Find the key ID
 	kid, err := p.lookupKid(ctx, algorithm)
 	if err != nil {
@@ -68,9 +62,9 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 	keyID := trust.KeyIdentifier(kid)
 
 	// Find the key by ID
-	keyDetails, err := idx.FindKeyByID(ctx, keyID)
+	keyDetails, err := p.KeyDelegator.FindKeyByID(ctx, keyID)
 	if err != nil {
-		p.Logger.ErrorContext(ctx, "SecurityProvider.FindKeyByID failed", "err", err)
+		p.Logger.ErrorContext(ctx, "checkpoint SecurityProvider.FindKeyByID failed", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
 	}
 
@@ -79,7 +73,7 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 		// For EC keys, return the certificate
 		pem, err = keyDetails.ExportCertificate(ctx)
 		if err != nil {
-			p.Logger.ErrorContext(ctx, "keyDetails.ExportCertificate failed", "err", err)
+			p.Logger.ErrorContext(ctx, "keyDetails.ExportCertificate failed", slog.Any("error", err))
 			return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
 		}
 	case security.AlgorithmRSA2048:
@@ -88,7 +82,7 @@ func (p *Provider) LegacyPublicKey(ctx context.Context, req *connect.Request[kas
 		// For RSA keys, return the public key in PKCS8 format
 		pem, err = keyDetails.ExportPublicKey(ctx, trust.KeyTypePKCS8)
 		if err != nil {
-			p.Logger.ErrorContext(ctx, "keyDetails.ExportPublicKey failed", "err", err)
+			p.Logger.ErrorContext(ctx, "keyDetails.ExportPublicKey failed", slog.Any("error", err))
 			return nil, connect.NewError(connect.CodeInternal, errors.Join(ErrConfig, errors.New("configuration error")))
 		}
 	default:
@@ -114,33 +108,42 @@ func (p *Provider) PublicKey(ctx context.Context, req *connect.Request[kaspb.Pub
 		return nil, err
 	}
 
-	// Get the security provider
-	idx := p.GetKeyIndex()
-	if idx == nil {
-		p.Logger.ErrorContext(ctx, "no security provider available")
-		return nil, connect.NewError(connect.CodeInternal, ErrInternal)
-	}
-
 	// Convert string KID to KeyIdentifier type
 	keyID := trust.KeyIdentifier(kid)
 
 	r := func(value, kid string, err error) (*connect.Response[kaspb.PublicKeyResponse], error) {
 		if errors.Is(err, security.ErrCertNotFound) {
-			p.Logger.ErrorContext(ctx, "no key found for", "err", err, "kid", kid, "algorithm", algorithm, "fmt", fmt)
+			p.Logger.ErrorContext(ctx,
+				"no key found for",
+				slog.String("kid", kid),
+				slog.String("algorithm", algorithm),
+				slog.String("fmt", fmt),
+				slog.Any("err", err),
+			)
 			return nil, connect.NewError(connect.CodeNotFound, security.ErrCertNotFound)
 		} else if err != nil {
-			p.Logger.ErrorContext(ctx, "configuration error for key lookup", "err", err, "kid", kid, "algorithm", algorithm, "fmt", fmt)
+			p.Logger.ErrorContext(ctx,
+				"configuration error for key lookup",
+				slog.String("kid", kid),
+				slog.String("algorithm", algorithm),
+				slog.String("fmt", fmt),
+				slog.Any("err", err),
+			)
 			return nil, connect.NewError(connect.CodeInternal, ErrInternal)
 		}
 		if req.Msg.GetV() == "1" {
-			p.Logger.WarnContext(ctx, "hiding kid in public key response for legacy client", "kid", kid, "v", req.Msg.GetV())
+			p.Logger.WarnContext(ctx,
+				"hiding kid in public key response for legacy client",
+				slog.String("kid", kid),
+				slog.String("v", req.Msg.GetV()),
+			)
 			return connect.NewResponse(&kaspb.PublicKeyResponse{PublicKey: value}), nil
 		}
 		return connect.NewResponse(&kaspb.PublicKeyResponse{PublicKey: value, Kid: kid}), nil
 	}
 
 	// Find the key by ID
-	keyDetails, err := idx.FindKeyByID(ctx, keyID)
+	keyDetails, err := p.KeyDelegator.FindKeyByID(ctx, keyID)
 	if err != nil {
 		return r("", kid, err)
 	}

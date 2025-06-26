@@ -5,6 +5,7 @@ on:
     # Run at 12:15 AM UTC (Scheduled actions are not guaranteed during times of high load like the top of the
     # hour or 00:00. See discussion: https://github.com/orgs/community/discussions/27130)
     - cron: "15 0 * * *"
+  workflow_dispatch:
 
 permissions: {}
 
@@ -15,12 +16,12 @@ jobs:
       contents: read
     steps:
       ######## CHECKOUT/SETUP PLATFORM #############
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.4.2
         with:
           fetch-depth: 0
           path: platform
           persist-credentials: false
-      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 #v5.5.0
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version-file: "platform/service/go.mod"
           check-latest: false
@@ -47,7 +48,7 @@ jobs:
         working-directory: platform
       - run: go run ./service provision fixtures
         working-directory: platform
-      - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
+      - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
         name: start server in background
         with:
           run: >
@@ -60,7 +61,7 @@ jobs:
           working-directory: platform
 
       ######## CHECKOUT/BUILD 'otdfctl' #############
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.4.2
         with:
           repository: opentdf/otdfctl
           ref: main
@@ -78,5 +79,7 @@ jobs:
         working-directory: platform
   ci-checks:
     permissions:
+      checks: write
       contents: read
+      pull-requests: read
     uses: opentdf/platform/.github/workflows/checks.yaml@main

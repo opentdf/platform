@@ -110,7 +110,10 @@ func (d *DBInterface) ExecInsert(table string, columns []string, values ...[]str
 	}
 	pconn, err := d.Client.Pgx.Exec(context.Background(), sql)
 	if err != nil {
-		slog.Error("insert error", "stmt", sql, "err", err)
+		slog.Error("insert error",
+			slog.Any("stmt", sql),
+			slog.Any("err", err),
+		)
 		return 0, err
 	}
 	return pconn.RowsAffected(), err
@@ -120,7 +123,10 @@ func (d *DBInterface) DropSchema() error {
 	sql := "DROP SCHEMA IF EXISTS " + d.Schema + " CASCADE"
 	_, err := d.Client.Pgx.Exec(context.Background(), sql)
 	if err != nil {
-		slog.Error("drop error", "stmt", sql, "err", err)
+		slog.Error("drop error",
+			slog.String("stmt", sql),
+			slog.Any("err", err),
+		)
 		return err
 	}
 	return nil

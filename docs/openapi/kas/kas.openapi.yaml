@@ -1,0 +1,503 @@
+openapi: 3.1.0
+info:
+  title: kas
+paths:
+  /kas/v2/kas_public_key:
+    get:
+      tags:
+        - kas.AccessService
+      summary: PublicKey
+      operationId: kas.AccessService.PublicKey
+      parameters:
+        - name: algorithm
+          in: query
+          schema:
+            type: string
+            title: algorithm
+        - name: fmt
+          in: query
+          schema:
+            type: string
+            title: fmt
+        - name: v
+          in: query
+          schema:
+            type: string
+            title: v
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/kas.PublicKeyResponse'
+  /kas/kas_public_key:
+    get:
+      tags:
+        - kas.AccessService
+      summary: LegacyPublicKey
+      description: |-
+        Endpoint intended for gRPC Gateway's REST endpoint to provide v1 compatibility with older TDF clients
+
+         This endpoint is not recommended for use in new applications, prefer the v2 endpoint ('PublicKey') instead.
+
+         buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+      operationId: kas.AccessService.LegacyPublicKey
+      parameters:
+        - name: algorithm
+          in: query
+          schema:
+            type: string
+            title: algorithm
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/google.protobuf.StringValue'
+  /kas/v2/rewrap:
+    post:
+      tags:
+        - kas.AccessService
+      summary: Rewrap
+      operationId: kas.AccessService.Rewrap
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/kas.RewrapRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/kas.RewrapResponse'
+components:
+  schemas:
+    google.protobuf.NullValue:
+      type: string
+      title: NullValue
+      enum:
+        - NULL_VALUE
+      description: |-
+        `NullValue` is a singleton enumeration to represent the null value for the
+         `Value` type union.
+
+         The JSON representation for `NullValue` is JSON `null`.
+    google.protobuf.ListValue:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.protobuf.Value'
+          title: values
+          description: Repeated field of dynamically typed values.
+      title: ListValue
+      additionalProperties: false
+      description: |-
+        `ListValue` is a wrapper around a repeated field of values.
+
+         The JSON representation for `ListValue` is JSON array.
+    google.protobuf.StringValue:
+      type: string
+      description: |-
+        Wrapper message for `string`.
+
+         The JSON representation for `StringValue` is JSON string.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
+    google.protobuf.Struct:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/google.protobuf.Value'
+      description: |-
+        `Struct` represents a structured data value, consisting of fields
+         which map to dynamically typed values. In some languages, `Struct`
+         might be supported by a native representation. For example, in
+         scripting languages like JS a struct is represented as an
+         object. The details of that representation are described together
+         with the proto support for the language.
+
+         The JSON representation for `Struct` is JSON object.
+    google.protobuf.Struct.FieldsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/google.protobuf.Value'
+      title: FieldsEntry
+      additionalProperties: false
+    google.protobuf.Value:
+      oneOf:
+        - type: "null"
+        - type: number
+        - type: string
+        - type: boolean
+        - type: array
+        - type: object
+          additionalProperties: true
+      description: |-
+        `Value` represents a dynamically typed value which can be either
+         null, a number, a string, a boolean, a recursive struct value, or a
+         list of values. A producer of value is expected to set one of these
+         variants. Absence of any variant indicates an error.
+
+         The JSON representation for `Value` is JSON value.
+    kas.InfoRequest:
+      type: object
+      title: InfoRequest
+      additionalProperties: false
+      description: Intentionally empty. May include features later.
+    kas.InfoResponse:
+      type: object
+      properties:
+        version:
+          type: string
+          title: version
+      title: InfoResponse
+      additionalProperties: false
+      description: Service application level metadata
+    kas.KeyAccess:
+      type: object
+      properties:
+        encryptedMetadata:
+          type: string
+          title: encrypted_metadata
+        policyBinding:
+          title: policy_binding
+          $ref: '#/components/schemas/kas.PolicyBinding'
+        protocol:
+          type: string
+          title: protocol
+        type:
+          type: string
+          title: key_type
+        url:
+          type: string
+          title: kas_url
+        kid:
+          type: string
+          title: kid
+        sid:
+          type: string
+          title: split_id
+        wrappedKey:
+          type: string
+          title: wrapped_key
+          format: byte
+        header:
+          type: string
+          title: header
+          format: byte
+          description: header is only used for NanoTDFs
+        ephemeralPublicKey:
+          type: string
+          title: ephemeral_public_key
+          description: |-
+            For wrapping with an ECDH derived key, when type=ec-wrapped.
+             Should be a PEM-encoded PKCS#8 (asn.1) value.
+      title: KeyAccess
+      additionalProperties: false
+    kas.KeyAccessRewrapResult:
+      type: object
+      oneOf:
+        - properties:
+            error:
+              type: string
+              title: error
+          title: error
+          required:
+            - error
+        - properties:
+            kasWrappedKey:
+              type: string
+              title: kas_wrapped_key
+              format: byte
+          title: kas_wrapped_key
+          required:
+            - kasWrappedKey
+      properties:
+        metadata:
+          type: object
+          title: metadata
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/google.protobuf.Value'
+        keyAccessObjectId:
+          type: string
+          title: key_access_object_id
+        status:
+          type: string
+          title: status
+      title: KeyAccessRewrapResult
+      additionalProperties: false
+    kas.KeyAccessRewrapResult.MetadataEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/google.protobuf.Value'
+      title: MetadataEntry
+      additionalProperties: false
+    kas.LegacyPublicKeyRequest:
+      type: object
+      properties:
+        algorithm:
+          type: string
+          title: algorithm
+      title: LegacyPublicKeyRequest
+      additionalProperties: false
+    kas.PolicyBinding:
+      type: object
+      properties:
+        alg:
+          type: string
+          title: algorithm
+        hash:
+          type: string
+          title: hash
+      title: PolicyBinding
+      additionalProperties: false
+    kas.PolicyRewrapResult:
+      type: object
+      properties:
+        policyId:
+          type: string
+          title: policy_id
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/kas.KeyAccessRewrapResult'
+          title: results
+      title: PolicyRewrapResult
+      additionalProperties: false
+    kas.PublicKeyRequest:
+      type: object
+      properties:
+        algorithm:
+          type: string
+          title: algorithm
+        fmt:
+          type: string
+          title: fmt
+        v:
+          type: string
+          title: v
+      title: PublicKeyRequest
+      additionalProperties: false
+    kas.PublicKeyResponse:
+      type: object
+      properties:
+        publicKey:
+          type: string
+          title: public_key
+        kid:
+          type: string
+          title: kid
+      title: PublicKeyResponse
+      additionalProperties: false
+    kas.RewrapRequest:
+      type: object
+      properties:
+        signedRequestToken:
+          type: string
+          title: signed_request_token
+      title: RewrapRequest
+      additionalProperties: false
+    kas.RewrapResponse:
+      type: object
+      properties:
+        metadata:
+          type: object
+          title: metadata
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/google.protobuf.Value'
+          deprecated: true
+        entityWrappedKey:
+          type: string
+          title: entity_wrapped_key
+          format: byte
+          deprecated: true
+        sessionPublicKey:
+          type: string
+          title: session_public_key
+        schemaVersion:
+          type: string
+          title: schema_version
+          deprecated: true
+        responses:
+          type: array
+          items:
+            $ref: '#/components/schemas/kas.PolicyRewrapResult'
+          title: responses
+          description: New Rewrap API changes
+      title: RewrapResponse
+      additionalProperties: false
+    kas.RewrapResponse.MetadataEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/google.protobuf.Value'
+      title: MetadataEntry
+      additionalProperties: false
+    kas.UnsignedRewrapRequest:
+      type: object
+      properties:
+        clientPublicKey:
+          type: string
+          title: client_public_key
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/kas.UnsignedRewrapRequest.WithPolicyRequest'
+          title: requests
+        keyAccess:
+          title: key_access
+          description: Used for legacy non-bulk requests
+          deprecated: true
+          $ref: '#/components/schemas/kas.KeyAccess'
+        policy:
+          type: string
+          title: policy
+          description: Used for legacy non-bulk requests
+          deprecated: true
+        algorithm:
+          type: string
+          title: algorithm
+          description: Used for legacy non-bulk requests
+          deprecated: true
+      title: UnsignedRewrapRequest
+      additionalProperties: false
+    kas.UnsignedRewrapRequest.WithKeyAccessObject:
+      type: object
+      properties:
+        keyAccessObjectId:
+          type: string
+          title: key_access_object_id
+        keyAccessObject:
+          title: key_access_object
+          $ref: '#/components/schemas/kas.KeyAccess'
+      title: WithKeyAccessObject
+      additionalProperties: false
+    kas.UnsignedRewrapRequest.WithPolicy:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        body:
+          type: string
+          title: body
+      title: WithPolicy
+      additionalProperties: false
+    kas.UnsignedRewrapRequest.WithPolicyRequest:
+      type: object
+      properties:
+        keyAccessObjects:
+          type: array
+          items:
+            $ref: '#/components/schemas/kas.UnsignedRewrapRequest.WithKeyAccessObject'
+          title: key_access_objects
+        policy:
+          title: policy
+          $ref: '#/components/schemas/kas.UnsignedRewrapRequest.WithPolicy'
+        algorithm:
+          type: string
+          title: algorithm
+      title: WithPolicyRequest
+      additionalProperties: false
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        detail:
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    google.protobuf.Any:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+          format: binary
+        debug:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+security: []
+tags:
+  - name: kas.AccessService
+    description: Get app info from the root path

@@ -1,4 +1,3 @@
-
 mode: all
 logger:
   level: debug
@@ -20,9 +19,9 @@ services:
   entityresolution:
     log_level: info
     url: http://localhost:8888/auth
-    clientid: 'tdf-entity-resolution'
-    clientsecret: 'secret'
-    realm: 'opentdf'
+    clientid: "tdf-entity-resolution"
+    clientsecret: "secret"
+    realm: "opentdf"
     legacykeycloak: true
     inferid:
       from:
@@ -36,8 +35,7 @@ server:
   auth:
     enabled: true
     enforceDPoP: false
-    public_client_id: 'opentdf-public'
-    audience: 'http://localhost:8080'
+    audience: "http://localhost:8080"
     issuer: http://localhost:8888/auth/realms/opentdf
     policy:
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
@@ -72,7 +70,7 @@ server:
     enabled: false
     # "*" to allow any origin or a specific domain like "https://yourdomain.com"
     allowedorigins:
-      - '*'
+      - "*"
     # List of methods. Examples: "GET,POST,PUT"
     allowedmethods:
       - GET
@@ -85,6 +83,7 @@ server:
     allowedheaders:
       - ACCEPT
       - Authorization
+      - Connect-Protocol-Version
       - Content-Type
       - X-CSRF-Token
       - X-Request-ID
@@ -98,3 +97,15 @@ server:
   grpc:
     reflectionEnabled: true # Default is false
   port: 8080
+  cryptoProvider:
+    type: standard
+    standard:
+      keys:
+        - kid: r1
+          alg: rsa:2048
+          private: ./testdata/kas-private.pem
+          cert: ./testdata/kas-cert.pem
+        - kid: e1
+          alg: ec:secp256r1
+          private: ./testdata/kas-ec-private.pem
+          cert: ./testdata/kas-ec-cert.pem

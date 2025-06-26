@@ -107,17 +107,17 @@ func unmarshalActionsProto(actionsJSON []byte, actions *[]*policy.Action) error 
 	return nil
 }
 
-func unmarshalPrivatePublicKeyContext(pubCtx, privCtx []byte) (*policy.KasPublicKeyCtx, *policy.KasPrivateKeyCtx, error) {
-	var pubKey *policy.KasPublicKeyCtx
-	var privKey *policy.KasPrivateKeyCtx
+func unmarshalPrivatePublicKeyContext(pubCtx, privCtx []byte) (*policy.PublicKeyCtx, *policy.PrivateKeyCtx, error) {
+	var pubKey *policy.PublicKeyCtx
+	var privKey *policy.PrivateKeyCtx
 	if pubCtx != nil {
-		pubKey = &policy.KasPublicKeyCtx{}
+		pubKey = &policy.PublicKeyCtx{}
 		if err := protojson.Unmarshal(pubCtx, pubKey); err != nil {
 			return nil, nil, errors.Join(fmt.Errorf("failed to unmarshal public key context [%s]: %w", string(pubCtx), err), db.ErrUnmarshalValueFailed)
 		}
 	}
 	if privCtx != nil {
-		privKey = &policy.KasPrivateKeyCtx{}
+		privKey = &policy.PrivateKeyCtx{}
 		if err := protojson.Unmarshal(privCtx, privKey); err != nil {
 			return nil, nil, errors.Join(errors.New("failed to unmarshal private key context"), db.ErrUnmarshalValueFailed)
 		}

@@ -52,20 +52,11 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 		return nil, err
 	}
 
-	var grants []*policy.KeyAccessServer
-	if ns.Grants != nil {
-		grants, err = db.KeyAccessServerProtoJSON(ns.Grants)
-		if err != nil {
-			c.logger.Error("could not unmarshal grants", slog.String("error", err.Error()))
-			return nil, err
-		}
-	}
-
-	var keys []*policy.KasKey
+	var keys []*policy.SimpleKasKey
 	if len(ns.Keys) > 0 {
-		keys, err = db.KasKeysProtoJSON(ns.Keys)
+		keys, err = db.SimpleKasKeysProtoJSON(ns.Keys)
 		if err != nil {
-			c.logger.Error("could not unmarshal keys", slog.String("error", err.Error()))
+			c.logger.ErrorContext(ctx, "could not unmarshal keys", slog.String("error", err.Error()))
 			return nil, err
 		}
 	}
@@ -74,7 +65,6 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 		Id:       ns.ID,
 		Name:     ns.Name,
 		Active:   &wrapperspb.BoolValue{Value: ns.Active},
-		Grants:   grants,
 		Metadata: metadata,
 		Fqn:      ns.Fqn.String,
 		KasKeys:  keys,
@@ -337,18 +327,6 @@ func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *pol
 	}, nil
 }
 
-func (c PolicyDBClient) AssignKeyAccessServerToNamespace(ctx context.Context, k *namespaces.NamespaceKeyAccessServer) (*namespaces.NamespaceKeyAccessServer, error) {
-	_, err := c.Queries.AssignKeyAccessServerToNamespace(ctx, AssignKeyAccessServerToNamespaceParams{
-		NamespaceID:       k.GetNamespaceId(),
-		KeyAccessServerID: k.GetKeyAccessServerId(),
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return k, nil
-}
-
 func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, k *namespaces.NamespaceKeyAccessServer) (*namespaces.NamespaceKeyAccessServer, error) {
 	count, err := c.Queries.RemoveKeyAccessServerFromNamespace(ctx, RemoveKeyAccessServerFromNamespaceParams{
 		NamespaceID:       k.GetNamespaceId(),
@@ -365,6 +343,10 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, 
 }
 
 func (c PolicyDBClient) AssignPublicKeyToNamespace(ctx context.Context, k *namespaces.NamespaceKey) (*namespaces.NamespaceKey, error) {
+	if err := c.verifyKeyIsActive(ctx, k.GetKeyId()); err != nil {
+		return nil, err
+	}
+
 	key, err := c.Queries.assignPublicKeyToNamespace(ctx, assignPublicKeyToNamespaceParams{
 		NamespaceID:          k.GetNamespaceId(),
 		KeyAccessServerKeyID: k.GetKeyId(),

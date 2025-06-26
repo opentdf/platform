@@ -2,9 +2,9 @@ package db
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/common"
@@ -55,7 +55,7 @@ func (c PolicyDBClient) GetProviderConfig(ctx context.Context, identifier any) (
 		}
 		params = getProviderConfigParams{ID: id}
 	case *keymanagement.GetProviderConfigRequest_Name:
-		name := pgtypeText(i.Name)
+		name := pgtypeText(strings.ToLower(i.Name))
 		if !name.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
@@ -68,11 +68,6 @@ func (c PolicyDBClient) GetProviderConfig(ctx context.Context, identifier any) (
 	pcRow, err := c.Queries.getProviderConfig(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	mappedMetadata := make(map[string]any)
-	if err = json.Unmarshal(pcRow.Metadata, &mappedMetadata); err != nil {
-		return nil, err
 	}
 
 	metadata := &common.Metadata{}
@@ -142,7 +137,7 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 	id := r.GetId()
 
 	// if extend we need to merge the metadata
-	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+	metadataJSON, _, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		a, err := c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest_Id{
 			Id: r.GetId(),
 		})
@@ -168,15 +163,12 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 	if count == 0 {
 		return nil, db.ErrNotFound
 	} else if count > 1 {
-		c.logger.Warn("UpdateProviderConfig updated more than one row", "count", count)
+		c.logger.Warn("updateProviderConfig updated more than one row", slog.Int64("count", count))
 	}
 
-	return &policy.KeyProviderConfig{
-		Id:         id,
-		Name:       name,
-		ConfigJson: config,
-		Metadata:   metadata,
-	}, nil
+	return c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest_Id{
+		Id: id,
+	})
 }
 
 func (c PolicyDBClient) DeleteProviderConfig(ctx context.Context, id string) (*policy.KeyProviderConfig, error) {

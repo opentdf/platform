@@ -163,6 +163,10 @@ func (p *KeyAdapter) System() string {
 	return mode
 }
 
+func (p *KeyAdapter) ProviderConfig() *policy.KeyProviderConfig {
+	return p.key.GetKey().GetProviderConfig()
+}
+
 func pemToPublicKey(publicPEM string) (*rsa.PublicKey, error) {
 	// Decode the PEM data
 	block, _ := pem.Decode([]byte(publicPEM))
@@ -209,6 +213,13 @@ func rsaPublicKeyAsJSON(_ context.Context, publicPEM string) (string, error) {
 // Repurpose of the StandardCrypto function
 func convertPEMToJWK(_ string) (string, error) {
 	return "", errors.New("convertPEMToJWK function is not implemented")
+}
+
+func (p *KeyAdapter) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
+	return &trust.PrivateKey{
+		WrappingKeyID: trust.KeyIdentifier(p.key.GetKey().GetPrivateKeyCtx().GetKeyId()),
+		WrappedKey:    p.key.GetKey().GetPrivateKeyCtx().GetWrappedKey(),
+	}, nil
 }
 
 func (p *KeyAdapter) ExportPublicKey(ctx context.Context, format trust.KeyType) (string, error) {

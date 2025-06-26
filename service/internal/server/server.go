@@ -27,8 +27,8 @@ import (
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/logger/audit"
 	ctxAuth "github.com/opentdf/platform/service/pkg/auth"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/tracing"
-	"github.com/opentdf/platform/service/trust"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
@@ -51,15 +51,20 @@ func (e Error) Error() string {
 // Configurations for the server
 type Config struct {
 	Auth auth.Config `mapstructure:"auth" json:"auth"`
-	GRPC GRPCConfig  `mapstructure:"grpc" json:"grpc"`
+
+	Cache cache.Config `mapstructure:"cache" json:"cache"`
+
+	GRPC GRPCConfig `mapstructure:"grpc" json:"grpc"`
 	// To Deprecate: Use the WithKey[X]Provider StartOptions to register trust providers.
 	CryptoProvider          security.Config                          `mapstructure:"cryptoProvider" json:"cryptoProvider"`
 	TLS                     TLSConfig                                `mapstructure:"tls" json:"tls"`
 	CORS                    CORSConfig                               `mapstructure:"cors" json:"cors"`
 	WellKnownConfigRegister func(namespace string, config any) error `mapstructure:"-" json:"-"`
 	// Port to listen on
-	Port int    `mapstructure:"port" json:"port" default:"8080"`
-	Host string `mapstructure:"host,omitempty" json:"host"`
+	Port           int    `mapstructure:"port" json:"port" default:"8080"`
+	Host           string `mapstructure:"host,omitempty" json:"host"`
+	PublicHostname string `mapstructure:"public_hostname,omitempty" json:"publicHostname"`
+
 	// Enable pprof
 	EnablePprof bool `mapstructure:"enable_pprof" json:"enable_pprof" default:"false"`
 	// Trace is for configuring open telemetry based tracing.
@@ -110,7 +115,7 @@ type CORSConfig struct {
 	Enabled          bool     `mapstructure:"enabled" json:"enabled" default:"true"`
 	AllowedOrigins   []string `mapstructure:"allowedorigins" json:"allowedorigins"`
 	AllowedMethods   []string `mapstructure:"allowedmethods" json:"allowedmethods" default:"[\"GET\",\"POST\",\"PATCH\",\"DELETE\",\"OPTIONS\"]"`
-	AllowedHeaders   []string `mapstructure:"allowedheaders" json:"allowedheaders" default:"[\"Accept\",\"Content-Type\",\"Content-Length\",\"Accept-Encoding\",\"X-CSRF-Token\",\"Authorization\",\"X-Requested-With\",\"Dpop\"]"`
+	AllowedHeaders   []string `mapstructure:"allowedheaders" json:"allowedheaders" default:"[\"Accept\",\"Content-Type\",\"Content-Length\",\"Accept-Encoding\",\"X-CSRF-Token\",\"Authorization\",\"X-Requested-With\",\"Dpop\",\"Connect-Protocol-Version\"]"`
 	ExposedHeaders   []string `mapstructure:"exposedheaders" json:"exposedheaders"`
 	AllowCredentials bool     `mapstructure:"allowcredentials" json:"allowedcredentials" default:"true"`
 	MaxAge           int      `mapstructure:"maxage" json:"maxage" default:"3600"`
@@ -129,15 +134,15 @@ type OpenTDFServer struct {
 	HTTPServer          *http.Server
 	ConnectRPCInProcess *inProcessServer
 	ConnectRPC          *ConnectRPC
-
-	TrustKeyIndex   trust.KeyIndex
-	TrustKeyManager trust.KeyManager
+	CacheManager        *cache.Manager
 
 	// To Deprecate: Use the TrustKeyIndex and TrustKeyManager instead
 	CryptoProvider *security.StandardCrypto
 	Listener       net.Listener
 
 	logger *logger.Logger
+
+	PublicHostname string
 }
 
 /*
@@ -153,7 +158,7 @@ type inProcessServer struct {
 	*ConnectRPC
 }
 
-func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, error) {
+func NewOpenTDFServer(config Config, logger *logger.Logger, cacheManager *cache.Manager) (*OpenTDFServer, error) {
 	var (
 		authN *auth.Authentication
 		err   error
@@ -222,6 +227,7 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 		AuthN:          authN,
 		GRPCGatewayMux: grpcGatewayMux,
 		HTTPServer:     httpServer,
+		CacheManager:   cacheManager,
 		ConnectRPC:     connectRPC,
 		ConnectRPCInProcess: &inProcessServer{
 			srv:                memhttp.New(connectRPCIpc.Mux),
@@ -229,7 +235,8 @@ func NewOpenTDFServer(config Config, logger *logger.Logger) (*OpenTDFServer, err
 			maxCallSendMsgSize: config.GRPC.MaxCallSendMsgSizeBytes,
 			ConnectRPC:         connectRPCIpc,
 		},
-		logger: logger,
+		logger:         logger,
+		PublicHostname: config.PublicHostname,
 	}
 
 	if !config.CryptoProvider.IsEmpty() {
@@ -545,15 +552,15 @@ func (s OpenTDFServer) openHTTPServerPort() (net.Listener, error) {
 func (s OpenTDFServer) startHTTPServer(ln net.Listener) {
 	var err error
 	if s.HTTPServer.TLSConfig != nil {
-		s.logger.Info("starting https server", "address", s.HTTPServer.Addr)
+		s.logger.Info("starting https server", slog.String("address", s.HTTPServer.Addr))
 		err = s.HTTPServer.ServeTLS(ln, "", "")
 	} else {
-		s.logger.Info("starting http server", "address", s.HTTPServer.Addr)
+		s.logger.Info("starting http server", slog.String("address", s.HTTPServer.Addr))
 		err = s.HTTPServer.Serve(ln)
 	}
 
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		s.logger.Error("failed to serve http", slog.String("error", err.Error()))
+		s.logger.Error("failed to serve http", slog.Any("error", err))
 	}
 }
 

@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
-	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/wellknownconfiguration"
@@ -57,9 +57,9 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 			return nil, err
 		}
 
-		var keys []*policy.KasKey
+		var keys []*policy.SimpleKasKey
 		if len(kas.Keys) > 0 {
-			keys, err = db.KasKeysProtoJSON(kas.Keys)
+			keys, err = db.SimpleKasKeysProtoJSON(kas.Keys)
 			if err != nil {
 				return nil, errors.New("failed to unmarshal keys")
 			}
@@ -147,9 +147,9 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 		return nil, err
 	}
 
-	var keys []*policy.KasKey
+	var keys []*policy.SimpleKasKey
 	if len(kas.Keys) > 0 {
-		keys, err = db.KasKeysProtoJSON(kas.Keys)
+		keys, err = db.SimpleKasKeysProtoJSON(kas.Keys)
 		if err != nil {
 			return nil, errors.New("failed to unmarshal keys")
 		}
@@ -351,11 +351,6 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 	}, nil
 }
 
-func isValidBase64(s string) bool {
-	_, err := base64.StdEncoding.DecodeString(s)
-	return err == nil
-}
-
 /*
 * Key Access Server Keys
  */
@@ -372,17 +367,6 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 	}
 	if (mode == int32(policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY) || mode == int32(policy.KeyMode_KEY_MODE_PROVIDER_ROOT_KEY)) && !isValidBase64(r.GetPrivateKeyCtx().GetWrappedKey()) {
 		return nil, errors.Join(errors.New("private key ctx"), db.ErrExpectedBase64EncodedValue)
-	}
-
-	// Especially if we need to verify the connection and get the public key.
-	// Need provider logic to validate connection to remote provider.
-	var pc *policy.KeyProviderConfig
-	var err error
-	if providerConfigID != "" {
-		pc, err = c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest_Id{Id: providerConfigID})
-		if err != nil {
-			return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, kasID)
-		}
 	}
 
 	// Marshal private key and public key context
@@ -412,7 +396,7 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		Metadata:          metadataJSON,
 		PrivateKeyCtx:     privateCtx,
 		PublicKeyCtx:      pubCtx,
-		ProviderConfigID:  pgtypeUUID(pc.GetId()),
+		ProviderConfigID:  pgtypeUUID(providerConfigID),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -537,22 +521,9 @@ func (c PolicyDBClient) UpdateKey(ctx context.Context, r *kasregistry.UpdateKeyR
 		return nil, err
 	}
 
-	count, err := c.Queries.updateKey(ctx, updateKeyParams{
-		ID:        id,
-		KeyStatus: pgtypeInt4(int32(r.GetKeyStatus()), r.GetKeyStatus() != policy.KeyStatus_KEY_STATUS_UNSPECIFIED),
-		Metadata:  metadataJSON,
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-	if count == 0 {
-		return nil, db.ErrNotFound
-	} else if count > 1 {
-		c.logger.Warn("UpdateKey updated more than one row", "count", count)
-	}
-
-	return c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
-		Id: id,
+	return c.updateKeyInternal(ctx, updateKeyParams{
+		ID:       id,
+		Metadata: metadataJSON,
 	})
 }
 
@@ -668,9 +639,9 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 		},
 	}
 
-	rotatedOutKey, err := c.UpdateKey(ctx, &kasregistry.UpdateKeyRequest{
-		Id:        activeKey.GetKey().GetId(),
-		KeyStatus: policy.KeyStatus_KEY_STATUS_INACTIVE,
+	rotatedOutKey, err := c.updateKeyInternal(ctx, updateKeyParams{
+		ID:        activeKey.GetKey().GetId(),
+		KeyStatus: pgtypeInt4(int32(policy.KeyStatus_KEY_STATUS_ROTATED), true),
 	})
 	if err != nil {
 		return nil, err
@@ -709,6 +680,137 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 	rotateKeyResp.KasKey = newKasKey.GetKasKey()
 
 	return rotateKeyResp, nil
+}
+
+func (c PolicyDBClient) GetBaseKey(ctx context.Context) (*policy.SimpleKasKey, error) {
+	key, err := c.Queries.getBaseKey(ctx)
+	if err != nil && !errors.Is(db.WrapIfKnownInvalidQueryErr(err), db.ErrNotFound) {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	baseKey, err := db.UnmarshalSimpleKasKey(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return baseKey, nil
+}
+
+func (c PolicyDBClient) SetBaseKey(ctx context.Context, r *kasregistry.SetBaseKeyRequest) (*kasregistry.SetBaseKeyResponse, error) {
+	var identifier any
+	switch r.GetActiveKey().(type) {
+	case *kasregistry.SetBaseKeyRequest_Id:
+		identifier = &kasregistry.GetKeyRequest_Id{
+			Id: r.GetId(),
+		}
+	case *kasregistry.SetBaseKeyRequest_Key:
+		identifier = &kasregistry.GetKeyRequest_Key{
+			Key: r.GetKey(),
+		}
+	}
+	keyToSet, err := c.GetKey(ctx, identifier)
+	if err != nil {
+		return nil, err
+	}
+
+	if keyToSet.GetKey().GetKeyMode() == policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY {
+		return nil, fmt.Errorf("cannot set key of mode %s as default key", keyToSet.GetKey().GetKeyMode().String())
+	}
+	if keyToSet.GetKey().GetKeyStatus() != policy.KeyStatus_KEY_STATUS_ACTIVE {
+		return nil, fmt.Errorf("cannot set key of status %s as default key", keyToSet.GetKey().GetKeyStatus().String())
+	}
+
+	previousDefaultKey, err := c.GetBaseKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// A trigger is set for BEFORE INSERT which will update the
+	// the key reference to the one being inserted, if present.
+	// If not, the insert will continue.
+	_, err = c.Queries.setBaseKey(ctx, pgtypeUUID(keyToSet.GetKey().GetId()))
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	// Get the new default key.
+	newBaseKey, err := c.GetBaseKey(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set wellknown config
+	if err := c.SetBaseKeyOnWellKnownConfig(ctx); err != nil {
+		return nil, err
+	}
+
+	return &kasregistry.SetBaseKeyResponse{
+		NewBaseKey:      newBaseKey,
+		PreviousBaseKey: previousDefaultKey,
+	}, nil
+}
+
+func (c PolicyDBClient) SetBaseKeyOnWellKnownConfig(ctx context.Context) error {
+	baseKey, err := c.GetBaseKey(ctx)
+	if err != nil {
+		return err
+	}
+
+	keyMapBytes, err := json.Marshal(baseKey)
+	if err != nil {
+		return err
+	}
+
+	var keyMap map[string]any
+	if err := json.Unmarshal(keyMapBytes, &keyMap); err != nil {
+		return err
+	}
+
+	if baseKey != nil {
+		algorithm, err := db.FormatAlg(baseKey.GetPublicKey().GetAlgorithm())
+		if err != nil {
+			return fmt.Errorf("failed to format algorithm: %w", err)
+		}
+		publicKey, ok := keyMap["public_key"].(map[string]any)
+		if !ok {
+			return errors.New("failed to cast public_key")
+		}
+		publicKey["algorithm"] = algorithm
+		keyMap["public_key"] = publicKey
+	}
+
+	wellknownconfiguration.UpdateConfigurationBaseKey(keyMap)
+	return nil
+}
+
+/*
+**********************
+TESTING ONLY
+************************
+*/
+func (c PolicyDBClient) DeleteAllBaseKeys(ctx context.Context) error {
+	_, err := c.Queries.deleteAllBaseKeys(ctx)
+	if err != nil {
+		return db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	return nil
+}
+
+func (c PolicyDBClient) updateKeyInternal(ctx context.Context, params updateKeyParams) (*policy.KasKey, error) {
+	count, err := c.Queries.updateKey(ctx, params)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	} else if count > 1 {
+		c.logger.Warn("updateKey updated more than one row", slog.Int64("count", count))
+	}
+
+	return c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
+		Id: params.ID,
+	})
 }
 
 func (c PolicyDBClient) populateChangeMappings(ctx context.Context, rotatedIDs rotatedMappingIDs, rotatedResources *kasregistry.RotatedResources) error {
@@ -812,104 +914,22 @@ func (c PolicyDBClient) rotateBaseKey(ctx context.Context, rotatedOutKeyID *poli
 	return nil
 }
 
-func (c PolicyDBClient) GetBaseKey(ctx context.Context) (*kasregistry.SimpleKasKey, error) {
-	key, err := c.Queries.getBaseKey(ctx)
-	if err != nil && !errors.Is(db.WrapIfKnownInvalidQueryErr(err), db.ErrNotFound) {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	baseKey, err := db.UnmarshalSimpleKasKey(key)
-	if err != nil {
-		return nil, err
-	}
-
-	return baseKey, nil
-}
-
-func (c PolicyDBClient) SetBaseKey(ctx context.Context, r *kasregistry.SetBaseKeyRequest) (*kasregistry.SetBaseKeyResponse, error) {
-	var identifier any
-	switch r.GetActiveKey().(type) {
-	case *kasregistry.SetBaseKeyRequest_Id:
-		identifier = &kasregistry.GetKeyRequest_Id{
-			Id: r.GetId(),
-		}
-	case *kasregistry.SetBaseKeyRequest_Key:
-		identifier = &kasregistry.GetKeyRequest_Key{
-			Key: r.GetKey(),
-		}
-	}
-	keyToSet, err := c.GetKey(ctx, identifier)
-	if err != nil {
-		return nil, err
-	}
-
-	if keyToSet.GetKey().GetKeyMode() == policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY {
-		return nil, fmt.Errorf("cannot set key of mode %s as default key", keyToSet.GetKey().GetKeyMode().String())
-	}
-	if keyToSet.GetKey().GetKeyStatus() != policy.KeyStatus_KEY_STATUS_ACTIVE {
-		return nil, fmt.Errorf("cannot set key of status %s as default key", keyToSet.GetKey().GetKeyStatus().String())
-	}
-
-	previousDefaultKey, err := c.GetBaseKey(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// A trigger is set for BEFORE INSERT which will update the
-	// the key reference to the one being inserted, if present.
-	// If not, the insert will continue.
-	_, err = c.Queries.setBaseKey(ctx, pgtypeUUID(keyToSet.GetKey().GetId()))
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	// Get the new default key.
-	newBaseKey, err := c.GetBaseKey(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set wellknown config
-	if err := c.SetBaseKeyOnWellKnownConfig(ctx); err != nil {
-		return nil, err
-	}
-
-	return &kasregistry.SetBaseKeyResponse{
-		NewBaseKey:      newBaseKey,
-		PreviousBaseKey: previousDefaultKey,
-	}, nil
-}
-
-func (c PolicyDBClient) SetBaseKeyOnWellKnownConfig(ctx context.Context) error {
-	baseKey, err := c.GetBaseKey(ctx)
+func (c PolicyDBClient) verifyKeyIsActive(ctx context.Context, id string) error {
+	key, err := c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
+		Id: id,
+	})
 	if err != nil {
 		return err
 	}
 
-	keyMapBytes, err := json.Marshal(baseKey)
-	if err != nil {
-		return err
+	if key.GetKey().GetKeyStatus() != policy.KeyStatus_KEY_STATUS_ACTIVE {
+		return fmt.Errorf("key with id %s is not active", id)
 	}
 
-	var keyMap map[string]any
-	if err := json.Unmarshal(keyMapBytes, &keyMap); err != nil {
-		return err
-	}
-
-	wellknownconfiguration.UpdateConfigurationBaseKey(keyMap)
 	return nil
 }
 
-/*
-**********************
-TESTING ONLY
-************************
-*/
-func (c PolicyDBClient) DeleteAllBaseKeys(ctx context.Context) error {
-	_, err := c.Queries.deleteAllBaseKeys(ctx)
-	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return nil
+func isValidBase64(s string) bool {
+	_, err := base64.StdEncoding.DecodeString(s)
+	return err == nil
 }

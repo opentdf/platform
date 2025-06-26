@@ -113,8 +113,6 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 	if err != nil {
 		return nil, err
 	}
-	// Assign configured public_client_id
-	oidcConfig.PublicClientID = cfg.PublicClientID
 
 	// If the issuer is different from the one in the configuration, update the configuration
 	// This could happen if we are hitting an internal endpoint. Example we might point to https://keycloak.opentdf.svc/realms/opentdf
@@ -125,7 +123,11 @@ func NewAuthenticator(ctx context.Context, cfg Config, logger *logger.Logger, we
 
 	cacheInterval, err := time.ParseDuration(cfg.CacheRefresh)
 	if err != nil {
-		logger.ErrorContext(ctx, fmt.Sprintf("Invalid cache_refresh_interval [%s]", cfg.CacheRefresh), "err", err)
+		logger.ErrorContext(ctx,
+			"invalid cache_refresh_interval",
+			slog.String("cache_refresh_interval", cfg.CacheRefresh),
+			slog.Any("err", err),
+		)
 		cacheInterval = refreshInterval
 	}
 
@@ -231,7 +233,11 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			m: []string{r.Method},
 		}, dp)
 		if err != nil {
-			slog.WarnContext(r.Context(), "unauthenticated", "error", err, "dpop", dp, "authorization", header)
+			slog.WarnContext(r.Context(),
+				"unauthenticated",
+				slog.Any("error", err),
+				slog.Any("dpop", dp),
+			)
 			http.Error(w, "unauthenticated", http.StatusUnauthorized)
 			return
 		}
@@ -257,7 +263,11 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		}
 		if allow, err := a.enforcer.Enforce(accessTok, r.URL.Path, action); err != nil {
 			if err.Error() == "permission denied" {
-				a.logger.WarnContext(r.Context(), "permission denied", slog.String("azp", accessTok.Subject()), slog.String("error", err.Error()))
+				a.logger.WarnContext(r.Context(),
+					"permission denied",
+					slog.String("azp", accessTok.Subject()),
+					slog.Any("error", err),
+				)
 				http.Error(w, "permission denied", http.StatusForbidden)
 				return
 			}
@@ -322,7 +332,10 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			// Check if the token is allowed to access the resource
 			if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
 				if err.Error() == "permission denied" {
-					a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.String("error", err.Error()))
+					a.logger.Warn("permission denied",
+						slog.String("azp", token.Subject()),
+						slog.Any("error", err),
+					)
 					return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 				}
 				return nil, err
@@ -399,7 +412,7 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		jwt.WithAcceptableSkew(a.oidcConfiguration.TokenSkew),
 	)
 	if err != nil {
-		a.logger.Warn("failed to validate auth token", slog.String("err", err.Error()))
+		a.logger.Warn("failed to validate auth token", slog.Any("err", err))
 		return nil, nil, err
 	}
 
@@ -420,7 +433,7 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 	}
 	key, err := a.validateDPoP(accessToken, tokenRaw, dpopInfo, dpopHeader)
 	if err != nil {
-		a.logger.Warn("failed to validate dpop", slog.String("token", tokenRaw), slog.Any("err", err))
+		a.logger.Warn("failed to validate dpop", slog.Any("err", err))
 		return nil, nil, err
 	}
 	ctx = ctxAuth.ContextWithAuthNInfo(ctx, key, accessToken, tokenRaw)
@@ -553,10 +566,18 @@ func (a Authentication) isPublicRoute(path string) func(string) bool {
 	return func(route string) bool {
 		matched, err := doublestar.Match(route, path)
 		if err != nil {
-			a.logger.Warn("error matching route", slog.String("route", route), slog.String("path", path), slog.String("error", err.Error()))
+			a.logger.Warn("error matching route",
+				slog.String("route", route),
+				slog.String("path", path),
+				slog.Any("error", err),
+			)
 			return false
 		}
-		a.logger.Trace("matching route", slog.String("route", route), slog.String("path", path), slog.Bool("matched", matched))
+		a.logger.Trace("matching route",
+			slog.String("route", route),
+			slog.String("path", path),
+			slog.Bool("matched", matched),
+		)
 		return matched
 	}
 }
@@ -595,10 +616,19 @@ func (a Authentication) lookupGatewayPaths(ctx context.Context, procedure string
 	default:
 		patterns := header["Pattern"]
 		if len(patterns) == 0 {
-			a.logger.InfoContext(ctx, "underspecified grpc gateway path; no pattern header", slog.Any("origin", origins), slog.String("procedure", procedure))
+			a.logger.InfoContext(ctx,
+				"underspecified grpc gateway path; no pattern header",
+				slog.Any("origin", origins),
+				slog.String("procedure", procedure),
+			)
 			paths = allowedPublicEndpoints[:]
 		} else {
-			a.logger.InfoContext(ctx, "underspecified grpc gateway path; patterns found", slog.Any("origin", origins), slog.String("procedure", procedure), slog.Any("patterns", patterns))
+			a.logger.InfoContext(ctx,
+				"underspecified grpc gateway path; patterns found",
+				slog.Any("origin", origins),
+				slog.String("procedure", procedure),
+				slog.Any("patterns", patterns),
+			)
 		}
 		for _, pattern := range patterns {
 			if matched := goodPaths.MatchString(pattern); matched {
@@ -606,7 +636,12 @@ func (a Authentication) lookupGatewayPaths(ctx context.Context, procedure string
 			}
 		}
 		if len(paths) != len(patterns) {
-			a.logger.WarnContext(ctx, "invalid grpc gateway path; ignoring one or more invalid patterns", slog.Any("origin", origins), slog.String("procedure", procedure), slog.Any("patterns", patterns))
+			a.logger.WarnContext(ctx,
+				"invalid grpc gateway path; ignoring one or more invalid patterns",
+				slog.Any("origin", origins),
+				slog.String("procedure", procedure),
+				slog.Any("patterns", patterns),
+			)
 		}
 	}
 

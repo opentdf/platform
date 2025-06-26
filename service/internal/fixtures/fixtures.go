@@ -64,14 +64,14 @@ type SubjectConditionSet struct {
 	Condition struct {
 		SubjectSets []struct {
 			ConditionGroups []struct {
-				BooleanOperator string `yaml:"boolean_operator" json:"boolean_operator"`
+				BooleanOperator string `yaml:"booleanOperator" json:"booleanOperator"`
 				Conditions      []struct {
-					SubjectExternalSelectorValue string   `yaml:"subject_external_selector_value" json:"subject_external_selector_value"`
+					SubjectExternalSelectorValue string   `yaml:"subjectExternalSelectorValue" json:"subjectExternalSelectorValue"`
 					Operator                     string   `yaml:"operator" json:"operator"`
-					SubjectExternalValues        []string `yaml:"subject_external_values" json:"subject_external_values"`
+					SubjectExternalValues        []string `yaml:"subjectExternalValues" json:"subjectExternalValues"`
 				} `yaml:"conditions" json:"conditions"`
-			} `yaml:"condition_groups" json:"condition_groups"`
-		} `yaml:"subject_sets" json:"subject_sets"`
+			} `yaml:"conditionGroups" json:"conditionGroups"`
+		} `yaml:"subjectSets" json:"subjectSets"`
 	} `yaml:"condition" json:"condition"`
 }
 
@@ -144,15 +144,15 @@ type FixtureDataRegisteredResourceActionAttributeValue struct {
 }
 
 type FixtureDataKasRegistryKey struct {
-	ID                string `yaml:"id"`
-	KeyAccessServerID string `yaml:"key_access_server_id"`
-	KeyAlgorithm      string `yaml:"key_algorithm"`
-	KeyID             string `yaml:"key_id"`
-	KeyMode           string `yaml:"key_mode"`
-	KeyStatus         string `yaml:"key_status"`
-	PrivateKeyCtx     string `yaml:"private_key_ctx"`
-	PublicKeyCtx      string `yaml:"public_key_ctx"`
-	ProviderConfigID  string `yaml:"provider_config_id"`
+	ID                string  `yaml:"id"`
+	KeyAccessServerID string  `yaml:"key_access_server_id"`
+	KeyAlgorithm      string  `yaml:"key_algorithm"`
+	KeyID             string  `yaml:"key_id"`
+	KeyMode           string  `yaml:"key_mode"`
+	KeyStatus         string  `yaml:"key_status"`
+	PrivateKeyCtx     string  `yaml:"private_key_ctx"`
+	PublicKeyCtx      string  `yaml:"public_key_ctx"`
+	ProviderConfigID  *string `yaml:"provider_config_id"`
 }
 
 type FixtureDataProviderConfig struct {
@@ -241,15 +241,21 @@ type FixtureData struct {
 func LoadFixtureData(file string) {
 	c, err := os.ReadFile(file)
 	if err != nil {
-		slog.Error("could not read "+fixtureFilename, slog.String("error", err.Error()))
+		slog.Error("could not read",
+			slog.String("fixture_file_name", fixtureFilename),
+			slog.Any("error", err),
+		)
 		panic(err)
 	}
 
 	if err := yaml.Unmarshal(c, &fixtureData); err != nil {
-		slog.Error("could not unmarshal "+fixtureFilename, slog.String("error", err.Error()))
+		slog.Error("could not unmarshal",
+			slog.String("fixture_file_name", fixtureFilename),
+			slog.Any("error", err),
+		)
 		panic(err)
 	}
-	slog.Info("Fully loaded fixtures", slog.Any("fixtureData", fixtureData))
+	slog.Info("fully loaded fixtures", slog.Any("fixture_data", fixtureData))
 }
 
 type Fixtures struct {
@@ -416,6 +422,7 @@ func (f *Fixtures) GetRegisteredResourceValueKey(key string) FixtureDataRegister
 	return rv
 }
 
+//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) Provision() {
 	slog.Info("📦 running migrations in schema", slog.String("schema", f.db.Schema))
 	_, err := f.db.Client.RunMigrations(context.Background(), policy.Migrations)
@@ -484,6 +491,7 @@ func (f *Fixtures) Provision() {
 	slog.Info("📚 successfully indexed FQNs")
 }
 
+//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) TearDown() {
 	slog.Info("🗑  dropping schema", slog.String("schema", f.db.Schema))
 	if err := f.db.DropSchema(); err != nil {
@@ -533,6 +541,7 @@ func (f *Fixtures) provisionAttributeValues() int64 {
 	return f.provision(fixtureData.AttributeValues.Metadata.TableName, fixtureData.AttributeValues.Metadata.Columns, values)
 }
 
+//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionSubjectConditionSet() int64 {
 	values := make([][]string, 0, len(fixtureData.SubjectConditionSet.Data))
 	for _, d := range fixtureData.SubjectConditionSet.Data {
@@ -619,6 +628,7 @@ func (f *Fixtures) provisionResourceMappings() int64 {
 	return f.provision(fixtureData.ResourceMappings.Metadata.TableName, fixtureData.ResourceMappings.Metadata.Columns, values)
 }
 
+//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionKasRegistry() int64 {
 	values := make([][]string, 0, len(fixtureData.KasRegistries.Data))
 	for _, d := range fixtureData.KasRegistries.Data {
@@ -662,6 +672,7 @@ func (f *Fixtures) provisionAttributeValueKeyAccessServer() int64 {
 	return f.provision("attribute_value_key_access_grants", []string{"attribute_value_id", "key_access_server_id"}, values)
 }
 
+//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionProviderConfigs() int64 {
 	values := make([][]string, 0, len(fixtureData.ProviderConfigs.Data))
 	for _, d := range fixtureData.ProviderConfigs.Data {
@@ -680,6 +691,7 @@ func (f *Fixtures) provisionProviderConfigs() int64 {
 	return f.provision(fixtureData.ProviderConfigs.Metadata.TableName, fixtureData.ProviderConfigs.Metadata.Columns, values)
 }
 
+//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provisionKasRegistryKeys() int64 {
 	values := make([][]string, 0, len(fixtureData.KasRegistryKeys.Data))
 	for _, d := range fixtureData.KasRegistryKeys.Data {
@@ -702,10 +714,13 @@ func (f *Fixtures) provisionKasRegistryKeys() int64 {
 			f.db.StringWrap(d.KeyStatus),
 			f.db.StringWrap(string(privateCtx)),
 			f.db.StringWrap(string(pubCtx)),
-			f.db.StringWrap(d.ProviderConfigID),
 		})
+		providerConfigIDSQL := "NULL"
+		if d.ProviderConfigID != nil {
+			providerConfigIDSQL = f.db.StringWrap(*d.ProviderConfigID)
+		}
+		values[len(values)-1] = append(values[len(values)-1], providerConfigIDSQL)
 	}
-
 	return f.provision(fixtureData.KasRegistryKeys.Metadata.TableName, fixtureData.KasRegistryKeys.Metadata.Columns, values)
 }
 
@@ -751,6 +766,7 @@ func (f *Fixtures) provisionRegisteredResourceActionAttributeValues() int64 {
 	return f.provision(fixtureData.RegisteredResourceActionAttributeValues.Metadata.TableName, fixtureData.RegisteredResourceActionAttributeValues.Metadata.Columns, values)
 }
 
+//nolint:sloglint // preserve emoji usage
 func (f *Fixtures) provision(t string, c []string, v [][]string) int64 {
 	rows, err := f.db.ExecInsert(t, c, v...)
 	if err != nil {

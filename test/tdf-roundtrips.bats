@@ -3,35 +3,6 @@
 # Tests for creating and reading TDF files with various settings
 # Notably, tests both 'ztdf' and 'nano' formats.
 
-@test "examples: roundtrip Z-TDF" {
-  # TODO: add subject mapping here to remove reliance on `provision fixtures`
-  echo "[INFO] configure attribute with grant for local kas"
-  go run ./examples --creds opentdf:secret kas add --kas https://localhost:8080 --algorithm "rsa:2048" --kid r1 --public-key "$(<${BATS_TEST_DIRNAME}/../kas-cert.pem)"
-  go run ./examples --creds opentdf:secret attributes unassign -a https://example.com/attr/attr1 -v value1
-  go run ./examples --creds opentdf:secret attributes unassign -a https://example.com/attr/attr1
-  go run ./examples --creds opentdf:secret attributes assign -a https://example.com/attr/attr1 -v value1 -k https://localhost:8080
-
-  echo "[INFO] create a tdf3 format file"
-  run go run ./examples encrypt "Hello Zero Trust"
-  echo "[INFO] echoing output; if successful, this is just the manifest"
-  echo "$output"
-
-  echo "[INFO] Validate the manifest lists the expected kid in its KAO"
-  kid=$(jq -r '.encryptionInformation.keyAccess[0].kid' <<<"${output}")
-  echo "$kid"
-  [ "$kid" = r1 ]
-
-  echo "[INFO] decrypting..."
-  run go run ./examples decrypt sensitive.txt.tdf
-  echo "$output"
-  printf '%s\n' "$output" | grep "Hello Zero Trust"
-
-  echo "[INFO] decrypting with EC..."
-  run go run ./examples decrypt -A 'ec:secp256r1' sensitive.txt.tdf
-  echo "$output"
-  printf '%s\n' "$output" | grep "Hello Zero Trust"
-}
-
 @test "examples: roundtrip Z-TDF with EC wrapped KAO" {
   # TODO: add subject mapping here to remove reliance on `provision fixtures`
   echo "[INFO] create a tdf3 format file"
@@ -53,35 +24,6 @@
   run go run ./examples decrypt -A 'ec:secp256r1' sensitive-with-ec.txt.tdf
   echo "$output"
   printf '%s\n' "$output" | grep "Hello EC wrappers!"
-}
-
-@test "examples: roundtrip Z-TDF with extra unnecessary, invalid kas" {
-  # TODO: add subject mapping here to remove reliance on `provision fixtures`
-  echo "[INFO] configure attribute with grant for local kas"
-  go run ./examples --creds opentdf:secret kas add --kas https://localhost:8080 --algorithm "rsa:2048" --kid r1 --public-key "$(<${BATS_TEST_DIRNAME}/../kas-cert.pem)"
-  go run ./examples --creds opentdf:secret kas add --kas http://localhost:9090 --algorithm "rsa:2048" --kid r2 --public-key "$(<${BATS_TEST_DIRNAME}/../kas-cert.pem)"
-  go run ./examples --creds opentdf:secret attributes unassign -a https://example.com/attr/attr1 -v value1
-  go run ./examples --creds opentdf:secret attributes unassign -a https://example.com/attr/attr1
-  go run ./examples --creds opentdf:secret attributes assign -a https://example.com/attr/attr1 -v value1 -k "https://localhost:8080,http://localhost:9090"
-
-  echo "[INFO] create a tdf3 format file"
-  run go run ./examples encrypt "Hello multikao split"
-  echo "[INFO] echoing output; if successful, this is just the manifest"
-  echo "$output"
-
-  echo "[INFO] Validate the manifest lists the expected kid in its KAO"
-  u1=$(jq -r '.encryptionInformation.keyAccess[0].url' <<<"${output}")
-  u2=$(jq -r '.encryptionInformation.keyAccess[1].url' <<<"${output}")
-  sid1=$(jq -r '.encryptionInformation.keyAccess[0].sid' <<<"${output}")
-  sid2=$(jq -r '.encryptionInformation.keyAccess[1].sid' <<<"${output}")
-  echo "${u1},${sid1} ?= ${u2},${sid2}"
-  [ "$u1" != "$u2" ]
-  [ "$sid1" = "$sid2" ]
-
-  echo "[INFO] decrypting..."
-  run go run ./examples decrypt sensitive.txt.tdf
-  echo "$output"
-  printf '%s\n' "$output" | grep "Hello multikao split"
 }
 
 @test "examples: roundtrip nanoTDF (encrypted policy)" {
@@ -111,7 +53,7 @@
 @test "examples: legacy key support Z-TDF" {
   echo "[INFO] validating default key is r1"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
-  
+
   [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
 
   echo "[INFO] encrypting samples"
@@ -129,6 +71,7 @@
 
   echo "[INFO] validating default key is r2"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
+
   [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r2 ]
 
   echo "[INFO] decrypting after key rotation"
@@ -139,6 +82,7 @@
 @test "examples: legacy kas and service config format support" {
   echo "[INFO] validating default key is r1"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
+
   [ "$(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
 
   echo "[INFO] encrypting samples"
@@ -156,17 +100,17 @@
 
   echo "[INFO] validating default key is r1"
   echo "[INFO] default key result: $(grpcurl "localhost:8080" "kas.AccessService/PublicKey")"
+
   [ $(grpcurl "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid) = r1 ]
 
   echo "[INFO] validating keys are correct by alg"
-  [ "$(grpcurl -d '{"algorithm":"ec:secp256r1"}'  "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = e1 ]
-  [ "$(grpcurl -d '{"algorithm":"rsa:2048"}'  "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
+  [ "$(grpcurl -d '{"algorithm":"ec:secp256r1"}' "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = e1 ]
+  [ "$(grpcurl -d '{"algorithm":"rsa:2048"}' "localhost:8080" "kas.AccessService/PublicKey" | jq -e -r .kid)" = r1 ]
 
   echo "[INFO] decrypting after key rotation"
   go run ./examples decrypt sensitive-with-no-kid.txt.tdf | grep "Hello Legacy"
   go run ./examples decrypt sensitive-with-kid.txt.tdf | grep "Hello with Key Identifier"
 }
-
 
 wait_for_green() {
   limit=5
@@ -181,7 +125,7 @@ wait_for_green() {
 downgrade_config() {
   ec_current_key=$1
   rsa_current_key=$2
-  cat >opentdf.yaml<<EOF
+  cat >opentdf.yaml <<EOF
 logger:
   level: debug
   type: text
@@ -247,7 +191,7 @@ update_config() {
   rsa_current_key=$3
   rsa_legacy_key=$4
 
-  cat >opentdf.yaml<<EOF
+  cat >opentdf.yaml <<EOF
 logger:
   level: debug
   type: text

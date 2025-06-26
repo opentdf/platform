@@ -11,6 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/trust"
 )
 
@@ -59,7 +60,7 @@ func (k *InProcessAESKey) Export(encapsulator trust.Encapsulator) ([]byte, error
 	encryptedKey, err := encapsulator.Encrypt(k.rawKey)
 	if err != nil {
 		if k.logger != nil {
-			k.logger.Warn("failed to encrypt key data for export", "err", err)
+			k.logger.Warn("failed to encrypt key data for export", slog.Any("err", err))
 		}
 		return nil, err
 	}
@@ -137,6 +138,10 @@ func (k *KeyDetailsAdapter) IsLegacy() bool {
 	return k.legacy
 }
 
+func (k *KeyDetailsAdapter) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
+	return nil, errors.New("private key export not supported")
+}
+
 func (k *KeyDetailsAdapter) ExportPublicKey(_ context.Context, format trust.KeyType) (string, error) {
 	kid := string(k.id)
 	switch format {
@@ -173,6 +178,11 @@ func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error)
 		return k.cryptoProvider.ECCertificate(kid)
 	}
 	return "", errors.New("certificates only available for EC keys")
+}
+
+func (k *KeyDetailsAdapter) ProviderConfig() *policy.KeyProviderConfig {
+	// Provider config is not supported for this adapter.
+	return nil
 }
 
 // NewSecurityProviderAdapter creates a new adapter that implements SecurityProvider using a CryptoProvider
@@ -257,7 +267,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 }
 
 // ListKeys lists all available keys
-func (a *InProcessProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, error) {
+func (a *InProcessProvider) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
 	// This is a limited implementation as CryptoProvider doesn't expose a list of all keys
 	var keys []trust.KeyDetails
 
@@ -274,7 +284,11 @@ func (a *InProcessProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, err
 			}
 		} else if err != nil {
 			if a.logger != nil {
-				a.logger.Warn("failed to list keys by algorithm", "algorithm", alg, "error", err)
+				a.logger.WarnContext(ctx,
+					"failed to list keys by algorithm",
+					slog.String("algorithm", alg),
+					slog.Any("error", err),
+				)
 			}
 		}
 	}
@@ -283,8 +297,8 @@ func (a *InProcessProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, err
 }
 
 // Decrypt implements the unified decryption method for both RSA and EC
-func (a *InProcessProvider) Decrypt(ctx context.Context, keyID trust.KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
-	kid := string(keyID)
+func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+	kid := string(keyDetails.ID())
 
 	// Try to determine the key type
 	keyType, err := a.determineKeyType(ctx, kid)
@@ -321,14 +335,14 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyID trust.KeyIdentifi
 }
 
 // DeriveKey generates a symmetric key for NanoTDF
-func (a *InProcessProvider) DeriveKey(_ context.Context, kasKID trust.KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
-	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(kasKID), ephemeralPublicKeyBytes, curve)
+func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
+	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(keyDetails.ID()), ephemeralPublicKeyBytes, curve)
 	return NewInProcessAESKey(k), err
 }
 
 // GenerateECSessionKey generates a session key for NanoTDF
 func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
-	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, versionSalt(), nil)
+	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
 }
 
 // Close releases any resources held by the provider

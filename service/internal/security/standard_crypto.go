@@ -113,7 +113,10 @@ func loadKeys(ks []KeyPairInfo) (*StandardCrypto, error) {
 	keysByAlg := make(map[string]keylist)
 	keysByID := make(keylist)
 	for _, k := range ks {
-		slog.Info("crypto cfg loading", "id", k.KID, "alg", k.Algorithm)
+		slog.Info("crypto cfg loading",
+			slog.Any("id", k.KID),
+			slog.Any("alg", k.Algorithm),
+		)
 		if _, ok := keysByID[k.KID]; ok {
 			return nil, fmt.Errorf("duplicate key identifier [%s]", k.KID)
 		}
@@ -217,7 +220,10 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 		keysByID[id] = k
 	}
 	for id, kasInfo := range ecKeys {
-		slog.Info("cfg.ECKeys", "id", id, "kasInfo", kasInfo)
+		slog.Info("cfg.ECKeys",
+			slog.String("id", id),
+			slog.Any("kasInfo", kasInfo),
+		)
 		// private and public EC KAS key
 		privatePemData, err := os.ReadFile(kasInfo.PrivateKeyPath)
 		if err != nil {
@@ -399,7 +405,7 @@ func DeriveNanoTDFSymmetricKey(curve elliptic.Curve, clientEphemera []byte, priv
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
 	}
 
-	key, err := ocrypto.CalculateHKDF(versionSalt(), symmetricKey)
+	key, err := ocrypto.CalculateHKDF(NanoVersionSalt(), symmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed:%w", err)
 	}
@@ -417,7 +423,7 @@ func TDFSalt() []byte {
 	return salt
 }
 
-func versionSalt() []byte {
+func NanoVersionSalt() []byte {
 	digest := sha256.New()
 	digest.Write([]byte(kNanoTDFMagicStringAndVersion))
 	return digest.Sum(nil)

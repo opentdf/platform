@@ -83,18 +83,9 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		return nil, err
 	}
 
-	var grants []*policy.KeyAccessServer
-	if av.Grants != nil {
-		grants, err = db.KeyAccessServerProtoJSON(av.Grants)
-		if err != nil {
-			c.logger.ErrorContext(ctx, "could not unmarshal key access grants", slog.String("error", err.Error()))
-			return nil, err
-		}
-	}
-
-	var keys []*policy.KasKey
+	var keys []*policy.SimpleKasKey
 	if av.Keys != nil {
-		keys, err = db.KasKeysProtoJSON(av.Keys)
+		keys, err = db.SimpleKasKeysProtoJSON(av.Keys)
 		if err != nil {
 			c.logger.ErrorContext(ctx, "could not unmarshal keys", slog.String("error", err.Error()))
 			return nil, err
@@ -105,7 +96,6 @@ func (c PolicyDBClient) GetAttributeValue(ctx context.Context, identifier any) (
 		Id:       av.ID,
 		Value:    av.Value,
 		Active:   &wrapperspb.BoolValue{Value: av.Active},
-		Grants:   grants,
 		Metadata: metadata,
 		Attribute: &policy.Attribute{
 			Id: av.AttributeDefinitionID,
@@ -317,18 +307,6 @@ func (c PolicyDBClient) UnsafeDeleteAttributeValue(ctx context.Context, toDelete
 	}, nil
 }
 
-func (c PolicyDBClient) AssignKeyAccessServerToValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
-	_, err := c.Queries.AssignKeyAccessServerToAttributeValue(ctx, AssignKeyAccessServerToAttributeValueParams{
-		AttributeValueID:  k.GetValueId(),
-		KeyAccessServerID: k.GetKeyAccessServerId(),
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return k, nil
-}
-
 func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *attributes.ValueKeyAccessServer) (*attributes.ValueKeyAccessServer, error) {
 	count, err := c.Queries.RemoveKeyAccessServerFromAttributeValue(ctx, RemoveKeyAccessServerFromAttributeValueParams{
 		AttributeValueID:  k.GetValueId(),
@@ -345,6 +323,10 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromValue(ctx context.Context, k *a
 }
 
 func (c PolicyDBClient) AssignPublicKeyToValue(ctx context.Context, k *attributes.ValueKey) (*attributes.ValueKey, error) {
+	if err := c.verifyKeyIsActive(ctx, k.GetKeyId()); err != nil {
+		return nil, err
+	}
+
 	vk, err := c.Queries.assignPublicKeyToAttributeValue(ctx, assignPublicKeyToAttributeValueParams{
 		ValueID:              k.GetValueId(),
 		KeyAccessServerKeyID: k.GetKeyId(),

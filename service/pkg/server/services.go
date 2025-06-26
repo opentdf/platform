@@ -18,11 +18,13 @@ import (
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/kas"
 	logging "github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policy"
 	"github.com/opentdf/platform/service/tracing"
+	"github.com/opentdf/platform/service/trust"
 	wellknown "github.com/opentdf/platform/service/wellknownconfiguration"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -116,12 +118,30 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 	return registeredServices, nil
 }
 
+type startServicesParams struct {
+	cfg                 *config.Config
+	otdf                *server.OpenTDFServer
+	client              *sdk.SDK
+	logger              *logging.Logger
+	reg                 serviceregistry.Registry
+	cacheManager        *cache.Manager
+	keyManagerFactories []trust.NamedKeyManagerFactory
+}
+
 // startServices iterates through the registered namespaces and starts the services
 // based on the configuration and namespace mode. It creates a new service logger
 // and a database client if required. It registers the services with the gRPC server,
 // in-process gRPC server, and gRPC gateway. Finally, it logs the status of each service.
-func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDFServer, client *sdk.SDK, logger *logging.Logger, reg serviceregistry.Registry) (func(), error) {
+func startServices(ctx context.Context, params startServicesParams) (func(), error) {
 	var gatewayCleanup func()
+
+	cfg := params.cfg
+	otdf := params.otdf
+	client := params.client
+	logger := params.logger
+	reg := params.reg
+	cacheManager := params.cacheManager
+	keyManagerFactories := params.keyManagerFactories
 
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
@@ -136,11 +156,14 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 
 		// Skip the namespace if the mode is not enabled
 		if !modeEnabled {
-			logger.Info("skipping namespace", slog.String("namespace", ns), slog.String("mode", namespace.Mode))
+			logger.Info("skipping namespace",
+				slog.String("namespace", ns),
+				slog.String("mode", namespace.Mode),
+			)
 			continue
 		}
 
-		var svcLogger *logging.Logger = logger.With("namespace", ns)
+		svcLogger := logger.With("namespace", ns)
 		extractedLogLevel, err := extractServiceLoggerConfig(cfg.Services[ns])
 
 		// If ns has log_level in config, create new logger with that level
@@ -174,6 +197,19 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 				svcLogger = svcLogger.With("version", svc.GetVersion())
 			}
 
+			// Function to create a cache given cache options
+			var createCacheClient func(cache.Options) (*cache.Cache, error) = func(options cache.Options) (*cache.Cache, error) {
+				slog.Info("creating cache client for",
+					slog.String("namespace", ns),
+					slog.String("service", svc.GetServiceDesc().ServiceName),
+				)
+				cacheClient, err := cacheManager.NewCache(ns, svcLogger, options)
+				if err != nil {
+					return nil, fmt.Errorf("issue creating cache client for %s: %w", ns, err)
+				}
+				return cacheClient, nil
+			}
+
 			err = svc.Start(ctx, serviceregistry.RegistrationParams{
 				Config:                 cfg.Services[svc.GetNamespace()],
 				Logger:                 svcLogger,
@@ -183,6 +219,8 @@ func startServices(ctx context.Context, cfg *config.Config, otdf *server.OpenTDF
 				RegisterReadinessCheck: health.RegisterReadinessCheck,
 				OTDF:                   otdf, // TODO: REMOVE THIS
 				Tracer:                 tracer,
+				NewCacheClient:         createCacheClient,
+				KeyManagerFactories:    keyManagerFactories,
 			})
 			if err != nil {
 				return func() {}, err

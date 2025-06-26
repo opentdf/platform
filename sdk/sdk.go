@@ -30,17 +30,17 @@ import (
 const (
 	// Failure while connecting to a service.
 	// Check your configuration and/or retry.
-	ErrGrpcDialFailed                 = Error("failed to dial grpc endpoint")
-	ErrShutdownFailed                 = Error("failed to shutdown sdk")
-	ErrPlatformUnreachable            = Error("platform unreachable or not responding")
-	ErrPlatformConfigFailed           = Error("failed to retrieve platform configuration")
-	ErrPlatformEndpointMalformed      = Error("platform endpoint is malformed")
-	ErrPlatformIssuerNotFound         = Error("issuer not found in well-known idp configuration")
-	ErrPlatformAuthzEndpointNotFound  = Error("authorization_endpoint not found in well-known idp configuration")
-	ErrPlatformTokenEndpointNotFound  = Error("token_endpoint not found in well-known idp configuration")
-	ErrPlatformPublicClientIDNotFound = Error("public_client_id not found in well-known idp configuration")
-	ErrPlatformEndpointNotFound       = Error("platform_endpoint not found in well-known configuration")
-	ErrAccessTokenInvalid             = Error("access token is invalid")
+	ErrGrpcDialFailed                = Error("failed to dial grpc endpoint")
+	ErrShutdownFailed                = Error("failed to shutdown sdk")
+	ErrPlatformUnreachable           = Error("platform unreachable or not responding")
+	ErrPlatformConfigFailed          = Error("failed to retrieve platform configuration")
+	ErrPlatformEndpointMalformed     = Error("platform endpoint is malformed")
+	ErrPlatformIssuerNotFound        = Error("issuer not found in well-known idp configuration")
+	ErrPlatformAuthzEndpointNotFound = Error("authorization_endpoint not found in well-known idp configuration")
+	ErrPlatformTokenEndpointNotFound = Error("token_endpoint not found in well-known idp configuration")
+	ErrPlatformEndpointNotFound      = Error("platform_endpoint not found in well-known configuration")
+	ErrAccessTokenInvalid            = Error("access token is invalid")
+	ErrWellKnowConfigEmpty           = Error("well-known configuration is empty")
 )
 
 type Error string

@@ -62,7 +62,6 @@ type attributeQueryRow struct {
 	active        bool
 	namespaceName string
 	valuesJSON    []byte
-	grantsJSON    []byte
 	fqn           sql.NullString
 }
 
@@ -81,15 +80,6 @@ func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
 		values = v
 	}
 
-	var grants []*policy.KeyAccessServer
-	if row.grantsJSON != nil {
-		k, err := db.KeyAccessServerProtoJSON(row.grantsJSON)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal grantsJSON [%s]: %w", string(row.grantsJSON), err)
-		}
-		grants = k
-	}
-
 	ns := &policy.Namespace{
 		Id:   row.namespaceID,
 		Name: row.namespaceName,
@@ -104,7 +94,6 @@ func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
 		Active:    &wrapperspb.BoolValue{Value: row.active},
 		Metadata:  metadata,
 		Namespace: ns,
-		Grants:    grants,
 		Fqn:       row.fqn.String,
 	}
 
@@ -191,34 +180,6 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 	}, nil
 }
 
-// Loads all attributes into memory by making iterative db roundtrip requests of defaultObjectListAllLimit size
-func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
-	var nextOffset int32
-	attrsList := make([]*policy.Attribute, 0)
-
-	for {
-		listed, err := c.ListAttributes(ctx, &attributes.ListAttributesRequest{
-			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
-			Pagination: &policy.PageRequest{
-				Limit:  c.listCfg.limitMax,
-				Offset: nextOffset,
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to list all attributes: %w", err)
-		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
-		attrsList = append(attrsList, listed.GetAttributes()...)
-
-		// offset becomes zero when list is exhausted
-		if nextOffset <= 0 {
-			break
-		}
-	}
-	return attrsList, nil
-}
-
 func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*policy.Attribute, error) {
 	var (
 		attr   GetAttributeRow
@@ -264,16 +225,15 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 		namespaceID:   attr.NamespaceID,
 		namespaceName: attr.NamespaceName.String,
 		valuesJSON:    attr.Values,
-		grantsJSON:    attr.Grants,
 		fqn:           sql.NullString(attr.Fqn),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	var keys []*policy.KasKey
+	var keys []*policy.SimpleKasKey
 	if len(attr.Keys) > 0 {
-		keys, err = db.KasKeysProtoJSON(attr.Keys)
+		keys, err = db.SimpleKasKeysProtoJSON(attr.Keys)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
 		}
@@ -302,21 +262,37 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			return nil, fmt.Errorf("failed to unmarshal values [%s]: %w", string(attr.Values), err)
 		}
 
+		var keys []*policy.SimpleKasKey
 		var grants []*policy.KeyAccessServer
-		if attr.Grants != nil {
-			grants, err = db.KeyAccessServerProtoJSON(attr.Grants)
-			if err != nil {
-				return nil, fmt.Errorf("failed to unmarshal grants [%s]: %w", string(attr.Grants), err)
-			}
-		}
-
-		var keys []*policy.KasKey
 		if len(attr.Keys) > 0 {
-			keys, err = db.KasKeysProtoJSON(attr.Keys)
+			keys, err = db.SimpleKasKeysProtoJSON(attr.Keys)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
 			}
+
+			grants, err = mapKasKeysToGrants(keys, grants, c.logger)
+			if err != nil {
+				return nil, fmt.Errorf("failed to map keys to grants: %w", err)
+			}
 		}
+
+		for _, val := range values {
+			if val.GetKasKeys() == nil {
+				continue
+			}
+
+			valGrants, err := mapKasKeysToGrants(val.GetKasKeys(), val.GetGrants(), c.logger)
+			if err != nil {
+				return nil, fmt.Errorf("failed to map keys to grants: %w", err)
+			}
+			val.Grants = valGrants
+		}
+
+		nsGrants, err := mapKasKeysToGrants(ns.GetKasKeys(), ns.GetGrants(), c.logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to map keys to grants: %w", err)
+		}
+		ns.Grants = nsGrants
 
 		attrs[i] = &policy.Attribute{
 			Id:        attr.ID,
@@ -324,8 +300,8 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
 			Fqn:       attr.Fqn,
 			Active:    &wrapperspb.BoolValue{Value: attr.Active},
-			Grants:    grants,
 			Namespace: ns,
+			Grants:    grants,
 			Values:    values,
 			KasKeys:   keys,
 		}
@@ -574,18 +550,6 @@ func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *pol
 /// Key Access Server assignments
 ///
 
-func (c PolicyDBClient) AssignKeyAccessServerToAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
-	_, err := c.Queries.AssignKeyAccessServerToAttribute(ctx, AssignKeyAccessServerToAttributeParams{
-		AttributeDefinitionID: k.GetAttributeId(),
-		KeyAccessServerID:     k.GetKeyAccessServerId(),
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return k, nil
-}
-
 func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
 	count, err := c.Queries.RemoveKeyAccessServerFromAttribute(ctx, RemoveKeyAccessServerFromAttributeParams{
 		AttributeDefinitionID: k.GetAttributeId(),
@@ -602,6 +566,10 @@ func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, 
 }
 
 func (c PolicyDBClient) AssignPublicKeyToAttribute(ctx context.Context, k *attributes.AttributeKey) (*attributes.AttributeKey, error) {
+	if err := c.verifyKeyIsActive(ctx, k.GetKeyId()); err != nil {
+		return nil, err
+	}
+
 	ak, err := c.Queries.assignPublicKeyToAttributeDefinition(ctx, assignPublicKeyToAttributeDefinitionParams{
 		DefinitionID:         k.GetAttributeId(),
 		KeyAccessServerKeyID: k.GetKeyId(),

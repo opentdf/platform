@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -18,12 +19,75 @@ import (
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
+	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/yaml.v3"
+)
+
+const (
+	dummyEcCert = `-----BEGIN CERTIFICATE-----
+MIIB5DCBzQIUZsQqf2nfB0JuxsKBwrVjfCVjjmUwDQYJKoZIhvcNAQELBQAwGzEZ
+MBcGA1UEAwwQY2Eub3BlbnRkZi5sb2NhbDAeFw0yMzA3MTgxOTM5NTJaFw0yMzA3
+MTkxOTM5NTJaMA4xDDAKBgNVBAMMA2thczBZMBMGByqGSM49AgEGCCqGSM49AwEH
+A0IABDc+h0JhF0uUuXYY6mKHXTt81nBsBFnb0j+JWcBosyWBqC9GrQaiyfZxJXgX
+XkEV8eULg7BztVhjK/qVNG4x5pIwDQYJKoZIhvcNAQELBQADggEBAGP1pPFNpx/i
+N3skt5hVVYHPpGAUBxElbIRGx/NEPQ38q3RQ5QFMFHU9rCgQd/27lPZKS6+RLCbM
+IsWPNtyPVlD9oPkVWydPiIKdRNJbKsv4FEHl0c5ik80E5er7B5TwzttR/t5B54m+
+D0yZnKKXtqEi9KeStxCJKHcdibGuO+OtYJkl1uUhsX+6hDazdAX1jWq22j8L9hNS
+buwEf498deOfNt/9PkT3MardMgQR492VPYJd4Ocj7drJEX0t2EeWouuoX9WijZi9
+0umFuYEUo0VaLgv00k3hJuqBAUngzqlyepj8FKMsP6dkPpjjp/s9VTKHg2pmxeku
+qX8+pZNixMc=
+-----END CERTIFICATE-----
+`
+	dummyEcPrivate = `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgdDFmn9LlJUTalXe8
+S6/DnZELbJRo+NTpFKfs8VC2SK2hRANCAAQ3PodCYRdLlLl2GOpih107fNZwbARZ
+29I/iVnAaLMlgagvRq0Gosn2cSV4F15BFfHlC4Owc7VYYyv6lTRuMeaS
+-----END PRIVATE KEY-----
+`
+	dummyRsaPrivate = `-----BEGIN RSA PRIVATE KEY-----
+MIIEogIBAAKCAQEA2+frLbHZOoUcdS3PWtPRkKrXQpMTKLR3B6dKDJwGnMU3jkr3
+k5GK4wFnPv0G3fB8Duh/P8qtO8yORQXbSp6Fl6lCvciYMDE5qrPFYa/49iNHeeFM
+WvdmRBDvr659UmfrZ+Fh9d2fN3hj7legiaa9kkD8YhJQ+zHplGMC2xMWnAy6NnlB
+XAjKB57DtVckxb8SBFUqkSEFZGpl7tm87bPds2YzGwdhoy7eOuvhWb0XeBFt7RWz
+98Dir9oB4CxW4YnQGZR2zL/2y6a+jf5kwYl9c+IGR81BPaPzHnrzo55MgmRUSq10
++odecl37TuFP+maU1Iq3jsVvXS5DbipxxPe8kwIDAQABAoIBAQCkdC0xkAZnODLP
+AwJF55CagtjWhczXLRazF41OHsTnKqngdPnvVvGp0FvZBDrFcVolgAPhvf2Nce2X
+esjDZgd8Iu2xpjkCGV4J5cUfyA0Ebd+/KxkCEnBdSNkm5fP805B9sFSlHSc7wYHi
+NY/uQU8V+BmGcjIzmOEYwm7ZTM4kxhBEUyfczd41D0E312j/+J+Y2JFoLDugmyh7
+KjYu79OCVvZU+snwcBDlnhdxoXnQTjlO68PDfXxqJmN94Jw/8+GYcA6N74uSwCp9
+FZYD0X9AVQm7V/8t865S2UWcoHDNOZwW2IyBjaW37E20NGPx1PcAX9oZW3QsxSxG
+gf7uj/zZAoGBAPz3RJq66CSXmcRMnNKk0CAu4LE3FrhKt9UsnGW1I1zzOfLylpHW
+EfhCllb9Zsx92SeW6XDXBLEWIJmEQ6/c79cpaMMYkpfi4CsOLceZ3EoON22PsjNF
+vSQ72oA6ueSnAC1rSPZV310YmkHgC0JPD+3W0wNe1+4OKR68bDxKNtxPAoGBAN6L
+I9oK8AsQFJfTMlZ6SRCXarHVMo7uQZ2x+c5+n/DTlzcl5sk2o7iIuOyY2YFpJwYu
+3fdiGohXPi5XnVzkFJTqSoOs6pKCRlD9TgEbNLF5JdnQvCuXDopc7s8BoIAVoQnV
+da7L4fDeO6SpkmUd7ZdkegeY5zFL9m8qMPfWErZ9An85T8w7Qh1WLQKpdrIRB0Yg
+BH7jp5d+KW983J6SbHeWl4SJhmyWnel0VaG6E682pUyNq6M37X8in+DC5zRuo5+z
+H66chPSxdLVVC+FTV4iRPqdQKz40X5h6nRTj+GolY7CmmafuJ4ZzkR9hzWC/pSn2
+uLUWDmbdiFfInufmwOmtAoGARghjb+qhP9n/oQfFf5FcDOyZlv0QvAoefBHWGzWd
+/5uWqrQyvH+FZj0gdNRlHmSI81ksYP1ufBl4Z/0KeIEOOQ7CBE4WQ6TbnAEa2x5E
+ptUJJFKb5NvUp5Y3UM2iRKyJ0R5rumZO5A4LlvYGK+wPKOVlwZ5MoybUlocggd3M
+ZcECgYEAia0FTcXO8J1wZCYBTqFi+yvhVWPdn9kjK2ldWrsuJwO1llujjM3AqUto
+awYnM8c/bPESvSLtl6+uuG3HcQRPIHz77dxvhRAyv4gltjyni3EYMreQGQwf5PNR
+hgm3BlxwSujE0rKUwGCr5ol91yqiVojF/qyY4EwKP646AyMiJSQ=
+-----END RSA PRIVATE KEY-----
+`
+	dummyRsaPublic = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2+frLbHZOoUcdS3PWtPR
+kKrXQpMTKLR3B6dKDJwGnMU3jkr3k5GK4wFnPv0G3fB8Duh/P8qtO8yORQXbSp6F
+l6lCvciYMDE5qrPFYa/49iNHeeFMWvdmRBDvr659UmfrZ+Fh9d2fN3hj7legiaa9
+kkD8YhJQ+zHplGMC2xMWnAy6NnlBXAjKB57DtVckxb8SBFUqkSEFZGpl7tm87bPd
+s2YzGwdhoy7eOuvhWb0XeBFt7RWz98Dir9oB4CxW4YnQGZR2zL/2y6a+jf5kwYl9
+c+IGR81BPaPzHnrzo55MgmRUSq10+odecl37TuFP+maU1Iq3jsVvXS5DbipxxPe8
+kwIDAQAB
+-----END PUBLIC KEY-----
+`
 )
 
 type (
@@ -89,6 +153,7 @@ func mockOpenTDFServer() (*server.OpenTDFServer, error) {
 		&logger.Logger{
 			Logger: slog.New(slog.Default().Handler()),
 		},
+		&cache.Manager{},
 	)
 }
 
@@ -164,7 +229,41 @@ func TestStartTestSuite(t *testing.T) {
 	suite.Run(t, new(StartTestSuite))
 }
 
-func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
+func (s *StartTestSuite) SetupSuite() {
+	// Create dummy KAS key files in testdata
+	keyFiles := map[string]string{
+		"kas-private.pem":    dummyRsaPrivate,
+		"kas-cert.pem":       dummyRsaPublic, // Using public key as cert for dummy purposes
+		"kas-ec-private.pem": dummyEcPrivate,
+		"kas-ec-cert.pem":    dummyEcCert,
+	}
+
+	for filename, content := range keyFiles {
+		filePath := filepath.Join("testdata", filename)
+		err := os.WriteFile(filePath, []byte(content), 0o600)
+		s.Require().NoError(err, "Failed to write dummy key file: %s", filename)
+	}
+}
+
+func (s *StartTestSuite) TearDownSuite() {
+	ignoreFile := "all-no-config.yaml"
+
+	entries, err := os.ReadDir("testdata")
+	s.Require().NoError(err, "Failed to read testdata directory")
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if entry.Name() == ignoreFile {
+			continue
+		}
+		err = os.Remove("testdata/" + entry.Name())
+		s.Require().NoError(err, "Failed to remove testdata file: %s", entry.Name())
+	}
+}
+
+func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 	testCases := []struct {
 		name         string
 		mode         []string
@@ -234,8 +333,8 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 	}
 
 	for _, tc := range testCases {
-		suite.Run(tc.name, func() {
-			t := suite.T()
+		s.Run(tc.name, func() {
+			t := s.T()
 			s, err := mockOpenTDFServer()
 			require.NoError(t, err)
 
@@ -253,15 +352,23 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 
 			registry := serviceregistry.NewServiceRegistry()
 			err = registry.RegisterService(registerTestService, "test")
-			suite.Require().NoError(err)
+			require.NoError(t, err)
 
 			// Start services with test service
-			cleanup, err := startServices(context.Background(), &config.Config{
-				Mode: tc.mode,
-				Services: map[string]config.ServiceConfig{
-					"test": {},
+			cleanup, err := startServices(context.Background(), startServicesParams{
+				cfg: &config.Config{
+					Mode: tc.mode,
+					Services: map[string]config.ServiceConfig{
+						"test": {},
+					},
 				},
-			}, s, nil, logger, registry)
+				otdf:                s,
+				client:              nil,
+				keyManagerFactories: []trust.NamedKeyManagerFactory{},
+				logger:              logger,
+				reg:                 registry,
+				cacheManager:        &cache.Manager{},
+			})
 			require.NoError(t, err)
 			defer cleanup()
 
@@ -275,7 +382,7 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 				if err == nil {
 					break
 				}
-				slog.Info("not yet ready", "err", err)
+				slog.Error("not yet ready", slog.Any("err", err))
 				// retry after a blip
 				time.Sleep(100 * time.Millisecond)
 			}
@@ -301,8 +408,8 @@ func (suite *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 	}
 }
 
-func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
-	t := suite.T()
+func (s *StartTestSuite) Test_Start_Mode_Config_Errors() {
+	t := s.T()
 	discoveryEndpoint := mockKeycloakServer()
 	originalFilePath := "testdata/all-no-config.yaml"
 	testCases := []struct {
@@ -360,8 +467,8 @@ func (suite *StartTestSuite) Test_Start_Mode_Config_Errors() {
 	}
 }
 
-func (suite *StartTestSuite) Test_Start_Mode_Config_Success() {
-	t := suite.T()
+func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
+	t := s.T()
 	discoveryEndpoint := mockKeycloakServer()
 	// require.NoError(t, err)
 	originalFilePath := "testdata/all-no-config.yaml"

@@ -16,6 +16,7 @@ import (
 
 	"connectrpc.com/connect"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/trust"
@@ -52,6 +53,10 @@ func (m *MockKeyDetails) IsLegacy() bool {
 	return m.legacy
 }
 
+func (m *MockKeyDetails) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
+	return nil, errors.New("not implemented for tests")
+}
+
 func (m *MockKeyDetails) ExportPublicKey(_ context.Context, format trust.KeyType) (string, error) {
 	switch format {
 	case trust.KeyTypeJWK:
@@ -74,6 +79,10 @@ func (m *MockKeyDetails) ExportCertificate(_ context.Context) (string, error) {
 		return "", errors.New("certificate not available")
 	}
 	return m.certData, nil
+}
+
+func (m *MockKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
+	return nil
 }
 
 // MockSecurityProvider is a test implementation of SecurityProvider
@@ -117,11 +126,11 @@ func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, 
 	return keys, nil
 }
 
-func (m *MockSecurityProvider) Decrypt(_ context.Context, _ trust.KeyIdentifier, _, _ []byte) (trust.ProtectedKey, error) {
+func (m *MockSecurityProvider) Decrypt(_ context.Context, _ trust.KeyDetails, _, _ []byte) (trust.ProtectedKey, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ trust.KeyIdentifier, _ []byte, _ elliptic.Curve) (trust.ProtectedKey, error) {
+func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ trust.KeyDetails, _ []byte, _ elliptic.Curve) (trust.ProtectedKey, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
@@ -163,10 +172,11 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 	kasURI := urlHost(t)
 
 	// Create Provider with the mock security provider
+	delegator := trust.NewDelegatingKeyService(mockProvider, logger.CreateTestLogger(), nil)
+	delegator.RegisterKeyManager(mockProvider.Name(), func(_ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) { return mockProvider, nil })
 	kas := Provider{
-		URI:        *kasURI,
-		KeyIndex:   mockProvider,
-		KeyManager: mockProvider,
+		URI:          *kasURI,
+		KeyDelegator: delegator,
 		KASConfig: KASConfig{
 			Keyring: []CurrentKeyFor{
 				{
@@ -333,11 +343,18 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 	defer c.Close()
 	kasURI := urlHost(t)
 
+	inProcess := security.NewSecurityProviderAdapter(c, nil, nil)
+
+	delegator := trust.NewDelegatingKeyService(inProcess, logger.CreateTestLogger(), nil)
+	delegator.RegisterKeyManager(inProcess.Name(), func(_ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+		return inProcess, nil
+	})
+
 	kas := Provider{
-		URI:        *kasURI,
-		KeyManager: security.NewSecurityProviderAdapter(c, nil, nil),
-		Logger:     logger.CreateTestLogger(),
-		Tracer:     noop.NewTracerProvider().Tracer(""),
+		URI:          *kasURI,
+		KeyDelegator: delegator,
+		Logger:       logger.CreateTestLogger(),
+		Tracer:       noop.NewTracerProvider().Tracer(""),
 	}
 
 	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{Fmt: "pkcs8"}})

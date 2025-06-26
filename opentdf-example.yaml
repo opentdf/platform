@@ -35,13 +35,16 @@ services:
   # policy is enabled by default in mode 'all'
   # policy:
   #   enabled: true
-  # list_request_limit_default: 1000
-  # list_request_limit_max: 2500
+  #   list_request_limit_default: 1000
+  #   list_request_limit_max: 2500
+  # authorization:
+  #   entitlement_policy_cache:
+  #     enabled: false
+  #     refresh_interval: 30s
 server:
   auth:
     enabled: true
     enforceDPoP: false
-    public_client_id: "opentdf-public"
     audience: "http://localhost:8080"
     issuer: http://keycloak:8888/auth/realms/opentdf
     policy:
@@ -89,8 +92,10 @@ server:
     allowedheaders:
       - ACCEPT
       - Authorization
+      - Connect-Protocol-Version
       - Content-Type
       - X-CSRF-Token
+      - X-Request-ID
     # List of response headers that browsers are allowed to access
     exposedheaders:
       - Link

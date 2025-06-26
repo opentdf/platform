@@ -21,7 +21,6 @@ server:
   auth:
     enabled: false
     enforceDPoP: false
-    public_client_id: 'opentdf-public'
     audience: 'http://localhost:8080'
     issuer: http://localhost:8888/auth/realms/tdf
   cors:
@@ -41,6 +40,7 @@ server:
     allowedheaders:
       - ACCEPT
       - Authorization
+      - Connect-Protocol-Version
       - Content-Type
       - X-CSRF-Token
     # List of response headers that browsers are allowed to access

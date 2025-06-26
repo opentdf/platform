@@ -1,7 +1,6 @@
 ---------------------------------------------------------------- 
 -- KEY ACCESS SERVERS
 ----------------------------------------------------------------
-
 -- name: ListKeyAccessServerGrants :many
 WITH listed AS (
     SELECT
@@ -88,18 +87,17 @@ LEFT JOIN (
             kask.key_access_server_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'kas_id', kask.key_access_server_id,
-                    'key', JSONB_BUILD_OBJECT(
-                        'id', kask.id,
-                        'key_id', kask.key_id,
-                        'key_status', kask.key_status,
-                        'key_mode', kask.key_mode,
-                        'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', kask.public_key_ctx
+                    'kas_uri', kas.uri,
+                    'kas_id', kas.id,
+                    'public_key', JSONB_BUILD_OBJECT(
+                         'algorithm', kask.key_algorithm::INTEGER,
+                         'kid', kask.key_id,
+                         'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM key_access_server_keys kask
+        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
 LIMIT @limit_ 
@@ -126,18 +124,17 @@ LEFT JOIN (
             kask.key_access_server_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'kas_id', kask.key_access_server_id,
-                    'key', JSONB_BUILD_OBJECT(
-                        'id', kask.id,
-                        'key_id', kask.key_id,
-                        'key_status', kask.key_status,
-                        'key_mode', kask.key_mode,
-                        'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', kask.public_key_ctx
+                    'kas_uri', kas.uri,
+                    'kas_id', kas.id,
+                    'public_key', JSONB_BUILD_OBJECT(
+                         'algorithm', kask.key_algorithm::INTEGER,
+                         'kid', kask.key_id,
+                         'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
         FROM key_access_server_keys kask
+        INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
         GROUP BY kask.key_access_server_id
     ) kask_keys ON kas.id = kask_keys.key_access_server_id
 WHERE (sqlc.narg('id')::uuid IS NULL OR kas.id = sqlc.narg('id')::uuid)
@@ -252,6 +249,7 @@ LEFT JOIN
     provider_config as pc ON kask.provider_config_id = pc.id
 WHERE
     (sqlc.narg('key_algorithm')::integer IS NULL OR kask.key_algorithm = sqlc.narg('key_algorithm')::integer)
+ORDER BY kask.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_;
 
@@ -415,18 +413,8 @@ LEFT JOIN (
     av.id,
     av.value,
     av.active,
-    JSON_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-            'id', vkas.id,
-            'uri', vkas.uri,
-            'name', vkas.name,
-            'public_key', vkas.public_key
-        )
-    ) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
     av.attribute_definition_id
   FROM attribute_values av
-  LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
-  LEFT JOIN key_access_servers vkas ON avg.key_access_server_id = vkas.id
   GROUP BY av.id
 ) avt ON avt.attribute_definition_id = ad.id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
@@ -469,33 +457,20 @@ WITH target_definition AS (
         ad.rule,
         ad.active,
         ad.values_order,
-        JSONB_AGG(
-	        DISTINCT JSONB_BUILD_OBJECT(
-	            'id', kas.id,
-	            'uri', kas.uri,
-                'name', kas.name,
-	            'public_key', kas.public_key
-	        )
-	    ) FILTER (WHERE kas.id IS NOT NULL) AS grants,
         defk.keys AS keys
     FROM attribute_fqns fqns
     INNER JOIN attribute_definitions ad ON fqns.attribute_id = ad.id
-    LEFT JOIN attribute_definition_key_access_grants adkag ON ad.id = adkag.attribute_definition_id
-    LEFT JOIN key_access_servers kas ON adkag.key_access_server_id = kas.id
     LEFT JOIN (
         SELECT
             k.definition_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'kas_id', kask.key_access_server_id,
                     'kas_uri', kas.uri,
-                    'key', JSONB_BUILD_OBJECT(
-                        'id', kask.id,
-                        'key_id', kask.key_id,
-                        'key_status', kask.key_status,
-                        'key_mode', kask.key_mode,
-                        'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', kask.public_key_ctx
+                    'kas_id', kas.id,
+                    'public_key', JSONB_BUILD_OBJECT(
+                         'algorithm', kask.key_algorithm::INTEGER,
+                         'kid', kask.key_id,
+                         'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -516,35 +491,22 @@ namespaces AS (
 			'name', n.name,
 			'active', n.active,
 	        'fqn', fqns.fqn,
-	        'grants', JSONB_AGG(
-	            DISTINCT JSONB_BUILD_OBJECT(
-	                'id', kas.id,
-	                'uri', kas.uri,
-                    'name', kas.name,
-	                'public_key', kas.public_key
-	            )
-	        ) FILTER (WHERE kas.id IS NOT NULL),
             'kas_keys', nmp_keys.keys
     	) AS namespace
 	FROM target_definition td
 	INNER JOIN attribute_namespaces n ON td.namespace_id = n.id
 	INNER JOIN attribute_fqns fqns ON n.id = fqns.namespace_id
-	LEFT JOIN attribute_namespace_key_access_grants ankag ON n.id = ankag.namespace_id
-	LEFT JOIN key_access_servers kas ON ankag.key_access_server_id = kas.id
     LEFT JOIN (
         SELECT
             k.namespace_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'kas_id', kask.key_access_server_id,
                     'kas_uri', kas.uri,
-                    'key', JSONB_BUILD_OBJECT(
-                        'id', kask.id,
-                        'key_id', kask.key_id,
-                        'key_status', kask.key_status,
-                        'key_mode', kask.key_mode,
-                        'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', kask.public_key_ctx
+                    'kas_id', kas.id,
+                    'public_key', JSONB_BUILD_OBJECT(
+                         'algorithm', kask.key_algorithm::INTEGER,
+                         'kid', kask.key_id,
+                         'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -556,23 +518,6 @@ namespaces AS (
 	WHERE n.active = TRUE
 		AND (fqns.attribute_id IS NULL AND fqns.value_id IS NULL)
 	GROUP BY n.id, fqns.fqn, nmp_keys.keys
-),
-value_grants AS (
-	SELECT
-		av.id,
-		JSON_AGG(
-			DISTINCT JSONB_BUILD_OBJECT(
-				'id', kas.id,
-                'uri', kas.uri,
-                'name', kas.name,
-                'public_key', kas.public_key
-            )
-		) FILTER (WHERE kas.id IS NOT NULL) AS grants
-	FROM target_definition td
-	LEFT JOIN attribute_values av on td.id = av.attribute_definition_id
-	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
-	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
-	GROUP BY av.id
 ),
 value_subject_mappings AS (
 	SELECT
@@ -638,7 +583,6 @@ values AS (
 	            'value', av.value,
 	            'active', av.active,
 	            'fqn', fqns.fqn,
-	            'grants', avg.grants,
 	            'subject_mappings', avsm.sub_maps,
                 'resource_mappings', avrm.res_maps,
                 'kas_keys', value_keys.keys
@@ -648,7 +592,6 @@ values AS (
 	FROM target_definition td
 	LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
 	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-	LEFT JOIN value_grants avg ON av.id = avg.id
 	LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
     LEFT JOIN value_resource_mappings avrm ON av.id = avrm.id
     LEFT JOIN (
@@ -656,15 +599,12 @@ values AS (
             k.value_id,
             JSONB_AGG(
                 DISTINCT JSONB_BUILD_OBJECT(
-                    'kas_id', kask.key_access_server_id,
                     'kas_uri', kas.uri,
-                    'key', JSONB_BUILD_OBJECT(
-                        'id', kask.id,
-                        'key_id', kask.key_id,
-                        'key_status', kask.key_status,
-                        'key_mode', kask.key_mode,
-                        'key_algorithm', kask.key_algorithm,
-                        'public_key_ctx', kask.public_key_ctx
+                    'kas_id', kas.id,
+                    'public_key', JSONB_BUILD_OBJECT(
+                         'algorithm', kask.key_algorithm::INTEGER,
+                         'kid', kask.key_id,
+                         'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                     )
                 )
             ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -684,7 +624,6 @@ SELECT
 	n.namespace,
 	fqns.fqn,
 	values.values,
-	td.grants,
     td.keys
 FROM target_definition td
 INNER JOIN attribute_fqns fqns ON td.id = fqns.attribute_id
@@ -709,14 +648,6 @@ SELECT
             'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
     ) AS values,
-    JSONB_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-            'id', kas.id,
-            'uri', kas.uri,
-            'name', kas.name,
-            'public_key', kas.public_key
-        )
-    ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
     fqns.fqn,
     defk.keys as keys
 FROM attribute_definitions ad
@@ -726,31 +657,23 @@ LEFT JOIN (
         av.id,
         av.value,
         av.active,
-        JSON_AGG(DISTINCT JSONB_BUILD_OBJECT('id', vkas.id,'uri', vkas.uri,'name', vkas.name,'public_key', vkas.public_key )) FILTER (WHERE vkas.id IS NOT NULL AND vkas.uri IS NOT NULL AND vkas.public_key IS NOT NULL) AS val_grants_arr,
         av.attribute_definition_id
     FROM attribute_values av
-    LEFT JOIN attribute_value_key_access_grants avg ON av.id = avg.attribute_value_id
-    LEFT JOIN key_access_servers vkas ON avg.key_access_server_id = vkas.id
     GROUP BY av.id
 ) avt ON avt.attribute_definition_id = ad.id
-LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
-LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 LEFT JOIN (
     SELECT
         k.definition_id,
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
-                'key', JSONB_BUILD_OBJECT(
-                    'id', kask.id,
-                    'key_id', kask.key_id,
-                    'key_status', kask.key_status,
-                    'key_mode', kask.key_mode,
-                    'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', kask.public_key_ctx
-                ),
-                'kas_id', kask.key_access_server_id,
-                'kas_uri', kas.uri
+                'kas_uri', kas.uri,
+                'kas_id', kas.id,
+                'public_key', JSONB_BUILD_OBJECT(
+                     'algorithm', kask.key_algorithm::INTEGER,
+                     'kid', kask.key_id,
+                     'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
+                )
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
     FROM attribute_definition_public_key_map k
@@ -780,10 +703,6 @@ WHERE id = $1;
 
 -- name: DeleteAttribute :execrows
 DELETE FROM attribute_definitions WHERE id = $1;
-
--- name: AssignKeyAccessServerToAttribute :execrows
-INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id)
-VALUES ($1, $2);
 
 -- name: RemoveKeyAccessServerFromAttribute :execrows
 DELETE FROM attribute_definition_key_access_grants
@@ -839,33 +758,20 @@ SELECT
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
     av.attribute_definition_id,
     fqns.fqn,
-    JSONB_AGG(
-        DISTINCT JSONB_BUILD_OBJECT(
-            'id', kas.id,
-            'uri', kas.uri,
-            'name', kas.name,
-            'public_key', kas.public_key
-        )
-    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
     value_keys.keys as keys
 FROM attribute_values av
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
-LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
-LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
 LEFT JOIN (
     SELECT
         k.value_id,
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
-                'kas_id', kask.key_access_server_id,
                 'kas_uri', kas.uri,
-                'key', JSONB_BUILD_OBJECT(
-                    'id', kask.id,
-                    'key_id', kask.key_id,
-                    'key_status', kask.key_status,
-                    'key_mode', kask.key_mode,
-                    'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', kask.public_key_ctx
+                'kas_id', kas.id,
+                'public_key', JSONB_BUILD_OBJECT(
+                     'algorithm', kask.key_algorithm::INTEGER,
+                     'kid', kask.key_id,
+                     'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                 )
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -894,10 +800,6 @@ WHERE id = $1;
 
 -- name: DeleteAttributeValue :execrows
 DELETE FROM attribute_values WHERE id = $1;
-
--- name: AssignKeyAccessServerToAttributeValue :execrows
-INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id)
-VALUES ($1, $2);
 
 -- name: RemoveKeyAccessServerFromAttributeValue :execrows
 DELETE FROM attribute_value_key_access_grants
@@ -1081,31 +983,20 @@ SELECT
     ns.active,
     fqns.fqn,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
-    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
-        'id', kas.id,
-        'uri', kas.uri,
-        'name', kas.name,
-        'public_key', kas.public_key
-    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
     nmp_keys.keys as keys
 FROM attribute_namespaces ns
-LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
-LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 LEFT JOIN (
     SELECT
         k.namespace_id,
         JSONB_AGG(
             DISTINCT JSONB_BUILD_OBJECT(
-                'kas_id', kask.key_access_server_id,
                 'kas_uri', kas.uri,
-                'key', JSONB_BUILD_OBJECT(
-                    'id', kask.id,
-                    'key_id', kask.key_id,
-                    'key_status', kask.key_status,
-                    'key_mode', kask.key_mode,
-                    'key_algorithm', kask.key_algorithm,
-                    'public_key_ctx', kask.public_key_ctx
+                'kas_id', kas.id,
+                'public_key', JSONB_BUILD_OBJECT(
+                     'algorithm', kask.key_algorithm::INTEGER,
+                     'kid', kask.key_id,
+                     'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
                 )
             )
         ) FILTER (WHERE kask.id IS NOT NULL) AS keys
@@ -1135,10 +1026,6 @@ WHERE id = $1;
 
 -- name: DeleteNamespace :execrows
 DELETE FROM attribute_namespaces WHERE id = $1;
-
--- name: AssignKeyAccessServerToNamespace :execrows
-INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id)
-VALUES ($1, $2);
 
 -- name: RemoveKeyAccessServerFromNamespace :execrows
 DELETE FROM attribute_namespace_key_access_grants
@@ -1211,24 +1098,28 @@ RETURNING id;
 ----------------------------------------------------------------
 
 -- name: listSubjectMappings :many
-WITH counted AS (
+WITH subject_actions AS (
+    SELECT
+        sma.subject_mapping_id,
+        COALESCE(
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) FILTER (WHERE a.is_standard = TRUE),
+            '[]'::JSONB
+        ) AS standard_actions,
+        COALESCE(
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) FILTER (WHERE a.is_standard = FALSE),
+            '[]'::JSONB
+        ) AS custom_actions
+    FROM subject_mapping_actions sma
+    JOIN actions a ON sma.action_id = a.id
+    GROUP BY sma.subject_mapping_id
+), counted AS (
     SELECT COUNT(sm.id) AS total
     FROM subject_mappings sm
 )
 SELECT
     sm.id,
-    (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
-        FROM actions a
-        JOIN subject_mapping_actions sma ON sma.action_id = a.id
-        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
-    ) AS standard_actions,
-    (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
-        FROM actions a
-        JOIN subject_mapping_actions sma ON sma.action_id = a.id
-        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
-    ) AS custom_actions,
+    sa.standard_actions,
+    sa.custom_actions,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', sm.metadata -> 'labels', 'created_at', sm.created_at, 'updated_at', sm.updated_at)) AS metadata,
     JSON_BUILD_OBJECT(
         'id', scs.id,
@@ -1244,10 +1135,19 @@ SELECT
     counted.total
 FROM subject_mappings sm
 CROSS JOIN counted
+LEFT JOIN subject_actions sa ON sm.id = sa.subject_mapping_id
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-GROUP BY av.id, sm.id, scs.id, counted.total, fqns.fqn
+GROUP BY
+    sm.id,
+    sa.standard_actions,
+    sa.custom_actions,
+    sm.metadata, sm.created_at, sm.updated_at, -- for metadata object
+    scs.id, scs.metadata, scs.created_at, scs.updated_at, scs.condition, -- for subject_condition_set object
+    av.id, av.value, av.active, -- for attribute_value object
+    fqns.fqn,
+    counted.total
 LIMIT @limit_
 OFFSET @offset_;
 
@@ -1280,20 +1180,25 @@ WHERE sm.id = $1
 GROUP BY av.id, sm.id, scs.id;
 
 -- name: matchSubjectMappings :many
+WITH subject_actions AS (
+    SELECT
+        sma.subject_mapping_id,
+        COALESCE(
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) FILTER (WHERE a.is_standard = TRUE),
+            '[]'::JSONB
+        ) AS standard_actions,
+        COALESCE(
+            JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name)) FILTER (WHERE a.is_standard = FALSE),
+            '[]'::JSONB
+        ) AS custom_actions
+    FROM subject_mapping_actions sma
+    JOIN actions a ON sma.action_id = a.id
+    GROUP BY sma.subject_mapping_id
+)
 SELECT
     sm.id,
-    (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
-        FROM actions a
-        JOIN subject_mapping_actions sma ON sma.action_id = a.id
-        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = TRUE
-    ) AS standard_actions,
-    (
-        SELECT JSONB_AGG(JSONB_BUILD_OBJECT('id', a.id, 'name', a.name))
-        FROM actions a
-        JOIN subject_mapping_actions sma ON sma.action_id = a.id
-        WHERE sma.subject_mapping_id = sm.id AND a.is_standard = FALSE
-    ) AS custom_actions,
+    sa.standard_actions,
+    sa.custom_actions,
     JSON_BUILD_OBJECT(
         'id', scs.id,
         'subject_sets', scs.condition
@@ -1305,17 +1210,23 @@ SELECT
         'fqn', fqns.fqn
     ) AS attribute_value
 FROM subject_mappings sm
+LEFT JOIN subject_actions sa ON sm.id = sa.subject_mapping_id
 LEFT JOIN attribute_values av ON sm.attribute_value_id = av.id
 LEFT JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
 LEFT JOIN attribute_namespaces ns ON ad.namespace_id = ns.id
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
 LEFT JOIN subject_condition_set scs ON scs.id = sm.subject_condition_set_id
-WHERE ns.active = true AND ad.active = true and av.active = true AND EXISTS (
-    SELECT 1
-    FROM JSONB_ARRAY_ELEMENTS(scs.condition) AS ss, JSONB_ARRAY_ELEMENTS(ss->'conditionGroups') AS cg, JSONB_ARRAY_ELEMENTS(cg->'conditions') AS each_condition
-    WHERE (each_condition->>'subjectExternalSelectorValue' = ANY(@selectors::TEXT[])) 
-)
-GROUP BY av.id, sm.id, scs.id, fqns.fqn;
+WHERE
+    ns.active = TRUE
+    AND ad.active = TRUE
+    AND av.active = TRUE
+    AND scs.selector_values && @selectors::TEXT[]
+GROUP BY
+    sm.id,
+    sa.standard_actions,
+    sa.custom_actions,
+    scs.id, scs.condition,
+    av.id, av.value, av.active, fqns.fqn;
 
 -- name: createSubjectMapping :one
 WITH inserted_mapping AS (
@@ -1504,16 +1415,41 @@ SELECT
     r.id,
     r.name,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', r.metadata -> 'labels', 'created_at', r.created_at, 'updated_at', r.updated_at)) as metadata,
+    -- Aggregate all values for this resource into a JSON array, filtering NULL entries
     JSON_AGG(
         JSON_BUILD_OBJECT(
             'id', v.id,
-            'value', v.value
+            'value', v.value,
+            'action_attribute_values', action_attrs.values
         )
     ) FILTER (WHERE v.id IS NOT NULL) as values,
     counted.total
 FROM registered_resources r
 CROSS JOIN counted
 LEFT JOIN registered_resource_values v ON v.registered_resource_id = r.id
+-- Build a JSON array of action/attribute pairs for each resource value
+LEFT JOIN LATERAL (
+    SELECT JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'action', JSON_BUILD_OBJECT(
+                'id', a.id,
+                'name', a.name
+            ),
+            'attribute_value', JSON_BUILD_OBJECT(
+                'id', av.id,
+                'value', av.value,
+                'fqn', fqns.fqn
+            )
+        )
+    ) AS values
+    -- Join to get all action-attribute relationships for this resource value
+    FROM registered_resource_action_attribute_values rav
+    LEFT JOIN actions a on rav.action_id = a.id
+    LEFT JOIN attribute_values av on rav.attribute_value_id = av.id
+    LEFT JOIN attribute_fqns fqns on av.id = fqns.value_id
+    -- Correlate to the outer query's resource value
+    WHERE rav.registered_resource_value_id = v.id
+) action_attrs ON true  -- required syntax for LATERAL joins
 GROUP BY r.id, counted.total
 LIMIT @limit_ 
 OFFSET @offset_;
@@ -1701,10 +1637,11 @@ WHERE id = $1;
 SELECT
     DISTINCT JSONB_BUILD_OBJECT(
        'kas_uri', kas.uri,
+       'kas_id', kas.id,
        'public_key', JSONB_BUILD_OBJECT(
-            'algorithm', kask.key_algorithm::TEXT,
+            'algorithm', kask.key_algorithm::INTEGER,
             'kid', kask.key_id,
-            'pem', kask.public_key_ctx ->> 'pem'
+            'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
        )
     ) AS base_keys
 FROM base_keys bk
@@ -1717,4 +1654,3 @@ VALUES ($1);
 
 -- name: deleteAllBaseKeys :execrows
 DELETE FROM base_keys;
-

@@ -5,6 +5,8 @@ import (
 	"crypto/elliptic"
 	"testing"
 
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -18,16 +20,16 @@ func (m *MockKeyManager) Name() string {
 	return args.String(0)
 }
 
-func (m *MockKeyManager) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error) {
-	args := m.Called(ctx, keyID, ciphertext, ephemeralPublicKey)
+func (m *MockKeyManager) Decrypt(ctx context.Context, keyDetails KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error) {
+	args := m.Called(ctx, keyDetails, ciphertext, ephemeralPublicKey)
 	if a0, ok := args.Get(0).(ProtectedKey); ok {
 		return a0, args.Error(1)
 	}
 	return nil, args.Error(1)
 }
 
-func (m *MockKeyManager) DeriveKey(ctx context.Context, kasKID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error) {
-	args := m.Called(ctx, kasKID, ephemeralPublicKeyBytes, curve)
+func (m *MockKeyManager) DeriveKey(ctx context.Context, keyDetails KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error) {
+	args := m.Called(ctx, keyDetails, ephemeralPublicKeyBytes, curve)
 	if a0, ok := args.Get(0).(ProtectedKey); ok {
 		return a0, args.Error(1)
 	}
@@ -98,6 +100,14 @@ func (m *MockKeyDetails) IsLegacy() bool {
 	return args.Bool(0)
 }
 
+func (m *MockKeyDetails) ExportPrivateKey(_ context.Context) (*PrivateKey, error) {
+	args := m.Called()
+	if a0, ok := args.Get(0).(*PrivateKey); ok {
+		return a0, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 func (m *MockKeyDetails) ExportPublicKey(ctx context.Context, format KeyType) (string, error) {
 	args := m.Called(ctx, format)
 	return args.String(0), args.Error(1)
@@ -114,6 +124,14 @@ func (m *MockKeyDetails) ExportCertificate(ctx context.Context) (string, error) 
 func (m *MockKeyDetails) System() string {
 	args := m.Called()
 	return args.String(0)
+}
+
+func (m *MockKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
+	args := m.Called()
+	if a0, ok := args.Get(0).(*policy.KeyProviderConfig); ok {
+		return a0
+	}
+	return nil
 }
 
 type MockProtectedKey struct {
@@ -178,7 +196,7 @@ type DelegatingKeyServiceTestSuite struct {
 
 func (suite *DelegatingKeyServiceTestSuite) SetupTest() {
 	suite.mockIndex = &MockKeyIndex{}
-	suite.service = NewDelegatingKeyService(suite.mockIndex)
+	suite.service = NewDelegatingKeyService(suite.mockIndex, logger.CreateTestLogger(), nil)
 	suite.mockManagerA = &MockKeyManager{}
 	suite.mockManagerB = &MockKeyManager{}
 }
@@ -214,9 +232,9 @@ func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {
 
 	mockProtectedKey := &MockProtectedKey{}
 	mockProtectedKey.On("DecryptAESGCM", mock.Anything, mock.Anything, mock.Anything).Return([]byte("decrypted"), nil)
-	suite.mockManagerA.On("Decrypt", mock.Anything, KeyIdentifier("key1"), []byte("ciphertext"), []byte("ephemeralKey")).Return(mockProtectedKey, nil)
+	suite.mockManagerA.On("Decrypt", mock.Anything, mockKeyDetails, []byte("ciphertext"), []byte("ephemeralKey")).Return(mockProtectedKey, nil)
 
-	suite.service.RegisterKeyManager("mockManager", func() (KeyManager, error) {
+	suite.service.RegisterKeyManager("mockManager", func(_ *KeyManagerFactoryOptions) (KeyManager, error) {
 		return suite.mockManagerA, nil
 	})
 
@@ -232,9 +250,9 @@ func (suite *DelegatingKeyServiceTestSuite) TestDeriveKey() {
 
 	mockProtectedKey := &MockProtectedKey{}
 	mockProtectedKey.On("Export", mock.Anything).Return([]byte("exported"), nil)
-	suite.mockManagerA.On("DeriveKey", mock.Anything, KeyIdentifier("key1"), []byte("ephemeralKey"), elliptic.P256()).Return(mockProtectedKey, nil)
+	suite.mockManagerA.On("DeriveKey", mock.Anything, mockKeyDetails, []byte("ephemeralKey"), elliptic.P256()).Return(mockProtectedKey, nil)
 
-	suite.service.RegisterKeyManager("mockManager", func() (KeyManager, error) {
+	suite.service.RegisterKeyManager("mockManager", func(_ *KeyManagerFactoryOptions) (KeyManager, error) {
 		return suite.mockManagerA, nil
 	})
 
@@ -244,7 +262,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestDeriveKey() {
 }
 
 func (suite *DelegatingKeyServiceTestSuite) TestGenerateECSessionKey() {
-	suite.service.RegisterKeyManager("default", func() (KeyManager, error) {
+	suite.service.RegisterKeyManager("default", func(_ *KeyManagerFactoryOptions) (KeyManager, error) {
 		return suite.mockManagerA, nil
 	})
 	suite.service.defaultMode = "default"

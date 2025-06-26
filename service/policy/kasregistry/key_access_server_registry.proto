@@ -313,6 +313,7 @@ message ActivatePublicKeyResponse {
 // attribute tree relation. If grants to a known namespace, attribute, or value
 // are needed, use the respective GET request to the specific policy object.
 message ListKeyAccessServerGrantsRequest {
+  option deprecated = true;
   // Optional
   // Filter LIST by ID of a registered Key Access Server.
   // If neither is provided, grants from all registered KASs to policy attribute
@@ -364,6 +365,8 @@ message ListKeyAccessServerGrantsRequest {
 
 // Deprecated
 message ListKeyAccessServerGrantsResponse {
+  option deprecated = true;
+
   repeated KeyAccessServerGrants grants = 1 [deprecated = true];
 
   policy.PageResponse pagination = 10;
@@ -409,10 +412,9 @@ message CreateKeyRequest {
     expression: "this >= 1 && this <= 4" // Allow CONFIG_ROOT_KEY, PROVIDER_ROOT_KEY, REMOTE, PUBLIC_KEY_ONLY
   }]; // The mode of the key (e.g., local or external)
   // Required
-  KasPublicKeyCtx public_key_ctx = 5 [(buf.validate.field).required = true]; // Context or additional data specific to the public key, based on the key provider implementation
-  // Required
-  KasPrivateKeyCtx private_key_ctx = 6; // Context or additional data specific to the private key, based on the key provider implementation
-
+  PublicKeyCtx public_key_ctx = 5 [(buf.validate.field).required = true]; // Context or additional data specific to the public key, based on the key provider implementation
+  // Conditionally Required
+  PrivateKeyCtx private_key_ctx = 6; // Context or additional data specific to the private key, based on the key provider implementation
   // Optional
   string provider_config_id = 7; // Configuration ID for the key provider, if applicable
   // Common metadata
@@ -469,11 +471,6 @@ message ListKeysResponse {
 // Update an existing asymmetric key in the Key Management System
 message UpdateKeyRequest {
   option (buf.validate.message).cel = {
-    id: "key_status_cannot_update_to_unspecified"
-    message: "Key status cannot be updated to UNSPECIFIED."
-    expression: "((this.key_status != 0) || (has(this.metadata)))"
-  };
-  option (buf.validate.message).cel = {
     id: "metadata_update_behavior"
     message: "Metadata update behavior must be either APPEND or REPLACE, when updating metadata."
     expression: "((!has(this.metadata)) || (has(this.metadata) && this.metadata_update_behavior != 0))"
@@ -481,8 +478,6 @@ message UpdateKeyRequest {
 
   // Required
   string id = 1 [(buf.validate.field).string.uuid = true]; // The unique identifier of the key to update
-  // Optional
-  KeyStatus key_status = 2 [(buf.validate.field).enum.defined_only = true]; // The new status of the key (e.g., active, inactive)
 
   // Optional
   // Common metadata
@@ -562,9 +557,9 @@ message RotateKeyRequest {
       }
     ];
     // Required
-    KasPublicKeyCtx public_key_ctx = 4 [(buf.validate.field).required = true];
+    PublicKeyCtx public_key_ctx = 4 [(buf.validate.field).required = true];
     // Required
-    KasPrivateKeyCtx private_key_ctx = 5;
+    PrivateKeyCtx private_key_ctx = 5;
     // Conditionally Required.
     string provider_config_id = 6; // Validation handled by message-level CEL
 
@@ -612,17 +607,6 @@ message SetBaseKeyRequest {
   }
 }
 
-message SimpleKasPublicKey {
-  string algorithm = 1;
-  string kid = 2;
-  string pem = 3;
-}
-
-message SimpleKasKey {
-    string kas_uri = 1; // The URL of the Key Access Server
-    SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
-};
-
 message GetBaseKeyRequest {}
 message GetBaseKeyResponse {
   SimpleKasKey base_key = 1; // The current base key
@@ -640,31 +624,18 @@ service KeyAccessServerRegistryService {
   }
 
   rpc GetKeyAccessServer(GetKeyAccessServerRequest) returns (GetKeyAccessServerResponse) {
-    option (google.api.http) = {get: "/key-access-servers/{id}"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {
-    option (google.api.http) = {
-      post: "/key-access-servers"
-      body: "*"
-    };
-  }
+  rpc CreateKeyAccessServer(CreateKeyAccessServerRequest) returns (CreateKeyAccessServerResponse) {}
 
-  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {
-    option (google.api.http) = {
-      patch: "/key-access-servers/{id}"
-      body: "*"
-    };
-  }
+  rpc UpdateKeyAccessServer(UpdateKeyAccessServerRequest) returns (UpdateKeyAccessServerResponse) {}
 
-  rpc DeleteKeyAccessServer(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {
-    option (google.api.http) = {delete: "/key-access-servers/{id}"};
-  }
+  rpc DeleteKeyAccessServer(DeleteKeyAccessServerRequest) returns (DeleteKeyAccessServerResponse) {}
 
   // Deprecated
   rpc ListKeyAccessServerGrants(ListKeyAccessServerGrantsRequest) returns (ListKeyAccessServerGrantsResponse) {
-    option (google.api.http) = {get: "/key-access-servers/grants"};
+    option deprecated = true;
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 

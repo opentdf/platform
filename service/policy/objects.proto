@@ -6,6 +6,18 @@ import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/protobuf/wrappers.proto";
 
+message SimpleKasPublicKey {
+  Algorithm algorithm = 1;
+  string kid = 2;
+  string pem = 3;
+}
+
+message SimpleKasKey {
+    string kas_uri = 1; // The URL of the Key Access Server
+    SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
+    string kas_id = 3; // The ID of the Key Access Server
+};
+
 message KeyProviderConfig {
   string id = 1;
   string name = 2;
@@ -29,11 +41,11 @@ message Namespace {
 
   common.Metadata metadata = 5;
 
-  // KAS grants for the namespace
+  // Deprecated KAS grants for the namespace. Use kas_keys instead.
   repeated KeyAccessServer grants = 6;
 
   // Keys for the namespace
-  repeated KasKey kas_keys = 7;
+  repeated SimpleKasKey kas_keys = 7;
 }
 
 message Attribute {
@@ -53,7 +65,7 @@ message Attribute {
 
   repeated Value values = 5;
 
-  // Deprecated
+  // Deprecated KAS grants for the attribute. Use kas_keys instead.
   repeated KeyAccessServer grants = 6;
 
   string fqn = 7;
@@ -62,7 +74,7 @@ message Attribute {
   google.protobuf.BoolValue active = 8;
 
   //Keys associated with the attribute
-  repeated KasKey kas_keys = 9;
+  repeated SimpleKasKey kas_keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -87,8 +99,7 @@ message Value {
   reserved "members";
   reserved 4;
 
-  // Deprecated
-  // list of key access servers
+  // Deprecated KAS grants for the value. Use kas_keys instead.
   repeated KeyAccessServer grants = 5;
 
   string fqn = 6;
@@ -99,7 +110,7 @@ message Value {
   // subject mapping
   repeated SubjectMapping subject_mappings = 8;
 
-  repeated KasKey kas_keys = 9;
+  repeated SimpleKasKey kas_keys = 9;
 
   repeated ResourceMapping resource_mappings = 10;
 
@@ -322,7 +333,7 @@ message KeyAccessServer {
   // The source of the KAS: (INTERNAL, EXTERNAL)
   SourceType source_type = 4;
   // Kas keys associated with this KAS
-  repeated KasKey kas_keys = 5;
+  repeated SimpleKasKey kas_keys = 5;
 
   // Optional
   // Unique name of the KAS instance
@@ -463,8 +474,7 @@ enum Algorithm {
 enum KeyStatus {
   KEY_STATUS_UNSPECIFIED = 0;
   KEY_STATUS_ACTIVE = 1;
-  KEY_STATUS_INACTIVE = 2;
-  KEY_STATUS_COMPROMISED = 3;
+  KEY_STATUS_ROTATED = 2;
 }
 
 // Describes the management and operational mode of a cryptographic key.
@@ -499,12 +509,12 @@ message KasKey {
   string kas_uri = 3;
 }
 
-message KasPublicKeyCtx {
+message PublicKeyCtx {
   // Required
   string pem = 1 [(buf.validate.field).string = {min_len: 1}]; // Base64 encoded public key in PEM format
 }
 
-message KasPrivateKeyCtx {
+message PrivateKeyCtx {
   // Required
   string key_id = 1 [(buf.validate.field).string = {min_len: 1}]; // Key ID for the symmetric key wrapping this key.
   // Optional
@@ -523,9 +533,9 @@ message AsymmetricKey {
   // Required
   KeyMode key_mode = 5; // Specifies how the key is managed (local or remote)
   // Required
-  KasPublicKeyCtx public_key_ctx = 6; // Specific structure based on key provider implementation
+  PublicKeyCtx public_key_ctx = 6; // Specific structure based on key provider implementation
   // Optional
-  KasPrivateKeyCtx private_key_ctx = 7; // Specific structure based on key provider implementation
+  PrivateKeyCtx private_key_ctx = 7; // Specific structure based on key provider implementation
   // Optional
   KeyProviderConfig provider_config = 8; // Configuration for the key provider
 

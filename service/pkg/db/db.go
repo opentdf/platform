@@ -254,7 +254,10 @@ func (c Config) buildConfig() (*pgxpool.Config, error) {
 	parsed.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
 		_, err := conn.Exec(ctx, "SET search_path TO "+c.Schema)
 		if err != nil {
-			slog.Error("failed to set database client search_path", slog.String("schema", c.Schema), slog.String("error", err.Error()))
+			slog.Error("failed to set database client search_path",
+				slog.String("schema", c.Schema),
+				slog.Any("error", err),
+			)
 			return err
 		}
 		slog.Debug("successfully set database client search_path", slog.String("schema", c.Schema))

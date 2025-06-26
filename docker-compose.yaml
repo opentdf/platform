@@ -46,9 +46,9 @@ services:
       # If you are running on a M4 chip use the run-compose.sh script to start the containers
       # The EXTRA_JAVA_OPTS variable allows users to pass additional Java options and is used by the run-compose.sh script
       # to set the JAVA_OPTS_APPEND environment variable in the Keycloak container
-      JAVA_OPTS_APPEND: "${EXTRA_JAVA_OPTS}"
+      # JAVA_OPTS_APPEND: "${EXTRA_JAVA_OPTS}"
       # OR comment the above line and uncomment the JAVA_OPTS_APPEND line below
-      # JAVA_OPTS_APPEND: "-XX:UseSVE=0" # Uncommenting resolves SIGILL with Code 134 when running on a machine with an M4 chip: https://github.com/keycloak/keycloak/issues/36008
+      JAVA_OPTS_APPEND: "-XX:UseSVE=0" # Uncommenting resolves SIGILL with Code 134 when running on a machine with an M4 chip: https://github.com/keycloak/keycloak/issues/36008
       ###
     ports:
       - "9001:9001"
@@ -73,7 +73,7 @@ services:
               java.net.HttpURLConnection conn = (java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection(); 
               System.exit(java.net.HttpURLConnection.HTTP_OK == conn.getResponseCode() ? 0 : 1); 
             } 
-          }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java https://localhost:9001/auth/health/live
+          }" > /tmp/HealthCheck.java && java -XX:UseSVE=0 /tmp/HealthCheck.java https://localhost:9001/auth/health/live
       timeout: 10s
       retries: 3
       start_period: 2m

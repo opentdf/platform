@@ -604,6 +604,9 @@ components:
          has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
+      examples:
+        - 1s
+        - 1.000340012s
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -1101,7 +1104,7 @@ components:
             Required The algorithm to be used for the key
             The key_algorithm must be one of the defined values.:
             ```
-            this in [1, 2, 3, 4]
+            this in [1, 2, 3, 4, 5]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'
@@ -1550,7 +1553,7 @@ components:
             Filter keys by algorithm
             The key_algorithm must be one of the defined values.:
             ```
-            this in [0, 1, 2, 3, 4]
+            this in [0, 1, 2, 3, 4, 5]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'
@@ -1794,7 +1797,7 @@ components:
             Required
             The key_algorithm must be one of the defined values.:
             ```
-            this in [1, 2, 3, 4]
+            this in [1, 2, 3, 4, 5]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'

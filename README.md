@@ -52,7 +52,7 @@ There are two primary audiences for this project. Consumers and Contributors
 Consumers of the OpenTDF platform should begin their journey [here](./docs/Consuming.md).
 
 2. Contributing
-To contribute to the OpenTDF platform, you'll need a bit more set setup and should start [here](./docs/Contributing.md).
+To contribute to the OpenTDF platform, you'll need a bit more setup and should start [here](./docs/Contributing.md).
 
 ## Additional info for Project Consumers & Contributors
 
@@ -137,7 +137,7 @@ platform. The SDKs contain a native Go SDK and generated Go service SDKs. A full
 
 ### How To Add a New Go Module
 
-Within this repo, todefine a new, distinct [go module](https://go.dev/ref/mod),
+Within this repo, to define a new, distinct [go module](https://go.dev/ref/mod),
 for example to provide shared functionality between several existing modules,
 or to define new and unique functionality
 follow these steps.
@@ -198,7 +198,7 @@ COPY lib/foo/ lib/foo/
 
 #### Updating the Workflow Files
 
-1. Add your new `go.mod` directory to the `.github/workflows/checks.yaml`'s `go` job's `matrix.strategry.directory` line.
+1. Add your new `go.mod` directory to the `.github/workflows/checks.yaml`'s `go` job's `strategy.matrix.directory` line.
 2. Add the module to the `license` job in the `checks` workflow as well, especially if you declare _any_ dependencies.
 3. Do the same for any other workflows that should be running on your folder, such as `vuln-check` and `lint`.
 

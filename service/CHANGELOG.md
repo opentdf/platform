@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.0](https://github.com/opentdf/platform/compare/service/v0.7.0...service/v0.8.0) (2025-06-27)
+
+
+### Bug Fixes
+
+* add back grants to listAttributesByDefOrValueFqns ([#2493](https://github.com/opentdf/platform/issues/2493)) ([2b47095](https://github.com/opentdf/platform/commit/2b47095a3f577063d48b67adac50a9fa59b8ace3))
+* **core:** Allow 521 curve to be used ([#2485](https://github.com/opentdf/platform/issues/2485)) ([aaf43dc](https://github.com/opentdf/platform/commit/aaf43dc368b4cabbc9affa0a6075abd335aa57e3))
+
 ## [0.7.0](https://github.com/opentdf/platform/compare/service/v0.6.0...service/v0.7.0) (2025-06-24)
 
 

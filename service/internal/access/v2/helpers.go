@@ -216,15 +216,24 @@ func getResourceDecisionableAttributes(
 			if !found {
 				return nil, fmt.Errorf("resource registered resource value FQN not found in memory [%s]: %w", regResValueFQN, ErrInvalidResource)
 			}
-
+			// list of strings
+			// attrValActions := make([]string, 0)
+			attrValActions := make(map[string]string)
 			for _, aav := range regResValue.GetActionAttributeValues() {
 				// TODO: DSPX-1295 - revisit this logic bc it is causing failures for attributes with missing actions
-				// slog.Info("processing action attribute value", slog.Any("aav", aav))
+				slog.Info("processing action attribute value", slog.Any("aav", aav))
 				aavAction := aav.GetAction()
-				if aavAction.GetName() != action.GetName() {
-					logger.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("action", aavAction.GetName()))
+				// attrValActions = append(attrValActions, aavAction.GetName())
+				// attrValActions[aavAction.GetName()] = aav.GetAttributeValue().GetFqn()
+				if !(aavAction.GetName() == action.GetName() || attrValActions[aavAction.GetName()] == aav.GetAttributeValue().GetFqn()) {
+					// test if action is in the list of actions for this attribute value
+
+					logger.DebugContext(ctx, "skipping action not matching Decision Request action")
+					logger.DebugContext(ctx, "expected action", slog.String("expected_action", action.GetName()))
+					logger.DebugContext(ctx, "received action", slog.String("received_action", aavAction.GetName()))
 					continue
 				}
+				attrValActions[aavAction.GetName()] = aav.GetAttributeValue().GetFqn()
 
 				attrValueFQNs = append(attrValueFQNs, aav.GetAttributeValue().GetFqn())
 			}

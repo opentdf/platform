@@ -56,8 +56,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           PULL_NUMBERS: ${{ steps.backport.outputs.created_pull_numbers }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        uses: opentdf/platform/.github/actions/sign-backport-action-commits@main
+        uses: opentdf/platform/.github/actions/sign-github-app-commit@main
 
       - name: "Output failed backports"
         if: ${{ steps.backport.outputs.was_successful == 'false' }}

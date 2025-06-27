@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/opentdf/platform/compare/service/v0.7.0...service/v0.7.1) (2025-06-27)
+
+
+### Bug Fixes
+
+* add back grants to listAttributesByDefOrValueFqns [backport to release/service/v0.7] ([#2495](https://github.com/opentdf/platform/issues/2495)) ([3d7e7dd](https://github.com/opentdf/platform/commit/3d7e7dd200362e295ec3d9d30100356eb68e7219))
+
 ## [0.7.0](https://github.com/opentdf/platform/compare/service/v0.6.0...service/v0.7.0) (2025-06-24)
 
 

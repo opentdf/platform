@@ -62,6 +62,7 @@ type attributeQueryRow struct {
 	active        bool
 	namespaceName string
 	valuesJSON    []byte
+	grantsJSON    []byte
 	fqn           sql.NullString
 }
 
@@ -80,6 +81,15 @@ func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
 		values = v
 	}
 
+	var grants []*policy.KeyAccessServer
+	if row.grantsJSON != nil {
+		k, err := db.KeyAccessServerProtoJSON(row.grantsJSON)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal grantsJSON [%s]: %w", string(row.grantsJSON), err)
+		}
+		grants = k
+	}
+
 	ns := &policy.Namespace{
 		Id:   row.namespaceID,
 		Name: row.namespaceName,
@@ -94,6 +104,7 @@ func hydrateAttribute(row *attributeQueryRow) (*policy.Attribute, error) {
 		Active:    &wrapperspb.BoolValue{Value: row.active},
 		Metadata:  metadata,
 		Namespace: ns,
+		Grants:    grants,
 		Fqn:       row.fqn.String,
 	}
 
@@ -225,6 +236,7 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 		namespaceID:   attr.NamespaceID,
 		namespaceName: attr.NamespaceName.String,
 		valuesJSON:    attr.Values,
+		grantsJSON:    attr.Grants,
 		fqn:           sql.NullString(attr.Fqn),
 	})
 	if err != nil {
@@ -264,6 +276,12 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 
 		var keys []*policy.SimpleKasKey
 		var grants []*policy.KeyAccessServer
+		if len(attr.Grants) > 0 {
+			grants, err = db.KeyAccessServerProtoJSON(attr.Grants)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal grants [%s]: %w", string(attr.Grants), err)
+			}
+		}
 		if len(attr.Keys) > 0 {
 			keys, err = db.SimpleKasKeysProtoJSON(attr.Keys)
 			if err != nil {

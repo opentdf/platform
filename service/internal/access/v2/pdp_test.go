@@ -2184,8 +2184,8 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		// 	s.False(decision.Access)
-		// 	s.Len(decision.Results, 4)
+		s.False(decision.Access)
+		s.Len(decision.Results, 4)
 
 		// 	expectedResults := map[string]bool{
 		// 		testClassSecretFQN:     false,

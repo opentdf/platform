@@ -64,10 +64,9 @@ func getResourceDecision(
 		for _, aav := range regResValue.GetActionAttributeValues() {
 			// TODO: DSPX-1295 - revisit this logic -- reg res' are different from attr values since they can be both entity and resource
 			// and are tied to actions and attribute values
-			//
-			// if aav.GetAction().GetName() != action.GetName() {
-			// 	continue
-			// }
+			if aav.GetAction().GetName() != action.GetName() {
+				continue
+			}
 
 			aavAttrValueFQN := aav.GetAttributeValue().GetFqn()
 			if !slices.Contains(resourceAttributeValues.GetFqns(), aavAttrValueFQN) {

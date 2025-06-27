@@ -1647,6 +1647,93 @@ func (s *AttributeFqnSuite) TestGetAttributeByValueFqns_KAS_Keys_Returned() {
 	}
 }
 
+func (s *AttributeFqnSuite) Test_GrantsAreReturned() {
+	// Create New Namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "grants.com"})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+
+	// Create Attribute
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "grants",
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"value1", "value2"},
+	})
+
+	// Create Kas Registry
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://grants.com/kas",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Remote{
+				Remote: "https://grants.com/kas/public_key",
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(kas)
+
+	// Create NS Grant
+	nsGrant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, policydb.AssignKeyAccessServerToNamespaceParams{
+		NamespaceID:       ns.GetId(),
+		KeyAccessServerID: kas.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(nsGrant)
+
+	// Create Attribute Grant
+	attrGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, policydb.AssignKeyAccessServerToAttributeParams{
+		AttributeDefinitionID: attr.GetId(),
+		KeyAccessServerID:     kas.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(attrGrant)
+
+	// Create Value Grant
+	valueGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttributeValue(s.ctx, policydb.AssignKeyAccessServerToAttributeValueParams{
+		AttributeValueID:  attr.GetValues()[0].GetId(),
+		KeyAccessServerID: kas.GetId(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(valueGrant)
+
+	// Get Namespace check for grant
+	nsGet, err := s.db.PolicyClient.GetNamespace(s.ctx, ns.GetId())
+	s.Require().NoError(err)
+	s.NotNil(nsGet)
+	s.Len(nsGet.GetGrants(), 1)
+	s.Equal(ns.GetId(), nsGet.GetId())
+	s.Equal(kas.GetId(), nsGet.GetGrants()[0].GetId())
+
+	// Get Attribute
+	attrGet, err := s.db.PolicyClient.GetAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(attrGet)
+	s.Len(attrGet.GetGrants(), 1)
+	s.Equal(attr.GetId(), attrGet.GetId())
+	s.Equal(kas.GetId(), attrGet.GetGrants()[0].GetId())
+
+	// Get Value
+	valueGet, err := s.db.PolicyClient.GetAttributeValue(s.ctx, attr.GetValues()[0].GetId())
+	s.Require().NoError(err)
+	s.NotNil(valueGet)
+	s.Len(valueGet.GetGrants(), 1)
+	s.Equal(attr.GetValues()[0].GetId(), valueGet.GetId())
+	s.Equal(kas.GetId(), valueGet.GetGrants()[0].GetId())
+
+	// GetAttributeByFQN Values
+	fqn := fqnBuilder(ns.GetName(), attr.GetName(), attr.GetValues()[0].GetValue())
+	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn},
+	})
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.Len(v, 1)
+	s.Len(v[fqn].GetAttribute().GetNamespace().GetGrants(), 1)
+	s.Len(v[fqn].GetAttribute().GetGrants(), 1)
+	s.Len(v[fqn].GetValue().GetGrants(), 1)
+}
+
 func validateSimpleKasKey(s *suite.Suite, expected *policy.KasKey, actual *policy.SimpleKasKey) {
 	s.Equal(expected.GetKey().GetKeyId(), actual.GetPublicKey().GetKid())
 	s.Equal(expected.GetKasUri(), actual.GetKasUri())

@@ -11,6 +11,74 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const assignKeyAccessServerToAttribute = `-- name: AssignKeyAccessServerToAttribute :execrows
+INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id)
+VALUES ($1, $2)
+`
+
+type AssignKeyAccessServerToAttributeParams struct {
+	AttributeDefinitionID string `json:"attribute_definition_id"`
+	KeyAccessServerID     string `json:"key_access_server_id"`
+}
+
+// -----------------------
+// For Testing Only!!!!!!!!!
+// -----------------------
+//
+//	INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id)
+//	VALUES ($1, $2)
+func (q *Queries) AssignKeyAccessServerToAttribute(ctx context.Context, arg AssignKeyAccessServerToAttributeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, assignKeyAccessServerToAttribute, arg.AttributeDefinitionID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const assignKeyAccessServerToAttributeValue = `-- name: AssignKeyAccessServerToAttributeValue :execrows
+INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id)
+VALUES ($1, $2)
+`
+
+type AssignKeyAccessServerToAttributeValueParams struct {
+	AttributeValueID  string `json:"attribute_value_id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// AssignKeyAccessServerToAttributeValue
+//
+//	INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id)
+//	VALUES ($1, $2)
+func (q *Queries) AssignKeyAccessServerToAttributeValue(ctx context.Context, arg AssignKeyAccessServerToAttributeValueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, assignKeyAccessServerToAttributeValue, arg.AttributeValueID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const assignKeyAccessServerToNamespace = `-- name: AssignKeyAccessServerToNamespace :execrows
+INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id)
+VALUES ($1, $2)
+`
+
+type AssignKeyAccessServerToNamespaceParams struct {
+	NamespaceID       string `json:"namespace_id"`
+	KeyAccessServerID string `json:"key_access_server_id"`
+}
+
+// AssignKeyAccessServerToNamespace
+//
+//	INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id)
+//	VALUES ($1, $2)
+func (q *Queries) AssignKeyAccessServerToNamespace(ctx context.Context, arg AssignKeyAccessServerToNamespaceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, assignKeyAccessServerToNamespace, arg.NamespaceID, arg.KeyAccessServerID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createAttribute = `-- name: CreateAttribute :one
 INSERT INTO attribute_definitions (namespace_id, name, rule, metadata)
 VALUES ($1, $2, $3, $4) 
@@ -350,6 +418,14 @@ SELECT
             'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
         ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
     ) AS values,
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'name', kas.name,
+            'public_key', kas.public_key
+        )
+    ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
     fqns.fqn,
     defk.keys as keys
 FROM attribute_definitions ad
@@ -363,6 +439,8 @@ LEFT JOIN (
     FROM attribute_values av
     GROUP BY av.id
 ) avt ON avt.attribute_definition_id = ad.id
+LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
+LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 LEFT JOIN (
     SELECT
@@ -402,6 +480,7 @@ type GetAttributeRow struct {
 	Active        bool                    `json:"active"`
 	NamespaceName pgtype.Text             `json:"namespace_name"`
 	Values        []byte                  `json:"values"`
+	Grants        []byte                  `json:"grants"`
 	Fqn           pgtype.Text             `json:"fqn"`
 	Keys          []byte                  `json:"keys"`
 }
@@ -424,6 +503,14 @@ type GetAttributeRow struct {
 //	            'fqn', CONCAT(fqns.fqn, '/value/', avt.value)
 //	        ) ORDER BY ARRAY_POSITION(ad.values_order, avt.id)
 //	    ) AS values,
+//	    JSONB_AGG(
+//	        DISTINCT JSONB_BUILD_OBJECT(
+//	            'id', kas.id,
+//	            'uri', kas.uri,
+//	            'name', kas.name,
+//	            'public_key', kas.public_key
+//	        )
+//	    ) FILTER (WHERE adkag.attribute_definition_id IS NOT NULL) AS grants,
 //	    fqns.fqn,
 //	    defk.keys as keys
 //	FROM attribute_definitions ad
@@ -437,6 +524,8 @@ type GetAttributeRow struct {
 //	    FROM attribute_values av
 //	    GROUP BY av.id
 //	) avt ON avt.attribute_definition_id = ad.id
+//	LEFT JOIN attribute_definition_key_access_grants adkag ON adkag.attribute_definition_id = ad.id
+//	LEFT JOIN key_access_servers kas ON kas.id = adkag.key_access_server_id
 //	LEFT JOIN attribute_fqns fqns ON fqns.attribute_id = ad.id AND fqns.value_id IS NULL
 //	LEFT JOIN (
 //	    SELECT
@@ -472,6 +561,7 @@ func (q *Queries) GetAttribute(ctx context.Context, arg GetAttributeParams) (Get
 		&i.Active,
 		&i.NamespaceName,
 		&i.Values,
+		&i.Grants,
 		&i.Fqn,
 		&i.Keys,
 	)
@@ -486,9 +576,19 @@ SELECT
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
     av.attribute_definition_id,
     fqns.fqn,
+    JSONB_AGG(
+        DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'name', kas.name,
+            'public_key', kas.public_key
+        )
+    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
     value_keys.keys as keys
 FROM attribute_values av
 LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
 LEFT JOIN (
     SELECT
         k.value_id,
@@ -525,6 +625,7 @@ type GetAttributeValueRow struct {
 	Metadata              []byte      `json:"metadata"`
 	AttributeDefinitionID string      `json:"attribute_definition_id"`
 	Fqn                   pgtype.Text `json:"fqn"`
+	Grants                []byte      `json:"grants"`
 	Keys                  []byte      `json:"keys"`
 }
 
@@ -537,9 +638,19 @@ type GetAttributeValueRow struct {
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', av.metadata -> 'labels', 'created_at', av.created_at, 'updated_at', av.updated_at)) as metadata,
 //	    av.attribute_definition_id,
 //	    fqns.fqn,
+//	    JSONB_AGG(
+//	        DISTINCT JSONB_BUILD_OBJECT(
+//	            'id', kas.id,
+//	            'uri', kas.uri,
+//	            'name', kas.name,
+//	            'public_key', kas.public_key
+//	        )
+//	    ) FILTER (WHERE avkag.attribute_value_id IS NOT NULL) AS grants,
 //	    value_keys.keys as keys
 //	FROM attribute_values av
 //	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+//	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+//	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
 //	LEFT JOIN (
 //	    SELECT
 //	        k.value_id,
@@ -572,6 +683,7 @@ func (q *Queries) GetAttributeValue(ctx context.Context, arg GetAttributeValuePa
 		&i.Metadata,
 		&i.AttributeDefinitionID,
 		&i.Fqn,
+		&i.Grants,
 		&i.Keys,
 	)
 	return i, err
@@ -692,8 +804,16 @@ SELECT
     ns.active,
     fqns.fqn,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
+        'id', kas.id,
+        'uri', kas.uri,
+        'name', kas.name,
+        'public_key', kas.public_key
+    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
     nmp_keys.keys as keys
 FROM attribute_namespaces ns
+LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
+LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 LEFT JOIN (
     SELECT
@@ -731,6 +851,7 @@ type GetNamespaceRow struct {
 	Active   bool        `json:"active"`
 	Fqn      pgtype.Text `json:"fqn"`
 	Metadata []byte      `json:"metadata"`
+	Grants   []byte      `json:"grants"`
 	Keys     []byte      `json:"keys"`
 }
 
@@ -742,8 +863,16 @@ type GetNamespaceRow struct {
 //	    ns.active,
 //	    fqns.fqn,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)) as metadata,
+//	    JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
+//	        'id', kas.id,
+//	        'uri', kas.uri,
+//	        'name', kas.name,
+//	        'public_key', kas.public_key
+//	    )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL) as grants,
 //	    nmp_keys.keys as keys
 //	FROM attribute_namespaces ns
+//	LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
+//	LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
 //	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 //	LEFT JOIN (
 //	    SELECT
@@ -777,6 +906,7 @@ func (q *Queries) GetNamespace(ctx context.Context, arg GetNamespaceParams) (Get
 		&i.Active,
 		&i.Fqn,
 		&i.Metadata,
+		&i.Grants,
 		&i.Keys,
 	)
 	return i, err
@@ -3773,9 +3903,19 @@ WITH target_definition AS (
         ad.rule,
         ad.active,
         ad.values_order,
+        JSONB_AGG(
+	        DISTINCT JSONB_BUILD_OBJECT(
+	            'id', kas.id,
+	            'uri', kas.uri,
+                'name', kas.name,
+	            'public_key', kas.public_key
+	        )
+	    ) FILTER (WHERE kas.id IS NOT NULL) AS grants,
         defk.keys AS keys
     FROM attribute_fqns fqns
     INNER JOIN attribute_definitions ad ON fqns.attribute_id = ad.id
+    LEFT JOIN attribute_definition_key_access_grants adkag ON ad.id = adkag.attribute_definition_id
+    LEFT JOIN key_access_servers kas ON adkag.key_access_server_id = kas.id
     LEFT JOIN (
         SELECT
             k.definition_id,
@@ -3807,11 +3947,21 @@ namespaces AS (
 			'name', n.name,
 			'active', n.active,
 	        'fqn', fqns.fqn,
+            'grants', JSONB_AGG(
+	            DISTINCT JSONB_BUILD_OBJECT(
+	                'id', kas.id,
+	                'uri', kas.uri,
+                    'name', kas.name,
+	                'public_key', kas.public_key
+	            )
+	        ) FILTER (WHERE kas.id IS NOT NULL),
             'kas_keys', nmp_keys.keys
     	) AS namespace
 	FROM target_definition td
 	INNER JOIN attribute_namespaces n ON td.namespace_id = n.id
 	INNER JOIN attribute_fqns fqns ON n.id = fqns.namespace_id
+    LEFT JOIN attribute_namespace_key_access_grants ankag ON n.id = ankag.namespace_id
+	LEFT JOIN key_access_servers kas ON ankag.key_access_server_id = kas.id
     LEFT JOIN (
         SELECT
             k.namespace_id,
@@ -3834,6 +3984,23 @@ namespaces AS (
 	WHERE n.active = TRUE
 		AND (fqns.attribute_id IS NULL AND fqns.value_id IS NULL)
 	GROUP BY n.id, fqns.fqn, nmp_keys.keys
+),
+value_grants AS (
+	SELECT
+		av.id,
+		JSON_AGG(
+			DISTINCT JSONB_BUILD_OBJECT(
+				'id', kas.id,
+                'uri', kas.uri,
+                'name', kas.name,
+                'public_key', kas.public_key
+            )
+		) FILTER (WHERE kas.id IS NOT NULL) AS grants
+	FROM target_definition td
+	LEFT JOIN attribute_values av on td.id = av.attribute_definition_id
+	LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+	LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+	GROUP BY av.id
 ),
 value_subject_mappings AS (
 	SELECT
@@ -3899,6 +4066,7 @@ values AS (
 	            'value', av.value,
 	            'active', av.active,
 	            'fqn', fqns.fqn,
+                'grants', avg.grants,
 	            'subject_mappings', avsm.sub_maps,
                 'resource_mappings', avrm.res_maps,
                 'kas_keys', value_keys.keys
@@ -3908,6 +4076,7 @@ values AS (
 	FROM target_definition td
 	LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
 	LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+    LEFT JOIN value_grants avg ON av.id = avg.id
 	LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
     LEFT JOIN value_resource_mappings avrm ON av.id = avrm.id
     LEFT JOIN (
@@ -3940,6 +4109,7 @@ SELECT
 	n.namespace,
 	fqns.fqn,
 	values.values,
+    td.grants,
     td.keys
 FROM target_definition td
 INNER JOIN attribute_fqns fqns ON td.id = fqns.attribute_id
@@ -3956,6 +4126,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 	Namespace []byte                  `json:"namespace"`
 	Fqn       string                  `json:"fqn"`
 	Values    []byte                  `json:"values"`
+	Grants    []byte                  `json:"grants"`
 	Keys      []byte                  `json:"keys"`
 }
 
@@ -3969,9 +4140,19 @@ type listAttributesByDefOrValueFqnsRow struct {
 //	        ad.rule,
 //	        ad.active,
 //	        ad.values_order,
+//	        JSONB_AGG(
+//		        DISTINCT JSONB_BUILD_OBJECT(
+//		            'id', kas.id,
+//		            'uri', kas.uri,
+//	                'name', kas.name,
+//		            'public_key', kas.public_key
+//		        )
+//		    ) FILTER (WHERE kas.id IS NOT NULL) AS grants,
 //	        defk.keys AS keys
 //	    FROM attribute_fqns fqns
 //	    INNER JOIN attribute_definitions ad ON fqns.attribute_id = ad.id
+//	    LEFT JOIN attribute_definition_key_access_grants adkag ON ad.id = adkag.attribute_definition_id
+//	    LEFT JOIN key_access_servers kas ON adkag.key_access_server_id = kas.id
 //	    LEFT JOIN (
 //	        SELECT
 //	            k.definition_id,
@@ -4003,11 +4184,21 @@ type listAttributesByDefOrValueFqnsRow struct {
 //				'name', n.name,
 //				'active', n.active,
 //		        'fqn', fqns.fqn,
+//	            'grants', JSONB_AGG(
+//		            DISTINCT JSONB_BUILD_OBJECT(
+//		                'id', kas.id,
+//		                'uri', kas.uri,
+//	                    'name', kas.name,
+//		                'public_key', kas.public_key
+//		            )
+//		        ) FILTER (WHERE kas.id IS NOT NULL),
 //	            'kas_keys', nmp_keys.keys
 //	    	) AS namespace
 //		FROM target_definition td
 //		INNER JOIN attribute_namespaces n ON td.namespace_id = n.id
 //		INNER JOIN attribute_fqns fqns ON n.id = fqns.namespace_id
+//	    LEFT JOIN attribute_namespace_key_access_grants ankag ON n.id = ankag.namespace_id
+//		LEFT JOIN key_access_servers kas ON ankag.key_access_server_id = kas.id
 //	    LEFT JOIN (
 //	        SELECT
 //	            k.namespace_id,
@@ -4030,6 +4221,23 @@ type listAttributesByDefOrValueFqnsRow struct {
 //		WHERE n.active = TRUE
 //			AND (fqns.attribute_id IS NULL AND fqns.value_id IS NULL)
 //		GROUP BY n.id, fqns.fqn, nmp_keys.keys
+//	),
+//	value_grants AS (
+//		SELECT
+//			av.id,
+//			JSON_AGG(
+//				DISTINCT JSONB_BUILD_OBJECT(
+//					'id', kas.id,
+//	                'uri', kas.uri,
+//	                'name', kas.name,
+//	                'public_key', kas.public_key
+//	            )
+//			) FILTER (WHERE kas.id IS NOT NULL) AS grants
+//		FROM target_definition td
+//		LEFT JOIN attribute_values av on td.id = av.attribute_definition_id
+//		LEFT JOIN attribute_value_key_access_grants avkag ON av.id = avkag.attribute_value_id
+//		LEFT JOIN key_access_servers kas ON avkag.key_access_server_id = kas.id
+//		GROUP BY av.id
 //	),
 //	value_subject_mappings AS (
 //		SELECT
@@ -4095,6 +4303,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //		            'value', av.value,
 //		            'active', av.active,
 //		            'fqn', fqns.fqn,
+//	                'grants', avg.grants,
 //		            'subject_mappings', avsm.sub_maps,
 //	                'resource_mappings', avrm.res_maps,
 //	                'kas_keys', value_keys.keys
@@ -4104,6 +4313,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //		FROM target_definition td
 //		LEFT JOIN attribute_values av ON td.id = av.attribute_definition_id
 //		LEFT JOIN attribute_fqns fqns ON av.id = fqns.value_id
+//	    LEFT JOIN value_grants avg ON av.id = avg.id
 //		LEFT JOIN value_subject_mappings avsm ON av.id = avsm.id
 //	    LEFT JOIN value_resource_mappings avrm ON av.id = avrm.id
 //	    LEFT JOIN (
@@ -4136,6 +4346,7 @@ type listAttributesByDefOrValueFqnsRow struct {
 //		n.namespace,
 //		fqns.fqn,
 //		values.values,
+//	    td.grants,
 //	    td.keys
 //	FROM target_definition td
 //	INNER JOIN attribute_fqns fqns ON td.id = fqns.attribute_id
@@ -4159,6 +4370,7 @@ func (q *Queries) listAttributesByDefOrValueFqns(ctx context.Context, fqns []str
 			&i.Namespace,
 			&i.Fqn,
 			&i.Values,
+			&i.Grants,
 			&i.Keys,
 		); err != nil {
 			return nil, err

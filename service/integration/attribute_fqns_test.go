@@ -1660,6 +1660,8 @@ func (s *AttributeFqnSuite) Test_GrantsAreReturned() {
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
 		Values:      []string{"value1", "value2"},
 	})
+	s.Require().NoError(err)
+	s.NotNil(attr)
 
 	// Create Kas Registry
 	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{

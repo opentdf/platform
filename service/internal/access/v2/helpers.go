@@ -201,7 +201,7 @@ func getResourceDecisionableAttributes(
 		decisionableAttributes = make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 		attrValueFQNs          = make([]string, 0)
 	)
-
+	slog.Info("aCtIoN", slog.Any("action", action))
 	// Parse attribute value FQNs from various resource types
 	for idx, resource := range resources {
 		// Assign indexed ephemeral ID for resource if not already set
@@ -232,6 +232,9 @@ func getResourceDecisionableAttributes(
 					logger.DebugContext(ctx, "expected action", slog.String("expected_action", action.GetName()))
 					logger.DebugContext(ctx, "received action", slog.String("received_action", aavAction.GetName()))
 					continue
+				} else {
+					logger.DebugContext(ctx, "eXPected action", slog.String("expected_action", action.GetName()))
+					logger.DebugContext(ctx, "rECeived action", slog.String("received_action", aavAction.GetName()))
 				}
 				attrValActions[aavAction.GetName()] = aav.GetAttributeValue().GetFqn()
 

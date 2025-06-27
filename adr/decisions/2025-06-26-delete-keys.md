@@ -57,6 +57,11 @@ Drawing inspiration from HashiCorp's KV secrets engine, we could implement a "so
 * 🟨 **Neutral**, Storage Overhead: Retaining deleted key versions increases storage requirements.
 * 🟥 **Bad**, Unclear behavior when a key access server is to be deleted and all keys are marked as *deleted*. Should we allow the keys to be deleted? Should we block the deletion of the key access server?
 
+>[!NOTE]
+>A derivative of this option could be that we move the key to an archived table
+>and remove it from the key_access_server_keys table, thus eliminating the
+>unclear table relationship issues.
+
 ### Option 4: Add exported column / export RPC method
 
 Add a column to the keys table to denote whether or not the key has been exported. If it has, then we allow the unsafe deletion. If the key has not been exported we return a meaningful error instructing the user to call the export rpc.
@@ -66,6 +71,7 @@ Add a column to the keys table to denote whether or not the key has been exporte
 * 🟩 **Good**, Allows admins a safe, auditable way for deleting keys
 * 🟨 **Neutral**, Cannot guarantee that the admin has kept the key after calling the export key method.
 * 🟥 **Bad**, No way of recovering your private key if not backed up before deletion.
+
 
 ## Decision Outcome
 

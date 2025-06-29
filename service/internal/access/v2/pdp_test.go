@@ -2878,7 +2878,7 @@ func createResourcePerFqn(attributeValueFQNs ...string) []*authz.Resource {
 
 		// TODO: DSPX-1295 - identifier lib does not do case-insensitive parsing, so we need to ensure FQNs are lowercased
 		// should maybe be fixed in the identifier library?
-		if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](strings.ToLower(fqn)); err == nil {
+		if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](fqn); err == nil {
 			// FQN is a registered resource value
 			resources[i] = createRegisteredResource(resourceID, fqn)
 		} else {

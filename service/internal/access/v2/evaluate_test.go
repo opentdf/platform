@@ -823,6 +823,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 						Fqns: []string{levelMidFQN},
 					},
 				},
+				// EphemeralId: "test-attr-vals",
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
 				levelMidFQN: []*policy.Action{actionRead},
@@ -945,9 +946,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			s.NotNil(decision)
 			s.Equal(tc.expectPass, decision.Passed, "Decision passed state didn't match expected")
 
-			if tc.resource != nil && tc.resource.GetEphemeralId() != "" {
-				s.Equal(tc.resource.GetEphemeralId(), decision.ResourceID, "Resource ID didn't match")
-			}
+			s.Equal(tc.resource.GetEphemeralId(), decision.ResourceID, "Resource ID didn't match")
 		})
 	}
 }

@@ -51,7 +51,6 @@ func Parse[T FullyQualified](identifier string) (T, error) {
 		err    error
 	)
 	identifier = strings.ToLower(identifier)
-
 	// Use type assertion to determine the concrete type and call the appropriate parser
 	switch any(result).(type) {
 	case *FullyQualifiedAttribute:

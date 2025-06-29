@@ -155,8 +155,56 @@ func (s *EvaluateTestSuite) SetupTest() {
 	}
 
 	// Setup accessible registered resource values map
-	// TODO: DSPX-1295
-	s.accessibleRegisteredResourceValues = map[string]*policy.RegisteredResourceValue{}
+	levelRegResValueFQN := strings.ToLower(createAttrValueFQN(baseNamespace, "level", "registered_res"))
+	projRegResValueFQN := strings.ToLower(createAttrValueFQN(baseNamespace, "project", "registered_res"))
+
+	// Create the registered resource values with action attribute values
+	s.accessibleRegisteredResourceValues = map[string]*policy.RegisteredResourceValue{
+		levelRegResValueFQN: {
+			Id:    "level-registered-res-id",
+			Value: "registered_res",
+			ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+				{
+					Id:     "level-action-attr-val-1",
+					Action: actionRead,
+					AttributeValue: &policy.Value{
+						Fqn:   levelHighestFQN,
+						Value: "highest",
+					},
+				},
+				{
+					Id:     "level-action-attr-val-2",
+					Action: actionCreate,
+					AttributeValue: &policy.Value{
+						Fqn:   levelMidFQN,
+						Value: "mid",
+					},
+				},
+			},
+		},
+		projRegResValueFQN: {
+			Id:    "project-registered-res-id",
+			Value: "registered_res",
+			ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+				{
+					Id:     "project-action-attr-val-1",
+					Action: actionRead,
+					AttributeValue: &policy.Value{
+						Fqn:   projectAvengersFQN,
+						Value: "avengers",
+					},
+				},
+				{
+					Id:     "project-action-attr-val-2",
+					Action: actionRead,
+					AttributeValue: &policy.Value{
+						Fqn:   projectJusticeLeagueFQN,
+						Value: "justiceleague",
+					},
+				},
+			},
+		},
+	}
 }
 
 func TestEvaluateSuite(t *testing.T) {
@@ -749,13 +797,23 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 	}
 }
 
+// Helper function to create registered resource value FQN for tests
+// func createRegisteredResourceValueFQN(namespace, attrName, valueName string) string {
+// 	return createAttrValueFQN(namespace, attrName, valueName)
+// }
+
 // Test cases for getResourceDecision
 func (s *EvaluateTestSuite) TestGetResourceDecision() {
+	levelRegResValueFQN := createAttrValueFQN(baseNamespace, "level", "registered_res")
+	projRegResValueFQN := createAttrValueFQN(baseNamespace, "project", "registered_res")
+	nonExistentRegResValueFQN := createAttrValueFQN(baseNamespace, "nonexistent", "value")
+
 	tests := []struct {
 		name         string
 		resource     *authz.Resource
 		entitlements subjectmappingbuiltin.AttributeValueFQNsToActions
 		expectError  bool
+		expectPass   bool
 	}{
 		{
 			name: "attribute values resource",
@@ -770,12 +828,99 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				levelMidFQN: []*policy.Action{actionRead},
 			},
 			expectError: false,
+			expectPass:  true,
+		},
+		{
+			name: "registered resource value with all entitlements",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: levelRegResValueFQN,
+				},
+				EphemeralId: "test-reg-res-id-1",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				levelHighestFQN: []*policy.Action{actionRead},
+			},
+			expectError: false,
+			expectPass:  true,
+		},
+		{
+			name: "registered resource value with project values",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: projRegResValueFQN,
+				},
+				EphemeralId: "test-reg-res-id-2",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				projectAvengersFQN:      []*policy.Action{actionRead},
+				projectJusticeLeagueFQN: []*policy.Action{actionRead},
+			},
+			expectError: false,
+			expectPass:  true,
+		},
+		{
+			name: "registered resource value with missing entitlements",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: projRegResValueFQN,
+				},
+				EphemeralId: "test-reg-res-id-3",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				// Missing projectJusticeLeagueFQN
+				projectAvengersFQN: []*policy.Action{actionRead},
+			},
+			expectError: false,
+			expectPass:  false, // Missing entitlement for projectJusticeLeagueFQN
+		},
+		{
+			name: "registered resource value with wrong action",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: levelRegResValueFQN,
+				},
+				EphemeralId: "test-reg-res-id-4",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				// Wrong action
+				levelHighestFQN: []*policy.Action{actionCreate},
+			},
+			expectError: false,
+			expectPass:  false,
+		},
+		{
+			name: "nonexistent registered resource value",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: nonExistentRegResValueFQN,
+				},
+				EphemeralId: "test-reg-res-id-5",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
+			expectError:  true,
+			expectPass:   false,
 		},
 		{
 			name:         "invalid nil resource",
 			resource:     nil,
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
 			expectError:  true,
+			expectPass:   false,
+		},
+		{
+			name: "case insensitive registered resource value FQN",
+			resource: &authz.Resource{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: strings.ToUpper(levelRegResValueFQN), // Test case insensitivity
+				},
+				EphemeralId: "test-reg-res-id-6",
+			},
+			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
+				levelHighestFQN: []*policy.Action{actionRead},
+			},
+			expectError: false,
+			expectPass:  true,
 		},
 	}
 
@@ -793,9 +938,15 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 
 			if tc.expectError {
 				s.Error(err)
-			} else {
-				s.Require().NoError(err)
-				s.NotNil(decision)
+				return
+			}
+
+			s.Require().NoError(err)
+			s.NotNil(decision)
+			s.Equal(tc.expectPass, decision.Passed, "Decision passed state didn't match expected")
+
+			if tc.resource != nil && tc.resource.GetEphemeralId() != "" {
+				s.Equal(tc.resource.GetEphemeralId(), decision.ResourceID, "Resource ID didn't match")
 			}
 		})
 	}

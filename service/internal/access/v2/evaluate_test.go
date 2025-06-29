@@ -797,11 +797,6 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 	}
 }
 
-// Helper function to create registered resource value FQN for tests
-// func createRegisteredResourceValueFQN(namespace, attrName, valueName string) string {
-// 	return createAttrValueFQN(namespace, attrName, valueName)
-// }
-
 // Test cases for getResourceDecision
 func (s *EvaluateTestSuite) TestGetResourceDecision() {
 	levelRegResValueFQN := createAttrValueFQN(baseNamespace, "level", "registered_res")
@@ -823,7 +818,6 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 						Fqns: []string{levelMidFQN},
 					},
 				},
-				// EphemeralId: "test-attr-vals",
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{
 				levelMidFQN: []*policy.Action{actionRead},

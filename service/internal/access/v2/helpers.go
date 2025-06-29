@@ -194,14 +194,14 @@ func getResourceDecisionableAttributes(
 	logger *logger.Logger,
 	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue,
 	entitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
-	action *policy.Action,
+	// action *policy.Action,
 	resources []*authz.Resource,
 ) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	var (
 		decisionableAttributes = make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
 		attrValueFQNs          = make([]string, 0)
 	)
-	slog.Info("aCtIoN", slog.Any("action", action))
+
 	// Parse attribute value FQNs from various resource types
 	for idx, resource := range resources {
 		// Assign indexed ephemeral ID for resource if not already set
@@ -216,13 +216,16 @@ func getResourceDecisionableAttributes(
 			if !found {
 				return nil, fmt.Errorf("resource registered resource value FQN not found in memory [%s]: %w", regResValueFQN, ErrInvalidResource)
 			}
+
 			for _, aav := range regResValue.GetActionAttributeValues() {
-				slog.Info("processing action attribute value", slog.Any("aav", aav))
-				aavAction := aav.GetAction()
 				// TODO: DSPX-1295 - revisit this logic bc it is causing failures for attributes with missing actions
-				if !(aavAction.GetName() == action.GetName()) {
-					continue
-				}
+				// slog.Info("processing action attribute value", slog.Any("aav", aav))
+				// aavAction := aav.GetAction()
+				// if aavAction.GetName() != action.GetName() {
+				// 	logger.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("action", aavAction.GetName()))
+				// 	continue
+				// }
+
 				attrValueFQNs = append(attrValueFQNs, aav.GetAttributeValue().GetFqn())
 			}
 

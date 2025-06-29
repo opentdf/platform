@@ -114,7 +114,7 @@ WHERE subject_mappings.subject_condition_set_id = subject_mappings_migration_dat
 
 ALTER TABLE IF EXISTS subject_mappings DROP COLUMN subject_condition_set_id, DROP COLUMN actions;
 
-DROP TRIGGER subject_condition_set_updated_at;
+DROP TRIGGER IF EXISTS subject_condition_set_updated_at ON subject_condition_set;
 DROP TABLE subject_condition_set;
 CREATE TYPE subject_mappings_operator AS ENUM ('UNSPECIFIED', 'IN', 'NOT_IN');
 

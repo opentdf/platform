@@ -824,7 +824,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				levelMidFQN: []*policy.Action{actionRead},
 			},
 			expectError: false,
-			// expectPass:  true,
+			expectPass:  true,
 		},
 		{
 			name: "registered resource value with all entitlements",
@@ -838,7 +838,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				levelHighestFQN: []*policy.Action{actionRead},
 			},
 			expectError: false,
-			// expectPass:  true,
+			expectPass:  true,
 		},
 		{
 			name: "registered resource value with project values",
@@ -853,7 +853,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				projectJusticeLeagueFQN: []*policy.Action{actionRead},
 			},
 			expectError: false,
-			// expectPass:  true,
+			expectPass:  true,
 		},
 		{
 			name: "registered resource value with missing entitlements",
@@ -868,7 +868,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				projectAvengersFQN: []*policy.Action{actionRead},
 			},
 			expectError: false,
-			// expectPass:  false, // Missing entitlement for projectJusticeLeagueFQN
+			expectPass:  false, // Missing entitlement for projectJusticeLeagueFQN
 		},
 		{
 			name: "registered resource value with wrong action",
@@ -883,7 +883,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				levelHighestFQN: []*policy.Action{actionCreate},
 			},
 			expectError: false,
-			// expectPass:  false,
+			expectPass:  false,
 		},
 		{
 			name: "nonexistent registered resource value",
@@ -895,7 +895,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			},
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
 			expectError:  true,
-			// expectPass:   false,
+			expectPass:   false,
 		},
 		{
 			name:         "invalid nil resource",
@@ -915,6 +915,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				levelHighestFQN: []*policy.Action{actionRead},
 			},
 			expectError: false,
+			expectPass:  true,
 		},
 	}
 
@@ -935,6 +936,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			} else {
 				s.Require().NoError(err)
 				s.NotNil(decision)
+				s.Equal(tc.expectPass, decision.Passed, "Decision pass status didn't match")
 				s.Equal(tc.resource.GetEphemeralId(), decision.ResourceID, "Resource ID didn't match")
 			}
 		})

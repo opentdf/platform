@@ -23,6 +23,7 @@ type KeyType string
 
 const (
 	RSA2048Key KeyType = "rsa:2048"
+	RSA4096Key KeyType = "rsa:4096"
 	EC256Key   KeyType = "ec:secp256r1"
 	EC384Key   KeyType = "ec:secp384r1"
 	EC521Key   KeyType = "ec:secp521r1"
@@ -40,6 +41,7 @@ const (
 	ECCurveP384Size = 384
 	ECCurveP521Size = 521
 	RSA2048Size     = 2048
+	RSA4096Size     = 4096
 )
 
 type KeyPair interface {
@@ -50,7 +52,7 @@ type KeyPair interface {
 
 func NewKeyPair(kt KeyType) (KeyPair, error) {
 	switch kt {
-	case RSA2048Key:
+	case RSA2048Key, RSA4096Key:
 		bits, err := RSAKeyTypeToBits(kt)
 		if err != nil {
 			return nil, err
@@ -82,7 +84,7 @@ func IsECKeyType(kt KeyType) bool {
 
 func IsRSAKeyType(kt KeyType) bool {
 	switch kt { //nolint:exhaustive // only handle rsa types
-	case RSA2048Key:
+	case RSA2048Key, RSA4096Key:
 		return true
 	default:
 		return false
@@ -155,6 +157,8 @@ func RSAKeyTypeToBits(kt KeyType) (int, error) {
 	switch kt { //nolint:exhaustive // only handle rsa types
 	case RSA2048Key:
 		return RSA2048Size, nil
+	case RSA4096Key:
+		return RSA4096Size, nil
 	default:
 		return 0, fmt.Errorf("unsupported type: %v", kt)
 	}
@@ -272,7 +276,7 @@ func ConvertToECDHPrivateKey(key interface{}) (*ecdh.PrivateKey, error) {
 func CalculateHKDF(salt []byte, secret []byte) ([]byte, error) {
 	hkdfObj := hkdf.New(sha256.New, secret, salt, nil)
 
-	derivedKey := make([]byte, len(secret))
+	derivedKey := make([]byte, 32) //nolint:mnd // AES-256 requires a 32-byte key
 	_, err := io.ReadFull(hkdfObj, derivedKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive hkdf key: %w", err)
@@ -347,7 +351,7 @@ func ECPrivateKeyFromPem(privateECKeyInPem []byte) (*ecdh.PrivateKey, error) {
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("x509.ParsePKCS8PrivateKey failed: %w", err)
+		return nil, fmt.Errorf("ec x509.ParsePKCS8PrivateKey failed: %w", err)
 	}
 
 	switch privateKey := priv.(type) {

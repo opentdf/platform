@@ -103,7 +103,7 @@ func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 		data,
 		&rsa.OAEPOptions{Hash: crypto.SHA1})
 	if err != nil {
-		return nil, fmt.Errorf("x509.ParsePKCS8PrivateKey failed: %w", err)
+		return nil, fmt.Errorf("rsa decrypt failed: %w", err)
 	}
 
 	return bytes, nil
@@ -146,7 +146,7 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 		case *ecdh.PublicKey:
 			ek = pubFromDSN
 		default:
-			return nil, errors.New("not an supported type of public key")
+			return nil, fmt.Errorf("unsupported public key of type: %T", pubFromDSN)
 		}
 	} else {
 		ekDSA, err := UncompressECPubKey(convCurve(e.sk.Curve()), ephemeral)
@@ -166,7 +166,7 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 
 	hkdfObj := hkdf.New(sha256.New, ikm, e.salt, e.info)
 
-	derivedKey := make([]byte, len(ikm))
+	derivedKey := make([]byte, 32) //nolint:mnd // AES-256 requires a 32-byte key
 	if _, err := io.ReadFull(hkdfObj, derivedKey); err != nil {
 		return nil, fmt.Errorf("hkdf failure: %w", err)
 	}

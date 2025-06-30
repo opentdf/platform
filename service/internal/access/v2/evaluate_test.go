@@ -902,7 +902,6 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			resource:     nil,
 			entitlements: subjectmappingbuiltin.AttributeValueFQNsToActions{},
 			expectError:  true,
-			// expectPass:   false,
 		},
 		{
 			name: "case insensitive registered resource value FQN",
@@ -916,7 +915,6 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 				levelHighestFQN: []*policy.Action{actionRead},
 			},
 			expectError: false,
-			// expectPass:  true,
 		},
 	}
 
@@ -937,15 +935,8 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			} else {
 				s.Require().NoError(err)
 				s.NotNil(decision)
-			}
-			// if tc.resource != nil && tc.resource.GetEphemeralId() != "" {
-			if decision == nil {
-				println("Resource is nil, skipping check: ", tc.name)
-			}
-			if tc.expectPass {
 				s.Equal(tc.resource.GetEphemeralId(), decision.ResourceID, "Resource ID didn't match")
 			}
-			// }
 		})
 	}
 }

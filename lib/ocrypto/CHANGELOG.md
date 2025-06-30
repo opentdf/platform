@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.2.0...lib/ocrypto/v0.3.0) (2025-06-30)
+
+
+### Features
+
+* **sdk:** Adds rsa:4096 support to ocrypto; fix larger curves ([#2478](https://github.com/opentdf/platform/issues/2478)) ([44d800e](https://github.com/opentdf/platform/commit/44d800e262258325a4a24e5633686103d8914212))
+
 ## [0.2.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.1.9...lib/ocrypto/v0.2.0) (2025-05-22)
 
 

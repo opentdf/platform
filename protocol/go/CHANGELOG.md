@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/opentdf/platform/compare/protocol/go/v0.5.0...protocol/go/v0.5.1) (2025-06-26)
+
+
+### Bug Fixes
+
+* **core:** Allow 521 curve to be used [backport to release/protocol/go/v0.5] ([#2489](https://github.com/opentdf/platform/issues/2489)) ([403409c](https://github.com/opentdf/platform/commit/403409c4ec1bc08ec65c294bd7ed4b3a5d44436b))
+
 ## [0.5.0](https://github.com/opentdf/platform/compare/protocol/go/v0.4.0...protocol/go/v0.5.0) (2025-06-23)
 
 

@@ -145,6 +145,8 @@ server:
   grpc:
     reflectionEnabled: true # Default is false
   # http:
+  #   # HTTP server configuration
+  #   # Negative values indicate no timeout, default will be used if the timeout is set to 0
   #   readTimeout: 15s
   #   writeTimeout: 15s
   #   readHeaderTimeout: 10s

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.2](https://github.com/opentdf/platform/compare/service/v0.7.1...service/v0.7.2) (2025-07-01)
+
+
+### Features
+
+* **core:** Add the ability to configure the http server settings [backport to release/service/v0.7] ([#2523](https://github.com/opentdf/platform/issues/2523)) ([2518049](https://github.com/opentdf/platform/commit/25180492b8770e510bf29c8690f1c47158a25e52))
+
 ## [0.7.1](https://github.com/opentdf/platform/compare/service/v0.7.0...service/v0.7.1) (2025-06-27)
 
 

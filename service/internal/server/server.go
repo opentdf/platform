@@ -65,7 +65,7 @@ type Config struct {
 	Host           string `mapstructure:"host,omitempty" json:"host"`
 	PublicHostname string `mapstructure:"public_hostname,omitempty" json:"publicHostname"`
 	// Http server config
-	HttpServerConfig HttpServerConfig `mapstructure:"http" json:"http"`
+	HTTPServerConfig HTTPServerConfig `mapstructure:"http" json:"http"`
 	// Enable pprof
 	EnablePprof bool `mapstructure:"enable_pprof" json:"enable_pprof" default:"false"`
 	// Trace is for configuring open telemetry based tracing.
@@ -110,7 +110,7 @@ type TLSConfig struct {
 	Key string `mapstructure:"key" json:"key"`
 }
 
-type HttpServerConfig struct {
+type HTTPServerConfig struct {
 	ReadTimeout       time.Duration `mapstructure:"readTimeout" json:"readTimeout"`
 	ReadHeaderTimeout time.Duration `mapstructure:"readHeaderTimeout" json:"readHeaderTimeout"`
 	WriteTimeout      time.Duration `mapstructure:"writeTimeout" json:"writeTimeout"`
@@ -341,8 +341,8 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 	if c.EnablePprof {
 		grpcGateway = pprofHandler(grpcGateway)
 		// Need to extend write timeout to collect pprof data.
-		if c.HttpServerConfig.WriteTimeout < 30*time.Second {
-			c.HttpServerConfig.WriteTimeout = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
+		if c.HTTPServerConfig.WriteTimeout < 30*time.Second {
+			c.HTTPServerConfig.WriteTimeout = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
 		}
 	}
 
@@ -357,20 +357,20 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 		handler = routeConnectRPCRequests(connectRPC, grpcGateway)
 	}
 
-	if c.HttpServerConfig.ReadTimeout == 0 {
-		c.HttpServerConfig.ReadTimeout = defaultReadTimeout
+	if c.HTTPServerConfig.ReadTimeout == 0 {
+		c.HTTPServerConfig.ReadTimeout = defaultReadTimeout
 	}
-	if c.HttpServerConfig.WriteTimeout == 0 {
-		c.HttpServerConfig.WriteTimeout = defaultWriteTimeout
+	if c.HTTPServerConfig.WriteTimeout == 0 {
+		c.HTTPServerConfig.WriteTimeout = defaultWriteTimeout
 	}
 
 	return &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", c.Host, c.Port),
-		WriteTimeout:      c.HttpServerConfig.WriteTimeout,
-		ReadTimeout:       c.HttpServerConfig.ReadTimeout,
-		ReadHeaderTimeout: c.HttpServerConfig.ReadHeaderTimeout,
-		IdleTimeout:       c.HttpServerConfig.IdleTimeout,
-		MaxHeaderBytes:    c.HttpServerConfig.MaxHeaderBytes,
+		WriteTimeout:      c.HTTPServerConfig.WriteTimeout,
+		ReadTimeout:       c.HTTPServerConfig.ReadTimeout,
+		ReadHeaderTimeout: c.HTTPServerConfig.ReadHeaderTimeout,
+		IdleTimeout:       c.HTTPServerConfig.IdleTimeout,
+		MaxHeaderBytes:    c.HTTPServerConfig.MaxHeaderBytes,
 		Handler:           handler,
 		TLSConfig:         tc,
 	}, nil

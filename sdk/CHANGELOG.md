@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1](https://github.com/opentdf/platform/compare/sdk/v0.5.0...sdk/v0.5.1) (2025-07-01)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.2.0 to 0.3.0 in /sdk [backport to release/sdk/v0.5] ([#2508](https://github.com/opentdf/platform/issues/2508)) ([79b5221](https://github.com/opentdf/platform/commit/79b5221de26f297e20ffab71d6fea4732f034c9d))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.5.0 to 0.5.1 in /sdk [backport to release/sdk/v0.5] ([#2509](https://github.com/opentdf/platform/issues/2509)) ([63e0668](https://github.com/opentdf/platform/commit/63e06683bc7ba891e5971f8bb0f6ad56d8a0c767))
+
 ## [0.5.0](https://github.com/opentdf/platform/compare/sdk/v0.4.7...sdk/v0.5.0) (2025-06-23)
 
 

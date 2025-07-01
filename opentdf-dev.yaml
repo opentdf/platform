@@ -144,6 +144,12 @@ server:
     maxage: 3600
   grpc:
     reflectionEnabled: true # Default is false
+  # http:
+  #   readTimeout: 15s
+  #   writeTimeout: 15s
+  #   readHeaderTimeout: 10s
+  #   idleTimeout: 20s
+  #   maxHeaderBytes: 1 << 20 # 1 MB
   cryptoProvider:
     type: standard
     standard:

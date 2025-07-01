@@ -149,7 +149,7 @@ server:
   #   writeTimeout: 15s
   #   readHeaderTimeout: 10s
   #   idleTimeout: 20s
-  #   maxHeaderBytes: 1 << 20 # 1 MB
+  #   maxHeaderBytes: 1048576 # 1 MB
   cryptoProvider:
     type: standard
     standard:

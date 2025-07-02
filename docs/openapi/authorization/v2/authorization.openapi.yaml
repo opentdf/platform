@@ -209,10 +209,10 @@ components:
             entityChain:
               title: entity_chain
               description: |+
-                chain of one or more entities
+                chain of one or more entities and at most 10
                 entities must be provided:
                 ```
-                has(this.entities) && this.entities.size() > 0
+                has(this.entities) && this.entities.size() > 0 && this.entities.size() <= 10
                 ```
 
               $ref: '#/components/schemas/entity.EntityChain'
@@ -259,7 +259,11 @@ components:
           items:
             $ref: '#/components/schemas/authorization.v2.GetDecisionMultiResourceRequest'
           title: decision_requests
+          maxItems: 200
+          minItems: 1
       title: GetDecisionBulkRequest
+      required:
+        - decisionRequests
       additionalProperties: false
       description: |-
         Is access allowed?
@@ -292,6 +296,7 @@ components:
           items:
             $ref: '#/components/schemas/authorization.v2.Resource'
           title: resources
+          maxItems: 1000
           minItems: 1
       title: GetDecisionMultiResourceRequest
       required:
@@ -304,7 +309,7 @@ components:
          1. one entity reference (actor)
          2. one action
          3. multiple resources
-         Note: this is a more performant bulk request for multiple resource decisions
+         Note: this is a more performant bulk request for multiple resource decisions, up to 1000 per request
         action.name must be provided:
         ```
         has(this.action.name)
@@ -406,9 +411,10 @@ components:
             attributeValues:
               title: attribute_values
               description: |+
+                a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count
                 if provided, resource.attribute_values must not be empty:
                 ```
-                this.fqns.size() > 0 && this.fqns.all(item, item.isUri())
+                this.fqns.all(item, item.isUri()) && this.fqns.size() > 0 && this.fqns.size() <= 20
                 ```
 
               $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'
@@ -421,6 +427,7 @@ components:
               title: registered_resource_value_fqn
               minLength: 1
               format: uri
+              description: fully qualified name of the registered resource value stored in platform policy
           title: registered_resource_value_fqn
           required:
             - registeredResourceValueFqn

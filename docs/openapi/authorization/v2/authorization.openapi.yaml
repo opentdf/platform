@@ -409,7 +409,7 @@ components:
               title: attribute_values
               description: |+
                 a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count
-                if provided, resource.attribute_values must not be empty:
+                if provided, resource.attribute_values must be between 1 and 20 in count with all valid FQNs:
                 ```
                 this.fqns.size() > 0 && this.fqns.size() <= 20 && this.fqns.all(item, item.isUri())
                 ```

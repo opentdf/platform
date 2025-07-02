@@ -68,7 +68,7 @@ message Resource {
     // a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count
     AttributeValues attribute_values = 2 [(buf.validate.field).cel = {
       id: "attribute_values_required"
-      message: "if provided, resource.attribute_values must not be empty"
+      message: "if provided, resource.attribute_values must be between 1 and 20 in count with all valid FQNs"
       expression: "this.fqns.size() > 0 && this.fqns.size() <= 20 && this.fqns.all(item, item.isUri())"
     }];
     // fully qualified name of the registered resource value stored in platform policy

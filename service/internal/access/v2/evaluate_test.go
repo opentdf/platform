@@ -39,6 +39,10 @@ var (
 	projectAvengersFQN      = createAttrValueFQN(baseNamespace, "project", "avengers")
 	projectXmenFQN          = createAttrValueFQN(baseNamespace, "project", "xmen")
 	projectFantasicFourFQN  = createAttrValueFQN(baseNamespace, "project", "fantasticfour")
+
+	// Registered resource values
+	netRegResValFQN  = createRegisteredResourceValueFQN("network", "external")
+	platRegResValFQN = createRegisteredResourceValueFQN("platform", "internal")
 )
 
 var (
@@ -155,17 +159,14 @@ func (s *EvaluateTestSuite) SetupTest() {
 	}
 
 	// Setup accessible registered resource values map
-	levelRegResValueFQN := strings.ToLower(createAttrValueFQN(baseNamespace, "level", "registered_res"))
-	projRegResValueFQN := strings.ToLower(createAttrValueFQN(baseNamespace, "project", "registered_res"))
-
 	// Create the registered resource values with action attribute values
 	s.accessibleRegisteredResourceValues = map[string]*policy.RegisteredResourceValue{
-		levelRegResValueFQN: {
-			Id:    "level-registered-res-id",
-			Value: "registered_res",
+		netRegResValFQN: {
+			Id:    "network-registered-res-id",
+			Value: "external",
 			ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
 				{
-					Id:     "level-action-attr-val-1",
+					Id:     "network-action-attr-val-1",
 					Action: actionRead,
 					AttributeValue: &policy.Value{
 						Fqn:   levelHighestFQN,
@@ -173,7 +174,7 @@ func (s *EvaluateTestSuite) SetupTest() {
 					},
 				},
 				{
-					Id:     "level-action-attr-val-2",
+					Id:     "network-action-attr-val-2",
 					Action: actionCreate,
 					AttributeValue: &policy.Value{
 						Fqn:   levelMidFQN,
@@ -182,12 +183,12 @@ func (s *EvaluateTestSuite) SetupTest() {
 				},
 			},
 		},
-		projRegResValueFQN: {
-			Id:    "project-registered-res-id",
-			Value: "registered_res",
+		platRegResValFQN: {
+			Id:    "platform-registered-res-id",
+			Value: "internal",
 			ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
 				{
-					Id:     "project-action-attr-val-1",
+					Id:     "platform-action-attr-val-1",
 					Action: actionRead,
 					AttributeValue: &policy.Value{
 						Fqn:   projectAvengersFQN,
@@ -195,7 +196,7 @@ func (s *EvaluateTestSuite) SetupTest() {
 					},
 				},
 				{
-					Id:     "project-action-attr-val-2",
+					Id:     "platform-action-attr-val-2",
 					Action: actionRead,
 					AttributeValue: &policy.Value{
 						Fqn:   projectJusticeLeagueFQN,
@@ -799,9 +800,7 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 
 // Test cases for getResourceDecision
 func (s *EvaluateTestSuite) TestGetResourceDecision() {
-	levelRegResValueFQN := createAttrValueFQN(baseNamespace, "level", "registered_res")
-	projRegResValueFQN := createAttrValueFQN(baseNamespace, "project", "registered_res")
-	nonExistentRegResValueFQN := createAttrValueFQN(baseNamespace, "nonexistent", "value")
+	nonExistentRegResValueFQN := createRegisteredResourceValueFQN("nonexistent", "value")
 
 	tests := []struct {
 		name         string
@@ -830,7 +829,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			name: "registered resource value with all entitlements",
 			resource: &authz.Resource{
 				Resource: &authz.Resource_RegisteredResourceValueFqn{
-					RegisteredResourceValueFqn: levelRegResValueFQN,
+					RegisteredResourceValueFqn: netRegResValFQN,
 				},
 				EphemeralId: "test-reg-res-id-1",
 			},
@@ -844,7 +843,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			name: "registered resource value with project values",
 			resource: &authz.Resource{
 				Resource: &authz.Resource_RegisteredResourceValueFqn{
-					RegisteredResourceValueFqn: projRegResValueFQN,
+					RegisteredResourceValueFqn: platRegResValFQN,
 				},
 				EphemeralId: "test-reg-res-id-2",
 			},
@@ -859,7 +858,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			name: "registered resource value with missing entitlements",
 			resource: &authz.Resource{
 				Resource: &authz.Resource_RegisteredResourceValueFqn{
-					RegisteredResourceValueFqn: projRegResValueFQN,
+					RegisteredResourceValueFqn: platRegResValFQN,
 				},
 				EphemeralId: "test-reg-res-id-3",
 			},
@@ -874,7 +873,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			name: "registered resource value with wrong action",
 			resource: &authz.Resource{
 				Resource: &authz.Resource_RegisteredResourceValueFqn{
-					RegisteredResourceValueFqn: levelRegResValueFQN,
+					RegisteredResourceValueFqn: netRegResValFQN,
 				},
 				EphemeralId: "test-reg-res-id-4",
 			},
@@ -907,7 +906,7 @@ func (s *EvaluateTestSuite) TestGetResourceDecision() {
 			name: "case insensitive registered resource value FQN",
 			resource: &authz.Resource{
 				Resource: &authz.Resource_RegisteredResourceValueFqn{
-					RegisteredResourceValueFqn: strings.ToUpper(levelRegResValueFQN), // Test case insensitivity
+					RegisteredResourceValueFqn: strings.ToUpper(netRegResValFQN), // Test case insensitivity
 				},
 				EphemeralId: "test-reg-res-id-6",
 			},

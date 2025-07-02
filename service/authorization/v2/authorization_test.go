@@ -813,7 +813,7 @@ func Test_GetDecisionMultiResourceRequest_ResourceLimit(t *testing.T) {
 		Action:    sampleActionCreate,
 		Resources: make([]*authzV2.Resource, upperBoundLimit),
 	}
-	for i := range req.Resources {
+	for i := range req.GetResources() {
 		req.Resources[i] = &authzV2.Resource{
 			Resource: &authzV2.Resource_AttributeValues_{
 				AttributeValues: &authzV2.Resource_AttributeValues{
@@ -959,13 +959,13 @@ func Test_GetDecisionBulkRequest_Limits(t *testing.T) {
 		},
 	}
 	req.DecisionRequests = make([]*authzV2.GetDecisionMultiResourceRequest, 201)
-	for i := range req.DecisionRequests {
+	for i := range req.GetDecisionRequests() {
 		req.DecisionRequests[i] = dr
 	}
 	err = v.Validate(req)
 	require.Error(t, err, "validation should fail for bulk request with more than 200 multi resource decision requests")
 
-	req.DecisionRequests = append(req.DecisionRequests, dr)
+	req.DecisionRequests = append(req.GetDecisionRequests(), dr)
 	err = v.Validate(req)
 	require.Error(t, err, "validation should fail for bulk request with more than 200 multi resource decision requests")
 }

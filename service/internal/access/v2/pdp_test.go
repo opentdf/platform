@@ -157,7 +157,7 @@ type PDPTestSuite struct {
 		// Test registered resources
 		classificationRegRes *policy.RegisteredResource
 		deptRegRes           *policy.RegisteredResource
-		networkRegRes        *policy.RegisteredResource
+		networkRegRes        *policy.RegisteredResource // TODO: remove this and use the others that match test attributes
 		countryRegRes        *policy.RegisteredResource
 		projectRegRes        *policy.RegisteredResource
 		platformRegRes       *policy.RegisteredResource

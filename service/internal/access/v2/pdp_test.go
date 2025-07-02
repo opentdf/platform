@@ -87,7 +87,7 @@ var (
 	testPlatformOnPremFQN = createAttrValueFQN(testSecondaryNamespace, "platform", "onprem")
 	testPlatformHybridFQN = createAttrValueFQN(testSecondaryNamespace, "platform", "hybrid")
 
-	// Registered resource value FQNs
+	// Registered resource value FQNs (TODO: remove)
 	testNetworkPrivateFQN = createRegisteredResourceValueFQN("network", "private")
 	testNetworkPublicFQN  = createRegisteredResourceValueFQN("network", "public")
 )
@@ -107,6 +107,7 @@ var (
 )
 
 // Registered resource value FQNs using identifier package
+// TODO: remove these and use the other ones above
 var (
 	regResValNoActionAttrValFQN                     string
 	regResValSingleActionAttrValFQN                 string
@@ -2239,6 +2240,18 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 			}
 		}
 	})
+}
+
+func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_PartialActionEntitlement() {
+	s.T().Skip("TODO")
+}
+
+func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_CombinedAttributeRules_SingleResource() {
+	s.T().Skip("TODO")
+}
+
+func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_AcrossNamespaces() {
+	s.T().Skip("TODO")
 }
 
 // TestGetEntitlements tests the functionality of retrieving entitlements for entities

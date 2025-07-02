@@ -3,6 +3,7 @@ package authorization
 import (
 	"errors"
 	"math/rand"
+	"strconv"
 	"testing"
 
 	"buf.build/go/protovalidate"
@@ -361,6 +362,58 @@ func getValidator() protovalidate.Validator {
 		panic(err)
 	}
 	return v
+}
+
+func Test_EntityIdentifier_ManyChainedEntities(t *testing.T) {
+	v := getValidator()
+	// many entities in chain
+	entityIdentifier := &authzV2.EntityIdentifier{
+		Identifier: &authzV2.EntityIdentifier_EntityChain{
+			EntityChain: &entity.EntityChain{
+				EphemeralId: "1234",
+				Entities:    make([]*entity.Entity, 10),
+			},
+		},
+	}
+	for i := range 10 {
+		entityIdentifier.GetEntityChain().Entities[i] = &entity.Entity{
+			EphemeralId: "chained-" + strconv.Itoa(i),
+			EntityType:  &entity.Entity_EmailAddress{EmailAddress: "test@test.com"},
+			Category:    entity.Entity_CATEGORY_SUBJECT,
+		}
+	}
+	err := v.Validate(entityIdentifier)
+	require.NoError(t, err, "validation should succeed for request with up to 10 entities in chain")
+
+	// add one more
+	entityIdentifier.GetEntityChain().Entities = append(entityIdentifier.GetEntityChain().Entities, &entity.Entity{
+		EphemeralId: "chained-10",
+		EntityType:  &entity.Entity_EmailAddress{EmailAddress: "test@test.com"},
+		Category:    entity.Entity_CATEGORY_SUBJECT,
+	})
+	err = v.Validate(entityIdentifier)
+	require.Error(t, err, "validation should fail for request with 11 entities in chain")
+}
+
+func Test_Resource_ManyAttributeValues(t *testing.T) {
+	v := getValidator()
+	resource := &authzV2.Resource{
+		Resource: &authzV2.Resource_AttributeValues_{
+			AttributeValues: &authzV2.Resource_AttributeValues{
+				Fqns: make([]string, 20),
+			},
+		},
+	}
+	for i := range 20 {
+		resource.GetAttributeValues().Fqns[i] = "https://example.com/attr/any_of_attr_name/value/val" + strconv.Itoa(i)
+	}
+	err := v.Validate(resource)
+	require.NoError(t, err, "validation should succeed for request with 20 attribute values")
+
+	// add one more
+	resource.GetAttributeValues().Fqns = append(resource.GetAttributeValues().Fqns, "https://example.com/attr/any_of_attr_name/value/val20")
+	err = v.Validate(resource)
+	require.Error(t, err, "validation should fail for request with 21 attribute values")
 }
 
 func Test_GetDecisionRequest_Succeeds(t *testing.T) {
@@ -735,12 +788,53 @@ func Test_GetDecisionRequest_Fails(t *testing.T) {
 func Test_GetDecisionMultiResourceRequest_Succeeds(t *testing.T) {
 	v := getValidator()
 
+	// All known good cases should pass
 	for _, tc := range goodMultiResourceRequests {
 		t.Run(tc.name, func(t *testing.T) {
 			err := v.Validate(tc.request)
 			require.NoError(t, err, "validation should succeed for request: %s", tc.name)
 		})
 	}
+}
+
+func Test_GetDecisionMultiResourceRequest_ResourceLimit(t *testing.T) {
+	v := getValidator()
+	upperBoundLimit := 1000
+
+	req := &authzV2.GetDecisionMultiResourceRequest{
+		EntityIdentifier: &authzV2.EntityIdentifier{
+			Identifier: &authzV2.EntityIdentifier_Token{
+				Token: &entity.Token{
+					EphemeralId: "123",
+					Jwt:         "test-jwt-token",
+				},
+			},
+		},
+		Action:    sampleActionCreate,
+		Resources: make([]*authzV2.Resource, upperBoundLimit),
+	}
+	for i := range req.Resources {
+		req.Resources[i] = &authzV2.Resource{
+			Resource: &authzV2.Resource_AttributeValues_{
+				AttributeValues: &authzV2.Resource_AttributeValues{
+					Fqns: []string{sampleRegisteredResourceFQN},
+				},
+			},
+		}
+	}
+	err := v.Validate(req)
+	require.NoError(t, err, "validation should succeed for request with 1000 resources")
+
+	// Add one more resource to exceed the limit
+	req.Resources = append(req.Resources, &authzV2.Resource{
+		Resource: &authzV2.Resource_AttributeValues_{
+			AttributeValues: &authzV2.Resource_AttributeValues{
+				Fqns: []string{sampleRegisteredResourceFQN},
+			},
+		},
+	})
+	err = v.Validate(req)
+	require.Error(t, err, "validation should fail for request with 1001 resources")
 }
 
 func Test_GetDecisionMultiResourceRequest_Fails(t *testing.T) {
@@ -835,6 +929,45 @@ func Test_GetDecisionBulkRequest_Fails(t *testing.T) {
 		err := v.Validate(testReq.request)
 		require.Error(t, err, "validation should fail for request: %s", testReq.name)
 	}
+}
+
+func Test_GetDecisionBulkRequest_Limits(t *testing.T) {
+	v := getValidator()
+	// requests must be between 1 and 200
+	req := &authzV2.GetDecisionBulkRequest{}
+	err := v.Validate(req)
+	require.Error(t, err, "validation should fail for bulk request without any multi resource decision requests")
+
+	dr := &authzV2.GetDecisionMultiResourceRequest{
+		EntityIdentifier: &authzV2.EntityIdentifier{
+			Identifier: &authzV2.EntityIdentifier_Token{
+				Token: &entity.Token{
+					EphemeralId: "123",
+					Jwt:         "sample-jwt-token",
+				},
+			},
+		},
+		Action: sampleActionCreate,
+		Resources: []*authzV2.Resource{
+			{
+				Resource: &authzV2.Resource_AttributeValues_{
+					AttributeValues: &authzV2.Resource_AttributeValues{
+						Fqns: []string{sampleResourceFQN},
+					},
+				},
+			},
+		},
+	}
+	req.DecisionRequests = make([]*authzV2.GetDecisionMultiResourceRequest, 201)
+	for i := range req.DecisionRequests {
+		req.DecisionRequests[i] = dr
+	}
+	err = v.Validate(req)
+	require.Error(t, err, "validation should fail for bulk request with more than 200 multi resource decision requests")
+
+	req.DecisionRequests = append(req.DecisionRequests, dr)
+	err = v.Validate(req)
+	require.Error(t, err, "validation should fail for bulk request with more than 200 multi resource decision requests")
 }
 
 func Test_GetEntitlementsRequest_Succeeds(t *testing.T) {

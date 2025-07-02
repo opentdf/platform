@@ -681,7 +681,7 @@ func (s *PDPTestSuite) SetupTest() {
 		},
 	}
 
-	// Initialize test registered resources
+	// Initialize test registered resources (TODO: replace with above real use cases)
 	regResValNoActionAttrVal := &policy.RegisteredResourceValue{
 		Value:                 "no-action-attr-val",
 		ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{},

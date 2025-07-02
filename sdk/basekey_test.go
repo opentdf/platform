@@ -15,10 +15,9 @@ import (
 )
 
 const (
-	testPem          = "a-pem"
-	testKasURI       = "https://test-kas.example.com"
-	testRSAAlgorithm = "rsa:2048"
-	testKid          = "test-key-id"
+	testPem    = "a-pem"
+	testKasURI = "https://test-kas.example.com"
+	testKid    = "test-key-id"
 )
 
 // Mock implementation of the WellKnownServiceClient for testing
@@ -192,7 +191,7 @@ func (s *BaseKeyTestSuite) TestGetBaseKeySuccess() {
 		baseKeyWellKnown: map[string]interface{}{
 			"kas_uri": "https://test-kas.example.com",
 			baseKeyPublicKey: map[string]interface{}{
-				baseKeyAlg: testRSAAlgorithm,
+				baseKeyAlg: "rsa:2048",
 				"kid":      testKid,
 				"pem":      testPem,
 			},

@@ -3,7 +3,6 @@ syntax = "proto3";
 package policy.unsafe;
 
 import "buf/validate/validate.proto";
-
 import "policy/objects.proto";
 
 // Namespaces Unsafe RPCs
@@ -174,7 +173,7 @@ message UnsafeDeleteKasKeyRequest {
 }
 
 message UnsafeDeleteKasKeyResponse {
-  policy.Key key = 1;
+  policy.KasKey key = 1;
 }
 
 ///

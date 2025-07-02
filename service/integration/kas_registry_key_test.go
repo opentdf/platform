@@ -1108,6 +1108,99 @@ func (s *KasRegistryKeySuite) Test_RotateKey_MetadataUnchanged_Success() {
 	s.Require().Equal(labels, oldKey.GetKey().GetMetadata().GetLabels())
 }
 
+func (s *KasRegistryKeySuite) Test_Public_Key_Only_Can_Be_Deleted() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	// Create a new KAS server
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_public_key_only_delete_kas",
+		Uri:  "https://test-public-key-only-delete.opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
+
+	// Create a public key only key for the KAS
+	keyReq := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "public_key_only_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
+		PublicKeyCtx: &policy.PublicKeyCtx{
+			Pem: keyCtx,
+		},
+	}
+	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+	s.Require().NoError(err)
+	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
+
+	// Delete the public key only key
+	_, err = s.db.PolicyClient.DeleteKeyPublicKeyOnly(s.ctx, key.GetKasKey().GetKey().GetId())
+	s.Require().NoError(err)
+	keyIDs = keyIDs[:0] // Key is deleted, remove from cleanup list
+
+	// Verify the key is deleted
+	_, err = s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
+		Id: key.GetKasKey().GetKey().GetId(),
+	})
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, db.ErrNotFound.Error())
+}
+
+func (s *KasRegistryKeySuite) Test_Non_Public_Key_Only_Cannot_Be_Deleted() {
+	keyIDs := make([]string, 0)
+	kasIDs := make([]string, 0)
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	// Create a new KAS server
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_non_public_key_only_delete_kas",
+		Uri:  "https://test-non-public-key-only-delete.opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
+
+	// Create a non public key only key for the KAS
+	keyReq := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "non_public_key_only_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{
+			Pem: keyCtx,
+		},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			KeyId:      validKeyID1,
+			WrappedKey: keyCtx,
+		},
+	}
+	key, err := s.db.PolicyClient.CreateKey(s.ctx, &keyReq)
+	s.Require().NoError(err)
+	s.NotNil(key)
+	keyIDs = append(keyIDs, key.GetKasKey().GetKey().GetId())
+
+	// Attempt to delete the non public key only key
+	_, err = s.db.PolicyClient.DeleteKeyPublicKeyOnly(s.ctx, key.GetKasKey().GetKey().GetId())
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, "only KEY_MODE_PUBLIC_KEY_ONLY keys can be deleted")
+
+	// Verify the key is not deleted
+	_, err = s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
+		Id: key.GetKasKey().GetKey().GetId(),
+	})
+	s.Require().NoError(err)
+}
+
 func (s *KasRegistryKeySuite) setupKeysForRotate(kasID string) map[string]*policy.KasKey {
 	// Create a key for the KAS
 	keyReq := kasregistry.CreateKeyRequest{

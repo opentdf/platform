@@ -630,6 +630,35 @@ func (c PolicyDBClient) DeleteKey(ctx context.Context, id string) (*policy.Asymm
 	}, nil
 }
 
+func (c PolicyDBClient) DeleteKeyPublicKeyOnly(ctx context.Context, id string) (*policy.KasKey, error) {
+	if !pgtypeUUID(id).Valid {
+		return nil, db.ErrUUIDInvalid
+	}
+
+	// Get Current Key
+	key, err := c.GetKey(ctx, &kasregistry.GetKeyRequest_Id{
+		Id: id,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	if key.GetKey().GetKeyMode() != policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY {
+		return nil, errors.New("only KEY_MODE_PUBLIC_KEY_ONLY keys can be deleted")
+	}
+
+	count, err := c.Queries.deleteKey(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	// return the key that was deleted
+	return key, nil
+}
+
 func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey, newKey *kasregistry.RotateKeyRequest_NewKey) (*kasregistry.RotateKeyResponse, error) {
 	rotateKeyResp := &kasregistry.RotateKeyResponse{
 		RotatedResources: &kasregistry.RotatedResources{

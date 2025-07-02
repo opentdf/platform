@@ -210,7 +210,7 @@ components:
               title: entity_chain
               description: |+
                 chain of one or more entities and at most 10
-                entities must be provided:
+                entities must be provided and between 1 and 10 in count:
                 ```
                 has(this.entities) && this.entities.size() > 0 && this.entities.size() <= 10
                 ```
@@ -262,8 +262,6 @@ components:
           maxItems: 200
           minItems: 1
       title: GetDecisionBulkRequest
-      required:
-        - decisionRequests
       additionalProperties: false
       description: |-
         Is access allowed?
@@ -302,7 +300,6 @@ components:
       required:
         - entityIdentifier
         - action
-        - resources
       additionalProperties: false
       description: |+
         Can the identified entity/entities access?
@@ -414,7 +411,7 @@ components:
                 a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count
                 if provided, resource.attribute_values must not be empty:
                 ```
-                this.fqns.all(item, item.isUri()) && this.fqns.size() > 0 && this.fqns.size() <= 20
+                this.fqns.size() > 0 && this.fqns.size() <= 20 && this.fqns.all(item, item.isUri())
                 ```
 
               $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'

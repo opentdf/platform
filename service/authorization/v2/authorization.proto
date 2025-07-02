@@ -24,7 +24,7 @@ message EntityIdentifier {
     // chain of one or more entities and at most 10
     entity.EntityChain entity_chain = 1 [(buf.validate.field).cel = {
       id: "entity_chain_required"
-      message: "entities must be provided"
+      message: "entities must be provided and between 1 and 10 in count"
       expression: "has(this.entities) && this.entities.size() > 0 && this.entities.size() <= 10"
     }];
 
@@ -69,7 +69,7 @@ message Resource {
     AttributeValues attribute_values = 2 [(buf.validate.field).cel = {
       id: "attribute_values_required"
       message: "if provided, resource.attribute_values must not be empty"
-      expression: "this.fqns.all(item, item.isUri()) && this.fqns.size() > 0 && this.fqns.size() <= 20"
+      expression: "this.fqns.size() > 0 && this.fqns.size() <= 20 && this.fqns.all(item, item.isUri())"
     }];
     // fully qualified name of the registered resource value stored in platform policy
     string registered_resource_value_fqn = 3 [(buf.validate.field).string = {
@@ -121,7 +121,6 @@ message GetDecisionMultiResourceRequest {
   // name on action is required
   policy.Action action = 2 [(buf.validate.field).required = true];
   repeated Resource resources = 3 [
-    (buf.validate.field).required = true,
     (buf.validate.field).repeated = {
       min_items: 1
       max_items: 1000
@@ -147,7 +146,6 @@ message GetDecisionMultiResourceResponse {
 // multiple resources)
 message GetDecisionBulkRequest {
   repeated GetDecisionMultiResourceRequest decision_requests = 1 [
-    (buf.validate.field).required = true,
     (buf.validate.field).repeated = {
       min_items: 1
       max_items: 200

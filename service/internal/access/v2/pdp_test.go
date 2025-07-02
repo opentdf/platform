@@ -163,7 +163,7 @@ type PDPTestSuite struct {
 		projectRegRes        *policy.RegisteredResource
 		platformRegRes       *policy.RegisteredResource
 
-		// Test registered resources
+		// Test registered resources (TODO: remove these and use the ones above)
 		regRes                                       *policy.RegisteredResource
 		regResValNoActionAttrVal                     *policy.RegisteredResourceValue
 		regResValSingleActionAttrVal                 *policy.RegisteredResourceValue

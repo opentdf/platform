@@ -12,15 +12,19 @@ CREATE TABLE IF NOT EXISTS obligation_definitions
     metadata JSONB
 );
 
--- CREATE UNIQUE INDEX comp_key ON obligation_definitions (
---     namespace_id,
---     name
--- );
-
--- obligation_values_standard
+CREATE TABLE IF NOT EXISTS obligation_values_standard
+(
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    obligation_definition_id UUID NOT NULL REFERENCES obligation_definitions(id),
+    value VARCHAR NOT NULL,
+    -- implicit index on unique obligation_definition_id, value
+    UNIQUE (obligation_definition_id, value),
+    metadata JSONB
+);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 DROP TABLE IF EXISTS obligation_definitions;
+DROP TABLE IF EXISTS obligation_values_standard;
 -- +goose StatementEnd

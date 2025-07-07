@@ -87,31 +87,37 @@ CREATE TABLE IF NOT EXISTS obligation_action_attribute_values
 
 CREATE OR REPLACE FUNCTION standardize_table(table_name regclass, include_metadata boolean DEFAULT TRUE)
 RETURNS void AS $$
-DECLARE alteration text := 'ALTER TABLE %I ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP';
+-- DECLARE alteration text := 'ALTER TABLE %I ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP';
 BEGIN
     -- IF include_metadata THEN
     --     alteration := alteration || ', ADD COLUMN metadata JSONB';
     -- END IF;
-    -- EXECUTE FORMAT(alteration, table_name);
+    EXECUTE FORMAT('
+        ALTER TABLE %I 
+        ADD COLUMN metadata JSONB,
+        ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ', table_name);
     
-    -- -- Create trigger for updating updated_at column
-    -- EXECUTE FORMAT('
-    --     CREATE TRIGGER %I_updated_at
-    --     BEFORE UPDATE ON %I
-    --     FOR EACH ROW
-    --     EXECUTE FUNCTION update_updated_at()
-    -- ', table_name, table_name);    
+    -- Create trigger for updating updated_at column
+    EXECUTE FORMAT('
+        CREATE TRIGGER %I_updated_at
+        BEFORE UPDATE ON %I
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at()
+    ', table_name, table_name);    
 END;
 $$ LANGUAGE plpgsql;
 
--- CREATE OR REPLACE FUNCTION standardize_tables(tables text[])
--- RETURNS void AS $$
--- BEGIN 
+CREATE OR REPLACE FUNCTION standardize_tables(tables text[])
+RETURNS void AS $$
+BEGIN 
 --     FOREACH table_name IN ARRAY tables
 --     LOOP
 --         PERFORM standardize_table(table_name::regclass);
 --     END LOOP;
--- END;
+END;
+$$ LANGUAGE plpgsql;
 
 -- tables text[] := ARRAY['obligation_definitions', 'obligation_values_standard', 'obligation_triggers', 'obligation_fulfillers', 'obligation_action_attribute_values'];
 -- PERFORM standardize_tables(tables);

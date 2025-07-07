@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS obligation_triggers
     attribute_value_id UUID NOT NULL REFERENCES attribute_values(id),
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
     metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obligation_fulfillers
@@ -42,7 +44,9 @@ CREATE TABLE IF NOT EXISTS obligation_fulfillers
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
     conditionals JSONB,
-    metadata JSONB
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obligation_action_attribute_values
@@ -56,10 +60,32 @@ CREATE TABLE IF NOT EXISTS obligation_action_attribute_values
     UNIQUE(obligation_value_id, action_id, attribute_value_id)
 );
 
+CREATE TRIGGER obligation_definitions_updated_at
+  BEFORE UPDATE ON obligation_definitions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER obligation_values_standard_updated_at
+  BEFORE UPDATE ON obligation_values_standard
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER obligation_triggers_updated_at
+  BEFORE UPDATE ON obligation_triggers
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER obligation_fulfillers_updated_at
+  BEFORE UPDATE ON obligation_fulfillers
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at();
+
 CREATE TRIGGER obligation_action_attribute_values_updated_at
   BEFORE UPDATE ON obligation_action_attribute_values
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at();
+
+
 -- +goose StatementEnd
 
 -- +goose Down
@@ -68,6 +94,5 @@ DROP TABLE IF EXISTS obligation_definitions;
 DROP TABLE IF EXISTS obligation_values_standard;
 DROP TABLE IF EXISTS obligation_triggers;
 DROP TABLE IF EXISTS obligation_fulfillers;
-DROP TRIGGER IF EXISTS obligation_action_attribute_values_updated_at ON obligation_action_attribute_values;
 DROP TABLE IF EXISTS obligation_action_attribute_values;
 -- +goose StatementEnd

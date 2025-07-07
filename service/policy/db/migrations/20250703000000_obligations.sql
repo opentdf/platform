@@ -3,87 +3,113 @@
 
 CREATE TABLE IF NOT EXISTS obligation_definitions
 (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    -- id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     namespace_id UUID NOT NULL REFERENCES attribute_namespaces(id),
     -- name is a unique identifier for the obligation definition within the namespace
     name VARCHAR NOT NULL UNIQUE,
     -- implicit index on unique (namespace_id, name) combo
     -- index name: obligation_definitions_namespace_id_name_key
     UNIQUE (namespace_id, name),
-    metadata JSONB,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    -- metadata JSONB,
+    -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obligation_values_standard
 (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    -- id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     obligation_definition_id UUID NOT NULL REFERENCES obligation_definitions(id),
     -- value is a unique identifier for the obligation value within the definition
     value VARCHAR NOT NULL UNIQUE,
     -- implicit index on unique (obligation_definition_id, value) combo
     -- index name: obligation_values_standard_obligation_definition_id_value_key
     UNIQUE (obligation_definition_id, value),
-    metadata JSONB,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    -- metadata JSONB,
+    -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obligation_triggers
 (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    -- id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     attribute_value_id UUID NOT NULL REFERENCES attribute_values(id),
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
-    metadata JSONB,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    -- metadata JSONB,
+    -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obligation_fulfillers
 (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    -- id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
     conditionals JSONB,
-    metadata JSONB,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    -- metadata JSONB,
+    -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obligation_action_attribute_values
 (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    -- id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
     action_id UUID NOT NULL REFERENCES actions(id),
     attribute_value_id UUID NOT NULL REFERENCES attribute_values(id),
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     UNIQUE(obligation_value_id, action_id, attribute_value_id)
 );
 
-CREATE TRIGGER obligation_definitions_updated_at
-  BEFORE UPDATE ON obligation_definitions
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at();
+-- CREATE TRIGGER obligation_definitions_updated_at
+--   BEFORE UPDATE ON obligation_definitions
+--   FOR EACH ROW
+--   EXECUTE FUNCTION update_updated_at();
 
-CREATE TRIGGER obligation_values_standard_updated_at
-  BEFORE UPDATE ON obligation_values_standard
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at();
+-- CREATE TRIGGER obligation_values_standard_updated_at
+--   BEFORE UPDATE ON obligation_values_standard
+--   FOR EACH ROW
+--   EXECUTE FUNCTION update_updated_at();
 
-CREATE TRIGGER obligation_triggers_updated_at
-  BEFORE UPDATE ON obligation_triggers
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at();
+-- CREATE TRIGGER obligation_triggers_updated_at
+--   BEFORE UPDATE ON obligation_triggers
+--   FOR EACH ROW
+--   EXECUTE FUNCTION update_updated_at();
 
-CREATE TRIGGER obligation_fulfillers_updated_at
-  BEFORE UPDATE ON obligation_fulfillers
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at();
+-- CREATE TRIGGER obligation_fulfillers_updated_at
+--   BEFORE UPDATE ON obligation_fulfillers
+--   FOR EACH ROW
+--   EXECUTE FUNCTION update_updated_at();
 
-CREATE TRIGGER obligation_action_attribute_values_updated_at
-  BEFORE UPDATE ON obligation_action_attribute_values
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at();
+-- CREATE TRIGGER obligation_action_attribute_values_updated_at
+--   BEFORE UPDATE ON obligation_action_attribute_values
+--   FOR EACH ROW
+--   EXECUTE FUNCTION update_updated_at();
+
+CREATE OR REPLACE FUNCTION add_standard_columns_and_triggers(table_names text[])
+RETURNS void AS $$
+BEGIN
+    FOREACH table_name IN ARRAY table_names
+    LOOP
+        tbl := table_name::regclass;
+        -- Add all standard columns in one statement
+        EXECUTE format('
+            ALTER TABLE %I 
+            ADD COLUMN id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            ADD COLUMN metadata JSONB,
+            ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ', tbl);
+        
+        -- Create trigger for updating updated_at column
+        EXECUTE format('
+            CREATE TRIGGER %I_updated_at
+            BEFORE UPDATE ON %I
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at()
+        ', tbl, tbl);    
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
 
 
 -- +goose StatementEnd

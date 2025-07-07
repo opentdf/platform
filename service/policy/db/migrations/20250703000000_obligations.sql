@@ -85,29 +85,24 @@ CREATE TABLE IF NOT EXISTS obligation_action_attribute_values
 --   FOR EACH ROW
 --   EXECUTE FUNCTION update_updated_at();
 
--- CREATE OR REPLACE FUNCTION standardize_table(table_name regclass, include_metadata boolean DEFAULT TRUE)
--- RETURNS void AS $$
--- BEGIN
---     alteration := '
---         ALTER TABLE %I 
---         ADD COLUMN id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
---         ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
---         ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
---     ';
---     IF include_metadata THEN
---         alteration := alteration || ', ADD COLUMN metadata JSONB';
---     END IF;
---     EXECUTE FORMAT(alteration, table_name);
+CREATE OR REPLACE FUNCTION standardize_table(table_name regclass, include_metadata boolean DEFAULT TRUE)
+RETURNS void AS $$
+DECLARE alteration text := 'ALTER TABLE %I ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP';
+BEGIN
+    -- IF include_metadata THEN
+    --     alteration := alteration || ', ADD COLUMN metadata JSONB';
+    -- END IF;
+    -- EXECUTE FORMAT(alteration, table_name);
     
---     -- Create trigger for updating updated_at column
---     EXECUTE FORMAT('
---         CREATE TRIGGER %I_updated_at
---         BEFORE UPDATE ON %I
---         FOR EACH ROW
---         EXECUTE FUNCTION update_updated_at()
---     ', table_name, table_name);    
--- END;
--- $$ LANGUAGE plpgsql;
+    -- -- Create trigger for updating updated_at column
+    -- EXECUTE FORMAT('
+    --     CREATE TRIGGER %I_updated_at
+    --     BEFORE UPDATE ON %I
+    --     FOR EACH ROW
+    --     EXECUTE FUNCTION update_updated_at()
+    -- ', table_name, table_name);    
+END;
+$$ LANGUAGE plpgsql;
 
 -- CREATE OR REPLACE FUNCTION standardize_tables(tables text[])
 -- RETURNS void AS $$

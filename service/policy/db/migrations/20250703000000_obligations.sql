@@ -3,13 +3,13 @@
 
 CREATE TABLE IF NOT EXISTS obligation_definitions
 (
-    -- id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     namespace_id UUID NOT NULL REFERENCES attribute_namespaces(id),
     -- name is a unique identifier for the obligation definition within the namespace
     name VARCHAR NOT NULL UNIQUE,
     -- implicit index on unique (namespace_id, name) combo
     -- index name: obligation_definitions_namespace_id_name_key
-    UNIQUE (namespace_id, name),
+    UNIQUE (namespace_id, name)
     -- metadata JSONB,
     -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -17,13 +17,13 @@ CREATE TABLE IF NOT EXISTS obligation_definitions
 
 CREATE TABLE IF NOT EXISTS obligation_values_standard
 (
-    -- id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     obligation_definition_id UUID NOT NULL REFERENCES obligation_definitions(id),
     -- value is a unique identifier for the obligation value within the definition
     value VARCHAR NOT NULL UNIQUE,
     -- implicit index on unique (obligation_definition_id, value) combo
     -- index name: obligation_values_standard_obligation_definition_id_value_key
-    UNIQUE (obligation_definition_id, value),
+    UNIQUE (obligation_definition_id, value)
     -- metadata JSONB,
     -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -31,9 +31,9 @@ CREATE TABLE IF NOT EXISTS obligation_values_standard
 
 CREATE TABLE IF NOT EXISTS obligation_triggers
 (
-    -- id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     attribute_value_id UUID NOT NULL REFERENCES attribute_values(id),
-    obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
+    obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id)
     -- metadata JSONB,
     -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -41,9 +41,9 @@ CREATE TABLE IF NOT EXISTS obligation_triggers
 
 CREATE TABLE IF NOT EXISTS obligation_fulfillers
 (
-    -- id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
-    conditionals JSONB,
+    conditionals JSONB
     -- metadata JSONB,
     -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS obligation_fulfillers
 
 CREATE TABLE IF NOT EXISTS obligation_action_attribute_values
 (
-    -- id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
     action_id UUID NOT NULL REFERENCES actions(id),
     attribute_value_id UUID NOT NULL REFERENCES attribute_values(id),
@@ -85,43 +85,41 @@ CREATE TABLE IF NOT EXISTS obligation_action_attribute_values
 --   FOR EACH ROW
 --   EXECUTE FUNCTION update_updated_at();
 
-CREATE OR REPLACE FUNCTION standardize_table(table_name regclass, include_metadata boolean DEFAULT TRUE)
-RETURNS void AS $$
-BEGIN
-    -- define prefix
-    DECLARE prefix TEXT := 'ALTER TABLE %I ADD COLUMN id UUID PRIMARY KEY DEFAULT gen_random_uuid(),';
-    DECLARE suffix TEXT := 'ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP';
-    IF include_metadata THEN
-        suffix := suffix || ', ADD COLUMN metadata JSONB';
-    END IF;
-    EXECUTE FORMAT('
-        ALTER TABLE %I 
-        ADD COLUMN id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        ADD COLUMN metadata JSONB,
-        ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
-    ', table_name);
+-- CREATE OR REPLACE FUNCTION standardize_table(table_name regclass, include_metadata boolean DEFAULT TRUE)
+-- RETURNS void AS $$
+-- BEGIN
+--     alteration := '
+--         ALTER TABLE %I 
+--         ADD COLUMN id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--         ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+--         ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+--     ';
+--     IF include_metadata THEN
+--         alteration := alteration || ', ADD COLUMN metadata JSONB';
+--     END IF;
+--     EXECUTE FORMAT(alteration, table_name);
     
-    -- Create trigger for updating updated_at column
-    EXECUTE FORMAT('
-        CREATE TRIGGER %I_updated_at
-        BEFORE UPDATE ON %I
-        FOR EACH ROW
-        EXECUTE FUNCTION update_updated_at()
-    ', table_name, table_name);    
-END;
-$$ LANGUAGE plpgsql;
+--     -- Create trigger for updating updated_at column
+--     EXECUTE FORMAT('
+--         CREATE TRIGGER %I_updated_at
+--         BEFORE UPDATE ON %I
+--         FOR EACH ROW
+--         EXECUTE FUNCTION update_updated_at()
+--     ', table_name, table_name);    
+-- END;
+-- $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION standardize_tables(tables text[])
-RETURNS void AS $$
-BEGIN 
-    FOREACH table_name IN ARRAY tables
-    LOOP
-        PERFORM standardize_table(table_name::regclass);
-    END LOOP;
-END;
+-- CREATE OR REPLACE FUNCTION standardize_tables(tables text[])
+-- RETURNS void AS $$
+-- BEGIN 
+--     FOREACH table_name IN ARRAY tables
+--     LOOP
+--         PERFORM standardize_table(table_name::regclass);
+--     END LOOP;
+-- END;
 
-
+-- tables text[] := ARRAY['obligation_definitions', 'obligation_values_standard', 'obligation_triggers', 'obligation_fulfillers', 'obligation_action_attribute_values'];
+-- PERFORM standardize_tables(tables);
 -- +goose StatementEnd
 
 -- +goose Down

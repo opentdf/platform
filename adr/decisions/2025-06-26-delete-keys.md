@@ -71,7 +71,7 @@ Add a column to the keys table to denote whether or not the key has been exporte
 * 🟩 **Good**, Allows admins a safe, auditable way for deleting keys
 * 🟨 **Neutral**, Cannot guarantee that the admin has kept the key after calling the export key method.
 * 🟥 **Bad**, No way of recovering your private key if not backed up before deletion.
-
+* 🟥 **Bad**, Requires additional distribution of the key, spreading the potential for compromise even if removed by the service.
 
 ## Decision Outcome
 

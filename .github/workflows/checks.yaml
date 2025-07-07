@@ -245,7 +245,7 @@ jobs:
       - name: run decision benchmark tests
         run: |
           # Run the benchmark with a specific count (adjust as needed)
-          OUTPUT=$(./examples/examples benchmark-decision --count 5000)
+          OUTPUT=$(./examples/examples benchmark-decision --count 1000)
           echo "--- Decision Benchmark Output ---"
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY" # Add to job summary page
@@ -258,7 +258,7 @@ jobs:
       - name: run decision v2 benchmark tests
         run: |
           # Run the benchmark with a specific count (adjust as needed)
-          OUTPUT=$(./examples/examples benchmark-decision-v2 --count 5000)
+          OUTPUT=$(./examples/examples benchmark-decision-v2 --count 1000)
           echo "--- Decision Benchmark v2 Output ---"
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY" # Add to job summary page

@@ -85,10 +85,16 @@ CREATE TABLE IF NOT EXISTS obligation_action_attribute_values
 --   FOR EACH ROW
 --   EXECUTE FUNCTION update_updated_at();
 
-CREATE OR REPLACE FUNCTION standardize_table(table_name regclass)
+CREATE OR REPLACE FUNCTION standardize_table(table_name regclass, include_metadata boolean DEFAULT TRUE)
 RETURNS void AS $$
 BEGIN
-    EXECUTE format('
+    -- define prefix
+    DECLARE prefix TEXT := 'ALTER TABLE %I ADD COLUMN id UUID PRIMARY KEY DEFAULT gen_random_uuid(),';
+    DECLARE suffix TEXT := 'ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP';
+    IF include_metadata THEN
+        suffix := suffix || ', ADD COLUMN metadata JSONB';
+    END IF;
+    EXECUTE FORMAT('
         ALTER TABLE %I 
         ADD COLUMN id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         ADD COLUMN metadata JSONB,
@@ -97,7 +103,7 @@ BEGIN
     ', table_name);
     
     -- Create trigger for updating updated_at column
-    EXECUTE format('
+    EXECUTE FORMAT('
         CREATE TRIGGER %I_updated_at
         BEFORE UPDATE ON %I
         FOR EACH ROW

@@ -1,3 +1,5 @@
+
+
 -- +goose Up
 -- +goose StatementBegin
 
@@ -85,6 +87,15 @@ CREATE TABLE IF NOT EXISTS obligation_action_attribute_values
 --   FOR EACH ROW
 --   EXECUTE FUNCTION update_updated_at();
 
+CREATE OR REPLACE FUNCTION get_obligation_tables()
+RETURNS text[] AS $$
+BEGIN
+    RETURN ARRAY['obligation_definitions', 'obligation_values_standard', 
+                 'obligation_triggers', 'obligation_fulfillers', 
+                 'obligation_action_attribute_values'];
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION standardize_table(table_name regclass, include_metadata boolean DEFAULT TRUE)
 RETURNS void AS $$
 -- DECLARE alteration text := 'ALTER TABLE %I ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP';
@@ -120,17 +131,34 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- DECLARE tables text[] := ARRAY['obligation_definitions', 'obligation_values_standard', 'obligation_triggers', 'obligation_fulfillers', 'obligation_action_attribute_values'];
-SELECT standardize_tables(ARRAY['obligation_definitions', 'obligation_values_standard', 'obligation_triggers', 'obligation_fulfillers', 'obligation_action_attribute_values']);
+CREATE OR REPLACE FUNCTION drop_tables(tables text[])
+RETURNS void AS $$
+DECLARE table_name text;
+BEGIN
+    FOREACH table_name IN ARRAY tables
+    LOOP
+        EXECUTE FORMAT('DROP TABLE IF EXISTS %I', table_name);
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT standardize_tables(get_obligation_tables());
+ALTER TABLE obligation_action_attribute_values DROP COLUMN IF EXISTS metadata;
 
 -- PERFORM standardize_tables(tables);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS obligation_definitions;
-DROP TABLE IF EXISTS obligation_values_standard;
-DROP TABLE IF EXISTS obligation_triggers;
-DROP TABLE IF EXISTS obligation_fulfillers;
-DROP TABLE IF EXISTS obligation_action_attribute_values;
+-- DROP TABLE IF EXISTS obligation_definitions;
+-- DROP TABLE IF EXISTS obligation_values_standard;
+-- DROP TABLE IF EXISTS obligation_triggers;
+-- DROP TABLE IF EXISTS obligation_fulfillers;
+-- DROP TABLE IF EXISTS obligation_action_attribute_values;
+SELECT drop_tables(get_obligation_tables());
+DROP FUNCTION IF EXISTS get_obligation_tables;
+DROP FUNCTION IF EXISTS standardize_table;
+DROP FUNCTION IF EXISTS standardize_tables;
+DROP FUNCTION IF EXISTS drop_tables;
+
 -- +goose StatementEnd

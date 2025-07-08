@@ -160,11 +160,11 @@ erDiagram
     }
 
     obligation_triggers {
-        uuid attribute_value_id FK 
+        uuid attribute_value_id FK,UK 
         timestamp_with_time_zone created_at 
         uuid id PK 
         jsonb metadata 
-        uuid obligation_value_id FK 
+        uuid obligation_value_id FK,UK 
         timestamp_with_time_zone updated_at 
     }
 

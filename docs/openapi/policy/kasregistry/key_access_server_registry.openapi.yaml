@@ -1468,16 +1468,19 @@ components:
           items:
             $ref: '#/components/schemas/policy.kasregistry.MappedPolicyObject'
           title: namespace_mappings
+          description: List of namespaces mapped to the key
         attributeMappings:
           type: array
           items:
             $ref: '#/components/schemas/policy.kasregistry.MappedPolicyObject'
           title: attribute_mappings
+          description: List of attribute definitions mapped to the key
         valueMappings:
           type: array
           items:
             $ref: '#/components/schemas/policy.kasregistry.MappedPolicyObject'
           title: value_mappings
+          description: List of attribute values mapped to the key
       title: KeyMapping
       additionalProperties: false
     policy.kasregistry.ListKeyAccessServerGrantsRequest:
@@ -1597,11 +1600,6 @@ components:
           $ref: '#/components/schemas/policy.PageRequest'
       title: ListKeyMappingsRequest
       additionalProperties: false
-      description: |-
-        Plan would be to union all mappings tables
-         Join with the fqns table
-         Group by key.id
-         return limit / offset
     policy.kasregistry.ListKeyMappingsResponse:
       type: object
       properties:

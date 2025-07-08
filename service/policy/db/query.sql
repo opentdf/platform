@@ -1699,7 +1699,7 @@ WHERE id = $1;
 -- name: listKeyMappings :many
 WITH filtered_keys AS (
     -- Get all keys matching the filter criteria
-    SELECT DISTINCT
+    SELECT
         kask.created_at,
         kask.id AS id,
         kask.key_id AS kid,
@@ -1728,8 +1728,7 @@ WITH filtered_keys AS (
     )
 ),
 keys_with_mappings AS (
-    -- Count total unique keys with mappings
-    SELECT COUNT(DISTINCT id) AS total
+    SELECT id
     FROM filtered_keys fk
     WHERE EXISTS (
         SELECT 1 FROM attribute_namespace_public_key_map anpm WHERE anpm.key_access_server_key_id = fk.id
@@ -1738,6 +1737,9 @@ keys_with_mappings AS (
     ) OR EXISTS (
         SELECT 1 FROM attribute_value_public_key_map avpm WHERE avpm.key_access_server_key_id = fk.id
     )
+),
+keys_with_mappings_count AS (
+    SELECT COUNT(*) AS total FROM keys_with_mappings
 ),
 namespace_mappings AS (
     -- Get namespace mappings for each key
@@ -1790,19 +1792,13 @@ SELECT
     COALESCE(nm.namespace_mappings, '[]'::json) AS namespace_mappings,
     COALESCE(dm.definition_mappings, '[]'::json) AS attribute_mappings,
     COALESCE(vm.value_mappings, '[]'::json) AS value_mappings,
-    kwm.total
+    kwmc.total
 FROM filtered_keys fk
-CROSS JOIN keys_with_mappings kwm
+INNER JOIN keys_with_mappings kwm ON fk.id = kwm.id
+CROSS JOIN keys_with_mappings_count kwmc
 LEFT JOIN namespace_mappings nm ON fk.id = nm.key_id
 LEFT JOIN definition_mappings dm ON fk.id = dm.key_id
 LEFT JOIN value_mappings vm ON fk.id = vm.key_id
-WHERE EXISTS (
-    SELECT 1 FROM attribute_namespace_public_key_map anpm WHERE anpm.key_access_server_key_id = fk.id
-) OR EXISTS (
-    SELECT 1 FROM attribute_definition_public_key_map adpm WHERE adpm.key_access_server_key_id = fk.id
-) OR EXISTS (
-    SELECT 1 FROM attribute_value_public_key_map avpm WHERE avpm.key_access_server_key_id = fk.id
-)
 ORDER BY fk.created_at
 LIMIT @limit_ 
 OFFSET @offset_;

@@ -3052,9 +3052,9 @@ type KeyMapping struct {
 
 	Kid               string                `protobuf:"bytes,1,opt,name=kid,proto3" json:"kid,omitempty"`
 	KasUri            string                `protobuf:"bytes,2,opt,name=kas_uri,json=kasUri,proto3" json:"kas_uri,omitempty"`
-	NamespaceMappings []*MappedPolicyObject `protobuf:"bytes,3,rep,name=namespace_mappings,json=namespaceMappings,proto3" json:"namespace_mappings,omitempty"`
-	AttributeMappings []*MappedPolicyObject `protobuf:"bytes,4,rep,name=attribute_mappings,json=attributeMappings,proto3" json:"attribute_mappings,omitempty"`
-	ValueMappings     []*MappedPolicyObject `protobuf:"bytes,5,rep,name=value_mappings,json=valueMappings,proto3" json:"value_mappings,omitempty"`
+	NamespaceMappings []*MappedPolicyObject `protobuf:"bytes,3,rep,name=namespace_mappings,json=namespaceMappings,proto3" json:"namespace_mappings,omitempty"` // List of namespaces mapped to the key
+	AttributeMappings []*MappedPolicyObject `protobuf:"bytes,4,rep,name=attribute_mappings,json=attributeMappings,proto3" json:"attribute_mappings,omitempty"` // List of attribute definitions mapped to the key
+	ValueMappings     []*MappedPolicyObject `protobuf:"bytes,5,rep,name=value_mappings,json=valueMappings,proto3" json:"value_mappings,omitempty"`             // List of attribute values mapped to the key
 }
 
 func (x *KeyMapping) Reset() {
@@ -3124,10 +3124,6 @@ func (x *KeyMapping) GetValueMappings() []*MappedPolicyObject {
 	return nil
 }
 
-// Plan would be to union all mappings tables
-// Join with the fqns table
-// Group by key.id
-// return limit / offset
 type ListKeyMappingsRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

@@ -625,15 +625,11 @@ message MappedPolicyObject {
 message KeyMapping {
   string kid = 1;
   string kas_uri = 2;
-  repeated MappedPolicyObject namespace_mappings = 3;
-  repeated MappedPolicyObject attribute_mappings = 4;
-  repeated MappedPolicyObject value_mappings = 5;
+  repeated MappedPolicyObject namespace_mappings = 3; // List of namespaces mapped to the key
+  repeated MappedPolicyObject attribute_mappings = 4; // List of attribute definitions mapped to the key
+  repeated MappedPolicyObject value_mappings = 5; // List of attribute values mapped to the key
 }
 
-// Plan would be to union all mappings tables
-// Join with the fqns table
-// Group by key.id
-// return limit / offset
 message ListKeyMappingsRequest {
   oneof identifier {
     option (buf.validate.oneof).required = false;

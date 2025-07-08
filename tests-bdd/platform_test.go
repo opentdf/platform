@@ -85,7 +85,7 @@ func runTests() int {
 		Name:                 "platform",
 		TestSuiteInitializer: platformCukesContext.InitializeTestSuite,
 		ScenarioInitializer: func(ctx *godog.ScenarioContext) {
-			// cukes.RegisterLocalPlatformStepDefinitions(ctx, platformCukesContext)
+			cukes.RegisterLocalPlatformStepDefinitions(ctx, platformCukesContext)
 			cukes.RegisterNamespaceStepDefinitions(ctx)
 			cukes.RegisterAttributeStepDefinitions(ctx, platformCukesContext)
 			// cukes.RegisterSubjectMappingsStepsDefinitions(ctx)

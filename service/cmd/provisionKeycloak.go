@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/opentdf/otdfctl/pkg/cli"
 	"github.com/opentdf/platform/lib/fixtures"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -32,7 +33,7 @@ var provisionKeycloakCmd = &cobra.Command{
 	Short: "Run local provision of keycloak data",
 	Long: `
 	** Local Development and Testing Only **
-	This command will create the following Keyclaok resource:
+	This command will create the following Keycloak resource:
 	- Realm
 	- Roles
 	- Client
@@ -46,7 +47,7 @@ var provisionKeycloakCmd = &cobra.Command{
 		kcPassword, _ := cmd.Flags().GetString(provKcPasswordFlag)
 		keycloakFilename, _ := cmd.Flags().GetString(provKcFilenameFlag)
 
-		LoadKeycloakData(keycloakFilename)
+		keycloakData := LoadKeycloakData(keycloakFilename)
 		ctx := context.Background()
 
 		kcParams := fixtures.KeycloakConnectParams{
@@ -59,7 +60,7 @@ var provisionKeycloakCmd = &cobra.Command{
 
 		err := fixtures.SetupCustomKeycloak(ctx, kcParams, keycloakData)
 		if err != nil {
-			return err
+			cli.ExitWithError("Error setting up custom keycloak config", err)
 		}
 
 		return nil
@@ -94,35 +95,36 @@ func convert(i interface{}) interface{} {
 	return i
 }
 
-func LoadKeycloakData(file string) {
+func LoadKeycloakData(file string) fixtures.KeycloakData {
 	yamlData := make(map[interface{}]interface{})
 
 	f, err := os.Open(file)
 	if err != nil {
-		panic(fmt.Errorf("error when opening YAML file: %s", err.Error()))
+		cli.ExitWithError("Error opening provided file", fmt.Errorf("error when opening YAML file: %s", err.Error()))
 	}
 
 	fileData, err := io.ReadAll(f)
 	if err != nil {
-		panic(fmt.Errorf("error reading YAML file: %s", err.Error()))
+		cli.ExitWithError("Error reading file", fmt.Errorf("error reading YAML file: %s", err.Error()))
 	}
 
 	err = yaml.Unmarshal(fileData, &yamlData)
 	if err != nil {
-		panic(fmt.Errorf("error unmarshaling yaml file %s", err.Error()))
+		cli.ExitWithError("Error unmarshalling yaml data", fmt.Errorf("error unmarshaling yaml file %s", err.Error()))
 	}
 
 	cleanedYaml := convert(yamlData)
 
 	kcData, err := json.Marshal(cleanedYaml)
 	if err != nil {
-		panic(fmt.Errorf("error converting yaml to json: %s", err.Error()))
+		cli.ExitWithError("Error converting yaml data to json", fmt.Errorf("error converting yaml to json: %s", err.Error()))
 	}
-
+	var keycloakData fixtures.KeycloakData
 	if err := json.Unmarshal(kcData, &keycloakData); err != nil {
 		slog.Error("could not unmarshal json into data object", slog.String("error", err.Error()))
-		panic(err)
+		cli.ExitWithError("Error unmarshalling data into struct", err)
 	}
+	return keycloakData
 }
 
 func init() {

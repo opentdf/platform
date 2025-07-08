@@ -1,0 +1,30 @@
+services:
+  otdf:
+    image: ${OTDF_IMAGE}
+    command: ["start", "--config-file","/app/otdf.yaml"]
+    environment:
+      SSL_CERT_DIR: /app/otdf-keys
+      # ENCRYPTED_TOKEN_KEY: ${ENCRYPTED_TOKEN_KEY} # Uncomment if needed
+    ports:
+      - "${EXPOSED_PORT}:${EXPOSED_PORT}"
+    volumes:
+      - ${OTDF_KEYS_DIR}:/app/otdf-keys
+      - ${OTDF_CONFIG_PATH}:/app/otdf.yaml
+      - ${TAGGING_CONFIG_PATH}:/app/tagging.yaml
+    extra_hosts:
+      - "${HOSTNAME}:host-gateway"
+    healthcheck:
+      test: [
+        "CMD",
+        "/usr/bin/otdf",
+        "tructl",
+        "--tls-no-verify",
+        "--host",
+        "https://localhost:${EXPOSED_PORT}",
+        "--with-client-creds",
+        '{"clientId":"opentdf", "clientSecret":"secret"}',
+        "policy", "attributes", "list" ]
+      interval: 5s
+      timeout: 1s
+      retries: 5
+      start_period: 1s

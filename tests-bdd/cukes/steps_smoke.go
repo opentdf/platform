@@ -2,6 +2,7 @@ package cukes
 
 import (
 	"log/slog"
+	"time"
 
 	"github.com/cucumber/godog"
 )
@@ -21,4 +22,9 @@ func RegisterSmokeStepDefinitions(ctx *godog.ScenarioContext, x *PlatformTestSui
 		PlatformCukesContext: x,
 	}
 	ctx.Step(`^the platform glue is initialized$`, stepDefinitions.thePlatformGlueIsInitialized)
+	ctx.Step(`^I wait for 5 minutes$`, func() error {
+		slog.Info("Waiting for 5 minutes for troubleshooting...")
+		time.Sleep(5 * time.Minute)
+		return nil
+	})
 }

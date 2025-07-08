@@ -1,5 +1,3 @@
-
-
 -- +goose Up
 -- +goose StatementBegin
 
@@ -12,9 +10,6 @@ CREATE TABLE IF NOT EXISTS obligation_definitions
     -- implicit index on unique (namespace_id, name) combo
     -- index name: obligation_definitions_namespace_id_name_key
     UNIQUE (namespace_id, name)
-    -- metadata JSONB,
-    -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obligation_values_standard
@@ -26,9 +21,6 @@ CREATE TABLE IF NOT EXISTS obligation_values_standard
     -- implicit index on unique (obligation_definition_id, value) combo
     -- index name: obligation_values_standard_obligation_definition_id_value_key
     UNIQUE (obligation_definition_id, value)
-    -- metadata JSONB,
-    -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obligation_triggers
@@ -36,9 +28,6 @@ CREATE TABLE IF NOT EXISTS obligation_triggers
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     attribute_value_id UUID NOT NULL REFERENCES attribute_values(id),
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id)
-    -- metadata JSONB,
-    -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obligation_fulfillers
@@ -46,9 +35,6 @@ CREATE TABLE IF NOT EXISTS obligation_fulfillers
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
     conditionals JSONB
-    -- metadata JSONB,
-    -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obligation_action_attribute_values
@@ -57,35 +43,8 @@ CREATE TABLE IF NOT EXISTS obligation_action_attribute_values
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
     action_id UUID NOT NULL REFERENCES actions(id),
     attribute_value_id UUID NOT NULL REFERENCES attribute_values(id),
-    -- created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    -- updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     UNIQUE(obligation_value_id, action_id, attribute_value_id)
 );
-
--- CREATE TRIGGER obligation_definitions_updated_at
---   BEFORE UPDATE ON obligation_definitions
---   FOR EACH ROW
---   EXECUTE FUNCTION update_updated_at();
-
--- CREATE TRIGGER obligation_values_standard_updated_at
---   BEFORE UPDATE ON obligation_values_standard
---   FOR EACH ROW
---   EXECUTE FUNCTION update_updated_at();
-
--- CREATE TRIGGER obligation_triggers_updated_at
---   BEFORE UPDATE ON obligation_triggers
---   FOR EACH ROW
---   EXECUTE FUNCTION update_updated_at();
-
--- CREATE TRIGGER obligation_fulfillers_updated_at
---   BEFORE UPDATE ON obligation_fulfillers
---   FOR EACH ROW
---   EXECUTE FUNCTION update_updated_at();
-
--- CREATE TRIGGER obligation_action_attribute_values_updated_at
---   BEFORE UPDATE ON obligation_action_attribute_values
---   FOR EACH ROW
---   EXECUTE FUNCTION update_updated_at();
 
 CREATE OR REPLACE FUNCTION get_obligation_tables()
 RETURNS text[] AS $$
@@ -96,13 +55,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION standardize_table(table_name regclass, include_metadata boolean DEFAULT TRUE)
+CREATE OR REPLACE FUNCTION standardize_table(table_name regclass)
 RETURNS void AS $$
--- DECLARE alteration text := 'ALTER TABLE %I ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP';
 BEGIN
-    -- IF include_metadata THEN
-    --     alteration := alteration || ', ADD COLUMN metadata JSONB';
-    -- END IF;
+    -- Add standard columns to the table
     EXECUTE FORMAT('
         ALTER TABLE %I 
         ADD COLUMN metadata JSONB,
@@ -145,16 +101,11 @@ $$ LANGUAGE plpgsql;
 SELECT standardize_tables(get_obligation_tables());
 ALTER TABLE obligation_action_attribute_values DROP COLUMN IF EXISTS metadata;
 
--- PERFORM standardize_tables(tables);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
--- DROP TABLE IF EXISTS obligation_definitions;
--- DROP TABLE IF EXISTS obligation_values_standard;
--- DROP TABLE IF EXISTS obligation_triggers;
--- DROP TABLE IF EXISTS obligation_fulfillers;
--- DROP TABLE IF EXISTS obligation_action_attribute_values;
+
 SELECT drop_tables(get_obligation_tables());
 DROP FUNCTION IF EXISTS get_obligation_tables;
 DROP FUNCTION IF EXISTS standardize_table;

@@ -479,6 +479,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.kasregistry.GetBaseKeyResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/ListKeyMappings:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: ListKeyMappings
+      description: Request to list key mappings in the Key Access Service.
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.ListKeyMappings
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.ListKeyMappingsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.ListKeyMappingsResponse'
 components:
   schemas:
     common.MetadataUpdateEnum:
@@ -599,14 +635,8 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
-
-         Not recommended for use in new APIs, but still useful for legacy APIs and
-         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
-      examples:
-        - 1s
-        - 1.000340012s
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -1424,6 +1454,32 @@ components:
       title: KeyAccessServerGrants
       additionalProperties: false
       description: Deprecated
+    policy.kasregistry.KeyMapping:
+      type: object
+      properties:
+        kid:
+          type: string
+          title: kid
+        kasUri:
+          type: string
+          title: kas_uri
+        namespaceMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.MappedPolicyObject'
+          title: namespace_mappings
+        attributeMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.MappedPolicyObject'
+          title: attribute_mappings
+        valueMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.MappedPolicyObject'
+          title: value_mappings
+      title: KeyMapping
+      additionalProperties: false
     policy.kasregistry.ListKeyAccessServerGrantsRequest:
       type: object
       properties:
@@ -1514,6 +1570,52 @@ components:
           title: pagination
           $ref: '#/components/schemas/policy.PageResponse'
       title: ListKeyAccessServersResponse
+      additionalProperties: false
+    policy.kasregistry.ListKeyMappingsRequest:
+      type: object
+      oneOf:
+        - properties:
+            id:
+              type: string
+              title: id
+              format: uuid
+              description: The unique identifier of the key to retrieve
+          title: id
+          required:
+            - id
+        - properties:
+            key:
+              title: key
+              $ref: '#/components/schemas/policy.kasregistry.KasKeyIdentifier'
+          title: key
+          required:
+            - key
+      properties:
+        pagination:
+          title: pagination
+          description: Pagination request for the list of keys
+          $ref: '#/components/schemas/policy.PageRequest'
+      title: ListKeyMappingsRequest
+      additionalProperties: false
+      description: |-
+        Plan would be to union all mappings tables
+         Join with the fqns table
+         Group by key.id
+         return limit / offset
+    policy.kasregistry.ListKeyMappingsResponse:
+      type: object
+      properties:
+        keyMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.KeyMapping'
+          title: key_mappings
+          description: The list of key mappings
+        pagination:
+          title: pagination
+          description: Pagination response for the list of keys
+          $ref: '#/components/schemas/policy.PageResponse'
+      title: ListKeyMappingsResponse
       additionalProperties: false
     policy.kasregistry.ListKeysRequest:
       type: object
@@ -1739,6 +1841,19 @@ components:
           title: pagination
           $ref: '#/components/schemas/policy.PageResponse'
       title: ListPublicKeysResponse
+      additionalProperties: false
+    policy.kasregistry.MappedPolicyObject:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: The unique identifier of the policy object
+        fqn:
+          type: string
+          title: fqn
+          description: The fully qualified name of the policy object
+      title: MappedPolicyObject
       additionalProperties: false
     policy.kasregistry.RotateKeyRequest:
       type: object

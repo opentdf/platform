@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS obligation_triggers
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     attribute_value_id UUID NOT NULL REFERENCES attribute_values(id),
-    obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id)
+    obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
+    UNIQUE (attribute_value_id, obligation_value_id)
 );
 
 CREATE TABLE IF NOT EXISTS obligation_fulfillers

@@ -111,15 +111,18 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION standardize_tables(tables text[])
 RETURNS void AS $$
+DECLARE table_name text;
 BEGIN 
---     FOREACH table_name IN ARRAY tables
---     LOOP
---         PERFORM standardize_table(table_name::regclass);
---     END LOOP;
+    FOREACH table_name IN ARRAY tables
+    LOOP
+        PERFORM standardize_table(table_name::regclass);
+    END LOOP;
 END;
 $$ LANGUAGE plpgsql;
 
--- tables text[] := ARRAY['obligation_definitions', 'obligation_values_standard', 'obligation_triggers', 'obligation_fulfillers', 'obligation_action_attribute_values'];
+-- DECLARE tables text[] := ARRAY['obligation_definitions', 'obligation_values_standard', 'obligation_triggers', 'obligation_fulfillers', 'obligation_action_attribute_values'];
+SELECT standardize_tables(ARRAY['obligation_definitions', 'obligation_values_standard', 'obligation_triggers', 'obligation_fulfillers', 'obligation_action_attribute_values']);
+
 -- PERFORM standardize_tables(tables);
 -- +goose StatementEnd
 

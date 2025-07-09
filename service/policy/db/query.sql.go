@@ -1987,29 +1987,6 @@ func (q *Queries) assignPublicKeyToNamespace(ctx context.Context, arg assignPubl
 	return i, err
 }
 
-const createCustomAction = `-- name: createCustomAction :one
-INSERT INTO actions (name, metadata, is_standard)
-VALUES ($1, $2, FALSE)
-RETURNING id
-`
-
-type createCustomActionParams struct {
-	Name     string `json:"name"`
-	Metadata []byte `json:"metadata"`
-}
-
-// createCustomAction
-//
-//	INSERT INTO actions (name, metadata, is_standard)
-//	VALUES ($1, $2, FALSE)
-//	RETURNING id
-func (q *Queries) createCustomAction(ctx context.Context, arg createCustomActionParams) (string, error) {
-	row := q.db.QueryRow(ctx, createCustomAction, arg.Name, arg.Metadata)
-	var id string
-	err := row.Scan(&id)
-	return id, err
-}
-
 const createKey = `-- name: createKey :one
 INSERT INTO key_access_server_keys
     (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id)
@@ -2052,119 +2029,6 @@ func (q *Queries) createKey(ctx context.Context, arg createKeyParams) (string, e
 	var id string
 	err := row.Scan(&id)
 	return id, err
-}
-
-const createOrListActionsByName = `-- name: createOrListActionsByName :many
-WITH input_actions AS (
-    SELECT unnest($1::text[]) AS name
-),
-new_actions AS (
-    INSERT INTO actions (name, is_standard)
-    SELECT 
-        input.name, 
-        FALSE -- custom actions
-    FROM input_actions input
-    WHERE NOT EXISTS (
-        SELECT 1 FROM actions a WHERE LOWER(a.name) = LOWER(input.name)
-    )
-    ON CONFLICT (name) DO NOTHING
-    RETURNING id, name, is_standard, created_at
-),
-all_actions AS (
-    -- Get existing actions that match input names
-    SELECT a.id, a.name, a.is_standard, a.created_at, 
-           TRUE AS pre_existing
-    FROM actions a
-    JOIN input_actions input ON LOWER(a.name) = LOWER(input.name)
-    
-    UNION ALL
-    
-    -- Include newly created actions
-    SELECT id, name, is_standard, created_at,
-           FALSE AS pre_existing
-    FROM new_actions
-)
-SELECT 
-    id,
-    name,
-    is_standard,
-    created_at,
-    pre_existing
-FROM all_actions
-ORDER BY name
-`
-
-type createOrListActionsByNameRow struct {
-	ID          string             `json:"id"`
-	Name        string             `json:"name"`
-	IsStandard  bool               `json:"is_standard"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	PreExisting bool               `json:"pre_existing"`
-}
-
-// createOrListActionsByName
-//
-//	WITH input_actions AS (
-//	    SELECT unnest($1::text[]) AS name
-//	),
-//	new_actions AS (
-//	    INSERT INTO actions (name, is_standard)
-//	    SELECT
-//	        input.name,
-//	        FALSE -- custom actions
-//	    FROM input_actions input
-//	    WHERE NOT EXISTS (
-//	        SELECT 1 FROM actions a WHERE LOWER(a.name) = LOWER(input.name)
-//	    )
-//	    ON CONFLICT (name) DO NOTHING
-//	    RETURNING id, name, is_standard, created_at
-//	),
-//	all_actions AS (
-//	    -- Get existing actions that match input names
-//	    SELECT a.id, a.name, a.is_standard, a.created_at,
-//	           TRUE AS pre_existing
-//	    FROM actions a
-//	    JOIN input_actions input ON LOWER(a.name) = LOWER(input.name)
-//
-//	    UNION ALL
-//
-//	    -- Include newly created actions
-//	    SELECT id, name, is_standard, created_at,
-//	           FALSE AS pre_existing
-//	    FROM new_actions
-//	)
-//	SELECT
-//	    id,
-//	    name,
-//	    is_standard,
-//	    created_at,
-//	    pre_existing
-//	FROM all_actions
-//	ORDER BY name
-func (q *Queries) createOrListActionsByName(ctx context.Context, actionNames []string) ([]createOrListActionsByNameRow, error) {
-	rows, err := q.db.Query(ctx, createOrListActionsByName, actionNames)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []createOrListActionsByNameRow
-	for rows.Next() {
-		var i createOrListActionsByNameRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.IsStandard,
-			&i.CreatedAt,
-			&i.PreExisting,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const createProviderConfig = `-- name: createProviderConfig :one
@@ -2305,25 +2169,6 @@ func (q *Queries) deleteAllBaseKeys(ctx context.Context) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
-const deleteCustomAction = `-- name: deleteCustomAction :execrows
-DELETE FROM actions
-WHERE id = $1
-  AND is_standard = FALSE
-`
-
-// deleteCustomAction
-//
-//	DELETE FROM actions
-//	WHERE id = $1
-//	  AND is_standard = FALSE
-func (q *Queries) deleteCustomAction(ctx context.Context, id string) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteCustomAction, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const deleteKey = `-- name: deleteKey :execrows
 DELETE FROM key_access_server_keys WHERE id = $1
 `
@@ -2369,53 +2214,6 @@ func (q *Queries) deleteSubjectMapping(ctx context.Context, id string) (int64, e
 		return 0, err
 	}
 	return result.RowsAffected(), nil
-}
-
-const getAction = `-- name: getAction :one
-SELECT 
-    id,
-    name,
-    is_standard,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-FROM actions a
-WHERE 
-  ($1::uuid IS NULL OR a.id = $1::uuid)
-  AND ($2::text IS NULL OR a.name = $2::text)
-`
-
-type getActionParams struct {
-	ID   pgtype.UUID `json:"id"`
-	Name pgtype.Text `json:"name"`
-}
-
-type getActionRow struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	IsStandard bool   `json:"is_standard"`
-	Metadata   []byte `json:"metadata"`
-}
-
-// getAction
-//
-//	SELECT
-//	    id,
-//	    name,
-//	    is_standard,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', metadata -> 'labels', 'created_at', created_at, 'updated_at', updated_at)) AS metadata
-//	FROM actions a
-//	WHERE
-//	  ($1::uuid IS NULL OR a.id = $1::uuid)
-//	  AND ($2::text IS NULL OR a.name = $2::text)
-func (q *Queries) getAction(ctx context.Context, arg getActionParams) (getActionRow, error) {
-	row := q.db.QueryRow(ctx, getAction, arg.ID, arg.Name)
-	var i getActionRow
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.IsStandard,
-		&i.Metadata,
-	)
-	return i, err
 }
 
 const getBaseKey = `-- name: getBaseKey :one
@@ -2702,85 +2500,6 @@ func (q *Queries) getSubjectMapping(ctx context.Context, id string) (getSubjectM
 		&i.AttributeValue,
 	)
 	return i, err
-}
-
-const listActions = `-- name: listActions :many
-
-WITH counted AS (
-    SELECT COUNT(id) AS total FROM actions
-)
-SELECT 
-    a.id,
-    a.name,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-        'labels', a.metadata -> 'labels', 
-        'created_at', a.created_at, 
-        'updated_at', a.updated_at
-    )) as metadata,
-    a.is_standard,
-    counted.total
-FROM actions a
-CROSS JOIN counted
-LIMIT $2 
-OFFSET $1
-`
-
-type listActionsParams struct {
-	Offset int32 `json:"offset_"`
-	Limit  int32 `json:"limit_"`
-}
-
-type listActionsRow struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	Metadata   []byte `json:"metadata"`
-	IsStandard bool   `json:"is_standard"`
-	Total      int64  `json:"total"`
-}
-
-// --------------------------------------------------------------
-//
-//	WITH counted AS (
-//	    SELECT COUNT(id) AS total FROM actions
-//	)
-//	SELECT
-//	    a.id,
-//	    a.name,
-//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT(
-//	        'labels', a.metadata -> 'labels',
-//	        'created_at', a.created_at,
-//	        'updated_at', a.updated_at
-//	    )) as metadata,
-//	    a.is_standard,
-//	    counted.total
-//	FROM actions a
-//	CROSS JOIN counted
-//	LIMIT $2
-//	OFFSET $1
-func (q *Queries) listActions(ctx context.Context, arg listActionsParams) ([]listActionsRow, error) {
-	rows, err := q.db.Query(ctx, listActions, arg.Offset, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []listActionsRow
-	for rows.Next() {
-		var i listActionsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Metadata,
-			&i.IsStandard,
-			&i.Total,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const listAttributesByDefOrValueFqns = `-- name: listAttributesByDefOrValueFqns :many
@@ -4249,37 +3968,6 @@ VALUES ($1)
 //	VALUES ($1)
 func (q *Queries) setBaseKey(ctx context.Context, keyAccessServerKeyID pgtype.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, setBaseKey, keyAccessServerKeyID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const updateCustomAction = `-- name: updateCustomAction :execrows
-UPDATE actions
-SET
-    name = COALESCE($2, name),
-    metadata = COALESCE($3, metadata)
-WHERE id = $1
-  AND is_standard = FALSE
-`
-
-type updateCustomActionParams struct {
-	ID       string      `json:"id"`
-	Name     pgtype.Text `json:"name"`
-	Metadata []byte      `json:"metadata"`
-}
-
-// updateCustomAction
-//
-//	UPDATE actions
-//	SET
-//	    name = COALESCE($2, name),
-//	    metadata = COALESCE($3, metadata)
-//	WHERE id = $1
-//	  AND is_standard = FALSE
-func (q *Queries) updateCustomAction(ctx context.Context, arg updateCustomActionParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateCustomAction, arg.ID, arg.Name, arg.Metadata)
 	if err != nil {
 		return 0, err
 	}

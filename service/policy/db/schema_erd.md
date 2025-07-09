@@ -132,15 +132,6 @@ erDiagram
         character_varying uri UK "URI of the KAS"
     }
 
-    obligation_action_attribute_values {
-        uuid action_id FK,UK 
-        uuid attribute_value_id FK,UK 
-        timestamp_with_time_zone created_at 
-        uuid id PK 
-        uuid obligation_value_id FK,UK 
-        timestamp_with_time_zone updated_at 
-    }
-
     obligation_definitions {
         timestamp_with_time_zone created_at 
         uuid id PK 
@@ -160,6 +151,7 @@ erDiagram
     }
 
     obligation_triggers {
+        uuid action_id FK,UK 
         uuid attribute_value_id FK,UK 
         timestamp_with_time_zone created_at 
         uuid id PK 
@@ -268,7 +260,7 @@ erDiagram
         timestamp_with_time_zone updated_at "Timestamp when the key was last updated"
     }
 
-    obligation_action_attribute_values }o--|| actions : "action_id"
+    obligation_triggers }o--|| actions : "action_id"
     registered_resource_action_attribute_values }o--|| actions : "action_id"
     subject_mapping_actions }o--|| actions : "action_id"
     asym_key }o--|| provider_config : "provider_config_id"
@@ -291,7 +283,6 @@ erDiagram
     attribute_value_key_access_grants }o--|| key_access_servers : "key_access_server_id"
     attribute_value_public_key_map }o--|| attribute_values : "value_id"
     attribute_value_public_key_map }o--|| key_access_server_keys : "key_access_server_key_id"
-    obligation_action_attribute_values }o--|| attribute_values : "attribute_value_id"
     obligation_triggers }o--|| attribute_values : "attribute_value_id"
     registered_resource_action_attribute_values }o--|| attribute_values : "attribute_value_id"
     resource_mappings }o--|| attribute_values : "attribute_value_id"
@@ -299,7 +290,6 @@ erDiagram
     base_keys }o--|| key_access_server_keys : "key_access_server_key_id"
     key_access_server_keys }o--|| key_access_servers : "key_access_server_id"
     key_access_server_keys }o--|| provider_config : "provider_config_id"
-    obligation_action_attribute_values }o--|| obligation_values_standard : "obligation_value_id"
     obligation_values_standard }o--|| obligation_definitions : "obligation_definition_id"
     obligation_fulfillers }o--|| obligation_values_standard : "obligation_value_id"
     obligation_triggers }o--|| obligation_values_standard : "obligation_value_id"

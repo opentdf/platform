@@ -40,7 +40,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.Queries.ListKeyAccessServers(ctx, ListKeyAccessServersParams{
+	list, err := c.Queries.listKeyAccessServers(ctx, listKeyAccessServersParams{
 		Offset: offset,
 		Limit:  limit,
 	})
@@ -101,9 +101,9 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 
 func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) (*policy.KeyAccessServer, error) {
 	var (
-		kas    GetKeyAccessServerRow
+		kas    getKeyAccessServerRow
 		err    error
-		params GetKeyAccessServerParams
+		params getKeyAccessServerParams
 	)
 
 	switch i := identifier.(type) {
@@ -112,31 +112,31 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 		if !id.Valid {
 			return nil, db.ErrUUIDInvalid
 		}
-		params = GetKeyAccessServerParams{ID: id}
+		params = getKeyAccessServerParams{ID: id}
 	case *kasregistry.GetKeyAccessServerRequest_Name:
 		name := pgtypeText(i.Name)
 		if !name.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
-		params = GetKeyAccessServerParams{Name: name}
+		params = getKeyAccessServerParams{Name: name}
 	case *kasregistry.GetKeyAccessServerRequest_Uri:
 		uri := pgtypeText(i.Uri)
 		if !uri.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
-		params = GetKeyAccessServerParams{Uri: uri}
+		params = getKeyAccessServerParams{Uri: uri}
 	case string:
 		id := pgtypeUUID(i)
 		if !id.Valid {
 			return nil, db.ErrUUIDInvalid
 		}
-		params = GetKeyAccessServerParams{ID: id}
+		params = getKeyAccessServerParams{ID: id}
 	default:
 		// unexpected type
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
-	kas, err = c.Queries.GetKeyAccessServer(ctx, params)
+	kas, err = c.Queries.getKeyAccessServer(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -189,7 +189,7 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 		return nil, err
 	}
 
-	createdID, err := c.Queries.CreateKeyAccessServer(ctx, CreateKeyAccessServerParams{
+	createdID, err := c.Queries.createKeyAccessServer(ctx, createKeyAccessServerParams{
 		Uri:        uri,
 		PublicKey:  publicKeyJSON,
 		Name:       pgtypeText(name),
@@ -252,7 +252,7 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 		}
 	}
 
-	count, err := c.Queries.UpdateKeyAccessServer(ctx, UpdateKeyAccessServerParams{
+	count, err := c.Queries.updateKeyAccessServer(ctx, updateKeyAccessServerParams{
 		ID:         id,
 		Uri:        pgtypeText(uri),
 		Name:       pgtypeText(name),
@@ -278,7 +278,7 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 }
 
 func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*policy.KeyAccessServer, error) {
-	count, err := c.Queries.DeleteKeyAccessServer(ctx, id)
+	count, err := c.Queries.deleteKeyAccessServer(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -299,14 +299,14 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	params := ListKeyAccessServerGrantsParams{
+	params := listKeyAccessServerGrantsParams{
 		KasID:   r.GetKasId(),
 		KasUri:  r.GetKasUri(),
 		KasName: r.GetKasName(),
 		Offset:  offset,
 		Limit:   limit,
 	}
-	listRows, err := c.Queries.ListKeyAccessServerGrants(ctx, params)
+	listRows, err := c.Queries.listKeyAccessServerGrants(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

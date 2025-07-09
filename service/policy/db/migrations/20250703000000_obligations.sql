@@ -26,9 +26,10 @@ CREATE TABLE IF NOT EXISTS obligation_values_standard
 CREATE TABLE IF NOT EXISTS obligation_triggers
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    attribute_value_id UUID NOT NULL REFERENCES attribute_values(id),
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
-    UNIQUE (attribute_value_id, obligation_value_id)
+    action_id UUID NOT NULL REFERENCES actions(id),
+    attribute_value_id UUID NOT NULL REFERENCES attribute_values(id),
+    UNIQUE(obligation_value_id, action_id, attribute_value_id)
 );
 
 CREATE TABLE IF NOT EXISTS obligation_fulfillers
@@ -38,21 +39,11 @@ CREATE TABLE IF NOT EXISTS obligation_fulfillers
     conditionals JSONB
 );
 
-CREATE TABLE IF NOT EXISTS obligation_action_attribute_values
-(
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
-    action_id UUID NOT NULL REFERENCES actions(id),
-    attribute_value_id UUID NOT NULL REFERENCES attribute_values(id),
-    UNIQUE(obligation_value_id, action_id, attribute_value_id)
-);
-
 CREATE OR REPLACE FUNCTION get_obligation_tables()
 RETURNS text[] AS $$
 BEGIN
     RETURN ARRAY['obligation_definitions', 'obligation_values_standard', 
-                 'obligation_triggers', 'obligation_fulfillers', 
-                 'obligation_action_attribute_values'];
+                 'obligation_triggers', 'obligation_fulfillers'];
 END;
 $$ LANGUAGE plpgsql;
 
@@ -88,6 +79,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+SELECT standardize_tables(get_obligation_tables());
+DROP FUNCTION IF EXISTS standardize_table;
+DROP FUNCTION IF EXISTS standardize_tables;
+
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+
 CREATE OR REPLACE FUNCTION drop_tables(tables text[])
 RETURNS void AS $$
 DECLARE table_name text;
@@ -99,18 +99,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT standardize_tables(get_obligation_tables());
-ALTER TABLE obligation_action_attribute_values DROP COLUMN IF EXISTS metadata;
-
--- +goose StatementEnd
-
--- +goose Down
--- +goose StatementBegin
-
 SELECT drop_tables(get_obligation_tables());
 DROP FUNCTION IF EXISTS get_obligation_tables;
-DROP FUNCTION IF EXISTS standardize_table;
-DROP FUNCTION IF EXISTS standardize_tables;
 DROP FUNCTION IF EXISTS drop_tables;
 
 -- +goose StatementEnd

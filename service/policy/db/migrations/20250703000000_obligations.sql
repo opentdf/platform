@@ -60,11 +60,11 @@ BEGIN
     
     -- Create trigger for updating updated_at column
     EXECUTE FORMAT('
-        CREATE TRIGGER %I_updated_at
+        CREATE TRIGGER %I
         BEFORE UPDATE ON %I
         FOR EACH ROW
         EXECUTE FUNCTION update_updated_at()
-    ', table_name, table_name);    
+    ', table_name::text || '_updated_at', table_name);
 END;
 $$ LANGUAGE plpgsql;
 

@@ -81,11 +81,6 @@ $$ LANGUAGE plpgsql;
 
 SELECT standardize_tables(get_obligation_tables());
 
--- +goose StatementEnd
-
--- +goose Down
--- +goose StatementBegin
-
 CREATE OR REPLACE FUNCTION drop_tables(tables text[])
 RETURNS void AS $$
 DECLARE table_name text;
@@ -96,6 +91,11 @@ BEGIN
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
+
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
 
 SELECT drop_tables(get_obligation_tables());
 DROP FUNCTION IF EXISTS get_obligation_tables;

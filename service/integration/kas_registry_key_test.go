@@ -1752,7 +1752,11 @@ func (s *KasRegistryKeySuite) cleanupAttrs(attrValueIDs []string, namespaceIDs [
 		s.Require().NoError(err)
 	}
 	for _, id := range namespaceIDs {
-		_, err := s.db.PolicyClient.DeleteNamespace(s.ctx, id)
+		// todo: clean this up
+		fullNS, err := s.db.PolicyClient.GetNamespace(s.ctx, id)
+		s.Require().NoError(err)
+		s.NotNil(fullNS)
+		_, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, fullNS, fullNS.GetFqn())
 		s.Require().NoError(err)
 	}
 	for _, id := range attributeIDs {
@@ -1856,7 +1860,11 @@ func (s *KasRegistryKeySuite) deleteAttributes(namespaces []*policy.Namespace, a
 		s.Require().NoError(err)
 	}
 	for _, ns := range namespaces {
-		_, err := s.db.PolicyClient.DeleteNamespace(s.ctx, ns.GetId())
+		// todo: clean this up
+		fullNS, err := s.db.PolicyClient.GetNamespace(s.ctx, ns.GetId())
+		s.Require().NoError(err)
+		s.NotNil(fullNS)
+		_, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, fullNS, fullNS.GetFqn())
 		s.Require().NoError(err)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
@@ -45,11 +46,12 @@ func (s *PolicyDBClientSuite) Test_RunInTx_CommitsOnSuccess() {
 	)
 
 	txErr := s.db.PolicyClient.RunInTx(s.ctx, func(txClient *db.PolicyDBClient) error {
-		nsID, err = txClient.Queries.CreateNamespace(s.ctx, db.CreateNamespaceParams{
+		ns, err := txClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 			Name: nsName,
 		})
 		s.Require().NoError(err)
-		s.Require().NotNil(nsID)
+		s.Require().NotNil(ns)
+		nsID = ns.GetId()
 
 		attrID, err = txClient.Queries.CreateAttribute(s.ctx, db.CreateAttributeParams{
 			NamespaceID: nsID,
@@ -94,11 +96,12 @@ func (s *PolicyDBClientSuite) Test_RunInTx_RollsBackOnFailure() {
 	)
 
 	txErr := s.db.PolicyClient.RunInTx(s.ctx, func(txClient *db.PolicyDBClient) error {
-		nsID, err = txClient.Queries.CreateNamespace(s.ctx, db.CreateNamespaceParams{
+		ns, err := txClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 			Name: nsName,
 		})
 		s.Require().NoError(err)
-		s.Require().NotNil(nsID)
+		s.Require().NotNil(ns)
+		nsID = ns.GetId()
 
 		attrID, err = txClient.Queries.CreateAttribute(s.ctx, db.CreateAttributeParams{
 			NamespaceID: "invalid_ns_id",

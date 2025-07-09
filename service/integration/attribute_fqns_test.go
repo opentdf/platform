@@ -260,7 +260,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeDefKeysAssociated
 	s.Require().NoError(err)
 
 	// Remove the namespace
-	_, err = s.db.PolicyClient.DeleteNamespace(s.ctx, ns.GetId())
+	_, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
 	s.Require().NoError(err)
 }
 

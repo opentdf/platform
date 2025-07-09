@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.6.0](https://github.com/opentdf/platform/compare/sdk/v0.5.0...sdk/v0.6.0) (2025-07-09)
+
+
+### Features
+
+* **policy:** Add list key mappings rpc. ([#2533](https://github.com/opentdf/platform/issues/2533)) ([fbc2724](https://github.com/opentdf/platform/commit/fbc2724a066b5e4121838a958cb926a1ab5bdcde))
+* **sdk:** bump protocol/go v0.6.0 ([#2536](https://github.com/opentdf/platform/issues/2536)) ([23e4c2b](https://github.com/opentdf/platform/commit/23e4c2b0b41db368482f52cbc39331b05fe23462))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.2.0 to 0.3.0 in /sdk ([#2502](https://github.com/opentdf/platform/issues/2502)) ([3ec8b35](https://github.com/opentdf/platform/commit/3ec8b3577982796c9ce6e02deaa7cf91358641d2))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.5.0 to 0.5.1 in /sdk ([#2505](https://github.com/opentdf/platform/issues/2505)) ([4edab72](https://github.com/opentdf/platform/commit/4edab72fa06c182c987d2b85fba3f5efea251ce4))
+* **sdk:** Prefer KID and Algorithm selection from key maps ([#2475](https://github.com/opentdf/platform/issues/2475)) ([98fd392](https://github.com/opentdf/platform/commit/98fd39230a3cc4bfa5ff5ffc1742dd5d15eaeb1c))
+
 ## [0.5.0](https://github.com/opentdf/platform/compare/sdk/v0.4.7...sdk/v0.5.0) (2025-06-23)
 
 

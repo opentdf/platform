@@ -105,6 +105,28 @@ func GrantedPolicyObjectProtoJSON(grantsJSON []byte) ([]*kasregistry.GrantedPoli
 	return policyObjectGrants, nil
 }
 
+func MappedPolicyObjectProtoJSON(mappingsJSON []byte) ([]*kasregistry.MappedPolicyObject, error) {
+	var (
+		policyObjectMappings []*kasregistry.MappedPolicyObject
+		raw                  []json.RawMessage
+	)
+	if mappingsJSON == nil {
+		return nil, nil
+	}
+
+	if err := json.Unmarshal(mappingsJSON, &raw); err != nil {
+		return nil, err
+	}
+	for _, r := range raw {
+		mapping := kasregistry.MappedPolicyObject{}
+		if err := protojson.Unmarshal(r, &mapping); err != nil {
+			return nil, err
+		}
+		policyObjectMappings = append(policyObjectMappings, &mapping)
+	}
+	return policyObjectMappings, nil
+}
+
 func KasKeysProtoJSON(keysJSON []byte) ([]*policy.KasKey, error) {
 	var (
 		keys []*policy.KasKey

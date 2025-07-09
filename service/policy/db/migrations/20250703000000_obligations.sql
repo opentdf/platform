@@ -80,8 +80,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 SELECT standardize_tables(get_obligation_tables());
-DROP FUNCTION IF EXISTS standardize_table;
-DROP FUNCTION IF EXISTS standardize_tables;
 
 -- +goose StatementEnd
 
@@ -102,5 +100,7 @@ $$ LANGUAGE plpgsql;
 SELECT drop_tables(get_obligation_tables());
 DROP FUNCTION IF EXISTS get_obligation_tables;
 DROP FUNCTION IF EXISTS drop_tables;
+DROP FUNCTION IF EXISTS standardize_table;
+DROP FUNCTION IF EXISTS standardize_tables;
 
 -- +goose StatementEnd

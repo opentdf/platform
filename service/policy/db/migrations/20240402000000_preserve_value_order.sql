@@ -37,12 +37,14 @@ EXECUTE FUNCTION update_definition_delete_values_order();
 
 -- +goose StatementBegin
 
-DROP FUNCTION update_definition_add_values_order;
-DROP TRIGGER trigger_update_definition_add_values_order;
+DROP TRIGGER IF EXISTS trigger_update_definition_add_values_order ON attribute_values;
 
-DROP FUNCTION update_definition_delete_values_order;
-DROP TRIGGER trigger_update_definition_delete_values_order;
+DROP TRIGGER IF EXISTS trigger_update_definition_delete_values_order ON attribute_values;
 
-ALTER TABLE attribute_definitions DROP COLUMN values_order;
+DROP FUNCTION IF EXISTS update_definition_add_values_order();
+
+DROP FUNCTION IF EXISTS update_definition_delete_values_order();
+
+ALTER TABLE attribute_definitions DROP COLUMN IF EXISTS values_order;
 
 -- +goose StatementEnd

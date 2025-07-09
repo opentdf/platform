@@ -23,13 +23,13 @@ func TestDiscover_Success(t *testing.T) {
 
 	// Patch client.Discover
 	oldDiscover := Discover
-	Discover = func(ctx context.Context, issuer string, _ *logger.Logger) (*DiscoveryConfiguration, error) {
+	Discover = func(ctx context.Context, _ *logger.Logger, issuer string, tlsNoVerify bool) (*DiscoveryConfiguration, error) {
 		return mockClientDiscover(ctx, issuer, nil)
 	}
 	defer func() { Discover = oldDiscover }()
 
 	issuer := "https://good-issuer"
-	conf, err := Discover(t.Context(), issuer, log)
+	conf, err := Discover(t.Context(), log, issuer, false)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -42,13 +42,13 @@ func TestDiscover_Failure(t *testing.T) {
 	log := logger.CreateTestLogger()
 
 	oldDiscover := Discover
-	Discover = func(ctx context.Context, issuer string, _ *logger.Logger) (*DiscoveryConfiguration, error) {
+	Discover = func(ctx context.Context, _ *logger.Logger, issuer string, tlsNoVerify bool) (*DiscoveryConfiguration, error) {
 		return mockClientDiscover(ctx, issuer, nil)
 	}
 	defer func() { Discover = oldDiscover }()
 
 	issuer := "https://bad-issuer"
-	conf, err := Discover(t.Context(), issuer, log)
+	conf, err := Discover(t.Context(), log, issuer, false)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

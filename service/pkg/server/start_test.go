@@ -433,7 +433,7 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Errors() {
 
 	// Mock oidc.Discover to avoid network traffic
 	origDiscover := oidc.Discover
-	oidc.Discover = func(_ context.Context, _ string, _ *logger.Logger) (*oidc.DiscoveryConfiguration, error) {
+	oidc.Discover = func(_ context.Context, _ *logger.Logger, _ string, _ bool) (*oidc.DiscoveryConfiguration, error) {
 		return &oidc.DiscoveryConfiguration{
 			Issuer:  discoveryEndpoint.URL,
 			JwksURI: discoveryEndpoint.URL + "/oauth2/v1/keys",
@@ -508,7 +508,7 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 
 	// Mock oidc.Discover to avoid network traffic
 	origDiscover := oidc.Discover
-	oidc.Discover = func(_ context.Context, _ string, _ *logger.Logger) (*oidc.DiscoveryConfiguration, error) {
+	oidc.Discover = func(_ context.Context, _ *logger.Logger, _ string, _ bool) (*oidc.DiscoveryConfiguration, error) {
 		return &oidc.DiscoveryConfiguration{
 			Issuer:  discoveryEndpoint.URL,
 			JwksURI: discoveryEndpoint.URL + "/oauth2/v1/keys",

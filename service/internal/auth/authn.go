@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -139,7 +140,17 @@ func NewAuthenticator(ctx context.Context, cfg *Config, logger *logger.Logger, w
 		logger.Info("client credentials validation successful")
 	}
 
+	logger.Info("[NewAuthenticator] Creating new JWKS cache", slog.String("jwks_uri", oidcConfig.JwksURI))
 	cache := jwk.NewCache(ctx)
+	// Inject custom HTTP client for JWKS fetch if TLSNoVerify is set
+	var jwkRegisterOpts []jwk.RegisterOption
+	if cfg.AuthNConfig.TLSNoVerify {
+		logger.Info("[NewAuthenticator] Setting JWKS cache HTTP client with InsecureSkipVerify=true")
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+		}
+		jwkRegisterOpts = append(jwkRegisterOpts, jwk.WithHTTPClient(&http.Client{Transport: tr}))
+	}
 
 	// If the issuer is different from the one in the configuration, update the configuration
 	// This could happen if we are hitting an internal endpoint. Example we might point to https://keycloak.opentdf.svc/realms/opentdf
@@ -155,7 +166,10 @@ func NewAuthenticator(ctx context.Context, cfg *Config, logger *logger.Logger, w
 	}
 
 	// Register the jwks_uri with the cache
-	if err := cache.Register(oidcConfig.JwksURI, jwk.WithMinRefreshInterval(cacheInterval)); err != nil {
+	logger.Info("[NewAuthenticator] Registering JWKS URI with cache", slog.String("jwks_uri", oidcConfig.JwksURI), slog.String("refresh_interval", cacheInterval.String()))
+	jwkRegisterOpts = append(jwkRegisterOpts, jwk.WithMinRefreshInterval(cacheInterval))
+	if err := cache.Register(oidcConfig.JwksURI, jwkRegisterOpts...); err != nil {
+		logger.Error("[NewAuthenticator] Failed to register JWKS URI with cache", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -167,13 +181,15 @@ func NewAuthenticator(ctx context.Context, cfg *Config, logger *logger.Logger, w
 		return nil, fmt.Errorf("failed to initialize casbin enforcer: %w", err)
 	}
 
-	// Need to refresh the cache to verify jwks is available
+	logger.Info("[NewAuthenticator] Refreshing JWKS cache", slog.String("jwks_uri", oidcConfig.JwksURI))
 	_, err = cache.Refresh(ctx, oidcConfig.JwksURI)
 	if err != nil {
+		logger.Error("[NewAuthenticator] Failed to refresh JWKS cache", slog.String("error", err.Error()), slog.String("jwks_uri", oidcConfig.JwksURI))
 		return nil, err
 	}
 
 	// Set the cache
+	logger.Info("[NewAuthenticator] Created cached JWKS set", slog.String("jwks_uri", oidcConfig.JwksURI))
 	a.cachedKeySet = jwk.NewCachedSet(cache, oidcConfig.JwksURI)
 
 	// Combine public routes

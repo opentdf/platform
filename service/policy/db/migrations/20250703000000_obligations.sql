@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS obligation_definitions
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    namespace_id UUID NOT NULL REFERENCES attribute_namespaces(id),
+    namespace_id UUID NOT NULL REFERENCES attribute_namespaces(id) ON DELETE CASCADE,
     -- name is a unique identifier for the obligation definition within the namespace
     name VARCHAR NOT NULL,
     -- implicit index on unique (namespace_id, name) combo
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS obligation_definitions
 CREATE TABLE IF NOT EXISTS obligation_values_standard
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    obligation_definition_id UUID NOT NULL REFERENCES obligation_definitions(id),
+    obligation_definition_id UUID NOT NULL REFERENCES obligation_definitions(id) ON DELETE CASCADE,
     -- value is a unique identifier for the obligation value within the definition
     value VARCHAR NOT NULL,
     -- implicit index on unique (obligation_definition_id, value) combo
@@ -26,16 +26,16 @@ CREATE TABLE IF NOT EXISTS obligation_values_standard
 CREATE TABLE IF NOT EXISTS obligation_triggers
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
-    action_id UUID NOT NULL REFERENCES actions(id),
-    attribute_value_id UUID NOT NULL REFERENCES attribute_values(id),
+    obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id) ON DELETE CASCADE,
+    action_id UUID NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
+    attribute_value_id UUID NOT NULL REFERENCES attribute_values(id) ON DELETE CASCADE,
     UNIQUE(obligation_value_id, action_id, attribute_value_id)
 );
 
 CREATE TABLE IF NOT EXISTS obligation_fulfillers
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id),
+    obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id) ON DELETE CASCADE,
     conditionals JSONB
 );
 

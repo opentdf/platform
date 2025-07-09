@@ -24,6 +24,7 @@ func SetSkipValidationForTest(skip bool) {
 
 // ClientCredentialsToken fetches a client credentials access token for the given client
 func ClientCredentialsToken(ctx context.Context, oidcConfig *DiscoveryConfiguration, clientID string, clientScopes []string, clientKey []byte, tlsNoVerify bool, timeout time.Duration, _ jwk.Key) (string, error) {
+	fmt.Printf("[ClientCredentialsToken] called with clientID=%s, tlsNoVerify=%v, tokenEndpoint=%s\n", clientID, tlsNoVerify, oidcConfig.TokenEndpoint)
 	baseClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -33,13 +34,16 @@ func ClientCredentialsToken(ctx context.Context, oidcConfig *DiscoveryConfigurat
 		},
 		Timeout: timeout,
 	}
+	fmt.Printf("[ClientCredentialsToken] http.Client created with InsecureSkipVerify=%v\n", tlsNoVerify)
 	httpClient, err := NewHTTPClient(baseClient, WithGeneratedDPoPKey(), WithOAuthFlow())
 	if err != nil {
+		fmt.Printf("[ClientCredentialsToken] failed to create HTTP client: %v\n", err)
 		return "", fmt.Errorf("failed to create HTTP client: %w", err)
 	}
 
 	key, err := parseKey(clientKey)
 	if err != nil {
+		fmt.Printf("[ClientCredentialsToken] failed to parse private key: %v\n", err)
 		return "", fmt.Errorf("failed to parse private key: %w", err)
 	}
 
@@ -48,19 +52,23 @@ func ClientCredentialsToken(ctx context.Context, oidcConfig *DiscoveryConfigurat
 		ClientID: clientID,
 		Scopes:   clientScopes,
 	}
+	fmt.Printf("[ClientCredentialsToken] making OAuth form request to %s\n", oidcConfig.TokenEndpoint)
 	req := httpClient.NewOAuthFormRequest(ctx, key, oidcConfig.TokenEndpoint, params)
 	resp, err := req.Do()
 	if err != nil {
+		fmt.Printf("[ClientCredentialsToken] failed to obtain client credentials: %v\n", err)
 		return "", fmt.Errorf("failed to obtain client credentials: %w", err)
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
+		fmt.Printf("[ClientCredentialsToken] failed to read token response body: %v\n", err)
 		return "", fmt.Errorf("failed to read token response body: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("[ClientCredentialsToken] token endpoint returned status: %s, body: %s\n", resp.Status, string(bodyBytes))
 		return "", fmt.Errorf("token endpoint returned status: %s, body: %s", resp.Status, string(bodyBytes))
 	}
 
@@ -68,11 +76,14 @@ func ClientCredentialsToken(ctx context.Context, oidcConfig *DiscoveryConfigurat
 		AccessToken string `json:"access_token"`
 	}
 	if err := json.Unmarshal(bodyBytes, &respData); err != nil {
+		fmt.Printf("[ClientCredentialsToken] failed to decode token response: %v\n", err)
 		return "", fmt.Errorf("failed to decode token response: %w", err)
 	}
 	if respData.AccessToken == "" {
+		fmt.Printf("[ClientCredentialsToken] invalid client credentials: no access token received\n")
 		return "", errors.New("invalid client credentials: no access token received")
 	}
+	fmt.Printf("[ClientCredentialsToken] successfully obtained access token\n")
 	return respData.AccessToken, nil
 }
 

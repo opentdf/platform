@@ -100,7 +100,7 @@ func Start(ctx context.Context, f ...StartOptions) error {
 	// Connect with IdP
 	var oidcConfig *oidc.DiscoveryConfiguration
 	// Get OIDC discovery
-	oidcConfig, err = oidc.Discover(ctx, cfg.Server.Auth.Issuer, logger)
+	oidcConfig, err = oidc.Discover(ctx, logger, cfg.Server.Auth.Issuer, cfg.Server.Auth.TLSNoVerify)
 	if err != nil {
 		return fmt.Errorf("failed to discover oidc configuration: %w", err)
 	}

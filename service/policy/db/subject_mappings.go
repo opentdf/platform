@@ -66,7 +66,7 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 		return nil, err
 	}
 
-	createdID, err := c.Queries.CreateSubjectConditionSet(ctx, CreateSubjectConditionSetParams{
+	createdID, err := c.Queries.createSubjectConditionSet(ctx, createSubjectConditionSetParams{
 		Condition: conditionJSON,
 		Metadata:  metadataJSON,
 	})
@@ -82,7 +82,7 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 }
 
 func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
-	cs, err := c.Queries.GetSubjectConditionSet(ctx, id)
+	cs, err := c.Queries.getSubjectConditionSet(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -112,7 +112,7 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subject
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.Queries.ListSubjectConditionSets(ctx, ListSubjectConditionSetsParams{
+	list, err := c.Queries.listSubjectConditionSets(ctx, listSubjectConditionSetsParams{
 		Limit:  limit,
 		Offset: offset,
 	})
@@ -180,7 +180,7 @@ func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjec
 		}
 	}
 
-	count, err := c.Queries.UpdateSubjectConditionSet(ctx, UpdateSubjectConditionSetParams{
+	count, err := c.Queries.updateSubjectConditionSet(ctx, updateSubjectConditionSetParams{
 		ID:        id,
 		Condition: conditionJSON,
 		Metadata:  metadataJSON,
@@ -201,7 +201,7 @@ func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjec
 
 // Deletes specified subject condition set and returns the id of the deleted
 func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
-	count, err := c.Queries.DeleteSubjectConditionSet(ctx, id)
+	count, err := c.Queries.deleteSubjectConditionSet(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -216,7 +216,7 @@ func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string
 
 // Deletes/prunes all subject condition sets not referenced within a subject mapping
 func (c PolicyDBClient) DeleteAllUnmappedSubjectConditionSets(ctx context.Context) ([]*policy.SubjectConditionSet, error) {
-	deletedIDs, err := c.Queries.DeleteAllUnmappedSubjectConditionSets(ctx)
+	deletedIDs, err := c.Queries.deleteAllUnmappedSubjectConditionSets(ctx)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

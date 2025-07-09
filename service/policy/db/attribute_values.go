@@ -34,7 +34,7 @@ func (c PolicyDBClient) CreateAttributeValue(ctx context.Context, attributeID st
 	}
 
 	// Update FQN
-	_, err = c.Queries.UpsertAttributeValueFqn(ctx, createdID)
+	_, err = c.Queries.upsertAttributeValueFqn(ctx, createdID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -252,7 +252,7 @@ func (c PolicyDBClient) UnsafeUpdateAttributeValue(ctx context.Context, r *unsaf
 	}
 
 	// Update FQN
-	_, err = c.Queries.UpsertAttributeValueFqn(ctx, id)
+	_, err = c.Queries.upsertAttributeValueFqn(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

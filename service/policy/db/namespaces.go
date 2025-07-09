@@ -184,7 +184,7 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	}
 
 	// Update FQN
-	_, err = c.Queries.UpsertAttributeNamespaceFqn(ctx, createdID)
+	_, err = c.Queries.upsertAttributeNamespaceFqn(ctx, createdID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -243,7 +243,7 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	}
 
 	// Update all FQNs that may contain the namespace name
-	_, err = c.Queries.UpsertAttributeNamespaceFqn(ctx, id)
+	_, err = c.Queries.upsertAttributeNamespaceFqn(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

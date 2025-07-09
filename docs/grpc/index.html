@@ -1120,6 +1120,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.kasregistry.KeyMapping"><span class="badge">M</span>KeyMapping</a>
+                </li>
+              
+                <li>
                   <a href="#policy.kasregistry.ListKeyAccessServerGrantsRequest"><span class="badge">M</span>ListKeyAccessServerGrantsRequest</a>
                 </li>
               
@@ -1133,6 +1137,14 @@
               
                 <li>
                   <a href="#policy.kasregistry.ListKeyAccessServersResponse"><span class="badge">M</span>ListKeyAccessServersResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListKeyMappingsRequest"><span class="badge">M</span>ListKeyMappingsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.ListKeyMappingsResponse"><span class="badge">M</span>ListKeyMappingsResponse</a>
                 </li>
               
                 <li>
@@ -1169,6 +1181,10 @@
               
                 <li>
                   <a href="#policy.kasregistry.ListPublicKeysResponse"><span class="badge">M</span>ListPublicKeysResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.kasregistry.MappedPolicyObject"><span class="badge">M</span>MappedPolicyObject</a>
                 </li>
               
                 <li>
@@ -9444,6 +9460,58 @@ Mutable metadata for the key </p></td>
 
         
       
+        <h3 id="policy.kasregistry.KeyMapping">KeyMapping</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>kid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_mappings</td>
+                  <td><a href="#policy.kasregistry.MappedPolicyObject">MappedPolicyObject</a></td>
+                  <td>repeated</td>
+                  <td><p>List of namespaces mapped to the key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_mappings</td>
+                  <td><a href="#policy.kasregistry.MappedPolicyObject">MappedPolicyObject</a></td>
+                  <td>repeated</td>
+                  <td><p>List of attribute definitions mapped to the key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value_mappings</td>
+                  <td><a href="#policy.kasregistry.MappedPolicyObject">MappedPolicyObject</a></td>
+                  <td>repeated</td>
+                  <td><p>List of attribute values mapped to the key </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.kasregistry.ListKeyAccessServerGrantsRequest">ListKeyAccessServerGrantsRequest</h3>
         <p>LIST of KAS Grants returns flat response of grants to all policy objects. It</p><p>does not employ selectors for grants to specific policy objects or build the</p><p>attribute tree relation. If grants to a known namespace, attribute, or value</p><p>are needed, use the respective GET request to the specific policy object.</p>
 
@@ -9596,6 +9664,75 @@ objects are returned. </p></td>
                   <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListKeyMappingsRequest">ListKeyMappingsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The unique identifier of the key to retrieve </p></td>
+                </tr>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#policy.kasregistry.KasKeyIdentifier">KasKeyIdentifier</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
+                  <td></td>
+                  <td><p>Pagination request for the list of keys </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.ListKeyMappingsResponse">ListKeyMappingsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key_mappings</td>
+                  <td><a href="#policy.kasregistry.KeyMapping">KeyMapping</a></td>
+                  <td>repeated</td>
+                  <td><p>The list of key mappings </p></td>
+                </tr>
+              
+                <tr>
+                  <td>pagination</td>
+                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
+                  <td></td>
+                  <td><p>Pagination response for the list of keys </p></td>
                 </tr>
               
             </tbody>
@@ -9961,6 +10098,37 @@ Pagination request for the list of keys </p></td>
                   <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.kasregistry.MappedPolicyObject">MappedPolicyObject</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The unique identifier of the policy object </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The fully qualified name of the policy object </p></td>
                 </tr>
               
             </tbody>
@@ -10544,6 +10712,13 @@ Request to create a new key in the Key Access Service.</p></td>
                 <td><a href="#policy.kasregistry.GetBaseKeyRequest">GetBaseKeyRequest</a></td>
                 <td><a href="#policy.kasregistry.GetBaseKeyResponse">GetBaseKeyResponse</a></td>
                 <td><p>Get Default kas keys</p></td>
+              </tr>
+            
+              <tr>
+                <td>ListKeyMappings</td>
+                <td><a href="#policy.kasregistry.ListKeyMappingsRequest">ListKeyMappingsRequest</a></td>
+                <td><a href="#policy.kasregistry.ListKeyMappingsResponse">ListKeyMappingsResponse</a></td>
+                <td><p>Request to list key mappings in the Key Access Service.</p></td>
               </tr>
             
           </tbody>

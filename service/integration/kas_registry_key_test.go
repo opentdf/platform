@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
@@ -1748,7 +1749,14 @@ func (s *KasRegistryKeySuite) setupAttributesForRotate(numAttrsToRotate, numAttr
 
 func (s *KasRegistryKeySuite) cleanupAttrs(attrValueIDs []string, namespaceIDs []string, attributeIDs []string) {
 	for _, id := range attrValueIDs {
-		_, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, id)
+		// todo: clean this up
+		fullAttrVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, id)
+		s.Require().NoError(err)
+		s.NotNil(fullAttrVal)
+		_, err = s.db.PolicyClient.UnsafeDeleteAttributeValue(s.ctx, fullAttrVal, &unsafe.UnsafeDeleteAttributeValueRequest{
+			Id:  fullAttrVal.GetId(),
+			Fqn: fullAttrVal.GetFqn(),
+		})
 		s.Require().NoError(err)
 	}
 	for _, id := range attributeIDs {
@@ -1856,7 +1864,14 @@ func validatePrivatePublicCtx(s *suite.Suite, expectedPrivCtx, expectedPubCtx []
 
 func (s *KasRegistryKeySuite) deleteAttributes(namespaces []*policy.Namespace, attributeDefs []*policy.Attribute, attrValues []*policy.Value) {
 	for _, value := range attrValues {
-		_, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, value.GetId())
+		// todo: clean this up
+		fullVal, err := s.db.PolicyClient.GetAttributeValue(s.ctx, value.GetId())
+		s.Require().NoError(err)
+		s.NotNil(fullVal)
+		_, err = s.db.PolicyClient.UnsafeDeleteAttributeValue(s.ctx, fullVal, &unsafe.UnsafeDeleteAttributeValueRequest{
+			Id:  fullVal.GetId(),
+			Fqn: fullVal.GetFqn(),
+		})
 		s.Require().NoError(err)
 	}
 	for _, def := range attributeDefs {

@@ -64,12 +64,13 @@ func (s *PolicyDBClientSuite) Test_RunInTx_CommitsOnSuccess() {
 		s.Require().NotNil(attr)
 		attrID = attr.GetId()
 
-		valID, err = txClient.Queries.CreateAttributeValue(s.ctx, db.CreateAttributeValueParams{
-			AttributeDefinitionID: attrID,
-			Value:                 attrValue,
+		val, err := txClient.CreateAttributeValue(s.ctx, attrID, &attributes.CreateAttributeValueRequest{
+			AttributeId: attrID,
+			Value:       attrValue,
 		})
 		s.Require().NoError(err)
 		s.Require().NotNil(valID)
+		valID = val.GetId()
 
 		return nil
 	})

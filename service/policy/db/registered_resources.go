@@ -500,7 +500,7 @@ func (c PolicyDBClient) createRegisteredResourceActionAttributeValues(ctx contex
 		case *registeredresources.ActionAttributeValue_AttributeValueId:
 			attributeValueID = identifier.AttributeValueId
 		case *registeredresources.ActionAttributeValue_AttributeValueFqn:
-			av, err := c.Queries.GetAttributeValue(ctx, GetAttributeValueParams{
+			av, err := c.Queries.getAttributeValue(ctx, getAttributeValueParams{
 				Fqn: pgtypeText(strings.ToLower(identifier.AttributeValueFqn)),
 			})
 			if err != nil {

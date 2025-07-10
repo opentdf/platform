@@ -47,34 +47,27 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION standardize_table(table_name regclass)
-RETURNS void AS $$
-BEGIN
-    -- Add standard columns to the table
-    EXECUTE FORMAT('
-        ALTER TABLE %I 
-        ADD COLUMN metadata JSONB,
-        ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
-    ', table_name);
-    
-    -- Create trigger for updating updated_at column
-    EXECUTE FORMAT('
-        CREATE TRIGGER %I
-        BEFORE UPDATE ON %I
-        FOR EACH ROW
-        EXECUTE FUNCTION update_updated_at()
-    ', table_name::text || '_updated_at', table_name);
-END;
-$$ LANGUAGE plpgsql;
-
 CREATE OR REPLACE FUNCTION standardize_tables(tables text[])
 RETURNS void AS $$
 DECLARE table_name text;
 BEGIN 
     FOREACH table_name IN ARRAY tables
     LOOP
-        PERFORM standardize_table(table_name::regclass);
+        -- Add standard columns to the table
+        EXECUTE FORMAT('
+            ALTER TABLE %I 
+            ADD COLUMN metadata JSONB,
+            ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ', table_name);
+    
+        -- Create trigger for updating updated_at column
+        EXECUTE FORMAT('
+            CREATE TRIGGER %I
+            BEFORE UPDATE ON %I
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at()
+        ', table_name::text || '_updated_at', table_name);
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
@@ -100,7 +93,6 @@ $$ LANGUAGE plpgsql;
 SELECT drop_tables(get_obligation_tables());
 DROP FUNCTION IF EXISTS get_obligation_tables;
 DROP FUNCTION IF EXISTS drop_tables;
-DROP FUNCTION IF EXISTS standardize_table;
 DROP FUNCTION IF EXISTS standardize_tables;
 
 -- +goose StatementEnd

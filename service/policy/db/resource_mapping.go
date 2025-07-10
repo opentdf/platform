@@ -25,7 +25,7 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.Queries.listResourceMappingGroups(ctx, listResourceMappingGroupsParams{
+	list, err := c.queries.listResourceMappingGroups(ctx, listResourceMappingGroupsParams{
 		NamespaceID: r.GetNamespaceId(),
 		Limit:       limit,
 		Offset:      offset,
@@ -68,7 +68,7 @@ func (c PolicyDBClient) ListResourceMappingGroups(ctx context.Context, r *resour
 }
 
 func (c PolicyDBClient) GetResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
-	rmGroup, err := c.Queries.getResourceMappingGroup(ctx, id)
+	rmGroup, err := c.queries.getResourceMappingGroup(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -95,7 +95,7 @@ func (c PolicyDBClient) CreateResourceMappingGroup(ctx context.Context, r *resou
 		return nil, err
 	}
 
-	createdID, err := c.Queries.createResourceMappingGroup(ctx, createResourceMappingGroupParams{
+	createdID, err := c.queries.createResourceMappingGroup(ctx, createResourceMappingGroupParams{
 		NamespaceID: namespaceID,
 		Name:        name,
 		Metadata:    metadataJSON,
@@ -127,7 +127,7 @@ func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id strin
 		return nil, err
 	}
 
-	count, err := c.Queries.updateResourceMappingGroup(ctx, updateResourceMappingGroupParams{
+	count, err := c.queries.updateResourceMappingGroup(ctx, updateResourceMappingGroupParams{
 		ID:          id,
 		NamespaceID: pgtypeUUID(namespaceID),
 		Name:        pgtypeText(name),
@@ -149,7 +149,7 @@ func (c PolicyDBClient) UpdateResourceMappingGroup(ctx context.Context, id strin
 }
 
 func (c PolicyDBClient) DeleteResourceMappingGroup(ctx context.Context, id string) (*policy.ResourceMappingGroup, error) {
-	count, err := c.Queries.deleteResourceMappingGroup(ctx, id)
+	count, err := c.queries.deleteResourceMappingGroup(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -174,7 +174,7 @@ func (c PolicyDBClient) ListResourceMappings(ctx context.Context, r *resourcemap
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.Queries.listResourceMappings(ctx, listResourceMappingsParams{
+	list, err := c.queries.listResourceMappings(ctx, listResourceMappingsParams{
 		GroupID: r.GetGroupId(),
 		Limit:   limit,
 		Offset:  offset,
@@ -246,7 +246,7 @@ func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqn
 			continue
 		}
 
-		rows, err := c.Queries.listResourceMappingsByFullyQualifiedGroup(ctx, listResourceMappingsByFullyQualifiedGroupParams{
+		rows, err := c.queries.listResourceMappingsByFullyQualifiedGroup(ctx, listResourceMappingsByFullyQualifiedGroupParams{
 			NamespaceName: fullyQualifiedGroup.Namespace,
 			GroupName:     fullyQualifiedGroup.GroupName,
 		})
@@ -304,7 +304,7 @@ func (c PolicyDBClient) ListResourceMappingsByGroupFqns(ctx context.Context, fqn
 }
 
 func (c PolicyDBClient) GetResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
-	rm, err := c.Queries.getResourceMapping(ctx, id)
+	rm, err := c.queries.getResourceMapping(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -364,7 +364,7 @@ func (c PolicyDBClient) CreateResourceMapping(ctx context.Context, r *resourcema
 		}
 	}
 
-	createdID, err := c.Queries.createResourceMapping(ctx, createResourceMappingParams{
+	createdID, err := c.queries.createResourceMapping(ctx, createResourceMappingParams{
 		AttributeValueID: attributeValueID,
 		Terms:            terms,
 		Metadata:         metadataJSON,
@@ -422,7 +422,7 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 		}
 	}
 
-	count, err := c.Queries.updateResourceMapping(ctx, updateResourceMappingParams{
+	count, err := c.queries.updateResourceMapping(ctx, updateResourceMappingParams{
 		ID:               id,
 		AttributeValueID: pgtypeUUID(attributeValueID),
 		Terms:            terms,
@@ -454,7 +454,7 @@ func (c PolicyDBClient) UpdateResourceMapping(ctx context.Context, id string, r 
 }
 
 func (c PolicyDBClient) DeleteResourceMapping(ctx context.Context, id string) (*policy.ResourceMapping, error) {
-	count, err := c.Queries.deleteResourceMapping(ctx, id)
+	count, err := c.queries.deleteResourceMapping(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

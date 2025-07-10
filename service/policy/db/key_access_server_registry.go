@@ -40,7 +40,7 @@ func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.Queries.listKeyAccessServers(ctx, listKeyAccessServersParams{
+	list, err := c.queries.listKeyAccessServers(ctx, listKeyAccessServersParams{
 		Offset: offset,
 		Limit:  limit,
 	})
@@ -136,7 +136,7 @@ func (c PolicyDBClient) GetKeyAccessServer(ctx context.Context, identifier any) 
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
-	kas, err = c.Queries.getKeyAccessServer(ctx, params)
+	kas, err = c.queries.getKeyAccessServer(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -189,7 +189,7 @@ func (c PolicyDBClient) CreateKeyAccessServer(ctx context.Context, r *kasregistr
 		return nil, err
 	}
 
-	createdID, err := c.Queries.createKeyAccessServer(ctx, createKeyAccessServerParams{
+	createdID, err := c.queries.createKeyAccessServer(ctx, createKeyAccessServerParams{
 		Uri:        uri,
 		PublicKey:  publicKeyJSON,
 		Name:       pgtypeText(name),
@@ -252,7 +252,7 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 		}
 	}
 
-	count, err := c.Queries.updateKeyAccessServer(ctx, updateKeyAccessServerParams{
+	count, err := c.queries.updateKeyAccessServer(ctx, updateKeyAccessServerParams{
 		ID:         id,
 		Uri:        pgtypeText(uri),
 		Name:       pgtypeText(name),
@@ -278,7 +278,7 @@ func (c PolicyDBClient) UpdateKeyAccessServer(ctx context.Context, id string, r 
 }
 
 func (c PolicyDBClient) DeleteKeyAccessServer(ctx context.Context, id string) (*policy.KeyAccessServer, error) {
-	count, err := c.Queries.deleteKeyAccessServer(ctx, id)
+	count, err := c.queries.deleteKeyAccessServer(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -306,7 +306,7 @@ func (c PolicyDBClient) ListKeyAccessServerGrants(ctx context.Context, r *kasreg
 		Offset:  offset,
 		Limit:   limit,
 	}
-	listRows, err := c.Queries.listKeyAccessServerGrants(ctx, params)
+	listRows, err := c.queries.listKeyAccessServerGrants(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -394,7 +394,7 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		return nil, err
 	}
 
-	id, err := c.Queries.createKey(ctx, createKeyParams{
+	id, err := c.queries.createKey(ctx, createKeyParams{
 		KeyAccessServerID: kasID,
 		KeyAlgorithm:      algo,
 		KeyID:             keyID,
@@ -464,7 +464,7 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Kas
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
-	key, err := c.Queries.getKey(ctx, params)
+	key, err := c.queries.getKey(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -555,7 +555,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 		Limit:        limit,
 	}
 
-	listRows, err := c.Queries.listKeys(ctx, params)
+	listRows, err := c.queries.listKeys(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -623,7 +623,7 @@ func (c PolicyDBClient) DeleteKey(ctx context.Context, id string) (*policy.Asymm
 		return nil, db.ErrUUIDInvalid
 	}
 
-	count, err := c.Queries.deleteKey(ctx, id)
+	count, err := c.queries.deleteKey(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -690,7 +690,7 @@ func (c PolicyDBClient) RotateKey(ctx context.Context, activeKey *policy.KasKey,
 }
 
 func (c PolicyDBClient) GetBaseKey(ctx context.Context) (*policy.SimpleKasKey, error) {
-	key, err := c.Queries.getBaseKey(ctx)
+	key, err := c.queries.getBaseKey(ctx)
 	if err != nil && !errors.Is(db.WrapIfKnownInvalidQueryErr(err), db.ErrNotFound) {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -735,7 +735,7 @@ func (c PolicyDBClient) SetBaseKey(ctx context.Context, r *kasregistry.SetBaseKe
 	// A trigger is set for BEFORE INSERT which will update the
 	// the key reference to the one being inserted, if present.
 	// If not, the insert will continue.
-	_, err = c.Queries.setBaseKey(ctx, pgtypeUUID(keyToSet.GetKey().GetId()))
+	_, err = c.queries.setBaseKey(ctx, pgtypeUUID(keyToSet.GetKey().GetId()))
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -828,7 +828,7 @@ func (c PolicyDBClient) ListKeyMappings(ctx context.Context, r *kasregistry.List
 		}
 	}
 
-	mappingRows, err := c.Queries.listKeyMappings(ctx, params)
+	mappingRows, err := c.queries.listKeyMappings(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -875,22 +875,8 @@ func (c PolicyDBClient) ListKeyMappings(ctx context.Context, r *kasregistry.List
 	}, nil
 }
 
-/*
-**********************
-TESTING ONLY
-************************
-*/
-func (c PolicyDBClient) DeleteAllBaseKeys(ctx context.Context) error {
-	_, err := c.Queries.deleteAllBaseKeys(ctx)
-	if err != nil {
-		return db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return nil
-}
-
 func (c PolicyDBClient) updateKeyInternal(ctx context.Context, params updateKeyParams) (*policy.KasKey, error) {
-	count, err := c.Queries.updateKey(ctx, params)
+	count, err := c.queries.updateKey(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -960,7 +946,7 @@ func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID, new
 		AttributeValueIDs: make([]string, 0),
 	}
 
-	rotatedIDs.NamespaceIDs, err = c.rotatePublicKeyForNamespace(ctx, rotatePublicKeyForNamespaceParams{
+	rotatedIDs.NamespaceIDs, err = c.queries.rotatePublicKeyForNamespace(ctx, rotatePublicKeyForNamespaceParams{
 		OldKeyID: oldKeyID,
 		NewKeyID: newKeyID,
 	})
@@ -968,7 +954,7 @@ func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID, new
 		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	rotatedIDs.AttributeDefIDs, err = c.rotatePublicKeyForAttributeDefinition(ctx, rotatePublicKeyForAttributeDefinitionParams{
+	rotatedIDs.AttributeDefIDs, err = c.queries.rotatePublicKeyForAttributeDefinition(ctx, rotatePublicKeyForAttributeDefinitionParams{
 		OldKeyID: oldKeyID,
 		NewKeyID: newKeyID,
 	})
@@ -976,7 +962,7 @@ func (c PolicyDBClient) rotatePublicKeyTables(ctx context.Context, oldKeyID, new
 		return rotatedIDs, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	rotatedIDs.AttributeValueIDs, err = c.rotatePublicKeyForAttributeValue(ctx, rotatePublicKeyForAttributeValueParams{
+	rotatedIDs.AttributeValueIDs, err = c.queries.rotatePublicKeyForAttributeValue(ctx, rotatePublicKeyForAttributeValueParams{
 		OldKeyID: oldKeyID,
 		NewKeyID: newKeyID,
 	})

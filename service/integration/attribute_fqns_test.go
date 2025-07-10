@@ -1676,28 +1676,28 @@ func (s *AttributeFqnSuite) Test_GrantsAreReturned() {
 	s.NotNil(kas)
 
 	// Create NS Grant
-	nsGrant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, policydb.AssignKeyAccessServerToNamespaceParams{
-		NamespaceID:       ns.GetId(),
-		KeyAccessServerID: kas.GetId(),
-	})
+	// use Pgx.Exec because INSERT is only for testing and should not be part of PolicyDBClient
+	nsGrant, err := s.db.PolicyClient.Pgx.Exec(s.ctx,
+		`INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id) VALUES ($1, $2)`,
+		ns.GetId(), kas.GetId())
 	s.Require().NoError(err)
-	s.NotNil(nsGrant)
+	s.NotNil(nsGrant.RowsAffected())
 
 	// Create Attribute Grant
-	attrGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttribute(s.ctx, policydb.AssignKeyAccessServerToAttributeParams{
-		AttributeDefinitionID: attr.GetId(),
-		KeyAccessServerID:     kas.GetId(),
-	})
+	// use Pgx.Exec because INSERT is only for testing and should not be part of PolicyDBClient
+	attrGrant, err := s.db.PolicyClient.Pgx.Exec(s.ctx,
+		`INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id) VALUES ($1, $2)`,
+		attr.GetId(), kas.GetId())
 	s.Require().NoError(err)
-	s.NotNil(attrGrant)
+	s.NotNil(attrGrant.RowsAffected())
 
 	// Create Value Grant
-	valueGrant, err := s.db.PolicyClient.AssignKeyAccessServerToAttributeValue(s.ctx, policydb.AssignKeyAccessServerToAttributeValueParams{
-		AttributeValueID:  attr.GetValues()[0].GetId(),
-		KeyAccessServerID: kas.GetId(),
-	})
+	// use Pgx.Exec because INSERT is only for testing and should not be part of PolicyDBClient
+	valueGrant, err := s.db.PolicyClient.Pgx.Exec(s.ctx,
+		`INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id) VALUES ($1, $2)`,
+		attr.GetValues()[0].GetId(), kas.GetId())
 	s.Require().NoError(err)
-	s.NotNil(valueGrant)
+	s.NotNil(valueGrant.RowsAffected())
 
 	// Get Namespace check for grant
 	nsGet, err := s.db.PolicyClient.GetNamespace(s.ctx, ns.GetId())

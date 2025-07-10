@@ -87,21 +87,6 @@ func (q *Queries) createKeyAccessServer(ctx context.Context, arg createKeyAccess
 	return id, err
 }
 
-const deleteAllBaseKeys = `-- name: deleteAllBaseKeys :execrows
-DELETE FROM base_keys
-`
-
-// deleteAllBaseKeys
-//
-//	DELETE FROM base_keys
-func (q *Queries) deleteAllBaseKeys(ctx context.Context) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteAllBaseKeys)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const deleteKey = `-- name: deleteKey :execrows
 DELETE FROM key_access_server_keys WHERE id = $1
 `

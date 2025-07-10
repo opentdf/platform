@@ -144,7 +144,7 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 		}
 	}
 
-	list, err := c.Queries.listAttributesDetail(ctx, listAttributesDetailParams{
+	list, err := c.queries.listAttributesDetail(ctx, listAttributesDetailParams{
 		Active:        active,
 		NamespaceID:   namespaceID,
 		NamespaceName: namespaceName,
@@ -222,7 +222,7 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 		return nil, errors.Join(db.ErrSelectIdentifierInvalid, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
-	attr, err = c.Queries.getAttribute(ctx, params)
+	attr, err = c.queries.getAttribute(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -256,7 +256,7 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 }
 
 func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string) ([]*policy.Attribute, error) {
-	list, err := c.Queries.listAttributesByDefOrValueFqns(ctx, fqns)
+	list, err := c.queries.listAttributesByDefOrValueFqns(ctx, fqns)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -343,7 +343,7 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 }
 
 func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceID string) ([]*policy.Attribute, error) {
-	list, err := c.Queries.listAttributesSummary(ctx, listAttributesSummaryParams{
+	list, err := c.queries.listAttributesSummary(ctx, listAttributesSummaryParams{
 		NamespaceID: namespaceID,
 	})
 	if err != nil {
@@ -379,7 +379,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	}
 	ruleString := attributesRuleTypeEnumTransformIn(r.GetRule().String())
 
-	createdID, err := c.Queries.createAttribute(ctx, createAttributeParams{
+	createdID, err := c.queries.createAttribute(ctx, createAttributeParams{
 		NamespaceID: namespaceID,
 		Name:        name,
 		Rule:        AttributeDefinitionRule(ruleString),
@@ -402,7 +402,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	}
 
 	// Update the FQNs
-	_, err = c.Queries.upsertAttributeDefinitionFqn(ctx, createdID)
+	_, err = c.queries.upsertAttributeDefinitionFqn(ctx, createdID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -447,7 +447,7 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 		ruleString = attributesRuleTypeEnumTransformIn(rule.String())
 	}
 
-	count, err := c.Queries.updateAttribute(ctx, updateAttributeParams{
+	count, err := c.queries.updateAttribute(ctx, updateAttributeParams{
 		ID:   id,
 		Name: pgtypeText(name),
 		Rule: NullAttributeDefinitionRule{
@@ -465,7 +465,7 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 
 	// Upsert all the FQNs with the definition name mutation
 	if name != "" {
-		_, err = c.Queries.upsertAttributeDefinitionFqn(ctx, id)
+		_, err = c.queries.upsertAttributeDefinitionFqn(ctx, id)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}
@@ -487,7 +487,7 @@ func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attri
 		return nil, err
 	}
 
-	count, err := c.Queries.updateAttribute(ctx, updateAttributeParams{
+	count, err := c.queries.updateAttribute(ctx, updateAttributeParams{
 		ID:       id,
 		Metadata: metadataJSON,
 	})
@@ -505,7 +505,7 @@ func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attri
 }
 
 func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	count, err := c.Queries.updateAttribute(ctx, updateAttributeParams{
+	count, err := c.queries.updateAttribute(ctx, updateAttributeParams{
 		ID:     id,
 		Active: pgtypeBool(false),
 	})
@@ -523,7 +523,7 @@ func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*po
 }
 
 func (c PolicyDBClient) UnsafeReactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	count, err := c.Queries.updateAttribute(ctx, updateAttributeParams{
+	count, err := c.queries.updateAttribute(ctx, updateAttributeParams{
 		ID:     id,
 		Active: pgtypeBool(true),
 	})
@@ -551,7 +551,7 @@ func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *pol
 
 	id := existing.GetId()
 
-	count, err := c.Queries.deleteAttribute(ctx, id)
+	count, err := c.queries.deleteAttribute(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -569,7 +569,7 @@ func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *pol
 ///
 
 func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
-	count, err := c.Queries.removeKeyAccessServerFromAttribute(ctx, removeKeyAccessServerFromAttributeParams{
+	count, err := c.queries.removeKeyAccessServerFromAttribute(ctx, removeKeyAccessServerFromAttributeParams{
 		AttributeDefinitionID: k.GetAttributeId(),
 		KeyAccessServerID:     k.GetKeyAccessServerId(),
 	})
@@ -588,7 +588,7 @@ func (c PolicyDBClient) AssignPublicKeyToAttribute(ctx context.Context, k *attri
 		return nil, err
 	}
 
-	ak, err := c.Queries.assignPublicKeyToAttributeDefinition(ctx, assignPublicKeyToAttributeDefinitionParams{
+	ak, err := c.queries.assignPublicKeyToAttributeDefinition(ctx, assignPublicKeyToAttributeDefinitionParams{
 		DefinitionID:         k.GetAttributeId(),
 		KeyAccessServerKeyID: k.GetKeyId(),
 	})
@@ -603,7 +603,7 @@ func (c PolicyDBClient) AssignPublicKeyToAttribute(ctx context.Context, k *attri
 }
 
 func (c PolicyDBClient) RemovePublicKeyFromAttribute(ctx context.Context, k *attributes.AttributeKey) (*attributes.AttributeKey, error) {
-	count, err := c.Queries.removePublicKeyFromAttributeDefinition(ctx, removePublicKeyFromAttributeDefinitionParams{
+	count, err := c.queries.removePublicKeyFromAttributeDefinition(ctx, removePublicKeyFromAttributeDefinitionParams{
 		DefinitionID:         k.GetAttributeId(),
 		KeyAccessServerKeyID: k.GetKeyId(),
 	})

@@ -1778,7 +1778,8 @@ func (s *KasRegistryKeySuite) cleanupAttrs(attrValueIDs []string, namespaceIDs [
 }
 
 func (s *KasRegistryKeySuite) cleanupKeys(keyIDs []string, keyAccessServerIDs []string) {
-	err := s.db.PolicyClient.DeleteAllBaseKeys(s.ctx)
+	// use Pgx.Exec because DELETE is only for testing and should not be part of PolicyDBClient
+	_, err := s.db.PolicyClient.Pgx.Exec(s.ctx, "DELETE FROM base_keys")
 	s.Require().NoError(err)
 
 	for _, id := range keyIDs {

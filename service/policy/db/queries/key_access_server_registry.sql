@@ -279,6 +279,3 @@ INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id;
 -- name: setBaseKey :execrows
 INSERT INTO base_keys (key_access_server_key_id)
 VALUES ($1);
-
--- name: deleteAllBaseKeys :execrows
-DELETE FROM base_keys;

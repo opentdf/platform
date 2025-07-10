@@ -42,7 +42,7 @@ func (c PolicyDBClient) GetNamespace(ctx context.Context, identifier any) (*poli
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
-	ns, err = c.Queries.getNamespace(ctx, params)
+	ns, err = c.queries.getNamespace(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -97,7 +97,7 @@ func (c PolicyDBClient) ListNamespaces(ctx context.Context, r *namespaces.ListNa
 		active = pgtypeBool(state == stateActive)
 	}
 
-	list, err := c.Queries.listNamespaces(ctx, listNamespacesParams{
+	list, err := c.queries.listNamespaces(ctx, listNamespacesParams{
 		Active: active,
 		Limit:  limit,
 		Offset: offset,
@@ -175,7 +175,7 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 		return nil, err
 	}
 
-	createdID, err := c.Queries.createNamespace(ctx, createNamespaceParams{
+	createdID, err := c.queries.createNamespace(ctx, createNamespaceParams{
 		Name:     name,
 		Metadata: metadataJSON,
 	})
@@ -184,7 +184,7 @@ func (c PolicyDBClient) CreateNamespace(ctx context.Context, r *namespaces.Creat
 	}
 
 	// Update FQN
-	_, err = c.Queries.upsertAttributeNamespaceFqn(ctx, createdID)
+	_, err = c.queries.upsertAttributeNamespaceFqn(ctx, createdID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -208,7 +208,7 @@ func (c PolicyDBClient) UpdateNamespace(ctx context.Context, id string, r *names
 		return nil, err
 	}
 
-	count, err := c.Queries.updateNamespace(ctx, updateNamespaceParams{
+	count, err := c.queries.updateNamespace(ctx, updateNamespaceParams{
 		ID:       id,
 		Metadata: metadataJSON,
 	})
@@ -231,7 +231,7 @@ UNSAFE OPERATIONS
 func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, name string) (*policy.Namespace, error) {
 	name = strings.ToLower(name)
 
-	count, err := c.Queries.updateNamespace(ctx, updateNamespaceParams{
+	count, err := c.queries.updateNamespace(ctx, updateNamespaceParams{
 		ID:   id,
 		Name: pgtypeText(name),
 	})
@@ -243,7 +243,7 @@ func (c PolicyDBClient) UnsafeUpdateNamespace(ctx context.Context, id string, na
 	}
 
 	// Update all FQNs that may contain the namespace name
-	_, err = c.Queries.upsertAttributeNamespaceFqn(ctx, id)
+	_, err = c.queries.upsertAttributeNamespaceFqn(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -269,7 +269,7 @@ func (c PolicyDBClient) DeactivateNamespace(ctx context.Context, id string) (*po
 		c.logger.Warn("deactivating the namespace with existing attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 
-	count, err := c.Queries.updateNamespace(ctx, updateNamespaceParams{
+	count, err := c.queries.updateNamespace(ctx, updateNamespaceParams{
 		ID:     id,
 		Active: pgtypeBool(false),
 	})
@@ -296,7 +296,7 @@ func (c PolicyDBClient) UnsafeReactivateNamespace(ctx context.Context, id string
 		c.logger.Warn("reactivating the namespace with existing attributes can affect access to related data. Please be aware and proceed accordingly.")
 	}
 
-	count, err := c.Queries.updateNamespace(ctx, updateNamespaceParams{
+	count, err := c.queries.updateNamespace(ctx, updateNamespaceParams{
 		ID:     id,
 		Active: pgtypeBool(true),
 	})
@@ -324,7 +324,7 @@ func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *pol
 
 	id := existing.GetId()
 
-	count, err := c.Queries.deleteNamespace(ctx, id)
+	count, err := c.queries.deleteNamespace(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -338,7 +338,7 @@ func (c PolicyDBClient) UnsafeDeleteNamespace(ctx context.Context, existing *pol
 }
 
 func (c PolicyDBClient) RemoveKeyAccessServerFromNamespace(ctx context.Context, k *namespaces.NamespaceKeyAccessServer) (*namespaces.NamespaceKeyAccessServer, error) {
-	count, err := c.Queries.removeKeyAccessServerFromNamespace(ctx, removeKeyAccessServerFromNamespaceParams{
+	count, err := c.queries.removeKeyAccessServerFromNamespace(ctx, removeKeyAccessServerFromNamespaceParams{
 		NamespaceID:       k.GetNamespaceId(),
 		KeyAccessServerID: k.GetKeyAccessServerId(),
 	})
@@ -357,7 +357,7 @@ func (c PolicyDBClient) AssignPublicKeyToNamespace(ctx context.Context, k *names
 		return nil, err
 	}
 
-	key, err := c.Queries.assignPublicKeyToNamespace(ctx, assignPublicKeyToNamespaceParams{
+	key, err := c.queries.assignPublicKeyToNamespace(ctx, assignPublicKeyToNamespaceParams{
 		NamespaceID:          k.GetNamespaceId(),
 		KeyAccessServerKeyID: k.GetKeyId(),
 	})
@@ -371,7 +371,7 @@ func (c PolicyDBClient) AssignPublicKeyToNamespace(ctx context.Context, k *names
 }
 
 func (c PolicyDBClient) RemovePublicKeyFromNamespace(ctx context.Context, k *namespaces.NamespaceKey) (*namespaces.NamespaceKey, error) {
-	count, err := c.Queries.removePublicKeyFromNamespace(ctx, removePublicKeyFromNamespaceParams{
+	count, err := c.queries.removePublicKeyFromNamespace(ctx, removePublicKeyFromNamespaceParams{
 		NamespaceID:          k.GetNamespaceId(),
 		KeyAccessServerKeyID: k.GetKeyId(),
 	})

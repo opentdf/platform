@@ -87,6 +87,21 @@ func (q *Queries) createKeyAccessServer(ctx context.Context, arg createKeyAccess
 	return id, err
 }
 
+const deleteAllBaseKeys = `-- name: deleteAllBaseKeys :execrows
+DELETE FROM base_keys
+`
+
+// deleteAllBaseKeys
+//
+//	DELETE FROM base_keys
+func (q *Queries) deleteAllBaseKeys(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAllBaseKeys)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteKey = `-- name: deleteKey :execrows
 DELETE FROM key_access_server_keys WHERE id = $1
 `
@@ -115,6 +130,47 @@ func (q *Queries) deleteKeyAccessServer(ctx context.Context, id string) (int64, 
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getBaseKey = `-- name: getBaseKey :one
+
+SELECT
+    DISTINCT JSONB_BUILD_OBJECT(
+       'kas_uri', kas.uri,
+       'kas_id', kas.id,
+       'public_key', JSONB_BUILD_OBJECT(
+            'algorithm', kask.key_algorithm::INTEGER,
+            'kid', kask.key_id,
+            'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
+       )
+    ) AS base_keys
+FROM base_keys bk
+INNER JOIN key_access_server_keys kask ON bk.key_access_server_key_id = kask.id
+INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+`
+
+// --------------------------------------------------------------
+// Default KAS Keys
+// --------------------------------------------------------------
+//
+//	SELECT
+//	    DISTINCT JSONB_BUILD_OBJECT(
+//	       'kas_uri', kas.uri,
+//	       'kas_id', kas.id,
+//	       'public_key', JSONB_BUILD_OBJECT(
+//	            'algorithm', kask.key_algorithm::INTEGER,
+//	            'kid', kask.key_id,
+//	            'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
+//	       )
+//	    ) AS base_keys
+//	FROM base_keys bk
+//	INNER JOIN key_access_server_keys kask ON bk.key_access_server_key_id = kask.id
+//	INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+func (q *Queries) getBaseKey(ctx context.Context) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getBaseKey)
+	var base_keys []byte
+	err := row.Scan(&base_keys)
+	return base_keys, err
 }
 
 const getKey = `-- name: getKey :one
@@ -809,6 +865,23 @@ func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysR
 		return nil, err
 	}
 	return items, nil
+}
+
+const setBaseKey = `-- name: setBaseKey :execrows
+INSERT INTO base_keys (key_access_server_key_id)
+VALUES ($1)
+`
+
+// setBaseKey
+//
+//	INSERT INTO base_keys (key_access_server_key_id)
+//	VALUES ($1)
+func (q *Queries) setBaseKey(ctx context.Context, keyAccessServerKeyID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, setBaseKey, keyAccessServerKeyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateKey = `-- name: updateKey :execrows

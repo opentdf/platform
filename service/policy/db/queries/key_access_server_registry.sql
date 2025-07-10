@@ -255,3 +255,30 @@ OFFSET @offset_;
 
 -- name: deleteKey :execrows
 DELETE FROM key_access_server_keys WHERE id = $1;
+
+
+---------------------------------------------------------------- 
+-- Default KAS Keys
+----------------------------------------------------------------
+
+-- name: getBaseKey :one
+SELECT
+    DISTINCT JSONB_BUILD_OBJECT(
+       'kas_uri', kas.uri,
+       'kas_id', kas.id,
+       'public_key', JSONB_BUILD_OBJECT(
+            'algorithm', kask.key_algorithm::INTEGER,
+            'kid', kask.key_id,
+            'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
+       )
+    ) AS base_keys
+FROM base_keys bk
+INNER JOIN key_access_server_keys kask ON bk.key_access_server_key_id = kask.id
+INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id;
+
+-- name: setBaseKey :execrows
+INSERT INTO base_keys (key_access_server_key_id)
+VALUES ($1);
+
+-- name: deleteAllBaseKeys :execrows
+DELETE FROM base_keys;

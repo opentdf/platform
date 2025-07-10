@@ -1751,16 +1751,20 @@ func (s *KasRegistryKeySuite) cleanupAttrs(attrValueIDs []string, namespaceIDs [
 		_, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, id)
 		s.Require().NoError(err)
 	}
+	for _, id := range attributeIDs {
+		// todo: clean this up
+		fullAttr, err := s.db.PolicyClient.GetAttribute(s.ctx, id)
+		s.Require().NoError(err)
+		s.NotNil(fullAttr)
+		_, err = s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, fullAttr, fullAttr.GetFqn())
+		s.Require().NoError(err)
+	}
 	for _, id := range namespaceIDs {
 		// todo: clean this up
 		fullNS, err := s.db.PolicyClient.GetNamespace(s.ctx, id)
 		s.Require().NoError(err)
 		s.NotNil(fullNS)
 		_, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, fullNS, fullNS.GetFqn())
-		s.Require().NoError(err)
-	}
-	for _, id := range attributeIDs {
-		_, err := s.db.PolicyClient.DeleteAttribute(s.ctx, id)
 		s.Require().NoError(err)
 	}
 }
@@ -1856,7 +1860,11 @@ func (s *KasRegistryKeySuite) deleteAttributes(namespaces []*policy.Namespace, a
 		s.Require().NoError(err)
 	}
 	for _, def := range attributeDefs {
-		_, err := s.db.PolicyClient.DeleteAttribute(s.ctx, def.GetId())
+		// todo: clean this up
+		fullDef, err := s.db.PolicyClient.GetAttribute(s.ctx, def.GetId())
+		s.Require().NoError(err)
+		s.NotNil(fullDef)
+		_, err = s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, fullDef, fullDef.GetFqn())
 		s.Require().NoError(err)
 	}
 	for _, ns := range namespaces {

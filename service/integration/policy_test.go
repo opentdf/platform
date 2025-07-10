@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/policy/db"
@@ -53,13 +55,14 @@ func (s *PolicyDBClientSuite) Test_RunInTx_CommitsOnSuccess() {
 		s.Require().NotNil(ns)
 		nsID = ns.GetId()
 
-		attrID, err = txClient.Queries.CreateAttribute(s.ctx, db.CreateAttributeParams{
-			NamespaceID: nsID,
+		attr, err := txClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			NamespaceId: nsID,
 			Name:        attrName,
-			Rule:        db.AttributeDefinitionRuleALLOF,
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 		})
 		s.Require().NoError(err)
-		s.Require().NotNil(attrID)
+		s.Require().NotNil(attr)
+		attrID = attr.GetId()
 
 		valID, err = txClient.Queries.CreateAttributeValue(s.ctx, db.CreateAttributeValueParams{
 			AttributeDefinitionID: attrID,
@@ -103,13 +106,15 @@ func (s *PolicyDBClientSuite) Test_RunInTx_RollsBackOnFailure() {
 		s.Require().NotNil(ns)
 		nsID = ns.GetId()
 
-		attrID, err = txClient.Queries.CreateAttribute(s.ctx, db.CreateAttributeParams{
-			NamespaceID: "invalid_ns_id",
+		attr, err := txClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			NamespaceId: "invalid_ns_id",
 			Name:        attrName,
-			Rule:        db.AttributeDefinitionRuleALLOF,
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 		})
 		s.Require().Error(err)
-		s.Require().Empty(attrID)
+		s.Require().Empty(attr)
+		attrID = attr.GetId()
+
 		return err
 	})
 	s.Require().Error(txErr)

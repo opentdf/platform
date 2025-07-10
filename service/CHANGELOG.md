@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.8.0](https://github.com/opentdf/platform/compare/service/v0.7.0...service/v0.8.0) (2025-07-10)
+
+
+### Features
+
+* **authz:** RR GetDecision improvements ([#2479](https://github.com/opentdf/platform/issues/2479)) ([443cedb](https://github.com/opentdf/platform/commit/443cedba49691e2ef5c2ea6824c0150feff8f056))
+* **authz:** sensible request limit upper bounds ([#2526](https://github.com/opentdf/platform/issues/2526)) ([b3093cc](https://github.com/opentdf/platform/commit/b3093cce2ffd1f1cdaec884967dc96a40caa2903))
+* **core:** Add the ability to configure the http server settings ([#2522](https://github.com/opentdf/platform/issues/2522)) ([b1472df](https://github.com/opentdf/platform/commit/b1472df8722768f2d00113481458e6eaa4c1247e))
+* **policy:** Add list key mappings rpc. ([#2533](https://github.com/opentdf/platform/issues/2533)) ([fbc2724](https://github.com/opentdf/platform/commit/fbc2724a066b5e4121838a958cb926a1ab5bdcde))
+* **policy:** sqlc queries refactor ([#2541](https://github.com/opentdf/platform/issues/2541)) ([e34680e](https://github.com/opentdf/platform/commit/e34680e3d3eeae5534a0ce1624a9e4386b100af1))
+
+
+### Bug Fixes
+
+* add back grants to listAttributesByDefOrValueFqns ([#2493](https://github.com/opentdf/platform/issues/2493)) ([2b47095](https://github.com/opentdf/platform/commit/2b47095a3f577063d48b67adac50a9fa59b8ace3))
+* **authz:** access pdp should use proto getter ([#2530](https://github.com/opentdf/platform/issues/2530)) ([f856212](https://github.com/opentdf/platform/commit/f85621280954f05701dba83a6a4cff729d21b029))
+* **core:** Allow 521 curve to be used ([#2485](https://github.com/opentdf/platform/issues/2485)) ([aaf43dc](https://github.com/opentdf/platform/commit/aaf43dc368b4cabbc9affa0a6075abd335aa57e3))
+* **deps:** bump github.com/opentdf/platform/lib/ocrypto from 0.2.0 to 0.3.0 in /service ([#2504](https://github.com/opentdf/platform/issues/2504)) ([a9cc4dd](https://github.com/opentdf/platform/commit/a9cc4dd7db0fbb688d4000468cc2892b260609d2))
+* **sdk:** Prefer KID and Algorithm selection from key maps ([#2475](https://github.com/opentdf/platform/issues/2475)) ([98fd392](https://github.com/opentdf/platform/commit/98fd39230a3cc4bfa5ff5ffc1742dd5d15eaeb1c))
+
 ## [0.7.0](https://github.com/opentdf/platform/compare/service/v0.6.0...service/v0.7.0) (2025-06-24)
 
 

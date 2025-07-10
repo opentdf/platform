@@ -460,6 +460,22 @@ message RegisteredResourceValue {
   common.Metadata metadata = 100;
 }
 
+message Obligation {
+  string id = 1;
+}
+
+message ObligationValue {
+  string id = 1;
+}
+
+message ObligationTrigger {
+  string id = 1;
+}
+
+message ObligationFulfiller {
+  string id = 1;
+}
+
 // Supported key algorithms.
 enum Algorithm {
   ALGORITHM_UNSPECIFIED = 0;

@@ -436,8 +436,7 @@ message RegisteredResource {
   common.Metadata metadata = 100;
 }
 
-message RegisteredResourceValue {
-  message ActionAttributeValue {
+message ActionAttributeValue {
     string id = 1;
 
     Action action = 2;
@@ -446,8 +445,9 @@ message RegisteredResourceValue {
 
     // Common metadata
     common.Metadata metadata = 100;
-  }
+}
 
+message RegisteredResourceValue {
   string id = 1;
 
   string value = 2;
@@ -462,18 +462,23 @@ message RegisteredResourceValue {
 
 message Obligation {
   string id = 1;
+  Namespace namespace = 2;
 }
 
 message ObligationValue {
   string id = 1;
+  Obligation obligation = 2;
 }
 
 message ObligationTrigger {
   string id = 1;
+  ObligationValue obligation_value = 2;
+  ActionAttributeValue action_attribute_value = 3;
 }
 
 message ObligationFulfiller {
   string id = 1;
+  ObligationValue obligation_value = 2;
 }
 
 // Supported key algorithms.

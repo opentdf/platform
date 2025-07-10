@@ -255,11 +255,7 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeDefKeysAssociated
 	})
 	s.Require().NoError(err)
 
-	// Remove the attribute
-	_, err = s.db.PolicyClient.UnsafeDeleteAttribute(s.ctx, attr, attr.GetFqn())
-	s.Require().NoError(err)
-
-	// Remove the namespace
+	// cascade delete will remove namespaces and all associated attributes and values
 	_, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
 	s.Require().NoError(err)
 }

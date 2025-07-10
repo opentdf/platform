@@ -400,14 +400,12 @@ func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Limit_Success() {
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespaces_Success() {
-	attrValueIDs := make([]string, 0)
-	attrDefIDs := make([]string, 0)
 	namespaceIDs := make([]string, 0)
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
 
 	defer func() {
-		s.cleanupAttrs(attrValueIDs, namespaceIDs, attrDefIDs)
+		s.cleanupNamespacesAndAttrsByIDs(namespaceIDs)
 		s.cleanupKeys(keyIDs, kasIDs)
 	}()
 
@@ -426,8 +424,6 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 	namespaceMap := s.setupNamespaceForRotate(1, 1, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
 	namespaceIDs = append(namespaceIDs, namespaceMap[rotateKey][0].GetId(), namespaceMap[nonRotateKey][0].GetId())
 	attributeMap := s.setupAttributesForRotate(1, 1, 1, 1, namespaceMap, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
-	attrDefIDs = append(attrDefIDs, attributeMap[rotateKey][0].GetId(), attributeMap[nonRotateKey][0].GetId())
-	attrValueIDs = append(attrValueIDs, attributeMap[rotateKey][0].GetValues()[0].GetId(), attributeMap[nonRotateKey][0].GetValues()[0].GetId())
 
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
@@ -525,14 +521,12 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespac
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_AttributeValue_Success() {
-	attrValueIDs := make([]string, 0)
-	attrDefIDs := make([]string, 0)
 	namespaceIDs := make([]string, 0)
 	keyIDs := make([]string, 0)
 	kasIDs := make([]string, 0)
 
 	defer func() {
-		s.cleanupAttrs(attrValueIDs, namespaceIDs, attrDefIDs)
+		s.cleanupNamespacesAndAttrsByIDs(namespaceIDs)
 		s.cleanupKeys(keyIDs, kasIDs)
 	}()
 
@@ -551,7 +545,6 @@ func (s *KasRegistryKeySuite) Test_RotateKey_Two_Attribute_Two_Namespace_0_Attri
 	namespaceMap := s.setupNamespaceForRotate(2, 2, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
 	namespaceIDs = append(namespaceIDs, namespaceMap[rotateKey][0].GetId(), namespaceMap[rotateKey][1].GetId(), namespaceMap[nonRotateKey][0].GetId(), namespaceMap[nonRotateKey][1].GetId())
 	attributeMap := s.setupAttributesForRotate(2, 2, 0, 0, namespaceMap, keyMap[rotateKey].GetKey(), keyMap[nonRotateKey].GetKey())
-	attrDefIDs = append(attrDefIDs, attributeMap[rotateKey][0].GetId(), attributeMap[nonRotateKey][0].GetId(), attributeMap[rotateKey][1].GetId(), attributeMap[nonRotateKey][1].GetId())
 
 	newKey := kasregistry.RotateKeyRequest_NewKey{
 		KeyId:        "new_key_id",
@@ -1143,7 +1136,7 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_ByID_OneAttrValue_Success() {
 			keyIDs = append(keyIDs, key.GetKey().GetId())
 		}
 		s.cleanupKeys(keyIDs, kasIDs)
-		s.deleteAttributes(namespaces, attributeDefs, attrValues)
+		s.cleanupNamespacesAndAttrs(namespaces)
 	}()
 	kasKey := s.createKeyAndKas()
 	kasKeys = append(kasKeys, kasKey)
@@ -1209,7 +1202,7 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_By_Key_Success() {
 			keyIDs = append(keyIDs, key.GetKey().GetId())
 		}
 		s.cleanupKeys(keyIDs, kasIDs)
-		s.deleteAttributes(namespaces, attributeDefs, attrValues)
+		s.cleanupNamespacesAndAttrs(namespaces)
 	}()
 	kasKey := s.createKeyAndKas()
 	kasKeys = append(kasKeys, kasKey)
@@ -1308,7 +1301,7 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_SameKeyId_DifferentKas_Succes
 			keyIDs = append(keyIDs, key.GetKey().GetId())
 		}
 		s.cleanupKeys(keyIDs, kasIDs)
-		s.deleteAttributes(namespaces, attributeDefs, attrValues)
+		s.cleanupNamespacesAndAttrs(namespaces)
 	}()
 
 	kasKey := s.createKeyAndKas()
@@ -1411,7 +1404,7 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_Multiple_Keys_Pagination_Succ
 			keyIDs = append(keyIDs, key.GetKey().GetId())
 		}
 		s.cleanupKeys(keyIDs, kasIDs)
-		s.deleteAttributes(namespaces, attributeDefs, attrValues)
+		s.cleanupNamespacesAndAttrs(namespaces)
 	}()
 	for i := range 2 {
 		kasKey := s.createKeyAndKas()
@@ -1482,7 +1475,7 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_Multiple_Mixed_Mappings() {
 			keyIDs = append(keyIDs, key.GetKey().GetId())
 		}
 		s.cleanupKeys(keyIDs, kasIDs)
-		s.deleteAttributes(namespaces, attributeDefs, attrValues)
+		s.cleanupNamespacesAndAttrs(namespaces)
 	}()
 
 	for range 3 {
@@ -1746,23 +1739,9 @@ func (s *KasRegistryKeySuite) setupAttributesForRotate(numAttrsToRotate, numAttr
 	}
 }
 
-func (s *KasRegistryKeySuite) cleanupAttrs(attrValueIDs []string, namespaceIDs []string, attributeIDs []string) {
-	for _, id := range attrValueIDs {
-		_, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, id)
-		s.Require().NoError(err)
-	}
-	for _, id := range namespaceIDs {
-		_, err := s.db.PolicyClient.DeleteNamespace(s.ctx, id)
-		s.Require().NoError(err)
-	}
-	for _, id := range attributeIDs {
-		_, err := s.db.PolicyClient.DeleteAttribute(s.ctx, id)
-		s.Require().NoError(err)
-	}
-}
-
 func (s *KasRegistryKeySuite) cleanupKeys(keyIDs []string, keyAccessServerIDs []string) {
-	err := s.db.PolicyClient.DeleteAllBaseKeys(s.ctx)
+	// use Pgx.Exec because DELETE is only for testing and should not be part of PolicyDBClient
+	_, err := s.db.PolicyClient.Pgx.Exec(s.ctx, "DELETE FROM base_keys")
 	s.Require().NoError(err)
 
 	for _, id := range keyIDs {
@@ -1846,17 +1825,22 @@ func validatePrivatePublicCtx(s *suite.Suite, expectedPrivCtx, expectedPubCtx []
 	})
 }
 
-func (s *KasRegistryKeySuite) deleteAttributes(namespaces []*policy.Namespace, attributeDefs []*policy.Attribute, attrValues []*policy.Value) {
-	for _, value := range attrValues {
-		_, err := s.db.PolicyClient.DeleteAttributeValue(s.ctx, value.GetId())
+// cascade delete will remove namespaces and all associated attributes and values
+func (s *KasRegistryKeySuite) cleanupNamespacesAndAttrsByIDs(namespaceIDs []string) {
+	namespaces := make([]*policy.Namespace, len(namespaceIDs))
+	for i, id := range namespaceIDs {
+		ns, err := s.db.PolicyClient.GetNamespace(s.ctx, id)
 		s.Require().NoError(err)
+		s.NotNil(ns)
+		namespaces[i] = ns
 	}
-	for _, def := range attributeDefs {
-		_, err := s.db.PolicyClient.DeleteAttribute(s.ctx, def.GetId())
-		s.Require().NoError(err)
-	}
+	s.cleanupNamespacesAndAttrs(namespaces)
+}
+
+// cascade delete will remove namespaces and all associated attributes and values
+func (s *KasRegistryKeySuite) cleanupNamespacesAndAttrs(namespaces []*policy.Namespace) {
 	for _, ns := range namespaces {
-		_, err := s.db.PolicyClient.DeleteNamespace(s.ctx, ns.GetId())
+		_, err := s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
 		s.Require().NoError(err)
 	}
 }

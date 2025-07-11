@@ -1667,6 +1667,7 @@ func (s *AttributeFqnSuite) Test_GrantsAreReturned() {
 				Remote: "https://grants.com/kas/public_key",
 			},
 		},
+		Name: "https://grants.com/kas",
 	})
 	s.Require().NoError(err)
 	s.NotNil(kas)
@@ -1793,6 +1794,7 @@ func (s *AttributeFqnSuite) bigTestSetup(namespaceName string) bigSetup {
 					Remote: toAssociate.uri + "/public_key",
 				},
 			},
+			Name: toAssociate.uri,
 		})
 		s.Require().NoError(err)
 		s.NotNil(kas)

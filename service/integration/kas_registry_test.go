@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
@@ -282,7 +283,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Remote() {
 		PublicKey:  pubKey,
 		Metadata:   metadata,
 		SourceType: sourceType,
-		// Leave off 'name' to test optionality
+		Name:       "kas.uri",
 	}
 	r, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
@@ -302,6 +303,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_UriConflict_Fails() {
 	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
 		Uri:       uri,
 		PublicKey: pubKey,
+		Name:      uuid.NewString(), // Use a unique name to avoid name conflict
 	}
 	k, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
@@ -367,6 +369,23 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Name_LowerCased() {
 	s.Equal(strings.ToLower(name), got.GetName())
 }
 
+func (s *KasRegistrySuite) Test_CreateKeyAccessServer_WithoutName_Fail() {
+	uri := "testingCreationWithoutName.com"
+	pubKey := &policy.PublicKey{
+		PublicKey: &policy.PublicKey_Remote{
+			Remote: "https://something.somewhere/key",
+		},
+	}
+	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
+		Uri:       uri,
+		PublicKey: pubKey,
+	}
+	k, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
+	s.Require().Nil(k)
+	s.Require().Error(err)
+	s.ErrorIs(err, db.ErrNotNullViolation)
+}
+
 func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Cached() {
 	metadata := &common.MetadataMutable{
 		Labels: map[string]string{
@@ -390,7 +409,7 @@ func (s *KasRegistrySuite) Test_CreateKeyAccessServer_Cached() {
 		Uri:       "testingCreation.uri.com",
 		PublicKey: pubKey,
 		Metadata:  metadata,
-		// Leave off 'name' to test optionality
+		Name:      "testingCreation.uri.com",
 	}
 	r, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
 	s.Require().NoError(err)
@@ -428,7 +447,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_Everything() {
 			},
 		},
 		SourceType: sourceType,
-		// Leave off 'name' to test optionality
+		Name:       uuid.NewString(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(created)
@@ -593,7 +612,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 				"unchanged": "unchanged label",
 			},
 		},
-		// Leave off 'name' to test optionality
+		Name: uri,
 	})
 	s.Require().NoError(err)
 	s.NotNil(created)
@@ -611,7 +630,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_PublicKey_DoesNotAlterOthe
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(uri, got.GetUri())
-	s.Empty(got.GetName()) // name not given to KAS in create or update
+	s.Equal(uri, got.GetName())
 	s.Equal(updatedKeySet, got.GetPublicKey().GetCached())
 	s.Empty(got.GetPublicKey().GetRemote())
 	s.Equal("unchanged label", got.GetMetadata().GetLabels()["unchanged"])
@@ -630,7 +649,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_UpdatingSourceTypeUnspecif
 			},
 		},
 		SourceType: sourceType,
-		// Leave off 'name' to test optionality
+		Name:       uri,
 	})
 	s.Require().NoError(err)
 	s.NotNil(created)
@@ -648,7 +667,7 @@ func (s *KasRegistrySuite) Test_UpdateKeyAccessServer_UpdatingSourceTypeUnspecif
 	s.NotNil(got)
 	s.Equal(created.GetId(), got.GetId())
 	s.Equal(uri, got.GetUri())
-	s.Empty(got.GetName())
+	s.Equal(uri, got.GetName())
 	s.Empty(got.GetPublicKey().GetRemote())
 	s.Equal("unchanged label", got.GetMetadata().GetLabels()["unchanged"])
 	s.Equal(sourceType, got.GetSourceType())
@@ -729,6 +748,7 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer() {
 	testKas := &kasregistry.CreateKeyAccessServerRequest{
 		Uri:       "deleting.net",
 		PublicKey: pubKey,
+		Name:      uuid.NewString(),
 	}
 	createdKas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, testKas)
 	s.Require().NoError(err)
@@ -754,6 +774,7 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithChildKeys_Fails() {
 	testKas := &kasregistry.CreateKeyAccessServerRequest{
 		Uri:       "trying-to-delete.net",
 		PublicKey: pubKey,
+		Name:      uuid.NewString(),
 	}
 	createdKas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, testKas)
 	s.Require().NoError(err)

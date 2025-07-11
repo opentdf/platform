@@ -228,13 +228,6 @@ func Test_CreateKeyAccessServer_Succeeds(t *testing.T) {
 		{
 			fakeURI,
 			fakeCachedKey,
-			"",
-			"no optional KAS name & cached key",
-			policy.SourceType_SOURCE_TYPE_EXTERNAL,
-		},
-		{
-			fakeURI,
-			fakeCachedKey,
 			"kas_name",
 			"included KAS name & cached key",
 			policy.SourceType_SOURCE_TYPE_EXTERNAL,
@@ -263,15 +256,8 @@ func Test_CreateKeyAccessServer_Succeeds(t *testing.T) {
 		{
 			fakeURI,
 			remotePubKey,
-			"",
-			"no optional KAS name & remote key",
-			policy.SourceType_SOURCE_TYPE_EXTERNAL,
-		},
-		{
-			fakeURI,
-			remotePubKey,
-			"",
-			"no optional KAS name & remote key",
+			"kas-name",
+			"remote key and source type internal",
 			policy.SourceType_SOURCE_TYPE_INTERNAL,
 		},
 	}

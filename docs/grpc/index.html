@@ -218,6 +218,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.ActionAttributeValue"><span class="badge">M</span>ActionAttributeValue</a>
+                </li>
+              
+                <li>
                   <a href="#policy.AsymmetricKey"><span class="badge">M</span>AsymmetricKey</a>
                 </li>
               
@@ -262,6 +266,22 @@
                 </li>
               
                 <li>
+                  <a href="#policy.Obligation"><span class="badge">M</span>Obligation</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.ObligationFulfiller"><span class="badge">M</span>ObligationFulfiller</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.ObligationTrigger"><span class="badge">M</span>ObligationTrigger</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.ObligationValue"><span class="badge">M</span>ObligationValue</a>
+                </li>
+              
+                <li>
                   <a href="#policy.PrivateKeyCtx"><span class="badge">M</span>PrivateKeyCtx</a>
                 </li>
               
@@ -279,10 +299,6 @@
               
                 <li>
                   <a href="#policy.RegisteredResourceValue"><span class="badge">M</span>RegisteredResourceValue</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.RegisteredResourceValue.ActionAttributeValue"><span class="badge">M</span>RegisteredResourceValue.ActionAttributeValue</a>
                 </li>
               
                 <li>
@@ -1397,6 +1413,17 @@
         
           
           <li>
+            <a href="#policy%2fobligations%2fobligations.proto">policy/obligations/obligations.proto</a>
+            <ul>
+              
+              
+              
+              
+            </ul>
+          </li>
+        
+          
+          <li>
             <a href="#policy%2fregisteredresources%2fregistered_resources.proto">policy/registeredresources/registered_resources.proto</a>
             <ul>
               
@@ -2124,6 +2151,51 @@
 
         
       
+        <h3 id="policy.ActionAttributeValue">ActionAttributeValue</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#policy.Action">Action</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value</td>
+                  <td><a href="#policy.Value">Value</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.AsymmetricKey">AsymmetricKey</h3>
         <p></p>
 
@@ -2711,6 +2783,186 @@ enable federation </p></td>
 
         
       
+        <h3 id="policy.Obligation">Obligation</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace</td>
+                  <td><a href="#policy.Namespace">Namespace</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.ObligationFulfiller">ObligationFulfiller</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>obligation_value</td>
+                  <td><a href="#policy.ObligationValue">ObligationValue</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>conditionals</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.ObligationTrigger">ObligationTrigger</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>obligation_value</td>
+                  <td><a href="#policy.ObligationValue">ObligationValue</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>action_attribute_value</td>
+                  <td><a href="#policy.ActionAttributeValue">ActionAttributeValue</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.ObligationValue">ObligationValue</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>obligation</td>
+                  <td><a href="#policy.Obligation">Obligation</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.PrivateKeyCtx">PrivateKeyCtx</h3>
         <p></p>
 
@@ -2881,53 +3133,8 @@ Base64 encoded public key in PEM format </p></td>
               
                 <tr>
                   <td>action_attribute_values</td>
-                  <td><a href="#policy.RegisteredResourceValue.ActionAttributeValue">RegisteredResourceValue.ActionAttributeValue</a></td>
+                  <td><a href="#policy.ActionAttributeValue">ActionAttributeValue</a></td>
                   <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.Metadata">common.Metadata</a></td>
-                  <td></td>
-                  <td><p>Common metadata </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.RegisteredResourceValue.ActionAttributeValue">RegisteredResourceValue.ActionAttributeValue</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>action</td>
-                  <td><a href="#policy.Action">Action</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>attribute_value</td>
-                  <td><a href="#policy.Value">Value</a></td>
-                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -11859,6 +12066,20 @@ Namespace &lt;&gt; Key RPCs
           </table>
           
         
+    
+      
+      <div class="file-heading">
+        <h2 id="policy/obligations/obligations.proto">policy/obligations/obligations.proto</h2><a href="#title">Top</a>
+      </div>
+      <p></p>
+
+      
+
+      
+
+      
+
+      
     
       
       <div class="file-heading">

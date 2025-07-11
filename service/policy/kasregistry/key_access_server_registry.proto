@@ -78,7 +78,7 @@ message CreateKeyAccessServerRequest {
 
   // Optional
   string name = 20 [
-    (buf.validate.field).required = false,
+    (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
       id: "kas_name_format"

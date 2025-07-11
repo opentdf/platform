@@ -463,11 +463,13 @@ message RegisteredResourceValue {
 message Obligation {
   string id = 1;
   Namespace namespace = 2;
+  string name = 3;
 }
 
 message ObligationValue {
   string id = 1;
   Obligation obligation = 2;
+  string value = 3;
 }
 
 message ObligationTrigger {
@@ -479,6 +481,7 @@ message ObligationTrigger {
 message ObligationFulfiller {
   string id = 1;
   ObligationValue obligation_value = 2;
+  google.protobuf.Struct conditionals = 3;
 }
 
 // Supported key algorithms.

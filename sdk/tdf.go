@@ -258,6 +258,9 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		}
 
 		n, err := reader.Read(readBuf.Bytes()[:readSize])
+		if err == io.EOF && totalSegments == 1 {
+			err = nil // EOF is expected on the last segment
+		}
 		if err != nil {
 			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
 		}
@@ -873,7 +876,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	var payloadReadOffset int64
 	var decryptedDataOffset int64
 	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
-		if decryptedDataOffset+seg.Size < r.cursor {
+		if decryptedDataOffset+seg.Size <= r.cursor {
 			decryptedDataOffset += seg.Size
 			payloadReadOffset += seg.EncryptedSize
 			continue

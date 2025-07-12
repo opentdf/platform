@@ -9,7 +9,10 @@ CREATE TABLE IF NOT EXISTS obligation_definitions
     name VARCHAR NOT NULL,
     -- implicit index on unique (namespace_id, name) combo
     -- index name: obligation_definitions_namespace_id_name_key
-    UNIQUE (namespace_id, name)
+    UNIQUE (namespace_id, name),
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obligation_values_standard
@@ -20,7 +23,10 @@ CREATE TABLE IF NOT EXISTS obligation_values_standard
     value VARCHAR NOT NULL,
     -- implicit index on unique (obligation_definition_id, value) combo
     -- index name: obligation_values_standard_obligation_definition_id_value_key
-    UNIQUE (obligation_definition_id, value)
+    UNIQUE (obligation_definition_id, value),
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obligation_triggers
@@ -29,70 +35,50 @@ CREATE TABLE IF NOT EXISTS obligation_triggers
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id) ON DELETE CASCADE,
     action_id UUID NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
     attribute_value_id UUID NOT NULL REFERENCES attribute_values(id) ON DELETE CASCADE,
-    UNIQUE(obligation_value_id, action_id, attribute_value_id)
+    UNIQUE(obligation_value_id, action_id, attribute_value_id),
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obligation_fulfillers
 (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id) ON DELETE CASCADE,
-    conditionals JSONB
+    conditionals JSONB,
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE OR REPLACE FUNCTION get_obligation_tables()
-RETURNS text[] AS $$
-BEGIN
-    RETURN ARRAY['obligation_definitions', 'obligation_values_standard', 
-                 'obligation_triggers', 'obligation_fulfillers'];
-END;
-$$ LANGUAGE plpgsql;
+CREATE TRIGGER obligation_definitions_updated_at
+    BEFORE UPDATE ON obligation_definitions
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();
 
-CREATE OR REPLACE FUNCTION standardize_tables(tables text[])
-RETURNS void AS $$
-DECLARE table_name text;
-BEGIN 
-    FOREACH table_name IN ARRAY tables
-    LOOP
-        -- Add standard columns to the table
-        EXECUTE FORMAT('
-            ALTER TABLE %I 
-            ADD COLUMN metadata JSONB,
-            ADD COLUMN created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
-        ', table_name);
-    
-        -- Create trigger for updating updated_at column
-        EXECUTE FORMAT('
-            CREATE TRIGGER %I
-            BEFORE UPDATE ON %I
-            FOR EACH ROW
-            EXECUTE FUNCTION update_updated_at()
-        ', table_name::text || '_updated_at', table_name);
-    END LOOP;
-END;
-$$ LANGUAGE plpgsql;
+CREATE TRIGGER obligation_values_standard_updated_at
+    BEFORE UPDATE ON obligation_values_standard
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();
 
-SELECT standardize_tables(get_obligation_tables());
+CREATE TRIGGER obligation_triggers_updated_at
+    BEFORE UPDATE ON obligation_triggers
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();
 
-CREATE OR REPLACE FUNCTION drop_tables(tables text[])
-RETURNS void AS $$
-DECLARE table_name text;
-BEGIN
-    FOREACH table_name IN ARRAY tables
-    LOOP
-        EXECUTE FORMAT('DROP TABLE IF EXISTS %I', table_name);
-    END LOOP;
-END;
-$$ LANGUAGE plpgsql;
+CREATE TRIGGER obligation_fulfillers_updated_at
+    BEFORE UPDATE ON obligation_fulfillers
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
 
-SELECT drop_tables(get_obligation_tables());
-DROP FUNCTION IF EXISTS get_obligation_tables;
-DROP FUNCTION IF EXISTS drop_tables;
-DROP FUNCTION IF EXISTS standardize_tables;
+DROP TABLE IF EXISTS obligation_definitions;
+DROP TABLE IF EXISTS obligation_values_standard;
+DROP TABLE IF EXISTS obligation_triggers;
+DROP TABLE IF EXISTS obligation_fulfillers;
 
 -- +goose StatementEnd

@@ -23,7 +23,6 @@ const (
 
 const RSA4096Key ocrypto.KeyType = "rsa:4096"
 
-// TODO: Move this function to ocrypto?
 func getKasKeyAlg(alg string) policy.Algorithm {
 	switch alg {
 	case string(ocrypto.RSA2048Key):
@@ -43,7 +42,7 @@ func getKasKeyAlg(alg string) policy.Algorithm {
 
 // TODO: Move this function to ocrypto?
 func formatAlg(alg policy.Algorithm) (string, error) {
-	switch alg {
+	switch alg { //nolint:exhaustive // only handle known algorithms
 	case policy.Algorithm_ALGORITHM_RSA_2048:
 		return string(ocrypto.RSA2048Key), nil
 	case policy.Algorithm_ALGORITHM_RSA_4096:

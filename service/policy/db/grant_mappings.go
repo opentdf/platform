@@ -11,7 +11,7 @@ import (
 var errKasInfoIncomplete = errors.New("kas information is incomplete")
 
 func mapAlgorithmToKasPublicKeyAlg(alg policy.Algorithm) policy.KasPublicKeyAlgEnum {
-	switch alg {
+	switch alg { //nolint:exhaustive // only handle known algorithms
 	case policy.Algorithm_ALGORITHM_RSA_2048:
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
 	case policy.Algorithm_ALGORITHM_RSA_4096:

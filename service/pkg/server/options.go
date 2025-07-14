@@ -15,7 +15,7 @@ type StartConfig struct {
 	WaitForShutdownSignal bool
 	PublicRoutes          []string
 	IPCReauthRoutes       []string
-	builtinPolicyOverride  string
+	builtinPolicyOverride string
 	extraCoreServices     []serviceregistry.IService
 	extraServices         []serviceregistry.IService
 	casbinAdapter         persist.Adapter

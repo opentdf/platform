@@ -6,10 +6,10 @@ import (
 	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -128,35 +128,29 @@ func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, 
 	return ECDecryptor{sk, salt, info}, nil
 }
 
-func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {
-	// TK How to get the ephmeral key into here?
-	return nil, errors.New("ecdh standard decrypt unimplemented")
-}
-
-func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
+func (e ECDecryptor) Decrypt(wrapped []byte) ([]byte, error) {
 	var ek *ecdh.PublicKey
+	var wv ecWrappedValue
+	var pubFromDSN any
 
-	if pubFromDSN, err := x509.ParsePKIXPublicKey(ephemeral); err == nil {
-		switch pubFromDSN := pubFromDSN.(type) {
-		case *ecdsa.PublicKey:
-			ek, err = ConvertToECDHPublicKey(pubFromDSN)
-			if err != nil {
-				return nil, fmt.Errorf("ecdh conversion failure: %w", err)
-			}
-		case *ecdh.PublicKey:
-			ek = pubFromDSN
-		default:
-			return nil, fmt.Errorf("unsupported public key of type: %T", pubFromDSN)
-		}
-	} else {
-		ekDSA, err := UncompressECPubKey(convCurve(e.sk.Curve()), ephemeral)
+	if rest, err := asn1.Unmarshal(wrapped, &wv); err != nil {
+		return nil, fmt.Errorf("asn1.Unmarshal failure: %w", err)
+	} else if len(rest) > 0 {
+		return nil, errors.New("trailing data")
+	} else if pubFromDSN, err = x509.ParsePKIXPublicKey(wv.EphemeralKey); err != nil {
+		return nil, fmt.Errorf("ecdh failure: %w", err)
+	}
+	switch pubFromDSN := pubFromDSN.(type) {
+	case *ecdsa.PublicKey:
+		var err error
+		ek, err = ConvertToECDHPublicKey(pubFromDSN)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("ecdh conversion failure: %w", err)
 		}
-		ek, err = ekDSA.ECDH()
-		if err != nil {
-			return nil, fmt.Errorf("ecdh failure: %w", err)
-		}
+	case *ecdh.PublicKey:
+		ek = pubFromDSN
+	default:
+		return nil, errors.New("not an supported type of public key")
 	}
 
 	ikm, err := e.sk.ECDH(ek)
@@ -183,28 +177,15 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 	}
 
 	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
+	if len(wv.CipherText) < nonceSize {
 		return nil, errors.New("ciphertext too short")
 	}
 
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	nonce, ciphertext := wv.CipherText[:nonceSize], wv.CipherText[nonceSize:]
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("gcm.Open failure: %w", err)
 	}
 
 	return plaintext, nil
-}
-
-func convCurve(c ecdh.Curve) elliptic.Curve {
-	switch c {
-	case ecdh.P256():
-		return elliptic.P256()
-	case ecdh.P384():
-		return elliptic.P384()
-	case ecdh.P521():
-		return elliptic.P521()
-	default:
-		return nil
-	}
 }

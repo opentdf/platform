@@ -50,7 +50,7 @@ func (b *BasicManager) Name() string {
 	return BasicManagerName
 }
 
-func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte) (trust.ProtectedKey, error) {
 	// Implementation of Decrypt method
 
 	// Get Private Key
@@ -85,7 +85,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		if err != nil {
 			return nil, fmt.Errorf("failed to create ECDecryptor: %w", err)
 		}
-		plaintext, err := ecDecryptor.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
+		plaintext, err := ecDecryptor.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with ephemeral key: %w", err)
 		}

@@ -20,8 +20,8 @@ func (m *MockKeyManager) Name() string {
 	return args.String(0)
 }
 
-func (m *MockKeyManager) Decrypt(ctx context.Context, keyDetails KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error) {
-	args := m.Called(ctx, keyDetails, ciphertext, ephemeralPublicKey)
+func (m *MockKeyManager) Decrypt(ctx context.Context, keyDetails KeyDetails, ciphertext []byte) (ProtectedKey, error) {
+	args := m.Called(ctx, keyDetails, ciphertext)
 	if a0, ok := args.Get(0).(ProtectedKey); ok {
 		return a0, args.Error(1)
 	}
@@ -238,7 +238,7 @@ func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {
 		return suite.mockManagerA, nil
 	})
 
-	protectedKey, err := suite.service.Decrypt(context.Background(), KeyIdentifier("key1"), []byte("ciphertext"), []byte("ephemeralKey"))
+	protectedKey, err := suite.service.Decrypt(context.Background(), KeyIdentifier("key1"), []byte("ciphertext"))
 	suite.Require().NoError(err)
 	suite.NotNil(protectedKey)
 }

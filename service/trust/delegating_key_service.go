@@ -83,7 +83,7 @@ func (d *DelegatingKeyService) Name() string {
 	return "DelegatingKeyService"
 }
 
-func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error) {
+func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte) (ProtectedKey, error) {
 	keyDetails, err := d.index.FindKeyByID(ctx, keyID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to find key by ID '%s': %w", keyID, err)
@@ -94,7 +94,7 @@ func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier,
 		return nil, fmt.Errorf("unable to get key manager for system '%s': %w", keyDetails.System(), err)
 	}
 
-	return manager.Decrypt(ctx, keyDetails, ciphertext, ephemeralPublicKey)
+	return manager.Decrypt(ctx, keyDetails, ciphertext)
 }
 
 func (d *DelegatingKeyService) DeriveKey(ctx context.Context, keyID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error) {

@@ -69,9 +69,6 @@ type kaoResult struct {
 	DEK      trust.ProtectedKey
 	Encapped []byte
 	Error    error
-
-	// Optional: Present for EC wrapped responses
-	EphemeralPublicKey []byte
 }
 
 // From policy ID to KAO ID to result
@@ -167,16 +164,15 @@ func extractAndConvertV1SRTBody(body []byte) (kaspb.UnsignedRewrapRequest, error
 				{
 					KeyAccessObjectId: "kao-0",
 					KeyAccessObject: &kaspb.KeyAccess{
-						EncryptedMetadata:  kao.EncryptedMetadata,
-						PolicyBinding:      &kaspb.PolicyBinding{Hash: binding, Algorithm: kao.Algorithm},
-						Protocol:           kao.Protocol,
-						KeyType:            kao.Type,
-						KasUrl:             kao.URL,
-						Kid:                kao.KID,
-						SplitId:            kao.SID,
-						WrappedKey:         kao.WrappedKey,
-						Header:             kao.Header,
-						EphemeralPublicKey: kao.EphemeralPublicKey,
+						EncryptedMetadata: kao.EncryptedMetadata,
+						PolicyBinding:     &kaspb.PolicyBinding{Hash: binding, Algorithm: kao.Algorithm},
+						Protocol:          kao.Protocol,
+						KeyType:           kao.Type,
+						KasUrl:            kao.URL,
+						Kid:               kao.KID,
+						SplitId:           kao.SID,
+						WrappedKey:        kao.WrappedKey,
+						Header:            kao.Header,
 					},
 				},
 			},
@@ -493,72 +489,8 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				continue
 			}
 
-			// Get the ephemeral public key in PEM format
-			ephemeralPubKeyPEM := kao.GetKeyAccessObject().GetEphemeralPublicKey()
-
-			// Get EC key size and convert to mode
-			keySize, err := ocrypto.GetECKeySize([]byte(ephemeralPubKeyPEM))
-			if err != nil {
-				p.Logger.WarnContext(ctx,
-					"failed to get EC key size",
-					slog.Any("kao", kao),
-					slog.Any("error", err),
-				)
-				failedKAORewrap(results, kao, err400("bad request"))
-				continue
-			}
-
-			mode, err := ocrypto.ECSizeToMode(keySize)
-			if err != nil {
-				p.Logger.WarnContext(ctx,
-					"failed to convert key size to mode",
-					slog.Any("kao", kao),
-					slog.Any("error", err),
-				)
-				failedKAORewrap(results, kao, err400("bad request"))
-				continue
-			}
-
-			// Parse the PEM public key
-			block, _ := pem.Decode([]byte(ephemeralPubKeyPEM))
-			if block == nil {
-				p.Logger.WarnContext(ctx,
-					"failed to decode PEM block",
-					slog.Any("kao", kao),
-					slog.Any("error", err),
-				)
-				failedKAORewrap(results, kao, err400("bad request"))
-				continue
-			}
-
-			pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-			if err != nil {
-				p.Logger.WarnContext(ctx,
-					"failed to parse public key",
-					slog.Any("kao", kao),
-					slog.Any("error", err),
-				)
-				failedKAORewrap(results, kao, err400("bad request"))
-				continue
-			}
-
-			ecPub, ok := pub.(*ecdsa.PublicKey)
-			if !ok {
-				p.Logger.WarnContext(ctx, "not an EC public key", slog.Any("error", err))
-				failedKAORewrap(results, kao, err400("bad request"))
-				continue
-			}
-
-			// Compress the public key
-			compressedKey, err := ocrypto.CompressedECPublicKey(mode, *ecPub)
-			if err != nil {
-				p.Logger.WarnContext(ctx, "failed to compress public key", slog.Any("error", err))
-				failedKAORewrap(results, kao, err400("bad request"))
-				continue
-			}
-
 			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
-			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), compressedKey)
+			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey())
 			if err != nil {
 				p.Logger.WarnContext(ctx, "failed to decrypt EC key", slog.Any("error", err))
 				failedKAORewrap(results, kao, err400("bad request"))
@@ -578,13 +510,13 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 				}
 			}
 
-			dek, err = p.KeyDelegator.Decrypt(ctx, kidsToCheck[0], kao.GetKeyAccessObject().GetWrappedKey(), nil)
+			dek, err = p.KeyDelegator.Decrypt(ctx, kidsToCheck[0], kao.GetKeyAccessObject().GetWrappedKey())
 			for _, kid := range kidsToCheck[1:] {
 				p.Logger.WarnContext(ctx, "continue paging through legacy KIDs for kid free kao", slog.Any("error", err))
 				if err == nil {
 					break
 				}
-				dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), nil)
+				dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey())
 			}
 		}
 		if err != nil {
@@ -771,7 +703,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			}
 
 			// Use the Export method with the asymEncrypt encryptor
-			encryptedKey, err := kaoRes.DEK.Export(asymEncrypt)
+			rewrappedKey, err := kaoRes.DEK.Export(asymEncrypt)
 			if err != nil {
 				//nolint:sloglint // reference to camelcase key is intentional
 				p.Logger.WarnContext(ctx, "rewrap: Export with encryptor failed", slog.String("clientPublicKey", clientPublicKey), slog.Any("error", err))
@@ -780,9 +712,8 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 				continue
 			}
 			kaoResults[kaoID] = kaoResult{
-				ID:                 kaoID,
-				Encapped:           encryptedKey,
-				EphemeralPublicKey: asymEncrypt.EphemeralKey(),
+				ID:       kaoID,
+				Encapped: rewrappedKey,
 			}
 
 			p.Logger.Audit.RewrapSuccess(ctx, auditEventParams)

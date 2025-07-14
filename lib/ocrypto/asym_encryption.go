@@ -10,6 +10,7 @@ import (
 	"crypto/sha1" //nolint:gosec // used for padding which is safe
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -32,16 +33,6 @@ type PublicKeyEncryptor interface {
 
 	// PublicKeyInPemFormat Returns public key in pem format, or the empty string if not present
 	PublicKeyInPemFormat() (string, error)
-
-	// Type required to use the scheme for encryption - notably, if it procduces extra metadata.
-	Type() SchemeType
-
-	// For EC schemes, this method returns the public part of the ephemeral key.
-	// Otherwise, it returns nil.
-	EphemeralKey() []byte
-
-	// Any extra metadata, e.g. the ephemeral public key for EC scheme keys.
-	Metadata() (map[string]string, error)
 }
 
 type AsymEncryption struct {
@@ -53,6 +44,11 @@ type ECEncryptor struct {
 	ek   *ecdh.PrivateKey
 	salt []byte
 	info []byte
+}
+
+type ecWrappedValue struct {
+	EphemeralKey []byte
+	CipherText   []byte
 }
 
 func FromPublicPEM(publicKeyInPem string) (PublicKeyEncryptor, error) {
@@ -143,28 +139,6 @@ func (e ECEncryptor) Type() SchemeType {
 	return EC
 }
 
-func (e AsymEncryption) EphemeralKey() []byte {
-	return nil
-}
-
-func (e ECEncryptor) EphemeralKey() []byte {
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(e.ek.PublicKey())
-	if err != nil {
-		return nil
-	}
-	return publicKeyBytes
-}
-
-func (e AsymEncryption) Metadata() (map[string]string, error) {
-	return make(map[string]string), nil
-}
-
-func (e ECEncryptor) Metadata() (map[string]string, error) {
-	m := make(map[string]string)
-	m["ephemeralPublicKey"] = string(e.EphemeralKey())
-	return m, nil
-}
-
 func (e AsymEncryption) Encrypt(data []byte) ([]byte, error) {
 	if e.PublicKey == nil {
 		return nil, errors.New("failed to encrypt, public key is empty")
@@ -233,7 +207,23 @@ func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
 	}
 
 	ciphertext := gcm.Seal(nonce, nonce, data, nil)
-	return ciphertext, nil
+
+	ekb, err := x509.MarshalPKIXPublicKey(e.ek.PublicKey())
+	if err != nil {
+		return nil, fmt.Errorf("ephemeral key serialization failed: %w", err)
+	}
+
+	wv := ecWrappedValue{
+		EphemeralKey: ekb,
+		CipherText:   ciphertext,
+	}
+
+	resp, err := asn1.Marshal(wv)
+	if err != nil {
+		return nil, fmt.Errorf("serialization failed: %w", err)
+	}
+
+	return resp, nil
 }
 
 // PublicKeyInPemFormat Returns public key in pem format.

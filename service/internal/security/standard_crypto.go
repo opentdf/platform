@@ -464,7 +464,7 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 			key.sk = loaded
 		}
 
-		ed, err := ocrypto.NewSaltedECDecryptor(key.sk, TDFSalt(), nil)
+		ed, err := ocrypto.NewSaltedECDecryptor(key.sk, TDFSalt(), "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create EC decryptor: %w", err)
 		}

@@ -91,7 +91,7 @@ services:
       timeout: 5s
       retries: 10
     ports:
-      - "5432:5432"
+      - "${POSTGRES_EXPOSE_PORT:-5432}:5432"
 
   jaeger:
     image: jaegertracing/all-in-one:latest

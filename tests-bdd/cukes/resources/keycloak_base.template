@@ -108,7 +108,6 @@ realms:
             - 'http://localhost:*'
           protocolMappers:
             - *customAudMapper
-    users: {{ .users }}
     token_exchanges:
       - start_client: opentdf
         target_client: opentdf-sdk

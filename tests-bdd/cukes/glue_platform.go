@@ -285,7 +285,7 @@ func NewLocalDevOptions() (LocalDevOptions, error) {
 		return LocalDevOptions{}, err
 	}
 	return LocalDevOptions{
-		Hostname:   "local-dsp.virtru.com",
+		Hostname:   "localhost",
 		CukesDir:   dname,
 		KeysDir:    keydir,
 		ProjectDir: projectDir,

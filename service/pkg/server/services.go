@@ -61,7 +61,7 @@ func registerEssentialServices(reg serviceregistry.Registry) error {
 
 // registerCoreServices registers the core services based on the provided mode.
 // It returns the list of registered services and any error encountered during registration.
-func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string, error) {
+func registerCoreServices(reg serviceregistry.Registry, mode []string, customPolicyServices []serviceregistry.IService) ([]string, error) {
 	var (
 		services           []serviceregistry.IService
 		registeredServices []string
@@ -79,7 +79,11 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 				entityresolution.NewRegistration(),
 				entityresolutionV2.NewRegistration(),
 			}...)
-			services = append(services, policy.NewRegistrations()...)
+			if len(customPolicyServices) > 0 {
+				services = append(services, customPolicyServices...)
+			} else {
+				services = append(services, policy.NewRegistrations()...)
+			}
 		case "core":
 			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceWellKnown}...)
 			services = append(services, []serviceregistry.IService{
@@ -87,7 +91,11 @@ func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string
 				authorizationV2.NewRegistration(),
 				wellknown.NewRegistration(),
 			}...)
-			services = append(services, policy.NewRegistrations()...)
+			if len(customPolicyServices) > 0 {
+				services = append(services, customPolicyServices...)
+			} else {
+				services = append(services, policy.NewRegistrations()...)
+			}
 		case "kas":
 			// If the mode is "kas", register only the KAS service
 			registeredServices = append(registeredServices, serviceKAS)

@@ -113,8 +113,8 @@ func Start(f ...StartOptions) error {
 	}
 
 	// Set Default Policy
-	if startConfig.bultinPolicyOverride != "" {
-		cfg.Server.Auth.Policy.Builtin = startConfig.bultinPolicyOverride
+	if startConfig.builtinPolicyOverride != "" {
+		cfg.Server.Auth.Policy.Builtin = startConfig.builtinPolicyOverride
 	}
 
 	// Set Casbin Adapter

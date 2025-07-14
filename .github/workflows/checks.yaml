@@ -156,7 +156,7 @@ jobs:
       - run: test/service-start.bats
       - run: test/tdf-roundtrips.bats
       - run: test/policy-service.bats
-      - name: verify bultin casbin policy
+      - name: verify builtin casbin policy
         run: test/builtin-casbin.bats
       - name: create roundtrip test data and run tests
         run: go test ./service/rttests -v

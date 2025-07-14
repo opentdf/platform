@@ -7,16 +7,15 @@ import (
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/hkdf"
+	"crypto/mlkem"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
-
-	"golang.org/x/crypto/hkdf"
 )
 
 type AsymDecryption struct {
@@ -35,13 +34,22 @@ func FromPrivatePEM(privateKeyInPem string) (PrivateKeyDecryptor, error) {
 	digest.Write([]byte("TDF"))
 	salt := digest.Sum(nil)
 
-	return FromPrivatePEMWithSalt(privateKeyInPem, salt, nil)
+	return FromPrivatePEMWithSalt(privateKeyInPem, salt, "")
 }
 
-func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateKeyDecryptor, error) {
+func FromPrivatePEMWithSalt(privateKeyInPem string, salt []byte, info string) (PrivateKeyDecryptor, error) {
 	block, _ := pem.Decode([]byte(privateKeyInPem))
 	if block == nil {
 		return AsymDecryption{}, errors.New("failed to parse PEM formatted private key")
+	}
+
+	if block.Type == "MLKEM DECAPSULATION KEY" {
+		// TK Handle ML-KEM decapsulation key
+		decap, err := mlkem.NewDecapsulationKey768(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("mlkem.NewDecapsulationKey768 failed: %w", err)
+		}
+		return NewMLKEMDecryptor768(decap)
 	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
@@ -81,7 +89,7 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 }
 
 func NewAsymDecryption(privateKeyInPem string) (AsymDecryption, error) {
-	d, err := FromPrivatePEMWithSalt(privateKeyInPem, nil, nil)
+	d, err := FromPrivatePEMWithSalt(privateKeyInPem, nil, "")
 	if err != nil {
 		return AsymDecryption{}, err
 	}
@@ -112,7 +120,7 @@ func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 type ECDecryptor struct {
 	sk   *ecdh.PrivateKey
 	salt []byte
-	info []byte
+	info string
 }
 
 func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
@@ -121,11 +129,23 @@ func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
 	digest.Write([]byte("TDF"))
 	salt := digest.Sum(nil)
 
-	return ECDecryptor{sk, salt, nil}, nil
+	return ECDecryptor{sk, salt, ""}, nil
 }
 
-func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, error) {
+func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt []byte, info string) (ECDecryptor, error) {
 	return ECDecryptor{sk, salt, info}, nil
+}
+
+type MLKEMDecryptor768 struct {
+	decap *mlkem.DecapsulationKey768
+}
+
+func NewMLKEMDecryptor768(decap *mlkem.DecapsulationKey768) (*MLKEMDecryptor768, error) {
+	if decap == nil {
+		return nil, errors.New("decapsulation key is nil")
+	}
+
+	return &MLKEMDecryptor768{decap}, nil
 }
 
 func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {
@@ -164,10 +184,8 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 		return nil, fmt.Errorf("ecdh failure: %w", err)
 	}
 
-	hkdfObj := hkdf.New(sha256.New, ikm, e.salt, e.info)
-
-	derivedKey := make([]byte, 32) //nolint:mnd // AES-256 requires a 32-byte key
-	if _, err := io.ReadFull(hkdfObj, derivedKey); err != nil {
+	derivedKey, err := hkdf.Key(sha256.New, ikm, e.salt, e.info, 32) //nolint:mnd // AES-256 requires a 32-byte key
+	if err != nil {
 		return nil, fmt.Errorf("hkdf failure: %w", err)
 	}
 
@@ -207,4 +225,42 @@ func convCurve(c ecdh.Curve) elliptic.Curve {
 	default:
 		return nil
 	}
+}
+
+func (d *MLKEMDecryptor768) Decrypt(data []byte) ([]byte, error) {
+	return nil, errors.New("decapsulation key requires ciphertext (ephemeral key) to decrypt")
+}
+
+func (d *MLKEMDecryptor768) DecryptWithEphemeralKey(data, cipherText []byte) ([]byte, error) {
+	if d.decap == nil {
+		return nil, errors.New("mlkem.DecryptWithEphemeralKey - decapsulation key is nil")
+	}
+
+	sharedSecret, err := d.decap.Decapsulate(cipherText)
+	if err != nil {
+		return nil, fmt.Errorf("mlkem.DecryptWithEphemeralKey - decap failed: %w", err)
+	}
+
+	block, err := aes.NewCipher(sharedSecret)
+	if err != nil {
+		return nil, fmt.Errorf("mlkem.DecryptWithEphemeralKey - aes.NewCipher failed: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("mlkem.DecryptWithEphemeralKey - cipher.NewGCM failure: %w", err)
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(data) < nonceSize {
+		return nil, errors.New("mlkem.DecryptWithEphemeralKey - ciphertext too short")
+	}
+
+	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("mlkem.DecryptWithEphemeralKey - gcm.Open failure: %w", err)
+	}
+
+	return plaintext, nil
 }

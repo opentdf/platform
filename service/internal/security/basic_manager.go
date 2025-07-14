@@ -135,7 +135,7 @@ func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetail
 
 func (b *BasicManager) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
 	// Implementation of GenerateECSessionKey method
-	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
+	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), "")
 }
 
 func (b *BasicManager) Close() {

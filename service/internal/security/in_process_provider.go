@@ -349,7 +349,7 @@ func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDet
 
 // GenerateECSessionKey generates a session key for NanoTDF
 func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
-	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
+	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), "")
 }
 
 // Close releases any resources held by the provider

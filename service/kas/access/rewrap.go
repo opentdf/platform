@@ -706,7 +706,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		return "", results
 	}
 
-	asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(clientPublicKey, security.TDFSalt(), nil)
+	asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(clientPublicKey, security.TDFSalt(), "")
 	if err != nil {
 		p.Logger.WarnContext(ctx, "ocrypto.NewAsymEncryption", slog.Any("error", err))
 		failAllKaos(requests, results, err400("invalid request"))

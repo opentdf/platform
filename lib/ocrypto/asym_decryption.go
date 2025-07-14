@@ -26,6 +26,12 @@ type AsymDecryption struct {
 type PrivateKeyDecryptor interface {
 	// Decrypt decrypts ciphertext with private key.
 	Decrypt(data []byte) ([]byte, error)
+
+	// DecryptWithEphemeralKey decrypts ciphertext with private key and ephemeral key, if needed.
+	DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error)
+
+	// Gets the public key
+	PublicKey() PublicKeyEncryptor
 }
 
 // FromPrivatePEM creates and returns a new AsymDecryption.
@@ -93,6 +99,14 @@ func NewAsymDecryption(privateKeyInPem string) (AsymDecryption, error) {
 	}
 }
 
+func (asymDecryption AsymDecryption) PublicKey() PublicKeyEncryptor {
+	publicKey, ok := asymDecryption.PrivateKey.Public().(*rsa.PublicKey)
+	if !ok {
+		return nil
+	}
+	return AsymEncryption{publicKey}
+}
+
 // Decrypt decrypts ciphertext with private key.
 func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 	if asymDecryption.PrivateKey == nil {
@@ -107,6 +121,10 @@ func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 	}
 
 	return bytes, nil
+}
+
+func (asymDecryption AsymDecryption) DecryptWithEphemeralKey(data, _ []byte) ([]byte, error) {
+	return asymDecryption.Decrypt(data)
 }
 
 type ECDecryptor struct {
@@ -126,6 +144,18 @@ func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
 
 func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, error) {
 	return ECDecryptor{sk, salt, info}, nil
+}
+
+func (e ECDecryptor) PublicKey() PublicKeyEncryptor {
+	publicKey, ok := e.sk.Public().(*ecdh.PublicKey)
+	if !ok {
+		return nil
+	}
+	ecEncryptor, err := NewECIES(publicKey, e.salt, e.info)
+	if err != nil {
+		return nil
+	}
+	return ecEncryptor
 }
 
 func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {
@@ -194,6 +224,29 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 	}
 
 	return plaintext, nil
+}
+
+func (e ECDecryptor) DeriveNanoTDFSymmetricKey(curve elliptic.Curve, clientEphemeralKey []byte) ([]byte, error) {
+	ephemeralECDSAPublicKey, err := UncompressECPubKey(curve, clientEphemeralKey)
+	if err != nil {
+		return nil, err
+	}
+
+	ephemeralECDHPublicKey, err := ephemeralECDSAPublicKey.ECDH()
+	if err != nil {
+		return nil, fmt.Errorf("ecdh failure: %w", err)
+	}
+	sharedSecret, err := e.sk.ECDH(ephemeralECDHPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("there was a problem deriving a shared ECDH key: %w", err)
+	}
+
+	key, err := CalculateHKDF(e.salt, sharedSecret)
+	if err != nil {
+		return nil, fmt.Errorf("DeriveNanoTDFSymmetricKey error during CalculateHKDF: %w", err)
+	}
+
+	return key, nil
 }
 
 func convCurve(c ecdh.Curve) elliptic.Curve {

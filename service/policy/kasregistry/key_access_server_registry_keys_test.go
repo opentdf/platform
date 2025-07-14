@@ -677,6 +677,23 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			expectError:  true,
 			errorMessage: "private_key_ctx must not be set",
 		},
+		{
+			name: "Valid - MLKEM Key",
+			req: &kasregistry.CreateKeyRequest{
+				KasId:        validUUID,
+				KeyId:        validKeyID,
+				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+				KeyMode:      policy.KeyMode_KEY_MODE_PUBLIC_KEY_ONLY,
+				PublicKeyCtx: &policy.PublicKeyCtx{
+					Pem: validKeyCtx,
+				},
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
+					KeyId: validKeyID,
+				},
+			},
+			expectError:  true,
+			errorMessage: "private_key_ctx must not be set",
+		},
 	}
 
 	v := getValidator() // Get the validator instance (assuming this is defined elsewhere)

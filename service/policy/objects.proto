@@ -468,6 +468,8 @@ enum Algorithm {
   ALGORITHM_EC_P256 = 3;
   ALGORITHM_EC_P384 = 4;
   ALGORITHM_EC_P521 = 5;
+  ALGORITHM_MLKEM_768 = 6;
+  ALGORITHM_MLKEM_1024 = 7;
 }
 
 // The status of the key

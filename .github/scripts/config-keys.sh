@@ -16,12 +16,10 @@ keys=()
 while IFS= read -r -d $'\0' key_json <&3; do
   printf 'processing %s\n' "${key_json}"
   alg="$(jq -r '.alg' <<<"${key_json}")"
-
   if ! printf '%s\n' "${allowed_algorithms[@]}" | grep -q -w -F -- "${alg}"; then
     printf 'algorithm [%s] is not allowed. Skipping extra key [%s]\n' "${alg}" "${kid}" 1>&2
     continue
   fi
-
   private_pem="$(jq -r '.privateKey' <<<"${key_json}")"
   cert_pem="$(jq -r '.cert' <<<"${key_json}")"
   kid="$(jq -r '.kid' <<<"${key_json}")"

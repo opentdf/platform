@@ -8,10 +8,13 @@ import (
 	"math/big"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/service/internal/security"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -22,14 +25,27 @@ var (
 func init() {
 	keysCmd := cobra.Command{
 		Use:   "keys",
-		Short: "Initialize and manage KAS public keys",
+		Short: "Initialize and manage KAS public keys, outputting them to the `-o` directory, and printing out yaml to add to server.cryptoProvider.standard.keys to load them",
 	}
 
 	initCmd := &cobra.Command{
 		Use:  "init",
 		Args: cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return keysInit()
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ks, err := keysInit()
+			if len(ks) > 0 {
+				b, err := yaml.Marshal(&ks)
+				if err != nil {
+					cmd.PrintErrf("failed to marshal keys: %v", err)
+					return err
+				}
+				cmd.Print(string(b))
+			}
+			if err != nil {
+				cmd.PrintErrf("failed to initialize keys: %v", err)
+				return err
+			}
+			return nil
 		},
 	}
 	initCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "verbose logging")
@@ -102,11 +118,11 @@ func findNewID(existing map[string]bool) (string, error) {
 	}
 }
 
-func getNamesFor(alg string) (string, string, error) {
+func getNamesFor(alg string) (string, string, string, error) {
 	// find all existing key ids
 	files, err := os.ReadDir(output)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to read output directory [%s]: %w", output, err)
+		return "", "", "", fmt.Errorf("failed to read output directory [%s]: %w", output, err)
 	}
 
 	existingIDs := make(map[string]bool)
@@ -120,44 +136,36 @@ func getNamesFor(alg string) (string, string, error) {
 	// generate a new id
 	id, err := findNewID(existingIDs)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to generate new id: %w", err)
+		return "", "", "", fmt.Errorf("failed to generate new id: %w", err)
 	}
 
 	// return the new file names
 	privateFile := fmt.Sprintf("%s/kas-%s-%s-private.pem", output, alg, id)
 	publicFile := fmt.Sprintf("%s/kas-%s-%s-public.pem", output, alg, id)
-	return privateFile, publicFile, nil
+	return privateFile, publicFile, id, nil
 }
 
-func keysInit() error {
-	// openssl req -x509 -nodes -newkey RSA:2048
-	//  -subj "/CN=kas" -keyout "$opt_output/kas-private.pem" -out "$opt_output/kas-cert.pem" -days 365
-	// Generate RSA key.
-	keyRSA, err := ocrypto.Generate("rsa:2048")
-	if err != nil {
-		return fmt.Errorf("unable to generate rsa key [%w]", err)
+func keysInit() ([]security.KeyPairInfo, error) {
+	var keyPairs []security.KeyPairInfo
+	for _, kt := range []ocrypto.KeyType{ocrypto.RSA2048Key, ocrypto.EC256Key, ocrypto.MLKEM768Key} {
+		keyRSA, err := ocrypto.Generate(kt)
+		if err != nil {
+			return keyPairs, fmt.Errorf("unable to generate rsa key [%w]", err)
+		}
+		fullName := string(kt)
+		shortName := strings.Replace(fullName, ":", "-", 1)
+		privateFile, publicFile, id, err := getNamesFor(shortName)
+		if err != nil {
+			return keyPairs, err
+		}
+		if err := storeKeyPair(keyRSA, privateFile, publicFile); err != nil {
+			return keyPairs, err
+		}
+		keyPairs = append(keyPairs, security.KeyPairInfo{
+			Private:   privateFile,
+			Algorithm: string(kt),
+			KID:       id,
+		})
 	}
-	rsaPrivateFile, rsaPublicFile, err := getNamesFor("rsa")
-	if err != nil {
-		return err
-	}
-	if err := storeKeyPair(keyRSA, rsaPrivateFile, rsaPublicFile); err != nil {
-		return err
-	}
-
-	// openssl ecparam -name prime256v1 >ecparams.tmp
-	// openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout "$opt_output/kas-ec-private.pem" -out "$opt_output/kas-ec-cert.pem" -days 365
-	keyEC, err := ocrypto.Generate("ec:256")
-	if err != nil {
-		return fmt.Errorf("failed to generate ECDSA private key [%w]", err)
-	}
-	ecPrivateFile, ecPublicFile, err := getNamesFor("ec")
-	if err != nil {
-		return err
-	}
-	if err := storeKeyPair(keyEC, ecPrivateFile, ecPublicFile); err != nil {
-		return err
-	}
-
-	return nil
+	return keyPairs, nil
 }

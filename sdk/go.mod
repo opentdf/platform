@@ -10,8 +10,8 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
 	github.com/lestrrat-go/jwx/v2 v2.1.6
 	github.com/opentdf/platform/lib/fixtures v0.3.0
-	github.com/opentdf/platform/lib/ocrypto v0.3.1-0.20250715130753-f9944c684e5a
-	github.com/opentdf/platform/protocol/go v0.6.0
+	github.com/opentdf/platform/lib/ocrypto v0.3.1-0.20250715173441-ec3517fc4f59
+	github.com/opentdf/platform/protocol/go v0.6.1-0.20250715173441-ec3517fc4f59
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
 	github.com/xeipuuv/gojsonschema v1.2.0

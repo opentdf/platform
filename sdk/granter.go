@@ -304,6 +304,8 @@ func convertStringToAlgorithm(alg string) policy.Algorithm {
 		return policy.Algorithm_ALGORITHM_RSA_2048
 	case RSA4096Key:
 		return policy.Algorithm_ALGORITHM_RSA_4096
+	case ocrypto.MLKEM768Key:
+		return policy.Algorithm_ALGORITHM_MLKEM_768
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED
 	}

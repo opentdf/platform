@@ -92,6 +92,15 @@ func IsRSAKeyType(kt KeyType) bool {
 	}
 }
 
+func IsMLKEMKeyType(kt KeyType) bool {
+	switch kt { //nolint:exhaustive // only handle rsa types
+	case MLKEM768Key:
+		return true
+	default:
+		return false
+	}
+}
+
 // GetECCurveFromECCMode return elliptic curve from ecc mode
 func GetECCurveFromECCMode(mode ECCMode) (elliptic.Curve, error) {
 	var c elliptic.Curve

@@ -497,7 +497,7 @@ func algProto2String(e policy.KasPublicKeyAlgEnum) string {
 }
 
 func algProto2OcryptoKeyType(e policy.Algorithm) ocrypto.KeyType {
-	switch e {
+	switch e { //nolint:exhaustive // only handle known algorithms
 	case policy.Algorithm_ALGORITHM_EC_P256:
 		return ocrypto.EC256Key
 	case policy.Algorithm_ALGORITHM_EC_P384:

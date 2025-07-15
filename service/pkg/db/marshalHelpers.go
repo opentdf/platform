@@ -146,7 +146,7 @@ func KasKeysProtoJSON(keysJSON []byte) ([]*policy.KasKey, error) {
 }
 
 func FormatAlg(alg policy.Algorithm) (string, error) {
-	switch alg {
+	switch alg { //nolint:exhaustive // only handle known algorithms
 	case policy.Algorithm_ALGORITHM_RSA_2048:
 		return "rsa:2048", nil
 	case policy.Algorithm_ALGORITHM_RSA_4096:

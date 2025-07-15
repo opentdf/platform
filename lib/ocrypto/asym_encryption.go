@@ -7,9 +7,9 @@ import (
 	"crypto/ecdsa"
 	"crypto/hkdf"
 	"crypto/mlkem"
-	"crypto/rand" //nolint:gosec // used for padding which is safe
+	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec // used for padding which is safe
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
@@ -243,7 +243,7 @@ func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("ecdh failure: %w", err)
 	}
 
-	derivedKey, err := hkdf.Key(sha256.New, ikm, e.salt, e.info, 32)
+	derivedKey, err := hkdf.Key(sha256.New, ikm, e.salt, e.info, 32) //nolint:mnd // 32 bytes = 256 bit AES key
 	if err != nil {
 		return nil, fmt.Errorf("hkdf failure: %w", err)
 	}

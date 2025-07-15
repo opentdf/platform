@@ -33,13 +33,13 @@ func TestFindNewId(t *testing.T) {
 
 	// Test for uniqueness over multiple generations
 	for i := 0; i < 100; i++ {
-		id, err := findNewID(existing)
+		nid, err := findNewID(existing)
 		if err != nil {
 			t.Fatalf("findNewID failed during multiple generations: %v", err)
 		}
-		if existing[id] {
+		if existing[nid] {
 			t.Errorf("generated a duplicate id '%s' that was already in the map", id)
 		}
-		existing[id] = true
+		existing[nid] = true
 	}
 }

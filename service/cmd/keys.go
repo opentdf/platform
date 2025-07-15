@@ -196,6 +196,10 @@ func (ek *existingKeys) getNamesFor(alg string) (string, string, trust.KeyIdenti
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to create key identifier: %w", err)
 	}
+	kid, err := trust.NewKeyIdentifier(id)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to create key identifier: %w", err)
+	}
 
 	// return the new file names
 	privateFile := fmt.Sprintf("%s/kas-%s-%s-private.pem", output, alg, id)

@@ -647,7 +647,7 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 			keyAccess.EphemeralPublicKey = wrappedKeyInfo.publicKey
 		}
 	case ocrypto.IsMLKEMKeyType(ktype):
-		wrappedInfo, err := genereateWrapKeyWithMLKEM(kasInfo.PublicKey, symKey)
+		wrappedInfo, err := generateWrapKeyWithMLKEM(kasInfo.PublicKey, symKey)
 		if err != nil {
 			return KeyAccess{}, err
 		}
@@ -681,7 +681,7 @@ type mlkemWrappedKeyInfo struct {
 	wrappedKey string
 }
 
-func genereateWrapKeyWithMLKEM(pubPem string, symKey []byte) (mlkemWrappedKeyInfo, error) {
+func generateWrapKeyWithMLKEM(pubPem string, symKey []byte) (mlkemWrappedKeyInfo, error) {
 	encryptor, err := ocrypto.FromPublicPEM(pubPem)
 	if err != nil {
 		return mlkemWrappedKeyInfo{}, fmt.Errorf("ocrypto.NewAsymEncryption failed:%w", err)
@@ -709,7 +709,7 @@ func genereateWrapKeyWithMLKEM(pubPem string, symKey []byte) (mlkemWrappedKeyInf
 	}
 
 	return mlkemWrappedKeyInfo{
-		cipherText: cipherText,
+		cipherText: string(ocrypto.Base64Encode([]byte(cipherText))),
 		wrappedKey: string(ocrypto.Base64Encode(wrappedKey)),
 	}, nil
 }

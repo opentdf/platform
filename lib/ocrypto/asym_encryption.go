@@ -145,7 +145,7 @@ func getPublicPart(publicKeyInPem string) (any, error) {
 		}
 
 		pub = cert.PublicKey
-	case "MLKEM PUBLIC KEY":
+	case "MLKEM ENCAPSULATOR":
 		encap, err := mlkem.NewEncapsulationKey768(block.Bytes)
 		if err != nil {
 			return nil, fmt.Errorf("mlkem.NewEncapsulationKey768 failed: %w", err)
@@ -306,7 +306,7 @@ func (e ECEncryptor) PublicKeyInPemFormat() (string, error) {
 // PublicKeyInPemFormat Returns public key in pem format.
 func (e *MLKEMEncryptor768) PublicKeyInPemFormat() (string, error) {
 	return string(pem.EncodeToMemory(&pem.Block{
-		Type:  "MLKEM PUBLIC KEY",
+		Type:  "MLKEM ENCAPSULATOR",
 		Bytes: e.pub.Bytes(),
 	})), nil
 }

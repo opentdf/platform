@@ -7,19 +7,22 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/goccy/go-yaml"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 var (
 	verbose bool
 	output  string
+	inplace bool
+	
 )
 
 func init() {
@@ -32,24 +35,66 @@ func init() {
 		Use:  "init",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			ks, err := keysInit()
-			if len(ks) > 0 {
-				b, err := yaml.Marshal(&ks)
-				if err != nil {
-					cmd.PrintErrf("failed to marshal keys: %v", err)
-					return err
+			if inplace {
+				if _, err := exec.LookPath("yq"); err != nil {
+					return fmt.Errorf("yq not found in PATH, please install it to use the --inplace flag")
 				}
-				cmd.Print(string(b))
 			}
+			ks, err := keysInit()
 			if err != nil {
 				cmd.PrintErrf("failed to initialize keys: %v", err)
 				return err
 			}
+
+			if !inplace {
+				if len(ks) > 0 {
+					var keyInfos []security.KeyPairInfo
+					for _, k := range ks {
+						keyInfos = append(keyInfos, security.KeyPairInfo{
+							Private:     k.PrivateFile,
+							Certificate: k.PublicFile,
+							Algorithm:   k.Algorithm,
+							KID:         k.KID,
+						})
+					}
+					b, err := yaml.Marshal(&keyInfos)
+					if err != nil {
+						cmd.PrintErrf("failed to marshal keys: %v", err)
+						return err
+					}
+					cmd.Print(string(b))
+				}
+				return nil
+			}
+
+			// Inplace update
+			for _, k := range ks {
+				keyInfo := fmt.Sprintf(`{"private": "%s", "cert": "%s", "kid": "%s", "alg": "%s"}`, k.PrivateFile, k.PublicFile, k.KID, k.Algorithm)
+				yqCmd := exec.Command("yq", "-i", fmt.Sprintf(`.server.cryptoProvider.standard.keys += [%s]`, keyInfo), "opentdf.yaml")
+				if verbose {
+					cmd.Println(yqCmd.String())
+				}
+				if output, err := yqCmd.CombinedOutput(); err != nil {
+					return fmt.Errorf("failed to update opentdf.yaml with key info (is yq installed?): %v\n%s", err, output)
+				}
+
+				keyringInfo := fmt.Sprintf(`{"kid": "%s", "alg": "%s"}`, k.KID, k.Algorithm)
+				yqCmd = exec.Command("yq", "-i", fmt.Sprintf(`.services.kas.keyring += [%s]`, keyringInfo), "opentdf.yaml")
+				if verbose {
+					cmd.Println(yqCmd.String())
+				}
+				if output, err := yqCmd.CombinedOutput(); err != nil {
+					return fmt.Errorf("failed to update opentdf.yaml with keyring info: %v\n%s", err, output)
+				}
+			}
+			cmd.Println("opentdf.yaml updated")
+
 			return nil
 		},
 	}
 	initCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "verbose logging")
 	initCmd.Flags().StringVarP(&output, "output", "o", ".", "directory to store new keys to")
+	initCmd.Flags().BoolVarP(&inplace, "inplace", "i", false, "update opentdf.yaml in-place using yq")
 	keysCmd.AddCommand(initCmd)
 
 	rootCmd.AddCommand(&keysCmd)
@@ -145,8 +190,15 @@ func getNamesFor(alg string) (string, string, string, error) {
 	return privateFile, publicFile, id, nil
 }
 
-func keysInit() ([]security.KeyPairInfo, error) {
-	var keyPairs []security.KeyPairInfo
+type NewKeyInfo struct {
+	PrivateFile string
+	PublicFile  string
+	Algorithm   string
+	KID         string
+}
+
+func keysInit() ([]NewKeyInfo, error) {
+	var keyPairs []NewKeyInfo
 	for _, kt := range []ocrypto.KeyType{ocrypto.RSA2048Key, ocrypto.EC256Key, ocrypto.MLKEM768Key} {
 		keyRSA, err := ocrypto.Generate(kt)
 		if err != nil {
@@ -161,10 +213,11 @@ func keysInit() ([]security.KeyPairInfo, error) {
 		if err := storeKeyPair(keyRSA, privateFile, publicFile); err != nil {
 			return keyPairs, err
 		}
-		keyPairs = append(keyPairs, security.KeyPairInfo{
-			Private:   privateFile,
-			Algorithm: string(kt),
-			KID:       id,
+		keyPairs = append(keyPairs, NewKeyInfo{
+			PrivateFile: privateFile,
+			PublicFile:  publicFile,
+			Algorithm:   string(kt),
+			KID:         id,
 		})
 	}
 	return keyPairs, nil

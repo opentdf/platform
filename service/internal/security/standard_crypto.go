@@ -45,11 +45,11 @@ type KeyPairInfo struct {
 	Private string `mapstructure:"private" json:"private"`
 	// Optional locator for the corresponding certificate.
 	// If not found, only public key (derivable from Private) is available.
-	Certificate string `mapstructure:"cert" json:"cert"`
+	Certificate string `mapstructure:"cert" json:"cert,omitempty"`
 	// Optional enumeration of intended usages of keypair
-	Usage string `mapstructure:"usage" json:"usage"`
+	Usage string `mapstructure:"usage" json:"usage,omitempty"`
 	// Optional long form description of key pair including purpose and life cycle information
-	Purpose string `mapstructure:"purpose" json:"purpose"`
+	Purpose string `mapstructure:"purpose" json:"purpose,omitempty"`
 }
 
 type StandardKeyInfo struct {

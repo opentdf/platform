@@ -11,4 +11,7 @@ const (
 	// Used for encryption with RSA of the KAO
 	AlgorithmRSA2048 = "rsa:2048"
 	AlgorithmRSA4096 = "rsa:4096"
+
+	// Used for encryption with ML-KEM
+	AlgorithmMLKEM768 = "mlkem:768"
 )

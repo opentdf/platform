@@ -49,6 +49,7 @@ func (f *TDFFormat) Type() string {
 
 type BenchmarkConfig struct {
 	TDFFormat          TDFFormat
+	WrapperAlg         string
 	ConcurrentRequests int
 	RequestCount       int
 	RequestsPerSecond  int
@@ -65,11 +66,14 @@ func init() {
 		RunE:  runBenchmark,
 	}
 
+	config.WrapperAlg = "rsa:2048" // Default wrapper algorithm
+
 	benchmarkCmd.Flags().IntVar(&config.ConcurrentRequests, "concurrent", 10, "Number of concurrent requests") //nolint: mnd // This is output to the help with explanation
 	benchmarkCmd.Flags().IntVar(&config.RequestCount, "count", 100, "Total number of requests")                //nolint: mnd // This is output to the help with explanation
 	benchmarkCmd.Flags().IntVar(&config.RequestsPerSecond, "rps", 50, "Requests per second limit")             //nolint: mnd // This is output to the help with explanation
 	benchmarkCmd.Flags().IntVar(&config.TimeoutSeconds, "timeout", 30, "Timeout in seconds")                   //nolint: mnd // This is output to the help with explanation
 	benchmarkCmd.Flags().Var(&config.TDFFormat, "tdf", "TDF format (tdf3 or nanotdf)")
+	benchmarkCmd.Flags().StringVar(&config.WrapperAlg, "wrapper", "Wrapper algorithm (e.g. mlkem or ec)")
 	ExamplesCmd.AddCommand(benchmarkCmd)
 }
 
@@ -127,7 +131,11 @@ func runBenchmark(cmd *cobra.Command, _ []string) error {
 		// 	}
 		// }
 	} else {
-		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...), sdk.WithAutoconfigure(false)}
+		opts := []sdk.TDFOption{
+			sdk.WithDataAttributes(dataAttributes...),
+			sdk.WithAutoconfigure(false),
+			sdk.WithWrappingKeyAlg(config.WrapperAlg),
+		}
 		if insecurePlaintextConn || strings.HasPrefix(platformEndpoint, "http://") {
 			opts = append(opts, sdk.WithKasInformation(
 				sdk.KASInfo{

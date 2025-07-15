@@ -41,7 +41,7 @@ fi
 
 mkdir -p "$opt_output"
 
-if ! go run github.com/opentdf/platform/service keys init -o="$opt_output" $( [ "$opt_verbose" == true ] && printf %s '-v' ); then
+if ! go run github.com/opentdf/platform/service keys init -i -o="$opt_output" $( [ "$opt_verbose" == true ] && printf %s '-v' ); then
     echo "[ERROR] keys init failed"
     exit 1
 fi

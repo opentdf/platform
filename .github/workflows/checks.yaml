@@ -129,10 +129,10 @@ jobs:
           chmod +x mkcert-v*-linux-amd64
           sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
       - run: |
+          cp opentdf-dev.yaml opentdf.yaml
           .github/scripts/init-temp-keys.sh
           mkcert -install
           mkcert -cert-file ./keys/platform.crt -key-file ./keys/platform-key.pem localhost
-          cp opentdf-dev.yaml opentdf.yaml
           yq eval '.server.tls.enabled = true' -i opentdf.yaml
       - name: Added Trusted Certs
         run: |
@@ -207,10 +207,10 @@ jobs:
           chmod +x mkcert-v*-linux-amd64
           sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
       - run: |
+          cp opentdf-dev.yaml opentdf.yaml
           .github/scripts/init-temp-keys.sh
           mkcert -install
           mkcert -cert-file ./keys/platform.crt -key-file ./keys/platform-key.pem localhost
-          cp opentdf-dev.yaml opentdf.yaml
           yq eval '.server.tls.enabled = true' -i opentdf.yaml
           yq eval '.trace = {"enabled":true}' -i opentdf.yaml
       - name: Added Trusted Certs

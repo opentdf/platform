@@ -281,6 +281,26 @@ jobs:
             echo "$OUTPUT";
             echo "EOO"
           } >> "$GITHUB_ENV"
+      - name: run tdf3 ec benchmark tests
+        run: |
+          OUTPUT=$(./examples/examples benchmark --wrapper=ec:secp256r1 --count=5000 --concurrent=50)
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "BENCHMARK_TDF3_EC_OUTPUT<<EOO";
+            echo "$OUTPUT";
+            echo "EOO"
+          } >> "$GITHUB_ENV"
+      - name: run tdf3 mlkem benchmark tests
+        run: |
+          OUTPUT=$(./examples/examples benchmark --wrapper=mlkem:768 --count=5000 --concurrent=50)
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "BENCHMARK_TDF3_MLKEM_OUTPUT<<EOO";
+            echo "$OUTPUT";
+            echo "EOO"
+          } >> "$GITHUB_ENV"
       - name: run nanotdf benchmark tests
         run: |
           OUTPUT=$(./examples/examples benchmark --storeCollectionHeaders=false --tdf=nanotdf --count=5000 --concurrent=50)
@@ -323,6 +343,8 @@ jobs:
             h2 "${BENCHMARK_METRICS_OUTPUT}" "Standard Benchmark Metrics"
             h2 "${BENCHMARK_BULK_OUTPUT}" "Bulk Benchmark"
             h2 "${BENCHMARK_TDF3_OUTPUT}" "TDF3 Benchmark"
+            h2 "${BENCHMARK_TDF3_EC_OUTPUT}" "TDF3 EC Benchmark"
+            h2 "${BENCHMARK_TDF3_MLKEM_OUTPUT}" "TDF3 MLKEM Benchmark"
             h2 "${BENCHMARK_NANO_OUTPUT}" "Nano Benchmark"
 
             echo EOO

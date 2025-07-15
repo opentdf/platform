@@ -96,16 +96,6 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt []byte, info string) (Pub
 	return nil, errors.New("unsupported type of public key")
 }
 
-func newECIES(pub *ecdh.PublicKey, salt []byte, info string) (ECEncryptor, error) {
-	ek, err := pub.Curve().GenerateKey(rand.Reader)
-	return ECEncryptor{pub, ek, salt, info}, err
-}
-
-func newMLKEM768(pub *mlkem.EncapsulationKey768) (PublicKeyEncryptor, error) {
-	s, c := pub.Encapsulate()
-	return &MLKEMEncryptor768{pub: pub, cipherText: c, sharedSecret: s}, nil
-}
-
 // NewAsymEncryption creates and returns a new AsymEncryption.
 // Deprecated: Use FromPublicPEM instead.
 func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
@@ -122,6 +112,16 @@ func NewAsymEncryption(publicKeyInPem string) (AsymEncryption, error) {
 	}
 
 	return AsymEncryption{}, fmt.Errorf("unsupported public key type: %T", pub)
+}
+
+func newECIES(pub *ecdh.PublicKey, salt []byte, info string) (ECEncryptor, error) {
+	ek, err := pub.Curve().GenerateKey(rand.Reader)
+	return ECEncryptor{pub, ek, salt, info}, err
+}
+
+func newMLKEM768(pub *mlkem.EncapsulationKey768) (PublicKeyEncryptor, error) {
+	s, c := pub.Encapsulate()
+	return &MLKEMEncryptor768{pub: pub, cipherText: c, sharedSecret: s}, nil
 }
 
 func getPublicPart(publicKeyInPem string) (any, error) {

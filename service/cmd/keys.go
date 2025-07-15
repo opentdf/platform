@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -15,6 +17,7 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/service/internal/security"
+	"github.com/opentdf/platform/service/trust"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +25,6 @@ var (
 	verbose bool
 	output  string
 	inplace bool
-	
 )
 
 func init() {
@@ -37,7 +39,7 @@ func init() {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if inplace {
 				if _, err := exec.LookPath("yq"); err != nil {
-					return fmt.Errorf("yq not found in PATH, please install it to use the --inplace flag")
+					return errors.New("yq not found in PATH, please install it to use the --inplace flag")
 				}
 			}
 			ks, err := keysInit()
@@ -53,8 +55,8 @@ func init() {
 						keyInfos = append(keyInfos, security.KeyPairInfo{
 							Private:     k.PrivateFile,
 							Certificate: k.PublicFile,
-							Algorithm:   k.Algorithm,
-							KID:         k.KID,
+							Algorithm:   string(k.Algorithm),
+							KID:         string(k.KID),
 						})
 					}
 					b, err := yaml.Marshal(&keyInfos)
@@ -70,21 +72,21 @@ func init() {
 			// Inplace update
 			for _, k := range ks {
 				keyInfo := fmt.Sprintf(`{"private": "%s", "cert": "%s", "kid": "%s", "alg": "%s"}`, k.PrivateFile, k.PublicFile, k.KID, k.Algorithm)
-				yqCmd := exec.Command("yq", "-i", fmt.Sprintf(`.server.cryptoProvider.standard.keys += [%s]`, keyInfo), "opentdf.yaml")
+				yqCmd := exec.Command("yq", "-i", fmt.Sprintf(`.server.cryptoProvider.standard.keys += [%s]`, keyInfo), "opentdf.yaml") //nolint:gosec //validated earlier
 				if verbose {
 					cmd.Println(yqCmd.String())
 				}
 				if output, err := yqCmd.CombinedOutput(); err != nil {
-					return fmt.Errorf("failed to update opentdf.yaml with key info (is yq installed?): %v\n%s", err, output)
+					return fmt.Errorf("failed to update opentdf.yaml with key info (is yq installed?): %w\n%s", err, output)
 				}
 
 				keyringInfo := fmt.Sprintf(`{"kid": "%s", "alg": "%s"}`, k.KID, k.Algorithm)
-				yqCmd = exec.Command("yq", "-i", fmt.Sprintf(`.services.kas.keyring += [%s]`, keyringInfo), "opentdf.yaml")
+				yqCmd = exec.Command("yq", "-i", fmt.Sprintf(`.services.kas.keyring += [%s]`, keyringInfo), "opentdf.yaml") //nolint:gosec //validated earlier
 				if verbose {
 					cmd.Println(yqCmd.String())
 				}
 				if output, err := yqCmd.CombinedOutput(); err != nil {
-					return fmt.Errorf("failed to update opentdf.yaml with keyring info: %v\n%s", err, output)
+					return fmt.Errorf("failed to update opentdf.yaml with keyring info: %w\n%s", err, output)
 				}
 			}
 			cmd.Println("opentdf.yaml updated")
@@ -155,7 +157,7 @@ func findNewID(existing map[string]bool) (string, error) {
 		if _, err := rand.Read(b); err != nil {
 			return "", err
 		}
-		id := fmt.Sprintf("%x", b)
+		id := hex.EncodeToString(b)
 		id = id[:idLength]
 		if !existing[id] {
 			return id, nil
@@ -163,7 +165,7 @@ func findNewID(existing map[string]bool) (string, error) {
 	}
 }
 
-func getNamesFor(alg string) (string, string, string, error) {
+func getNamesFor(alg string) (string, string, trust.KeyIdentifier, error) {
 	// find all existing key ids
 	files, err := os.ReadDir(output)
 	if err != nil {
@@ -173,8 +175,8 @@ func getNamesFor(alg string) (string, string, string, error) {
 	existingIDs := make(map[string]bool)
 	for _, file := range files {
 		matches := re.FindStringSubmatch(file.Name())
-		if len(matches) > 2 {
-			existingIDs[matches[2]] = true
+		if len(matches) > 2 { //nolint:mnd // found a match for the regex
+			existingIDs[matches[2]] = true // store the key id
 		}
 	}
 
@@ -183,18 +185,22 @@ func getNamesFor(alg string) (string, string, string, error) {
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to generate new id: %w", err)
 	}
+	kid, err := trust.NewKeyIdentifier(id)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to create key identifier: %w", err)
+	}
 
 	// return the new file names
 	privateFile := fmt.Sprintf("%s/kas-%s-%s-private.pem", output, alg, id)
 	publicFile := fmt.Sprintf("%s/kas-%s-%s-public.pem", output, alg, id)
-	return privateFile, publicFile, id, nil
+	return privateFile, publicFile, kid, nil
 }
 
 type NewKeyInfo struct {
 	PrivateFile string
 	PublicFile  string
-	Algorithm   string
-	KID         string
+	Algorithm   ocrypto.KeyType
+	KID         trust.KeyIdentifier
 }
 
 func keysInit() ([]NewKeyInfo, error) {
@@ -216,7 +222,7 @@ func keysInit() ([]NewKeyInfo, error) {
 		keyPairs = append(keyPairs, NewKeyInfo{
 			PrivateFile: privateFile,
 			PublicFile:  publicFile,
-			Algorithm:   string(kt),
+			Algorithm:   kt,
 			KID:         id,
 		})
 	}

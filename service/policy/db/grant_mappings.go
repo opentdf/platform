@@ -22,6 +22,8 @@ func mapAlgorithmToKasPublicKeyAlg(alg policy.Algorithm) policy.KasPublicKeyAlgE
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
 	case policy.Algorithm_ALGORITHM_EC_P521: // ALGORITHM_EC_P521 is an alias
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+	case policy.Algorithm_ALGORITHM_MLKEM_768:
+		fallthrough
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		return policy.KasPublicKeyAlgEnum_KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
 	default:

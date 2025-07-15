@@ -50,9 +50,9 @@ type MLKEMDecryptor768 struct {
 func Generate(kt KeyType) (PrivateKeyDecryptor, error) {
 	switch kt {
 	case RSA2048Key:
-		return GenerateRSA(2048)
+		return GenerateRSA(2048) //nolint:mnd // Standard RSA
 	case RSA4096Key:
-		return GenerateRSA(4096)
+		return GenerateRSA(4096) //nolint:mnd // More RSA
 	case EC256Key:
 		return GenerateEC(elliptic.P256())
 	case EC384Key:
@@ -314,7 +314,7 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 	return plaintext, nil
 }
 
-func (d *MLKEMDecryptor768) Decrypt(data []byte) ([]byte, error) {
+func (d *MLKEMDecryptor768) Decrypt(_ []byte) ([]byte, error) {
 	return nil, errors.New("decapsulation key requires ciphertext (ephemeral key) to decrypt")
 }
 

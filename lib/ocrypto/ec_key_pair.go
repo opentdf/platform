@@ -65,6 +65,8 @@ func NewKeyPair(kt KeyType) (KeyPair, error) {
 			return nil, err
 		}
 		return NewECKeyPair(mode)
+	case MLKEM768Key:
+		fallthrough
 	default:
 		return nil, fmt.Errorf("unsupported key type: %v", kt)
 	}

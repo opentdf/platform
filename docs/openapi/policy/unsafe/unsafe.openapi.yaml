@@ -388,7 +388,6 @@ components:
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
         - ALGORITHM_MLKEM_768
-        - ALGORITHM_MLKEM_1024
       description: Supported key algorithms.
     policy.AttributeRuleTypeEnum:
       type: string

@@ -534,6 +534,7 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+        - ALGORITHM_MLKEM_768
       description: Supported key algorithms.
     policy.KasPublicKeyAlgEnum:
       type: string
@@ -1144,7 +1145,7 @@ components:
             Required The algorithm to be used for the key
             The key_algorithm must be one of the defined values.:
             ```
-            this in [1, 2, 3, 4, 5]
+            this in [1, 2, 3, 4, 5, 20]
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'

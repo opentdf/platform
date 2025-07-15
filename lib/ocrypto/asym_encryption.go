@@ -180,7 +180,7 @@ func (e ECEncryptor) EphemeralKey() []byte {
 }
 
 func (e *MLKEMEncryptor768) EphemeralKey() []byte {
-	return e.pub.Bytes()
+	return e.cipherText
 }
 
 func (e AsymEncryption) Metadata() (map[string]string, error) {
@@ -306,7 +306,7 @@ func (e ECEncryptor) PublicKeyInPemFormat() (string, error) {
 // PublicKeyInPemFormat Returns public key in pem format.
 func (e *MLKEMEncryptor768) PublicKeyInPemFormat() (string, error) {
 	return string(pem.EncodeToMemory(&pem.Block{
-		Type:  "MLKEM SHARED SECRET",
-		Bytes: e.sharedSecret,
+		Type:  "MLKEM PUBLIC KEY",
+		Bytes: e.pub.Bytes(),
 	})), nil
 }

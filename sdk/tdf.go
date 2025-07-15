@@ -631,25 +631,39 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 		SchemaVersion:     keyAccessSchemaVersion,
 	}
 
-	ktype := ocrypto.KeyType(kasInfo.Algorithm)
-	if ocrypto.IsECKeyType(ktype) {
-		mode, err := ocrypto.ECKeyTypeToMode(ktype)
+	switch ktype := ocrypto.KeyType(kasInfo.Algorithm); {
+	case ocrypto.IsECKeyType(ktype):
+		{
+			mode, err := ocrypto.ECKeyTypeToMode(ktype)
+			if err != nil {
+				return KeyAccess{}, err
+			}
+			wrappedKeyInfo, err := generateWrapKeyWithEC(mode, kasInfo.PublicKey, symKey)
+			if err != nil {
+				return KeyAccess{}, err
+			}
+			keyAccess.KeyType = kECWrapped
+			keyAccess.WrappedKey = wrappedKeyInfo.wrappedKey
+			keyAccess.EphemeralPublicKey = wrappedKeyInfo.publicKey
+		}
+	case ocrypto.IsMLKEMKeyType(ktype):
+		wrappedInfo, err := genereateWrapKeyWithMLKEM(kasInfo.PublicKey, symKey)
 		if err != nil {
 			return KeyAccess{}, err
 		}
-		wrappedKeyInfo, err := generateWrapKeyWithEC(mode, kasInfo.PublicKey, symKey)
-		if err != nil {
-			return KeyAccess{}, err
+		keyAccess.KeyType = string(ocrypto.MLKEM)
+		keyAccess.WrappedKey = wrappedInfo.wrappedKey
+		keyAccess.EphemeralPublicKey = wrappedInfo.cipherText
+
+	case ocrypto.IsRSAKeyType(ktype):
+	default:
+		{
+			wrappedKey, err := generateWrapKeyWithRSA(kasInfo.PublicKey, symKey)
+			if err != nil {
+				return KeyAccess{}, err
+			}
+			keyAccess.WrappedKey = wrappedKey
 		}
-		keyAccess.KeyType = kECWrapped
-		keyAccess.WrappedKey = wrappedKeyInfo.wrappedKey
-		keyAccess.EphemeralPublicKey = wrappedKeyInfo.publicKey
-	} else {
-		wrappedKey, err := generateWrapKeyWithRSA(kasInfo.PublicKey, symKey)
-		if err != nil {
-			return KeyAccess{}, err
-		}
-		keyAccess.WrappedKey = wrappedKey
 	}
 
 	return keyAccess, nil
@@ -660,6 +674,44 @@ func tdfSalt() []byte {
 	digest.Write([]byte("TDF"))
 	salt := digest.Sum(nil)
 	return salt
+}
+
+type mlkemWrappedKeyInfo struct {
+	cipherText string // This is so KAS can derive the shared secret s'
+	wrappedKey string
+}
+
+func genereateWrapKeyWithMLKEM(pubPem string, symKey []byte) (mlkemWrappedKeyInfo, error) {
+	encryptor, err := ocrypto.FromPublicPEM(pubPem)
+	if err != nil {
+		return mlkemWrappedKeyInfo{}, fmt.Errorf("ocrypto.NewAsymEncryption failed:%w", err)
+	}
+
+	var mlKemEncryptor *ocrypto.MLKEMEncryptor768
+	var ok bool
+	if mlKemEncryptor, ok = encryptor.(*ocrypto.MLKEMEncryptor768); !ok {
+		return mlkemWrappedKeyInfo{}, fmt.Errorf("encryptor is not of type MLKEMEncryptor768")
+	}
+
+	wrappedKey, err := mlKemEncryptor.Encrypt(symKey)
+	if err != nil {
+		return mlkemWrappedKeyInfo{}, fmt.Errorf("mlkem encryption failed:%w", err)
+	}
+
+	metadataMap, err := mlKemEncryptor.Metadata()
+	if err != nil {
+		return mlkemWrappedKeyInfo{}, fmt.Errorf("error retrieving metadata for mlkem key")
+	}
+
+	cipherText, ok := metadataMap["encapsulatedKey"]
+	if !ok {
+		return mlkemWrappedKeyInfo{}, fmt.Errorf("encapsulatedKey not found in metadata")
+	}
+
+	return mlkemWrappedKeyInfo{
+		cipherText: cipherText,
+		wrappedKey: string(ocrypto.Base64Encode(wrappedKey)),
+	}, nil
 }
 
 func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []byte) (ecKeyWrappedKeyInfo, error) {

@@ -254,7 +254,7 @@ func runBenchmark(cmd *cobra.Command, _ []string) error {
 	if format == "" {
 		format = TDF3
 	}
-	fmt.Printf("## %s Benchmark Results:\n", strings.ToUpper(format.String()))
+	fmt.Printf("## %s (%s) Benchmark Results:\n", strings.ToUpper(format.String()), config.WrapperAlg)
 	fmt.Printf("| Metric                | Value                     |\n")
 	fmt.Printf("|-----------------------|---------------------------|\n")
 	fmt.Printf("| Total Requests        | %d                        |\n", config.RequestCount)

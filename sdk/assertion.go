@@ -1,12 +1,20 @@
 package sdk
 
+// ============================================
+// QUANTUM-SAFE ADDITION - Hackathon 2025
+// Adds ML-DSA (FIPS-204) support for quantum-resistant assertions
+// Original RSA/HS256 functionality preserved
+// ============================================
+
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"runtime"
 	"time"
 
+	"github.com/cloudflare/circl/sign/mldsa/mldsa44"
 	"github.com/gowebpki/jcs"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -44,6 +52,57 @@ var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with 
 // It returns an error if the signing fails.
 // The assertion binding is updated with the method and the signature.
 func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
+	if key.Alg == AssertionKeyAlgMLDSA44 {
+		mldsaKey, ok := key.Key.(*mldsa44.PrivateKey)
+		if !ok {
+			return errors.New("invalid ML-DSA-44 private key")
+		}
+
+		// Create a structured message containing hash and sig
+		message := struct {
+			Hash      string `json:"hash"`
+			Signature string `json:"sig"`
+		}{
+			Hash:      hash,
+			Signature: sig,
+		}
+
+		// Marshal to JSON for consistent format
+		messageBytes, err := json.Marshal(message)
+		if err != nil {
+			return fmt.Errorf("failed to marshal message: %w", err)
+		}
+
+		// Sign with ML-DSA-44
+		signature := make([]byte, mldsa44.SignatureSize)
+		err = mldsa44.SignTo(mldsaKey, messageBytes, nil, true, signature)
+		if err != nil {
+			return fmt.Errorf("ML-DSA-44 signing failed: %w", err)
+		}
+
+		// Store both message and signature
+		// Using a custom format since JWT doesn't support ML-DSA
+		bindingData := struct {
+			Algorithm string `json:"alg"`
+			Message   string `json:"msg"`
+			Signature string `json:"sig"`
+		}{
+			Algorithm: "MLDSA44",
+			Message:   base64.StdEncoding.EncodeToString(messageBytes),
+			Signature: base64.StdEncoding.EncodeToString(signature),
+		}
+
+		bindingJSON, err := json.Marshal(bindingData)
+		if err != nil {
+			return fmt.Errorf("failed to marshal binding: %w", err)
+		}
+
+		a.Binding.Method = JWS.String() // Or create a new method type
+		a.Binding.Signature = base64.StdEncoding.EncodeToString(bindingJSON)
+
+		return nil
+	}
+
 	tok := jwt.New()
 	if err := tok.Set(kAssertionHash, hash); err != nil {
 		return fmt.Errorf("failed to set assertion hash: %w", err)
@@ -68,6 +127,62 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 // Verify checks the binding signature of the assertion and
 // returns the hash and the signature. It returns an error if the verification fails.
 func (a Assertion) Verify(key AssertionKey) (string, string, error) {
+
+	if key.Alg == AssertionKeyAlgMLDSA44 {
+		mldsaKey, ok := key.Key.(*mldsa44.PublicKey)
+		if !ok {
+			return "", "", errors.New("invalid ML-DSA-44 public key")
+		}
+
+		// Decode the binding
+		bindingJSON, err := base64.StdEncoding.DecodeString(a.Binding.Signature)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to decode binding: %w", err)
+		}
+
+		var bindingData struct {
+			Algorithm string `json:"alg"`
+			Message   string `json:"msg"`
+			Signature string `json:"sig"`
+		}
+
+		if err := json.Unmarshal(bindingJSON, &bindingData); err != nil {
+			return "", "", fmt.Errorf("failed to unmarshal binding: %w", err)
+		}
+
+		if bindingData.Algorithm != "MLDSA44" {
+			return "", "", fmt.Errorf("unexpected algorithm: %s", bindingData.Algorithm)
+		}
+
+		// Decode message and signature
+		messageBytes, err := base64.StdEncoding.DecodeString(bindingData.Message)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to decode message: %w", err)
+		}
+
+		signature, err := base64.StdEncoding.DecodeString(bindingData.Signature)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to decode signature: %w", err)
+		}
+
+		// Verify with ML-DSA-44
+		if !mldsa44.Verify(mldsaKey, messageBytes, nil, signature) {
+			return "", "", errAssertionVerifyKeyFailure
+		}
+
+		// Extract hash and sig from the verified message
+		var message struct {
+			Hash      string `json:"hash"`
+			Signature string `json:"sig"`
+		}
+
+		if err := json.Unmarshal(messageBytes, &message); err != nil {
+			return "", "", fmt.Errorf("failed to unmarshal message: %w", err)
+		}
+
+		return message.Hash, message.Signature, nil
+	}
+
 	tok, err := jwt.Parse([]byte(a.Binding.Signature),
 		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
 	)
@@ -241,6 +356,9 @@ type AssertionKeyAlg string
 const (
 	AssertionKeyAlgRS256 AssertionKeyAlg = "RS256"
 	AssertionKeyAlgHS256 AssertionKeyAlg = "HS256"
+
+	//ML-DSA algorithms
+	AssertionKeyAlgMLDSA44 AssertionKeyAlg = "ML-DSA-44"
 )
 
 // String returns the string representation of the algorithm.
@@ -330,4 +448,38 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 			Value:  string(metadataJSON),
 		},
 	}, nil
+}
+
+// GenerateMLDSAKeyPair generates a new ML-DSA-44 key pair for quantum-resistant assertions.
+func GenerateMLDSAKeyPair() (AssertionKey, error) {
+	_, privateKey, err := mldsa44.GenerateKey(nil)
+	if err != nil {
+		return AssertionKey{}, fmt.Errorf("failed to generate ML-DSA-44 key pair: %w", err)
+	}
+
+	return AssertionKey{
+		Alg: AssertionKeyAlgMLDSA44,
+		Key: privateKey,
+	}, nil
+}
+
+// GetQuantumSafeSystemMetadataAssertionConfig returns a system metadata assertion configuration
+// that uses quantum-resistant ML-DSA-44 signatures.
+func GetQuantumSafeSystemMetadataAssertionConfig() (AssertionConfig, error) {
+	// Get the base system metadata config
+	config, err := GetSystemMetadataAssertionConfig()
+	if err != nil {
+		return AssertionConfig{}, err
+	}
+
+	// Generate ML-DSA-44 key pair for signing
+	signingKey, err := GenerateMLDSAKeyPair()
+	if err != nil {
+		return AssertionConfig{}, fmt.Errorf("failed to generate quantum-safe signing key: %w", err)
+	}
+
+	// Update the config to use the quantum-safe signing key
+	config.SigningKey = signingKey
+
+	return config, nil
 }

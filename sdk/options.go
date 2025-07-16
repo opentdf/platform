@@ -43,6 +43,7 @@ type config struct {
 	entityResolutionConn               *ConnectRPCConnection
 	collectionStore                    *collectionStore
 	shouldValidatePlatformConnectivity bool
+	useQuantumAssertions               bool // Indicates if quantum-resistant assertions should be used
 }
 
 // Options specific to TDF protocol features
@@ -228,5 +229,12 @@ func WithExtraClientOptions(opts ...connect.ClientOption) Option {
 func WithNoKIDInNano() Option {
 	return func(c *config) {
 		c.nanoFeatures.noKID = true
+	}
+}
+
+func WithQuantumResistantAssertions() TDFOption {
+	return func(c *TDFConfig) error {
+		c.useQuantumAssertions = true
+		return nil
 	}
 }

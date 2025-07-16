@@ -1,0 +1,109 @@
+2025/07/15 11:17:37 INFO trying to resolve absolute path path=/Users/queenie.sun/.opentdf
+2025/07/15 11:17:37 INFO adding path to search paths path=/Users/queenie.sun/.opentdf
+2025/07/15 11:17:37 INFO trying to resolve absolute path path=.opentdf
+2025/07/15 11:17:37 INFO adding path to search paths path=/Users/queenie.sun/Documents/GitHub/platform/.opentdf
+2025/07/15 11:17:37 INFO trying to resolve absolute path path=.
+2025/07/15 11:17:37 INFO adding path to search paths path=/Users/queenie.sun/Documents/GitHub/platform
+2025/07/15 11:17:37 INFO attempting to read in config file
+2025/07/15 11:17:37 INFO searching for config in paths paths="[/Users/queenie.sun/.opentdf /Users/queenie.sun/Documents/GitHub/platform/.opentdf /Users/queenie.sun/Documents/GitHub/platform]"
+time=2025-07-15T11:17:37.257-04:00 level=DEBUG msg="configuring otel tracer"
+time=2025-07-15T11:17:37.257-04:00 level=INFO msg="tracing disabled."
+time=2025-07-15T11:17:37.257-04:00 level=DEBUG msg="config loaded" config.dev_mode=false config.db.host=localhost config.db.port=5432 config.db.database=opentdf config.db.user=postgres config.db.password=[REDACTED] config.db.sslmode=prefer config.db.schema=opentdf config.db.connect_timeout_seconds=15 config.db.pool.max_connection_count=4 config.db.pool.min_connection_count=0 config.db.pool.max_connection_lifetime_seconds=3600 config.db.pool.max_connection_idle_seconds=1800 config.db.pool.health_check_period_seconds=60 config.db.runMigrations=true config.db.verifyConnection=true config.logger="{Level:debug Output:stdout Type:text}" config.mode=[all] config.sdk_config.core.endpoint="" config.sdk_config.core.plaintext=false config.sdk_config.core.insecure=false config.sdk_config.entityresolution.endpoint="" config.sdk_config.entityresolution.plaintext=false config.sdk_config.entityresolution.insecure=false config.sdk_config.client_id="" config.sdk_config.client_secret=[REDACTED] config.server.auth="{Enabled:true PublicRoutes:[] IPCReauthRoutes:[] AuthNConfig:{EnforceDPoP:false Issuer:http://localhost:8888/auth/realms/opentdf Audience:http://localhost:8080 Policy:{Builtin: UserNameClaim:preferred_username GroupsClaim:realm_access.roles RoleClaim:realm_access.roles RoleMap:map[] Csv: Extension:g, opentdf-admin, role:admin\ng, opentdf-standard, role:standard\n Model: Adapter:<nil>} CacheRefresh:15m DPoPSkew:1h0m0s TokenSkew:1m0s}}" config.server.grpc="{ReflectionEnabled:true MaxCallRecvMsgSizeBytes:4194304 MaxCallSendMsgSizeBytes:4194304}" config.server.tls="{Enabled:false Cert:./keys/platform.crt Key:./keys/platform-key.pem}" config.server.cors="{Enabled:true AllowedOrigins:[*] AllowedMethods:[GET POST PATCH PUT DELETE OPTIONS] AllowedHeaders:[ACCEPT Authorization Connect-Protocol-Version Content-Type X-CSRF-Token X-Request-ID] ExposedHeaders:[Link] AllowCredentials:true MaxAge:3600 Debug:false}" config.server.port=8080 config.server.host="" config.server.enablePprof=false config.server.cryptoProvider="{Type:standard StandardConfig:{Keys:[{Algorithm:rsa:2048 KID:r1 Private:kas-private.pem Certificate:kas-cert.pem Usage: Purpose:} {Algorithm:ec:secp256r1 KID:e1 Private:kas-ec-private.pem Certificate:kas-ec-cert.pem Usage: Purpose:}] RSAKeys:map[] ECKeys:map[]}}"
+time=2025-07-15T11:17:37.257-04:00 level=INFO msg="creating cache manager"
+time=2025-07-15T11:17:37.258-04:00 level=INFO msg="starting opentdf services"
+time=2025-07-15T11:17:37.258-04:00 level=DEBUG msg="initializing opentdf server"
+time=2025-07-15T11:17:37.258-04:00 level=WARN msg="config Auth.EnforceDPoP is false. DPoP will not be enforced."
+time=2025-07-15T11:17:37.258-04:00 level=DEBUG msg="discovering openid configuration" issuer=http://localhost:8888/auth/realms/opentdf
+time=2025-07-15T11:17:37.263-04:00 level=INFO msg="initializing casbin enforcer"
+time=2025-07-15T11:17:37.263-04:00 level=DEBUG msg="creating casbin enforcer" config="{PolicyConfig:{Builtin: UserNameClaim:preferred_username GroupsClaim:realm_access.roles RoleClaim:realm_access.roles RoleMap:map[] Csv:## Roles (prefixed with role:)\n# admin - admin\n# standard - standard\n# unknown - unknown role or no role\n\n## Resources\n# Resources beginning with / are HTTP routes. Generally, this does not matter, but when HTTP routes don't map well\n# with the protos this may become important.\n\n## Actions\n# read - read the resource\n# write - write to the resource\n# delete - delete the resource\n# unsafe - unsafe actions\n\n# Role: Admin\n## gRPC and HTTP routes\np,\trole:admin,\t\t*,\t\t\t\t\t*,\t\t\tallow\n\n## Role: Standard\n## gRPC routes\np,\trole:standard,\t\tpolicy.*,\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tread,\t\t\tallow\np,\trole:standard,\t\tkasregistry.*,\t\t\t\t\t\t\t\t\t\t\t\t\tread,\t\t\tallow\np,\trole:standard,      kas.AccessService/Rewrap, \t\t\t           *,\t\t\tallow\np,  role:standard,      authorization.AuthorizationService/GetDecisions,        read, allow\np,  role:standard,      authorization.AuthorizationService/GetDecisionsByToken, read, allow\np,  role:standard,      authorization.v2.AuthorizationService/GetDecision, read, allow\np,  role:standard,      authorization.v2.AuthorizationService/GetDecisionMultiResource, read, allow\np,  role:standard,      authorization.v2.AuthorizationService/GetDecisionBulk, read, allow\n\n## HTTP routes\np,\trole:standard,\t\t/attributes*,\t\t\t\t\t\t\t\t\t\t\t\t\t\tread,\t\t\tallow\np,\trole:standard,\t\t/namespaces*,\t\t\t\t\t\t\t\t\t\t\t\t\t\tread,\t\t\tallow\np,\trole:standard,\t\t/subject-mappings*,\t\t\t\t\t\t\t\t\t\t\tread,\t\t\tallow\np,\trole:standard,\t\t/resource-mappings*,\t\t\t\t\t\t\t\t\t\tread,\t\t\tallow\np,\trole:standard,\t\t/key-access-servers*,\t\t\t\t\t\t\t\t\t\tread,\t\t\tallow\np,\trole:standard,\t\t/kas/v2/rewrap,\t\t\t\t\t\t\t\t\t\t\t\t\twrite,\t\tallow\np,  role:standard,      /v1/authorization,                                                              write,          allow\np,  role:standard,      /v1/token/authorization,                                                        write,          allow\n\n# Public routes\n## gRPC routes\n## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)\np,\trole:unknown,     kas.AccessService/Rewrap, \t\t\t                                  *,\t  allow\n## HTTP routes\n## for ERS, right now we don't care about requester role, just that a valid jwt is provided when the OPA engine calls (enforced in the ERS itself, not casbin)\np,\trole:unknown,\t\t  /kas/v2/rewrap,\t\t\t\t\t\t\t\t\t\t\t\t\t  *,\t\tallow\ng, opentdf-admin, role:admin\ng, opentdf-standard, role:standard\n Extension:g, opentdf-admin, role:admin\ng, opentdf-standard, role:standard\n Model:[request_definition]\nr = sub,\tres,\tact\n\n[policy_definition]\np = sub,\tres,\tact,\teft\n\n[role_definition]\ng = _,\t_\n\n[policy_effect]\ne = some(where (p.eft == allow)) && !some(where (p.eft == deny))\n\n[matchers]\nm = g(r.sub,\tp.sub) && keyMatch(r.res,\tp.res) && keyMatch(r.act,\tp.act) Adapter:0x1400044e320}}" isDefaultModel=true isBuiltinPolicy=true isPolicyExtended=true isDefaultAdapter=true
+time=2025-07-15T11:17:37.266-04:00 level=DEBUG msg="authentication interceptor enabled"
+time=2025-07-15T11:17:37.269-04:00 level=INFO msg="creating crypto provider" type=standard
+time=2025-07-15T11:17:37.269-04:00 level=INFO msg="crypto cfg loading" id=r1 alg=rsa:2048
+time=2025-07-15T11:17:37.269-04:00 level=INFO msg="crypto cfg loading" id=e1 alg=ec:secp256r1
+time=2025-07-15T11:17:37.269-04:00 level=DEBUG msg="initializing service registry"
+time=2025-07-15T11:17:37.270-04:00 level=DEBUG msg="registering essential services"
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=health service=grpc.health.v1.Health
+time=2025-07-15T11:17:37.270-04:00 level=DEBUG msg="registering services"
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=authorization service=authorization.AuthorizationService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=authorization service=authorization.v2.AuthorizationService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=kas service=kas.AccessService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=wellknown service=wellknownconfiguration.WellKnownService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=entityresolution service=entityresolution.EntityResolutionService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=entityresolution service=entityresolution.v2.EntityResolutionService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=policy service=policy.attributes.AttributesService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=policy service=policy.namespaces.NamespaceService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=policy service=policy.resourcemapping.ResourceMappingService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=policy service=policy.subjectmapping.SubjectMappingService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=policy service=policy.kasregistry.KeyAccessServerRegistryService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=policy service=policy.unsafe.UnsafeService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=policy service=policy.actions.ActionService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=policy service=policy.registeredresources.RegisteredResourcesService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered service" namespace=policy service=policy.keymanagement.KeyManagementService
+time=2025-07-15T11:17:37.270-04:00 level=INFO msg="registered the following core services" core_services="[policy authorization kas wellknown entityresolution]"
+time=2025-07-15T11:17:37.493-04:00 level=INFO msg="starting services"
+time=2025-07-15T11:17:37.493-04:00 level=INFO msg="service did not register extra http handlers" namespace=wellknown
+time=2025-07-15T11:17:37.493-04:00 level=INFO msg="service running" namespace=wellknown service=wellknownconfiguration.WellKnownService database.required=false database.migrationStatus="service does not require a database"
+time=2025-07-15T11:17:37.493-04:00 level=DEBUG msg="configuring logger"
+time=2025-07-15T11:17:37.493-04:00 level=INFO msg="service did not register extra http handlers" namespace=entityresolution
+time=2025-07-15T11:17:37.493-04:00 level=INFO msg="service running" namespace=entityresolution service=entityresolution.EntityResolutionService database.required=false database.migrationStatus="service does not require a database"
+time=2025-07-15T11:17:37.493-04:00 level=INFO msg="service did not register a grpc gateway handler" namespace=entityresolution
+time=2025-07-15T11:17:37.493-04:00 level=INFO msg="service did not register extra http handlers" namespace=entityresolution
+time=2025-07-15T11:17:37.493-04:00 level=INFO msg="service running" namespace=entityresolution service=entityresolution.v2.EntityResolutionService database.required=false database.migrationStatus="service does not require a database"
+time=2025-07-15T11:17:37.493-04:00 level=DEBUG msg="creating database client" namespace=policy
+time=2025-07-15T11:17:37.497-04:00 level=INFO msg="opening new database pool" schema=opentdf_policy
+time=2025-07-15T11:17:37.507-04:00 level=DEBUG msg="successfully set database client search_path" schema=opentdf_policy
+time=2025-07-15T11:17:37.507-04:00 level=INFO msg="running migration up" schema=opentdf_policy database=opentdf
+time=2025-07-15T11:17:37.508-04:00 level=INFO msg="database notice" schema=opentdf_policy message="schema \"opentdf_policy\" already exists, skipping"
+time=2025-07-15T11:17:37.514-04:00 level=INFO msg="migration db info" current_version=20250609000000
+time=2025-07-15T11:17:37.515-04:00 level=INFO msg="migration up complete" post_op_version=20250609000000
+time=2025-07-15T11:17:37.515-04:00 level=INFO msg="database migrations complete" namespace=policy applied=0
+time=2025-07-15T11:17:37.515-04:00 level=DEBUG msg="policy config" config="&{ListRequestLimitDefault:1000 ListRequestLimitMax:2500}"
+time=2025-07-15T11:17:37.516-04:00 level=INFO msg="service did not register extra http handlers" namespace=policy
+time=2025-07-15T11:17:37.516-04:00 level=INFO msg="service running" namespace=policy service=policy.attributes.AttributesService database.required=true database.migrationStatus="required migrations already ran"
+time=2025-07-15T11:17:37.516-04:00 level=DEBUG msg="policy config" config="&{ListRequestLimitDefault:1000 ListRequestLimitMax:2500}"
+time=2025-07-15T11:17:37.516-04:00 level=INFO msg="service did not register a grpc gateway handler" namespace=policy
+time=2025-07-15T11:17:37.516-04:00 level=INFO msg="service did not register extra http handlers" namespace=policy
+time=2025-07-15T11:17:37.516-04:00 level=INFO msg="service running" namespace=policy service=policy.namespaces.NamespaceService database.required=true database.migrationStatus="required migrations already ran"
+time=2025-07-15T11:17:37.516-04:00 level=DEBUG msg="policy config" config="&{ListRequestLimitDefault:1000 ListRequestLimitMax:2500}"
+time=2025-07-15T11:17:37.516-04:00 level=INFO msg="service did not register a grpc gateway handler" namespace=policy
+time=2025-07-15T11:17:37.516-04:00 level=INFO msg="service did not register extra http handlers" namespace=policy
+time=2025-07-15T11:17:37.516-04:00 level=INFO msg="service running" namespace=policy service=policy.resourcemapping.ResourceMappingService database.required=true database.migrationStatus="required migrations already ran"
+time=2025-07-15T11:17:37.516-04:00 level=DEBUG msg="policy config" config="&{ListRequestLimitDefault:1000 ListRequestLimitMax:2500}"
+time=2025-07-15T11:17:37.516-04:00 level=INFO msg="service did not register a grpc gateway handler" namespace=policy
+time=2025-07-15T11:17:37.516-04:00 level=INFO msg="service did not register extra http handlers" namespace=policy
+time=2025-07-15T11:17:37.516-04:00 level=INFO msg="service running" namespace=policy service=policy.subjectmapping.SubjectMappingService database.required=true database.migrationStatus="required migrations already ran"
+time=2025-07-15T11:17:37.516-04:00 level=DEBUG msg="policy config" config="&{ListRequestLimitDefault:1000 ListRequestLimitMax:2500}"
+time=2025-07-15T11:17:37.519-04:00 level=ERROR msg="encountered database error" error=": err: no rows in result set (SQLSTATE 20000)"
+time=2025-07-15T11:17:37.520-04:00 level=INFO msg="service did not register extra http handlers" namespace=policy
+time=2025-07-15T11:17:37.520-04:00 level=INFO msg="service running" namespace=policy service=policy.kasregistry.KeyAccessServerRegistryService database.required=true database.migrationStatus="required migrations already ran"
+time=2025-07-15T11:17:37.520-04:00 level=DEBUG msg="policy config" config="&{ListRequestLimitDefault:1000 ListRequestLimitMax:2500}"
+time=2025-07-15T11:17:37.520-04:00 level=INFO msg="service did not register a grpc gateway handler" namespace=policy
+time=2025-07-15T11:17:37.520-04:00 level=INFO msg="service did not register extra http handlers" namespace=policy
+time=2025-07-15T11:17:37.520-04:00 level=INFO msg="service running" namespace=policy service=policy.unsafe.UnsafeService database.required=true database.migrationStatus="required migrations already ran"
+time=2025-07-15T11:17:37.520-04:00 level=DEBUG msg="policy config" config="&{ListRequestLimitDefault:1000 ListRequestLimitMax:2500}"
+time=2025-07-15T11:17:37.520-04:00 level=INFO msg="service did not register a grpc gateway handler" namespace=policy
+time=2025-07-15T11:17:37.520-04:00 level=INFO msg="service did not register extra http handlers" namespace=policy
+time=2025-07-15T11:17:37.520-04:00 level=INFO msg="service running" namespace=policy service=policy.actions.ActionService database.required=true database.migrationStatus="required migrations already ran"
+time=2025-07-15T11:17:37.520-04:00 level=DEBUG msg="policy config" config="&{ListRequestLimitDefault:1000 ListRequestLimitMax:2500}"
+time=2025-07-15T11:17:37.521-04:00 level=INFO msg="service did not register a grpc gateway handler" namespace=policy
+time=2025-07-15T11:17:37.521-04:00 level=INFO msg="service did not register extra http handlers" namespace=policy
+time=2025-07-15T11:17:37.521-04:00 level=INFO msg="service running" namespace=policy service=policy.registeredresources.RegisteredResourcesService database.required=true database.migrationStatus="required migrations already ran"
+time=2025-07-15T11:17:37.521-04:00 level=DEBUG msg="policy config" config="&{ListRequestLimitDefault:1000 ListRequestLimitMax:2500}"
+time=2025-07-15T11:17:37.521-04:00 level=INFO msg="service did not register a grpc gateway handler" namespace=policy
+time=2025-07-15T11:17:37.521-04:00 level=INFO msg="service did not register extra http handlers" namespace=policy
+time=2025-07-15T11:17:37.521-04:00 level=INFO msg="service running" namespace=policy service=policy.keymanagement.KeyManagementService database.required=true database.migrationStatus="required migrations already ran"
+time=2025-07-15T11:17:37.521-04:00 level=INFO msg="service did not register a grpc gateway handler" namespace=health
+time=2025-07-15T11:17:37.521-04:00 level=INFO msg="service running" namespace=health service=grpc.health.v1.Health database.required=false database.migrationStatus="service does not require a database"
+time=2025-07-15T11:17:37.521-04:00 level=DEBUG msg="authorization service config" namespace=authorization
+time=2025-07-15T11:17:37.521-04:00 level=INFO msg="service did not register extra http handlers" namespace=authorization
+time=2025-07-15T11:17:37.521-04:00 level=INFO msg="service running" namespace=authorization service=authorization.AuthorizationService database.required=false database.migrationStatus="service does not require a database"
+time=2025-07-15T11:17:37.521-04:00 level=DEBUG msg="authorization service config" namespace=authorization version=v2 config.entitlement_policy_cache.enabled=false config.entitlement_policy_cache.refresh_interval=30s
+time=2025-07-15T11:17:37.521-04:00 level=DEBUG msg="entitlement policy cache is disabled" namespace=authorization version=v2
+time=2025-07-15T11:17:37.521-04:00 level=INFO msg="service did not register a grpc gateway handler" namespace=authorization
+time=2025-07-15T11:17:37.521-04:00 level=INFO msg="service did not register extra http handlers" namespace=authorization
+time=2025-07-15T11:17:37.521-04:00 level=INFO msg="service running" namespace=authorization service=authorization.v2.AuthorizationService database.required=false database.migrationStatus="service does not require a database"
+time=2025-07-15T11:17:37.522-04:00 level=DEBUG msg="kas config" namespace=kas config="{Keyring:[{Algorithm:ec:secp256r1 KID:e1 Legacy:false} {Algorithm:ec:secp256r1 KID:e1 Legacy:true} {Algorithm:rsa:2048 KID:r1 Legacy:false} {Algorithm:rsa:2048 KID:r1 Legacy:true}] ECCertID: RSACertID: RootKey:a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1 KeyCacheExpiration:0s ECTDFEnabled:false Preview:{ECTDFEnabled:false KeyManagement:false}}"
+time=2025-07-15T11:17:37.522-04:00 level=INFO msg="service did not register extra http handlers" namespace=kas
+time=2025-07-15T11:17:37.522-04:00 level=INFO msg="service running" namespace=kas service=kas.AccessService database.required=false database.migrationStatus="service does not require a database"
+time=2025-07-15T11:17:37.523-04:00 level=INFO msg="starting opentdf"
+time=2025-07-15T11:17:37.523-04:00 level=INFO msg="starting http server" address=:8080

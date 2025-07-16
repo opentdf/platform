@@ -17,7 +17,7 @@ func TestAsymEncryptionAndDecryption(t *testing.T) {
 		privateKey string
 		publicKey  string
 		salt       []byte
-		info       []byte
+		info       string
 	}{
 		{
 			"Test 2048 key",
@@ -59,7 +59,7 @@ hVJ0rIiNE8dDWzQCRBfivLemXhX8UFICyoS5i0IwenFvTr6T85EvMxK3aSAlGya3
 3wIDAQAB
 -----END PUBLIC KEY-----`,
 			salty("L1L"),
-			nil,
+			"",
 		},
 		{
 			"Test 3072 key",
@@ -115,7 +115,7 @@ KdheIKdUG+Ouv+vMTeAYOw9+5OGainDWFJA3LZHid3qbX85Y0as9n1nSKoYXMMQT
 pCVg892PjJwMcTWhIKJgX+9QEL2bSb2VY3yEpEa2b2LhAgMBAAE=
 -----END PUBLIC KEY-----`,
 			salty("L1L"),
-			nil,
+			"",
 		},
 		{
 			"Test 4096 key",
@@ -186,7 +186,7 @@ EfNOjyrEL5+gjYgiQzVVbYkRhr2ZNeNvzdQsM8j+I20ObCNY1RFCmp9//8xNbi1k
 ufgiB73q6Fnh5QHf1HNAeMUCAwEAAQ==
 -----END PUBLIC KEY-----`,
 			salty("TDF"),
-			nil,
+			"",
 		},
 		{
 			"Test certificate RSA 2048",
@@ -235,7 +235,7 @@ I099IoRfC5djHUYYLMU/VkOIHuPC3sb7J65pSN26eR8bTMVNagk187V/xNwUuvkf
 wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 -----END CERTIFICATE-----`,
 			salty("L1L"),
-			nil,
+			"",
 		},
 		{
 			"Test certificate EC 256",
@@ -255,7 +255,7 @@ CgYIKoZIzj0EAwIDSAAwRQIgUzKsJS6Pcu2aZ6BFfuqob552Ebdel4uFGZMqWrwW
 bW0CIQDT5QED+8mHFot9JXSx2q1c5mnRvl4yElK0fiHeatBdqw==
 -----END CERTIFICATE-----`,
 			salty("L1L"),
-			nil,
+			"",
 		},
 		{
 			"Test certificate EC 384",
@@ -277,7 +277,7 @@ AjBiKYC4jwue3pSHeyWsDR3ul4rddODdRAM6iQwD/rqVWvdAULNHhoYPKwVYmeVl
 4iI=
 -----END CERTIFICATE-----`,
 			salty("L1L"),
-			nil,
+			"",
 		},
 		{
 			"Test certificate EC 521",
@@ -302,7 +302,7 @@ MeouZaLdnl4fAkIBUVbK2hYOweQWyLU0ARQd8iWLyBymozt/Tj91dYV2LqhwW88Q
 MJseKiCRhbMS8XoCOTogO4Au9SqpOKqHq2CFRb4=
 -----END CERTIFICATE-----`,
 			salty("L1L"),
-			nil,
+			"",
 		},
 	}
 

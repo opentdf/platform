@@ -355,6 +355,7 @@ components:
         - ALGORITHM_EC_P256
         - ALGORITHM_EC_P384
         - ALGORITHM_EC_P521
+        - ALGORITHM_MLKEM_768
       description: Supported key algorithms.
     policy.KasPublicKeyAlgEnum:
       type: string

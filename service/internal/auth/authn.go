@@ -235,6 +235,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 		if err != nil {
 			slog.WarnContext(r.Context(),
 				"unauthenticated",
+				slog.Any("header", header),
 				slog.Any("error", err),
 				slog.Any("dpop", dp),
 			)
@@ -265,6 +266,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			if err.Error() == "permission denied" {
 				a.logger.WarnContext(r.Context(),
 					"permission denied",
+					slog.Any("token", accessTok),
 					slog.String("azp", accessTok.Subject()),
 					slog.Any("error", err),
 				)
@@ -333,6 +335,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
 				if err.Error() == "permission denied" {
 					a.logger.Warn("permission denied",
+						slog.Any("token", token),
 						slog.String("azp", token.Subject()),
 						slog.Any("error", err),
 					)
@@ -340,7 +343,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				}
 				return nil, err
 			} else if !allowed {
-				a.logger.Warn("permission denied", slog.String("azp", token.Subject()))
+				a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.Any("token", token))
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
 
@@ -412,7 +415,7 @@ func (a *Authentication) checkToken(ctx context.Context, authHeader []string, dp
 		jwt.WithAcceptableSkew(a.oidcConfiguration.TokenSkew),
 	)
 	if err != nil {
-		a.logger.Warn("failed to validate auth token", slog.Any("err", err))
+		a.logger.Warn("failed to validate auth token", slog.Any("err", err), slog.String("token", tokenRaw))
 		return nil, nil, err
 	}
 

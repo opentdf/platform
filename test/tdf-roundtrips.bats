@@ -268,9 +268,21 @@ setup_file() {
   if [ -f opentdf.yaml ]; then
     cp opentdf.yaml opentdf-test-backup.yaml.bak
   fi
-  openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout kas-r2-private.pem -out kas-r2-cert.pem -days 365
-  openssl ecparam -name prime256v1 >ecparams.tmp
-  openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout kas-e2-private.pem -out kas-e2-cert.pem -days 365
+  if [ ! -f kas-private.pem ]; then
+    openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout kas-private.pem -out kas-cert.pem -days 365
+  fi
+  if [ ! -f kas-ec-private.pem ]; then
+    openssl ecparam -name prime256v1 >ecparams.tmp
+    openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout kas-ec-private.pem -out kas-ec-cert.pem -days 365
+  fi
+
+  if [ ! -f kas-r2-private.pem ]; then
+    openssl req -x509 -nodes -newkey RSA:2048 -subj "/CN=kas" -keyout kas-r2-private.pem -out kas-r2-cert.pem -days 365
+  fi
+  if [ ! -f kas-e2-private.pem ]; then
+    openssl ecparam -name prime256v1 >ecparams.tmp
+    openssl req -x509 -nodes -newkey ec:ecparams.tmp -subj "/CN=kas" -keyout kas-e2-private.pem -out kas-e2-cert.pem -days 365
+  fi
 }
 
 setup() {

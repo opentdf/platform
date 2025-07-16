@@ -485,6 +485,31 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 		var dek trust.ProtectedKey
 		var err error
 		switch kao.GetKeyAccessObject().GetKeyType() {
+		case string(ocrypto.MLKEM):
+			encodedPubKey := kao.GetKeyAccessObject().GetEphemeralPublicKey()
+			if encodedPubKey == "" {
+				p.Logger.WarnContext(ctx, "missing ciphertext for ml-kem rewrap")
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
+
+			decodedPubKey, err := ocrypto.Base64Decode([]byte(encodedPubKey))
+			if err != nil {
+				p.Logger.WarnContext(ctx, "error decoding ciphertext for mlkem rewrap")
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
+
+			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
+			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), decodedPubKey)
+			if err != nil {
+				p.Logger.WarnContext(ctx, "failed to decrypt ml-kem key",
+					slog.Any("kid", kid),
+					slog.Any("error", err))
+				failedKAORewrap(results, kao, err400("bad request"))
+				continue
+			}
+
 		case "ec-wrapped":
 
 			if !p.ECTDFEnabled && !p.Preview.ECTDFEnabled {
@@ -706,7 +731,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		return "", results
 	}
 
-	asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(clientPublicKey, security.TDFSalt(), nil)
+	asymEncrypt, err := ocrypto.FromPublicPEMWithSalt(clientPublicKey, security.TDFSalt(), "")
 	if err != nil {
 		p.Logger.WarnContext(ctx, "ocrypto.NewAsymEncryption", slog.Any("error", err))
 		failAllKaos(requests, results, err400("invalid request"))

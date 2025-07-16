@@ -244,7 +244,7 @@ func loadDeprecatedKeys(rsaKeys map[string]StandardKeyInfo, ecKeys map[string]St
 		}
 		k := StandardECCrypto{
 			KeyPairInfo: KeyPairInfo{
-				Algorithm:   AlgorithmRSA2048,
+				Algorithm:   AlgorithmECP256R1,
 				KID:         id,
 				Private:     kasInfo.PrivateKeyPath,
 				Certificate: kasInfo.PublicKeyPath,
@@ -271,22 +271,27 @@ func (s StandardCrypto) FindKID(alg string) string {
 	return ""
 }
 
-func (s StandardCrypto) RSAPublicKey(kid string) (string, error) {
+// PublicKey retrieves the public key in PEM format for the given key identifier.
+func (s StandardCrypto) PublicKey(kid string) (string, error) {
 	k, ok := s.keysByID[kid]
 	if !ok {
-		return "", fmt.Errorf("no rsa key with id [%s]: %w", kid, ErrCertNotFound)
+		return "", fmt.Errorf("no public key with id [%s]: %w", kid, ErrCertNotFound)
 	}
-	rsa, ok := k.(PrivateKeyCrypto)
-	if !ok {
-		return "", fmt.Errorf("key with id [%s] is not an RSA key: %w", kid, ErrCertNotFound)
+	switch pkc := k.(type) {
+	case PrivateKeyCrypto:
+		pem, err := pkc.enc.PublicKeyInPemFormat()
+		if err != nil {
+			return "", fmt.Errorf("failed to retrieve rsa public key file: %w", err)
+		}
+		return pem, nil
+	case StandardECCrypto:
+		if pkc.ecCertificatePEM == "" {
+			return s.ECPublicKey(kid)
+		}
+		return pkc.ecCertificatePEM, nil
+	default:
+		return "", fmt.Errorf("key with id [%s] is not a public key: %w", kid, ErrCertNotFound)
 	}
-
-	pem, err := rsa.enc.PublicKeyInPemFormat()
-	if err != nil {
-		return "", fmt.Errorf("failed to retrieve rsa public key file: %w", err)
-	}
-
-	return pem, nil
 }
 
 func (s StandardCrypto) ECCertificate(kid string) (string, error) {

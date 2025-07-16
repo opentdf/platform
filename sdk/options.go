@@ -32,7 +32,7 @@ type config struct {
 	tokenEndpoint                      string
 	scopes                             []string
 	certExchange                       *oauth.CertExchangeInfo
-	kasSessionKey                      *ocrypto.RsaKeyPair
+	kasSessionKey                      ocrypto.PrivateKeyDecryptor
 	dpopKey                            *ocrypto.RsaKeyPair
 	ipc                                bool
 	tdfFeatures                        tdfFeatures
@@ -157,7 +157,7 @@ func WithTokenExchange(subjectToken string, audience []string) Option {
 // Please use with caution.
 func WithSessionEncryptionRSA(key *rsa.PrivateKey) Option {
 	return func(c *config) {
-		okey := ocrypto.FromRSA(key)
+		okey := ocrypto.FromGoRSA(key)
 		c.kasSessionKey = &okey
 	}
 }

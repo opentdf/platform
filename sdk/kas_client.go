@@ -2,7 +2,7 @@ package sdk
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/elliptic"
 	"errors"
 	"fmt"
 	"net"
@@ -31,7 +31,7 @@ type KASClient struct {
 	accessTokenSource auth.AccessTokenSource
 	httpClient        *http.Client
 	connectOptions    []connect.ClientOption
-	sessionKey        ocrypto.KeyPair
+	sessionKey        ocrypto.PrivateKeyDecryptor
 
 	// Set this to enable legacy, non-batch rewrap requests
 	supportSingleRewrapEndpoint bool
@@ -48,7 +48,7 @@ type decryptor interface {
 	Decrypt(ctx context.Context, results []kaoResult) (int, error)
 }
 
-func newKASClient(httpClient *http.Client, options []connect.ClientOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.KeyPair) *KASClient {
+func newKASClient(httpClient *http.Client, options []connect.ClientOption, accessTokenSource auth.AccessTokenSource, sessionKey ocrypto.PrivateKeyDecryptor) *KASClient {
 	return &KASClient{
 		accessTokenSource:           accessTokenSource,
 		httpClient:                  httpClient,
@@ -134,17 +134,17 @@ func upgradeRewrapErrorV1(err error, requests []*kas.UnsignedRewrapRequest_WithP
 }
 
 func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
-	keypair, err := ocrypto.NewECKeyPair(ocrypto.ECCModeSecp256r1)
+	keypair, err := ocrypto.GenerateEC(elliptic.P256())
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewECKeyPair failed :%w", err)
 	}
 
-	publicKeyAsPem, err := keypair.PublicKeyInPemFormat()
+	publicKeyAsPem, err := keypair.AsymEncryption().PublicKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewECKeyPair.PublicKeyInPemFormat failed :%w", err)
 	}
 
-	privateKeyAsPem, err := keypair.PrivateKeyInPemFormat()
+	privateKeyAsPem, err := keypair.Export()
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.NewECKeyPair.PrivateKeyInPemFormat failed :%w", err)
 	}
@@ -214,7 +214,7 @@ func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapR
 	if k.sessionKey == nil {
 		return nil, errors.New("session key is nil")
 	}
-	pubKey, err := k.sessionKey.PublicKeyInPemFormat()
+	pubKey, err := k.sessionKey.AsymEncryption().PublicKeyInPemFormat()
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.PublicKeyInPermFormat failed: %w", err)
 	}
@@ -223,46 +223,24 @@ func (k *KASClient) unwrap(ctx context.Context, requests ...*kas.UnsignedRewrapR
 		return nil, fmt.Errorf("error making rewrap request to kas: %w", err)
 	}
 
-	if ocrypto.IsECKeyType(k.sessionKey.GetKeyType()) {
-		return k.handleECKeyResponse(response)
+	if hk, ok := k.sessionKey.(ocrypto.HybridDecryptor); ok {
+		kasEphemeralPublicKey := response.GetSessionPublicKey()
+		sk, err := hk.HybridDecrypt([]byte(kasEphemeralPublicKey))
+		if err != nil {
+			return nil, fmt.Errorf("ocrypto.HybridDecrypt failed: %w", err)
+		}
+		return k.processHybridResponse(response, sk)
 	}
-	return k.handleRSAKeyResponse(response)
+	return k.processRSAResponse(response)
 }
 
-func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
-	kasEphemeralPublicKey := response.GetSessionPublicKey()
-	clientPrivateKey, err := k.sessionKey.PrivateKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get private key: %w", err)
-	}
-	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(clientPrivateKey), []byte(kasEphemeralPublicKey))
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
-	}
-
-	digest := sha256.New()
-	digest.Write([]byte("TDF"))
-	salt := digest.Sum(nil)
-	sessionKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.CalculateHKDF failed: %w", err)
-	}
-
-	aesGcm, err := ocrypto.NewAESGcm(sessionKey)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewAESGcm failed: %w", err)
-	}
-
-	return k.processECResponse(response, aesGcm)
-}
-
-func (k *KASClient) processECResponse(response *kas.RewrapResponse, aesGcm ocrypto.AesGcm) (map[string][]kaoResult, error) {
+func (k *KASClient) processHybridResponse(response *kas.RewrapResponse, aesGcm ocrypto.SymmetricDecrypt) (map[string][]kaoResult, error) {
 	policyResults := make(map[string][]kaoResult)
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
 			if kao.GetStatus() == statusPermit {
-				key, err := aesGcm.Decrypt(kao.GetKasWrappedKey())
+				key, err := aesGcm(kao.GetKasWrappedKey())
 				if err != nil {
 					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
 				} else {
@@ -277,27 +255,13 @@ func (k *KASClient) processECResponse(response *kas.RewrapResponse, aesGcm ocryp
 	return policyResults, nil
 }
 
-func (k *KASClient) handleRSAKeyResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
-	clientPrivateKey, err := k.sessionKey.PrivateKeyInPemFormat()
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
-	}
-
-	asymDecryption, err := ocrypto.NewAsymDecryption(clientPrivateKey)
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.NewAsymDecryption failed: %w", err)
-	}
-
-	return k.processRSAResponse(response, asymDecryption)
-}
-
-func (k *KASClient) processRSAResponse(response *kas.RewrapResponse, asymDecryption ocrypto.AsymDecryption) (map[string][]kaoResult, error) {
+func (k *KASClient) processRSAResponse(response *kas.RewrapResponse) (map[string][]kaoResult, error) {
 	policyResults := make(map[string][]kaoResult)
 	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
 		for _, kao := range results.GetResults() {
 			if kao.GetStatus() == statusPermit {
-				key, err := asymDecryption.Decrypt(kao.GetKasWrappedKey())
+				key, err := k.sessionKey.Decrypt(kao.GetKasWrappedKey())
 				if err != nil {
 					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err})
 				} else {

@@ -173,7 +173,7 @@ func (k *KASClient) nanoUnwrap(ctx context.Context, requests ...*kas.UnsignedRew
 		return policyResults, nil
 	}
 
-	sessionKey, err := ocrypto.ComputeECDHKey([]byte(privateKeyAsPem), []byte(spk))
+	sessionKey, err := ocrypto.ComputeECDHKey(privateKeyAsPem, []byte(spk))
 	if err != nil {
 		return nil, fmt.Errorf("nanoUnwrap: ocrypto.ComputeECDHKey failed :%w", err)
 	}

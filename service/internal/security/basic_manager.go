@@ -95,12 +95,6 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 			return nil, fmt.Errorf("failed to decrypt with ML-KEM: %w", err)
 		}
 		return NewInProcessAESKey(plaintext), nil
-	case policy.Algorithm_ALGORITHM_MLKEM_768.String():
-		plaintext, err := decrypter.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt with ML-KEM: %w", err)
-		}
-		return NewInProcessAESKey(plaintext), nil
 	}
 
 	return nil, fmt.Errorf("unsupported algorithm: %s", keyDetails.Algorithm())

@@ -193,7 +193,14 @@ func (e ECEncryptor) EphemeralKey() []byte {
 	if err != nil {
 		return nil
 	}
-	return publicKeyBytes
+
+	publicKeyPem := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: publicKeyBytes,
+		},
+	)
+	return publicKeyPem
 }
 
 func (e *MLKEMEncryptor768) EphemeralKey() []byte {

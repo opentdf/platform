@@ -2,8 +2,10 @@ package sdk
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
+	"github.com/cloudflare/circl/sign/mldsa/mldsa44"
 	"github.com/gowebpki/jcs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -181,4 +183,102 @@ func TestDeserializingAssertionWithStringInStatementValue(t *testing.T) {
 	require.NoError(t, err, "Error deserializing the assertion with a JSON object in the statement value")
 
 	assert.Equal(t, "this is a value", assertion.Statement.Value)
+}
+func TestMLDSA44Assertion(t *testing.T) {
+	// Generate ML-DSA-44 key pair
+	pk, sk, err := mldsa44.GenerateKey(nil)
+	require.NoError(t, err)
+
+	assertionConfig := AssertionConfig{
+		ID:             "test-mldsa44-assertion",
+		Type:           "handling",
+		Scope:          "tdo",
+		AppliesToState: "encrypted",
+		Statement: Statement{
+			Format: "json+stanag5636",
+			Value:  `{"test": "data"}`,
+		},
+		SigningKey: AssertionKey{
+			Alg: AssertionKeyAlgMLDSA44,
+			Key: sk,
+		},
+	}
+
+	// Create and sign assertion
+	assertion := Assertion{
+		ID:             assertionConfig.ID,
+		Type:           assertionConfig.Type,
+		Scope:          assertionConfig.Scope,
+		AppliesToState: assertionConfig.AppliesToState,
+		Statement:      assertionConfig.Statement,
+	}
+
+	hash, err := assertion.GetHash()
+	require.NoError(t, err)
+
+	testSig := "test-signature"
+	err = assertion.Sign(string(hash), testSig, assertionConfig.SigningKey)
+	require.NoError(t, err)
+
+	// Verify the binding was set correctly
+	require.Equal(t, JWS.String(), assertion.Binding.Method)
+	require.NotEmpty(t, assertion.Binding.Signature)
+
+	// Check that the signature has the expected format (message.signature)
+	parts := strings.Split(assertion.Binding.Signature, ".")
+	require.Len(t, parts, 2, "ML-DSA-44 signature should have format: base64(message).base64(signature)")
+
+	// Verify with public key
+	verifyKey := AssertionKey{
+		Alg: AssertionKeyAlgMLDSA44,
+		Key: pk,
+	}
+
+	verifiedHash, verifiedSig, err := assertion.Verify(verifyKey)
+	require.NoError(t, err, "Verification should succeed with correct public key")
+
+	// Check that we got back the original hash and signature
+	require.Equal(t, string(hash), verifiedHash, "Verified hash should match original")
+	require.Equal(t, testSig, verifiedSig, "Verified signature should match original")
+}
+
+func TestMLDSA44AssertionInvalidKey(t *testing.T) {
+	// Generate two different key pairs
+	_, sk1, err := mldsa44.GenerateKey(nil)
+	require.NoError(t, err)
+
+	pk2, _, err := mldsa44.GenerateKey(nil)
+	require.NoError(t, err)
+
+	assertion := Assertion{
+		ID:             "test-mldsa44-assertion",
+		Type:           "handling",
+		Scope:          "tdo",
+		AppliesToState: "encrypted",
+		Statement: Statement{
+			Format: "json+stanag5636",
+			Value:  `{"test": "data"}`,
+		},
+	}
+
+	hash, err := assertion.GetHash()
+	require.NoError(t, err)
+
+	// Sign with first key
+	signingKey := AssertionKey{
+		Alg: AssertionKeyAlgMLDSA44,
+		Key: sk1,
+	}
+	err = assertion.Sign(string(hash), "test-signature", signingKey)
+	require.NoError(t, err)
+
+	// Try to verify with wrong public key
+	wrongKey := AssertionKey{
+		Alg: AssertionKeyAlgMLDSA44,
+		Key: pk2, // Using pk2 instead of pk1
+	}
+
+	_, _, err = assertion.Verify(wrongKey)
+	require.Error(t, err, "Verification should fail with wrong public key")
+	require.Contains(t, err.Error(), "failed to verify")
 }

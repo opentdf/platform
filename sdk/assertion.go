@@ -7,6 +7,7 @@ package sdk
 // ============================================
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudflare/circl/sign/mldsa/mldsa44"
 	"github.com/gowebpki/jcs"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -51,8 +53,31 @@ var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with 
 // It returns an error if the signing fails.
 // The assertion binding is updated with the method and the signature.
 func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
-	if strings.HasPrefix(string(key.Alg), "ML-DSA") {
-		return a.signWithMLDSA(hash, sig, key)
+	if key.Alg == AssertionKeyAlgMLDSA44 {
+		mldsaKey, ok := key.Key.(*mldsa44.PrivateKey)
+		if !ok {
+			return errors.New("invalid ML-DSA-44 private key")
+		}
+
+		// Create message containing hash and sig
+		message := fmt.Sprintf("%s.%s", hash, sig)
+		messageBytes := []byte(message)
+
+		// Sign with ML-DSA-44
+		signature := make([]byte, mldsa44.SignatureSize)
+		err := mldsa44.SignTo(mldsaKey, messageBytes, nil, true, signature)
+		if err != nil {
+			return fmt.Errorf("ML-DSA-44 signing failed: %w", err)
+		}
+
+		// Store both message and signature in a structured format
+		// Format: base64(message).base64(signature)
+		a.Binding.Method = JWS.String()
+		a.Binding.Signature = fmt.Sprintf("%s.%s",
+			base64.StdEncoding.EncodeToString(messageBytes),
+			base64.StdEncoding.EncodeToString(signature))
+
+		return nil
 	}
 
 	tok := jwt.New()
@@ -80,8 +105,41 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 // returns the hash and the signature. It returns an error if the verification fails.
 func (a Assertion) Verify(key AssertionKey) (string, string, error) {
 
-	if strings.HasPrefix(string(key.Alg), "ML-DSA") {
-		return a.verifyWithMLDSA(key)
+	if key.Alg == AssertionKeyAlgMLDSA44 {
+		mldsaKey, ok := key.Key.(*mldsa44.PublicKey)
+		if !ok {
+			return "", "", errors.New("invalid ML-DSA-44 public key")
+		}
+
+		// Split the binding signature into message and signature parts
+		parts := strings.Split(a.Binding.Signature, ".")
+		if len(parts) != 2 {
+			return "", "", errors.New("invalid ML-DSA-44 signature format")
+		}
+
+		// Decode message and signature
+		message, err := base64.StdEncoding.DecodeString(parts[0])
+		if err != nil {
+			return "", "", fmt.Errorf("failed to decode message: %w", err)
+		}
+
+		signature, err := base64.StdEncoding.DecodeString(parts[1])
+		if err != nil {
+			return "", "", fmt.Errorf("failed to decode signature: %w", err)
+		}
+
+		// Now actually use mldsaKey and signature to verify
+		if !mldsa44.Verify(mldsaKey, message, nil, signature) {
+			return "", "", errAssertionVerifyKeyFailure
+		}
+
+		// Extract hash and sig from the verified message
+		messageParts := strings.Split(string(message), ".")
+		if len(messageParts) != 2 {
+			return "", "", errors.New("invalid message format")
+		}
+
+		return messageParts[0], messageParts[1], nil
 	}
 
 	tok, err := jwt.Parse([]byte(a.Binding.Signature),
@@ -260,8 +318,6 @@ const (
 
 	//ML-DSA algorithms
 	AssertionKeyAlgMLDSA44 AssertionKeyAlg = "ML-DSA-44"
-	AssertionKeyAlgMLDSA65 AssertionKeyAlg = "ML-DSA-65"
-	AssertionKeyAlgMLDSA87 AssertionKeyAlg = "ML-DSA-87"
 )
 
 // String returns the string representation of the algorithm.
@@ -354,7 +410,7 @@ func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 }
 
 func (a *Assertion) signWithMLDSA(hash, sig string, key AssertionKey) error {
-	if key.Alg != AssertionKeyAlgMLDSA44 && key.Alg != AssertionKeyAlgMLDSA65 && key.Alg != AssertionKeyAlgMLDSA87 {
+	if key.Alg != AssertionKeyAlgMLDSA44 {
 		return fmt.Errorf("unsupported ML-DSA algorithm: %s", key.Alg)
 	}
 
@@ -383,7 +439,7 @@ func (a *Assertion) signWithMLDSA(hash, sig string, key AssertionKey) error {
 // The mldsa44 package provides
 
 func (a Assertion) verifyWithMLDSA(key AssertionKey) (string, string, error) {
-	if key.Alg != AssertionKeyAlgMLDSA44 && key.Alg != AssertionKeyAlgMLDSA65 && key.Alg != AssertionKeyAlgMLDSA87 {
+	if key.Alg != AssertionKeyAlgMLDSA44 {
 		return "", "", fmt.Errorf("unsupported ML-DSA algorithm: %s", key.Alg)
 	}
 

@@ -266,7 +266,7 @@ func (a Authentication) MuxHandler(handler http.Handler) http.Handler {
 			if err.Error() == "permission denied" {
 				a.logger.WarnContext(r.Context(),
 					"permission denied",
-					slog.Any("token", accessTok),
+					slog.Any("header", header),
 					slog.String("azp", accessTok.Subject()),
 					slog.Any("error", err),
 				)
@@ -335,7 +335,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 			if allowed, err := a.enforcer.Enforce(token, resource, action); err != nil {
 				if err.Error() == "permission denied" {
 					a.logger.Warn("permission denied",
-						slog.Any("token", token),
+						slog.Any("header", header),
 						slog.String("azp", token.Subject()),
 						slog.Any("error", err),
 					)
@@ -343,7 +343,7 @@ func (a Authentication) ConnectUnaryServerInterceptor() connect.UnaryInterceptor
 				}
 				return nil, err
 			} else if !allowed {
-				a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.Any("token", token))
+				a.logger.Warn("permission denied", slog.String("azp", token.Subject()), slog.Any("header", header))
 				return nil, connect.NewError(connect.CodePermissionDenied, errors.New("permission denied"))
 			}
 

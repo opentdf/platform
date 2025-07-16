@@ -151,7 +151,7 @@ const (
 
 var re = regexp.MustCompile(KasIDRegexp)
 
-func findNewID(existing map[string]bool) (string, error) {
+func (ek existingKeys) findNewID() (string, error) {
 	for {
 		b := make([]byte, idLength)
 		if _, err := rand.Read(b); err != nil {
@@ -159,17 +159,20 @@ func findNewID(existing map[string]bool) (string, error) {
 		}
 		id := hex.EncodeToString(b)
 		id = id[:idLength]
-		if !existing[id] {
+		if !ek.existingIDs[id] {
 			return id, nil
 		}
 	}
 }
 
-func getNamesFor(alg string) (string, string, trust.KeyIdentifier, error) {
-	// find all existing key ids
+type existingKeys struct {
+	existingIDs map[string]bool
+}
+
+func lookupExistingKeys() (*existingKeys, error) {
 	files, err := os.ReadDir(output)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to read output directory [%s]: %w", output, err)
+		return nil, fmt.Errorf("failed to read output directory [%s]: %w", output, err)
 	}
 
 	existingIDs := make(map[string]bool)
@@ -180,10 +183,18 @@ func getNamesFor(alg string) (string, string, trust.KeyIdentifier, error) {
 		}
 	}
 
-	// generate a new id
-	id, err := findNewID(existingIDs)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to generate new id: %w", err)
+	return &existingKeys{existingIDs: existingIDs}, nil
+}
+
+func (ek *existingKeys) getNamesFor(alg string) (string, string, trust.KeyIdentifier, error) {
+	id := string(alg[0]) + "1"
+	var err error
+	if ek.existingIDs[id] {
+		// generate a new id
+		id, err = ek.findNewID()
+		if err != nil {
+			return "", "", "", fmt.Errorf("failed to generate new id: %w", err)
+		}
 	}
 	kid, err := trust.NewKeyIdentifier(id)
 	if err != nil {
@@ -205,6 +216,10 @@ type NewKeyInfo struct {
 
 func keysInit() ([]NewKeyInfo, error) {
 	var keyPairs []NewKeyInfo
+	ek, err := lookupExistingKeys()
+	if err != nil {
+		return keyPairs, fmt.Errorf("failed to lookup existing keys: %w", err)
+	}
 	for _, kt := range []ocrypto.KeyType{ocrypto.RSA2048Key, ocrypto.EC256Key, ocrypto.MLKEM768Key} {
 		keyRSA, err := ocrypto.Generate(kt)
 		if err != nil {
@@ -212,7 +227,7 @@ func keysInit() ([]NewKeyInfo, error) {
 		}
 		fullName := string(kt)
 		shortName := strings.Replace(fullName, ":", "-", 1)
-		privateFile, publicFile, id, err := getNamesFor(shortName)
+		privateFile, publicFile, id, err := ek.getNamesFor(shortName)
 		if err != nil {
 			return keyPairs, err
 		}

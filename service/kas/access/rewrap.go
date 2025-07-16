@@ -503,7 +503,9 @@ func (p *Provider) verifyRewrapRequests(ctx context.Context, req *kaspb.Unsigned
 			kid := trust.KeyIdentifier(kao.GetKeyAccessObject().GetKid())
 			dek, err = p.KeyDelegator.Decrypt(ctx, kid, kao.GetKeyAccessObject().GetWrappedKey(), decodedPubKey)
 			if err != nil {
-				p.Logger.WarnContext(ctx, "failed to decrypt ml-kem key", slog.Any("error", err))
+				p.Logger.WarnContext(ctx, "failed to decrypt ml-kem key",
+					slog.Any("kid", kid),
+					slog.Any("error", err))
 				failedKAORewrap(results, kao, err400("bad request"))
 				continue
 			}

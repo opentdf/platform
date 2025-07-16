@@ -241,10 +241,10 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 		return nil, ErrCertNotFound
 	}
 	switch t := k.(type) {
-	case t:
+	case StandardECCrypto:
 		return &KeyDetailsAdapter{
 			id:             id,
-			algorithm:      t.Algorithm,
+			algorithm:      ocrypto.KeyType(t.Algorithm),
 			legacy:         a.legacyKeys[string(id)],
 			cryptoProvider: a.cryptoProvider,
 		}, nil

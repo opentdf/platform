@@ -296,7 +296,15 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 	var signedAssertion []Assertion
 	if tdfConfig.addDefaultAssertion {
-		systemMeta, err := GetSystemMetadataAssertionConfig()
+		var systemMeta AssertionConfig
+		var err error
+
+		if tdfConfig.useQuantumAssertions {
+			systemMeta, err = GetQuantumSafeSystemMetadataAssertionConfig()
+		} else {
+			systemMeta, err = GetSystemMetadataAssertionConfig()
+		}
+
 		if err != nil {
 			return nil, err
 		}
@@ -336,9 +344,20 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 		assertionSigningKey := AssertionKey{}
 
-		// Set default to HS256 and payload key
-		assertionSigningKey.Alg = AssertionKeyAlgHS256
-		assertionSigningKey.Key = tdfObject.payloadKey[:]
+		// Set default to HS256 and payload key for backward compatibility
+		// unless quantum-resistant assertions are enabled
+		if tdfConfig.useQuantumAssertions && assertion.SigningKey.IsEmpty() {
+			// Generate quantum-safe key for this assertion if not provided
+			quantumKey, err := GenerateMLDSAKeyPair()
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate quantum-safe assertion key: %w", err)
+			}
+			assertionSigningKey = quantumKey
+		} else {
+			// Use traditional HS256 with payload key as default
+			assertionSigningKey.Alg = AssertionKeyAlgHS256
+			assertionSigningKey.Key = tdfObject.payloadKey[:]
+		}
 
 		if !assertion.SigningKey.IsEmpty() {
 			assertionSigningKey = assertion.SigningKey

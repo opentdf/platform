@@ -79,6 +79,7 @@ type TDFConfig struct {
 	useHex                     bool
 	excludeVersionFromManifest bool
 	addDefaultAssertion        bool
+	useQuantumAssertions       bool // Enable quantum-resistant assertions using ML-DSA
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {

@@ -1,6 +1,7 @@
 package ocrypto
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
@@ -267,7 +268,11 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 func (e ECDecryptor) HybridDecrypt(ephemeral []byte) (SymmetricDecrypt, error) {
 	var ek *ecdh.PublicKey
 
-	if pubFromDSN, err := x509.ParsePKIXPublicKey(ephemeral); err == nil {
+	if bytes.HasPrefix(ephemeral, []byte("-----BEGIN")) {
+		pubFromDSN, err := x509.ParsePKIXPublicKey(ephemeral)
+		if err != nil {
+			return nil, fmt.Errorf("x509.ParsePKIXPublicKey failed: %w", err)
+		}
 		switch pubFromDSN := pubFromDSN.(type) {
 		case *ecdsa.PublicKey:
 			ek, err = ConvertToECDHPublicKey(pubFromDSN)
@@ -333,7 +338,7 @@ func (d *MLKEMDecryptor768) Decrypt(_ []byte) ([]byte, error) {
 func (d *MLKEMDecryptor768) DecryptWithEphemeralKey(data, cipherText []byte) ([]byte, error) {
 	sd, err := d.HybridDecrypt(cipherText)
 	if err != nil {
-		return nil, fmt.Errorf("ecdh hybrid decrypt failed: %w", err)
+		return nil, fmt.Errorf("mlkem hybrid decrypt failed: %w", err)
 	}
 	return sd(data)
 }

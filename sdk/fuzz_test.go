@@ -24,9 +24,9 @@ func writeBytes(writerFunc func(io.Writer) error) []byte {
 }
 
 func newSDK() *SDK {
-	key, _ := ocrypto.NewRSAKeyPair(tdf3KeySize)
+	key, _ := ocrypto.GenerateRSA(tdf3KeySize)
 	cfg := &config{
-		kasSessionKey: &key,
+		kasSessionKey: key,
 	}
 	sdk := &SDK{
 		config:      *cfg,

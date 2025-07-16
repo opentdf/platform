@@ -30,7 +30,14 @@ type PrivateKeyDecryptor interface {
 	Export() ([]byte, error)
 
 	// AsymEncryption returns the AsymEncryption interface for this private key.
-	AsymEncryption() (PublicKeyEncryptor, error)
+	AsymEncryption() PublicKeyEncryptor
+}
+
+type SymmetricDecrypt func([]byte) ([]byte, error)
+
+type HybridDecryptor interface {
+	// HybridDecrypt returns a symmetric key backed decryptor.
+	HybridDecrypt(ephemeralPublicKey []byte) (SymmetricDecrypt, error)
 }
 
 type AsymDecryption struct {
@@ -64,6 +71,10 @@ func Generate(kt KeyType) (PrivateKeyDecryptor, error) {
 	default:
 		return nil, fmt.Errorf("unsupported key type: %s", kt)
 	}
+}
+
+func FromGoRSA(k *rsa.PrivateKey) AsymDecryption {
+	return AsymDecryption{k}
 }
 
 // FromPrivatePEM creates and returns a new AsymDecryption.
@@ -191,33 +202,25 @@ func GenerateMLKEM() (PrivateKeyDecryptor, error) {
 	return NewMLKEMDecryptor768(decap)
 }
 
-func (asymDecryption AsymDecryption) AsymEncryption() (PublicKeyEncryptor, error) {
-	if asymDecryption.PrivateKey == nil {
-		return nil, errors.New("failed to get AsymEncryption, private key is empty")
-	}
-
+func (asymDecryption AsymDecryption) AsymEncryption() PublicKeyEncryptor {
 	pub := asymDecryption.PrivateKey.Public()
 	switch pub := pub.(type) {
 	case *rsa.PublicKey:
-		return AsymEncryption{pub}, nil
+		return AsymEncryption{pub}
 	default:
-		return nil, fmt.Errorf("unsupported public key type: %T", pub)
+		panic(fmt.Errorf("unsupported public key type: %T", pub))
 	}
 }
 
-func (e ECDecryptor) AsymEncryption() (PublicKeyEncryptor, error) {
-	if e.sk == nil {
-		return nil, errors.New("failed to get AsymEncryption, private key is empty")
+func (e ECDecryptor) AsymEncryption() PublicKeyEncryptor {
+	pub, err := newECIES(e.sk.PublicKey(), e.salt, e.info)
+	if err != nil {
+		return nil
 	}
-
-	return newECIES(e.sk.PublicKey(), e.salt, e.info)
+	return pub
 }
 
-func (d *MLKEMDecryptor768) AsymEncryption() (PublicKeyEncryptor, error) {
-	if d.decap == nil {
-		return nil, errors.New("failed to get AsymEncryption, decapsulation key is empty")
-	}
-
+func (d *MLKEMDecryptor768) AsymEncryption() PublicKeyEncryptor {
 	encap := d.decap.EncapsulationKey()
 	return newMLKEM768(encap)
 }
@@ -254,6 +257,14 @@ func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {
 }
 
 func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
+	sd, err := e.HybridDecrypt(ephemeral)
+	if err != nil {
+		return nil, fmt.Errorf("ecdh hybrid decrypt failed: %w", err)
+	}
+	return sd(data)
+}
+
+func (e ECDecryptor) HybridDecrypt(ephemeral []byte) (SymmetricDecrypt, error) {
 	var ek *ecdh.PublicKey
 
 	if pubFromDSN, err := x509.ParsePKIXPublicKey(ephemeral); err == nil {
@@ -301,17 +312,18 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 	}
 
 	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
-		return nil, errors.New("ciphertext too short")
-	}
+	return func(data []byte) ([]byte, error) {
+		if len(data) < nonceSize {
+			return nil, errors.New("ciphertext too short")
+		}
 
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return nil, fmt.Errorf("gcm.Open failure: %w", err)
-	}
-
-	return plaintext, nil
+		nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+		plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+		if err != nil {
+			return nil, fmt.Errorf("gcm.Open failure: %w", err)
+		}
+		return plaintext, nil
+	}, nil
 }
 
 func (d *MLKEMDecryptor768) Decrypt(_ []byte) ([]byte, error) {
@@ -319,6 +331,14 @@ func (d *MLKEMDecryptor768) Decrypt(_ []byte) ([]byte, error) {
 }
 
 func (d *MLKEMDecryptor768) DecryptWithEphemeralKey(data, cipherText []byte) ([]byte, error) {
+	sd, err := d.HybridDecrypt(cipherText)
+	if err != nil {
+		return nil, fmt.Errorf("ecdh hybrid decrypt failed: %w", err)
+	}
+	return sd(data)
+}
+
+func (d *MLKEMDecryptor768) HybridDecrypt(cipherText []byte) (SymmetricDecrypt, error) {
 	if d.decap == nil {
 		return nil, errors.New("mlkem.DecryptWithEphemeralKey - decapsulation key is nil")
 	}
@@ -339,17 +359,18 @@ func (d *MLKEMDecryptor768) DecryptWithEphemeralKey(data, cipherText []byte) ([]
 	}
 
 	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
-		return nil, errors.New("mlkem.DecryptWithEphemeralKey - ciphertext too short")
-	}
+	return func(data []byte) ([]byte, error) {
+		if len(data) < nonceSize {
+			return nil, errors.New("mlkem.DecryptWithEphemeralKey - ciphertext too short")
+		}
 
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return nil, fmt.Errorf("mlkem.DecryptWithEphemeralKey - gcm.Open failure: %w", err)
-	}
-
-	return plaintext, nil
+		nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+		plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+		if err != nil {
+			return nil, fmt.Errorf("mlkem.DecryptWithEphemeralKey - gcm.Open failure: %w", err)
+		}
+		return plaintext, nil
+	}, nil
 }
 
 func (asymDecryption AsymDecryption) Export() ([]byte, error) {

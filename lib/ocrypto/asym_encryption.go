@@ -105,7 +105,7 @@ func FromPublicPEMWithSalt(publicKeyInPem string, salt []byte, info string) (Pub
 	case *ecdh.PublicKey:
 		return newECIES(pub, salt, info)
 	case *mlkem.EncapsulationKey768:
-		return newMLKEM768(pub)
+		return newMLKEM768(pub), nil
 	default:
 		break
 	}
@@ -136,9 +136,9 @@ func newECIES(pub *ecdh.PublicKey, salt []byte, info string) (ECEncryptor, error
 	return ECEncryptor{pub, ek, salt, info}, err
 }
 
-func newMLKEM768(pub *mlkem.EncapsulationKey768) (PublicKeyEncryptor, error) {
+func newMLKEM768(pub *mlkem.EncapsulationKey768) PublicKeyEncryptor {
 	s, c := pub.Encapsulate()
-	return &MLKEMEncryptor768{pub: pub, cipherText: c, sharedSecret: s}, nil
+	return &MLKEMEncryptor768{pub: pub, cipherText: c, sharedSecret: s}
 }
 
 func getPublicPart(publicKeyInPem string) (any, error) {

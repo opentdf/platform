@@ -2392,6 +2392,9 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 				f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
 				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
 				f.s.Require().NoError(err, "ocrypto.encrypt failed")
+
+			default:
+				f.s.Require().FailNowf("unknown key type %s", kaoReq.GetKeyAccessObject().GetKeyType())
 			}
 
 			kaoResult := &kaspb.KeyAccessRewrapResult{

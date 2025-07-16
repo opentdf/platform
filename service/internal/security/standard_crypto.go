@@ -171,10 +171,7 @@ func loadKey(k KeyPairInfo) (any, error) {
 			}
 			pkc.enc = pub
 		} else {
-			pkc.enc, err = sk.AsymEncryption()
-			if err != nil {
-				return nil, fmt.Errorf("sk.AsymEncryption failed: %w", err)
-			}
+			pkc.enc = sk.AsymEncryption()
 		}
 		return pkc, nil
 	default:

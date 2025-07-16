@@ -165,7 +165,7 @@ func attruuid(ctx context.Context, s *sdk.SDK, nsu, fqn string) (string, error) 
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
 	for _, a := range resp.GetAttributes() {
-		if strings.ToLower(a.GetFqn()) == strings.ToLower(fqn) {
+		if strings.EqualFold(a.GetFqn(), fqn) {
 			return a.GetId(), nil
 		}
 	}
@@ -179,7 +179,7 @@ func avuuid(ctx context.Context, s *sdk.SDK, auuid, vs string) (string, error) {
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
 	for _, v := range resp.GetAttribute().GetValues() {
-		if strings.ToLower(v.GetValue()) == strings.ToLower(vs) {
+		if strings.EqualFold(v.GetValue(), vs) {
 			return v.GetId(), nil
 		}
 	}

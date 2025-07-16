@@ -403,7 +403,7 @@ message CreateKeyRequest {
   Algorithm key_algorithm = 3 [(buf.validate.field).cel = {
     id: "key_algorithm_defined"
     message: "The key_algorithm must be one of the defined values."
-    expression: "this in [1, 2, 3, 4, 5]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521
+    expression: "this in [1, 2, 3, 4, 5, 20]" // Allow ALGORITHM_RSA_2048, ALGORITHM_RSA_4096, ALGORITHM_EC_P256, ALGORITHM_EC_P384, ALGORITHM_EC_P521
   }]; // The algorithm to be used for the key
   // Required
   KeyMode key_mode = 4 [(buf.validate.field).cel = {

@@ -86,7 +86,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		}
 		plaintext, err := ecDecryptor.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decrypt with ephemeral key: %w", err)
+			return nil, fmt.Errorf("basic failed to decrypt with ephemeral key: %w", err)
 		}
 		return NewInProcessAESKey(plaintext), nil
 	case policy.Algorithm_ALGORITHM_MLKEM_768.String():

@@ -26,6 +26,23 @@ const (
 	MLKEM SchemeType = "mlkem-wrapped"
 )
 
+func (s SchemeType) String() string {
+	return string(s)
+}
+
+func (kt KeyType) SchemeType() SchemeType {
+	switch kt {
+	case RSA2048Key, RSA4096Key:
+		return RSA
+	case EC256Key, EC384Key, EC521Key:
+		return EC
+	case MLKEM768Key:
+		return MLKEM
+	default:
+		return ""
+	}
+}
+
 type PublicKeyEncryptor interface {
 	// Encrypt encrypts data with public key.
 	Encrypt(data []byte) ([]byte, error)

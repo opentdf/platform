@@ -31,7 +31,7 @@ message CreateObligationValueRequest {
 message AddObligationTriggerRequest {
     // Required
     string obligation_value_id = 1;
-    string action_attribute_id = 2;
+    string action_attribute_value_id = 2;
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;

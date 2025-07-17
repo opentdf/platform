@@ -74,7 +74,7 @@ type Reader struct {
 	aesGcm              ocrypto.AesGcm
 	payloadSize         int64
 	payloadKey          []byte
-	kasSessionKey       ocrypto.KeyPair
+	kasSessionKey       ocrypto.PrivateKeyDecryptor
 	config              TDFReaderConfig
 }
 
@@ -632,8 +632,7 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 		return KeyAccess{}, fmt.Errorf("ocrypto.FromPublicPEMWithSalt failed: %w", err)
 	}
 
-	kt := ocrypto.KeyType(kasInfo.Algorithm)
-	scheme := kt.SchemeType()
+	scheme := enc.Type()
 	if scheme == ocrypto.SchemeType("") {
 		return KeyAccess{}, fmt.Errorf("unsupported key type: %s", kasInfo.Algorithm)
 	}
@@ -645,8 +644,13 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 
 	keyAccess.KeyType = string(scheme)
 	keyAccess.WrappedKey = string(ocrypto.Base64Encode(wrappedKey))
-	if enc.EphemeralKey() != nil {
-		keyAccess.EphemeralPublicKey = string(ocrypto.Base64Encode(enc.EphemeralKey()))
+	ek := enc.EphemeralKey()
+	if len(ek) > 0 {
+		if bytes.HasPrefix(ek, []byte("-----BEGIN")) { // uncompressed public key
+			keyAccess.EphemeralPublicKey = string(ek)
+		} else {
+			keyAccess.EphemeralPublicKey = string(ocrypto.Base64Encode(ek))
+		}
 	}
 
 	return keyAccess, nil

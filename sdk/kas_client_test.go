@@ -61,10 +61,10 @@ func getTokenSource(t *testing.T) FakeAccessTokenSource {
 func TestCreatingRequest(t *testing.T) {
 	var options []connect.ClientOption
 	tokenSource := getTokenSource(t)
-	kasKey, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
+	kasKey, err := ocrypto.GenerateRSA(tdf3KeySize)
 	require.NoError(t, err, "error creating RSA Key")
 
-	client := newKASClient(nil, options, tokenSource, &kasKey)
+	client := newKASClient(nil, options, tokenSource, kasKey)
 	require.NoError(t, err)
 
 	keyAccess := []*kaspb.UnsignedRewrapRequest_WithPolicyRequest{

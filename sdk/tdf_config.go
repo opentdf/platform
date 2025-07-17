@@ -268,7 +268,7 @@ type TDFReaderConfig struct {
 	disableAssertionVerification bool
 
 	schemaValidationIntensity SchemaValidationIntensity
-	kasSessionKey             ocrypto.KeyPair
+	kasSessionKey             ocrypto.PrivateKeyDecryptor
 	kasAllowlist              AllowList // KAS URLs that are allowed to be used for reading TDFs
 	ignoreAllowList           bool      // If true, the kasAllowlist will be ignored, and all KAS URLs will be allowed
 }
@@ -387,7 +387,7 @@ func WithDisableAssertionVerification(disable bool) TDFReaderOption {
 
 func WithSessionKeyType(keyType ocrypto.KeyType) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		kasSessionKey, err := ocrypto.NewKeyPair(keyType)
+		kasSessionKey, err := ocrypto.Generate(keyType)
 		if err != nil {
 			return fmt.Errorf("failed to create RSA key pair: %w", err)
 		}
@@ -421,7 +421,7 @@ func WithIgnoreAllowlist(ignore bool) TDFReaderOption {
 	}
 }
 
-func withSessionKey(k ocrypto.KeyPair) TDFReaderOption {
+func withSessionKey(k ocrypto.PrivateKeyDecryptor) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.kasSessionKey = k
 		return nil

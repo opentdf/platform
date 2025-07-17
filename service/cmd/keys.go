@@ -129,11 +129,7 @@ func storeKeyPair(priv ocrypto.PrivateKeyDecryptor, privateFile, publicFile stri
 		return fmt.Errorf("unable to store key [%w]", err)
 	}
 
-	pub, err := priv.AsymEncryption()
-	if err != nil {
-		return fmt.Errorf("unable to get public key [%w]", err)
-	}
-	pubPEM, err := pub.PublicKeyInPemFormat()
+	pubPEM, err := priv.AsymEncryption().PublicKeyInPemFormat()
 	if err != nil {
 		return fmt.Errorf("unable to marshal public key [%w]", err)
 	}

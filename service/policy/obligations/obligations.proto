@@ -17,3 +17,12 @@ message CreateObligationRequest {
     // Common metadata
     common.MetadataMutable metadata = 100;
 }
+
+message CreateObligationValueRequest {
+    // Required
+    string obligation_id = 1;
+    string value = 2;
+    // Optional
+    // Common metadata
+    common.MetadataMutable metadata = 100;
+}

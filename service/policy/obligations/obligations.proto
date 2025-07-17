@@ -1,3 +1,19 @@
 syntax = "proto3";
 
 package policy.obligations;
+
+import "common/common.proto";
+import "policy/objects.proto";
+
+///
+/// Obligation
+///
+
+message CreateObligationRequest {
+    // Required
+    string namespace_id = 1;
+    string name = 2;
+    // Optional
+    // Common metadata
+    common.MetadataMutable metadata = 100;
+}

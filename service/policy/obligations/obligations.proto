@@ -4,6 +4,7 @@ package policy.obligations;
 
 import "common/common.proto";
 import "policy/objects.proto";
+import "google/protobuf/struct.proto";
 
 ///
 /// Obligation
@@ -30,7 +31,7 @@ message CreateObligationValueRequest {
 message AddObligationTriggerRequest {
     // Required
     string obligation_value_id = 1;
-    // TODO: action attribute
+    string action_attribute_id = 2;
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;
@@ -39,7 +40,7 @@ message AddObligationTriggerRequest {
 message AddObligationFulfillerRequest {
     // Required
     string obligation_value_id = 1;
-    // TODO: conditionals
+    google.protobuf.Struct conditionals = 2;
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;

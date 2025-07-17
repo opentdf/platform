@@ -116,7 +116,7 @@ func NewPolicyDecisionPoint(
 		mappedValue := sm.GetAttributeValue()
 		mappedValueFQN := mappedValue.GetFqn()
 		if _, ok := allEntitleableAttributesByValueFQN[mappedValueFQN]; ok {
-			allEntitleableAttributesByValueFQN[mappedValueFQN].Value.SubjectMappings = append(allEntitleableAttributesByValueFQN[mappedValueFQN].Value.SubjectMappings, sm)
+			allEntitleableAttributesByValueFQN[mappedValueFQN].GetValue().SubjectMappings = append(allEntitleableAttributesByValueFQN[mappedValueFQN].GetValue().GetSubjectMappings(), sm)
 			continue
 		}
 		// Take subject mapping's attribute value and its definition from memory

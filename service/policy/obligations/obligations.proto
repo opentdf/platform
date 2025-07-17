@@ -26,3 +26,21 @@ message CreateObligationValueRequest {
     // Common metadata
     common.MetadataMutable metadata = 100;
 }
+
+message AddObligationTriggerRequest {
+    // Required
+    string obligation_value_id = 1;
+    // TODO: action attribute
+    // Optional
+    // Common metadata
+    common.MetadataMutable metadata = 100;
+}
+
+message AddObligationFulfillerRequest {
+    // Required
+    string obligation_value_id = 1;
+    // TODO: conditionals
+    // Optional
+    // Common metadata
+    common.MetadataMutable metadata = 100;
+}

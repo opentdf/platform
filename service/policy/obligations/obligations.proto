@@ -69,6 +69,14 @@ message AddObligationTriggerResponse {
     policy.ObligationTrigger trigger = 1;
 }
 
+message RemoveObligationTriggerRequest {
+    // TODO:
+}
+
+message RemoveObligationTriggerResponse {
+    policy.ObligationTrigger trigger = 1;
+}
+
 // Fulfillers
 message AddObligationFulfillerRequest {
     // Required

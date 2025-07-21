@@ -45,6 +45,22 @@ message UpdateObligationResponse {
   policy.Obligation obligation = 1;
 }
 
+message DeleteObligationRequest {
+    string id = 1;
+}
+
+message DeleteObligationResponse {
+    policy.Obligation obligation = 1;
+}
+
+message ListObligationsRequest {
+    // TODO:
+}
+
+message ListObligationsResponse {
+    // TODO:
+}
+
 // Values
 message GetObligationValueRequest {
     string id = 1;
@@ -78,6 +94,22 @@ message UpdateObligationValueRequest {
 
 message UpdateObligationValueResponse {
     policy.ObligationValue value = 1;
+}
+
+message DeleteObligationValueRequest {
+    string id = 1;
+}
+
+message DeleteObligationValueResponse {
+    policy.ObligationValue value = 1;
+}
+
+message ListObligationValuesRequest {
+    // TODO:
+}
+
+message ListObligationValuesResponse {
+    // TODO:
 }
 
 // Triggers

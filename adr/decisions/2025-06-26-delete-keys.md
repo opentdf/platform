@@ -11,7 +11,7 @@ consulted: '@strantalis @jrschumacher @dmihalcik-virtru @jp-ayyappan @biscoe916'
 
 ## Context and Problem Statement
 
-As an on-premise software solution, the OpenTDF Platform must empower administrators with comprehensive control over their data, including the sensitive capability to delete encryption keys. We acknowledge the profound risk: key deletion is irreversible, permanently rendering all data encrypted with that key irretrievable. Despite this, denying administrators this crucial functionality presents a greater risk. It would inevitably force them to resort to direct database manipulation, bypassing our system's controls and leading to a complete loss of audit trails—a critical component for security and compliance—and potential database corruption. Therefore, a controlled and auditable method for key deletion is essential.
+As an on-premise software solution, the OpenTDF Platform must provide administrators with essential control over their encryption keys, including the capability to delete them when necessary. While OpenTDF is designed to work with keys and provide fundamental key management operations, it is not intended to replace dedicated Key Management Systems (KMS) or Hardware Security Modules (HSM) that offer advanced key lifecycle features. We acknowledge the profound risk: key deletion is irreversible, permanently rendering all data encrypted with that key irretrievable. Despite this, denying administrators this basic functionality presents a greater operational risk. It would inevitably force them to resort to direct database manipulation, bypassing our system's controls and leading to a complete loss of audit trails—a critical component for security and compliance—and potential database corruption. Therefore, providing a simple, controlled, and auditable method for key deletion aligns with OpenTDF's core mission while preventing unsafe workarounds.
 
 <!-- This is an optional element. Feel free to remove. -->
 ## Decision Drivers
@@ -73,6 +73,15 @@ Add a column to the keys table to denote whether or not the key has been exporte
 ## Decision Outcome
 
 Chosen option: "Add Unsafe Delete with no guard rails"
+
+### Justification
+
+This decision aligns with OpenTDF's core mission as a data protection platform that works with encryption keys rather than serving as a comprehensive Key Management System (KMS) or Hardware Security Module (HSM) replacement.
+**Scope Alignment**: OpenTDF is designed to provide essential key management operations necessary for its data protection capabilities. Adding complex safeguards, versioning systems, or elaborate gating mechanisms would represent scope creep beyond our intended functionality and move us toward becoming a specialized KMS—a role better served by dedicated solutions.
+***Simplicity and Maintainability**: Option 1 provides the necessary functionality without introducing architectural complexity or operational overhead. The other options introduce features (environment variable gates, soft deletes, export tracking) that add maintenance burden and potential failure points without significantly improving the core use case.
+**Clear Responsibility Boundaries**: By providing a straightforward "unsafe delete" operation with clear naming and warnings, we place the responsibility appropriately on the administrator while maintaining our audit trail. This approach acknowledges that sophisticated key lifecycle management, backup strategies, and recovery mechanisms are the domain of dedicated KMS solutions or organizational processes, not OpenTDF itself.
+**Avoiding Feature Creep**: Options 2-4 would set a precedent for OpenTDF to provide increasingly sophisticated key management features, potentially leading to expectations for key escrow, automated backups, multi-party authorization, and other advanced KMS capabilities that fall outside our platform's intended scope.
+This decision ensures OpenTDF remains focused on its primary value proposition while providing administrators with the essential control they need in an on-premise environment.
 
 ## Consequences
 

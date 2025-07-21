@@ -70,7 +70,7 @@ message AddObligationTriggerResponse {
 }
 
 message RemoveObligationTriggerRequest {
-    // TODO:
+    string id = 1;
 }
 
 message RemoveObligationTriggerResponse {
@@ -88,5 +88,13 @@ message AddObligationFulfillerRequest {
 }
 
 message AddObligationFulfillerResponse {
+    policy.ObligationFulfiller fulfiller = 1;
+}
+
+message RemoveObligationFulfillerRequest {
+    string id = 1;
+}
+
+message RemoveObligationFulfillerResponse {
     policy.ObligationFulfiller fulfiller = 1;
 }

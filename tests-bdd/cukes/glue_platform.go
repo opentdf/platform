@@ -52,14 +52,12 @@ type LocalDevOptions struct {
 	CukesDir     string // temp directory for cukes test suite
 	KeysDir      string // directory with opentdf keys
 	ProjectDir   string // the opentdf project directory.
-	taggingPort  int
 	postgresPort int
 	keycloakPort int
 }
 
 type LocalDevScenarioOptions struct {
 	PlatformEndpoint       string
-	TaggingEndpoint        string
 	KeycloakRealm          string
 	InsecureSkipVerifyConn bool
 	DatabaseName           string
@@ -89,7 +87,7 @@ func (c *PlatformTestSuiteContext) InitializeScenario(scenarioContext *godog.Sce
 			}
 		}
 		trackedScenarioContext, featureTracked := c.FeatureTracker[sc.Uri]
-		suiteOptions, ok := (*c.PlatformGlue).(*LocalDevPlatformGlue)
+		_, ok := (*c.PlatformGlue).(*LocalDevPlatformGlue)
 		if !ok {
 			return ctx, errors.New("platform glue is not of expected type LocalDevPlatformGlue")
 		}
@@ -107,7 +105,6 @@ func (c *PlatformTestSuiteContext) InitializeScenario(scenarioContext *godog.Sce
 					PlatformPort:           platformPort,
 					KeycloakRealm:          scenarioID,
 					PlatformEndpoint:       fmt.Sprintf("https://localhost:%d", platformPort),
-					TaggingEndpoint:        fmt.Sprintf("localhost:%d", suiteOptions.Options.taggingPort),
 					InsecureSkipVerifyConn: true,
 				},
 				TestSuiteContext: c,
@@ -123,7 +120,6 @@ func (c *PlatformTestSuiteContext) InitializeScenario(scenarioContext *godog.Sce
 					PlatformPort:           trackedScenarioContext.ScenarioOptions.PlatformPort,
 					KeycloakRealm:          trackedScenarioContext.ScenarioOptions.KeycloakRealm,
 					PlatformEndpoint:       trackedScenarioContext.ScenarioOptions.PlatformEndpoint,
-					TaggingEndpoint:        trackedScenarioContext.ScenarioOptions.TaggingEndpoint,
 					InsecureSkipVerifyConn: trackedScenarioContext.ScenarioOptions.InsecureSkipVerifyConn,
 				},
 				TestSuiteContext: c,
@@ -354,11 +350,10 @@ func (l *LocalDevPlatformGlue) Setup(platformCukesContext *PlatformTestSuiteCont
 	// random open ports to expose
 	l.Options.keycloakPort = openPort()
 	l.Options.postgresPort = openPort()
-	l.Options.taggingPort = openPort()
 
 	logger.Info(fmt.Sprintf("starting with keycloak port = %d, "+
-		"tagging port = %d, postgresPort = %d, project directory = %s", l.Options.keycloakPort,
-		l.Options.taggingPort, l.Options.postgresPort, l.Options.ProjectDir))
+		"postgresPort = %d, project directory = %s", l.Options.keycloakPort,
+		l.Options.postgresPort, l.Options.ProjectDir))
 
 	// startup infrastructure services
 	var composeStackFiles tc.ComposeStackFiles = []string{path.Join(l.Options.ProjectDir, "docker-compose.yaml")}
@@ -372,9 +367,8 @@ func (l *LocalDevPlatformGlue) Setup(platformCukesContext *PlatformTestSuiteCont
 	//nolint:nestif // refactor later - compose is private *dockercompose
 	if err := compose.WithEnv(map[string]string{
 		"POSTGRES_EXPOSE_PORT": fmt.Sprintf("%d", l.Options.postgresPort),
-		"KC_EXPOSE_PORT":       fmt.Sprintf("%d", l.Options.keycloakPort),
+		"KC_EXPOSE_PORT_HTTP":  fmt.Sprintf("%d", l.Options.keycloakPort), // Use HTTP port for BDD tests
 		"OPENTDF_KEYS_DIR":     l.Options.KeysDir,
-		"TAGGING_EXPOSE_PORT":  fmt.Sprintf("%d", l.Options.taggingPort),
 	}).Up(ctx, tc.Wait(true)); err != nil {
 		logger.Error("error standing up containers", slog.String("error", err.Error()))
 		// log key data

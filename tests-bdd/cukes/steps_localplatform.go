@@ -29,7 +29,6 @@ import (
 
 const (
 	containerKeyPath                   = "/app/keys"
-	taggingConfig                      = "/app/tagging.yaml"
 	debugVersion                       = "DEBUG"
 	platformImageEnvironment           = "PLATFORM_IMAGE"
 	platformImageEnvironmentLocalImage = "platform-cukes:latest"
@@ -171,15 +170,22 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 			return ctx, err
 		}
 		if err := platformDockerCompose.WithEnv(map[string]string{
-			"PLATFORM_KEYS_DIR":    localPlatformOptions.KeysDir,
-			"PLATFORM_IMAGE":       version,
-			"EXPOSED_PORT":         fmt.Sprintf("%d", scenarioContext.ScenarioOptions.PlatformPort),
-			"PLATFORM_CONFIG_PATH": platformConfigPath,
-			"HOSTNAME":             localPlatformOptions.Hostname,
+			"OTDF_KEYS_DIR":       localPlatformOptions.KeysDir,
+			"OTDF_IMAGE":          version,
+			"EXPOSED_PORT":        fmt.Sprintf("%d", scenarioContext.ScenarioOptions.PlatformPort),
+			"OTDF_CONFIG_PATH":    platformConfigPath,
+			"TAGGING_CONFIG_PATH": platformConfigPath, // Use same config for now
+			"HOSTNAME":            localPlatformOptions.Hostname,
 		}).Up(ctx, tc.Wait(true)); err != nil {
 			logger.Error("error standing up platform container", slog.String("error", err.Error()))
 			LogComposeServices(platformDockerCompose, logger)
 			_ = platformDockerCompose.Down(ctx)
+			return ctx, err
+		}
+
+		// Wait for platform to be ready
+		logger.Debug("waiting for platform to start")
+		if err := waitForPlatform(platformEndpoint); err != nil {
 			return ctx, err
 		}
 
@@ -310,7 +316,7 @@ func provisionKeycloak(ctx context.Context, suiteOptions *LocalDevOptions, scena
 		return err
 	}
 	kcData := cmd.LoadKeycloakData(tmpKcFile.Name())
-	kcBasePath := fmt.Sprintf("https://%s/auth", net.JoinHostPort(suiteOptions.Hostname, fmt.Sprintf("%d", suiteOptions.keycloakPort)))
+	kcBasePath := fmt.Sprintf("http://%s/auth", net.JoinHostPort(suiteOptions.Hostname, fmt.Sprintf("%d", suiteOptions.keycloakPort)))
 	return fixtures.SetupCustomKeycloak(ctx, fixtures.KeycloakConnectParams{
 		BasePath:         kcBasePath,
 		Username:         "admin",
@@ -349,8 +355,6 @@ func createPlatformConfiguration(options *LocalDevOptions, scenarioOptions *Loca
 		"kcPort":          options.keycloakPort,
 		"platformPort":    scenarioOptions.PlatformPort,
 		"pgPort":          options.postgresPort,
-		"taggingPort":     options.taggingPort,
-		"taggingConfig":   taggingConfig,
 		"pgDatabase":      scenarioOptions.DatabaseName,
 		"pgHost":          pgHost,
 		"platformKeysDir": platformKeysDir,

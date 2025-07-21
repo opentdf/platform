@@ -51,9 +51,9 @@ services:
       JAVA_OPTS_APPEND: "-XX:UseSVE=0" # Uncommenting resolves SIGILL with Code 134 when running on a machine with an M4 chip: https://github.com/keycloak/keycloak/issues/36008
       ###
     ports:
-      - "9001:9001"
-      - "8888:8888"
-      - "8443:8443"
+      - "${KC_EXPOSE_PORT:-8443}:8443"
+      - "${KC_EXPOSE_PORT_HTTP:-8888}:8888"
+      - "${KC_EXPOSE_PORT_MGMT:-9001}:9001"
     healthcheck:
       test:
         - CMD-SHELL

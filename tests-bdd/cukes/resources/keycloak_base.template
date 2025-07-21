@@ -1,4 +1,4 @@
-baseUrl: &baseUrl https://{{.hostname}}:{{.kcPort}}
+baseUrl: &baseUrl http://{{.hostname}}:{{.kcPort}}
 serverBaseUrl: &serverBaseUrl https://{{.hostname}}:{{.platformPort}}
 redirectUris: &redirectUris
   - https://{{.hostname}}:{{.platformPort}}/*

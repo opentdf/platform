@@ -32,6 +32,19 @@ message CreateObligationResponse {
     policy.Obligation obligation = 1;
 }
 
+message UpdateObligationRequest {
+  // Required
+  string id = 1;
+
+  // Optional
+  common.MetadataMutable metadata = 100;
+  common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+
+message UpdateObligationResponse {
+  policy.Obligation obligation = 1;
+}
+
 // Values
 message GetObligationValueRequest {
     string id = 1;
@@ -51,6 +64,19 @@ message CreateObligationValueRequest {
 }
 
 message CreateObligationValueResponse {
+    policy.ObligationValue value = 1;
+}
+
+message UpdateObligationValueRequest {
+    // Required
+    string id = 1;
+    
+    // Optional
+    common.MetadataMutable metadata = 100;
+    common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+
+message UpdateObligationValueResponse {
     policy.ObligationValue value = 1;
 }
 

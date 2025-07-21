@@ -13,7 +13,7 @@ type ObligationsSuite struct {
 	suite.Suite
 	f   fixtures.Fixtures
 	db  fixtures.DBInterface
-	ctx context.Context
+	ctx context.Context //nolint:containedctx // context is used in the test suite
 }
 
 func (s *ObligationsSuite) SetupSuite() {

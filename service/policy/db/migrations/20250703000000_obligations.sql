@@ -7,12 +7,12 @@ CREATE TABLE IF NOT EXISTS obligation_definitions
     namespace_id UUID NOT NULL REFERENCES attribute_namespaces(id) ON DELETE CASCADE,
     -- name is a unique identifier for the obligation definition within the namespace
     name VARCHAR NOT NULL,
-    -- implicit index on unique (namespace_id, name) combo
-    -- index name: obligation_definitions_namespace_id_name_key
-    UNIQUE (namespace_id, name),
     metadata JSONB,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- implicit index on unique (namespace_id, name) combo
+    -- index name: obligation_definitions_namespace_id_name_key
+    UNIQUE (namespace_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS obligation_values_standard
@@ -21,12 +21,12 @@ CREATE TABLE IF NOT EXISTS obligation_values_standard
     obligation_definition_id UUID NOT NULL REFERENCES obligation_definitions(id) ON DELETE CASCADE,
     -- value is a unique identifier for the obligation value within the definition
     value VARCHAR NOT NULL,
-    -- implicit index on unique (obligation_definition_id, value) combo
-    -- index name: obligation_values_standard_obligation_definition_id_value_key
-    UNIQUE (obligation_definition_id, value),
     metadata JSONB,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- implicit index on unique (obligation_definition_id, value) combo
+    -- index name: obligation_values_standard_obligation_definition_id_value_key
+    UNIQUE (obligation_definition_id, value)
 );
 
 CREATE TABLE IF NOT EXISTS obligation_triggers
@@ -35,10 +35,10 @@ CREATE TABLE IF NOT EXISTS obligation_triggers
     obligation_value_id UUID NOT NULL REFERENCES obligation_values_standard(id) ON DELETE CASCADE,
     action_id UUID NOT NULL REFERENCES actions(id) ON DELETE CASCADE,
     attribute_value_id UUID NOT NULL REFERENCES attribute_values(id) ON DELETE CASCADE,
-    UNIQUE(obligation_value_id, action_id, attribute_value_id),
     metadata JSONB,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(obligation_value_id, action_id, attribute_value_id)
 );
 
 CREATE TABLE IF NOT EXISTS obligation_fulfillers

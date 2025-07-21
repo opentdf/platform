@@ -137,6 +137,8 @@ const listObligationDefinitions = `-- name: listObligationDefinitions :many
 WITH counted AS (
     SELECT COUNT(id) AS total
     FROM obligation_definitions
+    WHERE
+        (NULLIF($1, '') IS NULL OR od.namespace_id = $1::UUID)
 )
 SELECT
     od.id,
@@ -185,6 +187,8 @@ type listObligationDefinitionsRow struct {
 //	WITH counted AS (
 //	    SELECT COUNT(id) AS total
 //	    FROM obligation_definitions
+//	    WHERE
+//	        (NULLIF($1, '') IS NULL OR od.namespace_id = $1::UUID)
 //	)
 //	SELECT
 //	    od.id,

@@ -37,6 +37,8 @@ GROUP BY od.id, n.id;
 WITH counted AS (
     SELECT COUNT(id) AS total
     FROM obligation_definitions
+    WHERE
+        (NULLIF(@namespace_id, '') IS NULL OR od.namespace_id = @namespace_id::UUID)
 )
 SELECT
     od.id,

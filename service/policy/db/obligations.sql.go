@@ -72,6 +72,7 @@ LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
     (NULLIF($1, '') IS NULL OR id = $1::UUID) AND
     (NULLIF($2, '') IS NULL OR name = $2::VARCHAR)
+GROUP BY od.id
 `
 
 type getObligationDefinitionParams struct {
@@ -107,6 +108,7 @@ type getObligationDefinitionRow struct {
 //	WHERE
 //	    (NULLIF($1, '') IS NULL OR id = $1::UUID) AND
 //	    (NULLIF($2, '') IS NULL OR name = $2::VARCHAR)
+//	GROUP BY od.id
 func (q *Queries) getObligationDefinition(ctx context.Context, arg getObligationDefinitionParams) (getObligationDefinitionRow, error) {
 	row := q.db.QueryRow(ctx, getObligationDefinition, arg.ID, arg.Name)
 	var i getObligationDefinitionRow

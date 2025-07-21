@@ -25,7 +25,8 @@ FROM obligation_definitions od
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
     (NULLIF(@id, '') IS NULL OR id = @id::UUID) AND
-    (NULLIF(@name, '') IS NULL OR name = @name::VARCHAR);
+    (NULLIF(@name, '') IS NULL OR name = @name::VARCHAR)
+GROUP BY od.id;
 
 -- name: listObligationDefinitions :many
 WITH counted AS (

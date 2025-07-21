@@ -1,14 +1,11 @@
 ---
-# Required
-status: 'proposed'
-date: '{YYYY-MM-DD when the decision was last updated}'
+status: 'accepted'
+date: '2025-07-21'
 tags:
  - key-management
-# Optional
 driver: '@c-r33d @strantalis @jrschumacher'
-deciders: '@strantalis @jrschumacher @dmihalcik-virtru @damorris25'
-consulted: '{list everyone whose opinions are sought (typically subject-matter experts); and with whom there is a two-way communication}'
-informed: '{list everyone who is kept up-to-date on progress; and with whom there is a one-way communication}'
+deciders: '@strantalis @jrschumacher @jp-ayyappan @biscoe916'
+consulted: '@strantalis @jrschumacher @dmihalcik-virtru @jp-ayyappan @biscoe916'
 ---
 # Implementing Key Deletion in the OpenTDF Platform
 
@@ -72,11 +69,9 @@ Add a column to the keys table to denote whether or not the key has been exporte
 * 🟨 **Neutral**, Cannot guarantee that the admin has kept the key after calling the export key method.
 * 🟥 **Bad**, No way of recovering your private key if not backed up before deletion.
 
-
 ## Decision Outcome
 
-Chosen option: "{title of option 1}", because
-{justification. e.g., only option, which meets k.o. criterion decision driver | which resolves force {force} | … | comes out best (see below)}.
+Chosen option: "Add Unsafe Delete with no guard rails"
 
 ## Consequences
 

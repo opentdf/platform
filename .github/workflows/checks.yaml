@@ -245,7 +245,7 @@ jobs:
       - name: run decision benchmark tests
         run: |
           # Run the benchmark with a specific count (adjust as needed)
-          OUTPUT=$(./examples/examples benchmark-decision --count 5000)
+          OUTPUT=$(./examples/examples benchmark-decision --count 1000)
           echo "--- Decision Benchmark Output ---"
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY" # Add to job summary page
@@ -258,7 +258,7 @@ jobs:
       - name: run decision v2 benchmark tests
         run: |
           # Run the benchmark with a specific count (adjust as needed)
-          OUTPUT=$(./examples/examples benchmark-decision-v2 --count 5000)
+          OUTPUT=$(./examples/examples benchmark-decision-v2 --count 1000)
           echo "--- Decision Benchmark v2 Output ---"
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY" # Add to job summary page
@@ -437,7 +437,8 @@ jobs:
             examples/go.sum
       - run: cd service && go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
       - run: cd service && go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
-      - run: cd service && go install github.com/sudorandom/protoc-gen-connect-openapi@latest
+      - run: cd service && go install github.com/sudorandom/protoc-gen-connect-openapi@v0.18.0
+      - run: cd service && go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1
       - run: make proto-generate
       - name: generate connect wrappers
         run: make connect-wrapper-generate

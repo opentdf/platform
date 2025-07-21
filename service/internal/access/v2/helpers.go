@@ -218,14 +218,6 @@ func getResourceDecisionableAttributes(
 			}
 
 			for _, aav := range regResValue.GetActionAttributeValues() {
-				// TODO: DSPX-1295 - revisit this logic bc it is causing failures for attributes with missing actions
-				// slog.Info("processing action attribute value", slog.Any("aav", aav))
-				// aavAction := aav.GetAction()
-				// if aavAction.GetName() != action.GetName() {
-				// 	logger.DebugContext(ctx, "skipping action not matching Decision Request action", slog.String("action", aavAction.GetName()))
-				// 	continue
-				// }
-
 				attrValueFQNs = append(attrValueFQNs, aav.GetAttributeValue().GetFqn())
 			}
 

@@ -1,8 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-# Resigns commits created by backport action because backport action doesn't sign commits
-
 for each in $PULL_NUMBERS; do
 	# Get branch info from PR
 	branch_name=$(curl -f -s -H "Authorization: token $GH_TOKEN" \
@@ -35,6 +33,5 @@ for each in $PULL_NUMBERS; do
 		-d "{\"sha\": \"$new_commit_sha\", \"force\": true}" \
 		"https://api.github.com/repos/$GITHUB_REPOSITORY/git/refs/heads/$branch_name"
 
-	git switch main
 	echo "Signed commit created for PR #$each on branch $branch_name"
 done

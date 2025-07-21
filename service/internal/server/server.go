@@ -37,9 +37,9 @@ import (
 )
 
 const (
-	writeTimeout    time.Duration = 5 * time.Second
-	readTimeout     time.Duration = 10 * time.Second
-	shutdownTimeout time.Duration = 5 * time.Second
+	defaultWriteTimeout time.Duration = 5 * time.Second
+	defaultReadTimeout  time.Duration = 10 * time.Second
+	shutdownTimeout     time.Duration = 5 * time.Second
 )
 
 type Error string
@@ -64,7 +64,8 @@ type Config struct {
 	Port           int    `mapstructure:"port" json:"port" default:"8080"`
 	Host           string `mapstructure:"host,omitempty" json:"host"`
 	PublicHostname string `mapstructure:"public_hostname,omitempty" json:"publicHostname"`
-
+	// Http server config
+	HTTPServerConfig HTTPServerConfig `mapstructure:"http" json:"http"`
 	// Enable pprof
 	EnablePprof bool `mapstructure:"enable_pprof" json:"enable_pprof" default:"false"`
 	// Trace is for configuring open telemetry based tracing.
@@ -107,6 +108,14 @@ type TLSConfig struct {
 	Cert string `mapstructure:"cert" json:"cert"`
 	// Path to the key file
 	Key string `mapstructure:"key" json:"key"`
+}
+
+type HTTPServerConfig struct {
+	ReadTimeout       time.Duration `mapstructure:"readTimeout" json:"readTimeout"`
+	ReadHeaderTimeout time.Duration `mapstructure:"readHeaderTimeout" json:"readHeaderTimeout"`
+	WriteTimeout      time.Duration `mapstructure:"writeTimeout" json:"writeTimeout"`
+	IdleTimeout       time.Duration `mapstructure:"idleTimeout" json:"idleTimeout"`
+	MaxHeaderBytes    int           `mapstructure:"maxHeaderBytes" json:"maxHeaderBytes"`
 }
 
 // CORS Configuration for the server
@@ -283,9 +292,8 @@ func (rw *grpcGatewayResponseWriter) Write(data []byte) (int, error) {
 // newHTTPServer creates a new http server with the given handler and grpc server
 func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.Handler, a *auth.Authentication, l *logger.Logger) (*http.Server, error) {
 	var (
-		err                  error
-		tc                   *tls.Config
-		writeTimeoutOverride = writeTimeout
+		err error
+		tc  *tls.Config
 	)
 
 	// Adds deprecation header to any grpcGateway responses.
@@ -333,7 +341,9 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 	if c.EnablePprof {
 		grpcGateway = pprofHandler(grpcGateway)
 		// Need to extend write timeout to collect pprof data.
-		writeTimeoutOverride = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
+		if c.HTTPServerConfig.WriteTimeout < 30*time.Second {
+			c.HTTPServerConfig.WriteTimeout = 30 * time.Second //nolint:mnd // easier to read that we are overriding the default
+		}
 	}
 
 	var handler http.Handler
@@ -347,12 +357,22 @@ func newHTTPServer(c Config, connectRPC http.Handler, originalGrpcGateway http.H
 		handler = routeConnectRPCRequests(connectRPC, grpcGateway)
 	}
 
+	if c.HTTPServerConfig.ReadTimeout == 0 {
+		c.HTTPServerConfig.ReadTimeout = defaultReadTimeout
+	}
+	if c.HTTPServerConfig.WriteTimeout == 0 {
+		c.HTTPServerConfig.WriteTimeout = defaultWriteTimeout
+	}
+
 	return &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", c.Host, c.Port),
-		WriteTimeout: writeTimeoutOverride,
-		ReadTimeout:  readTimeout,
-		Handler:      handler,
-		TLSConfig:    tc,
+		Addr:              fmt.Sprintf("%s:%d", c.Host, c.Port),
+		WriteTimeout:      c.HTTPServerConfig.WriteTimeout,
+		ReadTimeout:       c.HTTPServerConfig.ReadTimeout,
+		ReadHeaderTimeout: c.HTTPServerConfig.ReadHeaderTimeout,
+		IdleTimeout:       c.HTTPServerConfig.IdleTimeout,
+		MaxHeaderBytes:    c.HTTPServerConfig.MaxHeaderBytes,
+		Handler:           handler,
+		TLSConfig:         tc,
 	}, nil
 }
 

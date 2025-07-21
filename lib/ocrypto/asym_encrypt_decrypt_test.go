@@ -13,12 +13,14 @@ func salty(s string) []byte {
 
 func TestAsymEncryptionAndDecryption(t *testing.T) {
 	keypairs := []struct {
+		n          string
 		privateKey string
 		publicKey  string
 		salt       []byte
 		info       []byte
 	}{
-		{ // Test 2048 key
+		{
+			"Test 2048 key",
 			`-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCu8piKYWnESnnx
 kZOCJo9FgTOuKRNncY/QqFYhitAUBtZ0TSq9JL7wvFxQNCiKwWTW7HUI72K5SXJl
@@ -59,7 +61,8 @@ hVJ0rIiNE8dDWzQCRBfivLemXhX8UFICyoS5i0IwenFvTr6T85EvMxK3aSAlGya3
 			salty("L1L"),
 			nil,
 		},
-		{ // Test 3072 key
+		{
+			"Test 3072 key",
 			`-----BEGIN PRIVATE KEY-----
 MIIG/wIBADANBgkqhkiG9w0BAQEFAASCBukwggblAgEAAoIBgQDfPx/sxi2pTWIM
 Ea6JuoLsBu0rzPAjZ4h2ptmj7OexfhZeU3lK70jKt/t15o2DL+uPk7ofQd01hdOD
@@ -114,7 +117,8 @@ pCVg892PjJwMcTWhIKJgX+9QEL2bSb2VY3yEpEa2b2LhAgMBAAE=
 			salty("L1L"),
 			nil,
 		},
-		{ // Test 4096 key
+		{
+			"Test 4096 key",
 			`-----BEGIN PRIVATE KEY-----
 MIIJQwIBADANBgkqhkiG9w0BAQEFAASCCS0wggkpAgEAAoICAQC+lM8PnXeuw8TE
 6yRCGojby6unhRVL3iEFnUl8W5SZXiya5dbod1zoanXGRe+hgwfWy4pXSOPbX0Cb
@@ -184,7 +188,8 @@ ufgiB73q6Fnh5QHf1HNAeMUCAwEAAQ==
 			salty("TDF"),
 			nil,
 		},
-		{ // Test certificate
+		{
+			"Test certificate RSA 2048",
 			`-----BEGIN PRIVATE KEY-----
 MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDOpiotrvV2i5h6
 clHMzDGgh3h/kMa0LoGx2OkDPd8jogycUh7pgE5GNiN2lpSmFkjxwYMXnyrwr9Ex
@@ -233,6 +238,7 @@ wVyElqp317Ksz+GtTIc+DE6oryxK3tZd4hrj9fXT4KiJvQ4pcRjpePgH7B8=
 			nil,
 		},
 		{
+			"Test certificate EC 256",
 			`-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgwQlQvwfqC0sEaPVi
 l1CdHNqAndukGsrqMsfiIefXHQChRANCAAQSZSoVakwpWhKBZIR9dmmTkKv7GK6n
@@ -251,43 +257,92 @@ bW0CIQDT5QED+8mHFot9JXSx2q1c5mnRvl4yElK0fiHeatBdqw==
 			salty("L1L"),
 			nil,
 		},
+		{
+			"Test certificate EC 384",
+			`-----BEGIN PRIVATE KEY-----
+MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDAaEe6Z1GpE8DbWqgl1
+urQSW5KDT6/L1ljpPnwV2B+yRp3ZHlgqH3fWneP3JQomA3+hZANiAAQjnID0ICj3
+zwtq76jLIC6oq8JNxM8BYYsyJfmVungkp3TC5FWc4XVV79StYSFjX2cbGUTo4ZdP
+Ww4w12rAW3QWG4gtFCiYncWFJuTsSnzvTMVEGVkLOv1d3aUtUEY6ZW8=
+-----END PRIVATE KEY-----`, `-----BEGIN CERTIFICATE-----
+MIIBrjCCATSgAwIBAgIUDNKft8yvHs3TiGKG6XlE7ahpUT0wCgYIKoZIzj0EAwIw
+DjEMMAoGA1UEAwwDa2FzMB4XDTI1MDYyNTE0MTQ0MloXDTI2MDYyNTE0MTQ0Mlow
+DjEMMAoGA1UEAwwDa2FzMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEI5yA9CAo988L
+au+oyyAuqKvCTcTPAWGLMiX5lbp4JKd0wuRVnOF1Ve/UrWEhY19nGxlE6OGXT1sO
+MNdqwFt0FhuILRQomJ3FhSbk7Ep870zFRBlZCzr9Xd2lLVBGOmVvo1MwUTAdBgNV
+HQ4EFgQUHtzuK/rGxSZT4Q7IZrpqMSrrI8owHwYDVR0jBBgwFoAUHtzuK/rGxSZT
+4Q7IZrpqMSrrI8owDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNoADBlAjEA
+rYAxgW5fOdLHck6hW+a8AsXda7PNmeqg+4KNP2PUVDV/lmg6n8+XjGcIH4s9EW11
+AjBiKYC4jwue3pSHeyWsDR3ul4rddODdRAM6iQwD/rqVWvdAULNHhoYPKwVYmeVl
+4iI=
+-----END CERTIFICATE-----`,
+			salty("L1L"),
+			nil,
+		},
+		{
+			"Test certificate EC 521",
+			`-----BEGIN PRIVATE KEY-----
+MIHuAgEAMBAGByqGSM49AgEGBSuBBAAjBIHWMIHTAgEBBEIBcSjsoIDSPoj81S45
+VkyGl1DJ+KEzd5jC3VJvvtGUq374SyZUWqRw6eWD+J5o5THdC414+qT2n5UouTto
+H6kRUJ+hgYkDgYYABABgISG7nYmlskQgkC4ERlIQytWIDC0T77puA3NcbNdoWIiV
+2SHXkl0plz6dRgCFPXs44BKiXzi2xu3Tyvp69ydhfADpfGWaPDEKKMenIcFGFwf5
+tigHagVyFyEdEe1Flbq9gDZo5C2oYPQiM6NAiTPe33dEFBHM1UmzPeRCrGwfB+yf
+9Q==
+-----END PRIVATE KEY-----`, `-----BEGIN CERTIFICATE-----
+MIIB+TCCAVqgAwIBAgIUKEKBDmgjwEtTmMgk1Yk96EP5+TMwCgYIKoZIzj0EAwIw
+DjEMMAoGA1UEAwwDa2FzMB4XDTI1MDYyNTE0MTQ0M1oXDTI2MDYyNTE0MTQ0M1ow
+DjEMMAoGA1UEAwwDa2FzMIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQAYCEhu52J
+pbJEIJAuBEZSEMrViAwtE++6bgNzXGzXaFiIldkh15JdKZc+nUYAhT17OOASol84
+tsbt08r6evcnYXwA6XxlmjwxCijHpyHBRhcH+bYoB2oFchchHRHtRZW6vYA2aOQt
+qGD0IjOjQIkz3t93RBQRzNVJsz3kQqxsHwfsn/WjUzBRMB0GA1UdDgQWBBQQMD86
+YVkhwyPBpA8nSqs5N/CtJDAfBgNVHSMEGDAWgBQQMD86YVkhwyPBpA8nSqs5N/Ct
+JDAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA4GMADCBiAJCAScyUBtCAYvJ
+slhtbJq7LonLMi/LG0101eogrquLU1OJ8EUMcZeVF2CKXVxhpUiWOnWh4tJrErAt
+MeouZaLdnl4fAkIBUVbK2hYOweQWyLU0ARQd8iWLyBymozt/Tj91dYV2LqhwW88Q
+MJseKiCRhbMS8XoCOTogO4Au9SqpOKqHq2CFRb4=
+-----END CERTIFICATE-----`,
+			salty("L1L"),
+			nil,
+		},
 	}
 
 	for _, test := range keypairs {
-		asymEncryptor, err := FromPublicPEMWithSalt(test.publicKey, test.salt, test.info)
-		if err != nil {
-			t.Fatalf("NewAsymEncryption - failed: %v", err)
-		}
-
-		plainText := "virtru"
-		cipherText, err := asymEncryptor.Encrypt([]byte(plainText))
-		if err != nil {
-			t.Fatalf("AsymEncryption encrypt failed: %v", err)
-		}
-
-		asymDecryptor, err := FromPrivatePEMWithSalt(test.privateKey, test.salt, test.info)
-		if err != nil {
-			t.Fatalf("NewAsymDecryption - failed: %v", err)
-		}
-
-		var decryptedText []byte
-		ek := asymEncryptor.EphemeralKey()
-		if ek == nil {
-			decryptedText, err = asymDecryptor.Decrypt(cipherText)
+		t.Run(test.n, func(t *testing.T) {
+			asymEncryptor, err := FromPublicPEMWithSalt(test.publicKey, test.salt, test.info)
 			if err != nil {
-				t.Fatalf("AsymDecryption decrypt failed: %v", err)
+				t.Fatalf("NewAsymEncryption - failed: %v", err)
 			}
-		} else if ecd, ok := asymDecryptor.(ECDecryptor); ok {
-			decryptedText, err = ecd.DecryptWithEphemeralKey(cipherText, ek)
-			if err != nil {
-				t.Fatalf("AsymDecryption decrypt failed: %v", err)
-			}
-		} else {
-			t.Fatalf("AsymDecryption wrong type: %T", asymDecryptor)
-		}
 
-		if string(decryptedText) != plainText {
-			t.Error("Asym encrypt/decrypt failed")
-		}
+			plainText := "virtru"
+			cipherText, err := asymEncryptor.Encrypt([]byte(plainText))
+			if err != nil {
+				t.Fatalf("AsymEncryption encrypt failed: %v", err)
+			}
+
+			asymDecryptor, err := FromPrivatePEMWithSalt(test.privateKey, test.salt, test.info)
+			if err != nil {
+				t.Fatalf("NewAsymDecryption - failed: %v", err)
+			}
+
+			var decryptedText []byte
+			ek := asymEncryptor.EphemeralKey()
+			if ek == nil {
+				decryptedText, err = asymDecryptor.Decrypt(cipherText)
+				if err != nil {
+					t.Fatalf("AsymDecryption decrypt failed: %v", err)
+				}
+			} else if ecd, ok := asymDecryptor.(ECDecryptor); ok {
+				decryptedText, err = ecd.DecryptWithEphemeralKey(cipherText, ek)
+				if err != nil {
+					t.Fatalf("AsymDecryption decrypt failed: %v", err)
+				}
+			} else {
+				t.Fatalf("AsymDecryption wrong type: %T", asymDecryptor)
+			}
+
+			if string(decryptedText) != plainText {
+				t.Error("Asym encrypt/decrypt failed")
+			}
+		})
 	}
 }

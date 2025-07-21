@@ -428,6 +428,10 @@ func (c *kasKeyCache) store(ki KASInfo) {
 	c.c[cacheKey] = timeStampedKASInfo{ki, time.Now()}
 }
 
+type KASKeyFetcher interface {
+	getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind string) (*KASInfo, error)
+}
+
 func (s SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind string) (*KASInfo, error) {
 	if s.kasKeyCache != nil {
 		if cachedValue := s.kasKeyCache.get(kasurl, algorithm, kidToFind); nil != cachedValue {

@@ -255,12 +255,8 @@ func (s *AttributeFqnSuite) TestGetAttributeByFqn_WithAttributeDefKeysAssociated
 	})
 	s.Require().NoError(err)
 
-	// Remove the attribute
-	_, err = s.db.PolicyClient.DeleteAttribute(s.ctx, attr.GetId())
-	s.Require().NoError(err)
-
-	// Remove the namespace
-	_, err = s.db.PolicyClient.DeleteNamespace(s.ctx, ns.GetId())
+	// cascade delete will remove namespaces and all associated attributes and values
+	_, err = s.db.PolicyClient.UnsafeDeleteNamespace(s.ctx, ns, ns.GetFqn())
 	s.Require().NoError(err)
 }
 
@@ -1645,6 +1641,95 @@ func (s *AttributeFqnSuite) TestGetAttributeByValueFqns_KAS_Keys_Returned() {
 		validateSimpleKasKey(&s.Suite, kasKey, attr.GetAttribute().GetKasKeys()[0])
 		validateSimpleKasKey(&s.Suite, kasKey, attr.GetValue().GetKasKeys()[0])
 	}
+}
+
+func (s *AttributeFqnSuite) Test_GrantsAreReturned() {
+	// Create New Namespace
+	ns, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "grants.com"})
+	s.Require().NoError(err)
+	s.NotNil(ns)
+
+	// Create Attribute
+	attr, err := s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+		Name:        "grants",
+		NamespaceId: ns.GetId(),
+		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,
+		Values:      []string{"value1", "value2"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(attr)
+
+	// Create Kas Registry
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri: "https://grants.com/kas",
+		PublicKey: &policy.PublicKey{
+			PublicKey: &policy.PublicKey_Remote{
+				Remote: "https://grants.com/kas/public_key",
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(kas)
+
+	// Create NS Grant
+	// use Pgx.Exec because INSERT is only for testing and should not be part of PolicyDBClient
+	nsGrant, err := s.db.PolicyClient.Pgx.Exec(s.ctx,
+		`INSERT INTO attribute_namespace_key_access_grants (namespace_id, key_access_server_id) VALUES ($1, $2)`,
+		ns.GetId(), kas.GetId())
+	s.Require().NoError(err)
+	s.NotNil(nsGrant.RowsAffected())
+
+	// Create Attribute Grant
+	// use Pgx.Exec because INSERT is only for testing and should not be part of PolicyDBClient
+	attrGrant, err := s.db.PolicyClient.Pgx.Exec(s.ctx,
+		`INSERT INTO attribute_definition_key_access_grants (attribute_definition_id, key_access_server_id) VALUES ($1, $2)`,
+		attr.GetId(), kas.GetId())
+	s.Require().NoError(err)
+	s.NotNil(attrGrant.RowsAffected())
+
+	// Create Value Grant
+	// use Pgx.Exec because INSERT is only for testing and should not be part of PolicyDBClient
+	valueGrant, err := s.db.PolicyClient.Pgx.Exec(s.ctx,
+		`INSERT INTO attribute_value_key_access_grants (attribute_value_id, key_access_server_id) VALUES ($1, $2)`,
+		attr.GetValues()[0].GetId(), kas.GetId())
+	s.Require().NoError(err)
+	s.NotNil(valueGrant.RowsAffected())
+
+	// Get Namespace check for grant
+	nsGet, err := s.db.PolicyClient.GetNamespace(s.ctx, ns.GetId())
+	s.Require().NoError(err)
+	s.NotNil(nsGet)
+	s.Len(nsGet.GetGrants(), 1)
+	s.Equal(ns.GetId(), nsGet.GetId())
+	s.Equal(kas.GetId(), nsGet.GetGrants()[0].GetId())
+
+	// Get Attribute
+	attrGet, err := s.db.PolicyClient.GetAttribute(s.ctx, attr.GetId())
+	s.Require().NoError(err)
+	s.NotNil(attrGet)
+	s.Len(attrGet.GetGrants(), 1)
+	s.Equal(attr.GetId(), attrGet.GetId())
+	s.Equal(kas.GetId(), attrGet.GetGrants()[0].GetId())
+
+	// Get Value
+	valueGet, err := s.db.PolicyClient.GetAttributeValue(s.ctx, attr.GetValues()[0].GetId())
+	s.Require().NoError(err)
+	s.NotNil(valueGet)
+	s.Len(valueGet.GetGrants(), 1)
+	s.Equal(attr.GetValues()[0].GetId(), valueGet.GetId())
+	s.Equal(kas.GetId(), valueGet.GetGrants()[0].GetId())
+
+	// GetAttributeByFQN Values
+	fqn := fqnBuilder(ns.GetName(), attr.GetName(), attr.GetValues()[0].GetValue())
+	v, err := s.db.PolicyClient.GetAttributesByValueFqns(s.ctx, &attributes.GetAttributeValuesByFqnsRequest{
+		Fqns: []string{fqn},
+	})
+	s.Require().NoError(err)
+	s.NotNil(v)
+	s.Len(v, 1)
+	s.Len(v[fqn].GetAttribute().GetNamespace().GetGrants(), 1)
+	s.Len(v[fqn].GetAttribute().GetGrants(), 1)
+	s.Len(v[fqn].GetValue().GetGrants(), 1)
 }
 
 func validateSimpleKasKey(s *suite.Suite, expected *policy.KasKey, actual *policy.SimpleKasKey) {

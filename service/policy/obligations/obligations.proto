@@ -12,7 +12,6 @@ import "google/protobuf/struct.proto";
 
 // Definitions
 message GetObligationRequest {
-    // Required
     string id = 1;
 }
 
@@ -34,6 +33,14 @@ message CreateObligationResponse {
 }
 
 // Values
+message GetObligationValueRequest {
+    string id = 1;
+}
+
+message GetObligationValueResponse {
+    policy.ObligationValue value = 1;
+}
+
 message CreateObligationValueRequest {
     // Required
     string obligation_id = 1;
@@ -41,6 +48,10 @@ message CreateObligationValueRequest {
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;
+}
+
+message CreateObligationValueResponse {
+    policy.ObligationValue value = 1;
 }
 
 // Triggers

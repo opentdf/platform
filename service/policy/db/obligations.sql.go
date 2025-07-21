@@ -57,35 +57,41 @@ const getObligationDefinition = `-- name: getObligationDefinition :one
 SELECT
     od.id,
     od.name,
-    -- todo: prob return this as a JSON object
-    od.namespace_id,
+    JSON_BUILD_OBJECT(
+        'id', n.id,
+        'name', n.name
+    ) as namespace,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
     JSON_AGG(
-    JSON_BUILD_OBJECT(
-        'id', ov.id,
-        'value', ov.value
-    )
+        JSON_BUILD_OBJECT(
+            'id', ov.id,
+            'value', ov.value
+        )
     ) FILTER (WHERE ov.id IS NOT NULL) as values
     -- todo: add triggers and fulfillers
 FROM obligation_definitions od
+JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
+    -- handles by id or fqn queries
     (NULLIF($1, '') IS NULL OR id = $1::UUID) AND
-    (NULLIF($2, '') IS NULL OR name = $2::VARCHAR)
-GROUP BY od.id
+    (NULLIF($2, '') IS NULL OR od.namespace_id = $2::UUID) AND
+    (NULLIF($3, '') IS NULL OR name = $3::VARCHAR)
+GROUP BY od.id, n.id
 `
 
 type getObligationDefinitionParams struct {
-	ID   interface{} `json:"id"`
-	Name interface{} `json:"name"`
+	ID          interface{} `json:"id"`
+	NamespaceID interface{} `json:"namespace_id"`
+	Name        interface{} `json:"name"`
 }
 
 type getObligationDefinitionRow struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	NamespaceID string `json:"namespace_id"`
-	Metadata    []byte `json:"metadata"`
-	Values      []byte `json:"values"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Namespace []byte `json:"namespace"`
+	Metadata  []byte `json:"metadata"`
+	Values    []byte `json:"values"`
 }
 
 // getObligationDefinition
@@ -93,29 +99,34 @@ type getObligationDefinitionRow struct {
 //	SELECT
 //	    od.id,
 //	    od.name,
-//	    -- todo: prob return this as a JSON object
-//	    od.namespace_id,
+//	    JSON_BUILD_OBJECT(
+//	        'id', n.id,
+//	        'name', n.name
+//	    ) as namespace,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
 //	    JSON_AGG(
-//	    JSON_BUILD_OBJECT(
-//	        'id', ov.id,
-//	        'value', ov.value
-//	    )
+//	        JSON_BUILD_OBJECT(
+//	            'id', ov.id,
+//	            'value', ov.value
+//	        )
 //	    ) FILTER (WHERE ov.id IS NOT NULL) as values
 //	    -- todo: add triggers and fulfillers
 //	FROM obligation_definitions od
+//	JOIN attribute_namespaces n on od.namespace_id = n.id
 //	LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 //	WHERE
+//	    -- handles by id or fqn queries
 //	    (NULLIF($1, '') IS NULL OR id = $1::UUID) AND
-//	    (NULLIF($2, '') IS NULL OR name = $2::VARCHAR)
-//	GROUP BY od.id
+//	    (NULLIF($2, '') IS NULL OR od.namespace_id = $2::UUID) AND
+//	    (NULLIF($3, '') IS NULL OR name = $3::VARCHAR)
+//	GROUP BY od.id, n.id
 func (q *Queries) getObligationDefinition(ctx context.Context, arg getObligationDefinitionParams) (getObligationDefinitionRow, error) {
-	row := q.db.QueryRow(ctx, getObligationDefinition, arg.ID, arg.Name)
+	row := q.db.QueryRow(ctx, getObligationDefinition, arg.ID, arg.NamespaceID, arg.Name)
 	var i getObligationDefinitionRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.NamespaceID,
+		&i.Namespace,
 		&i.Metadata,
 		&i.Values,
 	)
@@ -130,23 +141,26 @@ WITH counted AS (
 SELECT
     od.id,
     od.name,
-    -- todo: prob return this as a JSON object
-    od.namespace_id,
+    JSON_BUILD_OBJECT(
+        'id', n.id,
+        'name', n.name
+    ) as namespace,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
     JSON_AGG(
-    JSON_BUILD_OBJECT(
-        'id', ov.id,
-        'value', ov.value
-    )
+        JSON_BUILD_OBJECT(
+            'id', ov.id,
+            'value', ov.value
+        )
     ) FILTER (WHERE ov.id IS NOT NULL) as values,
     -- todo: add triggers and fulfillers
     counted.total
 FROM obligation_definitions od
+JOIN attribute_namespaces n on od.namespace_id = n.id
 CROSS JOIN counted
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
     (NULLIF($1, '') IS NULL OR od.namespace_id = $1::UUID)
-GROUP BY od.id, counted.total
+GROUP BY od.id, n.id, counted.total
 LIMIT $3
 OFFSET $2
 `
@@ -158,12 +172,12 @@ type listObligationDefinitionsParams struct {
 }
 
 type listObligationDefinitionsRow struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	NamespaceID string `json:"namespace_id"`
-	Metadata    []byte `json:"metadata"`
-	Values      []byte `json:"values"`
-	Total       int64  `json:"total"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Namespace []byte `json:"namespace"`
+	Metadata  []byte `json:"metadata"`
+	Values    []byte `json:"values"`
+	Total     int64  `json:"total"`
 }
 
 // listObligationDefinitions
@@ -175,23 +189,26 @@ type listObligationDefinitionsRow struct {
 //	SELECT
 //	    od.id,
 //	    od.name,
-//	    -- todo: prob return this as a JSON object
-//	    od.namespace_id,
+//	    JSON_BUILD_OBJECT(
+//	        'id', n.id,
+//	        'name', n.name
+//	    ) as namespace,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
 //	    JSON_AGG(
-//	    JSON_BUILD_OBJECT(
-//	        'id', ov.id,
-//	        'value', ov.value
-//	    )
+//	        JSON_BUILD_OBJECT(
+//	            'id', ov.id,
+//	            'value', ov.value
+//	        )
 //	    ) FILTER (WHERE ov.id IS NOT NULL) as values,
 //	    -- todo: add triggers and fulfillers
 //	    counted.total
 //	FROM obligation_definitions od
+//	JOIN attribute_namespaces n on od.namespace_id = n.id
 //	CROSS JOIN counted
 //	LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 //	WHERE
 //	    (NULLIF($1, '') IS NULL OR od.namespace_id = $1::UUID)
-//	GROUP BY od.id, counted.total
+//	GROUP BY od.id, n.id, counted.total
 //	LIMIT $3
 //	OFFSET $2
 func (q *Queries) listObligationDefinitions(ctx context.Context, arg listObligationDefinitionsParams) ([]listObligationDefinitionsRow, error) {
@@ -206,7 +223,7 @@ func (q *Queries) listObligationDefinitions(ctx context.Context, arg listObligat
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.NamespaceID,
+			&i.Namespace,
 			&i.Metadata,
 			&i.Values,
 			&i.Total,

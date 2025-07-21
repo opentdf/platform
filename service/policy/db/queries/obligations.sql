@@ -11,22 +11,27 @@ RETURNING id;
 SELECT
     od.id,
     od.name,
-    -- todo: prob return this as a JSON object
-    od.namespace_id,
+    JSON_BUILD_OBJECT(
+        'id', n.id,
+        'name', n.name
+    ) as namespace,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
     JSON_AGG(
-    JSON_BUILD_OBJECT(
-        'id', ov.id,
-        'value', ov.value
-    )
+        JSON_BUILD_OBJECT(
+            'id', ov.id,
+            'value', ov.value
+        )
     ) FILTER (WHERE ov.id IS NOT NULL) as values
     -- todo: add triggers and fulfillers
 FROM obligation_definitions od
+JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
+    -- handles by id or fqn queries
     (NULLIF(@id, '') IS NULL OR id = @id::UUID) AND
+    (NULLIF(@namespace_id, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
     (NULLIF(@name, '') IS NULL OR name = @name::VARCHAR)
-GROUP BY od.id;
+GROUP BY od.id, n.id;
 
 -- name: listObligationDefinitions :many
 WITH counted AS (
@@ -36,23 +41,26 @@ WITH counted AS (
 SELECT
     od.id,
     od.name,
-    -- todo: prob return this as a JSON object
-    od.namespace_id,
+    JSON_BUILD_OBJECT(
+        'id', n.id,
+        'name', n.name
+    ) as namespace,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
     JSON_AGG(
-    JSON_BUILD_OBJECT(
-        'id', ov.id,
-        'value', ov.value
-    )
+        JSON_BUILD_OBJECT(
+            'id', ov.id,
+            'value', ov.value
+        )
     ) FILTER (WHERE ov.id IS NOT NULL) as values,
     -- todo: add triggers and fulfillers
     counted.total
 FROM obligation_definitions od
+JOIN attribute_namespaces n on od.namespace_id = n.id
 CROSS JOIN counted
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
     (NULLIF(@namespace_id, '') IS NULL OR od.namespace_id = @namespace_id::UUID)
-GROUP BY od.id, counted.total
+GROUP BY od.id, n.id, counted.total
 LIMIT @limit_
 OFFSET @offset_;
 

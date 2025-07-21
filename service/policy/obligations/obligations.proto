@@ -10,6 +10,16 @@ import "google/protobuf/struct.proto";
 /// Obligation
 ///
 
+// Definitions
+message GetObligationRequest {
+    // Required
+    string id = 1;
+}
+
+message GetObligationResponse {
+    policy.Obligation obligation = 1;
+}
+
 message CreateObligationRequest {
     // Required
     string namespace_id = 1;
@@ -19,6 +29,11 @@ message CreateObligationRequest {
     common.MetadataMutable metadata = 100;
 }
 
+message CreateObligationResponse {
+    policy.Obligation obligation = 1;
+}
+
+// Values
 message CreateObligationValueRequest {
     // Required
     string obligation_id = 1;
@@ -28,6 +43,7 @@ message CreateObligationValueRequest {
     common.MetadataMutable metadata = 100;
 }
 
+// Triggers
 message AddObligationTriggerRequest {
     // Required
     string obligation_value_id = 1;
@@ -38,6 +54,7 @@ message AddObligationTriggerRequest {
     common.MetadataMutable metadata = 100;
 }
 
+// Fulfillers
 message AddObligationFulfillerRequest {
     // Required
     string obligation_value_id = 1;

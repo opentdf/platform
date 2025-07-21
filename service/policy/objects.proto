@@ -427,17 +427,7 @@ message PublicKey {
 }
 
 message RegisteredResource {
-  string id = 1;
-
-  string name = 2;
-
-  repeated RegisteredResourceValue values = 3;
-
-  // Common metadata
-  common.Metadata metadata = 100;
-}
-
-message ActionAttributeValue {
+  message ActionAttributeValue {
     string id = 1;
 
     Action action = 2;
@@ -446,6 +436,16 @@ message ActionAttributeValue {
 
     // Common metadata
     common.Metadata metadata = 100;
+  }
+
+  string id = 1;
+
+  string name = 2;
+
+  repeated RegisteredResourceValue values = 3;
+
+  // Common metadata
+  common.Metadata metadata = 100;
 }
 
 message RegisteredResourceValue {
@@ -478,7 +478,8 @@ message ObligationValue {
 message ObligationTrigger {
   string id = 1;
   ObligationValue obligation_value = 2;
-  ActionAttributeValue action_attribute_value = 3;
+  Action action = 3;
+  Value attribute_value = 4;
   common.Metadata metadata = 100;
 }
 

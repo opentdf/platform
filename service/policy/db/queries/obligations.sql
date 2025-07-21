@@ -3,8 +3,8 @@
 ----------------------------------------------------------------
 
 -- name: createObligationDefinition :one
-INSERT INTO obligation_definitions (namespace_id, name)
-VALUES ($1, $2)
+INSERT INTO obligation_definitions (namespace_id, name, metadata)
+VALUES ($1, $2, $3)
 RETURNING id;
 
 -- name: getObligationDefinition :one
@@ -43,7 +43,7 @@ SELECT
         'id', ov.id,
         'value', ov.value
     )
-    ) FILTER (WHERE ov.id IS NOT NULL) as values
+    ) FILTER (WHERE ov.id IS NOT NULL) as values,
     -- todo: add triggers and fulfillers
     counted.total
 FROM obligation_definitions od

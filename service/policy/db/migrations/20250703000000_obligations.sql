@@ -76,9 +76,9 @@ CREATE TRIGGER obligation_fulfillers_updated_at
 -- +goose Down
 -- +goose StatementBegin
 
-DROP TABLE IF EXISTS obligation_definitions;
-DROP TABLE IF EXISTS obligation_values_standard;
-DROP TABLE IF EXISTS obligation_triggers;
 DROP TABLE IF EXISTS obligation_fulfillers;
+DROP TABLE IF EXISTS obligation_triggers;
+DROP TABLE IF EXISTS obligation_values_standard;
+DROP TABLE IF EXISTS obligation_definitions;
 
 -- +goose StatementEnd

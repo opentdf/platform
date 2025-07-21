@@ -65,6 +65,10 @@ message AddObligationTriggerRequest {
     common.MetadataMutable metadata = 100;
 }
 
+message AddObligationTriggerResponse {
+    policy.ObligationTrigger trigger = 1;
+}
+
 // Fulfillers
 message AddObligationFulfillerRequest {
     // Required
@@ -73,4 +77,8 @@ message AddObligationFulfillerRequest {
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;
+}
+
+message AddObligationFulfillerResponse {
+    policy.ObligationFulfiller fulfiller = 1;
 }

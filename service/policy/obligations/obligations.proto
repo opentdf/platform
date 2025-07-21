@@ -33,16 +33,16 @@ message CreateObligationResponse {
 }
 
 message UpdateObligationRequest {
-  // Required
-  string id = 1;
+    // Required
+    string id = 1;
 
-  // Optional
-  common.MetadataMutable metadata = 100;
-  common.MetadataUpdateEnum metadata_update_behavior = 101;
+    // Optional
+    common.MetadataMutable metadata = 100;
+    common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
 
 message UpdateObligationResponse {
-  policy.Obligation obligation = 1;
+    policy.Obligation obligation = 1;
 }
 
 message DeleteObligationRequest {
@@ -54,11 +54,18 @@ message DeleteObligationResponse {
 }
 
 message ListObligationsRequest {
-    // TODO:
+    // Optional
+    // Namespace ID or name
+    string namespace = 1;
+
+    // Optional
+    policy.PageRequest pagination = 10;
 }
 
 message ListObligationsResponse {
-    // TODO:
+    repeated policy.Obligation obligations = 1;
+
+    policy.PageResponse pagination = 10;
 }
 
 // Values
@@ -105,11 +112,17 @@ message DeleteObligationValueResponse {
 }
 
 message ListObligationValuesRequest {
-    // TODO:
+  // Required
+  string obligation_id = 1;
+
+  // Optional
+  policy.PageRequest pagination = 10;
 }
 
 message ListObligationValuesResponse {
-    // TODO:
+  repeated policy.ObligationValue values = 1;
+
+  policy.PageResponse pagination = 10;
 }
 
 // Triggers

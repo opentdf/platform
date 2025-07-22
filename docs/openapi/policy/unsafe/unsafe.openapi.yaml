@@ -1243,9 +1243,26 @@ components:
           description: |-
             Required
              UUID of the Key
+        kid:
+          type: string
+          title: kid
+          description: |-
+            Required
+             The key id assigned to this key (Ex: "key-1")
+        kasUri:
+          type: string
+          title: kas_uri
+          description: |-
+            Required
+             The kas uri for which this key belongs (Ex: "https://kas.example.com:8080")
       title: UnsafeDeleteKasKeyRequest
+      required:
+        - kid
+        - kasUri
       additionalProperties: false
-      description: WARNING!!
+      description: |-
+        WARNING!!
+         Deleting a key will make it so that ANY TDF that was encrypted with this key cannot be decrypted by the platform.
     policy.unsafe.UnsafeDeleteKasKeyResponse:
       type: object
       properties:

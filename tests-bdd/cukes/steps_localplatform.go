@@ -144,16 +144,29 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		return ctx, err
 	}
 
-	platformEndpoint := fmt.Sprintf("https://localhost:%d", scenarioContext.ScenarioOptions.PlatformPort)
+	platformEndpoint := fmt.Sprintf("http://localhost:%d", scenarioContext.ScenarioOptions.PlatformPort)
 
 	if version == "DEBUG" {
 		logger.Debug("starting local inline platform for debugging. This should only be used for a single scenario")
-		platformCtx := context.Background()
-		go func(ctx context.Context) {
-			_ = server.Start(server.WithConfigFile(platformConfigPath), server.WithConfigKey("platform"))
-			<-ctx.Done()
-			logger.Debug("Background process stopped")
-		}(platformCtx)
+		_, platformCancel := context.WithCancel(context.Background())
+		go func() {
+			defer func() {
+				slog.Debug("Background platform process stopped")
+			}()
+			_ = server.Start(
+				server.WithWaitForShutdownSignal(),
+				server.WithConfigFile(platformConfigPath),
+				server.WithConfigKey("platform"),
+			)
+		}()
+
+		// Register shutdown hook to stop the platform
+		scenarioContext.RegisterShutdownHook(func() error {
+			logger.Debug("Shutting down inline platform")
+			platformCancel()
+			return nil
+		})
+
 		logger.Debug("waiting for platform to start")
 		if err := waitForPlatform(platformEndpoint); err != nil {
 			return ctx, err
@@ -242,18 +255,30 @@ func waitForPlatform(platformEndpoint string) error {
 	const maxTries = 30
 	const timeout = time.Millisecond * 200
 	healthEndpoint := fmt.Sprintf("%s/healthz?service=all", platformEndpoint)
+	slog.Debug("waiting for platform health check", "endpoint", healthEndpoint)
 	for {
 		httpClient := &http.Client{Timeout: timeout}
-		resp, _ := httpClient.Get(healthEndpoint) //nolint:noctx //test only health check
+		resp, err := httpClient.Get(healthEndpoint) //nolint:noctx //test only health check
 		tries++
-		if resp != nil && resp.StatusCode == http.StatusOK {
+		if err == nil && resp != nil && resp.StatusCode == http.StatusOK {
 			_ = resp.Body.Close()
+			slog.Debug("platform health check passed", "tries", tries)
 			return nil
 		} else if tries > maxTries {
 			if resp != nil {
 				_ = resp.Body.Close()
+				slog.Debug("platform health check failed", "status", resp.StatusCode, "tries", tries, "err", err)
+			} else {
+				slog.Debug("platform health check failed", "tries", tries, "err", err)
 			}
 			return fmt.Errorf("timeout waiting for platform to start")
+		}
+		if tries%10 == 0 {
+			if err != nil {
+				slog.Debug("platform health check retry", "tries", tries, "err", err.Error())
+			} else if resp != nil {
+				slog.Debug("platform health check retry", "tries", tries, "status", resp.StatusCode)
+			}
 		}
 		time.Sleep(time.Second)
 	}

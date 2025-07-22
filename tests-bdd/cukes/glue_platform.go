@@ -104,7 +104,7 @@ func (c *PlatformTestSuiteContext) InitializeScenario(scenarioContext *godog.Sce
 					DatabaseName:           platformDBName,
 					PlatformPort:           platformPort,
 					KeycloakRealm:          scenarioID,
-					PlatformEndpoint:       fmt.Sprintf("https://localhost:%d", platformPort),
+					PlatformEndpoint:       fmt.Sprintf("http://localhost:%d", platformPort),
 					InsecureSkipVerifyConn: true,
 				},
 				TestSuiteContext: c,

@@ -11,6 +11,7 @@ logger:
   type: text
   output: stdout
 server:
+  port: {{.platformPort}}
   auth:
     enabled: true
     enforceDPoP: false
@@ -19,6 +20,7 @@ server:
     policy:
       extension: |
         g, opentdf-admin, role:admin
+        g, opentdf-org-admin, role:admin
         g, opentdf-standard, role:standard
 db:
   host: {{ .pgHost }}

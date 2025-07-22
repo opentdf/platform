@@ -316,24 +316,6 @@ components:
       title: Action
       additionalProperties: false
       description: An action an entity can take
-    policy.ActionAttributeValue:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-        action:
-          title: action
-          $ref: '#/components/schemas/policy.Action'
-        attributeValue:
-          title: attribute_value
-          $ref: '#/components/schemas/policy.Value'
-        metadata:
-          title: metadata
-          description: Common metadata
-          $ref: '#/components/schemas/common.Metadata'
-      title: ActionAttributeValue
-      additionalProperties: false
     policy.AsymmetricKey:
       type: object
       properties:
@@ -700,9 +682,12 @@ components:
         obligationValue:
           title: obligation_value
           $ref: '#/components/schemas/policy.ObligationValue'
-        actionAttributeValue:
-          title: action_attribute_value
-          $ref: '#/components/schemas/policy.ActionAttributeValue'
+        action:
+          title: action
+          $ref: '#/components/schemas/policy.Action'
+        attributeValue:
+          title: attribute_value
+          $ref: '#/components/schemas/policy.Value'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -812,13 +797,31 @@ components:
         actionAttributeValues:
           type: array
           items:
-            $ref: '#/components/schemas/policy.ActionAttributeValue'
+            $ref: '#/components/schemas/policy.RegisteredResourceValue.ActionAttributeValue'
           title: action_attribute_values
         metadata:
           title: metadata
           description: Common metadata
           $ref: '#/components/schemas/common.Metadata'
       title: RegisteredResourceValue
+      additionalProperties: false
+    policy.RegisteredResourceValue.ActionAttributeValue:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        action:
+          title: action
+          $ref: '#/components/schemas/policy.Action'
+        attributeValue:
+          title: attribute_value
+          $ref: '#/components/schemas/policy.Value'
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: ActionAttributeValue
       additionalProperties: false
     policy.ResourceMapping:
       type: object

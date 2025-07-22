@@ -3,7 +3,10 @@ package obligations
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
+	"github.com/opentdf/platform/protocol/go/policy/obligations"
+	"github.com/opentdf/platform/protocol/go/policy/obligations/obligationsconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -29,6 +32,35 @@ func OnConfigUpdate(s *ObligationsService) serviceregistry.OnConfigUpdateHook {
 		s.logger.Info("obligations service config reloaded")
 
 		return nil
+	}
+}
+
+func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *serviceregistry.Service[obligationsconnect.ObligationsServiceHandler] {
+	service := new(ObligationsService)
+	onUpdateConfigHook := OnConfigUpdate(service)
+
+	return &serviceregistry.Service[obligationsconnect.ObligationsServiceHandler]{
+		Close: service.Close,
+		ServiceOptions: serviceregistry.ServiceOptions[obligationsconnect.ObligationsServiceHandler]{
+			Namespace:      ns,
+			DB:             dbRegister,
+			ServiceDesc:    &obligations.ObligationsService_ServiceDesc,
+			ConnectRPCFunc: obligationsconnect.NewObligationsServiceHandler,
+			OnConfigUpdate: onUpdateConfigHook,
+			RegisterFunc: func(srp serviceregistry.RegistrationParams) (obligationsconnect.ObligationsServiceHandler, serviceregistry.HandlerServer) {
+				logger := srp.Logger
+				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
+				if err != nil {
+					logger.Error("error getting obligations service policy config", slog.String("error", err.Error()))
+					panic(err)
+				}
+
+				service.logger = logger
+				service.dbClient = policydb.NewClient(srp.DBClient, logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
+				service.config = cfg
+				return service, nil
+			},
+		},
 	}
 }
 

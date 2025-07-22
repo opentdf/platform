@@ -14520,7 +14520,7 @@ Fully Qualified Name (FQN) of Attribute Value (i.e. https://&lt;namespace&gt;/at
         
       
         <h3 id="policy.unsafe.UnsafeDeleteKasKeyRequest">UnsafeDeleteKasKeyRequest</h3>
-        <p>WARNING!!</p>
+        <p>WARNING!!</p><p>Deleting a key will make it so that ANY TDF that was encrypted with this key cannot be decrypted by the platform.</p>
 
         
           <table class="field-table">
@@ -14535,6 +14535,22 @@ Fully Qualified Name (FQN) of Attribute Value (i.e. https://&lt;namespace&gt;/at
                   <td></td>
                   <td><p>Required
 UUID of the Key </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kid</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+The key id assigned to this key (Ex: &#34;key-1&#34;) </p></td>
+                </tr>
+              
+                <tr>
+                  <td>kas_uri</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+The kas uri for which this key belongs (Ex: &#34;https://kas.example.com:8080&#34;) </p></td>
                 </tr>
               
             </tbody>

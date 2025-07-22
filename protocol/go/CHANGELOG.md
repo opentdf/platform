@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/opentdf/platform/compare/protocol/go/v0.6.0...protocol/go/v0.6.1) (2025-07-22)
+
+
+### Features
+
+* **policy:** Change return type for delete key proto. [backport to release/protocol/go/v0.6] ([#2568](https://github.com/opentdf/platform/issues/2568)) ([bb38eca](https://github.com/opentdf/platform/commit/bb38ecaf75feee91484b1a2f8e835e2fc57633d7))
+
 ## [0.6.0](https://github.com/opentdf/platform/compare/protocol/go/v0.5.0...protocol/go/v0.6.0) (2025-07-09)
 
 

@@ -1248,11 +1248,11 @@ components:
           title: kid
           description: |-
             Required
-             The key id assigned to this key
+             The key id assigned to this key (Ex: "key-1")
         kasUri:
           type: string
           title: kas_uri
-          description: The kas uri for which this key belongs
+          description: 'The kas uri for which this key belongs (Ex: "https://kas.example.com:8080")'
       title: UnsafeDeleteKasKeyRequest
       required:
         - kid

@@ -173,9 +173,9 @@ message UnsafeDeleteKasKeyRequest {
   // UUID of the Key
   string id = 1 [(buf.validate.field).string.uuid = true];
   // Required
-  // The key id assigned to this key
+  // The key id assigned to this key (Ex: "key-1")
   string kid = 2 [(buf.validate.field).required = true];
-  // The kas uri for which this key belongs
+  // The kas uri for which this key belongs (Ex: "https://kas.example.com:8080")
   string kas_uri = 3 [(buf.validate.field).required = true];
 }
 

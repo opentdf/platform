@@ -999,9 +999,9 @@ type UnsafeDeleteKasKeyRequest struct {
 	// UUID of the Key
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Required
-	// The key id assigned to this key
+	// The key id assigned to this key (Ex: "key-1")
 	Kid string `protobuf:"bytes,2,opt,name=kid,proto3" json:"kid,omitempty"`
-	// The kas uri for which this key belongs
+	// The kas uri for which this key belongs (Ex: "https://kas.example.com:8080")
 	KasUri string `protobuf:"bytes,3,opt,name=kas_uri,json=kasUri,proto3" json:"kas_uri,omitempty"`
 }
 

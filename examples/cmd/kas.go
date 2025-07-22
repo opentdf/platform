@@ -103,7 +103,7 @@ func upsertKasRegistration(ctx context.Context, s *sdk.SDK, uri string, pk *poli
 		return "", err
 	}
 	for _, ki := range r.GetKeyAccessServers() {
-		if strings.ToLower(uri) == strings.ToLower(ki.GetUri()) {
+		if strings.EqualFold(uri, ki.GetUri()) {
 			oldpk := ki.GetPublicKey()
 			recreate := false
 			switch {
@@ -225,7 +225,7 @@ func removeKas(cmd *cobra.Command) error {
 	}
 	deletedSomething := false
 	for _, ki := range r.GetKeyAccessServers() {
-		if strings.ToLower(kas) == strings.ToLower(ki.GetUri()) {
+		if strings.EqualFold(kas, ki.GetUri()) {
 			_, err := s.KeyAccessServerRegistry.DeleteKeyAccessServer(cmd.Context(), &kasregistry.DeleteKeyAccessServerRequest{Id: ki.GetId()})
 			if err != nil {
 				slog.Error("failed to DeleteKeyAccessServer", slog.Any("error", err))

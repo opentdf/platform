@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/opentdf/platform/compare/protocol/go/v0.6.1...protocol/go/v0.6.2) (2025-07-22)
+
+
+### Features
+
+* **policy:** Add validation to delete keys [backport to release/protocol/go/v0.6] ([#2577](https://github.com/opentdf/platform/issues/2577)) ([f1f5819](https://github.com/opentdf/platform/commit/f1f5819f95eda5b98cf002a43bd47a4e5b2c62d0))
+
 ## [0.6.1](https://github.com/opentdf/platform/compare/protocol/go/v0.6.0...protocol/go/v0.6.1) (2025-07-22)
 
 

@@ -443,13 +443,7 @@ func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Req
 
 	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
 
-	rsp.Key = &policy.KasKey{
-		KasUri: existing.GetKasUri(),
-		Key: &policy.AsymmetricKey{
-			Id:    existing.GetKey().GetId(),
-			KeyId: existing.GetKey().GetKeyId(),
-		},
-	}
+	rsp.Key = existing
 
 	return connect.NewResponse(rsp), nil
 }

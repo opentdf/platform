@@ -368,7 +368,7 @@ func (l *LocalDevPlatformGlue) Setup(platformCukesContext *PlatformTestSuiteCont
 	if err := compose.WithEnv(map[string]string{
 		"POSTGRES_EXPOSE_PORT": fmt.Sprintf("%d", l.Options.postgresPort),
 		"KC_EXPOSE_PORT_HTTP":  fmt.Sprintf("%d", l.Options.keycloakPort), // Use HTTP port for BDD tests
-		"OPENTDF_KEYS_DIR":     l.Options.KeysDir,
+		"KEYS_DIR":             l.Options.KeysDir,
 	}).Up(ctx, tc.Wait(true)); err != nil {
 		logger.Error("error standing up containers", slog.String("error", err.Error()))
 		// log key data

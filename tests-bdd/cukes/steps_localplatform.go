@@ -183,12 +183,11 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 			return ctx, err
 		}
 		if err := platformDockerCompose.WithEnv(map[string]string{
-			"OTDF_KEYS_DIR":       localPlatformOptions.KeysDir,
-			"OTDF_IMAGE":          version,
-			"EXPOSED_PORT":        fmt.Sprintf("%d", scenarioContext.ScenarioOptions.PlatformPort),
-			"OTDF_CONFIG_PATH":    platformConfigPath,
-			"TAGGING_CONFIG_PATH": platformConfigPath, // Use same config for now
-			"HOSTNAME":            localPlatformOptions.Hostname,
+			"KEYS_DIR":     localPlatformOptions.KeysDir,
+			"IMAGE":        version,
+			"EXPOSED_PORT": fmt.Sprintf("%d", scenarioContext.ScenarioOptions.PlatformPort),
+			"CONFIG_PATH":  platformConfigPath,
+			"HOSTNAME":     localPlatformOptions.Hostname,
 		}).Up(ctx, tc.Wait(true)); err != nil {
 			logger.Error("error standing up platform container", slog.String("error", err.Error()))
 			LogComposeServices(platformDockerCompose, logger)

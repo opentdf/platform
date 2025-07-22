@@ -1,24 +1,18 @@
 baseUrl: &baseUrl http://{{.hostname}}:{{.kcPort}}
 serverBaseUrl: &serverBaseUrl https://{{.hostname}}:{{.platformPort}}
-redirectUris: &redirectUris
-  - https://{{.hostname}}:{{.platformPort}}/*
-  - https://{{.hostname}}:{{.platformPort2}}/*
-webOrigins: &webOrigins
-  - *serverBaseUrl
 customAudMapper: &customAudMapper
   name: audience-mapper
   protocol: openid-connect
   protocolMapper: oidc-audience-mapper
   config:
-    included.client.audience: *serverBaseUrl
-    access.token.claim: 'true'
-    id.token.claim: 'true'
+    included.custom.audience: *serverBaseUrl
+    access.token.claim: "true"
+    id.token.claim: "true"
 realms:
   - realm_repepresentation:
       realm: {{.realm}}
       enabled: true
     custom_realm_roles:
-      - name: opentdf-org-admin
       - name: opentdf-admin
       - name: opentdf-standard
     custom_client_roles:
@@ -40,29 +34,8 @@ realms:
           protocolMappers:
             - *customAudMapper
         sa_realm_roles:
-          - opentdf-org-admin
-      - client:
-          clientID: opentdf-admin
-          enabled: true
-          name: opentdf
-          serviceAccountsEnabled: true
-          clientAuthenticatorType: client-secret
-          secret: secret
-          protocolMappers:
-            - *customAudMapper
-        sa_realm_roles:
           - opentdf-admin
-      - client:
-          clientID: opentdf-standard
-          enabled: true
-          name: opentdf
-          serviceAccountsEnabled: true
-          clientAuthenticatorType: client-secret
-          secret: secret
-          protocolMappers:
-            - *customAudMapper
-        sa_realm_roles:
-          - opentdf-standard
+        copies: 10
       - client:
           clientID: opentdf-sdk
           enabled: true
@@ -97,7 +70,7 @@ realms:
           clientAuthenticatorType: client-secret
           secret: secret
           protocolMappers:
-            - *customAudMapper      
+            - *customAudMapper
       - client:
           clientID: cli-client
           enabled: true
@@ -108,6 +81,33 @@ realms:
             - 'http://localhost:*'
           protocolMappers:
             - *customAudMapper
+    users:
+      - username: sample-user
+        enabled: true
+        firstName: sample
+        lastName: user
+        email: sampleuser@sample.com
+        credentials:
+          - value: testuser123
+            type: password
+        attributes:
+          superhero_name:
+            - thor
+          superhero_group:
+            - avengers
+        groups:
+          - mygroup
+        realmRoles:
+          - opentdf-admin
+        clientRoles:
+          realm-management:
+            - view-clients
+            - query-clients
+            - view-users
+            - query-users
+          tdf-entity-resolution:
+            - entity-resolution-test-role
+        copies: 10
     token_exchanges:
       - start_client: opentdf
         target_client: opentdf-sdk

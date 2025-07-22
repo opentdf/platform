@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -789,7 +790,11 @@ func (s *KasRegistrySuite) Test_DeleteKeyAccessServer_WithChildKeys_Fails() {
 	s.Nil(deleted)
 
 	// Remove key to clean up
-	_, err = s.db.PolicyClient.DeleteKey(s.ctx, createdKey.GetKasKey().GetKey().GetId())
+	_, err = s.db.PolicyClient.UnsafeDeleteKey(s.ctx, createdKey.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
+		Id:     createdKey.GetKasKey().GetKey().GetId(),
+		Kid:    createdKey.GetKasKey().GetKey().GetKeyId(),
+		KasUri: createdKey.GetKasKey().GetKasUri(),
+	})
 	s.Require().NoError(err)
 
 	// Delete the KAS

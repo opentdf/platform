@@ -435,7 +435,7 @@ func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Req
 		},
 	}
 
-	_, err = s.dbClient.DeleteKey(ctx, id)
+	_, err = s.dbClient.UnsafeDeleteKey(ctx, existing, req.Msg)
 	if err != nil {
 		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))

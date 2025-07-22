@@ -179,23 +179,31 @@ service ObligationsService {
      * Obligation RPCs
      *--------------------------------------*/
 
-     rpc ListObligations(ListObligationsRequest) returns (ListObligationsResponse) {
+    rpc ListObligations(ListObligationsRequest) returns (ListObligationsResponse) {
         option idempotency_level = NO_SIDE_EFFECTS;
-     }
+    }
 
-     rpc GetObligation(GetObligationRequest) returns (GetObligationResponse) {
+    rpc GetObligation(GetObligationRequest) returns (GetObligationResponse) {
         option idempotency_level = NO_SIDE_EFFECTS;
-     }
+    }
+
+    //  TODO: create
+    rpc UpdateObligation(UpdateObligationRequest) returns (UpdateObligationResponse) {}
+    // TODO: delete
 
     /*--------------------------------------*
      * Value RPCs
      *--------------------------------------*/
 
-     rpc ListObligationValues(ListObligationValuesRequest) returns (ListObligationValuesResponse) {
+    rpc ListObligationValues(ListObligationValuesRequest) returns (ListObligationValuesResponse) {
         option idempotency_level = NO_SIDE_EFFECTS;
-     }
+    }
 
-     rpc GetObligationValue(GetObligationValueRequest) returns (GetObligationValueResponse) {
+    rpc GetObligationValue(GetObligationValueRequest) returns (GetObligationValueResponse) {
         option idempotency_level = NO_SIDE_EFFECTS;
-     }
+    }
+
+    //  TODO: create
+    rpc UpdateObligationValue(UpdateObligationValueRequest) returns (UpdateObligationValueResponse) {}
+    // TODO: delete
 }

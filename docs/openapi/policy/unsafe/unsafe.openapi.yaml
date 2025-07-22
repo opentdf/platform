@@ -1252,7 +1252,9 @@ components:
         kasUri:
           type: string
           title: kas_uri
-          description: 'The kas uri for which this key belongs (Ex: "https://kas.example.com:8080")'
+          description: |-
+            Required
+             The kas uri for which this key belongs (Ex: "https://kas.example.com:8080")
       title: UnsafeDeleteKasKeyRequest
       required:
         - kid

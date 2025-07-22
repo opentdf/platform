@@ -1001,6 +1001,7 @@ type UnsafeDeleteKasKeyRequest struct {
 	// Required
 	// The key id assigned to this key (Ex: "key-1")
 	Kid string `protobuf:"bytes,2,opt,name=kid,proto3" json:"kid,omitempty"`
+	// Required
 	// The kas uri for which this key belongs (Ex: "https://kas.example.com:8080")
 	KasUri string `protobuf:"bytes,3,opt,name=kas_uri,json=kasUri,proto3" json:"kas_uri,omitempty"`
 }

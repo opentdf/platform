@@ -210,4 +210,20 @@ service ObligationsService {
     rpc UpdateObligationValue(UpdateObligationValueRequest) returns (UpdateObligationValueResponse) {}
     
     rpc DeleteObligationValue(DeleteObligationValueRequest) returns (DeleteObligationValueResponse) {}
+
+    /*--------------------------------------*
+     * Trigger RPCs
+     *--------------------------------------*/
+    
+    rpc AddObligationTrigger(AddObligationTriggerRequest) returns (AddObligationTriggerResponse) {}
+
+    rpc RemoveObligationTrigger(RemoveObligationTriggerRequest) returns (RemoveObligationTriggerResponse) {}
+
+    /*--------------------------------------*
+     * Fulfiller RPCs
+     *--------------------------------------*/
+
+    rpc AddObligationFulfiller(AddObligationFulfillerRequest) returns (AddObligationFulfillerResponse) {}
+
+    rpc RemoveObligationFulfiller(RemoveObligationFulfillerRequest) returns (RemoveObligationFulfillerResponse) {}   
 }

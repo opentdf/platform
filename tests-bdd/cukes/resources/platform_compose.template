@@ -12,18 +12,3 @@ services:
       - ${CONFIG_PATH}:/app/otdf.yaml
     extra_hosts:
       - "${HOSTNAME}:host-gateway"
-    healthcheck:
-      test: [
-        "CMD",
-        "/usr/bin/otdf",
-        "tructl",
-        "--tls-no-verify",
-        "--host",
-        "https://localhost:${EXPOSED_PORT}",
-        "--with-client-creds",
-        '{"clientId":"opentdf", "clientSecret":"secret"}',
-        "policy", "attributes", "list" ]
-      interval: 5s
-      timeout: 1s
-      retries: 5
-      start_period: 1s

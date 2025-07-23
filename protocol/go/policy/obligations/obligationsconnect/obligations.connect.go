@@ -39,6 +39,9 @@ const (
 	// ObligationsServiceGetObligationProcedure is the fully-qualified name of the ObligationsService's
 	// GetObligation RPC.
 	ObligationsServiceGetObligationProcedure = "/policy.obligations.ObligationsService/GetObligation"
+	// ObligationsServiceGetObligationsByFQNsProcedure is the fully-qualified name of the
+	// ObligationsService's GetObligationsByFQNs RPC.
+	ObligationsServiceGetObligationsByFQNsProcedure = "/policy.obligations.ObligationsService/GetObligationsByFQNs"
 	// ObligationsServiceCreateObligationProcedure is the fully-qualified name of the
 	// ObligationsService's CreateObligation RPC.
 	ObligationsServiceCreateObligationProcedure = "/policy.obligations.ObligationsService/CreateObligation"
@@ -54,6 +57,9 @@ const (
 	// ObligationsServiceGetObligationValueProcedure is the fully-qualified name of the
 	// ObligationsService's GetObligationValue RPC.
 	ObligationsServiceGetObligationValueProcedure = "/policy.obligations.ObligationsService/GetObligationValue"
+	// ObligationsServiceGetObligationValuesByFQNsProcedure is the fully-qualified name of the
+	// ObligationsService's GetObligationValuesByFQNs RPC.
+	ObligationsServiceGetObligationValuesByFQNsProcedure = "/policy.obligations.ObligationsService/GetObligationValuesByFQNs"
 	// ObligationsServiceCreateObligationValueProcedure is the fully-qualified name of the
 	// ObligationsService's CreateObligationValue RPC.
 	ObligationsServiceCreateObligationValueProcedure = "/policy.obligations.ObligationsService/CreateObligationValue"
@@ -82,11 +88,13 @@ var (
 	obligationsServiceServiceDescriptor                         = obligations.File_policy_obligations_obligations_proto.Services().ByName("ObligationsService")
 	obligationsServiceListObligationsMethodDescriptor           = obligationsServiceServiceDescriptor.Methods().ByName("ListObligations")
 	obligationsServiceGetObligationMethodDescriptor             = obligationsServiceServiceDescriptor.Methods().ByName("GetObligation")
+	obligationsServiceGetObligationsByFQNsMethodDescriptor      = obligationsServiceServiceDescriptor.Methods().ByName("GetObligationsByFQNs")
 	obligationsServiceCreateObligationMethodDescriptor          = obligationsServiceServiceDescriptor.Methods().ByName("CreateObligation")
 	obligationsServiceUpdateObligationMethodDescriptor          = obligationsServiceServiceDescriptor.Methods().ByName("UpdateObligation")
 	obligationsServiceDeleteObligationMethodDescriptor          = obligationsServiceServiceDescriptor.Methods().ByName("DeleteObligation")
 	obligationsServiceListObligationValuesMethodDescriptor      = obligationsServiceServiceDescriptor.Methods().ByName("ListObligationValues")
 	obligationsServiceGetObligationValueMethodDescriptor        = obligationsServiceServiceDescriptor.Methods().ByName("GetObligationValue")
+	obligationsServiceGetObligationValuesByFQNsMethodDescriptor = obligationsServiceServiceDescriptor.Methods().ByName("GetObligationValuesByFQNs")
 	obligationsServiceCreateObligationValueMethodDescriptor     = obligationsServiceServiceDescriptor.Methods().ByName("CreateObligationValue")
 	obligationsServiceUpdateObligationValueMethodDescriptor     = obligationsServiceServiceDescriptor.Methods().ByName("UpdateObligationValue")
 	obligationsServiceDeleteObligationValueMethodDescriptor     = obligationsServiceServiceDescriptor.Methods().ByName("DeleteObligationValue")
@@ -100,11 +108,13 @@ var (
 type ObligationsServiceClient interface {
 	ListObligations(context.Context, *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error)
 	GetObligation(context.Context, *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error)
+	GetObligationsByFQNs(context.Context, *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error)
 	CreateObligation(context.Context, *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error)
 	UpdateObligation(context.Context, *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error)
 	DeleteObligation(context.Context, *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error)
 	ListObligationValues(context.Context, *connect.Request[obligations.ListObligationValuesRequest]) (*connect.Response[obligations.ListObligationValuesResponse], error)
 	GetObligationValue(context.Context, *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error)
+	GetObligationValuesByFQNs(context.Context, *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error)
 	CreateObligationValue(context.Context, *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error)
 	UpdateObligationValue(context.Context, *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error)
 	DeleteObligationValue(context.Context, *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error)
@@ -138,6 +148,13 @@ func NewObligationsServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
+		getObligationsByFQNs: connect.NewClient[obligations.GetObligationsByFQNsRequest, obligations.GetObligationsByFQNsResponse](
+			httpClient,
+			baseURL+ObligationsServiceGetObligationsByFQNsProcedure,
+			connect.WithSchema(obligationsServiceGetObligationsByFQNsMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		createObligation: connect.NewClient[obligations.CreateObligationRequest, obligations.CreateObligationResponse](
 			httpClient,
 			baseURL+ObligationsServiceCreateObligationProcedure,
@@ -167,6 +184,13 @@ func NewObligationsServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			httpClient,
 			baseURL+ObligationsServiceGetObligationValueProcedure,
 			connect.WithSchema(obligationsServiceGetObligationValueMethodDescriptor),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
+		getObligationValuesByFQNs: connect.NewClient[obligations.GetObligationValuesByFQNsRequest, obligations.GetObligationValuesByFQNsResponse](
+			httpClient,
+			baseURL+ObligationsServiceGetObligationValuesByFQNsProcedure,
+			connect.WithSchema(obligationsServiceGetObligationValuesByFQNsMethodDescriptor),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
@@ -219,11 +243,13 @@ func NewObligationsServiceClient(httpClient connect.HTTPClient, baseURL string, 
 type obligationsServiceClient struct {
 	listObligations           *connect.Client[obligations.ListObligationsRequest, obligations.ListObligationsResponse]
 	getObligation             *connect.Client[obligations.GetObligationRequest, obligations.GetObligationResponse]
+	getObligationsByFQNs      *connect.Client[obligations.GetObligationsByFQNsRequest, obligations.GetObligationsByFQNsResponse]
 	createObligation          *connect.Client[obligations.CreateObligationRequest, obligations.CreateObligationResponse]
 	updateObligation          *connect.Client[obligations.UpdateObligationRequest, obligations.UpdateObligationResponse]
 	deleteObligation          *connect.Client[obligations.DeleteObligationRequest, obligations.DeleteObligationResponse]
 	listObligationValues      *connect.Client[obligations.ListObligationValuesRequest, obligations.ListObligationValuesResponse]
 	getObligationValue        *connect.Client[obligations.GetObligationValueRequest, obligations.GetObligationValueResponse]
+	getObligationValuesByFQNs *connect.Client[obligations.GetObligationValuesByFQNsRequest, obligations.GetObligationValuesByFQNsResponse]
 	createObligationValue     *connect.Client[obligations.CreateObligationValueRequest, obligations.CreateObligationValueResponse]
 	updateObligationValue     *connect.Client[obligations.UpdateObligationValueRequest, obligations.UpdateObligationValueResponse]
 	deleteObligationValue     *connect.Client[obligations.DeleteObligationValueRequest, obligations.DeleteObligationValueResponse]
@@ -241,6 +267,11 @@ func (c *obligationsServiceClient) ListObligations(ctx context.Context, req *con
 // GetObligation calls policy.obligations.ObligationsService.GetObligation.
 func (c *obligationsServiceClient) GetObligation(ctx context.Context, req *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
 	return c.getObligation.CallUnary(ctx, req)
+}
+
+// GetObligationsByFQNs calls policy.obligations.ObligationsService.GetObligationsByFQNs.
+func (c *obligationsServiceClient) GetObligationsByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
+	return c.getObligationsByFQNs.CallUnary(ctx, req)
 }
 
 // CreateObligation calls policy.obligations.ObligationsService.CreateObligation.
@@ -266,6 +297,11 @@ func (c *obligationsServiceClient) ListObligationValues(ctx context.Context, req
 // GetObligationValue calls policy.obligations.ObligationsService.GetObligationValue.
 func (c *obligationsServiceClient) GetObligationValue(ctx context.Context, req *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
 	return c.getObligationValue.CallUnary(ctx, req)
+}
+
+// GetObligationValuesByFQNs calls policy.obligations.ObligationsService.GetObligationValuesByFQNs.
+func (c *obligationsServiceClient) GetObligationValuesByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error) {
+	return c.getObligationValuesByFQNs.CallUnary(ctx, req)
 }
 
 // CreateObligationValue calls policy.obligations.ObligationsService.CreateObligationValue.
@@ -308,11 +344,13 @@ func (c *obligationsServiceClient) RemoveObligationFulfiller(ctx context.Context
 type ObligationsServiceHandler interface {
 	ListObligations(context.Context, *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error)
 	GetObligation(context.Context, *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error)
+	GetObligationsByFQNs(context.Context, *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error)
 	CreateObligation(context.Context, *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error)
 	UpdateObligation(context.Context, *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error)
 	DeleteObligation(context.Context, *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error)
 	ListObligationValues(context.Context, *connect.Request[obligations.ListObligationValuesRequest]) (*connect.Response[obligations.ListObligationValuesResponse], error)
 	GetObligationValue(context.Context, *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error)
+	GetObligationValuesByFQNs(context.Context, *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error)
 	CreateObligationValue(context.Context, *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error)
 	UpdateObligationValue(context.Context, *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error)
 	DeleteObligationValue(context.Context, *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error)
@@ -339,6 +377,13 @@ func NewObligationsServiceHandler(svc ObligationsServiceHandler, opts ...connect
 		ObligationsServiceGetObligationProcedure,
 		svc.GetObligation,
 		connect.WithSchema(obligationsServiceGetObligationMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	obligationsServiceGetObligationsByFQNsHandler := connect.NewUnaryHandler(
+		ObligationsServiceGetObligationsByFQNsProcedure,
+		svc.GetObligationsByFQNs,
+		connect.WithSchema(obligationsServiceGetObligationsByFQNsMethodDescriptor),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
@@ -371,6 +416,13 @@ func NewObligationsServiceHandler(svc ObligationsServiceHandler, opts ...connect
 		ObligationsServiceGetObligationValueProcedure,
 		svc.GetObligationValue,
 		connect.WithSchema(obligationsServiceGetObligationValueMethodDescriptor),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
+	obligationsServiceGetObligationValuesByFQNsHandler := connect.NewUnaryHandler(
+		ObligationsServiceGetObligationValuesByFQNsProcedure,
+		svc.GetObligationValuesByFQNs,
+		connect.WithSchema(obligationsServiceGetObligationValuesByFQNsMethodDescriptor),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
@@ -422,6 +474,8 @@ func NewObligationsServiceHandler(svc ObligationsServiceHandler, opts ...connect
 			obligationsServiceListObligationsHandler.ServeHTTP(w, r)
 		case ObligationsServiceGetObligationProcedure:
 			obligationsServiceGetObligationHandler.ServeHTTP(w, r)
+		case ObligationsServiceGetObligationsByFQNsProcedure:
+			obligationsServiceGetObligationsByFQNsHandler.ServeHTTP(w, r)
 		case ObligationsServiceCreateObligationProcedure:
 			obligationsServiceCreateObligationHandler.ServeHTTP(w, r)
 		case ObligationsServiceUpdateObligationProcedure:
@@ -432,6 +486,8 @@ func NewObligationsServiceHandler(svc ObligationsServiceHandler, opts ...connect
 			obligationsServiceListObligationValuesHandler.ServeHTTP(w, r)
 		case ObligationsServiceGetObligationValueProcedure:
 			obligationsServiceGetObligationValueHandler.ServeHTTP(w, r)
+		case ObligationsServiceGetObligationValuesByFQNsProcedure:
+			obligationsServiceGetObligationValuesByFQNsHandler.ServeHTTP(w, r)
 		case ObligationsServiceCreateObligationValueProcedure:
 			obligationsServiceCreateObligationValueHandler.ServeHTTP(w, r)
 		case ObligationsServiceUpdateObligationValueProcedure:
@@ -463,6 +519,10 @@ func (UnimplementedObligationsServiceHandler) GetObligation(context.Context, *co
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.GetObligation is not implemented"))
 }
 
+func (UnimplementedObligationsServiceHandler) GetObligationsByFQNs(context.Context, *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.GetObligationsByFQNs is not implemented"))
+}
+
 func (UnimplementedObligationsServiceHandler) CreateObligation(context.Context, *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.CreateObligation is not implemented"))
 }
@@ -481,6 +541,10 @@ func (UnimplementedObligationsServiceHandler) ListObligationValues(context.Conte
 
 func (UnimplementedObligationsServiceHandler) GetObligationValue(context.Context, *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.GetObligationValue is not implemented"))
+}
+
+func (UnimplementedObligationsServiceHandler) GetObligationValuesByFQNs(context.Context, *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.GetObligationValuesByFQNs is not implemented"))
 }
 
 func (UnimplementedObligationsServiceHandler) CreateObligationValue(context.Context, *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {

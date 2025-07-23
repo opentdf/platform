@@ -1481,6 +1481,30 @@
                 </li>
               
                 <li>
+                  <a href="#policy.obligations.GetObligationValuesByFQNsRequest"><span class="badge">M</span>GetObligationValuesByFQNsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.obligations.GetObligationValuesByFQNsResponse"><span class="badge">M</span>GetObligationValuesByFQNsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.obligations.GetObligationValuesByFQNsResponse.FqnValueMapEntry"><span class="badge">M</span>GetObligationValuesByFQNsResponse.FqnValueMapEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.obligations.GetObligationsByFQNsRequest"><span class="badge">M</span>GetObligationsByFQNsRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.obligations.GetObligationsByFQNsResponse"><span class="badge">M</span>GetObligationsByFQNsResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.obligations.GetObligationsByFQNsResponse.FqnObligationMapEntry"><span class="badge">M</span>GetObligationsByFQNsResponse.FqnObligationMapEntry</a>
+                </li>
+              
+                <li>
                   <a href="#policy.obligations.ListObligationValuesRequest"><span class="badge">M</span>ListObligationValuesRequest</a>
                 </li>
               
@@ -12648,6 +12672,164 @@ Common metadata </p></td>
 
         
       
+        <h3 id="policy.obligations.GetObligationValuesByFQNsRequest">GetObligationValuesByFQNsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.GetObligationValuesByFQNsResponse">GetObligationValuesByFQNsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqn_value_map</td>
+                  <td><a href="#policy.obligations.GetObligationValuesByFQNsResponse.FqnValueMapEntry">GetObligationValuesByFQNsResponse.FqnValueMapEntry</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.GetObligationValuesByFQNsResponse.FqnValueMapEntry">GetObligationValuesByFQNsResponse.FqnValueMapEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.ObligationValue">policy.ObligationValue</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.GetObligationsByFQNsRequest">GetObligationsByFQNsRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqns</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.GetObligationsByFQNsResponse">GetObligationsByFQNsResponse</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqn_obligation_map</td>
+                  <td><a href="#policy.obligations.GetObligationsByFQNsResponse.FqnObligationMapEntry">GetObligationsByFQNsResponse.FqnObligationMapEntry</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.GetObligationsByFQNsResponse.FqnObligationMapEntry">GetObligationsByFQNsResponse.FqnObligationMapEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#policy.Obligation">policy.Obligation</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="policy.obligations.ListObligationValuesRequest">ListObligationValuesRequest</h3>
         <p></p>
 
@@ -13022,6 +13204,13 @@ Namespace ID or name </p></td>
               </tr>
             
               <tr>
+                <td>GetObligationsByFQNs</td>
+                <td><a href="#policy.obligations.GetObligationsByFQNsRequest">GetObligationsByFQNsRequest</a></td>
+                <td><a href="#policy.obligations.GetObligationsByFQNsResponse">GetObligationsByFQNsResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
                 <td>CreateObligation</td>
                 <td><a href="#policy.obligations.CreateObligationRequest">CreateObligationRequest</a></td>
                 <td><a href="#policy.obligations.CreateObligationResponse">CreateObligationResponse</a></td>
@@ -13053,6 +13242,13 @@ Namespace ID or name </p></td>
                 <td>GetObligationValue</td>
                 <td><a href="#policy.obligations.GetObligationValueRequest">GetObligationValueRequest</a></td>
                 <td><a href="#policy.obligations.GetObligationValueResponse">GetObligationValueResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>GetObligationValuesByFQNs</td>
+                <td><a href="#policy.obligations.GetObligationValuesByFQNsRequest">GetObligationValuesByFQNsRequest</a></td>
+                <td><a href="#policy.obligations.GetObligationValuesByFQNsResponse">GetObligationValuesByFQNsResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -13132,12 +13328,22 @@ Namespace ID or name </p></td>
               </tr>
             
               <tr>
+                <td>GetObligationsByFQNs</td>
+                <td><p>NO_SIDE_EFFECTS</p></td>
+              </tr>
+            
+              <tr>
                 <td>ListObligationValues</td>
                 <td><p>NO_SIDE_EFFECTS</p></td>
               </tr>
             
               <tr>
                 <td>GetObligationValue</td>
+                <td><p>NO_SIDE_EFFECTS</p></td>
+              </tr>
+            
+              <tr>
+                <td>GetObligationValuesByFQNs</td>
                 <td><p>NO_SIDE_EFFECTS</p></td>
               </tr>
             

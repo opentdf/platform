@@ -20,6 +20,14 @@ message GetObligationResponse {
     policy.Obligation obligation = 1;
 }
 
+message GetObligationsByFQNsRequest {
+    repeated string fqns = 1;
+}
+
+message GetObligationsByFQNsResponse {
+    map<string, policy.Obligation> fqn_obligation_map = 1;
+}
+
 message CreateObligationRequest {
     // Required
     string namespace_id = 1;
@@ -76,6 +84,14 @@ message GetObligationValueRequest {
 
 message GetObligationValueResponse {
     policy.ObligationValue value = 1;
+}
+
+message GetObligationValuesByFQNsRequest {
+    repeated string fqns = 1;
+}
+
+message GetObligationValuesByFQNsResponse {
+    map<string, policy.ObligationValue> fqn_value_map = 1;
 }
 
 message CreateObligationValueRequest {
@@ -188,6 +204,10 @@ service ObligationsService {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
 
+    rpc GetObligationsByFQNs(GetObligationsByFQNsRequest) returns (GetObligationsByFQNsResponse) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
+
     rpc CreateObligation(CreateObligationRequest) returns (CreateObligationResponse) {}
 
     rpc UpdateObligation(UpdateObligationRequest) returns (UpdateObligationResponse) {}
@@ -203,6 +223,10 @@ service ObligationsService {
     }
 
     rpc GetObligationValue(GetObligationValueRequest) returns (GetObligationValueResponse) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
+
+    rpc GetObligationValuesByFQNs(GetObligationValuesByFQNsRequest) returns (GetObligationValuesByFQNsResponse) {
         option idempotency_level = NO_SIDE_EFFECTS;
     }
 

@@ -97,6 +97,11 @@ func (s *ObligationsService) GetObligation(ctx context.Context, req *connect.Req
 	return connect.NewResponse(&obligations.GetObligationResponse{}), nil
 }
 
+func (s *ObligationsService) GetObligationsByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
+	// TODO: Implement GetObligationsByFQNs logic
+	return connect.NewResponse(&obligations.GetObligationsByFQNsResponse{}), nil
+}
+
 func (s *ObligationsService) UpdateObligation(ctx context.Context, req *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error) {
 	// TODO: Implement UpdateObligation logic
 	return connect.NewResponse(&obligations.UpdateObligationResponse{}), nil
@@ -120,6 +125,11 @@ func (s *ObligationsService) CreateObligationValue(ctx context.Context, req *con
 func (s *ObligationsService) GetObligationValue(ctx context.Context, req *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
 	// TODO: Implement GetObligationValue logic
 	return connect.NewResponse(&obligations.GetObligationValueResponse{}), nil
+}
+
+func (s *ObligationsService) GetObligationValuesByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error) {
+	// TODO: Implement GetObligationValuesByFQNs logic
+	return connect.NewResponse(&obligations.GetObligationValuesByFQNsResponse{}), nil
 }
 
 func (s *ObligationsService) UpdateObligationValue(ctx context.Context, req *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error) {

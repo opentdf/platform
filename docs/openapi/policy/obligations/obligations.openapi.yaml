@@ -72,6 +72,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.GetObligationResponse'
+  /policy.obligations.ObligationsService/GetObligationsByFQNs:
+    post:
+      tags:
+        - policy.obligations.ObligationsService
+      summary: GetObligationsByFQNs
+      operationId: policy.obligations.ObligationsService.GetObligationsByFQNs
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.obligations.GetObligationsByFQNsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.obligations.GetObligationsByFQNsResponse'
   /policy.obligations.ObligationsService/CreateObligation:
     post:
       tags:
@@ -247,6 +282,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.GetObligationValueResponse'
+  /policy.obligations.ObligationsService/GetObligationValuesByFQNs:
+    post:
+      tags:
+        - policy.obligations.ObligationsService
+      summary: GetObligationValuesByFQNs
+      operationId: policy.obligations.ObligationsService.GetObligationValuesByFQNs
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.obligations.GetObligationValuesByFQNsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.obligations.GetObligationValuesByFQNsResponse'
   /policy.obligations.ObligationsService/CreateObligationValue:
     post:
       tags:
@@ -1555,6 +1625,70 @@ components:
           title: value
           $ref: '#/components/schemas/policy.ObligationValue'
       title: GetObligationValueResponse
+      additionalProperties: false
+    policy.obligations.GetObligationValuesByFQNsRequest:
+      type: object
+      properties:
+        fqns:
+          type: array
+          items:
+            type: string
+          title: fqns
+      title: GetObligationValuesByFQNsRequest
+      additionalProperties: false
+    policy.obligations.GetObligationValuesByFQNsResponse:
+      type: object
+      properties:
+        fqnValueMap:
+          type: object
+          title: fqn_value_map
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.ObligationValue'
+      title: GetObligationValuesByFQNsResponse
+      additionalProperties: false
+    policy.obligations.GetObligationValuesByFQNsResponse.FqnValueMapEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.ObligationValue'
+      title: FqnValueMapEntry
+      additionalProperties: false
+    policy.obligations.GetObligationsByFQNsRequest:
+      type: object
+      properties:
+        fqns:
+          type: array
+          items:
+            type: string
+          title: fqns
+      title: GetObligationsByFQNsRequest
+      additionalProperties: false
+    policy.obligations.GetObligationsByFQNsResponse:
+      type: object
+      properties:
+        fqnObligationMap:
+          type: object
+          title: fqn_obligation_map
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.Obligation'
+      title: GetObligationsByFQNsResponse
+      additionalProperties: false
+    policy.obligations.GetObligationsByFQNsResponse.FqnObligationMapEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.Obligation'
+      title: FqnObligationMapEntry
       additionalProperties: false
     policy.obligations.ListObligationValuesRequest:
       type: object

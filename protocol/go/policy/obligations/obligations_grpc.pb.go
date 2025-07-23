@@ -21,11 +21,13 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	ObligationsService_ListObligations_FullMethodName           = "/policy.obligations.ObligationsService/ListObligations"
 	ObligationsService_GetObligation_FullMethodName             = "/policy.obligations.ObligationsService/GetObligation"
+	ObligationsService_GetObligationsByFQNs_FullMethodName      = "/policy.obligations.ObligationsService/GetObligationsByFQNs"
 	ObligationsService_CreateObligation_FullMethodName          = "/policy.obligations.ObligationsService/CreateObligation"
 	ObligationsService_UpdateObligation_FullMethodName          = "/policy.obligations.ObligationsService/UpdateObligation"
 	ObligationsService_DeleteObligation_FullMethodName          = "/policy.obligations.ObligationsService/DeleteObligation"
 	ObligationsService_ListObligationValues_FullMethodName      = "/policy.obligations.ObligationsService/ListObligationValues"
 	ObligationsService_GetObligationValue_FullMethodName        = "/policy.obligations.ObligationsService/GetObligationValue"
+	ObligationsService_GetObligationValuesByFQNs_FullMethodName = "/policy.obligations.ObligationsService/GetObligationValuesByFQNs"
 	ObligationsService_CreateObligationValue_FullMethodName     = "/policy.obligations.ObligationsService/CreateObligationValue"
 	ObligationsService_UpdateObligationValue_FullMethodName     = "/policy.obligations.ObligationsService/UpdateObligationValue"
 	ObligationsService_DeleteObligationValue_FullMethodName     = "/policy.obligations.ObligationsService/DeleteObligationValue"
@@ -41,11 +43,13 @@ const (
 type ObligationsServiceClient interface {
 	ListObligations(ctx context.Context, in *ListObligationsRequest, opts ...grpc.CallOption) (*ListObligationsResponse, error)
 	GetObligation(ctx context.Context, in *GetObligationRequest, opts ...grpc.CallOption) (*GetObligationResponse, error)
+	GetObligationsByFQNs(ctx context.Context, in *GetObligationsByFQNsRequest, opts ...grpc.CallOption) (*GetObligationsByFQNsResponse, error)
 	CreateObligation(ctx context.Context, in *CreateObligationRequest, opts ...grpc.CallOption) (*CreateObligationResponse, error)
 	UpdateObligation(ctx context.Context, in *UpdateObligationRequest, opts ...grpc.CallOption) (*UpdateObligationResponse, error)
 	DeleteObligation(ctx context.Context, in *DeleteObligationRequest, opts ...grpc.CallOption) (*DeleteObligationResponse, error)
 	ListObligationValues(ctx context.Context, in *ListObligationValuesRequest, opts ...grpc.CallOption) (*ListObligationValuesResponse, error)
 	GetObligationValue(ctx context.Context, in *GetObligationValueRequest, opts ...grpc.CallOption) (*GetObligationValueResponse, error)
+	GetObligationValuesByFQNs(ctx context.Context, in *GetObligationValuesByFQNsRequest, opts ...grpc.CallOption) (*GetObligationValuesByFQNsResponse, error)
 	CreateObligationValue(ctx context.Context, in *CreateObligationValueRequest, opts ...grpc.CallOption) (*CreateObligationValueResponse, error)
 	UpdateObligationValue(ctx context.Context, in *UpdateObligationValueRequest, opts ...grpc.CallOption) (*UpdateObligationValueResponse, error)
 	DeleteObligationValue(ctx context.Context, in *DeleteObligationValueRequest, opts ...grpc.CallOption) (*DeleteObligationValueResponse, error)
@@ -75,6 +79,15 @@ func (c *obligationsServiceClient) ListObligations(ctx context.Context, in *List
 func (c *obligationsServiceClient) GetObligation(ctx context.Context, in *GetObligationRequest, opts ...grpc.CallOption) (*GetObligationResponse, error) {
 	out := new(GetObligationResponse)
 	err := c.cc.Invoke(ctx, ObligationsService_GetObligation_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *obligationsServiceClient) GetObligationsByFQNs(ctx context.Context, in *GetObligationsByFQNsRequest, opts ...grpc.CallOption) (*GetObligationsByFQNsResponse, error) {
+	out := new(GetObligationsByFQNsResponse)
+	err := c.cc.Invoke(ctx, ObligationsService_GetObligationsByFQNs_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +133,15 @@ func (c *obligationsServiceClient) ListObligationValues(ctx context.Context, in 
 func (c *obligationsServiceClient) GetObligationValue(ctx context.Context, in *GetObligationValueRequest, opts ...grpc.CallOption) (*GetObligationValueResponse, error) {
 	out := new(GetObligationValueResponse)
 	err := c.cc.Invoke(ctx, ObligationsService_GetObligationValue_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *obligationsServiceClient) GetObligationValuesByFQNs(ctx context.Context, in *GetObligationValuesByFQNsRequest, opts ...grpc.CallOption) (*GetObligationValuesByFQNsResponse, error) {
+	out := new(GetObligationValuesByFQNsResponse)
+	err := c.cc.Invoke(ctx, ObligationsService_GetObligationValuesByFQNs_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -195,11 +217,13 @@ func (c *obligationsServiceClient) RemoveObligationFulfiller(ctx context.Context
 type ObligationsServiceServer interface {
 	ListObligations(context.Context, *ListObligationsRequest) (*ListObligationsResponse, error)
 	GetObligation(context.Context, *GetObligationRequest) (*GetObligationResponse, error)
+	GetObligationsByFQNs(context.Context, *GetObligationsByFQNsRequest) (*GetObligationsByFQNsResponse, error)
 	CreateObligation(context.Context, *CreateObligationRequest) (*CreateObligationResponse, error)
 	UpdateObligation(context.Context, *UpdateObligationRequest) (*UpdateObligationResponse, error)
 	DeleteObligation(context.Context, *DeleteObligationRequest) (*DeleteObligationResponse, error)
 	ListObligationValues(context.Context, *ListObligationValuesRequest) (*ListObligationValuesResponse, error)
 	GetObligationValue(context.Context, *GetObligationValueRequest) (*GetObligationValueResponse, error)
+	GetObligationValuesByFQNs(context.Context, *GetObligationValuesByFQNsRequest) (*GetObligationValuesByFQNsResponse, error)
 	CreateObligationValue(context.Context, *CreateObligationValueRequest) (*CreateObligationValueResponse, error)
 	UpdateObligationValue(context.Context, *UpdateObligationValueRequest) (*UpdateObligationValueResponse, error)
 	DeleteObligationValue(context.Context, *DeleteObligationValueRequest) (*DeleteObligationValueResponse, error)
@@ -220,6 +244,9 @@ func (UnimplementedObligationsServiceServer) ListObligations(context.Context, *L
 func (UnimplementedObligationsServiceServer) GetObligation(context.Context, *GetObligationRequest) (*GetObligationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObligation not implemented")
 }
+func (UnimplementedObligationsServiceServer) GetObligationsByFQNs(context.Context, *GetObligationsByFQNsRequest) (*GetObligationsByFQNsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetObligationsByFQNs not implemented")
+}
 func (UnimplementedObligationsServiceServer) CreateObligation(context.Context, *CreateObligationRequest) (*CreateObligationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateObligation not implemented")
 }
@@ -234,6 +261,9 @@ func (UnimplementedObligationsServiceServer) ListObligationValues(context.Contex
 }
 func (UnimplementedObligationsServiceServer) GetObligationValue(context.Context, *GetObligationValueRequest) (*GetObligationValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObligationValue not implemented")
+}
+func (UnimplementedObligationsServiceServer) GetObligationValuesByFQNs(context.Context, *GetObligationValuesByFQNsRequest) (*GetObligationValuesByFQNsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetObligationValuesByFQNs not implemented")
 }
 func (UnimplementedObligationsServiceServer) CreateObligationValue(context.Context, *CreateObligationValueRequest) (*CreateObligationValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateObligationValue not implemented")
@@ -301,6 +331,24 @@ func _ObligationsService_GetObligation_Handler(srv interface{}, ctx context.Cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ObligationsServiceServer).GetObligation(ctx, req.(*GetObligationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ObligationsService_GetObligationsByFQNs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetObligationsByFQNsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ObligationsServiceServer).GetObligationsByFQNs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ObligationsService_GetObligationsByFQNs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ObligationsServiceServer).GetObligationsByFQNs(ctx, req.(*GetObligationsByFQNsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -391,6 +439,24 @@ func _ObligationsService_GetObligationValue_Handler(srv interface{}, ctx context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ObligationsServiceServer).GetObligationValue(ctx, req.(*GetObligationValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ObligationsService_GetObligationValuesByFQNs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetObligationValuesByFQNsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ObligationsServiceServer).GetObligationValuesByFQNs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ObligationsService_GetObligationValuesByFQNs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ObligationsServiceServer).GetObligationValuesByFQNs(ctx, req.(*GetObligationValuesByFQNsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -537,6 +603,10 @@ var ObligationsService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ObligationsService_GetObligation_Handler,
 		},
 		{
+			MethodName: "GetObligationsByFQNs",
+			Handler:    _ObligationsService_GetObligationsByFQNs_Handler,
+		},
+		{
 			MethodName: "CreateObligation",
 			Handler:    _ObligationsService_CreateObligation_Handler,
 		},
@@ -555,6 +625,10 @@ var ObligationsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetObligationValue",
 			Handler:    _ObligationsService_GetObligationValue_Handler,
+		},
+		{
+			MethodName: "GetObligationValuesByFQNs",
+			Handler:    _ObligationsService_GetObligationValuesByFQNs_Handler,
 		},
 		{
 			MethodName: "CreateObligationValue",

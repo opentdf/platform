@@ -130,3 +130,23 @@ func (s *ObligationsService) DeleteObligationValue(ctx context.Context, req *obl
 	// TODO: Implement DeleteObligationValue logic
 	return &obligations.DeleteObligationValueResponse{}, nil
 }
+
+func (s *ObligationsService) AddObligationTrigger(ctx context.Context, req *obligations.AddObligationTriggerRequest) (*obligations.AddObligationTriggerResponse, error) {
+	// TODO: Implement AddObligationTrigger logic
+	return &obligations.AddObligationTriggerResponse{}, nil
+}
+
+func (s *ObligationsService) RemoveObligationTrigger(ctx context.Context, req *obligations.RemoveObligationTriggerRequest) (*obligations.RemoveObligationTriggerResponse, error) {
+	// TODO: Implement RemoveObligationTrigger logic
+	return &obligations.RemoveObligationTriggerResponse{}, nil
+}
+
+func (s *ObligationsService) AddObligationFulfiller(ctx context.Context, req *obligations.AddObligationFulfillerRequest) (*obligations.AddObligationFulfillerResponse, error) {
+	// TODO: Implement AddObligationFulfiller logic
+	return &obligations.AddObligationFulfillerResponse{}, nil
+}
+
+func (s *ObligationsService) RemoveObligationFulfiller(ctx context.Context, req *obligations.RemoveObligationFulfillerRequest) (*obligations.RemoveObligationFulfillerResponse, error) {
+	// TODO: Implement RemoveObligationFulfiller logic
+	return &obligations.RemoveObligationFulfillerResponse{}, nil
+}

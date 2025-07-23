@@ -105,3 +105,28 @@ func (s *ObligationsService) DeleteObligation(ctx context.Context, req *obligati
 	// TODO: Implement DeleteObligation logic
 	return &obligations.DeleteObligationResponse{}, nil
 }
+
+func (s *ObligationsService) ListObligationValues(ctx context.Context, req *obligations.ListObligationValuesRequest) (*obligations.ListObligationValuesResponse, error) {
+	// TODO: Implement ListObligationValues logic
+	return &obligations.ListObligationValuesResponse{}, nil
+}
+
+func (s *ObligationsService) CreateObligationValue(ctx context.Context, req *obligations.CreateObligationValueRequest) (*obligations.CreateObligationValueResponse, error) {
+	// TODO: Implement CreateObligationValue logic
+	return &obligations.CreateObligationValueResponse{}, nil
+}
+
+func (s *ObligationsService) GetObligationValue(ctx context.Context, req *obligations.GetObligationValueRequest) (*obligations.GetObligationValueResponse, error) {
+	// TODO: Implement GetObligationValue logic
+	return &obligations.GetObligationValueResponse{}, nil
+}
+
+func (s *ObligationsService) UpdateObligationValue(ctx context.Context, req *obligations.UpdateObligationValueRequest) (*obligations.UpdateObligationValueResponse, error) {
+	// TODO: Implement UpdateObligationValue logic
+	return &obligations.UpdateObligationValueResponse{}, nil
+}
+
+func (s *ObligationsService) DeleteObligationValue(ctx context.Context, req *obligations.DeleteObligationValueRequest) (*obligations.DeleteObligationValueResponse, error) {
+	// TODO: Implement DeleteObligationValue logic
+	return &obligations.DeleteObligationValueResponse{}, nil
+}

@@ -462,30 +462,43 @@ message RegisteredResourceValue {
 
 message Obligation {
   string id = 1;
+
   Namespace namespace = 2;
+
   string name = 3;
+  
   common.Metadata metadata = 100;
 }
 
 message ObligationValue {
   string id = 1;
+
   Obligation obligation = 2;
+
   string value = 3;
+
   common.Metadata metadata = 100;
 }
 
 message ObligationTrigger {
   string id = 1;
+
   ObligationValue obligation_value = 2;
+
   Action action = 3;
+
   Value attribute_value = 4;
+
   common.Metadata metadata = 100;
 }
 
 message ObligationFulfiller {
   string id = 1;
+
   ObligationValue obligation_value = 2;
+
   google.protobuf.Struct conditionals = 3;
+
   common.Metadata metadata = 100;
 }
 

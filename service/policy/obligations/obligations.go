@@ -80,3 +80,28 @@ func (s *ObligationsService) Close() {
 	s.logger.Info("gracefully shutting down obligations service")
 	s.dbClient.Close()
 }
+
+func (s *ObligationsService) ListObligations(ctx context.Context, req *obligations.ListObligationsRequest) (*obligations.ListObligationsResponse, error) {
+	// TODO: Implement ListObligations logic
+	return &obligations.ListObligationsResponse{}, nil
+}
+
+func (s *ObligationsService) CreateObligation(ctx context.Context, req *obligations.CreateObligationRequest) (*obligations.CreateObligationResponse, error) {
+	// TODO: Implement CreateObligation logic
+	return &obligations.CreateObligationResponse{}, nil
+}
+
+func (s *ObligationsService) GetObligation(ctx context.Context, req *obligations.GetObligationRequest) (*obligations.GetObligationResponse, error) {
+	// TODO: Implement GetObligation logic
+	return &obligations.GetObligationResponse{}, nil
+}
+
+func (s *ObligationsService) UpdateObligation(ctx context.Context, req *obligations.UpdateObligationRequest) (*obligations.UpdateObligationResponse, error) {
+	// TODO: Implement UpdateObligation logic
+	return &obligations.UpdateObligationResponse{}, nil
+}
+
+func (s *ObligationsService) DeleteObligation(ctx context.Context, req *obligations.DeleteObligationRequest) (*obligations.DeleteObligationResponse, error) {
+	// TODO: Implement DeleteObligation logic
+	return &obligations.DeleteObligationResponse{}, nil
+}

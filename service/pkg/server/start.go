@@ -113,8 +113,8 @@ func Start(f ...StartOptions) error {
 	}
 
 	// Set Default Policy
-	if startConfig.bultinPolicyOverride != "" {
-		cfg.Server.Auth.Policy.Builtin = startConfig.bultinPolicyOverride
+	if startConfig.builtinPolicyOverride != "" {
+		cfg.Server.Auth.Policy.Builtin = startConfig.builtinPolicyOverride
 	}
 
 	// Set Casbin Adapter
@@ -148,7 +148,7 @@ func Start(f ...StartOptions) error {
 
 	var registeredCoreServices []string
 
-	registeredCoreServices, err = registerCoreServices(svcRegistry, cfg.Mode)
+	registeredCoreServices, err = registerCoreServices(svcRegistry, cfg.Mode, startConfig.customPolicyServices)
 	if err != nil {
 		logger.Error("could not register core services", slog.String("error", err.Error()))
 		return fmt.Errorf("could not register core services: %w", err)

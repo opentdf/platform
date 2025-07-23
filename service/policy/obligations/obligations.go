@@ -82,82 +82,82 @@ func (s *ObligationsService) Close() {
 	s.dbClient.Close()
 }
 
-func (s *ObligationsService) ListObligations(ctx context.Context, req *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error) {
+func (s *ObligationsService) ListObligations(_ context.Context, req *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error) {
 	// TODO: Implement ListObligations logic
 	return connect.NewResponse(&obligations.ListObligationsResponse{}), nil
 }
 
-func (s *ObligationsService) CreateObligation(ctx context.Context, req *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
+func (s *ObligationsService) CreateObligation(_ context.Context, req *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
 	// TODO: Implement CreateObligation logic
 	return connect.NewResponse(&obligations.CreateObligationResponse{}), nil
 }
 
-func (s *ObligationsService) GetObligation(ctx context.Context, req *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
+func (s *ObligationsService) GetObligation(_ context.Context, req *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
 	// TODO: Implement GetObligation logic
 	return connect.NewResponse(&obligations.GetObligationResponse{}), nil
 }
 
-func (s *ObligationsService) GetObligationsByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
+func (s *ObligationsService) GetObligationsByFQNs(_ context.Context, req *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
 	// TODO: Implement GetObligationsByFQNs logic
 	return connect.NewResponse(&obligations.GetObligationsByFQNsResponse{}), nil
 }
 
-func (s *ObligationsService) UpdateObligation(ctx context.Context, req *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error) {
+func (s *ObligationsService) UpdateObligation(_ context.Context, req *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error) {
 	// TODO: Implement UpdateObligation logic
 	return connect.NewResponse(&obligations.UpdateObligationResponse{}), nil
 }
 
-func (s *ObligationsService) DeleteObligation(ctx context.Context, req *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error) {
+func (s *ObligationsService) DeleteObligation(_ context.Context, req *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error) {
 	// TODO: Implement DeleteObligation logic
 	return connect.NewResponse(&obligations.DeleteObligationResponse{}), nil
 }
 
-func (s *ObligationsService) ListObligationValues(ctx context.Context, req *connect.Request[obligations.ListObligationValuesRequest]) (*connect.Response[obligations.ListObligationValuesResponse], error) {
+func (s *ObligationsService) ListObligationValues(_ context.Context, req *connect.Request[obligations.ListObligationValuesRequest]) (*connect.Response[obligations.ListObligationValuesResponse], error) {
 	// TODO: Implement ListObligationValues logic
 	return connect.NewResponse(&obligations.ListObligationValuesResponse{}), nil
 }
 
-func (s *ObligationsService) CreateObligationValue(ctx context.Context, req *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {
+func (s *ObligationsService) CreateObligationValue(_ context.Context, req *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {
 	// TODO: Implement CreateObligationValue logic
 	return connect.NewResponse(&obligations.CreateObligationValueResponse{}), nil
 }
 
-func (s *ObligationsService) GetObligationValue(ctx context.Context, req *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
+func (s *ObligationsService) GetObligationValue(_ context.Context, req *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
 	// TODO: Implement GetObligationValue logic
 	return connect.NewResponse(&obligations.GetObligationValueResponse{}), nil
 }
 
-func (s *ObligationsService) GetObligationValuesByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error) {
+func (s *ObligationsService) GetObligationValuesByFQNs(_ context.Context, req *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error) {
 	// TODO: Implement GetObligationValuesByFQNs logic
 	return connect.NewResponse(&obligations.GetObligationValuesByFQNsResponse{}), nil
 }
 
-func (s *ObligationsService) UpdateObligationValue(ctx context.Context, req *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error) {
+func (s *ObligationsService) UpdateObligationValue(_ context.Context, req *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error) {
 	// TODO: Implement UpdateObligationValue logic
 	return connect.NewResponse(&obligations.UpdateObligationValueResponse{}), nil
 }
 
-func (s *ObligationsService) DeleteObligationValue(ctx context.Context, req *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error) {
+func (s *ObligationsService) DeleteObligationValue(_ context.Context, req *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error) {
 	// TODO: Implement DeleteObligationValue logic
 	return connect.NewResponse(&obligations.DeleteObligationValueResponse{}), nil
 }
 
-func (s *ObligationsService) AddObligationTrigger(ctx context.Context, req *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error) {
+func (s *ObligationsService) AddObligationTrigger(_ context.Context, req *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error) {
 	// TODO: Implement AddObligationTrigger logic
 	return connect.NewResponse(&obligations.AddObligationTriggerResponse{}), nil
 }
 
-func (s *ObligationsService) RemoveObligationTrigger(ctx context.Context, req *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error) {
+func (s *ObligationsService) RemoveObligationTrigger(_ context.Context, req *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error) {
 	// TODO: Implement RemoveObligationTrigger logic
 	return connect.NewResponse(&obligations.RemoveObligationTriggerResponse{}), nil
 }
 
-func (s *ObligationsService) AddObligationFulfiller(ctx context.Context, req *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error) {
+func (s *ObligationsService) AddObligationFulfiller(_ context.Context, req *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error) {
 	// TODO: Implement AddObligationFulfiller logic
 	return connect.NewResponse(&obligations.AddObligationFulfillerResponse{}), nil
 }
 
-func (s *ObligationsService) RemoveObligationFulfiller(ctx context.Context, req *connect.Request[obligations.RemoveObligationFulfillerRequest]) (*connect.Response[obligations.RemoveObligationFulfillerResponse], error) {
+func (s *ObligationsService) RemoveObligationFulfiller(_ context.Context, req *connect.Request[obligations.RemoveObligationFulfillerRequest]) (*connect.Response[obligations.RemoveObligationFulfillerResponse], error) {
 	// TODO: Implement RemoveObligationFulfiller logic
 	return connect.NewResponse(&obligations.RemoveObligationFulfillerResponse{}), nil
 }

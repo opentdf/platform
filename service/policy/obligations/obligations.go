@@ -22,7 +22,7 @@ type Service struct {
 }
 
 func OnConfigUpdate(s *Service) serviceregistry.OnConfigUpdateHook {
-	return func(_ context.Context, cfg config.ServiceConfig) error {
+	return func(ctx context.Context, cfg config.ServiceConfig) error {
 		sharedCfg, err := policyconfig.GetSharedPolicyConfig(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to get shared policy config: %w", err)
@@ -30,7 +30,7 @@ func OnConfigUpdate(s *Service) serviceregistry.OnConfigUpdateHook {
 		s.config = sharedCfg
 		s.dbClient = policydb.NewClient(s.dbClient.Client, s.logger, int32(sharedCfg.ListRequestLimitMax), int32(sharedCfg.ListRequestLimitDefault))
 
-		s.logger.Info("obligations service config reloaded")
+		s.logger.InfoContext(ctx, "obligations service config reloaded")
 
 		return nil
 	}

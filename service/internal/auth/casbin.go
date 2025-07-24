@@ -54,7 +54,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 
 	isDefaultPolicy := false
 	if c.Csv == "" {
-		// Set the Bultin Policy if provided
+		// Set the Builtin Policy if provided
 		if c.Builtin != "" {
 			c.Csv = c.Builtin
 		} else {

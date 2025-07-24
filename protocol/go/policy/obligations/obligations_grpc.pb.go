@@ -19,35 +19,31 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ObligationsService_ListObligations_FullMethodName           = "/policy.obligations.ObligationsService/ListObligations"
-	ObligationsService_GetObligation_FullMethodName             = "/policy.obligations.ObligationsService/GetObligation"
-	ObligationsService_GetObligationsByFQNs_FullMethodName      = "/policy.obligations.ObligationsService/GetObligationsByFQNs"
-	ObligationsService_CreateObligation_FullMethodName          = "/policy.obligations.ObligationsService/CreateObligation"
-	ObligationsService_UpdateObligation_FullMethodName          = "/policy.obligations.ObligationsService/UpdateObligation"
-	ObligationsService_DeleteObligation_FullMethodName          = "/policy.obligations.ObligationsService/DeleteObligation"
-	ObligationsService_ListObligationValues_FullMethodName      = "/policy.obligations.ObligationsService/ListObligationValues"
-	ObligationsService_GetObligationValue_FullMethodName        = "/policy.obligations.ObligationsService/GetObligationValue"
-	ObligationsService_GetObligationValuesByFQNs_FullMethodName = "/policy.obligations.ObligationsService/GetObligationValuesByFQNs"
-	ObligationsService_CreateObligationValue_FullMethodName     = "/policy.obligations.ObligationsService/CreateObligationValue"
-	ObligationsService_UpdateObligationValue_FullMethodName     = "/policy.obligations.ObligationsService/UpdateObligationValue"
-	ObligationsService_DeleteObligationValue_FullMethodName     = "/policy.obligations.ObligationsService/DeleteObligationValue"
-	ObligationsService_AddObligationTrigger_FullMethodName      = "/policy.obligations.ObligationsService/AddObligationTrigger"
-	ObligationsService_RemoveObligationTrigger_FullMethodName   = "/policy.obligations.ObligationsService/RemoveObligationTrigger"
-	ObligationsService_AddObligationFulfiller_FullMethodName    = "/policy.obligations.ObligationsService/AddObligationFulfiller"
-	ObligationsService_RemoveObligationFulfiller_FullMethodName = "/policy.obligations.ObligationsService/RemoveObligationFulfiller"
+	Service_ListObligations_FullMethodName           = "/policy.obligations.Service/ListObligations"
+	Service_GetObligation_FullMethodName             = "/policy.obligations.Service/GetObligation"
+	Service_GetObligationsByFQNs_FullMethodName      = "/policy.obligations.Service/GetObligationsByFQNs"
+	Service_CreateObligation_FullMethodName          = "/policy.obligations.Service/CreateObligation"
+	Service_UpdateObligation_FullMethodName          = "/policy.obligations.Service/UpdateObligation"
+	Service_DeleteObligation_FullMethodName          = "/policy.obligations.Service/DeleteObligation"
+	Service_GetObligationValue_FullMethodName        = "/policy.obligations.Service/GetObligationValue"
+	Service_GetObligationValuesByFQNs_FullMethodName = "/policy.obligations.Service/GetObligationValuesByFQNs"
+	Service_CreateObligationValue_FullMethodName     = "/policy.obligations.Service/CreateObligationValue"
+	Service_UpdateObligationValue_FullMethodName     = "/policy.obligations.Service/UpdateObligationValue"
+	Service_DeleteObligationValue_FullMethodName     = "/policy.obligations.Service/DeleteObligationValue"
+	Service_AddObligationTrigger_FullMethodName      = "/policy.obligations.Service/AddObligationTrigger"
+	Service_RemoveObligationTrigger_FullMethodName   = "/policy.obligations.Service/RemoveObligationTrigger"
 )
 
-// ObligationsServiceClient is the client API for ObligationsService service.
+// ServiceClient is the client API for Service service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ObligationsServiceClient interface {
+type ServiceClient interface {
 	ListObligations(ctx context.Context, in *ListObligationsRequest, opts ...grpc.CallOption) (*ListObligationsResponse, error)
 	GetObligation(ctx context.Context, in *GetObligationRequest, opts ...grpc.CallOption) (*GetObligationResponse, error)
 	GetObligationsByFQNs(ctx context.Context, in *GetObligationsByFQNsRequest, opts ...grpc.CallOption) (*GetObligationsByFQNsResponse, error)
 	CreateObligation(ctx context.Context, in *CreateObligationRequest, opts ...grpc.CallOption) (*CreateObligationResponse, error)
 	UpdateObligation(ctx context.Context, in *UpdateObligationRequest, opts ...grpc.CallOption) (*UpdateObligationResponse, error)
 	DeleteObligation(ctx context.Context, in *DeleteObligationRequest, opts ...grpc.CallOption) (*DeleteObligationResponse, error)
-	ListObligationValues(ctx context.Context, in *ListObligationValuesRequest, opts ...grpc.CallOption) (*ListObligationValuesResponse, error)
 	GetObligationValue(ctx context.Context, in *GetObligationValueRequest, opts ...grpc.CallOption) (*GetObligationValueResponse, error)
 	GetObligationValuesByFQNs(ctx context.Context, in *GetObligationValuesByFQNsRequest, opts ...grpc.CallOption) (*GetObligationValuesByFQNsResponse, error)
 	CreateObligationValue(ctx context.Context, in *CreateObligationValueRequest, opts ...grpc.CallOption) (*CreateObligationValueResponse, error)
@@ -55,173 +51,143 @@ type ObligationsServiceClient interface {
 	DeleteObligationValue(ctx context.Context, in *DeleteObligationValueRequest, opts ...grpc.CallOption) (*DeleteObligationValueResponse, error)
 	AddObligationTrigger(ctx context.Context, in *AddObligationTriggerRequest, opts ...grpc.CallOption) (*AddObligationTriggerResponse, error)
 	RemoveObligationTrigger(ctx context.Context, in *RemoveObligationTriggerRequest, opts ...grpc.CallOption) (*RemoveObligationTriggerResponse, error)
-	AddObligationFulfiller(ctx context.Context, in *AddObligationFulfillerRequest, opts ...grpc.CallOption) (*AddObligationFulfillerResponse, error)
-	RemoveObligationFulfiller(ctx context.Context, in *RemoveObligationFulfillerRequest, opts ...grpc.CallOption) (*RemoveObligationFulfillerResponse, error)
 }
 
-type obligationsServiceClient struct {
+type serviceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewObligationsServiceClient(cc grpc.ClientConnInterface) ObligationsServiceClient {
-	return &obligationsServiceClient{cc}
+func NewServiceClient(cc grpc.ClientConnInterface) ServiceClient {
+	return &serviceClient{cc}
 }
 
-func (c *obligationsServiceClient) ListObligations(ctx context.Context, in *ListObligationsRequest, opts ...grpc.CallOption) (*ListObligationsResponse, error) {
+func (c *serviceClient) ListObligations(ctx context.Context, in *ListObligationsRequest, opts ...grpc.CallOption) (*ListObligationsResponse, error) {
 	out := new(ListObligationsResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_ListObligations_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Service_ListObligations_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *obligationsServiceClient) GetObligation(ctx context.Context, in *GetObligationRequest, opts ...grpc.CallOption) (*GetObligationResponse, error) {
+func (c *serviceClient) GetObligation(ctx context.Context, in *GetObligationRequest, opts ...grpc.CallOption) (*GetObligationResponse, error) {
 	out := new(GetObligationResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_GetObligation_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Service_GetObligation_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *obligationsServiceClient) GetObligationsByFQNs(ctx context.Context, in *GetObligationsByFQNsRequest, opts ...grpc.CallOption) (*GetObligationsByFQNsResponse, error) {
+func (c *serviceClient) GetObligationsByFQNs(ctx context.Context, in *GetObligationsByFQNsRequest, opts ...grpc.CallOption) (*GetObligationsByFQNsResponse, error) {
 	out := new(GetObligationsByFQNsResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_GetObligationsByFQNs_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Service_GetObligationsByFQNs_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *obligationsServiceClient) CreateObligation(ctx context.Context, in *CreateObligationRequest, opts ...grpc.CallOption) (*CreateObligationResponse, error) {
+func (c *serviceClient) CreateObligation(ctx context.Context, in *CreateObligationRequest, opts ...grpc.CallOption) (*CreateObligationResponse, error) {
 	out := new(CreateObligationResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_CreateObligation_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Service_CreateObligation_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *obligationsServiceClient) UpdateObligation(ctx context.Context, in *UpdateObligationRequest, opts ...grpc.CallOption) (*UpdateObligationResponse, error) {
+func (c *serviceClient) UpdateObligation(ctx context.Context, in *UpdateObligationRequest, opts ...grpc.CallOption) (*UpdateObligationResponse, error) {
 	out := new(UpdateObligationResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_UpdateObligation_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Service_UpdateObligation_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *obligationsServiceClient) DeleteObligation(ctx context.Context, in *DeleteObligationRequest, opts ...grpc.CallOption) (*DeleteObligationResponse, error) {
+func (c *serviceClient) DeleteObligation(ctx context.Context, in *DeleteObligationRequest, opts ...grpc.CallOption) (*DeleteObligationResponse, error) {
 	out := new(DeleteObligationResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_DeleteObligation_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Service_DeleteObligation_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *obligationsServiceClient) ListObligationValues(ctx context.Context, in *ListObligationValuesRequest, opts ...grpc.CallOption) (*ListObligationValuesResponse, error) {
-	out := new(ListObligationValuesResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_ListObligationValues_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *obligationsServiceClient) GetObligationValue(ctx context.Context, in *GetObligationValueRequest, opts ...grpc.CallOption) (*GetObligationValueResponse, error) {
+func (c *serviceClient) GetObligationValue(ctx context.Context, in *GetObligationValueRequest, opts ...grpc.CallOption) (*GetObligationValueResponse, error) {
 	out := new(GetObligationValueResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_GetObligationValue_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Service_GetObligationValue_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *obligationsServiceClient) GetObligationValuesByFQNs(ctx context.Context, in *GetObligationValuesByFQNsRequest, opts ...grpc.CallOption) (*GetObligationValuesByFQNsResponse, error) {
+func (c *serviceClient) GetObligationValuesByFQNs(ctx context.Context, in *GetObligationValuesByFQNsRequest, opts ...grpc.CallOption) (*GetObligationValuesByFQNsResponse, error) {
 	out := new(GetObligationValuesByFQNsResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_GetObligationValuesByFQNs_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Service_GetObligationValuesByFQNs_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *obligationsServiceClient) CreateObligationValue(ctx context.Context, in *CreateObligationValueRequest, opts ...grpc.CallOption) (*CreateObligationValueResponse, error) {
+func (c *serviceClient) CreateObligationValue(ctx context.Context, in *CreateObligationValueRequest, opts ...grpc.CallOption) (*CreateObligationValueResponse, error) {
 	out := new(CreateObligationValueResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_CreateObligationValue_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Service_CreateObligationValue_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *obligationsServiceClient) UpdateObligationValue(ctx context.Context, in *UpdateObligationValueRequest, opts ...grpc.CallOption) (*UpdateObligationValueResponse, error) {
+func (c *serviceClient) UpdateObligationValue(ctx context.Context, in *UpdateObligationValueRequest, opts ...grpc.CallOption) (*UpdateObligationValueResponse, error) {
 	out := new(UpdateObligationValueResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_UpdateObligationValue_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Service_UpdateObligationValue_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *obligationsServiceClient) DeleteObligationValue(ctx context.Context, in *DeleteObligationValueRequest, opts ...grpc.CallOption) (*DeleteObligationValueResponse, error) {
+func (c *serviceClient) DeleteObligationValue(ctx context.Context, in *DeleteObligationValueRequest, opts ...grpc.CallOption) (*DeleteObligationValueResponse, error) {
 	out := new(DeleteObligationValueResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_DeleteObligationValue_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Service_DeleteObligationValue_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *obligationsServiceClient) AddObligationTrigger(ctx context.Context, in *AddObligationTriggerRequest, opts ...grpc.CallOption) (*AddObligationTriggerResponse, error) {
+func (c *serviceClient) AddObligationTrigger(ctx context.Context, in *AddObligationTriggerRequest, opts ...grpc.CallOption) (*AddObligationTriggerResponse, error) {
 	out := new(AddObligationTriggerResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_AddObligationTrigger_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Service_AddObligationTrigger_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *obligationsServiceClient) RemoveObligationTrigger(ctx context.Context, in *RemoveObligationTriggerRequest, opts ...grpc.CallOption) (*RemoveObligationTriggerResponse, error) {
+func (c *serviceClient) RemoveObligationTrigger(ctx context.Context, in *RemoveObligationTriggerRequest, opts ...grpc.CallOption) (*RemoveObligationTriggerResponse, error) {
 	out := new(RemoveObligationTriggerResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_RemoveObligationTrigger_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Service_RemoveObligationTrigger_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *obligationsServiceClient) AddObligationFulfiller(ctx context.Context, in *AddObligationFulfillerRequest, opts ...grpc.CallOption) (*AddObligationFulfillerResponse, error) {
-	out := new(AddObligationFulfillerResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_AddObligationFulfiller_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *obligationsServiceClient) RemoveObligationFulfiller(ctx context.Context, in *RemoveObligationFulfillerRequest, opts ...grpc.CallOption) (*RemoveObligationFulfillerResponse, error) {
-	out := new(RemoveObligationFulfillerResponse)
-	err := c.cc.Invoke(ctx, ObligationsService_RemoveObligationFulfiller_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// ObligationsServiceServer is the server API for ObligationsService service.
-// All implementations must embed UnimplementedObligationsServiceServer
+// ServiceServer is the server API for Service service.
+// All implementations must embed UnimplementedServiceServer
 // for forward compatibility
-type ObligationsServiceServer interface {
+type ServiceServer interface {
 	ListObligations(context.Context, *ListObligationsRequest) (*ListObligationsResponse, error)
 	GetObligation(context.Context, *GetObligationRequest) (*GetObligationResponse, error)
 	GetObligationsByFQNs(context.Context, *GetObligationsByFQNsRequest) (*GetObligationsByFQNsResponse, error)
 	CreateObligation(context.Context, *CreateObligationRequest) (*CreateObligationResponse, error)
 	UpdateObligation(context.Context, *UpdateObligationRequest) (*UpdateObligationResponse, error)
 	DeleteObligation(context.Context, *DeleteObligationRequest) (*DeleteObligationResponse, error)
-	ListObligationValues(context.Context, *ListObligationValuesRequest) (*ListObligationValuesResponse, error)
 	GetObligationValue(context.Context, *GetObligationValueRequest) (*GetObligationValueResponse, error)
 	GetObligationValuesByFQNs(context.Context, *GetObligationValuesByFQNsRequest) (*GetObligationValuesByFQNsResponse, error)
 	CreateObligationValue(context.Context, *CreateObligationValueRequest) (*CreateObligationValueResponse, error)
@@ -229,434 +195,357 @@ type ObligationsServiceServer interface {
 	DeleteObligationValue(context.Context, *DeleteObligationValueRequest) (*DeleteObligationValueResponse, error)
 	AddObligationTrigger(context.Context, *AddObligationTriggerRequest) (*AddObligationTriggerResponse, error)
 	RemoveObligationTrigger(context.Context, *RemoveObligationTriggerRequest) (*RemoveObligationTriggerResponse, error)
-	AddObligationFulfiller(context.Context, *AddObligationFulfillerRequest) (*AddObligationFulfillerResponse, error)
-	RemoveObligationFulfiller(context.Context, *RemoveObligationFulfillerRequest) (*RemoveObligationFulfillerResponse, error)
-	mustEmbedUnimplementedObligationsServiceServer()
+	mustEmbedUnimplementedServiceServer()
 }
 
-// UnimplementedObligationsServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedObligationsServiceServer struct {
+// UnimplementedServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedServiceServer struct {
 }
 
-func (UnimplementedObligationsServiceServer) ListObligations(context.Context, *ListObligationsRequest) (*ListObligationsResponse, error) {
+func (UnimplementedServiceServer) ListObligations(context.Context, *ListObligationsRequest) (*ListObligationsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListObligations not implemented")
 }
-func (UnimplementedObligationsServiceServer) GetObligation(context.Context, *GetObligationRequest) (*GetObligationResponse, error) {
+func (UnimplementedServiceServer) GetObligation(context.Context, *GetObligationRequest) (*GetObligationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObligation not implemented")
 }
-func (UnimplementedObligationsServiceServer) GetObligationsByFQNs(context.Context, *GetObligationsByFQNsRequest) (*GetObligationsByFQNsResponse, error) {
+func (UnimplementedServiceServer) GetObligationsByFQNs(context.Context, *GetObligationsByFQNsRequest) (*GetObligationsByFQNsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObligationsByFQNs not implemented")
 }
-func (UnimplementedObligationsServiceServer) CreateObligation(context.Context, *CreateObligationRequest) (*CreateObligationResponse, error) {
+func (UnimplementedServiceServer) CreateObligation(context.Context, *CreateObligationRequest) (*CreateObligationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateObligation not implemented")
 }
-func (UnimplementedObligationsServiceServer) UpdateObligation(context.Context, *UpdateObligationRequest) (*UpdateObligationResponse, error) {
+func (UnimplementedServiceServer) UpdateObligation(context.Context, *UpdateObligationRequest) (*UpdateObligationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateObligation not implemented")
 }
-func (UnimplementedObligationsServiceServer) DeleteObligation(context.Context, *DeleteObligationRequest) (*DeleteObligationResponse, error) {
+func (UnimplementedServiceServer) DeleteObligation(context.Context, *DeleteObligationRequest) (*DeleteObligationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteObligation not implemented")
 }
-func (UnimplementedObligationsServiceServer) ListObligationValues(context.Context, *ListObligationValuesRequest) (*ListObligationValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListObligationValues not implemented")
-}
-func (UnimplementedObligationsServiceServer) GetObligationValue(context.Context, *GetObligationValueRequest) (*GetObligationValueResponse, error) {
+func (UnimplementedServiceServer) GetObligationValue(context.Context, *GetObligationValueRequest) (*GetObligationValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObligationValue not implemented")
 }
-func (UnimplementedObligationsServiceServer) GetObligationValuesByFQNs(context.Context, *GetObligationValuesByFQNsRequest) (*GetObligationValuesByFQNsResponse, error) {
+func (UnimplementedServiceServer) GetObligationValuesByFQNs(context.Context, *GetObligationValuesByFQNsRequest) (*GetObligationValuesByFQNsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetObligationValuesByFQNs not implemented")
 }
-func (UnimplementedObligationsServiceServer) CreateObligationValue(context.Context, *CreateObligationValueRequest) (*CreateObligationValueResponse, error) {
+func (UnimplementedServiceServer) CreateObligationValue(context.Context, *CreateObligationValueRequest) (*CreateObligationValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateObligationValue not implemented")
 }
-func (UnimplementedObligationsServiceServer) UpdateObligationValue(context.Context, *UpdateObligationValueRequest) (*UpdateObligationValueResponse, error) {
+func (UnimplementedServiceServer) UpdateObligationValue(context.Context, *UpdateObligationValueRequest) (*UpdateObligationValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateObligationValue not implemented")
 }
-func (UnimplementedObligationsServiceServer) DeleteObligationValue(context.Context, *DeleteObligationValueRequest) (*DeleteObligationValueResponse, error) {
+func (UnimplementedServiceServer) DeleteObligationValue(context.Context, *DeleteObligationValueRequest) (*DeleteObligationValueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteObligationValue not implemented")
 }
-func (UnimplementedObligationsServiceServer) AddObligationTrigger(context.Context, *AddObligationTriggerRequest) (*AddObligationTriggerResponse, error) {
+func (UnimplementedServiceServer) AddObligationTrigger(context.Context, *AddObligationTriggerRequest) (*AddObligationTriggerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddObligationTrigger not implemented")
 }
-func (UnimplementedObligationsServiceServer) RemoveObligationTrigger(context.Context, *RemoveObligationTriggerRequest) (*RemoveObligationTriggerResponse, error) {
+func (UnimplementedServiceServer) RemoveObligationTrigger(context.Context, *RemoveObligationTriggerRequest) (*RemoveObligationTriggerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveObligationTrigger not implemented")
 }
-func (UnimplementedObligationsServiceServer) AddObligationFulfiller(context.Context, *AddObligationFulfillerRequest) (*AddObligationFulfillerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddObligationFulfiller not implemented")
-}
-func (UnimplementedObligationsServiceServer) RemoveObligationFulfiller(context.Context, *RemoveObligationFulfillerRequest) (*RemoveObligationFulfillerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RemoveObligationFulfiller not implemented")
-}
-func (UnimplementedObligationsServiceServer) mustEmbedUnimplementedObligationsServiceServer() {}
+func (UnimplementedServiceServer) mustEmbedUnimplementedServiceServer() {}
 
-// UnsafeObligationsServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ObligationsServiceServer will
+// UnsafeServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ServiceServer will
 // result in compilation errors.
-type UnsafeObligationsServiceServer interface {
-	mustEmbedUnimplementedObligationsServiceServer()
+type UnsafeServiceServer interface {
+	mustEmbedUnimplementedServiceServer()
 }
 
-func RegisterObligationsServiceServer(s grpc.ServiceRegistrar, srv ObligationsServiceServer) {
-	s.RegisterService(&ObligationsService_ServiceDesc, srv)
+func RegisterServiceServer(s grpc.ServiceRegistrar, srv ServiceServer) {
+	s.RegisterService(&Service_ServiceDesc, srv)
 }
 
-func _ObligationsService_ListObligations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Service_ListObligations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListObligationsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ObligationsServiceServer).ListObligations(ctx, in)
+		return srv.(ServiceServer).ListObligations(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ObligationsService_ListObligations_FullMethodName,
+		FullMethod: Service_ListObligations_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).ListObligations(ctx, req.(*ListObligationsRequest))
+		return srv.(ServiceServer).ListObligations(ctx, req.(*ListObligationsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ObligationsService_GetObligation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Service_GetObligation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetObligationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ObligationsServiceServer).GetObligation(ctx, in)
+		return srv.(ServiceServer).GetObligation(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ObligationsService_GetObligation_FullMethodName,
+		FullMethod: Service_GetObligation_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).GetObligation(ctx, req.(*GetObligationRequest))
+		return srv.(ServiceServer).GetObligation(ctx, req.(*GetObligationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ObligationsService_GetObligationsByFQNs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Service_GetObligationsByFQNs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetObligationsByFQNsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ObligationsServiceServer).GetObligationsByFQNs(ctx, in)
+		return srv.(ServiceServer).GetObligationsByFQNs(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ObligationsService_GetObligationsByFQNs_FullMethodName,
+		FullMethod: Service_GetObligationsByFQNs_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).GetObligationsByFQNs(ctx, req.(*GetObligationsByFQNsRequest))
+		return srv.(ServiceServer).GetObligationsByFQNs(ctx, req.(*GetObligationsByFQNsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ObligationsService_CreateObligation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Service_CreateObligation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateObligationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ObligationsServiceServer).CreateObligation(ctx, in)
+		return srv.(ServiceServer).CreateObligation(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ObligationsService_CreateObligation_FullMethodName,
+		FullMethod: Service_CreateObligation_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).CreateObligation(ctx, req.(*CreateObligationRequest))
+		return srv.(ServiceServer).CreateObligation(ctx, req.(*CreateObligationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ObligationsService_UpdateObligation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Service_UpdateObligation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateObligationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ObligationsServiceServer).UpdateObligation(ctx, in)
+		return srv.(ServiceServer).UpdateObligation(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ObligationsService_UpdateObligation_FullMethodName,
+		FullMethod: Service_UpdateObligation_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).UpdateObligation(ctx, req.(*UpdateObligationRequest))
+		return srv.(ServiceServer).UpdateObligation(ctx, req.(*UpdateObligationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ObligationsService_DeleteObligation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Service_DeleteObligation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteObligationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ObligationsServiceServer).DeleteObligation(ctx, in)
+		return srv.(ServiceServer).DeleteObligation(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ObligationsService_DeleteObligation_FullMethodName,
+		FullMethod: Service_DeleteObligation_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).DeleteObligation(ctx, req.(*DeleteObligationRequest))
+		return srv.(ServiceServer).DeleteObligation(ctx, req.(*DeleteObligationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ObligationsService_ListObligationValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListObligationValuesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ObligationsServiceServer).ListObligationValues(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ObligationsService_ListObligationValues_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).ListObligationValues(ctx, req.(*ListObligationValuesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ObligationsService_GetObligationValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Service_GetObligationValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetObligationValueRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ObligationsServiceServer).GetObligationValue(ctx, in)
+		return srv.(ServiceServer).GetObligationValue(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ObligationsService_GetObligationValue_FullMethodName,
+		FullMethod: Service_GetObligationValue_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).GetObligationValue(ctx, req.(*GetObligationValueRequest))
+		return srv.(ServiceServer).GetObligationValue(ctx, req.(*GetObligationValueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ObligationsService_GetObligationValuesByFQNs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Service_GetObligationValuesByFQNs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetObligationValuesByFQNsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ObligationsServiceServer).GetObligationValuesByFQNs(ctx, in)
+		return srv.(ServiceServer).GetObligationValuesByFQNs(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ObligationsService_GetObligationValuesByFQNs_FullMethodName,
+		FullMethod: Service_GetObligationValuesByFQNs_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).GetObligationValuesByFQNs(ctx, req.(*GetObligationValuesByFQNsRequest))
+		return srv.(ServiceServer).GetObligationValuesByFQNs(ctx, req.(*GetObligationValuesByFQNsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ObligationsService_CreateObligationValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Service_CreateObligationValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateObligationValueRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ObligationsServiceServer).CreateObligationValue(ctx, in)
+		return srv.(ServiceServer).CreateObligationValue(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ObligationsService_CreateObligationValue_FullMethodName,
+		FullMethod: Service_CreateObligationValue_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).CreateObligationValue(ctx, req.(*CreateObligationValueRequest))
+		return srv.(ServiceServer).CreateObligationValue(ctx, req.(*CreateObligationValueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ObligationsService_UpdateObligationValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Service_UpdateObligationValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateObligationValueRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ObligationsServiceServer).UpdateObligationValue(ctx, in)
+		return srv.(ServiceServer).UpdateObligationValue(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ObligationsService_UpdateObligationValue_FullMethodName,
+		FullMethod: Service_UpdateObligationValue_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).UpdateObligationValue(ctx, req.(*UpdateObligationValueRequest))
+		return srv.(ServiceServer).UpdateObligationValue(ctx, req.(*UpdateObligationValueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ObligationsService_DeleteObligationValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Service_DeleteObligationValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteObligationValueRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ObligationsServiceServer).DeleteObligationValue(ctx, in)
+		return srv.(ServiceServer).DeleteObligationValue(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ObligationsService_DeleteObligationValue_FullMethodName,
+		FullMethod: Service_DeleteObligationValue_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).DeleteObligationValue(ctx, req.(*DeleteObligationValueRequest))
+		return srv.(ServiceServer).DeleteObligationValue(ctx, req.(*DeleteObligationValueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ObligationsService_AddObligationTrigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Service_AddObligationTrigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddObligationTriggerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ObligationsServiceServer).AddObligationTrigger(ctx, in)
+		return srv.(ServiceServer).AddObligationTrigger(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ObligationsService_AddObligationTrigger_FullMethodName,
+		FullMethod: Service_AddObligationTrigger_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).AddObligationTrigger(ctx, req.(*AddObligationTriggerRequest))
+		return srv.(ServiceServer).AddObligationTrigger(ctx, req.(*AddObligationTriggerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ObligationsService_RemoveObligationTrigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Service_RemoveObligationTrigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemoveObligationTriggerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ObligationsServiceServer).RemoveObligationTrigger(ctx, in)
+		return srv.(ServiceServer).RemoveObligationTrigger(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ObligationsService_RemoveObligationTrigger_FullMethodName,
+		FullMethod: Service_RemoveObligationTrigger_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).RemoveObligationTrigger(ctx, req.(*RemoveObligationTriggerRequest))
+		return srv.(ServiceServer).RemoveObligationTrigger(ctx, req.(*RemoveObligationTriggerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ObligationsService_AddObligationFulfiller_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddObligationFulfillerRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ObligationsServiceServer).AddObligationFulfiller(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ObligationsService_AddObligationFulfiller_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).AddObligationFulfiller(ctx, req.(*AddObligationFulfillerRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ObligationsService_RemoveObligationFulfiller_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveObligationFulfillerRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ObligationsServiceServer).RemoveObligationFulfiller(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ObligationsService_RemoveObligationFulfiller_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ObligationsServiceServer).RemoveObligationFulfiller(ctx, req.(*RemoveObligationFulfillerRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// ObligationsService_ServiceDesc is the grpc.ServiceDesc for ObligationsService service.
+// Service_ServiceDesc is the grpc.ServiceDesc for Service service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var ObligationsService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "policy.obligations.ObligationsService",
-	HandlerType: (*ObligationsServiceServer)(nil),
+var Service_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "policy.obligations.Service",
+	HandlerType: (*ServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "ListObligations",
-			Handler:    _ObligationsService_ListObligations_Handler,
+			Handler:    _Service_ListObligations_Handler,
 		},
 		{
 			MethodName: "GetObligation",
-			Handler:    _ObligationsService_GetObligation_Handler,
+			Handler:    _Service_GetObligation_Handler,
 		},
 		{
 			MethodName: "GetObligationsByFQNs",
-			Handler:    _ObligationsService_GetObligationsByFQNs_Handler,
+			Handler:    _Service_GetObligationsByFQNs_Handler,
 		},
 		{
 			MethodName: "CreateObligation",
-			Handler:    _ObligationsService_CreateObligation_Handler,
+			Handler:    _Service_CreateObligation_Handler,
 		},
 		{
 			MethodName: "UpdateObligation",
-			Handler:    _ObligationsService_UpdateObligation_Handler,
+			Handler:    _Service_UpdateObligation_Handler,
 		},
 		{
 			MethodName: "DeleteObligation",
-			Handler:    _ObligationsService_DeleteObligation_Handler,
-		},
-		{
-			MethodName: "ListObligationValues",
-			Handler:    _ObligationsService_ListObligationValues_Handler,
+			Handler:    _Service_DeleteObligation_Handler,
 		},
 		{
 			MethodName: "GetObligationValue",
-			Handler:    _ObligationsService_GetObligationValue_Handler,
+			Handler:    _Service_GetObligationValue_Handler,
 		},
 		{
 			MethodName: "GetObligationValuesByFQNs",
-			Handler:    _ObligationsService_GetObligationValuesByFQNs_Handler,
+			Handler:    _Service_GetObligationValuesByFQNs_Handler,
 		},
 		{
 			MethodName: "CreateObligationValue",
-			Handler:    _ObligationsService_CreateObligationValue_Handler,
+			Handler:    _Service_CreateObligationValue_Handler,
 		},
 		{
 			MethodName: "UpdateObligationValue",
-			Handler:    _ObligationsService_UpdateObligationValue_Handler,
+			Handler:    _Service_UpdateObligationValue_Handler,
 		},
 		{
 			MethodName: "DeleteObligationValue",
-			Handler:    _ObligationsService_DeleteObligationValue_Handler,
+			Handler:    _Service_DeleteObligationValue_Handler,
 		},
 		{
 			MethodName: "AddObligationTrigger",
-			Handler:    _ObligationsService_AddObligationTrigger_Handler,
+			Handler:    _Service_AddObligationTrigger_Handler,
 		},
 		{
 			MethodName: "RemoveObligationTrigger",
-			Handler:    _ObligationsService_RemoveObligationTrigger_Handler,
-		},
-		{
-			MethodName: "AddObligationFulfiller",
-			Handler:    _ObligationsService_AddObligationFulfiller_Handler,
-		},
-		{
-			MethodName: "RemoveObligationFulfiller",
-			Handler:    _ObligationsService_RemoveObligationFulfiller_Handler,
+			Handler:    _Service_RemoveObligationTrigger_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

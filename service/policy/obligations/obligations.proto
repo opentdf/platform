@@ -200,7 +200,7 @@ message RemoveObligationTriggerResponse {
 ///
 /// Obligation Service
 ///
-service ObligationsService {
+service Service {
 
    /*--------------------------------------*
     * Obligation RPCs

@@ -4,16 +4,6 @@ info:
 paths: {}
 components:
   schemas:
-    google.protobuf.NullValue:
-      type: string
-      title: NullValue
-      enum:
-        - NULL_VALUE
-      description: |-
-        `NullValue` is a singleton enumeration to represent the null value for the
-         `Value` type union.
-
-         The JSON representation for `NullValue` is JSON `null`.
     policy.Action.StandardAction:
       type: string
       title: StandardAction
@@ -132,45 +122,6 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
-    google.protobuf.ListValue:
-      type: object
-      properties:
-        values:
-          type: array
-          items:
-            $ref: '#/components/schemas/google.protobuf.Value'
-          title: values
-          description: Repeated field of dynamically typed values.
-      title: ListValue
-      additionalProperties: false
-      description: |-
-        `ListValue` is a wrapper around a repeated field of values.
-
-         The JSON representation for `ListValue` is JSON array.
-    google.protobuf.Struct:
-      type: object
-      additionalProperties:
-        $ref: '#/components/schemas/google.protobuf.Value'
-      description: |-
-        `Struct` represents a structured data value, consisting of fields
-         which map to dynamically typed values. In some languages, `Struct`
-         might be supported by a native representation. For example, in
-         scripting languages like JS a struct is represented as an
-         object. The details of that representation are described together
-         with the proto support for the language.
-
-         The JSON representation for `Struct` is JSON object.
-    google.protobuf.Struct.FieldsEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          title: value
-          $ref: '#/components/schemas/google.protobuf.Value'
-      title: FieldsEntry
-      additionalProperties: false
     google.protobuf.Timestamp:
       type: string
       examples:
@@ -267,22 +218,6 @@ components:
          the Joda Time's [`ISODateTimeFormat.dateTime()`](
          http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
          ) to obtain a formatter capable of generating timestamps in this format.
-    google.protobuf.Value:
-      oneOf:
-        - type: "null"
-        - type: number
-        - type: string
-        - type: boolean
-        - type: array
-        - type: object
-          additionalProperties: true
-      description: |-
-        `Value` represents a dynamically typed value which can be either
-         null, a number, a string, a boolean, a recursive struct value, or a
-         list of values. A producer of value is expected to set one of these
-         variants. Absence of any variant indicates an error.
-
-         The JSON representation for `Value` is JSON value.
     policy.Action:
       type: object
       oneOf:
@@ -655,23 +590,6 @@ components:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
       title: Obligation
-      additionalProperties: false
-    policy.ObligationFulfiller:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-        obligationValue:
-          title: obligation_value
-          $ref: '#/components/schemas/policy.ObligationValue'
-        conditionals:
-          title: conditionals
-          $ref: '#/components/schemas/google.protobuf.Struct'
-        metadata:
-          title: metadata
-          $ref: '#/components/schemas/common.Metadata'
-      title: ObligationFulfiller
       additionalProperties: false
     policy.ObligationTrigger:
       type: object

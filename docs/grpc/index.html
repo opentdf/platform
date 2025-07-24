@@ -266,10 +266,6 @@
                 </li>
               
                 <li>
-                  <a href="#policy.ObligationFulfiller"><span class="badge">M</span>ObligationFulfiller</a>
-                </li>
-              
-                <li>
                   <a href="#policy.ObligationTrigger"><span class="badge">M</span>ObligationTrigger</a>
                 </li>
               
@@ -1417,14 +1413,6 @@
             <ul>
               
                 <li>
-                  <a href="#policy.obligations.AddObligationFulfillerRequest"><span class="badge">M</span>AddObligationFulfillerRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.obligations.AddObligationFulfillerResponse"><span class="badge">M</span>AddObligationFulfillerResponse</a>
-                </li>
-              
-                <li>
                   <a href="#policy.obligations.AddObligationTriggerRequest"><span class="badge">M</span>AddObligationTriggerRequest</a>
                 </li>
               
@@ -1505,27 +1493,11 @@
                 </li>
               
                 <li>
-                  <a href="#policy.obligations.ListObligationValuesRequest"><span class="badge">M</span>ListObligationValuesRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.obligations.ListObligationValuesResponse"><span class="badge">M</span>ListObligationValuesResponse</a>
-                </li>
-              
-                <li>
                   <a href="#policy.obligations.ListObligationsRequest"><span class="badge">M</span>ListObligationsRequest</a>
                 </li>
               
                 <li>
                   <a href="#policy.obligations.ListObligationsResponse"><span class="badge">M</span>ListObligationsResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.obligations.RemoveObligationFulfillerRequest"><span class="badge">M</span>RemoveObligationFulfillerRequest</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.obligations.RemoveObligationFulfillerResponse"><span class="badge">M</span>RemoveObligationFulfillerResponse</a>
                 </li>
               
                 <li>
@@ -1556,7 +1528,7 @@
               
               
                 <li>
-                  <a href="#policy.obligations.ObligationsService"><span class="badge">S</span>ObligationsService</a>
+                  <a href="#policy.obligations.Service"><span class="badge">S</span>Service</a>
                 </li>
               
             </ul>
@@ -2905,51 +2877,6 @@ enable federation </p></td>
                 <tr>
                   <td>name</td>
                   <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.Metadata">common.Metadata</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.ObligationFulfiller">ObligationFulfiller</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>obligation_value</td>
-                  <td><a href="#policy.ObligationValue">ObligationValue</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>conditionals</td>
-                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -12221,69 +12148,6 @@ Namespace &lt;&gt; Key RPCs
       <p></p>
 
       
-        <h3 id="policy.obligations.AddObligationFulfillerRequest">AddObligationFulfillerRequest</h3>
-        <p>Fulfillers</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>obligation_value_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Required </p></td>
-                </tr>
-              
-                <tr>
-                  <td>conditionals</td>
-                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>metadata</td>
-                  <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
-                  <td></td>
-                  <td><p>Optional
-Common metadata </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.obligations.AddObligationFulfillerResponse">AddObligationFulfillerResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>fulfiller</td>
-                  <td><a href="#policy.ObligationFulfiller">policy.ObligationFulfiller</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="policy.obligations.AddObligationTriggerRequest">AddObligationTriggerRequest</h3>
         <p>Triggers</p>
 
@@ -12368,7 +12232,14 @@ Common metadata </p></td>
                   <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Required </p></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -12431,7 +12302,14 @@ Common metadata </p></td>
                   <td>obligation_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Required </p></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>obligation_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -12497,6 +12375,13 @@ Common metadata </p></td>
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -12540,6 +12425,13 @@ Common metadata </p></td>
               
                 <tr>
                   <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
@@ -12593,6 +12485,13 @@ Common metadata </p></td>
                   <td><p> </p></td>
                 </tr>
               
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
             </tbody>
           </table>
 
@@ -12636,6 +12535,13 @@ Common metadata </p></td>
               
                 <tr>
                   <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
@@ -12830,68 +12736,6 @@ Common metadata </p></td>
 
         
       
-        <h3 id="policy.obligations.ListObligationValuesRequest">ListObligationValuesRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>obligation_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p>Required </p></td>
-                </tr>
-              
-                <tr>
-                  <td>pagination</td>
-                  <td><a href="#policy.PageRequest">policy.PageRequest</a></td>
-                  <td></td>
-                  <td><p>Optional </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.obligations.ListObligationValuesResponse">ListObligationValuesResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>values</td>
-                  <td><a href="#policy.ObligationValue">policy.ObligationValue</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>pagination</td>
-                  <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="policy.obligations.ListObligationsRequest">ListObligationsRequest</h3>
         <p></p>
 
@@ -12903,11 +12747,17 @@ Common metadata </p></td>
             <tbody>
               
                 <tr>
-                  <td>namespace</td>
+                  <td>namespace_id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p>Optional
-Namespace ID or name </p></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>namespace_fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -12944,54 +12794,6 @@ Namespace ID or name </p></td>
                 <tr>
                   <td>pagination</td>
                   <td><a href="#policy.PageResponse">policy.PageResponse</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.obligations.RemoveObligationFulfillerRequest">RemoveObligationFulfillerRequest</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.obligations.RemoveObligationFulfillerResponse">RemoveObligationFulfillerResponse</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>fulfiller</td>
-                  <td><a href="#policy.ObligationFulfiller">policy.ObligationFulfiller</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -13069,10 +12871,17 @@ Namespace ID or name </p></td>
                 </tr>
               
                 <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
-                  <td><p>Optional </p></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -13131,10 +12940,17 @@ Namespace ID or name </p></td>
                 </tr>
               
                 <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
-                  <td><p>Optional </p></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
@@ -13181,7 +12997,7 @@ Namespace ID or name </p></td>
       
 
       
-        <h3 id="policy.obligations.ObligationsService">ObligationsService</h3>
+        <h3 id="policy.obligations.Service">Service</h3>
         <p>Obligation Service</p><p>/</p>
         <table class="enum-table">
           <thead>
@@ -13228,13 +13044,6 @@ Namespace ID or name </p></td>
                 <td>DeleteObligation</td>
                 <td><a href="#policy.obligations.DeleteObligationRequest">DeleteObligationRequest</a></td>
                 <td><a href="#policy.obligations.DeleteObligationResponse">DeleteObligationResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>ListObligationValues</td>
-                <td><a href="#policy.obligations.ListObligationValuesRequest">ListObligationValuesRequest</a></td>
-                <td><a href="#policy.obligations.ListObligationValuesResponse">ListObligationValuesResponse</a></td>
                 <td><p></p></td>
               </tr>
             
@@ -13287,20 +13096,6 @@ Namespace ID or name </p></td>
                 <td><p></p></td>
               </tr>
             
-              <tr>
-                <td>AddObligationFulfiller</td>
-                <td><a href="#policy.obligations.AddObligationFulfillerRequest">AddObligationFulfillerRequest</a></td>
-                <td><a href="#policy.obligations.AddObligationFulfillerResponse">AddObligationFulfillerResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
-              <tr>
-                <td>RemoveObligationFulfiller</td>
-                <td><a href="#policy.obligations.RemoveObligationFulfillerRequest">RemoveObligationFulfillerRequest</a></td>
-                <td><a href="#policy.obligations.RemoveObligationFulfillerResponse">RemoveObligationFulfillerResponse</a></td>
-                <td><p></p></td>
-              </tr>
-            
           </tbody>
         </table>
 
@@ -13329,11 +13124,6 @@ Namespace ID or name </p></td>
             
               <tr>
                 <td>GetObligationsByFQNs</td>
-                <td><p>NO_SIDE_EFFECTS</p></td>
-              </tr>
-            
-              <tr>
-                <td>ListObligationValues</td>
                 <td><p>NO_SIDE_EFFECTS</p></td>
               </tr>
             

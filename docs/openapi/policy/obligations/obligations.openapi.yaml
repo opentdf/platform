@@ -2,12 +2,12 @@ openapi: 3.1.0
 info:
   title: policy.obligations
 paths:
-  /policy.obligations.ObligationsService/ListObligations:
+  /policy.obligations.Service/ListObligations:
     post:
       tags:
-        - policy.obligations.ObligationsService
+        - policy.obligations.Service
       summary: ListObligations
-      operationId: policy.obligations.ObligationsService.ListObligations
+      operationId: policy.obligations.Service.ListObligations
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -37,12 +37,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.ListObligationsResponse'
-  /policy.obligations.ObligationsService/GetObligation:
+  /policy.obligations.Service/GetObligation:
     post:
       tags:
-        - policy.obligations.ObligationsService
+        - policy.obligations.Service
       summary: GetObligation
-      operationId: policy.obligations.ObligationsService.GetObligation
+      operationId: policy.obligations.Service.GetObligation
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -72,12 +72,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.GetObligationResponse'
-  /policy.obligations.ObligationsService/GetObligationsByFQNs:
+  /policy.obligations.Service/GetObligationsByFQNs:
     post:
       tags:
-        - policy.obligations.ObligationsService
+        - policy.obligations.Service
       summary: GetObligationsByFQNs
-      operationId: policy.obligations.ObligationsService.GetObligationsByFQNs
+      operationId: policy.obligations.Service.GetObligationsByFQNs
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -107,12 +107,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.GetObligationsByFQNsResponse'
-  /policy.obligations.ObligationsService/CreateObligation:
+  /policy.obligations.Service/CreateObligation:
     post:
       tags:
-        - policy.obligations.ObligationsService
+        - policy.obligations.Service
       summary: CreateObligation
-      operationId: policy.obligations.ObligationsService.CreateObligation
+      operationId: policy.obligations.Service.CreateObligation
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -142,12 +142,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.CreateObligationResponse'
-  /policy.obligations.ObligationsService/UpdateObligation:
+  /policy.obligations.Service/UpdateObligation:
     post:
       tags:
-        - policy.obligations.ObligationsService
+        - policy.obligations.Service
       summary: UpdateObligation
-      operationId: policy.obligations.ObligationsService.UpdateObligation
+      operationId: policy.obligations.Service.UpdateObligation
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -177,12 +177,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.UpdateObligationResponse'
-  /policy.obligations.ObligationsService/DeleteObligation:
+  /policy.obligations.Service/DeleteObligation:
     post:
       tags:
-        - policy.obligations.ObligationsService
+        - policy.obligations.Service
       summary: DeleteObligation
-      operationId: policy.obligations.ObligationsService.DeleteObligation
+      operationId: policy.obligations.Service.DeleteObligation
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -212,47 +212,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.DeleteObligationResponse'
-  /policy.obligations.ObligationsService/ListObligationValues:
+  /policy.obligations.Service/GetObligationValue:
     post:
       tags:
-        - policy.obligations.ObligationsService
-      summary: ListObligationValues
-      operationId: policy.obligations.ObligationsService.ListObligationValues
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.obligations.ListObligationValuesRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.obligations.ListObligationValuesResponse'
-  /policy.obligations.ObligationsService/GetObligationValue:
-    post:
-      tags:
-        - policy.obligations.ObligationsService
+        - policy.obligations.Service
       summary: GetObligationValue
-      operationId: policy.obligations.ObligationsService.GetObligationValue
+      operationId: policy.obligations.Service.GetObligationValue
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -282,12 +247,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.GetObligationValueResponse'
-  /policy.obligations.ObligationsService/GetObligationValuesByFQNs:
+  /policy.obligations.Service/GetObligationValuesByFQNs:
     post:
       tags:
-        - policy.obligations.ObligationsService
+        - policy.obligations.Service
       summary: GetObligationValuesByFQNs
-      operationId: policy.obligations.ObligationsService.GetObligationValuesByFQNs
+      operationId: policy.obligations.Service.GetObligationValuesByFQNs
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -317,12 +282,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.GetObligationValuesByFQNsResponse'
-  /policy.obligations.ObligationsService/CreateObligationValue:
+  /policy.obligations.Service/CreateObligationValue:
     post:
       tags:
-        - policy.obligations.ObligationsService
+        - policy.obligations.Service
       summary: CreateObligationValue
-      operationId: policy.obligations.ObligationsService.CreateObligationValue
+      operationId: policy.obligations.Service.CreateObligationValue
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -352,12 +317,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.CreateObligationValueResponse'
-  /policy.obligations.ObligationsService/UpdateObligationValue:
+  /policy.obligations.Service/UpdateObligationValue:
     post:
       tags:
-        - policy.obligations.ObligationsService
+        - policy.obligations.Service
       summary: UpdateObligationValue
-      operationId: policy.obligations.ObligationsService.UpdateObligationValue
+      operationId: policy.obligations.Service.UpdateObligationValue
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -387,12 +352,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.UpdateObligationValueResponse'
-  /policy.obligations.ObligationsService/DeleteObligationValue:
+  /policy.obligations.Service/DeleteObligationValue:
     post:
       tags:
-        - policy.obligations.ObligationsService
+        - policy.obligations.Service
       summary: DeleteObligationValue
-      operationId: policy.obligations.ObligationsService.DeleteObligationValue
+      operationId: policy.obligations.Service.DeleteObligationValue
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -422,12 +387,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.DeleteObligationValueResponse'
-  /policy.obligations.ObligationsService/AddObligationTrigger:
+  /policy.obligations.Service/AddObligationTrigger:
     post:
       tags:
-        - policy.obligations.ObligationsService
+        - policy.obligations.Service
       summary: AddObligationTrigger
-      operationId: policy.obligations.ObligationsService.AddObligationTrigger
+      operationId: policy.obligations.Service.AddObligationTrigger
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -457,12 +422,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.AddObligationTriggerResponse'
-  /policy.obligations.ObligationsService/RemoveObligationTrigger:
+  /policy.obligations.Service/RemoveObligationTrigger:
     post:
       tags:
-        - policy.obligations.ObligationsService
+        - policy.obligations.Service
       summary: RemoveObligationTrigger
-      operationId: policy.obligations.ObligationsService.RemoveObligationTrigger
+      operationId: policy.obligations.Service.RemoveObligationTrigger
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -492,76 +457,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.obligations.RemoveObligationTriggerResponse'
-  /policy.obligations.ObligationsService/AddObligationFulfiller:
-    post:
-      tags:
-        - policy.obligations.ObligationsService
-      summary: AddObligationFulfiller
-      operationId: policy.obligations.ObligationsService.AddObligationFulfiller
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.obligations.AddObligationFulfillerRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.obligations.AddObligationFulfillerResponse'
-  /policy.obligations.ObligationsService/RemoveObligationFulfiller:
-    post:
-      tags:
-        - policy.obligations.ObligationsService
-      summary: RemoveObligationFulfiller
-      operationId: policy.obligations.ObligationsService.RemoveObligationFulfiller
-      parameters:
-        - name: Connect-Protocol-Version
-          in: header
-          required: true
-          schema:
-            $ref: '#/components/schemas/connect-protocol-version'
-        - name: Connect-Timeout-Ms
-          in: header
-          schema:
-            $ref: '#/components/schemas/connect-timeout-header'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/policy.obligations.RemoveObligationFulfillerRequest'
-        required: true
-      responses:
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/connect.error'
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/policy.obligations.RemoveObligationFulfillerResponse'
 components:
   schemas:
     common.MetadataUpdateEnum:
@@ -571,16 +466,6 @@ components:
         - METADATA_UPDATE_ENUM_UNSPECIFIED
         - METADATA_UPDATE_ENUM_EXTEND
         - METADATA_UPDATE_ENUM_REPLACE
-    google.protobuf.NullValue:
-      type: string
-      title: NullValue
-      enum:
-        - NULL_VALUE
-      description: |-
-        `NullValue` is a singleton enumeration to represent the null value for the
-         `Value` type union.
-
-         The JSON representation for `NullValue` is JSON `null`.
     policy.Action.StandardAction:
       type: string
       title: StandardAction
@@ -704,45 +589,6 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
-    google.protobuf.ListValue:
-      type: object
-      properties:
-        values:
-          type: array
-          items:
-            $ref: '#/components/schemas/google.protobuf.Value'
-          title: values
-          description: Repeated field of dynamically typed values.
-      title: ListValue
-      additionalProperties: false
-      description: |-
-        `ListValue` is a wrapper around a repeated field of values.
-
-         The JSON representation for `ListValue` is JSON array.
-    google.protobuf.Struct:
-      type: object
-      additionalProperties:
-        $ref: '#/components/schemas/google.protobuf.Value'
-      description: |-
-        `Struct` represents a structured data value, consisting of fields
-         which map to dynamically typed values. In some languages, `Struct`
-         might be supported by a native representation. For example, in
-         scripting languages like JS a struct is represented as an
-         object. The details of that representation are described together
-         with the proto support for the language.
-
-         The JSON representation for `Struct` is JSON object.
-    google.protobuf.Struct.FieldsEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          title: value
-          $ref: '#/components/schemas/google.protobuf.Value'
-      title: FieldsEntry
-      additionalProperties: false
     google.protobuf.Timestamp:
       type: string
       examples:
@@ -839,22 +685,6 @@ components:
          the Joda Time's [`ISODateTimeFormat.dateTime()`](
          http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
          ) to obtain a formatter capable of generating timestamps in this format.
-    google.protobuf.Value:
-      oneOf:
-        - type: "null"
-        - type: number
-        - type: string
-        - type: boolean
-        - type: array
-        - type: object
-          additionalProperties: true
-      description: |-
-        `Value` represents a dynamically typed value which can be either
-         null, a number, a string, a boolean, a recursive struct value, or a
-         list of values. A producer of value is expected to set one of these
-         variants. Absence of any variant indicates an error.
-
-         The JSON representation for `Value` is JSON value.
     policy.Action:
       type: object
       oneOf:
@@ -1128,23 +958,6 @@ components:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
       title: Obligation
-      additionalProperties: false
-    policy.ObligationFulfiller:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-        obligationValue:
-          title: obligation_value
-          $ref: '#/components/schemas/policy.ObligationValue'
-        conditionals:
-          title: conditionals
-          $ref: '#/components/schemas/google.protobuf.Struct'
-        metadata:
-          title: metadata
-          $ref: '#/components/schemas/common.Metadata'
-      title: ObligationFulfiller
       additionalProperties: false
     policy.ObligationTrigger:
       type: object
@@ -1451,33 +1264,6 @@ components:
           $ref: '#/components/schemas/common.Metadata'
       title: Value
       additionalProperties: false
-    policy.obligations.AddObligationFulfillerRequest:
-      type: object
-      properties:
-        obligationValueId:
-          type: string
-          title: obligation_value_id
-          description: Required
-        conditionals:
-          title: conditionals
-          $ref: '#/components/schemas/google.protobuf.Struct'
-        metadata:
-          title: metadata
-          description: |-
-            Optional
-             Common metadata
-          $ref: '#/components/schemas/common.MetadataMutable'
-      title: AddObligationFulfillerRequest
-      additionalProperties: false
-      description: Fulfillers
-    policy.obligations.AddObligationFulfillerResponse:
-      type: object
-      properties:
-        fulfiller:
-          title: fulfiller
-          $ref: '#/components/schemas/policy.ObligationFulfiller'
-      title: AddObligationFulfillerResponse
-      additionalProperties: false
     policy.obligations.AddObligationTriggerRequest:
       type: object
       properties:
@@ -1510,11 +1296,22 @@ components:
       additionalProperties: false
     policy.obligations.CreateObligationRequest:
       type: object
-      properties:
-        namespaceId:
-          type: string
+      oneOf:
+        - properties:
+            namespaceFqn:
+              type: string
+              title: namespace_fqn
+          title: namespace_fqn
+          required:
+            - namespaceFqn
+        - properties:
+            namespaceId:
+              type: string
+              title: namespace_id
           title: namespace_id
-          description: Required
+          required:
+            - namespaceId
+      properties:
         name:
           type: string
           title: name
@@ -1536,11 +1333,22 @@ components:
       additionalProperties: false
     policy.obligations.CreateObligationValueRequest:
       type: object
-      properties:
-        obligationId:
-          type: string
+      oneOf:
+        - properties:
+            obligationFqn:
+              type: string
+              title: obligation_fqn
+          title: obligation_fqn
+          required:
+            - obligationFqn
+        - properties:
+            obligationId:
+              type: string
+              title: obligation_id
           title: obligation_id
-          description: Required
+          required:
+            - obligationId
+      properties:
         value:
           type: string
           title: value
@@ -1562,10 +1370,21 @@ components:
       additionalProperties: false
     policy.obligations.DeleteObligationRequest:
       type: object
-      properties:
-        id:
-          type: string
+      oneOf:
+        - properties:
+            fqn:
+              type: string
+              title: fqn
+          title: fqn
+          required:
+            - fqn
+        - properties:
+            id:
+              type: string
+              title: id
           title: id
+          required:
+            - id
       title: DeleteObligationRequest
       additionalProperties: false
     policy.obligations.DeleteObligationResponse:
@@ -1578,10 +1397,21 @@ components:
       additionalProperties: false
     policy.obligations.DeleteObligationValueRequest:
       type: object
-      properties:
-        id:
-          type: string
+      oneOf:
+        - properties:
+            fqn:
+              type: string
+              title: fqn
+          title: fqn
+          required:
+            - fqn
+        - properties:
+            id:
+              type: string
+              title: id
           title: id
+          required:
+            - id
       title: DeleteObligationValueRequest
       additionalProperties: false
     policy.obligations.DeleteObligationValueResponse:
@@ -1594,10 +1424,21 @@ components:
       additionalProperties: false
     policy.obligations.GetObligationRequest:
       type: object
-      properties:
-        id:
-          type: string
+      oneOf:
+        - properties:
+            fqn:
+              type: string
+              title: fqn
+          title: fqn
+          required:
+            - fqn
+        - properties:
+            id:
+              type: string
+              title: id
           title: id
+          required:
+            - id
       title: GetObligationRequest
       additionalProperties: false
       description: Definitions
@@ -1611,10 +1452,21 @@ components:
       additionalProperties: false
     policy.obligations.GetObligationValueRequest:
       type: object
-      properties:
-        id:
-          type: string
+      oneOf:
+        - properties:
+            fqn:
+              type: string
+              title: fqn
+          title: fqn
+          required:
+            - fqn
+        - properties:
+            id:
+              type: string
+              title: id
           title: id
+          required:
+            - id
       title: GetObligationValueRequest
       additionalProperties: false
       description: Values
@@ -1690,41 +1542,24 @@ components:
           $ref: '#/components/schemas/policy.Obligation'
       title: FqnObligationMapEntry
       additionalProperties: false
-    policy.obligations.ListObligationValuesRequest:
-      type: object
-      properties:
-        obligationId:
-          type: string
-          title: obligation_id
-          description: Required
-        pagination:
-          title: pagination
-          description: Optional
-          $ref: '#/components/schemas/policy.PageRequest'
-      title: ListObligationValuesRequest
-      additionalProperties: false
-    policy.obligations.ListObligationValuesResponse:
-      type: object
-      properties:
-        values:
-          type: array
-          items:
-            $ref: '#/components/schemas/policy.ObligationValue'
-          title: values
-        pagination:
-          title: pagination
-          $ref: '#/components/schemas/policy.PageResponse'
-      title: ListObligationValuesResponse
-      additionalProperties: false
     policy.obligations.ListObligationsRequest:
       type: object
+      oneOf:
+        - properties:
+            namespaceFqn:
+              type: string
+              title: namespace_fqn
+          title: namespace_fqn
+          required:
+            - namespaceFqn
+        - properties:
+            namespaceId:
+              type: string
+              title: namespace_id
+          title: namespace_id
+          required:
+            - namespaceId
       properties:
-        namespace:
-          type: string
-          title: namespace
-          description: |-
-            Optional
-             Namespace ID or name
         pagination:
           title: pagination
           description: Optional
@@ -1743,22 +1578,6 @@ components:
           title: pagination
           $ref: '#/components/schemas/policy.PageResponse'
       title: ListObligationsResponse
-      additionalProperties: false
-    policy.obligations.RemoveObligationFulfillerRequest:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-      title: RemoveObligationFulfillerRequest
-      additionalProperties: false
-    policy.obligations.RemoveObligationFulfillerResponse:
-      type: object
-      properties:
-        fulfiller:
-          title: fulfiller
-          $ref: '#/components/schemas/policy.ObligationFulfiller'
-      title: RemoveObligationFulfillerResponse
       additionalProperties: false
     policy.obligations.RemoveObligationTriggerRequest:
       type: object
@@ -1783,9 +1602,12 @@ components:
           type: string
           title: id
           description: Required
+        name:
+          type: string
+          title: name
+          description: Optional
         metadata:
           title: metadata
-          description: Optional
           $ref: '#/components/schemas/common.MetadataMutable'
         metadataUpdateBehavior:
           title: metadata_update_behavior
@@ -1807,9 +1629,12 @@ components:
           type: string
           title: id
           description: Required
+        value:
+          type: string
+          title: value
+          description: Optional
         metadata:
           title: metadata
-          description: Optional
           $ref: '#/components/schemas/common.MetadataMutable'
         metadataUpdateBehavior:
           title: metadata_update_behavior
@@ -1883,7 +1708,7 @@ components:
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
 security: []
 tags:
-  - name: policy.obligations.ObligationsService
+  - name: policy.obligations.Service
     description: |-
       /
       / Obligation Service

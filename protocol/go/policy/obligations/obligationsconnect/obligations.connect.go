@@ -21,8 +21,8 @@ import (
 const _ = connect.IsAtLeastVersion1_13_0
 
 const (
-	// ObligationsServiceName is the fully-qualified name of the ObligationsService service.
-	ObligationsServiceName = "policy.obligations.ObligationsService"
+	// ServiceName is the fully-qualified name of the Service service.
+	ServiceName = "policy.obligations.Service"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -33,86 +33,71 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// ObligationsServiceListObligationsProcedure is the fully-qualified name of the
-	// ObligationsService's ListObligations RPC.
-	ObligationsServiceListObligationsProcedure = "/policy.obligations.ObligationsService/ListObligations"
-	// ObligationsServiceGetObligationProcedure is the fully-qualified name of the ObligationsService's
-	// GetObligation RPC.
-	ObligationsServiceGetObligationProcedure = "/policy.obligations.ObligationsService/GetObligation"
-	// ObligationsServiceGetObligationsByFQNsProcedure is the fully-qualified name of the
-	// ObligationsService's GetObligationsByFQNs RPC.
-	ObligationsServiceGetObligationsByFQNsProcedure = "/policy.obligations.ObligationsService/GetObligationsByFQNs"
-	// ObligationsServiceCreateObligationProcedure is the fully-qualified name of the
-	// ObligationsService's CreateObligation RPC.
-	ObligationsServiceCreateObligationProcedure = "/policy.obligations.ObligationsService/CreateObligation"
-	// ObligationsServiceUpdateObligationProcedure is the fully-qualified name of the
-	// ObligationsService's UpdateObligation RPC.
-	ObligationsServiceUpdateObligationProcedure = "/policy.obligations.ObligationsService/UpdateObligation"
-	// ObligationsServiceDeleteObligationProcedure is the fully-qualified name of the
-	// ObligationsService's DeleteObligation RPC.
-	ObligationsServiceDeleteObligationProcedure = "/policy.obligations.ObligationsService/DeleteObligation"
-	// ObligationsServiceListObligationValuesProcedure is the fully-qualified name of the
-	// ObligationsService's ListObligationValues RPC.
-	ObligationsServiceListObligationValuesProcedure = "/policy.obligations.ObligationsService/ListObligationValues"
-	// ObligationsServiceGetObligationValueProcedure is the fully-qualified name of the
-	// ObligationsService's GetObligationValue RPC.
-	ObligationsServiceGetObligationValueProcedure = "/policy.obligations.ObligationsService/GetObligationValue"
-	// ObligationsServiceGetObligationValuesByFQNsProcedure is the fully-qualified name of the
-	// ObligationsService's GetObligationValuesByFQNs RPC.
-	ObligationsServiceGetObligationValuesByFQNsProcedure = "/policy.obligations.ObligationsService/GetObligationValuesByFQNs"
-	// ObligationsServiceCreateObligationValueProcedure is the fully-qualified name of the
-	// ObligationsService's CreateObligationValue RPC.
-	ObligationsServiceCreateObligationValueProcedure = "/policy.obligations.ObligationsService/CreateObligationValue"
-	// ObligationsServiceUpdateObligationValueProcedure is the fully-qualified name of the
-	// ObligationsService's UpdateObligationValue RPC.
-	ObligationsServiceUpdateObligationValueProcedure = "/policy.obligations.ObligationsService/UpdateObligationValue"
-	// ObligationsServiceDeleteObligationValueProcedure is the fully-qualified name of the
-	// ObligationsService's DeleteObligationValue RPC.
-	ObligationsServiceDeleteObligationValueProcedure = "/policy.obligations.ObligationsService/DeleteObligationValue"
-	// ObligationsServiceAddObligationTriggerProcedure is the fully-qualified name of the
-	// ObligationsService's AddObligationTrigger RPC.
-	ObligationsServiceAddObligationTriggerProcedure = "/policy.obligations.ObligationsService/AddObligationTrigger"
-	// ObligationsServiceRemoveObligationTriggerProcedure is the fully-qualified name of the
-	// ObligationsService's RemoveObligationTrigger RPC.
-	ObligationsServiceRemoveObligationTriggerProcedure = "/policy.obligations.ObligationsService/RemoveObligationTrigger"
-	// ObligationsServiceAddObligationFulfillerProcedure is the fully-qualified name of the
-	// ObligationsService's AddObligationFulfiller RPC.
-	ObligationsServiceAddObligationFulfillerProcedure = "/policy.obligations.ObligationsService/AddObligationFulfiller"
-	// ObligationsServiceRemoveObligationFulfillerProcedure is the fully-qualified name of the
-	// ObligationsService's RemoveObligationFulfiller RPC.
-	ObligationsServiceRemoveObligationFulfillerProcedure = "/policy.obligations.ObligationsService/RemoveObligationFulfiller"
+	// ServiceListObligationsProcedure is the fully-qualified name of the Service's ListObligations RPC.
+	ServiceListObligationsProcedure = "/policy.obligations.Service/ListObligations"
+	// ServiceGetObligationProcedure is the fully-qualified name of the Service's GetObligation RPC.
+	ServiceGetObligationProcedure = "/policy.obligations.Service/GetObligation"
+	// ServiceGetObligationsByFQNsProcedure is the fully-qualified name of the Service's
+	// GetObligationsByFQNs RPC.
+	ServiceGetObligationsByFQNsProcedure = "/policy.obligations.Service/GetObligationsByFQNs"
+	// ServiceCreateObligationProcedure is the fully-qualified name of the Service's CreateObligation
+	// RPC.
+	ServiceCreateObligationProcedure = "/policy.obligations.Service/CreateObligation"
+	// ServiceUpdateObligationProcedure is the fully-qualified name of the Service's UpdateObligation
+	// RPC.
+	ServiceUpdateObligationProcedure = "/policy.obligations.Service/UpdateObligation"
+	// ServiceDeleteObligationProcedure is the fully-qualified name of the Service's DeleteObligation
+	// RPC.
+	ServiceDeleteObligationProcedure = "/policy.obligations.Service/DeleteObligation"
+	// ServiceGetObligationValueProcedure is the fully-qualified name of the Service's
+	// GetObligationValue RPC.
+	ServiceGetObligationValueProcedure = "/policy.obligations.Service/GetObligationValue"
+	// ServiceGetObligationValuesByFQNsProcedure is the fully-qualified name of the Service's
+	// GetObligationValuesByFQNs RPC.
+	ServiceGetObligationValuesByFQNsProcedure = "/policy.obligations.Service/GetObligationValuesByFQNs"
+	// ServiceCreateObligationValueProcedure is the fully-qualified name of the Service's
+	// CreateObligationValue RPC.
+	ServiceCreateObligationValueProcedure = "/policy.obligations.Service/CreateObligationValue"
+	// ServiceUpdateObligationValueProcedure is the fully-qualified name of the Service's
+	// UpdateObligationValue RPC.
+	ServiceUpdateObligationValueProcedure = "/policy.obligations.Service/UpdateObligationValue"
+	// ServiceDeleteObligationValueProcedure is the fully-qualified name of the Service's
+	// DeleteObligationValue RPC.
+	ServiceDeleteObligationValueProcedure = "/policy.obligations.Service/DeleteObligationValue"
+	// ServiceAddObligationTriggerProcedure is the fully-qualified name of the Service's
+	// AddObligationTrigger RPC.
+	ServiceAddObligationTriggerProcedure = "/policy.obligations.Service/AddObligationTrigger"
+	// ServiceRemoveObligationTriggerProcedure is the fully-qualified name of the Service's
+	// RemoveObligationTrigger RPC.
+	ServiceRemoveObligationTriggerProcedure = "/policy.obligations.Service/RemoveObligationTrigger"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	obligationsServiceServiceDescriptor                         = obligations.File_policy_obligations_obligations_proto.Services().ByName("ObligationsService")
-	obligationsServiceListObligationsMethodDescriptor           = obligationsServiceServiceDescriptor.Methods().ByName("ListObligations")
-	obligationsServiceGetObligationMethodDescriptor             = obligationsServiceServiceDescriptor.Methods().ByName("GetObligation")
-	obligationsServiceGetObligationsByFQNsMethodDescriptor      = obligationsServiceServiceDescriptor.Methods().ByName("GetObligationsByFQNs")
-	obligationsServiceCreateObligationMethodDescriptor          = obligationsServiceServiceDescriptor.Methods().ByName("CreateObligation")
-	obligationsServiceUpdateObligationMethodDescriptor          = obligationsServiceServiceDescriptor.Methods().ByName("UpdateObligation")
-	obligationsServiceDeleteObligationMethodDescriptor          = obligationsServiceServiceDescriptor.Methods().ByName("DeleteObligation")
-	obligationsServiceListObligationValuesMethodDescriptor      = obligationsServiceServiceDescriptor.Methods().ByName("ListObligationValues")
-	obligationsServiceGetObligationValueMethodDescriptor        = obligationsServiceServiceDescriptor.Methods().ByName("GetObligationValue")
-	obligationsServiceGetObligationValuesByFQNsMethodDescriptor = obligationsServiceServiceDescriptor.Methods().ByName("GetObligationValuesByFQNs")
-	obligationsServiceCreateObligationValueMethodDescriptor     = obligationsServiceServiceDescriptor.Methods().ByName("CreateObligationValue")
-	obligationsServiceUpdateObligationValueMethodDescriptor     = obligationsServiceServiceDescriptor.Methods().ByName("UpdateObligationValue")
-	obligationsServiceDeleteObligationValueMethodDescriptor     = obligationsServiceServiceDescriptor.Methods().ByName("DeleteObligationValue")
-	obligationsServiceAddObligationTriggerMethodDescriptor      = obligationsServiceServiceDescriptor.Methods().ByName("AddObligationTrigger")
-	obligationsServiceRemoveObligationTriggerMethodDescriptor   = obligationsServiceServiceDescriptor.Methods().ByName("RemoveObligationTrigger")
-	obligationsServiceAddObligationFulfillerMethodDescriptor    = obligationsServiceServiceDescriptor.Methods().ByName("AddObligationFulfiller")
-	obligationsServiceRemoveObligationFulfillerMethodDescriptor = obligationsServiceServiceDescriptor.Methods().ByName("RemoveObligationFulfiller")
+	serviceServiceDescriptor                         = obligations.File_policy_obligations_obligations_proto.Services().ByName("Service")
+	serviceListObligationsMethodDescriptor           = serviceServiceDescriptor.Methods().ByName("ListObligations")
+	serviceGetObligationMethodDescriptor             = serviceServiceDescriptor.Methods().ByName("GetObligation")
+	serviceGetObligationsByFQNsMethodDescriptor      = serviceServiceDescriptor.Methods().ByName("GetObligationsByFQNs")
+	serviceCreateObligationMethodDescriptor          = serviceServiceDescriptor.Methods().ByName("CreateObligation")
+	serviceUpdateObligationMethodDescriptor          = serviceServiceDescriptor.Methods().ByName("UpdateObligation")
+	serviceDeleteObligationMethodDescriptor          = serviceServiceDescriptor.Methods().ByName("DeleteObligation")
+	serviceGetObligationValueMethodDescriptor        = serviceServiceDescriptor.Methods().ByName("GetObligationValue")
+	serviceGetObligationValuesByFQNsMethodDescriptor = serviceServiceDescriptor.Methods().ByName("GetObligationValuesByFQNs")
+	serviceCreateObligationValueMethodDescriptor     = serviceServiceDescriptor.Methods().ByName("CreateObligationValue")
+	serviceUpdateObligationValueMethodDescriptor     = serviceServiceDescriptor.Methods().ByName("UpdateObligationValue")
+	serviceDeleteObligationValueMethodDescriptor     = serviceServiceDescriptor.Methods().ByName("DeleteObligationValue")
+	serviceAddObligationTriggerMethodDescriptor      = serviceServiceDescriptor.Methods().ByName("AddObligationTrigger")
+	serviceRemoveObligationTriggerMethodDescriptor   = serviceServiceDescriptor.Methods().ByName("RemoveObligationTrigger")
 )
 
-// ObligationsServiceClient is a client for the policy.obligations.ObligationsService service.
-type ObligationsServiceClient interface {
+// ServiceClient is a client for the policy.obligations.Service service.
+type ServiceClient interface {
 	ListObligations(context.Context, *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error)
 	GetObligation(context.Context, *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error)
 	GetObligationsByFQNs(context.Context, *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error)
 	CreateObligation(context.Context, *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error)
 	UpdateObligation(context.Context, *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error)
 	DeleteObligation(context.Context, *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error)
-	ListObligationValues(context.Context, *connect.Request[obligations.ListObligationValuesRequest]) (*connect.Response[obligations.ListObligationValuesResponse], error)
 	GetObligationValue(context.Context, *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error)
 	GetObligationValuesByFQNs(context.Context, *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error)
 	CreateObligationValue(context.Context, *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error)
@@ -120,134 +105,112 @@ type ObligationsServiceClient interface {
 	DeleteObligationValue(context.Context, *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error)
 	AddObligationTrigger(context.Context, *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error)
 	RemoveObligationTrigger(context.Context, *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error)
-	AddObligationFulfiller(context.Context, *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error)
-	RemoveObligationFulfiller(context.Context, *connect.Request[obligations.RemoveObligationFulfillerRequest]) (*connect.Response[obligations.RemoveObligationFulfillerResponse], error)
 }
 
-// NewObligationsServiceClient constructs a client for the policy.obligations.ObligationsService
-// service. By default, it uses the Connect protocol with the binary Protobuf Codec, asks for
-// gzipped responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply
-// the connect.WithGRPC() or connect.WithGRPCWeb() options.
+// NewServiceClient constructs a client for the policy.obligations.Service service. By default, it
+// uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and sends
+// uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
+// connect.WithGRPCWeb() options.
 //
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
 // http://api.acme.com or https://acme.com/grpc).
-func NewObligationsServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ObligationsServiceClient {
+func NewServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	return &obligationsServiceClient{
+	return &serviceClient{
 		listObligations: connect.NewClient[obligations.ListObligationsRequest, obligations.ListObligationsResponse](
 			httpClient,
-			baseURL+ObligationsServiceListObligationsProcedure,
-			connect.WithSchema(obligationsServiceListObligationsMethodDescriptor),
+			baseURL+ServiceListObligationsProcedure,
+			connect.WithSchema(serviceListObligationsMethodDescriptor),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getObligation: connect.NewClient[obligations.GetObligationRequest, obligations.GetObligationResponse](
 			httpClient,
-			baseURL+ObligationsServiceGetObligationProcedure,
-			connect.WithSchema(obligationsServiceGetObligationMethodDescriptor),
+			baseURL+ServiceGetObligationProcedure,
+			connect.WithSchema(serviceGetObligationMethodDescriptor),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getObligationsByFQNs: connect.NewClient[obligations.GetObligationsByFQNsRequest, obligations.GetObligationsByFQNsResponse](
 			httpClient,
-			baseURL+ObligationsServiceGetObligationsByFQNsProcedure,
-			connect.WithSchema(obligationsServiceGetObligationsByFQNsMethodDescriptor),
+			baseURL+ServiceGetObligationsByFQNsProcedure,
+			connect.WithSchema(serviceGetObligationsByFQNsMethodDescriptor),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createObligation: connect.NewClient[obligations.CreateObligationRequest, obligations.CreateObligationResponse](
 			httpClient,
-			baseURL+ObligationsServiceCreateObligationProcedure,
-			connect.WithSchema(obligationsServiceCreateObligationMethodDescriptor),
+			baseURL+ServiceCreateObligationProcedure,
+			connect.WithSchema(serviceCreateObligationMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		updateObligation: connect.NewClient[obligations.UpdateObligationRequest, obligations.UpdateObligationResponse](
 			httpClient,
-			baseURL+ObligationsServiceUpdateObligationProcedure,
-			connect.WithSchema(obligationsServiceUpdateObligationMethodDescriptor),
+			baseURL+ServiceUpdateObligationProcedure,
+			connect.WithSchema(serviceUpdateObligationMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		deleteObligation: connect.NewClient[obligations.DeleteObligationRequest, obligations.DeleteObligationResponse](
 			httpClient,
-			baseURL+ObligationsServiceDeleteObligationProcedure,
-			connect.WithSchema(obligationsServiceDeleteObligationMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
-		listObligationValues: connect.NewClient[obligations.ListObligationValuesRequest, obligations.ListObligationValuesResponse](
-			httpClient,
-			baseURL+ObligationsServiceListObligationValuesProcedure,
-			connect.WithSchema(obligationsServiceListObligationValuesMethodDescriptor),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			baseURL+ServiceDeleteObligationProcedure,
+			connect.WithSchema(serviceDeleteObligationMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getObligationValue: connect.NewClient[obligations.GetObligationValueRequest, obligations.GetObligationValueResponse](
 			httpClient,
-			baseURL+ObligationsServiceGetObligationValueProcedure,
-			connect.WithSchema(obligationsServiceGetObligationValueMethodDescriptor),
+			baseURL+ServiceGetObligationValueProcedure,
+			connect.WithSchema(serviceGetObligationValueMethodDescriptor),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		getObligationValuesByFQNs: connect.NewClient[obligations.GetObligationValuesByFQNsRequest, obligations.GetObligationValuesByFQNsResponse](
 			httpClient,
-			baseURL+ObligationsServiceGetObligationValuesByFQNsProcedure,
-			connect.WithSchema(obligationsServiceGetObligationValuesByFQNsMethodDescriptor),
+			baseURL+ServiceGetObligationValuesByFQNsProcedure,
+			connect.WithSchema(serviceGetObligationValuesByFQNsMethodDescriptor),
 			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 			connect.WithClientOptions(opts...),
 		),
 		createObligationValue: connect.NewClient[obligations.CreateObligationValueRequest, obligations.CreateObligationValueResponse](
 			httpClient,
-			baseURL+ObligationsServiceCreateObligationValueProcedure,
-			connect.WithSchema(obligationsServiceCreateObligationValueMethodDescriptor),
+			baseURL+ServiceCreateObligationValueProcedure,
+			connect.WithSchema(serviceCreateObligationValueMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		updateObligationValue: connect.NewClient[obligations.UpdateObligationValueRequest, obligations.UpdateObligationValueResponse](
 			httpClient,
-			baseURL+ObligationsServiceUpdateObligationValueProcedure,
-			connect.WithSchema(obligationsServiceUpdateObligationValueMethodDescriptor),
+			baseURL+ServiceUpdateObligationValueProcedure,
+			connect.WithSchema(serviceUpdateObligationValueMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		deleteObligationValue: connect.NewClient[obligations.DeleteObligationValueRequest, obligations.DeleteObligationValueResponse](
 			httpClient,
-			baseURL+ObligationsServiceDeleteObligationValueProcedure,
-			connect.WithSchema(obligationsServiceDeleteObligationValueMethodDescriptor),
+			baseURL+ServiceDeleteObligationValueProcedure,
+			connect.WithSchema(serviceDeleteObligationValueMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		addObligationTrigger: connect.NewClient[obligations.AddObligationTriggerRequest, obligations.AddObligationTriggerResponse](
 			httpClient,
-			baseURL+ObligationsServiceAddObligationTriggerProcedure,
-			connect.WithSchema(obligationsServiceAddObligationTriggerMethodDescriptor),
+			baseURL+ServiceAddObligationTriggerProcedure,
+			connect.WithSchema(serviceAddObligationTriggerMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		removeObligationTrigger: connect.NewClient[obligations.RemoveObligationTriggerRequest, obligations.RemoveObligationTriggerResponse](
 			httpClient,
-			baseURL+ObligationsServiceRemoveObligationTriggerProcedure,
-			connect.WithSchema(obligationsServiceRemoveObligationTriggerMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
-		addObligationFulfiller: connect.NewClient[obligations.AddObligationFulfillerRequest, obligations.AddObligationFulfillerResponse](
-			httpClient,
-			baseURL+ObligationsServiceAddObligationFulfillerProcedure,
-			connect.WithSchema(obligationsServiceAddObligationFulfillerMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
-		removeObligationFulfiller: connect.NewClient[obligations.RemoveObligationFulfillerRequest, obligations.RemoveObligationFulfillerResponse](
-			httpClient,
-			baseURL+ObligationsServiceRemoveObligationFulfillerProcedure,
-			connect.WithSchema(obligationsServiceRemoveObligationFulfillerMethodDescriptor),
+			baseURL+ServiceRemoveObligationTriggerProcedure,
+			connect.WithSchema(serviceRemoveObligationTriggerMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
 }
 
-// obligationsServiceClient implements ObligationsServiceClient.
-type obligationsServiceClient struct {
+// serviceClient implements ServiceClient.
+type serviceClient struct {
 	listObligations           *connect.Client[obligations.ListObligationsRequest, obligations.ListObligationsResponse]
 	getObligation             *connect.Client[obligations.GetObligationRequest, obligations.GetObligationResponse]
 	getObligationsByFQNs      *connect.Client[obligations.GetObligationsByFQNsRequest, obligations.GetObligationsByFQNsResponse]
 	createObligation          *connect.Client[obligations.CreateObligationRequest, obligations.CreateObligationResponse]
 	updateObligation          *connect.Client[obligations.UpdateObligationRequest, obligations.UpdateObligationResponse]
 	deleteObligation          *connect.Client[obligations.DeleteObligationRequest, obligations.DeleteObligationResponse]
-	listObligationValues      *connect.Client[obligations.ListObligationValuesRequest, obligations.ListObligationValuesResponse]
 	getObligationValue        *connect.Client[obligations.GetObligationValueRequest, obligations.GetObligationValueResponse]
 	getObligationValuesByFQNs *connect.Client[obligations.GetObligationValuesByFQNsRequest, obligations.GetObligationValuesByFQNsResponse]
 	createObligationValue     *connect.Client[obligations.CreateObligationValueRequest, obligations.CreateObligationValueResponse]
@@ -255,100 +218,81 @@ type obligationsServiceClient struct {
 	deleteObligationValue     *connect.Client[obligations.DeleteObligationValueRequest, obligations.DeleteObligationValueResponse]
 	addObligationTrigger      *connect.Client[obligations.AddObligationTriggerRequest, obligations.AddObligationTriggerResponse]
 	removeObligationTrigger   *connect.Client[obligations.RemoveObligationTriggerRequest, obligations.RemoveObligationTriggerResponse]
-	addObligationFulfiller    *connect.Client[obligations.AddObligationFulfillerRequest, obligations.AddObligationFulfillerResponse]
-	removeObligationFulfiller *connect.Client[obligations.RemoveObligationFulfillerRequest, obligations.RemoveObligationFulfillerResponse]
 }
 
-// ListObligations calls policy.obligations.ObligationsService.ListObligations.
-func (c *obligationsServiceClient) ListObligations(ctx context.Context, req *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error) {
+// ListObligations calls policy.obligations.Service.ListObligations.
+func (c *serviceClient) ListObligations(ctx context.Context, req *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error) {
 	return c.listObligations.CallUnary(ctx, req)
 }
 
-// GetObligation calls policy.obligations.ObligationsService.GetObligation.
-func (c *obligationsServiceClient) GetObligation(ctx context.Context, req *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
+// GetObligation calls policy.obligations.Service.GetObligation.
+func (c *serviceClient) GetObligation(ctx context.Context, req *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
 	return c.getObligation.CallUnary(ctx, req)
 }
 
-// GetObligationsByFQNs calls policy.obligations.ObligationsService.GetObligationsByFQNs.
-func (c *obligationsServiceClient) GetObligationsByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
+// GetObligationsByFQNs calls policy.obligations.Service.GetObligationsByFQNs.
+func (c *serviceClient) GetObligationsByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
 	return c.getObligationsByFQNs.CallUnary(ctx, req)
 }
 
-// CreateObligation calls policy.obligations.ObligationsService.CreateObligation.
-func (c *obligationsServiceClient) CreateObligation(ctx context.Context, req *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
+// CreateObligation calls policy.obligations.Service.CreateObligation.
+func (c *serviceClient) CreateObligation(ctx context.Context, req *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
 	return c.createObligation.CallUnary(ctx, req)
 }
 
-// UpdateObligation calls policy.obligations.ObligationsService.UpdateObligation.
-func (c *obligationsServiceClient) UpdateObligation(ctx context.Context, req *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error) {
+// UpdateObligation calls policy.obligations.Service.UpdateObligation.
+func (c *serviceClient) UpdateObligation(ctx context.Context, req *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error) {
 	return c.updateObligation.CallUnary(ctx, req)
 }
 
-// DeleteObligation calls policy.obligations.ObligationsService.DeleteObligation.
-func (c *obligationsServiceClient) DeleteObligation(ctx context.Context, req *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error) {
+// DeleteObligation calls policy.obligations.Service.DeleteObligation.
+func (c *serviceClient) DeleteObligation(ctx context.Context, req *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error) {
 	return c.deleteObligation.CallUnary(ctx, req)
 }
 
-// ListObligationValues calls policy.obligations.ObligationsService.ListObligationValues.
-func (c *obligationsServiceClient) ListObligationValues(ctx context.Context, req *connect.Request[obligations.ListObligationValuesRequest]) (*connect.Response[obligations.ListObligationValuesResponse], error) {
-	return c.listObligationValues.CallUnary(ctx, req)
-}
-
-// GetObligationValue calls policy.obligations.ObligationsService.GetObligationValue.
-func (c *obligationsServiceClient) GetObligationValue(ctx context.Context, req *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
+// GetObligationValue calls policy.obligations.Service.GetObligationValue.
+func (c *serviceClient) GetObligationValue(ctx context.Context, req *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
 	return c.getObligationValue.CallUnary(ctx, req)
 }
 
-// GetObligationValuesByFQNs calls policy.obligations.ObligationsService.GetObligationValuesByFQNs.
-func (c *obligationsServiceClient) GetObligationValuesByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error) {
+// GetObligationValuesByFQNs calls policy.obligations.Service.GetObligationValuesByFQNs.
+func (c *serviceClient) GetObligationValuesByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error) {
 	return c.getObligationValuesByFQNs.CallUnary(ctx, req)
 }
 
-// CreateObligationValue calls policy.obligations.ObligationsService.CreateObligationValue.
-func (c *obligationsServiceClient) CreateObligationValue(ctx context.Context, req *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {
+// CreateObligationValue calls policy.obligations.Service.CreateObligationValue.
+func (c *serviceClient) CreateObligationValue(ctx context.Context, req *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {
 	return c.createObligationValue.CallUnary(ctx, req)
 }
 
-// UpdateObligationValue calls policy.obligations.ObligationsService.UpdateObligationValue.
-func (c *obligationsServiceClient) UpdateObligationValue(ctx context.Context, req *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error) {
+// UpdateObligationValue calls policy.obligations.Service.UpdateObligationValue.
+func (c *serviceClient) UpdateObligationValue(ctx context.Context, req *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error) {
 	return c.updateObligationValue.CallUnary(ctx, req)
 }
 
-// DeleteObligationValue calls policy.obligations.ObligationsService.DeleteObligationValue.
-func (c *obligationsServiceClient) DeleteObligationValue(ctx context.Context, req *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error) {
+// DeleteObligationValue calls policy.obligations.Service.DeleteObligationValue.
+func (c *serviceClient) DeleteObligationValue(ctx context.Context, req *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error) {
 	return c.deleteObligationValue.CallUnary(ctx, req)
 }
 
-// AddObligationTrigger calls policy.obligations.ObligationsService.AddObligationTrigger.
-func (c *obligationsServiceClient) AddObligationTrigger(ctx context.Context, req *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error) {
+// AddObligationTrigger calls policy.obligations.Service.AddObligationTrigger.
+func (c *serviceClient) AddObligationTrigger(ctx context.Context, req *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error) {
 	return c.addObligationTrigger.CallUnary(ctx, req)
 }
 
-// RemoveObligationTrigger calls policy.obligations.ObligationsService.RemoveObligationTrigger.
-func (c *obligationsServiceClient) RemoveObligationTrigger(ctx context.Context, req *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error) {
+// RemoveObligationTrigger calls policy.obligations.Service.RemoveObligationTrigger.
+func (c *serviceClient) RemoveObligationTrigger(ctx context.Context, req *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error) {
 	return c.removeObligationTrigger.CallUnary(ctx, req)
 }
 
-// AddObligationFulfiller calls policy.obligations.ObligationsService.AddObligationFulfiller.
-func (c *obligationsServiceClient) AddObligationFulfiller(ctx context.Context, req *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error) {
-	return c.addObligationFulfiller.CallUnary(ctx, req)
-}
-
-// RemoveObligationFulfiller calls policy.obligations.ObligationsService.RemoveObligationFulfiller.
-func (c *obligationsServiceClient) RemoveObligationFulfiller(ctx context.Context, req *connect.Request[obligations.RemoveObligationFulfillerRequest]) (*connect.Response[obligations.RemoveObligationFulfillerResponse], error) {
-	return c.removeObligationFulfiller.CallUnary(ctx, req)
-}
-
-// ObligationsServiceHandler is an implementation of the policy.obligations.ObligationsService
-// service.
-type ObligationsServiceHandler interface {
+// ServiceHandler is an implementation of the policy.obligations.Service service.
+type ServiceHandler interface {
 	ListObligations(context.Context, *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error)
 	GetObligation(context.Context, *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error)
 	GetObligationsByFQNs(context.Context, *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error)
 	CreateObligation(context.Context, *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error)
 	UpdateObligation(context.Context, *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error)
 	DeleteObligation(context.Context, *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error)
-	ListObligationValues(context.Context, *connect.Request[obligations.ListObligationValuesRequest]) (*connect.Response[obligations.ListObligationValuesResponse], error)
 	GetObligationValue(context.Context, *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error)
 	GetObligationValuesByFQNs(context.Context, *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error)
 	CreateObligationValue(context.Context, *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error)
@@ -356,221 +300,182 @@ type ObligationsServiceHandler interface {
 	DeleteObligationValue(context.Context, *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error)
 	AddObligationTrigger(context.Context, *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error)
 	RemoveObligationTrigger(context.Context, *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error)
-	AddObligationFulfiller(context.Context, *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error)
-	RemoveObligationFulfiller(context.Context, *connect.Request[obligations.RemoveObligationFulfillerRequest]) (*connect.Response[obligations.RemoveObligationFulfillerResponse], error)
 }
 
-// NewObligationsServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
+// NewServiceHandler builds an HTTP handler from the service implementation. It returns the path on
+// which to mount the handler and the handler itself.
 //
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
-func NewObligationsServiceHandler(svc ObligationsServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	obligationsServiceListObligationsHandler := connect.NewUnaryHandler(
-		ObligationsServiceListObligationsProcedure,
+func NewServiceHandler(svc ServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	serviceListObligationsHandler := connect.NewUnaryHandler(
+		ServiceListObligationsProcedure,
 		svc.ListObligations,
-		connect.WithSchema(obligationsServiceListObligationsMethodDescriptor),
+		connect.WithSchema(serviceListObligationsMethodDescriptor),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
-	obligationsServiceGetObligationHandler := connect.NewUnaryHandler(
-		ObligationsServiceGetObligationProcedure,
+	serviceGetObligationHandler := connect.NewUnaryHandler(
+		ServiceGetObligationProcedure,
 		svc.GetObligation,
-		connect.WithSchema(obligationsServiceGetObligationMethodDescriptor),
+		connect.WithSchema(serviceGetObligationMethodDescriptor),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
-	obligationsServiceGetObligationsByFQNsHandler := connect.NewUnaryHandler(
-		ObligationsServiceGetObligationsByFQNsProcedure,
+	serviceGetObligationsByFQNsHandler := connect.NewUnaryHandler(
+		ServiceGetObligationsByFQNsProcedure,
 		svc.GetObligationsByFQNs,
-		connect.WithSchema(obligationsServiceGetObligationsByFQNsMethodDescriptor),
+		connect.WithSchema(serviceGetObligationsByFQNsMethodDescriptor),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
-	obligationsServiceCreateObligationHandler := connect.NewUnaryHandler(
-		ObligationsServiceCreateObligationProcedure,
+	serviceCreateObligationHandler := connect.NewUnaryHandler(
+		ServiceCreateObligationProcedure,
 		svc.CreateObligation,
-		connect.WithSchema(obligationsServiceCreateObligationMethodDescriptor),
+		connect.WithSchema(serviceCreateObligationMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	obligationsServiceUpdateObligationHandler := connect.NewUnaryHandler(
-		ObligationsServiceUpdateObligationProcedure,
+	serviceUpdateObligationHandler := connect.NewUnaryHandler(
+		ServiceUpdateObligationProcedure,
 		svc.UpdateObligation,
-		connect.WithSchema(obligationsServiceUpdateObligationMethodDescriptor),
+		connect.WithSchema(serviceUpdateObligationMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	obligationsServiceDeleteObligationHandler := connect.NewUnaryHandler(
-		ObligationsServiceDeleteObligationProcedure,
+	serviceDeleteObligationHandler := connect.NewUnaryHandler(
+		ServiceDeleteObligationProcedure,
 		svc.DeleteObligation,
-		connect.WithSchema(obligationsServiceDeleteObligationMethodDescriptor),
+		connect.WithSchema(serviceDeleteObligationMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	obligationsServiceListObligationValuesHandler := connect.NewUnaryHandler(
-		ObligationsServiceListObligationValuesProcedure,
-		svc.ListObligationValues,
-		connect.WithSchema(obligationsServiceListObligationValuesMethodDescriptor),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
-		connect.WithHandlerOptions(opts...),
-	)
-	obligationsServiceGetObligationValueHandler := connect.NewUnaryHandler(
-		ObligationsServiceGetObligationValueProcedure,
+	serviceGetObligationValueHandler := connect.NewUnaryHandler(
+		ServiceGetObligationValueProcedure,
 		svc.GetObligationValue,
-		connect.WithSchema(obligationsServiceGetObligationValueMethodDescriptor),
+		connect.WithSchema(serviceGetObligationValueMethodDescriptor),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
-	obligationsServiceGetObligationValuesByFQNsHandler := connect.NewUnaryHandler(
-		ObligationsServiceGetObligationValuesByFQNsProcedure,
+	serviceGetObligationValuesByFQNsHandler := connect.NewUnaryHandler(
+		ServiceGetObligationValuesByFQNsProcedure,
 		svc.GetObligationValuesByFQNs,
-		connect.WithSchema(obligationsServiceGetObligationValuesByFQNsMethodDescriptor),
+		connect.WithSchema(serviceGetObligationValuesByFQNsMethodDescriptor),
 		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
 		connect.WithHandlerOptions(opts...),
 	)
-	obligationsServiceCreateObligationValueHandler := connect.NewUnaryHandler(
-		ObligationsServiceCreateObligationValueProcedure,
+	serviceCreateObligationValueHandler := connect.NewUnaryHandler(
+		ServiceCreateObligationValueProcedure,
 		svc.CreateObligationValue,
-		connect.WithSchema(obligationsServiceCreateObligationValueMethodDescriptor),
+		connect.WithSchema(serviceCreateObligationValueMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	obligationsServiceUpdateObligationValueHandler := connect.NewUnaryHandler(
-		ObligationsServiceUpdateObligationValueProcedure,
+	serviceUpdateObligationValueHandler := connect.NewUnaryHandler(
+		ServiceUpdateObligationValueProcedure,
 		svc.UpdateObligationValue,
-		connect.WithSchema(obligationsServiceUpdateObligationValueMethodDescriptor),
+		connect.WithSchema(serviceUpdateObligationValueMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	obligationsServiceDeleteObligationValueHandler := connect.NewUnaryHandler(
-		ObligationsServiceDeleteObligationValueProcedure,
+	serviceDeleteObligationValueHandler := connect.NewUnaryHandler(
+		ServiceDeleteObligationValueProcedure,
 		svc.DeleteObligationValue,
-		connect.WithSchema(obligationsServiceDeleteObligationValueMethodDescriptor),
+		connect.WithSchema(serviceDeleteObligationValueMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	obligationsServiceAddObligationTriggerHandler := connect.NewUnaryHandler(
-		ObligationsServiceAddObligationTriggerProcedure,
+	serviceAddObligationTriggerHandler := connect.NewUnaryHandler(
+		ServiceAddObligationTriggerProcedure,
 		svc.AddObligationTrigger,
-		connect.WithSchema(obligationsServiceAddObligationTriggerMethodDescriptor),
+		connect.WithSchema(serviceAddObligationTriggerMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	obligationsServiceRemoveObligationTriggerHandler := connect.NewUnaryHandler(
-		ObligationsServiceRemoveObligationTriggerProcedure,
+	serviceRemoveObligationTriggerHandler := connect.NewUnaryHandler(
+		ServiceRemoveObligationTriggerProcedure,
 		svc.RemoveObligationTrigger,
-		connect.WithSchema(obligationsServiceRemoveObligationTriggerMethodDescriptor),
+		connect.WithSchema(serviceRemoveObligationTriggerMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	obligationsServiceAddObligationFulfillerHandler := connect.NewUnaryHandler(
-		ObligationsServiceAddObligationFulfillerProcedure,
-		svc.AddObligationFulfiller,
-		connect.WithSchema(obligationsServiceAddObligationFulfillerMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
-	obligationsServiceRemoveObligationFulfillerHandler := connect.NewUnaryHandler(
-		ObligationsServiceRemoveObligationFulfillerProcedure,
-		svc.RemoveObligationFulfiller,
-		connect.WithSchema(obligationsServiceRemoveObligationFulfillerMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/policy.obligations.ObligationsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return "/policy.obligations.Service/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case ObligationsServiceListObligationsProcedure:
-			obligationsServiceListObligationsHandler.ServeHTTP(w, r)
-		case ObligationsServiceGetObligationProcedure:
-			obligationsServiceGetObligationHandler.ServeHTTP(w, r)
-		case ObligationsServiceGetObligationsByFQNsProcedure:
-			obligationsServiceGetObligationsByFQNsHandler.ServeHTTP(w, r)
-		case ObligationsServiceCreateObligationProcedure:
-			obligationsServiceCreateObligationHandler.ServeHTTP(w, r)
-		case ObligationsServiceUpdateObligationProcedure:
-			obligationsServiceUpdateObligationHandler.ServeHTTP(w, r)
-		case ObligationsServiceDeleteObligationProcedure:
-			obligationsServiceDeleteObligationHandler.ServeHTTP(w, r)
-		case ObligationsServiceListObligationValuesProcedure:
-			obligationsServiceListObligationValuesHandler.ServeHTTP(w, r)
-		case ObligationsServiceGetObligationValueProcedure:
-			obligationsServiceGetObligationValueHandler.ServeHTTP(w, r)
-		case ObligationsServiceGetObligationValuesByFQNsProcedure:
-			obligationsServiceGetObligationValuesByFQNsHandler.ServeHTTP(w, r)
-		case ObligationsServiceCreateObligationValueProcedure:
-			obligationsServiceCreateObligationValueHandler.ServeHTTP(w, r)
-		case ObligationsServiceUpdateObligationValueProcedure:
-			obligationsServiceUpdateObligationValueHandler.ServeHTTP(w, r)
-		case ObligationsServiceDeleteObligationValueProcedure:
-			obligationsServiceDeleteObligationValueHandler.ServeHTTP(w, r)
-		case ObligationsServiceAddObligationTriggerProcedure:
-			obligationsServiceAddObligationTriggerHandler.ServeHTTP(w, r)
-		case ObligationsServiceRemoveObligationTriggerProcedure:
-			obligationsServiceRemoveObligationTriggerHandler.ServeHTTP(w, r)
-		case ObligationsServiceAddObligationFulfillerProcedure:
-			obligationsServiceAddObligationFulfillerHandler.ServeHTTP(w, r)
-		case ObligationsServiceRemoveObligationFulfillerProcedure:
-			obligationsServiceRemoveObligationFulfillerHandler.ServeHTTP(w, r)
+		case ServiceListObligationsProcedure:
+			serviceListObligationsHandler.ServeHTTP(w, r)
+		case ServiceGetObligationProcedure:
+			serviceGetObligationHandler.ServeHTTP(w, r)
+		case ServiceGetObligationsByFQNsProcedure:
+			serviceGetObligationsByFQNsHandler.ServeHTTP(w, r)
+		case ServiceCreateObligationProcedure:
+			serviceCreateObligationHandler.ServeHTTP(w, r)
+		case ServiceUpdateObligationProcedure:
+			serviceUpdateObligationHandler.ServeHTTP(w, r)
+		case ServiceDeleteObligationProcedure:
+			serviceDeleteObligationHandler.ServeHTTP(w, r)
+		case ServiceGetObligationValueProcedure:
+			serviceGetObligationValueHandler.ServeHTTP(w, r)
+		case ServiceGetObligationValuesByFQNsProcedure:
+			serviceGetObligationValuesByFQNsHandler.ServeHTTP(w, r)
+		case ServiceCreateObligationValueProcedure:
+			serviceCreateObligationValueHandler.ServeHTTP(w, r)
+		case ServiceUpdateObligationValueProcedure:
+			serviceUpdateObligationValueHandler.ServeHTTP(w, r)
+		case ServiceDeleteObligationValueProcedure:
+			serviceDeleteObligationValueHandler.ServeHTTP(w, r)
+		case ServiceAddObligationTriggerProcedure:
+			serviceAddObligationTriggerHandler.ServeHTTP(w, r)
+		case ServiceRemoveObligationTriggerProcedure:
+			serviceRemoveObligationTriggerHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
 	})
 }
 
-// UnimplementedObligationsServiceHandler returns CodeUnimplemented from all methods.
-type UnimplementedObligationsServiceHandler struct{}
+// UnimplementedServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedServiceHandler struct{}
 
-func (UnimplementedObligationsServiceHandler) ListObligations(context.Context, *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.ListObligations is not implemented"))
+func (UnimplementedServiceHandler) ListObligations(context.Context, *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.ListObligations is not implemented"))
 }
 
-func (UnimplementedObligationsServiceHandler) GetObligation(context.Context, *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.GetObligation is not implemented"))
+func (UnimplementedServiceHandler) GetObligation(context.Context, *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.GetObligation is not implemented"))
 }
 
-func (UnimplementedObligationsServiceHandler) GetObligationsByFQNs(context.Context, *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.GetObligationsByFQNs is not implemented"))
+func (UnimplementedServiceHandler) GetObligationsByFQNs(context.Context, *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.GetObligationsByFQNs is not implemented"))
 }
 
-func (UnimplementedObligationsServiceHandler) CreateObligation(context.Context, *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.CreateObligation is not implemented"))
+func (UnimplementedServiceHandler) CreateObligation(context.Context, *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.CreateObligation is not implemented"))
 }
 
-func (UnimplementedObligationsServiceHandler) UpdateObligation(context.Context, *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.UpdateObligation is not implemented"))
+func (UnimplementedServiceHandler) UpdateObligation(context.Context, *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.UpdateObligation is not implemented"))
 }
 
-func (UnimplementedObligationsServiceHandler) DeleteObligation(context.Context, *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.DeleteObligation is not implemented"))
+func (UnimplementedServiceHandler) DeleteObligation(context.Context, *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.DeleteObligation is not implemented"))
 }
 
-func (UnimplementedObligationsServiceHandler) ListObligationValues(context.Context, *connect.Request[obligations.ListObligationValuesRequest]) (*connect.Response[obligations.ListObligationValuesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.ListObligationValues is not implemented"))
+func (UnimplementedServiceHandler) GetObligationValue(context.Context, *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.GetObligationValue is not implemented"))
 }
 
-func (UnimplementedObligationsServiceHandler) GetObligationValue(context.Context, *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.GetObligationValue is not implemented"))
+func (UnimplementedServiceHandler) GetObligationValuesByFQNs(context.Context, *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.GetObligationValuesByFQNs is not implemented"))
 }
 
-func (UnimplementedObligationsServiceHandler) GetObligationValuesByFQNs(context.Context, *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.GetObligationValuesByFQNs is not implemented"))
+func (UnimplementedServiceHandler) CreateObligationValue(context.Context, *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.CreateObligationValue is not implemented"))
 }
 
-func (UnimplementedObligationsServiceHandler) CreateObligationValue(context.Context, *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.CreateObligationValue is not implemented"))
+func (UnimplementedServiceHandler) UpdateObligationValue(context.Context, *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.UpdateObligationValue is not implemented"))
 }
 
-func (UnimplementedObligationsServiceHandler) UpdateObligationValue(context.Context, *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.UpdateObligationValue is not implemented"))
+func (UnimplementedServiceHandler) DeleteObligationValue(context.Context, *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.DeleteObligationValue is not implemented"))
 }
 
-func (UnimplementedObligationsServiceHandler) DeleteObligationValue(context.Context, *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.DeleteObligationValue is not implemented"))
+func (UnimplementedServiceHandler) AddObligationTrigger(context.Context, *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.AddObligationTrigger is not implemented"))
 }
 
-func (UnimplementedObligationsServiceHandler) AddObligationTrigger(context.Context, *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.AddObligationTrigger is not implemented"))
-}
-
-func (UnimplementedObligationsServiceHandler) RemoveObligationTrigger(context.Context, *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.RemoveObligationTrigger is not implemented"))
-}
-
-func (UnimplementedObligationsServiceHandler) AddObligationFulfiller(context.Context, *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.AddObligationFulfiller is not implemented"))
-}
-
-func (UnimplementedObligationsServiceHandler) RemoveObligationFulfiller(context.Context, *connect.Request[obligations.RemoveObligationFulfillerRequest]) (*connect.Response[obligations.RemoveObligationFulfillerResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.ObligationsService.RemoveObligationFulfiller is not implemented"))
+func (UnimplementedServiceHandler) RemoveObligationTrigger(context.Context, *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("policy.obligations.Service.RemoveObligationTrigger is not implemented"))
 }

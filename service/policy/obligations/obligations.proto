@@ -5,7 +5,7 @@ package policy.obligations;
 import "common/common.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
-import "google/protobuf/struct.proto";
+// import "google/protobuf/struct.proto";
 
 ///
 /// Obligation

@@ -5,7 +5,7 @@ package policy;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/protobuf/wrappers.proto";
-import "google/protobuf/struct.proto";
+// import "google/protobuf/struct.proto";
 
 message SimpleKasPublicKey {
   Algorithm algorithm = 1;

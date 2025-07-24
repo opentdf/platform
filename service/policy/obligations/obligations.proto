@@ -52,6 +52,7 @@ message UpdateObligationRequest {
     string id = 1;
 
     // Optional
+    string name = 2;
     common.MetadataMutable metadata = 100;
     common.MetadataUpdateEnum metadata_update_behavior = 101;
 }

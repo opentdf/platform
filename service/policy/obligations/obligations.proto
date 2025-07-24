@@ -152,20 +152,6 @@ message DeleteObligationValueResponse {
     policy.ObligationValue value = 1;
 }
 
-message ListObligationValuesRequest {
-    // Required
-    string obligation_id = 1;
-
-    // Optional
-    policy.PageRequest pagination = 10;
-}
-
-message ListObligationValuesResponse {
-    repeated policy.ObligationValue values = 1;
-
-    policy.PageResponse pagination = 10;
-}
-
 // Triggers
 message AddObligationTriggerRequest {
     // Required
@@ -241,10 +227,6 @@ service ObligationsService {
     /*--------------------------------------*
      * Value RPCs
      *--------------------------------------*/
-
-    rpc ListObligationValues(ListObligationValuesRequest) returns (ListObligationValuesResponse) {
-        option idempotency_level = NO_SIDE_EFFECTS;
-    }
 
     rpc GetObligationValue(GetObligationValueRequest) returns (GetObligationValueResponse) {
         option idempotency_level = NO_SIDE_EFFECTS;

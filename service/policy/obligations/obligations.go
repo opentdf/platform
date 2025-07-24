@@ -112,11 +112,6 @@ func (s *ObligationsService) DeleteObligation(_ context.Context, _ *connect.Requ
 	return connect.NewResponse(&obligations.DeleteObligationResponse{}), nil
 }
 
-func (s *ObligationsService) ListObligationValues(_ context.Context, _ *connect.Request[obligations.ListObligationValuesRequest]) (*connect.Response[obligations.ListObligationValuesResponse], error) {
-	// TODO: Implement ListObligationValues logic
-	return connect.NewResponse(&obligations.ListObligationValuesResponse{}), nil
-}
-
 func (s *ObligationsService) CreateObligationValue(_ context.Context, _ *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {
 	// TODO: Implement CreateObligationValue logic
 	return connect.NewResponse(&obligations.CreateObligationValueResponse{}), nil

@@ -64,8 +64,11 @@ message DeleteObligationResponse {
 
 message ListObligationsRequest {
     // Optional
-    // Namespace ID or name
-    string namespace = 1;
+    // Namespace ID or FQN
+    oneof identifier {
+        string namespace_id = 1;
+        string namespace_fqn = 2;
+    }
 
     // Optional
     policy.PageRequest pagination = 10;

@@ -13,7 +13,10 @@ import "google/protobuf/struct.proto";
 
 // Definitions
 message GetObligationRequest {
-    string id = 1;
+    oneof identifier {
+        string id = 1;
+        string fqn = 2;
+    }
 }
 
 message GetObligationResponse {

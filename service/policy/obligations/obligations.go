@@ -15,7 +15,7 @@ import (
 	policydb "github.com/opentdf/platform/service/policy/db"
 )
 
-type Service struct { //nolint:revive // Service is a valid name
+type Service struct {
 	dbClient policydb.PolicyDBClient
 	logger   *logger.Logger
 	config   *policyconfig.Config

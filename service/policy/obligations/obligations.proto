@@ -109,8 +109,12 @@ message GetObligationValuesByFQNsResponse {
 
 message CreateObligationValueRequest {
     // Required
-    string obligation_id = 1;
-    string value = 2;
+    oneof identifier {
+        string obligation_id = 1;
+        string obligation_fqn = 2;
+    }
+    string value = 3;
+    
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;

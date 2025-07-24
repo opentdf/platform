@@ -33,8 +33,11 @@ message GetObligationsByFQNsResponse {
 
 message CreateObligationRequest {
     // Required
-    string namespace_id = 1;
-    string name = 2;
+    oneof identifier {
+        string namespace_id = 1;
+        string namespace_fqn = 2;
+    }
+    string name = 3;
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;

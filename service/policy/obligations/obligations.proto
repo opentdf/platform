@@ -114,7 +114,7 @@ message CreateObligationValueRequest {
         string obligation_fqn = 2;
     }
     string value = 3;
-    
+
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;
@@ -129,6 +129,7 @@ message UpdateObligationValueRequest {
     string id = 1;
     
     // Optional
+    string value = 2;
     common.MetadataMutable metadata = 100;
     common.MetadataUpdateEnum metadata_update_behavior = 101;
 }

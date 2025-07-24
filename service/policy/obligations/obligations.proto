@@ -89,7 +89,10 @@ message ListObligationsResponse {
 
 // Values
 message GetObligationValueRequest {
-    string id = 1;
+    oneof identifier {
+        string id = 1;
+        string fqn = 2;
+    }
 }
 
 message GetObligationValueResponse {
@@ -139,17 +142,17 @@ message DeleteObligationValueResponse {
 }
 
 message ListObligationValuesRequest {
-  // Required
-  string obligation_id = 1;
+    // Required
+    string obligation_id = 1;
 
-  // Optional
-  policy.PageRequest pagination = 10;
+    // Optional
+    policy.PageRequest pagination = 10;
 }
 
 message ListObligationValuesResponse {
-  repeated policy.ObligationValue values = 1;
+    repeated policy.ObligationValue values = 1;
 
-  policy.PageResponse pagination = 10;
+    policy.PageResponse pagination = 10;
 }
 
 // Triggers

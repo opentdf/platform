@@ -33,9 +33,9 @@ message GetObligationsByFQNsResponse {
 
 message CreateObligationRequest {
     // Required
-    oneof identifier {
-        string namespace_id = 1;
-        string namespace_fqn = 2;
+    oneof namespace_identifier {
+        string id = 1;
+        string fqn = 2;
     }
     string name = 3;
     // Optional
@@ -75,9 +75,9 @@ message DeleteObligationResponse {
 message ListObligationsRequest {
     // Optional
     // Namespace ID or FQN
-    oneof identifier {
-        string namespace_id = 1;
-        string namespace_fqn = 2;
+    oneof namespace_identifier {
+        string id = 1;
+        string fqn = 2;
     }
 
     // Optional
@@ -112,9 +112,9 @@ message GetObligationValuesByFQNsResponse {
 
 message CreateObligationValueRequest {
     // Required
-    oneof identifier {
-        string obligation_id = 1;
-        string obligation_fqn = 2;
+    oneof obligation_identifier {
+        string id = 1;
+        string fqn = 2;
     }
     string value = 3;
 

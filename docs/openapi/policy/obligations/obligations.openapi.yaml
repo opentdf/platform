@@ -1303,19 +1303,19 @@ components:
       type: object
       oneOf:
         - properties:
-            namespaceFqn:
+            fqn:
               type: string
-              title: namespace_fqn
-          title: namespace_fqn
+              title: fqn
+          title: fqn
           required:
-            - namespaceFqn
+            - fqn
         - properties:
-            namespaceId:
+            id:
               type: string
-              title: namespace_id
-          title: namespace_id
+              title: id
+          title: id
           required:
-            - namespaceId
+            - id
       properties:
         name:
           type: string
@@ -1340,19 +1340,19 @@ components:
       type: object
       oneOf:
         - properties:
-            obligationFqn:
+            fqn:
               type: string
-              title: obligation_fqn
-          title: obligation_fqn
+              title: fqn
+          title: fqn
           required:
-            - obligationFqn
+            - fqn
         - properties:
-            obligationId:
+            id:
               type: string
-              title: obligation_id
-          title: obligation_id
+              title: id
+          title: id
           required:
-            - obligationId
+            - id
       properties:
         value:
           type: string
@@ -1551,19 +1551,19 @@ components:
       type: object
       oneOf:
         - properties:
-            namespaceFqn:
+            fqn:
               type: string
-              title: namespace_fqn
-          title: namespace_fqn
+              title: fqn
+          title: fqn
           required:
-            - namespaceFqn
+            - fqn
         - properties:
-            namespaceId:
+            id:
               type: string
-              title: namespace_id
-          title: namespace_id
+              title: id
+          title: id
           required:
-            - namespaceId
+            - id
       properties:
         pagination:
           title: pagination

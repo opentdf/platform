@@ -3,7 +3,6 @@ issuerEndpoint: &issuerEndpoint http://{{ .hostname }}:{{.kcPort }}/auth/realms/
 tokenEndpoint: &tokenEndpoint http://{{ .hostname }}:{{.kcPort }}/auth/realms/{{.authRealm}}/protocol/openid-connect/token
 entityResolutionServiceUrl: &entityResolutionServiceUrl https://{{ .hostname }}:{{.platformPort }}/entityresolution/resolve
 platformEndpoint: &platformEndpoint https://{{.hostname }}:{{.platformPort }}
-taggingEndpoint: &taggingEndpoint localhost:{{.taggingPort }}
 authRealm: &authRealm {{.authRealm}}
 mode: all
 logger:

@@ -954,6 +954,11 @@ components:
         name:
           type: string
           title: name
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ObligationValue'
+          title: values
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'

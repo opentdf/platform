@@ -466,6 +466,8 @@ message Obligation {
   Namespace namespace = 2;
 
   string name = 3;
+
+  repeated ObligationValue values = 4;
   
   common.Metadata metadata = 100;
 }

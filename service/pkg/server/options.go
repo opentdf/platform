@@ -15,7 +15,7 @@ type StartConfig struct {
 	WaitForShutdownSignal bool
 	PublicRoutes          []string
 	IPCReauthRoutes       []string
-	bultinPolicyOverride  string
+	builtinPolicyOverride string
 	extraCoreServices     []serviceregistry.IService
 	extraServices         []serviceregistry.IService
 	casbinAdapter         persist.Adapter
@@ -85,7 +85,7 @@ func WithIPCReauthRoutes(routes []string) StartOptions {
 //		 }, "\n")),
 func WithBuiltinAuthZPolicy(policy string) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.bultinPolicyOverride = policy
+		c.builtinPolicyOverride = policy
 		return c
 	}
 }

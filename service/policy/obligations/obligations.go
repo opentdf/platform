@@ -147,12 +147,12 @@ func (s *ObligationsService) RemoveObligationTrigger(_ context.Context, _ *conne
 	return connect.NewResponse(&obligations.RemoveObligationTriggerResponse{}), nil
 }
 
-func (s *ObligationsService) AddObligationFulfiller(_ context.Context, _ *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error) {
-	// TODO: Implement AddObligationFulfiller logic
-	return connect.NewResponse(&obligations.AddObligationFulfillerResponse{}), nil
-}
+// func (s *ObligationsService) AddObligationFulfiller(_ context.Context, _ *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error) {
+// 	// TODO: Implement AddObligationFulfiller logic
+// 	return connect.NewResponse(&obligations.AddObligationFulfillerResponse{}), nil
+// }
 
-func (s *ObligationsService) RemoveObligationFulfiller(_ context.Context, _ *connect.Request[obligations.RemoveObligationFulfillerRequest]) (*connect.Response[obligations.RemoveObligationFulfillerResponse], error) {
-	// TODO: Implement RemoveObligationFulfiller logic
-	return connect.NewResponse(&obligations.RemoveObligationFulfillerResponse{}), nil
-}
+// func (s *ObligationsService) RemoveObligationFulfiller(_ context.Context, _ *connect.Request[obligations.RemoveObligationFulfillerRequest]) (*connect.Response[obligations.RemoveObligationFulfillerResponse], error) {
+// 	// TODO: Implement RemoveObligationFulfiller logic
+// 	return connect.NewResponse(&obligations.RemoveObligationFulfillerResponse{}), nil
+// }

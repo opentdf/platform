@@ -176,35 +176,35 @@ message RemoveObligationTriggerResponse {
 }
 
 // Fulfillers
-message AddObligationFulfillerRequest {
-    // Required
-    string obligation_value_id = 1;
-    google.protobuf.Struct conditionals = 2;
-    // Optional
-    // Common metadata
-    common.MetadataMutable metadata = 100;
-}
+// message AddObligationFulfillerRequest {
+//     // Required
+//     string obligation_value_id = 1;
+//     google.protobuf.Struct conditionals = 2;
+//     // Optional
+//     // Common metadata
+//     common.MetadataMutable metadata = 100;
+// }
 
-message AddObligationFulfillerResponse {
-    policy.ObligationFulfiller fulfiller = 1;
-}
+// message AddObligationFulfillerResponse {
+//     policy.ObligationFulfiller fulfiller = 1;
+// }
 
-message RemoveObligationFulfillerRequest {
-    string id = 1;
-}
+// message RemoveObligationFulfillerRequest {
+//     string id = 1;
+// }
 
-message RemoveObligationFulfillerResponse {
-    policy.ObligationFulfiller fulfiller = 1;
-}
+// message RemoveObligationFulfillerResponse {
+//     policy.ObligationFulfiller fulfiller = 1;
+// }
 
 ///
 /// Obligation Service
 ///
 service ObligationsService {
 
-    /*--------------------------------------*
-     * Obligation RPCs
-     *--------------------------------------*/
+   /*--------------------------------------*
+    * Obligation RPCs
+    *--------------------------------------*/
 
     rpc ListObligations(ListObligationsRequest) returns (ListObligationsResponse) {
         option idempotency_level = NO_SIDE_EFFECTS;
@@ -224,9 +224,9 @@ service ObligationsService {
     
     rpc DeleteObligation(DeleteObligationRequest) returns (DeleteObligationResponse) {}
 
-    /*--------------------------------------*
-     * Value RPCs
-     *--------------------------------------*/
+   /*--------------------------------------*
+    * Value RPCs
+    *--------------------------------------*/
 
     rpc GetObligationValue(GetObligationValueRequest) returns (GetObligationValueResponse) {
         option idempotency_level = NO_SIDE_EFFECTS;
@@ -242,19 +242,19 @@ service ObligationsService {
     
     rpc DeleteObligationValue(DeleteObligationValueRequest) returns (DeleteObligationValueResponse) {}
 
-    /*--------------------------------------*
-     * Trigger RPCs
-     *--------------------------------------*/
+   /*--------------------------------------*
+    * Trigger RPCs
+    *--------------------------------------*/
     
     rpc AddObligationTrigger(AddObligationTriggerRequest) returns (AddObligationTriggerResponse) {}
 
     rpc RemoveObligationTrigger(RemoveObligationTriggerRequest) returns (RemoveObligationTriggerResponse) {}
 
-    /*--------------------------------------*
-     * Fulfiller RPCs
-     *--------------------------------------*/
+   /*--------------------------------------*
+    * Fulfiller RPCs
+    *--------------------------------------*/
 
-    rpc AddObligationFulfiller(AddObligationFulfillerRequest) returns (AddObligationFulfillerResponse) {}
+    // rpc AddObligationFulfiller(AddObligationFulfillerRequest) returns (AddObligationFulfillerResponse) {}
 
-    rpc RemoveObligationFulfiller(RemoveObligationFulfillerRequest) returns (RemoveObligationFulfillerResponse) {}   
+    // rpc RemoveObligationFulfiller(RemoveObligationFulfillerRequest) returns (RemoveObligationFulfillerResponse) {}   
 }

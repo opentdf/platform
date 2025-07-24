@@ -492,15 +492,15 @@ message ObligationTrigger {
   common.Metadata metadata = 100;
 }
 
-message ObligationFulfiller {
-  string id = 1;
+// message ObligationFulfiller {
+//   string id = 1;
 
-  ObligationValue obligation_value = 2;
+//   ObligationValue obligation_value = 2;
 
-  google.protobuf.Struct conditionals = 3;
+//   google.protobuf.Struct conditionals = 3;
 
-  common.Metadata metadata = 100;
-}
+//   common.Metadata metadata = 100;
+// }
 
 // Supported key algorithms.
 enum Algorithm {

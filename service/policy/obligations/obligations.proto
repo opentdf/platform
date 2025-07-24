@@ -62,7 +62,10 @@ message UpdateObligationResponse {
 }
 
 message DeleteObligationRequest {
-    string id = 1;
+    oneof identifier {
+        string id = 1;
+        string fqn = 2;
+    }
 }
 
 message DeleteObligationResponse {
@@ -139,7 +142,10 @@ message UpdateObligationValueResponse {
 }
 
 message DeleteObligationValueRequest {
-    string id = 1;
+    oneof identifier {
+        string id = 1;
+        string fqn = 2;
+    }
 }
 
 message DeleteObligationValueResponse {

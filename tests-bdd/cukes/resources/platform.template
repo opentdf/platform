@@ -29,9 +29,9 @@ db:
   schema: otdf
 services:
   policyimportexport:
-    privatesignkey: {{.otdfKeysDir}}/policyimportexport/cosign.key
-    privatesignkeypassphrasepath: {{.otdfKeysDir}}/policyimportexport/cosign.pass
-    truststore: {{.otdfKeysDir}}/policyimportexport
+    privatesignkey: {{.platformKeysDir}}/policyimportexport/cosign.key
+    privatesignkeypassphrasepath: {{.platformKeysDir}}/policyimportexport/cosign.pass
+    truststore: {{.platformKeysDir}}/policyimportexport
   kas:
     keyring:
       - kid: e1

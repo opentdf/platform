@@ -15,6 +15,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/wellknownconfiguration"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -617,10 +618,20 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 	}, nil
 }
 
-// We don't currently expose this at the Service layer, but it is used by test code.
-func (c PolicyDBClient) DeleteKey(ctx context.Context, id string) (*policy.AsymmetricKey, error) {
+func (c PolicyDBClient) UnsafeDeleteKey(ctx context.Context, toDelete *policy.KasKey, r *unsafe.UnsafeDeleteKasKeyRequest) (*policy.AsymmetricKey, error) {
+	id := r.GetId()
+	kasURI := r.GetKasUri()
+	kid := r.GetKid()
+
 	if !pgtypeUUID(id).Valid {
 		return nil, db.ErrUUIDInvalid
+	}
+
+	if toDelete.GetKasUri() != kasURI {
+		return nil, errors.Join(db.ErrKasURIMismatch, fmt.Errorf("KAS URI mismatch: expected %s, got %s", toDelete.GetKasUri(), kasURI))
+	}
+	if toDelete.GetKey().GetKeyId() != kid {
+		return nil, errors.Join(db.ErrKIDMismatch, fmt.Errorf("key ID mismatch: expected %s, got %s", toDelete.GetKey().GetKeyId(), kid))
 	}
 
 	count, err := c.queries.deleteKey(ctx, id)

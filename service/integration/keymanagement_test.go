@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
@@ -389,10 +390,14 @@ func (s *KeyManagementSuite) Test_DeleteProviderConfig_InUse_Fails() {
 	// Create a provider config
 	pcIDs := make([]string, 0)
 	var kasID string
-	var keyID string
+	var kasKey *policy.KasKey
 	defer func() {
-		if keyID != "" {
-			_, err := s.db.PolicyClient.DeleteKey(s.ctx, keyID)
+		if kasKey != nil {
+			_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, kasKey, &unsafe.UnsafeDeleteKasKeyRequest{
+				Id:     kasKey.GetKey().GetId(),
+				Kid:    kasKey.GetKey().GetKeyId(),
+				KasUri: kasKey.GetKasUri(),
+			})
 			s.Require().NoError(err)
 		}
 		if kasID != "" {
@@ -441,7 +446,7 @@ func (s *KeyManagementSuite) Test_DeleteProviderConfig_InUse_Fails() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(key)
-	keyID = key.GetKasKey().GetKey().GetId()
+	kasKey = key.GetKasKey()
 
 	_, err = s.db.PolicyClient.DeleteProviderConfig(s.ctx, pc.GetId())
 	s.Require().Error(err)

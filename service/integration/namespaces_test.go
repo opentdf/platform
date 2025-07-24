@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
@@ -927,11 +928,15 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Returns_Error_When_
 func (s *NamespacesSuite) Test_AssignPublicKeyToNamespace_NotActiveKey_Fail() {
 	var kasID string
 	var namespaceID string
-	keyIDs := make([]string, 0)
+	keys := make([]*policy.KasKey, 0)
 	defer func() {
-		for _, keyID := range keyIDs {
-			// delete the kas key
-			_, err := s.db.PolicyClient.DeleteKey(s.ctx, keyID)
+		for _, key := range keys {
+			r := &unsafe.UnsafeDeleteKasKeyRequest{
+				Id:     key.GetKey().GetId(),
+				Kid:    key.GetKey().GetKeyId(),
+				KasUri: key.GetKasUri(),
+			}
+			_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, key, r)
 			s.Require().NoError(err)
 		}
 
@@ -975,7 +980,7 @@ func (s *NamespacesSuite) Test_AssignPublicKeyToNamespace_NotActiveKey_Fail() {
 	s.Require().NoError(err)
 	s.NotNil(toBeRotatedKey)
 	originalKeyID := toBeRotatedKey.GetKasKey().GetKey().GetId()
-	keyIDs = append(keyIDs, originalKeyID)
+	keys = append(keys, toBeRotatedKey.GetKasKey())
 
 	// rotate the key
 	rotateNewKeyReq := &kasregistry.RotateKeyRequest_NewKey{
@@ -989,7 +994,7 @@ func (s *NamespacesSuite) Test_AssignPublicKeyToNamespace_NotActiveKey_Fail() {
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, toBeRotatedKey.GetKasKey(), rotateNewKeyReq)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
-	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
+	keys = append(keys, rotatedInKey.GetKasKey())
 
 	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "test-kas-ns.com"})
 	s.Require().NoError(err)

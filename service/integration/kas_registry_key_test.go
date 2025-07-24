@@ -13,6 +13,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/keymanagement"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
@@ -150,7 +151,11 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_Success() {
 	s.Equal(validKeyID1, resp.GetKasKey().GetKey().GetPrivateKeyCtx().GetKeyId())
 	s.Nil(resp.GetKasKey().GetKey().GetProviderConfig())
 
-	_, err = s.db.PolicyClient.DeleteKey(s.ctx, resp.GetKasKey().GetKey().GetId())
+	_, err = s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
+		Id:     resp.GetKasKey().GetKey().GetId(),
+		KasUri: resp.GetKasKey().GetKasUri(),
+		Kid:    resp.GetKasKey().GetKey().GetKeyId(),
+	})
 	s.Require().NoError(err)
 }
 
@@ -1505,6 +1510,89 @@ func (s *KasRegistryKeySuite) Test_ListKeyMappings_Multiple_Mixed_Mappings() {
 	s.Equal(int32(0), mappedResponse.GetPagination().GetNextOffset())
 }
 
+func (s *KasRegistryKeySuite) Test_UnsafeDeleteKey_InvalidId_Fail() {
+	resp, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, &policy.KasKey{}, &unsafe.UnsafeDeleteKasKeyRequest{
+		Id: "invalid-uuid",
+	})
+	s.Require().Error(err)
+	s.Nil(resp)
+	s.Require().ErrorContains(err, db.ErrUUIDInvalid.Error())
+}
+
+func (s *KasRegistryKeySuite) Test_DeleteKey_WrongKasUriOrKid_Fail() {
+	// Create a key
+	req := kasregistry.CreateKeyRequest{
+		KasId:        s.kasKeys[0].KeyAccessServerID,
+		KeyId:        uuid.NewString(),
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+	}
+	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	defer func() {
+		r := unsafe.UnsafeDeleteKasKeyRequest{
+			Id:     resp.GetKasKey().GetKey().GetId(),
+			KasUri: resp.GetKasKey().GetKasUri(),
+			Kid:    resp.GetKasKey().GetKey().GetKeyId(),
+		}
+		_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &r)
+		s.Require().NoError(err)
+	}()
+
+	// Attempt to delete with incorrect Kid
+	deleteResp, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{Id: resp.GetKasKey().GetKey().GetId(), KasUri: resp.GetKasKey().GetKasUri(), Kid: "wrong-KID"})
+	s.Require().Error(err)
+	s.Nil(deleteResp)
+	s.Require().ErrorIs(err, db.ErrKIDMismatch)
+
+	deleteResp, err = s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{Id: resp.GetKasKey().GetKey().GetId(), KasUri: "wrong-kas-uri", Kid: resp.GetKasKey().GetKey().GetKeyId()})
+	s.Require().Error(err)
+	s.Nil(deleteResp)
+	s.Require().ErrorIs(err, db.ErrKasURIMismatch)
+}
+
+func (s *KasRegistryKeySuite) Test_DeleteKey_Success() {
+	// Create KAS server
+	req := kasregistry.CreateKeyRequest{
+		KasId:        s.kasKeys[0].KeyAccessServerID,
+		KeyId:        uuid.NewString(),
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+	}
+	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(resp)
+
+	deleteResp, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
+		Id:     resp.GetKasKey().GetKey().GetId(),
+		Kid:    resp.GetKasKey().GetKey().GetKeyId(),
+		KasUri: resp.GetKasKey().GetKasUri(),
+	})
+	s.Require().NoError(err)
+	s.NotNil(deleteResp)
+	s.Equal(resp.GetKasKey().GetKey().GetId(), deleteResp.GetId())
+
+	// Verify it's deleted
+	getResp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
+		Id: resp.GetKasKey().GetKey().GetId(),
+	})
+	s.Require().Error(err)
+	s.Nil(getResp)
+	s.Require().ErrorContains(err, db.ErrNotFound.Error())
+}
+
 func (s *KasRegistryKeySuite) validateKeyMapping(mapping *kasregistry.KeyMapping, expectedKey *policy.KasKey, expectedNamespace []*policy.Namespace, expectedAttrDef []*policy.Attribute, expectedValue []*policy.Value) {
 	s.Equal(expectedKey.GetKey().GetKeyId(), mapping.GetKid())
 	s.Equal(expectedKey.GetKasUri(), mapping.GetKasUri())
@@ -1745,7 +1833,17 @@ func (s *KasRegistryKeySuite) cleanupKeys(keyIDs []string, keyAccessServerIDs []
 	s.Require().NoError(err)
 
 	for _, id := range keyIDs {
-		_, err := s.db.PolicyClient.DeleteKey(s.ctx, id)
+		key, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
+			Id: id,
+		})
+		s.Require().NoError(err)
+		s.NotNil(key)
+		r := unsafe.UnsafeDeleteKasKeyRequest{
+			Id:     key.GetKey().GetId(),
+			KasUri: key.GetKasUri(),
+			Kid:    key.GetKey().GetKeyId(),
+		}
+		_, err = s.db.PolicyClient.UnsafeDeleteKey(s.ctx, key, &r)
 		s.Require().NoError(err)
 	}
 	for _, id := range keyAccessServerIDs {

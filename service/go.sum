@@ -251,8 +251,8 @@ github.com/opentdf/platform/lib/identifier v0.0.2 h1:h3zR+IZ/4/X5UOYUp/aTA0OcX1Q
 github.com/opentdf/platform/lib/identifier v0.0.2/go.mod h1:/tHnLlSVOq3qmbIYSvKrtuZchQfagenv4wG5twl4oRs=
 github.com/opentdf/platform/lib/ocrypto v0.3.0 h1:/nHlIj6kqZ9XT9M45vAbzoMV8USeCj7GRuhFR6JH+RA=
 github.com/opentdf/platform/lib/ocrypto v0.3.0/go.mod h1:VuVHTye/smLiRZ5Ls4sZ14R+PtN9Egwj8D1Hv5X9iP0=
-github.com/opentdf/platform/protocol/go v0.5.0 h1:C/jUpg+DfG5gdznT909UXzKktQPLCe2hgaXBmmwk/Z0=
-github.com/opentdf/platform/protocol/go v0.5.0/go.mod h1:FwoNd0HJaxGCZf74de/yFpVP4HEjkUMoF6Br79W0TBk=
+github.com/opentdf/platform/protocol/go v0.6.2 h1:seLTEP4xBRF2BG1vbuWzQqNo58g3wtkzCV+Z4ExRXnM=
+github.com/opentdf/platform/protocol/go v0.6.2/go.mod h1:FwoNd0HJaxGCZf74de/yFpVP4HEjkUMoF6Br79W0TBk=
 github.com/opentdf/platform/sdk v0.5.0 h1:K4a8kWUtt5EJktFC55egicsp9537SI1+bmJPMIsYrKg=
 github.com/opentdf/platform/sdk v0.5.0/go.mod h1:Qxwq9zjUVkBZs3xZUOPls5gdX4d0y2nsoZvJ93hyWAU=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=

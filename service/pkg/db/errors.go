@@ -35,6 +35,8 @@ var (
 	ErrMarshalValueFailed         = errors.New("ErrMashalValueFailed: failed to marshal value")
 	ErrUnmarshalValueFailed       = errors.New("ErrUnmarshalValueFailed: failed to unmarshal value")
 	ErrNamespaceMismatch          = errors.New("ErrNamespaceMismatch: namespace mismatch")
+	ErrKIDMismatch                = errors.New("ErrKIDMismatch: Key ID mismatch")
+	ErrKasURIMismatch             = errors.New("ErrKasURIMismatch: KAS URI mismatch")
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -123,6 +125,8 @@ const (
 	ErrorTextMarshalFailed              = "failed to marshal value"
 	ErrorTextUnmarsalFailed             = "failed to unmarshal value"
 	ErrorTextNamespaceMismatch          = "namespace mismatch"
+	ErrorTextKasURIMismatch             = "kas uri mismatch"
+	ErrorTextKIDMismatch                = "key id mismatch"
 )
 
 func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackErr string, logs ...any) error {
@@ -179,6 +183,15 @@ func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackEr
 		l.ErrorContext(ctx, ErrorTextMarshalFailed, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextMarshalFailed))
 	}
+	if errors.Is(err, ErrKIDMismatch) {
+		l.ErrorContext(ctx, ErrorTextKIDMismatch, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextKIDMismatch))
+	}
+	if errors.Is(err, ErrKasURIMismatch) {
+		l.ErrorContext(ctx, ErrorTextKasURIMismatch, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextKasURIMismatch))
+	}
+
 	l.ErrorContext(ctx, "request error", append(logs, slog.Any("error", err))...)
 	return connect.NewError(connect.CodeInternal, errors.New(fallbackErr))
 }

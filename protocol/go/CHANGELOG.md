@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.0](https://github.com/opentdf/platform/compare/protocol/go/v0.6.0...protocol/go/v0.7.0) (2025-07-25)
+
+
+### Features
+
+* **policy:** add obligation protos ([#2579](https://github.com/opentdf/platform/issues/2579)) ([50882e1](https://github.com/opentdf/platform/commit/50882e10abff64e14548e0c51851a4b671ef8b11))
+* **policy:** Add validation to delete keys ([#2576](https://github.com/opentdf/platform/issues/2576)) ([cc169d9](https://github.com/opentdf/platform/commit/cc169d969f0e3380a2341033bc53a1a0eece781a))
+* **policy:** Change return type for delete key proto. ([#2566](https://github.com/opentdf/platform/issues/2566)) ([c1ae924](https://github.com/opentdf/platform/commit/c1ae924d55ec0d13fd79917f960dede66cef7705))
+
 ## [0.6.0](https://github.com/opentdf/platform/compare/protocol/go/v0.5.0...protocol/go/v0.6.0) (2025-07-09)
 
 

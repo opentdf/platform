@@ -28,7 +28,7 @@ type mockTestServiceOptions struct {
 }
 
 const (
-	numExpectedPolicyServices                  = 10
+	numExpectedPolicyServices                  = 9
 	numExpectedEntityResolutionServiceVersions = 2
 	numExpectedAuthorizationServiceVersions    = 2
 )

@@ -5,6 +5,7 @@ package policy;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/protobuf/wrappers.proto";
+// import "google/protobuf/struct.proto";
 
 message SimpleKasPublicKey {
   Algorithm algorithm = 1;
@@ -447,7 +448,6 @@ message RegisteredResourceValue {
     // Common metadata
     common.Metadata metadata = 100;
   }
-
   string id = 1;
 
   string value = 2;
@@ -459,6 +459,50 @@ message RegisteredResourceValue {
   // Common metadata
   common.Metadata metadata = 100;
 }
+
+message Obligation {
+  string id = 1;
+
+  Namespace namespace = 2;
+
+  string name = 3;
+
+  repeated ObligationValue values = 4;
+  
+  common.Metadata metadata = 100;
+}
+
+message ObligationValue {
+  string id = 1;
+
+  Obligation obligation = 2;
+
+  string value = 3;
+
+  common.Metadata metadata = 100;
+}
+
+message ObligationTrigger {
+  string id = 1;
+
+  ObligationValue obligation_value = 2;
+
+  Action action = 3;
+
+  Value attribute_value = 4;
+
+  common.Metadata metadata = 100;
+}
+
+// message ObligationFulfiller {
+//   string id = 1;
+
+//   ObligationValue obligation_value = 2;
+
+//   google.protobuf.Struct conditionals = 3;
+
+//   common.Metadata metadata = 100;
+// }
 
 // Supported key algorithms.
 enum Algorithm {

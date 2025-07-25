@@ -40,6 +40,7 @@ func NewRegistrations() []serviceregistry.IService {
 		actions.NewRegistration(namespace, dbRegister),
 		registeredresources.NewRegistration(namespace, dbRegister),
 		keymanagement.NewRegistration(namespace, dbRegister),
+		// obligations.NewRegistration(namespace, dbRegister),
 	}...)
 	return registrations
 }

@@ -577,6 +577,65 @@ components:
           description: Keys for the namespace
       title: Namespace
       additionalProperties: false
+    policy.Obligation:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        namespace:
+          title: namespace
+          $ref: '#/components/schemas/policy.Namespace'
+        name:
+          type: string
+          title: name
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ObligationValue'
+          title: values
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: Obligation
+      additionalProperties: false
+    policy.ObligationTrigger:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        obligationValue:
+          title: obligation_value
+          $ref: '#/components/schemas/policy.ObligationValue'
+        action:
+          title: action
+          $ref: '#/components/schemas/policy.Action'
+        attributeValue:
+          title: attribute_value
+          $ref: '#/components/schemas/policy.Value'
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: ObligationTrigger
+      additionalProperties: false
+    policy.ObligationValue:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        obligation:
+          title: obligation
+          $ref: '#/components/schemas/policy.Obligation'
+        value:
+          type: string
+          title: value
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: ObligationValue
+      additionalProperties: false
     policy.PrivateKeyCtx:
       type: object
       properties:

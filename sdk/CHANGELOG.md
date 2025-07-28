@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/opentdf/platform/compare/sdk/v0.6.0...sdk/v0.6.1) (2025-07-28)
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.6.0 to 0.6.2 in /sdk [backport to release/sdk/v0.6] ([#2588](https://github.com/opentdf/platform/issues/2588)) ([b42c254](https://github.com/opentdf/platform/commit/b42c2541bb9e8519c31549a9e151bdea042d210f))
+
 ## [0.6.0](https://github.com/opentdf/platform/compare/sdk/v0.5.0...sdk/v0.6.0) (2025-07-09)
 
 

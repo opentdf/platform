@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/stretchr/testify/suite"
 )
@@ -48,8 +49,17 @@ func (s *ObligationsSuite) Test_CreateObligationDefinition_Succeeds() {
 	// tcs:
 	// - create obligation definition with valid namespace_id and name
 	// - create with values and possibly triggers and fulfillers?
-
-	s.T().Skip("obligation_definitions table not implemented yet")
+	fixtureNamespaceID = s.f.GetNamespaceKey("example.com").ID
+	oblName := "example-obligation"
+	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
+			Id: fixtureNamespaceID,
+		},
+		Name: oblName,
+	})
+	s.Require().NoError(err)
+	s.NotNil(obl)
+	s.Equal(obl.Name, oblName)
 }
 
 func (s *ObligationsSuite) Test_CreateObligationDefinition_Fails() {

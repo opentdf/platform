@@ -1,0 +1,260 @@
+syntax = "proto3";
+
+package policy.obligations;
+
+import "common/common.proto";
+import "policy/objects.proto";
+import "policy/selectors.proto";
+// import "google/protobuf/struct.proto";
+
+///
+/// Obligation
+///
+
+// Definitions
+message GetObligationRequest {
+    oneof identifier {
+        string id = 1;
+        string fqn = 2;
+    }
+}
+
+message GetObligationResponse {
+    policy.Obligation obligation = 1;
+}
+
+message GetObligationsByFQNsRequest {
+    repeated string fqns = 1;
+}
+
+message GetObligationsByFQNsResponse {
+    map<string, policy.Obligation> fqn_obligation_map = 1;
+}
+
+message CreateObligationRequest {
+    // Required
+    oneof namespace_identifier {
+        string id = 1;
+        string fqn = 2;
+    }
+    string name = 3;
+    // Optional
+    // Common metadata
+    common.MetadataMutable metadata = 100;
+}
+
+message CreateObligationResponse {
+    policy.Obligation obligation = 1;
+}
+
+message UpdateObligationRequest {
+    // Required
+    string id = 1;
+
+    // Optional
+    string name = 2;
+    common.MetadataMutable metadata = 100;
+    common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+
+message UpdateObligationResponse {
+    policy.Obligation obligation = 1;
+}
+
+message DeleteObligationRequest {
+    oneof identifier {
+        string id = 1;
+        string fqn = 2;
+    }
+}
+
+message DeleteObligationResponse {
+    policy.Obligation obligation = 1;
+}
+
+message ListObligationsRequest {
+    // Optional
+    // Namespace ID or FQN
+    oneof namespace_identifier {
+        string id = 1;
+        string fqn = 2;
+    }
+
+    // Optional
+    policy.PageRequest pagination = 10;
+}
+
+message ListObligationsResponse {
+    repeated policy.Obligation obligations = 1;
+
+    policy.PageResponse pagination = 10;
+}
+
+// Values
+message GetObligationValueRequest {
+    oneof identifier {
+        string id = 1;
+        string fqn = 2;
+    }
+}
+
+message GetObligationValueResponse {
+    policy.ObligationValue value = 1;
+}
+
+message GetObligationValuesByFQNsRequest {
+    repeated string fqns = 1;
+}
+
+message GetObligationValuesByFQNsResponse {
+    map<string, policy.ObligationValue> fqn_value_map = 1;
+}
+
+message CreateObligationValueRequest {
+    // Required
+    oneof obligation_identifier {
+        string id = 1;
+        string fqn = 2;
+    }
+    string value = 3;
+
+    // Optional
+    // Common metadata
+    common.MetadataMutable metadata = 100;
+}
+
+message CreateObligationValueResponse {
+    policy.ObligationValue value = 1;
+}
+
+message UpdateObligationValueRequest {
+    // Required
+    string id = 1;
+    
+    // Optional
+    string value = 2;
+    common.MetadataMutable metadata = 100;
+    common.MetadataUpdateEnum metadata_update_behavior = 101;
+}
+
+message UpdateObligationValueResponse {
+    policy.ObligationValue value = 1;
+}
+
+message DeleteObligationValueRequest {
+    oneof identifier {
+        string id = 1;
+        string fqn = 2;
+    }
+}
+
+message DeleteObligationValueResponse {
+    policy.ObligationValue value = 1;
+}
+
+// Triggers
+message AddObligationTriggerRequest {
+    // Required
+    string obligation_value_id = 1;
+    string action_id = 2;
+    string attribute_value_id = 3;
+    // Optional
+    // Common metadata
+    common.MetadataMutable metadata = 100;
+}
+
+message AddObligationTriggerResponse {
+    policy.ObligationTrigger trigger = 1;
+}
+
+message RemoveObligationTriggerRequest {
+    string id = 1;
+}
+
+message RemoveObligationTriggerResponse {
+    policy.ObligationTrigger trigger = 1;
+}
+
+// Fulfillers
+// message AddObligationFulfillerRequest {
+//     // Required
+//     string obligation_value_id = 1;
+//     google.protobuf.Struct conditionals = 2;
+//     // Optional
+//     // Common metadata
+//     common.MetadataMutable metadata = 100;
+// }
+
+// message AddObligationFulfillerResponse {
+//     policy.ObligationFulfiller fulfiller = 1;
+// }
+
+// message RemoveObligationFulfillerRequest {
+//     string id = 1;
+// }
+
+// message RemoveObligationFulfillerResponse {
+//     policy.ObligationFulfiller fulfiller = 1;
+// }
+
+///
+/// Obligation Service
+///
+service Service {
+
+   /*--------------------------------------*
+    * Obligation RPCs
+    *--------------------------------------*/
+
+    rpc ListObligations(ListObligationsRequest) returns (ListObligationsResponse) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
+
+    rpc GetObligation(GetObligationRequest) returns (GetObligationResponse) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
+
+    rpc GetObligationsByFQNs(GetObligationsByFQNsRequest) returns (GetObligationsByFQNsResponse) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
+
+    rpc CreateObligation(CreateObligationRequest) returns (CreateObligationResponse) {}
+
+    rpc UpdateObligation(UpdateObligationRequest) returns (UpdateObligationResponse) {}
+    
+    rpc DeleteObligation(DeleteObligationRequest) returns (DeleteObligationResponse) {}
+
+   /*--------------------------------------*
+    * Value RPCs
+    *--------------------------------------*/
+
+    rpc GetObligationValue(GetObligationValueRequest) returns (GetObligationValueResponse) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
+
+    rpc GetObligationValuesByFQNs(GetObligationValuesByFQNsRequest) returns (GetObligationValuesByFQNsResponse) {
+        option idempotency_level = NO_SIDE_EFFECTS;
+    }
+
+    rpc CreateObligationValue(CreateObligationValueRequest) returns (CreateObligationValueResponse) {}
+
+    rpc UpdateObligationValue(UpdateObligationValueRequest) returns (UpdateObligationValueResponse) {}
+    
+    rpc DeleteObligationValue(DeleteObligationValueRequest) returns (DeleteObligationValueResponse) {}
+
+   /*--------------------------------------*
+    * Trigger RPCs
+    *--------------------------------------*/
+    
+    rpc AddObligationTrigger(AddObligationTriggerRequest) returns (AddObligationTriggerResponse) {}
+
+    rpc RemoveObligationTrigger(RemoveObligationTriggerRequest) returns (RemoveObligationTriggerResponse) {}
+
+   /*--------------------------------------*
+    * Fulfiller RPCs
+    *--------------------------------------*/
+
+    // rpc AddObligationFulfiller(AddObligationFulfillerRequest) returns (AddObligationFulfillerResponse) {}
+
+    // rpc RemoveObligationFulfiller(RemoveObligationFulfillerRequest) returns (RemoveObligationFulfillerResponse) {}   
+}

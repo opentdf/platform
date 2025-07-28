@@ -1,17 +1,13 @@
 openapi: 3.1.0
 info:
-  title: policy.unsafe
+  title: policy.obligations
 paths:
-  /policy.unsafe.UnsafeService/UnsafeUpdateNamespace:
+  /policy.obligations.Service/ListObligations:
     post:
       tags:
-        - policy.unsafe.UnsafeService
-      summary: UnsafeUpdateNamespace
-      description: |-
-        --------------------------------------*
-         Namespace RPCs
-        ---------------------------------------
-      operationId: policy.unsafe.UnsafeService.UnsafeUpdateNamespace
+        - policy.obligations.Service
+      summary: ListObligations
+      operationId: policy.obligations.Service.ListObligations
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -26,7 +22,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateNamespaceRequest'
+              $ref: '#/components/schemas/policy.obligations.ListObligationsRequest'
         required: true
       responses:
         default:
@@ -40,13 +36,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateNamespaceResponse'
-  /policy.unsafe.UnsafeService/UnsafeReactivateNamespace:
+                $ref: '#/components/schemas/policy.obligations.ListObligationsResponse'
+  /policy.obligations.Service/GetObligation:
     post:
       tags:
-        - policy.unsafe.UnsafeService
-      summary: UnsafeReactivateNamespace
-      operationId: policy.unsafe.UnsafeService.UnsafeReactivateNamespace
+        - policy.obligations.Service
+      summary: GetObligation
+      operationId: policy.obligations.Service.GetObligation
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -61,7 +57,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateNamespaceRequest'
+              $ref: '#/components/schemas/policy.obligations.GetObligationRequest'
         required: true
       responses:
         default:
@@ -75,13 +71,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateNamespaceResponse'
-  /policy.unsafe.UnsafeService/UnsafeDeleteNamespace:
+                $ref: '#/components/schemas/policy.obligations.GetObligationResponse'
+  /policy.obligations.Service/GetObligationsByFQNs:
     post:
       tags:
-        - policy.unsafe.UnsafeService
-      summary: UnsafeDeleteNamespace
-      operationId: policy.unsafe.UnsafeService.UnsafeDeleteNamespace
+        - policy.obligations.Service
+      summary: GetObligationsByFQNs
+      operationId: policy.obligations.Service.GetObligationsByFQNs
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -96,7 +92,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteNamespaceRequest'
+              $ref: '#/components/schemas/policy.obligations.GetObligationsByFQNsRequest'
         required: true
       responses:
         default:
@@ -110,17 +106,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteNamespaceResponse'
-  /policy.unsafe.UnsafeService/UnsafeUpdateAttribute:
+                $ref: '#/components/schemas/policy.obligations.GetObligationsByFQNsResponse'
+  /policy.obligations.Service/CreateObligation:
     post:
       tags:
-        - policy.unsafe.UnsafeService
-      summary: UnsafeUpdateAttribute
-      description: |-
-        --------------------------------------*
-         Attribute RPCs
-        ---------------------------------------
-      operationId: policy.unsafe.UnsafeService.UnsafeUpdateAttribute
+        - policy.obligations.Service
+      summary: CreateObligation
+      operationId: policy.obligations.Service.CreateObligation
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -135,7 +127,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateAttributeRequest'
+              $ref: '#/components/schemas/policy.obligations.CreateObligationRequest'
         required: true
       responses:
         default:
@@ -149,13 +141,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateAttributeResponse'
-  /policy.unsafe.UnsafeService/UnsafeReactivateAttribute:
+                $ref: '#/components/schemas/policy.obligations.CreateObligationResponse'
+  /policy.obligations.Service/UpdateObligation:
     post:
       tags:
-        - policy.unsafe.UnsafeService
-      summary: UnsafeReactivateAttribute
-      operationId: policy.unsafe.UnsafeService.UnsafeReactivateAttribute
+        - policy.obligations.Service
+      summary: UpdateObligation
+      operationId: policy.obligations.Service.UpdateObligation
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -170,7 +162,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateAttributeRequest'
+              $ref: '#/components/schemas/policy.obligations.UpdateObligationRequest'
         required: true
       responses:
         default:
@@ -184,13 +176,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateAttributeResponse'
-  /policy.unsafe.UnsafeService/UnsafeDeleteAttribute:
+                $ref: '#/components/schemas/policy.obligations.UpdateObligationResponse'
+  /policy.obligations.Service/DeleteObligation:
     post:
       tags:
-        - policy.unsafe.UnsafeService
-      summary: UnsafeDeleteAttribute
-      operationId: policy.unsafe.UnsafeService.UnsafeDeleteAttribute
+        - policy.obligations.Service
+      summary: DeleteObligation
+      operationId: policy.obligations.Service.DeleteObligation
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -205,7 +197,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeRequest'
+              $ref: '#/components/schemas/policy.obligations.DeleteObligationRequest'
         required: true
       responses:
         default:
@@ -219,17 +211,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeResponse'
-  /policy.unsafe.UnsafeService/UnsafeUpdateAttributeValue:
+                $ref: '#/components/schemas/policy.obligations.DeleteObligationResponse'
+  /policy.obligations.Service/GetObligationValue:
     post:
       tags:
-        - policy.unsafe.UnsafeService
-      summary: UnsafeUpdateAttributeValue
-      description: |-
-        --------------------------------------*
-         Value RPCs
-        ---------------------------------------
-      operationId: policy.unsafe.UnsafeService.UnsafeUpdateAttributeValue
+        - policy.obligations.Service
+      summary: GetObligationValue
+      operationId: policy.obligations.Service.GetObligationValue
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -244,7 +232,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateAttributeValueRequest'
+              $ref: '#/components/schemas/policy.obligations.GetObligationValueRequest'
         required: true
       responses:
         default:
@@ -258,13 +246,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateAttributeValueResponse'
-  /policy.unsafe.UnsafeService/UnsafeReactivateAttributeValue:
+                $ref: '#/components/schemas/policy.obligations.GetObligationValueResponse'
+  /policy.obligations.Service/GetObligationValuesByFQNs:
     post:
       tags:
-        - policy.unsafe.UnsafeService
-      summary: UnsafeReactivateAttributeValue
-      operationId: policy.unsafe.UnsafeService.UnsafeReactivateAttributeValue
+        - policy.obligations.Service
+      summary: GetObligationValuesByFQNs
+      operationId: policy.obligations.Service.GetObligationValuesByFQNs
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -279,7 +267,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateAttributeValueRequest'
+              $ref: '#/components/schemas/policy.obligations.GetObligationValuesByFQNsRequest'
         required: true
       responses:
         default:
@@ -293,13 +281,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateAttributeValueResponse'
-  /policy.unsafe.UnsafeService/UnsafeDeleteAttributeValue:
+                $ref: '#/components/schemas/policy.obligations.GetObligationValuesByFQNsResponse'
+  /policy.obligations.Service/CreateObligationValue:
     post:
       tags:
-        - policy.unsafe.UnsafeService
-      summary: UnsafeDeleteAttributeValue
-      operationId: policy.unsafe.UnsafeService.UnsafeDeleteAttributeValue
+        - policy.obligations.Service
+      summary: CreateObligationValue
+      operationId: policy.obligations.Service.CreateObligationValue
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -314,7 +302,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeValueRequest'
+              $ref: '#/components/schemas/policy.obligations.CreateObligationValueRequest'
         required: true
       responses:
         default:
@@ -328,17 +316,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeValueResponse'
-  /policy.unsafe.UnsafeService/UnsafeDeleteKasKey:
+                $ref: '#/components/schemas/policy.obligations.CreateObligationValueResponse'
+  /policy.obligations.Service/UpdateObligationValue:
     post:
       tags:
-        - policy.unsafe.UnsafeService
-      summary: UnsafeDeleteKasKey
-      description: |-
-        --------------------------------------*
-         Kas Key RPCs
-        ---------------------------------------
-      operationId: policy.unsafe.UnsafeService.UnsafeDeleteKasKey
+        - policy.obligations.Service
+      summary: UpdateObligationValue
+      operationId: policy.obligations.Service.UpdateObligationValue
       parameters:
         - name: Connect-Protocol-Version
           in: header
@@ -353,7 +337,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteKasKeyRequest'
+              $ref: '#/components/schemas/policy.obligations.UpdateObligationValueRequest'
         required: true
       responses:
         default:
@@ -367,9 +351,121 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteKasKeyResponse'
+                $ref: '#/components/schemas/policy.obligations.UpdateObligationValueResponse'
+  /policy.obligations.Service/DeleteObligationValue:
+    post:
+      tags:
+        - policy.obligations.Service
+      summary: DeleteObligationValue
+      operationId: policy.obligations.Service.DeleteObligationValue
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.obligations.DeleteObligationValueRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.obligations.DeleteObligationValueResponse'
+  /policy.obligations.Service/AddObligationTrigger:
+    post:
+      tags:
+        - policy.obligations.Service
+      summary: AddObligationTrigger
+      operationId: policy.obligations.Service.AddObligationTrigger
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.obligations.AddObligationTriggerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.obligations.AddObligationTriggerResponse'
+  /policy.obligations.Service/RemoveObligationTrigger:
+    post:
+      tags:
+        - policy.obligations.Service
+      summary: RemoveObligationTrigger
+      operationId: policy.obligations.Service.RemoveObligationTrigger
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.obligations.RemoveObligationTriggerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.obligations.RemoveObligationTriggerResponse'
 components:
   schemas:
+    common.MetadataUpdateEnum:
+      type: string
+      title: MetadataUpdateEnum
+      enum:
+        - METADATA_UPDATE_ENUM_UNSPECIFIED
+        - METADATA_UPDATE_ENUM_EXTEND
+        - METADATA_UPDATE_ENUM_REPLACE
     policy.Action.StandardAction:
       type: string
       title: StandardAction
@@ -413,24 +509,6 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
-    policy.KeyMode:
-      type: string
-      title: KeyMode
-      enum:
-        - KEY_MODE_UNSPECIFIED
-        - KEY_MODE_CONFIG_ROOT_KEY
-        - KEY_MODE_PROVIDER_ROOT_KEY
-        - KEY_MODE_REMOTE
-        - KEY_MODE_PUBLIC_KEY_ONLY
-      description: Describes the management and operational mode of a cryptographic key.
-    policy.KeyStatus:
-      type: string
-      title: KeyStatus
-      enum:
-        - KEY_STATUS_UNSPECIFIED
-        - KEY_STATUS_ACTIVE
-        - KEY_STATUS_ROTATED
-      description: The status of the key
     policy.SourceType:
       type: string
       title: SourceType
@@ -482,15 +560,35 @@ components:
           title: value
       title: LabelsEntry
       additionalProperties: false
+    common.MetadataMutable:
+      type: object
+      properties:
+        labels:
+          type: object
+          title: labels
+          additionalProperties:
+            type: string
+            title: value
+          description: optional labels
+      title: MetadataMutable
+      additionalProperties: false
+    common.MetadataMutable.LabelsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: LabelsEntry
+      additionalProperties: false
     google.protobuf.BoolValue:
       type: boolean
       description: |-
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
-
-         Not recommended for use in new APIs, but still useful for legacy APIs and
-         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
       examples:
@@ -620,47 +718,6 @@ components:
       title: Action
       additionalProperties: false
       description: An action an entity can take
-    policy.AsymmetricKey:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          description: Required
-        keyId:
-          type: string
-          title: key_id
-          description: Required
-        keyAlgorithm:
-          title: key_algorithm
-          description: Required
-          $ref: '#/components/schemas/policy.Algorithm'
-        keyStatus:
-          title: key_status
-          description: Required
-          $ref: '#/components/schemas/policy.KeyStatus'
-        keyMode:
-          title: key_mode
-          description: Required Specifies how the key is managed (local or remote)
-          $ref: '#/components/schemas/policy.KeyMode'
-        publicKeyCtx:
-          title: public_key_ctx
-          description: Required Specific structure based on key provider implementation
-          $ref: '#/components/schemas/policy.PublicKeyCtx'
-        privateKeyCtx:
-          title: private_key_ctx
-          description: Optional Specific structure based on key provider implementation
-          $ref: '#/components/schemas/policy.PrivateKeyCtx'
-        providerConfig:
-          title: provider_config
-          description: Optional Configuration for the key provider
-          $ref: '#/components/schemas/policy.KeyProviderConfig'
-        metadata:
-          title: metadata
-          description: Common metadata fields
-          $ref: '#/components/schemas/common.Metadata'
-      title: AsymmetricKey
-      additionalProperties: false
     policy.Attribute:
       type: object
       properties:
@@ -762,20 +819,6 @@ components:
         - booleanOperator
       additionalProperties: false
       description: A collection of Conditions evaluated by the boolean_operator provided
-    policy.KasKey:
-      type: object
-      properties:
-        kasId:
-          type: string
-          title: kas_id
-        key:
-          title: key
-          $ref: '#/components/schemas/policy.AsymmetricKey'
-        kasUri:
-          type: string
-          title: kas_uri
-      title: KasKey
-      additionalProperties: false
     policy.KasPublicKey:
       type: object
       properties:
@@ -862,25 +905,6 @@ components:
       title: KeyAccessServer
       additionalProperties: false
       description: Key Access Server Registry
-    policy.KeyProviderConfig:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-        name:
-          type: string
-          title: name
-        configJson:
-          type: string
-          title: config_json
-          format: byte
-        metadata:
-          title: metadata
-          description: Common metadata
-          $ref: '#/components/schemas/common.Metadata'
-      title: KeyProviderConfig
-      additionalProperties: false
     policy.Namespace:
       type: object
       properties:
@@ -918,19 +942,106 @@ components:
           description: Keys for the namespace
       title: Namespace
       additionalProperties: false
-    policy.PrivateKeyCtx:
+    policy.Obligation:
       type: object
       properties:
-        keyId:
+        id:
           type: string
-          title: key_id
-          minLength: 1
-          description: Required Key ID for the symmetric key wrapping this key.
-        wrappedKey:
+          title: id
+        namespace:
+          title: namespace
+          $ref: '#/components/schemas/policy.Namespace'
+        name:
           type: string
-          title: wrapped_key
-          description: Optional Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.
-      title: PrivateKeyCtx
+          title: name
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ObligationValue'
+          title: values
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: Obligation
+      additionalProperties: false
+    policy.ObligationTrigger:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        obligationValue:
+          title: obligation_value
+          $ref: '#/components/schemas/policy.ObligationValue'
+        action:
+          title: action
+          $ref: '#/components/schemas/policy.Action'
+        attributeValue:
+          title: attribute_value
+          $ref: '#/components/schemas/policy.Value'
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: ObligationTrigger
+      additionalProperties: false
+    policy.ObligationValue:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        obligation:
+          title: obligation
+          $ref: '#/components/schemas/policy.Obligation'
+        value:
+          type: string
+          title: value
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: ObligationValue
+      additionalProperties: false
+    policy.PageRequest:
+      type: object
+      properties:
+        limit:
+          type: integer
+          title: limit
+          format: int32
+          description: |-
+            Optional
+             Set to configured default limit if not provided
+             Maximum limit set in platform config and enforced by services
+        offset:
+          type: integer
+          title: offset
+          format: int32
+          description: |-
+            Optional
+             Defaulted if not provided
+      title: PageRequest
+      additionalProperties: false
+    policy.PageResponse:
+      type: object
+      properties:
+        currentOffset:
+          type: integer
+          title: current_offset
+          format: int32
+          description: Requested pagination offset
+        nextOffset:
+          type: integer
+          title: next_offset
+          format: int32
+          description: |-
+            Calculated with request limit + offset or defaults
+             Empty when none remain after current page
+        total:
+          type: integer
+          title: total
+          format: int32
+          description: Total count of entire list
+      title: PageResponse
       additionalProperties: false
     policy.PublicKey:
       type: object
@@ -960,16 +1071,6 @@ components:
       title: PublicKey
       additionalProperties: false
       description: Deprecated
-    policy.PublicKeyCtx:
-      type: object
-      properties:
-        pem:
-          type: string
-          title: pem
-          minLength: 1
-          description: Required Base64 encoded public key in PEM format
-      title: PublicKeyCtx
-      additionalProperties: false
     policy.ResourceMapping:
       type: object
       properties:
@@ -1168,322 +1269,390 @@ components:
           $ref: '#/components/schemas/common.Metadata'
       title: Value
       additionalProperties: false
-    policy.unsafe.UnsafeDeleteAttributeRequest:
+    policy.obligations.AddObligationTriggerRequest:
       type: object
       properties:
-        id:
+        obligationValueId:
           type: string
-          title: id
-          format: uuid
+          title: obligation_value_id
+          description: Required
+        actionId:
+          type: string
+          title: action_id
+        attributeValueId:
+          type: string
+          title: attribute_value_id
+        metadata:
+          title: metadata
           description: |-
-            Required
-             UUID of the Attribute
-        fqn:
-          type: string
+            Optional
+             Common metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: AddObligationTriggerRequest
+      additionalProperties: false
+      description: Triggers
+    policy.obligations.AddObligationTriggerResponse:
+      type: object
+      properties:
+        trigger:
+          title: trigger
+          $ref: '#/components/schemas/policy.ObligationTrigger'
+      title: AddObligationTriggerResponse
+      additionalProperties: false
+    policy.obligations.CreateObligationRequest:
+      type: object
+      oneOf:
+        - properties:
+            fqn:
+              type: string
+              title: fqn
           title: fqn
-          description: |-
-            Required
-             Fully Qualified Name (FQN) of Attribute Definition (i.e. https://<namespace>/attr/<attribute name>), normalized to lower case.
-      title: UnsafeDeleteAttributeRequest
-      required:
-        - fqn
-      additionalProperties: false
-      description: |-
-        WARNING!!
-         Deleting an Attribute will free up the Attribute name for reuse, which can introduce an access path to existing TDFs containing the deleted Attribute name.
-         Values under this Attribute will be cascadingly deleted.
-         Any KAS Grants associated with this Attribute will be cascadingly deleted.
-    policy.unsafe.UnsafeDeleteAttributeResponse:
-      type: object
-      properties:
-        attribute:
-          title: attribute
-          $ref: '#/components/schemas/policy.Attribute'
-      title: UnsafeDeleteAttributeResponse
-      additionalProperties: false
-    policy.unsafe.UnsafeDeleteAttributeValueRequest:
-      type: object
-      properties:
-        id:
-          type: string
+          required:
+            - fqn
+        - properties:
+            id:
+              type: string
+              title: id
           title: id
-          format: uuid
-          description: |-
-            Required
-             UUID of the Attribute Value
-        fqn:
-          type: string
-          title: fqn
-          description: |-
-            Required
-             Fully Qualified Name (FQN) of Attribute Value (i.e. https://<namespace>/attr/<attribute name>/value/<value>), normalized to lower case.
-      title: UnsafeDeleteAttributeValueRequest
-      required:
-        - fqn
-      additionalProperties: false
-      description: |-
-        WARNING!!
-         Deleting an Attribute Value will free up the Attribute Value for reuse, which can introduce an access path to existing TDFs containing the deleted Attribute Value.
-         Any KAS Grants associated with this Attribute Value will be cascadingly deleted.
-    policy.unsafe.UnsafeDeleteAttributeValueResponse:
-      type: object
+          required:
+            - id
       properties:
-        value:
-          title: value
-          $ref: '#/components/schemas/policy.Value'
-      title: UnsafeDeleteAttributeValueResponse
-      additionalProperties: false
-    policy.unsafe.UnsafeDeleteKasKeyRequest:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-          description: |-
-            Required
-             UUID of the Key
-        kid:
-          type: string
-          title: kid
-          description: |-
-            Required
-             The key id assigned to this key (Ex: "key-1")
-        kasUri:
-          type: string
-          title: kas_uri
-          description: |-
-            Required
-             The kas uri for which this key belongs (Ex: "https://kas.example.com:8080")
-      title: UnsafeDeleteKasKeyRequest
-      required:
-        - kid
-        - kasUri
-      additionalProperties: false
-      description: |-
-        WARNING!!
-         Deleting a key will make it so that ANY TDF that was encrypted with this key cannot be decrypted by the platform.
-    policy.unsafe.UnsafeDeleteKasKeyResponse:
-      type: object
-      properties:
-        key:
-          title: key
-          $ref: '#/components/schemas/policy.KasKey'
-      title: UnsafeDeleteKasKeyResponse
-      additionalProperties: false
-    policy.unsafe.UnsafeDeleteNamespaceRequest:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-          description: |-
-            Required
-             UUID of the Namespace
-        fqn:
-          type: string
-          title: fqn
-          description: |-
-            Required
-             Fully Qualified Name (FQN) of Namespace (i.e. https://<namespace>), normalized to lower case.
-      title: UnsafeDeleteNamespaceRequest
-      required:
-        - fqn
-      additionalProperties: false
-      description: |-
-        WARNING!!
-         Deleting a Namespace will free up the Attribute Namespace, Definitions, and Values for reuse, which can introduce an access path to existing TDFs containing the deleted policy.
-         Definitions and their Values under this Namespace will be cascadingly deleted.
-    policy.unsafe.UnsafeDeleteNamespaceResponse:
-      type: object
-      properties:
-        namespace:
-          title: namespace
-          $ref: '#/components/schemas/policy.Namespace'
-      title: UnsafeDeleteNamespaceResponse
-      additionalProperties: false
-    policy.unsafe.UnsafeReactivateAttributeRequest:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-          description: Required
-      title: UnsafeReactivateAttributeRequest
-      additionalProperties: false
-      description: |-
-        WARNING!!
-         Reactivating an Attribute can potentially open up an access path to existing TDFs containing the Attribute name.
-         Active state of any Values under this Attribute Definition will NOT be changed.
-    policy.unsafe.UnsafeReactivateAttributeResponse:
-      type: object
-      properties:
-        attribute:
-          title: attribute
-          $ref: '#/components/schemas/policy.Attribute'
-      title: UnsafeReactivateAttributeResponse
-      additionalProperties: false
-    policy.unsafe.UnsafeReactivateAttributeValueRequest:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-          description: Required
-      title: UnsafeReactivateAttributeValueRequest
-      additionalProperties: false
-      description: |-
-        WARNING!!
-         Reactivating an Attribute Value can potentially open up an access path to existing TDFs containing the Attribute Value.
-    policy.unsafe.UnsafeReactivateAttributeValueResponse:
-      type: object
-      properties:
-        value:
-          title: value
-          $ref: '#/components/schemas/policy.Value'
-      title: UnsafeReactivateAttributeValueResponse
-      additionalProperties: false
-    policy.unsafe.UnsafeReactivateNamespaceRequest:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-          description: Required
-      title: UnsafeReactivateNamespaceRequest
-      additionalProperties: false
-      description: |-
-        WARNING!!
-         Reactivating a Namespace can potentially open up an access path to existing TDFs containing any Attributes under the Namespace.
-         Active state of any Definitions and their Values under this Namespace will NOT be changed.
-    policy.unsafe.UnsafeReactivateNamespaceResponse:
-      type: object
-      properties:
-        namespace:
-          title: namespace
-          $ref: '#/components/schemas/policy.Namespace'
-      title: UnsafeReactivateNamespaceResponse
-      additionalProperties: false
-    policy.unsafe.UnsafeUpdateAttributeRequest:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-          description: Required
         name:
           type: string
           title: name
-          maxLength: 253
-          description: |+
-            Optional
-             WARNING!!
-             Updating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.
-            Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case.:
-            ```
-            size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true
-            ```
-
-        rule:
-          title: rule
+        metadata:
+          title: metadata
           description: |-
             Optional
-             WARNING!!
-             Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.
-          $ref: '#/components/schemas/policy.AttributeRuleTypeEnum'
-        valuesOrder:
+             Common metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: CreateObligationRequest
+      additionalProperties: false
+    policy.obligations.CreateObligationResponse:
+      type: object
+      properties:
+        obligation:
+          title: obligation
+          $ref: '#/components/schemas/policy.Obligation'
+      title: CreateObligationResponse
+      additionalProperties: false
+    policy.obligations.CreateObligationValueRequest:
+      type: object
+      oneOf:
+        - properties:
+            fqn:
+              type: string
+              title: fqn
+          title: fqn
+          required:
+            - fqn
+        - properties:
+            id:
+              type: string
+              title: id
+          title: id
+          required:
+            - id
+      properties:
+        value:
+          type: string
+          title: value
+        metadata:
+          title: metadata
+          description: |-
+            Optional
+             Common metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: CreateObligationValueRequest
+      additionalProperties: false
+    policy.obligations.CreateObligationValueResponse:
+      type: object
+      properties:
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.ObligationValue'
+      title: CreateObligationValueResponse
+      additionalProperties: false
+    policy.obligations.DeleteObligationRequest:
+      type: object
+      oneOf:
+        - properties:
+            fqn:
+              type: string
+              title: fqn
+          title: fqn
+          required:
+            - fqn
+        - properties:
+            id:
+              type: string
+              title: id
+          title: id
+          required:
+            - id
+      title: DeleteObligationRequest
+      additionalProperties: false
+    policy.obligations.DeleteObligationResponse:
+      type: object
+      properties:
+        obligation:
+          title: obligation
+          $ref: '#/components/schemas/policy.Obligation'
+      title: DeleteObligationResponse
+      additionalProperties: false
+    policy.obligations.DeleteObligationValueRequest:
+      type: object
+      oneOf:
+        - properties:
+            fqn:
+              type: string
+              title: fqn
+          title: fqn
+          required:
+            - fqn
+        - properties:
+            id:
+              type: string
+              title: id
+          title: id
+          required:
+            - id
+      title: DeleteObligationValueRequest
+      additionalProperties: false
+    policy.obligations.DeleteObligationValueResponse:
+      type: object
+      properties:
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.ObligationValue'
+      title: DeleteObligationValueResponse
+      additionalProperties: false
+    policy.obligations.GetObligationRequest:
+      type: object
+      oneOf:
+        - properties:
+            fqn:
+              type: string
+              title: fqn
+          title: fqn
+          required:
+            - fqn
+        - properties:
+            id:
+              type: string
+              title: id
+          title: id
+          required:
+            - id
+      title: GetObligationRequest
+      additionalProperties: false
+      description: Definitions
+    policy.obligations.GetObligationResponse:
+      type: object
+      properties:
+        obligation:
+          title: obligation
+          $ref: '#/components/schemas/policy.Obligation'
+      title: GetObligationResponse
+      additionalProperties: false
+    policy.obligations.GetObligationValueRequest:
+      type: object
+      oneOf:
+        - properties:
+            fqn:
+              type: string
+              title: fqn
+          title: fqn
+          required:
+            - fqn
+        - properties:
+            id:
+              type: string
+              title: id
+          title: id
+          required:
+            - id
+      title: GetObligationValueRequest
+      additionalProperties: false
+      description: Values
+    policy.obligations.GetObligationValueResponse:
+      type: object
+      properties:
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.ObligationValue'
+      title: GetObligationValueResponse
+      additionalProperties: false
+    policy.obligations.GetObligationValuesByFQNsRequest:
+      type: object
+      properties:
+        fqns:
           type: array
           items:
             type: string
-          title: values_order
-          description: |-
-            Optional
-             WARNING!!
-             Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition
-             will retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted
-             deleted, created, and unsafely re-ordered as necessary.
-      title: UnsafeUpdateAttributeRequest
+          title: fqns
+      title: GetObligationValuesByFQNsRequest
       additionalProperties: false
-      description: |-
-        WARNING!!
-         Updating an Attribute can have dangerous consequences. Use with caution.
-    policy.unsafe.UnsafeUpdateAttributeResponse:
+    policy.obligations.GetObligationValuesByFQNsResponse:
       type: object
       properties:
-        attribute:
-          title: attribute
-          $ref: '#/components/schemas/policy.Attribute'
-      title: UnsafeUpdateAttributeResponse
+        fqnValueMap:
+          type: object
+          title: fqn_value_map
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.ObligationValue'
+      title: GetObligationValuesByFQNsResponse
       additionalProperties: false
-    policy.unsafe.UnsafeUpdateAttributeValueRequest:
+    policy.obligations.GetObligationValuesByFQNsResponse.FqnValueMapEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.ObligationValue'
+      title: FqnValueMapEntry
+      additionalProperties: false
+    policy.obligations.GetObligationsByFQNsRequest:
+      type: object
+      properties:
+        fqns:
+          type: array
+          items:
+            type: string
+          title: fqns
+      title: GetObligationsByFQNsRequest
+      additionalProperties: false
+    policy.obligations.GetObligationsByFQNsResponse:
+      type: object
+      properties:
+        fqnObligationMap:
+          type: object
+          title: fqn_obligation_map
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.Obligation'
+      title: GetObligationsByFQNsResponse
+      additionalProperties: false
+    policy.obligations.GetObligationsByFQNsResponse.FqnObligationMapEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.Obligation'
+      title: FqnObligationMapEntry
+      additionalProperties: false
+    policy.obligations.ListObligationsRequest:
+      type: object
+      oneOf:
+        - properties:
+            fqn:
+              type: string
+              title: fqn
+          title: fqn
+          required:
+            - fqn
+        - properties:
+            id:
+              type: string
+              title: id
+          title: id
+          required:
+            - id
+      properties:
+        pagination:
+          title: pagination
+          description: Optional
+          $ref: '#/components/schemas/policy.PageRequest'
+      title: ListObligationsRequest
+      additionalProperties: false
+    policy.obligations.ListObligationsResponse:
+      type: object
+      properties:
+        obligations:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Obligation'
+          title: obligations
+        pagination:
+          title: pagination
+          $ref: '#/components/schemas/policy.PageResponse'
+      title: ListObligationsResponse
+      additionalProperties: false
+    policy.obligations.RemoveObligationTriggerRequest:
       type: object
       properties:
         id:
           type: string
           title: id
-          format: uuid
-          description: Required
-        value:
-          type: string
-          title: value
-          maxLength: 253
-          description: |+
-            Required
-            Attribute Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case.:
-            ```
-            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
-            ```
-
-      title: UnsafeUpdateAttributeValueRequest
+      title: RemoveObligationTriggerRequest
       additionalProperties: false
-      description: |-
-        WARNING!!
-         Updating an Attribute Value will retroactively alter access to existing TDFs containing the old and new Attribute Value.
-    policy.unsafe.UnsafeUpdateAttributeValueResponse:
+    policy.obligations.RemoveObligationTriggerResponse:
       type: object
       properties:
-        value:
-          title: value
-          $ref: '#/components/schemas/policy.Value'
-      title: UnsafeUpdateAttributeValueResponse
+        trigger:
+          title: trigger
+          $ref: '#/components/schemas/policy.ObligationTrigger'
+      title: RemoveObligationTriggerResponse
       additionalProperties: false
-    policy.unsafe.UnsafeUpdateNamespaceRequest:
+    policy.obligations.UpdateObligationRequest:
       type: object
       properties:
         id:
           type: string
           title: id
-          format: uuid
           description: Required
         name:
           type: string
           title: name
-          maxLength: 253
-          description: |+
-            Required
-            Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. The stored namespace will be normalized to lower case.:
-            ```
-            this.matches('^([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$')
-            ```
-
-      title: UnsafeUpdateNamespaceRequest
+          description: Optional
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+        metadataUpdateBehavior:
+          title: metadata_update_behavior
+          $ref: '#/components/schemas/common.MetadataUpdateEnum'
+      title: UpdateObligationRequest
       additionalProperties: false
-      description: |-
-        WARNING!!
-         Updating the Namespace of an Attribute will retroactively alter access to existing TDFs of the old and new Namespace name.
-         Existing Attribute Definitions and their Values under the Namespace will now be associated with the new Namespace name.
-    policy.unsafe.UnsafeUpdateNamespaceResponse:
+    policy.obligations.UpdateObligationResponse:
       type: object
       properties:
-        namespace:
-          title: namespace
-          $ref: '#/components/schemas/policy.Namespace'
-      title: UnsafeUpdateNamespaceResponse
+        obligation:
+          title: obligation
+          $ref: '#/components/schemas/policy.Obligation'
+      title: UpdateObligationResponse
+      additionalProperties: false
+    policy.obligations.UpdateObligationValueRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: Required
+        value:
+          type: string
+          title: value
+          description: Optional
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+        metadataUpdateBehavior:
+          title: metadata_update_behavior
+          $ref: '#/components/schemas/common.MetadataUpdateEnum'
+      title: UpdateObligationValueRequest
+      additionalProperties: false
+    policy.obligations.UpdateObligationValueResponse:
+      type: object
+      properties:
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.ObligationValue'
+      title: UpdateObligationValueResponse
       additionalProperties: false
     connect-protocol-version:
       type: number
@@ -1544,8 +1713,8 @@ components:
       description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
 security: []
 tags:
-  - name: policy.unsafe.UnsafeService
+  - name: policy.obligations.Service
     description: |-
       /
-      / Unsafe Service
+      / Obligation Service
       /

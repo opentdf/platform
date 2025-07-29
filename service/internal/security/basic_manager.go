@@ -75,7 +75,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with RSA: %w", err)
 		}
-		return NewInProcessAESKey(plaintext), nil
+		return ocrypto.NewAESProtectedKey(plaintext), nil
 	case policy.Algorithm_ALGORITHM_EC_P256.String(), policy.Algorithm_ALGORITHM_EC_P384.String(), policy.Algorithm_ALGORITHM_EC_P521.String():
 		ecPrivKey, err := ocrypto.ECPrivateKeyFromPem(privKey)
 		if err != nil {
@@ -89,7 +89,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with ephemeral key: %w", err)
 		}
-		return NewInProcessAESKey(plaintext), nil
+		return ocrypto.NewAESProtectedKey(plaintext), nil
 	}
 
 	return nil, fmt.Errorf("unsupported algorithm: %s", keyDetails.Algorithm())
@@ -131,7 +131,7 @@ func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetail
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate HKDF: %w", err)
 	}
-	return NewInProcessAESKey(key), nil
+	return ocrypto.NewAESProtectedKey(key), nil
 }
 
 func (b *BasicManager) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {

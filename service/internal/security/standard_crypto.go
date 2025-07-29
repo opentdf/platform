@@ -488,8 +488,5 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 		return nil, fmt.Errorf("unsupported key type for key ID [%s]", kid)
 	}
 
-	return &InProcessAESKey{
-		rawKey: rawKey,
-		logger: slog.Default(),
-	}, nil
+	return ocrypto.NewAESProtectedKey(rawKey), nil
 }

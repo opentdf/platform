@@ -9,6 +9,8 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution/v2/entityresolutionv2connect"
 	claims "github.com/opentdf/platform/service/entityresolution/claims/v2"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
+	ldapERS "github.com/opentdf/platform/service/entityresolution/ldap/v2"
+	sqlERS "github.com/opentdf/platform/service/entityresolution/sql/v2"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
@@ -22,6 +24,8 @@ type ERSConfig struct {
 const (
 	KeycloakMode = "keycloak"
 	ClaimsMode   = "claims"
+	LDAPMode     = "ldap"
+	SQLMode      = "sql"
 )
 
 type EntityResolution struct {
@@ -42,10 +46,24 @@ func NewRegistration() *serviceregistry.Service[entityresolutionv2connect.Entity
 				if err := mapstructure.Decode(srp.Config, &inputConfig); err != nil {
 					panic(err)
 				}
-				if inputConfig.Mode == ClaimsMode {
+				switch inputConfig.Mode {
+				case ClaimsMode:
 					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
 					claimsSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
+				case LDAPMode:
+					ldapSVC, ldapHandler := ldapERS.RegisterLDAPERS(srp.Config, srp.Logger)
+					ldapSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: ldapSVC}, ldapHandler
+				case SQLMode:
+					sqlSVC, sqlHandler := sqlERS.RegisterSQLERS(srp.Config, srp.Logger)
+					sqlSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: sqlSVC}, sqlHandler
+				default:
+					// Default to keycloak ERS
+					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger)
+					kcSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
 				}
 
 				var ersCache *cache.Cache

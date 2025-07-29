@@ -422,33 +422,40 @@ func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Req
 		ObjectID:   id,
 	}
 
-	existing, err := s.dbClient.GetKey(ctx, &kasregistry.GetKeyRequest_Id{Id: id})
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		existing, err := txClient.GetKey(ctx, &kasregistry.GetKeyRequest_Id{Id: id})
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
+		}
+
+		auditParams.Original = &policy.KasKey{
+			KasUri: existing.GetKasUri(),
+			Key: &policy.AsymmetricKey{
+				Id:    existing.GetKey().GetId(),
+				KeyId: existing.GetKey().GetKeyId(),
+			},
+		}
+
+		_, err = txClient.UnsafeDeleteKey(ctx, existing, req.Msg)
+		if err != nil {
+			s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+			return db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
+		}
+
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+		rsp.Key = &policy.KasKey{
+			KasUri: existing.GetKasUri(),
+			Key: &policy.AsymmetricKey{
+				Id:    existing.GetKey().GetId(),
+				KeyId: existing.GetKey().GetKeyId(),
+			},
+		}
+		return nil
+	})
+
 	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", id))
-	}
-	auditParams.Original = &policy.KasKey{
-		KasUri: existing.GetKasUri(),
-		Key: &policy.AsymmetricKey{
-			Id:    existing.GetKey().GetId(),
-			KeyId: existing.GetKey().GetKeyId(),
-		},
-	}
-
-	_, err = s.dbClient.UnsafeDeleteKey(ctx, existing, req.Msg)
-	if err != nil {
-		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("id", id))
-	}
-
-	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
-
-	rsp.Key = &policy.KasKey{
-		KasUri: existing.GetKasUri(),
-		Key: &policy.AsymmetricKey{
-			Id:    existing.GetKey().GetId(),
-			KeyId: existing.GetKey().GetKeyId(),
-		},
+		return nil, err
 	}
 
 	return connect.NewResponse(rsp), nil

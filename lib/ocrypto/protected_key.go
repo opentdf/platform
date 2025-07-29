@@ -63,7 +63,7 @@ func (k *AESProtectedKey) Export(encapsulator Encapsulator) ([]byte, error) {
 }
 
 // VerifyBinding checks if the policy binding matches the given policy data
-func (k *AESProtectedKey) VerifyBinding(ctx context.Context, policy, policyBinding []byte) error {
+func (k *AESProtectedKey) VerifyBinding(_ context.Context, policy, policyBinding []byte) error {
 	if len(k.rawKey) == 0 {
 		return ErrEmptyKeyData
 	}

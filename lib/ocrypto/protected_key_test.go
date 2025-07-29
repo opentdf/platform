@@ -120,11 +120,10 @@ func TestAESProtectedKey_VerifyBinding(t *testing.T) {
 	ctx := context.Background()
 
 	// Generate the expected HMAC
-	expectedHMAC, err := protectedKey.generateHMACDigest(ctx, policy)
-	require.NoError(t, err)
+	expectedHMAC := protectedKey.generateHMACDigest(policy)
 
 	// Verify binding should succeed with correct HMAC
-	err = protectedKey.VerifyBinding(ctx, policy, expectedHMAC)
+	err := protectedKey.VerifyBinding(ctx, policy, expectedHMAC)
 	assert.NoError(t, err)
 }
 
@@ -161,12 +160,11 @@ func TestAESProtectedKey_VerifyBinding_DifferentPolicyData(t *testing.T) {
 
 	// Generate HMAC for first policy
 	policy1 := []byte("policy-data-1")
-	hmac1, err := protectedKey.generateHMACDigest(ctx, policy1)
-	require.NoError(t, err)
+	hmac1 := protectedKey.generateHMACDigest(policy1)
 
 	// Try to verify with different policy data
 	policy2 := []byte("policy-data-2")
-	err = protectedKey.VerifyBinding(ctx, policy2, hmac1)
+	err := protectedKey.VerifyBinding(ctx, policy2, hmac1)
 	assert.Error(t, err)
 	assert.Equal(t, ErrPolicyHMACMismatch, err)
 }

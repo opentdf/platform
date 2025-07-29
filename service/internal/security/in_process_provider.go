@@ -297,7 +297,7 @@ func (a *InProcessProvider) ListKeys(ctx context.Context) ([]trust.KeyDetails, e
 }
 
 // Decrypt implements the unified decryption method for both RSA and EC
-func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte) (trust.ProtectedKey, error) {
 	kid := string(keyDetails.ID())
 
 	// Try to determine the key type
@@ -309,16 +309,10 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 	var rawKey []byte
 	switch keyType {
 	case AlgorithmRSA2048:
-		if len(ephemeralPublicKey) > 0 {
-			return nil, errors.New("ephemeral public key should not be provided for RSA decryption")
-		}
 		rawKey, err = a.cryptoProvider.RSADecrypt(crypto.SHA1, kid, "", ciphertext)
 
 	case AlgorithmECP256R1:
-		if len(ephemeralPublicKey) == 0 {
-			return nil, errors.New("ephemeral public key is required for EC decryption")
-		}
-		rawKey, err = a.cryptoProvider.ECDecrypt(ctx, kid, ephemeralPublicKey, ciphertext)
+		rawKey, err = a.cryptoProvider.ECDecrypt(ctx, kid, ciphertext)
 
 	default:
 		return nil, errors.New("unsupported key algorithm")

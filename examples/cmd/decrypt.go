@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 
 	"github.com/opentdf/platform/sdk"
-
 	"github.com/spf13/cobra"
 )
 

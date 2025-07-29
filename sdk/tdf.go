@@ -633,17 +633,12 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 
 	ktype := ocrypto.KeyType(kasInfo.Algorithm)
 	if ocrypto.IsECKeyType(ktype) {
-		mode, err := ocrypto.ECKeyTypeToMode(ktype)
-		if err != nil {
-			return KeyAccess{}, err
-		}
-		wrappedKeyInfo, err := generateWrapKeyWithEC(mode, kasInfo.PublicKey, symKey)
+		wrappedKey, err := generateWrapKeyWithEC(kasInfo.PublicKey, symKey)
 		if err != nil {
 			return KeyAccess{}, err
 		}
 		keyAccess.KeyType = kECWrapped
-		keyAccess.WrappedKey = wrappedKeyInfo.wrappedKey
-		keyAccess.EphemeralPublicKey = wrappedKeyInfo.publicKey
+		keyAccess.WrappedKey = string(ocrypto.Base64Encode(wrappedKey))
 	} else {
 		wrappedKey, err := generateWrapKeyWithRSA(kasInfo.PublicKey, symKey)
 		if err != nil {
@@ -662,47 +657,13 @@ func tdfSalt() []byte {
 	return salt
 }
 
-func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []byte) (ecKeyWrappedKeyInfo, error) {
-	ecKeyPair, err := ocrypto.NewECKeyPair(mode)
+func generateWrapKeyWithEC(kasPublicKey string, symKey []byte) ([]byte, error) {
+	ecKeyPair, err := ocrypto.FromPublicPEMWithSalt(kasPublicKey, tdfSalt(), nil)
 	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.NewECKeyPair failed:%w", err)
+		return nil, fmt.Errorf("ocrypto.FromPublicPEMWithSalt failed:%w", err)
 	}
 
-	emphermalPublicKey, err := ecKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: failed to get EC public key: %w", err)
-	}
-
-	emphermalPrivateKey, err := ecKeyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: failed to get EC private key: %w", err)
-	}
-
-	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(emphermalPrivateKey), []byte(kasPublicKey))
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: ocrypto.ComputeECDHKey failed:%w", err)
-	}
-
-	salt := tdfSalt()
-	sessionKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: ocrypto.CalculateHKDF failed:%w", err)
-	}
-
-	gcm, err := ocrypto.NewAESGcm(sessionKey)
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: ocrypto.NewAESGcm failed:%w", err)
-	}
-
-	wrappedKey, err := gcm.Encrypt(symKey)
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: ocrypto.AESGcm.Encrypt failed:%w", err)
-	}
-
-	return ecKeyWrappedKeyInfo{
-		publicKey:  emphermalPublicKey,
-		wrappedKey: string(ocrypto.Base64Encode(wrappedKey)),
-	}, nil
+	return ecKeyPair.Encrypt(symKey)
 }
 
 func generateWrapKeyWithRSA(publicKey string, symKey []byte) (string, error) {
@@ -1164,9 +1125,8 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 					Hash:      hash,
 					Algorithm: alg,
 				},
-				SplitId:            kao.SplitID,
-				WrappedKey:         key,
-				EphemeralPublicKey: kao.EphemeralPublicKey,
+				SplitId:    kao.SplitID,
+				WrappedKey: key,
 			},
 		}
 		if req, ok := kasReqs[kao.KasURL]; ok {

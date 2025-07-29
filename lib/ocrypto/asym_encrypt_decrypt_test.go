@@ -325,19 +325,9 @@ MJseKiCRhbMS8XoCOTogO4Au9SqpOKqHq2CFRb4=
 			}
 
 			var decryptedText []byte
-			ek := asymEncryptor.EphemeralKey()
-			if ek == nil {
-				decryptedText, err = asymDecryptor.Decrypt(cipherText)
-				if err != nil {
-					t.Fatalf("AsymDecryption decrypt failed: %v", err)
-				}
-			} else if ecd, ok := asymDecryptor.(ECDecryptor); ok {
-				decryptedText, err = ecd.DecryptWithEphemeralKey(cipherText, ek)
-				if err != nil {
-					t.Fatalf("AsymDecryption decrypt failed: %v", err)
-				}
-			} else {
-				t.Fatalf("AsymDecryption wrong type: %T", asymDecryptor)
+			decryptedText, err = asymDecryptor.Decrypt(cipherText)
+			if err != nil {
+				t.Fatalf("AsymDecryption decrypt failed: %v", err)
 			}
 
 			if string(decryptedText) != plainText {

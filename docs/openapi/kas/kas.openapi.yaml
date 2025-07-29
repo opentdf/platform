@@ -216,12 +216,6 @@ components:
           title: header
           format: byte
           description: header is only used for NanoTDFs
-        ephemeralPublicKey:
-          type: string
-          title: ephemeral_public_key
-          description: |-
-            For wrapping with an ECDH derived key, when type=ec-wrapped.
-             Should be a PEM-encoded PKCS#8 (asn.1) value.
       title: KeyAccess
       additionalProperties: false
     kas.KeyAccessRewrapResult:

@@ -294,7 +294,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		ciphertext, err := rsaEncryptor.Encrypt(samplePayload)
 		require.NoError(t, err)
 
-		protectedKey, err := bm.Decrypt(t.Context(), mockDetails, ciphertext, nil)
+		protectedKey, err := bm.Decrypt(t.Context(), mockDetails, ciphertext)
 		require.NoError(t, err)
 		require.NotNil(t, protectedKey)
 
@@ -318,9 +318,8 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		require.NoError(t, err)
 		ciphertext, err := ecEncryptor.Encrypt(samplePayload)
 		require.NoError(t, err)
-		ephemeralPublicKey := ecEncryptor.EphemeralKey()
 
-		protectedKey, err := bm.Decrypt(t.Context(), mockDetails, ciphertext, ephemeralPublicKey)
+		protectedKey, err := bm.Decrypt(t.Context(), mockDetails, ciphertext)
 		require.NoError(t, err)
 		require.NotNil(t, protectedKey)
 
@@ -334,7 +333,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		mockDetails.On("ID").Return(trust.KeyIdentifier("fail-export"))
 		mockDetails.On("ExportPrivateKey").Return(nil, errors.New("export failed"))
 
-		_, err := bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
+		_, err := bm.Decrypt(t.Context(), mockDetails, []byte("ct"))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get private key")
 	})
@@ -351,7 +350,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
 		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil)
 
-		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
+		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to unwrap private key")
 	})
@@ -366,7 +365,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)
 		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil) // Ensure this mock is correctly set up
-		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
+		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to create decryptor from private PEM")
 	})
@@ -380,7 +379,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		mockDetails.On("ID").Return(trust.KeyIdentifier(mockDetails.MID))
 		mockDetails.On("Algorithm").Return(mockDetails.MAlgorithm)                                                                                                                                     // Corrected: require.NoError
 		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil) // Ensure this mock is correctly set up
-		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
+		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unsupported algorithm: unknown-algo")
 	})
@@ -478,9 +477,6 @@ func TestBasicManager_GenerateECSessionKey(t *testing.T) {
 		encapsulator, err := bm.GenerateECSessionKey(t.Context(), string(clientPubKeyPEM))
 		require.NoError(t, err)
 		require.NotNil(t, encapsulator)
-
-		ephemKey := encapsulator.EphemeralKey()
-		assert.NotEmpty(t, ephemKey, "Ephemeral key should be generated")
 
 		sampleData := []byte("test data for encapsulation")
 		encryptedData, err := encapsulator.Encrypt(sampleData)

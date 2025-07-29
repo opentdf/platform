@@ -430,16 +430,33 @@ func NanoVersionSalt() []byte {
 }
 
 // ECDecrypt uses hybrid ECIES to decrypt the data.
-func (s *StandardCrypto) ECDecrypt(ctx context.Context, keyID string, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
-	unwrappedKey, err := s.Decrypt(ctx, trust.KeyIdentifier(keyID), ciphertext, ephemeralPublicKey)
+func (s *StandardCrypto) ECDecrypt(_ context.Context, keyID string, ciphertext []byte) ([]byte, error) {
+	ska, ok := s.keysByID[keyID]
+	if !ok {
+		return nil, fmt.Errorf("key [%s] not found", keyID)
+	}
+	sk, ok := ska.(StandardECCrypto)
+	if !ok {
+		return nil, fmt.Errorf("key [%s] is not an EC key", keyID)
+	}
+	if sk.sk == nil {
+		// Parse the private key
+		loaded, err := ocrypto.ECPrivateKeyFromPem([]byte(sk.ecPrivateKeyPem))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse EC private key: %w", err)
+		}
+		sk.sk = loaded
+	}
+
+	ed, err := ocrypto.NewECDecryptor(sk.sk)
 	if err != nil {
 		return nil, err
 	}
-	return unwrappedKey.Export(nil)
+	return ed.Decrypt(ciphertext)
 }
 
 // Decrypt implements the SecurityProvider Decrypt method
-func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, ciphertext []byte) (trust.ProtectedKey, error) {
 	kid := string(keyID)
 	ska, ok := s.keysByID[kid]
 	if !ok {
@@ -451,10 +468,6 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 
 	switch key := ska.(type) {
 	case StandardECCrypto:
-		if len(ephemeralPublicKey) == 0 {
-			return nil, errors.New("ephemeral public key is required for EC decryption")
-		}
-
 		if key.sk == nil {
 			// Parse the private key
 			loaded, err := ocrypto.ECPrivateKeyFromPem([]byte(key.ecPrivateKeyPem))
@@ -469,16 +482,12 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 			return nil, fmt.Errorf("failed to create EC decryptor: %w", err)
 		}
 
-		rawKey, err = ed.DecryptWithEphemeralKey(ciphertext, ephemeralPublicKey)
+		rawKey, err = ed.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with ephemeral key: %w", err)
 		}
 
 	case StandardRSACrypto:
-		if len(ephemeralPublicKey) > 0 {
-			return nil, errors.New("ephemeral public key should not be provided for RSA decryption")
-		}
-
 		rawKey, err = key.asymDecryption.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data: %w", err)

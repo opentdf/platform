@@ -453,7 +453,6 @@ func (s *UnsafeService) UnsafeDeleteKasKey(ctx context.Context, req *connect.Req
 		}
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}

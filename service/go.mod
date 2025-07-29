@@ -16,18 +16,22 @@ require (
 	github.com/casbin/casbin/v2 v2.108.0
 	github.com/creasty/defaults v1.8.0
 	github.com/dgraph-io/ristretto v0.2.0
+	github.com/docker/docker v28.2.2+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/eko/gocache/lib/v4 v4.2.0
 	github.com/eko/gocache/store/ristretto/v4 v4.2.2
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-chi/cors v1.2.1
+	github.com/go-ldap/ldap/v3 v3.4.11
 	github.com/go-playground/validator/v10 v10.26.0
+	github.com/go-sql-driver/mysql v1.9.3
 	github.com/go-viper/mapstructure/v2 v2.3.0
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.0
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/lestrrat-go/jwx/v2 v2.1.6
+	github.com/mattn/go-sqlite3 v1.14.29
 	github.com/open-policy-agent/opa v1.5.1
 	github.com/opentdf/platform/lib/fixtures v0.3.0
 	github.com/opentdf/platform/lib/flattening v0.1.3
@@ -56,6 +60,13 @@ require (
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
+	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
+)
+
+require (
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250613105001-9f2d3c737feb.1 // indirect
 	cel.dev/expr v0.23.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
@@ -71,7 +82,6 @@ require (
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250613105001-9f2d3c737feb.1 // indirect
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect; indi\

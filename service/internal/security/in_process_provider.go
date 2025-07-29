@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto"
 	"crypto/elliptic"
-	"crypto/hmac"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -16,88 +14,6 @@ import (
 )
 
 const inProcessSystemName = "opentdf.io/in-process"
-
-// InProcessAESKey implements the trust.ProtectedKey interface with an in-memory secret key
-type InProcessAESKey struct {
-	rawKey []byte
-	logger *slog.Logger
-}
-
-var _ trust.ProtectedKey = (*InProcessAESKey)(nil)
-
-// NewInProcessAESKey creates a new instance of StandardUnwrappedKey
-func NewInProcessAESKey(rawKey []byte) *InProcessAESKey {
-	return &InProcessAESKey{
-		rawKey: rawKey,
-		logger: slog.Default(),
-	}
-}
-
-func (k *InProcessAESKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]byte, error) {
-	aesGcm, err := ocrypto.NewAESGcm(k.rawKey)
-	if err != nil {
-		return nil, err
-	}
-
-	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(iv, body, tagSize)
-	if err != nil {
-		return nil, err
-	}
-
-	return decryptedData, nil
-}
-
-// Export returns the raw key data, optionally encrypting it with the provided trust.Encapsulator
-func (k *InProcessAESKey) Export(encapsulator trust.Encapsulator) ([]byte, error) {
-	if encapsulator == nil {
-		if k.logger != nil {
-			k.logger.Warn("exporting raw key data without encryption")
-		}
-		return k.rawKey, nil
-	}
-
-	// If an encryptor is provided, encrypt the key data before returning
-	encryptedKey, err := encapsulator.Encapsulate(k)
-	if err != nil {
-		if k.logger != nil {
-			k.logger.Warn("failed to encrypt key data for export", slog.Any("err", err))
-		}
-		return nil, err
-	}
-
-	return encryptedKey, nil
-}
-
-// VerifyBinding checks if the policy binding matches the given policy data
-func (k *InProcessAESKey) VerifyBinding(ctx context.Context, policy, policyBinding []byte) error {
-	if len(k.rawKey) == 0 {
-		return errors.New("key data is empty")
-	}
-
-	actualHMAC, err := k.generateHMACDigest(ctx, policy)
-	if err != nil {
-		return fmt.Errorf("unable to generate policy hmac: %w", err)
-	}
-
-	if !hmac.Equal(actualHMAC, policyBinding) {
-		return errors.New("policy hmac mismatch")
-	}
-
-	return nil
-}
-
-// generateHMACDigest is a helper to generate an HMAC digest from a message using the key
-func (k *InProcessAESKey) generateHMACDigest(ctx context.Context, msg []byte) ([]byte, error) {
-	mac := hmac.New(sha256.New, k.rawKey)
-	_, err := mac.Write(msg)
-	if err != nil {
-		if k.logger != nil {
-			k.logger.WarnContext(ctx, "failed to compute hmac")
-		}
-		return nil, errors.New("policy hmac")
-	}
-	return mac.Sum(nil), nil
-}
 
 func convertPEMToJWK(_ string) (string, error) {
 	// Implement the conversion logic here or use an external library if available.
@@ -335,16 +251,13 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 		return nil, err
 	}
 
-	return &InProcessAESKey{
-		rawKey: rawKey,
-		logger: a.logger,
-	}, nil
+	return ocrypto.NewAESProtectedKey(rawKey), nil
 }
 
 // DeriveKey generates a symmetric key for NanoTDF
 func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
 	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(keyDetails.ID()), ephemeralPublicKeyBytes, curve)
-	return NewInProcessAESKey(k), err
+	return ocrypto.NewAESProtectedKey(k), err
 }
 
 // GenerateECSessionKey generates a session key for NanoTDF

@@ -47,27 +47,9 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 					panic(err)
 				}
 
-				switch inputConfig.Mode {
-				case ClaimsMode:
-					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
-					claimsSVC.Tracer = srp.Tracer
-					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
-				case LDAPMode:
-					ldapSVC, ldapHandler := ldapERS.RegisterLDAPERS(srp.Config, srp.Logger)
-					ldapSVC.Tracer = srp.Tracer
-					return EntityResolution{EntityResolutionServiceHandler: ldapSVC}, ldapHandler
-				case SQLMode:
-					sqlSVC, sqlHandler := sqlERS.RegisterSQLERS(srp.Config, srp.Logger)
-					sqlSVC.Tracer = srp.Tracer
-					return EntityResolution{EntityResolutionServiceHandler: sqlSVC}, sqlHandler
-				default:
-					// Default to keycloak ERS
-					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger)
-					kcSVC.Tracer = srp.Tracer
-					return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
-				}
+				// Set up cache if configured
 				var ersCache *cache.Cache
-				// default to no cache if no exipiration is set
+				// default to no cache if no expiration is set
 				if inputConfig.CacheExpiration != "" {
 					exp, err := time.ParseDuration(inputConfig.CacheExpiration)
 					if err != nil {
@@ -83,11 +65,25 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 					}
 				}
 
-				// Default to keycloak ERS
-				kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)
-				kcSVC.Tracer = srp.Tracer
-
-				return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
+				switch inputConfig.Mode {
+				case ClaimsMode:
+					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
+					claimsSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
+				case LDAPMode:
+					ldapSVC, ldapHandler := ldapERS.RegisterLDAPERS(srp.Config, srp.Logger)
+					ldapSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: ldapSVC}, ldapHandler
+				case SQLMode:
+					sqlSVC, sqlHandler := sqlERS.RegisterSQLERS(srp.Config, srp.Logger)
+					sqlSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: sqlSVC}, sqlHandler
+				default:
+					// Default to keycloak ERS with cache support
+					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)
+					kcSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
+				}
 			},
 		},
 	}

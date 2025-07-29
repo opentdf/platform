@@ -870,11 +870,15 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_Returns_Erro
 
 func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_NotActiveKey_Fail() {
 	var kasID string
-	keyIDs := make([]string, 0)
+	keys := make([]*policy.KasKey, 0)
 	defer func() {
-		for _, keyID := range keyIDs {
-			// delete the kas key
-			_, err := s.db.PolicyClient.DeleteKey(s.ctx, keyID)
+		for _, key := range keys {
+			r := &unsafe.UnsafeDeleteKasKeyRequest{
+				Id:     key.GetKey().GetId(),
+				Kid:    key.GetKey().GetKeyId(),
+				KasUri: key.GetKasUri(),
+			}
+			_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, key, r)
 			s.Require().NoError(err)
 		}
 
@@ -913,7 +917,7 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_NotActiveKey
 	toBeRotatedKey, err := s.db.PolicyClient.CreateKey(s.ctx, kasKey)
 	s.Require().NoError(err)
 	s.NotNil(toBeRotatedKey)
-	keyIDs = append(keyIDs, toBeRotatedKey.GetKasKey().GetKey().GetId())
+	keys = append(keys, toBeRotatedKey.GetKasKey())
 
 	// rotate the key
 	newKey := &kasregistry.RotateKeyRequest_NewKey{
@@ -927,7 +931,7 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_NotActiveKey
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, toBeRotatedKey.GetKasKey(), newKey)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
-	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
+	keys = append(keys, rotatedInKey.GetKasKey())
 
 	// Get an attribute value
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")

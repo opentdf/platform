@@ -3,6 +3,7 @@
 ----------------------------------------------------------------
 
 -- name: createObligationByNamespaceId :one
+-- also return namespace and obligation values
 INSERT INTO obligation_definitions (namespace_id, name, metadata)
 VALUES ($1, $2, $3)
 RETURNING id;

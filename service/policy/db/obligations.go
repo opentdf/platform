@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -13,11 +14,15 @@ import (
 /// Obligation Definitions
 ///
 
-func (c PolicyDBClient) CreateObligationByNamespaceID(ctx context.Context, namespaceID, name string, metadata []byte) (*policy.Obligation, error) {
+func (c PolicyDBClient) CreateObligationByNamespaceID(ctx context.Context, namespaceID, name string, metadata *common.MetadataMutable) (*policy.Obligation, error) {
+	metadataJSON, _, err := db.MarshalCreateMetadata(metadata)
+	if err != nil {
+		return nil, err
+	}
 	queryParams := createObligationByNamespaceIdParams{
 		NamespaceID: namespaceID,
 		Name:        name,
-		Metadata:    metadata,
+		Metadata:    metadataJSON,
 	}
 	id, err := c.queries.createObligationByNamespaceId(ctx, queryParams)
 	if err != nil {
@@ -26,14 +31,21 @@ func (c PolicyDBClient) CreateObligationByNamespaceID(ctx context.Context, names
 	return &policy.Obligation{
 		Id:   id,
 		Name: name,
+		Metadata: &common.Metadata{
+			Labels: metadata.GetLabels(),
+		},
 	}, nil
 }
 
-func (c PolicyDBClient) CreateObligationByNamespaceFQN(ctx context.Context, fqn, name string, metadata []byte) (*policy.Obligation, error) {
+func (c PolicyDBClient) CreateObligationByNamespaceFQN(ctx context.Context, fqn, name string, metadata *common.MetadataMutable) (*policy.Obligation, error) {
+	metadataJSON, _, err := db.MarshalCreateMetadata(metadata)
+	if err != nil {
+		return nil, err
+	}
 	queryParams := createObligationByNamespaceFQNParams{
 		Fqn:      fqn,
 		Name:     name,
-		Metadata: metadata,
+		Metadata: metadataJSON,
 	}
 	id, err := c.queries.createObligationByNamespaceFQN(ctx, queryParams)
 	if err != nil {
@@ -42,18 +54,17 @@ func (c PolicyDBClient) CreateObligationByNamespaceFQN(ctx context.Context, fqn,
 	return &policy.Obligation{
 		Id:   id,
 		Name: name,
+		Metadata: &common.Metadata{
+			Labels: metadata.GetLabels(),
+		},
 	}, nil
 }
 
 func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.CreateObligationRequest) (*policy.Obligation, error) {
-	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
-	if err != nil {
-		return nil, err
-	}
 	if r.GetId() != "" {
-		return c.CreateObligationByNamespaceID(ctx, r.GetId(), r.GetName(), metadataJSON)
+		return c.CreateObligationByNamespaceID(ctx, r.GetId(), r.GetName(), r.GetMetadata())
 	}
-	return c.CreateObligationByNamespaceFQN(ctx, r.GetFqn(), r.GetName(), metadataJSON)
+	return c.CreateObligationByNamespaceFQN(ctx, r.GetFqn(), r.GetName(), r.GetMetadata())
 }
 
 func (c PolicyDBClient) GetObligationDefinition(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {

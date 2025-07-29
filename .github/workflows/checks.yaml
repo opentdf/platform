@@ -126,10 +126,10 @@ jobs:
           chmod +x mkcert-v*-linux-amd64
           sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
       - run: |
+          cp opentdf-dev.yaml opentdf.yaml
           .github/scripts/init-temp-keys.sh
           mkcert -install
           mkcert -cert-file ./keys/platform.crt -key-file ./keys/platform-key.pem localhost
-          cp opentdf-dev.yaml opentdf.yaml
           yq eval '.server.tls.enabled = true' -i opentdf.yaml
       - name: Added Trusted Certs
         run: |
@@ -204,12 +204,13 @@ jobs:
           chmod +x mkcert-v*-linux-amd64
           sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
       - run: |
+          cp opentdf-dev.yaml opentdf.yaml
           .github/scripts/init-temp-keys.sh
           mkcert -install
           mkcert -cert-file ./keys/platform.crt -key-file ./keys/platform-key.pem localhost
-          cp opentdf-dev.yaml opentdf.yaml
           yq eval '.server.tls.enabled = true' -i opentdf.yaml
           yq eval '.trace = {"enabled":true}' -i opentdf.yaml
+          yq eval '.services.kas.preview.ec_tdf_enabled = true' -i opentdf.yaml
       - name: Added Trusted Certs
         run: |
           sudo chmod -R 777 ./keys
@@ -231,13 +232,23 @@ jobs:
           wait-for: 90s
       - name: build examples
         run: cd examples && go build -o examples .
-      - name: run bulk rewrap benchmark tests
+      - name: run bulk rewrap benchmark tests (tdf3, rsa)
         run: |
-          OUTPUT=$(./examples/examples benchmark-bulk --tdf tdf3 --count 100)
+          OUTPUT=$(./examples/examples benchmark-bulk --tdf tdf3 --count 100 --wrapper rsa:2048)
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
           {
-            echo "BENCHMARK_BULK_OUTPUT<<EOO";
+            echo "BENCHMARK_BULK_TDF3_RSA_OUTPUT<<EOO";
+            echo "$OUTPUT";
+            echo "EOO"
+          } >> "$GITHUB_ENV"
+      - name: run bulk rewrap benchmark tests (tdf3, ec)
+        run: |
+          OUTPUT=$(./examples/examples benchmark-bulk --tdf tdf3 --count 100 --wrapper ec:secp256r1)
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "BENCHMARK_BULK_TDF3_EC_OUTPUT<<EOO";
             echo "$OUTPUT";
             echo "EOO"
           } >> "$GITHUB_ENV"
@@ -274,7 +285,17 @@ jobs:
           echo "$OUTPUT"
           echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
           {
-            echo "BENCHMARK_TDF3_OUTPUT<<EOO";
+            echo "BENCHMARK_TDF3_RSA_OUTPUT<<EOO";
+            echo "$OUTPUT";
+            echo "EOO"
+          } >> "$GITHUB_ENV"
+      - name: run tdf3 ec benchmark tests
+        run: |
+          OUTPUT=$(./examples/examples benchmark --wrapper=ec:secp256r1 --count=5000 --concurrent=50)
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "BENCHMARK_TDF3_EC_OUTPUT<<EOO";
             echo "$OUTPUT";
             echo "EOO"
           } >> "$GITHUB_ENV"
@@ -318,8 +339,10 @@ jobs:
             h2 "${BENCHMARK_DECISION_OUTPUT}" "Decision Benchmark"
             h2 "${BENCHMARK_DECISION_V2_OUTPUT}" "Decision Benchmark v2"
             h2 "${BENCHMARK_METRICS_OUTPUT}" "Standard Benchmark Metrics"
-            h2 "${BENCHMARK_BULK_OUTPUT}" "Bulk Benchmark"
-            h2 "${BENCHMARK_TDF3_OUTPUT}" "TDF3 Benchmark"
+            h2 "${BENCHMARK_BULK_TDF3_RSA_OUTPUT}" "Bulk TDF3/RSA Benchmark"
+            h2 "${BENCHMARK_BULK_TDF3_EC_OUTPUT}" "Bulk TDF3/EC Benchmark"
+            h2 "${BENCHMARK_TDF3_RSA_OUTPUT}" "TDF3 RSA Benchmark"
+            h2 "${BENCHMARK_TDF3_EC_OUTPUT}" "TDF3 EC Benchmark"
             h2 "${BENCHMARK_NANO_OUTPUT}" "Nano Benchmark"
 
             echo EOO

@@ -94,9 +94,10 @@ services:
       # Query timeouts
       query_timeout: "30s"
       
-    # Single search strategy - simple and predictable
+    # Single search strategy - simple and predictable  
+    # NOTE: Query examples below are database-specific. See database-specific sections for details.
     search:
-      # SQL query to find and enrich user data
+      # PostgreSQL example query with advanced features
       query: |
         SELECT 
           u.email,
@@ -331,6 +332,7 @@ services:
       max_open_conns: 20
       max_idle_conns: 5
     search:
+      # PostgreSQL example - use database-specific examples above for other databases
       query: |
         SELECT u.email, u.department, u.clearance_level, u.cost_center,
                array_agg(g.group_name) as groups,
@@ -361,6 +363,7 @@ services:
       driver: "postgres"
       dsn: "postgres://analytics_user:pass@analytics.corp.com:5432/user_analytics?sslmode=require"
     search:
+      # PostgreSQL example - use database-specific examples above for other databases
       query: |
         SELECT u.email, u.risk_score, u.last_login_location, u.device_trust_level,
                json_build_object(
@@ -460,10 +463,88 @@ This demonstrates how SQL organizational data directly drives fine-grained autho
 
 ## More Information
 
+**Database-Specific Query Examples**:
+
+### PostgreSQL
+```yaml
+search:
+  query: |
+    SELECT 
+      u.email, u.username, u.department, u.clearance_level,
+      array_agg(DISTINCT g.group_name) as groups,
+      array_agg(DISTINCT p.project_code) as authorized_projects,
+      json_build_object(
+        'last_login', u.last_login_at,
+        'account_status', u.account_status
+      ) as metadata
+    FROM users u
+    LEFT JOIN user_groups ug ON u.id = ug.user_id
+    LEFT JOIN groups g ON ug.group_id = g.id
+    LEFT JOIN user_projects up ON u.id = up.user_id
+    LEFT JOIN projects p ON up.project_id = p.id
+    WHERE u.email = $1 AND u.active = true
+    GROUP BY u.id, u.email, u.username, u.department, u.clearance_level
+```
+
+### MySQL
+```yaml
+search:
+  query: |
+    SELECT 
+      u.email, u.username, u.department, u.clearance_level,
+      GROUP_CONCAT(DISTINCT g.group_name) as groups,
+      GROUP_CONCAT(DISTINCT p.project_code) as authorized_projects,
+      JSON_OBJECT(
+        'last_login', u.last_login_at,
+        'account_status', u.account_status
+      ) as metadata
+    FROM users u
+    LEFT JOIN user_groups ug ON u.id = ug.user_id
+    LEFT JOIN groups g ON ug.group_id = g.id
+    LEFT JOIN user_projects up ON u.id = up.user_id
+    LEFT JOIN projects p ON up.project_id = p.id
+    WHERE u.email = ? AND u.active = true
+    GROUP BY u.id, u.email, u.username, u.department, u.clearance_level
+```
+
+### SQLite
+```yaml
+search:
+  query: |
+    SELECT 
+      u.email, u.username, u.department, u.clearance_level,
+      GROUP_CONCAT(DISTINCT g.group_name) as groups,
+      GROUP_CONCAT(DISTINCT p.project_code) as authorized_projects,
+      json_object(
+        'last_login', u.last_login_at,
+        'account_status', u.account_status
+      ) as metadata
+    FROM users u
+    LEFT JOIN user_groups ug ON u.id = ug.user_id
+    LEFT JOIN groups g ON ug.group_id = g.id
+    LEFT JOIN user_projects up ON u.id = up.user_id
+    LEFT JOIN projects p ON up.project_id = p.id
+    WHERE u.email = ? AND u.active = true
+    GROUP BY u.id, u.email, u.username, u.department, u.clearance_level
+```
+
+### Portable Query (Basic)
+For maximum compatibility across databases, use simpler queries without aggregations:
+```yaml
+search:
+  query: |
+    SELECT 
+      u.email, u.username, u.department, u.clearance_level,
+      u.cost_center, u.manager_email, u.employee_type,
+      u.last_login_at, u.account_status, u.hire_date
+    FROM users u
+    WHERE u.email = ? AND u.active = true
+```
+
 **Database-Specific Considerations**:
-- **PostgreSQL**: Full JSON support, array aggregations, advanced indexing (GIN, GiST)
-- **MySQL**: JSON functions, GROUP_CONCAT for arrays, InnoDB optimizations
-- **SQLite**: Embedded scenarios, JSON1 extension, simpler deployment models
+- **PostgreSQL**: Full JSON support, array aggregations, `$1` parameters, advanced indexing (GIN, GiST)
+- **MySQL**: `JSON_OBJECT()`, `GROUP_CONCAT()`, `?` parameters, InnoDB optimizations
+- **SQLite**: `json_object()`, `GROUP_CONCAT()`, `?` parameters, JSON1 extension, simpler deployment
 - **Data Warehouses**: BigQuery, Snowflake, Redshift compatibility for analytics use cases
 
 **Authorization Policy Examples**:

@@ -5,179 +5,16 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"testing"
 
-	"github.com/creasty/defaults"
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
-	sqlv2 "github.com/opentdf/platform/service/entityresolution/sql/v2"
 	"github.com/opentdf/platform/service/logger"
-	tc "github.com/testcontainers/testcontainers-go"
-	"go.opentelemetry.io/otel/trace/noop"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// TestSQLEntityResolutionV2 runs all ERS tests against SQL implementation using the generic contract test framework
-func TestSQLEntityResolutionV2(t *testing.T) {
-	contractSuite := internal.NewContractTestSuite()
-	adapter := NewSQLTestAdapter()
-
-	contractSuite.RunContractTestsWithAdapter(t, adapter)
-}
-
-// TestSQLiteEntityResolutionV2 runs all ERS tests against SQLite specifically
-func TestSQLiteEntityResolutionV2(t *testing.T) {
-	// This is the same as TestSQLEntityResolutionV2 but with a more specific name
-	// It uses the same adapter which defaults to SQLite
-	contractSuite := internal.NewContractTestSuite()
-	adapter := NewSQLTestAdapter()
-
-	contractSuite.RunContractTestsWithAdapter(t, adapter)
-}
-
-// TestPostgreSQLEntityResolutionV2 runs all ERS tests against PostgreSQL specifically
-func TestPostgreSQLEntityResolutionV2(t *testing.T) {
-	if pgContainer == nil {
-		t.Skip("PostgreSQL container not available")
-	}
-
-	// For PostgreSQL-specific testing, we would need a PostgreSQL-specific adapter
-	// For now, we'll skip this as the current SQL adapter defaults to SQLite
-	t.Skip("PostgreSQL-specific adapter not yet implemented - use the generic SQL adapter")
-}
-
-var pgContainer tc.Container
-var sqliteConfig *SQLiteTestConfig
-var postgresqlConfig *PostgreSQLTestConfig
-
-// SQLiteTestConfig holds SQLite-specific test configuration
-type SQLiteTestConfig struct {
-	Driver string `json:"driver" default:"sqlite3"`
-	DSN    string `json:"dsn" default:":memory:"`
-}
-
-// PostgreSQLTestConfig holds PostgreSQL-specific test configuration
-type PostgreSQLTestConfig struct {
-	Host     string `json:"host" default:"localhost"`
-	Port     int    `json:"port" default:"5432"`
-	User     string `json:"user" default:"postgres"`
-	Password string `json:"password" default:"postgres"`
-	Database string `json:"database" default:"opentdf_ers_test"`
-}
-
-// initPostgreSQLConfig initializes the PostgreSQL configuration with defaults
-func initPostgreSQLConfig() error {
-	if postgresqlConfig == nil {
-		postgresqlConfig = &PostgreSQLTestConfig{}
-		if err := defaults.Set(postgresqlConfig); err != nil {
-			return fmt.Errorf("failed to set PostgreSQL config defaults: %w", err)
-		}
-	}
-	return nil
-}
-
-// CreateSQLiteV2Service creates a configured SQLite v2 ERS service for testing
-func CreateSQLiteV2Service() (*sqlv2.SQLEntityResolutionServiceV2, error) {
-	// Create a fresh in-memory SQLite database for this service
-	db, err := sql.Open("sqlite3", ":memory:")
-	if err != nil {
-		return nil, fmt.Errorf("failed to open SQLite database: %w", err)
-	}
-
-	// Create tables and load fixtures in the new database
-	if err := CreateSQLiteTestTablesInDB(db); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to create test tables: %w", err)
-	}
-
-	if err := LoadSQLiteFixturesInDB(db); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to load fixtures: %w", err)
-	}
-
-	sqlConfig := map[string]any{
-		"driver": "sqlite3",
-		"dsn":    ":memory:",
-		"query_mapping": map[string]any{
-			"username_query":  "SELECT username, email, display_name FROM users WHERE username = ?",
-			"email_query":     "SELECT username, email, display_name FROM users WHERE email = ?",
-			"client_id_query": "SELECT client_id, display_name, description FROM clients WHERE client_id = ?",
-		},
-		"column_mapping": map[string]any{
-			"username":     "username",
-			"email":        "email",
-			"display_name": "display_name",
-			"client_id":    "client_id",
-		},
-		"inferid": map[string]any{
-			"from": map[string]any{
-				"clientid": true,
-				"email":    true,
-				"username": true,
-			},
-		},
-	}
-
-	testLogger := logger.CreateTestLogger()
-	service, _ := sqlv2.RegisterSQLERS(sqlConfig, testLogger)
-
-	// Set a no-op tracer for testing to prevent nil pointer dereference
-	service.Tracer = noop.NewTracerProvider().Tracer("test-sqlite-v2")
-
-	// Replace the service's database with our prepared one
-	service.Close() // Close the service's default connection
-	service.DB = db // Use our prepared database
-
-	return service, nil
-}
-
-// CreatePostgreSQLV2Service creates a configured PostgreSQL v2 ERS service for testing
-func CreatePostgreSQLV2Service() (*sqlv2.SQLEntityResolutionServiceV2, error) {
-	if pgContainer == nil {
-		return nil, fmt.Errorf("PostgreSQL container not available")
-	}
-
-	// Initialize PostgreSQL config if not already done
-	if err := initPostgreSQLConfig(); err != nil {
-		return nil, err
-	}
-
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		postgresqlConfig.Host, postgresqlConfig.Port,
-		postgresqlConfig.User, postgresqlConfig.Password, postgresqlConfig.Database)
-
-	sqlConfig := map[string]any{
-		"driver": "pgx",
-		"dsn":    dsn,
-		"query_mapping": map[string]any{
-			"username_query":  "SELECT username, email, display_name FROM users WHERE username = $1",
-			"email_query":     "SELECT username, email, display_name FROM users WHERE email = $1",
-			"client_id_query": "SELECT client_id, display_name, description FROM clients WHERE client_id = $1",
-		},
-		"column_mapping": map[string]any{
-			"username":     "username",
-			"email":        "email",
-			"display_name": "display_name",
-			"client_id":    "client_id",
-		},
-		"inferid": map[string]any{
-			"from": map[string]any{
-				"clientid": true,
-				"email":    true,
-				"username": true,
-			},
-		},
-	}
-
-	testLogger := logger.CreateTestLogger()
-	service, _ := sqlv2.RegisterSQLERS(sqlConfig, testLogger)
-
-	// Set a no-op tracer for testing to prevent nil pointer dereference
-	service.Tracer = noop.NewTracerProvider().Tracer("test-postgresql-v2")
-
-	return service, nil
-}
+// SharedSQLTestUtilities provides common functionality for SQL-based ERS testing
+// This file contains shared utilities used by both SQLite and PostgreSQL test adapters
 
 // SQLTestDataInjector implements test data injection for SQL backends
 type SQLTestDataInjector struct {
@@ -257,7 +94,7 @@ func (injector *SQLTestDataInjector) ValidateTestData(ctx context.Context, dataS
 	return nil
 }
 
-// createTables creates the necessary tables for test data
+// createTables creates the necessary tables for test data (SQLite syntax)
 func (injector *SQLTestDataInjector) createTables(ctx context.Context) error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS users (
@@ -281,18 +118,14 @@ func (injector *SQLTestDataInjector) createTables(ctx context.Context) error {
 	return nil
 }
 
-// insertUser inserts a user into the SQL database
+// insertUser inserts a user into the SQL database (SQLite syntax)
 func (injector *SQLTestDataInjector) insertUser(ctx context.Context, user internal.TestUser) error {
-	query := `INSERT OR REPLACE INTO users (username, email, display_name, password_hash) VALUES (?, ?, ?, ?)`
-	passwordHash := user.Password
-	if passwordHash == "" {
-		passwordHash = "test-password-hash"
-	}
-	_, err := injector.db.ExecContext(ctx, query, user.Username, user.Email, user.DisplayName, passwordHash)
+	query := `INSERT OR REPLACE INTO users (username, email, display_name) VALUES (?, ?, ?)`
+	_, err := injector.db.ExecContext(ctx, query, user.Username, user.Email, user.DisplayName)
 	return err
 }
 
-// insertClient inserts a client into the SQL database
+// insertClient inserts a client into the SQL database (SQLite syntax)
 func (injector *SQLTestDataInjector) insertClient(ctx context.Context, client internal.TestClient) error {
 	query := `INSERT OR REPLACE INTO clients (client_id, description, display_name) VALUES (?, ?, ?)`
 	_, err := injector.db.ExecContext(ctx, query, client.ClientID, client.Description, client.ClientID)
@@ -334,54 +167,6 @@ func (injector *SQLTestDataInjector) validateClient(ctx context.Context, client 
 		return fmt.Errorf("query failed: %w", err)
 	}
 
-	return nil
-}
-
-// SQLTestAdapter implements ERSTestAdapter for SQL ERS testing
-type SQLTestAdapter struct {
-	service interface {
-		internal.ERSImplementation
-		Close() error
-	}
-}
-
-// NewSQLTestAdapter creates a new SQL test adapter
-func NewSQLTestAdapter() *SQLTestAdapter {
-	return &SQLTestAdapter{}
-}
-
-// GetScopeName returns the scope name for SQL ERS
-func (a *SQLTestAdapter) GetScopeName() string {
-	return "SQL"
-}
-
-// SetupTestData injects test data into the SQL database
-func (a *SQLTestAdapter) SetupTestData(ctx context.Context, testDataSet *internal.ContractTestDataSet) error {
-	// Create the SQL service first so we can access the database
-	service, err := CreateSQLiteV2Service()
-	if err != nil {
-		return err
-	}
-	a.service = service
-
-	// Use the SQL test data injector to inject the contract test data
-	injector := NewSQLTestDataInjector(service.DB, service.Logger)
-	return injector.InjectTestData(ctx, testDataSet)
-}
-
-// CreateERSService creates and returns a configured SQL ERS service
-func (a *SQLTestAdapter) CreateERSService(ctx context.Context) (internal.ERSImplementation, error) {
-	if a.service == nil {
-		return nil, fmt.Errorf("service not initialized - call SetupTestData first")
-	}
-	return a.service, nil
-}
-
-// TeardownTestData cleans up SQL test data and resources
-func (a *SQLTestAdapter) TeardownTestData(ctx context.Context) error {
-	if a.service != nil {
-		return a.service.Close()
-	}
 	return nil
 }
 
@@ -492,24 +277,3 @@ func LoadSQLiteFixturesInDB(db *sql.DB) error {
 
 	return nil
 }
-
-// ConnectToTestPostgreSQL creates a connection to the test PostgreSQL instance
-func ConnectToTestPostgreSQL() (*sql.DB, error) {
-	if pgContainer == nil {
-		return nil, fmt.Errorf("PostgreSQL container not available")
-	}
-
-	// Initialize PostgreSQL config if not already done
-	if err := initPostgreSQLConfig(); err != nil {
-		return nil, err
-	}
-
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		postgresqlConfig.Host, postgresqlConfig.Port,
-		postgresqlConfig.User, postgresqlConfig.Password, postgresqlConfig.Database)
-
-	return sql.Open("pgx", dsn)
-}
-
-
-

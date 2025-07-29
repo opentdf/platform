@@ -394,9 +394,20 @@ func (suite *ContractTestSuite) runSingleContractTest(t *testing.T, implementati
 					assert.GreaterOrEqual(t, len(propMap), validationRule.MinFieldCount, "Insufficient number of fields in additional properties")
 				}
 
-				// Check required fields
+				// Check required fields - with support for alternative field names
 				for fieldName, expectedValue := range validationRule.RequiredFields {
 					actualValue, exists := propMap[fieldName]
+					
+					// Handle alternative field names for cross-implementation compatibility
+					if !exists && fieldName == "client_id" {
+						// Try camelCase version for Keycloak compatibility
+						actualValue, exists = propMap["clientId"]
+					}
+					
+					if !exists {
+						// Debug: print all available fields when a required field is missing
+						t.Logf("DEBUG: Required field '%s' missing. Available fields: %v", fieldName, propMap)
+					}
 					assert.True(t, exists, "Required field %s is missing", fieldName)
 					
 					// For flexible validation, we only check if the expected value is non-nil

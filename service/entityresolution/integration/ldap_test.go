@@ -381,6 +381,33 @@ func initLDAPConfig() error {
 	return nil
 }
 
+// createLDAPContainerConfig returns an LDAP container configuration
+func createLDAPContainerConfig(config *LDAPTestConfig) internal.ContainerConfig {
+	return internal.ContainerConfig{
+		Image:        "osixia/openldap:1.5.0",
+		ExposedPorts: []string{"389/tcp", "636/tcp"},
+		Env: map[string]string{
+			"LDAP_ORGANISATION":              config.Organization,
+			"LDAP_DOMAIN":                    config.Domain,
+			"LDAP_ADMIN_PASSWORD":            config.AdminPassword,
+			"LDAP_CONFIG_PASSWORD":           config.ConfigPassword,
+			"LDAP_READONLY_USER":             "true",
+			"LDAP_READONLY_USER_USERNAME":    config.ReadOnlyUser,
+			"LDAP_READONLY_USER_PASSWORD":    config.ReadOnlyPassword,
+			"LDAP_RFC2307BIS_SCHEMA":         "false",
+			"LDAP_BACKEND":                   "mdb",
+			"LDAP_TLS":                       "true",
+			"LDAP_TLS_ENFORCE":               "false",
+			"LDAP_TLS_VERIFY_CLIENT":         "never",
+			"KEEP_EXISTING_CONFIG":           "false",
+			"LDAP_REMOVE_CONFIG_AFTER_SETUP": "true",
+			"LDAP_SSL_HELPER_PREFIX":         "ldap",
+		},
+		WaitStrategy: wait.ForLog("slapd starting").WithStartupTimeout(60 * time.Second),
+		Timeout: 3 * time.Minute,
+	}
+}
+
 // setupLDAP sets up the LDAP container for testing
 func setupLDAP(ctx context.Context, providerType tc.ProviderType) error {
 	// Initialize LDAP config
@@ -390,12 +417,14 @@ func setupLDAP(ctx context.Context, providerType tc.ProviderType) error {
 
 	slog.Info("📀 starting OpenLDAP container")
 
+	containerConfig := createLDAPContainerConfig(ldapConfig)
+
 	req := tc.GenericContainerRequest{
 		ProviderType: providerType,
 		ContainerRequest: tc.ContainerRequest{
-			Image:        "osixia/openldap:1.5.0",
+			Image:        containerConfig.Image,
 			Name:         "testcontainer-openldap",
-			ExposedPorts: []string{"389/tcp", "636/tcp"},
+			ExposedPorts: containerConfig.ExposedPorts,
 			HostConfigModifier: func(config *container.HostConfig) {
 				config.PortBindings = nat.PortMap{
 					"389/tcp": []nat.PortBinding{
@@ -412,24 +441,8 @@ func setupLDAP(ctx context.Context, providerType tc.ProviderType) error {
 					},
 				}
 			},
-			Env: map[string]string{
-				"LDAP_ORGANISATION":              ldapConfig.Organization,
-				"LDAP_DOMAIN":                    ldapConfig.Domain,
-				"LDAP_ADMIN_PASSWORD":            ldapConfig.AdminPassword,
-				"LDAP_CONFIG_PASSWORD":           ldapConfig.ConfigPassword,
-				"LDAP_READONLY_USER":             "true",
-				"LDAP_READONLY_USER_USERNAME":    ldapConfig.ReadOnlyUser,
-				"LDAP_READONLY_USER_PASSWORD":    ldapConfig.ReadOnlyPassword,
-				"LDAP_RFC2307BIS_SCHEMA":         "false",
-				"LDAP_BACKEND":                   "mdb",
-				"LDAP_TLS":                       "true",
-				"LDAP_TLS_ENFORCE":               "false",
-				"LDAP_TLS_VERIFY_CLIENT":         "never",
-				"KEEP_EXISTING_CONFIG":           "false",
-				"LDAP_REMOVE_CONFIG_AFTER_SETUP": "true",
-				"LDAP_SSL_HELPER_PREFIX":         "ldap",
-			},
-			WaitingFor: wait.ForLog("slapd starting").WithStartupTimeout(60 * time.Second),
+			Env:        containerConfig.Env,
+			WaitingFor: containerConfig.WaitStrategy,
 		},
 		Started: true,
 	}

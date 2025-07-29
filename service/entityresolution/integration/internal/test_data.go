@@ -123,18 +123,21 @@ func NewContractTestDataSet() *ContractTestDataSet {
 				Username:    "alice",
 				Email:       "alice@opentdf.test",
 				DisplayName: "Alice Smith",
+				Password:    "password123", // Add password for Keycloak
 				Groups:      []string{"users", "admins"},
 			},
 			{
 				Username:    "bob",
 				Email:       "bob@opentdf.test",
 				DisplayName: "Bob Johnson",
+				Password:    "password456", // Add password for Keycloak
 				Groups:      []string{"users"},
 			},
 			{
 				Username:    "charlie",
 				Email:       "charlie@opentdf.test",
 				DisplayName: "Charlie Brown",
+				Password:    "password789", // Add password for Keycloak
 				Groups:      []string{"users", "developers"},
 			},
 		},

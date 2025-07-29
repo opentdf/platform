@@ -13,8 +13,6 @@ var (
 	ErrEmptyKeyData = errors.New("key data is empty")
 	// ErrPolicyHMACMismatch is returned when policy binding verification fails
 	ErrPolicyHMACMismatch = errors.New("policy hmac mismatch")
-	// ErrHMACGeneration is returned when HMAC digest generation fails
-	ErrHMACGeneration = errors.New("failed to generate hmac digest")
 )
 
 // AESProtectedKey implements the ProtectedKey interface with an in-memory secret key
@@ -27,7 +25,7 @@ var _ ProtectedKey = (*AESProtectedKey)(nil)
 // NewAESProtectedKey creates a new instance of AESProtectedKey
 func NewAESProtectedKey(rawKey []byte) *AESProtectedKey {
 	return &AESProtectedKey{
-		rawKey: rawKey,
+		rawKey: append([]byte{}, rawKey...),
 	}
 }
 
@@ -51,7 +49,7 @@ func (k *AESProtectedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]
 func (k *AESProtectedKey) Export(encapsulator Encapsulator) ([]byte, error) {
 	if encapsulator == nil {
 		// Return raw key data without encryption - caller should be aware of this
-		return k.rawKey, nil
+		return append([]byte{}, k.rawKey...), nil
 	}
 
 	// Encrypt the key data before returning
@@ -70,10 +68,7 @@ func (k *AESProtectedKey) VerifyBinding(ctx context.Context, policy, policyBindi
 		return ErrEmptyKeyData
 	}
 
-	actualHMAC, err := k.generateHMACDigest(ctx, policy)
-	if err != nil {
-		return fmt.Errorf("unable to generate policy hmac: %w", err)
-	}
+	actualHMAC := k.generateHMACDigest(policy)
 
 	if !hmac.Equal(actualHMAC, policyBinding) {
 		return ErrPolicyHMACMismatch
@@ -83,11 +78,8 @@ func (k *AESProtectedKey) VerifyBinding(ctx context.Context, policy, policyBindi
 }
 
 // generateHMACDigest is a helper to generate an HMAC digest from a message using the key
-func (k *AESProtectedKey) generateHMACDigest(ctx context.Context, msg []byte) ([]byte, error) {
+func (k *AESProtectedKey) generateHMACDigest(msg []byte) []byte {
 	mac := hmac.New(sha256.New, k.rawKey)
-	_, err := mac.Write(msg)
-	if err != nil {
-		return nil, ErrHMACGeneration
-	}
-	return mac.Sum(nil), nil
+	mac.Write(msg)
+	return mac.Sum(nil)
 }

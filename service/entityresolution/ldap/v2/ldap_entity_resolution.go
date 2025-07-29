@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"log"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -114,7 +115,8 @@ type LDAPConnector struct {
 func RegisterLDAPERS(config config.ServiceConfig, logger *logger.Logger) (*LDAPEntityResolutionServiceV2, serviceregistry.HandlerServer) {
 	var ldapConfig LDAPConfig
 	if err := mapstructure.Decode(config, &ldapConfig); err != nil {
-		panic(fmt.Errorf("failed to decode LDAP configuration: %w", err))
+		logger.Error("Failed to decode LDAP configuration", slog.Any("error", err))
+		log.Fatalf("Failed to decode LDAP configuration: %v", err)
 	}
 
 	// Set defaults using creasty/defaults

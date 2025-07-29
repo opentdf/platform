@@ -166,11 +166,12 @@ func (as *Service) GetDecision(ctx context.Context, req *connect.Request[authzV2
 	propagator := otel.GetTextMapPropagator()
 	ctx = propagator.Extract(ctx, propagation.HeaderCarrier(req.Header()))
 
-	pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
-	if err != nil {
-		as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.Any("error", err))
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
+	// pdp, err := access.NewJustInTimePDP(ctx, as.logger, as.sdk, as.cache)
+	// if err != nil {
+	// 	as.logger.ErrorContext(ctx, "failed to create JIT PDP", slog.Any("error", err))
+	// 	return nil, connect.NewError(connect.CodeInternal, err)
+	// }
+	pdp := access.NewSaasPDP()
 
 	request := req.Msg
 	entityIdentifier := request.GetEntityIdentifier()

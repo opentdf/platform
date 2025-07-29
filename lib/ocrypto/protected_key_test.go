@@ -55,7 +55,7 @@ func TestAESProtectedKey_DecryptAESGCM_InvalidKey(t *testing.T) {
 	ciphertext := make([]byte, 16)
 
 	_, err := protectedKey.DecryptAESGCM(iv, ciphertext, 16)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to create AES-GCM cipher")
 }
 
@@ -97,7 +97,7 @@ func TestAESProtectedKey_Export_WithEncapsulator(t *testing.T) {
 
 	// Verify it was encrypted (should be different from original)
 	assert.NotEqual(t, key, exported)
-	assert.Equal(t, len(key), len(exported))
+	assert.Len(t, exported, len(key))
 
 	// Verify we can decrypt it back
 	for i, b := range exported {
@@ -117,7 +117,7 @@ func TestAESProtectedKey_Export_EncapsulatorError(t *testing.T) {
 	}
 
 	_, err := protectedKey.Export(mockEncapsulator)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to encrypt key data for export")
 }
 
@@ -145,7 +145,7 @@ func TestAESProtectedKey_VerifyBinding_Mismatch(t *testing.T) {
 	ctx := context.Background()
 
 	err := protectedKey.VerifyBinding(ctx, policy, wrongBinding)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, ErrPolicyHMACMismatch, err)
 }
 
@@ -157,7 +157,7 @@ func TestAESProtectedKey_VerifyBinding_EmptyKey(t *testing.T) {
 	ctx := context.Background()
 
 	err := protectedKey.VerifyBinding(ctx, policy, binding)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, ErrEmptyKeyData, err)
 }
 
@@ -174,7 +174,7 @@ func TestAESProtectedKey_VerifyBinding_DifferentPolicyData(t *testing.T) {
 	// Try to verify with different policy data
 	policy2 := []byte("policy-data-2")
 	err := protectedKey.VerifyBinding(ctx, policy2, hmac1)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, ErrPolicyHMACMismatch, err)
 }
 
@@ -183,7 +183,7 @@ func TestAESProtectedKey_InterfaceCompliance(t *testing.T) {
 	protectedKey := NewAESProtectedKey(key)
 
 	// Ensure it implements the ProtectedKey interface
-	var _ ProtectedKey = protectedKey
+	assert.Implements(t, (*ProtectedKey)(nil), protectedKey)
 }
 
 // Mock encapsulator for testing

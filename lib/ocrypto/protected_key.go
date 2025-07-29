@@ -18,25 +18,35 @@ var (
 // AESProtectedKey implements the ProtectedKey interface with an in-memory secret key
 type AESProtectedKey struct {
 	rawKey []byte
+	aesGcm AesGcm
 }
 
 var _ ProtectedKey = (*AESProtectedKey)(nil)
 
 // NewAESProtectedKey creates a new instance of AESProtectedKey
-func NewAESProtectedKey(rawKey []byte) *AESProtectedKey {
-	return &AESProtectedKey{
-		rawKey: append([]byte{}, rawKey...),
+func NewAESProtectedKey(rawKey []byte) (*AESProtectedKey, error) {
+	if len(rawKey) == 0 {
+		return nil, ErrEmptyKeyData
 	}
+	// Create a defensive copy of the key
+	keyCopy := append([]byte{}, rawKey...)
+
+	// Pre-initialize the AES-GCM cipher for performance
+	aesGcm, err := NewAESGcm(keyCopy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize AES-GCM cipher: %w", err)
+	}
+
+	return &AESProtectedKey{
+		rawKey: keyCopy,
+		aesGcm: aesGcm,
+	}, nil
 }
 
 // DecryptAESGCM decrypts data using AES-GCM with the protected key
 func (k *AESProtectedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]byte, error) {
-	aesGcm, err := NewAESGcm(k.rawKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create AES-GCM cipher: %w", err)
-	}
-
-	decryptedData, err := aesGcm.DecryptWithIVAndTagSize(iv, body, tagSize)
+	// Use the pre-initialized AES-GCM cipher for better performance
+	decryptedData, err := k.aesGcm.DecryptWithIVAndTagSize(iv, body, tagSize)
 	if err != nil {
 		return nil, fmt.Errorf("AES-GCM decryption failed: %w", err)
 	}
@@ -62,10 +72,6 @@ func (k *AESProtectedKey) Export(encapsulator Encapsulator) ([]byte, error) {
 
 // VerifyBinding checks if the policy binding matches the given policy data
 func (k *AESProtectedKey) VerifyBinding(_ context.Context, policy, policyBinding []byte) error {
-	if len(k.rawKey) == 0 {
-		return ErrEmptyKeyData
-	}
-
 	actualHMAC := k.generateHMACDigest(policy)
 
 	if !hmac.Equal(actualHMAC, policyBinding) {

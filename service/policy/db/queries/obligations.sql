@@ -2,9 +2,16 @@
 -- OBLIGATIONS
 ----------------------------------------------------------------
 
--- name: createObligationDefinition :one
+-- name: createObligationByNamespaceId :one
 INSERT INTO obligation_definitions (namespace_id, name, metadata)
 VALUES ($1, $2, $3)
+RETURNING id;
+
+-- name: createObligationByNamespaceFQN :one
+INSERT INTO obligation_definitions (namespace_id, name, metadata)
+SELECT fqns.namespace_id, $2, $3
+FROM attribute_fqns fqns
+WHERE fqns.fqn = $1
 RETURNING id;
 
 -- name: getObligationDefinition :one

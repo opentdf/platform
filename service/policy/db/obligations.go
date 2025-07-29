@@ -13,27 +13,47 @@ import (
 /// Obligation Definitions
 ///
 
-func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.CreateObligationRequest) (*policy.Obligation, error) {
-	if r.GetFqn() != "" {
-		return nil, errors.New("namespace identifier by FQN is not supported yet")
+func (c PolicyDBClient) CreateObligationByNamespaceID(ctx context.Context, namespaceID, name string, metadata []byte) (*policy.Obligation, error) {
+	queryParams := createObligationByNamespaceIdParams{
+		NamespaceID: namespaceID,
+		Name:        name,
+		Metadata:    metadata,
 	}
-	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
-	if err != nil {
-		return nil, err
-	}
-	queryParams := createObligationDefinitionParams{
-		NamespaceID: r.GetId(),
-		Name:        r.GetName(),
-		Metadata:    metadataJSON,
-	}
-	id, err := c.queries.createObligationDefinition(ctx, queryParams)
+	id, err := c.queries.createObligationByNamespaceId(ctx, queryParams)
 	if err != nil {
 		return nil, err
 	}
 	return &policy.Obligation{
 		Id:   id,
-		Name: r.GetName(),
+		Name: name,
 	}, nil
+}
+
+func (c PolicyDBClient) CreateObligationByNamespaceFQN(ctx context.Context, fqn, name string, metadata []byte) (*policy.Obligation, error) {
+	queryParams := createObligationByNamespaceFQNParams{
+		Fqn:      fqn,
+		Name:     name,
+		Metadata: metadata,
+	}
+	id, err := c.queries.createObligationByNamespaceFQN(ctx, queryParams)
+	if err != nil {
+		return nil, err
+	}
+	return &policy.Obligation{
+		Id:   id,
+		Name: name,
+	}, nil
+}
+
+func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.CreateObligationRequest) (*policy.Obligation, error) {
+	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
+	if err != nil {
+		return nil, err
+	}
+	if r.GetId() != "" {
+		return c.CreateObligationByNamespaceID(ctx, r.GetId(), r.GetName(), metadataJSON)
+	}
+	return c.CreateObligationByNamespaceFQN(ctx, r.GetFqn(), r.GetName(), metadataJSON)
 }
 
 func (c PolicyDBClient) GetObligationDefinition(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {

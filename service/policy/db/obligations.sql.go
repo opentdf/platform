@@ -11,14 +11,42 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createObligationDefinition = `-- name: createObligationDefinition :one
+const createObligationByNamespaceFQN = `-- name: createObligationByNamespaceFQN :one
+INSERT INTO obligation_definitions (namespace_id, name, metadata)
+SELECT fqns.namespace_id, $2, $3
+FROM attribute_fqns fqns
+WHERE fqns.fqn = $1
+RETURNING id
+`
+
+type createObligationByNamespaceFQNParams struct {
+	Fqn      string `json:"fqn"`
+	Name     string `json:"name"`
+	Metadata []byte `json:"metadata"`
+}
+
+// createObligationByNamespaceFQN
+//
+//	INSERT INTO obligation_definitions (namespace_id, name, metadata)
+//	SELECT fqns.namespace_id, $2, $3
+//	FROM attribute_fqns fqns
+//	WHERE fqns.fqn = $1
+//	RETURNING id
+func (q *Queries) createObligationByNamespaceFQN(ctx context.Context, arg createObligationByNamespaceFQNParams) (string, error) {
+	row := q.db.QueryRow(ctx, createObligationByNamespaceFQN, arg.Fqn, arg.Name, arg.Metadata)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const createObligationByNamespaceId = `-- name: createObligationByNamespaceId :one
 
 INSERT INTO obligation_definitions (namespace_id, name, metadata)
 VALUES ($1, $2, $3)
 RETURNING id
 `
 
-type createObligationDefinitionParams struct {
+type createObligationByNamespaceIdParams struct {
 	NamespaceID string `json:"namespace_id"`
 	Name        string `json:"name"`
 	Metadata    []byte `json:"metadata"`
@@ -31,8 +59,8 @@ type createObligationDefinitionParams struct {
 //	INSERT INTO obligation_definitions (namespace_id, name, metadata)
 //	VALUES ($1, $2, $3)
 //	RETURNING id
-func (q *Queries) createObligationDefinition(ctx context.Context, arg createObligationDefinitionParams) (string, error) {
-	row := q.db.QueryRow(ctx, createObligationDefinition, arg.NamespaceID, arg.Name, arg.Metadata)
+func (q *Queries) createObligationByNamespaceId(ctx context.Context, arg createObligationByNamespaceIdParams) (string, error) {
+	row := q.db.QueryRow(ctx, createObligationByNamespaceId, arg.NamespaceID, arg.Name, arg.Metadata)
 	var id string
 	err := row.Scan(&id)
 	return id, err

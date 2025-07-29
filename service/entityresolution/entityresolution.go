@@ -2,6 +2,7 @@
 package entityresolution
 
 import (
+	"log"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -44,7 +45,8 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 				var inputConfig ERSConfig
 
 				if err := mapstructure.Decode(srp.Config, &inputConfig); err != nil {
-					panic(err)
+					srp.Logger.Error("Failed to decode entity resolution configuration", "error", err)
+					log.Fatalf("Failed to decode entity resolution configuration: %v", err)
 				}
 
 				// Set up cache if configured
@@ -54,14 +56,14 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 					exp, err := time.ParseDuration(inputConfig.CacheExpiration)
 					if err != nil {
 						srp.Logger.Error("Failed to parse cache expiration duration", "error", err)
-						panic(err)
+						log.Fatalf("Invalid cache expiration duration '%s': %v", inputConfig.CacheExpiration, err)
 					}
 					ersCache, err = srp.NewCacheClient(cache.Options{
 						Expiration: exp,
 					})
 					if err != nil {
 						srp.Logger.Error("Failed to create cache for Entity Resolution Service", "error", err)
-						panic(err)
+						log.Fatalf("Failed to create cache client for Entity Resolution Service: %v", err)
 					}
 				}
 

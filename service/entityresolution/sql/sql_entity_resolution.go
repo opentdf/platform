@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"log/slog"
 	"strconv"
 	"time"
@@ -128,7 +129,8 @@ type EntityImpliedFrom struct {
 func RegisterSQLERS(config config.ServiceConfig, logger *logger.Logger) (*SQLEntityResolutionService, serviceregistry.HandlerServer) {
 	var sqlConfig SQLConfig
 	if err := mapstructure.Decode(config, &sqlConfig); err != nil {
-		panic(fmt.Errorf("failed to decode SQL configuration: %w", err))
+		logger.Error("Failed to decode SQL configuration", slog.Any("error", err))
+		log.Fatalf("Failed to decode SQL configuration: %v", err)
 	}
 
 	// Set defaults using creasty/defaults
@@ -170,7 +172,8 @@ func RegisterSQLERS(config config.ServiceConfig, logger *logger.Logger) (*SQLEnt
 
 	// Validate driver
 	if sqlConfig.Driver == "" {
-		panic(fmt.Errorf("SQL driver not specified"))
+		logger.Error("SQL driver not specified in configuration")
+		log.Fatalf("SQL driver not specified in configuration")
 	}
 
 	// Build DSN if not provided
@@ -183,7 +186,8 @@ func RegisterSQLERS(config config.ServiceConfig, logger *logger.Logger) (*SQLEnt
 	// Initialize database connection
 	db, err := sql.Open(sqlConfig.Driver, sqlConfig.DSN)
 	if err != nil {
-		panic(fmt.Errorf("failed to open SQL connection: %w", err))
+		logger.Error("Failed to open SQL connection", slog.Any("error", err), slog.String("driver", sqlConfig.Driver))
+		log.Fatalf("Failed to open SQL connection with driver %s: %v", sqlConfig.Driver, err)
 	}
 
 	// Configure connection pool
@@ -197,7 +201,8 @@ func RegisterSQLERS(config config.ServiceConfig, logger *logger.Logger) (*SQLEnt
 	
 	if err := db.PingContext(ctx); err != nil {
 		db.Close()
-		panic(fmt.Errorf("failed to ping SQL database: %w", err))
+		logger.Error("Failed to ping SQL database", slog.Any("error", err), slog.String("driver", sqlConfig.Driver))
+		log.Fatalf("Failed to ping SQL database with driver %s: %v", sqlConfig.Driver, err)
 	}
 
 	sqlSVC := &SQLEntityResolutionService{

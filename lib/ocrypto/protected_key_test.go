@@ -9,15 +9,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+<<<<<<< HEAD
 const testKey = "test-key-12345678901234567890123"
 
+=======
+>>>>>>> 26827e21 (feat(ocrypto): add AES protected key interface and implementation)
 func TestNewAESProtectedKey(t *testing.T) {
 	key := make([]byte, 32)
 	_, err := rand.Read(key)
 	require.NoError(t, err)
 
+<<<<<<< HEAD
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
+=======
+	protectedKey := NewAESProtectedKey(key)
+>>>>>>> 26827e21 (feat(ocrypto): add AES protected key interface and implementation)
 	assert.NotNil(t, protectedKey)
 	assert.Equal(t, key, protectedKey.rawKey)
 }
@@ -28,8 +35,12 @@ func TestAESProtectedKey_DecryptAESGCM(t *testing.T) {
 	_, err := rand.Read(key)
 	require.NoError(t, err)
 
+<<<<<<< HEAD
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
+=======
+	protectedKey := NewAESProtectedKey(key)
+>>>>>>> 26827e21 (feat(ocrypto): add AES protected key interface and implementation)
 
 	// Test data
 	plaintext := []byte("Hello, World!")
@@ -53,6 +64,7 @@ func TestAESProtectedKey_DecryptAESGCM(t *testing.T) {
 
 func TestAESProtectedKey_DecryptAESGCM_InvalidKey(t *testing.T) {
 	// Empty key should fail
+<<<<<<< HEAD
 	_, err := NewAESProtectedKey([]byte{})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrEmptyKeyData)
@@ -73,6 +85,30 @@ func TestAESProtectedKey_Export_WithEncapsulator(t *testing.T) {
 	key := []byte(testKey) // 32 bytes
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
+=======
+	protectedKey := NewAESProtectedKey([]byte{})
+
+	iv := make([]byte, 12)
+	ciphertext := make([]byte, 16)
+
+	_, err := protectedKey.DecryptAESGCM(iv, ciphertext, 16)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create AES-GCM cipher")
+}
+
+func TestAESProtectedKey_Export_NoEncapsulator(t *testing.T) {
+	key := []byte("test-key-1234567890123456") // 24 bytes
+	protectedKey := NewAESProtectedKey(key)
+
+	exported, err := protectedKey.Export(nil)
+	require.NoError(t, err)
+	assert.Equal(t, key, exported)
+}
+
+func TestAESProtectedKey_Export_WithEncapsulator(t *testing.T) {
+	key := []byte("test-key-1234567890123456") // 24 bytes
+	protectedKey := NewAESProtectedKey(key)
+>>>>>>> 26827e21 (feat(ocrypto): add AES protected key interface and implementation)
 
 	// Mock encapsulator
 	mockEncryptFunc := func(data []byte) ([]byte, error) {
@@ -99,7 +135,11 @@ func TestAESProtectedKey_Export_WithEncapsulator(t *testing.T) {
 
 	// Verify it was encrypted (should be different from original)
 	assert.NotEqual(t, key, exported)
+<<<<<<< HEAD
 	assert.Len(t, exported, len(key))
+=======
+	assert.Equal(t, len(key), len(exported))
+>>>>>>> 26827e21 (feat(ocrypto): add AES protected key interface and implementation)
 
 	// Verify we can decrypt it back
 	for i, b := range exported {
@@ -108,6 +148,7 @@ func TestAESProtectedKey_Export_WithEncapsulator(t *testing.T) {
 }
 
 func TestAESProtectedKey_Export_EncapsulatorError(t *testing.T) {
+<<<<<<< HEAD
 	key := []byte(testKey) // 32 bytes
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
@@ -118,21 +159,21 @@ func TestAESProtectedKey_Export_EncapsulatorError(t *testing.T) {
 		},
 	}
 
-	_, err = protectedKey.Export(mockEncapsulator)
-	require.Error(t, err)
+	_, err := protectedKey.Export(mockEncapsulator)
+	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to encrypt key data for export")
 }
 
 func TestAESProtectedKey_VerifyBinding(t *testing.T) {
-	key := []byte(testKey) // 32 bytes
-	protectedKey, err := NewAESProtectedKey(key)
-	require.NoError(t, err)
+	key := []byte("test-key-1234567890123456")
+	protectedKey := NewAESProtectedKey(key)
 
 	policy := []byte("test-policy-data")
 	ctx := context.Background()
 
 	// Generate the expected HMAC
-	expectedHMAC := protectedKey.generateHMACDigest(policy)
+	expectedHMAC, err := protectedKey.generateHMACDigest(ctx, policy)
+	require.NoError(t, err)
 
 	// Verify binding should succeed with correct HMAC
 	err = protectedKey.VerifyBinding(ctx, policy, expectedHMAC)
@@ -140,44 +181,54 @@ func TestAESProtectedKey_VerifyBinding(t *testing.T) {
 }
 
 func TestAESProtectedKey_VerifyBinding_Mismatch(t *testing.T) {
-	key := []byte(testKey) // 32 bytes
-	protectedKey, err := NewAESProtectedKey(key)
-	require.NoError(t, err)
+	key := []byte("test-key-1234567890123456")
+	protectedKey := NewAESProtectedKey(key)
 
 	policy := []byte("test-policy-data")
 	wrongBinding := []byte("wrong-binding-data")
 	ctx := context.Background()
 
-	err = protectedKey.VerifyBinding(ctx, policy, wrongBinding)
-	require.Error(t, err)
+	err := protectedKey.VerifyBinding(ctx, policy, wrongBinding)
+	assert.Error(t, err)
 	assert.Equal(t, ErrPolicyHMACMismatch, err)
 }
 
+func TestAESProtectedKey_VerifyBinding_EmptyKey(t *testing.T) {
+	protectedKey := NewAESProtectedKey([]byte{})
+
+	policy := []byte("test-policy-data")
+	binding := []byte("some-binding")
+	ctx := context.Background()
+
+	err := protectedKey.VerifyBinding(ctx, policy, binding)
+	assert.Error(t, err)
+	assert.Equal(t, ErrEmptyKeyData, err)
+}
+
 func TestAESProtectedKey_VerifyBinding_DifferentPolicyData(t *testing.T) {
-	key := []byte(testKey) // 32 bytes
-	protectedKey, err := NewAESProtectedKey(key)
-	require.NoError(t, err)
+	key := []byte("test-key-1234567890123456")
+	protectedKey := NewAESProtectedKey(key)
 
 	ctx := context.Background()
 
 	// Generate HMAC for first policy
 	policy1 := []byte("policy-data-1")
-	hmac1 := protectedKey.generateHMACDigest(policy1)
+	hmac1, err := protectedKey.generateHMACDigest(ctx, policy1)
+	require.NoError(t, err)
 
 	// Try to verify with different policy data
 	policy2 := []byte("policy-data-2")
 	err = protectedKey.VerifyBinding(ctx, policy2, hmac1)
-	require.Error(t, err)
+	assert.Error(t, err)
 	assert.Equal(t, ErrPolicyHMACMismatch, err)
 }
 
 func TestAESProtectedKey_InterfaceCompliance(t *testing.T) {
 	key := make([]byte, 32)
-	protectedKey, err := NewAESProtectedKey(key)
-	require.NoError(t, err)
+	protectedKey := NewAESProtectedKey(key)
 
 	// Ensure it implements the ProtectedKey interface
-	assert.Implements(t, (*ProtectedKey)(nil), protectedKey)
+	var _ ProtectedKey = protectedKey
 }
 
 // Mock encapsulator for testing
@@ -199,7 +250,7 @@ func (m *mockEncapsulator) Encrypt(data []byte) ([]byte, error) {
 	return data, nil
 }
 
-func (m *mockEncapsulator) PublicKeyAsPEM() (string, error) {
+func (m *mockEncapsulator) PublicKeyInPemFormat() (string, error) {
 	if m.publicKeyPEMFunc != nil {
 		return m.publicKeyPEMFunc()
 	}

@@ -3,35 +3,15 @@ package trust
 import (
 	"context"
 	"crypto/elliptic"
+
+	"github.com/opentdf/platform/lib/ocrypto"
 )
 
-type Encapsulator interface {
-	// Encapsulate wraps a secret key with the encapsulation key
-	Encapsulate(dek ProtectedKey) ([]byte, error)
-
-	// Encrypt wraps a secret key with the encapsulation key
-	Encrypt(data []byte) ([]byte, error)
-
-	// PublicKeyInPemFormat Returns public key in pem format, or the empty string if not present
-	PublicKeyInPemFormat() (string, error)
-
-	// For EC schemes, this method returns the public part of the ephemeral key.
-	// Otherwise, it returns nil.
-	EphemeralKey() []byte
-}
-
-// ProtectedKey represents a decrypted key with operations that can be performed on it
-type ProtectedKey interface {
-	// VerifyBinding checks if the policy binding matches the given policy data
-	VerifyBinding(ctx context.Context, policy, binding []byte) error
-
-	// Export returns the raw key data, optionally encrypting it with the provided encryptor
-	// Deprecated: Use the Encapsulator's Encapsulate method instead
-	Export(encryptor Encapsulator) ([]byte, error)
-
-	// Used to decrypt encrypted policies and metadata
-	DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]byte, error)
-}
+// Type aliases for backward compatibility - these interfaces are now defined in lib/ocrypto
+type (
+	Encapsulator = ocrypto.Encapsulator
+	ProtectedKey = ocrypto.ProtectedKey
+)
 
 // KeyManager combines key lookup functionality with cryptographic operations
 type KeyManager interface {

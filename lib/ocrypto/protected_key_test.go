@@ -9,22 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-<<<<<<< HEAD
-const testKey = "test-key-12345678901234567890123"
-
-=======
->>>>>>> 26827e21 (feat(ocrypto): add AES protected key interface and implementation)
 func TestNewAESProtectedKey(t *testing.T) {
 	key := make([]byte, 32)
 	_, err := rand.Read(key)
 	require.NoError(t, err)
 
-<<<<<<< HEAD
-	protectedKey, err := NewAESProtectedKey(key)
-	require.NoError(t, err)
-=======
 	protectedKey := NewAESProtectedKey(key)
->>>>>>> 26827e21 (feat(ocrypto): add AES protected key interface and implementation)
 	assert.NotNil(t, protectedKey)
 	assert.Equal(t, key, protectedKey.rawKey)
 }
@@ -35,12 +25,7 @@ func TestAESProtectedKey_DecryptAESGCM(t *testing.T) {
 	_, err := rand.Read(key)
 	require.NoError(t, err)
 
-<<<<<<< HEAD
-	protectedKey, err := NewAESProtectedKey(key)
-	require.NoError(t, err)
-=======
 	protectedKey := NewAESProtectedKey(key)
->>>>>>> 26827e21 (feat(ocrypto): add AES protected key interface and implementation)
 
 	// Test data
 	plaintext := []byte("Hello, World!")
@@ -64,28 +49,6 @@ func TestAESProtectedKey_DecryptAESGCM(t *testing.T) {
 
 func TestAESProtectedKey_DecryptAESGCM_InvalidKey(t *testing.T) {
 	// Empty key should fail
-<<<<<<< HEAD
-	_, err := NewAESProtectedKey([]byte{})
-	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrEmptyKeyData)
-}
-
-func TestAESProtectedKey_Export_NoEncapsulator(t *testing.T) {
-	key := []byte(testKey) // 32 bytes
-	protectedKey, err := NewAESProtectedKey(key)
-	require.NoError(t, err)
-
-	exported, err := protectedKey.Export(nil)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "encapsulator cannot be nil")
-	assert.Nil(t, exported)
-}
-
-func TestAESProtectedKey_Export_WithEncapsulator(t *testing.T) {
-	key := []byte(testKey) // 32 bytes
-	protectedKey, err := NewAESProtectedKey(key)
-	require.NoError(t, err)
-=======
 	protectedKey := NewAESProtectedKey([]byte{})
 
 	iv := make([]byte, 12)
@@ -108,7 +71,6 @@ func TestAESProtectedKey_Export_NoEncapsulator(t *testing.T) {
 func TestAESProtectedKey_Export_WithEncapsulator(t *testing.T) {
 	key := []byte("test-key-1234567890123456") // 24 bytes
 	protectedKey := NewAESProtectedKey(key)
->>>>>>> 26827e21 (feat(ocrypto): add AES protected key interface and implementation)
 
 	// Mock encapsulator
 	mockEncryptFunc := func(data []byte) ([]byte, error) {
@@ -135,11 +97,7 @@ func TestAESProtectedKey_Export_WithEncapsulator(t *testing.T) {
 
 	// Verify it was encrypted (should be different from original)
 	assert.NotEqual(t, key, exported)
-<<<<<<< HEAD
-	assert.Len(t, exported, len(key))
-=======
 	assert.Equal(t, len(key), len(exported))
->>>>>>> 26827e21 (feat(ocrypto): add AES protected key interface and implementation)
 
 	// Verify we can decrypt it back
 	for i, b := range exported {
@@ -148,7 +106,6 @@ func TestAESProtectedKey_Export_WithEncapsulator(t *testing.T) {
 }
 
 func TestAESProtectedKey_Export_EncapsulatorError(t *testing.T) {
-<<<<<<< HEAD
 	key := []byte(testKey) // 32 bytes
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
@@ -172,11 +129,10 @@ func TestAESProtectedKey_VerifyBinding(t *testing.T) {
 	ctx := context.Background()
 
 	// Generate the expected HMAC
-	expectedHMAC, err := protectedKey.generateHMACDigest(ctx, policy)
-	require.NoError(t, err)
+	expectedHMAC := protectedKey.generateHMACDigest(policy)
 
 	// Verify binding should succeed with correct HMAC
-	err = protectedKey.VerifyBinding(ctx, policy, expectedHMAC)
+	err := protectedKey.VerifyBinding(ctx, policy, expectedHMAC)
 	assert.NoError(t, err)
 }
 
@@ -213,12 +169,11 @@ func TestAESProtectedKey_VerifyBinding_DifferentPolicyData(t *testing.T) {
 
 	// Generate HMAC for first policy
 	policy1 := []byte("policy-data-1")
-	hmac1, err := protectedKey.generateHMACDigest(ctx, policy1)
-	require.NoError(t, err)
+	hmac1 := protectedKey.generateHMACDigest(policy1)
 
 	// Try to verify with different policy data
 	policy2 := []byte("policy-data-2")
-	err = protectedKey.VerifyBinding(ctx, policy2, hmac1)
+	err := protectedKey.VerifyBinding(ctx, policy2, hmac1)
 	assert.Error(t, err)
 	assert.Equal(t, ErrPolicyHMACMismatch, err)
 }

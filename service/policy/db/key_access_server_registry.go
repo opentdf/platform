@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -23,6 +24,12 @@ type rotatedMappingIDs struct {
 	NamespaceIDs      []string
 	AttributeDefIDs   []string
 	AttributeValueIDs []string
+}
+
+type kasParams struct {
+	KasID   pgtype.UUID
+	KasURI  pgtype.Text
+	KasName pgtype.Text
 }
 
 func (c PolicyDBClient) ListKeyAccessServers(ctx context.Context, r *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
@@ -783,6 +790,91 @@ func (c PolicyDBClient) SetBaseKeyOnWellKnownConfig(ctx context.Context) error {
 	return nil
 }
 
+func (c PolicyDBClient) ListKeyMappings(ctx context.Context, r *kasregistry.ListKeyMappingsRequest) (*kasregistry.ListKeyMappingsResponse, error) {
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > maxLimit {
+		return nil, db.ErrListLimitTooLarge
+	}
+
+	params := listKeyMappingsParams{
+		Offset: offset,
+		Limit:  limit,
+	}
+
+	if r.GetIdentifier() != nil {
+		switch i := r.GetIdentifier().(type) {
+		case *kasregistry.ListKeyMappingsRequest_Id:
+			pgUUID := pgtypeUUID(i.Id)
+			if !pgUUID.Valid {
+				return nil, db.ErrUUIDInvalid
+			}
+			params.ID = pgUUID
+		case *kasregistry.ListKeyMappingsRequest_Key:
+			keyID := pgtypeText(i.Key.GetKid())
+			if !keyID.Valid {
+				return nil, db.ErrSelectIdentifierInvalid
+			}
+			kasParams, err := getParamsFromKeyIdentifier(i.Key)
+			if err != nil {
+				return nil, err
+			}
+			params.KasID = kasParams.KasID
+			params.KasUri = kasParams.KasURI
+			params.KasName = kasParams.KasName
+			params.Kid = keyID
+		default:
+			return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
+		}
+	}
+
+	mappingRows, err := c.Queries.listKeyMappings(ctx, params)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	// Need to build a json object
+	mappings := make([]*kasregistry.KeyMapping, len(mappingRows))
+	for i, mapping := range mappingRows {
+		namespaceMappings, err := db.MappedPolicyObjectProtoJSON(mapping.NamespaceMappings)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal namespace mappings: %w", err)
+		}
+		definitionMappings, err := db.MappedPolicyObjectProtoJSON(mapping.AttributeMappings)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal attribute definition mappings: %w", err)
+		}
+		valueMappings, err := db.MappedPolicyObjectProtoJSON(mapping.ValueMappings)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal attribute value mappings: %w", err)
+		}
+
+		mappings[i] = &kasregistry.KeyMapping{
+			Kid:               mapping.Kid,
+			KasUri:            mapping.KasUri,
+			NamespaceMappings: namespaceMappings,
+			AttributeMappings: definitionMappings,
+			ValueMappings:     valueMappings,
+		}
+	}
+
+	var total int32
+	var nextOffset int32
+	if len(mappingRows) > 0 {
+		total = int32(mappingRows[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
+
+	return &kasregistry.ListKeyMappingsResponse{
+		KeyMappings: mappings,
+		Pagination: &policy.PageResponse{
+			CurrentOffset: offset,
+			Total:         total,
+			NextOffset:    nextOffset,
+		},
+	}, nil
+}
+
 /*
 **********************
 TESTING ONLY
@@ -932,4 +1024,36 @@ func (c PolicyDBClient) verifyKeyIsActive(ctx context.Context, id string) error 
 func isValidBase64(s string) bool {
 	_, err := base64.StdEncoding.DecodeString(s)
 	return err == nil
+}
+
+func getParamsFromKeyIdentifier(i *kasregistry.KasKeyIdentifier) (*kasParams, error) {
+	if i == nil {
+		return nil, db.ErrSelectIdentifierInvalid
+	}
+
+	kasParams := &kasParams{}
+	switch i.GetIdentifier().(type) {
+	case *kasregistry.KasKeyIdentifier_KasId:
+		kasID := pgtypeUUID(i.GetKasId())
+		if !kasID.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+		kasParams.KasID = kasID
+	case *kasregistry.KasKeyIdentifier_Uri:
+		kasURI := pgtypeText(i.GetUri())
+		if !kasURI.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+		kasParams.KasURI = kasURI
+	case *kasregistry.KasKeyIdentifier_Name:
+		kasName := pgtypeText(i.GetName())
+		if !kasName.Valid {
+			return nil, db.ErrSelectIdentifierInvalid
+		}
+		kasParams.KasName = kasName
+	default:
+		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
+	}
+
+	return kasParams, nil
 }

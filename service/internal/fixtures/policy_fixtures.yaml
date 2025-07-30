@@ -582,12 +582,12 @@ provider_configs:
     provider_config_1:
       id: 4ab6b1c4-fa5c-4036-8921-53f8c267b728
       provider_name: fixture-aws
-      manager: local
+      manager: opentdf.io/basic
       config: eyJzb21lIjogInZhbHVlIn0g
     provider_config_2:
       id: 19098106-54a1-4d33-8846-4894b5b6db3e
       provider_name: fixture-gcp
-      manager: local
+      manager: opentdf.io/basic
       config: eyJzb21lIjogInZhbHVlIn0g
 
 ##

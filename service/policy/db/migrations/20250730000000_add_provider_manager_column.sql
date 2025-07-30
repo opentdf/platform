@@ -7,7 +7,7 @@ ADD COLUMN manager VARCHAR(255);
 
 -- Update existing records to have a default manager value for backward compatibility
 UPDATE provider_config 
-SET manager = 'local' 
+SET manager = 'opentdf.io/basic' 
 WHERE manager IS NULL;
 
 -- Make manager column NOT NULL now that all existing records have been updated
@@ -24,7 +24,7 @@ ADD CONSTRAINT provider_config_provider_name_manager_key UNIQUE (provider_name, 
 
 -- Update column comments
 COMMENT ON COLUMN provider_config.provider_name IS 'Name of the key provider instance.';
-COMMENT ON COLUMN provider_config.manager IS 'Type of key manager (e.g., local, aws, azure, gcp).';
+COMMENT ON COLUMN provider_config.manager IS 'Type of key manager (e.g., opentdf.io/basic, aws, azure, gcp)';
 
 -- +goose StatementEnd
 

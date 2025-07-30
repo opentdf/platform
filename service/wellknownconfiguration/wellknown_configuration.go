@@ -61,8 +61,12 @@ func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.We
 func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *connect.Request[wellknown.GetWellKnownConfigurationRequest]) (*connect.Response[wellknown.GetWellKnownConfigurationResponse], error) {
 	rwMutex.RLock()
 	// Convert configuration to structpb-compatible format
-	convertedConfig := convertToSerializable(wellKnownConfiguration)
-	cfg, err := structpb.NewStruct(convertedConfig.(map[string]interface{}))
+	convertedConfig, ok := convertToSerializable(wellKnownConfiguration).(map[string]interface{})
+	if !ok {
+		s.logger.Error("failed to convert configuration to map[string]interface{}", slog.Any("config", wellKnownConfiguration))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to convert configuration to serializable format"))
+	}
+	cfg, err := structpb.NewStruct(convertedConfig)
 	rwMutex.RUnlock()
 	if err != nil {
 		s.logger.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
@@ -94,9 +98,21 @@ func convertValue(v reflect.Value) reflect.Value {
 	}
 
 	switch v.Kind() {
+	case reflect.Bool, reflect.String:
+		// Basic types supported by structpb
+		return v
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		// Convert all integer types to int64 for consistency
+		return reflect.ValueOf(v.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		// Convert unsigned integers to int64 (structpb doesn't support uint64)
+		return reflect.ValueOf(int64(v.Uint()))
+	case reflect.Float32, reflect.Float64:
+		// Convert all float types to float64 for consistency
+		return reflect.ValueOf(v.Float())
 	case reflect.Struct:
 		return convertStruct(v)
-	case reflect.Slice:
+	case reflect.Slice, reflect.Array:
 		return convertSlice(v)
 	case reflect.Map:
 		return convertMap(v)
@@ -110,9 +126,20 @@ func convertValue(v reflect.Value) reflect.Value {
 			return reflect.ValueOf(nil)
 		}
 		return convertValue(v.Elem())
+	case reflect.Invalid:
+		return reflect.ValueOf(nil)
+	case reflect.Complex64, reflect.Complex128:
+		// Complex numbers are not supported by structpb, convert to string representation
+		return reflect.ValueOf(fmt.Sprintf("%v", v.Complex()))
+	case reflect.Uintptr:
+		// Convert pointer addresses to string representation
+		return reflect.ValueOf(fmt.Sprintf("0x%x", v.Uint()))
+	case reflect.Chan, reflect.Func, reflect.UnsafePointer:
+		// These types cannot be meaningfully serialized, convert to string representation
+		return reflect.ValueOf(fmt.Sprintf("%v", v.Type()))
 	default:
-		// Basic types (bool, int, float, string) are handled as-is
-		return v
+		// Fallback for any other types - convert to string representation
+		return reflect.ValueOf(fmt.Sprintf("%v", v.Interface()))
 	}
 }
 

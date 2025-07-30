@@ -16,13 +16,15 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
+	"github.com/opentdf/platform/service/trust"
 	"github.com/opentdf/platform/service/wellknownconfiguration"
 )
 
 type Service struct {
-	dbClient policydb.PolicyDBClient
-	logger   *logger.Logger
-	config   *policyconfig.Config
+	dbClient            policydb.PolicyDBClient
+	logger              *logger.Logger
+	config              *policyconfig.Config
+	keyManagerFactories []trust.NamedKeyManagerFactory
 }
 
 func OnConfigUpdate(svc *Service) serviceregistry.OnConfigUpdateHook {
@@ -59,16 +61,15 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				ksvc.logger = srp.Logger
 				ksvc.config = cfg
 				ksvc.dbClient = policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
+				ksvc.keyManagerFactories = srp.KeyManagerFactories
 
 				// Register key managers in well-known configuration
-				registry := GetGlobalManagerRegistry()
-				managers := registry.GetRegisteredManagers()
 				managersMap := make(map[string]interface{})
-				for _, manager := range managers {
-					managersMap[manager.Name] = map[string]interface{}{
-						"name":        manager.Name,
-						"description": manager.Description,
-						"enabled":     manager.Enabled,
+				for _, factory := range srp.KeyManagerFactories {
+					managersMap[factory.Name] = map[string]interface{}{
+						"name":        factory.Name,
+						"description": fmt.Sprintf("Key manager: %s", factory.Name),
+						"enabled":     true,
 					}
 				}
 				
@@ -88,14 +89,23 @@ func (ksvc *Service) Close() {
 	ksvc.dbClient.Close()
 }
 
+// isManagerRegistered checks if a manager name is available in the trust key manager factories
+func (ksvc *Service) isManagerRegistered(managerName string) bool {
+	for _, factory := range ksvc.keyManagerFactories {
+		if factory.Name == managerName {
+			return true
+		}
+	}
+	return false
+}
+
 func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Request[keyMgmtProto.CreateProviderConfigRequest]) (*connect.Response[keyMgmtProto.CreateProviderConfigResponse], error) {
 	rsp := &keyMgmtProto.CreateProviderConfigResponse{}
 
 	ksvc.logger.DebugContext(ctx, "creating Provider Config", slog.String("name", req.Msg.GetName()), slog.String("manager", req.Msg.GetManager()))
 
 	// Validate that the manager type is registered
-	registry := GetGlobalManagerRegistry()
-	if !registry.IsManagerRegistered(req.Msg.GetManager()) {
+	if !ksvc.isManagerRegistered(req.Msg.GetManager()) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("manager type '%s' is not registered", req.Msg.GetManager()))
 	}
 
@@ -170,8 +180,7 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 
 	// Validate manager type if provided
 	if req.Msg.Manager != "" {
-		registry := GetGlobalManagerRegistry()
-		if !registry.IsManagerRegistered(req.Msg.Manager) {
+		if !ksvc.isManagerRegistered(req.Msg.Manager) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("manager type '%s' is not registered", req.Msg.Manager))
 		}
 	}

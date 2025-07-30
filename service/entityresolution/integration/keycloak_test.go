@@ -13,6 +13,7 @@ import (
 	keycloakv2 "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -132,7 +133,11 @@ func (a *KeycloakTestAdapter) CreateERSService(ctx context.Context) (internal.ER
 	}
 
 	testLogger := logger.CreateTestLogger()
-	service, _ := keycloakv2.RegisterKeycloakERS(keycloakConfig, testLogger)
+	
+	// Create a test cache - using nil for simplicity in tests
+	var testCache *cache.Cache = nil
+	
+	service, _ := keycloakv2.RegisterKeycloakERS(keycloakConfig, testLogger, testCache)
 	
 	// Set a no-op tracer for testing to prevent nil pointer dereference
 	service.Tracer = noop.NewTracerProvider().Tracer("test-keycloak-v2")

@@ -12,7 +12,7 @@ var (
 	// ErrEmptyKeyData is returned when the key data is empty
 	ErrEmptyKeyData = errors.New("key data is empty")
 	// ErrPolicyHMACMismatch is returned when policy binding verification fails
-	ErrPolicyHMACMismatch = errors.New("policy hmac mismatch")
+	ErrPolicyHMACMismatch = errors.New("policy HMAC mismatch")
 )
 
 // AESProtectedKey implements the ProtectedKey interface with an in-memory secret key

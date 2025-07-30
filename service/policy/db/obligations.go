@@ -47,82 +47,14 @@ func unmarshalNamespace(namespaceJSON []byte, namespace *policy.Namespace) error
 /// Obligation Definitions
 ///
 
-// func (c PolicyDBClient) CreateObligationByNamespaceID(ctx context.Context, namespaceID, name string, values []string, metadataJSON []byte) (*policy.Obligation, error) {
-// 	queryParams := createObligationByNamespaceIDParams{
-// 		NamespaceID: namespaceID,
-// 		Name:        name,
-// 		Metadata:    metadataJSON,
-// 		Values:      values,
-// 	}
-// 	row, err := c.queries.createObligationByNamespaceID(ctx, queryParams)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	oblVals := make([]*policy.ObligationValue, 0, len(values))
-// 	if err := unmarshalObligationValuesProto(row.Values, oblVals); err != nil {
-// 		return nil, fmt.Errorf("failed to unmarshal obligation values: %w", err)
-// 	}
-
-// 	return &policy.Obligation{
-// 		Id:   row.ID,
-// 		Name: name,
-// 		Metadata: &common.Metadata{
-// 			Labels: metadata.GetLabels(),
-// 		},
-// 		Namespace: &policy.Namespace{
-// 			Id: namespaceID,
-// 		},
-// 		Values: oblVals,
-// 	}, nil
-// }
-
-// func (c PolicyDBClient) CreateObligationByNamespaceFQN(ctx context.Context, fqn, name string, values []string, metadataJSON []byte) (createObligationByNamespaceFQNRow, error) {
-// 	queryParams := createObligationByNamespaceFQNParams{
-// 		Fqn:      fqn,
-// 		Name:     name,
-// 		Metadata: metadataJSON,
-// 		Values:   values,
-// 	}
-// 	return c.queries.createObligationByNamespaceFQN(ctx, queryParams)
-// 	// return &policy.Obligation{
-// 	// 	Id:   row.ID,
-// 	// 	Name: name,
-// 	// 	Metadata: &common.Metadata{
-// 	// 		Labels: metadata.GetLabels(),
-// 	// 	},
-// 	// 	Namespace: &policy.Namespace{
-// 	// 		Fqn: fqn,
-// 	// 	},
-// 	// }, nil
-// }
-
 func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.CreateObligationRequest) (*policy.Obligation, error) {
 	metadata := r.GetMetadata()
 	metadataJSON, _, err := db.MarshalCreateMetadata(metadata)
 	if err != nil {
 		return nil, err
 	}
-	// if r.GetId() != "" {
-	// 	queryParams := createObligationByNamespaceIDParams{
-	// 		NamespaceID: namespaceID,
-	// 		Name:        name,
-	// 		Metadata:    metadataJSON,
-	// 		Values:      values,
-	// 	}
-	// 	row, err := c.queries.createObligationByNamespaceID(ctx, queryParams)
-	// } else {
-	// 	queryParams := createObligationByNamespaceFQNParams{
-	// 		Fqn:      fqn,
-	// 		Name:     name,
-	// 		Metadata: metadataJSON,
-	// 		Values:   values,
-	// 	}
-	// 	row, err := c.queries.createObligationByNamespaceFQN(ctx, queryParams)
-	// }
 	name := r.GetName()
 	values := r.GetValues()
-	// namespaceID := r.GetId()
-	// namespaceFQN := r.GetFqn()
 	queryParams := createObligationParams{
 		NamespaceID:  r.GetId(),
 		NamespaceFqn: r.GetFqn(),

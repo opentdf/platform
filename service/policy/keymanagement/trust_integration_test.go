@@ -80,7 +80,7 @@ func TestServiceManagerValidationCaseSensitive(t *testing.T) {
 	assert.True(t, service.isManagerRegistered("local"))
 	assert.False(t, service.isManagerRegistered("Local"))
 	assert.False(t, service.isManagerRegistered("LOCAL"))
-	
+
 	assert.True(t, service.isManagerRegistered("Premium-HSM"))
 	assert.False(t, service.isManagerRegistered("premium-hsm"))
 	assert.False(t, service.isManagerRegistered("PREMIUM-HSM"))

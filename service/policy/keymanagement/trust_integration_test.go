@@ -3,17 +3,16 @@ package keymanagement
 import (
 	"testing"
 
-	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestServiceManagerValidation(t *testing.T) {
 	// Create a service with some mock trust key manager factories
 	service := &Service{
-		keyManagerFactories: []trust.NamedKeyManagerFactory{
-			{Name: "local", Factory: nil},
-			{Name: "premium-hsm", Factory: nil},
-			{Name: "premium-vault", Factory: nil},
+		keyManagerFactories: []registeredManagers{
+			{Name: "local"},
+			{Name: "premium-hsm"},
+			{Name: "premium-vault"},
 		},
 	}
 
@@ -60,7 +59,7 @@ func TestServiceManagerValidation(t *testing.T) {
 func TestServiceWithNoKeyManagers(t *testing.T) {
 	// Create a service with no key manager factories
 	service := &Service{
-		keyManagerFactories: []trust.NamedKeyManagerFactory{},
+		keyManagerFactories: []registeredManagers{},
 	}
 
 	// All manager names should be invalid
@@ -70,9 +69,9 @@ func TestServiceWithNoKeyManagers(t *testing.T) {
 
 func TestServiceManagerValidationCaseSensitive(t *testing.T) {
 	service := &Service{
-		keyManagerFactories: []trust.NamedKeyManagerFactory{
-			{Name: "local", Factory: nil},
-			{Name: "Premium-HSM", Factory: nil},
+		keyManagerFactories: []registeredManagers{
+			{Name: "local"},
+			{Name: "Premium-HSM"},
 		},
 	}
 

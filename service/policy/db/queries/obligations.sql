@@ -19,6 +19,20 @@ SELECT
     io.id,
     io.name,
     io.metadata,
+    JSON_BUILD_OBJECT(
+        'id', ns.id,
+        'name', ns.name,
+        'active', ns.active,
+        'fqn', fqns.fqn,
+        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)),
+        'grants', JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'name', kas.name,
+            'public_key', kas.public_key
+        )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL),
+        'keys', nmp_keys.keys
+    ) as namespace,
     COALESCE(
         JSON_AGG(
             JSON_BUILD_OBJECT(
@@ -29,8 +43,32 @@ SELECT
         '[]'::JSON
     ) as values
 FROM inserted_obligation io
+JOIN attribute_namespaces ns ON io.namespace_id = ns.id
+LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
+LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
-GROUP BY io.id, io.name, io.metadata;
+LEFT JOIN (
+    SELECT
+        k.namespace_id,
+        JSONB_AGG(
+            DISTINCT JSONB_BUILD_OBJECT(
+                'kas_uri', kas.uri,
+                'kas_id', kas.id,
+                'public_key', JSONB_BUILD_OBJECT(
+                     'algorithm', kask.key_algorithm::INTEGER,
+                     'kid', kask.key_id,
+                     'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
+                )
+            )
+        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+    FROM attribute_namespace_public_key_map k
+    INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+    INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+    GROUP BY k.namespace_id
+) nmp_keys ON ns.id = nmp_keys.namespace_id
+WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+GROUP BY io.id, io.name, io.metadata, ns.id, ns.name, ns.active, ns.metadata, ns.created_at, ns.updated_at, fqns.fqn, nmp_keys.keys;
 
 -- name: createObligationByNamespaceFQN :one
 WITH inserted_obligation AS (
@@ -51,6 +89,20 @@ SELECT
     io.id,
     io.name,
     io.metadata,
+    JSON_BUILD_OBJECT(
+        'id', ns.id,
+        'name', ns.name,
+        'active', ns.active,
+        'fqn', fqns.fqn,
+        'metadata', JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ns.metadata -> 'labels', 'created_at', ns.created_at, 'updated_at', ns.updated_at)),
+        'grants', JSONB_AGG(DISTINCT JSONB_BUILD_OBJECT(
+            'id', kas.id,
+            'uri', kas.uri,
+            'name', kas.name,
+            'public_key', kas.public_key
+        )) FILTER (WHERE kas_ns_grants.namespace_id IS NOT NULL),
+        'keys', nmp_keys.keys
+    ) as namespace,
     COALESCE(
         JSON_AGG(
             JSON_BUILD_OBJECT(
@@ -61,8 +113,32 @@ SELECT
         '[]'::JSON
     ) as values
 FROM inserted_obligation io
+JOIN attribute_namespaces ns ON io.namespace_id = ns.id
+LEFT JOIN attribute_namespace_key_access_grants kas_ns_grants ON kas_ns_grants.namespace_id = ns.id
+LEFT JOIN key_access_servers kas ON kas.id = kas_ns_grants.key_access_server_id
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = ns.id
 LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
-GROUP BY io.id, io.name, io.metadata;
+LEFT JOIN (
+    SELECT
+        k.namespace_id,
+        JSONB_AGG(
+            DISTINCT JSONB_BUILD_OBJECT(
+                'kas_uri', kas.uri,
+                'kas_id', kas.id,
+                'public_key', JSONB_BUILD_OBJECT(
+                     'algorithm', kask.key_algorithm::INTEGER,
+                     'kid', kask.key_id,
+                     'pem', CONVERT_FROM(DECODE(kask.public_key_ctx ->> 'pem', 'base64'), 'UTF8')
+                )
+            )
+        ) FILTER (WHERE kask.id IS NOT NULL) AS keys
+    FROM attribute_namespace_public_key_map k
+    INNER JOIN key_access_server_keys kask ON k.key_access_server_key_id = kask.id
+    INNER JOIN key_access_servers kas ON kask.key_access_server_id = kas.id
+    GROUP BY k.namespace_id
+) nmp_keys ON ns.id = nmp_keys.namespace_id
+WHERE fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+GROUP BY io.id, io.name, io.metadata, ns.id, ns.name, ns.active, ns.metadata, ns.created_at, ns.updated_at, fqns.fqn, nmp_keys.keys;
 
 -- name: getObligationDefinition :one
 SELECT

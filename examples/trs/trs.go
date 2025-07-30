@@ -41,8 +41,8 @@ type HelloReply struct {
 }
 
 var (
-	platformEndpointWithProtocol = "http://localhost:8080"
-	platformEndpoint             = "localhost:8080"
+	platformEndpointWithProtocol = "http://127.0.0.1:8080"
+	platformEndpoint             = "127.0.0.1:8080"
 )
 
 func encryptString(ctx context.Context, input string, sdk *otdf.SDK) (string, error) {

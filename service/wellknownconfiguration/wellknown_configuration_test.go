@@ -109,7 +109,7 @@ func TestConvertToSerializable(t *testing.T) {
 		{
 			name:     "Basic int",
 			input:    42,
-			expected: 42,
+			expected: int64(42),
 		},
 		{
 			name:     "Basic bool",
@@ -124,7 +124,7 @@ func TestConvertToSerializable(t *testing.T) {
 		{
 			name:     "Simple struct",
 			input:    TestStruct{Name: "test", Description: "desc", Count: 5, Active: true},
-			expected: map[string]interface{}{"name": "test", "description": "desc", "count": 5, "active": true},
+			expected: map[string]interface{}{"name": "test", "description": "desc", "count": int64(5), "active": true},
 		},
 		{
 			name: "Struct slice",
@@ -133,8 +133,8 @@ func TestConvertToSerializable(t *testing.T) {
 				{Name: "second", Description: "second desc", Count: 2, Active: false},
 			},
 			expected: []interface{}{
-				map[string]interface{}{"name": "first", "description": "first desc", "count": 1, "active": true},
-				map[string]interface{}{"name": "second", "description": "second desc", "count": 2, "active": false},
+				map[string]interface{}{"name": "first", "description": "first desc", "count": int64(1), "active": true},
+				map[string]interface{}{"name": "second", "description": "second desc", "count": int64(2), "active": false},
 			},
 		},
 		{
@@ -150,7 +150,7 @@ func TestConvertToSerializable(t *testing.T) {
 				"data": map[string]interface{}{
 					"name":        "nested",
 					"description": "nested desc",
-					"count":       10,
+					"count":       int64(10),
 					"active":      false,
 				},
 				"items":  []interface{}{"item1", "item2"},
@@ -160,7 +160,7 @@ func TestConvertToSerializable(t *testing.T) {
 		{
 			name:     "Map with interface values",
 			input:    map[string]interface{}{"key1": "value1", "key2": 42, "key3": true},
-			expected: map[string]interface{}{"key1": "value1", "key2": 42, "key3": true},
+			expected: map[string]interface{}{"key1": "value1", "key2": int64(42), "key3": true},
 		},
 		{
 			name:     "Nil value",
@@ -266,7 +266,7 @@ func TestConvertSlice(t *testing.T) {
 	t.Run("Mixed type slice", func(t *testing.T) {
 		input := []interface{}{1, "string", true}
 		result := convertSlice(reflect.ValueOf(input))
-		assert.Equal(t, []interface{}{1, "string", true}, result.Interface())
+		assert.Equal(t, []interface{}{int64(1), "string", true}, result.Interface())
 	})
 }
 
@@ -274,7 +274,7 @@ func TestConvertMap(t *testing.T) {
 	t.Run("String key map", func(t *testing.T) {
 		input := map[string]int{"one": 1, "two": 2}
 		result := convertMap(reflect.ValueOf(input))
-		expected := map[string]interface{}{"one": 1, "two": 2}
+		expected := map[string]interface{}{"one": int64(1), "two": int64(2)}
 		assert.Equal(t, expected, result.Interface())
 	})
 

@@ -100,9 +100,13 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 		slog.String("manager",
 			req.Msg.GetManager()))
 
-	// Validate that the manager type is registered
-	if !ksvc.isManagerRegistered(req.Msg.GetManager()) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("manager type '%s' is not registered", req.Msg.GetManager()))
+	// Validate that manager is provided and registered
+	manager := req.Msg.GetManager()
+	if manager == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("manager field is required"))
+	}
+	if !ksvc.isManagerRegistered(manager) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("manager type '%s' is not registered", manager))
 	}
 
 	auditParams := audit.PolicyEventParams{
@@ -175,9 +179,10 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 	ksvc.logger.DebugContext(ctx, "updating Provider Config", slog.String("id", req.Msg.GetId()))
 
 	// Validate manager type if provided
-	if req.Msg.GetManager() != "" {
-		if !ksvc.isManagerRegistered(req.Msg.GetManager()) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("manager type '%s' is not registered", req.Msg.GetManager()))
+	manager := req.Msg.GetManager()
+	if manager != "" {
+		if !ksvc.isManagerRegistered(manager) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("manager type '%s' is not registered", manager))
 		}
 	}
 

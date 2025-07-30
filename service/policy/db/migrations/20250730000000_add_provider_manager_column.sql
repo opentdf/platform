@@ -35,6 +35,15 @@ COMMENT ON COLUMN provider_config.manager IS 'Type of key manager (e.g., local, 
 ALTER TABLE provider_config 
 DROP CONSTRAINT IF EXISTS provider_config_provider_name_manager_key;
 
+-- Before re-adding unique constraint on provider_name, clean up duplicates
+-- Keep only the oldest record (earliest created_at) for each provider_name
+DELETE FROM provider_config 
+WHERE id NOT IN (
+    SELECT DISTINCT ON (provider_name) id 
+    FROM provider_config 
+    ORDER BY provider_name, created_at ASC
+);
+
 -- Re-add the original unique constraint on provider_name only
 ALTER TABLE provider_config 
 ADD CONSTRAINT provider_config_provider_name_key UNIQUE (provider_name);

@@ -158,6 +158,7 @@ type FixtureDataKasRegistryKey struct {
 type FixtureDataProviderConfig struct {
 	ID             string `yaml:"id"`
 	ProviderName   string `yaml:"provider_name"`
+	Manager        string `yaml:"manager"`
 	ProviderConfig string `yaml:"config"`
 }
 
@@ -684,6 +685,7 @@ func (f *Fixtures) provisionProviderConfigs() int64 {
 		values = append(values, []string{
 			f.db.StringWrap(d.ID),
 			f.db.StringWrap(d.ProviderName),
+			f.db.StringWrap(d.Manager),
 			f.db.StringWrap(string(providerConfigJSON)),
 		})
 	}

@@ -36,7 +36,7 @@ type CreateProviderConfigRequest struct {
 	// JSON configuration for the key provider. This is unique to individual key providers.
 	ConfigJson []byte `protobuf:"bytes,2,opt,name=config_json,json=configJson,proto3" json:"config_json,omitempty"`
 	// Required
-	// The type of key manager (e.g. "aws", "gcp", "azure", "local")
+	// The type of key manager (e.g. "aws", "gcp", "azure", "opentdf.io/basic")
 	Manager string `protobuf:"bytes,3,opt,name=manager,proto3" json:"manager,omitempty"`
 	// Common metadata
 	Metadata *common.MetadataMutable `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`

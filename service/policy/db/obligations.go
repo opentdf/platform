@@ -3,12 +3,23 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/pkg/db"
+	"google.golang.org/protobuf/encoding/protojson"
 )
+
+func unmarshalValue(values []byte, v *policy.ObligationValue) error {
+	if values != nil {
+		if err := protojson.Unmarshal(values, v); err != nil {
+			return fmt.Errorf("failed to unmarshal values [%s]: %w", string(values), err)
+		}
+	}
+	return errors.New("failed to unmarshal obligation values")
+}
 
 ///
 /// Obligation Definitions
@@ -23,11 +34,21 @@ func (c PolicyDBClient) CreateObligationByNamespaceID(ctx context.Context, names
 		NamespaceID: namespaceID,
 		Name:        name,
 		Metadata:    metadataJSON,
+		Values:      values,
 	}
 	row, err := c.queries.createObligationByNamespaceID(ctx, queryParams)
 	if err != nil {
 		return nil, err
 	}
+	oblVals := make([]*policy.ObligationValue, 0, len(values))
+	for _, value := range values {
+		oblVal := &policy.ObligationValue{}
+		if err := unmarshalValue([]byte(value), oblVal); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal obligation value: %w", err)
+		}
+		oblVals = append(oblVals, oblVal)
+	}
+
 	return &policy.Obligation{
 		Id:   row.ID,
 		Name: name,
@@ -37,6 +58,7 @@ func (c PolicyDBClient) CreateObligationByNamespaceID(ctx context.Context, names
 		Namespace: &policy.Namespace{
 			Id: namespaceID,
 		},
+		Values: oblVals,
 	}, nil
 }
 
@@ -49,6 +71,7 @@ func (c PolicyDBClient) CreateObligationByNamespaceFQN(ctx context.Context, fqn,
 		Fqn:      fqn,
 		Name:     name,
 		Metadata: metadataJSON,
+		Values:   values,
 	}
 	row, err := c.queries.createObligationByNamespaceFQN(ctx, queryParams)
 	if err != nil {

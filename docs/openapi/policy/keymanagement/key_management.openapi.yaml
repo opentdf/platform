@@ -425,7 +425,7 @@ components:
           title: manager
           description: |-
             Required
-             The type of key manager (e.g. "aws", "gcp", "azure", "local")
+             The type of key manager (e.g. "aws", "gcp", "azure", "opentdf.io/basic")
         metadata:
           title: metadata
           description: Common metadata

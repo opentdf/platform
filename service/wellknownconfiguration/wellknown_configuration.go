@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"reflect"
+	"strings"
 	"sync"
 
 	"connectrpc.com/connect"
@@ -58,7 +60,9 @@ func NewRegistration() *serviceregistry.Service[wellknownconfigurationconnect.We
 
 func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *connect.Request[wellknown.GetWellKnownConfigurationRequest]) (*connect.Response[wellknown.GetWellKnownConfigurationResponse], error) {
 	rwMutex.RLock()
-	cfg, err := structpb.NewStruct(wellKnownConfiguration)
+	// Convert configuration to structpb-compatible format
+	convertedConfig := convertToSerializable(wellKnownConfiguration)
+	cfg, err := structpb.NewStruct(convertedConfig.(map[string]interface{}))
 	rwMutex.RUnlock()
 	if err != nil {
 		s.logger.Error("failed to create struct for wellknown configuration", slog.String("error", err.Error()))
@@ -69,4 +73,103 @@ func (s WellKnownService) GetWellKnownConfiguration(_ context.Context, _ *connec
 		Configuration: cfg,
 	}
 	return connect.NewResponse(rsp), nil
+}
+
+// convertToSerializable converts any value to a format that structpb.NewStruct can handle
+func convertToSerializable(value interface{}) interface{} {
+	if value == nil {
+		return nil
+	}
+	converted := convertValue(reflect.ValueOf(value))
+	if !converted.IsValid() {
+		return nil
+	}
+	return converted.Interface()
+}
+
+// convertValue recursively converts reflection values to structpb-compatible types
+func convertValue(v reflect.Value) reflect.Value {
+	if !v.IsValid() {
+		return reflect.ValueOf(nil)
+	}
+
+	switch v.Kind() {
+	case reflect.Struct:
+		return convertStruct(v)
+	case reflect.Slice:
+		return convertSlice(v)
+	case reflect.Map:
+		return convertMap(v)
+	case reflect.Ptr:
+		if v.IsNil() {
+			return reflect.ValueOf(nil)
+		}
+		return convertValue(v.Elem())
+	case reflect.Interface:
+		if v.IsNil() {
+			return reflect.ValueOf(nil)
+		}
+		return convertValue(v.Elem())
+	default:
+		// Basic types (bool, int, float, string) are handled as-is
+		return v
+	}
+}
+
+// convertStruct converts a struct to a map[string]interface{}
+func convertStruct(v reflect.Value) reflect.Value {
+	t := v.Type()
+	result := make(map[string]interface{})
+
+	for i := 0; i < v.NumField(); i++ {
+		field := t.Field(i)
+		if !field.IsExported() {
+			continue
+		}
+
+		// Check json tag for exclusion
+		jsonTag := field.Tag.Get("json")
+		if jsonTag == "-" {
+			continue
+		}
+
+		// Use json tag if available, otherwise use field name
+		name := field.Name
+		if jsonTag != "" {
+			tagParts := strings.Split(jsonTag, ",")
+			if tagParts[0] != "" {
+				name = tagParts[0]
+			}
+		}
+
+		fieldValue := convertValue(v.Field(i))
+		if fieldValue.IsValid() {
+			result[name] = fieldValue.Interface()
+		} else {
+			result[name] = nil
+		}
+	}
+
+	return reflect.ValueOf(result)
+}
+
+// convertSlice converts slices to []interface{}
+func convertSlice(v reflect.Value) reflect.Value {
+	result := make([]interface{}, v.Len())
+	for i := 0; i < v.Len(); i++ {
+		converted := convertValue(v.Index(i))
+		result[i] = converted.Interface()
+	}
+	return reflect.ValueOf(result)
+}
+
+// convertMap converts maps to map[string]interface{}
+func convertMap(v reflect.Value) reflect.Value {
+	result := make(map[string]interface{})
+	for _, key := range v.MapKeys() {
+		keyStr := fmt.Sprintf("%v", key.Interface())
+		value := convertValue(v.MapIndex(key))
+		result[keyStr] = value.Interface()
+	}
+	return reflect.ValueOf(result)
 }

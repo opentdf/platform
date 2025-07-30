@@ -532,14 +532,14 @@ components:
           type: string
           title: name
           description: Optional
-        manager:
-          type: string
-          title: manager
-          description: Optional
         configJson:
           type: string
           title: config_json
           format: byte
+          description: Optional
+        manager:
+          type: string
+          title: manager
           description: Optional
         metadata:
           title: metadata

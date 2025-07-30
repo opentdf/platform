@@ -81,7 +81,7 @@ jobs:
         run: .github/scripts/init-temp-keys.sh
       - if: matrix.directory == 'examples'
         # Since 'trs' is an integration test, we skip it
-        run: go test $(go list ./... | grep -v '/examples/trs') -short
+        run: go test "$(go list ./... | grep -v '/examples/trs')"" -short
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory != 'examples'
         run: go test ./... -short

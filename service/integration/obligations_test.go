@@ -45,12 +45,11 @@ func TestObligationsSuite(t *testing.T) {
 
 // Create
 
-func (s *ObligationsSuite) Test_CreateObligationDefinition_Succeeds() {
-	// tcs:
-	// - create obligation definition with valid namespace_id and name
-	// - create with values and possibly triggers and fulfillers?
+func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
+	// By namespace ID
 	namespace := s.f.GetNamespaceKey("example.com")
 	namespaceID := namespace.ID
+	namespaceFQN := "https://" + namespace.Name
 	oblName := "example-obligation"
 	oblValPrefix := "obligation_value_"
 	oblVals := []string{
@@ -66,14 +65,18 @@ func (s *ObligationsSuite) Test_CreateObligationDefinition_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(obl)
-	s.Equal(obl.Name, oblName)
+	s.Equal(oblName, obl.Name)
+	s.Equal(namespaceID, obl.Namespace.Id)
+	s.Equal(namespace.Name, obl.Namespace.Name)
+	s.Equal(namespaceFQN, obl.Namespace.Fqn)
 	for _, value := range obl.Values {
 		s.Contains(value.GetValue(), oblValPrefix)
 	}
 
+	// By namespace FQN
 	namespace = s.f.GetNamespaceKey("example.net")
-	namespaceName := namespace.Name
-	namespaceFQN := "https://" + namespaceName
+	namespaceID = namespace.ID
+	namespaceFQN = "https://" + namespace.Name
 	obl, err = s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
 		NamespaceIdentifier: &obligations.CreateObligationRequest_Fqn{
 			Fqn: namespaceFQN,
@@ -82,7 +85,10 @@ func (s *ObligationsSuite) Test_CreateObligationDefinition_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(obl)
-	s.Equal(obl.Name, oblName)
+	s.Equal(oblName, obl.Name)
+	s.Equal(namespaceID, obl.Namespace.Id)
+	s.Equal(namespace.Name, obl.Namespace.Name)
+	s.Equal(namespaceFQN, obl.Namespace.Fqn)
 }
 
 func (s *ObligationsSuite) Test_CreateObligationDefinition_Fails() {

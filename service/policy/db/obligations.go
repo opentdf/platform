@@ -34,6 +34,15 @@ func unmarshalObligationValuesProto(valuesJSON []byte, values []*policy.Obligati
 	return nil
 }
 
+func unmarshalNamespace(namespaceJSON []byte, namespace *policy.Namespace) error {
+	if namespaceJSON != nil {
+		if err := protojson.Unmarshal(namespaceJSON, namespace); err != nil {
+			return fmt.Errorf("failed to unmarshal namespaceJSON [%s]: %w", string(namespaceJSON), err)
+		}
+	}
+	return nil
+}
+
 ///
 /// Obligation Definitions
 ///
@@ -112,8 +121,8 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 	// }
 	name := r.GetName()
 	values := r.GetValues()
-	namespaceID := r.GetId()
-	namespaceFQN := r.GetFqn()
+	// namespaceID := r.GetId()
+	// namespaceFQN := r.GetFqn()
 	queryParams := createObligationParams{
 		NamespaceID:  r.GetId(),
 		NamespaceFqn: r.GetFqn(),
@@ -131,17 +140,19 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 		return nil, fmt.Errorf("failed to unmarshal obligation values: %w", err)
 	}
 
+	var namespace policy.Namespace
+	if err := unmarshalNamespace(row.Namespace, &namespace); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
+	}
+
 	return &policy.Obligation{
 		Id:   row.ID,
 		Name: name,
 		Metadata: &common.Metadata{
 			Labels: metadata.GetLabels(),
 		},
-		Namespace: &policy.Namespace{
-			Id:  namespaceID,
-			Fqn: namespaceFQN,
-		},
-		Values: oblVals,
+		Namespace: &namespace,
+		Values:    oblVals,
 	}, nil
 }
 

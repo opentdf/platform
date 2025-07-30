@@ -2,6 +2,7 @@ package keymanagement
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -103,7 +104,7 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 	// Validate that manager is provided and registered
 	manager := req.Msg.GetManager()
 	if manager == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("manager field is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("manager field is required"))
 	}
 	if !ksvc.isManagerRegistered(manager) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("manager type '%s' is not registered", manager))

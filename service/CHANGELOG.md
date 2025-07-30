@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.7.0](https://github.com/opentdf/platform/compare/service/v0.6.0...service/v0.7.0) (2025-06-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** disable kas grants in favor of key mappings ([#2220](https://github.com/opentdf/platform/issues/2220))
+
+### Features
+
+* **authz:** Add caching to keycloak ERS ([#2466](https://github.com/opentdf/platform/issues/2466)) ([f5b0a06](https://github.com/opentdf/platform/commit/f5b0a06496ca322dfbf6a8dc613de748fe34d5bb))
+* **authz:** auth svc registered resource GetDecision support ([#2392](https://github.com/opentdf/platform/issues/2392)) ([5405674](https://github.com/opentdf/platform/commit/5405674a832baaad7f1f2fc9d479267d8958bc0b))
+* **authz:** authz v2 GetBulkDecision ([#2448](https://github.com/opentdf/platform/issues/2448)) ([0da3363](https://github.com/opentdf/platform/commit/0da3363f8cdc39d89892be12eac36b5040e594b9))
+* **authz:** cache entitlement policy within authorization service ([#2457](https://github.com/opentdf/platform/issues/2457)) ([c16361c](https://github.com/opentdf/platform/commit/c16361c8048a6685fa7781b6f1f403f13c897792))
+* **authz:** ensure logging parity between authz v2 and v1 ([#2443](https://github.com/opentdf/platform/issues/2443)) ([ef68586](https://github.com/opentdf/platform/commit/ef685860e1f01f9d618a8682d16055e5dfa91323))
+* **core:** add cache manager ([#2449](https://github.com/opentdf/platform/issues/2449)) ([2b062c5](https://github.com/opentdf/platform/commit/2b062c51d529aaed179258e0af8c86f3e5d53078))
+* **core:** consume RPC interceptor request context metadata in logging ([#2442](https://github.com/opentdf/platform/issues/2442)) ([2769c48](https://github.com/opentdf/platform/commit/2769c48a608d8373e24068f808ea27d89a0d5cd6))
+* **core:** DSPX-609 - add cli-client to keycloak provisioning ([#2396](https://github.com/opentdf/platform/issues/2396)) ([48e7489](https://github.com/opentdf/platform/commit/48e74899ffc1b68a9e8adb5717e84649125271ec))
+* **core:** ERS cache setup, fix cache initialization ([#2458](https://github.com/opentdf/platform/issues/2458)) ([d0c6938](https://github.com/opentdf/platform/commit/d0c6938632e5ba119e56fbb19d477bff1f4d1191))
+* inject logger and cache manager to key managers ([#2461](https://github.com/opentdf/platform/issues/2461)) ([9292162](https://github.com/opentdf/platform/commit/9292162f0eefd0718bfff10e3118acda273c2d52))
+* **kas:** expose provider config from key details. ([#2459](https://github.com/opentdf/platform/issues/2459)) ([0e7d39a](https://github.com/opentdf/platform/commit/0e7d39a53c1fff0194a26c8bb62a5e2996b5e9fb))
+* **main:** Add Close() method to cache manager ([#2465](https://github.com/opentdf/platform/issues/2465)) ([32630d6](https://github.com/opentdf/platform/commit/32630d68a55f2ac03f5ac6c1472258aab09a2f05))
+* **policy:** disable kas grants in favor of key mappings ([#2220](https://github.com/opentdf/platform/issues/2220)) ([30f8cf5](https://github.com/opentdf/platform/commit/30f8cf54abbb1a9def43a6d0fa602ba979dd3053))
+* **policy:** Restrict deletion of pc with used key. ([#2414](https://github.com/opentdf/platform/issues/2414)) ([3b40a46](https://github.com/opentdf/platform/commit/3b40a46919e4c5b4f2e86dcd63e0f3d8a27d5d27))
+* **sdk:** allow Connect-Protocol-Version RPC header for cors ([#2437](https://github.com/opentdf/platform/issues/2437)) ([4bf241e](https://github.com/opentdf/platform/commit/4bf241e15537da406019959b2062133f75171e0a))
+
+
+### Bug Fixes
+
+* **core:** remove generics on new platform cache manager and client ([#2456](https://github.com/opentdf/platform/issues/2456)) ([98c3c16](https://github.com/opentdf/platform/commit/98c3c166b2a86802c50fe4453ce3fea5974314dc))
+* **core:** replace opentdf-public client with cli-client ([#2422](https://github.com/opentdf/platform/issues/2422)) ([fb18525](https://github.com/opentdf/platform/commit/fb18525049405e558f70ae77b075b9e75306d81e))
+* **deps:** bump github.com/casbin/casbin/v2 from 2.106.0 to 2.107.0 in /service in the external group ([#2416](https://github.com/opentdf/platform/issues/2416)) ([43afd48](https://github.com/opentdf/platform/commit/43afd48a5338efecc1790f22a533e6d681af510d))
+* **deps:** bump github.com/opentdf/platform/protocol/go from 0.4.0 to 0.5.0 in /service ([#2470](https://github.com/opentdf/platform/issues/2470)) ([3a73fc9](https://github.com/opentdf/platform/commit/3a73fc9383eadf9078ff2046e7d90eb8beb8ea14))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.4.7 to 0.5.0 in /service ([#2473](https://github.com/opentdf/platform/issues/2473)) ([ad37476](https://github.com/opentdf/platform/commit/ad374769f234ba727ed7f8ab61abdd78a450506c))
+* **deps:** bump the external group across 1 directory with 2 updates ([#2450](https://github.com/opentdf/platform/issues/2450)) ([9d8d1f1](https://github.com/opentdf/platform/commit/9d8d1f155711fc4704e453e78e74b01ab09a26d6))
+* **deps:** bump the external group across 1 directory with 2 updates ([#2472](https://github.com/opentdf/platform/issues/2472)) ([d45b3c8](https://github.com/opentdf/platform/commit/d45b3c8b1e76646f14970f1622809378ccaff26a))
+* only request a token when near expiration ([#2370](https://github.com/opentdf/platform/issues/2370)) ([556d95e](https://github.com/opentdf/platform/commit/556d95ea6a7e61f9428754550c181c19e2f91747))
+* **policy:** fix casing bug and get provider config on update. ([#2403](https://github.com/opentdf/platform/issues/2403)) ([a52b8f9](https://github.com/opentdf/platform/commit/a52b8f940c8e523d40275310be581e3383411717))
+* **policy:** properly formatted pem in test fixtures ([#2409](https://github.com/opentdf/platform/issues/2409)) ([54ffd23](https://github.com/opentdf/platform/commit/54ffd2334b91b38c51a4b56e3b5e124f04bb2478))
+
 ## [0.6.0](https://github.com/opentdf/platform/compare/service/v0.5.5...service/v0.6.0) (2025-06-06)
 
 

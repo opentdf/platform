@@ -246,6 +246,92 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_NoPagination_Suc
 	s.Equal(2, foundCount)
 }
 
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_RegResValuesContainActionAttributeValues() {
+	// Create a registered resource with values that have action attribute values
+	newRegRes, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_list_reg_res_with_action_attr_values",
+	})
+	s.Require().NoError(err)
+	s.NotNil(newRegRes)
+	regResID := newRegRes.GetId()
+
+	val1, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: regResID,
+		Value:      "test_value_1",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameCreate,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val1)
+
+	val2, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: regResID,
+		Value:      "test_value_2",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameUpdate,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr2/value/value2",
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val2)
+
+	// List registered resources and check if values contain action attribute values
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	foundRegRes := false
+	foundVal1 := false
+	foundVal2 := false
+	for _, r := range list.GetResources() {
+		if r.GetId() == regResID {
+			s.Equal("test_list_reg_res_with_action_attr_values", r.GetName())
+			values := r.GetValues()
+			s.Require().Len(values, 2)
+			foundRegRes = true
+
+			// Check if action attribute values are present in the values
+			for _, v := range values {
+				if v.GetId() == val1.GetId() {
+					foundVal1 = true
+					actionAttrValues := v.GetActionAttributeValues()
+					s.Require().NotEmpty(actionAttrValues)
+					for _, aav := range actionAttrValues {
+						s.NotNil(aav.GetAction())
+						s.NotNil(aav.GetAttributeValue())
+					}
+				}
+				if v.GetId() == val2.GetId() {
+					foundVal2 = true
+					actionAttrValues := v.GetActionAttributeValues()
+					s.Require().NotEmpty(actionAttrValues)
+					for _, aav := range actionAttrValues {
+						s.NotNil(aav.GetAction())
+						s.NotNil(aav.GetAttributeValue())
+					}
+				}
+			}
+		}
+	}
+	s.True(foundRegRes, "Registered resource not found in list")
+	s.True(foundVal1, "Value 1 not found in registered resource values")
+	s.True(foundVal2, "Value 2 not found in registered resource values")
+}
+
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_Limit_Succeeds() {
 	var limit int32 = 1
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{

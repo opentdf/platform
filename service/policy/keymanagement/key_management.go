@@ -52,7 +52,7 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (keyMgmtConnect.KeyManagementServiceHandler, serviceregistry.HandlerServer) {
 				cfg, err := policyconfig.GetSharedPolicyConfig(srp.Config)
 				if err != nil {
-					srp.Logger.Error("Failed to get shared policy config", slog.String("error", err.Error()))
+					srp.Logger.Error("failed to get shared policy config", slog.Any("error", err))
 					panic(err)
 				}
 				ksvc.logger = srp.Logger
@@ -74,7 +74,7 @@ func (ksvc *Service) Close() {
 func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Request[keyMgmtProto.CreateProviderConfigRequest]) (*connect.Response[keyMgmtProto.CreateProviderConfigResponse], error) {
 	rsp := &keyMgmtProto.CreateProviderConfigResponse{}
 
-	ksvc.logger.Debug("Creating Provider Config")
+	ksvc.logger.DebugContext(ctx, "creating Provider Config")
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeCreate,
@@ -100,7 +100,7 @@ func (ksvc Service) CreateProviderConfig(ctx context.Context, req *connect.Reque
 		return nil
 	})
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("keyManagementService", req.Msg.GetName()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextCreationFailed, slog.String("keyManagementService", req.Msg.GetName()))
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -111,16 +111,16 @@ func (ksvc Service) GetProviderConfig(ctx context.Context, req *connect.Request[
 
 	switch req := req.Msg.GetIdentifier().(type) {
 	case *keyMgmtProto.GetProviderConfigRequest_Id:
-		ksvc.logger.Debug("Getting Provider config by ID", slog.String("ID", req.Id))
+		ksvc.logger.DebugContext(ctx, "getting provider config by ID", slog.String("id", req.Id))
 	case *keyMgmtProto.GetProviderConfigRequest_Name:
-		ksvc.logger.Debug("Getting Provider config by Name", slog.String("Name", req.Name))
+		ksvc.logger.DebugContext(ctx, "getting provider config by Name", slog.String("name", req.Name))
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, nil)
 	}
 
 	pc, err := ksvc.dbClient.GetProviderConfig(ctx, req.Msg.GetIdentifier())
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("keyManagementService", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("keyManagementService", req.Msg.String()))
 	}
 
 	rsp.ProviderConfig = pc
@@ -128,11 +128,11 @@ func (ksvc Service) GetProviderConfig(ctx context.Context, req *connect.Request[
 }
 
 func (ksvc Service) ListProviderConfigs(ctx context.Context, req *connect.Request[keyMgmtProto.ListProviderConfigsRequest]) (*connect.Response[keyMgmtProto.ListProviderConfigsResponse], error) {
-	ksvc.logger.Debug("Listing Provider Configs")
+	ksvc.logger.DebugContext(ctx, "listing Provider Configs")
 
 	resp, err := ksvc.dbClient.ListProviderConfigs(ctx, req.Msg.GetPagination())
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("keyManagementService", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("keyManagementService", req.Msg.String()))
 	}
 
 	return connect.NewResponse(resp), nil
@@ -142,7 +142,7 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 	rsp := &keyMgmtProto.UpdateProviderConfigResponse{}
 	providerConfigID := req.Msg.GetId()
 
-	ksvc.logger.Debug("Updating Provider Config", slog.String("id", req.Msg.GetId()))
+	ksvc.logger.DebugContext(ctx, "updating Provider Config", slog.String("id", req.Msg.GetId()))
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeUpdate,
@@ -155,7 +155,7 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 	})
 	if err != nil {
 		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("id", providerConfigID))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextGetRetrievalFailed, slog.String("id", providerConfigID))
 	}
 
 	err = ksvc.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
@@ -183,7 +183,7 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 		return nil
 	})
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("keyManagementService", req.Msg.GetId()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextUpdateFailed, slog.String("keyManagementService", req.Msg.GetId()))
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -192,7 +192,7 @@ func (ksvc Service) UpdateProviderConfig(ctx context.Context, req *connect.Reque
 func (ksvc Service) DeleteProviderConfig(ctx context.Context, req *connect.Request[keyMgmtProto.DeleteProviderConfigRequest]) (*connect.Response[keyMgmtProto.DeleteProviderConfigResponse], error) {
 	rsp := &keyMgmtProto.DeleteProviderConfigResponse{}
 
-	ksvc.logger.Debug("Deleting Provider Config", slog.String("id", req.Msg.GetId()))
+	ksvc.logger.DebugContext(ctx, "deleting Provider Config", slog.String("id", req.Msg.GetId()))
 
 	auditParams := audit.PolicyEventParams{
 		ActionType: audit.ActionTypeDelete,
@@ -202,7 +202,7 @@ func (ksvc Service) DeleteProviderConfig(ctx context.Context, req *connect.Reque
 	pc, err := ksvc.dbClient.DeleteProviderConfig(ctx, req.Msg.GetId())
 	if err != nil {
 		ksvc.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("keyManagementService", req.Msg.GetId()))
+		return nil, db.StatusifyError(ctx, ksvc.logger, err, db.ErrTextDeletionFailed, slog.String("keyManagementService", req.Msg.GetId()))
 	}
 
 	auditParams.ObjectID = pc.GetId()

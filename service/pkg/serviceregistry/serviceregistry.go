@@ -17,6 +17,7 @@ import (
 
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/trust"
@@ -43,7 +44,10 @@ type RegistrationParams struct {
 	Logger *logger.Logger
 	trace.Tracer
 
-	KeyManagers []trust.KeyManager
+	// NewCacheClient is a function that can be used to create a new cache instance for the service
+	NewCacheClient func(cache.Options) (*cache.Cache, error)
+
+	KeyManagerFactories []trust.NamedKeyManagerFactory
 
 	////// The following functions are optional and intended to be called by the service //////
 
@@ -288,9 +292,16 @@ func (reg Registry) Shutdown() {
 	for name, ns := range reg {
 		for _, svc := range ns.Services {
 			if svc.IsStarted() {
-				slog.Info("stopping service", slog.String("namespace", name), slog.String("service", svc.GetServiceDesc().ServiceName))
+				slog.Info("stopping service",
+					slog.String("namespace", name),
+					slog.String("service", svc.GetServiceDesc().ServiceName),
+				)
 				if err := svc.Shutdown(); err != nil {
-					slog.Error("error stopping service", slog.String("namespace", name), slog.String("service", svc.GetServiceDesc().ServiceName), slog.String("error", err.Error()))
+					slog.Error("error stopping service",
+						slog.String("namespace", name),
+						slog.String("service", svc.GetServiceDesc().ServiceName),
+						slog.Any("error", err),
+					)
 				}
 			}
 		}

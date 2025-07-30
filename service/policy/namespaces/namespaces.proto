@@ -3,28 +3,25 @@ syntax = "proto3";
 package policy.namespaces;
 
 import "buf/validate/validate.proto";
-
 import "common/common.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
 
 /*
-    Key Access Server Grants
+   Key Access Server Grants
 */
 
+// Deprecated
 message NamespaceKeyAccessServer {
+  option deprecated = true;
   // Required
-  string namespace_id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string namespace_id = 1 [(buf.validate.field).string.uuid = true];
   // Required
-  string key_access_server_id = 2 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string key_access_server_id = 2 [(buf.validate.field).string.uuid = true];
 }
 
 /*
-    Key Maps
+   Key Maps
 */
 
 message NamespaceKey {
@@ -49,14 +46,14 @@ message NamespaceKey {
 message GetNamespaceRequest {
   // Temporary message level validation until we remove the deprecated id field
   option (buf.validate.message).cel = {
-    id: "exclusive_fields",
-    expression: "!(has(this.id) && (has(this.namespace_id) || has(this.fqn)))",
+    id: "exclusive_fields"
+    expression: "!(has(this.id) && (has(this.namespace_id) || has(this.fqn)))"
     message: "Either use deprecated 'id' field or one of 'namespace_id' or 'fqn', but not both"
   };
 
   option (buf.validate.message).cel = {
-    id: "required_fields",
-    expression: "has(this.id) || has(this.namespace_id) || has(this.fqn)",
+    id: "required_fields"
+    expression: "has(this.id) || has(this.namespace_id) || has(this.fqn)"
     message: "Either id or one of namespace_id or fqn must be set"
   };
 
@@ -64,20 +61,16 @@ message GetNamespaceRequest {
   string id = 1 [
     deprecated = true,
     (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
-    (buf.validate.field).string.uuid= true
+    (buf.validate.field).string.uuid = true
   ];
 
   oneof identifier {
     //option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field
-    string namespace_id = 2 [
-      (buf.validate.field).string.uuid = true
-    ];
-    string fqn = 3 [
-      (buf.validate.field).string = {
-        min_len : 1
-        uri : true
-      }
-    ];
+    string namespace_id = 2 [(buf.validate.field).string.uuid = true];
+    string fqn = 3 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
   }
 }
 
@@ -105,8 +98,8 @@ message CreateNamespaceRequest {
     (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "namespace_format",
-      message: "Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. The stored namespace will be normalized to lower case.",
+      id: "namespace_format"
+      message: "Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. The stored namespace will be normalized to lower case."
       expression: "this.matches('^([a-zA-Z0-9]([a-zA-Z0-9\\\\-]{0,61}[a-zA-Z0-9])?\\\\.)+[a-zA-Z]{2,}$')"
     }
   ];
@@ -120,9 +113,7 @@ message CreateNamespaceResponse {
 
 message UpdateNamespaceRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 
   // Optional
   common.MetadataMutable metadata = 100;
@@ -134,16 +125,13 @@ message UpdateNamespaceResponse {
 
 message DeactivateNamespaceRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 message DeactivateNamespaceResponse {}
 
 /*
-  Assign Key Access Server to Namespace
+   Assign Key Access Server to Namespace
 */
-
 
 message AssignKeyAccessServerToNamespaceRequest {
   NamespaceKeyAccessServer namespace_key_access_server = 1;
@@ -162,12 +150,10 @@ message RemoveKeyAccessServerFromNamespaceResponse {
 }
 
 /*
-  Assign Key to Namespace
+   Assign Key to Namespace
 */
 message AssignPublicKeyToNamespaceRequest {
-  NamespaceKey namespace_key = 1 [
-    (buf.validate.field).required = true
-  ];
+  NamespaceKey namespace_key = 1 [(buf.validate.field).required = true];
 }
 
 message AssignPublicKeyToNamespaceResponse {
@@ -175,9 +161,7 @@ message AssignPublicKeyToNamespaceResponse {
 }
 
 message RemovePublicKeyFromNamespaceRequest {
-  NamespaceKey namespace_key = 1 [
-    (buf.validate.field).required = true
-  ];
+  NamespaceKey namespace_key = 1 [(buf.validate.field).required = true];
 }
 
 message RemovePublicKeyFromNamespaceResponse {
@@ -197,12 +181,16 @@ service NamespaceService {
   rpc UpdateNamespace(UpdateNamespaceRequest) returns (UpdateNamespaceResponse) {}
   rpc DeactivateNamespace(DeactivateNamespaceRequest) returns (DeactivateNamespaceResponse) {}
 
-   /*--------------------------------------*
+  /*--------------------------------------*
    * Namespace <> Key Access Server RPCs
    *---------------------------------------*/
-  rpc AssignKeyAccessServerToNamespace(AssignKeyAccessServerToNamespaceRequest) returns (AssignKeyAccessServerToNamespaceResponse) {}
+  rpc AssignKeyAccessServerToNamespace(AssignKeyAccessServerToNamespaceRequest) returns (AssignKeyAccessServerToNamespaceResponse) {
+    option deprecated = true;
+  }
 
-  rpc RemoveKeyAccessServerFromNamespace(RemoveKeyAccessServerFromNamespaceRequest) returns (RemoveKeyAccessServerFromNamespaceResponse) {}
+  rpc RemoveKeyAccessServerFromNamespace(RemoveKeyAccessServerFromNamespaceRequest) returns (RemoveKeyAccessServerFromNamespaceResponse) {
+    option deprecated = true;
+  }
 
   /*--------------------------------------*
    * Namespace <> Key RPCs
@@ -210,4 +198,3 @@ service NamespaceService {
   rpc AssignPublicKeyToNamespace(AssignPublicKeyToNamespaceRequest) returns (AssignPublicKeyToNamespaceResponse) {}
   rpc RemovePublicKeyFromNamespace(RemovePublicKeyFromNamespaceRequest) returns (RemovePublicKeyFromNamespaceResponse) {}
 }
-

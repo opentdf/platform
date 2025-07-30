@@ -19,7 +19,7 @@ toolcheck:
 	@which buf > /dev/null || (echo "buf not found, please install it from https://docs.buf.build/installation" && exit 1)
 	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.1.6'" && exit 1)
 	@which protoc-gen-doc > /dev/null || (echo "protoc-gen-doc not found, run 'go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1'" && exit 1)
-	@which protoc-gen-connect-openapi > /dev/null || (echo "protoc-gen-connect-openapi not found, run 'go install github.com/sudorandom/protoc-gen-connect-openapi@latest'" && exit 1)
+	@which protoc-gen-connect-openapi > /dev/null || (echo "protoc-gen-connect-openapi not found, run 'go install github.com/sudorandom/protoc-gen-connect-openapi@v0.18.0'" && exit 1)
 	@required_golangci_lint_version="2.1.0"; \
 	current_version=$$(golangci-lint --version | grep -Eo 'v?[0-9]+\.[0-9]+\.[0-9]+' | sed 's/^v//' | head -n 1); \
 	[ "$$(printf '%s\n' "$$required_golangci_lint_version" "$$current_version" | sort -V | head -n1)" = "$$required_golangci_lint_version" ] || \
@@ -65,7 +65,7 @@ govulncheck:
 	done; \
 	exit $$status
 
-proto-generate:
+proto-generate: toolcheck
 	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
 	buf generate service
 	buf generate service --template buf.gen.grpc.docs.yaml

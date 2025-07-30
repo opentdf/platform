@@ -216,6 +216,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.AssignKeyAccessServerToNamespaceResponse'
+      deprecated: true
   /policy.namespaces.NamespaceService/RemoveKeyAccessServerFromNamespace:
     post:
       tags:
@@ -251,6 +252,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.namespaces.RemoveKeyAccessServerFromNamespaceResponse'
+      deprecated: true
   /policy.namespaces.NamespaceService/AssignPublicKeyToNamespace:
     post:
       tags:
@@ -436,8 +438,14 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
+      examples:
+        - 1s
+        - 1.000340012s
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -643,7 +651,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.KeyAccessServer'
           title: grants
-          description: KAS grants for the namespace
+          description: Deprecated KAS grants for the namespace. Use kas_keys instead.
         kasKeys:
           type: array
           items:
@@ -942,6 +950,7 @@ components:
           description: Required
       title: NamespaceKeyAccessServer
       additionalProperties: false
+      description: Deprecated
     policy.namespaces.RemoveKeyAccessServerFromNamespaceRequest:
       type: object
       properties:

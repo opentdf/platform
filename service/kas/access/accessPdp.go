@@ -35,7 +35,7 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 	for i, policy := range policies {
 		if len(policy.Body.Dissem) > 0 {
 			// TODO: Move dissems check to the getdecisions endpoint
-			p.Logger.Error("Dissems check is not enabled in v2 platform kas")
+			p.Logger.Error("dissems check is not enabled in v2 platform kas")
 		}
 		if len(policy.Body.DataAttributes) > 0 {
 			id := "rewrap-" + strconv.Itoa(i)
@@ -60,7 +60,7 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 	// If no data attributes were found in any policies, return early with the results
 	// instead of roundtripping to get a decision on no resources
 	if len(resources) == 0 {
-		p.Logger.DebugContext(ctx, "No resources to check")
+		p.Logger.DebugContext(ctx, "no resources to check")
 		return res, nil
 	}
 
@@ -75,7 +75,7 @@ func (p *Provider) canAccess(ctx context.Context, token *entity.Token, policies 
 	for _, decision := range resourceDecisions {
 		policy, ok := idPolicyMap[decision.GetEphemeralResourceId()]
 		if !ok { // this really should not happen
-			p.Logger.WarnContext(ctx, "Unexpected ephemeral resource id not mapped to a policy", "decision response ephemeral resource ID", decision.GetEphemeralResourceId())
+			p.Logger.WarnContext(ctx, "unexpected ephemeral resource id not mapped to a policy")
 			continue
 		}
 		res = append(res, PDPAccessResult{Policy: policy, Access: decision.GetDecision() == authzV2.Decision_DECISION_PERMIT})
@@ -99,7 +99,7 @@ func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Res
 		}
 		dr, err := p.SDK.AuthorizationV2.GetDecision(ctx, req)
 		if err != nil {
-			p.Logger.ErrorContext(ctx, "Error received from GetDecision", "err", err)
+			p.Logger.ErrorContext(ctx, "error received from GetDecision")
 			return nil, errors.Join(ErrDecisionUnexpected, err)
 		}
 		return []*authzV2.ResourceDecision{dr.GetDecision()}, nil
@@ -116,7 +116,7 @@ func (p *Provider) checkAttributes(ctx context.Context, resources []*authzV2.Res
 
 	dr, err := p.SDK.AuthorizationV2.GetDecisionMultiResource(ctx, req)
 	if err != nil {
-		p.Logger.ErrorContext(ctx, "Error received from GetDecisionMultiResource", "err", err)
+		p.Logger.ErrorContext(ctx, "error received from GetDecisionMultiResource")
 		return nil, errors.Join(ErrDecisionUnexpected, err)
 	}
 	return dr.GetResourceDecisions(), nil

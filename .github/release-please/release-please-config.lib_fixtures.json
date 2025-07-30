@@ -4,6 +4,7 @@
   "versioning": "always-bump-patch",
   "separate-pull-requests": true,
   "include-component-in-tag": true,
+  "pull-request-title-pattern": "chore(release): release ${component} ${version}",
   "tag-separator": "/",
   "packages": {
     "lib/fixtures": {

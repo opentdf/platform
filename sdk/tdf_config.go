@@ -65,8 +65,6 @@ type TDFConfig struct {
 	defaultSegmentSize         int64
 	enableEncryption           bool
 	tdfFormat                  TDFFormat
-	tdfPublicKey               string // TODO: Remove it
-	tdfPrivateKey              string
 	metaData                   string
 	mimeType                   string
 	integrityAlgorithm         IntegrityAlgorithm
@@ -75,10 +73,12 @@ type TDFConfig struct {
 	attributes                 []AttributeValueFQN
 	attributeValues            []*policy.Value
 	kasInfoList                []KASInfo
+	kaoTemplate                []kaoTpl
 	splitPlan                  []keySplitStep
-	keyType                    ocrypto.KeyType
+	preferredKeyWrapAlg        ocrypto.KeyType
 	useHex                     bool
 	excludeVersionFromManifest bool
+	addDefaultAssertion        bool
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -89,7 +89,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		tdfFormat:                 JSONFormat,
 		integrityAlgorithm:        HS256,
 		segmentIntegrityAlgorithm: GMAC,
-		keyType:                   ocrypto.RSA2048Key, // default to RSA
+		addDefaultAssertion:       false,
 	}
 
 	for _, o := range opt {
@@ -99,31 +99,7 @@ func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 		}
 	}
 
-	publicKey, privateKey, err := generateKeyPair(c.keyType)
-	if err != nil {
-		return nil, err
-	}
-
-	c.tdfPrivateKey = privateKey
-	c.tdfPublicKey = publicKey
-
 	return c, nil
-}
-
-func generateKeyPair(kt ocrypto.KeyType) (string, string, error) {
-	keyPair, err := ocrypto.NewKeyPair(kt)
-	if err != nil {
-		return "", "", fmt.Errorf("ocrypto.NewRSAKeyPair failed: %w", err)
-	}
-	publicKey, err := keyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return "", "", fmt.Errorf("ocrypto.PublicKeyInPemFormat failed: %w", err)
-	}
-	privateKey, err := keyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		return "", "", fmt.Errorf("ocrypto.PrivateKeyInPemFormat failed: %w", err)
-	}
-	return publicKey, privateKey, nil
 }
 
 // WithDataAttributes appends the given data attributes to the bound policy
@@ -146,6 +122,7 @@ func WithDataAttributes(attributes ...string) TDFOption {
 // during autoconfigure. That is, to use autoconfigure in an 'offline' context,
 // you must first store the relevant attribute information locally and load
 // it to the `CreateTDF` method with this option.
+// DEPRECATION: This option is deprecated and will be removed in a future release.
 func WithDataAttributeValues(attributes ...*policy.Value) TDFOption {
 	return func(c *TDFConfig) error {
 		c.attributes = make([]AttributeValueFQN, len(attributes))
@@ -217,6 +194,14 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 }
 
+// WithDefaultAssertion returns an Option that adds a default assertion to the TDF.
+func WithSystemMetadataAssertion() TDFOption {
+	return func(c *TDFConfig) error {
+		c.addDefaultAssertion = true
+		return nil
+	}
+}
+
 // WithAssertions returns an Option that add assertions to TDF.
 func WithAssertions(assertionList ...AssertionConfig) TDFOption {
 	return func(c *TDFConfig) error {
@@ -237,12 +222,13 @@ func WithAutoconfigure(enable bool) TDFOption {
 	}
 }
 
+// Deprecated: WithWrappingKeyAlg sets the key type for the TDF wrapping key for both storage and transit.
 func WithWrappingKeyAlg(keyType ocrypto.KeyType) TDFOption {
 	return func(c *TDFConfig) error {
-		if c.keyType == "" {
+		if keyType == "" {
 			return errors.New("key type missing")
 		}
-		c.keyType = keyType
+		c.preferredKeyWrapAlg = keyType
 		return nil
 	}
 }

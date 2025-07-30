@@ -42,7 +42,12 @@ paths:
       tags:
         - kas.AccessService
       summary: LegacyPublicKey
-      description: buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+      description: |-
+        Endpoint intended for gRPC Gateway's REST endpoint to provide v1 compatibility with older TDF clients
+
+         This endpoint is not recommended for use in new applications, prefer the v2 endpoint ('PublicKey') instead.
+
+         buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
       operationId: kas.AccessService.LegacyPublicKey
       parameters:
         - name: algorithm
@@ -121,6 +126,9 @@ components:
         Wrapper message for `string`.
 
          The JSON representation for `StringValue` is JSON string.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
     google.protobuf.Struct:
       type: object
       additionalProperties:

@@ -54,7 +54,7 @@ func NewCasbinEnforcer(c CasbinConfig, logger *logger.Logger) (*Enforcer, error)
 
 	isDefaultPolicy := false
 	if c.Csv == "" {
-		// Set the Bultin Policy if provided
+		// Set the Builtin Policy if provided
 		if c.Builtin != "" {
 			c.Csv = c.Builtin
 		} else {
@@ -133,14 +133,27 @@ func (e *Enforcer) Enforce(token jwt.Token, resource, action string) (bool, erro
 	for _, info := range s {
 		allowed, err := e.Enforcer.Enforce(info, resource, action)
 		if err != nil {
-			e.logger.Error("enforce by role error", slog.String("subject info", info), slog.String("resource", resource), slog.String("action", action), slog.String("error", err.Error()))
+			e.logger.Error("enforce by role error",
+				slog.String("subject_info", info),
+				slog.String("action", action),
+				slog.String("resource", resource),
+				slog.Any("error", err),
+			)
 		}
 		if allowed {
-			e.logger.Debug("allowed by policy", slog.String("subject info", info), slog.String("resource", resource), slog.String("action", action))
+			e.logger.Debug("allowed by policy",
+				slog.String("subject_info", info),
+				slog.String("action", action),
+				slog.String("resource", resource),
+			)
 			return true, nil
 		}
 	}
-	e.logger.Debug("permission denied by policy", slog.Any("subject.info", s), slog.String("resource", resource), slog.String("action", action))
+	e.logger.Debug("permission denied by policy",
+		slog.Any("subject_info", s),
+		slog.String("action", action),
+		slog.String("resource", resource),
+	)
 	return false, errors.New("permission denied")
 }
 
@@ -148,14 +161,17 @@ func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 	var subject string
 	info := casbinSubject{}
 
-	e.logger.Debug("building subject from token", slog.Any("token", t))
+	e.logger.Debug("building subject from token")
 	roles := e.extractRolesFromToken(t)
 
 	if claim, found := t.Get(e.Config.UserNameClaim); found {
 		sub, ok := claim.(string)
 		subject = sub
 		if !ok {
-			e.logger.Warn("username claim not of type string", slog.String("claim", e.Config.UserNameClaim), slog.Any("claims", claim))
+			e.logger.Warn("username claim not of type string",
+				slog.String("claim", e.Config.UserNameClaim),
+				slog.Any("claims", claim),
+			)
 			subject = ""
 		}
 	}
@@ -165,7 +181,7 @@ func (e *Enforcer) buildSubjectFromToken(t jwt.Token) casbinSubject {
 }
 
 func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
-	e.logger.Debug("extracting roles from token", slog.Any("token", t))
+	e.logger.Debug("extracting roles from token")
 	roles := []string{}
 
 	roleClaim := e.Config.GroupsClaim
@@ -174,20 +190,32 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 	selectors := strings.Split(roleClaim, ".")
 	claim, exists := t.Get(selectors[0])
 	if !exists {
-		e.logger.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("token", t))
+		e.logger.Warn("claim not found",
+			slog.String("claim", roleClaim),
+			slog.Any("claims", claim),
+		)
 		return nil
 	}
-	e.logger.Debug("root claim found", slog.String("claim", roleClaim), slog.Any("claims", claim))
+	e.logger.Debug("root claim found",
+		slog.String("claim", roleClaim),
+		slog.Any("claims", claim),
+	)
 	// use dotnotation if the claim is nested
 	if len(selectors) > 1 {
 		claimMap, ok := claim.(map[string]interface{})
 		if !ok {
-			e.logger.Warn("claim is not of type map[string]interface{}", slog.String("claim", roleClaim), slog.Any("claims", claim))
+			e.logger.Warn("claim is not of type map[string]interface{}",
+				slog.String("claim", roleClaim),
+				slog.Any("claims", claim),
+			)
 			return nil
 		}
 		claim = util.Dotnotation(claimMap, strings.Join(selectors[1:], "."))
 		if claim == nil {
-			e.logger.Warn("claim not found", slog.String("claim", roleClaim), slog.Any("claims", claim))
+			e.logger.Warn("claim not found",
+				slog.String("claim", roleClaim),
+				slog.Any("claims", claim),
+			)
 			return nil
 		}
 	}
@@ -203,7 +231,10 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 			}
 		}
 	default:
-		e.logger.Warn("could not get claim type", slog.String("selector", roleClaim), slog.Any("claims", claim))
+		e.logger.Warn("could not get claim type",
+			slog.String("selector", roleClaim),
+			slog.Any("claims", claim),
+		)
 		return nil
 	}
 

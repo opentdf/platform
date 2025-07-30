@@ -18,12 +18,11 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/trust"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-
-	"github.com/eko/gocache/lib/v4/store"
 )
 
 // MockKeyDetails for testing
@@ -81,6 +80,14 @@ func (m *MockKeyDetails) System() string {
 	return args.String(0)
 }
 
+func (m *MockKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
+	args := m.Called()
+	if pk, ok := args.Get(0).(*policy.KeyProviderConfig); ok {
+		return pk
+	}
+	return nil
+}
+
 type MockEncapsulator struct {
 	mock.Mock
 }
@@ -129,19 +136,32 @@ func generateECKeyAndPEM(curve ocrypto.ECCMode) (ocrypto.ECKeyPair, error) {
 	return ocrypto.NewECKeyPair(curve)
 }
 
+// Helper to create a test cache
+func newTestCache(t *testing.T, log *logger.Logger) *cache.Cache {
+	t.Helper()
+	cm, err := cache.NewCacheManager(ristrettoMaxCost)
+	require.NoError(t, err)
+	c, err := cm.NewCache("testBasicManagerCache", log, cache.Options{
+		Expiration: time.Duration(ristrettoCacheTTL) * time.Second,
+	})
+	require.NoError(t, err)
+	return c
+}
+
 func TestNewBasicManager(t *testing.T) {
 	log := logger.CreateTestLogger()
+	testCache := newTestCache(t, log)
 	validRootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" // 32 bytes
 
 	t.Run("successful creation", func(t *testing.T) {
-		bm, err := NewBasicManager(log, validRootKeyHex)
+		bm, err := NewBasicManager(log, testCache, validRootKeyHex)
 		require.NoError(t, err)
 		require.NotNil(t, bm)
-		assert.Equal(t, basicManagerName, bm.Name())
+		assert.Equal(t, BasicManagerName, bm.Name())
 	})
 
 	t.Run("invalid root key hex", func(t *testing.T) {
-		_, err := NewBasicManager(log, "invalid-hex")
+		_, err := NewBasicManager(log, testCache, "invalid-hex")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to hex decode root key")
 	})
@@ -149,15 +169,17 @@ func TestNewBasicManager(t *testing.T) {
 
 func TestBasicManager_Name(t *testing.T) {
 	log := logger.CreateTestLogger()
+	testCache := newTestCache(t, log)
 	validRootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
-	bm, _ := NewBasicManager(log, validRootKeyHex)
-	assert.Equal(t, basicManagerName, bm.Name())
+	bm, _ := NewBasicManager(log, testCache, validRootKeyHex)
+	assert.Equal(t, BasicManagerName, bm.Name())
 }
 
 func TestBasicManager_Close(t *testing.T) {
 	log := logger.CreateTestLogger()
+	testCache := newTestCache(t, log)
 	validRootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
-	bm, _ := NewBasicManager(log, validRootKeyHex)
+	bm, _ := NewBasicManager(log, testCache, validRootKeyHex)
 	require.NotNil(t, bm.rootKey)
 	bm.Close()
 	assert.Nil(t, bm.rootKey, "rootKey should be nilled out after Close")
@@ -165,6 +187,7 @@ func TestBasicManager_Close(t *testing.T) {
 
 func TestBasicManager_unwrap(t *testing.T) {
 	log := logger.CreateTestLogger()
+	testCache := newTestCache(t, log)
 	rootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
 	rootKey, _ := hex.DecodeString(rootKeyHex)
 	samplePrivateKey := []byte("this is a secret key")
@@ -173,7 +196,7 @@ func TestBasicManager_unwrap(t *testing.T) {
 	wrappedKeyStr, err := wrapKeyWithAESGCM(samplePrivateKey, rootKey)
 	require.NoError(t, err)
 
-	bm, err := NewBasicManager(log, rootKeyHex)
+	bm, err := NewBasicManager(log, testCache, rootKeyHex)
 	require.NoError(t, err)
 
 	t.Run("cache miss, successful unwrap and cache", func(t *testing.T) {
@@ -194,7 +217,7 @@ func TestBasicManager_unwrap(t *testing.T) {
 
 	t.Run("cache hit", func(t *testing.T) {
 		// Ensure key is in cache (from previous test or set it)
-		err := bm.cache.Set(t.Context(), kid, samplePrivateKey, store.WithExpiration(time.Second*30))
+		err := bm.cache.Set(t.Context(), kid, samplePrivateKey, nil)
 		require.NoError(t, err)
 
 		unwrapped, err := bm.unwrap(t.Context(), kid, "this-should-not-be-used") // Provide dummy wrapped key
@@ -226,6 +249,7 @@ func TestBasicManager_unwrap(t *testing.T) {
 
 func TestBasicManager_Decrypt(t *testing.T) {
 	log := logger.CreateTestLogger()
+	testCache := newTestCache(t, log)
 	rootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
 	rootKey, _ := hex.DecodeString(rootKeyHex)
 
@@ -249,7 +273,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
 	require.NoError(t, err)
 
-	bm, err := NewBasicManager(log, rootKeyHex)
+	bm, err := NewBasicManager(log, testCache, rootKeyHex)
 	require.NoError(t, err)
 
 	samplePayload := []byte("secret payload")
@@ -364,6 +388,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 
 func TestBasicManager_DeriveKey(t *testing.T) {
 	log := logger.CreateTestLogger()
+	testCache := newTestCache(t, log)
 	rootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
 	rootKey, _ := hex.DecodeString(rootKeyHex)
 
@@ -375,7 +400,7 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 	wrappedECPrivKeyStr, err := wrapKeyWithAESGCM([]byte(ecPrivKey), rootKey)
 	require.NoError(t, err)
 
-	bm, err := NewBasicManager(log, rootKeyHex)
+	bm, err := NewBasicManager(log, testCache, rootKeyHex)
 	require.NoError(t, err)
 
 	clientEphemeralECDHKey, err := ecdh.P256().GenerateKey(rand.Reader)
@@ -438,8 +463,9 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 
 func TestBasicManager_GenerateECSessionKey(t *testing.T) {
 	log := logger.CreateTestLogger()
+	testCache := newTestCache(t, log)
 	rootKeyHex := "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
-	bm, err := NewBasicManager(log, rootKeyHex)
+	bm, err := NewBasicManager(log, testCache, rootKeyHex)
 	require.NoError(t, err)
 
 	clientPrivKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

@@ -14,20 +14,26 @@ on:
         required: true
     outputs:
       major:
-        description: "Major version number"
+        description: "Number representing major semver value"
         value: ${{ jobs.release-please.outputs.major }}
       minor:
-        description: "Minor version number"
+        description: "Number representing minor semver value"
         value: ${{ jobs.release-please.outputs.minor }}
       patch:
-        description: "Patch version number"
+        description: "Number representing patch semver value"
         value: ${{ jobs.release-please.outputs.patch }}
       sha:
-        description: "Commit SHA of the release"
+        description: "SHA that a GitHub release was tagged at"
         value: ${{ jobs.release-please.outputs.sha }}
       release_created:
-        description: "Indicates if a release was created"
+        description: "true if a root component release was created, false otherwise"
         value: ${{ jobs.release-please.outputs.release_created }}
+      prs_created:
+        description: "true if any pull request was created or updated"
+        value: ${{ jobs.release-please.outputs.prs_created }}
+      prs:
+        description: "A JSON string of the array of PullRequest objects (unset if no release created)"
+        value: ${{ jobs.release-please.outputs.prs }}
       tag_name:
         description: "Tag name of the release"
         value: ${{ jobs.release-please.outputs.tag_name }}
@@ -48,6 +54,8 @@ jobs:
       sha: ${{ steps.release-please.outputs.sha }}
       release_created: ${{ steps.release-please.outputs.release_created }}
       tag_name: ${{ steps.release-please.outputs.tag_name }}
+      prs_created: ${{ steps.release-please.outputs.prs_created }}
+      prs: ${{ steps.release-please.outputs.prs }}
     env:
       MAIN_CONFIG: ".github/release-please/release-please-config.main.json"
       MANIFEST_FILE: ".github/release-please/release-please-manifest.json"
@@ -60,6 +68,11 @@ jobs:
         run: |
           echo "Error: invalid github ref ['$REF_NAME'] for release-please action, must be 'main' or 'release/**'" | tee -a "$GITHUB_STEP_SUMMARY"
           exit 1
+
+      - name: "Checkout"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
       - name: "Validate release-please folder"
         env:
@@ -85,22 +98,27 @@ jobs:
           BRANCH_NAME: ${{ github.ref_name }}
           MAIN_CONFIG: ${{ env.MAIN_CONFIG }}
         run: |
-          # Remove 'release/' prefix
-          WITHOUT_PREFIX=${BRANCH_NAME#release/}
-          
-          # Remove everything from '/v' to the end
-          PACKAGE_NAME=${WITHOUT_PREFIX%/v*}
-          
-          # Check if PACKAGE_NAME is empty or equals to WITHOUT_PREFIX (meaning no "/v" was found)
-          if [[ -z "$PACKAGE_NAME" || "$PACKAGE_NAME" == "$WITHOUT_PREFIX" ]]; then
-            # This handles the case of only single package in repo - use release_branches config file
-            config_file="${MAIN_CONFIG/main/release_branches}"
+          # Check if branch is main first
+          if [[ "$BRANCH_NAME" == "main" ]]; then
+            config_file="$MAIN_CONFIG"
           else
-            # Replace any slashes in package name with underscores
-            SANITIZED_PACKAGE=${PACKAGE_NAME//\//_}
+            # Remove 'release/' prefix
+            WITHOUT_PREFIX=${BRANCH_NAME#release/}
             
-            # Replace 'main' in the config filename with the sanitized package name
-            config_file=${MAIN_CONFIG/main/$SANITIZED_PACKAGE}
+            # Remove everything from '/v' to the end
+            PACKAGE_NAME=${WITHOUT_PREFIX%/v*}
+            
+            # Check if PACKAGE_NAME is empty or equals to WITHOUT_PREFIX (meaning no "/v" was found)
+            if [[ -z "$PACKAGE_NAME" || "$PACKAGE_NAME" == "$WITHOUT_PREFIX" ]]; then
+              # This handles the case of "release/v1.20" - use release_branches config
+              config_file="${MAIN_CONFIG/main/release_branches}"
+            else
+              # Replace any slashes in package name with underscores
+              SANITIZED_PACKAGE=${PACKAGE_NAME//\//_}
+              
+              # Replace 'main' in the config filename with the sanitized package name
+              config_file=${MAIN_CONFIG/main/$SANITIZED_PACKAGE}
+            fi
           fi
 
           # Check if package config file exists
@@ -126,3 +144,40 @@ jobs:
           config-file: ${{ github.ref_name == 'main' && env.MAIN_CONFIG || startsWith(github.ref_name, 'release/') && steps.package-config.outputs.config_file }}
           manifest-file: ${{ env.MANIFEST_FILE }}
           target-branch: ${{ github.ref_name }}
+
+  update-web-sdk-dependencies:
+    if: ${{ github.repository == 'opentdf/web-sdk' && needs.release-please.outputs.prs_created == 'true' }}
+    needs: release-please
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: "Generate a token"
+        id: generate-token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_KEY }}
+
+      - name: "Checkout repo"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: true
+          ref: ${{ fromJSON(needs.release-please.outputs.prs)[0].headBranchName }}
+
+      - name: "Update dependencies"
+        run: |
+          git config --global user.name "opentdf-automation[bot]"
+          git config --global user.email "149537512+opentdf-automation[bot]@users.noreply.github.com"
+          make i
+          git add .
+          git commit -m "Update dependencies"
+          git push
+
+      - name: "Sign 'Update dependencies' commit"
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          PULL_NUMBERS: ${{ fromJSON(needs.release-please.outputs.prs)[0].number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        uses: opentdf/platform/.github/actions/sign-github-app-commit@main

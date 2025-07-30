@@ -413,6 +413,24 @@ components:
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
         - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+    policy.KeyMode:
+      type: string
+      title: KeyMode
+      enum:
+        - KEY_MODE_UNSPECIFIED
+        - KEY_MODE_CONFIG_ROOT_KEY
+        - KEY_MODE_PROVIDER_ROOT_KEY
+        - KEY_MODE_REMOTE
+        - KEY_MODE_PUBLIC_KEY_ONLY
+      description: Describes the management and operational mode of a cryptographic key.
+    policy.KeyStatus:
+      type: string
+      title: KeyStatus
+      enum:
+        - KEY_STATUS_UNSPECIFIED
+        - KEY_STATUS_ACTIVE
+        - KEY_STATUS_ROTATED
+      description: The status of the key
     policy.SourceType:
       type: string
       title: SourceType
@@ -470,8 +488,14 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
+      examples:
+        - 1s
+        - 1.000340012s
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -596,6 +620,47 @@ components:
       title: Action
       additionalProperties: false
       description: An action an entity can take
+    policy.AsymmetricKey:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: Required
+        keyId:
+          type: string
+          title: key_id
+          description: Required
+        keyAlgorithm:
+          title: key_algorithm
+          description: Required
+          $ref: '#/components/schemas/policy.Algorithm'
+        keyStatus:
+          title: key_status
+          description: Required
+          $ref: '#/components/schemas/policy.KeyStatus'
+        keyMode:
+          title: key_mode
+          description: Required Specifies how the key is managed (local or remote)
+          $ref: '#/components/schemas/policy.KeyMode'
+        publicKeyCtx:
+          title: public_key_ctx
+          description: Required Specific structure based on key provider implementation
+          $ref: '#/components/schemas/policy.PublicKeyCtx'
+        privateKeyCtx:
+          title: private_key_ctx
+          description: Optional Specific structure based on key provider implementation
+          $ref: '#/components/schemas/policy.PrivateKeyCtx'
+        providerConfig:
+          title: provider_config
+          description: Optional Configuration for the key provider
+          $ref: '#/components/schemas/policy.KeyProviderConfig'
+        metadata:
+          title: metadata
+          description: Common metadata fields
+          $ref: '#/components/schemas/common.Metadata'
+      title: AsymmetricKey
+      additionalProperties: false
     policy.Attribute:
       type: object
       properties:
@@ -624,7 +689,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.KeyAccessServer'
           title: grants
-          description: Deprecated
+          description: Deprecated KAS grants for the attribute. Use kas_keys instead.
         fqn:
           type: string
           title: fqn
@@ -697,6 +762,20 @@ components:
         - booleanOperator
       additionalProperties: false
       description: A collection of Conditions evaluated by the boolean_operator provided
+    policy.KasKey:
+      type: object
+      properties:
+        kasId:
+          type: string
+          title: kas_id
+        key:
+          title: key
+          $ref: '#/components/schemas/policy.AsymmetricKey'
+        kasUri:
+          type: string
+          title: kas_uri
+      title: KasKey
+      additionalProperties: false
     policy.KasPublicKey:
       type: object
       properties:
@@ -740,31 +819,6 @@ components:
       description: |-
         Deprecated
          A list of known KAS public keys
-    policy.Key:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          description: the database record ID, not the key ID (`kid`)
-        isActive:
-          title: is_active
-          $ref: '#/components/schemas/google.protobuf.BoolValue'
-        wasMapped:
-          title: was_mapped
-          $ref: '#/components/schemas/google.protobuf.BoolValue'
-        publicKey:
-          title: public_key
-          $ref: '#/components/schemas/policy.KasPublicKey'
-        kas:
-          title: kas
-          $ref: '#/components/schemas/policy.KeyAccessServer'
-        metadata:
-          title: metadata
-          description: Common metadata
-          $ref: '#/components/schemas/common.Metadata'
-      title: Key
-      additionalProperties: false
     policy.KeyAccessServer:
       type: object
       properties:
@@ -808,6 +862,25 @@ components:
       title: KeyAccessServer
       additionalProperties: false
       description: Key Access Server Registry
+    policy.KeyProviderConfig:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        configJson:
+          type: string
+          title: config_json
+          format: byte
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: KeyProviderConfig
+      additionalProperties: false
     policy.Namespace:
       type: object
       properties:
@@ -836,7 +909,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.KeyAccessServer'
           title: grants
-          description: KAS grants for the namespace
+          description: Deprecated KAS grants for the namespace. Use kas_keys instead.
         kasKeys:
           type: array
           items:
@@ -844,6 +917,20 @@ components:
           title: kas_keys
           description: Keys for the namespace
       title: Namespace
+      additionalProperties: false
+    policy.PrivateKeyCtx:
+      type: object
+      properties:
+        keyId:
+          type: string
+          title: key_id
+          minLength: 1
+          description: Required Key ID for the symmetric key wrapping this key.
+        wrappedKey:
+          type: string
+          title: wrapped_key
+          description: Optional Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.
+      title: PrivateKeyCtx
       additionalProperties: false
     policy.PublicKey:
       type: object
@@ -873,6 +960,16 @@ components:
       title: PublicKey
       additionalProperties: false
       description: Deprecated
+    policy.PublicKeyCtx:
+      type: object
+      properties:
+        pem:
+          type: string
+          title: pem
+          minLength: 1
+          description: Required Base64 encoded public key in PEM format
+      title: PublicKeyCtx
+      additionalProperties: false
     policy.ResourceMapping:
       type: object
       properties:
@@ -1041,9 +1138,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.KeyAccessServer'
           title: grants
-          description: |-
-            Deprecated
-             list of key access servers
+          description: Deprecated KAS grants for the value. Use kas_keys instead.
         fqn:
           type: string
           title: fqn
@@ -1148,15 +1243,32 @@ components:
           description: |-
             Required
              UUID of the Key
+        kid:
+          type: string
+          title: kid
+          description: |-
+            Required
+             The key id assigned to this key (Ex: "key-1")
+        kasUri:
+          type: string
+          title: kas_uri
+          description: |-
+            Required
+             The kas uri for which this key belongs (Ex: "https://kas.example.com:8080")
       title: UnsafeDeleteKasKeyRequest
+      required:
+        - kid
+        - kasUri
       additionalProperties: false
-      description: WARNING!!
+      description: |-
+        WARNING!!
+         Deleting a key will make it so that ANY TDF that was encrypted with this key cannot be decrypted by the platform.
     policy.unsafe.UnsafeDeleteKasKeyResponse:
       type: object
       properties:
         key:
           title: key
-          $ref: '#/components/schemas/policy.Key'
+          $ref: '#/components/schemas/policy.KasKey'
       title: UnsafeDeleteKasKeyResponse
       additionalProperties: false
     policy.unsafe.UnsafeDeleteNamespaceRequest:

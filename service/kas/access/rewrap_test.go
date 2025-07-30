@@ -28,6 +28,7 @@ import (
 
 	"github.com/google/uuid"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -49,6 +50,9 @@ func (f *fakeKeyDetails) ExportPublicKey(context.Context, trust.KeyType) (string
 }
 func (f *fakeKeyDetails) ExportCertificate(context.Context) (string, error) { return "", nil }
 func (f *fakeKeyDetails) System() string                                    { return "" }
+func (f *fakeKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
+	return &policy.KeyProviderConfig{}
+}
 
 type fakeKeyIndex struct {
 	keys []trust.KeyDetails
@@ -93,7 +97,7 @@ func TestListLegacyKeys_KeyIndexPopulated(t *testing.T) {
 	}
 	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{
 		keys: fakeKeys,
-	}, logger.CreateTestLogger())
+	}, logger.CreateTestLogger(), nil)
 	p := &Provider{
 		Logger:       testLogger,
 		KeyDelegator: delegator,
@@ -104,7 +108,7 @@ func TestListLegacyKeys_KeyIndexPopulated(t *testing.T) {
 
 func TestListLegacyKeys_Empty(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
-	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{}, logger.CreateTestLogger())
+	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{}, logger.CreateTestLogger(), nil)
 	p := &Provider{
 		Logger:       testLogger,
 		KeyDelegator: delegator,
@@ -117,7 +121,7 @@ func TestListLegacyKeys_KeyIndexError(t *testing.T) {
 	testLogger := logger.CreateTestLogger()
 	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{
 		err: errors.New("fail"),
-	}, logger.CreateTestLogger())
+	}, logger.CreateTestLogger(), nil)
 	p := &Provider{
 		Logger:       testLogger,
 		KeyDelegator: delegator,
@@ -340,10 +344,10 @@ func keyAccessWrappedRaw(t *testing.T, policyBindingAsString bool) kaspb.Unsigne
 
 type RSAPublicKey rsa.PublicKey
 
-func (publicKey *RSAPublicKey) VerifySignature(_ context.Context, raw string) ([]byte, error) {
+func (publicKey *RSAPublicKey) VerifySignature(ctx context.Context, raw string) ([]byte, error) {
 	tok, err := jws.Verify([]byte(raw), jws.WithKey(jwa.RS256, rsa.PublicKey(*publicKey)))
 	if err != nil {
-		slog.Error("jws.Verify fail", "raw", raw)
+		slog.ErrorContext(ctx, "jws.Verify fail", slog.String("raw", raw))
 		return nil, err
 	}
 	return tok, nil

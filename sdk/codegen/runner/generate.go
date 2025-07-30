@@ -20,7 +20,10 @@ type ClientsToGenerate struct {
 
 func Generate(clientsToGenerateList []ClientsToGenerate, outputDir string) error {
 	for _, client := range clientsToGenerateList {
-		slog.Info("Generating wrapper for", "interface", client.GrpcClientInterface, "package", client.GrpcPackagePath)
+		slog.Info("generating wrapper for",
+			slog.String("interface", client.GrpcClientInterface),
+			slog.String("package", client.GrpcPackagePath),
+		)
 		// Load the Go package using the import path
 		cfg := &packages.Config{
 			Mode: packages.NeedName |
@@ -62,7 +65,10 @@ func Generate(clientsToGenerateList []ClientsToGenerate, outputDir string) error
 						outputPath := filepath.Join(outputDir, packageName+".go")
 						err = os.WriteFile(outputPath, []byte(code), 0o644) //nolint:gosec // ignore G306
 						if err != nil {
-							slog.Error("Error writing file", "file", outputPath, "error", err)
+							slog.Error("error writing file",
+								slog.String("file", outputPath),
+								slog.Any("error", err),
+							)
 						}
 						found = true
 						return false // stop traversal

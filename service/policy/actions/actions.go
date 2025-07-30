@@ -93,7 +93,7 @@ func (a *ActionService) GetAction(ctx context.Context, req *connect.Request[acti
 
 	action, err := a.dbClient.GetAction(ctx, req.Msg)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
+		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
 	}
 	rsp.Action = action
 
@@ -104,7 +104,7 @@ func (a *ActionService) ListActions(ctx context.Context, req *connect.Request[ac
 	a.logger.DebugContext(ctx, "listing actions")
 	rsp, err := a.dbClient.ListActions(ctx, req.Msg)
 	if err != nil {
-		return nil, db.StatusifyError(err, db.ErrTextListRetrievalFailed)
+		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextListRetrievalFailed)
 	}
 	a.logger.DebugContext(ctx, "listed actions")
 	return connect.NewResponse(rsp), nil
@@ -133,7 +133,7 @@ func (a *ActionService) CreateAction(ctx context.Context, req *connect.Request[a
 	})
 	if err != nil {
 		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextCreationFailed, slog.String("action", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextCreationFailed, slog.String("action", req.Msg.String()))
 	}
 	return connect.NewResponse(rsp), nil
 }
@@ -173,7 +173,7 @@ func (a *ActionService) UpdateAction(ctx context.Context, req *connect.Request[a
 	})
 	if err != nil {
 		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextUpdateFailed, slog.String("action", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextUpdateFailed, slog.String("action", req.Msg.String()))
 	}
 
 	return connect.NewResponse(rsp), nil
@@ -193,7 +193,7 @@ func (a *ActionService) DeleteAction(ctx context.Context, req *connect.Request[a
 	deleted, err := a.dbClient.DeleteAction(ctx, req.Msg)
 	if err != nil {
 		a.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
-		return nil, db.StatusifyError(err, db.ErrTextDeletionFailed, slog.String("action", req.Msg.String()))
+		return nil, db.StatusifyError(ctx, a.logger, err, db.ErrTextDeletionFailed, slog.String("action", req.Msg.String()))
 	}
 
 	a.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)

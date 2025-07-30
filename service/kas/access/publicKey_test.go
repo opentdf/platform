@@ -16,6 +16,7 @@ import (
 
 	"connectrpc.com/connect"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/trust"
@@ -78,6 +79,10 @@ func (m *MockKeyDetails) ExportCertificate(_ context.Context) (string, error) {
 		return "", errors.New("certificate not available")
 	}
 	return m.certData, nil
+}
+
+func (m *MockKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
+	return nil
 }
 
 // MockSecurityProvider is a test implementation of SecurityProvider
@@ -167,8 +172,8 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 	kasURI := urlHost(t)
 
 	// Create Provider with the mock security provider
-	delegator := trust.NewDelegatingKeyService(mockProvider, logger.CreateTestLogger())
-	delegator.RegisterKeyManager(mockProvider.Name(), func() (trust.KeyManager, error) { return mockProvider, nil })
+	delegator := trust.NewDelegatingKeyService(mockProvider, logger.CreateTestLogger(), nil)
+	delegator.RegisterKeyManager(mockProvider.Name(), func(_ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) { return mockProvider, nil })
 	kas := Provider{
 		URI:          *kasURI,
 		KeyDelegator: delegator,
@@ -340,8 +345,10 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 
 	inProcess := security.NewSecurityProviderAdapter(c, nil, nil)
 
-	delegator := trust.NewDelegatingKeyService(inProcess, logger.CreateTestLogger())
-	delegator.RegisterKeyManager(inProcess.Name(), func() (trust.KeyManager, error) { return inProcess, nil })
+	delegator := trust.NewDelegatingKeyService(inProcess, logger.CreateTestLogger(), nil)
+	delegator.RegisterKeyManager(inProcess.Name(), func(_ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+		return inProcess, nil
+	})
 
 	kas := Provider{
 		URI:          *kasURI,

@@ -11,31 +11,25 @@ import "policy/selectors.proto";
 /*
    Key Access Server Grants
 */
-
+// Deprecated
 message AttributeKeyAccessServer {
+  option deprecated = true;
   // Required
-  string attribute_id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string attribute_id = 1 [(buf.validate.field).string.uuid = true];
   // Required
-  string key_access_server_id = 2 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string key_access_server_id = 2 [(buf.validate.field).string.uuid = true];
 }
 
 /*
-    Key Maps
+   Key Maps
 */
 
 message ValueKeyAccessServer {
+  option deprecated = true;
   // Required
-  string value_id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string value_id = 1 [(buf.validate.field).string.uuid = true];
   // Required
-  string key_access_server_id = 2 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string key_access_server_id = 2 [(buf.validate.field).string.uuid = true];
 }
 
 message AttributeKey {
@@ -88,14 +82,14 @@ message ListAttributesResponse {
 message GetAttributeRequest {
   // Temporary message level validation until we remove the deprecated id field
   option (buf.validate.message).cel = {
-    id: "exclusive_fields",
-    expression: "!(has(this.id) && (has(this.attribute_id) || has(this.fqn)))",
+    id: "exclusive_fields"
+    expression: "!(has(this.id) && (has(this.attribute_id) || has(this.fqn)))"
     message: "Either use deprecated 'id' field or one of 'attribute_id' or 'fqn', but not both"
   };
 
   option (buf.validate.message).cel = {
-    id: "required_fields",
-    expression: "has(this.id) || has(this.attribute_id) || has(this.fqn)",
+    id: "required_fields"
+    expression: "has(this.id) || has(this.attribute_id) || has(this.fqn)"
     message: "Either id or one of attribute_id or fqn must be set"
   };
 
@@ -103,20 +97,16 @@ message GetAttributeRequest {
   string id = 1 [
     deprecated = true,
     (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
-    (buf.validate.field).string.uuid= true
-  ];;
+    (buf.validate.field).string.uuid = true
+  ];
 
   oneof identifier {
     //option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field
-    string attribute_id = 2 [
-      (buf.validate.field).string.uuid = true
-    ];
-    string fqn = 3 [
-      (buf.validate.field).string = {
-        min_len : 1
-        uri : true
-      }
-    ];
+    string attribute_id = 2 [(buf.validate.field).string.uuid = true];
+    string fqn = 3 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
   }
 }
 message GetAttributeResponse {
@@ -125,16 +115,14 @@ message GetAttributeResponse {
 
 message CreateAttributeRequest {
   // Required
-  string namespace_id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string namespace_id = 1 [(buf.validate.field).string.uuid = true];
   // Required
   string name = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "attribute_name_format",
-      message: "Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case.",
+      id: "attribute_name_format"
+      message: "Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case."
       expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
     }
   ];
@@ -143,22 +131,19 @@ message CreateAttributeRequest {
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).required = true
   ];
-  // Optional 
+  // Optional
   // Attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
   // The stored attribute value will be normalized to lower case.
-  repeated string values = 4 [
-    (buf.validate.field).repeated = {
-      min_items: 0,
-      unique: true,
-      items: {
-        string: 
-          {
-            max_len: 253,
-            pattern: "^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
-          }
-      },
+  repeated string values = 4 [(buf.validate.field).repeated = {
+    min_items: 0
+    unique: true
+    items: {
+      string: {
+        max_len: 253
+        pattern: "^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
+      }
     }
-  ];
+  }];
 
   // Optional
   common.MetadataMutable metadata = 100;
@@ -169,9 +154,7 @@ message CreateAttributeResponse {
 
 message UpdateAttributeRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 
   // Optional
   common.MetadataMutable metadata = 100;
@@ -183,9 +166,7 @@ message UpdateAttributeResponse {
 
 message DeactivateAttributeRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 message DeactivateAttributeResponse {
   policy.Attribute attribute = 1;
@@ -197,14 +178,14 @@ message DeactivateAttributeResponse {
 message GetAttributeValueRequest {
   // Temporary message level validation until we remove the deprecated id field
   option (buf.validate.message).cel = {
-    id: "exclusive_fields",
-    expression: "!(has(this.id) && (has(this.value_id) || has(this.fqn)))",
+    id: "exclusive_fields"
+    expression: "!(has(this.id) && (has(this.value_id) || has(this.fqn)))"
     message: "Either use deprecated 'id' field or one of 'value_id' or 'fqn', but not both"
   };
 
   option (buf.validate.message).cel = {
-    id: "required_fields",
-    expression: "has(this.id) || has(this.value_id) || has(this.fqn)",
+    id: "required_fields"
+    expression: "has(this.id) || has(this.value_id) || has(this.fqn)"
     message: "Either id or one of value_id or fqn must be set"
   };
 
@@ -212,22 +193,17 @@ message GetAttributeValueRequest {
   string id = 1 [
     deprecated = true,
     (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
-    (buf.validate.field).string.uuid= true
-  ];;
+    (buf.validate.field).string.uuid = true
+  ];
 
   oneof identifier {
     //option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field
-    string value_id = 2 [
-      (buf.validate.field).string.uuid = true
-    ];
-    string fqn = 3 [
-      (buf.validate.field).string = {
-        min_len : 1
-        uri : true
-      }
-    ];
+    string value_id = 2 [(buf.validate.field).string.uuid = true];
+    string fqn = 3 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
   }
-
 }
 message GetAttributeValueResponse {
   policy.Value value = 1;
@@ -235,9 +211,7 @@ message GetAttributeValueResponse {
 
 message ListAttributeValuesRequest {
   // Required
-  string attribute_id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string attribute_id = 1 [(buf.validate.field).string.uuid = true];
   // Optional
   // ACTIVE by default when not specified
   common.ActiveStateEnum state = 2;
@@ -253,16 +227,14 @@ message ListAttributeValuesResponse {
 
 message CreateAttributeValueRequest {
   // Required
-  string attribute_id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string attribute_id = 1 [(buf.validate.field).string.uuid = true];
   // Required
-  string value = 2     [
+  string value = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.max_len = 253,
     (buf.validate.field).cel = {
-      id: "attribute_value_format",
-      message: "Attribute value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case.",
+      id: "attribute_value_format"
+      message: "Attribute value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case."
       expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
     }
   ];
@@ -281,9 +253,7 @@ message CreateAttributeValueResponse {
 
 message UpdateAttributeValueRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 
   // Deprecated
   reserved "members";
@@ -300,9 +270,7 @@ message UpdateAttributeValueResponse {
 
 message DeactivateAttributeValueRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 message DeactivateAttributeValueResponse {
   policy.Value value = 1;
@@ -311,12 +279,10 @@ message DeactivateAttributeValueResponse {
 message GetAttributeValuesByFqnsRequest {
   // Required
   // Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
-  repeated string fqns = 1 [
-    (buf.validate.field).repeated = {
-      min_items: 1,
-      max_items: 250
-    }
-  ];
+  repeated string fqns = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 250
+  }];
 
   // Optional
   // This attribute value selector is not used currently, but left here for future use.
@@ -336,38 +302,47 @@ message GetAttributeValuesByFqnsResponse {
 */
 
 message AssignKeyAccessServerToAttributeRequest {
+  option deprecated = true;
+
   // Required
   AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
 message AssignKeyAccessServerToAttributeResponse {
+  option deprecated = true;
   AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
 message RemoveKeyAccessServerFromAttributeRequest {
+  option deprecated = true;
   // Required
   AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
 message RemoveKeyAccessServerFromAttributeResponse {
+  option deprecated = true;
   AttributeKeyAccessServer attribute_key_access_server = 1;
 }
 
 message AssignKeyAccessServerToValueRequest {
+  option deprecated = true;
   // Required
   ValueKeyAccessServer value_key_access_server = 1;
 }
 
 message AssignKeyAccessServerToValueResponse {
+  option deprecated = true;
   ValueKeyAccessServer value_key_access_server = 1;
 }
 
 message RemoveKeyAccessServerFromValueRequest {
+  option deprecated = true;
   // Required
   ValueKeyAccessServer value_key_access_server = 1;
 }
 
 message RemoveKeyAccessServerFromValueResponse {
+  option deprecated = true;
   ValueKeyAccessServer value_key_access_server = 1;
 }
 
@@ -377,9 +352,7 @@ message RemoveKeyAccessServerFromValueResponse {
 
 message AssignPublicKeyToAttributeRequest {
   // Required
-  AttributeKey attribute_key = 1 [
-    (buf.validate.field).required = true
-  ];
+  AttributeKey attribute_key = 1 [(buf.validate.field).required = true];
 }
 
 message AssignPublicKeyToAttributeResponse {
@@ -389,9 +362,7 @@ message AssignPublicKeyToAttributeResponse {
 
 message RemovePublicKeyFromAttributeRequest {
   // Required
-  AttributeKey attribute_key = 1  [
-    (buf.validate.field).required = true
-  ];
+  AttributeKey attribute_key = 1 [(buf.validate.field).required = true];
 }
 
 message RemovePublicKeyFromAttributeResponse {
@@ -401,9 +372,7 @@ message RemovePublicKeyFromAttributeResponse {
 
 message AssignPublicKeyToValueRequest {
   // Required
-  ValueKey value_key = 1  [
-    (buf.validate.field).required = true
-  ];
+  ValueKey value_key = 1 [(buf.validate.field).required = true];
 }
 
 message AssignPublicKeyToValueResponse {
@@ -413,17 +382,13 @@ message AssignPublicKeyToValueResponse {
 
 message RemovePublicKeyFromValueRequest {
   // Required
-  ValueKey value_key = 1  [
-    (buf.validate.field).required = true
-  ];
+  ValueKey value_key = 1 [(buf.validate.field).required = true];
 }
 
 message RemovePublicKeyFromValueResponse {
   // Required
   ValueKey value_key = 1;
 }
-
-
 
 ///
 /// Attribute Service
@@ -469,25 +434,31 @@ service AttributesService {
   /*--------------------------------------*
    * Attribute <> Key Access Server RPCs
    *---------------------------------------*/
-  rpc AssignKeyAccessServerToAttribute(AssignKeyAccessServerToAttributeRequest) returns (AssignKeyAccessServerToAttributeResponse) {}
+  rpc AssignKeyAccessServerToAttribute(AssignKeyAccessServerToAttributeRequest) returns (AssignKeyAccessServerToAttributeResponse) {
+    option deprecated = true;
+  }
 
-  rpc RemoveKeyAccessServerFromAttribute(RemoveKeyAccessServerFromAttributeRequest) returns (RemoveKeyAccessServerFromAttributeResponse) {}
+  rpc RemoveKeyAccessServerFromAttribute(RemoveKeyAccessServerFromAttributeRequest) returns (RemoveKeyAccessServerFromAttributeResponse) {
+    option deprecated = true;
+  }
 
-  rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {}
+  rpc AssignKeyAccessServerToValue(AssignKeyAccessServerToValueRequest) returns (AssignKeyAccessServerToValueResponse) {
+    option deprecated = true;
+  }
 
-  rpc RemoveKeyAccessServerFromValue(RemoveKeyAccessServerFromValueRequest) returns (RemoveKeyAccessServerFromValueResponse) {}
+  rpc RemoveKeyAccessServerFromValue(RemoveKeyAccessServerFromValueRequest) returns (RemoveKeyAccessServerFromValueResponse) {
+    option deprecated = true;
+  }
 
   /*--------------------------------------*
-  * Attribute <> Key RPCs
-  *---------------------------------------*/
+   * Attribute <> Key RPCs
+   *---------------------------------------*/
 
-  rpc AssignPublicKeyToAttribute(AssignPublicKeyToAttributeRequest) returns (AssignPublicKeyToAttributeResponse){}
+  rpc AssignPublicKeyToAttribute(AssignPublicKeyToAttributeRequest) returns (AssignPublicKeyToAttributeResponse) {}
 
-  rpc RemovePublicKeyFromAttribute(RemovePublicKeyFromAttributeRequest) returns (RemovePublicKeyFromAttributeResponse){}
+  rpc RemovePublicKeyFromAttribute(RemovePublicKeyFromAttributeRequest) returns (RemovePublicKeyFromAttributeResponse) {}
 
-  rpc AssignPublicKeyToValue(AssignPublicKeyToValueRequest) returns (AssignPublicKeyToValueResponse){}
+  rpc AssignPublicKeyToValue(AssignPublicKeyToValueRequest) returns (AssignPublicKeyToValueResponse) {}
 
-  rpc RemovePublicKeyFromValue(RemovePublicKeyFromValueRequest) returns (RemovePublicKeyFromValueResponse){}
+  rpc RemovePublicKeyFromValue(RemovePublicKeyFromValueRequest) returns (RemovePublicKeyFromValueResponse) {}
 }
-
-

@@ -209,10 +209,10 @@ components:
             entityChain:
               title: entity_chain
               description: |+
-                chain of one or more entities
-                entities must be provided:
+                chain of one or more entities and at most 10
+                entities must be provided and between 1 and 10 in count:
                 ```
-                has(this.entities) && this.entities.size() > 0
+                has(this.entities) && this.entities.size() > 0 && this.entities.size() <= 10
                 ```
 
               $ref: '#/components/schemas/entity.EntityChain'
@@ -259,6 +259,8 @@ components:
           items:
             $ref: '#/components/schemas/authorization.v2.GetDecisionMultiResourceRequest'
           title: decision_requests
+          maxItems: 200
+          minItems: 1
       title: GetDecisionBulkRequest
       additionalProperties: false
       description: |-
@@ -292,19 +294,19 @@ components:
           items:
             $ref: '#/components/schemas/authorization.v2.Resource'
           title: resources
+          maxItems: 1000
           minItems: 1
       title: GetDecisionMultiResourceRequest
       required:
         - entityIdentifier
         - action
-        - resources
       additionalProperties: false
       description: |+
         Can the identified entity/entities access?
          1. one entity reference (actor)
          2. one action
          3. multiple resources
-         Note: this is a more performant bulk request for multiple resource decisions
+         Note: this is a more performant bulk request for multiple resource decisions, up to 1000 per request
         action.name must be provided:
         ```
         has(this.action.name)
@@ -406,9 +408,10 @@ components:
             attributeValues:
               title: attribute_values
               description: |+
-                if provided, resource.attribute_values must not be empty:
+                a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count
+                if provided, resource.attribute_values must be between 1 and 20 in count with all valid FQNs:
                 ```
-                this.fqns.size() > 0 && this.fqns.all(item, item.isUri())
+                this.fqns.size() > 0 && this.fqns.size() <= 20 && this.fqns.all(item, item.isUri())
                 ```
 
               $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'
@@ -421,6 +424,7 @@ components:
               title: registered_resource_value_fqn
               minLength: 1
               format: uri
+              description: fully qualified name of the registered resource value stored in platform policy
           title: registered_resource_value_fqn
           required:
             - registeredResourceValueFqn
@@ -579,8 +583,14 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
+      examples:
+        - 1s
+        - 1.000340012s
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local

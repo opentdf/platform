@@ -11,6 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/lib/ocrypto"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/trust"
 )
 
@@ -59,7 +60,7 @@ func (k *InProcessAESKey) Export(encapsulator trust.Encapsulator) ([]byte, error
 	encryptedKey, err := encapsulator.Encrypt(k.rawKey)
 	if err != nil {
 		if k.logger != nil {
-			k.logger.Warn("failed to encrypt key data for export", "err", err)
+			k.logger.Warn("failed to encrypt key data for export", slog.Any("err", err))
 		}
 		return nil, err
 	}
@@ -179,6 +180,11 @@ func (k *KeyDetailsAdapter) ExportCertificate(_ context.Context) (string, error)
 	return "", errors.New("certificates only available for EC keys")
 }
 
+func (k *KeyDetailsAdapter) ProviderConfig() *policy.KeyProviderConfig {
+	// Provider config is not supported for this adapter.
+	return nil
+}
+
 // NewSecurityProviderAdapter creates a new adapter that implements SecurityProvider using a CryptoProvider
 func NewSecurityProviderAdapter(cryptoProvider *StandardCrypto, defaultKeys, legacyKeys []string) trust.KeyService {
 	legacyKeysMap := make(map[string]bool, len(legacyKeys))
@@ -261,7 +267,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 }
 
 // ListKeys lists all available keys
-func (a *InProcessProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, error) {
+func (a *InProcessProvider) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
 	// This is a limited implementation as CryptoProvider doesn't expose a list of all keys
 	var keys []trust.KeyDetails
 
@@ -278,7 +284,11 @@ func (a *InProcessProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, err
 			}
 		} else if err != nil {
 			if a.logger != nil {
-				a.logger.Warn("failed to list keys by algorithm", "algorithm", alg, "error", err)
+				a.logger.WarnContext(ctx,
+					"failed to list keys by algorithm",
+					slog.String("algorithm", alg),
+					slog.Any("error", err),
+				)
 			}
 		}
 	}

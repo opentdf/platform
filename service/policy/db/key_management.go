@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/common"
@@ -21,7 +22,7 @@ func (c PolicyDBClient) CreateProviderConfig(ctx context.Context, r *keymanageme
 		return nil, err
 	}
 
-	providerConfig, err := c.Queries.createProviderConfig(ctx, createProviderConfigParams{
+	providerConfig, err := c.queries.createProviderConfig(ctx, createProviderConfigParams{
 		ProviderName: name,
 		Config:       config,
 		Metadata:     metadataJSON,
@@ -64,7 +65,7 @@ func (c PolicyDBClient) GetProviderConfig(ctx context.Context, identifier any) (
 		return nil, errors.Join(db.ErrUnknownSelectIdentifier, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
-	pcRow, err := c.Queries.getProviderConfig(ctx, params)
+	pcRow, err := c.queries.getProviderConfig(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -90,7 +91,7 @@ func (c PolicyDBClient) ListProviderConfigs(ctx context.Context, page *policy.Pa
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	providerConfigs, err := c.Queries.listProviderConfigs(ctx, listProviderConfigsParams{
+	providerConfigs, err := c.queries.listProviderConfigs(ctx, listProviderConfigsParams{
 		Limit:  limit,
 		Offset: offset,
 	})
@@ -149,7 +150,7 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 		return nil, err
 	}
 
-	count, err := c.Queries.updateProviderConfig(ctx, updateProviderConfigParams{
+	count, err := c.queries.updateProviderConfig(ctx, updateProviderConfigParams{
 		ID:           id,
 		ProviderName: pgtypeText(name),
 		Config:       config,
@@ -162,7 +163,7 @@ func (c PolicyDBClient) UpdateProviderConfig(ctx context.Context, r *keymanageme
 	if count == 0 {
 		return nil, db.ErrNotFound
 	} else if count > 1 {
-		c.logger.Warn("UpdateProviderConfig updated more than one row", "count", count)
+		c.logger.Warn("updateProviderConfig updated more than one row", slog.Int64("count", count))
 	}
 
 	return c.GetProviderConfig(ctx, &keymanagement.GetProviderConfigRequest_Id{
@@ -176,7 +177,7 @@ func (c PolicyDBClient) DeleteProviderConfig(ctx context.Context, id string) (*p
 		return nil, db.ErrUUIDInvalid
 	}
 
-	_, err := c.Queries.deleteProviderConfig(ctx, id)
+	_, err := c.queries.deleteProviderConfig(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

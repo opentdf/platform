@@ -58,22 +58,23 @@ func NewLogger(config Config) (*Logger, error) {
 		return nil, err
 	}
 
+	var handler slog.Handler
 	switch config.Type {
 	case "json":
-		j := slog.NewJSONHandler(w, &slog.HandlerOptions{
+		handler = slog.NewJSONHandler(w, &slog.HandlerOptions{
 			Level:       level,
 			ReplaceAttr: logger.replaceAttrChain,
 		})
-		sLogger = slog.New(j)
 	case "text":
-		t := slog.NewTextHandler(w, &slog.HandlerOptions{
+		handler = slog.NewTextHandler(w, &slog.HandlerOptions{
 			Level:       level,
 			ReplaceAttr: logger.replaceAttrChain,
 		})
-		sLogger = slog.New(t)
 	default:
 		return nil, fmt.Errorf("invalid logger type: %s", config.Type)
 	}
+
+	sLogger = slog.New(&ContextHandler{handler})
 
 	// Audit logger will always log at the AUDIT level and be JSON formatted
 	auditLoggerHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{
@@ -90,6 +91,7 @@ func NewLogger(config Config) (*Logger, error) {
 	return logger, nil
 }
 
+//nolint:sloglint // explicitly add key/value pairs to propagate to both loggers
 func (l *Logger) With(key string, value string) *Logger {
 	return &Logger{
 		Logger: l.Logger.With(key, value),
@@ -122,10 +124,12 @@ func getLevel(config Config) (slog.Leveler, error) {
 }
 
 func (l *Logger) Trace(msg string, args ...any) {
+	//nolint:sloglint // explicitly match the signature of slog.Log
 	l.Log(context.Background(), LevelTrace, msg, args...)
 }
 
 func (l *Logger) TraceContext(ctx context.Context, msg string, args ...any) {
+	//nolint:sloglint // explicitly match the signature of slog.Log
 	l.Log(ctx, LevelTrace, msg, args...)
 }
 

@@ -10,6 +10,7 @@ components:
         withKeyAccessGrants:
           type: boolean
           title: with_key_access_grants
+          description: Deprecated
         withNamespace:
           title: with_namespace
           $ref: '#/components/schemas/policy.AttributeDefinitionSelector.NamespaceSelector'
@@ -28,6 +29,7 @@ components:
         withKeyAccessGrants:
           type: boolean
           title: with_key_access_grants
+          description: Deprecated
         withSubjectMaps:
           type: boolean
           title: with_subject_maps
@@ -50,6 +52,7 @@ components:
         withKeyAccessGrants:
           type: boolean
           title: with_key_access_grants
+          description: Deprecated
         withValues:
           title: with_values
           $ref: '#/components/schemas/policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector'
@@ -61,6 +64,7 @@ components:
         withKeyAccessGrants:
           type: boolean
           title: with_key_access_grants
+          description: Deprecated
         withSubjectMaps:
           type: boolean
           title: with_subject_maps
@@ -75,6 +79,7 @@ components:
         withKeyAccessGrants:
           type: boolean
           title: with_key_access_grants
+          description: Deprecated
         withSubjectMaps:
           type: boolean
           title: with_subject_maps
@@ -92,6 +97,7 @@ components:
         withKeyAccessGrants:
           type: boolean
           title: with_key_access_grants
+          description: Deprecated
         withNamespace:
           title: with_namespace
           $ref: '#/components/schemas/policy.AttributeValueSelector.AttributeSelector.NamespaceSelector'

@@ -5,12 +5,20 @@ import (
 	"crypto/elliptic"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 )
 
-type KeyManagerFactory func() (KeyManager, error)
+type KeyManagerFactoryOptions struct {
+	Logger *logger.Logger
+	Cache  *cache.Cache
+}
+
+// KeyManagerFactory defines the signature for functions that can create KeyManager instances.
+type KeyManagerFactory func(opts *KeyManagerFactoryOptions) (KeyManager, error)
 
 // DelegatingKeyService is a key service that multiplexes between key managers based on the key's mode.
 type DelegatingKeyService struct {
@@ -29,16 +37,19 @@ type DelegatingKeyService struct {
 
 	l *logger.Logger
 
+	c *cache.Cache
+
 	// Mutex to protect access to the manager cache
 	mutex sync.Mutex
 }
 
-func NewDelegatingKeyService(index KeyIndex, l *logger.Logger) *DelegatingKeyService {
+func NewDelegatingKeyService(index KeyIndex, l *logger.Logger, c *cache.Cache) *DelegatingKeyService {
 	return &DelegatingKeyService{
 		index:            index,
 		managerFactories: make(map[string]KeyManagerFactory),
 		managers:         make(map[string]KeyManager),
 		l:                l,
+		c:                c,
 	}
 }
 
@@ -75,12 +86,12 @@ func (d *DelegatingKeyService) Name() string {
 func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ProtectedKey, error) {
 	keyDetails, err := d.index.FindKeyByID(ctx, keyID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to find key by ID '%s': %w", keyID, err)
 	}
 
 	manager, err := d.getKeyManager(keyDetails.System())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get key manager for system '%s': %w", keyDetails.System(), err)
 	}
 
 	return manager.Decrypt(ctx, keyDetails, ciphertext, ephemeralPublicKey)
@@ -89,12 +100,12 @@ func (d *DelegatingKeyService) Decrypt(ctx context.Context, keyID KeyIdentifier,
 func (d *DelegatingKeyService) DeriveKey(ctx context.Context, keyID KeyIdentifier, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ProtectedKey, error) {
 	keyDetails, err := d.index.FindKeyByID(ctx, keyID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to find key by ID '%s': %w", keyID, err)
 	}
 
 	manager, err := d.getKeyManager(keyDetails.System())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get key manager for system '%s': %w", keyDetails.System(), err)
 	}
 
 	return manager.DeriveKey(ctx, keyDetails, ephemeralPublicKeyBytes, curve)
@@ -104,7 +115,7 @@ func (d *DelegatingKeyService) GenerateECSessionKey(ctx context.Context, ephemer
 	// Assuming a default manager for session key generation
 	manager, err := d._defKM()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to get default key manager: %w", err)
 	}
 
 	return manager.GenerateECSessionKey(ctx, ephemeralPublicKey)
@@ -173,9 +184,15 @@ func (d *DelegatingKeyService) getKeyManager(name string) (KeyManager, error) {
 	d.mutex.Unlock()
 
 	if factoryExists {
-		managerFromFactory, err := factory()
+		options := &KeyManagerFactoryOptions{Logger: d.l.With("key-manager", name), Cache: d.c}
+		managerFromFactory, err := factory(options)
 		if err != nil {
 			return nil, fmt.Errorf("factory for key manager '%s' failed: %w", name, err)
+		}
+		// If err is nil (checked above) but managerFromFactory is still nil,
+		// the factory implementation is problematic.
+		if managerFromFactory == nil {
+			return nil, fmt.Errorf("factory for key manager '%s' returned nil manager without an error", name)
 		}
 
 		d.mutex.Lock()
@@ -183,11 +200,12 @@ func (d *DelegatingKeyService) getKeyManager(name string) (KeyManager, error) {
 		d.mutex.Unlock()
 		return managerFromFactory, nil
 	}
-
-	if name == currentDefaultMode && name != "" {
-		return nil, fmt.Errorf("configured default key manager '%s' not found (no factory/cache entry)", name)
-	}
-
-	d.l.Debug("Key manager not found by name, falling back to default", "requestedName", name, "configuredDefaultName", currentDefaultMode)
-	return d._defKM()
+	// Factory for 'name' not found.
+	// If 'name' was the defaultMode, _defKM will error if its factory is also missing.
+	// If 'name' was not the defaultMode, we fall back to the default manager.
+	d.l.Debug("key manager factory not found for name, attempting to use/load default",
+		slog.String("requested_name", name),
+		slog.String("configured_default_mode", currentDefaultMode),
+	)
+	return d._defKM() // _defKM handles erroring if the default manager itself cannot be loaded.
 }

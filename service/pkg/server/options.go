@@ -15,13 +15,13 @@ type StartConfig struct {
 	WaitForShutdownSignal bool
 	PublicRoutes          []string
 	IPCReauthRoutes       []string
-	bultinPolicyOverride  string
+	builtinPolicyOverride string
 	extraCoreServices     []serviceregistry.IService
 	extraServices         []serviceregistry.IService
 	casbinAdapter         persist.Adapter
 	configLoaders         []config.Loader
 
-	trustKeyManagers []trust.KeyManager
+	trustKeyManagers []trust.NamedKeyManagerFactory
 }
 
 // Deprecated: Use WithConfigKey
@@ -85,7 +85,7 @@ func WithIPCReauthRoutes(routes []string) StartOptions {
 //		 }, "\n")),
 func WithBuiltinAuthZPolicy(policy string) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.bultinPolicyOverride = policy
+		c.builtinPolicyOverride = policy
 		return c
 	}
 }
@@ -127,10 +127,10 @@ func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
 	}
 }
 
-// WithTrustKeyManagers option sets the trust key manager to be used for the server.
-func WithTrustKeyManagers(managers ...trust.KeyManager) StartOptions {
+// WithTrustKeyManagerFactories option provides factories for creating trust key managers.
+func WithTrustKeyManagerFactories(factories ...trust.NamedKeyManagerFactory) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.trustKeyManagers = append(c.trustKeyManagers, managers...)
+		c.trustKeyManagers = append(c.trustKeyManagers, factories...)
 		return c
 	}
 }

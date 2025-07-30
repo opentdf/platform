@@ -137,9 +137,11 @@ paths:
                Fully Qualified Names of attribute values (i.e. https://<namespace>/attr/<attribute_name>/value/<value_name>), normalized to lower case.
         - name: withValue.withKeyAccessGrants
           in: query
+          description: Deprecated
           schema:
             type: boolean
             title: with_key_access_grants
+            description: Deprecated
         - name: withValue.withSubjectMaps
           in: query
           schema:
@@ -152,9 +154,11 @@ paths:
             title: with_resource_maps
         - name: withValue.withAttribute.withKeyAccessGrants
           in: query
+          description: Deprecated
           schema:
             type: boolean
             title: with_key_access_grants
+            description: Deprecated
       responses:
         default:
           description: Error
@@ -456,6 +460,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToAttributeResponse'
+      deprecated: true
   /policy.attributes.AttributesService/RemoveKeyAccessServerFromAttribute:
     post:
       tags:
@@ -491,6 +496,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.RemoveKeyAccessServerFromAttributeResponse'
+      deprecated: true
   /policy.attributes.AttributesService/AssignKeyAccessServerToValue:
     post:
       tags:
@@ -526,6 +532,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.AssignKeyAccessServerToValueResponse'
+      deprecated: true
   /policy.attributes.AttributesService/RemoveKeyAccessServerFromValue:
     post:
       tags:
@@ -561,6 +568,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/policy.attributes.RemoveKeyAccessServerFromValueResponse'
+      deprecated: true
   /policy.attributes.AttributesService/AssignPublicKeyToAttribute:
     post:
       tags:
@@ -842,8 +850,14 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
+      examples:
+        - 1s
+        - 1.000340012s
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -996,7 +1010,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.KeyAccessServer'
           title: grants
-          description: Deprecated
+          description: Deprecated KAS grants for the attribute. Use kas_keys instead.
         fqn:
           type: string
           title: fqn
@@ -1024,6 +1038,7 @@ components:
         withKeyAccessGrants:
           type: boolean
           title: with_key_access_grants
+          description: Deprecated
         withSubjectMaps:
           type: boolean
           title: with_subject_maps
@@ -1041,6 +1056,7 @@ components:
         withKeyAccessGrants:
           type: boolean
           title: with_key_access_grants
+          description: Deprecated
         withNamespace:
           title: with_namespace
           $ref: '#/components/schemas/policy.AttributeValueSelector.AttributeSelector.NamespaceSelector'
@@ -1215,7 +1231,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.KeyAccessServer'
           title: grants
-          description: KAS grants for the namespace
+          description: Deprecated KAS grants for the namespace. Use kas_keys instead.
         kasKeys:
           type: array
           items:
@@ -1462,9 +1478,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.KeyAccessServer'
           title: grants
-          description: |-
-            Deprecated
-             list of key access servers
+          description: Deprecated KAS grants for the value. Use kas_keys instead.
         fqn:
           type: string
           title: fqn
@@ -1601,6 +1615,7 @@ components:
           description: Required
       title: AttributeKeyAccessServer
       additionalProperties: false
+      description: Deprecated
     policy.attributes.CreateAttributeRequest:
       type: object
       properties:
@@ -1633,7 +1648,10 @@ components:
             uniqueItems: true
           title: values
           uniqueItems: true
-          description: "Optional \n Attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.\n The stored attribute value will be normalized to lower case."
+          description: |-
+            Optional
+             Attribute values (when provided) must be alphanumeric strings, allowing hyphens and underscores but not as the first or last character.
+             The stored attribute value will be normalized to lower case.
         metadata:
           title: metadata
           description: Optional

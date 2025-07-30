@@ -9,12 +9,9 @@ import (
 
 	"github.com/opentdf/platform/lib/flattening"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
-	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
-	attrs "github.com/opentdf/platform/protocol/go/policy/attributes"
-	"github.com/opentdf/platform/protocol/go/policy/registeredresources"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdfSDK "github.com/opentdf/platform/sdk"
 
@@ -34,11 +31,12 @@ type JustInTimePDP struct {
 }
 
 // JustInTimePDP creates a new Policy Decision Point instance with no in-memory policy and a remote connection
-// via authenticated SDK, then fetches all Attributes and Subject Mappings from the policy services.
+// via authenticated SDK, then fetches all entitlement policy from provided store interface or policy services directly.
 func NewJustInTimePDP(
 	ctx context.Context,
 	l *logger.Logger,
 	sdk *otdfSDK.SDK,
+	store EntitlementPolicyStore,
 ) (*JustInTimePDP, error) {
 	var err error
 
@@ -57,18 +55,25 @@ func NewJustInTimePDP(
 		logger: l,
 	}
 
-	allAttributes, err := p.fetchAllDefinitions(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch all attribute definitions: %w", err)
+	// If no store is provided, have EntitlementPolicyRetriever fetch from policy services
+	if !store.IsEnabled() || !store.IsReady(ctx) {
+		l.DebugContext(ctx, "no EntitlementPolicyStore provided or not yet ready, will retrieve directly from policy services")
+		store = NewEntitlementPolicyRetriever(sdk)
 	}
-	allSubjectMappings, err := p.fetchAllSubjectMappings(ctx)
+
+	allAttributes, err := store.ListAllAttributes(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch all subject mappings: %w", err)
+		return nil, fmt.Errorf("failed to list cached attributes: %w", err)
 	}
-	allRegisteredResources, err := p.fetchAllRegisteredResources(ctx)
+	allSubjectMappings, err := store.ListAllSubjectMappings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list cached subject mappings: %w", err)
+	}
+	allRegisteredResources, err := store.ListAllRegisteredResources(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch all registered resources: %w", err)
 	}
+
 	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings, allRegisteredResources)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
@@ -100,10 +105,17 @@ func (p *JustInTimePDP) GetDecision(
 	case *authzV2.EntityIdentifier_Token:
 		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
 
-	// TODO: implement this case
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
-		p.logger.DebugContext(ctx, "getting decision - resolving registered resource value FQN")
-		return nil, false, errors.New("registered resources not yet implemented")
+		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
+		// registered resources do not have entity representations, so only one decision to make and we can skip the remaining logic
+		decision, err := p.pdp.GetDecisionRegisteredResource(ctx, regResValueFQN, action, resources)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to get decision for registered resource value FQN [%s]: %w", regResValueFQN, err)
+		}
+		if decision == nil {
+			return nil, false, fmt.Errorf("decision is nil for registered resource value FQN [%s]", regResValueFQN)
+		}
+		return []*Decision{decision}, decision.Access, nil
 
 	default:
 		return nil, false, ErrInvalidEntityType
@@ -155,10 +167,10 @@ func (p *JustInTimePDP) GetEntitlements(
 		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
-		p.logger.DebugContext(ctx, "getting decision - resolving registered resource value FQN")
-		valueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
+		p.logger.DebugContext(ctx, "getting entitlements - resolving registered resource value FQN")
+		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
 		// registered resources do not have entity representations, so we can skip the remaining logic
-		return p.pdp.GetEntitlementsRegisteredResource(ctx, valueFQN, withComprehensiveHierarchy)
+		return p.pdp.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
 
 	default:
 		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
@@ -222,89 +234,6 @@ func (p *JustInTimePDP) getMatchedSubjectMappings(
 	return rsp.GetSubjectMappings(), nil
 }
 
-// fetchAllDefinitions retrieves all attribute definitions within policy
-func (p *JustInTimePDP) fetchAllDefinitions(ctx context.Context) ([]*policy.Attribute, error) {
-	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
-	var nextOffset int32
-	attrsList := make([]*policy.Attribute, 0)
-
-	for {
-		listed, err := p.sdk.Attributes.ListAttributes(ctx, &attrs.ListAttributesRequest{
-			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ACTIVE,
-			// defer to service default for limit pagination
-			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to list attributes: %w", err)
-		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
-		attrsList = append(attrsList, listed.GetAttributes()...)
-
-		if nextOffset <= 0 {
-			break
-		}
-	}
-	return attrsList, nil
-}
-
-// fetchAllSubjectMappings retrieves all attribute values' subject mappings within policy
-func (p *JustInTimePDP) fetchAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
-	// If quantity of attributes exceeds maximum list pagination, all are needed to determine entitlements
-	var nextOffset int32
-	smList := make([]*policy.SubjectMapping, 0)
-
-	for {
-		listed, err := p.sdk.SubjectMapping.ListSubjectMappings(ctx, &subjectmapping.ListSubjectMappingsRequest{
-			// defer to service default for limit pagination
-			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to list subject mappings: %w", err)
-		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
-		smList = append(smList, listed.GetSubjectMappings()...)
-
-		if nextOffset <= 0 {
-			break
-		}
-	}
-	return smList, nil
-}
-
-// fetchAllRegisteredResources retrieves all registered resources within policy
-func (p *JustInTimePDP) fetchAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error) {
-	// If quantity of registered resources exceeds maximum list pagination, all are needed to determine entitlements
-	var nextOffset int32
-	rrList := make([]*policy.RegisteredResource, 0)
-
-	for {
-		listed, err := p.sdk.RegisteredResources.ListRegisteredResources(ctx, &registeredresources.ListRegisteredResourcesRequest{
-			// defer to service default for limit pagination
-			Pagination: &policy.PageRequest{
-				Offset: nextOffset,
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to list registered resources: %w", err)
-		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
-		rrList = append(rrList, listed.GetResources()...)
-
-		if nextOffset <= 0 {
-			break
-		}
-	}
-
-	return rrList, nil
-}
-
 // resolveEntitiesFromEntityChain roundtrips to ERS to resolve the provided entity chain
 // and optionally skips environment entities (which is expected behavior in decision flow)
 func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
@@ -312,7 +241,11 @@ func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
 	entityChain *entity.EntityChain,
 	skipEnvironmentEntities bool,
 ) ([]*entityresolutionV2.EntityRepresentation, error) {
-	p.logger.DebugContext(ctx, "resolving entities from entity chain", slog.String("entityChain ID", entityChain.GetEphemeralId()), slog.Bool("skipEnvironmentEntities", skipEnvironmentEntities))
+	p.logger.DebugContext(ctx,
+		"resolving entities from entity chain",
+		slog.String("entity_chain_id", entityChain.GetEphemeralId()),
+		slog.Bool("skip_environment_entities", skipEnvironmentEntities),
+	)
 
 	var filteredEntities []*entity.Entity
 	if skipEnvironmentEntities {
@@ -348,7 +281,7 @@ func (p *JustInTimePDP) resolveEntitiesFromToken(
 	skipEnvironmentEntities bool,
 ) ([]*entityresolutionV2.EntityRepresentation, error) {
 	// WARNING: do not log the token JWT, just its ID
-	p.logger.DebugContext(ctx, "resolving entities from token", slog.String("token ephemeral id", token.GetEphemeralId()))
+	p.logger.DebugContext(ctx, "resolving entities from token", slog.String("token_ephemeral_id", token.GetEphemeralId()))
 	ersResp, err := p.sdk.EntityResolutionV2.CreateEntityChainsFromTokens(ctx, &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: []*entity.Token{token}})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create entity chains from token: %w", err)

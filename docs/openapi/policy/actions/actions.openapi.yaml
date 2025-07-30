@@ -309,8 +309,14 @@ components:
         Wrapper message for `bool`.
 
          The JSON representation for `BoolValue` is JSON `true` and `false`.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
     google.protobuf.Timestamp:
       type: string
+      examples:
+        - 1s
+        - 1.000340012s
       format: date-time
       description: |-
         A Timestamp represents a point in time independent of any time zone or local
@@ -463,7 +469,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.KeyAccessServer'
           title: grants
-          description: Deprecated
+          description: Deprecated KAS grants for the attribute. Use kas_keys instead.
         fqn:
           type: string
           title: fqn
@@ -650,7 +656,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.KeyAccessServer'
           title: grants
-          description: KAS grants for the namespace
+          description: Deprecated KAS grants for the namespace. Use kas_keys instead.
         kasKeys:
           type: array
           items:
@@ -897,9 +903,7 @@ components:
           items:
             $ref: '#/components/schemas/policy.KeyAccessServer'
           title: grants
-          description: |-
-            Deprecated
-             list of key access servers
+          description: Deprecated KAS grants for the value. Use kas_keys instead.
         fqn:
           type: string
           title: fqn

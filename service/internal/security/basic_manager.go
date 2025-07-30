@@ -7,23 +7,20 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
-	"github.com/dgraph-io/ristretto"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/trust"
-
-	"github.com/eko/gocache/lib/v4/cache"
-	"github.com/eko/gocache/lib/v4/store"
-	ristretto_store "github.com/eko/gocache/store/ristretto/v4"
 )
 
 const (
-	basicManagerName     = "opentdf.io/basic"
+	// BasicManagerName is the unique identifier for the BasicManager.
+	BasicManagerName     = "opentdf.io/basic"
 	ristrettoBufferItems = 64
 	ristrettoMaxCost     = 3400000
 	ristrettoNumCounters = ristrettoMaxCost * 10
@@ -33,37 +30,24 @@ const (
 type BasicManager struct {
 	l       *logger.Logger
 	rootKey []byte
-	cache   *cache.Cache[[]byte]
+	cache   *cache.Cache
 }
 
-func NewBasicManager(logger *logger.Logger, rootKey string) (*BasicManager, error) {
+func NewBasicManager(logger *logger.Logger, c *cache.Cache, rootKey string) (*BasicManager, error) {
 	rk, err := hex.DecodeString(rootKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hex decode root key: %w", err)
 	}
 
-	ristrettoCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: ristrettoNumCounters,
-		MaxCost:     ristrettoMaxCost,
-		BufferItems: ristrettoBufferItems,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create ristretto cache: %w", err)
-	}
-
-	ristrettoStore := ristretto_store.NewRistretto(ristrettoCache)
-
-	cacheManager := cache.New[[]byte](ristrettoStore)
-
 	return &BasicManager{
 		l:       logger,
 		rootKey: rk,
-		cache:   cacheManager,
+		cache:   c,
 	}, nil
 }
 
 func (b *BasicManager) Name() string {
-	return basicManagerName
+	return BasicManagerName
 }
 
 func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
@@ -161,15 +145,27 @@ func (b *BasicManager) Close() {
 		b.rootKey[i] = 0
 	}
 	b.rootKey = nil
-	return
 }
 
 func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string) ([]byte, error) {
-	if privKey, err := b.cache.Get(ctx, kid); err == nil {
-		b.l.DebugContext(ctx, "found private key in cache", slog.String("kid", kid))
-		return privKey, nil
+	cacheEnabled := b.cache != nil
+	if cacheEnabled {
+		if privKey, err := b.cache.Get(ctx, kid); err == nil {
+			b.l.DebugContext(ctx, "found private key in cache", slog.String("kid", kid))
+			if privKeyBytes, ok := privKey.([]byte); ok {
+				return privKeyBytes, nil
+			}
+			b.l.ErrorContext(ctx,
+				"private key in cache is not of type []byte",
+				slog.String("kid", kid),
+				slog.Any("type", fmt.Sprintf("%T", privKey)),
+			)
+			return nil, errors.New("private key in cache is not of type []byte")
+		}
+		b.l.DebugContext(ctx, "private key not found in cache", slog.String("kid", kid))
+	} else {
+		b.l.DebugContext(ctx, "cache not configured, skipping cache lookup", slog.String("kid", kid))
 	}
-	b.l.DebugContext(ctx, "private key not found in cache", slog.String("kid", kid))
 
 	// base64 decode
 	wk, err := base64.StdEncoding.DecodeString(wrappedKey)
@@ -187,8 +183,14 @@ func (b *BasicManager) unwrap(ctx context.Context, kid string, wrappedKey string
 		return nil, fmt.Errorf("failed to decrypt wrapped key: %w", err)
 	}
 
-	if err := b.cache.Set(ctx, kid, privKey, store.WithExpiration(time.Second*ristrettoCacheTTL)); err != nil {
-		b.l.ErrorContext(ctx, "failed to cache private key", slog.String("kid", kid), slog.String("error", err.Error()))
+	if cacheEnabled {
+		if err := b.cache.Set(ctx, kid, privKey, nil); err != nil {
+			b.l.ErrorContext(ctx,
+				"failed to cache private key",
+				slog.String("kid", kid),
+				slog.Any("error", err),
+			)
+		}
 	}
 
 	return privKey, nil

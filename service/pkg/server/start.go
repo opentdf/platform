@@ -20,6 +20,7 @@ import (
 	"github.com/opentdf/platform/service/internal/auth"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/tracing"
@@ -86,6 +87,17 @@ func Start(f ...StartOptions) error {
 
 	logger.Debug("config loaded", slog.Any("config", cfg.LogValue()))
 
+	// Configure cache manager
+	logger.Info("creating cache manager")
+	if cfg.Server.Cache.Driver != "ristretto" {
+		return fmt.Errorf("unsupported cache driver: %s", cfg.Server.Cache.Driver)
+	}
+	cacheManager, err := cache.NewCacheManager(cfg.Server.Cache.RistrettoCache.MaxCostBytes())
+	if err != nil {
+		return fmt.Errorf("could not create cache manager: %w", err)
+	}
+	defer cacheManager.Close()
+
 	logger.Info("starting opentdf services")
 
 	// Set allowed public routes when platform is being extended
@@ -101,8 +113,8 @@ func Start(f ...StartOptions) error {
 	}
 
 	// Set Default Policy
-	if startConfig.bultinPolicyOverride != "" {
-		cfg.Server.Auth.Policy.Builtin = startConfig.bultinPolicyOverride
+	if startConfig.builtinPolicyOverride != "" {
+		cfg.Server.Auth.Policy.Builtin = startConfig.builtinPolicyOverride
 	}
 
 	// Set Casbin Adapter
@@ -113,7 +125,7 @@ func Start(f ...StartOptions) error {
 	// Create new server for grpc & http. Also will support in process grpc potentially too
 	logger.Debug("initializing opentdf server")
 	cfg.Server.WellKnownConfigRegister = wellknown.RegisterConfiguration
-	otdf, err := server.NewOpenTDFServer(cfg.Server, logger)
+	otdf, err := server.NewOpenTDFServer(cfg.Server, logger, cacheManager)
 	if err != nil {
 		logger.Error("issue creating opentdf server", slog.String("error", err.Error()))
 		return fmt.Errorf("issue creating opentdf server: %w", err)
@@ -160,7 +172,10 @@ func Start(f ...StartOptions) error {
 		for _, service := range startConfig.extraServices {
 			err := svcRegistry.RegisterService(service, service.GetNamespace())
 			if err != nil {
-				logger.Error("could not register extra service", slog.String("namespace", service.GetNamespace()), slog.String("error", err.Error()))
+				logger.Error("could not register extra service",
+					slog.String("namespace", service.GetNamespace()),
+					slog.Any("error", err),
+				)
 				return fmt.Errorf("could not register extra service: %w", err)
 			}
 		}
@@ -261,12 +276,12 @@ func Start(f ...StartOptions) error {
 			ersConnectRPCConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
 
 			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(&ersConnectRPCConn))
-			logger.Info("added with custom ers connection for ", "", ersConnectRPCConn.Endpoint)
+			logger.Info("added with custom ers connection", slog.String("ers_connection_endpoint", ersConnectRPCConn.Endpoint))
 		}
 
 		client, err = sdk.New("", sdkOptions...)
 		if err != nil {
-			logger.Error("issue creating sdk client", slog.String("error", err.Error()))
+			logger.Error("issue creating sdk client", slog.Any("error", err))
 			return fmt.Errorf("issue creating sdk client: %w", err)
 		}
 	} else {
@@ -287,7 +302,15 @@ func Start(f ...StartOptions) error {
 	defer client.Close()
 
 	logger.Info("starting services")
-	gatewayCleanup, err := startServices(ctx, cfg, otdf, client, startConfig.trustKeyManagers, logger, svcRegistry)
+	gatewayCleanup, err := startServices(ctx, startServicesParams{
+		cfg:                 cfg,
+		otdf:                otdf,
+		client:              client,
+		keyManagerFactories: startConfig.trustKeyManagers,
+		logger:              logger,
+		reg:                 svcRegistry,
+		cacheManager:        cacheManager,
+	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))
 		return fmt.Errorf("issue starting services: %w", err)

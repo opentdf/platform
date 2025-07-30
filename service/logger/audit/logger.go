@@ -49,6 +49,7 @@ func CreateAuditLogger(logger slog.Logger) *Logger {
 
 func (a *Logger) With(key string, value string) *Logger {
 	return &Logger{
+		//nolint:sloglint // custom logger should support key/value pairs in With attributes
 		logger: a.logger.With(key, value),
 	}
 }
@@ -73,29 +74,38 @@ func (a *Logger) PolicyCRUDFailure(ctx context.Context, eventParams PolicyEventP
 func (a *Logger) GetDecision(ctx context.Context, eventParams GetDecisionEventParams) {
 	auditEvent, err := CreateGetDecisionEvent(ctx, eventParams)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating get decision audit event", "err", err)
+		a.logger.ErrorContext(ctx, "error creating get decision audit event", slog.Any("error", err))
 		return
 	}
 
-	a.logger.Log(ctx, LevelAudit, "decision", "audit", *auditEvent)
+	a.logger.Log(ctx, LevelAudit, "decision", slog.Any("audit", *auditEvent))
+}
+
+func (a *Logger) GetDecisionV2(ctx context.Context, eventParams GetDecisionV2EventParams) {
+	event, err := CreateV2GetDecisionEvent(ctx, eventParams)
+	if err != nil {
+		a.logger.ErrorContext(ctx, "error creating v2 get decision audit event", slog.Any("error", err))
+		return
+	}
+	a.logger.Log(ctx, LevelAudit, "decision", slog.Any("audit", *event))
 }
 
 func (a *Logger) rewrapBase(ctx context.Context, eventParams RewrapAuditEventParams) {
 	auditEvent, err := CreateRewrapAuditEvent(ctx, eventParams)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating rewrap audit event", "err", err)
+		a.logger.ErrorContext(ctx, "error creating rewrap audit event", slog.Any("error", err))
 		return
 	}
 
-	a.logger.Log(ctx, LevelAudit, "rewrap", "audit", *auditEvent)
+	a.logger.Log(ctx, LevelAudit, "rewrap", slog.Any("audit", *auditEvent))
 }
 
 func (a *Logger) policyCrudBase(ctx context.Context, isSuccess bool, eventParams PolicyEventParams) {
 	auditEvent, err := CreatePolicyEvent(ctx, isSuccess, eventParams)
 	if err != nil {
-		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", "err", err)
+		a.logger.ErrorContext(ctx, "error creating policy attribute audit event", slog.Any("error", err))
 		return
 	}
 
-	a.logger.Log(ctx, LevelAudit, "policy crud", "audit", *auditEvent)
+	a.logger.Log(ctx, LevelAudit, "policy crud", slog.Any("audit", *auditEvent))
 }

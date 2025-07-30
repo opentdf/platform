@@ -48,7 +48,7 @@ func (c PolicyDBClient) GetAction(ctx context.Context, req *actions.GetActionReq
 		return nil, db.ErrSelectIdentifierInvalid
 	}
 
-	got, err := c.Queries.getAction(ctx, getActionParams)
+	got, err := c.queries.getAction(ctx, getActionParams)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -73,7 +73,7 @@ func (c PolicyDBClient) ListActions(ctx context.Context, req *actions.ListAction
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.Queries.listActions(ctx, listActionsParams{
+	list, err := c.queries.listActions(ctx, listActionsParams{
 		Limit:  limit,
 		Offset: offset,
 	})
@@ -130,7 +130,7 @@ func (c PolicyDBClient) CreateAction(ctx context.Context, req *actions.CreateAct
 		Metadata: metadataJSON,
 	}
 
-	createdID, err := c.Queries.createCustomAction(ctx, createParams)
+	createdID, err := c.queries.createCustomAction(ctx, createParams)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -166,7 +166,7 @@ func (c PolicyDBClient) UpdateAction(ctx context.Context, req *actions.UpdateAct
 		Metadata: metadataJSON,
 	}
 
-	count, err := c.Queries.updateCustomAction(ctx, updateParams)
+	count, err := c.queries.updateCustomAction(ctx, updateParams)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -182,7 +182,7 @@ func (c PolicyDBClient) UpdateAction(ctx context.Context, req *actions.UpdateAct
 }
 
 func (c PolicyDBClient) DeleteAction(ctx context.Context, req *actions.DeleteActionRequest) (*policy.Action, error) {
-	count, err := c.Queries.deleteCustomAction(ctx, req.GetId())
+	count, err := c.queries.deleteCustomAction(ctx, req.GetId())
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

@@ -30,8 +30,9 @@ func (s *KeyIndexTestSuite) SetupTest() {
 					Pem: "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF3SEw0TkVrOFpDa0JzNjZXQVpWagpIS3NseDRseWdmaXN3aW42RUx5OU9OczZLVDRYa1crRGxsdExtck14bHZkbzVRaDg1UmFZS01mWUdDTWtPM0dGCkFsK0JOeWFOM1kwa0N1QjNPU2ErTzdyMURhNVZteVVuaEJNbFBrYnVPY1Y0cjlLMUhOSGd3eDl2UFp3RjRpQW8KQStEY1VBcWFEeHlvYjV6enNGZ0hUNjJHLzdLdEtiZ2hYT1dCanRUYUl1ZHpsK2FaSjFPemY0U1RkOXhST2QrMQordVo2VG1ocmFEUm9zdDUrTTZUN0toL2lGWk40TTFUY2hwWXU1TDhKR2tVaG9YaEdZcHUrMGczSzlqYlh6RVh5CnpJU3VXN2d6SGRWYUxvcnBkQlNkRHpOWkNvTFVoL0U1T3d5TFZFQkNKaDZJVUtvdWJ5WHVucnIxQnJmK2tLbEsKeHdJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==",
 				},
 				ProviderConfig: &policy.KeyProviderConfig{
-					Id:   "test-provider-id",
-					Name: "openbao",
+					Id:         "test-provider-id",
+					Name:       "openbao",
+					ConfigJson: []byte("config"),
 				},
 			},
 		},
@@ -44,6 +45,7 @@ func (s *KeyIndexTestSuite) TestKeyDetails() {
 	s.Equal("ALGORITHM_RSA_2048", s.rsaKey.Algorithm())
 	s.False(s.rsaKey.IsLegacy())
 	s.Equal("openbao", s.rsaKey.System())
+	s.Equal("config", string(s.rsaKey.ProviderConfig().GetConfigJson()))
 }
 
 func (s *KeyIndexTestSuite) TestKeyExportPublicKey_JWKFormat() {

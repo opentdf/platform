@@ -2,54 +2,34 @@
 -- OBLIGATIONS
 ----------------------------------------------------------------
 
--- name: createObligationByNamespaceID :one
+-- name: createObligation :one
 WITH inserted_obligation AS (
     INSERT INTO obligation_definitions (namespace_id, name, metadata)
-    VALUES ($1, $2, $3)
+    SELECT 
+        CASE 
+            WHEN @namespace_id::TEXT != '' THEN @namespace_id::UUID
+            ELSE fqns.namespace_id
+        END,
+        @name, 
+        @metadata
+    FROM (
+        SELECT 
+            CASE 
+                WHEN @namespace_id::TEXT != '' THEN @namespace_id::UUID
+                ELSE NULL
+            END as direct_namespace_id
+    ) direct
+    LEFT JOIN attribute_fqns fqns ON fqns.fqn = @namespace_fqn AND @namespace_id::TEXT = ''
+    WHERE 
+        (@namespace_id::TEXT != '' AND direct.direct_namespace_id IS NOT NULL) OR
+        (@namespace_fqn::TEXT != '' AND fqns.namespace_id IS NOT NULL)
     RETURNING id, namespace_id, name, metadata
 ),
 inserted_values AS (
     INSERT INTO obligation_values_standard (obligation_definition_id, value)
-    SELECT io.id, UNNEST(sqlc.arg('values')::VARCHAR[])
+    SELECT io.id, UNNEST(@values::VARCHAR[])
     FROM inserted_obligation io
-    WHERE sqlc.arg('values')::VARCHAR[] IS NOT NULL AND array_length(sqlc.arg('values')::VARCHAR[], 1) > 0
-    RETURNING id, obligation_definition_id, value
-)
-SELECT
-    io.id,
-    io.name,
-    io.metadata,
-    JSON_BUILD_OBJECT(
-        'id', n.id,
-        'name', n.name
-    ) as namespace,
-    COALESCE(
-        JSON_AGG(
-            JSON_BUILD_OBJECT(
-                'id', iv.id,
-                'value', iv.value
-            )
-        ) FILTER (WHERE iv.id IS NOT NULL),
-        '[]'::JSON
-    )::JSONB as values
-FROM inserted_obligation io
-JOIN attribute_namespaces n ON io.namespace_id = n.id
-LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
-GROUP BY io.id, io.name, io.metadata, n.id, n.name;
-
--- name: createObligationByNamespaceFQN :one
-WITH inserted_obligation AS (
-    INSERT INTO obligation_definitions (namespace_id, name, metadata)
-    SELECT fqns.namespace_id, $2, $3
-    FROM attribute_fqns fqns
-    WHERE fqns.fqn = $1
-    RETURNING id, namespace_id, name, metadata
-),
-inserted_values AS (
-    INSERT INTO obligation_values_standard (obligation_definition_id, value)
-    SELECT io.id, UNNEST(sqlc.arg('values')::VARCHAR[])
-    FROM inserted_obligation io
-    WHERE sqlc.arg('values')::VARCHAR[] IS NOT NULL AND array_length(sqlc.arg('values')::VARCHAR[], 1) > 0
+    WHERE @values::VARCHAR[] IS NOT NULL AND array_length(@values::VARCHAR[], 1) > 0
     RETURNING id, obligation_definition_id, value
 )
 SELECT

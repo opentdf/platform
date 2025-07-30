@@ -11,19 +11,35 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createObligationByNamespaceFQN = `-- name: createObligationByNamespaceFQN :one
+const createObligation = `-- name: createObligation :one
+
 WITH inserted_obligation AS (
     INSERT INTO obligation_definitions (namespace_id, name, metadata)
-    SELECT fqns.namespace_id, $2, $3
-    FROM attribute_fqns fqns
-    WHERE fqns.fqn = $1
+    SELECT 
+        CASE 
+            WHEN $1::TEXT != '' THEN $1::UUID
+            ELSE fqns.namespace_id
+        END,
+        $2, 
+        $3
+    FROM (
+        SELECT 
+            CASE 
+                WHEN $1::TEXT != '' THEN $1::UUID
+                ELSE NULL
+            END as direct_namespace_id
+    ) direct
+    LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4 AND $1::TEXT = ''
+    WHERE 
+        ($1::TEXT != '' AND direct.direct_namespace_id IS NOT NULL) OR
+        ($4::TEXT != '' AND fqns.namespace_id IS NOT NULL)
     RETURNING id, namespace_id, name, metadata
 ),
 inserted_values AS (
     INSERT INTO obligation_values_standard (obligation_definition_id, value)
-    SELECT io.id, UNNEST($4::VARCHAR[])
+    SELECT io.id, UNNEST($5::VARCHAR[])
     FROM inserted_obligation io
-    WHERE $4::VARCHAR[] IS NOT NULL AND array_length($4::VARCHAR[], 1) > 0
+    WHERE $5::VARCHAR[] IS NOT NULL AND array_length($5::VARCHAR[], 1) > 0
     RETURNING id, obligation_definition_id, value
 )
 SELECT
@@ -49,121 +65,15 @@ LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
 GROUP BY io.id, io.name, io.metadata, n.id, n.name
 `
 
-type createObligationByNamespaceFQNParams struct {
-	Fqn      string   `json:"fqn"`
-	Name     string   `json:"name"`
-	Metadata []byte   `json:"metadata"`
-	Values   []string `json:"values"`
+type createObligationParams struct {
+	NamespaceID  string   `json:"namespace_id"`
+	Name         string   `json:"name"`
+	Metadata     []byte   `json:"metadata"`
+	NamespaceFqn string   `json:"namespace_fqn"`
+	Values       []string `json:"values"`
 }
 
-type createObligationByNamespaceFQNRow struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Metadata  []byte `json:"metadata"`
-	Namespace []byte `json:"namespace"`
-	Values    []byte `json:"values"`
-}
-
-// createObligationByNamespaceFQN
-//
-//	WITH inserted_obligation AS (
-//	    INSERT INTO obligation_definitions (namespace_id, name, metadata)
-//	    SELECT fqns.namespace_id, $2, $3
-//	    FROM attribute_fqns fqns
-//	    WHERE fqns.fqn = $1
-//	    RETURNING id, namespace_id, name, metadata
-//	),
-//	inserted_values AS (
-//	    INSERT INTO obligation_values_standard (obligation_definition_id, value)
-//	    SELECT io.id, UNNEST($4::VARCHAR[])
-//	    FROM inserted_obligation io
-//	    WHERE $4::VARCHAR[] IS NOT NULL AND array_length($4::VARCHAR[], 1) > 0
-//	    RETURNING id, obligation_definition_id, value
-//	)
-//	SELECT
-//	    io.id,
-//	    io.name,
-//	    io.metadata,
-//	    JSON_BUILD_OBJECT(
-//	        'id', n.id,
-//	        'name', n.name
-//	    ) as namespace,
-//	    COALESCE(
-//	        JSON_AGG(
-//	            JSON_BUILD_OBJECT(
-//	                'id', iv.id,
-//	                'value', iv.value
-//	            )
-//	        ) FILTER (WHERE iv.id IS NOT NULL),
-//	        '[]'::JSON
-//	    )::JSONB as values
-//	FROM inserted_obligation io
-//	JOIN attribute_namespaces n ON io.namespace_id = n.id
-//	LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
-//	GROUP BY io.id, io.name, io.metadata, n.id, n.name
-func (q *Queries) createObligationByNamespaceFQN(ctx context.Context, arg createObligationByNamespaceFQNParams) (createObligationByNamespaceFQNRow, error) {
-	row := q.db.QueryRow(ctx, createObligationByNamespaceFQN,
-		arg.Fqn,
-		arg.Name,
-		arg.Metadata,
-		arg.Values,
-	)
-	var i createObligationByNamespaceFQNRow
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Metadata,
-		&i.Namespace,
-		&i.Values,
-	)
-	return i, err
-}
-
-const createObligationByNamespaceID = `-- name: createObligationByNamespaceID :one
-
-WITH inserted_obligation AS (
-    INSERT INTO obligation_definitions (namespace_id, name, metadata)
-    VALUES ($1, $2, $3)
-    RETURNING id, namespace_id, name, metadata
-),
-inserted_values AS (
-    INSERT INTO obligation_values_standard (obligation_definition_id, value)
-    SELECT io.id, UNNEST($4::VARCHAR[])
-    FROM inserted_obligation io
-    WHERE $4::VARCHAR[] IS NOT NULL AND array_length($4::VARCHAR[], 1) > 0
-    RETURNING id, obligation_definition_id, value
-)
-SELECT
-    io.id,
-    io.name,
-    io.metadata,
-    JSON_BUILD_OBJECT(
-        'id', n.id,
-        'name', n.name
-    ) as namespace,
-    COALESCE(
-        JSON_AGG(
-            JSON_BUILD_OBJECT(
-                'id', iv.id,
-                'value', iv.value
-            )
-        ) FILTER (WHERE iv.id IS NOT NULL),
-        '[]'::JSON
-    )::JSONB as values
-FROM inserted_obligation io
-JOIN attribute_namespaces n ON io.namespace_id = n.id
-LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
-GROUP BY io.id, io.name, io.metadata, n.id, n.name
-`
-
-type createObligationByNamespaceIDParams struct {
-	NamespaceID string   `json:"namespace_id"`
-	Name        string   `json:"name"`
-	Metadata    []byte   `json:"metadata"`
-	Values      []string `json:"values"`
-}
-
-type createObligationByNamespaceIDRow struct {
+type createObligationRow struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	Metadata  []byte `json:"metadata"`
@@ -177,14 +87,31 @@ type createObligationByNamespaceIDRow struct {
 //
 //	WITH inserted_obligation AS (
 //	    INSERT INTO obligation_definitions (namespace_id, name, metadata)
-//	    VALUES ($1, $2, $3)
+//	    SELECT
+//	        CASE
+//	            WHEN $1::TEXT != '' THEN $1::UUID
+//	            ELSE fqns.namespace_id
+//	        END,
+//	        $2,
+//	        $3
+//	    FROM (
+//	        SELECT
+//	            CASE
+//	                WHEN $1::TEXT != '' THEN $1::UUID
+//	                ELSE NULL
+//	            END as direct_namespace_id
+//	    ) direct
+//	    LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4 AND $1::TEXT = ''
+//	    WHERE
+//	        ($1::TEXT != '' AND direct.direct_namespace_id IS NOT NULL) OR
+//	        ($4::TEXT != '' AND fqns.namespace_id IS NOT NULL)
 //	    RETURNING id, namespace_id, name, metadata
 //	),
 //	inserted_values AS (
 //	    INSERT INTO obligation_values_standard (obligation_definition_id, value)
-//	    SELECT io.id, UNNEST($4::VARCHAR[])
+//	    SELECT io.id, UNNEST($5::VARCHAR[])
 //	    FROM inserted_obligation io
-//	    WHERE $4::VARCHAR[] IS NOT NULL AND array_length($4::VARCHAR[], 1) > 0
+//	    WHERE $5::VARCHAR[] IS NOT NULL AND array_length($5::VARCHAR[], 1) > 0
 //	    RETURNING id, obligation_definition_id, value
 //	)
 //	SELECT
@@ -208,14 +135,15 @@ type createObligationByNamespaceIDRow struct {
 //	JOIN attribute_namespaces n ON io.namespace_id = n.id
 //	LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
 //	GROUP BY io.id, io.name, io.metadata, n.id, n.name
-func (q *Queries) createObligationByNamespaceID(ctx context.Context, arg createObligationByNamespaceIDParams) (createObligationByNamespaceIDRow, error) {
-	row := q.db.QueryRow(ctx, createObligationByNamespaceID,
+func (q *Queries) createObligation(ctx context.Context, arg createObligationParams) (createObligationRow, error) {
+	row := q.db.QueryRow(ctx, createObligation,
 		arg.NamespaceID,
 		arg.Name,
 		arg.Metadata,
+		arg.NamespaceFqn,
 		arg.Values,
 	)
-	var i createObligationByNamespaceIDRow
+	var i createObligationRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,

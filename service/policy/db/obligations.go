@@ -34,6 +34,9 @@ func (c PolicyDBClient) CreateObligationByNamespaceID(ctx context.Context, names
 		Metadata: &common.Metadata{
 			Labels: metadata.GetLabels(),
 		},
+		Namespace: &policy.Namespace{
+			Id: namespaceID,
+		},
 	}, nil
 }
 
@@ -56,6 +59,9 @@ func (c PolicyDBClient) CreateObligationByNamespaceFQN(ctx context.Context, fqn,
 		Name: name,
 		Metadata: &common.Metadata{
 			Labels: metadata.GetLabels(),
+		},
+		Namespace: &policy.Namespace{
+			Fqn: fqn,
 		},
 	}, nil
 }

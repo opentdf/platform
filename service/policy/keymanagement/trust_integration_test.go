@@ -10,7 +10,7 @@ func TestServiceManagerValidation(t *testing.T) {
 	// Create a service with some mock trust key manager factories
 	service := &Service{
 		keyManagerFactories: []registeredManagers{
-			{Name: "local"},
+			{Name: "opentdf.io/basic"},
 			{Name: "premium-hsm"},
 			{Name: "premium-vault"},
 		},
@@ -22,8 +22,8 @@ func TestServiceManagerValidation(t *testing.T) {
 		expectValid bool
 	}{
 		{
-			name:        "Valid local manager",
-			manager:     "local",
+			name:        "Valid opentdf.io/basic manager",
+			manager:     "opentdf.io/basic",
 			expectValid: true,
 		},
 		{
@@ -63,20 +63,20 @@ func TestServiceWithNoKeyManagers(t *testing.T) {
 	}
 
 	// All manager names should be invalid
-	assert.False(t, service.isManagerRegistered("local"))
+	assert.False(t, service.isManagerRegistered("opentdf.io/basic"))
 	assert.False(t, service.isManagerRegistered("any-manager"))
 }
 
 func TestServiceManagerValidationCaseSensitive(t *testing.T) {
 	service := &Service{
 		keyManagerFactories: []registeredManagers{
-			{Name: "local"},
+			{Name: "opentdf.io/basic"},
 			{Name: "Premium-HSM"},
 		},
 	}
 
 	// Manager names should be case sensitive
-	assert.True(t, service.isManagerRegistered("local"))
+	assert.True(t, service.isManagerRegistered("opentdf.io/basic"))
 	assert.False(t, service.isManagerRegistered("Local"))
 	assert.False(t, service.isManagerRegistered("LOCAL"))
 

@@ -18,7 +18,7 @@ message CreateProviderConfigRequest {
   // JSON configuration for the key provider. This is unique to individual key providers.
   bytes config_json = 2 [(buf.validate.field).required = true];
   // Required
-  // The type of key manager (e.g. "aws", "gcp", "azure", "local")
+  // The type of key manager (e.g. "aws", "gcp", "azure", "opentdf.io/basic")
   string manager = 3 [(buf.validate.field).required = true];
 
   // Common metadata

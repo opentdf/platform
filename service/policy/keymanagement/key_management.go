@@ -16,7 +16,6 @@ import (
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
-	"github.com/opentdf/platform/service/trust"
 	"github.com/opentdf/platform/service/wellknownconfiguration"
 )
 
@@ -24,7 +23,12 @@ type Service struct {
 	dbClient            policydb.PolicyDBClient
 	logger              *logger.Logger
 	config              *policyconfig.Config
-	keyManagerFactories []trust.NamedKeyManagerFactory
+	keyManagerFactories []registeredManagers
+}
+
+type registeredManagers struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 func OnConfigUpdate(svc *Service) serviceregistry.OnConfigUpdateHook {
@@ -61,16 +65,15 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 				ksvc.logger = srp.Logger
 				ksvc.config = cfg
 				ksvc.dbClient = policydb.NewClient(srp.DBClient, srp.Logger, int32(cfg.ListRequestLimitMax), int32(cfg.ListRequestLimitDefault))
-				ksvc.keyManagerFactories = srp.KeyManagerFactories
 
 				// Register key managers in well-known configuration
-				managersMap := make(map[string]interface{})
+				ksvc.keyManagerFactories = make([]registeredManagers, 0, len(srp.KeyManagerFactories))
+				managersMap := make(map[string]registeredManagers)
 				for _, factory := range srp.KeyManagerFactories {
-					managersMap[factory.Name] = map[string]interface{}{
-						"name":        factory.Name,
-						"description": "Key manager: " + factory.Name,
-						"enabled":     true,
-					}
+					ksvc.keyManagerFactories = append(ksvc.keyManagerFactories, registeredManagers{
+						Name:        factory.Name,
+						Description: "Key manager: " + factory.Name,
+					})
 				}
 
 				if err := wellknownconfiguration.RegisterConfiguration("key_managers", managersMap); err != nil {

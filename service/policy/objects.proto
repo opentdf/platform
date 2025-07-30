@@ -22,7 +22,8 @@ message SimpleKasKey {
 message KeyProviderConfig {
   string id = 1;
   string name = 2;
-  bytes config_json = 3;
+  string manager = 3;
+  bytes config_json = 4;
 
   // Common metadata
   common.Metadata metadata = 100;

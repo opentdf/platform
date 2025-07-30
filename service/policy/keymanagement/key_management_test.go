@@ -11,16 +11,18 @@ import (
 
 const (
 	errMessageName       = "name"
+	errMessageManager    = "manager"
 	errMessageConfig     = "config_json"
 	errMessageIdentifier = "identifier"
 	errMessageUUID       = "uuid"
 )
 
 var (
-	validConfig = []byte(`{"key": "value"}`)
-	invalidUUID = "invalid-uuid"
-	validUUID   = "123e4567-e89b-12d3-a456-426614174000"
-	validName   = "TestConfig"
+	validConfig  = []byte(`{"key": "value"}`)
+	invalidUUID  = "invalid-uuid"
+	validUUID    = "123e4567-e89b-12d3-a456-426614174000"
+	validName    = "TestConfig"
+	validManager = "local"
 )
 
 func getValidator() *protovalidate.Validator {
@@ -41,15 +43,26 @@ func Test_CreateProviderConfigRequest(t *testing.T) {
 		{
 			name: "Invalid Name (empty)",
 			req: &keymanagement.CreateProviderConfigRequest{
+				Manager:    validManager,
 				ConfigJson: validConfig,
 			},
 			expectError:  true,
 			errorMessage: errMessageName,
 		},
 		{
+			name: "Invalid Manager (empty)",
+			req: &keymanagement.CreateProviderConfigRequest{
+				Name:       validName,
+				ConfigJson: validConfig,
+			},
+			expectError:  true,
+			errorMessage: errMessageManager,
+		},
+		{
 			name: "Invalid config (empty)",
 			req: &keymanagement.CreateProviderConfigRequest{
-				Name: "TestConfig",
+				Name:    validName,
+				Manager: validManager,
 			},
 			expectError:  true,
 			errorMessage: errMessageConfig,
@@ -57,7 +70,8 @@ func Test_CreateProviderConfigRequest(t *testing.T) {
 		{
 			name: "Valid config",
 			req: &keymanagement.CreateProviderConfigRequest{
-				Name:       "TestConfig",
+				Name:       validName,
+				Manager:    validManager,
 				ConfigJson: validConfig,
 			},
 			expectError: false,
@@ -185,6 +199,14 @@ func Test_UpdateProviderConfigRequest(t *testing.T) {
 			req: &keymanagement.UpdateProviderConfigRequest{
 				Id:   validUUID,
 				Name: validName,
+			},
+			expectError: false,
+		},
+		{
+			name: "Valid manager",
+			req: &keymanagement.UpdateProviderConfigRequest{
+				Id:      validUUID,
+				Manager: validManager,
 			},
 			expectError: false,
 		},

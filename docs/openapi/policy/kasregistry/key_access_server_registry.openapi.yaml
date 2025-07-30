@@ -913,6 +913,9 @@ components:
         name:
           type: string
           title: name
+        manager:
+          type: string
+          title: manager
         configJson:
           type: string
           title: config_json

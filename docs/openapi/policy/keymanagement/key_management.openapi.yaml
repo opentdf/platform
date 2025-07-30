@@ -349,13 +349,13 @@ components:
         name:
           type: string
           title: name
-        manager:
-          type: string
-          title: manager
         configJson:
           type: string
           title: config_json
           format: byte
+        manager:
+          type: string
+          title: manager
         metadata:
           title: metadata
           description: Common metadata

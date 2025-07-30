@@ -67,7 +67,7 @@ func makeConfigFile(workingDirectory string) string {
 		panic(fmt.Sprintf("Failed to read config file: %v", err))
 	}
 
-	if err := os.WriteFile(newConfigFile, input, 0644); err != nil {
+	if err := os.WriteFile(newConfigFile, input, 0o644); err != nil {
 		panic(fmt.Sprintf("Failed to write config file: %v", err))
 	}
 	return newConfigFile
@@ -85,8 +85,8 @@ func backgroundPlatformServer(t *testing.T, id int, wg *sync.WaitGroup, configFi
 
 	// Run server.Start in a goroutine so backgroundPlatformServer can react to 'done'
 	go func() {
-		cwd, _ := os.Getwd()
-		t.Logf("Worker %d: Preparing to start server in working directory: %s\n", id, cwd)
+		serverCwd, _ := os.Getwd()
+		t.Logf("Worker %d: Preparing to start server in working directory: %s\n", id, serverCwd)
 
 		err := server.Start(
 			server.WithWaitForShutdownSignal(), // Shutdown when SIGINT or SIGTERM is received

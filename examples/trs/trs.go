@@ -40,10 +40,12 @@ type HelloReply struct {
 	Message string `json:"message"`
 }
 
-var platformEndpointWithProtocol = "http://localhost:8080"
-var platformEndpoint = "localhost:8080"
+var (
+	platformEndpointWithProtocol = "http://localhost:8080"
+	platformEndpoint             = "localhost:8080"
+)
 
-func encryptString(input string, sdk *otdf.SDK) (string, error) {
+func encryptString(ctx context.Context, input string, sdk *otdf.SDK) (string, error) {
 	var ciphertext bytes.Buffer
 	plaintext := strings.NewReader(input)
 	baseKasURL := platformEndpoint
@@ -51,7 +53,8 @@ func encryptString(input string, sdk *otdf.SDK) (string, error) {
 		baseKasURL = "http://" + baseKasURL
 	}
 
-	_, err := sdk.CreateTDF(
+	_, err := sdk.CreateTDFContext(
+		ctx,
 		&ciphertext,
 		plaintext,
 		otdf.WithDataAttributes(nil...),
@@ -66,15 +69,15 @@ func encryptString(input string, sdk *otdf.SDK) (string, error) {
 	return ciphertext.String(), err
 }
 
-func (trs *testReadyService) SayHelloHandler(_ context.Context, in *HelloRequest) (*HelloReply, error) {
-	slog.Info("SayHelloHandler received: ", slog.String("name", in.Name))
+func (trs *testReadyService) SayHelloHandler(ctx context.Context, in *HelloRequest) (*HelloReply, error) {
+	slog.InfoContext(ctx, "sayHelloHandler received", slog.String("name", in.Name))
 	return &HelloReply{Message: "Hello " + in.Name}, nil
 }
 
 func (trs testReadyService) GoodbyeRequestHandler() func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-	x := func(w http.ResponseWriter, _ *http.Request, pathParams map[string]string) {
+	x := func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 		nameInput := pathParams["name"]
-		slog.Info("GoodbyeRequestHandler received: ", slog.String("name", nameInput))
+		slog.InfoContext(r.Context(), "goodbyeRequestHandler received", slog.String("name", nameInput))
 
 		_, err := w.Write([]byte("goodbye " + pathParams["name"] + " from custom handler!"))
 		if err != nil {
@@ -86,13 +89,13 @@ func (trs testReadyService) GoodbyeRequestHandler() func(w http.ResponseWriter, 
 }
 
 func (trs testReadyService) EncryptNameHandler() func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-	x := func(w http.ResponseWriter, _ *http.Request, pathParams map[string]string) {
+	x := func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 		toEncrypt := pathParams["name"]
-		slog.Info("EncryptNameHandler received: ", slog.String("name", toEncrypt))
+		slog.InfoContext(r.Context(), "encryptNameHandler received", slog.String("name", toEncrypt))
 
-		encryptedString, err := encryptString(toEncrypt, trs.sdk)
+		encryptedString, err := encryptString(r.Context(), toEncrypt, trs.sdk)
 		if err != nil {
-			slog.Error("Error encrypting string", slog.String("error", err.Error()))
+			slog.ErrorContext(r.Context(), "error encrypting string", slog.String("error", err.Error()))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -106,7 +109,7 @@ func (trs testReadyService) EncryptNameHandler() func(w http.ResponseWriter, r *
 
 		_, err = w.Write(encryptedByteString)
 		if err != nil {
-			slog.Error("Error writing response", slog.String("error", err.Error()))
+			slog.ErrorContext(r.Context(), "error writing response", slog.String("error", err.Error()))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -128,20 +131,21 @@ func newSdkClientHack(_ *otdf.SDK) (*otdf.SDK, error) {
 }
 
 func createTestReadyService(sdkClient *otdf.SDK, extraProps map[string]interface{}) testReadyService {
-	slog.Debug("Caller passed SDK client", slog.String("client", fmt.Sprintf("%+v", sdkClient)))
+	ctx := context.Background()
+	slog.DebugContext(ctx, "caller passed SDK client", slog.String("client", fmt.Sprintf("%+v", sdkClient)))
 
-	slog.Info("Setting up service")
+	slog.InfoContext(ctx, "setting up service")
 	var cfg Config
 	// Convert map to JSON
 	svcJSON, err := json.Marshal(extraProps)
 	if err != nil {
-		slog.Error("Error unmarshalling extra properties to JSON", slog.String("error", err.Error()))
+		slog.ErrorContext(ctx, "error unmarshalling extra properties to JSON", slog.String("error", err.Error()))
 		panic("Error unmarshalling service map to JSON")
 	}
 
 	// Unmarshal JSON into Config struct
 	if err := json.Unmarshal(svcJSON, &cfg); err != nil {
-		slog.Error("Error unmarshalling service map to JSON", slog.String("error", err.Error()))
+		slog.ErrorContext(ctx, "error unmarshalling service map to JSON", slog.String("error", err.Error()))
 		panic("Error unmarshalling service map to JSON")
 	}
 
@@ -150,7 +154,7 @@ func createTestReadyService(sdkClient *otdf.SDK, extraProps map[string]interface
 	if err != nil {
 		panic(err)
 	}
-	slog.Debug("Returning testReadyService with SDK client", slog.String("sdkClient", fmt.Sprintf("%+v", sdkClient)))
+	slog.DebugContext(ctx, "returning testReadyService with SDK client", slog.String("sdk_client", fmt.Sprintf("%+v", sdkClient)))
 
 	return testReadyService{
 		sdk: sdkClient,
@@ -190,8 +194,8 @@ func NewRegistration() *serviceregistry.Service[testReadyService] {
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (testReadyService, serviceregistry.HandlerServer) {
 				trsService := createTestReadyService(srp.SDK, srp.Config)
 
-				slog.Info("Registering test ready service")
-				return trsService, func(_ context.Context, mux *runtime.ServeMux) error {
+				return trsService, func(ctx context.Context, mux *runtime.ServeMux) error {
+					slog.InfoContext(ctx, "registering test ready service")
 					return registerServiceEndpoints(trsService, mux)
 				}
 			},

@@ -14,7 +14,7 @@ import (
 /// Obligation Definitions
 ///
 
-func (c PolicyDBClient) CreateObligationByNamespaceID(ctx context.Context, namespaceID, name string, metadata *common.MetadataMutable) (*policy.Obligation, error) {
+func (c PolicyDBClient) CreateObligationByNamespaceID(ctx context.Context, namespaceID, name string, values []string, metadata *common.MetadataMutable) (*policy.Obligation, error) {
 	metadataJSON, _, err := db.MarshalCreateMetadata(metadata)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func (c PolicyDBClient) CreateObligationByNamespaceID(ctx context.Context, names
 	}, nil
 }
 
-func (c PolicyDBClient) CreateObligationByNamespaceFQN(ctx context.Context, fqn, name string, metadata *common.MetadataMutable) (*policy.Obligation, error) {
+func (c PolicyDBClient) CreateObligationByNamespaceFQN(ctx context.Context, fqn, name string, values []string, metadata *common.MetadataMutable) (*policy.Obligation, error) {
 	metadataJSON, _, err := db.MarshalCreateMetadata(metadata)
 	if err != nil {
 		return nil, err
@@ -68,9 +68,9 @@ func (c PolicyDBClient) CreateObligationByNamespaceFQN(ctx context.Context, fqn,
 
 func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.CreateObligationRequest) (*policy.Obligation, error) {
 	if r.GetId() != "" {
-		return c.CreateObligationByNamespaceID(ctx, r.GetId(), r.GetName(), r.GetMetadata())
+		return c.CreateObligationByNamespaceID(ctx, r.GetId(), r.GetName(), r.GetValues(), r.GetMetadata())
 	}
-	return c.CreateObligationByNamespaceFQN(ctx, r.GetFqn(), r.GetName(), r.GetMetadata())
+	return c.CreateObligationByNamespaceFQN(ctx, r.GetFqn(), r.GetName(), r.GetValues(), r.GetMetadata())
 }
 
 func (c PolicyDBClient) GetObligationDefinition(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {

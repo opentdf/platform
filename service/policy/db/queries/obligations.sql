@@ -2,17 +2,67 @@
 -- OBLIGATIONS
 ----------------------------------------------------------------
 
--- name: createObligationByNamespaceId :one
-INSERT INTO obligation_definitions (namespace_id, name, metadata)
-VALUES ($1, $2, $3)
-RETURNING id;
+-- name: createObligationByNamespaceID :one
+WITH inserted_obligation AS (
+    INSERT INTO obligation_definitions (namespace_id, name, metadata)
+    VALUES ($1, $2, $3)
+    RETURNING id, namespace_id, name, metadata
+),
+inserted_values AS (
+    INSERT INTO obligation_values_standard (obligation_definition_id, value)
+    SELECT io.id, UNNEST($4::VARCHAR[])
+    FROM inserted_obligation io
+    WHERE $4::VARCHAR[] IS NOT NULL AND array_length($4::VARCHAR[], 1) > 0
+    RETURNING id, obligation_definition_id, value
+)
+SELECT
+    io.id,
+    io.name,
+    io.metadata,
+    COALESCE(
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', iv.id,
+                'value', iv.value
+            )
+        ) FILTER (WHERE iv.id IS NOT NULL),
+        '[]'::JSON
+    ) as values
+FROM inserted_obligation io
+LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
+GROUP BY io.id, io.name, io.metadata;
 
 -- name: createObligationByNamespaceFQN :one
-INSERT INTO obligation_definitions (namespace_id, name, metadata)
-SELECT fqns.namespace_id, $2, $3
-FROM attribute_fqns fqns
-WHERE fqns.fqn = $1
-RETURNING id;
+WITH inserted_obligation AS (
+    INSERT INTO obligation_definitions (namespace_id, name, metadata)
+    SELECT fqns.namespace_id, $2, $3
+    FROM attribute_fqns fqns
+    WHERE fqns.fqn = $1
+    RETURNING id, namespace_id, name, metadata
+),
+inserted_values AS (
+    INSERT INTO obligation_values_standard (obligation_definition_id, value)
+    SELECT io.id, UNNEST($4::VARCHAR[])
+    FROM inserted_obligation io
+    WHERE $4::VARCHAR[] IS NOT NULL AND array_length($4::VARCHAR[], 1) > 0
+    RETURNING id, obligation_definition_id, value
+)
+SELECT
+    io.id,
+    io.name,
+    io.metadata,
+    COALESCE(
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', iv.id,
+                'value', iv.value
+            )
+        ) FILTER (WHERE iv.id IS NOT NULL),
+        '[]'::JSON
+    ) as values
+FROM inserted_obligation io
+LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
+GROUP BY io.id, io.name, io.metadata;
 
 -- name: getObligationDefinition :one
 SELECT

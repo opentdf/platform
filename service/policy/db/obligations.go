@@ -19,17 +19,17 @@ func (c PolicyDBClient) CreateObligationByNamespaceID(ctx context.Context, names
 	if err != nil {
 		return nil, err
 	}
-	queryParams := createObligationByNamespaceIdParams{
+	queryParams := createObligationByNamespaceIDParams{
 		NamespaceID: namespaceID,
 		Name:        name,
 		Metadata:    metadataJSON,
 	}
-	id, err := c.queries.createObligationByNamespaceId(ctx, queryParams)
+	row, err := c.queries.createObligationByNamespaceID(ctx, queryParams)
 	if err != nil {
 		return nil, err
 	}
 	return &policy.Obligation{
-		Id:   id,
+		Id:   row.ID,
 		Name: name,
 		Metadata: &common.Metadata{
 			Labels: metadata.GetLabels(),
@@ -50,12 +50,12 @@ func (c PolicyDBClient) CreateObligationByNamespaceFQN(ctx context.Context, fqn,
 		Name:     name,
 		Metadata: metadataJSON,
 	}
-	id, err := c.queries.createObligationByNamespaceFQN(ctx, queryParams)
+	row, err := c.queries.createObligationByNamespaceFQN(ctx, queryParams)
 	if err != nil {
 		return nil, err
 	}
 	return &policy.Obligation{
-		Id:   id,
+		Id:   row.ID,
 		Name: name,
 		Metadata: &common.Metadata{
 			Labels: metadata.GetLabels(),

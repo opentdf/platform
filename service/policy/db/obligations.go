@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -12,13 +13,25 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func unmarshalValue(values []byte, v *policy.ObligationValue) error {
-	if values != nil {
-		if err := protojson.Unmarshal(values, v); err != nil {
-			return fmt.Errorf("failed to unmarshal values [%s]: %w", string(values), err)
-		}
+func unmarshalObligationValuesProto(valuesJSON []byte, values []*policy.ObligationValue) error {
+	if valuesJSON == nil {
+		return nil
 	}
-	return errors.New("failed to unmarshal obligation values")
+
+	raw := []json.RawMessage{}
+	if err := json.Unmarshal(valuesJSON, &raw); err != nil {
+		return fmt.Errorf("failed to unmarshal values array [%s]: %w", string(valuesJSON), err)
+	}
+
+	for _, r := range raw {
+		v := &policy.ObligationValue{}
+		if err := protojson.Unmarshal(r, v); err != nil {
+			return fmt.Errorf("failed to unmarshal value [%s]: %w", string(r), err)
+		}
+		values = append(values, v)
+	}
+
+	return nil
 }
 
 ///
@@ -41,12 +54,8 @@ func (c PolicyDBClient) CreateObligationByNamespaceID(ctx context.Context, names
 		return nil, err
 	}
 	oblVals := make([]*policy.ObligationValue, 0, len(values))
-	for _, value := range values {
-		oblVal := &policy.ObligationValue{}
-		if err := unmarshalValue([]byte(value), oblVal); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal obligation value: %w", err)
-		}
-		oblVals = append(oblVals, oblVal)
+	if err := unmarshalObligationValuesProto(row.Values, oblVals); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligation values: %w", err)
 	}
 
 	return &policy.Obligation{

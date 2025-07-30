@@ -52,15 +52,24 @@ func (s *ObligationsSuite) Test_CreateObligationDefinition_Succeeds() {
 	namespace := s.f.GetNamespaceKey("example.com")
 	namespaceID := namespace.ID
 	oblName := "example-obligation"
+	oblValPrefix := "obligation_value_"
+	oblVals := []string{
+		oblValPrefix + "1",
+		oblValPrefix + "2",
+	}
 	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
 		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
 			Id: namespaceID,
 		},
-		Name: oblName,
+		Name:   oblName,
+		Values: oblVals,
 	})
 	s.Require().NoError(err)
 	s.NotNil(obl)
 	s.Equal(obl.Name, oblName)
+	for _, value := range obl.Values {
+		s.Contains(value.GetValue(), oblValPrefix)
+	}
 
 	namespace = s.f.GetNamespaceKey("example.net")
 	namespaceName := namespace.Name
@@ -74,7 +83,6 @@ func (s *ObligationsSuite) Test_CreateObligationDefinition_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(obl)
 	s.Equal(obl.Name, oblName)
-
 }
 
 func (s *ObligationsSuite) Test_CreateObligationDefinition_Fails() {

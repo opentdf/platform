@@ -48,7 +48,8 @@ SELECT
     io.metadata,
     JSON_BUILD_OBJECT(
         'id', n.id,
-        'name', n.name
+        'name', n.name,
+        'fqn', fqns.fqn
     ) as namespace,
     COALESCE(
         JSON_AGG(
@@ -61,8 +62,9 @@ SELECT
     )::JSONB as values
 FROM inserted_obligation io
 JOIN attribute_namespaces n ON io.namespace_id = n.id
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
-GROUP BY io.id, io.name, io.metadata, n.id, n.name
+GROUP BY io.id, io.name, io.metadata, n.id, n.name, fqns.fqn
 `
 
 type createObligationParams struct {
@@ -120,7 +122,8 @@ type createObligationRow struct {
 //	    io.metadata,
 //	    JSON_BUILD_OBJECT(
 //	        'id', n.id,
-//	        'name', n.name
+//	        'name', n.name,
+//	        'fqn', fqns.fqn
 //	    ) as namespace,
 //	    COALESCE(
 //	        JSON_AGG(
@@ -133,8 +136,9 @@ type createObligationRow struct {
 //	    )::JSONB as values
 //	FROM inserted_obligation io
 //	JOIN attribute_namespaces n ON io.namespace_id = n.id
+//	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
-//	GROUP BY io.id, io.name, io.metadata, n.id, n.name
+//	GROUP BY io.id, io.name, io.metadata, n.id, n.name, fqns.fqn
 func (q *Queries) createObligation(ctx context.Context, arg createObligationParams) (createObligationRow, error) {
 	row := q.db.QueryRow(ctx, createObligation,
 		arg.NamespaceID,

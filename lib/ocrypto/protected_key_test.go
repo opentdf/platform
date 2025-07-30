@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testKey = "test-key-12345678901234567890123"
+
 func TestNewAESProtectedKey(t *testing.T) {
 	key := make([]byte, 32)
 	_, err := rand.Read(key)
@@ -57,7 +59,7 @@ func TestAESProtectedKey_DecryptAESGCM_InvalidKey(t *testing.T) {
 }
 
 func TestAESProtectedKey_Export_NoEncapsulator(t *testing.T) {
-	key := []byte("test-key-12345678901234567890123") // 32 bytes
+	key := []byte(testKey) // 32 bytes
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
 
@@ -67,7 +69,7 @@ func TestAESProtectedKey_Export_NoEncapsulator(t *testing.T) {
 }
 
 func TestAESProtectedKey_Export_WithEncapsulator(t *testing.T) {
-	key := []byte("test-key-12345678901234567890123") // 32 bytes
+	key := []byte(testKey) // 32 bytes
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
 
@@ -97,7 +99,7 @@ func TestAESProtectedKey_Export_WithEncapsulator(t *testing.T) {
 }
 
 func TestAESProtectedKey_Export_EncapsulatorError(t *testing.T) {
-	key := []byte("test-key-12345678901234567890123") // 32 bytes
+	key := []byte(testKey) // 32 bytes
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
 
@@ -113,7 +115,7 @@ func TestAESProtectedKey_Export_EncapsulatorError(t *testing.T) {
 }
 
 func TestAESProtectedKey_VerifyBinding(t *testing.T) {
-	key := []byte("test-key-12345678901234567890123") // 32 bytes
+	key := []byte(testKey) // 32 bytes
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
 
@@ -129,7 +131,7 @@ func TestAESProtectedKey_VerifyBinding(t *testing.T) {
 }
 
 func TestAESProtectedKey_VerifyBinding_Mismatch(t *testing.T) {
-	key := []byte("test-key-12345678901234567890123") // 32 bytes
+	key := []byte(testKey) // 32 bytes
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
 
@@ -143,7 +145,7 @@ func TestAESProtectedKey_VerifyBinding_Mismatch(t *testing.T) {
 }
 
 func TestAESProtectedKey_VerifyBinding_DifferentPolicyData(t *testing.T) {
-	key := []byte("test-key-12345678901234567890123") // 32 bytes
+	key := []byte(testKey) // 32 bytes
 	protectedKey, err := NewAESProtectedKey(key)
 	require.NoError(t, err)
 
@@ -176,6 +178,10 @@ type mockEncapsulator struct {
 	ephemeralKeyFunc func() []byte
 }
 
+func (m *mockEncapsulator) Encapsulate(dek ProtectedKey) ([]byte, error) {
+	return nil, nil
+}
+
 func (m *mockEncapsulator) Encrypt(data []byte) ([]byte, error) {
 	if m.encryptFunc != nil {
 		return m.encryptFunc(data)
@@ -183,7 +189,7 @@ func (m *mockEncapsulator) Encrypt(data []byte) ([]byte, error) {
 	return data, nil
 }
 
-func (m *mockEncapsulator) PublicKeyInPemFormat() (string, error) {
+func (m *mockEncapsulator) PublicKeyAsPEM() (string, error) {
 	if m.publicKeyPEMFunc != nil {
 		return m.publicKeyPEMFunc()
 	}

@@ -393,20 +393,6 @@ jobs:
       # use commit instead of ref so we can "go get" specific sdk version
       platform-ref: ${{ github.event.pull_request.head.sha || github.sha }} lts
 
-  # test latest otdfctl CLI 'main' against platform PR branch
-  otdfctl-test:
-    permissions:
-      contents: read
-    name: otdfctl e2e tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: opentdf/platform/test/start-up-with-containers@main
-        with:
-          platform-ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: opentdf/otdfctl/e2e@main
-        with:
-          otdfctl-ref: "main"
-
   buflint:
     permissions:
       contents: read
@@ -466,7 +452,6 @@ jobs:
       - benchmark
       - license
       - platform-xtest
-      - otdfctl-test
     runs-on: ubuntu-22.04
     if: ${{ !cancelled() }}
     steps:

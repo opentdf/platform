@@ -134,19 +134,6 @@ func (trs *testReadyService) EncryptNameHandler() func(w http.ResponseWriter, r 
 	return x
 }
 
-/*
-FIXME: Use the given sdkClient, rather than replacing it.
-*/
-func newSdkClientHack(_ *otdf.SDK) (*otdf.SDK, error) {
-	sdkClient, err := otdf.New(getPlatformEndpointWithProtocol(),
-		otdf.WithPlatformConfiguration(otdf.PlatformConfiguration{}),
-		otdf.WithInsecurePlaintextConn(),
-		otdf.WithStoreCollectionHeaders(),
-	)
-
-	return sdkClient, err
-}
-
 func createTestReadyService(sdkClient *otdf.SDK, extraProps map[string]interface{}) testReadyService {
 	ctx := context.Background()
 	slog.DebugContext(ctx, "caller passed SDK client", slog.String("client", fmt.Sprintf("%+v", sdkClient)))
@@ -166,14 +153,10 @@ func createTestReadyService(sdkClient *otdf.SDK, extraProps map[string]interface
 		panic(fmt.Sprintf("Error unmarshalling service map to JSON: %v", err))
 	}
 
-	// Create a new SDK client
-	sdkClient, err = newSdkClientHack(sdkClient)
-	if err != nil {
-		panic(err)
-	}
 	slog.DebugContext(ctx, "returning testReadyService with SDK client", slog.String("sdk_client", fmt.Sprintf("%+v", sdkClient)))
 
 	return testReadyService{
+		// Use the provided SDK client
 		sdk: sdkClient,
 	}
 }

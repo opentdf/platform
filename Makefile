@@ -66,7 +66,7 @@ govulncheck:
 	exit $$status
 
 proto-generate: toolcheck
-	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
+	rm -rf protocol/go/authorization protocol/go/common protocol/go/entity protocol/go/entityresolution protocol/go/kas protocol/go/policy protocol/go/wellknownconfiguration docs/grpc docs/openapi
 	buf generate service
 	buf generate service --template buf.gen.grpc.docs.yaml
 	buf generate service --template buf.gen.openapi.docs.yaml

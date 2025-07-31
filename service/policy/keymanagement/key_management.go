@@ -79,6 +79,12 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 					managersMap = append(managersMap, rm)
 				}
 
+				// Add opentdf.io/basic manually for now. This manager gets registered in KAS isn't available
+				managersMap = append(managersMap, registeredManagers{
+					Name:        "opentdf.io/basic",
+					Description: "Key manager: opentdf.io/basic",
+				})
+
 				if err := wellknownconfiguration.RegisterConfiguration("key_managers", managersMap); err != nil {
 					srp.Logger.Warn("failed to register key managers in well-known configuration", slog.Any("error", err))
 				}

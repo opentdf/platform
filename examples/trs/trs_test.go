@@ -170,7 +170,7 @@ func setupServer(t *testing.T) (chan struct{}, *sync.WaitGroup) {
 	go backgroundPlatformServer(t, 1, &wg, configFile, done)
 
 	t.Logf("Waiting for server to start...")
-	healthURL := fmt.Sprintf("%s/healthz", getPlatformEndpointWithProtocol())
+	healthURL := getPlatformEndpointWithProtocol() + "/healthz"
 	const maxAttempts = 12
 	const pollInterval = 1500 * time.Millisecond
 	var serverIsReady bool

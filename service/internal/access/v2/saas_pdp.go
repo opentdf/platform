@@ -2,7 +2,10 @@ package access
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -82,6 +85,26 @@ func (p *SaasPDP) GetDecision(
 			Passed:     resp.StatusCode == http.StatusOK,
 			ResourceID: resource.GetEphemeralId(),
 		}
+
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, false, err
+		}
+
+		var bodyJson map[string]interface{}
+		err = json.Unmarshal(bodyBytes, &bodyJson)
+		if err != nil {
+			return nil, false, err
+		}
+
+		slog.Info("Received decision from ACM",
+			"policyID", policyID,
+			"resourceID", decision.ResourceID,
+			"statusCode", resp.StatusCode,
+			"status", resp.Status,
+			"passed", decision.Passed,
+			"body", bodyJson,
+		)
 
 		return []*Decision{
 			{

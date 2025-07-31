@@ -23,39 +23,54 @@ const (
 var (
 	workspaceFolderAbsPath string
 	originalDir            string
-	errInit                error
 )
 
-func init() {
-	// Get the current file's directory
+func TestMain(m *testing.M) {
+	// Setup: Get the current file's directory
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
-		panic("Failed to get current file path")
+		fmt.Fprintf(os.Stderr, "Failed to get current file path\n")
+		os.Exit(1)
 	}
 
 	// Save current working directory to restore it at the end
-	originalDir, errInit = os.Getwd()
-	if errInit != nil {
-		panic(fmt.Sprintf("Failed to get current directory: %v", errInit))
+	var err error
+	originalDir, err = os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to get current directory: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Users of the TRS recipe will need to modify the following statement to point to the root of the project
 	// Set the relative path to the workspace (root) folder
 	workspaceRoot := filepath.Join(filepath.Dir(filename), "..", "..")
-	workspaceFolderAbsPath, errInit = filepath.Abs(workspaceRoot)
-	if errInit != nil {
-		panic(fmt.Sprintf("Failed to get absolute path: %v", errInit))
+	workspaceFolderAbsPath, err = filepath.Abs(workspaceRoot)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to get absolute path: %v\n", err)
+		os.Exit(1)
 	}
+
+	// Run tests
+	code := m.Run()
+
+	// Cleanup: Restore original working directory
+	if originalDir != "" {
+		if err := os.Chdir(originalDir); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to restore original directory: %v\n", err)
+		}
+	}
+
+	os.Exit(code)
 }
 
-func makeConfigFile(workingDirectory string) string {
+func makeConfigFile(workingDirectory string) (string, error) {
 	// Using the workingDirectory, perform 'cp opentdf-dev.yaml opentdf.yaml'
 	// then, return the full path to the config file
 
 	// Copy
 	configFile := filepath.Join(workingDirectory, "opentdf-dev.yaml")
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		panic(fmt.Sprintf("Config file %s does not exist", configFile))
+		return "", fmt.Errorf("config file %s does not exist", configFile)
 	}
 	// Create a new config file
 	newConfigFile := filepath.Join(workingDirectory, "opentdf.yaml")
@@ -63,13 +78,13 @@ func makeConfigFile(workingDirectory string) string {
 	// Copy the file
 	input, err := os.ReadFile(configFile)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to read config file: %v", err))
+		return "", fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	if err := os.WriteFile(newConfigFile, input, 0o644); err != nil {
-		panic(fmt.Sprintf("Failed to write config file: %v", err))
+		return "", fmt.Errorf("failed to write config file: %w", err)
 	}
-	return newConfigFile
+	return newConfigFile, nil
 }
 
 // It takes a done channel to signal when it should stop.
@@ -143,7 +158,10 @@ func setupServer(t *testing.T) (chan struct{}, *sync.WaitGroup) {
 	t.Chdir(workspaceFolderAbsPath)
 	t.Logf("Changed working directory to: %s", workspaceFolderAbsPath)
 
-	configFile := makeConfigFile(workspaceFolderAbsPath)
+	configFile, err := makeConfigFile(workspaceFolderAbsPath)
+	if err != nil {
+		t.Fatalf("Failed to create config file: %v", err)
+	}
 
 	var wg sync.WaitGroup // To wait for our goroutine to finish
 

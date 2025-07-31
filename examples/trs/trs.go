@@ -74,7 +74,7 @@ func (trs *testReadyService) SayHelloHandler(ctx context.Context, in *HelloReque
 	return &HelloReply{Message: "Hello " + in.Name}, nil
 }
 
-func (trs testReadyService) GoodbyeRequestHandler() func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+func (trs *testReadyService) GoodbyeRequestHandler() func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 	x := func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 		nameInput := pathParams["name"]
 		slog.InfoContext(r.Context(), "goodbyeRequestHandler received", slog.String("name", nameInput))
@@ -88,7 +88,7 @@ func (trs testReadyService) GoodbyeRequestHandler() func(w http.ResponseWriter, 
 	return x
 }
 
-func (trs testReadyService) EncryptNameHandler() func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+func (trs *testReadyService) EncryptNameHandler() func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 	x := func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 		toEncrypt := pathParams["name"]
 		slog.InfoContext(r.Context(), "encryptNameHandler received", slog.String("name", toEncrypt))
@@ -140,13 +140,13 @@ func createTestReadyService(sdkClient *otdf.SDK, extraProps map[string]interface
 	svcJSON, err := json.Marshal(extraProps)
 	if err != nil {
 		slog.ErrorContext(ctx, "error unmarshalling extra properties to JSON", slog.String("error", err.Error()))
-		panic("Error unmarshalling service map to JSON")
+		panic(fmt.Sprintf("Error marshalling extra properties to JSON: %v", err))
 	}
 
 	// Unmarshal JSON into Config struct
 	if err := json.Unmarshal(svcJSON, &cfg); err != nil {
 		slog.ErrorContext(ctx, "error unmarshalling service map to JSON", slog.String("error", err.Error()))
-		panic("Error unmarshalling service map to JSON")
+		panic(fmt.Sprintf("Error unmarshalling service map to JSON: %v", err))
 	}
 
 	// Create a new SDK client

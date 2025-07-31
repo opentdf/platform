@@ -203,7 +203,7 @@ func TestTRSIntegration(t *testing.T) {
 	// Use subtests for different endpoints
 	t.Run("Hello endpoint", func(t *testing.T) {
 		testName := "world"
-		url := fmt.Sprintf("%s/trs/hello/%s", platformEndpointWithProtocol, testName)
+		url := fmt.Sprintf("%s/trs/hello/%s", getPlatformEndpointWithProtocol(), testName)
 
 		resp, err := http.Get(url)
 		if err != nil {
@@ -224,7 +224,7 @@ func TestTRSIntegration(t *testing.T) {
 
 	t.Run("Goodbye endpoint", func(t *testing.T) {
 		testName := "tester"
-		url := fmt.Sprintf("%s/trs/goodbye/%s", platformEndpointWithProtocol, testName)
+		url := fmt.Sprintf("%s/trs/goodbye/%s", getPlatformEndpointWithProtocol(), testName)
 
 		resp, err := http.Get(url)
 		if err != nil {
@@ -245,7 +245,7 @@ func TestTRSIntegration(t *testing.T) {
 
 	t.Run("Encrypt endpoint", func(t *testing.T) {
 		testName := "secretdata"
-		url := fmt.Sprintf("%s/trs/encrypt/%s", platformEndpointWithProtocol, testName)
+		url := fmt.Sprintf("%s/trs/encrypt/%s", getPlatformEndpointWithProtocol(), testName)
 
 		resp, err := http.Get(url)
 		if err != nil {

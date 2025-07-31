@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -41,14 +42,30 @@ type HelloReply struct {
 }
 
 var (
-	platformEndpointWithProtocol = "http://127.0.0.1:8080"
-	platformEndpoint             = "127.0.0.1:8080"
+	defaultPlatformEndpointWithProtocol = "http://127.0.0.1:8080"
+	defaultPlatformEndpoint             = "127.0.0.1:8080"
 )
+
+// getPlatformEndpointWithProtocol returns the platform endpoint with protocol from environment variable or default
+func getPlatformEndpointWithProtocol() string {
+	if endpoint := os.Getenv("PLATFORM_ENDPOINT_WITH_PROTOCOL"); endpoint != "" {
+		return endpoint
+	}
+	return defaultPlatformEndpointWithProtocol
+}
+
+// getPlatformEndpoint returns the platform endpoint without protocol from environment variable or default
+func getPlatformEndpoint() string {
+	if endpoint := os.Getenv("PLATFORM_ENDPOINT"); endpoint != "" {
+		return endpoint
+	}
+	return defaultPlatformEndpoint
+}
 
 func encryptString(ctx context.Context, input string, sdk *otdf.SDK) (string, error) {
 	var ciphertext bytes.Buffer
 	plaintext := strings.NewReader(input)
-	baseKasURL := platformEndpoint
+	baseKasURL := getPlatformEndpoint()
 	if !strings.HasPrefix(baseKasURL, "http://") && !strings.HasPrefix(baseKasURL, "https://") {
 		baseKasURL = "http://" + baseKasURL
 	}
@@ -121,7 +138,7 @@ func (trs *testReadyService) EncryptNameHandler() func(w http.ResponseWriter, r 
 FIXME: Use the given sdkClient, rather than replacing it.
 */
 func newSdkClientHack(_ *otdf.SDK) (*otdf.SDK, error) {
-	sdkClient, err := otdf.New(platformEndpointWithProtocol,
+	sdkClient, err := otdf.New(getPlatformEndpointWithProtocol(),
 		otdf.WithPlatformConfiguration(otdf.PlatformConfiguration{}),
 		otdf.WithInsecurePlaintextConn(),
 		otdf.WithStoreCollectionHeaders(),

@@ -56,13 +56,14 @@ LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id 
 LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
 GROUP BY io.id, io.name, io.metadata, n.id, n.name, fqns.fqn;
 
--- name: getObligationDefinition :one
+-- name: getObligation :one
 SELECT
     od.id,
     od.name,
     JSON_BUILD_OBJECT(
         'id', n.id,
-        'name', n.name
+        'name', n.name,
+        'fqn', fqns.fqn
     ) as namespace,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
     JSON_AGG(
@@ -74,13 +75,15 @@ SELECT
     -- todo: add triggers and fulfillers
 FROM obligation_definitions od
 JOIN attribute_namespaces n on od.namespace_id = n.id
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
-    -- handles by id or fqn queries
-    (NULLIF(@id, '') IS NULL OR id = @id::UUID) AND
+    -- handles by id or fqn+name queries
+    (NULLIF(@id, '') IS NULL OR od.id = @id::UUID) AND
     (NULLIF(@namespace_id, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
-    (NULLIF(@name, '') IS NULL OR name = @name::VARCHAR)
-GROUP BY od.id, n.id;
+    (NULLIF(@name, '') IS NULL OR od.name = @name::VARCHAR) AND
+    (NULLIF(@namespace_fqn, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
+GROUP BY od.id, n.id, n.name, fqns.fqn;
 
 -- name: listObligationDefinitions :many
 WITH counted AS (

@@ -65,7 +65,7 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 	row, err := c.queries.createObligation(ctx, queryParams)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to create obligation: %w", err)
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	oblVals := make([]*policy.ObligationValue, 0, len(values))
 	if err := unmarshalObligationValuesProto(row.Values, oblVals); err != nil {
@@ -89,6 +89,10 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 }
 
 func (c PolicyDBClient) GetObligationDefinition(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {
+	// queryParams := getObligationParams{
+	// 	ID:  r.GetId(),
+	// 	Fqn: r.GetFqn(),
+	// }
 	return nil, errors.New("GetObligationDefinition is not implemented in PolicyDBClient")
 }
 

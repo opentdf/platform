@@ -173,13 +173,14 @@ func (q *Queries) deleteObligationDefinition(ctx context.Context, id string) (in
 	return result.RowsAffected(), nil
 }
 
-const getObligationDefinition = `-- name: getObligationDefinition :one
+const getObligation = `-- name: getObligation :one
 SELECT
     od.id,
     od.name,
     JSON_BUILD_OBJECT(
         'id', n.id,
-        'name', n.name
+        'name', n.name,
+        'fqn', fqns.fqn
     ) as namespace,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
     JSON_AGG(
@@ -191,22 +192,25 @@ SELECT
     -- todo: add triggers and fulfillers
 FROM obligation_definitions od
 JOIN attribute_namespaces n on od.namespace_id = n.id
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
-    -- handles by id or fqn queries
-    (NULLIF($1, '') IS NULL OR id = $1::UUID) AND
+    -- handles by id or fqn+name queries
+    (NULLIF($1, '') IS NULL OR od.id = $1::UUID) AND
     (NULLIF($2, '') IS NULL OR od.namespace_id = $2::UUID) AND
-    (NULLIF($3, '') IS NULL OR name = $3::VARCHAR)
-GROUP BY od.id, n.id
+    (NULLIF($3, '') IS NULL OR od.name = $3::VARCHAR) AND
+    (NULLIF($4, '') IS NULL OR fqns.fqn = $4::VARCHAR)
+GROUP BY od.id, n.id, n.name, fqns.fqn
 `
 
-type getObligationDefinitionParams struct {
-	ID          interface{} `json:"id"`
-	NamespaceID interface{} `json:"namespace_id"`
-	Name        interface{} `json:"name"`
+type getObligationParams struct {
+	ID           interface{} `json:"id"`
+	NamespaceID  interface{} `json:"namespace_id"`
+	Name         interface{} `json:"name"`
+	NamespaceFqn interface{} `json:"namespace_fqn"`
 }
 
-type getObligationDefinitionRow struct {
+type getObligationRow struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	Namespace []byte `json:"namespace"`
@@ -214,14 +218,15 @@ type getObligationDefinitionRow struct {
 	Values    []byte `json:"values"`
 }
 
-// getObligationDefinition
+// getObligation
 //
 //	SELECT
 //	    od.id,
 //	    od.name,
 //	    JSON_BUILD_OBJECT(
 //	        'id', n.id,
-//	        'name', n.name
+//	        'name', n.name,
+//	        'fqn', fqns.fqn
 //	    ) as namespace,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
 //	    JSON_AGG(
@@ -233,16 +238,23 @@ type getObligationDefinitionRow struct {
 //	    -- todo: add triggers and fulfillers
 //	FROM obligation_definitions od
 //	JOIN attribute_namespaces n on od.namespace_id = n.id
+//	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 //	WHERE
-//	    -- handles by id or fqn queries
-//	    (NULLIF($1, '') IS NULL OR id = $1::UUID) AND
+//	    -- handles by id or fqn+name queries
+//	    (NULLIF($1, '') IS NULL OR od.id = $1::UUID) AND
 //	    (NULLIF($2, '') IS NULL OR od.namespace_id = $2::UUID) AND
-//	    (NULLIF($3, '') IS NULL OR name = $3::VARCHAR)
-//	GROUP BY od.id, n.id
-func (q *Queries) getObligationDefinition(ctx context.Context, arg getObligationDefinitionParams) (getObligationDefinitionRow, error) {
-	row := q.db.QueryRow(ctx, getObligationDefinition, arg.ID, arg.NamespaceID, arg.Name)
-	var i getObligationDefinitionRow
+//	    (NULLIF($3, '') IS NULL OR od.name = $3::VARCHAR) AND
+//	    (NULLIF($4, '') IS NULL OR fqns.fqn = $4::VARCHAR)
+//	GROUP BY od.id, n.id, n.name, fqns.fqn
+func (q *Queries) getObligation(ctx context.Context, arg getObligationParams) (getObligationRow, error) {
+	row := q.db.QueryRow(ctx, getObligation,
+		arg.ID,
+		arg.NamespaceID,
+		arg.Name,
+		arg.NamespaceFqn,
+	)
+	var i getObligationRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,

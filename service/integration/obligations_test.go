@@ -7,6 +7,7 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/internal/fixtures"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -46,7 +47,7 @@ func TestObligationsSuite(t *testing.T) {
 // Create
 
 func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
-	// By namespace ID
+	// By namespace ID and with values
 	namespace := s.f.GetNamespaceKey("example.com")
 	namespaceID := namespace.ID
 	namespaceFQN := "https://" + namespace.Name
@@ -91,12 +92,39 @@ func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
 	s.Equal(namespaceFQN, obl.Namespace.Fqn)
 }
 
-func (s *ObligationsSuite) Test_CreateObligationDefinition_Fails() {
-	// tcs:
-	// - create obligation definition with invalid namespace_id
-	// - create obligation definition with non-unique namespace_id/name pair
+func (s *ObligationsSuite) Test_CreateObligation_Fails() {
+	// Invalid namespace ID
+	fakeNamespaceID := "fake-namespace-id"
+	oblName := "example-obligation"
+	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
+			Id: fakeNamespaceID,
+		},
+		Name: oblName,
+	})
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+	s.Nil(obl)
 
-	s.T().Skip("obligation_definitions table not implemented yet")
+	// Non-unique namespace_id/name pair
+	namespace := s.f.GetNamespaceKey("example.org")
+	namespaceID := namespace.ID
+	obl, err = s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
+			Id: namespaceID,
+		},
+		Name: oblName,
+	})
+	s.Require().NoError(err)
+	s.NotNil(obl)
+
+	obl, err = s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
+			Id: namespaceID,
+		},
+		Name: oblName,
+	})
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
+	s.Nil(obl)
 }
 
 // Get

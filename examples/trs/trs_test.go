@@ -16,10 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	startupDelay = 6 * time.Second // Give server time to start
-)
-
 var (
 	workspaceFolderAbsPath string
 	originalDir            string
@@ -173,8 +169,29 @@ func setupServer(t *testing.T) (chan struct{}, *sync.WaitGroup) {
 	wg.Add(1)
 	go backgroundPlatformServer(t, 1, &wg, configFile, done)
 
-	t.Logf("Sleeping for %v to allow server to start...", startupDelay)
-	time.Sleep(startupDelay)
+	t.Logf("Waiting for server to start...")
+	healthURL := fmt.Sprintf("%s/healthz", getPlatformEndpointWithProtocol())
+	const maxAttempts = 12
+	const pollInterval = 1500 * time.Millisecond
+	var serverIsReady bool
+	for i := 0; i < maxAttempts; i++ {
+		resp, err := http.Get(healthURL)
+		if err == nil {
+			if resp.StatusCode == http.StatusOK {
+				serverIsReady = true
+			}
+			resp.Body.Close()
+			if serverIsReady {
+				break
+			}
+		}
+		time.Sleep(pollInterval)
+	}
+
+	if !serverIsReady {
+		t.Fatalf("Server failed to start after %v", time.Duration(maxAttempts)*pollInterval)
+	}
+	t.Logf("Server is ready.")
 
 	return done, &wg
 }

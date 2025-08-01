@@ -139,6 +139,9 @@ services:
   entityresolution:
     mode: "multi-strategy"    # New mode alongside existing: keycloak, claims, ldap, sql
     
+    # Global failure strategy configuration
+    failure_strategy: "continue"    # "fail-fast" (default) or "continue"
+    
     # Define multiple providers with different backend types
     providers:
       primary_db:
@@ -187,6 +190,7 @@ services:
       # Strategy 1: Try JWT claims first for zero-latency resolution
       - name: "jwt_claims_primary"
         provider: "jwt_claims"
+        entity_type: "subject"            # Resolves subject entities (users/clients)
         conditions:
           jwt_claims:
             - claim: "email"
@@ -215,6 +219,7 @@ services:
       # Strategy 2: Corporate employees from primary database (fallback for enrichment)
       - name: "corporate_users_primary"
         provider: "primary_db"
+        entity_type: "subject"            # Also resolves subject entities
         conditions:
           jwt_claims:
             - claim: "email"
@@ -394,33 +399,69 @@ func (s *MultiStrategyEntityResolutionService) ResolveEntities(
 }
 ```
 
+### Strategy Configuration Properties
+
+**Global Failure Strategy**: Controls how the entire service handles strategy execution failures:
+- `fail-fast` (default): Stop immediately and return error when any strategy fails
+- `continue`: Try all matching strategies until one succeeds
+
+This is a **global configuration** that applies consistently to all strategies, simplifying behavior and reducing configuration complexity.
+
+**Entity Type** (per-strategy): Specifies the type of entity being resolved:
+- `subject`: Resolves subject entities (users, clients, service accounts)
+- `environment`: Resolves environment entities (network context, device info, regulatory zones)
+
+This aligns with the OpenTDF authorization protocol's Entity.Category enum values (`CATEGORY_SUBJECT` and `CATEGORY_ENVIRONMENT`).
+
 **Strategy Selection Flow**:
 1. **JWT Extraction**: Extract JWT claims from request
-2. **Strategy Matching**: Find first strategy where conditions match JWT
-3. **Provider Selection**: Get provider instance for selected strategy
-4. **Parameter Extraction**: Extract parameters from JWT using input mapping
-5. **Backend Query**: Execute strategy against provider with parameters
-6. **Result Transformation**: Apply strategy-specific output mapping
-7. **Response Construction**: Build EntityRepresentation with mapped claims
+2. **Strategy Matching**: Find all strategies where conditions match JWT (in configuration order)
+3. **Global Failure Strategy Check**: Determine how to handle failures based on global setting
+4. **Strategy Execution**: For each matching strategy:
+   - Get provider instance for strategy
+   - Extract parameters from JWT using input mapping
+   - Execute strategy against provider with parameters
+   - Apply strategy-specific output mapping
+   - If success: return result with entity_type and failure_strategy metadata
+   - If failure and global `failure_strategy: continue`: try next strategy
+   - If failure and global `failure_strategy: fail-fast`: return error immediately
+5. **Response Construction**: Build EntityRepresentation with mapped claims and metadata
 
 **Strategy Matching Implementation**:
 ```go
-func (s *MultiStrategyEntityResolutionService) selectStrategy(jwt *JWT) (*MappingStrategy, error) {
-    for _, strategy := range s.strategies {
-        if s.matchesConditions(jwt, strategy.Conditions) {
-            // Simple health check before using provider (except JWT claims)
-            if strategy.Provider != "jwt_claims" {
-                provider := s.providers[strategy.Provider]
-                if err := provider.HealthCheck(ctx); err != nil {
-                    s.logger.Warn("Provider unhealthy, trying next strategy", 
-                                  "provider", strategy.Provider, "error", err)
-                    continue
-                }
-            }
-            return &strategy, nil
-        }
+func (s *MultiStrategyEntityResolutionService) ResolveEntity(ctx context.Context, entityID string, jwtClaims JWTClaims) (*EntityResult, error) {
+    // Get all matching strategies based on JWT claims
+    strategies, err := s.strategyMatcher.SelectStrategies(ctx, jwtClaims)
+    if err != nil {
+        return nil, err
     }
-    return nil, ErrNoMatchingStrategy
+
+    // Get global failure strategy
+    failureStrategy := s.config.FailureStrategy
+    if failureStrategy == "" {
+        failureStrategy = "fail-fast"
+    }
+
+    // Try each matching strategy based on global failure strategy
+    for _, strategy := range strategies {
+        result, err := s.executeStrategy(ctx, entityID, jwtClaims, strategy)
+        if err != nil {
+            // If fail-fast, return error immediately
+            if failureStrategy == "fail-fast" {
+                return nil, err
+            }
+            // Continue to next strategy (global continue policy)
+            continue
+        }
+        
+        // Success - add metadata and return result
+        result.Metadata["entity_type"] = strategy.EntityType
+        result.Metadata["failure_strategy"] = failureStrategy
+        return result, nil
+    }
+    
+    // All strategies failed
+    return nil, errors.New("all matching strategies failed")
 }
 
 func (s *MultiStrategyEntityResolutionService) matchesConditions(jwt *JWT, conditions Conditions) bool {
@@ -726,6 +767,26 @@ mapping_strategies:
           operator: "contains"
           values: ["admin"]
 ```
+
+## Future Considerations
+
+### Entity Chains Handling
+
+**Note for Future Implementation**: The current multi-strategy ERS implementation resolves individual entities, but does not yet handle entity chains (sequences of related entities that need to be resolved together). Entity chains present additional complexity that needs to be addressed:
+
+1. **Chain Resolution Strategy**: How to resolve multiple interdependent entities in a single request
+2. **Cross-Strategy Dependencies**: When entities in a chain require different strategies or providers
+3. **Failure Handling**: How failure strategies (fail-fast vs continue) apply across entity chains
+4. **Performance Optimization**: Batching and parallel resolution of chain entities
+5. **Consistency Guarantees**: Ensuring transactional consistency across multiple entity resolutions
+
+**Implementation Approaches to Consider**:
+- **Sequential Resolution**: Resolve entities one by one, using results from previous entities to inform subsequent resolutions
+- **Batch Resolution**: Group entities by strategy/provider and resolve in batches
+- **Graph-Based Resolution**: Model entity relationships as a dependency graph and resolve in topological order
+- **Streaming Resolution**: Process entity chains as streams for large or unbounded chains
+
+This will require extending the current strategy-based architecture to support multi-entity workflows while maintaining the flexibility and performance characteristics of the single-entity approach.
 
 ## Future Enhancements
 

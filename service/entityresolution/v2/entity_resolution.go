@@ -10,8 +10,6 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution/v2/entityresolutionv2connect"
 	claims "github.com/opentdf/platform/service/entityresolution/claims/v2"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
-	ldapERS "github.com/opentdf/platform/service/entityresolution/ldap/v2"
-	sqlERS "github.com/opentdf/platform/service/entityresolution/sql/v2"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
@@ -73,13 +71,13 @@ func NewRegistration() *serviceregistry.Service[entityresolutionv2connect.Entity
 					claimsSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
 				case LDAPMode:
-					ldapSVC, ldapHandler := ldapERS.RegisterLDAPERS(srp.Config, srp.Logger)
-					ldapSVC.Tracer = srp.Tracer
-					return EntityResolution{EntityResolutionServiceHandler: ldapSVC}, ldapHandler
+					srp.Logger.Error("LDAP mode is no longer supported in v2. Please use multi-strategy mode instead.")
+					log.Fatalf("LDAP mode has been removed. Please use multi-strategy mode with LDAP provider configuration.")
+					panic("unreachable")
 				case SQLMode:
-					sqlSVC, sqlHandler := sqlERS.RegisterSQLERS(srp.Config, srp.Logger)
-					sqlSVC.Tracer = srp.Tracer
-					return EntityResolution{EntityResolutionServiceHandler: sqlSVC}, sqlHandler
+					srp.Logger.Error("SQL mode is no longer supported in v2. Please use multi-strategy mode instead.")
+					log.Fatalf("SQL mode has been removed. Please use multi-strategy mode with SQL provider configuration.")
+					panic("unreachable")
 				default:
 					// Default to keycloak ERS with cache support
 					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)

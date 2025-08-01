@@ -10,8 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution/entityresolutionconnect"
 	claims "github.com/opentdf/platform/service/entityresolution/claims"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak"
-	ldapERS "github.com/opentdf/platform/service/entityresolution/ldap"
-	sqlERS "github.com/opentdf/platform/service/entityresolution/sql"
+	multistrategy "github.com/opentdf/platform/service/entityresolution/multi-strategy"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
@@ -23,10 +22,11 @@ type ERSConfig struct {
 }
 
 const (
-	KeycloakMode = "keycloak"
-	ClaimsMode   = "claims"
-	LDAPMode     = "ldap"
-	SQLMode      = "sql"
+	KeycloakMode      = "keycloak"
+	ClaimsMode        = "claims"
+	LDAPMode          = "ldap"
+	SQLMode           = "sql"
+	MultiStrategyMode = "multi-strategy"
 )
 
 type EntityResolution struct {
@@ -73,13 +73,17 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 					claimsSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
 				case LDAPMode:
-					ldapSVC, ldapHandler := ldapERS.RegisterLDAPERS(srp.Config, srp.Logger)
-					ldapSVC.Tracer = srp.Tracer
-					return EntityResolution{EntityResolutionServiceHandler: ldapSVC}, ldapHandler
+					srp.Logger.Error("LDAP mode is no longer supported. Please use multi-strategy mode instead.")
+					log.Fatalf("LDAP mode has been removed. Please use multi-strategy mode with LDAP provider configuration.")
+					panic("unreachable")
 				case SQLMode:
-					sqlSVC, sqlHandler := sqlERS.RegisterSQLERS(srp.Config, srp.Logger)
-					sqlSVC.Tracer = srp.Tracer
-					return EntityResolution{EntityResolutionServiceHandler: sqlSVC}, sqlHandler
+					srp.Logger.Error("SQL mode is no longer supported. Please use multi-strategy mode instead.")
+					log.Fatalf("SQL mode has been removed. Please use multi-strategy mode with SQL provider configuration.")
+					panic("unreachable")
+				case MultiStrategyMode:
+					multiSVC, multiHandler := multistrategy.RegisterMultiStrategyERS(srp.Config, srp.Logger)
+					multiSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: multiSVC}, multiHandler
 				default:
 					// Default to keycloak ERS with cache support
 					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)

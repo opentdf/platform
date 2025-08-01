@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -69,11 +70,13 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger, svc
 	var inputIdpConfig KeycloakConfig
 
 	if err := defaults.Set(&inputIdpConfig); err != nil {
-		panic(err)
+		logger.Error("Failed to set Keycloak default configuration", "error", err)
+		log.Fatalf("Failed to set Keycloak default configuration: %v", err)
 	}
 
 	if err := mapstructure.Decode(config, &inputIdpConfig); err != nil {
-		panic(err)
+		logger.Error("Failed to decode Keycloak configuration", "error", err)
+		log.Fatalf("Failed to decode Keycloak configuration: %v", err)
 	}
 	logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
 	keycloakSVC := &KeycloakEntityResolutionService{idpConfig: inputIdpConfig, logger: logger, svcCache: svcCache}

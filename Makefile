@@ -106,7 +106,7 @@ clean:
 	for m in $(MODS); do (cd $$m && go clean) || exit 1; done
 	rm -f opentdf examples/examples
 
-build: proto-generate connect-wrapper-generate opentdf sdk/sdk examples/examples
+build: proto-generate policy-sql-gen connect-wrapper-generate opentdf sdk/sdk examples/examples
 
 opentdf: $(shell find service)
 	go build -o opentdf -v service/main.go

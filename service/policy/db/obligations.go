@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -88,11 +89,19 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 	}, nil
 }
 
+func splitOblFQN(fqn string) (string, string) {
+	nsFQN := strings.Split(fqn, "/obl/")[0]
+	parts := strings.Split(fqn, "/")
+	oblName := parts[len(parts)-1]
+	return nsFQN, oblName
+}
+
 func (c PolicyDBClient) GetObligationDefinition(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {
-	// queryParams := getObligationParams{
-	// 	ID:  r.GetId(),
-	// 	Fqn: r.GetFqn(),
-	// }
+	nsFQN, oblName := splitOblFQN(r.GetFqn())
+	queryParams := getObligationParams{
+		ID:  r.GetId(),
+		Fqn: r.GetFqn(),
+	}
 	return nil, errors.New("GetObligationDefinition is not implemented in PolicyDBClient")
 }
 

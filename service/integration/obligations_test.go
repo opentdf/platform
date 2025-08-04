@@ -44,6 +44,8 @@ func TestObligationsSuite(t *testing.T) {
 /// Obligation Definitions
 ///
 
+const oblName = "example-obligation"
+
 // Create
 
 func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
@@ -51,7 +53,7 @@ func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
 	namespace := s.f.GetNamespaceKey("example.com")
 	namespaceID := namespace.ID
 	namespaceFQN := "https://" + namespace.Name
-	oblName := "example-obligation"
+	// oblName := "example-obligation"
 	oblValPrefix := "obligation_value_"
 	oblVals := []string{
 		oblValPrefix + "1",
@@ -95,7 +97,7 @@ func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
 func (s *ObligationsSuite) Test_CreateObligation_Fails() {
 	// Invalid namespace ID
 	fakeNamespaceID := "fake-namespace-id"
-	oblName := "example-obligation"
+	// oblName := "example-obligation"
 	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
 		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
 			Id: fakeNamespaceID,
@@ -129,11 +131,10 @@ func (s *ObligationsSuite) Test_CreateObligation_Fails() {
 
 // Get
 
-func (s *ObligationsSuite) Test_GetObligationDefinition_Succeeds() {
-	// tcs:
-	// - get obligation definition by valid id
-	// - get obligation definition by valid name
+func (s *ObligationsSuite) Test_GetObligation_Succeeds() {
+	// Valid ID
 
+	// Valid FQN
 	s.T().Skip("obligation_definitions table not implemented yet")
 }
 

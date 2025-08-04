@@ -27,7 +27,7 @@ type Config struct {
 type Service struct {
 	Enabled    bool                   `json:"enabled"`
 	Remote     RemoteConfig           `json:"remote"`
-	ExtraProps map[string]interface{} `json:"-"`
+	ExtraProps map[string]any `json:"-"`
 }
 type RemoteConfig struct {
 	Endpoint string `json:"endpoint"`

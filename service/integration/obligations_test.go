@@ -173,19 +173,12 @@ func (s *ObligationsSuite) Test_GetObligation_Succeeds() {
 
 func (s *ObligationsSuite) Test_GetObligation_Fails() {
 	// Invalid ID
-	createdObl, _ := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
-			Id: invalidUUID,
-		},
-		Name: oblName,
-	})
-
 	obl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
 		Identifier: &obligations.GetObligationRequest_Id{
-			Id: createdObl.GetId(),
+			Id: invalidUUID,
 		},
 	})
-	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
 	s.Nil(obl)
 
 	// Invalid FQN

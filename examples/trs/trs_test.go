@@ -204,6 +204,9 @@ Be sure to start docker services before running these tests:
 	docker-compose -f docker-compose.yaml up
 */
 func TestTRSIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	done, wg := setupServer(t) // Start the platform
 
 	// Register cleanup to happen after this test and all its subtests

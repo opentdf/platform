@@ -316,7 +316,7 @@ type ObligationValuesStandard struct {
 type ProviderConfig struct {
 	// Unique identifier for the provider configuration
 	ID string `json:"id"`
-	// Unique name for the key provider.
+	// Name of the key provider instance.
 	ProviderName string `json:"provider_name"`
 	// Configuration details for the key provider
 	Config []byte `json:"config"`
@@ -326,6 +326,8 @@ type ProviderConfig struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Additional metadata for the provider configuration
 	Metadata []byte `json:"metadata"`
+	// Type of key manager (e.g., local, aws, azure, gcp).
+	Manager string `json:"manager"`
 }
 
 // Table to store registered resources

@@ -158,7 +158,7 @@ func (p *KeyAdapter) IsLegacy() bool {
 func (p *KeyAdapter) System() string {
 	var mode string
 	if p.key.GetKey().GetProviderConfig() != nil {
-		mode = p.key.GetKey().GetProviderConfig().GetName()
+		mode = p.key.GetKey().GetProviderConfig().GetManager()
 	}
 	return mode
 }

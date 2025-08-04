@@ -98,7 +98,7 @@ func splitOblFQN(fqn string) (string, string) {
 	return nsFQN, oblName
 }
 
-func (c PolicyDBClient) GetObligationDefinition(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {
+func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {
 	nsFQN, oblName := splitOblFQN(r.GetFqn())
 	queryParams := getObligationParams{
 		ID:           r.GetId(),

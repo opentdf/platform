@@ -92,6 +92,8 @@ func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
 	s.Equal(namespaceID, obl.Namespace.Id)
 	s.Equal(namespace.Name, obl.Namespace.Name)
 	s.Equal(namespaceFQN, obl.Namespace.Fqn)
+
+	// TODO: delete both obligations after tests are done
 }
 
 func (s *ObligationsSuite) Test_CreateObligation_Fails() {
@@ -127,15 +129,46 @@ func (s *ObligationsSuite) Test_CreateObligation_Fails() {
 	})
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 	s.Nil(obl)
+
+	// TODO: delete obligation after tests are done
 }
 
 // Get
 
 func (s *ObligationsSuite) Test_GetObligation_Succeeds() {
+	createdObl, _ := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
+			Id: s.f.GetNamespaceKey("example.com").ID,
+		},
+		Name: oblName,
+	})
+
 	// Valid ID
+	obl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Identifier: &obligations.GetObligationRequest_Id{
+			Id: createdObl.GetId(),
+		},
+	})
+
+	s.Require().NoError(err)
+	s.NotNil(obl)
+	s.Equal(oblName, obl.Name)
+	s.Equal(createdObl.GetNamespace().GetId(), obl.GetNamespace().GetId())
+	s.Equal(createdObl.GetNamespace().GetName(), obl.GetNamespace().GetName())
+	s.Equal(createdObl.GetNamespace().GetFqn(), obl.GetNamespace().GetFqn())
 
 	// Valid FQN
-	s.T().Skip("obligation_definitions table not implemented yet")
+	obl, err = s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Identifier: &obligations.GetObligationRequest_Fqn{
+			Fqn: createdObl.GetNamespace().GetFqn() + "/obl/" + oblName,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(obl)
+	s.Equal(oblName, obl.Name)
+	s.Equal(createdObl.GetNamespace().GetId(), obl.GetNamespace().GetId())
+	s.Equal(createdObl.GetNamespace().GetName(), obl.GetNamespace().GetName())
+	s.Equal(createdObl.GetNamespace().GetFqn(), obl.GetNamespace().GetFqn())
 }
 
 func (s *ObligationsSuite) Test_GetObligationDefinition_Fails() {

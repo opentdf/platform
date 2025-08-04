@@ -79,12 +79,10 @@ jobs:
           skip-cache: true
       - if: matrix.directory == 'service'
         run: .github/scripts/init-temp-keys.sh
-      - if: matrix.directory == 'examples'
-        # Since 'trs' is an integration test, we skip it
-        run: go list ./... | grep -v '/examples/trs' | xargs go test -short
+      - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
-      - if: matrix.directory != 'examples'
-        run: go test ./... -short
+      - if: matrix.directory == 'examples'
+        run: go test ./trs/...
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'
         run: go test ./service/integration -race -failfast

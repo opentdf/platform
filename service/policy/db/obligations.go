@@ -49,8 +49,7 @@ func unmarshalNamespace(namespaceJSON []byte, namespace *policy.Namespace) error
 ///
 
 func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.CreateObligationRequest) (*policy.Obligation, error) {
-	metadata := r.GetMetadata()
-	metadataJSON, _, err := db.MarshalCreateMetadata(metadata)
+	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
 		return nil, err
 	}
@@ -73,18 +72,21 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 		return nil, fmt.Errorf("failed to unmarshal obligation values: %w", err)
 	}
 
-	var namespace policy.Namespace
-	if err := unmarshalNamespace(row.Namespace, &namespace); err != nil {
+	namespace := &policy.Namespace{}
+	if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 	}
 
+	metadata := &common.Metadata{}
+	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligation metadata: %w", err)
+	}
+
 	return &policy.Obligation{
-		Id:   row.ID,
-		Name: name,
-		Metadata: &common.Metadata{
-			Labels: metadata.GetLabels(),
-		},
-		Namespace: &namespace,
+		Id:        row.ID,
+		Name:      name,
+		Metadata:  metadata,
+		Namespace: namespace,
 		Values:    oblVals,
 	}, nil
 }

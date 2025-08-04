@@ -98,11 +98,9 @@ func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
 
 func (s *ObligationsSuite) Test_CreateObligation_Fails() {
 	// Invalid namespace ID
-	fakeNamespaceID := "fake-namespace-id"
-	// oblName := "example-obligation"
 	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
 		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
-			Id: fakeNamespaceID,
+			Id: invalidUUID,
 		},
 		Name: oblName,
 	})
@@ -169,14 +167,35 @@ func (s *ObligationsSuite) Test_GetObligation_Succeeds() {
 	s.Equal(createdObl.GetNamespace().GetId(), obl.GetNamespace().GetId())
 	s.Equal(createdObl.GetNamespace().GetName(), obl.GetNamespace().GetName())
 	s.Equal(createdObl.GetNamespace().GetFqn(), obl.GetNamespace().GetFqn())
+
+	// TODO: delete obligation after tests are done
 }
 
-func (s *ObligationsSuite) Test_GetObligationDefinition_Fails() {
-	// tcs:
-	// - get obligation definition by invalid id
-	// - get obligation definition by invalid name
+func (s *ObligationsSuite) Test_GetObligation_Fails() {
+	// Invalid ID
+	createdObl, _ := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
+			Id: invalidUUID,
+		},
+		Name: oblName,
+	})
 
-	s.T().Skip("obligation_definitions table not implemented yet")
+	obl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Identifier: &obligations.GetObligationRequest_Id{
+			Id: createdObl.GetId(),
+		},
+	})
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(obl)
+
+	// Invalid FQN
+	obl, err = s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Identifier: &obligations.GetObligationRequest_Fqn{
+			Fqn: "https://example.com/obl/" + oblName,
+		},
+	})
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(obl)
 }
 
 // List

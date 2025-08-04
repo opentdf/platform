@@ -78,11 +78,15 @@ JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
-    -- handles by id or fqn+name queries
-    (NULLIF(@id, '') IS NULL OR od.id = @id::UUID) AND
-    (NULLIF(@namespace_id, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
-    (NULLIF(@name, '') IS NULL OR od.name = @name::VARCHAR) AND
-    (NULLIF(@namespace_fqn, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
+    -- lookup by obligation id OR by namespace fqn + obligation name
+    (
+        -- lookup by obligation id
+        (NULLIF(@id, '') IS NOT NULL AND od.id = @id::UUID)
+        OR
+        -- lookup by namespace fqn + obligation name
+        (NULLIF(@namespace_fqn, '') IS NOT NULL AND NULLIF(@name, '') IS NOT NULL 
+         AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
+    )
 GROUP BY od.id, n.id, n.name, fqns.fqn;
 
 -- name: listObligationDefinitions :many

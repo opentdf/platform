@@ -195,19 +195,22 @@ JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
-    -- handles by id or fqn+name queries
-    (NULLIF($1, '') IS NULL OR od.id = $1::UUID) AND
-    (NULLIF($2, '') IS NULL OR od.namespace_id = $2::UUID) AND
-    (NULLIF($3, '') IS NULL OR od.name = $3::VARCHAR) AND
-    (NULLIF($4, '') IS NULL OR fqns.fqn = $4::VARCHAR)
+    -- lookup by obligation id OR by namespace fqn + obligation name
+    (
+        -- lookup by obligation id
+        (NULLIF($1, '') IS NOT NULL AND od.id = $1::UUID)
+        OR
+        -- lookup by namespace fqn + obligation name
+        (NULLIF($2, '') IS NOT NULL AND NULLIF($3, '') IS NOT NULL 
+         AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
+    )
 GROUP BY od.id, n.id, n.name, fqns.fqn
 `
 
 type getObligationParams struct {
 	ID           interface{} `json:"id"`
-	NamespaceID  interface{} `json:"namespace_id"`
-	Name         interface{} `json:"name"`
 	NamespaceFqn interface{} `json:"namespace_fqn"`
+	Name         interface{} `json:"name"`
 }
 
 type getObligationRow struct {
@@ -241,19 +244,18 @@ type getObligationRow struct {
 //	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 //	WHERE
-//	    -- handles by id or fqn+name queries
-//	    (NULLIF($1, '') IS NULL OR od.id = $1::UUID) AND
-//	    (NULLIF($2, '') IS NULL OR od.namespace_id = $2::UUID) AND
-//	    (NULLIF($3, '') IS NULL OR od.name = $3::VARCHAR) AND
-//	    (NULLIF($4, '') IS NULL OR fqns.fqn = $4::VARCHAR)
+//	    -- lookup by obligation id OR by namespace fqn + obligation name
+//	    (
+//	        -- lookup by obligation id
+//	        (NULLIF($1, '') IS NOT NULL AND od.id = $1::UUID)
+//	        OR
+//	        -- lookup by namespace fqn + obligation name
+//	        (NULLIF($2, '') IS NOT NULL AND NULLIF($3, '') IS NOT NULL
+//	         AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
+//	    )
 //	GROUP BY od.id, n.id, n.name, fqns.fqn
 func (q *Queries) getObligation(ctx context.Context, arg getObligationParams) (getObligationRow, error) {
-	row := q.db.QueryRow(ctx, getObligation,
-		arg.ID,
-		arg.NamespaceID,
-		arg.Name,
-		arg.NamespaceFqn,
-	)
+	row := q.db.QueryRow(ctx, getObligation, arg.ID, arg.NamespaceFqn, arg.Name)
 	var i getObligationRow
 	err := row.Scan(
 		&i.ID,

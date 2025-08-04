@@ -99,10 +99,39 @@ func splitOblFQN(fqn string) (string, string) {
 func (c PolicyDBClient) GetObligationDefinition(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {
 	nsFQN, oblName := splitOblFQN(r.GetFqn())
 	queryParams := getObligationParams{
-		ID:  r.GetId(),
-		Fqn: r.GetFqn(),
+		ID:           r.GetId(),
+		Name:         oblName,
+		NamespaceFqn: nsFQN,
 	}
-	return nil, errors.New("GetObligationDefinition is not implemented in PolicyDBClient")
+
+	row, err := c.queries.getObligation(ctx, queryParams)
+
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	oblVals := make([]*policy.ObligationValue, 0)
+	if err := unmarshalObligationValuesProto(row.Values, oblVals); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligation values: %w", err)
+	}
+
+	namespace := &policy.Namespace{}
+	if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
+	}
+
+	metadata := &common.Metadata{}
+	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligation metadata: %w", err)
+	}
+
+	return &policy.Obligation{
+		Id:        row.ID,
+		Name:      row.Name,
+		Metadata:  metadata,
+		Namespace: namespace,
+		Values:    oblVals,
+	}, nil
 }
 
 func (c PolicyDBClient) ListObligationDefinitions(ctx context.Context, r *obligations.ListObligationsRequest) ([]*policy.Obligation, error) {

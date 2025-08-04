@@ -465,7 +465,7 @@ jobs:
   ci:
     permissions: {}
     needs:
-      - buflint
+      - buflint-and-gencode-checks
       - go
       - image
       - integration

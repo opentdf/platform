@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"log/slog"
+	"strconv"
 	"testing"
 
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
@@ -197,13 +198,43 @@ func (s *ObligationsSuite) Test_GetObligation_Fails() {
 
 // List
 
-func (s *ObligationsSuite) Test_ListObligationDefinitions_Succeeds() {
-	// tcs: see registered resources
+func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
+	// Create multiple obligations
+	numObls := 3
+	namespace := s.f.GetNamespaceKey("example.com")
+	for i := 0; i < numObls; i++ {
+		_, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+			NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
+				Id: namespace.ID,
+			},
+			Name:   oblName + "-" + strconv.Itoa(i),
+			Values: oblVals,
+		})
+		s.Require().NoError(err)
+	}
+	// List obligations by namespace ID
+	oblList, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceIdentifier: &obligations.ListObligationsRequest_Id{
+			Id: namespace.ID,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblList)
+	s.Len(oblList, numObls)
+	for _, obl := range oblList {
+		s.Contains(obl.Name, oblName)
+		s.Equal(namespace.ID, obl.Namespace.Id)
+		s.Equal(namespace.Name, obl.Namespace.Name)
+		s.Equal("https://"+namespace.Name, obl.Namespace.Fqn)
+		for _, value := range obl.Values {
+			s.Contains(value.GetValue(), oblValPrefix)
+		}
+	}
 
-	s.T().Skip("obligation_definitions table not implemented yet")
+	// TODO: delete obligations after tests are done
 }
 
-func (s *ObligationsSuite) Test_ListObligationDefinitions_Fails() {
+func (s *ObligationsSuite) Test_ListObligations_Fails() {
 	// tcs: see registered resources
 
 	s.T().Skip("obligation_definitions table not implemented yet")

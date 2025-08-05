@@ -354,9 +354,12 @@ func (s *ObligationsSuite) Test_UpdateObligation_Succeeds() {
 }
 
 func (s *ObligationsSuite) Test_UpdateObligation_Fails() {
-	// tcs: see registered resources
-
-	s.T().Skip("obligation_definitions table not implemented yet")
+	// Attempt to update an obligation with an invalid ID
+	updatedObl, err := s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
+		Id: invalidUUID,
+	})
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+	s.Nil(updatedObl)
 }
 
 // Delete

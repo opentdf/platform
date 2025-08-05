@@ -227,7 +227,7 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 	oblList, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{})
 	s.Require().NoError(err)
 	s.NotNil(oblList)
-	s.GreaterOrEqual(len(oblList), numObls+1) // at least the ones we just created
+	s.Equal(len(oblList), numObls+1)
 	found := 0
 	for _, obl := range oblList {
 		if obl.Namespace.Id == namespace.ID {
@@ -236,6 +236,14 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 			s.Equal(namespace.ID, obl.Namespace.Id)
 			s.Equal(namespace.Name, obl.Namespace.Name)
 			s.Equal("https://"+namespace.Name, obl.Namespace.Fqn)
+			for _, value := range obl.Values {
+				s.Contains(value.GetValue(), oblValPrefix)
+			}
+		} else {
+			s.Equal(otherNamespace.ID, obl.Namespace.Id)
+			s.Equal(otherNamespace.Name, obl.Namespace.Name)
+			s.Equal("https://"+otherNamespace.Name, obl.Namespace.Fqn)
+			s.Contains(obl.Name, "other-namespace")
 			for _, value := range obl.Values {
 				s.Contains(value.GetValue(), oblValPrefix)
 			}

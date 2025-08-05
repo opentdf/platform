@@ -145,8 +145,10 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	}
 
 	list, err := c.queries.listObligations(ctx, listObligationsParams{
-		Limit:  limit,
-		Offset: offset,
+		NamespaceID:  r.GetId(),
+		NamespaceFqn: r.GetFqn(),
+		Limit:        limit,
+		Offset:       offset,
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)

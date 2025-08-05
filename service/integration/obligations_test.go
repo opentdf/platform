@@ -212,10 +212,60 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 		})
 		s.Require().NoError(err)
 	}
+	// Create one more obligation in a different namespace to ensure filtering works
+	otherNamespace := s.f.GetNamespaceKey("example.net")
+	_, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
+			Id: otherNamespace.ID,
+		},
+		Name:   oblName + "-other-namespace",
+		Values: oblVals,
+	})
+	s.Require().NoError(err)
+
+	// List all obligations
+	oblList, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{})
+	s.Require().NoError(err)
+	s.NotNil(oblList)
+	s.GreaterOrEqual(len(oblList), numObls+1) // at least the ones we just created
+	found := 0
+	for _, obl := range oblList {
+		if obl.Namespace.Id == namespace.ID {
+			found++
+			s.Contains(obl.Name, oblName)
+			s.Equal(namespace.ID, obl.Namespace.Id)
+			s.Equal(namespace.Name, obl.Namespace.Name)
+			s.Equal("https://"+namespace.Name, obl.Namespace.Fqn)
+			for _, value := range obl.Values {
+				s.Contains(value.GetValue(), oblValPrefix)
+			}
+		}
+	}
+	s.Equal(numObls, found)
+
 	// List obligations by namespace ID
-	oblList, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+	oblList, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		NamespaceIdentifier: &obligations.ListObligationsRequest_Id{
 			Id: namespace.ID,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblList)
+	s.Len(oblList, numObls)
+	for _, obl := range oblList {
+		s.Contains(obl.Name, oblName)
+		s.Equal(namespace.ID, obl.Namespace.Id)
+		s.Equal(namespace.Name, obl.Namespace.Name)
+		s.Equal("https://"+namespace.Name, obl.Namespace.Fqn)
+		for _, value := range obl.Values {
+			s.Contains(value.GetValue(), oblValPrefix)
+		}
+	}
+
+	// List obligations by namespace FQN
+	oblList, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceIdentifier: &obligations.ListObligationsRequest_Fqn{
+			Fqn: "https://" + namespace.Name,
 		},
 	})
 	s.Require().NoError(err)

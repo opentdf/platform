@@ -47,6 +47,7 @@ func TestObligationsSuite(t *testing.T) {
 
 const oblName = "example-obligation"
 const oblValPrefix = "obligation_value_"
+const invalidFQN = "invalid-fqn"
 
 var oblVals = []string{
 	oblValPrefix + "1",
@@ -189,7 +190,7 @@ func (s *ObligationsSuite) Test_GetObligation_Fails() {
 	// Invalid FQN
 	obl, err = s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
 		Identifier: &obligations.GetObligationRequest_Fqn{
-			Fqn: "invalid-fqn",
+			Fqn: invalidFQN,
 		},
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
@@ -289,13 +290,28 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 		}
 	}
 
+	// Attempt to list obligations with an invalid namespace FQN
+	oblList, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceIdentifier: &obligations.ListObligationsRequest_Fqn{
+			Fqn: invalidFQN,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblList)
+	s.Equal(len(oblList), 0)
+
 	// TODO: delete obligations after tests are done
 }
 
 func (s *ObligationsSuite) Test_ListObligations_Fails() {
-	// tcs: see registered resources
-
-	s.T().Skip("obligation_definitions table not implemented yet")
+	// Attempt to list obligations with an invalid namespace ID
+	oblList, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+		NamespaceIdentifier: &obligations.ListObligationsRequest_Id{
+			Id: invalidUUID,
+		},
+	})
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+	s.Nil(oblList)
 }
 
 // Update

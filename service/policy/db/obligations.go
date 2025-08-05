@@ -151,8 +151,50 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	println(list)
-	return nil, errors.New("ListObligations is not implemented in PolicyDBClient")
+	oblList := make([]*policy.Obligation, len(list))
+
+	for i, r := range list {
+		metadata := &common.Metadata{}
+		if err = unmarshalMetadata(r.Metadata, metadata); err != nil {
+			return nil, err
+		}
+
+		namespace := &policy.Namespace{}
+		if err := unmarshalNamespace(r.Namespace, namespace); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
+		}
+
+		values := []*policy.ObligationValue{}
+		if err = unmarshalObligationValuesProto(r.Values, values); err != nil {
+			return nil, err
+		}
+
+		oblList[i] = &policy.Obligation{
+			Id:        r.ID,
+			Name:      r.Name,
+			Metadata:  metadata,
+			Namespace: namespace,
+			Values:    values,
+		}
+	}
+
+	// var total int32
+	// var nextOffset int32
+	// if len(list) > 0 {
+	// total = int32(list[0].Total)
+	// nextOffset = getNextOffset(offset, limit, total)
+	// }
+
+	return oblList, nil
+
+	// return &obligations.ListObligationsResponse{
+	// 	Obligations: oblList,
+	// 	Pagination: &policy.PageResponse{
+	// 		CurrentOffset: offset,
+	// 		Total:         total,
+	// 		NextOffset:    nextOffset,
+	// 	},
+	// }, nil
 }
 
 func (c PolicyDBClient) UpdateObligationDefinition(ctx context.Context, r *obligations.UpdateObligationRequest) (*policy.Obligation, error) {

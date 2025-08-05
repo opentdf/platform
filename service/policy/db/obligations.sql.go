@@ -269,17 +269,21 @@ func (q *Queries) getObligation(ctx context.Context, arg getObligationParams) (g
 
 const listObligations = `-- name: listObligations :many
 WITH counted AS (
-    SELECT COUNT(id) AS total
-    FROM obligation_definitions
+    SELECT COUNT(od.id) AS total
+    FROM obligation_definitions od
+    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
+    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
-        (NULLIF($1, '') IS NULL OR od.namespace_id = $1::UUID)
+        (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
+        (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
 )
 SELECT
     od.id,
     od.name,
     JSON_BUILD_OBJECT(
         'id', n.id,
-        'name', n.name
+        'name', n.name,
+        'fqn', fqns.fqn
     ) as namespace,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
     JSON_AGG(
@@ -292,19 +296,22 @@ SELECT
     counted.total
 FROM obligation_definitions od
 JOIN attribute_namespaces n on od.namespace_id = n.id
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 CROSS JOIN counted
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
-    (NULLIF($1, '') IS NULL OR od.namespace_id = $1::UUID)
-GROUP BY od.id, n.id, counted.total
-LIMIT $3
-OFFSET $2
+    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
+    (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
+GROUP BY od.id, n.id, n.name, fqns.fqn, counted.total
+LIMIT $4
+OFFSET $3
 `
 
 type listObligationsParams struct {
-	NamespaceID interface{} `json:"namespace_id"`
-	Offset      int32       `json:"offset_"`
-	Limit       int32       `json:"limit_"`
+	NamespaceID  string `json:"namespace_id"`
+	NamespaceFqn string `json:"namespace_fqn"`
+	Offset       int32  `json:"offset_"`
+	Limit        int32  `json:"limit_"`
 }
 
 type listObligationsRow struct {
@@ -319,17 +326,21 @@ type listObligationsRow struct {
 // listObligations
 //
 //	WITH counted AS (
-//	    SELECT COUNT(id) AS total
-//	    FROM obligation_definitions
+//	    SELECT COUNT(od.id) AS total
+//	    FROM obligation_definitions od
+//	    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
+//	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	    WHERE
-//	        (NULLIF($1, '') IS NULL OR od.namespace_id = $1::UUID)
+//	        (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
+//	        (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
 //	)
 //	SELECT
 //	    od.id,
 //	    od.name,
 //	    JSON_BUILD_OBJECT(
 //	        'id', n.id,
-//	        'name', n.name
+//	        'name', n.name,
+//	        'fqn', fqns.fqn
 //	    ) as namespace,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
 //	    JSON_AGG(
@@ -342,15 +353,22 @@ type listObligationsRow struct {
 //	    counted.total
 //	FROM obligation_definitions od
 //	JOIN attribute_namespaces n on od.namespace_id = n.id
+//	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	CROSS JOIN counted
 //	LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 //	WHERE
-//	    (NULLIF($1, '') IS NULL OR od.namespace_id = $1::UUID)
-//	GROUP BY od.id, n.id, counted.total
-//	LIMIT $3
-//	OFFSET $2
+//	    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
+//	    (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
+//	GROUP BY od.id, n.id, n.name, fqns.fqn, counted.total
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listObligations(ctx context.Context, arg listObligationsParams) ([]listObligationsRow, error) {
-	rows, err := q.db.Query(ctx, listObligations, arg.NamespaceID, arg.Offset, arg.Limit)
+	rows, err := q.db.Query(ctx, listObligations,
+		arg.NamespaceID,
+		arg.NamespaceFqn,
+		arg.Offset,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

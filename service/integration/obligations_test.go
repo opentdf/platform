@@ -45,6 +45,12 @@ func TestObligationsSuite(t *testing.T) {
 ///
 
 const oblName = "example-obligation"
+const oblValPrefix = "obligation_value_"
+
+var oblVals = []string{
+	oblValPrefix + "1",
+	oblValPrefix + "2",
+}
 
 // Create
 
@@ -53,12 +59,6 @@ func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
 	namespace := s.f.GetNamespaceKey("example.com")
 	namespaceID := namespace.ID
 	namespaceFQN := "https://" + namespace.Name
-	// oblName := "example-obligation"
-	oblValPrefix := "obligation_value_"
-	oblVals := []string{
-		oblValPrefix + "1",
-		oblValPrefix + "2",
-	}
 	obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
 		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
 			Id: namespaceID,
@@ -138,7 +138,8 @@ func (s *ObligationsSuite) Test_GetObligation_Succeeds() {
 		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
 			Id: s.f.GetNamespaceKey("example.com").ID,
 		},
-		Name: oblName,
+		Name:   oblName,
+		Values: oblVals,
 	})
 
 	// Valid ID
@@ -154,6 +155,9 @@ func (s *ObligationsSuite) Test_GetObligation_Succeeds() {
 	s.Equal(createdObl.GetNamespace().GetId(), obl.GetNamespace().GetId())
 	s.Equal(createdObl.GetNamespace().GetName(), obl.GetNamespace().GetName())
 	s.Equal(createdObl.GetNamespace().GetFqn(), obl.GetNamespace().GetFqn())
+	for _, value := range obl.Values {
+		s.Contains(value.GetValue(), oblValPrefix)
+	}
 
 	// Valid FQN
 	obl, err = s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{

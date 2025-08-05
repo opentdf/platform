@@ -151,6 +151,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
+	println(list)
 	return nil, errors.New("ListObligations is not implemented in PolicyDBClient")
 }
 

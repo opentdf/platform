@@ -128,12 +128,12 @@ GROUP BY od.id, n.id, n.name, fqns.fqn, counted.total
 LIMIT @limit_
 OFFSET @offset_;
 
--- name: updateObligationDefinition :execrows
+-- name: updateObligation :execrows
 UPDATE obligation_definitions
 SET
     name = COALESCE(sqlc.narg('name'), name),
     metadata = COALESCE(sqlc.narg('metadata'), metadata)
 WHERE id = $1;
 
--- name: deleteObligationDefinition :execrows
+-- name: deleteObligation :execrows
 DELETE FROM obligation_definitions WHERE id = $1;

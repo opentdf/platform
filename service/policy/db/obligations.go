@@ -136,12 +136,12 @@ func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObl
 	}, nil
 }
 
-func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.ListObligationsRequest) ([]*policy.Obligation, error) {
+func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.ListObligationsRequest) ([]*policy.Obligation, *policy.PageResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
 	maxLimit := c.listCfg.limitMax
 	if maxLimit > 0 && limit > maxLimit {
-		return nil, db.ErrListLimitTooLarge
+		return nil, nil, db.ErrListLimitTooLarge
 	}
 
 	list, err := c.queries.listObligations(ctx, listObligationsParams{
@@ -151,24 +151,24 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 		Offset:       offset,
 	})
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		return nil, nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	oblList := make([]*policy.Obligation, len(list))
 
 	for i, r := range list {
 		metadata := &common.Metadata{}
 		if err = unmarshalMetadata(r.Metadata, metadata); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		namespace := &policy.Namespace{}
 		if err := unmarshalNamespace(r.Namespace, namespace); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
+			return nil, nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 		}
 
 		values := []*policy.ObligationValue{}
 		if err = unmarshalObligationValuesProto(r.Values, values); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		oblList[i] = &policy.Obligation{
@@ -180,23 +180,20 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 		}
 	}
 
-	// var total int32
-	// var nextOffset int32
-	// if len(list) > 0 {
-	// total = int32(list[0].Total)
-	// nextOffset = getNextOffset(offset, limit, total)
-	// }
+	var total int32
+	var nextOffset int32
+	if len(list) > 0 {
+		total = int32(list[0].Total)
+		nextOffset = getNextOffset(offset, limit, total)
+	}
 
-	return oblList, nil
+	pagination := &policy.PageResponse{
+		CurrentOffset: offset,
+		Total:         total,
+		NextOffset:    nextOffset,
+	}
 
-	// return &obligations.ListObligationsResponse{
-	// 	Obligations: oblList,
-	// 	Pagination: &policy.PageResponse{
-	// 		CurrentOffset: offset,
-	// 		Total:         total,
-	// 		NextOffset:    nextOffset,
-	// 	},
-	// }, nil
+	return oblList, pagination, nil
 }
 
 func (c PolicyDBClient) UpdateObligationDefinition(ctx context.Context, r *obligations.UpdateObligationRequest) (*policy.Obligation, error) {

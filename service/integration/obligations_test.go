@@ -225,7 +225,7 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 	s.Require().NoError(err)
 
 	// List all obligations
-	oblList, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{})
+	oblList, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{})
 	s.Require().NoError(err)
 	s.NotNil(oblList)
 	s.Equal(len(oblList), numObls+1)
@@ -253,7 +253,7 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 	s.Equal(numObls, found)
 
 	// List obligations by namespace ID
-	oblList, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+	oblList, _, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		NamespaceIdentifier: &obligations.ListObligationsRequest_Id{
 			Id: namespace.ID,
 		},
@@ -272,7 +272,7 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 	}
 
 	// List obligations by namespace FQN
-	oblList, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+	oblList, _, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		NamespaceIdentifier: &obligations.ListObligationsRequest_Fqn{
 			Fqn: "https://" + namespace.Name,
 		},
@@ -291,7 +291,7 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 	}
 
 	// Attempt to list obligations with an invalid namespace FQN
-	oblList, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+	oblList, _, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		NamespaceIdentifier: &obligations.ListObligationsRequest_Fqn{
 			Fqn: invalidFQN,
 		},
@@ -305,7 +305,7 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 
 func (s *ObligationsSuite) Test_ListObligations_Fails() {
 	// Attempt to list obligations with an invalid namespace ID
-	oblList, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
+	oblList, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		NamespaceIdentifier: &obligations.ListObligationsRequest_Id{
 			Id: invalidUUID,
 		},
@@ -316,13 +316,13 @@ func (s *ObligationsSuite) Test_ListObligations_Fails() {
 
 // Update
 
-func (s *ObligationsSuite) Test_UpdateObligationDefinitions_Succeeds() {
+func (s *ObligationsSuite) Test_UpdateObligation_Succeeds() {
 	// tcs: see registered resources
 
 	s.T().Skip("obligation_definitions table not implemented yet")
 }
 
-func (s *ObligationsSuite) Test_UpdateObligationDefinitions_Fails() {
+func (s *ObligationsSuite) Test_UpdateObligation_Fails() {
 	// tcs: see registered resources
 
 	s.T().Skip("obligation_definitions table not implemented yet")
@@ -330,14 +330,14 @@ func (s *ObligationsSuite) Test_UpdateObligationDefinitions_Fails() {
 
 // Delete
 
-func (s *ObligationsSuite) Test_DeleteObligationDefinition_Succeeds() {
+func (s *ObligationsSuite) Test_DeleteObligation_Succeeds() {
 	// tcs:
 	// - delete by id and ensure cascade removes children relationships
 
 	s.T().Skip("obligation_definitions table not implemented yet")
 }
 
-func (s *ObligationsSuite) Test_DeleteObligationDefinition_Fails() {
+func (s *ObligationsSuite) Test_DeleteObligation_Fails() {
 	// tcs:
 	// - delete by invalid id
 

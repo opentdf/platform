@@ -224,11 +224,19 @@ func (s *ObligationsSuite) Test_GetObligation_Fails() {
 // List
 
 func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
-	// Create multiple obligations
+	// Setup test data
 	numObls := 3
 	namespace := s.f.GetNamespaceKey("example.com")
+	otherNamespace := s.f.GetNamespaceKey("example.net")
+	namespaceFQN := "https://" + namespace.Name
+	otherNamespaceFQN := "https://" + otherNamespace.Name
+
+	// Track created obligations for cleanup
+	var createdOblIDs []string
+
+	// Create multiple obligations in first namespace
 	for i := 0; i < numObls; i++ {
-		_, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		obl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
 			NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
 				Id: namespace.ID,
 			},
@@ -236,10 +244,11 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 			Values: oblVals,
 		})
 		s.Require().NoError(err)
+		createdOblIDs = append(createdOblIDs, obl.GetId())
 	}
-	// Create one more obligation in a different namespace to ensure filtering works
-	otherNamespace := s.f.GetNamespaceKey("example.net")
-	_, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+
+	// Create one obligation in different namespace
+	otherObl, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
 		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
 			Id: otherNamespace.ID,
 		},
@@ -247,36 +256,36 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 		Values: oblVals,
 	})
 	s.Require().NoError(err)
+	createdOblIDs = append(createdOblIDs, otherObl.GetId())
 
-	// List all obligations
+	// Test 1: List all obligations
 	oblList, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{})
 	s.Require().NoError(err)
 	s.NotNil(oblList)
-	s.Equal(len(oblList), numObls+1)
+	s.Equal(numObls+1, len(oblList))
+
 	found := 0
 	for _, obl := range oblList {
+		s.Contains(obl.Name, oblName)
+		for _, value := range obl.Values {
+			s.Contains(value.GetValue(), oblValPrefix)
+		}
+
 		if obl.Namespace.Id == namespace.ID {
 			found++
-			s.Contains(obl.Name, oblName)
 			s.Equal(namespace.ID, obl.Namespace.Id)
 			s.Equal(namespace.Name, obl.Namespace.Name)
-			s.Equal("https://"+namespace.Name, obl.Namespace.Fqn)
-			for _, value := range obl.Values {
-				s.Contains(value.GetValue(), oblValPrefix)
-			}
+			s.Equal(namespaceFQN, obl.Namespace.Fqn)
 		} else {
 			s.Equal(otherNamespace.ID, obl.Namespace.Id)
 			s.Equal(otherNamespace.Name, obl.Namespace.Name)
-			s.Equal("https://"+otherNamespace.Name, obl.Namespace.Fqn)
+			s.Equal(otherNamespaceFQN, obl.Namespace.Fqn)
 			s.Contains(obl.Name, "other-namespace")
-			for _, value := range obl.Values {
-				s.Contains(value.GetValue(), oblValPrefix)
-			}
 		}
 	}
 	s.Equal(numObls, found)
 
-	// List obligations by namespace ID
+	// Test 2: List obligations by namespace ID
 	oblList, _, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		NamespaceIdentifier: &obligations.ListObligationsRequest_Id{
 			Id: namespace.ID,
@@ -289,16 +298,16 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 		s.Contains(obl.Name, oblName)
 		s.Equal(namespace.ID, obl.Namespace.Id)
 		s.Equal(namespace.Name, obl.Namespace.Name)
-		s.Equal("https://"+namespace.Name, obl.Namespace.Fqn)
+		s.Equal(namespaceFQN, obl.Namespace.Fqn)
 		for _, value := range obl.Values {
 			s.Contains(value.GetValue(), oblValPrefix)
 		}
 	}
 
-	// List obligations by namespace FQN
+	// Test 3: List obligations by namespace FQN
 	oblList, _, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		NamespaceIdentifier: &obligations.ListObligationsRequest_Fqn{
-			Fqn: "https://" + namespace.Name,
+			Fqn: namespaceFQN,
 		},
 	})
 	s.Require().NoError(err)
@@ -308,13 +317,13 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 		s.Contains(obl.Name, oblName)
 		s.Equal(namespace.ID, obl.Namespace.Id)
 		s.Equal(namespace.Name, obl.Namespace.Name)
-		s.Equal("https://"+namespace.Name, obl.Namespace.Fqn)
+		s.Equal(namespaceFQN, obl.Namespace.Fqn)
 		for _, value := range obl.Values {
 			s.Contains(value.GetValue(), oblValPrefix)
 		}
 	}
 
-	// Attempt to list obligations with an invalid namespace FQN
+	// Test 4: List obligations with invalid namespace FQN (should return empty)
 	oblList, _, err = s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
 		NamespaceIdentifier: &obligations.ListObligationsRequest_Fqn{
 			Fqn: invalidFQN,
@@ -322,36 +331,13 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(oblList)
-	s.Equal(len(oblList), 0)
+	s.Empty(oblList)
 
-	// Delete obligations after tests are done
-	// Delete obligations from first namespace
-	firstNamespaceObls, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
-		NamespaceIdentifier: &obligations.ListObligationsRequest_Id{
-			Id: namespace.ID,
-		},
-	})
-	s.Require().NoError(err)
-	for _, obl := range firstNamespaceObls {
+	// Cleanup: Delete all created obligations
+	for _, oblID := range createdOblIDs {
 		_, err = s.db.PolicyClient.DeleteObligationDefinition(s.ctx, &obligations.DeleteObligationRequest{
 			Identifier: &obligations.DeleteObligationRequest_Id{
-				Id: obl.Id,
-			},
-		})
-		s.Require().NoError(err)
-	}
-
-	// Delete obligations from other namespace
-	otherNamespaceObls, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
-		NamespaceIdentifier: &obligations.ListObligationsRequest_Id{
-			Id: otherNamespace.ID,
-		},
-	})
-	s.Require().NoError(err)
-	for _, obl := range otherNamespaceObls {
-		_, err = s.db.PolicyClient.DeleteObligationDefinition(s.ctx, &obligations.DeleteObligationRequest{
-			Identifier: &obligations.DeleteObligationRequest_Id{
-				Id: obl.Id,
+				Id: oblID,
 			},
 		})
 		s.Require().NoError(err)

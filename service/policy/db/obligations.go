@@ -199,16 +199,16 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.UpdateObligationRequest) (*policy.Obligation, error) {
 	id := r.GetId()
 	name := strings.ToLower(r.GetName())
+	obl, err := c.GetObligation(ctx, &obligations.GetObligationRequest{
+		Identifier: &obligations.GetObligationRequest_Id{
+			Id: id,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-		v, err := c.GetObligation(ctx, &obligations.GetObligationRequest{
-			Identifier: &obligations.GetObligationRequest_Id{
-				Id: id,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-		return v.GetMetadata(), nil
+		return obl.GetMetadata(), nil
 	})
 	if err != nil {
 		return nil, err
@@ -227,9 +227,11 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 	}
 
 	return &policy.Obligation{
-		Id:       id,
-		Name:     name,
-		Metadata: metadata,
+		Id:        id,
+		Name:      name,
+		Metadata:  metadata,
+		Namespace: obl.GetNamespace(),
+		Values:    obl.GetValues(),
 	}, nil
 }
 

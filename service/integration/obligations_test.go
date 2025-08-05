@@ -346,9 +346,9 @@ func (s *ObligationsSuite) Test_UpdateObligation_Succeeds() {
 	s.Equal(createdObl.GetNamespace().GetName(), updatedObl.GetNamespace().GetName())
 	s.Equal(createdObl.GetNamespace().GetFqn(), updatedObl.GetNamespace().GetFqn())
 
-	// for _, value := range updatedObl.Values {
-	// 	s.Contains(value.GetValue(), oblValPrefix)
-	// }
+	for _, value := range updatedObl.Values {
+		s.Contains(value.GetValue(), oblValPrefix)
+	}
 
 	// Delete the obligation after tests are done
 }

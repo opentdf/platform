@@ -89,7 +89,7 @@ WHERE
     )
 GROUP BY od.id, n.id, n.name, fqns.fqn;
 
--- name: listObligationDefinitions :many
+-- name: listObligations :many
 WITH counted AS (
     SELECT COUNT(id) AS total
     FROM obligation_definitions

@@ -267,7 +267,7 @@ func (q *Queries) getObligation(ctx context.Context, arg getObligationParams) (g
 	return i, err
 }
 
-const listObligationDefinitions = `-- name: listObligationDefinitions :many
+const listObligations = `-- name: listObligations :many
 WITH counted AS (
     SELECT COUNT(id) AS total
     FROM obligation_definitions
@@ -301,13 +301,13 @@ LIMIT $3
 OFFSET $2
 `
 
-type listObligationDefinitionsParams struct {
+type listObligationsParams struct {
 	NamespaceID interface{} `json:"namespace_id"`
 	Offset      int32       `json:"offset_"`
 	Limit       int32       `json:"limit_"`
 }
 
-type listObligationDefinitionsRow struct {
+type listObligationsRow struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	Namespace []byte `json:"namespace"`
@@ -316,7 +316,7 @@ type listObligationDefinitionsRow struct {
 	Total     int64  `json:"total"`
 }
 
-// listObligationDefinitions
+// listObligations
 //
 //	WITH counted AS (
 //	    SELECT COUNT(id) AS total
@@ -349,15 +349,15 @@ type listObligationDefinitionsRow struct {
 //	GROUP BY od.id, n.id, counted.total
 //	LIMIT $3
 //	OFFSET $2
-func (q *Queries) listObligationDefinitions(ctx context.Context, arg listObligationDefinitionsParams) ([]listObligationDefinitionsRow, error) {
-	rows, err := q.db.Query(ctx, listObligationDefinitions, arg.NamespaceID, arg.Offset, arg.Limit)
+func (q *Queries) listObligations(ctx context.Context, arg listObligationsParams) ([]listObligationsRow, error) {
+	rows, err := q.db.Query(ctx, listObligations, arg.NamespaceID, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []listObligationDefinitionsRow
+	var items []listObligationsRow
 	for rows.Next() {
-		var i listObligationDefinitionsRow
+		var i listObligationsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,

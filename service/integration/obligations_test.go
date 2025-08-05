@@ -184,7 +184,7 @@ func (s *ObligationsSuite) Test_GetObligation_Fails() {
 	// Invalid FQN
 	obl, err = s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
 		Identifier: &obligations.GetObligationRequest_Fqn{
-			Fqn: "https://example.com/obl/" + oblName,
+			Fqn: "invalid-fqn",
 		},
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)

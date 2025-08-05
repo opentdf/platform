@@ -136,8 +136,22 @@ func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObl
 	}, nil
 }
 
-func (c PolicyDBClient) ListObligationDefinitions(ctx context.Context, r *obligations.ListObligationsRequest) ([]*policy.Obligation, error) {
-	return nil, errors.New("ListObligationDefinitions is not implemented in PolicyDBClient")
+func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.ListObligationsRequest) ([]*policy.Obligation, error) {
+	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
+
+	maxLimit := c.listCfg.limitMax
+	if maxLimit > 0 && limit > maxLimit {
+		return nil, db.ErrListLimitTooLarge
+	}
+
+	list, err := c.queries.listObligations(ctx, listObligationsParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	return nil, errors.New("ListObligations is not implemented in PolicyDBClient")
 }
 
 func (c PolicyDBClient) UpdateObligationDefinition(ctx context.Context, r *obligations.UpdateObligationRequest) (*policy.Obligation, error) {

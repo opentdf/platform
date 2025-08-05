@@ -88,9 +88,6 @@ func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
 	s.Require().NoError(err)
 
 	// By namespace FQN
-	// namespace = s.f.GetNamespaceKey("example.net")
-	// namespaceID = namespace.ID
-	// namespaceFQN = "https://" + namespace.Name
 	obl, err = s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
 		NamespaceIdentifier: &obligations.CreateObligationRequest_Fqn{
 			Fqn: namespaceFQN,
@@ -136,34 +133,22 @@ func (s *ObligationsSuite) Test_CreateObligation_Fails() {
 	s.Require().NoError(err)
 	s.NotNil(obl)
 
-	obl, err = s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+	pending, err := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
 		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
 			Id: namespaceID,
 		},
 		Name: oblName,
 	})
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
-	s.Nil(obl)
+	s.Nil(pending)
 
 	// Delete obligation after tests are done
-	// Find and delete the created obligation
-	oblList, _, err := s.db.PolicyClient.ListObligations(s.ctx, &obligations.ListObligationsRequest{
-		NamespaceIdentifier: &obligations.ListObligationsRequest_Id{
-			Id: namespaceID,
+	_, err = s.db.PolicyClient.DeleteObligationDefinition(s.ctx, &obligations.DeleteObligationRequest{
+		Identifier: &obligations.DeleteObligationRequest_Id{
+			Id: obl.GetId(),
 		},
 	})
 	s.Require().NoError(err)
-	for _, createdObl := range oblList {
-		if createdObl.Name == oblName {
-			_, err = s.db.PolicyClient.DeleteObligationDefinition(s.ctx, &obligations.DeleteObligationRequest{
-				Identifier: &obligations.DeleteObligationRequest_Id{
-					Id: createdObl.Id,
-				},
-			})
-			s.Require().NoError(err)
-			break
-		}
-	}
 }
 
 // Get

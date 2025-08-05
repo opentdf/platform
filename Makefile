@@ -66,7 +66,9 @@ govulncheck:
 	exit $$status
 
 proto-generate: toolcheck
-	rm -rf protocol/go/[a-fh-z]* docs/grpc docs/openapi
+	# remove all generated directories under protocol/go
+	find protocol/go -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
+	rm -rf docs/grpc docs/openapi
 	buf generate service
 	buf generate service --template buf.gen.grpc.docs.yaml
 	buf generate service --template buf.gen.openapi.docs.yaml

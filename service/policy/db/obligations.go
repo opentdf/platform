@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -236,5 +235,16 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 }
 
 func (c PolicyDBClient) DeleteObligationDefinition(ctx context.Context, r *obligations.DeleteObligationRequest) (*policy.Obligation, error) {
-	return nil, errors.New("DeleteObligationDefinition is not implemented in PolicyDBClient")
+	id := r.GetId()
+	count, err := c.queries.deleteObligation(ctx, id)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	return &policy.Obligation{
+		Id: id,
+	}, nil
 }

@@ -355,25 +355,61 @@ func (s *ObligationsSuite) Test_UpdateObligation_Succeeds() {
 
 func (s *ObligationsSuite) Test_UpdateObligation_Fails() {
 	// Attempt to update an obligation with an invalid ID
-	updatedObl, err := s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
+	obl, err := s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
 		Id: invalidUUID,
 	})
 	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
-	s.Nil(updatedObl)
+	s.Nil(obl)
 }
 
 // Delete
 
 func (s *ObligationsSuite) Test_DeleteObligation_Succeeds() {
-	// tcs:
-	// - delete by id and ensure cascade removes children relationships
+	// Create an obligation to delete
+	createdObl, _ := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
+			Id: s.f.GetNamespaceKey("example.com").ID,
+		},
+		Name:   oblName,
+		Values: oblVals,
+	})
 
-	s.T().Skip("obligation_definitions table not implemented yet")
+	// Get the obligation to ensure it exists
+	obl, err := s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Identifier: &obligations.GetObligationRequest_Id{
+			Id: createdObl.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(obl)
+
+	// Delete the obligation
+	obl, err = s.db.PolicyClient.DeleteObligationDefinition(s.ctx, &obligations.DeleteObligationRequest{
+		Identifier: &obligations.DeleteObligationRequest_Id{
+			Id: createdObl.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(obl)
+	s.Equal(createdObl.GetId(), obl.GetId())
+
+	// Attempt to get the obligation again to ensure it has been deleted
+	obl, err = s.db.PolicyClient.GetObligation(s.ctx, &obligations.GetObligationRequest{
+		Identifier: &obligations.GetObligationRequest_Id{
+			Id: createdObl.GetId(),
+		},
+	})
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(obl)
 }
 
 func (s *ObligationsSuite) Test_DeleteObligation_Fails() {
-	// tcs:
-	// - delete by invalid id
-
-	s.T().Skip("obligation_definitions table not implemented yet")
+	// Attempt to delete an obligation with an invalid ID
+	obl, err := s.db.PolicyClient.DeleteObligationDefinition(s.ctx, &obligations.DeleteObligationRequest{
+		Identifier: &obligations.DeleteObligationRequest_Id{
+			Id: invalidUUID,
+		},
+	})
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+	s.Nil(obl)
 }

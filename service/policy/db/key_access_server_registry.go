@@ -551,7 +551,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 
 	var legacy pgtype.Bool
 	//nolint:staticcheck // Need to check if the legacy field is set.
-	if r == nil || r.Legacy == nil {
+	if r.Legacy == nil {
 		legacy = pgtype.Bool{Valid: false}
 	} else {
 		legacy = pgtypeBool(r.GetLegacy())

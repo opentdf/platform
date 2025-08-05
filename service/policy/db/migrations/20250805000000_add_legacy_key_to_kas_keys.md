@@ -6,9 +6,9 @@ This migration introduces a `legacy` column to the `key_access_server_keys` tabl
 ## Changes
 
 - **`key_access_server_keys` table:**
-    - A new boolean column `legacy` is added.
-    - This column defaults to `FALSE`.
-    - A unique index `key_access_server_keys_legacy_true_idx` is created on `key_access_server_id` where `legacy` is `TRUE`.
+  - A new boolean column `legacy` is added.
+  - This column defaults to `FALSE`.
+  - A unique index `key_access_server_keys_legacy_true_idx` is created on `key_access_server_id` where `legacy` is `TRUE`.
 
 ## ERD
 
@@ -56,4 +56,3 @@ erDiagram
         boolean legacy "New column"
     }
 ```
-****

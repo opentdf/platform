@@ -7,8 +7,6 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createObligation = `-- name: createObligation :one
@@ -158,15 +156,15 @@ func (q *Queries) createObligation(ctx context.Context, arg createObligationPara
 	return i, err
 }
 
-const deleteObligationDefinition = `-- name: deleteObligationDefinition :execrows
+const deleteObligation = `-- name: deleteObligation :execrows
 DELETE FROM obligation_definitions WHERE id = $1
 `
 
-// deleteObligationDefinition
+// deleteObligation
 //
 //	DELETE FROM obligation_definitions WHERE id = $1
-func (q *Queries) deleteObligationDefinition(ctx context.Context, id string) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteObligationDefinition, id)
+func (q *Queries) deleteObligation(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteObligation, id)
 	if err != nil {
 		return 0, err
 	}
@@ -394,29 +392,29 @@ func (q *Queries) listObligations(ctx context.Context, arg listObligationsParams
 	return items, nil
 }
 
-const updateObligationDefinition = `-- name: updateObligationDefinition :execrows
+const updateObligation = `-- name: updateObligation :execrows
 UPDATE obligation_definitions
 SET
-    name = COALESCE($2, name),
-    metadata = COALESCE($3, metadata)
-WHERE id = $1
+    name = COALESCE(NULLIF($1::TEXT, ''), name),
+    metadata = COALESCE($2, metadata)
+WHERE id = $3
 `
 
-type updateObligationDefinitionParams struct {
-	ID       string      `json:"id"`
-	Name     pgtype.Text `json:"name"`
-	Metadata []byte      `json:"metadata"`
+type updateObligationParams struct {
+	Name     string `json:"name"`
+	Metadata []byte `json:"metadata"`
+	ID       string `json:"id"`
 }
 
-// updateObligationDefinition
+// updateObligation
 //
 //	UPDATE obligation_definitions
 //	SET
-//	    name = COALESCE($2, name),
-//	    metadata = COALESCE($3, metadata)
-//	WHERE id = $1
-func (q *Queries) updateObligationDefinition(ctx context.Context, arg updateObligationDefinitionParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateObligationDefinition, arg.ID, arg.Name, arg.Metadata)
+//	    name = COALESCE(NULLIF($1::TEXT, ''), name),
+//	    metadata = COALESCE($2, metadata)
+//	WHERE id = $3
+func (q *Queries) updateObligation(ctx context.Context, arg updateObligationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateObligation, arg.Name, arg.Metadata, arg.ID)
 	if err != nil {
 		return 0, err
 	}

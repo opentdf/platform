@@ -131,9 +131,9 @@ OFFSET @offset_;
 -- name: updateObligation :execrows
 UPDATE obligation_definitions
 SET
-    name = COALESCE(sqlc.narg('name'), name),
-    metadata = COALESCE(sqlc.narg('metadata'), metadata)
-WHERE id = $1;
+    name = COALESCE(NULLIF(@name::TEXT, ''), name),
+    metadata = COALESCE(@metadata, metadata)
+WHERE id = @id;
 
 -- name: deleteObligation :execrows
 DELETE FROM obligation_definitions WHERE id = $1;

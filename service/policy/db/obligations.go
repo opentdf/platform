@@ -196,8 +196,41 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	return oblList, pagination, nil
 }
 
-func (c PolicyDBClient) UpdateObligationDefinition(ctx context.Context, r *obligations.UpdateObligationRequest) (*policy.Obligation, error) {
-	return nil, errors.New("UpdateObligationDefinition is not implemented in PolicyDBClient")
+func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.UpdateObligationRequest) (*policy.Obligation, error) {
+	id := r.GetId()
+	name := strings.ToLower(r.GetName())
+	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+		v, err := c.GetObligation(ctx, &obligations.GetObligationRequest{
+			Identifier: &obligations.GetObligationRequest_Id{
+				Id: id,
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		return v.GetMetadata(), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := c.queries.updateObligation(ctx, updateObligationParams{
+		ID:       id,
+		Name:     name,
+		Metadata: metadataJSON,
+	})
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	return &policy.Obligation{
+		Id:       id,
+		Name:     name,
+		Metadata: metadata,
+	}, nil
 }
 
 func (c PolicyDBClient) DeleteObligationDefinition(ctx context.Context, r *obligations.DeleteObligationRequest) (*policy.Obligation, error) {

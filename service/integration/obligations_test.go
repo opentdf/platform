@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
@@ -317,9 +318,39 @@ func (s *ObligationsSuite) Test_ListObligations_Fails() {
 // Update
 
 func (s *ObligationsSuite) Test_UpdateObligation_Succeeds() {
-	// tcs: see registered resources
+	// Create an obligation to update
+	createdObl, _ := s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
+		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
+			Id: s.f.GetNamespaceKey("example.com").ID,
+		},
+		Name:   oblName,
+		Values: oblVals,
+	})
 
-	s.T().Skip("obligation_definitions table not implemented yet")
+	// Update the obligation
+	newName := oblName + "-updated"
+	newMetadata := &common.MetadataMutable{
+		Labels: map[string]string{"key": "value"},
+	}
+	updatedObl, err := s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
+		Id:                     createdObl.GetId(),
+		Name:                   newName,
+		Metadata:               newMetadata,
+		MetadataUpdateBehavior: 1,
+	})
+	s.Require().NoError(err)
+	s.NotNil(updatedObl)
+	s.Equal(newName, updatedObl.Name)
+	s.Equal(newMetadata.GetLabels(), updatedObl.Metadata.GetLabels())
+	s.Equal(createdObl.GetNamespace().GetId(), updatedObl.GetNamespace().GetId())
+	s.Equal(createdObl.GetNamespace().GetName(), updatedObl.GetNamespace().GetName())
+	s.Equal(createdObl.GetNamespace().GetFqn(), updatedObl.GetNamespace().GetFqn())
+
+	// for _, value := range updatedObl.Values {
+	// 	s.Contains(value.GetValue(), oblValPrefix)
+	// }
+
+	// Delete the obligation after tests are done
 }
 
 func (s *ObligationsSuite) Test_UpdateObligation_Fails() {

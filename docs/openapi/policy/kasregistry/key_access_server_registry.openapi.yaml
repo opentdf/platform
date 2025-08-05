@@ -769,6 +769,10 @@ components:
           title: provider_config
           description: Optional Configuration for the key provider
           $ref: '#/components/schemas/policy.KeyProviderConfig'
+        legacy:
+          type: boolean
+          title: legacy
+          description: Optional Whether the key is a legacy key
         metadata:
           title: metadata
           description: Common metadata fields
@@ -1166,6 +1170,10 @@ components:
           type: string
           title: provider_config_id
           description: Optional Configuration ID for the key provider, if applicable
+        legacy:
+          type: boolean
+          title: legacy
+          description: Optional Whether the key is a legacy key
         metadata:
           title: metadata
           description: Common metadata Mutable metadata for the key
@@ -1663,6 +1671,11 @@ components:
             ```
 
           $ref: '#/components/schemas/policy.Algorithm'
+        legacy:
+          type: boolean
+          title: legacy
+          description: Optional Filter for legacy keys
+          nullable: true
         pagination:
           title: pagination
           description: Optional Pagination request for the list of keys

@@ -13,8 +13,8 @@ import (
 
 const createKey = `-- name: createKey :one
 INSERT INTO key_access_server_keys
-    (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id, legacy)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id
 `
 
@@ -28,6 +28,7 @@ type createKeyParams struct {
 	PrivateKeyCtx     []byte      `json:"private_key_ctx"`
 	PublicKeyCtx      []byte      `json:"public_key_ctx"`
 	ProviderConfigID  pgtype.UUID `json:"provider_config_id"`
+	Legacy            bool        `json:"legacy"`
 }
 
 // ---------------------------------------------------------------
@@ -35,8 +36,8 @@ type createKeyParams struct {
 // ----------------------------------------------------------------
 //
 //	INSERT INTO key_access_server_keys
-//	    (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id)
-//	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+//	    (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id, legacy)
+//	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 //	RETURNING id
 func (q *Queries) createKey(ctx context.Context, arg createKeyParams) (string, error) {
 	row := q.db.QueryRow(ctx, createKey,
@@ -49,6 +50,7 @@ func (q *Queries) createKey(ctx context.Context, arg createKeyParams) (string, e
 		arg.PrivateKeyCtx,
 		arg.PublicKeyCtx,
 		arg.ProviderConfigID,
+		arg.Legacy,
 	)
 	var id string
 	err := row.Scan(&id)
@@ -179,7 +181,8 @@ SELECT
   ) AS metadata,
   pc.provider_name,
   pc.config AS pc_config,
-  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
+  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata,
+  kask.legacy
 FROM key_access_server_keys AS kask
 LEFT JOIN 
     provider_config as pc ON kask.provider_config_id = pc.id
@@ -215,6 +218,7 @@ type getKeyRow struct {
 	ProviderName      pgtype.Text `json:"provider_name"`
 	PcConfig          []byte      `json:"pc_config"`
 	PcMetadata        []byte      `json:"pc_metadata"`
+	Legacy            bool        `json:"legacy"`
 }
 
 // getKey
@@ -239,7 +243,8 @@ type getKeyRow struct {
 //	  ) AS metadata,
 //	  pc.provider_name,
 //	  pc.config AS pc_config,
-//	  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
+//	  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata,
+//	  kask.legacy
 //	FROM key_access_server_keys AS kask
 //	LEFT JOIN
 //	    provider_config as pc ON kask.provider_config_id = pc.id
@@ -274,6 +279,7 @@ func (q *Queries) getKey(ctx context.Context, arg getKeyParams) (getKeyRow, erro
 		&i.ProviderName,
 		&i.PcConfig,
 		&i.PcMetadata,
+		&i.Legacy,
 	)
 	return i, err
 }
@@ -970,9 +976,9 @@ WITH listed AS (
         kas.id AS kas_id,
         kas.uri AS kas_uri
     FROM key_access_servers AS kas
-    WHERE ($4::uuid IS NULL OR kas.id = $4::uuid)
-            AND ($5::text IS NULL OR kas.name = $5::text)
-            AND ($6::text IS NULL OR kas.uri = $6::text)
+    WHERE ($5::uuid IS NULL OR kas.id = $5::uuid)
+            AND ($6::text IS NULL OR kas.name = $6::text)
+            AND ($7::text IS NULL OR kas.uri = $7::text)
 )
 SELECT 
   COUNT(*) OVER () AS total,
@@ -995,7 +1001,8 @@ SELECT
   ) AS metadata,
   pc.provider_name,
   pc.config AS provider_config,
-  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
+  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata,
+  kask.legacy
 FROM key_access_server_keys AS kask
 INNER JOIN
     listed ON kask.key_access_server_id = listed.kas_id
@@ -1003,13 +1010,15 @@ LEFT JOIN
     provider_config as pc ON kask.provider_config_id = pc.id
 WHERE
     ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
+    AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
 ORDER BY kask.created_at DESC
-LIMIT $3 
-OFFSET $2
+LIMIT $4 
+OFFSET $3
 `
 
 type listKeysParams struct {
 	KeyAlgorithm pgtype.Int4 `json:"key_algorithm"`
+	Legacy       pgtype.Bool `json:"legacy"`
 	Offset       int32       `json:"offset_"`
 	Limit        int32       `json:"limit_"`
 	KasID        pgtype.UUID `json:"kas_id"`
@@ -1033,6 +1042,7 @@ type listKeysRow struct {
 	ProviderName      pgtype.Text `json:"provider_name"`
 	ProviderConfig    []byte      `json:"provider_config"`
 	PcMetadata        []byte      `json:"pc_metadata"`
+	Legacy            bool        `json:"legacy"`
 }
 
 // listKeys
@@ -1042,9 +1052,9 @@ type listKeysRow struct {
 //	        kas.id AS kas_id,
 //	        kas.uri AS kas_uri
 //	    FROM key_access_servers AS kas
-//	    WHERE ($4::uuid IS NULL OR kas.id = $4::uuid)
-//	            AND ($5::text IS NULL OR kas.name = $5::text)
-//	            AND ($6::text IS NULL OR kas.uri = $6::text)
+//	    WHERE ($5::uuid IS NULL OR kas.id = $5::uuid)
+//	            AND ($6::text IS NULL OR kas.name = $6::text)
+//	            AND ($7::text IS NULL OR kas.uri = $7::text)
 //	)
 //	SELECT
 //	  COUNT(*) OVER () AS total,
@@ -1067,7 +1077,8 @@ type listKeysRow struct {
 //	  ) AS metadata,
 //	  pc.provider_name,
 //	  pc.config AS provider_config,
-//	  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
+//	  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata,
+//	  kask.legacy
 //	FROM key_access_server_keys AS kask
 //	INNER JOIN
 //	    listed ON kask.key_access_server_id = listed.kas_id
@@ -1075,12 +1086,14 @@ type listKeysRow struct {
 //	    provider_config as pc ON kask.provider_config_id = pc.id
 //	WHERE
 //	    ($1::integer IS NULL OR kask.key_algorithm = $1::integer)
+//	    AND ($2::boolean IS NULL OR kask.legacy = $2::boolean)
 //	ORDER BY kask.created_at DESC
-//	LIMIT $3
-//	OFFSET $2
+//	LIMIT $4
+//	OFFSET $3
 func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysRow, error) {
 	rows, err := q.db.Query(ctx, listKeys,
 		arg.KeyAlgorithm,
+		arg.Legacy,
 		arg.Offset,
 		arg.Limit,
 		arg.KasID,
@@ -1110,6 +1123,7 @@ func (q *Queries) listKeys(ctx context.Context, arg listKeysParams) ([]listKeysR
 			&i.ProviderName,
 			&i.ProviderConfig,
 			&i.PcMetadata,
+			&i.Legacy,
 		); err != nil {
 			return nil, err
 		}

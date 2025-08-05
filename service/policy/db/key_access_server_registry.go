@@ -405,6 +405,7 @@ func (c PolicyDBClient) CreateKey(ctx context.Context, r *kasregistry.CreateKeyR
 		PrivateKeyCtx:     privateCtx,
 		PublicKeyCtx:      pubCtx,
 		ProviderConfigID:  pgtypeUUID(providerConfigID),
+		Legacy:            r.GetLegacy(),
 	})
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
@@ -505,6 +506,7 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Kas
 			PublicKeyCtx:   publicKeyCtx,
 			ProviderConfig: providerConfig,
 			Metadata:       metadata,
+			Legacy:         key.Legacy,
 		},
 	}, nil
 }
@@ -547,7 +549,16 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 	kasName := pgtypeText(strings.ToLower(r.GetKasName()))
 	algo := pgtypeInt4(int32(r.GetKeyAlgorithm()), r.GetKeyAlgorithm() != policy.Algorithm_ALGORITHM_UNSPECIFIED)
 
+	var legacy pgtype.Bool
+	//nolint:staticcheck // Need to check if the legacy field is set.
+	if r == nil || r.Legacy == nil {
+		legacy = pgtype.Bool{Valid: false}
+	} else {
+		legacy = pgtypeBool(r.GetLegacy())
+	}
+
 	params := listKeysParams{
+		Legacy:       legacy,
 		KeyAlgorithm: algo,
 		KasID:        kasID,
 		KasUri:       kasURI,
@@ -598,6 +609,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 				PrivateKeyCtx:  privateKeyCtx,
 				ProviderConfig: providerConfig,
 				Metadata:       metadata,
+				Legacy:         key.Legacy,
 			},
 		}
 	}

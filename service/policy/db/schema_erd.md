@@ -114,6 +114,7 @@ erDiagram
         character_varying key_id UK 
         integer key_mode 
         integer key_status 
+        boolean legacy 
         jsonb metadata 
         jsonb private_key_ctx 
         uuid provider_config_id FK 

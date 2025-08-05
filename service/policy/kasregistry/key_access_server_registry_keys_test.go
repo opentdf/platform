@@ -13,11 +13,9 @@ const (
 	invalidUUID                        = "invalid-uuid"
 	validKeyID                         = "a-key"
 	errMessageID                       = "id"
-	errInvalidUUID                     = "invalid uuid"
 	errMessageIdentifier               = "identifier"
 	errMessageKeyID                    = "key_id"
 	errMessageKasID                    = "kas_id"
-	errMessageKeyStatus                = "key_status"
 	errMessageKeyKid                   = "key.kid"
 	errMessageKeyName                  = "key.name"
 	errMessageKeyURI                   = "key.uri"
@@ -27,15 +25,11 @@ const (
 	errMessagePrivateKeyCtx            = "The wrapped_key is required"            // This seems to be a generic message, CEL rules are more specific
 	errMessageProviderConfigID         = "provider_config_id_optionally_required" // Updated for CEL rule ID
 	errMessagePrivateKeyCtxKeyID       = "private_key_ctx.key_id"
-	errMessagePrivateKeyCtxWrappedKey  = "private_key_ctx.wrapped_key"
 	errMessageKeyIdentifier            = "identifier"
 	invalidKeyMode                     = -1
 	invalidAlgo                        = -1
-	invalidKeyStatus                   = -1
-	invalidPageLimit                   = 5001
 	validKeyCtx                        = "eyJrZXkiOiJ2YWx1ZSJ9Cg=="
 	errPrivateKeyCtxMessageID          = "private_key_ctx_optionally_required"
-	errKeystatusUpdateMessageID        = "key_status_cannot_update_to_unspecified"
 	errMetadataUpdateBehaviorMessageID = "metadata_update_behavior"
 	errMessageNewKeyKid                = "new_key.key_id"
 	errMessageNewKeyAlgo               = "new_key.algorithm"
@@ -92,6 +86,9 @@ var (
 		Metadata:         validMetadata,
 		ProviderConfigId: validUUID, // Required for this mode
 	}
+
+	legacyTrue  = true
+	legacyFalse = false
 )
 
 func Test_GetKeyAccessServer_Keys(t *testing.T) {
@@ -677,6 +674,24 @@ func Test_CreateKeyAccessServer_Keys(t *testing.T) {
 			expectError:  true,
 			errorMessage: "private_key_ctx must not be set",
 		},
+		{
+			name: "Valid request - legacy key",
+			req: &kasregistry.CreateKeyRequest{
+				KasId:        validUUID,
+				KeyId:        validKeyID,
+				KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+				PublicKeyCtx: &policy.PublicKeyCtx{
+					Pem: validKeyCtx,
+				},
+				PrivateKeyCtx: &policy.PrivateKeyCtx{
+					KeyId:      validKeyID,
+					WrappedKey: validKeyCtx,
+				},
+				Legacy: true,
+			},
+			expectError: false,
+		},
 	}
 
 	v := getValidator() // Get the validator instance (assuming this is defined elsewhere)
@@ -854,6 +869,20 @@ func Test_ListKeyAccessServer_Keys(t *testing.T) {
 		{
 			name:        "Valid Request (no filters)",
 			req:         &kasregistry.ListKeysRequest{},
+			expectError: false,
+		},
+		{
+			name: "Valid Request (with legacy filter true)",
+			req: &kasregistry.ListKeysRequest{
+				Legacy: &legacyTrue,
+			},
+			expectError: false,
+		},
+		{
+			name: "Valid Request (with legacy filter false)",
+			req: &kasregistry.ListKeysRequest{
+				Legacy: &legacyFalse,
+			},
 			expectError: false,
 		},
 	}

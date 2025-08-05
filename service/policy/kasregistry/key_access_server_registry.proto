@@ -417,6 +417,8 @@ message CreateKeyRequest {
   PrivateKeyCtx private_key_ctx = 6; // Context or additional data specific to the private key, based on the key provider implementation
   // Optional
   string provider_config_id = 7; // Configuration ID for the key provider, if applicable
+  // Optional
+  bool legacy = 8; // Whether the key is a legacy key
   // Common metadata
   common.MetadataMutable metadata = 100; // Mutable metadata for the key
 }
@@ -456,6 +458,9 @@ message ListKeysRequest {
       uri: true
     }]; // Filter keys by the KAS URI
   }
+
+  // Optional
+  optional bool legacy = 8; // Filter for legacy keys
 
   // Optional
   policy.PageRequest pagination = 10; // Pagination request for the list of keys

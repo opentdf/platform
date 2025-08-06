@@ -9,6 +9,7 @@
 ## Documentation
 
 - [Configuration](./docs/Configuring.md)
+- [Multi-Strategy Entity Resolution Service](./ERS_TESTING.md)
 - [Development](#for-contributors)
 - [Policy Config Schema](./service/policy/db/schema_erd.md)
 - [Policy Config Testing Diagram](./service/integration/testing_diagram.png)
@@ -112,6 +113,43 @@ Run the OpenTDF platform service.
 go run ./service start
 ```
 <!-- END copy ./service/README#quick-start -->
+
+### Multi-Strategy Entity Resolution Service
+
+The OpenTDF platform supports a powerful multi-strategy Entity Resolution Service (ERS) that can integrate with multiple identity providers and data sources simultaneously.
+
+#### Quick Start with Multi-Strategy ERS
+
+To run OpenTDF with comprehensive entity resolution using SQL and LDAP providers:
+
+```sh
+# Start core infrastructure + ERS test services
+docker compose --profile ers-test up
+
+# Use the multi-strategy configuration
+go run ./service start --config opentdf-ers-test.yaml
+```
+
+This enables entity resolution from:
+- **JWT Claims** - Direct token claim extraction
+- **PostgreSQL** - SQL database queries for organizational data
+- **LDAP/Active Directory** - Directory service integration
+
+#### ERS Provider Testing
+
+Test the multi-strategy ERS functionality:
+
+```sh
+# Run integration tests (Docker services provide the backends automatically)
+go test ./service/entityresolution/integration -run TestMultiStrategy -v
+```
+
+#### Configuration Options
+
+- **`opentdf-ers-test.yaml`** - Complete OpenTDF platform with multi-strategy ERS
+- **`ERS_TESTING.md`** - Comprehensive documentation and examples
+
+The multi-strategy ERS provides enterprise-grade identity resolution with failover, multiple provider support, and flexible mapping strategies.
 
 ## For Contributors
 

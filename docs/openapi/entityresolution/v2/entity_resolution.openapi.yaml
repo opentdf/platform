@@ -164,6 +164,16 @@ components:
       required:
         - jwt
       additionalProperties: false
+    entityresolution.v2.ActionsList:
+      type: object
+      properties:
+        actions:
+          type: array
+          items:
+            type: string
+          title: actions
+      title: ActionsList
+      additionalProperties: false
     entityresolution.v2.CreateEntityChainsFromTokensRequest:
       type: object
       properties:
@@ -217,7 +227,25 @@ components:
           items:
             $ref: '#/components/schemas/google.protobuf.Struct'
           title: additional_props
+        fqns:
+          type: object
+          title: fqns
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/entityresolution.v2.ActionsList'
+          description: Map of FQN to array of actions
       title: EntityRepresentation
+      additionalProperties: false
+    entityresolution.v2.EntityRepresentation.FqnsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/entityresolution.v2.ActionsList'
+      title: FqnsEntry
       additionalProperties: false
     entityresolution.v2.ResolveEntitiesRequest:
       type: object

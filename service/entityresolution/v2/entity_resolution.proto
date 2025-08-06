@@ -7,10 +7,16 @@ import "entity/entity.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/struct.proto";
 
+message ActionsList {
+  repeated string actions = 1;
+}
+
 message EntityRepresentation {
   // ephemeral entity id from the request
   string original_id = 1;
   repeated google.protobuf.Struct additional_props = 2;
+  // Map of FQN to array of actions
+  map<string, ActionsList> fqns = 3;
 }
 
 // Resolve a set of entities to their representations.

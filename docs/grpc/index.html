@@ -613,6 +613,10 @@
             <ul>
               
                 <li>
+                  <a href="#entityresolution.v2.ActionsList"><span class="badge">M</span>ActionsList</a>
+                </li>
+              
+                <li>
                   <a href="#entityresolution.v2.CreateEntityChainsFromTokensRequest"><span class="badge">M</span>CreateEntityChainsFromTokensRequest</a>
                 </li>
               
@@ -626,6 +630,10 @@
               
                 <li>
                   <a href="#entityresolution.v2.EntityRepresentation"><span class="badge">M</span>EntityRepresentation</a>
+                </li>
+              
+                <li>
+                  <a href="#entityresolution.v2.EntityRepresentation.FqnsEntry"><span class="badge">M</span>EntityRepresentation.FqnsEntry</a>
                 </li>
               
                 <li>
@@ -5671,6 +5679,30 @@ down the hierarchical values instead of returning solely the value that is direc
       <p></p>
 
       
+        <h3 id="entityresolution.v2.ActionsList">ActionsList</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>actions</td>
+                  <td><a href="#string">string</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
         <h3 id="entityresolution.v2.CreateEntityChainsFromTokensRequest">CreateEntityChainsFromTokensRequest</h3>
         <p>Create an entity chain for each token (JWT) in the request.</p>
 
@@ -5785,6 +5817,44 @@ down the hierarchical values instead of returning solely the value that is direc
                   <td>additional_props</td>
                   <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqns</td>
+                  <td><a href="#entityresolution.v2.EntityRepresentation.FqnsEntry">EntityRepresentation.FqnsEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>Map of FQN to array of actions </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.v2.EntityRepresentation.FqnsEntry">EntityRepresentation.FqnsEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#entityresolution.v2.ActionsList">ActionsList</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               

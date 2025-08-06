@@ -38,6 +38,9 @@ message CreateObligationRequest {
         string fqn = 2;
     }
     string name = 3;
+
+    // Optional
+    repeated string values = 4;
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;

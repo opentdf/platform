@@ -1320,6 +1320,12 @@ components:
         name:
           type: string
           title: name
+        values:
+          type: array
+          items:
+            type: string
+          title: values
+          description: Optional
         metadata:
           title: metadata
           description: |-

@@ -39,13 +39,17 @@ func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Cont
 func CreateEntityChainsFromTokens(
 	_ context.Context,
 	req *entityresolutionV2.CreateEntityChainsFromTokensRequest,
-	_ *logger.Logger,
+	logger *logger.Logger,
 ) (entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
+	logger.Info("VirtruSaas CreateEntityChainsFromTokens called", "tokens", len(req.GetTokens()))
+
 	return entityresolutionV2.CreateEntityChainsFromTokensResponse{}, errors.New("not implemented") // Placeholder for actual implementation
 }
 
 func EntityResolution(_ context.Context,
 	req *entityresolutionV2.ResolveEntitiesRequest, logger *logger.Logger,
 ) (entityresolutionV2.ResolveEntitiesResponse, error) {
+	logger.Info("VirtruSaas EntityResolution called", "entities", req.GetEntities())
+
 	return entityresolutionV2.ResolveEntitiesResponse{}, errors.New("not implemented") // Placeholder for actual implementation
 }

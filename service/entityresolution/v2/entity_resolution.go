@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution/v2/entityresolutionv2connect"
 	claims "github.com/opentdf/platform/service/entityresolution/claims/v2"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
+	"github.com/opentdf/platform/service/entityresolution/virtrusaas/v2"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
@@ -20,8 +21,9 @@ type ERSConfig struct {
 }
 
 const (
-	KeycloakMode = "keycloak"
-	ClaimsMode   = "claims"
+	KeycloakMode   = "keycloak"
+	ClaimsMode     = "claims"
+	VirtruSaasMode = "virtrusaas"
 )
 
 type EntityResolution struct {
@@ -46,6 +48,11 @@ func NewRegistration() *serviceregistry.Service[entityresolutionv2connect.Entity
 					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
 					claimsSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
+				}
+				if inputConfig.Mode == VirtruSaasMode {
+					virtruSaasSVC, virtruSaasHandler := virtrusaas.RegisterVirtruSaasERS(srp.Config, srp.Logger)
+					virtruSaasSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: virtruSaasSVC}, virtruSaasHandler
 				}
 
 				var ersCache *cache.Cache

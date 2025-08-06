@@ -103,7 +103,10 @@ func (p *JustInTimePDP) GetDecision(
 		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_Token:
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
+		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, resources)
+		p.logger.Info("Virtru SaaS Entity Representations",
+			slog.Any("representations", entityRepresentations),
+		)
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
@@ -153,48 +156,49 @@ func (p *JustInTimePDP) GetEntitlements(
 ) ([]*authzV2.EntityEntitlements, error) {
 	p.logger.DebugContext(ctx, "getting entitlements - resolving entity chain")
 
-	var (
-		entityRepresentations   []*entityresolutionV2.EntityRepresentation
-		err                     error
-		skipEnvironmentEntities = false
-	)
+	// var (
+	// 	entityRepresentations   []*entityresolutionV2.EntityRepresentation
+	// 	err                     error
+	// 	skipEnvironmentEntities = false
+	// )
 
-	switch entityIdentifier.GetIdentifier().(type) {
-	case *authzV2.EntityIdentifier_EntityChain:
-		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
+	// switch entityIdentifier.GetIdentifier().(type) {
+	// case *authzV2.EntityIdentifier_EntityChain:
+	// 	entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
-	case *authzV2.EntityIdentifier_Token:
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
+	// case *authzV2.EntityIdentifier_Token:
+	// 	entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
 
-	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
-		p.logger.DebugContext(ctx, "getting entitlements - resolving registered resource value FQN")
-		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
-		// registered resources do not have entity representations, so we can skip the remaining logic
-		return p.pdp.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
+	// case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
+	// 	p.logger.DebugContext(ctx, "getting entitlements - resolving registered resource value FQN")
+	// 	regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
+	// 	// registered resources do not have entity representations, so we can skip the remaining logic
+	// 	return p.pdp.GetEntitlementsRegisteredResource(ctx, regResValueFQN, withComprehensiveHierarchy)
 
-	default:
-		return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve entities from entity identifier: %w", err)
-	}
+	// default:
+	// 	return nil, fmt.Errorf("entity type %T: %w", entityIdentifier.GetIdentifier(), ErrInvalidEntityType)
+	// }
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to resolve entities from entity identifier: %w", err)
+	// }
 
-	matchedSubjectMappings, err := p.getMatchedSubjectMappings(ctx, entityRepresentations)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get matched subject mappings: %w", err)
-	}
-	// If no subject mappings are found, return empty entitlements
-	if matchedSubjectMappings == nil {
-		// TODO: is this an error case?
-		p.logger.DebugContext(ctx, "matched subject mappings is empty")
-		return nil, nil
-	}
+	// matchedSubjectMappings, err := p.getMatchedSubjectMappings(ctx, entityRepresentations)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to get matched subject mappings: %w", err)
+	// }
+	// // If no subject mappings are found, return empty entitlements
+	// if matchedSubjectMappings == nil {
+	// 	// TODO: is this an error case?
+	// 	p.logger.DebugContext(ctx, "matched subject mappings is empty")
+	// 	return nil, nil
+	// }
 
-	entitlements, err := p.pdp.GetEntitlements(ctx, entityRepresentations, matchedSubjectMappings, withComprehensiveHierarchy)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get entitlements: %w", err)
-	}
-	return entitlements, nil
+	// entitlements, err := p.pdp.GetEntitlements(ctx, entityRepresentations, matchedSubjectMappings, withComprehensiveHierarchy)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to get entitlements: %w", err)
+	// }
+	// return entitlements, nil
+	return nil, errors.New("not implemented") // Placeholder for actual implementation
 }
 
 // getMatchedSubjectMappings retrieves the subject mappings for the provided entity representations
@@ -262,7 +266,9 @@ func (p *JustInTimePDP) resolveEntitiesFromEntityChain(
 		return nil, errors.New("no subject entities to resolve - all were environment entities and skipped")
 	}
 
-	ersResp, err := p.sdk.EntityResolutionV2.ResolveEntities(ctx, &entityresolutionV2.ResolveEntitiesRequest{Entities: filteredEntities})
+	ersResp, err := p.sdk.EntityResolutionV2.ResolveEntities(ctx, &entityresolutionV2.ResolveEntitiesRequest{
+		Entities: filteredEntities,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve entities: %w", err)
 	}
@@ -279,10 +285,11 @@ func (p *JustInTimePDP) resolveEntitiesFromToken(
 	ctx context.Context,
 	token *entity.Token,
 	skipEnvironmentEntities bool,
+	resources []*authzV2.Resource,
 ) ([]*entityresolutionV2.EntityRepresentation, error) {
 	// WARNING: do not log the token JWT, just its ID
 	p.logger.DebugContext(ctx, "resolving entities from token", slog.String("token_ephemeral_id", token.GetEphemeralId()))
-	ersResp, err := p.sdk.EntityResolutionV2.CreateEntityChainsFromTokens(ctx, &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: []*entity.Token{token}})
+	ersResp, err := p.sdk.EntityResolutionV2.CreateEntityChainsFromTokens(ctx, &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: []*entity.Token{token}, Resources: resources})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create entity chains from token: %w", err)
 	}

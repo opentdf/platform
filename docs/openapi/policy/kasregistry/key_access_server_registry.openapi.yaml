@@ -772,7 +772,7 @@ components:
         legacy:
           type: boolean
           title: legacy
-          description: Optional Whether the key is a legacy key
+          description: Optional Indicates a key may be found in TDFs without key identifiers
         metadata:
           title: metadata
           description: Common metadata fields

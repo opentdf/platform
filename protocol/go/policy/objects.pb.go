@@ -2702,7 +2702,7 @@ type AsymmetricKey struct {
 	// Optional
 	ProviderConfig *KeyProviderConfig `protobuf:"bytes,8,opt,name=provider_config,json=providerConfig,proto3" json:"provider_config,omitempty"` // Configuration for the key provider
 	// Optional
-	Legacy bool `protobuf:"varint,9,opt,name=legacy,proto3" json:"legacy,omitempty"` // Whether the key is a legacy key
+	Legacy bool `protobuf:"varint,9,opt,name=legacy,proto3" json:"legacy,omitempty"` // Indicates a key may be found in TDFs without key identifiers
 	// Common metadata fields
 	Metadata *common.Metadata `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }

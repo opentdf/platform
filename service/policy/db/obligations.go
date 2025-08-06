@@ -62,7 +62,6 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 		Values:       values,
 	}
 	row, err := c.queries.createObligation(ctx, queryParams)
-
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -106,7 +105,6 @@ func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObl
 	}
 
 	row, err := c.queries.getObligation(ctx, queryParams)
-
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}

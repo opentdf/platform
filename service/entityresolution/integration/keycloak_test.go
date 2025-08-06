@@ -25,6 +25,18 @@ func TestKeycloakEntityResolutionV2(t *testing.T) {
 		t.Skip("Skipping Keycloak integration tests in short mode")
 	}
 
+	// Use a panic handler to catch Docker unavailability
+	defer func() {
+		if r := recover(); r != nil {
+			if panicStr := fmt.Sprintf("%v", r); strings.Contains(panicStr, "Docker") || strings.Contains(panicStr, "docker") {
+				t.Skipf("Docker not available for Keycloak container tests: %v", r)
+			} else {
+				// Re-panic if it's not a Docker issue
+				panic(r)
+			}
+		}
+	}()
+
 	contractSuite := internal.NewContractTestSuite()
 	adapter := NewKeycloakTestAdapter()
 
@@ -198,6 +210,9 @@ func (a *KeycloakTestAdapter) setupKeycloakContainer(ctx context.Context) error 
 		Started:          true,
 	})
 	if err != nil {
+		if strings.Contains(err.Error(), "Docker") || strings.Contains(err.Error(), "docker") {
+			return fmt.Errorf("Docker not available for Keycloak container tests: %w", err)
+		}
 		return fmt.Errorf("failed to start Keycloak container: %w", err)
 	}
 

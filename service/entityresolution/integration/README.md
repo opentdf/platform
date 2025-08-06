@@ -7,8 +7,7 @@ This guide covers the testing infrastructure for the OpenTDF Entity Resolution S
 The ERS supports multiple backends for entity resolution:
 - **Claims**: JWT token processing and claims extraction
 - **Keycloak**: Identity provider integration with Admin API
-- **LDAP**: Enterprise LDAP directory integration
-- **SQL**: Database-backed entity resolution (SQLite and PostgreSQL)
+- **Multi-Strategy**: Configurable multi-provider entity resolution (supports LDAP, SQL, and JWT claims providers)
 
 ## Running Tests
 
@@ -22,14 +21,8 @@ go test ./integration -v
 # Claims tests (fast)
 go test ./integration -run TestClaims -v
 
-# SQLite tests (fast)
-go test ./integration -run TestSQLite -v
-
-# PostgreSQL tests (requires Docker)
-go test ./integration -run TestPostgreSQL -v
-
-# LDAP tests (requires Docker)
-go test ./integration -run TestLDAP -v
+# Multi-Strategy tests (fast, uses JWT claims provider)
+go test ./integration -run TestMultiStrategy -v
 
 # Keycloak tests (requires Docker, longer startup time)
 go test ./integration -run TestKeycloak -v -timeout=10m
@@ -78,55 +71,30 @@ type ERSTestAdapter interface {
 adapter := NewClaimsTestAdapter()
 ```
 
-### SQLite Testing
-**File:** `sql_sqlite_test.go`
+### Multi-Strategy Testing
+**File:** `multistrategy_test.go`
 **Features:**
-- In-memory database for fast execution
-- Complete SQL schema creation
-- Transaction-based test isolation
+- Configurable multi-provider entity resolution
+- Strategy-based JWT claims processing
+- Failure strategy testing (fail-fast vs continue)
+- Entity chain creation and validation
+- No external dependencies (uses JWT claims provider)
 
 **Configuration:**
 ```go
-// Uses SQLite in-memory database
-adapter := NewSQLiteTestAdapter()
+// Uses JWT claims provider for testing
+adapter := NewMultiStrategyTestAdapter()
 ```
 
-### PostgreSQL Testing
-**File:** `sql_postgres_test.go`
-**Features:**
-- Docker container with PostgreSQL 15
-- Full database lifecycle management
-- Production-like testing environment
+**Supported Providers:**
+- JWT Claims Provider (used in tests)
+- SQL Provider (SQLite/PostgreSQL support)
+- LDAP Provider (enterprise directory integration)
 
-**Configuration:**
-```go
-config := &PostgreSQLTestConfig{
-    Host:     "localhost",
-    Port:     5432, // Auto-assigned by testcontainers
-    User:     "postgres",
-    Password: "postgres", 
-    Database: "opentdf_ers_test",
-}
-```
-
-### LDAP Testing
-**File:** `ldap_test.go`
-**Features:**
-- OpenLDAP container with test data
-- TLS support and connection pooling
-- Real LDAP operations testing
-
-**Configuration:**
-```go
-config := &LDAPTestConfig{
-    Host:             "localhost",
-    Port:             389, // Auto-assigned by testcontainers
-    Organization:     "OpenTDF Test",
-    Domain:           "opentdf.test",
-    AdminPassword:    "admin_password",
-    BaseDN:           "dc=opentdf,dc=test",
-}
-```
+**Strategy Testing:**
+- Multiple mapping strategies with conditions
+- JWT claim matching and processing
+- Provider failover and fallback mechanisms
 
 ### Keycloak Testing
 **File:** `keycloak_test.go`
@@ -210,17 +178,14 @@ type ContractTestDataSet struct {
 Each adapter handles backend-specific data injection:
 
 - **Claims**: JWT key generation and token creation
-- **SQL**: Database table creation and row insertion
-- **LDAP**: LDAP entry creation via LDAP operations
+- **Multi-Strategy**: JWT claims extraction and strategy matching
 - **Keycloak**: User/client creation via Admin API
 
 ## Performance and Reliability
 
 ### Test Execution Times
 - **Claims**: ~0.1s (no external dependencies)
-- **SQLite**: ~0.4s (in-memory database)
-- **PostgreSQL**: ~3.5s (includes container startup)
-- **LDAP**: ~10s (includes container startup and data injection)
+- **Multi-Strategy**: ~0.4s (JWT claims provider, no external dependencies)
 - **Keycloak**: ~30s (includes container startup and configuration)
 
 ### Reliability Features
@@ -280,7 +245,7 @@ TESTCONTAINERS_DEBUG=true go test ./integration -v
 ### Local Development
 ```bash
 # Quick tests during development
-go test ./integration -run TestSQLite -v
+go test ./integration -run TestMultiStrategy -v
 
 # Full test suite before commits
 make test-integration

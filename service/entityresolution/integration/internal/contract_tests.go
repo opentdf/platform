@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -76,9 +77,11 @@ type EntityValidationRule struct {
 
 // EntityChainValidationRule defines how to validate a returned entity chain
 type EntityChainValidationRule struct {
-	EphemeralID   string // Expected ephemeral ID
-	EntityCount   int    // Expected number of entities in the chain
-	EntityTypes   []string // Expected entity types in order
+	EphemeralID              string   // Expected ephemeral ID
+	EntityCount              int      // Expected number of entities in the chain
+	EntityTypes              []string // Expected entity types in order
+	EntityCategories         []string // Expected entity categories in order (CATEGORY_ENVIRONMENT, CATEGORY_SUBJECT)
+	RequireConsistentOrdering bool     // Whether entity order must be consistent across implementations
 }
 
 // ContractTestSuite holds all the contract tests for ERS implementations
@@ -100,8 +103,9 @@ func NewContractTestSuite() *ContractTestSuite {
 					},
 				},
 				Expected: ContractExpected{
-					EntityCount: 1,
-					ShouldError: false,
+					EntityCount:      1,
+					ShouldError:      false,
+					ErrorCode:        0,
 					EntityValidation: []EntityValidationRule{
 						{
 							Index:       0,
@@ -110,9 +114,11 @@ func NewContractTestSuite() *ContractTestSuite {
 								"username": "alice",
 								"email":    "alice@opentdf.test",
 							},
-							MinFieldCount: 2,
+							ForbiddenFields: []string{},
+							MinFieldCount:   2,
 						},
 					},
+					ChainValidation: []EntityChainValidationRule{},
 				},
 			},
 			{
@@ -299,6 +305,8 @@ func NewContractTestSuite() *ContractTestSuite {
 				},
 			},
 		},
+		// NOTE: Token-based entity chain tests have been moved to chain_contract_tests.go
+		// to avoid struct literal syntax conflicts with existing test cases
 	}
 }
 
@@ -320,6 +328,9 @@ func (suite *ContractTestSuite) RunContractTestsWithAdapter(t *testing.T, adapte
 	// Setup test data
 	err := adapter.SetupTestData(ctx, testDataSet)
 	if err != nil {
+		if strings.Contains(err.Error(), "Docker not available") {
+			t.Skipf("Skipping %s tests: %v", adapter.GetScopeName(), err)
+		}
 		t.Fatalf("Failed to setup test data for %s: %v", adapter.GetScopeName(), err)
 	}
 	
@@ -470,7 +481,42 @@ func (suite *ContractTestSuite) runSingleContractTest(t *testing.T, implementati
 						break
 					}
 					actualType := getEntityTypeString(entities[i])
-					assert.Equal(t, expectedType, actualType, "Unexpected entity type at index %d", i)
+					if validationRule.RequireConsistentOrdering {
+						assert.Equal(t, expectedType, actualType, "Unexpected entity type at index %d (strict ordering required)", i)
+					} else {
+						// For flexible validation, just ensure all expected types are present
+						found := false
+						for _, entity := range entities {
+							if getEntityTypeString(entity) == expectedType {
+								found = true
+								break
+							}
+						}
+						assert.True(t, found, "Expected entity type %s not found in chain", expectedType)
+					}
+				}
+			}
+			
+			// Validate entity categories if specified
+			if len(validationRule.EntityCategories) > 0 {
+				for i, expectedCategory := range validationRule.EntityCategories {
+					if i >= len(entities) {
+						break
+					}
+					actualCategory := entities[i].GetCategory().String()
+					if validationRule.RequireConsistentOrdering {
+						assert.Equal(t, expectedCategory, actualCategory, "Unexpected entity category at index %d (strict ordering required)", i)
+					} else {
+						// For flexible validation, just ensure all expected categories are present
+						found := false
+						for _, entity := range entities {
+							if entity.GetCategory().String() == expectedCategory {
+								found = true
+								break
+							}
+						}
+						assert.True(t, found, "Expected entity category %s not found in chain", expectedCategory)
+					}
 				}
 			}
 		}

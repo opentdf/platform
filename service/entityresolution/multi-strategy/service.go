@@ -46,6 +46,16 @@ func NewService(config types.MultiStrategyConfig) (*Service, error) {
 	return service, nil
 }
 
+// GetStrategyMatcher returns the strategy matcher for external access
+func (s *Service) GetStrategyMatcher() *StrategyMatcher {
+	return s.strategyMatcher
+}
+
+// GetConfig returns the configuration for external access
+func (s *Service) GetConfig() types.MultiStrategyConfig {
+	return s.config
+}
+
 // ResolveEntity resolves entity information using the configured strategies
 func (s *Service) ResolveEntity(ctx context.Context, entityID string, jwtClaims types.JWTClaims) (*types.EntityResult, error) {
 	// Get all matching strategies based on JWT claims

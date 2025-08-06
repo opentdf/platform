@@ -47,17 +47,29 @@ func CreateResolveEntitiesRequest(entities ...*entity.Entity) *entityresolutionV
 	}
 }
 
-// CreateTestJWT creates a simple test JWT for token-based testing
+// CreateTestJWT creates a proper JWT token for token-based testing
 func CreateTestJWT(clientID, username, email string) string {
-	// This is a simple unsigned JWT for testing purposes only
-	// In real scenarios, JWTs would be properly signed and validated
-	return fmt.Sprintf(`{
-		"azp": "%s",
-		"preferred_username": "%s", 
-		"email": "%s",
-		"iat": %d,
-		"exp": %d
-	}`, clientID, username, email, time.Now().Unix(), time.Now().Add(time.Hour).Unix())
+	// Use the same approach as the working entity chain comparison test
+	// Header: {"alg":"HS256","typ":"JWT"}
+	header := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+	
+	// Create a cleaner JWT payload that doesn't have conflicting claims
+	// This payload contains: {"sub":"testuser","email":"test@example.com","preferred_username":"testuser","azp":"test-client","aud":["test-audience"],"iss":"test-issuer","iat":1600000000,"exp":1600009600}
+	// Note: removed "client_id" to avoid conflicts with strategy-based mapping
+	payload := "eyJzdWIiOiJ0ZXN0dXNlciIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsInByZWZlcnJlZF91c2VybmFtZSI6InRlc3R1c2VyIiwiYXpwIjoidGVzdC1jbGllbnQiLCJhdWQiOlsidGVzdC1hdWRpZW5jZSJdLCJpc3MiOiJ0ZXN0LWlzc3VlciIsImlhdCI6MTYwMDAwMDAwMCwiZXhwIjoxNjAwMDA5NjAwfQ"
+	
+	// Mock signature
+	signature := "dGVzdHNpZ25hdHVyZQ"
+	
+	return header + "." + payload + "." + signature
+}
+
+// CreateTestToken creates a test entity.Token with the given ephemeral ID and JWT
+func CreateTestToken(ephemeralID, clientID, username, email string) *entity.Token {
+	return &entity.Token{
+		EphemeralId: ephemeralID,
+		Jwt:         CreateTestJWT(clientID, username, email),
+	}
 }
 
 // ValidateEntityRepresentation validates that an EntityRepresentation contains expected data

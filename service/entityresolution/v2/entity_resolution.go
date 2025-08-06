@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/entityresolution/v2/entityresolutionv2connect"
 	claims "github.com/opentdf/platform/service/entityresolution/claims/v2"
 	keycloak "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
+	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
@@ -21,10 +22,11 @@ type ERSConfig struct {
 }
 
 const (
-	KeycloakMode = "keycloak"
-	ClaimsMode   = "claims"
-	LDAPMode     = "ldap"
-	SQLMode      = "sql"
+	KeycloakMode      = "keycloak"
+	ClaimsMode        = "claims"
+	LDAPMode          = "ldap"
+	SQLMode           = "sql"
+	MultiStrategyMode = "multi-strategy"
 )
 
 type EntityResolution struct {
@@ -78,6 +80,10 @@ func NewRegistration() *serviceregistry.Service[entityresolutionv2connect.Entity
 					srp.Logger.Error("SQL mode is no longer supported in v2. Please use multi-strategy mode instead.")
 					log.Fatalf("SQL mode has been removed. Please use multi-strategy mode with SQL provider configuration.")
 					panic("unreachable")
+				case MultiStrategyMode:
+					multiSVC, multiHandler := multistrategyv2.RegisterMultiStrategyERSV2(srp.Config, srp.Logger)
+					multiSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: multiSVC}, multiHandler
 				default:
 					// Default to keycloak ERS with cache support
 					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)

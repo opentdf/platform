@@ -657,7 +657,7 @@ func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
 		p.Logger.WarnContext(ctx, "checkpoint KeyIndex.ListKeys failed", slog.Any("error", err))
 	} else {
 		for _, key := range k {
-			if key.Algorithm() == security.AlgorithmRSA2048 && key.IsLegacy() {
+			if key.Algorithm() == ocrypto.RSA2048Key && key.IsLegacy() {
 				kidsToCheck = append(kidsToCheck, key.ID())
 			}
 		}

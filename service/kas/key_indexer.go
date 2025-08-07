@@ -45,18 +45,18 @@ func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, l *logger.Logger) *KeyIn
 	}
 }
 
-func convertEnumToAlg(alg policy.Algorithm) string {
+func convertEnumToAlg(alg policy.Algorithm) ocrypto.KeyType {
 	switch alg {
 	case policy.Algorithm_ALGORITHM_RSA_2048:
-		return string(ocrypto.RSA2048Key)
+		return ocrypto.RSA2048Key
 	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return string(ocrypto.RSA4096Key)
+		return ocrypto.RSA4096Key
 	case policy.Algorithm_ALGORITHM_EC_P256:
-		return string(ocrypto.EC256Key)
+		return ocrypto.EC256Key
 	case policy.Algorithm_ALGORITHM_EC_P384:
-		return string(ocrypto.EC384Key)
+		return ocrypto.EC384Key
 	case policy.Algorithm_ALGORITHM_EC_P521:
-		return string(ocrypto.EC521Key)
+		return ocrypto.EC521Key
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:
@@ -167,7 +167,7 @@ func (p *KeyAdapter) ID() trust.KeyIdentifier {
 
 // Might need to convert this to a standard format
 func (p *KeyAdapter) Algorithm() ocrypto.KeyType {
-	return ocrypto.StrToKeyType(convertEnumToAlg(p.key.GetKey().GetKeyAlgorithm()))
+	return convertEnumToAlg(p.key.GetKey().GetKeyAlgorithm())
 }
 
 func (p *KeyAdapter) IsLegacy() bool {

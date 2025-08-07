@@ -74,8 +74,8 @@ func (d *DelegatingKeyService) FindKeyByID(ctx context.Context, id KeyIdentifier
 	return d.index.FindKeyByID(ctx, id)
 }
 
-func (d *DelegatingKeyService) ListKeys(ctx context.Context) ([]KeyDetails, error) {
-	return d.index.ListKeys(ctx)
+func (d *DelegatingKeyService) ListKeys(ctx context.Context, legacyOnly bool) ([]KeyDetails, error) {
+	return d.index.ListKeys(ctx, legacyOnly)
 }
 
 // Implementing KeyManager methods

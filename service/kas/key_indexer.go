@@ -61,10 +61,15 @@ func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 	}
 }
 
-func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, _ bool) (trust.KeyDetails, error) {
+func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, includeLegacy bool) (trust.KeyDetails, error) {
 	alg, err := convertAlgToEnum(algorithm)
 	if err != nil {
 		return nil, err
+	}
+
+	var legacy bool
+	if !includeLegacy {
+		legacy = false
 	}
 
 	req := &kasregistry.ListKeysRequest{
@@ -72,6 +77,7 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, _
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
 			KasUri: p.kasURI,
 		},
+		Legacy: &legacy,
 	}
 	resp, err := p.sdk.KeyAccessServerRegistry.ListKeys(ctx, req)
 	if err != nil {
@@ -119,11 +125,17 @@ func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (t
 	}, nil
 }
 
-func (p *KeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
+func (p *KeyIndexer) ListKeys(ctx context.Context, legacyOnly bool) ([]trust.KeyDetails, error) {
+	var legacy bool
+	if legacyOnly {
+		legacy = true
+	}
+
 	req := &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
 			KasUri: p.kasURI,
 		},
+		Legacy: &legacy,
 	}
 	resp, err := p.sdk.KeyAccessServerRegistry.ListKeys(ctx, req)
 	if err != nil {
@@ -151,7 +163,7 @@ func (p *KeyAdapter) Algorithm() string {
 }
 
 func (p *KeyAdapter) IsLegacy() bool {
-	return false
+	return p.key.GetKey().GetLegacy()
 }
 
 // This will point to the correct "manager"

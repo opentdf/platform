@@ -69,8 +69,8 @@ func (m *MockKeyIndex) FindKeyByID(ctx context.Context, id KeyIdentifier) (KeyDe
 	return &MockKeyDetails{}, args.Error(1)
 }
 
-func (m *MockKeyIndex) ListKeys(ctx context.Context) ([]KeyDetails, error) {
-	args := m.Called(ctx)
+func (m *MockKeyIndex) ListKeys(ctx context.Context, legacyOnly bool) ([]KeyDetails, error) {
+	args := m.Called(ctx, legacyOnly)
 	if a0, ok := args.Get(0).([]KeyDetails); ok {
 		return a0, args.Error(1)
 	}
@@ -218,11 +218,26 @@ func (suite *DelegatingKeyServiceTestSuite) TestFindKeyByID() {
 }
 
 func (suite *DelegatingKeyServiceTestSuite) TestListKeys() {
-	suite.mockIndex.On("ListKeys", mock.Anything).Return([]KeyDetails{&MockKeyDetails{}}, nil)
+	suite.mockIndex.On("ListKeys", mock.Anything, false).Return([]KeyDetails{&MockKeyDetails{}}, nil)
 
-	keys, err := suite.service.ListKeys(context.Background())
+	keys, err := suite.service.ListKeys(context.Background(), false)
 	suite.Require().NoError(err)
 	suite.Len(keys, 1)
+}
+
+func (suite *DelegatingKeyServiceTestSuite) TestListKeys_Legacy() {
+	legacyKey := &MockKeyDetails{}
+	legacyKey.On("IsLegacy").Return(true)
+
+	nonLegacyKey := &MockKeyDetails{}
+	nonLegacyKey.On("IsLegacy").Return(false)
+
+	suite.mockIndex.On("ListKeys", mock.Anything, true).Return([]KeyDetails{legacyKey}, nil)
+
+	keys, err := suite.service.ListKeys(context.Background(), true)
+	suite.Require().NoError(err)
+	suite.Len(keys, 1)
+	suite.True(keys[0].IsLegacy())
 }
 
 func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {

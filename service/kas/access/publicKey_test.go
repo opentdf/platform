@@ -118,9 +118,12 @@ func (m *MockSecurityProvider) FindKeyByID(_ context.Context, id trust.KeyIdenti
 	return nil, security.ErrCertNotFound
 }
 
-func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, error) {
+func (m *MockSecurityProvider) ListKeys(_ context.Context, legacyOnly bool) ([]trust.KeyDetails, error) {
 	var keys []trust.KeyDetails
 	for _, key := range m.keys {
+		if legacyOnly && !key.IsLegacy() {
+			continue
+		}
 		keys = append(keys, key)
 	}
 	return keys, nil

@@ -267,7 +267,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 }
 
 // ListKeys lists all available keys
-func (a *InProcessProvider) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
+func (a *InProcessProvider) ListKeys(ctx context.Context, legacyOnly bool) ([]trust.KeyDetails, error) {
 	// This is a limited implementation as CryptoProvider doesn't expose a list of all keys
 	var keys []trust.KeyDetails
 
@@ -275,6 +275,9 @@ func (a *InProcessProvider) ListKeys(ctx context.Context) ([]trust.KeyDetails, e
 	for _, alg := range []string{AlgorithmRSA2048, AlgorithmECP256R1} {
 		if kids, err := a.cryptoProvider.ListKIDsByAlgorithm(alg); err == nil && len(kids) > 0 {
 			for _, kid := range kids {
+				if legacyOnly && !a.legacyKeys[kid] {
+					continue
+				}
 				keys = append(keys, &KeyDetailsAdapter{
 					id:             trust.KeyIdentifier(kid),
 					algorithm:      alg,

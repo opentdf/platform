@@ -64,5 +64,7 @@ type KeyIndex interface {
 	FindKeyByID(ctx context.Context, id KeyIdentifier) (KeyDetails, error)
 
 	// ListKeys returns all available keys
-	ListKeys(ctx context.Context) ([]KeyDetails, error)
+	// If legacyOnly is true, only legacy keys will be returned.
+	// If false, all keys will be returned.
+	ListKeys(ctx context.Context, legacyOnly bool) ([]KeyDetails, error)
 }

@@ -73,6 +73,26 @@ func (s *KeyIndexTestSuite) TestKeyExportPublicKey_PKCSFormat() {
 	s.Equal(pubCtx.GetPem(), string(base64Pem))
 }
 
+func (s *KeyIndexTestSuite) TestKeyDetails_Legacy() {
+	legacyKey := &KeyAdapter{
+		key: &policy.KasKey{
+			KasId: "test-kas-id",
+			Key: &policy.AsymmetricKey{
+				Id:           "test-id-legacy",
+				KeyId:        "test-key-id-legacy",
+				KeyAlgorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+				KeyStatus:    policy.KeyStatus_KEY_STATUS_ACTIVE,
+				KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+				Legacy:       true, // Mark as legacy
+				PublicKeyCtx: &policy.PublicKeyCtx{
+					Pem: "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUF3SEw0TkVrOFpDa0JzNjZXQVpWagpIS3NseDRseWdmaXN3aW42RUx5OU9OczZLVDRYa1crRGxsdExtck14bHZkbzVRaDg1UmFZS01mWUdDTWtPM0dGCkFsK0JOeWFOM1kwa0N1QjNPU2ErTzdyMURhNVZteVVuaEJNbFBrYnVPY1Y0cjlLMUhOSGd3eDl2UFp3RjRpQW8KQStEY1VBcWFEeHlvYjV6enNGZ0hUNjJHLzdLdEtiZ2hYT1dCanRUYUl1ZHpsK2FaSjFPemY0U1RkOXhST2QrMQordVo2VG1ocmFEUm9zdDUrTTZUN0toL2lGWk40TTFUY2hwWXU1TDhKR2tVaG9YaEdZcHUrMGczSzlqYlh6RVh5CnpJU3VXN2d6SGRWYUxvcnBkQlNkRHpOWkNvTFVoL0U1T3d5TFZFQkNKaDZJVUtvdWJ5WHVucnIxQnJmK2tLbEsKeHdJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==",
+				},
+			},
+		},
+	}
+	s.True(legacyKey.IsLegacy())
+}
+
 func TestNewPlatformKeyIndexTestSuite(t *testing.T) {
 	suite.Run(t, new(KeyIndexTestSuite))
 }

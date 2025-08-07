@@ -105,6 +105,7 @@ func TestListLegacyKeys_KeyIndexPopulated(t *testing.T) {
 		&fakeKeyDetails{id: "id2", algorithm: "rsa:2048", legacy: false},
 		&fakeKeyDetails{id: "id3", algorithm: "ec:secp256r1", legacy: true},
 		&fakeKeyDetails{id: "id4", algorithm: "rsa:2048", legacy: true},
+		&fakeKeyDetails{id: "id5", algorithm: "ALGORITHM_RSA_2048", legacy: true},
 	}
 	delegator := trust.NewDelegatingKeyService(&fakeKeyIndex{
 		keys: fakeKeys,
@@ -114,7 +115,7 @@ func TestListLegacyKeys_KeyIndexPopulated(t *testing.T) {
 		KeyDelegator: delegator,
 	}
 	kids := p.listLegacyKeys(t.Context())
-	assert.ElementsMatch(t, []trust.KeyIdentifier{"id1", "id4"}, kids)
+	assert.ElementsMatch(t, []trust.KeyIdentifier{"id1", "id4", "id5"}, kids)
 }
 
 func TestListLegacyKeys_Empty(t *testing.T) {

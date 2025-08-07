@@ -166,8 +166,8 @@ func (p *KeyAdapter) ID() trust.KeyIdentifier {
 }
 
 // Might need to convert this to a standard format
-func (p *KeyAdapter) Algorithm() string {
-	return convertEnumToAlg(p.key.GetKey().GetKeyAlgorithm())
+func (p *KeyAdapter) Algorithm() ocrypto.KeyType {
+	return ocrypto.StrToKeyType(convertEnumToAlg(p.key.GetKey().GetKeyAlgorithm()))
 }
 
 func (p *KeyAdapter) IsLegacy() bool {

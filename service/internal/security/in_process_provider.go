@@ -116,7 +116,7 @@ type InProcessProvider struct {
 // KeyDetailsAdapter adapts CryptoProvider to KeyDetails
 type KeyDetailsAdapter struct {
 	id             trust.KeyIdentifier
-	algorithm      string
+	algorithm      ocrypto.KeyType
 	legacy         bool
 	cryptoProvider *StandardCrypto
 }
@@ -130,7 +130,7 @@ func (k *KeyDetailsAdapter) ID() trust.KeyIdentifier {
 	return k.id
 }
 
-func (k *KeyDetailsAdapter) Algorithm() string {
+func (k *KeyDetailsAdapter) Algorithm() ocrypto.KeyType {
 	return k.algorithm
 }
 
@@ -229,7 +229,7 @@ func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm stri
 		if legacy && a.legacyKeys[kid] || !legacy && a.defaultKeys[kid] {
 			return &KeyDetailsAdapter{
 				id:             trust.KeyIdentifier(kid),
-				algorithm:      algorithm,
+				algorithm:      ocrypto.StrToKeyType(algorithm),
 				cryptoProvider: a.cryptoProvider,
 				legacy:         legacy,
 			}, nil
@@ -247,7 +247,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 			if _, err := a.cryptoProvider.ECPublicKey(string(id)); err == nil {
 				return &KeyDetailsAdapter{
 					id:             id,
-					algorithm:      alg,
+					algorithm:      ocrypto.StrToKeyType(alg),
 					legacy:         a.legacyKeys[string(id)],
 					cryptoProvider: a.cryptoProvider,
 				}, nil
@@ -256,7 +256,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 			if _, err := a.cryptoProvider.RSAPublicKey(string(id)); err == nil {
 				return &KeyDetailsAdapter{
 					id:             id,
-					algorithm:      alg,
+					algorithm:      ocrypto.StrToKeyType(alg),
 					legacy:         a.legacyKeys[string(id)],
 					cryptoProvider: a.cryptoProvider,
 				}, nil
@@ -277,7 +277,7 @@ func (a *InProcessProvider) ListKeys(ctx context.Context) ([]trust.KeyDetails, e
 			for _, kid := range kids {
 				keys = append(keys, &KeyDetailsAdapter{
 					id:             trust.KeyIdentifier(kid),
-					algorithm:      alg,
+					algorithm:      ocrypto.StrToKeyType(alg),
 					cryptoProvider: a.cryptoProvider,
 					legacy:         a.legacyKeys[kid],
 				})

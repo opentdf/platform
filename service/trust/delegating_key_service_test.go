@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"testing"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/mock"
@@ -90,9 +91,9 @@ func (m *MockKeyDetails) ID() KeyIdentifier {
 	return KeyIdentifier("unknown")
 }
 
-func (m *MockKeyDetails) Algorithm() string {
+func (m *MockKeyDetails) Algorithm() ocrypto.KeyType {
 	args := m.Called()
-	return args.String(0)
+	return ocrypto.StrToKeyType(args.String(0))
 }
 
 func (m *MockKeyDetails) IsLegacy() bool {

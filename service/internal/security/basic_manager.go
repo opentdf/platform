@@ -69,13 +69,13 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 	}
 
 	switch keyDetails.Algorithm() {
-	case string(ocrypto.RSA2048Key), string(ocrypto.RSA4096Key):
+	case ocrypto.RSA2048Key, ocrypto.RSA4096Key:
 		plaintext, err := decrypter.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with RSA: %w", err)
 		}
 		return NewInProcessAESKey(plaintext), nil
-	case string(ocrypto.EC256Key), string(ocrypto.EC384Key), string(ocrypto.EC521Key):
+	case ocrypto.EC256Key, ocrypto.EC384Key, ocrypto.EC521Key:
 		ecPrivKey, err := ocrypto.ECPrivateKeyFromPem(privKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create EC private key from PEM: %w", err)

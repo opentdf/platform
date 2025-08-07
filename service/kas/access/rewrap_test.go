@@ -39,8 +39,10 @@ type fakeKeyDetails struct {
 }
 
 func (f *fakeKeyDetails) ID() trust.KeyIdentifier { return f.id }
-func (f *fakeKeyDetails) Algorithm() string       { return f.algorithm }
-func (f *fakeKeyDetails) IsLegacy() bool          { return f.legacy }
+func (f *fakeKeyDetails) Algorithm() ocrypto.KeyType {
+	return ocrypto.StrToKeyType(f.algorithm)
+}
+func (f *fakeKeyDetails) IsLegacy() bool { return f.legacy }
 func (f *fakeKeyDetails) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
 	return &trust.PrivateKey{}, nil
 }

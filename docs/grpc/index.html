@@ -613,10 +613,6 @@
             <ul>
               
                 <li>
-                  <a href="#entityresolution.v2.ActionsList"><span class="badge">M</span>ActionsList</a>
-                </li>
-              
-                <li>
                   <a href="#entityresolution.v2.CreateEntityChainsFromTokensRequest"><span class="badge">M</span>CreateEntityChainsFromTokensRequest</a>
                 </li>
               
@@ -625,15 +621,15 @@
                 </li>
               
                 <li>
+                  <a href="#entityresolution.v2.DirectEntitlement"><span class="badge">M</span>DirectEntitlement</a>
+                </li>
+              
+                <li>
                   <a href="#entityresolution.v2.EntityNotFoundError"><span class="badge">M</span>EntityNotFoundError</a>
                 </li>
               
                 <li>
                   <a href="#entityresolution.v2.EntityRepresentation"><span class="badge">M</span>EntityRepresentation</a>
-                </li>
-              
-                <li>
-                  <a href="#entityresolution.v2.EntityRepresentation.DirectEntitlementsEntry"><span class="badge">M</span>EntityRepresentation.DirectEntitlementsEntry</a>
                 </li>
               
                 <li>
@@ -5679,30 +5675,6 @@ down the hierarchical values instead of returning solely the value that is direc
       <p></p>
 
       
-        <h3 id="entityresolution.v2.ActionsList">ActionsList</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>actions</td>
-                  <td><a href="#string">string</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="entityresolution.v2.CreateEntityChainsFromTokensRequest">CreateEntityChainsFromTokensRequest</h3>
         <p>Create an entity chain for each token (JWT) in the request.</p>
 
@@ -5747,6 +5719,37 @@ down the hierarchical values instead of returning solely the value that is direc
                 <tr>
                   <td>entity_chains</td>
                   <td><a href="#entity.EntityChain">entity.EntityChain</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="entityresolution.v2.DirectEntitlement">DirectEntitlement</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>actions</td>
+                  <td><a href="#string">string</a></td>
                   <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
@@ -5829,40 +5832,9 @@ down the hierarchical values instead of returning solely the value that is direc
               
                 <tr>
                   <td>direct_entitlements</td>
-                  <td><a href="#entityresolution.v2.EntityRepresentation.DirectEntitlementsEntry">EntityRepresentation.DirectEntitlementsEntry</a></td>
+                  <td><a href="#entityresolution.v2.DirectEntitlement">DirectEntitlement</a></td>
                   <td>repeated</td>
                   <td><p>Map of FQN to array of actions </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="entityresolution.v2.EntityRepresentation.DirectEntitlementsEntry">EntityRepresentation.DirectEntitlementsEntry</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>value</td>
-                  <td><a href="#entityresolution.v2.ActionsList">ActionsList</a></td>
-                  <td></td>
-                  <td><p> </p></td>
                 </tr>
               
             </tbody>

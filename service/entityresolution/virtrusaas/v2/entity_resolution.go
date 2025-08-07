@@ -2,7 +2,6 @@ package virtrusaas
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -91,11 +90,31 @@ func EntityResolution(_ context.Context,
 			if originialID == "" {
 				originialID = ent.EntityIDPrefix + strconv.Itoa(idx)
 			}
+
+			directEntitlements := make([]*entityresolutionV2.DirectEntitlement, 0)
+			if pbstructDirectEntitlement, ok := entityStruct.Fields["direct_entitlements"]; ok {
+				for _, entitlement := range pbstructDirectEntitlement.GetListValue().GetValues() {
+					bytes, err := protojson.Marshal(entitlement)
+					if err != nil {
+						return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error marshaling direct entitlement: %w", err))
+					}
+
+					var directEntitlement entityresolutionV2.DirectEntitlement
+					if err := protojson.Unmarshal(bytes, &directEntitlement); err != nil {
+						return entityresolutionV2.ResolveEntitiesResponse{}, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("error unmarshaling direct entitlement: %w", err))
+					}
+					directEntitlements = append(directEntitlements, &directEntitlement)
+				}
+
+				delete(entityStruct.Fields, "direct_entitlements")
+			}
+
 			resolvedEntities = append(
 				resolvedEntities,
 				&entityresolutionV2.EntityRepresentation{
-					OriginalId:      originialID,
-					AdditionalProps: []*structpb.Struct{entityStruct},
+					OriginalId:         originialID,
+					AdditionalProps:    []*structpb.Struct{entityStruct},
+					DirectEntitlements: directEntitlements,
 				},
 			)
 		default:
@@ -121,6 +140,8 @@ func getEntitiesFromToken(jwtString string, resources []*authorizationv2.Resourc
 		return nil, fmt.Errorf("error converting to structpb.Struct: %w", err)
 	}
 
+	spbEntitlements := make([]*structpb.Value, 0)
+
 	for _, res := range resources {
 		for _, resFQN := range res.GetAttributeValues().GetFqns() {
 			// strip policy ID off resource attr value FQN
@@ -139,24 +160,31 @@ func getEntitiesFromToken(jwtString string, resources []*authorizationv2.Resourc
 				actions = []string{"read"}
 			}
 
-			directEntitlements := map[string][]string{
-				resFQN: actions,
+			entitlement := &entityresolutionV2.DirectEntitlement{
+				Fqn:     resFQN,
+				Actions: actions,
 			}
 
-			bytes, err := json.Marshal(directEntitlements)
+			bytes, err := protojson.Marshal(entitlement)
 			if err != nil {
-				return nil, fmt.Errorf("error marshaling direct entitlements: %w", err)
+				return nil, fmt.Errorf("error converting entitlement to JSON: %w", err)
 			}
 
-			var directEntitlementsStruct structpb.Struct
-			if err := protojson.Unmarshal(bytes, &directEntitlementsStruct); err != nil {
+			var entitlementStructPbValue structpb.Value
+			if err := protojson.Unmarshal(bytes, &entitlementStructPbValue); err != nil {
 				return nil, fmt.Errorf("error unmarshaling direct entitlements: %w", err)
 			}
 
-			structClaims.Fields["direct_entitlements"] = &structpb.Value{
-				Kind: &structpb.Value_StructValue{StructValue: &directEntitlementsStruct},
-			}
+			spbEntitlements = append(spbEntitlements, &entitlementStructPbValue)
 		}
+	}
+
+	structClaims.Fields["direct_entitlements"] = &structpb.Value{
+		Kind: &structpb.Value_ListValue{
+			ListValue: &structpb.ListValue{
+				Values: spbEntitlements,
+			},
+		},
 	}
 
 	// Wrap the struct in an *anypb.Any message

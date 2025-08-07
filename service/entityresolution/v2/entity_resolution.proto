@@ -8,8 +8,16 @@ import "google/protobuf/any.proto";
 import "google/protobuf/struct.proto";
 import "authorization/v2/authorization.proto";
 
-message ActionsList {
-  repeated string actions = 1;
+message DirectEntitlement {
+  string fqn = 1 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
+
+  repeated string actions = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {min_items: 1}
+  ];
 }
 
 message EntityRepresentation {
@@ -17,7 +25,7 @@ message EntityRepresentation {
   string original_id = 1;
   repeated google.protobuf.Struct additional_props = 2;
   // Map of FQN to array of actions
-  map<string, ActionsList> direct_entitlements = 3;
+  repeated DirectEntitlement direct_entitlements = 3;
 }
 
 // Resolve a set of entities to their representations.

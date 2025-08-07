@@ -209,16 +209,6 @@ components:
       required:
         - jwt
       additionalProperties: false
-    entityresolution.v2.ActionsList:
-      type: object
-      properties:
-        actions:
-          type: array
-          items:
-            type: string
-          title: actions
-      title: ActionsList
-      additionalProperties: false
     entityresolution.v2.CreateEntityChainsFromTokensRequest:
       type: object
       properties:
@@ -247,6 +237,25 @@ components:
             $ref: '#/components/schemas/entity.EntityChain'
           title: entity_chains
       title: CreateEntityChainsFromTokensResponse
+      additionalProperties: false
+    entityresolution.v2.DirectEntitlement:
+      type: object
+      properties:
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
+        actions:
+          type: array
+          items:
+            type: string
+            minItems: 1
+          title: actions
+          minItems: 1
+      title: DirectEntitlement
+      required:
+        - actions
       additionalProperties: false
     entityresolution.v2.EntityNotFoundError:
       type: object
@@ -281,24 +290,12 @@ components:
             $ref: '#/components/schemas/google.protobuf.Struct'
           title: additional_props
         directEntitlements:
-          type: object
+          type: array
+          items:
+            $ref: '#/components/schemas/entityresolution.v2.DirectEntitlement'
           title: direct_entitlements
-          additionalProperties:
-            title: value
-            $ref: '#/components/schemas/entityresolution.v2.ActionsList'
           description: Map of FQN to array of actions
       title: EntityRepresentation
-      additionalProperties: false
-    entityresolution.v2.EntityRepresentation.DirectEntitlementsEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          title: value
-          $ref: '#/components/schemas/entityresolution.v2.ActionsList'
-      title: DirectEntitlementsEntry
       additionalProperties: false
     entityresolution.v2.ResolveEntitiesRequest:
       type: object

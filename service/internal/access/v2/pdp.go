@@ -191,6 +191,17 @@ func (p *PolicyDecisionPoint) GetDecision(
 	}
 	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitled_value_fqns_to_actions", entitledFQNsToActions))
 
+	for _, directEntitlement := range entityRepresentation.GetDirectEntitlements() {
+		fqn := directEntitlement.GetFqn()
+		actionNames := directEntitlement.GetActions()
+
+		actions := make([]*policy.Action, 0, len(actionNames))
+		for _, name := range actionNames {
+			actions = append(actions, &policy.Action{Name: name})
+		}
+		entitledFQNsToActions[fqn] = actions
+	}
+
 	decision := &Decision{
 		Access:  true,
 		Results: make([]ResourceDecision, len(resources)),

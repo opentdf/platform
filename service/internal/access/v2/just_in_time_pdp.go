@@ -104,7 +104,7 @@ func (p *JustInTimePDP) GetDecision(
 
 	case *authzV2.EntityIdentifier_Token:
 		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, resources)
-		p.logger.Info("Virtru SaaS Entity Representations",
+		p.logger.Info("Virtru SaaS Entity Representations >>>>>>>>>>>>>>>>>",
 			slog.Any("representations", entityRepresentations),
 		)
 

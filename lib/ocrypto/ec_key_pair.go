@@ -63,6 +63,8 @@ func StrToKeyType(kt string) KeyType {
 		return EC384Key
 	case string(EC521Key):
 		return EC521Key
+	case string(UnsupportedKeyType):
+		fallthrough
 	default:
 		return UnsupportedKeyType
 	}

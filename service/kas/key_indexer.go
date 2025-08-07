@@ -44,6 +44,23 @@ func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, l *logger.Logger) *KeyIn
 	}
 }
 
+func convertEnumToAlg(alg policy.Algorithm) string {
+	switch alg {
+	case policy.Algorithm_ALGORITHM_RSA_2048:
+		return "rsa:2048"
+	case policy.Algorithm_ALGORITHM_RSA_4096:
+		return "rsa:4096"
+	case policy.Algorithm_ALGORITHM_EC_P256:
+		return "ec:secp256r1"
+	case policy.Algorithm_ALGORITHM_EC_P384:
+		return "ec:secp384r1"
+	case policy.Algorithm_ALGORITHM_EC_P521:
+		return "ec:secp521r1"
+	default:
+		return ""
+	}
+}
+
 func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 	switch alg {
 	case "rsa:2048":
@@ -147,7 +164,7 @@ func (p *KeyAdapter) ID() trust.KeyIdentifier {
 
 // Might need to convert this to a standard format
 func (p *KeyAdapter) Algorithm() string {
-	return p.key.GetKey().GetKeyAlgorithm().String()
+	return convertEnumToAlg(p.key.GetKey().GetKeyAlgorithm())
 }
 
 func (p *KeyAdapter) IsLegacy() bool {

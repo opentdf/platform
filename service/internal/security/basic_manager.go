@@ -91,7 +91,7 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 		return NewInProcessAESKey(plaintext), nil
 	}
 
-	return nil, fmt.Errorf("unsupported algorithm for kid: %s", keyDetails.ID())
+	return nil, fmt.Errorf("unsupported algorithm: %s", keyDetails.Algorithm())
 }
 
 func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {

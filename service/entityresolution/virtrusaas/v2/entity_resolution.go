@@ -22,7 +22,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-var acmClient *AcmClient = NewAcmClient()
+var acmClient = NewAcmClient()
 
 type EntityResolutionServiceV2 struct {
 	entityresolutionV2.UnimplementedEntityResolutionServiceServer
@@ -53,7 +53,7 @@ func (s EntityResolutionServiceV2) CreateEntityChainsFromTokens(ctx context.Cont
 func CreateEntityChainsFromTokens(
 	_ context.Context,
 	req *entityresolutionV2.CreateEntityChainsFromTokensRequest,
-	logger *logger.Logger,
+	_ *logger.Logger,
 ) (entityresolutionV2.CreateEntityChainsFromTokensResponse, error) {
 	entityChains := []*entity.EntityChain{}
 	resources := req.GetResources()
@@ -71,7 +71,8 @@ func CreateEntityChainsFromTokens(
 }
 
 func EntityResolution(_ context.Context,
-	req *entityresolutionV2.ResolveEntitiesRequest, logger *logger.Logger,
+	req *entityresolutionV2.ResolveEntitiesRequest,
+	_ *logger.Logger,
 ) (entityresolutionV2.ResolveEntitiesResponse, error) {
 	var resolvedEntities []*entityresolutionV2.EntityRepresentation
 
@@ -93,7 +94,7 @@ func EntityResolution(_ context.Context,
 			}
 
 			directEntitlements := make([]*entityresolutionV2.DirectEntitlement, 0)
-			if pbstructDirectEntitlement, ok := entityStruct.Fields["direct_entitlements"]; ok {
+			if pbstructDirectEntitlement, ok := entityStruct.GetFields()["direct_entitlements"]; ok {
 				for _, entitlement := range pbstructDirectEntitlement.GetListValue().GetValues() {
 					bytes, err := protojson.Marshal(entitlement)
 					if err != nil {
@@ -107,7 +108,7 @@ func EntityResolution(_ context.Context,
 					directEntitlements = append(directEntitlements, &directEntitlement)
 				}
 
-				delete(entityStruct.Fields, "direct_entitlements")
+				delete(entityStruct.GetFields(), "direct_entitlements")
 			}
 
 			resolvedEntities = append(
@@ -151,7 +152,7 @@ func getEntitiesFromToken(jwtString string, resources []*authorizationv2.Resourc
 			// validate access with call to ACM GET /policies/{policyID}/contract with token as auth
 			resp, err := acmClient.GetContract(policyID, jwtString)
 			if err != nil {
-				slog.Debug("error getting contract for policy ID", slog.String("policyID", policyID), slog.Any("error", err))
+				slog.Debug("error getting contract for policy ID", slog.String("policy_id", policyID), slog.Any("error", err))
 				continue // skip this resource if we can't get the contract b/c entity doesn't have access
 			}
 

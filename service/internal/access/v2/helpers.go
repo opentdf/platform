@@ -251,7 +251,7 @@ func getResourceDecisionableAttributes(
 			if err != nil {
 				return nil, fmt.Errorf("resource attribute value FQN not found in memory and no definition found [%s]: %w", attrValueFQN, err)
 			}
-			
+
 			// Extract the value part from the FQN
 			// FQN format: https://<namespace>/attr/<name>/value/<value>
 			lastSlashIdx := strings.LastIndex(attrValueFQN, "/")
@@ -259,13 +259,13 @@ func getResourceDecisionableAttributes(
 			if lastSlashIdx != -1 {
 				valueStr = attrValueFQN[lastSlashIdx+1:]
 			}
-			
+
 			// Create synthetic AttributeAndValue for adhoc attribute
 			syntheticValue := &policy.Value{
 				Fqn:   attrValueFQN,
 				Value: valueStr,
 			}
-			
+
 			attributeAndValue = &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
 				Value:     syntheticValue,
 				Attribute: parentDefinition,

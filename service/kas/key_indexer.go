@@ -56,6 +56,8 @@ func convertEnumToAlg(alg policy.Algorithm) string {
 		return "ec:secp384r1"
 	case policy.Algorithm_ALGORITHM_EC_P521:
 		return "ec:secp521r1"
+	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
+		fallthrough
 	default:
 		return ""
 	}

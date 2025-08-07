@@ -655,6 +655,10 @@ components:
           title: provider_config
           description: Optional Configuration for the key provider
           $ref: '#/components/schemas/policy.KeyProviderConfig'
+        legacy:
+          type: boolean
+          title: legacy
+          description: Optional Indicates a key may be found in TDFs without key identifiers
         metadata:
           title: metadata
           description: Common metadata fields

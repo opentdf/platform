@@ -582,6 +582,8 @@ message AsymmetricKey {
   PrivateKeyCtx private_key_ctx = 7; // Specific structure based on key provider implementation
   // Optional
   KeyProviderConfig provider_config = 8; // Configuration for the key provider
+  // Optional
+  bool legacy = 9; // Indicates a key may be found in TDFs without key identifiers
 
   // Common metadata fields
   common.Metadata metadata = 100;

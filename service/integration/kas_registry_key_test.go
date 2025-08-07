@@ -159,6 +159,141 @@ func (s *KasRegistryKeySuite) Test_CreateKasKey_Success() {
 	s.Require().NoError(err)
 }
 
+func (s *KasRegistryKeySuite) Test_CreateKasKey_Legacy_Success() {
+	// Create KAS server
+	req := kasregistry.CreateKeyRequest{
+		KasId:        s.kasKeys[0].KeyAccessServerID,
+		KeyId:        "legacy_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+		Legacy: true,
+	}
+	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.True(resp.GetKasKey().GetKey().GetLegacy())
+
+	_, err = s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
+		Id:     resp.GetKasKey().GetKey().GetId(),
+		KasUri: resp.GetKasKey().GetKasUri(),
+		Kid:    resp.GetKasKey().GetKey().GetKeyId(),
+	})
+	s.Require().NoError(err)
+}
+
+func (s *KasRegistryKeySuite) Test_CreateKasKey_Legacy_MultipleOnSameKas_Fail() {
+	// Create KAS server
+	req := kasregistry.CreateKeyRequest{
+		KasId:        s.kasKeys[0].KeyAccessServerID,
+		KeyId:        "legacy_key_id_1",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+		Legacy: true,
+	}
+	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.True(resp.GetKasKey().GetKey().GetLegacy())
+
+	defer func() {
+		_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
+			Id:     resp.GetKasKey().GetKey().GetId(),
+			KasUri: resp.GetKasKey().GetKasUri(),
+			Kid:    resp.GetKasKey().GetKey().GetKeyId(),
+		})
+		s.Require().NoError(err)
+	}()
+
+	req2 := kasregistry.CreateKeyRequest{
+		KasId:        s.kasKeys[0].KeyAccessServerID,
+		KeyId:        "legacy_key_id_2",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+		Legacy: true,
+	}
+	_, err = s.db.PolicyClient.CreateKey(s.ctx, &req2)
+	s.Require().Error(err)
+	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
+}
+
+func (s *KasRegistryKeySuite) Test_CreateKasKey_Legacy_MultipleOnDifferentKas_Success() {
+	// Create KAS server
+	req := kasregistry.CreateKeyRequest{
+		KasId:        s.kasKeys[0].KeyAccessServerID,
+		KeyId:        "legacy_key_id_1",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+		Legacy: true,
+	}
+	resp, err := s.db.PolicyClient.CreateKey(s.ctx, &req)
+	s.Require().NoError(err)
+	s.NotNil(resp)
+	s.True(resp.GetKasKey().GetKey().GetLegacy())
+
+	defer func() {
+		_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, resp.GetKasKey(), &unsafe.UnsafeDeleteKasKeyRequest{
+			Id:     resp.GetKasKey().GetKey().GetId(),
+			KasUri: resp.GetKasKey().GetKasUri(),
+			Kid:    resp.GetKasKey().GetKey().GetKeyId(),
+		})
+		s.Require().NoError(err)
+	}()
+
+	// Create a new KAS server
+	kasReq := kasregistry.CreateKeyAccessServerRequest{
+		Name: "test_kas_legacy_key",
+		Uri:  "https://test-kas-legacy-key.opentdf.io",
+	}
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasReq)
+	s.Require().NoError(err)
+	s.NotNil(kas)
+
+	kasIDs := []string{kas.GetId()}
+	keyIDs := []string{}
+
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	req2 := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "legacy_key_id_2",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+		Legacy: true,
+	}
+	resp2, err := s.db.PolicyClient.CreateKey(s.ctx, &req2)
+	s.Require().NoError(err)
+	s.NotNil(resp2)
+	s.True(resp2.GetKasKey().GetKey().GetLegacy())
+	keyIDs = append(keyIDs, resp2.GetKasKey().GetKey().GetId())
+}
+
 func (s *KasRegistryKeySuite) Test_GetKasKey_InvalidId_Fail() {
 	resp, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
 		Id: "invalid-uuid",
@@ -402,6 +537,113 @@ func (s *KasRegistryKeySuite) Test_ListKeys_KasID_Limit_Success() {
 	s.GreaterOrEqual(int32(2), resp.GetPagination().GetTotal())
 	s.Equal(int32(0), resp.GetPagination().GetNextOffset())
 	s.Equal(int32(0), resp.GetPagination().GetCurrentOffset())
+}
+
+func (s *KasRegistryKeySuite) Test_ListKeys_Legacy_Success() {
+	kasIDs := make([]string, 0)
+	keyIDs := make([]string, 0)
+
+	defer func() {
+		s.cleanupKeys(keyIDs, kasIDs)
+	}()
+
+	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, &kasregistry.CreateKeyAccessServerRequest{
+		Uri:  "https://legacy-kas.opentdf.io",
+		Name: "Legacy KAS",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(kas)
+	kasIDs = append(kasIDs, kas.GetId())
+
+	legacyReq := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "legacy_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+		Legacy: true,
+	}
+	legacyResp, err := s.db.PolicyClient.CreateKey(s.ctx, &legacyReq)
+	s.Require().NoError(err)
+	s.NotNil(legacyResp)
+	s.True(legacyResp.GetKasKey().GetKey().GetLegacy())
+	keyIDs = append(keyIDs, legacyResp.GetKasKey().GetKey().GetId())
+
+	nonLegacyReq := kasregistry.CreateKeyRequest{
+		KasId:        kas.GetId(),
+		KeyId:        "non_legacy_key_id",
+		KeyAlgorithm: policy.Algorithm_ALGORITHM_EC_P256,
+		KeyMode:      policy.KeyMode_KEY_MODE_CONFIG_ROOT_KEY,
+		PublicKeyCtx: &policy.PublicKeyCtx{Pem: keyCtx},
+		PrivateKeyCtx: &policy.PrivateKeyCtx{
+			WrappedKey: keyCtx,
+			KeyId:      validKeyID1,
+		},
+	}
+	nonLegacyResp, err := s.db.PolicyClient.CreateKey(s.ctx, &nonLegacyReq)
+	s.Require().NoError(err)
+	s.Require().NotNil(nonLegacyResp)
+	s.Require().False(nonLegacyResp.GetKasKey().GetKey().GetLegacy())
+	keyIDs = append(keyIDs, nonLegacyResp.GetKasKey().GetKey().GetId())
+
+	// List legacy keys
+	legacyFilter := true
+	listResp, err := s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		Legacy: &legacyFilter,
+		KasFilter: &kasregistry.ListKeysRequest_KasId{
+			KasId: kas.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listResp)
+	s.Len(listResp.GetKasKeys(), 1)
+	s.True(listResp.GetKasKeys()[0].GetKey().GetLegacy())
+	s.Equal(legacyResp.GetKasKey().GetKey().GetId(), listResp.GetKasKeys()[0].GetKey().GetId())
+
+	// Check that legacy key is included with non-legacy keys when filter is nil
+	listResp, err = s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		KasFilter: &kasregistry.ListKeysRequest_KasId{
+			KasId: kas.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listResp)
+	s.Len(listResp.GetKasKeys(), 2)
+	foundLegacy := false
+	foundNonLegacy := false
+	for _, key := range listResp.GetKasKeys() {
+		if key.GetKey().GetLegacy() {
+			s.Equal("legacy_key_id", key.GetKey().GetKeyId())
+			foundLegacy = true
+		} else {
+			foundNonLegacy = true
+		}
+	}
+	s.True(foundNonLegacy)
+	s.True(foundLegacy)
+
+	legacyFilter = false
+	listResp, err = s.db.PolicyClient.ListKeys(s.ctx, &kasregistry.ListKeysRequest{
+		Legacy: &legacyFilter,
+		KasFilter: &kasregistry.ListKeysRequest_KasId{
+			KasId: kas.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(listResp)
+	s.Len(listResp.GetKasKeys(), 1)
+
+	foundLegacy = false
+	for _, key := range listResp.GetKasKeys() {
+		if key.GetKey().GetLegacy() {
+			foundLegacy = true
+		}
+	}
+	s.False(foundLegacy)
 }
 
 func (s *KasRegistryKeySuite) Test_RotateKey_Multiple_Attributes_Values_Namespaces_Success() {

@@ -3,6 +3,7 @@ package virtrusaas
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -150,7 +151,8 @@ func getEntitiesFromToken(jwtString string, resources []*authorizationv2.Resourc
 			// validate access with call to ACM GET /policies/{policyID}/contract with token as auth
 			resp, err := acmClient.GetContract(policyID, jwtString)
 			if err != nil {
-				return nil, fmt.Errorf("error getting contract for policy ID %s: %w", policyID, err)
+				slog.Debug("error getting contract for policy ID", slog.String("policyID", policyID), slog.Any("error", err))
+				continue // skip this resource if we can't get the contract b/c entity doesn't have access
 			}
 
 			var actions []string

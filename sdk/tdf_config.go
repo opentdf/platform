@@ -65,8 +65,6 @@ type TDFConfig struct {
 	defaultSegmentSize         int64
 	enableEncryption           bool
 	tdfFormat                  TDFFormat
-	tdfPublicKey               string // TODO: Remove it
-	tdfPrivateKey              string
 	metaData                   string
 	mimeType                   string
 	integrityAlgorithm         IntegrityAlgorithm
@@ -101,14 +99,6 @@ func NewTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 			return nil, err
 		}
 	}
-
-	publicKey, privateKey, err := generateKeyPair(c.keyType)
-	if err != nil {
-		return nil, err
-	}
-
-	c.tdfPrivateKey = privateKey
-	c.tdfPublicKey = publicKey
 
 	return c, nil
 }

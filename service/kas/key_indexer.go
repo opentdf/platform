@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/sdk"
@@ -47,15 +48,15 @@ func NewPlatformKeyIndexer(sdk *sdk.SDK, kasURI string, l *logger.Logger) *KeyIn
 func convertEnumToAlg(alg policy.Algorithm) string {
 	switch alg {
 	case policy.Algorithm_ALGORITHM_RSA_2048:
-		return "rsa:2048"
+		return string(ocrypto.RSA2048Key)
 	case policy.Algorithm_ALGORITHM_RSA_4096:
-		return "rsa:4096"
+		return string(ocrypto.RSA4096Key)
 	case policy.Algorithm_ALGORITHM_EC_P256:
-		return "ec:secp256r1"
+		return string(ocrypto.EC256Key)
 	case policy.Algorithm_ALGORITHM_EC_P384:
-		return "ec:secp384r1"
+		return string(ocrypto.EC384Key)
 	case policy.Algorithm_ALGORITHM_EC_P521:
-		return "ec:secp521r1"
+		return string(ocrypto.EC521Key)
 	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
 		fallthrough
 	default:
@@ -65,15 +66,15 @@ func convertEnumToAlg(alg policy.Algorithm) string {
 
 func convertAlgToEnum(alg string) (policy.Algorithm, error) {
 	switch alg {
-	case "rsa:2048":
+	case string(ocrypto.RSA2048Key):
 		return policy.Algorithm_ALGORITHM_RSA_2048, nil
-	case "rsa:4096":
+	case string(ocrypto.RSA4096Key):
 		return policy.Algorithm_ALGORITHM_RSA_4096, nil
-	case "ec:secp256r1":
+	case string(ocrypto.EC256Key):
 		return policy.Algorithm_ALGORITHM_EC_P256, nil
-	case "ec:secp384r1":
+	case string(ocrypto.EC384Key):
 		return policy.Algorithm_ALGORITHM_EC_P384, nil
-	case "ec:secp521r1":
+	case string(ocrypto.EC521Key):
 		return policy.Algorithm_ALGORITHM_EC_P521, nil
 	default:
 		return policy.Algorithm_ALGORITHM_UNSPECIFIED, fmt.Errorf("unsupported algorithm: %s", alg)

@@ -50,23 +50,6 @@ type KeyPair interface {
 	GetKeyType() KeyType
 }
 
-func StrToKeyType(kt string) KeyType {
-	switch kt {
-	case string(RSA2048Key):
-		return RSA2048Key
-	case string(RSA4096Key):
-		return RSA4096Key
-	case string(EC256Key):
-		return EC256Key
-	case string(EC384Key):
-		return EC384Key
-	case string(EC521Key):
-		return EC521Key
-	default:
-		return KeyType(kt)
-	}
-}
-
 func NewKeyPair(kt KeyType) (KeyPair, error) {
 	switch kt {
 	case RSA2048Key, RSA4096Key:

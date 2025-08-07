@@ -47,7 +47,7 @@ func (m *MockKeyDetails) ID() trust.KeyIdentifier {
 }
 
 func (m *MockKeyDetails) Algorithm() ocrypto.KeyType {
-	return ocrypto.StrToKeyType(m.algorithm)
+	return ocrypto.KeyType(m.algorithm)
 }
 
 func (m *MockKeyDetails) IsLegacy() bool {

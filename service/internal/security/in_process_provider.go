@@ -229,7 +229,7 @@ func (a *InProcessProvider) FindKeyByAlgorithm(_ context.Context, algorithm stri
 		if legacy && a.legacyKeys[kid] || !legacy && a.defaultKeys[kid] {
 			return &KeyDetailsAdapter{
 				id:             trust.KeyIdentifier(kid),
-				algorithm:      ocrypto.StrToKeyType(algorithm),
+				algorithm:      ocrypto.KeyType(algorithm),
 				cryptoProvider: a.cryptoProvider,
 				legacy:         legacy,
 			}, nil
@@ -247,7 +247,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 			if _, err := a.cryptoProvider.ECPublicKey(string(id)); err == nil {
 				return &KeyDetailsAdapter{
 					id:             id,
-					algorithm:      ocrypto.StrToKeyType(alg),
+					algorithm:      ocrypto.KeyType(alg),
 					legacy:         a.legacyKeys[string(id)],
 					cryptoProvider: a.cryptoProvider,
 				}, nil
@@ -256,7 +256,7 @@ func (a *InProcessProvider) FindKeyByID(_ context.Context, id trust.KeyIdentifie
 			if _, err := a.cryptoProvider.RSAPublicKey(string(id)); err == nil {
 				return &KeyDetailsAdapter{
 					id:             id,
-					algorithm:      ocrypto.StrToKeyType(alg),
+					algorithm:      ocrypto.KeyType(alg),
 					legacy:         a.legacyKeys[string(id)],
 					cryptoProvider: a.cryptoProvider,
 				}, nil
@@ -277,7 +277,7 @@ func (a *InProcessProvider) ListKeys(ctx context.Context) ([]trust.KeyDetails, e
 			for _, kid := range kids {
 				keys = append(keys, &KeyDetailsAdapter{
 					id:             trust.KeyIdentifier(kid),
-					algorithm:      ocrypto.StrToKeyType(alg),
+					algorithm:      ocrypto.KeyType(alg),
 					cryptoProvider: a.cryptoProvider,
 					legacy:         a.legacyKeys[kid],
 				})

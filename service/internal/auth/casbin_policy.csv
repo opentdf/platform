@@ -19,24 +19,24 @@ p,	role:admin,		*,					*,			allow
 
 ## Role: Standard
 ## gRPC routes
-p,	role:unknown,		policy.*,																read,			allow
-p,	role:unknown,		kasregistry.*,													read,			allow
-p,	role:unknown,      kas.AccessService/Rewrap, 			           *,			allow
-p,  role:unknown,      authorization.AuthorizationService/GetDecisions,        read, allow
-p,  role:unknown,      authorization.AuthorizationService/GetDecisionsByToken, read, allow
-p,  role:unknown,      authorization.v2.AuthorizationService/GetDecision, read, allow
-p,  role:unknown,      authorization.v2.AuthorizationService/GetDecisionMultiResource, read, allow
-p,  role:unknown,      authorization.v2.AuthorizationService/GetDecisionBulk, read, allow
+p,	role:standard,		policy.*,																read,			allow
+p,	role:standard,		kasregistry.*,													read,			allow
+p,	role:standard,      kas.AccessService/Rewrap, 			           *,			allow
+p,  role:standard,      authorization.AuthorizationService/GetDecisions,        read, allow
+p,  role:standard,      authorization.AuthorizationService/GetDecisionsByToken, read, allow
+p,  role:standard,      authorization.v2.AuthorizationService/GetDecision, read, allow
+p,  role:standard,      authorization.v2.AuthorizationService/GetDecisionMultiResource, read, allow
+p,  role:standard,      authorization.v2.AuthorizationService/GetDecisionBulk, read, allow
 
 ## HTTP routes
-p,	role:unknown,		/attributes*,														read,			allow
-p,	role:unknown,		/namespaces*,														read,			allow
-p,	role:unknown,		/subject-mappings*,											read,			allow
-p,	role:unknown,		/resource-mappings*,										read,			allow
-p,	role:unknown,		/key-access-servers*,										read,			allow
-p,	role:unknown,		/kas/v2/rewrap,													write,		allow
-p,  role:unknown,      /v1/authorization,                                                              write,          allow
-p,  role:unknown,      /v1/token/authorization,                                                        write,          allow
+p,	role:standard,		/attributes*,														read,			allow
+p,	role:standard,		/namespaces*,														read,			allow
+p,	role:standard,		/subject-mappings*,											read,			allow
+p,	role:standard,		/resource-mappings*,										read,			allow
+p,	role:standard,		/key-access-servers*,										read,			allow
+p,	role:standard,		/kas/v2/rewrap,													write,		allow
+p,  role:standard,      /v1/authorization,                                                              write,          allow
+p,  role:standard,      /v1/token/authorization,                                                        write,          allow
 
 # Public routes
 ## gRPC routes

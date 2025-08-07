@@ -382,7 +382,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		mockDetails.On("ExportPrivateKey").Return(&trust.PrivateKey{WrappingKeyID: trust.KeyIdentifier(mockDetails.MPrivateKey.GetKeyId()), WrappedKey: mockDetails.MPrivateKey.GetWrappedKey()}, nil) // Ensure this mock is correctly set up
 		_, err = bm.Decrypt(t.Context(), mockDetails, []byte("ct"), nil)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unsupported algorithm: unknown-algo")
+		assert.Contains(t, err.Error(), "unsupported algorithm for kid: unsupported-algo-decrypt")
 	})
 }
 

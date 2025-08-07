@@ -42,7 +42,7 @@ func (s *KeyIndexTestSuite) TearDownTest() {}
 
 func (s *KeyIndexTestSuite) TestKeyDetails() {
 	s.Equal("test-key-id", string(s.rsaKey.ID()))
-	s.Equal("rsa:2048", s.rsaKey.Algorithm())
+	s.Equal(ocrypto.RSA2048Key, s.rsaKey.Algorithm())
 	s.False(s.rsaKey.IsLegacy())
 	s.Equal("openbao", s.rsaKey.System())
 	s.Equal("config", string(s.rsaKey.ProviderConfig().GetConfigJson()))

@@ -10,7 +10,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"math/big"
-	"net/url"
 	"os"
 	"testing"
 
@@ -181,13 +180,10 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 		certData:  "-----BEGIN CERTIFICATE-----\nMIIBcTCCARegAwIBAgIUTxgZ1CzWBXgysrV4bKVGw+1iBTwwCgYIKoZIzj0EAwIw\nDjEMMAoGA1UEAwwDa2FzMB4XDTIzMDYxMzAwMDAwMFoXDTI4MDYxMzAwMDAwMFow\nDjEMMAoGA1UEAwwDa2FzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEn6WYEj3s\nxP/IR0W1O5TYHKPyhceFki4Y/9YYeK/D3QkYQrv+DkKXPKkR/MQS6uzmHZY9NS8X\nbcwJ4cGpR6l4FaNmMGQwHQYDVR0OBBYEFFQ8TIybvYhMKH0E+lOVDS0F7r9PMB8G\nA1UdIwQYMBaAFFQ8TIybvYhMKH0E+lOVDS0F7r9PMA8GA1UdEwEB/wQFMAMBAf8w\nEQYDVR0gBAowCDAGBgRVHSAAMAoGCCqGSM49BAMCA0gAMEUCIQD5adIeKGCpbI1E\nJr3jVwQNJL6+bLGXRORhIeKjpvd3egIgRZ7qwTpjZwrkXpDS2i1ODQjj2Ap9ZeMN\nzuDaXdOl90E=\n-----END CERTIFICATE-----",
 	})
 
-	kasURI := urlHost(t)
-
 	// Create Provider with the mock security provider
 	delegator := trust.NewDelegatingKeyService(mockProvider, logger.CreateTestLogger(), nil)
 	delegator.RegisterKeyManager(mockProvider.Name(), func(_ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) { return mockProvider, nil })
 	kas := Provider{
-		URI:          *kasURI,
 		KeyDelegator: delegator,
 		KASConfig: KASConfig{
 			Keyring: []CurrentKeyFor{
@@ -345,15 +341,12 @@ func TestError(t *testing.T) {
 	assert.Equal(t, "certificate encode error", output)
 }
 
-const hostname = "localhost"
-
 func TestStandardCertificateHandlerEmpty(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 	}
 	c := mustNewCryptoProvider(t, configStandard)
 	defer c.Close()
-	kasURI := urlHost(t)
 
 	inProcess := security.NewSecurityProviderAdapter(c, nil, nil)
 
@@ -363,7 +356,6 @@ func TestStandardCertificateHandlerEmpty(t *testing.T) {
 	})
 
 	kas := Provider{
-		URI:          *kasURI,
 		KeyDelegator: delegator,
 		Logger:       logger.CreateTestLogger(),
 		Tracer:       noop.NewTracerProvider().Tracer(""),
@@ -380,12 +372,3 @@ func mustNewCryptoProvider(t *testing.T, configStandard security.Config) *securi
 	require.NotNil(t, c)
 	return c
 }
-
-func urlHost(t *testing.T) *url.URL {
-	url, err := url.Parse("https://" + hostname + ":5000")
-	require.NoError(t, err)
-	return url
-}
-
-// Original tests kept for backward compatibility
-// They test the direct CryptoProvider usage path

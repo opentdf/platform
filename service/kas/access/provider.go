@@ -21,7 +21,6 @@ const (
 
 type Provider struct {
 	kaspb.AccessServiceServer
-	URI          url.URL `json:"uri"`
 	SDK          *otdf.SDK
 	AttributeSvc *url.URL
 	KeyDelegator *trust.DelegatingKeyService
@@ -54,8 +53,13 @@ type KASConfig struct {
 }
 
 type Preview struct {
-	ECTDFEnabled  bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
-	KeyManagement bool `mapstructure:"key_management" json:"key_management"`
+	ECTDFEnabled  bool          `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	KeyManagement KeyManagement `mapstructure:"key_management" json:"key_management"`
+}
+
+type KeyManagement struct {
+	Enabled          bool   `mapstructure:"enabled" json:"enabled"`
+	RegisteredKasURI string `mapstructure:"registered_kas_uri" json:"registered_kas_uri"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.

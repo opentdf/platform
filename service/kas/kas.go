@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/url"
-	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
@@ -45,53 +43,14 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 			GRPCGatewayFunc: kaspb.RegisterAccessServiceHandler,
 			OnConfigUpdate:  onConfigUpdate,
 			RegisterFunc: func(srp serviceregistry.RegistrationParams) (kasconnect.AccessServiceHandler, serviceregistry.HandlerServer) {
-				// Determine KAS URI based on public hostname and server's listening port/scheme
-				kasHost := srp.OTDF.PublicHostname
-				serverAddr := srp.OTDF.HTTPServer.Addr
-
-				// Extract port from serverAddr
-				// serverAddr is typically in "host:port" or ":port" format
-				_, port, err := net.SplitHostPort(serverAddr)
-				if err != nil {
-					// If SplitHostPort fails, it might be because serverAddr is just ":port"
-					if strings.HasPrefix(serverAddr, ":") {
-						port = strings.TrimPrefix(serverAddr, ":")
-					} else {
-						// Or if serverAddr is invalid or unexpected format
-						panic(fmt.Errorf("could not extract port from KAS server address '%s': %w", serverAddr, err))
-					}
-				}
-
-				if kasHost == "" {
-					// Fallback if PublicHostname is not configured
-					hostFromServerAddr, _, _ := net.SplitHostPort(serverAddr) // Error already handled for port
-					if hostFromServerAddr != "" && hostFromServerAddr != "0.0.0.0" {
-						kasHost = hostFromServerAddr
-					} else {
-						// Default to localhost if listening on all interfaces or host is not specified in Addr
-						kasHost = "localhost"
-					}
-				}
-
-				scheme := "http"
-				if srp.OTDF.HTTPServer.TLSConfig != nil {
-					scheme = "https"
-				}
-
-				kasURLString := fmt.Sprintf("%s://%s", scheme, net.JoinHostPort(kasHost, port))
-
-				kasURI, err := url.Parse(kasURLString)
-				if err != nil {
-					panic(fmt.Errorf("invalid kas address [%s] %w", kasURLString, err))
-				}
-
 				var kasCfg access.KASConfig
 				if err := mapstructure.Decode(srp.Config, &kasCfg); err != nil {
 					panic(fmt.Errorf("invalid kas cfg [%v] %w", srp.Config, err))
-				} // kasURLString will be used for p.URI
+				}
 
 				var cacheClient *cache.Cache
 				if kasCfg.KeyCacheExpiration != 0 {
+					var err error
 					cacheClient, err = srp.NewCacheClient(cache.Options{
 						Expiration: kasCfg.KeyCacheExpiration,
 					})
@@ -100,11 +59,18 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					}
 				}
 
-				if kasCfg.Preview.KeyManagement {
+				if kasCfg.Preview.KeyManagement.Enabled {
 					srp.Logger.Info("preview feature: key management is enabled")
 
+					kasURL, err := url.Parse(kasCfg.Preview.KeyManagement.RegisteredKasURI)
+					if err != nil {
+						panic(fmt.Errorf("failed to parse registered KAS URI [%v]: %w", kasCfg.Preview.KeyManagement.RegisteredKasURI, err))
+					}
+
+					srp.Logger.Info("using registered KAS URI", slog.String("uri", kasURL.String()))
+
 					// Configure new delegation service
-					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURLString, srp.Logger), srp.Logger, cacheClient)
+					p.KeyDelegator = trust.NewDelegatingKeyService(NewPlatformKeyIndexer(srp.SDK, kasURL.String(), srp.Logger), srp.Logger, cacheClient)
 					for _, manager := range srp.KeyManagerFactories {
 						p.KeyDelegator.RegisterKeyManager(manager.Name, manager.Factory)
 					}
@@ -136,7 +102,6 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					p.KeyDelegator.SetDefaultMode(inProcessService.Name())
 				}
 
-				p.URI = *kasURI
 				p.SDK = srp.SDK
 				p.Logger = srp.Logger
 				p.KASConfig = kasCfg

@@ -19,47 +19,69 @@ type MockKeyAccessServerRegistryClient struct {
 	mock.Mock
 }
 
-func (m *MockKeyAccessServerRegistryClient) CreateKeyAccessServer(ctx context.Context, req *kasregistry.CreateKeyAccessServerRequest) (*kasregistry.CreateKeyAccessServerResponse, error) {
+func (m *MockKeyAccessServerRegistryClient) CreateKeyAccessServer(context.Context, *kasregistry.CreateKeyAccessServerRequest) (*kasregistry.CreateKeyAccessServerResponse, error) {
 	return nil, errors.New("not implemented")
 }
-func (m *MockKeyAccessServerRegistryClient) GetKeyAccessServer(ctx context.Context, req *kasregistry.GetKeyAccessServerRequest) (*kasregistry.GetKeyAccessServerResponse, error) {
+
+func (m *MockKeyAccessServerRegistryClient) GetKeyAccessServer(context.Context, *kasregistry.GetKeyAccessServerRequest) (*kasregistry.GetKeyAccessServerResponse, error) {
 	return nil, errors.New("not implemented")
 }
-func (m *MockKeyAccessServerRegistryClient) ListKeyAccessServers(ctx context.Context, req *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
+
+func (m *MockKeyAccessServerRegistryClient) ListKeyAccessServers(context.Context, *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
 	return nil, errors.New("not implemented")
 }
-func (m *MockKeyAccessServerRegistryClient) UpdateKeyAccessServer(ctx context.Context, req *kasregistry.UpdateKeyAccessServerRequest) (*kasregistry.UpdateKeyAccessServerResponse, error) {
+
+func (m *MockKeyAccessServerRegistryClient) UpdateKeyAccessServer(context.Context, *kasregistry.UpdateKeyAccessServerRequest) (*kasregistry.UpdateKeyAccessServerResponse, error) {
 	return nil, errors.New("not implemented")
 }
-func (m *MockKeyAccessServerRegistryClient) DeleteKeyAccessServer(ctx context.Context, req *kasregistry.DeleteKeyAccessServerRequest) (*kasregistry.DeleteKeyAccessServerResponse, error) {
+
+func (m *MockKeyAccessServerRegistryClient) DeleteKeyAccessServer(context.Context, *kasregistry.DeleteKeyAccessServerRequest) (*kasregistry.DeleteKeyAccessServerResponse, error) {
 	return nil, errors.New("not implemented")
 }
-func (m *MockKeyAccessServerRegistryClient) ListKeyAccessServerGrants(ctx context.Context, req *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
+
+func (m *MockKeyAccessServerRegistryClient) ListKeyAccessServerGrants(context.Context, *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
 	return nil, errors.New("not implemented")
 }
-func (m *MockKeyAccessServerRegistryClient) CreateKey(ctx context.Context, req *kasregistry.CreateKeyRequest) (*kasregistry.CreateKeyResponse, error) {
+
+func (m *MockKeyAccessServerRegistryClient) CreateKey(context.Context, *kasregistry.CreateKeyRequest) (*kasregistry.CreateKeyResponse, error) {
 	return nil, errors.New("not implemented")
 }
-func (m *MockKeyAccessServerRegistryClient) GetKey(ctx context.Context, req *kasregistry.GetKeyRequest) (*kasregistry.GetKeyResponse, error) {
+
+func (m *MockKeyAccessServerRegistryClient) GetKey(context.Context, *kasregistry.GetKeyRequest) (*kasregistry.GetKeyResponse, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (m *MockKeyAccessServerRegistryClient) ListKeys(ctx context.Context, req *kasregistry.ListKeysRequest) (*kasregistry.ListKeysResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.ListKeysResponse), args.Error(1) //nolint:errcheck // Mocking
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	var resp *kasregistry.ListKeysResponse
+	var ok bool
+	if resp, ok = args.Get(0).(*kasregistry.ListKeysResponse); !ok {
+		return nil, args.Error(1)
+	}
+	return resp, args.Error(1)
 }
-func (m *MockKeyAccessServerRegistryClient) UpdateKey(ctx context.Context, req *kasregistry.UpdateKeyRequest) (*kasregistry.UpdateKeyResponse, error) {
+
+func (m *MockKeyAccessServerRegistryClient) UpdateKey(context.Context, *kasregistry.UpdateKeyRequest) (*kasregistry.UpdateKeyResponse, error) {
 	return nil, errors.New("not implemented")
 }
-func (m *MockKeyAccessServerRegistryClient) RotateKey(ctx context.Context, req *kasregistry.RotateKeyRequest) (*kasregistry.RotateKeyResponse, error) {
+
+func (m *MockKeyAccessServerRegistryClient) RotateKey(context.Context, *kasregistry.RotateKeyRequest) (*kasregistry.RotateKeyResponse, error) {
 	return nil, errors.New("not implemented")
 }
-func (m *MockKeyAccessServerRegistryClient) SetBaseKey(ctx context.Context, req *kasregistry.SetBaseKeyRequest) (*kasregistry.SetBaseKeyResponse, error) {
+
+func (m *MockKeyAccessServerRegistryClient) SetBaseKey(context.Context, *kasregistry.SetBaseKeyRequest) (*kasregistry.SetBaseKeyResponse, error) {
 	return nil, errors.New("not implemented")
 }
-func (m *MockKeyAccessServerRegistryClient) GetBaseKey(ctx context.Context, req *kasregistry.GetBaseKeyRequest) (*kasregistry.GetBaseKeyResponse, error) {
+
+func (m *MockKeyAccessServerRegistryClient) GetBaseKey(context.Context, *kasregistry.GetBaseKeyRequest) (*kasregistry.GetBaseKeyResponse, error) {
 	return nil, errors.New("not implemented")
 }
-func (m *MockKeyAccessServerRegistryClient) ListKeyMappings(ctx context.Context, req *kasregistry.ListKeyMappingsRequest) (*kasregistry.ListKeyMappingsResponse, error) {
+
+func (m *MockKeyAccessServerRegistryClient) ListKeyMappings(context.Context, *kasregistry.ListKeyMappingsRequest) (*kasregistry.ListKeyMappingsResponse, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -234,7 +256,7 @@ func (s *KeyIndexTestSuite) TestFindKeyByAlgorithm() {
 
 	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
 		//nolint:staticcheck // Legacy optional flag should not be set
-		return req.KeyAlgorithm == policy.Algorithm_ALGORITHM_RSA_2048 && (req.Legacy != nil && req.GetLegacy() == false)
+		return req.GetKeyAlgorithm() == policy.Algorithm_ALGORITHM_RSA_2048 && (req.Legacy != nil && req.GetLegacy() == false)
 	})).Return(&kasregistry.ListKeysResponse{
 		KasKeys: []*policy.KasKey{
 			{

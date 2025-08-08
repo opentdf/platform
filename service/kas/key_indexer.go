@@ -87,9 +87,9 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, i
 		return nil, err
 	}
 
-	var legacy bool
-	if !includeLegacy {
-		legacy = false
+	var legacy *bool
+	if includeLegacy {
+		legacy = &includeLegacy
 	}
 
 	req := &kasregistry.ListKeysRequest{
@@ -97,7 +97,7 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, i
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
 			KasUri: p.kasURI,
 		},
-		Legacy: &legacy,
+		Legacy: legacy,
 	}
 	resp, err := p.sdk.KeyAccessServerRegistry.ListKeys(ctx, req)
 	if err != nil {
@@ -146,16 +146,16 @@ func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (t
 }
 
 func (p *KeyIndexer) ListKeys(ctx context.Context, legacyOnly bool) ([]trust.KeyDetails, error) {
-	var legacy bool
+	var legacy *bool
 	if legacyOnly {
-		legacy = true
+		legacy = &legacyOnly
 	}
 
 	req := &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
 			KasUri: p.kasURI,
 		},
-		Legacy: &legacy,
+		Legacy: legacy,
 	}
 	resp, err := p.sdk.KeyAccessServerRegistry.ListKeys(ctx, req)
 	if err != nil {

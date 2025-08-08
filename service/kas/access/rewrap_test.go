@@ -68,6 +68,7 @@ func (f *fakeKeyIndex) FindKeyByAlgorithm(context.Context, string, bool) (trust.
 func (f *fakeKeyIndex) FindKeyByID(context.Context, trust.KeyIdentifier) (trust.KeyDetails, error) {
 	return nil, errors.New("not implemented")
 }
+
 func (f *fakeKeyIndex) ListKeys(_ context.Context, legacyOnly bool) ([]trust.KeyDetails, error) {
 	if legacyOnly {
 		var legacyKeys []trust.KeyDetails

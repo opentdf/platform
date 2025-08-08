@@ -12,7 +12,6 @@ import (
 	"log/slog"
 
 	"github.com/opentdf/platform/lib/ocrypto"
-	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/trust"
@@ -70,13 +69,13 @@ func (b *BasicManager) Decrypt(ctx context.Context, keyDetails trust.KeyDetails,
 	}
 
 	switch keyDetails.Algorithm() {
-	case policy.Algorithm_ALGORITHM_RSA_2048.String(), policy.Algorithm_ALGORITHM_RSA_4096.String():
+	case ocrypto.RSA2048Key, ocrypto.RSA4096Key:
 		plaintext, err := decrypter.Decrypt(ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decrypt with RSA: %w", err)
 		}
 		return NewInProcessAESKey(plaintext), nil
-	case policy.Algorithm_ALGORITHM_EC_P256.String(), policy.Algorithm_ALGORITHM_EC_P384.String(), policy.Algorithm_ALGORITHM_EC_P521.String():
+	case ocrypto.EC256Key, ocrypto.EC384Key, ocrypto.EC521Key:
 		ecPrivKey, err := ocrypto.ECPrivateKeyFromPem(privKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create EC private key from PEM: %w", err)

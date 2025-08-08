@@ -47,9 +47,9 @@ func (m *MockKeyDetails) ID() trust.KeyIdentifier {
 	return ""
 }
 
-func (m *MockKeyDetails) Algorithm() string {
+func (m *MockKeyDetails) Algorithm() ocrypto.KeyType {
 	args := m.Called()
-	return args.String(0)
+	return ocrypto.KeyType(args.String(0))
 }
 
 func (m *MockKeyDetails) IsLegacy() bool {
@@ -281,7 +281,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	t.Run("successful RSA decryption", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "rsa-kid-decrypt"
-		mockDetails.MAlgorithm = policy.Algorithm_ALGORITHM_RSA_2048.String()
+		mockDetails.MAlgorithm = AlgorithmRSA2048
 		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedRSAPrivKeyStr}
 
 		// Set up mock expectations
@@ -306,7 +306,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	t.Run("successful EC decryption", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "ec-kid-decrypt"
-		mockDetails.MAlgorithm = policy.Algorithm_ALGORITHM_EC_P256.String()
+		mockDetails.MAlgorithm = AlgorithmECP256R1
 		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
 
 		// Set up mock expectations
@@ -342,7 +342,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	t.Run("fail unwrap", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "fail-unwrap-decrypt"
-		mockDetails.MAlgorithm = policy.Algorithm_ALGORITHM_RSA_2048.String()
+		mockDetails.MAlgorithm = AlgorithmRSA2048
 		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: "invalid-base64-for-unwrap"}
 
 		// Set up mock expectations for ExportPrivateKey to return a valid wrapped key
@@ -359,7 +359,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	t.Run("fail FromPrivatePEM", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "fail-frompem-decrypt"
-		mockDetails.MAlgorithm = policy.Algorithm_ALGORITHM_RSA_2048.String()
+		mockDetails.MAlgorithm = AlgorithmRSA2048
 		invalidPEMWrapped, _ := wrapKeyWithAESGCM([]byte("-----BEGIN INVALID KEY-----..."), rootKey)
 		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: invalidPEMWrapped}
 
@@ -419,7 +419,7 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 	t.Run("successful key derivation", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)
 		mockDetails.MID = "ec-kid-derive"
-		mockDetails.MAlgorithm = policy.Algorithm_ALGORITHM_EC_P256.String()
+		mockDetails.MAlgorithm = AlgorithmECP256R1
 		mockDetails.MPrivateKey = &policy.PrivateKeyCtx{WrappedKey: wrappedECPrivKeyStr}
 
 		// Set up mock expectations

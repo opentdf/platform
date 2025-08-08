@@ -25,7 +25,6 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/entity"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
-	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
@@ -658,7 +657,7 @@ func (p *Provider) listLegacyKeys(ctx context.Context) []trust.KeyIdentifier {
 		p.Logger.WarnContext(ctx, "checkpoint KeyIndex.ListKeys failed", slog.Any("error", err))
 	} else {
 		for _, key := range k {
-			if (key.Algorithm() == security.AlgorithmRSA2048 || key.Algorithm() == policy.Algorithm_ALGORITHM_RSA_2048.String()) && key.IsLegacy() {
+			if key.Algorithm() == ocrypto.RSA2048Key && key.IsLegacy() {
 				kidsToCheck = append(kidsToCheck, key.ID())
 			}
 		}

@@ -3,6 +3,7 @@ package trust
 import (
 	"context"
 
+	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
@@ -32,7 +33,7 @@ type KeyDetails interface {
 	ID() KeyIdentifier
 
 	// Algorithm returns the algorithm used by the key
-	Algorithm() string
+	Algorithm() ocrypto.KeyType
 
 	// IsLegacy returns true if this is a legacy key that should only be used for decryption
 	IsLegacy() bool

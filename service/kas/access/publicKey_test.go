@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/internal/security"
@@ -45,8 +46,8 @@ func (m *MockKeyDetails) ID() trust.KeyIdentifier {
 	return m.id
 }
 
-func (m *MockKeyDetails) Algorithm() string {
-	return m.algorithm
+func (m *MockKeyDetails) Algorithm() ocrypto.KeyType {
+	return ocrypto.KeyType(m.algorithm)
 }
 
 func (m *MockKeyDetails) IsLegacy() bool {

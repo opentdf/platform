@@ -68,7 +68,23 @@ func (f *fakeKeyIndex) FindKeyByAlgorithm(context.Context, string, bool) (trust.
 func (f *fakeKeyIndex) FindKeyByID(context.Context, trust.KeyIdentifier) (trust.KeyDetails, error) {
 	return nil, errors.New("not implemented")
 }
-func (f *fakeKeyIndex) ListKeys(context.Context) ([]trust.KeyDetails, error) { return f.keys, f.err }
+
+func (f *fakeKeyIndex) ListKeys(context.Context) ([]trust.KeyDetails, error) {
+	return f.keys, f.err
+}
+
+func (f *fakeKeyIndex) ListKeysWith(_ context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+	if opts.LegacyOnly {
+		var legacyKeys []trust.KeyDetails
+		for _, key := range f.keys {
+			if key.IsLegacy() {
+				legacyKeys = append(legacyKeys, key)
+			}
+		}
+		return legacyKeys, f.err
+	}
+	return f.keys, f.err
+}
 
 func TestListLegacyKeys_KeyringPopulated(t *testing.T) {
 	testLogger := logger.CreateTestLogger()

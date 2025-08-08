@@ -127,6 +127,17 @@ func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, 
 	return keys, nil
 }
 
+func (m *MockSecurityProvider) ListKeysWith(_ context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+	var keys []trust.KeyDetails
+	for _, key := range m.keys {
+		if opts.LegacyOnly && !key.IsLegacy() {
+			continue
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
+}
+
 func (m *MockSecurityProvider) Decrypt(_ context.Context, _ trust.KeyDetails, _, _ []byte) (trust.ProtectedKey, error) {
 	return nil, errors.New("not implemented for tests")
 }

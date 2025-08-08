@@ -78,6 +78,14 @@ func (m *MockKeyIndex) ListKeys(ctx context.Context) ([]KeyDetails, error) {
 	return nil, args.Error(1)
 }
 
+func (m *MockKeyIndex) ListKeysWith(ctx context.Context, opts ListKeyOptions) ([]KeyDetails, error) {
+	args := m.Called(ctx, opts)
+	if a0, ok := args.Get(0).([]KeyDetails); ok {
+		return a0, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 // MockKeyDetails is a mock implementation of the KeyDetails interface
 type MockKeyDetails struct {
 	mock.Mock
@@ -224,6 +232,21 @@ func (suite *DelegatingKeyServiceTestSuite) TestListKeys() {
 	keys, err := suite.service.ListKeys(context.Background())
 	suite.Require().NoError(err)
 	suite.Len(keys, 1)
+}
+
+func (suite *DelegatingKeyServiceTestSuite) TestListKeysWith_Legacy() {
+	legacyKey := &MockKeyDetails{}
+	legacyKey.On("IsLegacy").Return(true)
+
+	nonLegacyKey := &MockKeyDetails{}
+	nonLegacyKey.On("IsLegacy").Return(false)
+
+	suite.mockIndex.On("ListKeysWith", mock.Anything, ListKeyOptions{LegacyOnly: true}).Return([]KeyDetails{legacyKey}, nil)
+
+	keys, err := suite.service.ListKeysWith(context.Background(), ListKeyOptions{LegacyOnly: true})
+	suite.Require().NoError(err)
+	suite.Len(keys, 1)
+	suite.True(keys[0].IsLegacy())
 }
 
 func (suite *DelegatingKeyServiceTestSuite) TestDecrypt() {

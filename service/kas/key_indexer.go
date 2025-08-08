@@ -88,7 +88,7 @@ func (p *KeyIndexer) FindKeyByAlgorithm(ctx context.Context, algorithm string, i
 	}
 
 	var legacy *bool
-	if includeLegacy {
+	if !includeLegacy {
 		legacy = &includeLegacy
 	}
 

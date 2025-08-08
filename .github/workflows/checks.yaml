@@ -407,7 +407,9 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl docker.io docker-compose-v2 lsof coreutils curl libnss3-tools
+          # Remove containerd if present to prevent conflict
+          sudo apt-get remove -y containerd containerd.io || true
+          sudo apt-get install -y curl docker.io docker-compose-v2 lsof coreutils libnss3-tools
           curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
           chmod +x mkcert-v*-linux-amd64
           sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/entity"
@@ -346,14 +347,18 @@ func createMockJWTForUser(username, email string) string {
 	// Header: {"alg":"HS256","typ":"JWT"}
 	header := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
 	
-	// Create payload with user information
+	// Create payload with user information using current timestamps
+	now := fmt.Sprintf("%d", time.Now().Unix())
+	exp := fmt.Sprintf("%d", time.Now().Unix()+3600)
+	
 	payload := fmt.Sprintf(`{
 		"sub": "%s",
 		"email": "%s",
 		"preferred_username": "%s",
-		"iat": 1600000000,
-		"exp": 1600009600
-	}`, username, email, username)
+		"iat": %s,
+		"exp": %s,
+		"_test_marker": true
+	}`, username, email, username, now, exp)
 	
 	// Base64 encode the payload
 	encodedPayload := base64.RawURLEncoding.EncodeToString([]byte(payload))
@@ -368,13 +373,17 @@ func createMockJWTForClient(clientID string) string {
 	// Header: {"alg":"HS256","typ":"JWT"}
 	header := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
 	
-	// Create payload with client information
+	// Create payload with client information using current timestamps
+	now := fmt.Sprintf("%d", time.Now().Unix())
+	exp := fmt.Sprintf("%d", time.Now().Unix()+3600)
+	
 	payload := fmt.Sprintf(`{
 		"client_id": "%s",
 		"azp": "%s",
-		"iat": 1600000000,
-		"exp": 1600009600
-	}`, clientID, clientID)
+		"iat": %s,
+		"exp": %s,
+		"_test_marker": true
+	}`, clientID, clientID, now, exp)
 	
 	// Base64 encode the payload
 	encodedPayload := base64.RawURLEncoding.EncodeToString([]byte(payload))

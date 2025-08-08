@@ -2,6 +2,8 @@ package internal
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
@@ -47,21 +49,112 @@ func CreateResolveEntitiesRequest(entities ...*entity.Entity) *entityresolutionV
 	}
 }
 
-// CreateTestJWT creates a proper JWT token for token-based testing
+// CreateTestJWT creates a proper JWT token for token-based testing using actual parameters
 func CreateTestJWT(clientID, username, email string) string {
-	// Use the same approach as the working entity chain comparison test
-	// Header: {"alg":"HS256","typ":"JWT"}
+	return CreateTestJWTWithClaims(clientID, username, email, nil)
+}
+
+// CreateTestJWTWithClaims creates a JWT token with additional custom claims for multi-strategy testing
+func CreateTestJWTWithClaims(clientID, username, email string, additionalClaims map[string]interface{}) string {
+	// Create JWT header: {"alg":"HS256","typ":"JWT"}
 	header := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
 	
-	// Create a cleaner JWT payload that doesn't have conflicting claims
-	// This payload contains: {"sub":"testuser","email":"test@example.com","preferred_username":"testuser","azp":"test-client","aud":["test-audience"],"iss":"test-issuer","iat":1600000000,"exp":1600009600}
-	// Note: removed "client_id" to avoid conflicts with strategy-based mapping
-	payload := "eyJzdWIiOiJ0ZXN0dXNlciIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsInByZWZlcnJlZF91c2VybmFtZSI6InRlc3R1c2VyIiwiYXpwIjoidGVzdC1jbGllbnQiLCJhdWQiOlsidGVzdC1hdWRpZW5jZSJdLCJpc3MiOiJ0ZXN0LWlzc3VlciIsImlhdCI6MTYwMDAwMDAwMCwiZXhwIjoxNjAwMDA5NjAwfQ"
+	// Create dynamic payload using actual input parameters
+	now := time.Now().Unix()
+	payloadData := map[string]interface{}{
+		"sub":                username,
+		"email":              email,
+		"preferred_username": username,
+		"azp":                clientID,
+		"aud":                []string{"test-audience"}, // Default audience
+		"iss":                "test-issuer",             // Default issuer
+		"iat":                now,
+		"exp":                now + 3600, // 1 hour validity
+		"_test_marker":       true,       // Clear indicator this is a test JWT
+	}
 	
-	// Mock signature
+	// Handle empty parameters gracefully
+	if clientID != "" {
+		payloadData["client_id"] = clientID // Include client_id when provided
+	}
+	if username == "" {
+		payloadData["sub"] = "anonymous"
+		payloadData["preferred_username"] = "anonymous"
+	}
+	if email == "" {
+		delete(payloadData, "email") // Remove email claim if not provided
+	}
+	
+	// Merge additional claims (allows overriding defaults)
+	for key, value := range additionalClaims {
+		payloadData[key] = value
+	}
+	
+	// Encode payload to JSON then base64
+	payloadJSON, err := json.Marshal(payloadData)
+	if err != nil {
+		// Fallback to basic payload if marshaling fails
+		payloadJSON = []byte(fmt.Sprintf(`{"sub":"%s","email":"%s","azp":"%s","iat":%d,"exp":%d}`, 
+			username, email, clientID, now, now+3600))
+	}
+	
+	encodedPayload := base64.RawURLEncoding.EncodeToString(payloadJSON)
+	
+	// Mock signature for testing (not cryptographically valid)
 	signature := "dGVzdHNpZ25hdHVyZQ"
 	
-	return header + "." + payload + "." + signature
+	return header + "." + encodedPayload + "." + signature
+}
+
+// Multi-Strategy Routing Test Helpers
+
+// CreateInternalJWT creates a JWT for internal audience routing (uses JWT claims provider)
+func CreateInternalJWT(clientID, username, email string) string {
+	return CreateTestJWTWithClaims(clientID, username, email, map[string]interface{}{
+		"aud": []string{"internal", "opentdf-internal"},
+		"iss": "internal-issuer",
+	})
+}
+
+// CreateExternalJWT creates a JWT for external audience routing (uses database lookup)
+func CreateExternalJWT(clientID, username, email string, userID string) string {
+	claims := map[string]interface{}{
+		"aud": []string{"external", "partner"},
+		"iss": "partner-issuer",
+	}
+	if userID != "" {
+		claims["user_id"] = userID
+	}
+	return CreateTestJWTWithClaims(clientID, username, email, claims)
+}
+
+// CreateCustomerJWT creates a JWT for customer audience routing
+func CreateCustomerJWT(clientID, username, email string) string {
+	return CreateTestJWTWithClaims(clientID, username, email, map[string]interface{}{
+		"aud": []string{"customer"},
+		"iss": "customer-portal",
+	})
+}
+
+// CreateEnvironmentJWT creates a JWT with environment context for environment entity routing
+func CreateEnvironmentJWT(clientID, clientIP, deviceID string) string {
+	return CreateTestJWTWithClaims(clientID, "", "", map[string]interface{}{
+		"aud":       []string{"device-context"},
+		"iss":       "device-registry",
+		"client_ip": clientIP,
+		"device_id": deviceID,
+	})
+}
+
+// CreateMultiStrategyTestSet creates a set of JWTs for testing different routing scenarios
+func CreateMultiStrategyTestSet() map[string]string {
+	return map[string]string{
+		"internal-user":    CreateInternalJWT("web-client", "alice", "alice@company.com"),
+		"external-partner": CreateExternalJWT("partner-app", "bob", "bob@partner.org", "ext_user_456"),
+		"customer-portal":  CreateCustomerJWT("customer-client", "charlie", "charlie@customer.com"),
+		"device-context":   CreateEnvironmentJWT("mobile-app", "192.168.1.100", "device-12345"),
+		"fallback-email":   CreateTestJWT("unknown-client", "dave", "dave@unknown.com"), // No specific audience
+	}
 }
 
 // CreateTestToken creates a test entity.Token with the given ephemeral ID and JWT

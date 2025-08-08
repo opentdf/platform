@@ -24,6 +24,7 @@ type GetContractResponse struct {
 }
 
 func (c *AcmClient) GetContract(policyID string, token string) (*GetContractResponse, error) {
+	// TODO: ACM base url will move to a config setting once this service is moved to a separate repo
 	reqURL, err := url.Parse("https://api-develop01.develop.virtru.com/acm/api/policies/" + policyID + "/contract")
 	if err != nil {
 		return nil, err

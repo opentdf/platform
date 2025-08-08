@@ -108,6 +108,7 @@ func EntityResolution(_ context.Context,
 					directEntitlements = append(directEntitlements, &directEntitlement)
 				}
 
+				// delete so that subject mappings logic does not try to process direct entitlements
 				delete(entityStruct.GetFields(), "direct_entitlements")
 			}
 

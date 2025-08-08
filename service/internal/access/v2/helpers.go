@@ -246,6 +246,8 @@ func getResourceDecisionableAttributes(
 
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
 		if !ok {
+			// TODO: this logic requires a provisioned Virtru org namespace, definition and FQN record in the database
+			// TODO: add provisioning scripts for test orgs in dev/staging and decide how to provision for production
 			// Try to find the definition by extracting partial FQN for adhoc attributes
 			parentDefinition, err := getDefinition(attrValueFQN, allAttributesByDefinitionFQN)
 			if err != nil {

@@ -59,7 +59,7 @@ type Preview struct {
 
 type KeyManagement struct {
 	Enabled          bool   `mapstructure:"enabled" json:"enabled"`
-	RegisteredKasURI string `mapstructure:"registered_kas_uri" json:"registered_kas_uri"`
+	RegisteredKASURI string `mapstructure:"registered_kas_uri" json:"registered_kas_uri"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.

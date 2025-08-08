@@ -10,6 +10,12 @@ import (
 // KeyType represents the format in which a key can be exported
 type KeyType int
 
+// Key Options to pass into ListKeysWith
+// when filtering keys
+type ListKeyOptions struct {
+	LegacyOnly bool
+}
+
 const (
 	// KeyTypeJWK represents a key in JWK format
 	KeyTypeJWK KeyType = iota
@@ -65,7 +71,8 @@ type KeyIndex interface {
 	FindKeyByID(ctx context.Context, id KeyIdentifier) (KeyDetails, error)
 
 	// ListKeys returns all available keys
-	// If legacyOnly is true, only legacy keys will be returned.
-	// If false, all keys will be returned.
-	ListKeys(ctx context.Context, legacyOnly bool) ([]KeyDetails, error)
+	ListKeys(ctx context.Context) ([]KeyDetails, error)
+
+	// List keys with options
+	ListKeysWith(ctx context.Context, opts ListKeyOptions) ([]KeyDetails, error)
 }

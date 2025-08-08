@@ -145,17 +145,21 @@ func (p *KeyIndexer) FindKeyByID(ctx context.Context, id trust.KeyIdentifier) (t
 	}, nil
 }
 
-func (p *KeyIndexer) ListKeys(ctx context.Context, legacyOnly bool) ([]trust.KeyDetails, error) {
-	var legacy *bool
-	if legacyOnly {
-		legacy = &legacyOnly
+func (p *KeyIndexer) ListKeys(ctx context.Context) ([]trust.KeyDetails, error) {
+	return p.ListKeysWith(ctx, trust.ListKeyOptions{LegacyOnly: false})
+}
+
+func (p *KeyIndexer) ListKeysWith(ctx context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+	var legacyOnly *bool
+	if opts.LegacyOnly {
+		legacyOnly = &opts.LegacyOnly
 	}
 
 	req := &kasregistry.ListKeysRequest{
 		KasFilter: &kasregistry.ListKeysRequest_KasUri{
 			KasUri: p.kasURI,
 		},
-		Legacy: legacy,
+		Legacy: legacyOnly,
 	}
 	resp, err := p.sdk.KeyAccessServerRegistry.ListKeys(ctx, req)
 	if err != nil {

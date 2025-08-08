@@ -119,10 +119,18 @@ func (m *MockSecurityProvider) FindKeyByID(_ context.Context, id trust.KeyIdenti
 	return nil, security.ErrCertNotFound
 }
 
-func (m *MockSecurityProvider) ListKeys(_ context.Context, legacyOnly bool) ([]trust.KeyDetails, error) {
+func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, error) {
 	var keys []trust.KeyDetails
 	for _, key := range m.keys {
-		if legacyOnly && !key.IsLegacy() {
+		keys = append(keys, key)
+	}
+	return keys, nil
+}
+
+func (m *MockSecurityProvider) ListKeysWith(_ context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+	var keys []trust.KeyDetails
+	for _, key := range m.keys {
+		if opts.LegacyOnly && !key.IsLegacy() {
 			continue
 		}
 		keys = append(keys, key)
@@ -280,16 +288,16 @@ func TestExportRsaPublicKeyAsPemStrSuccess(t *testing.T) {
 		E: 65537,
 	}
 
-	output, err := exportRsaPublicKeyAsPemStr(mockKey)
+	outPut, err := exportRsaPublicKeyAsPemStr(mockKey)
 
 	require.NoError(t, err)
-	assert.NotEmpty(t, output)
-	assert.IsType(t, "string", output)
+	assert.NotEmpty(t, outPut)
+	assert.IsType(t, "string", outPut)
 }
 
 func TestExportRsaPublicKeyAsPemStrFailure(t *testing.T) {
-	output, err := exportRsaPublicKeyAsPemStr(&rsa.PublicKey{})
-	assert.Empty(t, output)
+	outPut, err := exportRsaPublicKeyAsPemStr(&rsa.PublicKey{})
+	assert.Empty(t, outPut)
 	assert.Error(t, err)
 }
 
@@ -298,16 +306,16 @@ func TestExportEcPublicKeyAsPemStrSuccess(t *testing.T) {
 	privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
 	require.NoError(t, err)
 
-	output, err := exportEcPublicKeyAsPemStr(&privateKey.PublicKey)
+	outPut, err := exportEcPublicKeyAsPemStr(&privateKey.PublicKey)
 	require.NoError(t, err)
 
-	assert.NotEmpty(t, output)
-	assert.IsType(t, "string", output)
+	assert.NotEmpty(t, outPut)
+	assert.IsType(t, "string", outPut)
 }
 
 func TestExportEcPublicKeyAsPemStrFailure(t *testing.T) {
-	output, err := exportEcPublicKeyAsPemStr(&ecdsa.PublicKey{})
-	assert.Empty(t, output)
+	outPut, err := exportEcPublicKeyAsPemStr(&ecdsa.PublicKey{})
+	assert.Empty(t, outPut)
 	assert.Error(t, err)
 }
 
@@ -333,8 +341,8 @@ func TestExportCertificateAsPemStrSuccess(t *testing.T) {
 }
 
 func TestError(t *testing.T) {
-	output := Error.Error(ErrCertificateEncode)
-	assert.Equal(t, "certificate encode error", output)
+	outPut := Error.Error(ErrCertificateEncode)
+	assert.Equal(t, "certificate encode error", outPut)
 }
 
 const hostname = "localhost"

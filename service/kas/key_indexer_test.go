@@ -2,6 +2,7 @@ package kas
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -19,73 +20,47 @@ type MockKeyAccessServerRegistryClient struct {
 }
 
 func (m *MockKeyAccessServerRegistryClient) CreateKeyAccessServer(ctx context.Context, req *kasregistry.CreateKeyAccessServerRequest) (*kasregistry.CreateKeyAccessServerResponse, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.CreateKeyAccessServerResponse), args.Error(1)
+	return nil, errors.New("not implemented")
 }
-
 func (m *MockKeyAccessServerRegistryClient) GetKeyAccessServer(ctx context.Context, req *kasregistry.GetKeyAccessServerRequest) (*kasregistry.GetKeyAccessServerResponse, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.GetKeyAccessServerResponse), args.Error(1)
+	return nil, errors.New("not implemented")
 }
-
 func (m *MockKeyAccessServerRegistryClient) ListKeyAccessServers(ctx context.Context, req *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.ListKeyAccessServersResponse), args.Error(1)
+	return nil, errors.New("not implemented")
 }
-
 func (m *MockKeyAccessServerRegistryClient) UpdateKeyAccessServer(ctx context.Context, req *kasregistry.UpdateKeyAccessServerRequest) (*kasregistry.UpdateKeyAccessServerResponse, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.UpdateKeyAccessServerResponse), args.Error(1)
+	return nil, errors.New("not implemented")
 }
-
 func (m *MockKeyAccessServerRegistryClient) DeleteKeyAccessServer(ctx context.Context, req *kasregistry.DeleteKeyAccessServerRequest) (*kasregistry.DeleteKeyAccessServerResponse, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.DeleteKeyAccessServerResponse), args.Error(1)
+	return nil, errors.New("not implemented")
 }
-
 func (m *MockKeyAccessServerRegistryClient) ListKeyAccessServerGrants(ctx context.Context, req *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.ListKeyAccessServerGrantsResponse), args.Error(1)
+	return nil, errors.New("not implemented")
 }
-
 func (m *MockKeyAccessServerRegistryClient) CreateKey(ctx context.Context, req *kasregistry.CreateKeyRequest) (*kasregistry.CreateKeyResponse, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.CreateKeyResponse), args.Error(1)
+	return nil, errors.New("not implemented")
 }
-
 func (m *MockKeyAccessServerRegistryClient) GetKey(ctx context.Context, req *kasregistry.GetKeyRequest) (*kasregistry.GetKeyResponse, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.GetKeyResponse), args.Error(1)
+	return nil, errors.New("not implemented")
 }
-
 func (m *MockKeyAccessServerRegistryClient) ListKeys(ctx context.Context, req *kasregistry.ListKeysRequest) (*kasregistry.ListKeysResponse, error) {
 	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.ListKeysResponse), args.Error(1)
+	return args.Get(0).(*kasregistry.ListKeysResponse), args.Error(1) //nolint:errcheck // Mocking
 }
-
 func (m *MockKeyAccessServerRegistryClient) UpdateKey(ctx context.Context, req *kasregistry.UpdateKeyRequest) (*kasregistry.UpdateKeyResponse, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.UpdateKeyResponse), args.Error(1)
+	return nil, errors.New("not implemented")
 }
-
 func (m *MockKeyAccessServerRegistryClient) RotateKey(ctx context.Context, req *kasregistry.RotateKeyRequest) (*kasregistry.RotateKeyResponse, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.RotateKeyResponse), args.Error(1)
+	return nil, errors.New("not implemented")
 }
-
 func (m *MockKeyAccessServerRegistryClient) SetBaseKey(ctx context.Context, req *kasregistry.SetBaseKeyRequest) (*kasregistry.SetBaseKeyResponse, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.SetBaseKeyResponse), args.Error(1)
+	return nil, errors.New("not implemented")
 }
-
 func (m *MockKeyAccessServerRegistryClient) GetBaseKey(ctx context.Context, req *kasregistry.GetBaseKeyRequest) (*kasregistry.GetBaseKeyResponse, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.GetBaseKeyResponse), args.Error(1)
+	return nil, errors.New("not implemented")
 }
-
 func (m *MockKeyAccessServerRegistryClient) ListKeyMappings(ctx context.Context, req *kasregistry.ListKeyMappingsRequest) (*kasregistry.ListKeyMappingsResponse, error) {
-	args := m.Called(ctx, req)
-	return args.Get(0).(*kasregistry.ListKeyMappingsResponse), args.Error(1)
+	return nil, errors.New("not implemented")
 }
 
 type KeyIndexTestSuite struct {
@@ -211,13 +186,13 @@ func (s *KeyIndexTestSuite) TestListKeysWith() {
 
 	// Test with legacy flag set to true
 	keys, err := keyIndexer.ListKeysWith(context.Background(), trust.ListKeyOptions{LegacyOnly: true})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Len(keys, 1)
 	s.Equal("legacy-key-id", string(keys[0].ID()))
 
 	// Test with legacy flag set to false
 	keys, err = keyIndexer.ListKeysWith(context.Background(), trust.ListKeyOptions{LegacyOnly: false})
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Len(keys, 2)
 	s.Equal("non-legacy-key-id", string(keys[0].ID()))
 	s.Equal("legacy-key-id", string(keys[1].ID()))
@@ -244,7 +219,7 @@ func (s *KeyIndexTestSuite) TestListKeys() {
 	}, nil)
 
 	keys, err := keyIndexer.ListKeys(context.Background())
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Len(keys, 1)
 	s.Equal("test-key-id", string(keys[0].ID()))
 }
@@ -274,7 +249,7 @@ func (s *KeyIndexTestSuite) TestFindKeyByAlgorithm() {
 
 	mockClient.On("ListKeys", mock.Anything, mock.MatchedBy(func(req *kasregistry.ListKeysRequest) bool {
 		//nolint:staticcheck // Legacy optional flag should not be set
-		return req.KeyAlgorithm == policy.Algorithm_ALGORITHM_RSA_2048 && req.Legacy == nil
+		return req.GetKeyAlgorithm() == policy.Algorithm_ALGORITHM_RSA_2048 && req.Legacy == nil
 	})).Return(&kasregistry.ListKeysResponse{
 		KasKeys: []*policy.KasKey{
 			{
@@ -295,12 +270,12 @@ func (s *KeyIndexTestSuite) TestFindKeyByAlgorithm() {
 	}, nil)
 
 	key, err := keyIndexer.FindKeyByAlgorithm(context.Background(), string(ocrypto.RSA2048Key), false)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(key)
 	s.Equal("test-key-id", string(key.ID()))
 
 	key, err = keyIndexer.FindKeyByAlgorithm(context.Background(), string(ocrypto.RSA2048Key), true)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(key)
 	s.Equal("test-legacy-key-id", string(key.ID()))
 }

@@ -6,11 +6,26 @@ import "buf/validate/validate.proto";
 import "entity/entity.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/struct.proto";
+import "authorization/v2/authorization.proto";
+
+message DirectEntitlement {
+  string fqn = 1 [(buf.validate.field).string = {
+      min_len: 1
+      uri: true
+    }];
+
+  repeated string actions = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {min_items: 1}
+  ];
+}
 
 message EntityRepresentation {
   // ephemeral entity id from the request
   string original_id = 1;
   repeated google.protobuf.Struct additional_props = 2;
+  // Map of FQN to array of actions
+  repeated DirectEntitlement direct_entitlements = 3;
 }
 
 // Resolve a set of entities to their representations.
@@ -34,6 +49,11 @@ message EntityNotFoundError {
 // Create an entity chain for each token (JWT) in the request.
 message CreateEntityChainsFromTokensRequest {
   repeated entity.Token tokens = 1;
+
+  repeated authorization.v2.Resource resources = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {min_items: 1}
+  ];
 }
 
 message CreateEntityChainsFromTokensResponse {

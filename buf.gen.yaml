@@ -25,3 +25,5 @@ plugins:
     out: protocol/go
     opt:
       - paths=source_relative
+  - remote: buf.build/bufbuild/es
+    out: protocol/es

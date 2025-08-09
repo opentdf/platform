@@ -34,7 +34,7 @@ type PolicyConfig struct {
 	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"preferred_username"`
 	// Claim to use for group/role information
 	GroupsClaim string `mapstructure:"groups_claim" json:"group_claim" default:"realm_access.roles"`
-	// Deprecated: Use GroupClain instead
+	// Deprecated: Use GroupClaim instead
 	RoleClaim string `mapstructure:"claim" json:"claim" default:"realm_access.roles"`
 	// Deprecated: Use Casbin grouping statements g, <user/group>, <role>
 	RoleMap map[string]string `mapstructure:"map" json:"map"`

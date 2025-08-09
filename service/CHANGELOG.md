@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.0](https://github.com/opentdf/platform/compare/service/v0.8.0...service/v0.9.0) (2025-08-09)
+
+
+### Features
+
+* **policy:** Add legacy keys. ([#2613](https://github.com/opentdf/platform/issues/2613)) ([57370b0](https://github.com/opentdf/platform/commit/57370b0f76605ec2ed375728ec9b60a829072d99))
+* **policy:** add values to CreateObligationRequest ([#2614](https://github.com/opentdf/platform/issues/2614)) ([94535cc](https://github.com/opentdf/platform/commit/94535cc0c1622b7499dad8e91a02a93f1eb1531b))
+* **policy:** Modify KAS indexer to support legacy keys. ([#2616](https://github.com/opentdf/platform/issues/2616)) ([ba96c18](https://github.com/opentdf/platform/commit/ba96c186330bce0b86cb3a3f275bb2863e532654))
+
+
+### Bug Fixes
+
+* updated generated sqlc ([#2609](https://github.com/opentdf/platform/issues/2609)) ([e44a569](https://github.com/opentdf/platform/commit/e44a56937453ebbdac1761f042003aa622e3a239))
+
 ## [0.8.0](https://github.com/opentdf/platform/compare/service/v0.7.0...service/v0.8.0) (2025-07-29)
 
 

@@ -47,3 +47,6 @@ keys/
 /examples/sensitive.txt.ntdf
 sensitive.txt.ntdf
 traces/
+
+# Cucumber / BDD log files
+*.log

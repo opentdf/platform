@@ -104,7 +104,7 @@ func (suite *ServiceTestSuite) TestRegisterEssentialServiceRegistrationIsSuccess
 
 func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_Services_Registered() {
 	registry := serviceregistry.NewServiceRegistry()
-	_, err := registerCoreServices(registry, []string{modeALL})
+	_, err := registerCoreServices(registry, []string{modeALL}, nil)
 	suite.Require().NoError(err)
 
 	authz, err := registry.GetNamespace(serviceAuthorization)
@@ -136,7 +136,7 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_
 // Every service except kas is registered
 func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_Core_Expect_Core_Services_Registered() {
 	registry := serviceregistry.NewServiceRegistry()
-	_, err := registerCoreServices(registry, []string{modeCore})
+	_, err := registerCoreServices(registry, []string{modeCore}, nil)
 	suite.Require().NoError(err)
 
 	authz, err := registry.GetNamespace(serviceAuthorization)
@@ -162,7 +162,7 @@ func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_Core_Expect_Cor
 // Register core and kas services
 func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expect_Core_And_Kas_Services_Registered() {
 	registry := serviceregistry.NewServiceRegistry()
-	_, err := registerCoreServices(registry, []string{modeCore, modeKAS})
+	_, err := registerCoreServices(registry, []string{modeCore, modeKAS}, nil)
 	suite.Require().NoError(err)
 
 	authz, err := registry.GetNamespace(serviceAuthorization)
@@ -189,7 +189,7 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 // Register core and kas and ERS services
 func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expect_Core_And_Kas_And_ERS_Services_Registered() {
 	registry := serviceregistry.NewServiceRegistry()
-	_, err := registerCoreServices(registry, []string{modeCore, modeKAS, modeERS})
+	_, err := registerCoreServices(registry, []string{modeCore, modeKAS, modeERS}, nil)
 	suite.Require().NoError(err)
 
 	authz, err := registry.GetNamespace(serviceAuthorization)
@@ -216,6 +216,35 @@ func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expec
 	suite.Require().NoError(err)
 	suite.Len(ers.Services, numExpectedEntityResolutionServiceVersions)
 	suite.Equal(modeERS, ers.Mode)
+}
+
+func (suite *ServiceTestSuite) Test_RegisterCoreServices_With_Custom_Policy_Service() {
+	registry := serviceregistry.NewServiceRegistry()
+
+	// Create a mock policy service
+	mockPolicyService, _ := mockTestServiceRegistry(mockTestServiceOptions{
+		namespace:     servicePolicy,
+		serviceName:   "CustomPolicyService",
+		serviceObject: TestService{},
+	})
+
+	_, err := registerCoreServices(registry, []string{modeCore}, []serviceregistry.IService{mockPolicyService})
+	suite.Require().NoError(err)
+
+	// Check that the custom policy service is registered
+	policyNS, err := registry.GetNamespace(servicePolicy)
+	suite.Require().NoError(err)
+	suite.Len(policyNS.Services, 1)
+	suite.Equal("CustomPolicyService", policyNS.Services[0].GetServiceDesc().ServiceName)
+
+	// Check that other core services are still registered
+	authz, err := registry.GetNamespace(serviceAuthorization)
+	suite.Require().NoError(err)
+	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
+
+	wellKnown, err := registry.GetNamespace(serviceWellKnown)
+	suite.Require().NoError(err)
+	suite.Len(wellKnown.Services, 1)
 }
 
 func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {

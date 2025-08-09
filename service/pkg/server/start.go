@@ -148,7 +148,7 @@ func Start(f ...StartOptions) error {
 
 	var registeredCoreServices []string
 
-	registeredCoreServices, err = registerCoreServices(svcRegistry, cfg.Mode)
+	registeredCoreServices, err = registerCoreServices(svcRegistry, cfg.Mode, startConfig.customPolicyServices)
 	if err != nil {
 		logger.Error("could not register core services", slog.String("error", err.Error()))
 		return fmt.Errorf("could not register core services: %w", err)

@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/internal/security"
@@ -45,8 +46,8 @@ func (m *MockKeyDetails) ID() trust.KeyIdentifier {
 	return m.id
 }
 
-func (m *MockKeyDetails) Algorithm() string {
-	return m.algorithm
+func (m *MockKeyDetails) Algorithm() ocrypto.KeyType {
+	return ocrypto.KeyType(m.algorithm)
 }
 
 func (m *MockKeyDetails) IsLegacy() bool {
@@ -121,6 +122,17 @@ func (m *MockSecurityProvider) FindKeyByID(_ context.Context, id trust.KeyIdenti
 func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, error) {
 	var keys []trust.KeyDetails
 	for _, key := range m.keys {
+		keys = append(keys, key)
+	}
+	return keys, nil
+}
+
+func (m *MockSecurityProvider) ListKeysWith(_ context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+	var keys []trust.KeyDetails
+	for _, key := range m.keys {
+		if opts.LegacyOnly && !key.IsLegacy() {
+			continue
+		}
 		keys = append(keys, key)
 	}
 	return keys, nil

@@ -273,6 +273,7 @@ type KeyAccessServerKey struct {
 	// Timestamp when the key was last updated
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 	KeyAccessServerID string             `json:"key_access_server_id"`
+	Legacy            bool               `json:"legacy"`
 }
 
 type ObligationDefinition struct {

@@ -78,6 +78,10 @@ func (d *DelegatingKeyService) ListKeys(ctx context.Context) ([]KeyDetails, erro
 	return d.index.ListKeys(ctx)
 }
 
+func (d *DelegatingKeyService) ListKeysWith(ctx context.Context, opts ListKeyOptions) ([]KeyDetails, error) {
+	return d.index.ListKeysWith(ctx, opts)
+}
+
 // Implementing KeyManager methods
 func (d *DelegatingKeyService) Name() string {
 	return "DelegatingKeyService"

@@ -165,8 +165,8 @@ DELETE FROM key_access_servers WHERE id = $1;
 ------------------------------------------------------------------
 -- name: createKey :one
 INSERT INTO key_access_server_keys
-    (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    (key_access_server_id, key_algorithm, key_id, key_mode, key_status, metadata, private_key_ctx, public_key_ctx, provider_config_id, legacy)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id;
 
 -- name: getKey :one
@@ -190,7 +190,8 @@ SELECT
   ) AS metadata,
   pc.provider_name,
   pc.config AS pc_config,
-  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
+  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata,
+  kask.legacy
 FROM key_access_server_keys AS kask
 LEFT JOIN 
     provider_config as pc ON kask.provider_config_id = pc.id
@@ -347,7 +348,8 @@ SELECT
   ) AS metadata,
   pc.provider_name,
   pc.config AS provider_config,
-  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata
+  JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS pc_metadata,
+  kask.legacy
 FROM key_access_server_keys AS kask
 INNER JOIN
     listed ON kask.key_access_server_id = listed.kas_id
@@ -355,6 +357,7 @@ LEFT JOIN
     provider_config as pc ON kask.provider_config_id = pc.id
 WHERE
     (sqlc.narg('key_algorithm')::integer IS NULL OR kask.key_algorithm = sqlc.narg('key_algorithm')::integer)
+    AND (sqlc.narg('legacy')::boolean IS NULL OR kask.legacy = sqlc.narg('legacy')::boolean)
 ORDER BY kask.created_at DESC
 LIMIT @limit_ 
 OFFSET @offset_;

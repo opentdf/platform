@@ -21,7 +21,6 @@ const (
 
 type Provider struct {
 	kaspb.AccessServiceServer
-	URI          url.URL `json:"uri"`
 	SDK          *otdf.SDK
 	AttributeSvc *url.URL
 	KeyDelegator *trust.DelegatingKeyService
@@ -49,8 +48,9 @@ type KASConfig struct {
 	// Enables experimental EC rewrap support in TDFs
 	// Enabling is required to parse KAOs with the `ec-wrapped` type,
 	// and (currently) also enables responding with ECIES encrypted responses.
-	ECTDFEnabled bool    `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
-	Preview      Preview `mapstructure:"preview" json:"preview"`
+	ECTDFEnabled     bool    `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	Preview          Preview `mapstructure:"preview" json:"preview"`
+	RegisteredKASURI string  `mapstructure:"registered_kas_uri" json:"registered_kas_uri"`
 }
 
 type Preview struct {

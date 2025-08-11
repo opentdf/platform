@@ -146,7 +146,7 @@ func determineKASURL(srp serviceregistry.RegistrationParams, kasCfg access.KASCo
 			port = strings.TrimPrefix(serverAddr, ":")
 		} else {
 			// Or if serverAddr is invalid or unexpected format
-			panic(fmt.Errorf("could not extract port from KAS server address '%s': %w", serverAddr, err))
+			return nil, fmt.Errorf("could not extract port from KAS server address '%s': %w", serverAddr, err)
 		}
 	}
 

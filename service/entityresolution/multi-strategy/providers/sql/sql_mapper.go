@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opentdf/platform/service/entityresolution/multi-strategy/transformation"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
@@ -128,99 +129,12 @@ func (m *SQLMapper) ValidateOutputMapping(outputMapping []types.OutputMapping) e
 
 // GetSupportedTransformations returns SQL-specific transformations
 func (m *SQLMapper) GetSupportedTransformations() []string {
-	return []string{
-		// Common transformations
-		"csv_to_array",
-		"array",
-		"string",
-		"lowercase",
-		"uppercase",
-		// SQL-specific transformations
-		"postgres_array",
-		"json_extract",
-		"date_format",
-	}
+	return transformation.GetAllSQLTransformations()
 }
 
 // ApplyTransformation applies SQL-specific transformations
-func (m *SQLMapper) ApplyTransformation(value interface{}, transformation string) (interface{}, error) {
-	if transformation == "" {
-		return value, nil
-	}
-
-	// Apply common transformations first
-	switch transformation {
-	case "csv_to_array":
-		if str, ok := value.(string); ok {
-			if str == "" {
-				return []string{}, nil
-			}
-			parts := strings.Split(str, ",")
-			for i, part := range parts {
-				parts[i] = strings.TrimSpace(part)
-			}
-			return parts, nil
-		}
-		return nil, fmt.Errorf("csv_to_array transformation requires string input, got %T", value)
-
-	case "array":
-		// Ensure value is an array
-		if arr, ok := value.([]interface{}); ok {
-			return arr, nil
-		}
-		if arr, ok := value.([]string); ok {
-			result := make([]interface{}, len(arr))
-			for i, v := range arr {
-				result[i] = v
-			}
-			return result, nil
-		}
-		return []interface{}{value}, nil
-
-	case "string":
-		return fmt.Sprintf("%v", value), nil
-
-	case "lowercase":
-		if str, ok := value.(string); ok {
-			return strings.ToLower(str), nil
-		}
-		return strings.ToLower(fmt.Sprintf("%v", value)), nil
-
-	case "uppercase":
-		if str, ok := value.(string); ok {
-			return strings.ToUpper(str), nil
-		}
-		return strings.ToUpper(fmt.Sprintf("%v", value)), nil
-
-	// Apply SQL-specific transformations
-	case "postgres_array":
-		// Handle PostgreSQL array format: {item1,item2,item3}
-		if str, ok := value.(string); ok {
-			str = strings.Trim(str, "{}")
-			if str == "" {
-				return []string{}, nil
-			}
-			parts := strings.Split(str, ",")
-			for i, part := range parts {
-				parts[i] = strings.TrimSpace(part)
-				// Remove quotes if present
-				parts[i] = strings.Trim(parts[i], "\"")
-			}
-			return parts, nil
-		}
-		return nil, fmt.Errorf("postgres_array transformation requires string input, got %T", value)
-
-	case "json_extract":
-		// For now, return as-is. Future enhancement could parse JSON
-		return value, nil
-
-	case "date_format":
-		// For now, return as-is. Future enhancement could format dates
-		return value, nil
-
-	default:
-		return nil, fmt.Errorf("unsupported SQL transformation: %s", transformation)
-	}
+func (m *SQLMapper) ApplyTransformation(value interface{}, transformationName string) (interface{}, error) {
+	return transformation.DefaultRegistry.ApplyTransformation(value, transformationName, "sql")
 }
 
 // sanitizeParameterValue ensures parameter values are safe for SQL queries
@@ -256,12 +170,6 @@ func isValidSQLIdentifier(name string) bool {
 }
 
 // isTransformationSupported checks if a transformation is supported by SQL mapper
-func (m *SQLMapper) isTransformationSupported(transformation string) bool {
-	supported := m.GetSupportedTransformations()
-	for _, t := range supported {
-		if t == transformation {
-			return true
-		}
-	}
-	return false
+func (m *SQLMapper) isTransformationSupported(transformationName string) bool {
+	return transformation.IsSupportedByProvider(transformationName, "sql")
 }

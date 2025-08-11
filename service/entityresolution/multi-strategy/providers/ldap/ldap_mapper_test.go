@@ -3,6 +3,7 @@ package ldap
 import (
 	"testing"
 
+	"github.com/opentdf/platform/service/entityresolution/multi-strategy/transformation"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
@@ -391,8 +392,8 @@ func TestLDAPMapper_GetSupportedTransformations(t *testing.T) {
 }
 
 func TestLDAPMapper_extractCNFromDN(t *testing.T) {
-	mapper := NewLDAPMapper()
-
+	// This function has been moved to the transformation package
+	// Test it there directly using the transformation.ExtractCNFromDN function
 	tests := []struct {
 		name     string
 		dn       string
@@ -427,9 +428,10 @@ func TestLDAPMapper_extractCNFromDN(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := mapper.extractCNFromDN(tt.dn)
+			// Import and use the transformation package function directly
+			result := transformation.ExtractCNFromDN(tt.dn)
 			if result != tt.expected {
-				t.Errorf("extractCNFromDN(%s): expected %s, got %s", tt.dn, tt.expected, result)
+				t.Errorf("ExtractCNFromDN(%s): expected %s, got %s", tt.dn, tt.expected, result)
 			}
 		})
 	}

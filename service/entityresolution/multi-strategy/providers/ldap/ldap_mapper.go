@@ -2,8 +2,8 @@ package ldap
 
 import (
 	"fmt"
-	"strings"
 
+	"github.com/opentdf/platform/service/entityresolution/multi-strategy/transformation"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
@@ -125,161 +125,19 @@ func (m *LDAPMapper) ValidateOutputMapping(outputMapping []types.OutputMapping) 
 
 // GetSupportedTransformations returns LDAP-specific transformations
 func (m *LDAPMapper) GetSupportedTransformations() []string {
-	return []string{
-		// Common transformations
-		"csv_to_array",
-		"array",
-		"string",
-		"lowercase",
-		"uppercase",
-		// LDAP-specific transformations
-		"ldap_dn_to_cn_array",
-		"ldap_dn_to_cn",
-		"ldap_attribute_values",
-		"ad_group_name",
-	}
+	return transformation.GetAllLDAPTransformations()
 }
 
 // ApplyTransformation applies LDAP-specific transformations
-func (m *LDAPMapper) ApplyTransformation(value interface{}, transformation string) (interface{}, error) {
-	if transformation == "" {
-		return value, nil
-	}
-
-	// Apply common transformations first
-	switch transformation {
-	case "csv_to_array":
-		if str, ok := value.(string); ok {
-			if str == "" {
-				return []string{}, nil
-			}
-			parts := strings.Split(str, ",")
-			for i, part := range parts {
-				parts[i] = strings.TrimSpace(part)
-			}
-			return parts, nil
-		}
-		return nil, fmt.Errorf("csv_to_array transformation requires string input, got %T", value)
-
-	case "array":
-		// Ensure value is an array
-		if arr, ok := value.([]interface{}); ok {
-			return arr, nil
-		}
-		if arr, ok := value.([]string); ok {
-			result := make([]interface{}, len(arr))
-			for i, v := range arr {
-				result[i] = v
-			}
-			return result, nil
-		}
-		return []interface{}{value}, nil
-
-	case "string":
-		return fmt.Sprintf("%v", value), nil
-
-	case "lowercase":
-		if str, ok := value.(string); ok {
-			return strings.ToLower(str), nil
-		}
-		return strings.ToLower(fmt.Sprintf("%v", value)), nil
-
-	case "uppercase":
-		if str, ok := value.(string); ok {
-			return strings.ToUpper(str), nil
-		}
-		return strings.ToUpper(fmt.Sprintf("%v", value)), nil
-
-	// Apply LDAP-specific transformations
-	case "ldap_dn_to_cn_array":
-		// Convert array of DNs to array of CNs
-		if arr, ok := value.([]interface{}); ok {
-			result := make([]string, 0, len(arr))
-			for _, item := range arr {
-				if str, ok := item.(string); ok {
-					cn := m.extractCNFromDN(str)
-					if cn != "" {
-						result = append(result, cn)
-					}
-				}
-			}
-			return result, nil
-		}
-		if arr, ok := value.([]string); ok {
-			result := make([]string, 0, len(arr))
-			for _, dn := range arr {
-				cn := m.extractCNFromDN(dn)
-				if cn != "" {
-					result = append(result, cn)
-				}
-			}
-			return result, nil
-		}
-		return nil, fmt.Errorf("ldap_dn_to_cn_array transformation requires array input, got %T", value)
-
-	case "ldap_dn_to_cn":
-		// Convert single DN to CN
-		if str, ok := value.(string); ok {
-			return m.extractCNFromDN(str), nil
-		}
-		return nil, fmt.Errorf("ldap_dn_to_cn transformation requires string input, got %T", value)
-
-	case "ldap_attribute_values":
-		// Extract values from LDAP attribute (handle multi-valued attributes)
-		if arr, ok := value.([]interface{}); ok {
-			result := make([]string, len(arr))
-			for i, v := range arr {
-				result[i] = fmt.Sprintf("%v", v)
-			}
-			return result, nil
-		}
-		if arr, ok := value.([]string); ok {
-			return arr, nil
-		}
-		// Single value
-		return []string{fmt.Sprintf("%v", value)}, nil
-
-	case "ad_group_name":
-		// Extract group name from Active Directory group DN
-		if str, ok := value.(string); ok {
-			// Handle both DN format and simple group names
-			if strings.Contains(str, "CN=") {
-				return m.extractCNFromDN(str), nil
-			}
-			return str, nil
-		}
-		return nil, fmt.Errorf("ad_group_name transformation requires string input, got %T", value)
-
-	default:
-		return nil, fmt.Errorf("unsupported LDAP transformation: %s", transformation)
-	}
+func (m *LDAPMapper) ApplyTransformation(value interface{}, transformationName string) (interface{}, error) {
+	return transformation.DefaultRegistry.ApplyTransformation(value, transformationName, "ldap")
 }
 
 // escapeLDAPFilter escapes special characters in LDAP filter values
 func (m *LDAPMapper) escapeLDAPFilter(value string) string {
-	// LDAP filter metacharacters that need escaping
-	replacer := strings.NewReplacer(
-		"\\", "\\5c",
-		"*", "\\2a",
-		"(", "\\28",
-		")", "\\29",
-		"\x00", "\\00",
-	)
-	return replacer.Replace(value)
+	return transformation.EscapeLDAPFilter(value)
 }
 
-// extractCNFromDN extracts the Common Name (CN) from a Distinguished Name (DN)
-func (m *LDAPMapper) extractCNFromDN(dn string) string {
-	// Simple CN extraction from DN like "CN=Users,OU=Groups,DC=example,DC=com"
-	parts := strings.Split(dn, ",")
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if strings.HasPrefix(strings.ToUpper(part), "CN=") {
-			return part[3:] // Remove "CN=" prefix
-		}
-	}
-	return ""
-}
 
 // isValidTemplateVariable checks if a string is a valid template variable name
 func isValidTemplateVariable(name string) bool {
@@ -326,12 +184,6 @@ func isValidLDAPAttribute(name string) bool {
 }
 
 // isTransformationSupported checks if a transformation is supported by LDAP mapper
-func (m *LDAPMapper) isTransformationSupported(transformation string) bool {
-	supported := m.GetSupportedTransformations()
-	for _, t := range supported {
-		if t == transformation {
-			return true
-		}
-	}
-	return false
+func (m *LDAPMapper) isTransformationSupported(transformationName string) bool {
+	return transformation.IsSupportedByProvider(transformationName, "ldap")
 }

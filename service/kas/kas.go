@@ -63,7 +63,7 @@ func NewRegistration() *serviceregistry.Service[kasconnect.AccessServiceHandler]
 					srp.Logger.Info("preview feature: key management is enabled")
 
 					if kasCfg.Preview.KeyManagement.RegisteredKASURI == "" {
-						panic(fmt.Errorf("registered KAS URI is required when key management is enabled"))
+						panic("registered KAS URI is required when key management is enabled")
 					}
 					kasURL, err := url.Parse(kasCfg.Preview.KeyManagement.RegisteredKASURI)
 					if err != nil {

@@ -48,18 +48,14 @@ type KASConfig struct {
 	// Enables experimental EC rewrap support in TDFs
 	// Enabling is required to parse KAOs with the `ec-wrapped` type,
 	// and (currently) also enables responding with ECIES encrypted responses.
-	ECTDFEnabled bool    `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
-	Preview      Preview `mapstructure:"preview" json:"preview"`
+	ECTDFEnabled     bool    `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	Preview          Preview `mapstructure:"preview" json:"preview"`
+	RegisteredKASURI string  `mapstructure:"registered_kas_uri" json:"registered_kas_uri"`
 }
 
 type Preview struct {
-	ECTDFEnabled  bool          `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
-	KeyManagement KeyManagement `mapstructure:"key_management" json:"key_management"`
-}
-
-type KeyManagement struct {
-	Enabled          bool   `mapstructure:"enabled" json:"enabled"`
-	RegisteredKASURI string `mapstructure:"registered_kas_uri" json:"registered_kas_uri"`
+	ECTDFEnabled  bool `mapstructure:"ec_tdf_enabled" json:"ec_tdf_enabled"`
+	KeyManagement bool `mapstructure:"key_management" json:"key_management"`
 }
 
 // Specifies the preferred/default key for a given algorithm type.

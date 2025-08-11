@@ -170,7 +170,7 @@ func determineKASURL(srp serviceregistry.RegistrationParams, kasCfg access.KASCo
 
 	kasURL, err := url.Parse(kasURLString)
 	if err != nil {
-		panic(fmt.Errorf("invalid kas address [%s] %w", kasURLString, err))
+		return nil, fmt.Errorf("invalid kas address [%s] %w", kasURLString, err)
 	}
 
 	return kasURL, nil

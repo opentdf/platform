@@ -208,7 +208,7 @@ services:
             claim_name: "organizational_unit"
           - source_claim: "groups"
             claim_name: "group_memberships"
-            transformation: "csv_to_array"    # Handle "admin,user,finance" format
+            transformation: csv_to_array    # Handle "admin,user,finance" format
           - source_claim: "clearance"         # JWT uses different claim name
             claim_name: "access_level"
           - source_claim: "cost_center"
@@ -274,10 +274,10 @@ services:
             claim_name: "reporting_manager"
           - source_column: "groups"
             claim_name: "group_memberships"       # Generic group concept
-            transformation: "array"
+            transformation: array
           - source_column: "authorized_projects"
             claim_name: "project_assignments"     # Generic project access
-            transformation: "array"
+            transformation: array
 
       # Strategy 3: Backup database failover strategy  
       - name: "corporate_users_backup"
@@ -356,7 +356,7 @@ services:
             claim_name: "access_level"
           - source_attribute: "memberOf"
             claim_name: "group_memberships"
-            transformation: "ldap_dn_to_cn_array"
+            transformation: ldap_dn_to_cn_array
 
     # Health check configuration
     health_check:

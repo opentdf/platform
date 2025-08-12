@@ -35,16 +35,16 @@ services:
           query_timeout: 30s
           description: "Primary user directory database"
 
-      # LDAP Provider - Corporate directory (commented out - requires LDAP library)
-      # corporate_ldap:
-      #   type: ldap
-      #   connection:
-      #     host: ldap.company.com
-      #     port: 636
-      #     use_tls: true
-      #     bind_dn: "cn=ers-service,ou=services,dc=company,dc=com"
-      #     bind_password: "ldap_service_password"
-      #     description: "Corporate LDAP directory"
+      # LDAP Provider - Corporate directory
+      corporate_ldap:
+        type: ldap
+        connection:
+          host: ldap.company.com
+          port: 636
+          use_tls: true
+          bind_dn: "cn=ers-service,ou=services,dc=company,dc=com"
+          bind_password: "ldap_service_password"
+          description: "Corporate LDAP directory"
 
     # Define mapping strategies (evaluated in order)
     # With failure_strategy: "continue", if a strategy fails, the next matching strategy is tried
@@ -122,41 +122,42 @@ services:
           - source_column: last_login
             claim_name: last_login
 
-      # Strategy 3: LDAP lookup for corporate SSO (commented out - requires LDAP)
-      # - name: corporate_ldap_lookup
-      #   provider: corporate_ldap
-      #   conditions:
-      #     jwt_claims:
-      #       - claim: aud
-      #         operator: equals
-      #         values: ["corporate", "intranet"]
-      #       - claim: employee_id
-      #         operator: exists
-      #   ldap_search:
-      #     base_dn: "ou=employees,dc=company,dc=com"
-      #     filter: "(&(objectClass=person)(employeeID={employee_id}))"
-      #     scope: subtree
-      #     attributes:
-      #       - cn
-      #       - mail
-      #       - employeeID
-      #       - department
-      #       - title
-      #       - memberOf
-      #   input_mapping:
-      #     - jwt_claim: employee_id
-      #       parameter: employee_id
-      #       required: true
-      #   output_mapping:
-      #     - source_attribute: employeeID
-      #       claim_name: employee_id
-      #     - source_attribute: mail
-      #       claim_name: email_address
-      #     - source_attribute: cn
-      #       claim_name: display_name
-      #     - source_attribute: memberOf
-      #       claim_name: ldap_groups
-      #       transformation: ldap_dn_to_cn_array
+      # Strategy 3: LDAP lookup for corporate SSO
+      - name: corporate_ldap_lookup
+        provider: corporate_ldap
+        entity_type: subject
+        conditions:
+          jwt_claims:
+            - claim: aud
+              operator: equals
+              values: ["corporate", "intranet"]
+            - claim: employee_id
+              operator: exists
+        ldap_search:
+          base_dn: "ou=employees,dc=company,dc=com"
+          filter: "(&(objectClass=person)(employeeID={employee_id}))"
+          scope: subtree
+          attributes:
+            - cn
+            - mail
+            - employeeID
+            - department
+            - title
+            - memberOf
+        input_mapping:
+          - jwt_claim: employee_id
+            parameter: employee_id
+            required: true
+        output_mapping:
+          - source_attribute: employeeID
+            claim_name: employee_id
+          - source_attribute: mail
+            claim_name: email_address
+          - source_attribute: cn
+            claim_name: display_name
+          - source_attribute: memberOf
+            claim_name: ldap_groups
+            transformation: ldap_dn_to_cn_array
 
       # Strategy 4: Fallback email lookup in database
       # When we have an email but no specific user_id, try email lookup
@@ -247,8 +248,8 @@ services:
       provider_checks:
         - provider: user_db
           query: "SELECT 1"
-        # - provider: corporate_ldap
-        #   bind_test: true
+        - provider: corporate_ldap
+          bind_test: true
 
 # Example usage patterns with global failure_strategy: "continue":
 #

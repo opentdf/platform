@@ -36,14 +36,20 @@ ERS enables the OpenTDF platform to:
 - **Features**: Connection pooling, parameterized queries, multiple database support
 - **Use Case**: Custom database schemas, high-performance requirements
 
+### Multi-Strategy Entity Resolution Service
+- **Location**: [`./multi-strategy/`](./multi-strategy/)
+- **Backends**: SQL, LDAP, JWT Claims (all in one service)
+- **Features**: Dynamic strategy selection, data transformations, cross-backend failover
+- **Failure Strategies**: `fail-fast` (default) for strict error handling, `continue` for resilient failover
+- **Use Case**: Organizations with heterogeneous identity systems, complex authorization requirements
+
 ## Quick Start
 
 ### 1. Choose Your Implementation
 Select the ERS implementation that matches your identity backend:
 - Use **Claims ERS** for JWT-based authentication systems
 - Use **Keycloak ERS** for Keycloak identity provider integration
-- Use **LDAP ERS** for Active Directory or OpenLDAP
-- Use **SQL ERS** for custom database schemas
+- Use **Multi-Strategy ERS** for LDAP, SQL databases, and multiple backends with intelligent routing
 
 ### 2. Configure Your Service
 ```yaml
@@ -52,10 +58,8 @@ services:
     mode: claims    # JWT token processing
     # OR
     mode: keycloak  # Keycloak identity provider
-    # OR  
-    mode: ldap      # LDAP/Active Directory
     # OR
-    mode: sql       # Database backends
+    mode: multi-strategy  # LDAP, SQL, and JWT Claims with intelligent routing
     # Implementation-specific configuration
 ```
 
@@ -86,6 +90,41 @@ inferid:
 connect_timeout: "10s"  # Connection establishment
 read_timeout: "30s"     # Query execution (LDAP)
 query_timeout: "30s"    # Query execution (SQL)
+```
+
+### Data Transformations (Multi-Strategy ERS)
+Multi-Strategy ERS supports data transformations to normalize values from different sources:
+
+#### Common Transformations
+- **`csv_to_array`**: Converts `"admin,user,finance"` → `["admin", "user", "finance"]`
+- **`array`**: Ensures value is returned as an array type
+- **`string`**: Converts any value to string representation
+- **`lowercase`**: Converts strings to lowercase
+- **`uppercase`**: Converts strings to uppercase
+
+#### SQL-Specific Transformations
+- **`postgres_array`**: Handles PostgreSQL array format `{item1,item2,item3}`
+- **`json_extract`**: Extracts data from JSON columns (future enhancement)
+- **`date_format`**: Formats date values (future enhancement)
+
+#### LDAP-Specific Transformations
+- **`ldap_dn_to_cn_array`**: Converts DN arrays to CN arrays
+- **`ldap_dn_to_cn`**: Extracts CN from single DN
+- **`ldap_attribute_values`**: Handles multi-valued LDAP attributes
+- **`ad_group_name`**: Extracts group names from AD DNs
+
+#### Claims-Specific Transformations  
+- **`jwt_extract_scope`**: Parses OAuth2 space-separated scopes
+- **`jwt_normalize_groups`**: Handles various group formats
+- **`jwt_decode_base64`**: Decodes base64-encoded claims (future enhancement)
+- **`jwt_parse_json`**: Parses JSON string claims (future enhancement)
+
+Example usage:
+```yaml
+output_mapping:
+  - source_column: user_groups
+    claim_name: groups
+    transformation: csv_to_array  # Converts CSV to array
 ```
 
 ### Logging & Security
@@ -139,15 +178,20 @@ go test -v
 
 ## Implementation Details
 
-| Feature | Claims ERS | Keycloak ERS | LDAP ERS | SQL ERS |
-|---------|------------|--------------|----------|---------|
-| **External Dependencies** | None | Keycloak server | LDAP server | Database |
-| **Connection Management** | Stateless | HTTP client pool | Connection pooling | Connection pooling |
-| **Security** | JWT signature validation | OAuth2/OIDC | LDAPS/StartTLS | SSL/TLS support |
-| **Query Flexibility** | JWT claims extraction | Admin API calls | LDAP filters | Custom SQL queries |
-| **Group Support** | JWT group claims | Keycloak roles/groups | LDAP groups | SQL joins |
-| **Performance** | Fastest (no I/O) | HTTP API latency | LDAP-optimized | SQL-optimized |
-| **Use Case** | Microservices, JWTs | Keycloak deployments | Enterprise directories | Custom schemas |
+| Feature | Claims ERS | Keycloak ERS | Multi-Strategy ERS |
+|---------|------------|--------------|-------------------|
+| **External Dependencies** | None | Keycloak server | SQL + LDAP + Claims (configurable) |
+| **Connection Management** | Stateless | HTTP client pool | Multiple connection pools |
+| **Security** | JWT signature validation | OAuth2/OIDC | All security types (LDAPS/StartTLS/SSL/TLS) |
+| **Query Flexibility** | JWT claims extraction | Admin API calls | All query types (LDAP filters + SQL queries + JWT claims) |
+| **Group Support** | JWT group claims | Keycloak roles/groups | All group types (LDAP + SQL joins + JWT claims) |
+| **Data Transformations** | Basic | None | **Advanced (16 types)** |
+| **Failover Support** | None | None | **Cross-backend intelligent failover** |
+| **Performance** | Fastest (no I/O) | HTTP API latency | **Intelligent routing (JWT-first → DB → LDAP)** |
+| **Backend Support** | JWT only | Keycloak only | **SQL databases + LDAP directories + JWT claims** |
+| **Use Case** | Microservices, JWTs | Keycloak deployments | **Any identity system - unified approach** |
+
+> **Note**: For LDAP or SQL backends, use **Multi-Strategy ERS** instead of the deprecated individual implementations.
 
 ## Development
 
@@ -190,10 +234,12 @@ go test -v -run TestKeycloak        # Docker Keycloak (slowest)
 |-------------|----|-----------| 
 | **External system** | **Claims** | Implement JWT token validation, configure signing keys |
 | **External system** | **Keycloak** | Set up Keycloak server, configure Admin API access |
-| **LDAP** | **SQL** | Replace LDAP filters with SQL queries, update attribute mapping |
-| **SQL** | **LDAP** | Replace SQL queries with LDAP filters, configure directory access |
+| **Deprecated LDAP mode** | **Multi-Strategy** | Configure LDAP provider with strategies, enable transformations |
+| **Deprecated SQL mode** | **Multi-Strategy** | Configure SQL provider with strategies, enable transformations |
 | **Any v1** | **Any v2** | Update protocol imports, change `Id` to `EphemeralId` |
 | **Multiple backends** | **Claims** | Consolidate to JWT-based authentication for simplified architecture |
+| **Multiple backends** | **Multi-Strategy** | **Unified service with intelligent routing and cross-backend failover** |
+| **Multiple ERS services** | **Multi-Strategy** | **Single service supporting all backends with strategy-based routing** |
 
 ## Troubleshooting
 

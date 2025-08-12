@@ -61,7 +61,12 @@ require (
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da // indirect
+<<<<<<< HEAD
 	github.com/ebitengine/purego v0.8.2 // indirect
+=======
+	github.com/docker/docker v28.3.3+incompatible // indirect
+	github.com/ebitengine/purego v0.8.4 // indirect
+>>>>>>> 3c392aa (fix(deps): bump github.com/docker/docker from 28.2.2+incompatible to 28.3.3+incompatible in /service (#2598))
 	github.com/moby/go-archive v0.1.0 // indirect
 	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.1 // indirect

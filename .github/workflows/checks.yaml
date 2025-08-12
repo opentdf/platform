@@ -426,7 +426,7 @@ jobs:
       - uses: bufbuild/buf-breaking-action@c57b3d842a5c3f3b454756ef65305a50a587c5ba # v1.1.4
         with:
           input: service
-          against: "https://github.com/opentdf/platform.git#branch=${{ github.event.pull_request.base.ref || 'main' }},subdir=service"
+          against: "https://github.com/opentdf/platform.git#branch=${{ github.event.pull_request.base.ref || github.base_ref || 'main' }},subdir=service"
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version-file: "service/go.mod"

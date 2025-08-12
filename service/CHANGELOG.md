@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/opentdf/platform/compare/service/v0.8.0...service/v0.8.1) (2025-08-12)
+
+
+### Bug Fixes
+
+* **kas:** Allow admin to set registered kas uri [backport to release/service/v0.8] ([#2628](https://github.com/opentdf/platform/issues/2628)) ([44b63b5](https://github.com/opentdf/platform/commit/44b63b5462bc6cb0831da02d718af3eac92a3531))
+
 ## [0.8.0](https://github.com/opentdf/platform/compare/service/v0.7.0...service/v0.8.0) (2025-07-29)
 
 

@@ -88,7 +88,7 @@ func (s *Service) ListObligations(ctx context.Context, req *connect.Request[obli
 
 	os, pr, err := s.dbClient.ListObligations(ctx, req.Msg)
 	if err != nil {
-		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("request", req.Msg))
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
 	}
 	rsp := &obligations.ListObligationsResponse{
 		Obligations: os,
@@ -98,21 +98,24 @@ func (s *Service) ListObligations(ctx context.Context, req *connect.Request[obli
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) CreateObligation(_ context.Context, _ *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
-	// TODO: Implement CreateObligation logic
-	return connect.NewResponse(&obligations.CreateObligationResponse{}), nil
+func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
+	s.logger.DebugContext(ctx, "creating registered resource", slog.String("name", req.Msg.GetName()))
+
+	obl, err := s.dbClient.CreateObligation(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation", req.Msg.String()))
+	}
+	return connect.NewResponse(&obligations.CreateObligationResponse{Obligation: obl}), nil
 }
 
 func (s *Service) GetObligation(ctx context.Context, req *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
-	rsp := &obligations.GetObligationResponse{}
-
 	s.logger.DebugContext(ctx, "getting obligation", slog.Any("identifier", req.Msg.GetIdentifier()))
 
 	obl, err := s.dbClient.GetObligation(ctx, req.Msg)
 	if err != nil {
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
 	}
-	rsp.Obligation = obl
+	rsp := &obligations.GetObligationResponse{Obligation: obl}
 
 	return connect.NewResponse(rsp), nil
 }

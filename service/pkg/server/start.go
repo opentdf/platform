@@ -56,7 +56,7 @@ func Start(f ...StartOptions) error {
 
 		for _, loader := range startConfig.configLoaders {
 			slog.Debug("loading config for loader", slog.String("loader", loader.Name()))
-			err := loader.Load(cfg)
+			err := loader.Load()
 			if err != nil {
 				return fmt.Errorf("failed load config with loader %s: %w", loader.Name(), err)
 			}

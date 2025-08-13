@@ -163,7 +163,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 
 func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.UpdateObligationRequest) (*policy.Obligation, error) {
 	id := r.GetId()
-	name := strings.ToLower(r.GetName())
+	name := r.GetName()
 	obl, err := c.GetObligation(ctx, &obligations.GetObligationRequest{
 		Identifier: &obligations.GetObligationRequest_Id{
 			Id: id,

@@ -57,15 +57,22 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 	}, nil
 }
 
-func splitOblFQN(fqn string) (string, string) {
+func breakOblFQN(fqn string) (string, string) {
 	nsFQN := strings.Split(fqn, "/obl/")[0]
 	parts := strings.Split(fqn, "/")
 	oblName := parts[len(parts)-1]
 	return nsFQN, oblName
 }
 
+func buildOblFQN(nsFQN, oblName string) string {
+	if !strings.HasSuffix(nsFQN, "/") {
+		nsFQN += "/"
+	}
+	return nsFQN + "obl/" + oblName
+}
+
 func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {
-	nsFQN, oblName := splitOblFQN(r.GetFqn())
+	nsFQN, oblName := breakOblFQN(r.GetFqn())
 	queryParams := getObligationParams{
 		ID:           r.GetId(),
 		Name:         oblName,
@@ -105,7 +112,7 @@ func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations
 	nsFQNs := make([]string, 0, len(r.GetFqns()))
 	oblNames := make([]string, 0, len(r.GetFqns()))
 	for _, fqn := range r.GetFqns() {
-		nsFQN, oblName := splitOblFQN(fqn)
+		nsFQN, oblName := breakOblFQN(fqn)
 		nsFQNs = append(nsFQNs, nsFQN)
 		oblNames = append(oblNames, oblName)
 	}

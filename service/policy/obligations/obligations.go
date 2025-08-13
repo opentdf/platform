@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/obligations/obligationsconnect"
 	"github.com/opentdf/platform/service/logger"
@@ -118,9 +119,19 @@ func (s *Service) GetObligation(ctx context.Context, req *connect.Request[obliga
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) GetObligationsByFQNs(_ context.Context, _ *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
-	// TODO: Implement GetObligationsByFQNs logic
-	return connect.NewResponse(&obligations.GetObligationsByFQNsResponse{}), nil
+func (s *Service) GetObligationsByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
+	s.logger.DebugContext(ctx, "getting obligations")
+
+	os, err := s.dbClient.GetObligationsByFQNs(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed)
+	}
+	obls := make(map[string]*policy.Obligation)
+	for _, obl := range os {
+		obls[obl.GetFqn()] = obl
+	}
+	rsp := &obligations.GetObligationsByFQNsResponse{FqnObligationMap: obls}
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *Service) UpdateObligation(ctx context.Context, req *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error) {

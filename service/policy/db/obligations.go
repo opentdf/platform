@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -10,38 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/pkg/db"
-	"google.golang.org/protobuf/encoding/protojson"
 )
-
-func unmarshalObligationValuesProto(valuesJSON []byte, values []*policy.ObligationValue) error {
-	if valuesJSON == nil {
-		return nil
-	}
-
-	raw := []json.RawMessage{}
-	if err := json.Unmarshal(valuesJSON, &raw); err != nil {
-		return fmt.Errorf("failed to unmarshal values array [%s]: %w", string(valuesJSON), err)
-	}
-
-	for _, r := range raw {
-		v := &policy.ObligationValue{}
-		if err := protojson.Unmarshal(r, v); err != nil {
-			return fmt.Errorf("failed to unmarshal value [%s]: %w", string(r), err)
-		}
-		values = append(values, v)
-	}
-
-	return nil
-}
-
-func unmarshalNamespace(namespaceJSON []byte, namespace *policy.Namespace) error {
-	if namespaceJSON != nil {
-		if err := protojson.Unmarshal(namespaceJSON, namespace); err != nil {
-			return fmt.Errorf("failed to unmarshal namespaceJSON [%s]: %w", string(namespaceJSON), err)
-		}
-	}
-	return nil
-}
 
 ///
 /// Obligation Definitions
@@ -66,7 +34,7 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 	oblVals := make([]*policy.ObligationValue, 0, len(values))
-	if err := unmarshalObligationValuesProto(row.Values, oblVals); err != nil {
+	if err := unmarshalObligationValues(row.Values, oblVals); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal obligation values: %w", err)
 	}
 
@@ -110,7 +78,7 @@ func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObl
 	}
 
 	oblVals := make([]*policy.ObligationValue, 0)
-	if err := unmarshalObligationValuesProto(row.Values, oblVals); err != nil {
+	if err := unmarshalObligationValues(row.Values, oblVals); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal obligation values: %w", err)
 	}
 
@@ -164,7 +132,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 		}
 
 		values := []*policy.ObligationValue{}
-		if err = unmarshalObligationValuesProto(r.Values, values); err != nil {
+		if err = unmarshalObligationValues(r.Values, values); err != nil {
 			return nil, nil, err
 		}
 

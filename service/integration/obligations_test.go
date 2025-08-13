@@ -75,7 +75,7 @@ func (s *ObligationsSuite) Test_CreateObligation_Succeeds() {
 	// By namespace FQN
 	obl = s.createObligationByFQN(namespaceFQN, oblName, nil)
 	s.assertObligationBasics(obl, oblName, namespaceID, namespace.Name, namespaceFQN)
-	s.deleteObligation(obl.GetId())
+	defer s.deleteObligation(obl.GetId())
 }
 
 func (s *ObligationsSuite) Test_CreateObligation_Fails() {
@@ -102,7 +102,7 @@ func (s *ObligationsSuite) Test_CreateObligation_Fails() {
 	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
 	s.Nil(pending)
 
-	s.deleteObligation(obl.GetId())
+	defer s.deleteObligation(obl.GetId())
 }
 
 // Get
@@ -130,7 +130,7 @@ func (s *ObligationsSuite) Test_GetObligation_Succeeds() {
 	s.Require().NoError(err)
 	s.assertObligationBasics(obl, oblName, namespaceID, namespace.Name, namespaceFQN)
 
-	s.deleteObligation(createdObl.GetId())
+	defer s.deleteObligation(createdObl.GetId())
 }
 
 func (s *ObligationsSuite) Test_GetObligation_Fails() {
@@ -236,7 +236,7 @@ func (s *ObligationsSuite) Test_ListObligations_Succeeds() {
 	s.Empty(oblList)
 
 	// Cleanup: Delete all created obligations
-	s.deleteObligations(createdOblIDs)
+	defer s.deleteObligations(createdOblIDs)
 }
 
 func (s *ObligationsSuite) Test_ListObligations_Fails() {
@@ -272,7 +272,7 @@ func (s *ObligationsSuite) Test_UpdateObligation_Succeeds() {
 	s.Equal(newMetadata.GetLabels(), updatedObl.GetMetadata().GetLabels())
 	s.assertObligationValues(updatedObl)
 
-	s.deleteObligation(updatedObl.GetId())
+	defer s.deleteObligation(updatedObl.GetId())
 }
 
 func (s *ObligationsSuite) Test_UpdateObligation_Fails() {

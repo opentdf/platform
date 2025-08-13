@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/obligations/obligationsconnect"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -82,9 +83,19 @@ func (s *Service) Close() {
 	s.dbClient.Close()
 }
 
-func (s *Service) ListObligations(_ context.Context, _ *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error) {
-	// TODO: Implement ListObligations logic
-	return connect.NewResponse(&obligations.ListObligationsResponse{}), nil
+func (s *Service) ListObligations(ctx context.Context, req *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error) {
+	s.logger.DebugContext(ctx, "listing obligations")
+
+	os, pr, err := s.dbClient.ListObligations(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("request", req.Msg))
+	}
+	rsp := &obligations.ListObligationsResponse{
+		Obligations: os,
+		Pagination:  pr,
+	}
+
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *Service) CreateObligation(_ context.Context, _ *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
@@ -92,9 +103,18 @@ func (s *Service) CreateObligation(_ context.Context, _ *connect.Request[obligat
 	return connect.NewResponse(&obligations.CreateObligationResponse{}), nil
 }
 
-func (s *Service) GetObligation(_ context.Context, _ *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
-	// TODO: Implement GetObligation logic
-	return connect.NewResponse(&obligations.GetObligationResponse{}), nil
+func (s *Service) GetObligation(ctx context.Context, req *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
+	rsp := &obligations.GetObligationResponse{}
+
+	s.logger.DebugContext(ctx, "getting obligation", slog.Any("identifier", req.Msg.GetIdentifier()))
+
+	obl, err := s.dbClient.GetObligation(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
+	}
+	rsp.Obligation = obl
+
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *Service) GetObligationsByFQNs(_ context.Context, _ *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {

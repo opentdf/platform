@@ -202,7 +202,7 @@ WHERE
         ($2::TEXT != '' AND $3::TEXT != '' 
          AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
     )
-GROUP BY od.id, n.id, n.name, fqns.fqn
+GROUP BY od.id, n.id, fqns.fqn
 `
 
 type getObligationParams struct {
@@ -251,7 +251,7 @@ type getObligationRow struct {
 //	        ($2::TEXT != '' AND $3::TEXT != ''
 //	         AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
 //	    )
-//	GROUP BY od.id, n.id, n.name, fqns.fqn
+//	GROUP BY od.id, n.id, fqns.fqn
 func (q *Queries) getObligation(ctx context.Context, arg getObligationParams) (getObligationRow, error) {
 	row := q.db.QueryRow(ctx, getObligation, arg.ID, arg.NamespaceFqn, arg.Name)
 	var i getObligationRow

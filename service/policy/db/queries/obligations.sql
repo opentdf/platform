@@ -87,7 +87,7 @@ WHERE
         (sqlc.arg(namespace_fqn)::TEXT != '' AND sqlc.arg(name)::TEXT != '' 
          AND fqns.fqn = sqlc.arg(namespace_fqn)::VARCHAR AND od.name = sqlc.arg(name)::VARCHAR)
     )
-GROUP BY od.id, n.id, n.name, fqns.fqn;
+GROUP BY od.id, n.id, fqns.fqn;
 
 -- name: listObligations :many
 WITH counted AS (

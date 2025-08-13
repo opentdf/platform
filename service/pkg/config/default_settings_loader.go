@@ -40,18 +40,7 @@ func (l *DefaultSettingsLoader) Get(key string) (any, error) {
 }
 
 // Load loads the configuration into the provided struct
-func (l *DefaultSettingsLoader) Load() error {
-	// Unmarshal config
-	//if err := l.viper.Unmarshal(cfg); err != nil {
-	//	return errors.Join(err, ErrUnmarshallingConfig)
-	//}
-
-	// Validate config
-	//validate := validator.New()
-	//if err := validate.Struct(cfg); err != nil {
-	//	return errors.Join(err, ErrUnmarshallingConfig)
-	//}
-
+func (l *DefaultSettingsLoader) Load(mostRecentConfig Config) error {
 	return nil
 }
 

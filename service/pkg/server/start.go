@@ -46,22 +46,56 @@ func Start(f ...StartOptions) error {
 	ctx := context.Background()
 
 	slog.Debug("loading configuration from environment")
-	cfg, err := config.LoadConfig(ctx, startConfig.ConfigKey, startConfig.ConfigFile)
-	if err != nil {
-		return fmt.Errorf("could not load config: %w", err)
+	loaderOrder := []string{"environment-value", "config-file", "default-settings"}
+	if startConfig.configLoaderOrder != nil {
+		loaderOrder = startConfig.configLoaderOrder
 	}
 
-	if startConfig.configLoaders != nil {
-		slog.Debug("loading configuration from additional provided loaders")
+	loaders := make([]config.Loader, len(loaderOrder))
 
-		for _, loader := range startConfig.configLoaders {
-			slog.Debug("loading config for loader", slog.String("loader", loader.Name()))
-			err := loader.Load()
-			if err != nil {
-				return fmt.Errorf("failed load config with loader %s: %w", loader.Name(), err)
+	defaultKVs, err := config.GetDefaultKVs()
+	if err != nil {
+		return err
+	}
+
+	for idx, loaderName := range loaderOrder {
+		var loader config.Loader
+		switch loaderName {
+		case "environment-value":
+			allowedEnvOverrides := make([]string, len(defaultKVs))
+			for defaultKeys := range defaultKVs {
+				allowedEnvOverrides = append(allowedEnvOverrides, defaultKeys)
 			}
-			cfg.AddLoader(loader)
+			loader, err = config.NewEnvironmentValueLoader(startConfig.ConfigKey, allowedEnvOverrides)
+			if err != nil {
+				return err
+			}
+		case "config-file":
+			loader, err = config.NewConfigFileLoader(startConfig.ConfigKey, startConfig.ConfigFile)
+			if err != nil {
+				return err
+			}
+		case "default-settings":
+			loader, err = config.NewDefaultSettingsLoader()
+			if err != nil {
+				return err
+			}
+		default:
+			for _, additionalLoader := range startConfig.configLoaders {
+				if additionalLoader.Name() == loaderName {
+					loader = additionalLoader
+					break
+				}
+			}
 		}
+		if loader == nil {
+			return fmt.Errorf("loader not found: %s", loaderName)
+		}
+		loaders[idx] = loader
+	}
+	cfg, err := config.LoadConfig(ctx, loaders)
+	if err != nil {
+		return fmt.Errorf("could not load config: %w", err)
 	}
 
 	if cfg.DevMode {

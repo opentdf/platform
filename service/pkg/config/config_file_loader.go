@@ -48,7 +48,7 @@ func (l *ConfigFileLoader) Get(key string) (any, error) {
 }
 
 // Load loads the configuration into the provided struct
-func (l *ConfigFileLoader) Load() error {
+func (l *ConfigFileLoader) Load(mostRecentConfig Config) error {
 	// Read the config file
 	if err := l.viper.ReadInConfig(); err != nil {
 		return errors.Join(err, ErrLoadingConfig)
@@ -78,7 +78,7 @@ func (l *ConfigFileLoader) Watch(ctx context.Context, cfg *Config, onChange func
 		slog.DebugContext(ctx, "environment config file changed", slog.String("file", e.Name))
 
 		// First reload and validate the config
-		if err := l.Load(); err != nil {
+		if err := l.Load(*cfg); err != nil {
 			slog.ErrorContext(ctx, "error reloading environment config", slog.Any("error", err))
 			return
 		}

@@ -170,66 +170,47 @@ func (c SDKConfig) LogValue() slog.Value {
 }
 
 // LoadConfig loads configuration using the provided loader or creates a default Viper loader
-func LoadConfig(_ context.Context, key, file string) (*Config, error) {
+func LoadConfig(_ context.Context, loaders []Loader) (*Config, error) {
 	defaultKVs, err := GetDefaultKVs()
 	if err != nil {
 		return nil, err
 	}
 
-	defaultSettingsLoader, err := NewDefaultSettingsLoader()
-	if err != nil {
-		return nil, err
-	}
-	err = defaultSettingsLoader.Load()
-	if err != nil {
-		return nil, err
-	}
-	allowedEnvOverrides := []string{}
-	for defaultKeys := range defaultKVs {
-		allowedEnvOverrides = append(allowedEnvOverrides, defaultKeys)
-	}
-	environmentValueLoader, err := NewEnvironmentValueLoader(key, allowedEnvOverrides)
-	if err != nil {
-		return nil, err
-	}
-	err = environmentValueLoader.Load()
-	if err != nil {
-		return nil, err
-	}
-	configFileLoader, err := NewConfigFileLoader(key, file)
-	if err != nil {
-		return nil, err
-	}
-	err = configFileLoader.Load()
-	if err != nil {
-		return nil, err
-	}
-	loaders := []Loader{
-		environmentValueLoader,
-		configFileLoader,
-		defaultSettingsLoader,
-	}
-
-	defaultKeys := []string{}
-	for defaultKey := range defaultKVs {
-		defaultKeys = append(defaultKeys, defaultKey)
-	}
-
 	orderedViper := viper.NewWithOptions(viper.WithLogger(slog.Default()))
-	for _, defaultConfigKey := range defaultKeys {
-		orderedViper.SetDefault(defaultConfigKey, defaultKVs[defaultConfigKey])
-		for _, loader := range loaders {
+	for defaultConfigKey, defaultConfigValue := range defaultKVs {
+		orderedViper.SetDefault(defaultConfigKey, defaultConfigValue)
+	}
+	assigned := make(map[string]struct{})
+	for _, loader := range loaders {
+		mostRecentConfig := &Config{}
+		err = orderedViper.Unmarshal(mostRecentConfig)
+		if err != nil {
+			return nil, errors.Join(err, ErrUnmarshallingConfig)
+		}
+		err = validator.New().Struct(mostRecentConfig)
+		if err != nil {
+			return nil, errors.Join(err, ErrUnmarshallingConfig)
+		}
+
+		err = loader.Load(*mostRecentConfig)
+		if err != nil {
+			return nil, err
+		}
+		for defaultConfigKey, _ := range defaultKVs {
+			if _, assignedAlready := assigned[defaultConfigKey]; assignedAlready {
+				continue
+			}
 			loaderValue, err := loader.Get(defaultConfigKey)
 			if err != nil {
 				return nil, err
 			}
-			if loaderValue == nil {
-				continue
+			if loaderValue != nil {
+				orderedViper.Set(defaultConfigKey, loaderValue)
+				assigned[defaultConfigKey] = struct{}{}
 			}
-			orderedViper.Set(defaultConfigKey, loaderValue)
-			break
 		}
 	}
+
 	config := &Config{}
 	err = orderedViper.Unmarshal(config)
 	if err != nil {

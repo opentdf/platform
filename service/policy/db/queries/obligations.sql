@@ -137,3 +137,37 @@ WHERE id = @id;
 
 -- name: deleteObligation :execrows
 DELETE FROM obligation_definitions WHERE id = $1;
+
+-- name: getObligationsByFQNs :many
+SELECT
+    od.id,
+    od.name,
+    od.metadata,
+    JSON_BUILD_OBJECT(
+        'id', n.id,
+        'name', n.name,
+        'fqn', fqns.fqn
+    ) as namespace,
+    COALESCE(
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', ov.id,
+                'value', ov.value
+            )
+        ) FILTER (WHERE ov.id IS NOT NULL),
+        '[]'::JSON
+    )::JSONB as values
+FROM
+    obligation_definitions od
+JOIN
+    attribute_namespaces n on od.namespace_id = n.id
+JOIN
+    attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+JOIN
+    (SELECT unnest(@namespace_fqns::text[]) as ns_fqn, unnest(@obligation_names::text[]) as obl_name) as fqn_pairs
+ON
+    fqns.fqn = fqn_pairs.ns_fqn AND od.name = fqn_pairs.obl_name
+LEFT JOIN
+    obligation_values_standard ov on od.id = ov.obligation_definition_id
+GROUP BY
+    od.id, n.id, fqns.fqn;

@@ -111,7 +111,7 @@ func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations
 	}
 
 	queryParams := getObligationsByFQNsParams{
-		NamespaceFQNs:   nsFQNs,
+		NamespaceFqns:   nsFQNs,
 		ObligationNames: oblNames,
 	}
 
@@ -124,7 +124,7 @@ func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations
 	for i, r := range list {
 		metadata := &common.Metadata{}
 		if err = unmarshalMetadata(r.Metadata, metadata); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		namespace := &policy.Namespace{}

@@ -64,11 +64,8 @@ func breakOblFQN(fqn string) (string, string) {
 	return nsFQN, oblName
 }
 
-func buildOblFQN(nsFQN, oblName string) string {
-	if !strings.HasSuffix(nsFQN, "/") {
-		nsFQN += "/"
-	}
-	return nsFQN + "obl/" + oblName
+func BuildOblFQN(nsFQN, oblName string) string {
+	return nsFQN + "/obl/" + oblName
 }
 
 func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {

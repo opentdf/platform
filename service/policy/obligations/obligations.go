@@ -128,7 +128,7 @@ func (s *Service) GetObligationsByFQNs(ctx context.Context, req *connect.Request
 	}
 	obls := make(map[string]*policy.Obligation)
 	for _, obl := range os {
-		obls[obl.GetFqn()] = obl
+		obls[policydb.BuildOblFQN(obl.GetNamespace().GetFqn(), obl.GetName())] = obl
 	}
 	rsp := &obligations.GetObligationsByFQNsResponse{FqnObligationMap: obls}
 	return connect.NewResponse(rsp), nil

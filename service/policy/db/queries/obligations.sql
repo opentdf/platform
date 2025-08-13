@@ -54,7 +54,7 @@ FROM inserted_obligation io
 JOIN attribute_namespaces n ON io.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
-GROUP BY io.id, io.name, io.metadata, n.id, n.name, fqns.fqn;
+GROUP BY io.id, io.name, io.metadata, n.id, fqns.fqn;
 
 -- name: getObligation :one
 SELECT
@@ -124,7 +124,7 @@ LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
     (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
     (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
-GROUP BY od.id, n.id, n.name, fqns.fqn, counted.total
+GROUP BY od.id, n.id, fqns.fqn, counted.total
 LIMIT @limit_
 OFFSET @offset_;
 

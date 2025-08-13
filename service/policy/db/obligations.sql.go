@@ -62,7 +62,7 @@ FROM inserted_obligation io
 JOIN attribute_namespaces n ON io.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
-GROUP BY io.id, io.name, io.metadata, n.id, n.name, fqns.fqn
+GROUP BY io.id, io.name, io.metadata, n.id, fqns.fqn
 `
 
 type createObligationParams struct {
@@ -136,7 +136,7 @@ type createObligationRow struct {
 //	JOIN attribute_namespaces n ON io.namespace_id = n.id
 //	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
-//	GROUP BY io.id, io.name, io.metadata, n.id, n.name, fqns.fqn
+//	GROUP BY io.id, io.name, io.metadata, n.id, fqns.fqn
 func (q *Queries) createObligation(ctx context.Context, arg createObligationParams) (createObligationRow, error) {
 	row := q.db.QueryRow(ctx, createObligation,
 		arg.NamespaceID,
@@ -300,7 +300,7 @@ LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
     (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
     (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
-GROUP BY od.id, n.id, n.name, fqns.fqn, counted.total
+GROUP BY od.id, n.id, fqns.fqn, counted.total
 LIMIT $4
 OFFSET $3
 `
@@ -357,7 +357,7 @@ type listObligationsRow struct {
 //	WHERE
 //	    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
 //	    (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
-//	GROUP BY od.id, n.id, n.name, fqns.fqn, counted.total
+//	GROUP BY od.id, n.id, fqns.fqn, counted.total
 //	LIMIT $4
 //	OFFSET $3
 func (q *Queries) listObligations(ctx context.Context, arg listObligationsParams) ([]listObligationsRow, error) {

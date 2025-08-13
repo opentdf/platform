@@ -101,6 +101,54 @@ func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObl
 	}, nil
 }
 
+func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations.GetObligationsByFQNsRequest) ([]*policy.Obligation, error) {
+	nsFQNs := make([]string, 0, len(r.GetFqns()))
+	oblNames := make([]string, 0, len(r.GetFqns()))
+	for _, fqn := range r.GetFqns() {
+		nsFQN, oblName := splitOblFQN(fqn)
+		nsFQNs = append(nsFQNs, nsFQN)
+		oblNames = append(oblNames, oblName)
+	}
+
+	queryParams := getObligationsByFQNsParams{
+		NamespaceFQNs:   nsFQNs,
+		ObligationNames: oblNames,
+	}
+
+	list, err := c.queries.getObligationsByFQNs(ctx, queryParams)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	obls := make([]*policy.Obligation, len(list))
+
+	for i, r := range list {
+		metadata := &common.Metadata{}
+		if err = unmarshalMetadata(r.Metadata, metadata); err != nil {
+			return nil, nil, err
+		}
+
+		namespace := &policy.Namespace{}
+		if err := unmarshalNamespace(r.Namespace, namespace); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
+		}
+
+		values := []*policy.ObligationValue{}
+		if err = unmarshalObligationValues(r.Values, values); err != nil {
+			return nil, err
+		}
+
+		obls[i] = &policy.Obligation{
+			Id:        r.ID,
+			Name:      r.Name,
+			Metadata:  metadata,
+			Namespace: namespace,
+			Values:    values,
+		}
+	}
+
+	return obls, nil
+}
+
 func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.ListObligationsRequest) ([]*policy.Obligation, *policy.PageResponse, error) {
 	limit, offset := c.getRequestedLimitOffset(r.GetPagination())
 
@@ -109,7 +157,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 		return nil, nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.queries.listObligations(ctx, listObligationsParams{
+	rows, err := c.queries.listObligations(ctx, listObligationsParams{
 		NamespaceID:  r.GetId(),
 		NamespaceFqn: r.GetFqn(),
 		Limit:        limit,
@@ -118,9 +166,9 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 	if err != nil {
 		return nil, nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	oblList := make([]*policy.Obligation, len(list))
+	obls := make([]*policy.Obligation, len(rows))
 
-	for i, r := range list {
+	for i, r := range rows {
 		metadata := &common.Metadata{}
 		if err = unmarshalMetadata(r.Metadata, metadata); err != nil {
 			return nil, nil, err
@@ -136,7 +184,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 			return nil, nil, err
 		}
 
-		oblList[i] = &policy.Obligation{
+		obls[i] = &policy.Obligation{
 			Id:        r.ID,
 			Name:      r.Name,
 			Metadata:  metadata,
@@ -147,8 +195,8 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 
 	var total int32
 	var nextOffset int32
-	if len(list) > 0 {
-		total = int32(list[0].Total)
+	if len(rows) > 0 {
+		total = int32(rows[0].Total)
 		nextOffset = getNextOffset(offset, limit, total)
 	}
 
@@ -158,7 +206,7 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 		NextOffset:    nextOffset,
 	}
 
-	return oblList, pagination, nil
+	return obls, pagination, nil
 }
 
 func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.UpdateObligationRequest) (*policy.Obligation, error) {

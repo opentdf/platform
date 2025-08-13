@@ -35,7 +35,18 @@ var (
 		Run: func(cmd *cobra.Command, _ []string) {
 			configFile, _ := cmd.Flags().GetString(configFileFlag)
 			configKey, _ := cmd.Flags().GetString(configKeyFlag)
-			cfg, err := config.LoadConfig(cmd.Context(), configKey, configFile)
+			envLoader, err := config.NewEnvironmentValueLoader(configKey, nil)
+			if err != nil {
+				panic(fmt.Errorf("could not load config: %w", err))
+			}
+			configFileLoader, err := config.NewConfigFileLoader(configKey, configFile)
+			if err != nil {
+				panic(fmt.Errorf("could not load config: %w", err))
+			}
+			cfg, err := config.LoadConfig(cmd.Context(), []config.Loader{
+				envLoader,
+				configFileLoader,
+			})
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}

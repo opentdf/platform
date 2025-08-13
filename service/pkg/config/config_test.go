@@ -215,7 +215,14 @@ func TestConfig_OnChange(t *testing.T) {
 
 func TestLoadConfig_NoFileExistsInEnv(t *testing.T) {
 	ctx := t.Context()
-	_, err := LoadConfig(ctx, "test", "non-existent-file")
+	envLoader, err := NewEnvironmentValueLoader("test", nil)
+	require.NoError(t, err)
+	configFileLoader, err := NewConfigFileLoader("test", "non-existent-file")
+	require.NoError(t, err)
+	_, err = LoadConfig(ctx, []Loader{
+		envLoader,
+		configFileLoader,
+	})
 	assert.Error(t, err)
 }
 
@@ -253,7 +260,14 @@ server:
 
 	// Call LoadConfig with the temp file
 	ctx := t.Context()
-	config, err := LoadConfig(ctx, "test", tempFile.Name())
+	envLoader, err := NewEnvironmentValueLoader("test", nil)
+	require.NoError(t, err)
+	configFileLoader, err := NewConfigFileLoader("test", tempFile.Name())
+	require.NoError(t, err)
+	config, err := LoadConfig(ctx, []Loader{
+		envLoader,
+		configFileLoader,
+	})
 
 	// Assertions
 	require.NoError(t, err)

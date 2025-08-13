@@ -196,19 +196,19 @@ WHERE
     -- lookup by obligation id OR by namespace fqn + obligation name
     (
         -- lookup by obligation id
-        (NULLIF($1, '') IS NOT NULL AND od.id = $1::UUID)
+        ($1::TEXT != '' AND od.id = $1::UUID)
         OR
         -- lookup by namespace fqn + obligation name
-        (NULLIF($2, '') IS NOT NULL AND NULLIF($3, '') IS NOT NULL 
+        ($2::TEXT != '' AND $3::TEXT != '' 
          AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
     )
 GROUP BY od.id, n.id, n.name, fqns.fqn
 `
 
 type getObligationParams struct {
-	ID           interface{} `json:"id"`
-	NamespaceFqn interface{} `json:"namespace_fqn"`
-	Name         interface{} `json:"name"`
+	ID           string `json:"id"`
+	NamespaceFqn string `json:"namespace_fqn"`
+	Name         string `json:"name"`
 }
 
 type getObligationRow struct {
@@ -245,10 +245,10 @@ type getObligationRow struct {
 //	    -- lookup by obligation id OR by namespace fqn + obligation name
 //	    (
 //	        -- lookup by obligation id
-//	        (NULLIF($1, '') IS NOT NULL AND od.id = $1::UUID)
+//	        ($1::TEXT != '' AND od.id = $1::UUID)
 //	        OR
 //	        -- lookup by namespace fqn + obligation name
-//	        (NULLIF($2, '') IS NOT NULL AND NULLIF($3, '') IS NOT NULL
+//	        ($2::TEXT != '' AND $3::TEXT != ''
 //	         AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
 //	    )
 //	GROUP BY od.id, n.id, n.name, fqns.fqn

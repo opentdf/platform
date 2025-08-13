@@ -81,11 +81,11 @@ WHERE
     -- lookup by obligation id OR by namespace fqn + obligation name
     (
         -- lookup by obligation id
-        (NULLIF(@id, '') IS NOT NULL AND od.id = @id::UUID)
+        (sqlc.arg(id)::TEXT != '' AND od.id = sqlc.arg(id)::UUID)
         OR
         -- lookup by namespace fqn + obligation name
-        (NULLIF(@namespace_fqn, '') IS NOT NULL AND NULLIF(@name, '') IS NOT NULL 
-         AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
+        (sqlc.arg(namespace_fqn)::TEXT != '' AND sqlc.arg(name)::TEXT != '' 
+         AND fqns.fqn = sqlc.arg(namespace_fqn)::VARCHAR AND od.name = sqlc.arg(name)::VARCHAR)
     )
 GROUP BY od.id, n.id, n.name, fqns.fqn;
 

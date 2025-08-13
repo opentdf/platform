@@ -272,8 +272,8 @@ WITH counted AS (
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
-        (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
-        (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
+        ($1::TEXT = '' OR od.namespace_id = $1::UUID) AND
+        ($2::TEXT = '' OR fqns.fqn = $2::VARCHAR)
 )
 SELECT
     od.id,
@@ -298,8 +298,8 @@ LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id 
 CROSS JOIN counted
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
-    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
-    (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
+    ($1::TEXT = '' OR od.namespace_id = $1::UUID) AND
+    ($2::TEXT = '' OR fqns.fqn = $2::VARCHAR)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
 LIMIT $4
 OFFSET $3
@@ -329,8 +329,8 @@ type listObligationsRow struct {
 //	    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
 //	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 //	    WHERE
-//	        (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
-//	        (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
+//	        ($1::TEXT = '' OR od.namespace_id = $1::UUID) AND
+//	        ($2::TEXT = '' OR fqns.fqn = $2::VARCHAR)
 //	)
 //	SELECT
 //	    od.id,
@@ -355,8 +355,8 @@ type listObligationsRow struct {
 //	CROSS JOIN counted
 //	LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 //	WHERE
-//	    (NULLIF($1::TEXT, '') IS NULL OR od.namespace_id = $1::UUID) AND
-//	    (NULLIF($2::TEXT, '') IS NULL OR fqns.fqn = $2::VARCHAR)
+//	    ($1::TEXT = '' OR od.namespace_id = $1::UUID) AND
+//	    ($2::TEXT = '' OR fqns.fqn = $2::VARCHAR)
 //	GROUP BY od.id, n.id, fqns.fqn, counted.total
 //	LIMIT $4
 //	OFFSET $3

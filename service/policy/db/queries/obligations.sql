@@ -7,7 +7,7 @@ WITH inserted_obligation AS (
     INSERT INTO obligation_definitions (namespace_id, name, metadata)
     SELECT 
         CASE 
-            WHEN @namespace_id::TEXT != '' THEN @namespace_id::UUID
+            WHEN sqlc.arg(namespace_id)::TEXT != '' THEN sqlc.arg(namespace_id)::UUID
             ELSE fqns.namespace_id
         END,
         @name, 
@@ -15,21 +15,21 @@ WITH inserted_obligation AS (
     FROM (
         SELECT 
             CASE 
-                WHEN @namespace_id::TEXT != '' THEN @namespace_id::UUID
+                WHEN sqlc.arg(namespace_id)::TEXT != '' THEN sqlc.arg(namespace_id)::UUID
                 ELSE NULL
             END as direct_namespace_id
     ) direct
-    LEFT JOIN attribute_fqns fqns ON fqns.fqn = @namespace_fqn AND @namespace_id::TEXT = ''
+    LEFT JOIN attribute_fqns fqns ON fqns.fqn = sqlc.arg(namespace_fqn) AND sqlc.arg(namespace_id)::TEXT = ''
     WHERE 
-        (@namespace_id::TEXT != '' AND direct.direct_namespace_id IS NOT NULL) OR
-        (@namespace_fqn::TEXT != '' AND fqns.namespace_id IS NOT NULL)
+        (sqlc.arg(namespace_id)::TEXT != '' AND direct.direct_namespace_id IS NOT NULL) OR
+        (sqlc.arg(namespace_fqn)::TEXT != '' AND fqns.namespace_id IS NOT NULL)
     RETURNING id, namespace_id, name, metadata
 ),
 inserted_values AS (
     INSERT INTO obligation_values_standard (obligation_definition_id, value)
-    SELECT io.id, UNNEST(@values::VARCHAR[])
+    SELECT io.id, UNNEST(sqlc.arg(values)::VARCHAR[])
     FROM inserted_obligation io
-    WHERE @values::VARCHAR[] IS NOT NULL AND array_length(@values::VARCHAR[], 1) > 0
+    WHERE sqlc.arg(values)::VARCHAR[] IS NOT NULL AND array_length(sqlc.arg(values)::VARCHAR[], 1) > 0
     RETURNING id, obligation_definition_id, value
 )
 SELECT
@@ -96,8 +96,8 @@ WITH counted AS (
     LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
     LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
-        (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
-        (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
+        (sqlc.arg(namespace_id)::TEXT = '' OR od.namespace_id = sqlc.arg(namespace_id)::UUID) AND
+        (sqlc.arg(namespace_fqn)::TEXT = '' OR fqns.fqn = sqlc.arg(namespace_fqn)::VARCHAR)
 )
 SELECT
     od.id,
@@ -122,8 +122,8 @@ LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id 
 CROSS JOIN counted
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
 WHERE
-    (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
-    (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
+    (sqlc.arg(namespace_id)::TEXT = '' OR od.namespace_id = sqlc.arg(namespace_id)::UUID) AND
+    (sqlc.arg(namespace_fqn)::TEXT = '' OR fqns.fqn = sqlc.arg(namespace_fqn)::VARCHAR)
 GROUP BY od.id, n.id, fqns.fqn, counted.total
 LIMIT @limit_
 OFFSET @offset_;
@@ -131,8 +131,8 @@ OFFSET @offset_;
 -- name: updateObligation :execrows
 UPDATE obligation_definitions
 SET
-    name = COALESCE(NULLIF(@name::TEXT, ''), name),
-    metadata = COALESCE(@metadata, metadata)
+    name = COALESCE(NULLIF(sqlc.arg(name)::TEXT, ''), name),
+    metadata = COALESCE(sqlc.arg(metadata), metadata)
 WHERE id = @id;
 
 -- name: deleteObligation :execrows

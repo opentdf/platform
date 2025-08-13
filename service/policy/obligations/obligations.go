@@ -94,7 +94,6 @@ func (s *Service) ListObligations(ctx context.Context, req *connect.Request[obli
 		Obligations: os,
 		Pagination:  pr,
 	}
-
 	return connect.NewResponse(rsp), nil
 }
 
@@ -116,7 +115,6 @@ func (s *Service) GetObligation(ctx context.Context, req *connect.Request[obliga
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
 	}
 	rsp := &obligations.GetObligationResponse{Obligation: obl}
-
 	return connect.NewResponse(rsp), nil
 }
 
@@ -125,9 +123,15 @@ func (s *Service) GetObligationsByFQNs(_ context.Context, _ *connect.Request[obl
 	return connect.NewResponse(&obligations.GetObligationsByFQNsResponse{}), nil
 }
 
-func (s *Service) UpdateObligation(_ context.Context, _ *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error) {
-	// TODO: Implement UpdateObligation logic
-	return connect.NewResponse(&obligations.UpdateObligationResponse{}), nil
+func (s *Service) UpdateObligation(ctx context.Context, req *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error) {
+	id := req.Msg.GetId()
+	s.logger.DebugContext(ctx, "updating obligation", slog.String("id", id))
+
+	obl, err := s.dbClient.UpdateObligation(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("obligation", req.Msg.String()))
+	}
+	return connect.NewResponse(&obligations.UpdateObligationResponse{Obligation: obl}), nil
 }
 
 func (s *Service) DeleteObligation(ctx context.Context, req *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error) {

@@ -300,7 +300,7 @@ func (s *ObligationsSuite) Test_DeleteObligation_Succeeds() {
 	s.NotNil(obl)
 
 	// Delete the obligation
-	obl, err = s.db.PolicyClient.DeleteObligationDefinition(s.ctx, &obligations.DeleteObligationRequest{
+	obl, err = s.db.PolicyClient.DeleteObligation(s.ctx, &obligations.DeleteObligationRequest{
 		Identifier: &obligations.DeleteObligationRequest_Id{
 			Id: createdObl.GetId(),
 		},
@@ -321,7 +321,7 @@ func (s *ObligationsSuite) Test_DeleteObligation_Succeeds() {
 
 func (s *ObligationsSuite) Test_DeleteObligation_Fails() {
 	// Attempt to delete an obligation with an invalid ID
-	obl, err := s.db.PolicyClient.DeleteObligationDefinition(s.ctx, &obligations.DeleteObligationRequest{
+	obl, err := s.db.PolicyClient.DeleteObligation(s.ctx, &obligations.DeleteObligationRequest{
 		Identifier: &obligations.DeleteObligationRequest_Id{
 			Id: invalidUUID,
 		},
@@ -376,7 +376,7 @@ func (s *ObligationsSuite) createObligationByFQN(namespaceFQN, name string, valu
 }
 
 func (s *ObligationsSuite) deleteObligation(oblID string) {
-	_, err := s.db.PolicyClient.DeleteObligationDefinition(s.ctx, &obligations.DeleteObligationRequest{
+	_, err := s.db.PolicyClient.DeleteObligation(s.ctx, &obligations.DeleteObligationRequest{
 		Identifier: &obligations.DeleteObligationRequest_Id{
 			Id: oblID,
 		},

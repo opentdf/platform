@@ -99,7 +99,7 @@ func (s *Service) ListObligations(ctx context.Context, req *connect.Request[obli
 }
 
 func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
-	s.logger.DebugContext(ctx, "creating registered resource", slog.String("name", req.Msg.GetName()))
+	s.logger.DebugContext(ctx, "creating obligation", slog.String("name", req.Msg.GetName()))
 
 	obl, err := s.dbClient.CreateObligation(ctx, req.Msg)
 	if err != nil {
@@ -130,9 +130,16 @@ func (s *Service) UpdateObligation(_ context.Context, _ *connect.Request[obligat
 	return connect.NewResponse(&obligations.UpdateObligationResponse{}), nil
 }
 
-func (s *Service) DeleteObligation(_ context.Context, _ *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error) {
-	// TODO: Implement DeleteObligation logic
-	return connect.NewResponse(&obligations.DeleteObligationResponse{}), nil
+func (s *Service) DeleteObligation(ctx context.Context, req *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error) {
+	id := req.Msg.GetId()
+	s.logger.DebugContext(ctx, "deleting obligation", slog.String("id", id))
+
+	obl, err := s.dbClient.DeleteObligation(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation", req.Msg.String()))
+	}
+	rsp := &obligations.DeleteObligationResponse{Obligation: obl}
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *Service) CreateObligationValue(_ context.Context, _ *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {

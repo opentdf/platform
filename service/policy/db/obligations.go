@@ -200,7 +200,7 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 	}, nil
 }
 
-func (c PolicyDBClient) DeleteObligationDefinition(ctx context.Context, r *obligations.DeleteObligationRequest) (*policy.Obligation, error) {
+func (c PolicyDBClient) DeleteObligation(ctx context.Context, r *obligations.DeleteObligationRequest) (*policy.Obligation, error) {
 	id := r.GetId()
 	count, err := c.queries.deleteObligation(ctx, id)
 	if err != nil {

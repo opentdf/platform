@@ -153,6 +153,115 @@ func (s *ObligationsSuite) Test_GetObligation_Fails() {
 	s.Nil(obl)
 }
 
+// GetObligationsByFQNs
+
+func (s *ObligationsSuite) Test_GetObligationsByFQNs_Succeeds() {
+	// Setup test data
+	namespaceID1, namespaceFQN1, namespace1 := s.getNamespaceData(nsExampleCom)
+	namespaceID2, namespaceFQN2, namespace2 := s.getNamespaceData(nsExampleNet)
+	namespaceID3, _, _ := s.getNamespaceData(nsExampleOrg)
+
+	// Create obligations in different namespaces
+	obl1 := s.createObligation(namespaceID1, oblName+"-1", oblVals)
+	obl2 := s.createObligation(namespaceID2, oblName+"-2", oblVals)
+	obl3 := s.createObligation(namespaceID3, oblName+"-3", oblVals)
+
+	// Test 1: Get multiple obligations by FQNs
+	fqns := []string{
+		namespaceFQN1 + "/obl/" + oblName + "-1",
+		namespaceFQN2 + "/obl/" + oblName + "-2",
+	}
+
+	oblList, err := s.db.PolicyClient.GetObligationsByFQNs(s.ctx, &obligations.GetObligationsByFQNsRequest{
+		Fqns: fqns,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblList)
+	s.Len(oblList, 2)
+
+	// Verify first obligation
+	found1 := false
+	found2 := false
+	for _, obl := range oblList {
+		if obl.GetId() == obl1.GetId() {
+			s.assertObligationBasics(obl, oblName+"-1", namespaceID1, namespace1.Name, namespaceFQN1)
+			s.assertObligationValues(obl)
+			found1 = true
+		} else if obl.GetId() == obl2.GetId() {
+			s.assertObligationBasics(obl, oblName+"-2", namespaceID2, namespace2.Name, namespaceFQN2)
+			s.assertObligationValues(obl)
+			found2 = true
+		}
+	}
+	s.True(found1, "First obligation should be found")
+	s.True(found2, "Second obligation should be found")
+
+	// Test 2: Get single obligation by FQN
+	singleFQN := []string{namespaceFQN1 + "/obl/" + oblName + "-1"}
+	oblList, err = s.db.PolicyClient.GetObligationsByFQNs(s.ctx, &obligations.GetObligationsByFQNsRequest{
+		Fqns: singleFQN,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblList)
+	s.Len(oblList, 1)
+	s.assertObligationBasics(oblList[0], oblName+"-1", namespaceID1, namespace1.Name, namespaceFQN1)
+	s.assertObligationValues(oblList[0])
+
+	// Test 3: Empty FQN list should return empty result
+	oblList, err = s.db.PolicyClient.GetObligationsByFQNs(s.ctx, &obligations.GetObligationsByFQNsRequest{
+		Fqns: []string{},
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblList)
+	s.Empty(oblList)
+
+	// Cleanup
+	s.deleteObligations([]string{obl1.GetId(), obl2.GetId(), obl3.GetId()})
+}
+
+func (s *ObligationsSuite) Test_GetObligationsByFQNs_Fails() {
+	// Setup test data
+	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
+	obl := s.createObligation(namespaceID, oblName, oblVals)
+
+	// Test 1: Invalid FQN should return empty result (not error)
+	invalidFQNs := []string{invalidFQN}
+	oblList, err := s.db.PolicyClient.GetObligationsByFQNs(s.ctx, &obligations.GetObligationsByFQNsRequest{
+		Fqns: invalidFQNs,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblList)
+	s.Empty(oblList)
+
+	// Test 2: Mix of valid and invalid FQNs should return only valid ones
+	mixedFQNs := []string{
+		namespaceFQN + "/obl/" + oblName,
+		invalidFQN,
+		"https://nonexistent.com/obl/nonexistent",
+	}
+	oblList, err = s.db.PolicyClient.GetObligationsByFQNs(s.ctx, &obligations.GetObligationsByFQNsRequest{
+		Fqns: mixedFQNs,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblList)
+	s.Len(oblList, 1)
+	s.Equal(obl.GetId(), oblList[0].GetId())
+
+	// Test 3: Non-existent obligation names should return empty result
+	nonExistentFQNs := []string{
+		namespaceFQN + "/obl/nonexistent-obligation",
+	}
+	oblList, err = s.db.PolicyClient.GetObligationsByFQNs(s.ctx, &obligations.GetObligationsByFQNsRequest{
+		Fqns: nonExistentFQNs,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblList)
+	s.Empty(oblList)
+
+	// Cleanup
+	s.deleteObligations([]string{obl.GetId()})
+}
+
 // List
 
 func (s *ObligationsSuite) Test_ListObligations_Succeeds() {

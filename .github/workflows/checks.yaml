@@ -69,7 +69,7 @@ jobs:
       - run: go work use .
         if: env.IS_RELEASE_BRANCH == 'true'
         working-directory: ${{ matrix.directory }}
-      - name: govulncheck
+      - name: govluncheck
         if: matrix.directory != 'tests-bdd'
         uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1.0.4
         with:

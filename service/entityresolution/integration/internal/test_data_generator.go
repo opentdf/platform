@@ -119,7 +119,7 @@ func (g *TestDataGenerator) GenerateTestUsers(scenario TestDataScenario) []TestU
 			Username:    username,
 			Email:       email,
 			DisplayName: formatDisplayName(username),
-			Password:    generatePassword(username, i),
+			Password:    generateTestPassword(username, i),
 			Groups:      generateGroups(username, i),
 			DN:          generateDN(username, "users"),
 		})
@@ -231,7 +231,7 @@ func formatDisplayName(identifier string) string {
 	return result
 }
 
-func generatePassword(username string, index int) string {
+func generateTestPassword(username string, index int) string {
 	if username == "" {
 		return ""
 	}

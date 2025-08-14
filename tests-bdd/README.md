@@ -110,7 +110,7 @@ of the platform and provisioning of the platform.  This is handled in the follow
 Platform level testing should leverage the platform test suite and registered Step Definitions. Additional 
 component or feature testing should use new test suites and new step definitions (as needed).
 
-Leverage tooling to help generate an author tests.
+Leverage tooling to help generate and author tests.
 
 ### Scenario Generation
 AI can be useful to generate scenarios from service descriptions.  

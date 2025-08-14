@@ -145,7 +145,7 @@ func (c *PlatformTestSuiteContext) InitializeScenario(scenarioContext *godog.Sce
 		for _, hook := range shutdownHooks {
 			hookErr := hook()
 			if hookErr != nil {
-				fmt.Printf("error scenario shutdownhook %v\n", hookErr) //nolint:forbidigo // testing code
+				c.Logger.Error("error in scenario shutdown hook", "error", hookErr)
 			}
 		}
 		return ctx, nil
@@ -168,12 +168,12 @@ func (c *PlatformTestSuiteContext) InitializeTestSuite(ctx *godog.TestSuiteConte
 	ctx.AfterSuite(func() {
 		for _, sf := range c.ShutdownFunctions {
 			if err := sf(); err != nil {
-				fmt.Printf("error sending shutdown function: %v\n", err) //nolint:forbidigo // testing code
+				c.Logger.Error("error in shutdown function", "error", err)
 			}
 		}
 		err := (*c.PlatformGlue).Shutdown(c)
 		if err != nil {
-			fmt.Printf("error platform glue shutdown function: %v\n", err) //nolint:forbidigo // testing code
+			c.Logger.Error("error in platform glue shutdown", "error", err)
 		}
 	})
 }
@@ -201,7 +201,7 @@ func (c *PlatformScenarioContext) ClearError() {
 
 func (c *PlatformScenarioContext) SetError(err error) {
 	if err != nil {
-		fmt.Println(err.Error()) //nolint:forbidigo // testing code
+		c.TestSuiteContext.Logger.Debug("setting scenario error", "error", err)
 	}
 	c.err = err
 }

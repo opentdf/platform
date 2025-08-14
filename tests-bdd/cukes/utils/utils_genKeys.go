@@ -1,4 +1,4 @@
-package utils
+package utils //nolint:revive // test utility package
 
 import (
 	"crypto/ecdsa"
@@ -14,6 +14,11 @@ import (
 	"os/exec"
 	"path"
 	"time"
+)
+
+const (
+	rsaKeySize         = 2048
+	serialNumberLenBit = 128
 )
 
 // GenerateTempKeys creates a set of RSA and EC certificates and cosign keys in the specified outputPath.
@@ -32,12 +37,12 @@ func GenerateTempKeys(outputPath string) {
 
 // generateRSACertificate creates a self-signed RSA certificate and private key.
 func generateRSACertificate(outputPath string) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	privateKey, err := rsa.GenerateKey(rand.Reader, rsaKeySize)
 	if err != nil {
 		log.Fatalf("Failed to generate RSA private key: %v", err)
 	}
 
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), serialNumberLenBit)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
 		log.Fatalf("Failed to generate serial number: %v", err)
@@ -71,7 +76,7 @@ func generateRSACertificate(outputPath string) {
 	defer certOut.Close()
 
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
-		log.Fatalf("Failed to write RSA certificate to file: %v", err)
+		log.Fatalf("Failed to write RSA certificate to file: %v", err) //nolint:gocritic // test code
 	}
 
 	keyOut, err := os.Create(path.Join(outputPath, "kas-private.pem"))
@@ -104,7 +109,7 @@ func generateECParameters(outputPath string) {
 	}
 
 	if err := pem.Encode(paramsOut, ecParamBlock); err != nil {
-		log.Fatalf("Failed to write EC parameters to file: %v", err)
+		log.Fatalf("Failed to write EC parameters to file: %v", err) //nolint:gocritic // test code
 	}
 
 	log.Printf("EC parameters generated successfully: %s", path.Join(outputPath, "ecparams.tmp"))
@@ -117,7 +122,7 @@ func generateECCertificate(outputPath string) {
 		log.Fatalf("Failed to generate EC private key: %v", err)
 	}
 
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), serialNumberLenBit)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
 		log.Fatalf("Failed to generate serial number: %v", err)
@@ -151,7 +156,7 @@ func generateECCertificate(outputPath string) {
 	defer certOut.Close()
 
 	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
-		log.Fatalf("Failed to write EC certificate to file: %v", err)
+		log.Fatalf("Failed to write EC certificate to file: %v", err) //nolint:gocritic // test code
 	}
 
 	keyOut, err := os.Create(path.Join(outputPath, "kas-ec-private.pem"))
@@ -181,21 +186,18 @@ func generateJavaKeystore(outputPath string) {
 	keystorePath := path.Join(outputPath, "ca.jks")
 
 	// Create keystore using keytool command
-	cmd := exec.Command("keytool", "-import", "-trustcacerts", "-noprompt",
+	createJavaKeystore(certPath, keystorePath)
+}
+
+func createJavaKeystore(certPath, keystorePath string) {
+	cmd := exec.Command("keytool", "-import", "-trustcacerts", "-noprompt", //nolint:noctx // test code
 		"-alias", "ca",
 		"-file", certPath,
 		"-keystore", keystorePath,
 		"-storepass", "password")
 
 	if err := cmd.Run(); err != nil {
-		// If keytool is not available, create a simple dummy keystore file
-		log.Printf("Warning: keytool not available, creating dummy keystore: %v", err)
-		dummyKeystore := []byte("dummy keystore content for testing")
-		if err := os.WriteFile(keystorePath, dummyKeystore, 0o600); err != nil {
-			log.Fatalf("Failed to write dummy keystore file: %v", err)
-		}
-		log.Printf("Dummy keystore created: %s", keystorePath)
-		return
+		log.Fatalf("Failed to create Java keystore (keytool required): %v", err)
 	}
 
 	log.Printf("Java keystore generated successfully: %s", keystorePath)

@@ -2,6 +2,7 @@ package cukes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -52,7 +53,7 @@ func (s *AttributesStepDefinitions) createAttributeRequestFromTable(scenarioCont
 				case "namespace_id":
 					id, ok := scenarioContext.GetObject(cell.Value).(string)
 					if !ok {
-						return nil, fmt.Errorf("unable to extract namespace ID")
+						return nil, errors.New("unable to extract namespace ID")
 					}
 					createAttributeRequest.NamespaceId = id
 				case "name":

@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/cucumber/godog"
@@ -66,7 +67,7 @@ type LocalDevScenarioOptions struct {
 }
 
 func (d *DockerComposeLogger) Printf(format string, v ...interface{}) {
-	d.Logger.Info(fmt.Sprintf(format, v...))
+	d.Logger.Info("docker compose log", slog.String("message", fmt.Sprintf(format, v...)))
 }
 
 func CreatePlatformCukesContext(logger *slog.Logger, composeLogger *slog.Logger) *PlatformTestSuiteContext {
@@ -99,7 +100,7 @@ func (c *PlatformTestSuiteContext) InitializeScenario(scenarioContext *godog.Sce
 		scenarioID := uuid.New().String()
 		if !featureTracked || !statelessFeature {
 			platformPort := openPort()
-			platformDBName := strings.ReplaceAll(fmt.Sprintf("opentdf%s", scenarioID), "-", "_")
+			platformDBName := strings.ReplaceAll("opentdf"+scenarioID, "-", "_")
 			platformScenarioContext = &PlatformScenarioContext{
 				ID:            scenarioID,
 				FirstScenario: !featureTracked,
@@ -305,36 +306,20 @@ func NewLocalDevPlatformGlue(options LocalDevOptions) *LocalDevPlatformGlue {
 	}
 }
 
-func (l *LocalDevPlatformGlue) mkCert() error {
-	cmd := exec.Command("mkcert", "-install")
-	cmd.Dir = l.Options.CukesDir
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	//nolint:gosec // G204
-	cmd = exec.Command("mkcert", "-cert-file",
-		path.Join(l.Options.KeysDir, fmt.Sprintf("%s.crt", l.Options.Hostname)), "-key-file",
-		path.Join(l.Options.KeysDir, fmt.Sprintf("%s.key", l.Options.Hostname)), l.Options.Hostname,
-		fmt.Sprintf("*.%s", l.Options.Hostname),
-		"localhost")
-	cmd.Dir = l.Options.CukesDir
-	return cmd.Run()
-}
-
 func (l *LocalDevPlatformGlue) Shutdown(platformCukesContext *PlatformTestSuiteContext) error {
 	// Only clean up if no failures occurred and CUKES_PRESERVE_TEST_DIRECTORY is not set
 	// Environment variable CUKES_PRESERVE_TEST_DIRECTORY=true can be used to always preserve the directory
 	preserveTestDirectory := os.Getenv("CUKES_PRESERVE_TEST_DIRECTORY") == "true"
 
 	if platformCukesContext.HasFailures || preserveTestDirectory {
-		platformCukesContext.Logger.Warn("Preserving cukes directory for debugging",
+		platformCukesContext.Logger.Warn("preserving cukes directory for debugging",
 			slog.String("directory", l.Options.CukesDir),
 			slog.Bool("hasFailures", platformCukesContext.HasFailures),
 			slog.Bool("preserveOnFailure", preserveTestDirectory))
 		return nil
 	}
 
-	platformCukesContext.Logger.Info("Cleaning up cukes directory", slog.String("directory", l.Options.CukesDir))
+	platformCukesContext.Logger.Info("cleaning up cukes directory", slog.String("directory", l.Options.CukesDir))
 	err := os.RemoveAll(l.Options.CukesDir)
 	return err
 }
@@ -359,7 +344,7 @@ func changePermissions(dirPath string, mode os.FileMode) error {
 func (l *LocalDevPlatformGlue) Setup(platformCukesContext *PlatformTestSuiteContext) error {
 	ctx := l.Context
 	logger := platformCukesContext.Logger
-	logger.Info("Setting up local dev platform")
+	logger.Info("setting up local dev platform")
 	logger.Info("setup mkcert")
 	if err := l.mkCert(); err != nil {
 		return err
@@ -374,9 +359,10 @@ func (l *LocalDevPlatformGlue) Setup(platformCukesContext *PlatformTestSuiteCont
 	l.Options.keycloakPort = openPort()
 	l.Options.postgresPort = openPort()
 
-	logger.Info(fmt.Sprintf("starting with keycloak port = %d, "+
-		"postgresPort = %d, project directory = %s", l.Options.keycloakPort,
-		l.Options.postgresPort, l.Options.ProjectDir))
+	logger.Info("starting with ports",
+		slog.Int("keycloak_port", l.Options.keycloakPort),
+		slog.Int("postgres_port", l.Options.postgresPort),
+		slog.String("project_dir", l.Options.ProjectDir))
 
 	// startup infrastructure services
 	var composeStackFiles tc.ComposeStackFiles = []string{path.Join(l.Options.ProjectDir, "docker-compose.yaml")}
@@ -389,8 +375,8 @@ func (l *LocalDevPlatformGlue) Setup(platformCukesContext *PlatformTestSuiteCont
 
 	//nolint:nestif // refactor later - compose is private *dockercompose
 	if err := compose.WithEnv(map[string]string{
-		"POSTGRES_EXPOSE_PORT": fmt.Sprintf("%d", l.Options.postgresPort),
-		"KC_EXPOSE_PORT_HTTP":  fmt.Sprintf("%d", l.Options.keycloakPort), // Use HTTP port for BDD tests
+		"POSTGRES_EXPOSE_PORT": strconv.Itoa(l.Options.postgresPort),
+		"KC_EXPOSE_PORT_HTTP":  strconv.Itoa(l.Options.keycloakPort), // Use HTTP port for BDD tests
 		"KEYS_DIR":             l.Options.KeysDir,
 		"JAVA_OPTS_APPEND":     os.Getenv("JAVA_OPTS_APPEND"), // Pass through JAVA_OPTS_APPEND for Apple Silicon compatibility
 	}).Up(ctx, tc.Wait(true)); err != nil {
@@ -405,7 +391,9 @@ func (l *LocalDevPlatformGlue) Setup(platformCukesContext *PlatformTestSuiteCont
 				if err != nil {
 					return err
 				}
-				logger.Warn("keys content", slog.String("path", path), slog.String("content", string(content)))
+				logger.Warn("keys content",
+					slog.String("path", path),
+					slog.String("content", string(content)))
 			}
 			return nil
 		})
@@ -422,20 +410,42 @@ func (l *LocalDevPlatformGlue) Setup(platformCukesContext *PlatformTestSuiteCont
 	return nil
 }
 
+func (l *LocalDevPlatformGlue) mkCert() error {
+	cmd := exec.Command("mkcert", "-install") //nolint:noctx // test code
+	cmd.Dir = l.Options.CukesDir
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	//nolint:gosec // G204
+	cmd = exec.Command("mkcert", "-cert-file", //nolint:noctx // test code
+		path.Join(l.Options.KeysDir, l.Options.Hostname+".crt"), "-key-file",
+		path.Join(l.Options.KeysDir, l.Options.Hostname+".key"), l.Options.Hostname,
+		"*."+l.Options.Hostname,
+		"localhost")
+	cmd.Dir = l.Options.CukesDir
+	return cmd.Run()
+}
+
 // LogComposeService logs to `logger` all log statements for a docker container
 func LogComposeService(ctx context.Context, container *tcb.DockerContainer, logger *slog.Logger, svc string) {
 	logReader, composeError := container.Logs(ctx)
 	if composeError != nil {
-		logger.Error("error reading container logs", slog.String("service", svc), slog.String("error", composeError.Error()))
+		logger.Error("error reading container logs",
+			slog.String("service", svc),
+			slog.String("error", composeError.Error()))
 	} else {
 		logBytes, err := io.ReadAll(logReader)
 		if err == nil {
-			logger.Warn(fmt.Sprintf("Logs for %s:", svc))
+			logger.Warn("logs for service", slog.String("service", svc))
 			for _, line := range strings.Split(string(logBytes), "\n") {
-				logger.Warn(fmt.Sprintf("%s: %s", svc, line))
+				logger.Warn("container log line",
+					slog.String("service", svc),
+					slog.String("line", line))
 			}
 		} else {
-			logger.Error("error reading container logs", slog.String("service", svc), slog.String("error", err.Error()))
+			logger.Error("error reading container logs",
+				slog.String("service", svc),
+				slog.String("error", err.Error()))
 		}
 	}
 }
@@ -453,7 +463,9 @@ func LogComposeServices(c interface{}, logger *slog.Logger) {
 		for _, svc := range services {
 			container, composeError := composeStack.ServiceContainer(ctx, svc)
 			if composeError != nil {
-				logger.Error("error creating container for service", slog.String("service", svc), slog.String("error", composeError.Error()))
+				logger.Error("error creating container for service",
+					slog.String("service", svc),
+					slog.String("error", composeError.Error()))
 				continue
 			}
 			LogComposeService(ctx, container, logger, svc)
@@ -465,7 +477,7 @@ func LogComposeServices(c interface{}, logger *slog.Logger) {
 
 func openPort() int {
 	//nolint:gosec // G102
-	listener, err := net.Listen("tcp", ":0")
+	listener, err := net.Listen("tcp", ":0") //nolint:noctx // test code
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -474,7 +486,7 @@ func openPort() int {
 	// Get the port number from the listener address
 	tcpAddr, ok := listener.Addr().(*net.TCPAddr)
 	if !ok {
-		panic(fmt.Errorf("address is not a TCP Address"))
+		panic(errors.New("address is not a TCP Address"))
 	}
 	return tcpAddr.Port
 }

@@ -2,7 +2,7 @@ package cukes
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/cucumber/godog"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
@@ -17,7 +17,7 @@ type NamespacesStepDefinitions struct{}
 func (ns *NamespacesStepDefinitions) thereIsAnError(ctx context.Context) (context.Context, error) {
 	err := GetPlatformScenarioContext(ctx).GetError()
 	if err == nil {
-		return ctx, fmt.Errorf("error not present")
+		return ctx, errors.New("error not present")
 	}
 	return ctx, nil
 }
@@ -25,7 +25,7 @@ func (ns *NamespacesStepDefinitions) thereIsAnError(ctx context.Context) (contex
 func (ns *NamespacesStepDefinitions) thereIsNoError(ctx context.Context) (context.Context, error) {
 	err := GetPlatformScenarioContext(ctx).GetError()
 	if err != nil {
-		return ctx, fmt.Errorf("error is present")
+		return ctx, errors.New("error is present")
 	}
 	return ctx, nil
 }

@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"text/template"
 	"time"
 
@@ -127,7 +128,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		return ctx, err
 	}
 	defer pool.Close()
-	_, err = pool.Exec(context.Background(), fmt.Sprintf("CREATE DATABASE %s", scenarioContext.ScenarioOptions.DatabaseName))
+	_, err = pool.Exec(context.Background(), "CREATE DATABASE "+scenarioContext.ScenarioOptions.DatabaseName)
 	if err != nil {
 		return ctx, err
 	}
@@ -146,12 +147,12 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 
 	platformEndpoint := fmt.Sprintf("http://localhost:%d", scenarioContext.ScenarioOptions.PlatformPort)
 
-	if version == "DEBUG" {
+	if version == "DEBUG" { //nolint:nestif // test code debug path
 		logger.Debug("starting local inline platform for debugging. This should only be used for a single scenario")
 		_, platformCancel := context.WithCancel(context.Background())
 		go func() {
 			defer func() {
-				slog.Debug("Background platform process stopped")
+				slog.Debug("background platform process stopped")
 			}()
 			_ = server.Start(
 				server.WithWaitForShutdownSignal(),
@@ -162,7 +163,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 
 		// Register shutdown hook to stop the platform
 		scenarioContext.RegisterShutdownHook(func() error {
-			logger.Debug("Shutting down inline platform")
+			logger.Debug("shutting down inline platform")
 			platformCancel()
 			return nil
 		})
@@ -185,7 +186,7 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 		if err := platformDockerCompose.WithEnv(map[string]string{
 			"KEYS_DIR":     localPlatformOptions.KeysDir,
 			"IMAGE":        version,
-			"EXPOSED_PORT": fmt.Sprintf("%d", scenarioContext.ScenarioOptions.PlatformPort),
+			"EXPOSED_PORT": strconv.Itoa(scenarioContext.ScenarioOptions.PlatformPort),
 			"CONFIG_PATH":  platformConfigPath,
 			"HOSTNAME":     localPlatformOptions.Hostname,
 		}).Up(ctx, tc.Wait(true)); err != nil {
@@ -219,7 +220,9 @@ func (s *LocalPlatformStepDefinitions) commonLocalPlatform(ctx context.Context, 
 	}
 	scenarioContext.SDK = platformSDK
 	te, _ := platformSDK.PlatformConfiguration.TokenEndpoint()
-	logger.Debug(fmt.Sprintf("realm = %s, endpoint=%s", scenarioContext.ScenarioOptions.KeycloakRealm, te))
+	logger.Debug("platform configuration",
+		slog.String("realm", scenarioContext.ScenarioOptions.KeycloakRealm),
+		slog.String("endpoint", te))
 
 	return ctx, nil
 }
@@ -253,30 +256,39 @@ func waitForPlatform(platformEndpoint string) error {
 	tries := 0
 	const maxTries = 30
 	const timeout = time.Millisecond * 200
-	healthEndpoint := fmt.Sprintf("%s/healthz?service=all", platformEndpoint)
-	slog.Debug("waiting for platform health check", "endpoint", healthEndpoint)
+	healthEndpoint := platformEndpoint + "/healthz?service=all"
+	slog.Debug("waiting for platform health check", slog.String("endpoint", healthEndpoint))
 	for {
 		httpClient := &http.Client{Timeout: timeout}
 		resp, err := httpClient.Get(healthEndpoint) //nolint:noctx //test only health check
 		tries++
 		if err == nil && resp != nil && resp.StatusCode == http.StatusOK {
 			_ = resp.Body.Close()
-			slog.Debug("platform health check passed", "tries", tries)
+			slog.Debug("platform health check passed", slog.Int("tries", tries))
 			return nil
 		} else if tries > maxTries {
 			if resp != nil {
 				_ = resp.Body.Close()
-				slog.Debug("platform health check failed", "status", resp.StatusCode, "tries", tries, "err", err)
+				slog.Debug("platform health check failed",
+					slog.Int("status", resp.StatusCode),
+					slog.Int("tries", tries),
+					slog.Any("err", err))
 			} else {
-				slog.Debug("platform health check failed", "tries", tries, "err", err)
+				slog.Debug("platform health check failed",
+					slog.Int("tries", tries),
+					slog.Any("err", err))
 			}
-			return fmt.Errorf("timeout waiting for platform to start")
+			return errors.New("timeout waiting for platform to start")
 		}
 		if tries%10 == 0 {
 			if err != nil {
-				slog.Debug("platform health check retry", "tries", tries, "err", err.Error())
+				slog.Debug("platform health check retry",
+					slog.Int("tries", tries),
+					slog.String("err", err.Error()))
 			} else if resp != nil {
-				slog.Debug("platform health check retry", "tries", tries, "status", resp.StatusCode)
+				slog.Debug("platform health check retry",
+					slog.Int("tries", tries),
+					slog.Int("status", resp.StatusCode))
 			}
 		}
 		time.Sleep(time.Second)
@@ -296,7 +308,7 @@ func provisionKeycloak(ctx context.Context, suiteOptions *LocalDevOptions, scena
 	if ctxUser != nil {
 		userObj, ok := ctxUser.([]map[string]any)
 		if !ok {
-			return fmt.Errorf("keycloak users not a []map[string]any")
+			return errors.New("keycloak users not a []map[string]any")
 		}
 		users = userObj
 	}
@@ -317,11 +329,11 @@ func provisionKeycloak(ctx context.Context, suiteOptions *LocalDevOptions, scena
 		}
 		realms, realmsOk := kcData["realms"].([]interface{})
 		if !realmsOk {
-			return fmt.Errorf("keycloak realms not an array")
+			return errors.New("keycloak realms not an array")
 		}
 		realm, ok := realms[0].(map[interface{}]interface{})
 		if !ok {
-			return fmt.Errorf("keycloak realm not found in realms")
+			return errors.New("keycloak realm not found in realms")
 		}
 		realm["users"] = users
 		updatedKcData, err := yaml.Marshal(kcData)
@@ -340,7 +352,7 @@ func provisionKeycloak(ctx context.Context, suiteOptions *LocalDevOptions, scena
 		return err
 	}
 	kcData := cmd.LoadKeycloakData(tmpKcFile.Name())
-	kcBasePath := fmt.Sprintf("http://%s/auth", net.JoinHostPort(suiteOptions.Hostname, fmt.Sprintf("%d", suiteOptions.keycloakPort)))
+	kcBasePath := fmt.Sprintf("http://%s/auth", net.JoinHostPort(suiteOptions.Hostname, strconv.Itoa(suiteOptions.keycloakPort)))
 	return fixtures.SetupCustomKeycloak(ctx, fixtures.KeycloakConnectParams{
 		BasePath:         kcBasePath,
 		Username:         "admin",

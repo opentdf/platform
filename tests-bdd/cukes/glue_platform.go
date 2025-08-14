@@ -411,13 +411,13 @@ func (l *LocalDevPlatformGlue) Setup(platformCukesContext *PlatformTestSuiteCont
 }
 
 func (l *LocalDevPlatformGlue) mkCert() error {
-	cmd := exec.Command("mkcert", "-install") //nolint:noctx // test code
+	cmd := exec.Command("mkcert", "-install")
 	cmd.Dir = l.Options.CukesDir
 	if err := cmd.Run(); err != nil {
 		return err
 	}
 	//nolint:gosec // G204
-	cmd = exec.Command("mkcert", "-cert-file", //nolint:noctx // test code
+	cmd = exec.Command("mkcert", "-cert-file",
 		path.Join(l.Options.KeysDir, l.Options.Hostname+".crt"), "-key-file",
 		path.Join(l.Options.KeysDir, l.Options.Hostname+".key"), l.Options.Hostname,
 		"*."+l.Options.Hostname,
@@ -477,7 +477,7 @@ func LogComposeServices(c interface{}, logger *slog.Logger) {
 
 func openPort() int {
 	//nolint:gosec // G102
-	listener, err := net.Listen("tcp", ":0") //nolint:noctx // test code
+	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
 		log.Fatal(err)
 	}

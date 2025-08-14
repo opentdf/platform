@@ -1,4 +1,4 @@
-package utils //nolint:revive // test utility package
+package utils
 
 import (
 	"crypto/ecdsa"
@@ -190,7 +190,7 @@ func generateJavaKeystore(outputPath string) {
 }
 
 func createJavaKeystore(certPath, keystorePath string) {
-	cmd := exec.Command("keytool", "-import", "-trustcacerts", "-noprompt", //nolint:noctx // test code
+	cmd := exec.Command("keytool", "-import", "-trustcacerts", "-noprompt",
 		"-alias", "ca",
 		"-file", certPath,
 		"-keystore", keystorePath,

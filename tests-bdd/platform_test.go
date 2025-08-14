@@ -88,10 +88,6 @@ func runTests() int {
 			cukes.RegisterLocalPlatformStepDefinitions(ctx, platformCukesContext)
 			cukes.RegisterNamespaceStepDefinitions(ctx)
 			cukes.RegisterAttributeStepDefinitions(ctx, platformCukesContext)
-			// cukes.RegisterSubjectMappingsStepsDefinitions(ctx)
-			// cukes.RegisterAuthorizationStepDefinitions(ctx)
-			// cukes.RegisterTaggingStepDefinitions(ctx, platformCukesContext)
-			// cukes.RegisterAssertionStepDefinitions(ctx, platformCukesContext)
 			cukes.RegisterSmokeStepDefinitions(ctx, platformCukesContext)
 			platformCukesContext.InitializeScenario(ctx)
 		},

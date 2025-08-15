@@ -1,4 +1,4 @@
-// Wrapper for ServiceClient (generated code) DO NOT EDIT
+// Wrapper for ObligationsServiceClient (generated code) DO NOT EDIT
 package sdkconnect
 
 import (
@@ -8,15 +8,15 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/obligations/obligationsconnect"
 )
 
-type ServiceClientConnectWrapper struct {
+type ObligationsServiceClientConnectWrapper struct {
 	obligationsconnect.ServiceClient
 }
 
-func NewServiceClientConnectWrapper(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) *ServiceClientConnectWrapper {
-	return &ServiceClientConnectWrapper{ServiceClient: obligationsconnect.NewServiceClient(httpClient, baseURL, opts...)}
+func NewObligationsServiceClientConnectWrapper(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) *ObligationsServiceClientConnectWrapper {
+	return &ObligationsServiceClientConnectWrapper{ServiceClient: obligationsconnect.NewServiceClient(httpClient, baseURL, opts...)}
 }
 
-type ServiceClient interface {
+type ObligationsServiceClient interface {
 	ListObligations(ctx context.Context, req *obligations.ListObligationsRequest) (*obligations.ListObligationsResponse, error)
 	GetObligation(ctx context.Context, req *obligations.GetObligationRequest) (*obligations.GetObligationResponse, error)
 	GetObligationsByFQNs(ctx context.Context, req *obligations.GetObligationsByFQNsRequest) (*obligations.GetObligationsByFQNsResponse, error)
@@ -32,7 +32,7 @@ type ServiceClient interface {
 	RemoveObligationTrigger(ctx context.Context, req *obligations.RemoveObligationTriggerRequest) (*obligations.RemoveObligationTriggerResponse, error)
 }
 
-func (w *ServiceClientConnectWrapper) ListObligations(ctx context.Context, req *obligations.ListObligationsRequest) (*obligations.ListObligationsResponse, error) {
+func (w *ObligationsServiceClientConnectWrapper) ListObligations(ctx context.Context, req *obligations.ListObligationsRequest) (*obligations.ListObligationsResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.ListObligations(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -41,7 +41,7 @@ func (w *ServiceClientConnectWrapper) ListObligations(ctx context.Context, req *
 	return res.Msg, err
 }
 
-func (w *ServiceClientConnectWrapper) GetObligation(ctx context.Context, req *obligations.GetObligationRequest) (*obligations.GetObligationResponse, error) {
+func (w *ObligationsServiceClientConnectWrapper) GetObligation(ctx context.Context, req *obligations.GetObligationRequest) (*obligations.GetObligationResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.GetObligation(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -50,7 +50,7 @@ func (w *ServiceClientConnectWrapper) GetObligation(ctx context.Context, req *ob
 	return res.Msg, err
 }
 
-func (w *ServiceClientConnectWrapper) GetObligationsByFQNs(ctx context.Context, req *obligations.GetObligationsByFQNsRequest) (*obligations.GetObligationsByFQNsResponse, error) {
+func (w *ObligationsServiceClientConnectWrapper) GetObligationsByFQNs(ctx context.Context, req *obligations.GetObligationsByFQNsRequest) (*obligations.GetObligationsByFQNsResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.GetObligationsByFQNs(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -59,7 +59,7 @@ func (w *ServiceClientConnectWrapper) GetObligationsByFQNs(ctx context.Context, 
 	return res.Msg, err
 }
 
-func (w *ServiceClientConnectWrapper) CreateObligation(ctx context.Context, req *obligations.CreateObligationRequest) (*obligations.CreateObligationResponse, error) {
+func (w *ObligationsServiceClientConnectWrapper) CreateObligation(ctx context.Context, req *obligations.CreateObligationRequest) (*obligations.CreateObligationResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.CreateObligation(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -68,7 +68,7 @@ func (w *ServiceClientConnectWrapper) CreateObligation(ctx context.Context, req 
 	return res.Msg, err
 }
 
-func (w *ServiceClientConnectWrapper) UpdateObligation(ctx context.Context, req *obligations.UpdateObligationRequest) (*obligations.UpdateObligationResponse, error) {
+func (w *ObligationsServiceClientConnectWrapper) UpdateObligation(ctx context.Context, req *obligations.UpdateObligationRequest) (*obligations.UpdateObligationResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.UpdateObligation(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -77,7 +77,7 @@ func (w *ServiceClientConnectWrapper) UpdateObligation(ctx context.Context, req 
 	return res.Msg, err
 }
 
-func (w *ServiceClientConnectWrapper) DeleteObligation(ctx context.Context, req *obligations.DeleteObligationRequest) (*obligations.DeleteObligationResponse, error) {
+func (w *ObligationsServiceClientConnectWrapper) DeleteObligation(ctx context.Context, req *obligations.DeleteObligationRequest) (*obligations.DeleteObligationResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.DeleteObligation(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -86,7 +86,7 @@ func (w *ServiceClientConnectWrapper) DeleteObligation(ctx context.Context, req 
 	return res.Msg, err
 }
 
-func (w *ServiceClientConnectWrapper) GetObligationValue(ctx context.Context, req *obligations.GetObligationValueRequest) (*obligations.GetObligationValueResponse, error) {
+func (w *ObligationsServiceClientConnectWrapper) GetObligationValue(ctx context.Context, req *obligations.GetObligationValueRequest) (*obligations.GetObligationValueResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.GetObligationValue(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -95,7 +95,7 @@ func (w *ServiceClientConnectWrapper) GetObligationValue(ctx context.Context, re
 	return res.Msg, err
 }
 
-func (w *ServiceClientConnectWrapper) GetObligationValuesByFQNs(ctx context.Context, req *obligations.GetObligationValuesByFQNsRequest) (*obligations.GetObligationValuesByFQNsResponse, error) {
+func (w *ObligationsServiceClientConnectWrapper) GetObligationValuesByFQNs(ctx context.Context, req *obligations.GetObligationValuesByFQNsRequest) (*obligations.GetObligationValuesByFQNsResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.GetObligationValuesByFQNs(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -104,7 +104,7 @@ func (w *ServiceClientConnectWrapper) GetObligationValuesByFQNs(ctx context.Cont
 	return res.Msg, err
 }
 
-func (w *ServiceClientConnectWrapper) CreateObligationValue(ctx context.Context, req *obligations.CreateObligationValueRequest) (*obligations.CreateObligationValueResponse, error) {
+func (w *ObligationsServiceClientConnectWrapper) CreateObligationValue(ctx context.Context, req *obligations.CreateObligationValueRequest) (*obligations.CreateObligationValueResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.CreateObligationValue(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -113,7 +113,7 @@ func (w *ServiceClientConnectWrapper) CreateObligationValue(ctx context.Context,
 	return res.Msg, err
 }
 
-func (w *ServiceClientConnectWrapper) UpdateObligationValue(ctx context.Context, req *obligations.UpdateObligationValueRequest) (*obligations.UpdateObligationValueResponse, error) {
+func (w *ObligationsServiceClientConnectWrapper) UpdateObligationValue(ctx context.Context, req *obligations.UpdateObligationValueRequest) (*obligations.UpdateObligationValueResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.UpdateObligationValue(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -122,7 +122,7 @@ func (w *ServiceClientConnectWrapper) UpdateObligationValue(ctx context.Context,
 	return res.Msg, err
 }
 
-func (w *ServiceClientConnectWrapper) DeleteObligationValue(ctx context.Context, req *obligations.DeleteObligationValueRequest) (*obligations.DeleteObligationValueResponse, error) {
+func (w *ObligationsServiceClientConnectWrapper) DeleteObligationValue(ctx context.Context, req *obligations.DeleteObligationValueRequest) (*obligations.DeleteObligationValueResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.DeleteObligationValue(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -131,7 +131,7 @@ func (w *ServiceClientConnectWrapper) DeleteObligationValue(ctx context.Context,
 	return res.Msg, err
 }
 
-func (w *ServiceClientConnectWrapper) AddObligationTrigger(ctx context.Context, req *obligations.AddObligationTriggerRequest) (*obligations.AddObligationTriggerResponse, error) {
+func (w *ObligationsServiceClientConnectWrapper) AddObligationTrigger(ctx context.Context, req *obligations.AddObligationTriggerRequest) (*obligations.AddObligationTriggerResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.AddObligationTrigger(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -140,7 +140,7 @@ func (w *ServiceClientConnectWrapper) AddObligationTrigger(ctx context.Context, 
 	return res.Msg, err
 }
 
-func (w *ServiceClientConnectWrapper) RemoveObligationTrigger(ctx context.Context, req *obligations.RemoveObligationTriggerRequest) (*obligations.RemoveObligationTriggerResponse, error) {
+func (w *ObligationsServiceClientConnectWrapper) RemoveObligationTrigger(ctx context.Context, req *obligations.RemoveObligationTriggerRequest) (*obligations.RemoveObligationTriggerResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.ServiceClient.RemoveObligationTrigger(ctx, connect.NewRequest(req))
 	if res == nil {

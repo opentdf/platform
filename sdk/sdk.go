@@ -63,6 +63,7 @@ type SDK struct {
 	EntityResolutionV2      sdkconnect.EntityResolutionServiceClientV2
 	KeyAccessServerRegistry sdkconnect.KeyAccessServerRegistryServiceClient
 	Namespaces              sdkconnect.NamespaceServiceClient
+	Obligations             sdkconnect.ServiceClient
 	RegisteredResources     sdkconnect.RegisteredResourcesServiceClient
 	ResourceMapping         sdkconnect.ResourceMappingServiceClient
 	SubjectMapping          sdkconnect.SubjectMappingServiceClient
@@ -188,6 +189,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		Actions:                 sdkconnect.NewActionServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Attributes:              sdkconnect.NewAttributesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		Namespaces:              sdkconnect.NewNamespaceServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		Obligations:             sdkconnect.NewServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		RegisteredResources:     sdkconnect.NewRegisteredResourcesServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		ResourceMapping:         sdkconnect.NewResourceMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		SubjectMapping:          sdkconnect.NewSubjectMappingServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),

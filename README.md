@@ -118,7 +118,9 @@ go run ./service start
 
 The OpenTDF platform supports a powerful multi-strategy Entity Resolution Service (ERS) that can integrate with multiple identity providers and data sources simultaneously.
 
-#### Quick Start with Multi-Strategy ERS
+#### Quick Start with Multi-Strategy ERS (Preview)
+
+> **⚠️ Preview Feature**: Multi-Strategy ERS is in preview (V2 only). APIs may change.
 
 To run OpenTDF with comprehensive entity resolution using SQL and LDAP providers:
 
@@ -149,7 +151,7 @@ go test ./service/entityresolution/integration -run TestMultiStrategy -v
 - **`opentdf-ers-test.yaml`** - Complete OpenTDF platform with multi-strategy ERS
 - **`ERS_TESTING.md`** - Comprehensive documentation and examples
 
-The multi-strategy ERS provides enterprise-grade identity resolution with failover, multiple provider support, and flexible mapping strategies.
+The multi-strategy ERS (preview) provides enterprise-grade identity resolution with failover, multiple provider support, and flexible mapping strategies.
 
 ## For Contributors
 

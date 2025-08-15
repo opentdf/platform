@@ -194,6 +194,7 @@ func getResourceDecisionableAttributes(
 	logger *logger.Logger,
 	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue,
 	entitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+	allAttributesByDefinitionFQN map[string]*policy.Attribute,
 	// action *policy.Action,
 	resources []*authz.Resource,
 ) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
@@ -245,7 +246,32 @@ func getResourceDecisionableAttributes(
 
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
 		if !ok {
-			return nil, fmt.Errorf("resource attribute value FQN not found in memory [%s]: %w", attrValueFQN, ErrInvalidResource)
+			// TODO: this logic requires a provisioned Virtru org namespace, definition and FQN record in the database
+			// TODO: add provisioning scripts for test orgs in dev/staging and decide how to provision for production
+			// Try to find the definition by extracting partial FQN for adhoc attributes
+			parentDefinition, err := getDefinition(attrValueFQN, allAttributesByDefinitionFQN)
+			if err != nil {
+				return nil, fmt.Errorf("resource attribute value FQN not found in memory and no definition found [%s]: %w", attrValueFQN, err)
+			}
+
+			// Extract the value part from the FQN
+			// FQN format: https://<namespace>/attr/<name>/value/<value>
+			lastSlashIdx := strings.LastIndex(attrValueFQN, "/")
+			valueStr := ""
+			if lastSlashIdx != -1 {
+				valueStr = attrValueFQN[lastSlashIdx+1:]
+			}
+
+			// Create synthetic AttributeAndValue for adhoc attribute
+			syntheticValue := &policy.Value{
+				Fqn:   attrValueFQN,
+				Value: valueStr,
+			}
+
+			attributeAndValue = &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+				Value:     syntheticValue,
+				Attribute: parentDefinition,
+			}
 		}
 
 		decisionableAttributes[attrValueFQN] = attributeAndValue

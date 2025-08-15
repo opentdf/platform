@@ -51,6 +51,7 @@ type PolicyDecisionPoint struct {
 	logger                             *logger.Logger
 	allEntitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue
 	allRegisteredResourceValuesByFQN   map[string]*policy.RegisteredResourceValue
+	allAttributesByDefinitionFQN       map[string]*policy.Attribute
 }
 
 var (
@@ -156,6 +157,7 @@ func NewPolicyDecisionPoint(
 		l,
 		allEntitleableAttributesByValueFQN,
 		allRegisteredResourceValuesByFQN,
+		allAttributesByDefinitionFQN,
 	}
 	return pdp, nil
 }
@@ -176,7 +178,7 @@ func (p *PolicyDecisionPoint) GetDecision(
 	}
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
-	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN /* action, */, resources)
+	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN, p.allAttributesByDefinitionFQN /* action, */, resources)
 	if err != nil {
 		return nil, fmt.Errorf("error getting decisionable attributes: %w", err)
 	}
@@ -188,6 +190,18 @@ func (p *PolicyDecisionPoint) GetDecision(
 		return nil, fmt.Errorf("error evaluating subject mappings for entitlement: %w", err)
 	}
 	l.DebugContext(ctx, "evaluated subject mappings", slog.Any("entitled_value_fqns_to_actions", entitledFQNsToActions))
+
+	for _, directEntitlement := range entityRepresentation.GetDirectEntitlements() {
+		fqn := directEntitlement.GetFqn()
+		actionNames := directEntitlement.GetActions()
+
+		actions := make([]*policy.Action, len(actionNames))
+		for i, name := range actionNames {
+			actions[i] = &policy.Action{Name: name}
+		}
+
+		entitledFQNsToActions[fqn] = actions
+	}
 
 	decision := &Decision{
 		Access:  true,
@@ -250,7 +264,7 @@ func (p *PolicyDecisionPoint) GetDecisionRegisteredResource(
 	}
 
 	// Filter all attributes down to only those that relevant to the entitlement decisioning of these specific resources
-	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN /*action, */, resources)
+	decisionableAttributes, err := getResourceDecisionableAttributes(ctx, l, p.allRegisteredResourceValuesByFQN, p.allEntitleableAttributesByValueFQN, p.allAttributesByDefinitionFQN /*action, */, resources)
 	if err != nil {
 		return nil, fmt.Errorf("error getting decisionable attributes: %w", err)
 	}

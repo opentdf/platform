@@ -22,17 +22,14 @@ const (
 	provKcInsecure     = "insecure"
 )
 
-var (
-	provKeycloakFilename = "./service/cmd/keycloak_data.yaml"
-	keycloakData         fixtures.KeycloakData
-)
+var provKeycloakFilename = "./service/cmd/keycloak_data.yaml"
 
 var provisionKeycloakCmd = &cobra.Command{
 	Use:   "keycloak",
 	Short: "Run local provision of keycloak data",
 	Long: `
 	** Local Development and Testing Only **
-	This command will create the following Keyclaok resource:
+	This command will create the following Keycloak resource:
 	- Realm
 	- Roles
 	- Client
@@ -46,7 +43,7 @@ var provisionKeycloakCmd = &cobra.Command{
 		kcPassword, _ := cmd.Flags().GetString(provKcPasswordFlag)
 		keycloakFilename, _ := cmd.Flags().GetString(provKcFilenameFlag)
 
-		LoadKeycloakData(keycloakFilename)
+		keycloakData := LoadKeycloakData(keycloakFilename)
 		ctx := context.Background()
 
 		kcParams := fixtures.KeycloakConnectParams{
@@ -94,7 +91,7 @@ func convert(i interface{}) interface{} {
 	return i
 }
 
-func LoadKeycloakData(file string) {
+func LoadKeycloakData(file string) fixtures.KeycloakData {
 	yamlData := make(map[interface{}]interface{})
 
 	f, err := os.Open(file)
@@ -118,11 +115,12 @@ func LoadKeycloakData(file string) {
 	if err != nil {
 		panic(fmt.Errorf("error converting yaml to json: %s", err.Error()))
 	}
-
+	var keycloakData fixtures.KeycloakData
 	if err := json.Unmarshal(kcData, &keycloakData); err != nil {
 		slog.Error("could not unmarshal json into data object", slog.String("error", err.Error()))
 		panic(err)
 	}
+	return keycloakData
 }
 
 func init() {

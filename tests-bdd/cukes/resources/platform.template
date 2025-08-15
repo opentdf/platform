@@ -1,0 +1,56 @@
+authEndpoint: &authEndpoint http://{{ .hostname }}:{{.kcPort }}/auth
+issuerEndpoint: &issuerEndpoint http://{{ .hostname }}:{{.kcPort }}/auth/realms/{{.authRealm}}
+tokenEndpoint: &tokenEndpoint http://{{ .hostname }}:{{.kcPort }}/auth/realms/{{.authRealm}}/protocol/openid-connect/token
+entityResolutionServiceUrl: &entityResolutionServiceUrl https://{{ .hostname }}:{{.platformPort }}/entityresolution/resolve
+platformEndpoint: &platformEndpoint https://{{.hostname }}:{{.platformPort }}
+authRealm: &authRealm {{.authRealm}}
+mode: all
+logger:
+  level: debug
+  type: text
+  output: stdout
+server:
+  port: {{.platformPort}}
+  auth:
+    enabled: true
+    enforceDPoP: false
+    audience: *platformEndpoint
+    issuer: *issuerEndpoint
+    policy:
+      extension: |
+        g, opentdf-admin, role:admin
+        g, opentdf-standard, role:standard
+db:
+  host: {{ .pgHost }}
+  port: {{ .pgPort }}
+  database: {{ .pgDatabase }}
+  user: postgres
+  password: changeme
+  schema: otdf
+services:
+  kas:
+    keyring:
+      - kid: e1
+        alg: ec:secp256r1
+      - kid: r1
+        alg: rsa:2048
+  entityresolution:
+    url: *authEndpoint
+    clientid: 'tdf-entity-resolution'
+    clientsecret: 'secret'
+    realm: *authRealm
+    legacykeycloak: true
+    inferid:
+      from:
+        email: true
+        username: true
+  shared:
+    clientId: otdf-shared
+    clientSecret: secret
+    authClientId: otdf-shared-auth
+    serviceHostName: shared
+    platformEndpoint: *platformEndpoint
+    platformAuthEndpoint: *authEndpoint
+    platformAuthRealm: *authRealm
+    tokenEndpoint: *tokenEndpoint
+  # ...other service configs as needed...

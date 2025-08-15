@@ -24,8 +24,6 @@ type ERSConfig struct {
 const (
 	KeycloakMode      = "keycloak"
 	ClaimsMode        = "claims"
-	LDAPMode          = "ldap"
-	SQLMode           = "sql"
 	MultiStrategyMode = "multi-strategy"
 )
 
@@ -72,23 +70,20 @@ func NewRegistration() *serviceregistry.Service[entityresolutionv2connect.Entity
 					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
 					claimsSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
-				case LDAPMode:
-					srp.Logger.Error("LDAP mode is no longer supported in v2. Please use multi-strategy mode instead.")
-					log.Fatalf("LDAP mode has been removed. Please use multi-strategy mode with LDAP provider configuration.")
-					panic("unreachable")
-				case SQLMode:
-					srp.Logger.Error("SQL mode is no longer supported in v2. Please use multi-strategy mode instead.")
-					log.Fatalf("SQL mode has been removed. Please use multi-strategy mode with SQL provider configuration.")
-					panic("unreachable")
+				case KeycloakMode:
+					// Keycloak ERS with cache support
+					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)
+					kcSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
 				case MultiStrategyMode:
 					multiSVC, multiHandler := multistrategyv2.RegisterMultiStrategyERSV2(srp.Config, srp.Logger)
 					multiSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: multiSVC}, multiHandler
 				default:
-					// Default to keycloak ERS with cache support
-					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)
-					kcSVC.Tracer = srp.Tracer
-					return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
+					// Default to claims ERS (works with any IdP)
+					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
+					claimsSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
 				}
 			},
 		},

@@ -153,10 +153,10 @@ func TestTransformationRegistry_GetSupportedTransformations(t *testing.T) {
 		{
 			name:         "SQL provider",
 			providerType: "sql",
-			expectedMin:  8, // 5 common + 3 SQL-specific
+			expectedMin:  6, // 5 common + 1 SQL-specific
 			shouldContain: []string{
 				CommonCSVToArray, CommonArray, CommonString,
-				SQLPostgresArray, SQLJSONExtract, SQLDateFormat,
+				SQLPostgresArray,
 			},
 		},
 		{
@@ -171,10 +171,10 @@ func TestTransformationRegistry_GetSupportedTransformations(t *testing.T) {
 		{
 			name:         "Claims provider",
 			providerType: "claims",
-			expectedMin:  9, // 5 common + 4 Claims-specific
+			expectedMin:  7, // 5 common + 2 Claims-specific
 			shouldContain: []string{
 				CommonCSVToArray, CommonArray, CommonString,
-				ClaimsDecodeBase64, ClaimsParseJSON, ClaimsExtractScope, ClaimsNormalizeGroups,
+				ClaimsExtractScope, ClaimsNormalizeGroups,
 			},
 		},
 		{

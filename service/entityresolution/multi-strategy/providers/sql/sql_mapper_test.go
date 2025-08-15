@@ -363,8 +363,6 @@ func TestSQLMapper_GetSupportedTransformations(t *testing.T) {
 		"uppercase",
 		// SQL-specific transformations
 		"postgres_array",
-		"json_extract",
-		"date_format",
 	}
 
 	if len(transformations) != len(expectedTransformations) {

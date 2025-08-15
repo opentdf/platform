@@ -87,7 +87,6 @@ func TestIsCommonTransformation(t *testing.T) {
 		{"Uppercase", CommonUppercase, true},
 		{"SQL Postgres Array", SQLPostgresArray, false},
 		{"LDAP DN to CN", LDAPDNToCN, false},
-		{"Claims Decode Base64", ClaimsDecodeBase64, false},
 		{"Unknown", "unknown_transformation", false},
 	}
 	
@@ -122,9 +121,6 @@ func TestIsSupportedByProvider(t *testing.T) {
 		{"LDAP DN to CN - SQL", LDAPDNToCN, "sql", false},
 		{"LDAP DN to CN - Claims", LDAPDNToCN, "claims", false},
 		
-		{"JWT Decode Base64 - Claims", ClaimsDecodeBase64, "claims", true},
-		{"JWT Decode Base64 - SQL", ClaimsDecodeBase64, "sql", false},
-		{"JWT Decode Base64 - LDAP", ClaimsDecodeBase64, "ldap", false},
 		
 		// Unknown transformations
 		{"Unknown - SQL", "unknown", "sql", false},
@@ -160,16 +156,11 @@ func TestTransformationConstants(t *testing.T) {
 		{"Common Uppercase", CommonUppercase, "uppercase"},
 		
 		{"SQL Postgres Array", SQLPostgresArray, "postgres_array"},
-		{"SQL JSON Extract", SQLJSONExtract, "json_extract"},
-		{"SQL Date Format", SQLDateFormat, "date_format"},
-		
 		{"LDAP DN to CN Array", LDAPDNToCNArray, "ldap_dn_to_cn_array"},
 		{"LDAP DN to CN", LDAPDNToCN, "ldap_dn_to_cn"},
 		{"LDAP Attribute Values", LDAPAttrValues, "ldap_attribute_values"},
 		{"LDAP AD Group Name", LDAPADGroupName, "ad_group_name"},
 		
-		{"Claims Decode Base64", ClaimsDecodeBase64, "jwt_decode_base64"},
-		{"Claims Parse JSON", ClaimsParseJSON, "jwt_parse_json"},
 		{"Claims Extract Scope", ClaimsExtractScope, "jwt_extract_scope"},
 		{"Claims Normalize Groups", ClaimsNormalizeGroups, "jwt_normalize_groups"},
 	}

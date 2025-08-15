@@ -8,10 +8,6 @@ import (
 // ApplyClaimsTransformation applies Claims-specific transformations
 func ApplyClaimsTransformation(value interface{}, transformation string) (interface{}, error) {
 	switch transformation {
-	case ClaimsDecodeBase64:
-		return ApplyJWTDecodeBase64(value)
-	case ClaimsParseJSON:
-		return ApplyJWTParseJSON(value)
 	case ClaimsExtractScope:
 		return ApplyJWTExtractScope(value)
 	case ClaimsNormalizeGroups:
@@ -19,35 +15,6 @@ func ApplyClaimsTransformation(value interface{}, transformation string) (interf
 	default:
 		return nil, fmt.Errorf("unsupported Claims transformation: %s", transformation)
 	}
-}
-
-// ApplyJWTDecodeBase64 decodes base64 encoded claim values
-func ApplyJWTDecodeBase64(value interface{}) (interface{}, error) {
-	str, ok := value.(string)
-	if !ok {
-		return nil, fmt.Errorf("jwt_decode_base64 transformation requires string input, got %T", value)
-	}
-
-	// For now, return as-is. Future enhancement could decode base64
-	// This would use encoding/base64 package:
-	// decoded, err := base64.StdEncoding.DecodeString(str)
-	// return string(decoded), err
-	return str, nil
-}
-
-// ApplyJWTParseJSON parses JSON string claim values
-func ApplyJWTParseJSON(value interface{}) (interface{}, error) {
-	str, ok := value.(string)
-	if !ok {
-		return nil, fmt.Errorf("jwt_parse_json transformation requires string input, got %T", value)
-	}
-
-	// For now, return as-is. Future enhancement could parse JSON
-	// This would use encoding/json package:
-	// var result interface{}
-	// err := json.Unmarshal([]byte(str), &result)
-	// return result, err
-	return str, nil
 }
 
 // ApplyJWTExtractScope extracts scopes from space-separated scope claim

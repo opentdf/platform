@@ -10,10 +10,6 @@ func ApplySQLTransformation(value interface{}, transformation string) (interface
 	switch transformation {
 	case SQLPostgresArray:
 		return ApplyPostgresArray(value)
-	case SQLJSONExtract:
-		return ApplyJSONExtract(value)
-	case SQLDateFormat:
-		return ApplyDateFormat(value)
 	default:
 		return nil, fmt.Errorf("unsupported SQL transformation: %s", transformation)
 	}
@@ -42,16 +38,3 @@ func ApplyPostgresArray(value interface{}) (interface{}, error) {
 	return parts, nil
 }
 
-// ApplyJSONExtract handles JSON extraction (placeholder for future enhancement)
-func ApplyJSONExtract(value interface{}) (interface{}, error) {
-	// For now, return as-is. Future enhancement could parse JSON
-	// This could use encoding/json to extract specific fields
-	return value, nil
-}
-
-// ApplyDateFormat handles date formatting (placeholder for future enhancement)
-func ApplyDateFormat(value interface{}) (interface{}, error) {
-	// For now, return as-is. Future enhancement could format dates
-	// This could use time package to format dates consistently
-	return value, nil
-}

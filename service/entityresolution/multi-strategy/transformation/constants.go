@@ -15,8 +15,6 @@ const (
 // SQL-specific transformation constants
 const (
 	SQLPostgresArray = "postgres_array"
-	SQLJSONExtract   = "json_extract"
-	SQLDateFormat    = "date_format"
 )
 
 // LDAP-specific transformation constants
@@ -29,8 +27,6 @@ const (
 
 // Claims-specific transformation constants
 const (
-	ClaimsDecodeBase64      = "jwt_decode_base64"
-	ClaimsParseJSON         = "jwt_parse_json"
 	ClaimsExtractScope      = "jwt_extract_scope"
 	ClaimsNormalizeGroups   = "jwt_normalize_groups"
 )
@@ -50,8 +46,6 @@ func GetCommonTransformations() []string {
 func GetSQLTransformations() []string {
 	return []string{
 		SQLPostgresArray,
-		SQLJSONExtract,
-		SQLDateFormat,
 	}
 }
 
@@ -68,8 +62,6 @@ func GetLDAPTransformations() []string {
 // GetClaimsTransformations returns Claims-specific transformations
 func GetClaimsTransformations() []string {
 	return []string{
-		ClaimsDecodeBase64,
-		ClaimsParseJSON,
 		ClaimsExtractScope,
 		ClaimsNormalizeGroups,
 	}

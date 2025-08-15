@@ -104,8 +104,6 @@ Multi-Strategy ERS supports data transformations to normalize values from differ
 
 #### SQL-Specific Transformations
 - **`postgres_array`**: Handles PostgreSQL array format `{item1,item2,item3}`
-- **`json_extract`**: Extracts data from JSON columns (future enhancement)
-- **`date_format`**: Formats date values (future enhancement)
 
 #### LDAP-Specific Transformations
 - **`ldap_dn_to_cn_array`**: Converts DN arrays to CN arrays
@@ -116,8 +114,6 @@ Multi-Strategy ERS supports data transformations to normalize values from differ
 #### Claims-Specific Transformations  
 - **`jwt_extract_scope`**: Parses OAuth2 space-separated scopes
 - **`jwt_normalize_groups`**: Handles various group formats
-- **`jwt_decode_base64`**: Decodes base64-encoded claims (future enhancement)
-- **`jwt_parse_json`**: Parses JSON string claims (future enhancement)
 
 Example usage:
 ```yaml

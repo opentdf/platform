@@ -121,8 +121,6 @@ services:
 | Transformation | Input | Output | Use Case |
 |---------------|-------|---------|----------|
 | `postgres_array` | `"{apple,banana,cherry}"` | `["apple", "banana", "cherry"]` | PostgreSQL arrays |
-| `json_extract` | `'{"role": "admin"}'` | `"admin"` | JSON columns (future) |
-| `date_format` | `"2023-12-25"` | Formatted date | Date formatting (future) |
 
 ### LDAP-Specific Transformations
 
@@ -139,8 +137,6 @@ services:
 |---------------|-------|---------|----------|
 | `jwt_extract_scope` | `"read write admin"` | `["read", "write", "admin"]` | OAuth2 scopes |
 | `jwt_normalize_groups` | `"finance,admin"` or `"finance admin"` | `["finance", "admin"]` | Various group formats |
-| `jwt_decode_base64` | Base64 string | Decoded value | Encoded claims (future) |
-| `jwt_parse_json` | JSON string | Parsed object | JSON claims (future) |
 
 ## Strategy Selection
 

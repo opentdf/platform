@@ -39,6 +39,10 @@ var clientsToGenerateList = []runner.ClientsToGenerate{
 		PackageNameOverride: "entityresolutionv2",
 	},
 	{
+		GrpcClientInterface: "FeatureFlagServiceClient",
+		GrpcPackagePath:     "github.com/opentdf/platform/protocol/go/featureflag",
+	},
+	{
 		GrpcClientInterface: "KeyAccessServerRegistryServiceClient",
 		GrpcPackagePath:     "github.com/opentdf/platform/protocol/go/policy/kasregistry",
 	},

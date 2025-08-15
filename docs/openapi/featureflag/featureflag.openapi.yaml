@@ -1,0 +1,631 @@
+openapi: 3.1.0
+info:
+  title: featureflag
+paths:
+  /featureflag.FeatureFlagService/ResolveAll:
+    post:
+      tags:
+        - featureflag.FeatureFlagService
+      summary: ResolveAll
+      operationId: featureflag.FeatureFlagService.ResolveAll
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/featureflag.ResolveAllRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/featureflag.ResolveAllResponse'
+  /featureflag.FeatureFlagService/ResolveBoolean:
+    post:
+      tags:
+        - featureflag.FeatureFlagService
+      summary: ResolveBoolean
+      operationId: featureflag.FeatureFlagService.ResolveBoolean
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/featureflag.ResolveBooleanRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/featureflag.ResolveBooleanResponse'
+  /featureflag.FeatureFlagService/ResolveString:
+    post:
+      tags:
+        - featureflag.FeatureFlagService
+      summary: ResolveString
+      operationId: featureflag.FeatureFlagService.ResolveString
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/featureflag.ResolveStringRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/featureflag.ResolveStringResponse'
+  /featureflag.FeatureFlagService/ResolveFloat:
+    post:
+      tags:
+        - featureflag.FeatureFlagService
+      summary: ResolveFloat
+      operationId: featureflag.FeatureFlagService.ResolveFloat
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/featureflag.ResolveFloatRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/featureflag.ResolveFloatResponse'
+  /featureflag.FeatureFlagService/ResolveInt:
+    post:
+      tags:
+        - featureflag.FeatureFlagService
+      summary: ResolveInt
+      operationId: featureflag.FeatureFlagService.ResolveInt
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/featureflag.ResolveIntRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/featureflag.ResolveIntResponse'
+  /featureflag.FeatureFlagService/ResolveObject:
+    post:
+      tags:
+        - featureflag.FeatureFlagService
+      summary: ResolveObject
+      operationId: featureflag.FeatureFlagService.ResolveObject
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/featureflag.ResolveObjectRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/featureflag.ResolveObjectResponse'
+components:
+  schemas:
+    google.protobuf.NullValue:
+      type: string
+      title: NullValue
+      enum:
+        - NULL_VALUE
+      description: |-
+        `NullValue` is a singleton enumeration to represent the null value for the
+         `Value` type union.
+
+         The JSON representation for `NullValue` is JSON `null`.
+    featureflag.AnyFlag:
+      type: object
+      oneOf:
+        - properties:
+            boolValue:
+              type: boolean
+              title: bool_value
+          title: bool_value
+          required:
+            - boolValue
+        - properties:
+            doubleValue:
+              type: number
+              title: double_value
+              format: double
+          title: double_value
+          required:
+            - doubleValue
+        - properties:
+            objectValue:
+              title: object_value
+              $ref: '#/components/schemas/google.protobuf.Struct'
+          title: object_value
+          required:
+            - objectValue
+        - properties:
+            stringValue:
+              type: string
+              title: string_value
+          title: string_value
+          required:
+            - stringValue
+      properties:
+        reason:
+          type: string
+          title: reason
+          description: The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details
+        variant:
+          type: string
+          title: variant
+          description: The variant name of the returned flag value.
+        metadata:
+          title: metadata
+          description: Metadata for this evaluation
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: AnyFlag
+      additionalProperties: false
+      description: A variant type flag response.
+    featureflag.EventStreamResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          title: type
+          description: String key indicating the type of event that is being received, for example, provider_ready or configuration_change
+        data:
+          title: data
+          description: |-
+            Object structure for use when sending relevant metadata to provide context to the event.
+             Can be left unset when it is not required.
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: EventStreamResponse
+      additionalProperties: false
+      description: Response body for the EventStream stream response
+    featureflag.ResolveAllRequest:
+      type: object
+      properties:
+        context:
+          title: context
+          description: Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: ResolveAllRequest
+      additionalProperties: false
+      description: Request body for bulk flag evaluation, used by the ResolveAll rpc.
+    featureflag.ResolveAllResponse:
+      type: object
+      properties:
+        flags:
+          type: object
+          title: flags
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/featureflag.AnyFlag'
+          description: Object structure describing the evaluated flags for the provided context.
+        metadata:
+          title: metadata
+          description: Metadata for the bulk evaluation
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: ResolveAllResponse
+      additionalProperties: false
+      description: Response body for bulk flag evaluation, used by the ResolveAll rpc.
+    featureflag.ResolveAllResponse.FlagsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/featureflag.AnyFlag'
+      title: FlagsEntry
+      additionalProperties: false
+    featureflag.ResolveBooleanRequest:
+      type: object
+      properties:
+        flagKey:
+          type: string
+          title: flag_key
+          description: Flag key of the requested flag.
+        context:
+          title: context
+          description: Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: ResolveBooleanRequest
+      additionalProperties: false
+      description: Request body for boolean flag evaluation, used by the ResolveBoolean rpc.
+    featureflag.ResolveBooleanResponse:
+      type: object
+      properties:
+        value:
+          type: boolean
+          title: value
+          description: The response value of the boolean flag evaluation, will be unset in the case of error.
+        reason:
+          type: string
+          title: reason
+          description: The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details
+        variant:
+          type: string
+          title: variant
+          description: The variant name of the returned flag value.
+        metadata:
+          title: metadata
+          description: Metadata for this evaluation
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: ResolveBooleanResponse
+      additionalProperties: false
+      description: Response body for boolean flag evaluation. used by the ResolveBoolean rpc.
+    featureflag.ResolveFloatRequest:
+      type: object
+      properties:
+        flagKey:
+          type: string
+          title: flag_key
+          description: Flag key of the requested flag.
+        context:
+          title: context
+          description: Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: ResolveFloatRequest
+      additionalProperties: false
+      description: Request body for float flag evaluation, used by the ResolveFloat rpc.
+    featureflag.ResolveFloatResponse:
+      type: object
+      properties:
+        value:
+          type: number
+          title: value
+          format: double
+          description: The response value of the float flag evaluation, will be empty in the case of error.
+        reason:
+          type: string
+          title: reason
+          description: The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details
+        variant:
+          type: string
+          title: variant
+          description: The variant name of the returned flag value.
+        metadata:
+          title: metadata
+          description: Metadata for this evaluation
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: ResolveFloatResponse
+      additionalProperties: false
+      description: Response body for float flag evaluation. used by the ResolveFloat rpc.
+    featureflag.ResolveIntRequest:
+      type: object
+      properties:
+        flagKey:
+          type: string
+          title: flag_key
+          description: Flag key of the requested flag.
+        context:
+          title: context
+          description: Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: ResolveIntRequest
+      additionalProperties: false
+      description: Request body for int flag evaluation, used by the ResolveInt rpc.
+    featureflag.ResolveIntResponse:
+      type: object
+      properties:
+        value:
+          type:
+            - integer
+            - string
+          title: value
+          format: int64
+          description: The response value of the int flag evaluation, will be unset in the case of error.
+        reason:
+          type: string
+          title: reason
+          description: The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details
+        variant:
+          type: string
+          title: variant
+          description: The variant name of the returned flag value.
+        metadata:
+          title: metadata
+          description: Metadata for this evaluation
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: ResolveIntResponse
+      additionalProperties: false
+      description: Response body for int flag evaluation. used by the ResolveInt rpc.
+    featureflag.ResolveObjectRequest:
+      type: object
+      properties:
+        flagKey:
+          type: string
+          title: flag_key
+          description: Flag key of the requested flag.
+        context:
+          title: context
+          description: Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: ResolveObjectRequest
+      additionalProperties: false
+      description: Request body for object flag evaluation, used by the ResolveObject rpc.
+    featureflag.ResolveObjectResponse:
+      type: object
+      properties:
+        value:
+          title: value
+          description: |-
+            The response value of the object flag evaluation, will be unset in the case of error.
+
+             NOTE: This structure will need to be decoded from google/protobuf/struct.proto before it is returned to the SDK
+          $ref: '#/components/schemas/google.protobuf.Struct'
+        reason:
+          type: string
+          title: reason
+          description: The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details
+        variant:
+          type: string
+          title: variant
+          description: The variant name of the returned flag value.
+        metadata:
+          title: metadata
+          description: Metadata for this evaluation
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: ResolveObjectResponse
+      additionalProperties: false
+      description: Response body for object flag evaluation. used by the ResolveObject rpc.
+    featureflag.ResolveStringRequest:
+      type: object
+      properties:
+        flagKey:
+          type: string
+          title: flag_key
+          description: Flag key of the requested flag.
+        context:
+          title: context
+          description: Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: ResolveStringRequest
+      additionalProperties: false
+      description: Request body for string flag evaluation, used by the ResolveString rpc.
+    featureflag.ResolveStringResponse:
+      type: object
+      properties:
+        value:
+          type: string
+          title: value
+          description: The response value of the string flag evaluation, will be unset in the case of error.
+        reason:
+          type: string
+          title: reason
+          description: The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details
+        variant:
+          type: string
+          title: variant
+          description: The variant name of the returned flag value.
+        metadata:
+          title: metadata
+          description: Metadata for this evaluation
+          $ref: '#/components/schemas/google.protobuf.Struct'
+      title: ResolveStringResponse
+      additionalProperties: false
+      description: Response body for string flag evaluation. used by the ResolveString rpc.
+    google.protobuf.ListValue:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.protobuf.Value'
+          title: values
+          description: Repeated field of dynamically typed values.
+      title: ListValue
+      additionalProperties: false
+      description: |-
+        `ListValue` is a wrapper around a repeated field of values.
+
+         The JSON representation for `ListValue` is JSON array.
+    google.protobuf.Struct:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/google.protobuf.Value'
+      description: |-
+        `Struct` represents a structured data value, consisting of fields
+         which map to dynamically typed values. In some languages, `Struct`
+         might be supported by a native representation. For example, in
+         scripting languages like JS a struct is represented as an
+         object. The details of that representation are described together
+         with the proto support for the language.
+
+         The JSON representation for `Struct` is JSON object.
+    google.protobuf.Struct.FieldsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/google.protobuf.Value'
+      title: FieldsEntry
+      additionalProperties: false
+    google.protobuf.Value:
+      oneOf:
+        - type: "null"
+        - type: number
+        - type: string
+        - type: boolean
+        - type: array
+        - type: object
+          additionalProperties: true
+      description: |-
+        `Value` represents a dynamically typed value which can be either
+         null, a number, a string, a boolean, a recursive struct value, or a
+         list of values. A producer of value is expected to set one of these
+         variants. Absence of any variant indicates an error.
+
+         The JSON representation for `Value` is JSON value.
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        detail:
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    google.protobuf.Any:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+          format: binary
+        debug:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+security: []
+tags:
+  - name: featureflag.FeatureFlagService
+    description: Service defines the exposed rpcs of flagd

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/auth/oauth"
@@ -43,6 +44,7 @@ type config struct {
 	entityResolutionConn               *ConnectRPCConnection
 	collectionStore                    *collectionStore
 	shouldValidatePlatformConnectivity bool
+	featureProvider                    openfeature.FeatureProvider
 }
 
 // Options specific to TDF protocol features
@@ -228,5 +230,12 @@ func WithExtraClientOptions(opts ...connect.ClientOption) Option {
 func WithNoKIDInNano() Option {
 	return func(c *config) {
 		c.nanoFeatures.noKID = true
+	}
+}
+
+// internal option for setting the feature provider on the SDK.
+func withFeatureProvider(provider openfeature.FeatureProvider) Option {
+	return func(c *config) {
+		c.featureProvider = provider
 	}
 }

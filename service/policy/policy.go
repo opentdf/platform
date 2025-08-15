@@ -3,6 +3,7 @@ package policy
 import (
 	"embed"
 
+	"github.com/opentdf/platform/service/featureflag"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/policy/actions"
 	"github.com/opentdf/platform/service/policy/attributes"
@@ -40,6 +41,7 @@ func NewRegistrations() []serviceregistry.IService {
 		actions.NewRegistration(namespace, dbRegister),
 		registeredresources.NewRegistration(namespace, dbRegister),
 		keymanagement.NewRegistration(namespace, dbRegister),
+		featureflag.NewRegistration(),
 		// obligations.NewRegistration(namespace, dbRegister),
 	}...)
 	return registrations

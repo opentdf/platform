@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -217,6 +218,9 @@ type granter struct {
 
 	// Key lookup for keys without a KID.
 	keyInfoFetcher KASKeyFetcher
+
+	// Pointer to feature client
+	featureClient *openfeature.Client
 }
 
 type keyAccessGrant struct {
@@ -327,33 +331,34 @@ type grantableObject interface {
 func (r *granter) addAllGrants(fqn AttributeValueFQN, ag grantableObject, attr *policy.Attribute) grantType {
 	result := noKeysFound
 
-	// Check for mapped keys
-	for _, k := range ag.GetKasKeys() {
-		if k == nil || k.GetKasUri() == "" {
-			slog.Debug("invalid KAS key in policy service",
-				slog.Any("simple_kas_key", k),
-				slog.Any("value", fqn),
-			)
-			continue
+	if r.featureClient.Boolean(context.TODO(), "key_management", false, openfeature.EvaluationContext{}) {
+		// Check for mapped keys
+		for _, k := range ag.GetKasKeys() {
+			if k == nil || k.GetKasUri() == "" {
+				slog.Debug("invalid KAS key in policy service",
+					slog.Any("simple_kas_key", k),
+					slog.Any("value", fqn),
+				)
+				continue
+			}
+			kasURI := k.GetKasUri()
+			r.typ = mappedFound
+			result = r.typ
+			err := r.addMappedKey(fqn, k)
+			if err != nil {
+				slog.Debug("failed to add mapped key",
+					slog.Any("fqn", fqn),
+					slog.String("kas", kasURI),
+					slog.Any("error", err),
+				)
+			}
+			if _, present := r.grantTable[fqn.key]; !present {
+				r.grantTable[fqn.key] = &keyAccessGrant{attr, []string{kasURI}}
+			} else {
+				r.grantTable[fqn.key].kases = append(r.grantTable[fqn.key].kases, kasURI)
+			}
 		}
-		kasURI := k.GetKasUri()
-		r.typ = mappedFound
-		result = r.typ
-		err := r.addMappedKey(fqn, k)
-		if err != nil {
-			slog.Debug("failed to add mapped key",
-				slog.Any("fqn", fqn),
-				slog.String("kas", kasURI),
-				slog.Any("error", err),
-			)
-		}
-		if _, present := r.grantTable[fqn.key]; !present {
-			r.grantTable[fqn.key] = &keyAccessGrant{attr, []string{kasURI}}
-		} else {
-			r.grantTable[fqn.key].kases = append(r.grantTable[fqn.key].kases, kasURI)
-		}
-	}
-	if result != noKeysFound {
+
 		return result
 	}
 
@@ -426,7 +431,7 @@ func (r granter) byAttribute(fqn AttributeValueFQN) *keyAccessGrant {
 }
 
 // Gets a list of directory of KAS grants for a list of attribute FQNs
-func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkconnect.AttributesServiceClient, fqns ...AttributeValueFQN) (granter, error) {
+func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkconnect.AttributesServiceClient, featureClient *openfeature.Client, fqns ...AttributeValueFQN) (granter, error) {
 	fqnsStr := make([]string, len(fqns))
 	for i, v := range fqns {
 		fqnsStr[i] = v.String()
@@ -443,9 +448,10 @@ func newGranterFromService(ctx context.Context, keyCache *kasKeyCache, as sdkcon
 	}
 
 	grants := granter{
-		tags:       fqns,
-		grantTable: make(map[string]*keyAccessGrant),
-		keyCache:   &rlKeyCache{c: make(map[ResourceLocator]*policy.SimpleKasKey)},
+		tags:          fqns,
+		grantTable:    make(map[string]*keyAccessGrant),
+		keyCache:      &rlKeyCache{c: make(map[ResourceLocator]*policy.SimpleKasKey)},
+		featureClient: featureClient,
 	}
 	for fqnstr, pair := range av.GetFqnAttributeValues() {
 		fqn, err := NewAttributeValueFQN(fqnstr)
@@ -585,12 +591,13 @@ func storeKeysToCache(kases []*policy.KeyAccessServer, keys []*policy.SimpleKasK
 // Given a policy (list of data attributes or tags),
 // get a set of grants from attribute values to KASes.
 // Unlike `newGranterFromService`, this works offline.
-func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (granter, error) {
+func newGranterFromAttributes(keyCache *kasKeyCache, featureClient *openfeature.Client, attrs ...*policy.Value) (granter, error) {
 	grants := granter{
-		grantTable: make(map[string]*keyAccessGrant),
-		mapTable:   make(map[string][]*ResourceLocator),
-		tags:       make([]AttributeValueFQN, len(attrs)),
-		keyCache:   &rlKeyCache{c: make(map[ResourceLocator]*policy.SimpleKasKey)},
+		grantTable:    make(map[string]*keyAccessGrant),
+		mapTable:      make(map[string][]*ResourceLocator),
+		tags:          make([]AttributeValueFQN, len(attrs)),
+		keyCache:      &rlKeyCache{c: make(map[ResourceLocator]*policy.SimpleKasKey)},
+		featureClient: featureClient,
 	}
 	for i, v := range attrs {
 		fqn, err := NewAttributeValueFQN(v.GetFqn())
@@ -618,6 +625,12 @@ func newGranterFromAttributes(keyCache *kasKeyCache, attrs ...*policy.Value) (gr
 		}
 		grants.addAllGrants(fqn, namespace, def)
 		storeKeysToCache(namespace.GetGrants(), namespace.GetKasKeys(), keyCache, grants.keyCache)
+	}
+
+	// Check if key_management feature is provided.
+	if featureClient.Boolean(context.TODO(), "key_management", false, openfeature.EvaluationContext{}) && grants.typ == grantsFound {
+		// Set to no key found, use base key
+		grants.typ = noKeysFound
 	}
 
 	return grants, nil

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
@@ -573,7 +574,8 @@ func TestConfigurationServicePutGet(t *testing.T) {
 	} {
 		t.Run(tc.n, func(t *testing.T) {
 			v := valuesToPolicy(tc.policy...)
-			grants, err := newGranterFromAttributes(newKasKeyCache(), v...)
+			ffClient := openfeature.NewClient("test-client")
+			grants, err := newGranterFromAttributes(newKasKeyCache(), ffClient, v...)
 			require.NoError(t, err)
 			assert.Len(t, grants.grantTable, tc.size)
 			assert.Subset(t, policyToStringKeys(tc.policy), slices.Collect(maps.Keys(grants.grantTable)))
@@ -731,7 +733,8 @@ func TestReasonerConstructAttributeBoolean(t *testing.T) {
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
-			reasoner, err := newGranterFromAttributes(newKasKeyCache(), valuesToPolicy(tc.policy...)...)
+			ffClient := openfeature.NewClient("test-client")
+			reasoner, err := newGranterFromAttributes(newKasKeyCache(), ffClient, valuesToPolicy(tc.policy...)...)
 			require.NoError(t, err)
 
 			reasoner.keyInfoFetcher = &fakeKeyInfoFetcher{}
@@ -879,7 +882,8 @@ func TestReasonerSpecificity(t *testing.T) {
 		},
 	} {
 		t.Run(tc.n, func(t *testing.T) {
-			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
+			ffClient := openfeature.NewClient("test-client")
+			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &mockAttributesClient{}, ffClient, tc.policy...)
 			require.NoError(t, err)
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {
@@ -1030,7 +1034,8 @@ func TestReasonerSpecificityWithNamespaces(t *testing.T) {
 		},
 	} {
 		t.Run((tc.n + "\n" + tc.desc), func(t *testing.T) {
-			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &mockAttributesClient{}, tc.policy...)
+			ffClient := openfeature.NewClient("test-client")
+			reasoner, err := newGranterFromService(t.Context(), newKasKeyCache(), &mockAttributesClient{}, ffClient, tc.policy...)
 			require.NoError(t, err)
 			i := 0
 			plan, err := reasoner.plan(tc.defaults, func() string {

@@ -648,6 +648,81 @@
         
           
           <li>
+            <a href="#featureflag%2ffeatureflag.proto">featureflag/featureflag.proto</a>
+            <ul>
+              
+                <li>
+                  <a href="#featureflag.AnyFlag"><span class="badge">M</span>AnyFlag</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.EventStreamResponse"><span class="badge">M</span>EventStreamResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.ResolveAllRequest"><span class="badge">M</span>ResolveAllRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.ResolveAllResponse"><span class="badge">M</span>ResolveAllResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.ResolveAllResponse.FlagsEntry"><span class="badge">M</span>ResolveAllResponse.FlagsEntry</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.ResolveBooleanRequest"><span class="badge">M</span>ResolveBooleanRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.ResolveBooleanResponse"><span class="badge">M</span>ResolveBooleanResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.ResolveFloatRequest"><span class="badge">M</span>ResolveFloatRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.ResolveFloatResponse"><span class="badge">M</span>ResolveFloatResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.ResolveIntRequest"><span class="badge">M</span>ResolveIntRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.ResolveIntResponse"><span class="badge">M</span>ResolveIntResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.ResolveObjectRequest"><span class="badge">M</span>ResolveObjectRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.ResolveObjectResponse"><span class="badge">M</span>ResolveObjectResponse</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.ResolveStringRequest"><span class="badge">M</span>ResolveStringRequest</a>
+                </li>
+              
+                <li>
+                  <a href="#featureflag.ResolveStringResponse"><span class="badge">M</span>ResolveStringResponse</a>
+                </li>
+              
+              
+              
+              
+                <li>
+                  <a href="#featureflag.FeatureFlagService"><span class="badge">S</span>FeatureFlagService</a>
+                </li>
+              
+            </ul>
+          </li>
+        
+          
+          <li>
             <a href="#kas%2fkas.proto">kas/kas.proto</a>
             <ul>
               
@@ -5877,6 +5952,640 @@ down the hierarchical values instead of returning solely the value that is direc
                 <td>CreateEntityChainsFromTokens</td>
                 <td><a href="#entityresolution.v2.CreateEntityChainsFromTokensRequest">CreateEntityChainsFromTokensRequest</a></td>
                 <td><a href="#entityresolution.v2.CreateEntityChainsFromTokensResponse">CreateEntityChainsFromTokensResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+          </tbody>
+        </table>
+
+        
+    
+      
+      <div class="file-heading">
+        <h2 id="featureflag/featureflag.proto">featureflag/featureflag.proto</h2><a href="#title">Top</a>
+      </div>
+      <p>Flag evaluation API</p><p>This proto forms the basis of a flag-evaluation API.</p><p>It supports single and bulk evaluation RPCs, and flags of various types, as well as establishing a stream for getting notifications about changes in a flag definition.</p><p>It supports the inclusion of a "context" with each evaluation, which may contain arbitrary attributes relevant to flag evaluation.</p>
+
+      
+        <h3 id="featureflag.AnyFlag">AnyFlag</h3>
+        <p>A variant type flag response.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>reason</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details </p></td>
+                </tr>
+              
+                <tr>
+                  <td>variant</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The variant name of the returned flag value. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>bool_value</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>string_value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>double_value</td>
+                  <td><a href="#double">double</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>object_value</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Metadata for this evaluation </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.EventStreamResponse">EventStreamResponse</h3>
+        <p>Response body for the EventStream stream response</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>type</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>String key indicating the type of event that is being received, for example, provider_ready or configuration_change </p></td>
+                </tr>
+              
+                <tr>
+                  <td>data</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Object structure for use when sending relevant metadata to provide context to the event.
+Can be left unset when it is not required. </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.ResolveAllRequest">ResolveAllRequest</h3>
+        <p>Request body for bulk flag evaluation, used by the ResolveAll rpc.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.ResolveAllResponse">ResolveAllResponse</h3>
+        <p>Response body for bulk flag evaluation, used by the ResolveAll rpc.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>flags</td>
+                  <td><a href="#featureflag.ResolveAllResponse.FlagsEntry">ResolveAllResponse.FlagsEntry</a></td>
+                  <td>repeated</td>
+                  <td><p>Object structure describing the evaluated flags for the provided context. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Metadata for the bulk evaluation </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.ResolveAllResponse.FlagsEntry">ResolveAllResponse.FlagsEntry</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#featureflag.AnyFlag">AnyFlag</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.ResolveBooleanRequest">ResolveBooleanRequest</h3>
+        <p>Request body for boolean flag evaluation, used by the ResolveBoolean rpc.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>flag_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Flag key of the requested flag. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.ResolveBooleanResponse">ResolveBooleanResponse</h3>
+        <p>Response body for boolean flag evaluation. used by the ResolveBoolean rpc.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#bool">bool</a></td>
+                  <td></td>
+                  <td><p>The response value of the boolean flag evaluation, will be unset in the case of error. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>reason</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details </p></td>
+                </tr>
+              
+                <tr>
+                  <td>variant</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The variant name of the returned flag value. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Metadata for this evaluation </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.ResolveFloatRequest">ResolveFloatRequest</h3>
+        <p>Request body for float flag evaluation, used by the ResolveFloat rpc.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>flag_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Flag key of the requested flag. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.ResolveFloatResponse">ResolveFloatResponse</h3>
+        <p>Response body for float flag evaluation. used by the ResolveFloat rpc.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#double">double</a></td>
+                  <td></td>
+                  <td><p>The response value of the float flag evaluation, will be empty in the case of error. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>reason</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details </p></td>
+                </tr>
+              
+                <tr>
+                  <td>variant</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The variant name of the returned flag value. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Metadata for this evaluation </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.ResolveIntRequest">ResolveIntRequest</h3>
+        <p>Request body for int flag evaluation, used by the ResolveInt rpc.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>flag_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Flag key of the requested flag. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.ResolveIntResponse">ResolveIntResponse</h3>
+        <p>Response body for int flag evaluation. used by the ResolveInt rpc.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#int64">int64</a></td>
+                  <td></td>
+                  <td><p>The response value of the int flag evaluation, will be unset in the case of error. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>reason</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details </p></td>
+                </tr>
+              
+                <tr>
+                  <td>variant</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The variant name of the returned flag value. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Metadata for this evaluation </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.ResolveObjectRequest">ResolveObjectRequest</h3>
+        <p>Request body for object flag evaluation, used by the ResolveObject rpc.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>flag_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Flag key of the requested flag. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.ResolveObjectResponse">ResolveObjectResponse</h3>
+        <p>Response body for object flag evaluation. used by the ResolveObject rpc.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>The response value of the object flag evaluation, will be unset in the case of error.
+
+NOTE: This structure will need to be decoded from google/protobuf/struct.proto before it is returned to the SDK </p></td>
+                </tr>
+              
+                <tr>
+                  <td>reason</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details </p></td>
+                </tr>
+              
+                <tr>
+                  <td>variant</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The variant name of the returned flag value. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Metadata for this evaluation </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.ResolveStringRequest">ResolveStringRequest</h3>
+        <p>Request body for string flag evaluation, used by the ResolveString rpc.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>flag_key</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Flag key of the requested flag. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="featureflag.ResolveStringResponse">ResolveStringResponse</h3>
+        <p>Response body for string flag evaluation. used by the ResolveString rpc.</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>value</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The response value of the string flag evaluation, will be unset in the case of error. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>reason</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details </p></td>
+                </tr>
+              
+                <tr>
+                  <td>variant</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>The variant name of the returned flag value. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>metadata</td>
+                  <td><a href="#google.protobuf.Struct">google.protobuf.Struct</a></td>
+                  <td></td>
+                  <td><p>Metadata for this evaluation </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+
+      
+
+      
+
+      
+        <h3 id="featureflag.FeatureFlagService">FeatureFlagService</h3>
+        <p>Service defines the exposed rpcs of flagd</p>
+        <table class="enum-table">
+          <thead>
+            <tr><td>Method Name</td><td>Request Type</td><td>Response Type</td><td>Description</td></tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td>ResolveAll</td>
+                <td><a href="#featureflag.ResolveAllRequest">ResolveAllRequest</a></td>
+                <td><a href="#featureflag.ResolveAllResponse">ResolveAllResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ResolveBoolean</td>
+                <td><a href="#featureflag.ResolveBooleanRequest">ResolveBooleanRequest</a></td>
+                <td><a href="#featureflag.ResolveBooleanResponse">ResolveBooleanResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ResolveString</td>
+                <td><a href="#featureflag.ResolveStringRequest">ResolveStringRequest</a></td>
+                <td><a href="#featureflag.ResolveStringResponse">ResolveStringResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ResolveFloat</td>
+                <td><a href="#featureflag.ResolveFloatRequest">ResolveFloatRequest</a></td>
+                <td><a href="#featureflag.ResolveFloatResponse">ResolveFloatResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ResolveInt</td>
+                <td><a href="#featureflag.ResolveIntRequest">ResolveIntRequest</a></td>
+                <td><a href="#featureflag.ResolveIntResponse">ResolveIntResponse</a></td>
+                <td><p></p></td>
+              </tr>
+            
+              <tr>
+                <td>ResolveObject</td>
+                <td><a href="#featureflag.ResolveObjectRequest">ResolveObjectRequest</a></td>
+                <td><a href="#featureflag.ResolveObjectResponse">ResolveObjectResponse</a></td>
                 <td><p></p></td>
               </tr>
             

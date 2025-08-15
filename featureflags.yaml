@@ -1,0 +1,14 @@
+{
+  "$schema": "https://flagd.dev/schema/v0/flags.json",
+  "flags": {
+    "key_management": {
+      "state": "ENABLED",
+      "defaultVariant": "false",
+      "variants": {
+        "true": true,
+        "false": false
+      },
+      "targeting": {}
+    }
+  }
+}

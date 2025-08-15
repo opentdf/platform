@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/casbin/casbin/v2/persist"
+	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"github.com/opentdf/platform/service/trust"
@@ -20,6 +21,7 @@ type StartConfig struct {
 	extraServices         []serviceregistry.IService
 	casbinAdapter         persist.Adapter
 	configLoaders         []config.Loader
+	featureClient         *openfeature.Client
 
 	trustKeyManagers []trust.NamedKeyManagerFactory
 }
@@ -131,6 +133,13 @@ func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
 func WithTrustKeyManagerFactories(factories ...trust.NamedKeyManagerFactory) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.trustKeyManagers = append(c.trustKeyManagers, factories...)
+		return c
+	}
+}
+
+func WithEvaluationProvider(client *openfeature.Client) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.featureClient = client
 		return c
 	}
 }

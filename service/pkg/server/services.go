@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
+	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/service/authorization"
 	authorizationV2 "github.com/opentdf/platform/service/authorization/v2"
@@ -126,6 +127,7 @@ type startServicesParams struct {
 	reg                 serviceregistry.Registry
 	cacheManager        *cache.Manager
 	keyManagerFactories []trust.NamedKeyManagerFactory
+	featureFlagClient   *openfeature.Client
 }
 
 // startServices iterates through the registered namespaces and starts the services
@@ -221,6 +223,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				Tracer:                 tracer,
 				NewCacheClient:         createCacheClient,
 				KeyManagerFactories:    keyManagerFactories,
+				FFClient:               params.featureFlagClient,
 			})
 			if err != nil {
 				return func() {}, err

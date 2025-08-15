@@ -8,10 +8,13 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path"
 	"slices"
 	"syscall"
 
 	"connectrpc.com/connect"
+	flagd "github.com/open-feature/go-sdk-contrib/providers/flagd/pkg"
+	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk"
 	sdkauth "github.com/opentdf/platform/sdk/auth"
@@ -301,6 +304,32 @@ func Start(f ...StartOptions) error {
 
 	defer client.Close()
 
+	if startConfig.featureClient == nil {
+		currentDirectory, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("issue getting current directory: %w", err)
+		}
+
+		logger.Info("initializing feature flag client", slog.String("current_directory", currentDirectory))
+		provider, err := flagd.NewProvider(
+			flagd.WithFileResolver(),
+			flagd.WithOfflineFilePath(path.Join(currentDirectory, "featureflags.yaml")),
+		)
+		if err != nil {
+			logger.Error("issue initializing feature flag client", slog.String("error", err.Error()))
+			return fmt.Errorf("issue initializing feature flag client: %w", err)
+		}
+
+		openfeature.SetProviderAndWait(provider)
+		startConfig.featureClient = openfeature.NewClient("platform-client")
+		logger.Info("setting feature flag provider", slog.String("provider", provider.Metadata().Name))
+	} else {
+		logger.Info("using provided feature flag client", slog.String("client_name", startConfig.featureClient.Metadata().Domain()))
+	}
+
+	// Shutdown all providers.
+	defer openfeature.Shutdown()
+
 	logger.Info("starting services")
 	gatewayCleanup, err := startServices(ctx, startServicesParams{
 		cfg:                 cfg,
@@ -310,6 +339,7 @@ func Start(f ...StartOptions) error {
 		logger:              logger,
 		reg:                 svcRegistry,
 		cacheManager:        cacheManager,
+		featureFlagClient:   startConfig.featureClient,
 	})
 	if err != nil {
 		logger.Error("issue starting services", slog.String("error", err.Error()))

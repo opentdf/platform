@@ -16,6 +16,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/Masterminds/semver/v3"
+	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/opentdf/platform/protocol/go/kas"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
@@ -402,7 +403,9 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 		case noKeysFound:
 			var baseKey *policy.SimpleKasKey
 			baseKey, err = getBaseKeyFromWellKnown(ctx, s)
-			if err == nil {
+			if s.featureProvider.BooleanEvaluation(ctx, "key_management", false, openfeature.FlattenedContext{}).Value && err != nil {
+				return fmt.Errorf("key_managent feature is on, but error getting base key: %w", err)
+			} else if err == nil {
 				err = populateKasInfoFromBaseKey(baseKey, tdfConfig)
 			} else {
 				slog.Debug("cannot getting base key, falling back to default kas", slog.Any("error", err))
@@ -463,9 +466,9 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s SDK) error {
 func (s SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig, err error) (granter, error) {
 	var g granter
 	if len(tdfConfig.attributeValues) > 0 {
-		g, err = newGranterFromAttributes(s.kasKeyCache, tdfConfig.attributeValues...)
+		g, err = newGranterFromAttributes(s.kasKeyCache, s.featureClient, tdfConfig.attributeValues...)
 	} else if len(tdfConfig.attributes) > 0 {
-		g, err = newGranterFromService(ctx, s.kasKeyCache, s.Attributes, tdfConfig.attributes...)
+		g, err = newGranterFromService(ctx, s.kasKeyCache, s.Attributes, s.featureClient, tdfConfig.attributes...)
 	}
 	g.keyInfoFetcher = s
 	return g, err

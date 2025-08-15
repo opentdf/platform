@@ -11,6 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/opentdf/platform/sdk"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
@@ -48,6 +49,8 @@ type RegistrationParams struct {
 	NewCacheClient func(cache.Options) (*cache.Cache, error)
 
 	KeyManagerFactories []trust.NamedKeyManagerFactory
+
+	FFClient *openfeature.Client
 
 	////// The following functions are optional and intended to be called by the service //////
 

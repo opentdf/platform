@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+	openfeature "github.com/open-feature/go-sdk/openfeature"
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/wellknownconfiguration"
@@ -69,6 +70,7 @@ type SDK struct {
 	Unsafe                  sdkconnect.UnsafeServiceClient
 	KeyManagement           sdkconnect.KeyManagementServiceClient
 	wellknownConfiguration  sdkconnect.WellKnownServiceClient
+	featureClient           *openfeature.Client
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -179,6 +181,16 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		ersConn = platformConn
 	}
 
+	if cfg.featureProvider == nil {
+		featureProvider := NewPlatformProvider(sdkconnect.NewFeatureFlagServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...))
+		cfg.featureProvider = featureProvider
+	}
+
+	err = openfeature.SetProviderAndWait(cfg.featureProvider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set feature flag provider: %w", err)
+	}
+
 	return &SDK{
 		config:                  *cfg,
 		collectionStore:         cfg.collectionStore,
@@ -199,6 +211,7 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		EntityResolutionV2:      sdkconnect.NewEntityResolutionServiceClientV2ConnectWrapper(ersConn.Client, ersConn.Endpoint, ersConn.Options...),
 		KeyManagement:           sdkconnect.NewKeyManagementServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		wellknownConfiguration:  sdkconnect.NewWellKnownServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		featureClient:           openfeature.NewClient("opentdf-sdk"),
 	}, nil
 }
 

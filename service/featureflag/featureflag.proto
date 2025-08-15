@@ -1,0 +1,193 @@
+/**
+ * Flag evaluation API
+ *
+ * This proto forms the basis of a flag-evaluation API.
+ * It supports single and bulk evaluation RPCs, and flags of various types, as well as establishing a stream for getting notifications about changes in a flag definition.
+ * It supports the inclusion of a "context" with each evaluation, which may contain arbitrary attributes relevant to flag evaluation.
+ */
+syntax = "proto3";
+
+package featureflag;
+
+import "google/protobuf/struct.proto";
+
+// Request body for bulk flag evaluation, used by the ResolveAll rpc.
+message ResolveAllRequest {
+  // Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context
+  google.protobuf.Struct context = 1;
+}
+
+// Response body for bulk flag evaluation, used by the ResolveAll rpc.
+message ResolveAllResponse {
+  // Object structure describing the evaluated flags for the provided context.
+  map<string, AnyFlag> flags = 1;
+
+  // Metadata for the bulk evaluation
+  google.protobuf.Struct metadata = 2;
+}
+
+// A variant type flag response.
+message AnyFlag {
+  // The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details
+  string reason = 1;
+
+  // The variant name of the returned flag value.
+  string variant = 2;
+
+  // The response value of the boolean flag evaluation, will be unset in the case of error.
+  oneof value {
+    bool bool_value = 3;
+    string string_value = 4;
+    double double_value = 5;
+    google.protobuf.Struct object_value = 6;
+  }
+
+  // Metadata for this evaluation
+  google.protobuf.Struct metadata = 7;
+}
+
+// Request body for boolean flag evaluation, used by the ResolveBoolean rpc.
+message ResolveBooleanRequest {
+  // Flag key of the requested flag.
+  string flag_key = 1;
+
+  // Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context
+  google.protobuf.Struct context = 2;
+}
+
+// Response body for boolean flag evaluation. used by the ResolveBoolean rpc.
+message ResolveBooleanResponse {
+  // The response value of the boolean flag evaluation, will be unset in the case of error.
+  bool value = 1;
+
+  // The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details
+  string reason = 2;
+
+  // The variant name of the returned flag value.
+  string variant = 3;
+
+  // Metadata for this evaluation
+  google.protobuf.Struct metadata = 4;
+}
+
+// Request body for string flag evaluation, used by the ResolveString rpc.
+message ResolveStringRequest {
+  // Flag key of the requested flag.
+  string flag_key = 1;
+
+  // Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context
+  google.protobuf.Struct context = 2;
+}
+
+// Response body for string flag evaluation. used by the ResolveString rpc.
+message ResolveStringResponse {
+  // The response value of the string flag evaluation, will be unset in the case of error.
+  string value = 1;
+
+  // The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details
+  string reason = 2;
+
+  // The variant name of the returned flag value.
+  string variant = 3;
+
+  // Metadata for this evaluation
+  google.protobuf.Struct metadata = 4;
+}
+
+// Request body for float flag evaluation, used by the ResolveFloat rpc.
+message ResolveFloatRequest {
+  // Flag key of the requested flag.
+  string flag_key = 1;
+
+  // Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context
+  google.protobuf.Struct context = 2;
+}
+
+// Response body for float flag evaluation. used by the ResolveFloat rpc.
+message ResolveFloatResponse {
+  // The response value of the float flag evaluation, will be empty in the case of error.
+  double value = 1;
+
+  // The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details
+  string reason = 2;
+
+  // The variant name of the returned flag value.
+  string variant = 3;
+
+  // Metadata for this evaluation
+  google.protobuf.Struct metadata = 4;
+}
+
+// Request body for int flag evaluation, used by the ResolveInt rpc.
+message ResolveIntRequest {
+  // Flag key of the requested flag.
+  string flag_key = 1;
+
+  // Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context
+  google.protobuf.Struct context = 2;
+}
+
+// Response body for int flag evaluation. used by the ResolveInt rpc.
+message ResolveIntResponse {
+  // The response value of the int flag evaluation, will be unset in the case of error.
+  int64 value = 1;
+
+  // The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details
+  string reason = 2;
+
+  // The variant name of the returned flag value.
+  string variant = 3;
+
+  // Metadata for this evaluation
+  google.protobuf.Struct metadata = 4;
+}
+
+// Request body for object flag evaluation, used by the ResolveObject rpc.
+message ResolveObjectRequest {
+  // Flag key of the requested flag.
+  string flag_key = 1;
+
+  // Object structure describing the EvaluationContext used in the flag evaluation, see https://openfeature.dev/docs/reference/concepts/evaluation-context
+  google.protobuf.Struct context = 2;
+}
+
+// Response body for object flag evaluation. used by the ResolveObject rpc.
+message ResolveObjectResponse {
+  // The response value of the object flag evaluation, will be unset in the case of error.
+  //
+  // NOTE: This structure will need to be decoded from google/protobuf/struct.proto before it is returned to the SDK
+  google.protobuf.Struct value = 1;
+
+  // The reason for the given return value, see https://openfeature.dev/docs/specification/types#resolution-details
+  string reason = 2;
+
+  // The variant name of the returned flag value.
+  string variant = 3;
+
+  // Metadata for this evaluation
+  google.protobuf.Struct metadata = 4;
+}
+
+// Response body for the EventStream stream response
+message EventStreamResponse {
+  // String key indicating the type of event that is being received, for example, provider_ready or configuration_change
+  string type = 1;
+
+  // Object structure for use when sending relevant metadata to provide context to the event.
+  // Can be left unset when it is not required.
+  google.protobuf.Struct data = 2;
+}
+
+// Empty stream request body
+//message EventStreamRequest {}
+
+// Service defines the exposed rpcs of flagd
+service FeatureFlagService {
+  rpc ResolveAll(ResolveAllRequest) returns (ResolveAllResponse) {}
+  rpc ResolveBoolean(ResolveBooleanRequest) returns (ResolveBooleanResponse) {}
+  rpc ResolveString(ResolveStringRequest) returns (ResolveStringResponse) {}
+  rpc ResolveFloat(ResolveFloatRequest) returns (ResolveFloatResponse) {}
+  rpc ResolveInt(ResolveIntRequest) returns (ResolveIntResponse) {}
+  rpc ResolveObject(ResolveObjectRequest) returns (ResolveObjectResponse) {}
+  //rpc EventStream(EventStreamRequest) returns (stream EventStreamResponse) {}
+}

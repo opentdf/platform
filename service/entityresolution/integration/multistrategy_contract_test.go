@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"testing"
 
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
@@ -16,7 +17,7 @@ func TestMultiStrategyContractValidation(t *testing.T) {
 		t.Skip("Skipping multi-strategy contract validation tests in short mode")
 	}
 
-	// Create chain-specific contract test suite  
+	// Create chain-specific contract test suite
 	chainSuite := internal.NewChainContractTestSuite()
 
 	// Create multi-strategy implementation with enhanced configuration for multi-entity chains
@@ -29,7 +30,7 @@ func TestMultiStrategyContractValidation(t *testing.T) {
 			},
 		},
 		MappingStrategies: []types.MappingStrategy{
-			// Strategy 1: Create ENVIRONMENT entity from client claims (like Keycloak) 
+			// Strategy 1: Create ENVIRONMENT entity from client claims (like Keycloak)
 			{
 				Name:       "client_environment_strategy",
 				Provider:   "jwt_claims",
@@ -53,7 +54,7 @@ func TestMultiStrategyContractValidation(t *testing.T) {
 			// Strategy 2: Create SUBJECT entity from user claims (like Keycloak)
 			// IMPORTANT: This strategy should NOT create client_id claims to avoid conflicts
 			{
-				Name:       "user_subject_strategy", 
+				Name:       "user_subject_strategy",
 				Provider:   "jwt_claims",
 				EntityType: types.EntityTypeSubject, // SUBJECT category
 				Conditions: types.StrategyConditions{
@@ -80,7 +81,7 @@ func TestMultiStrategyContractValidation(t *testing.T) {
 		},
 	}
 
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(config, logger.CreateTestLogger())
+	ctx := context.Background(); ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -92,10 +93,10 @@ func TestMultiStrategyContractValidation(t *testing.T) {
 	}
 
 	t.Log("Running multi-entity chain contract tests against Multi-Strategy ERS")
-	
+
 	// Run chain-specific contract tests
 	chainSuite.RunChainContractTests(t, wrapper, "MultiStrategy")
-	
+
 	t.Log("✅ Multi-Strategy ERS multi-entity chain contract validation completed successfully!")
 	t.Log("🎯 All entity chain tests passed - Multi-Strategy now matches Keycloak behavior")
 }
@@ -148,7 +149,7 @@ func TestMultiStrategyChainSpecific(t *testing.T) {
 		},
 	}
 
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(config, logger.CreateTestLogger())
+	ctx := context.Background(); ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}

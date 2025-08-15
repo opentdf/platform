@@ -55,7 +55,7 @@ func (m *MockERSImplementation) ResolveEntities(ctx context.Context, req *connec
 
 	for _, ent := range req.Msg.GetEntities() {
 		key := m.getEntityKey(ent)
-		
+
 		if data, exists := m.mockData[key]; exists {
 			// Convert map to structpb.Struct
 			structData, err := structpb.NewStruct(data)
@@ -72,7 +72,7 @@ func (m *MockERSImplementation) ResolveEntities(ctx context.Context, req *connec
 			inferredData := map[string]interface{}{
 				"inferred": true,
 			}
-			
+
 			switch ent.GetEntityType().(type) {
 			case *entity.Entity_UserName:
 				inferredData["username"] = ent.GetUserName()
@@ -166,7 +166,7 @@ func TestContractTestSuiteStructure(t *testing.T) {
 	for _, testCase := range suite.TestCases {
 		assert.NotEmpty(t, testCase.Name, "Test case should have a name")
 		assert.NotEmpty(t, testCase.Description, "Test case should have a description")
-		
+
 		// At least one of entities or tokens should be provided
 		hasInput := len(testCase.Input.Entities) > 0 || len(testCase.Input.Tokens) > 0
 		assert.True(t, hasInput, "Test case should have input entities or tokens")
@@ -196,7 +196,7 @@ func TestContractTestDataSet(t *testing.T) {
 // TestEntityValidationRules tests the entity validation logic in the contract framework
 func TestEntityValidationRules(t *testing.T) {
 	mockImpl := NewMockERSImplementation()
-	
+
 	// Create a simple test case to validate
 	testCase := ContractTestCase{
 		Name: "TestValidation",
@@ -223,7 +223,7 @@ func TestEntityValidationRules(t *testing.T) {
 	}
 
 	suite := &ContractTestSuite{TestCases: []ContractTestCase{testCase}}
-	
+
 	// This should pass with the mock implementation
 	t.Run("ValidateEntityFields", func(t *testing.T) {
 		suite.runSingleContractTest(t, mockImpl, testCase)
@@ -233,10 +233,10 @@ func TestEntityValidationRules(t *testing.T) {
 // TestTestDataInjectors tests the test data injection interfaces
 func TestTestDataInjectors(t *testing.T) {
 	t.Run("MockTestDataInjector", func(t *testing.T) {
+		ctx := context.Background()
 		testLogger := logger.CreateTestLogger()
 		injector := NewMockTestDataInjector(testLogger)
 		dataSet := NewContractTestDataSet()
-		ctx := context.Background()
 
 		// All methods should succeed for mock injector (no-ops)
 		err := injector.InjectTestData(ctx, dataSet)

@@ -37,4 +37,3 @@ func ApplyPostgresArray(value interface{}) (interface{}, error) {
 	}
 	return parts, nil
 }
-

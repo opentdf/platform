@@ -113,9 +113,9 @@ func TestClaimsMapper_TransformResults(t *testing.T) {
 				{SourceClaim: "name", ClaimName: "display_name"},
 			},
 			expectedClaims: map[string]interface{}{
-				"subject":      "user123",
+				"subject":       "user123",
 				"email_address": "user@example.com",
-				"display_name": "Test User",
+				"display_name":  "Test User",
 			},
 			expectError: false,
 		},

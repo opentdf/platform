@@ -114,9 +114,9 @@ func EscapeLDAPFilter(value string) string {
 	// LDAP filter metacharacters that need escaping per RFC 4515
 	replacer := strings.NewReplacer(
 		"\\", "\\5c", // backslash must be first
-		"*", "\\2a",  // asterisk
-		"(", "\\28",  // left parenthesis
-		")", "\\29",  // right parenthesis
+		"*", "\\2a", // asterisk
+		"(", "\\28", // left parenthesis
+		")", "\\29", // right parenthesis
 		"\x00", "\\00", // null character
 	)
 	return replacer.Replace(value)

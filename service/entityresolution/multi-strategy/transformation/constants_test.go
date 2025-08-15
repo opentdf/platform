@@ -6,7 +6,7 @@ import (
 
 func TestGetCommonTransformations(t *testing.T) {
 	transformations := GetCommonTransformations()
-	
+
 	expected := []string{
 		CommonCSVToArray,
 		CommonArray,
@@ -14,11 +14,11 @@ func TestGetCommonTransformations(t *testing.T) {
 		CommonLowercase,
 		CommonUppercase,
 	}
-	
+
 	if len(transformations) != len(expected) {
 		t.Errorf("Expected %d transformations, got %d", len(expected), len(transformations))
 	}
-	
+
 	for _, exp := range expected {
 		found := false
 		for _, actual := range transformations {
@@ -35,16 +35,16 @@ func TestGetCommonTransformations(t *testing.T) {
 
 func TestGetAllSQLTransformations(t *testing.T) {
 	transformations := GetAllSQLTransformations()
-	
+
 	// Should include both common and SQL-specific transformations
 	expectedCommon := GetCommonTransformations()
 	expectedSQL := GetSQLTransformations()
 	expectedTotal := len(expectedCommon) + len(expectedSQL)
-	
+
 	if len(transformations) != expectedTotal {
 		t.Errorf("Expected %d transformations, got %d", expectedTotal, len(transformations))
 	}
-	
+
 	// Check that all common transformations are included
 	for _, common := range expectedCommon {
 		found := false
@@ -58,7 +58,7 @@ func TestGetAllSQLTransformations(t *testing.T) {
 			t.Errorf("Expected common transformation %s not found", common)
 		}
 	}
-	
+
 	// Check that all SQL-specific transformations are included
 	for _, sql := range expectedSQL {
 		found := false
@@ -89,7 +89,7 @@ func TestIsCommonTransformation(t *testing.T) {
 		{"LDAP DN to CN", LDAPDNToCN, false},
 		{"Unknown", "unknown_transformation", false},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := IsCommonTransformation(tt.transformation)
@@ -111,31 +111,30 @@ func TestIsSupportedByProvider(t *testing.T) {
 		{"CSV to Array - SQL", CommonCSVToArray, "sql", true},
 		{"CSV to Array - LDAP", CommonCSVToArray, "ldap", true},
 		{"CSV to Array - Claims", CommonCSVToArray, "claims", true},
-		
+
 		// Provider-specific transformations
 		{"Postgres Array - SQL", SQLPostgresArray, "sql", true},
 		{"Postgres Array - LDAP", SQLPostgresArray, "ldap", false},
 		{"Postgres Array - Claims", SQLPostgresArray, "claims", false},
-		
+
 		{"LDAP DN to CN - LDAP", LDAPDNToCN, "ldap", true},
 		{"LDAP DN to CN - SQL", LDAPDNToCN, "sql", false},
 		{"LDAP DN to CN - Claims", LDAPDNToCN, "claims", false},
-		
-		
+
 		// Unknown transformations
 		{"Unknown - SQL", "unknown", "sql", false},
 		{"Unknown - LDAP", "unknown", "ldap", false},
 		{"Unknown - Claims", "unknown", "claims", false},
-		
+
 		// Unknown provider types
 		{"CSV to Array - Unknown Provider", CommonCSVToArray, "unknown", false},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := IsSupportedByProvider(tt.transformation, tt.providerType)
 			if result != tt.expected {
-				t.Errorf("IsSupportedByProvider(%s, %s) = %v, expected %v", 
+				t.Errorf("IsSupportedByProvider(%s, %s) = %v, expected %v",
 					tt.transformation, tt.providerType, result, tt.expected)
 			}
 		})
@@ -154,17 +153,17 @@ func TestTransformationConstants(t *testing.T) {
 		{"Common String", CommonString, "string"},
 		{"Common Lowercase", CommonLowercase, "lowercase"},
 		{"Common Uppercase", CommonUppercase, "uppercase"},
-		
+
 		{"SQL Postgres Array", SQLPostgresArray, "postgres_array"},
 		{"LDAP DN to CN Array", LDAPDNToCNArray, "ldap_dn_to_cn_array"},
 		{"LDAP DN to CN", LDAPDNToCN, "ldap_dn_to_cn"},
 		{"LDAP Attribute Values", LDAPAttrValues, "ldap_attribute_values"},
 		{"LDAP AD Group Name", LDAPADGroupName, "ad_group_name"},
-		
+
 		{"Claims Extract Scope", ClaimsExtractScope, "jwt_extract_scope"},
 		{"Claims Normalize Groups", ClaimsNormalizeGroups, "jwt_normalize_groups"},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.constant != tt.expected {

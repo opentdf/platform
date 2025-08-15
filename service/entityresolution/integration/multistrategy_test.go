@@ -12,8 +12,8 @@ import (
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
-	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
+	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
 	"github.com/opentdf/platform/service/logger"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -66,7 +66,7 @@ func NewMultiStrategyTestAdapter() *MultiStrategyTestAdapter {
 					},
 				},
 			},
-			// Strategy for client entities  
+			// Strategy for client entities
 			{
 				Name:       "client_jwt_strategy",
 				Provider:   "jwt_claims",
@@ -161,17 +161,17 @@ func (a *MultiStrategyTestAdapter) SetupTestData(ctx context.Context, testDataSe
 
 func (a *MultiStrategyTestAdapter) CreateERSService(ctx context.Context) (internal.ERSImplementation, error) {
 	// Create the v2 multi-strategy service
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(a.config, a.logger)
+	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, a.config, a.logger)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Wrap it to handle contract tests that use ResolveEntities with entity IDs
 	wrapper := &MultiStrategyERSWrapper{
 		ers:    ers,
 		logger: a.logger,
 	}
-	
+
 	return wrapper, nil
 }
 
@@ -186,17 +186,17 @@ type MultiStrategyERSWrapper struct {
 func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
 	// Convert entity IDs to mock JWT tokens and use CreateEntityChainsFromTokens
 	var tokens []*entity.Token
-	
+
 	// Store entity ID to expected data mapping for later use
 	entityDataMap := make(map[string]map[string]interface{})
-	
+
 	for _, entityReq := range req.Msg.Entities {
 		entityID := entityReq.GetEphemeralId()
-		
+
 		// Create mock JWT based on entity ID pattern and store expected data
 		var mockJWT string
 		var expectedData map[string]interface{}
-		
+
 		if strings.HasPrefix(entityID, "test-user-") {
 			// Extract username from entity ID
 			username := strings.TrimPrefix(entityID, "test-user-")
@@ -231,36 +231,36 @@ func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *conn
 				"email":    email,
 			}
 		}
-		
+
 		entityDataMap[entityID] = expectedData
 		tokens = append(tokens, &entity.Token{
 			EphemeralId: entityID,
 			Jwt:         mockJWT,
 		})
 	}
-	
+
 	// Use the multi-strategy ERS with JWT tokens
 	chainReq := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 		Tokens: tokens,
 	}
-	
+
 	chainResp, err := w.ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(chainReq))
 	if err != nil {
 		w.logger.Error("Failed to create entity chains for contract test", "error", err)
 		return nil, err
 	}
-	
+
 	// Convert entity chains back to entity representations
 	var representations []*entityresolutionV2.EntityRepresentation
-	
+
 	for _, chain := range chainResp.Msg.EntityChains {
 		if len(chain.Entities) > 0 {
 			// Use the first entity from each chain
 			entityFromChain := chain.Entities[0]
-			
+
 			// Create additional properties from entity fields
 			additionalProps := make(map[string]interface{})
-			
+
 			// Map entity fields to expected contract test fields
 			if entityFromChain.GetUserName() != "" {
 				additionalProps["username"] = entityFromChain.GetUserName()
@@ -271,7 +271,7 @@ func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *conn
 			if entityFromChain.GetClientId() != "" {
 				additionalProps["client_id"] = entityFromChain.GetClientId()
 			}
-			
+
 			// Extract claims for additional information - try to unmarshal the Any type
 			if claims := entityFromChain.GetClaims(); claims != nil {
 				// Try to unmarshal the claims as a Struct
@@ -297,7 +297,7 @@ func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *conn
 					}
 				}
 			}
-			
+
 			// Use the expected data from entity ID mapping to fill in missing fields
 			if expectedData, exists := entityDataMap[chain.EphemeralId]; exists {
 				for key, value := range expectedData {
@@ -306,34 +306,34 @@ func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *conn
 					}
 				}
 			}
-			
+
 			// Add entity ID and any error information for debugging
 			additionalProps["entity_id"] = chain.EphemeralId
 			if len(additionalProps) == 1 { // Only entity_id was added
 				additionalProps["error"] = "No fields mapped from multi-strategy result"
 			}
-			
-			// Convert to protobuf Struct 
+
+			// Convert to protobuf Struct
 			propsStruct, err := structpb.NewStruct(additionalProps)
 			if err != nil {
 				w.logger.Error("Failed to create protobuf struct", "error", err)
 				continue
 			}
-			
+
 			// Convert to EntityRepresentation format expected by contract tests
 			representation := &entityresolutionV2.EntityRepresentation{
 				OriginalId:      chain.EphemeralId,
 				AdditionalProps: []*structpb.Struct{propsStruct},
 			}
-			
+
 			representations = append(representations, representation)
 		}
 	}
-	
+
 	response := &entityresolutionV2.ResolveEntitiesResponse{
 		EntityRepresentations: representations,
 	}
-	
+
 	return connect.NewResponse(response), nil
 }
 
@@ -346,11 +346,11 @@ func (w *MultiStrategyERSWrapper) CreateEntityChainsFromTokens(ctx context.Conte
 func createMockJWTForUser(username, email string) string {
 	// Header: {"alg":"HS256","typ":"JWT"}
 	header := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
-	
+
 	// Create payload with user information using current timestamps
 	now := fmt.Sprintf("%d", time.Now().Unix())
 	exp := fmt.Sprintf("%d", time.Now().Unix()+3600)
-	
+
 	payload := fmt.Sprintf(`{
 		"sub": "%s",
 		"email": "%s",
@@ -359,24 +359,24 @@ func createMockJWTForUser(username, email string) string {
 		"exp": %s,
 		"_test_marker": true
 	}`, username, email, username, now, exp)
-	
+
 	// Base64 encode the payload
 	encodedPayload := base64.RawURLEncoding.EncodeToString([]byte(payload))
-	
+
 	// Mock signature
 	signature := "dGVzdHNpZ25hdHVyZQ"
-	
+
 	return header + "." + encodedPayload + "." + signature
 }
 
 func createMockJWTForClient(clientID string) string {
 	// Header: {"alg":"HS256","typ":"JWT"}
 	header := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
-	
+
 	// Create payload with client information using current timestamps
 	now := fmt.Sprintf("%d", time.Now().Unix())
 	exp := fmt.Sprintf("%d", time.Now().Unix()+3600)
-	
+
 	payload := fmt.Sprintf(`{
 		"client_id": "%s",
 		"azp": "%s",
@@ -384,16 +384,15 @@ func createMockJWTForClient(clientID string) string {
 		"exp": %s,
 		"_test_marker": true
 	}`, clientID, clientID, now, exp)
-	
+
 	// Base64 encode the payload
 	encodedPayload := base64.RawURLEncoding.EncodeToString([]byte(payload))
-	
+
 	// Mock signature
 	signature := "dGVzdHNpZ25hdHVyZQ"
-	
+
 	return header + "." + encodedPayload + "." + signature
 }
-
 
 func (a *MultiStrategyTestAdapter) TeardownTestData(ctx context.Context) error {
 	// No cleanup needed for claims provider
@@ -427,7 +426,7 @@ func TestMultiStrategyEntityResolutionV2(t *testing.T) {
 			ChainValidation: []internal.EntityChainValidationRule{
 				{
 					EphemeralID: "test-token-1",
-					EntityCount: 3, // Multi-strategy with FailureStrategyContinue creates multiple entities from all matching strategies
+					EntityCount: 3,                                            // Multi-strategy with FailureStrategyContinue creates multiple entities from all matching strategies
 					EntityTypes: []string{"username", "username", "username"}, // All strategies create username entities
 				},
 			},
@@ -443,13 +442,13 @@ func createTestJWT(sub, email string) string {
 	// This creates a properly formatted JWT for testing purposes
 	// Header: {"alg":"HS256","typ":"JWT"}
 	header := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
-	
+
 	// Payload with dynamic values: {"sub":"user123","email":"user@example.com","azp":"external-client","preferred_username":"user123","aud":["test-audience"],"iat":1600000000,"exp":1600009600}
 	payload := "eyJzdWIiOiJ1c2VyMTIzIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiYXpwIjoiZXh0ZXJuYWwtY2xpZW50IiwicHJlZmVycmVkX3VzZXJuYW1lIjoidXNlcjEyMyIsImF1ZCI6WyJ0ZXN0LWF1ZGllbmNlIl0sImlhdCI6MTYwMDAwMDAwMCwiZXhwIjoxNjAwMDA5NjAwfQ"
-	
+
 	// Valid base64 signature (fake but properly encoded)
 	signature := "dGVzdHNpZ25hdHVyZQ" // base64 encoded "testsignature"
-	
+
 	return header + "." + payload + "." + signature
 }
 
@@ -484,12 +483,11 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 			},
 		}
 
-		ers, err := multistrategyv2.NewMultiStrategyERSV2(config, logger.CreateTestLogger())
+		ctx := context.Background()
+		ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
 		if err != nil {
 			t.Fatalf("Failed to create ERS: %v", err)
 		}
-
-		ctx := context.Background()
 		v2Req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 			Tokens: []*entity.Token{
 				{
@@ -498,23 +496,23 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 				},
 			},
 		}
-		
+
 		// This should fail fast since JWT doesn't have the required claim
 		resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(v2Req))
 		if err != nil {
 			t.Logf("Got expected error with fail-fast strategy: %v", err)
 			return
 		}
-		
+
 		// With proper v2 implementation, this should either fail or succeed with entities
 		if len(resp.Msg.EntityChains) == 0 {
 			t.Fatal("Expected at least one chain, got none")
 		}
-		
+
 		// Check what entities we get from the v2 implementation
 		chain := resp.Msg.EntityChains[0]
 		t.Logf("Got %d entities in chain for fail-fast strategy", len(chain.Entities))
-		
+
 		// The v2 implementation should now properly parse JWT and create entities
 		if len(chain.Entities) > 0 {
 			t.Logf("✅ v2 implementation correctly created entities from JWT")
@@ -570,12 +568,11 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 			},
 		}
 
-		ers, err := multistrategyv2.NewMultiStrategyERSV2(config, logger.CreateTestLogger())
+		ctx := context.Background()
+		ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
 		if err != nil {
 			t.Fatalf("Failed to create ERS: %v", err)
 		}
-
-		ctx := context.Background()
 		v2Req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 			Tokens: []*entity.Token{
 				{
@@ -584,8 +581,8 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 				},
 			},
 		}
-		
-		// This should succeed with fallback strategy  
+
+		// This should succeed with fallback strategy
 		resp, err := ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(v2Req))
 		if err != nil {
 			t.Fatalf("Expected success with continue strategy, got error: %v", err)
@@ -594,11 +591,11 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 		if len(resp.Msg.EntityChains) == 0 {
 			t.Fatal("Expected at least one entity chain, got none")
 		}
-		
+
 		// Check what entities we get from the v2 implementation with continue strategy
 		chain := resp.Msg.EntityChains[0]
 		t.Logf("Got %d entities in chain with continue strategy", len(chain.Entities))
-		
+
 		// The v2 implementation should now properly parse JWT and create entities
 		if len(chain.Entities) > 0 {
 			t.Logf("✅ v2 implementation correctly created entities with continue strategy")

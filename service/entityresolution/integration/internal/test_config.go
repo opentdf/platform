@@ -10,12 +10,12 @@ import (
 // TestConfig provides environment-aware configuration for integration tests
 type TestConfig struct {
 	// Service Endpoints
-	KeycloakURL    string
-	KeycloakPort   int
-	PostgresHost   string
-	PostgresPort   int
-	LDAPHost       string
-	LDAPPort       int
+	KeycloakURL  string
+	KeycloakPort int
+	PostgresHost string
+	PostgresPort int
+	LDAPHost     string
+	LDAPPort     int
 
 	// Authentication
 	AdminUser     string
@@ -27,12 +27,12 @@ type TestConfig struct {
 	// Test Behavior
 	ContainerStartupTimeout time.Duration
 	ContainerRunTimeout     time.Duration
-	TestDataVariation      bool // Enable varied test data generation
-	JWTValidityDuration    time.Duration
-	
+	TestDataVariation       bool // Enable varied test data generation
+	JWTValidityDuration     time.Duration
+
 	// Test Data
-	EmailDomains   []string
-	TestUserCount  int
+	EmailDomains    []string
+	TestUserCount   int
 	TestClientCount int
 }
 
@@ -40,12 +40,12 @@ type TestConfig struct {
 func GetTestConfig() *TestConfig {
 	return &TestConfig{
 		// Service Endpoints - configurable via environment
-		KeycloakURL:    getEnvString("TEST_KEYCLOAK_URL", "http://localhost:8080"),
-		KeycloakPort:   getEnvInt("TEST_KEYCLOAK_PORT", 8080),
-		PostgresHost:   getEnvString("TEST_POSTGRES_HOST", "localhost"),
-		PostgresPort:   getEnvInt("TEST_POSTGRES_PORT", 5432),
-		LDAPHost:       getEnvString("TEST_LDAP_HOST", "localhost"),
-		LDAPPort:       getEnvInt("TEST_LDAP_PORT", 389),
+		KeycloakURL:  getEnvString("TEST_KEYCLOAK_URL", "http://localhost:8080"),
+		KeycloakPort: getEnvInt("TEST_KEYCLOAK_PORT", 8080),
+		PostgresHost: getEnvString("TEST_POSTGRES_HOST", "localhost"),
+		PostgresPort: getEnvInt("TEST_POSTGRES_PORT", 5432),
+		LDAPHost:     getEnvString("TEST_LDAP_HOST", "localhost"),
+		LDAPPort:     getEnvInt("TEST_LDAP_PORT", 389),
 
 		// Authentication - configurable for different test environments
 		AdminUser:     getEnvString("TEST_ADMIN_USER", "admin"),
@@ -57,8 +57,8 @@ func GetTestConfig() *TestConfig {
 		// Test Behavior - tunable for different environments
 		ContainerStartupTimeout: getEnvDuration("TEST_CONTAINER_STARTUP_TIMEOUT", 2*time.Minute),
 		ContainerRunTimeout:     getEnvDuration("TEST_CONTAINER_RUN_TIMEOUT", 4*time.Minute),
-		TestDataVariation:      getEnvBool("TEST_DATA_VARIATION", true),
-		JWTValidityDuration:    getEnvDuration("TEST_JWT_VALIDITY", time.Hour),
+		TestDataVariation:       getEnvBool("TEST_DATA_VARIATION", true),
+		JWTValidityDuration:     getEnvDuration("TEST_JWT_VALIDITY", time.Hour),
 
 		// Test Data - configurable scale and variety
 		EmailDomains:    getEnvStringSlice("TEST_EMAIL_DOMAINS", []string{"opentdf.test", "example.com", "company.local"}),
@@ -114,12 +114,12 @@ func getEnvStringSlice(key string, defaultValue []string) []string {
 // KeycloakConfig returns Keycloak-specific configuration
 func (tc *TestConfig) KeycloakConfig() map[string]interface{} {
 	return map[string]interface{}{
-		"url":           tc.KeycloakURL,
-		"realm":         tc.Realm,
-		"clientid":      tc.ClientID,
-		"clientsecret":  tc.ClientSecret,
-		"admin_user":    tc.AdminUser,
-		"admin_pass":    tc.AdminPassword,
+		"url":          tc.KeycloakURL,
+		"realm":        tc.Realm,
+		"clientid":     tc.ClientID,
+		"clientsecret": tc.ClientSecret,
+		"admin_user":   tc.AdminUser,
+		"admin_pass":   tc.AdminPassword,
 	}
 }
 

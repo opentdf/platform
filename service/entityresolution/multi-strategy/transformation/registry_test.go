@@ -9,12 +9,12 @@ func TestTransformationRegistry_ApplyTransformation(t *testing.T) {
 	registry := NewTransformationRegistry()
 
 	tests := []struct {
-		name         string
-		value        interface{}
+		name           string
+		value          interface{}
 		transformation string
-		providerType string
-		expected     interface{}
-		hasError     bool
+		providerType   string
+		expected       interface{}
+		hasError       bool
 	}{
 		// Common transformations should work for all provider types
 		{
@@ -145,9 +145,9 @@ func TestTransformationRegistry_GetSupportedTransformations(t *testing.T) {
 	registry := NewTransformationRegistry()
 
 	tests := []struct {
-		name         string
-		providerType string
-		expectedMin  int // Minimum number of expected transformations
+		name          string
+		providerType  string
+		expectedMin   int // Minimum number of expected transformations
 		shouldContain []string
 	}{
 		{

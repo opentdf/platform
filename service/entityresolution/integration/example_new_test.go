@@ -37,8 +37,8 @@ func createBulkResolutionTestCase() internal.ContractTestCase {
 			ShouldError: false,
 			EntityValidation: []internal.EntityValidationRule{
 				{
-					Index:         0,
-					EphemeralID:   "test-user-alice",
+					Index:       0,
+					EphemeralID: "test-user-alice",
 					RequiredFields: map[string]interface{}{
 						"username": "alice",
 						"email":    "alice@opentdf.test",
@@ -60,8 +60,8 @@ func createEdgeCaseTestCase() internal.ContractTestCase {
 			Entities: []*entity.Entity{}, // Empty list
 		},
 		Expected: internal.ContractExpected{
-			EntityCount: 0,
-			ShouldError: false,
+			EntityCount:      0,
+			ShouldError:      false,
 			EntityValidation: []internal.EntityValidationRule{}, // No entities to validate
 		},
 	}

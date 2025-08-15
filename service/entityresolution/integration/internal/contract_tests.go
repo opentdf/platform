@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -26,18 +27,18 @@ type ERSImplementation interface {
 type ERSTestAdapter interface {
 	// GetScopeName returns the human-readable name for this ERS scope (e.g., "LDAP", "SQL")
 	GetScopeName() string
-	
+
 	// SetupTestData injects the provided test data into the backend data store
 	// Each implementation handles this differently:
 	// - LDAP: Creates LDAP entries via LDAP operations
 	// - SQL: Inserts rows into database tables
 	// - Claims: Sets up JWT signing keys and test claims
 	SetupTestData(ctx context.Context, testDataSet *ContractTestDataSet) error
-	
+
 	// CreateERSService creates and returns a configured ERS service instance
 	// ready for testing with the injected test data
 	CreateERSService(ctx context.Context) (ERSImplementation, error)
-	
+
 	// TeardownTestData cleans up any test data and resources
 	// This is called after tests complete to ensure clean state
 	TeardownTestData(ctx context.Context) error
@@ -59,28 +60,28 @@ type ContractInput struct {
 
 // ContractExpected defines the expected output for a contract test
 type ContractExpected struct {
-	EntityCount      int                            // Expected number of entities returned
-	ShouldError      bool                          // Whether the call should return an error
-	ErrorCode        connect.Code                  // Expected error code if ShouldError is true
-	EntityValidation []EntityValidationRule        // Rules for validating returned entities
-	ChainValidation  []EntityChainValidationRule  // Rules for validating entity chains
+	EntityCount      int                         // Expected number of entities returned
+	ShouldError      bool                        // Whether the call should return an error
+	ErrorCode        connect.Code                // Expected error code if ShouldError is true
+	EntityValidation []EntityValidationRule      // Rules for validating returned entities
+	ChainValidation  []EntityChainValidationRule // Rules for validating entity chains
 }
 
 // EntityValidationRule defines how to validate a returned entity
 type EntityValidationRule struct {
-	Index          int                    // Which entity in the response to validate
-	EphemeralID    string                // Expected ephemeral ID
-	RequiredFields map[string]interface{} // Fields that must be present with specific values
-	ForbiddenFields []string              // Fields that must not be present
-	MinFieldCount  int                   // Minimum number of fields in additional properties
+	Index           int                    // Which entity in the response to validate
+	EphemeralID     string                 // Expected ephemeral ID
+	RequiredFields  map[string]interface{} // Fields that must be present with specific values
+	ForbiddenFields []string               // Fields that must not be present
+	MinFieldCount   int                    // Minimum number of fields in additional properties
 }
 
 // EntityChainValidationRule defines how to validate a returned entity chain
 type EntityChainValidationRule struct {
-	EphemeralID              string   // Expected ephemeral ID
-	EntityCount              int      // Expected number of entities in the chain
-	EntityTypes              []string // Expected entity types in order
-	EntityCategories         []string // Expected entity categories in order (CATEGORY_ENVIRONMENT, CATEGORY_SUBJECT)
+	EphemeralID               string   // Expected ephemeral ID
+	EntityCount               int      // Expected number of entities in the chain
+	EntityTypes               []string // Expected entity types in order
+	EntityCategories          []string // Expected entity categories in order (CATEGORY_ENVIRONMENT, CATEGORY_SUBJECT)
 	RequireConsistentOrdering bool     // Whether entity order must be consistent across implementations
 }
 
@@ -103,9 +104,9 @@ func NewContractTestSuite() *ContractTestSuite {
 					},
 				},
 				Expected: ContractExpected{
-					EntityCount:      1,
-					ShouldError:      false,
-					ErrorCode:        0,
+					EntityCount: 1,
+					ShouldError: false,
+					ErrorCode:   0,
 					EntityValidation: []EntityValidationRule{
 						{
 							Index:       0,
@@ -215,8 +216,8 @@ func NewContractTestSuite() *ContractTestSuite {
 					ShouldError: false,
 					EntityValidation: []EntityValidationRule{
 						{
-							Index:       0,
-							EphemeralID: "test-user-nonexistent",
+							Index:         0,
+							EphemeralID:   "test-user-nonexistent",
 							MinFieldCount: 1, // Should have at least the inferred entity data
 						},
 					},
@@ -235,8 +236,8 @@ func NewContractTestSuite() *ContractTestSuite {
 					ShouldError: false,
 					EntityValidation: []EntityValidationRule{
 						{
-							Index:       0,
-							EphemeralID: "test-email-nonexistent@example.com",
+							Index:         0,
+							EphemeralID:   "test-email-nonexistent@example.com",
 							MinFieldCount: 1,
 						},
 					},
@@ -255,8 +256,8 @@ func NewContractTestSuite() *ContractTestSuite {
 					ShouldError: false,
 					EntityValidation: []EntityValidationRule{
 						{
-							Index:       0,
-							EphemeralID: "test-client-nonexistent-client",
+							Index:         0,
+							EphemeralID:   "test-client-nonexistent-client",
 							MinFieldCount: 1,
 						},
 					},
@@ -322,10 +323,10 @@ func (suite *ContractTestSuite) RunContractTests(t *testing.T, implementation ER
 // RunContractTestsWithAdapter executes all contract tests against the given ERS adapter
 // This is the preferred way to run contract tests as it handles data setup/teardown
 func (suite *ContractTestSuite) RunContractTestsWithAdapter(t *testing.T, adapter ERSTestAdapter) {
-	ctx := context.Background()
 	testDataSet := NewContractTestDataSet()
-	
+
 	// Setup test data
+	ctx := context.Background()
 	err := adapter.SetupTestData(ctx, testDataSet)
 	if err != nil {
 		if strings.Contains(err.Error(), "Docker not available") {
@@ -333,20 +334,20 @@ func (suite *ContractTestSuite) RunContractTestsWithAdapter(t *testing.T, adapte
 		}
 		t.Fatalf("Failed to setup test data for %s: %v", adapter.GetScopeName(), err)
 	}
-	
+
 	// Ensure cleanup happens
 	t.Cleanup(func() {
 		if err := adapter.TeardownTestData(ctx); err != nil {
 			t.Logf("Warning: Failed to cleanup test data for %s: %v", adapter.GetScopeName(), err)
 		}
 	})
-	
+
 	// Create ERS service
 	implementation, err := adapter.CreateERSService(ctx)
 	if err != nil {
 		t.Fatalf("Failed to create ERS service for %s: %v", adapter.GetScopeName(), err)
 	}
-	
+
 	// Run all contract tests
 	for _, testCase := range suite.TestCases {
 		t.Run(fmt.Sprintf("%s_%s", adapter.GetScopeName(), testCase.Name), func(t *testing.T) {
@@ -357,17 +358,17 @@ func (suite *ContractTestSuite) RunContractTestsWithAdapter(t *testing.T, adapte
 
 // runSingleContractTest executes a single contract test
 func (suite *ContractTestSuite) runSingleContractTest(t *testing.T, implementation ERSImplementation, testCase ContractTestCase) {
-	ctx := context.Background()
 
 	// Test ResolveEntities if entities are provided
 	if len(testCase.Input.Entities) > 0 {
+		ctx := context.Background()
 		req := CreateResolveEntitiesRequest(testCase.Input.Entities...)
 		resp, err := implementation.ResolveEntities(ctx, connect.NewRequest(req))
 
 		if testCase.Expected.ShouldError {
 			require.Error(t, err, "Expected error but got none")
-			connectErr, ok := err.(*connect.Error)
-			require.True(t, ok, "Expected connect.Error")
+			var connectErr *connect.Error
+			require.True(t, errors.As(err, &connectErr), "Expected connect.Error")
 			assert.Equal(t, testCase.Expected.ErrorCode, connectErr.Code(), "Unexpected error code")
 			return
 		}
@@ -386,7 +387,7 @@ func (suite *ContractTestSuite) runSingleContractTest(t *testing.T, implementati
 			}
 
 			entity := representations[validationRule.Index]
-			
+
 			// Validate ephemeral ID
 			if validationRule.EphemeralID != "" {
 				assert.Equal(t, validationRule.EphemeralID, entity.GetOriginalId(), "Unexpected ephemeral ID")
@@ -399,7 +400,7 @@ func (suite *ContractTestSuite) runSingleContractTest(t *testing.T, implementati
 			if len(additionalProps) > 0 {
 				// Convert first additional prop to map for easier validation
 				propMap := additionalProps[0].AsMap()
-				
+
 				// Check minimum field count
 				if validationRule.MinFieldCount > 0 {
 					assert.GreaterOrEqual(t, len(propMap), validationRule.MinFieldCount, "Insufficient number of fields in additional properties")
@@ -408,23 +409,23 @@ func (suite *ContractTestSuite) runSingleContractTest(t *testing.T, implementati
 				// Check required fields - with support for alternative field names
 				for fieldName, expectedValue := range validationRule.RequiredFields {
 					actualValue, exists := propMap[fieldName]
-					
+
 					// Handle alternative field names for cross-implementation compatibility
 					if !exists && fieldName == "client_id" {
 						// Try camelCase version for Keycloak compatibility
 						actualValue, exists = propMap["clientId"]
 					}
-					
+
 					if !exists {
 						// Debug: print all available fields when a required field is missing
 						t.Logf("DEBUG: Required field '%s' missing. Available fields: %v", fieldName, propMap)
 					}
 					assert.True(t, exists, "Required field %s is missing", fieldName)
-					
+
 					// For flexible validation, we only check if the expected value is non-nil
 					if expectedValue != nil {
 						// Convert both to strings for easier comparison
-						assert.Contains(t, fmt.Sprintf("%v", actualValue), fmt.Sprintf("%v", expectedValue), 
+						assert.Contains(t, fmt.Sprintf("%v", actualValue), fmt.Sprintf("%v", expectedValue),
 							"Field %s has unexpected value", fieldName)
 					}
 				}
@@ -440,6 +441,7 @@ func (suite *ContractTestSuite) runSingleContractTest(t *testing.T, implementati
 
 	// Test CreateEntityChainsFromTokens if tokens are provided
 	if len(testCase.Input.Tokens) > 0 {
+		ctx := context.Background()
 		req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 			Tokens: testCase.Input.Tokens,
 		}
@@ -447,8 +449,8 @@ func (suite *ContractTestSuite) runSingleContractTest(t *testing.T, implementati
 
 		if testCase.Expected.ShouldError {
 			require.Error(t, err, "Expected error but got none")
-			connectErr, ok := err.(*connect.Error)
-			require.True(t, ok, "Expected connect.Error")
+			var connectErr *connect.Error
+			require.True(t, errors.As(err, &connectErr), "Expected connect.Error")
 			assert.Equal(t, testCase.Expected.ErrorCode, connectErr.Code(), "Unexpected error code")
 			return
 		}
@@ -457,7 +459,7 @@ func (suite *ContractTestSuite) runSingleContractTest(t *testing.T, implementati
 		require.NotNil(t, resp, "Response should not be nil")
 
 		chains := resp.Msg.GetEntityChains()
-		
+
 		// Validate each chain according to the rules
 		for _, validationRule := range testCase.Expected.ChainValidation {
 			// Find the chain with matching ephemeral ID
@@ -468,12 +470,12 @@ func (suite *ContractTestSuite) runSingleContractTest(t *testing.T, implementati
 					break
 				}
 			}
-			
+
 			require.NotNil(t, matchingChain, "Chain with ephemeral ID %s not found", validationRule.EphemeralID)
-			
+
 			entities := matchingChain.GetEntities()
 			assert.Len(t, entities, validationRule.EntityCount, "Unexpected number of entities in chain")
-			
+
 			// Validate entity types if specified
 			if len(validationRule.EntityTypes) > 0 {
 				for i, expectedType := range validationRule.EntityTypes {
@@ -496,7 +498,7 @@ func (suite *ContractTestSuite) runSingleContractTest(t *testing.T, implementati
 					}
 				}
 			}
-			
+
 			// Validate entity categories if specified
 			if len(validationRule.EntityCategories) > 0 {
 				for i, expectedCategory := range validationRule.EntityCategories {

@@ -12,13 +12,13 @@ import (
 	"connectrpc.com/connect"
 	"github.com/opentdf/platform/protocol/go/entity"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
-	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
+	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	
-	_ "github.com/lib/pq"         // PostgreSQL driver
+
+	_ "github.com/lib/pq" // PostgreSQL driver
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -68,13 +68,12 @@ func TestMultiStrategy_ClaimsOnly(t *testing.T) {
 		},
 	}
 
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(config, logger.CreateTestLogger())
+	ctx := context.Background()
+	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
 
-	ctx := context.Background()
-	
 	// Test entity chain creation with JWT token
 	req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 		Tokens: []*entity.Token{
@@ -135,7 +134,7 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 			t.Fatalf("Failed to start PostgreSQL container: %v", err)
 		}
 	}
-	defer postgresContainer.Terminate(ctx)
+	defer func() { _ = postgresContainer.Terminate(ctx) }()
 
 	// Get container connection details
 	host, err := postgresContainer.Host(ctx)
@@ -218,7 +217,7 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 		},
 	}
 
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(config, logger.CreateTestLogger())
+	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -263,8 +262,8 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 			Image:        "osixia/openldap:1.5.0",
 			ExposedPorts: []string{"389/tcp"},
 			Env: map[string]string{
-				"LDAP_ORGANISATION": "Test Org",
-				"LDAP_DOMAIN":       "test.local",
+				"LDAP_ORGANISATION":   "Test Org",
+				"LDAP_DOMAIN":         "test.local",
 				"LDAP_ADMIN_PASSWORD": "admin123",
 			},
 			WaitingFor: wait.ForLog("slapd starting").WithStartupTimeout(60 * time.Second),
@@ -278,7 +277,7 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 			t.Fatalf("Failed to start LDAP container: %v", err)
 		}
 	}
-	defer ldapContainer.Terminate(ctx)
+	defer func() { _ = ldapContainer.Terminate(ctx) }()
 
 	// Get container connection details
 	host, err := ldapContainer.Host(ctx)
@@ -355,7 +354,7 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 		},
 	}
 
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(config, logger.CreateTestLogger())
+	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		// Check if this is the expected LDAP stub error
 		if strings.Contains(err.Error(), "LDAP not implemented - stub function") {
@@ -418,7 +417,7 @@ func TestMultiStrategy_MultiProviderFailover(t *testing.T) {
 					JWTClaims: []types.JWTClaimCondition{
 						{
 							Claim:    "nonexistent_field",
-							Operator: "exists", 
+							Operator: "exists",
 							Values:   []string{},
 						},
 					},
@@ -432,7 +431,7 @@ func TestMultiStrategy_MultiProviderFailover(t *testing.T) {
 			},
 			{
 				Name:       "try_another_nonexistent_claim",
-				Provider:   "working_claims", 
+				Provider:   "working_claims",
 				EntityType: types.EntityTypeSubject,
 				Conditions: types.StrategyConditions{
 					JWTClaims: []types.JWTClaimCondition{
@@ -473,12 +472,11 @@ func TestMultiStrategy_MultiProviderFailover(t *testing.T) {
 		},
 	}
 
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(config, logger.CreateTestLogger())
+	ctx := context.Background()
+	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
-
-	ctx := context.Background()
 	req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 		Tokens: []*entity.Token{
 			{
@@ -572,12 +570,11 @@ func TestMultiStrategy_MultiProviderEarlySuccess(t *testing.T) {
 		},
 	}
 
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(config, logger.CreateTestLogger())
+	ctx := context.Background()
+	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
-
-	ctx := context.Background()
 	req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 		Tokens: []*entity.Token{
 			{
@@ -675,13 +672,12 @@ func TestMultiStrategy_EntityChainCreation(t *testing.T) {
 		},
 	}
 
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(config, logger.CreateTestLogger())
+	ctx := context.Background()
+	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
 
-	ctx := context.Background()
-	
 	// Test multiple tokens to create multiple chains
 	req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 		Tokens: []*entity.Token{
@@ -690,7 +686,7 @@ func TestMultiStrategy_EntityChainCreation(t *testing.T) {
 				Jwt:         createComprehensiveTestJWT("chain-user-1", "user1@example.com"),
 			},
 			{
-				EphemeralId: "chain-token-2", 
+				EphemeralId: "chain-token-2",
 				Jwt:         createComprehensiveTestJWT("chain-user-2", "user2@example.com"),
 			},
 			{
@@ -715,20 +711,20 @@ func TestMultiStrategy_EntityChainCreation(t *testing.T) {
 			t.Errorf("Chain %d has no entities", i)
 			continue
 		}
-		
+
 		totalEntities += len(chain.Entities)
-		
+
 		entity := chain.Entities[0]
 		expectedUsername := fmt.Sprintf("chain-user-%d", i+1)
 		if entity.GetUserName() != expectedUsername {
 			t.Errorf("Chain %d: Expected username '%s', got '%s'", i, expectedUsername, entity.GetUserName())
 		}
-		
-		t.Logf("Chain %d: EphemeralId=%s, Username=%s, Entities=%d", 
+
+		t.Logf("Chain %d: EphemeralId=%s, Username=%s, Entities=%d",
 			i, chain.EphemeralId, entity.GetUserName(), len(chain.Entities))
 	}
 
-	t.Logf("✅ Entity chain creation test passed: Created %d chains with %d total entities", 
+	t.Logf("✅ Entity chain creation test passed: Created %d chains with %d total entities",
 		len(resp.Msg.EntityChains), totalEntities)
 }
 
@@ -738,7 +734,7 @@ func createComprehensiveTestJWT(sub, email string) string {
 	// This creates a properly formatted JWT for testing purposes (not cryptographically signed)
 	// Header: {"alg":"HS256","typ":"JWT"}
 	header := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
-	
+
 	// Create payload JSON with the provided values
 	payloadJSON := fmt.Sprintf(`{
 		"sub": "%s",
@@ -751,13 +747,13 @@ func createComprehensiveTestJWT(sub, email string) string {
 		"iat": 1600000000,
 		"exp": 1600009600
 	}`, sub, email, sub)
-	
+
 	// Base64 encode the payload
 	payload := base64.RawURLEncoding.EncodeToString([]byte(payloadJSON))
-	
+
 	// Valid base64 signature (fake but properly encoded)
 	signature := "dGVzdHNpZ25hdHVyZQ" // base64 encoded "testsignature"
-	
+
 	return header + "." + payload + "." + signature
 }
 

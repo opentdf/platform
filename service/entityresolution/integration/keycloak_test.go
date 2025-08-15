@@ -10,8 +10,8 @@ import (
 
 	"github.com/Nerzal/gocloak/v13"
 	"github.com/docker/docker/api/types/container"
-	keycloakv2 "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
+	keycloakv2 "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -43,8 +43,10 @@ func TestKeycloakEntityResolutionV2(t *testing.T) {
 	contractSuite.RunContractTestsWithAdapter(t, adapter)
 }
 
-var keycloakContainer tc.Container
-var keycloakConfig *KeycloakTestConfig
+var (
+	keycloakContainer tc.Container
+	keycloakConfig    *KeycloakTestConfig
+)
 
 // KeycloakTestConfig holds Keycloak-specific test configuration
 type KeycloakTestConfig struct {
@@ -61,11 +63,11 @@ type KeycloakTestConfig struct {
 
 // KeycloakTestAdapter implements ERSTestAdapter for Keycloak ERS testing
 type KeycloakTestAdapter struct {
-	service         *keycloakv2.EntityResolutionServiceV2
-	keycloakClient  *gocloak.GoCloak
-	adminToken      *gocloak.JWT
-	config          *KeycloakTestConfig
-	containerSetup  bool
+	service        *keycloakv2.EntityResolutionServiceV2
+	keycloakClient *gocloak.GoCloak
+	adminToken     *gocloak.JWT
+	config         *KeycloakTestConfig
+	containerSetup bool
 }
 
 // NewKeycloakTestAdapter creates a new Keycloak test adapter
@@ -129,12 +131,12 @@ func (a *KeycloakTestAdapter) SetupTestData(ctx context.Context, testDataSet *in
 // CreateERSService creates and returns a configured Keycloak ERS service
 func (a *KeycloakTestAdapter) CreateERSService(ctx context.Context) (internal.ERSImplementation, error) {
 	keycloakConfig := map[string]interface{}{
-		"url":           a.config.URL,
-		"realm":         a.config.Realm,
-		"clientid":      a.config.ClientID,
-		"clientsecret":  a.config.ClientSecret,
+		"url":            a.config.URL,
+		"realm":          a.config.Realm,
+		"clientid":       a.config.ClientID,
+		"clientsecret":   a.config.ClientSecret,
 		"legacykeycloak": false,
-		"subgroups":     false,
+		"subgroups":      false,
 		"inferid": map[string]interface{}{
 			"from": map[string]interface{}{
 				"clientid": true,
@@ -145,15 +147,15 @@ func (a *KeycloakTestAdapter) CreateERSService(ctx context.Context) (internal.ER
 	}
 
 	testLogger := logger.CreateTestLogger()
-	
+
 	// Create a test cache - using nil for simplicity in tests
 	var testCache *cache.Cache = nil
-	
+
 	service, _ := keycloakv2.RegisterKeycloakERS(keycloakConfig, testLogger, testCache)
-	
+
 	// Set a no-op tracer for testing to prevent nil pointer dereference
 	service.Tracer = noop.NewTracerProvider().Tracer("test-keycloak-v2")
-	
+
 	a.service = service
 	return service, nil
 }
@@ -182,11 +184,11 @@ func (a *KeycloakTestAdapter) createKeycloakContainerConfig() internal.Container
 			"KC_HOSTNAME_STRICT":      "false",
 			"KC_HEALTH_ENABLED":       "true",
 			"KC_METRICS_ENABLED":      "false",
-			"KC_LOG_LEVEL":           "WARN", // Reduce log noise for faster startup
+			"KC_LOG_LEVEL":            "WARN", // Reduce log noise for faster startup
 		},
-		Cmd: []string{"start-dev"},
-		WaitStrategy: wait.ForListeningPort("8080/tcp").WithStartupTimeout(2*time.Minute),
-		Timeout: 4 * time.Minute,
+		Cmd:          []string{"start-dev"},
+		WaitStrategy: wait.ForListeningPort("8080/tcp").WithStartupTimeout(2 * time.Minute),
+		Timeout:      4 * time.Minute,
 	}
 }
 
@@ -255,12 +257,12 @@ func (a *KeycloakTestAdapter) waitForKeycloakReady(ctx context.Context) error {
 // initializeKeycloakClient initializes the Keycloak admin client
 func (a *KeycloakTestAdapter) initializeKeycloakClient(ctx context.Context) error {
 	a.keycloakClient = gocloak.NewClient(a.config.AdminURL)
-	
+
 	token, err := a.keycloakClient.LoginAdmin(ctx, a.config.AdminUser, a.config.AdminPass, "master")
 	if err != nil {
 		return fmt.Errorf("failed to login as admin: %w", err)
 	}
-	
+
 	a.adminToken = token
 	return nil
 }
@@ -289,12 +291,12 @@ func (a *KeycloakTestAdapter) createTestRealm(ctx context.Context) error {
 // createTestClient creates the test client in the realm
 func (a *KeycloakTestAdapter) createTestClient(ctx context.Context) error {
 	client := gocloak.Client{
-		ClientID:     gocloak.StringP(a.config.ClientID),
-		Secret:       gocloak.StringP(a.config.ClientSecret),
-		Enabled:      gocloak.BoolP(true),
-		ServiceAccountsEnabled: gocloak.BoolP(true),
+		ClientID:                  gocloak.StringP(a.config.ClientID),
+		Secret:                    gocloak.StringP(a.config.ClientSecret),
+		Enabled:                   gocloak.BoolP(true),
+		ServiceAccountsEnabled:    gocloak.BoolP(true),
 		DirectAccessGrantsEnabled: gocloak.BoolP(true),
-		PublicClient: gocloak.BoolP(false), // Confidential client for service account
+		PublicClient:              gocloak.BoolP(false), // Confidential client for service account
 	}
 
 	clientUUID, err := a.keycloakClient.CreateClient(ctx, a.adminToken.AccessToken, a.config.Realm, client)
@@ -303,7 +305,7 @@ func (a *KeycloakTestAdapter) createTestClient(ctx context.Context) error {
 			return fmt.Errorf("failed to create client: %w", err)
 		}
 		slog.Debug("Client already exists, continuing", "client", a.config.ClientID)
-		
+
 		// Get existing client UUID for role assignment
 		clients, err := a.keycloakClient.GetClients(ctx, a.adminToken.AccessToken, a.config.Realm, gocloak.GetClientsParams{
 			ClientID: gocloak.StringP(a.config.ClientID),
@@ -356,7 +358,7 @@ func (a *KeycloakTestAdapter) assignServiceAccountRoles(ctx context.Context, cli
 	// Find and assign the necessary roles
 	var rolesToAssign []gocloak.Role
 	neededRoles := []string{"view-users", "query-users", "view-clients", "query-clients", "manage-users", "manage-clients", "view-realm", "query-realms"}
-	
+
 	for _, availableRole := range availableRoles {
 		for _, neededRole := range neededRoles {
 			if availableRole.Name != nil && *availableRole.Name == neededRole {
@@ -435,8 +437,7 @@ func (a *KeycloakTestAdapter) injectTestClients(ctx context.Context, clients []i
 
 // isConflictError checks if the error is a conflict (resource already exists)
 func isConflictError(err error) bool {
-	return err != nil && (
-		fmt.Sprintf("%v", err) == "409 Conflict" ||
+	return err != nil && (fmt.Sprintf("%v", err) == "409 Conflict" ||
 		fmt.Sprintf("%v", err) == "resource already exists" ||
 		containsString(err.Error(), "already exists") ||
 		containsString(err.Error(), "409") ||

@@ -28,13 +28,13 @@ type TestDataScenario struct {
 	UserCount    int
 	ClientCount  int
 	EmailDomains []string
-	
+
 	// JWT claim variations
 	IncludeClientID   bool
-	IncludeEmail      bool 
+	IncludeEmail      bool
 	IncludeUsername   bool
 	IncludeEmptyUsers bool // Test edge case with missing claims
-	
+
 	// Strategy testing
 	StrategyTypes []string // Which strategies should be triggered
 }
@@ -53,10 +53,10 @@ func (g *TestDataGenerator) GetStandardScenarios() []TestDataScenario {
 			StrategyTypes:   []string{"jwt_claims", "client_jwt", "azp_jwt"},
 		},
 		{
-			Name:            "Edge Cases",
-			UserCount:       2,
-			ClientCount:     1,
-			EmailDomains:    []string{"opentdf.test"},
+			Name:              "Edge Cases",
+			UserCount:         2,
+			ClientCount:       1,
+			EmailDomains:      []string{"opentdf.test"},
 			IncludeClientID:   false, // Test missing client_id
 			IncludeEmail:      true,
 			IncludeUsername:   true,
@@ -89,9 +89,9 @@ func (g *TestDataGenerator) GetStandardScenarios() []TestDataScenario {
 // GenerateTestUsers creates varied test users based on scenario
 func (g *TestDataGenerator) GenerateTestUsers(scenario TestDataScenario) []TestUser {
 	users := make([]TestUser, 0, scenario.UserCount)
-	
+
 	baseUsers := []string{"alice", "bob", "charlie", "diana", "eve", "frank", "grace", "henry"}
-	
+
 	for i := 0; i < scenario.UserCount; i++ {
 		var username string
 		if i < len(baseUsers) {
@@ -99,22 +99,22 @@ func (g *TestDataGenerator) GenerateTestUsers(scenario TestDataScenario) []TestU
 		} else {
 			username = fmt.Sprintf("user%d", i+1)
 		}
-		
+
 		// Add variation when enabled
 		if g.config.TestDataVariation && i > 0 {
 			username = fmt.Sprintf("%s_%d", username, g.rand.Intn(100))
 		}
-		
+
 		// Select domain
 		domainIndex := i % len(scenario.EmailDomains)
 		email := fmt.Sprintf("%s@%s", username, scenario.EmailDomains[domainIndex])
-		
+
 		// Handle empty user case for edge testing
 		if scenario.IncludeEmptyUsers && i == scenario.UserCount-1 {
 			username = ""
 			email = ""
 		}
-		
+
 		users = append(users, TestUser{
 			Username:    username,
 			Email:       email,
@@ -124,16 +124,16 @@ func (g *TestDataGenerator) GenerateTestUsers(scenario TestDataScenario) []TestU
 			DN:          generateDN(username, "users"),
 		})
 	}
-	
+
 	return users
 }
 
 // GenerateTestClients creates varied test clients based on scenario
 func (g *TestDataGenerator) GenerateTestClients(scenario TestDataScenario) []TestClient {
 	clients := make([]TestClient, 0, scenario.ClientCount)
-	
+
 	baseClients := []string{"web-app", "mobile-app", "api-client", "admin-client", "external-client"}
-	
+
 	for i := 0; i < scenario.ClientCount; i++ {
 		var clientID string
 		if i < len(baseClients) {
@@ -141,12 +141,12 @@ func (g *TestDataGenerator) GenerateTestClients(scenario TestDataScenario) []Tes
 		} else {
 			clientID = fmt.Sprintf("client-%d", i+1)
 		}
-		
+
 		// Add variation when enabled
 		if g.config.TestDataVariation && i > 0 {
 			clientID = fmt.Sprintf("%s-%d", clientID, g.rand.Intn(1000))
 		}
-		
+
 		clients = append(clients, TestClient{
 			ClientID:    clientID,
 			DisplayName: formatDisplayName(clientID),
@@ -154,40 +154,40 @@ func (g *TestDataGenerator) GenerateTestClients(scenario TestDataScenario) []Tes
 			DN:          generateDN(clientID, "clients"),
 		})
 	}
-	
+
 	return clients
 }
 
 // GenerateTestTokens creates tokens that will trigger specific strategies
 func (g *TestDataGenerator) GenerateTestTokens(scenario TestDataScenario, users []TestUser, clients []TestClient) []*entity.Token {
 	tokens := make([]*entity.Token, 0)
-	
+
 	// Create user tokens
 	for i, user := range users {
 		if user.Username == "" && user.Email == "" {
 			continue // Skip empty users for token generation
 		}
-		
+
 		clientID := ""
 		if scenario.IncludeClientID && len(clients) > 0 {
 			clientID = clients[i%len(clients)].ClientID
 		}
-		
+
 		username := user.Username
 		if !scenario.IncludeUsername {
 			username = ""
 		}
-		
+
 		email := user.Email
 		if !scenario.IncludeEmail {
 			email = ""
 		}
-		
+
 		ephemeralID := fmt.Sprintf("token-%s-%d", scenario.Name, i)
 		token := CreateTestToken(ephemeralID, clientID, username, email)
 		tokens = append(tokens, token)
 	}
-	
+
 	// Create client-only tokens if scenario focuses on clients
 	if len(scenario.StrategyTypes) > 0 {
 		for _, strategyType := range scenario.StrategyTypes {
@@ -201,7 +201,7 @@ func (g *TestDataGenerator) GenerateTestTokens(scenario TestDataScenario, users 
 			}
 		}
 	}
-	
+
 	return tokens
 }
 
@@ -214,7 +214,7 @@ func formatDisplayName(identifier string) string {
 	if len(identifier) == 0 {
 		return identifier
 	}
-	
+
 	result := ""
 	capitalize := true
 	for _, char := range identifier {
@@ -242,9 +242,9 @@ func generateGroups(username string, index int) []string {
 	if username == "" {
 		return []string{}
 	}
-	
+
 	groups := []string{"users"}
-	
+
 	// Add role-based groups based on index
 	switch index % 3 {
 	case 0:
@@ -254,7 +254,7 @@ func generateGroups(username string, index int) []string {
 	case 2:
 		groups = append(groups, "developers")
 	}
-	
+
 	return groups
 }
 
@@ -269,7 +269,7 @@ func generateDN(identifier, ouType string) string {
 func (g *TestDataGenerator) CreateVariedTestDataSet(scenario TestDataScenario) *ContractTestDataSet {
 	users := g.GenerateTestUsers(scenario)
 	clients := g.GenerateTestClients(scenario)
-	
+
 	return &ContractTestDataSet{
 		Users:   users,
 		Clients: clients,

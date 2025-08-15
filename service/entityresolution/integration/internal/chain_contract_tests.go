@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -37,11 +38,11 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 					EntityValidation: []EntityValidationRule{},
 					ChainValidation: []EntityChainValidationRule{
 						{
-							EphemeralID:              "chain-token-1",
-							EntityCount:              2, // Both Keycloak and Multi-Strategy create 2 entities per token
-							EntityTypes:              []string{}, // Implementation-agnostic: don't specify entity types
-							EntityCategories:         []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"}, // Both must create these categories
-							RequireConsistentOrdering: false, // Allow flexible ordering between implementations
+							EphemeralID:               "chain-token-1",
+							EntityCount:               2,                                                    // Both Keycloak and Multi-Strategy create 2 entities per token
+							EntityTypes:               []string{},                                           // Implementation-agnostic: don't specify entity types
+							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"}, // Both must create these categories
+							RequireConsistentOrdering: false,                                                // Allow flexible ordering between implementations
 						},
 					},
 				},
@@ -63,17 +64,17 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 					EntityValidation: []EntityValidationRule{},
 					ChainValidation: []EntityChainValidationRule{
 						{
-							EphemeralID:              "chain-token-1",
-							EntityCount:              2, // Both implementations create 2 entities per token
-							EntityTypes:              []string{}, // Implementation-agnostic
-							EntityCategories:         []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"},
+							EphemeralID:               "chain-token-1",
+							EntityCount:               2,          // Both implementations create 2 entities per token
+							EntityTypes:               []string{}, // Implementation-agnostic
+							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"},
 							RequireConsistentOrdering: false,
 						},
 						{
-							EphemeralID:              "chain-token-2", 
-							EntityCount:              2, // Consistent behavior across tokens
-							EntityTypes:              []string{}, // Implementation-agnostic
-							EntityCategories:         []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"},
+							EphemeralID:               "chain-token-2",
+							EntityCount:               2,          // Consistent behavior across tokens
+							EntityTypes:               []string{}, // Implementation-agnostic
+							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"},
 							RequireConsistentOrdering: false,
 						},
 					},
@@ -95,11 +96,11 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 					EntityValidation: []EntityValidationRule{},
 					ChainValidation: []EntityChainValidationRule{
 						{
-							EphemeralID:              "category-test-token",
-							EntityCount:              2, // Both implementations create multiple entities
-							EntityTypes:              []string{}, // Implementation-agnostic: entity types vary by implementation
-							EntityCategories:         []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"}, // Contract: both categories must exist
-							RequireConsistentOrdering: false, // Allow implementation flexibility
+							EphemeralID:               "category-test-token",
+							EntityCount:               2,                                                    // Both implementations create multiple entities
+							EntityTypes:               []string{},                                           // Implementation-agnostic: entity types vary by implementation
+							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"}, // Contract: both categories must exist
+							RequireConsistentOrdering: false,                                                // Allow implementation flexibility
 						},
 					},
 				},
@@ -120,10 +121,10 @@ func NewChainContractTestSuite() *ChainContractTestSuite {
 					EntityValidation: []EntityValidationRule{},
 					ChainValidation: []EntityChainValidationRule{
 						{
-							EphemeralID:              "consistency-token",
-							EntityCount:              2, // Consistent entity count across implementations
-							EntityTypes:              []string{}, // Implementation-specific entity types allowed
-							EntityCategories:         []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"},
+							EphemeralID:               "consistency-token",
+							EntityCount:               2,          // Consistent entity count across implementations
+							EntityTypes:               []string{}, // Implementation-specific entity types allowed
+							EntityCategories:          []string{"CATEGORY_ENVIRONMENT", "CATEGORY_SUBJECT"},
 							RequireConsistentOrdering: false, // Behavioral contract, not implementation details
 						},
 					},
@@ -144,10 +145,10 @@ func (suite *ChainContractTestSuite) RunChainContractTests(t *testing.T, impleme
 
 // runSingleChainTest executes a single multi-entity chain test
 func (suite *ChainContractTestSuite) runSingleChainTest(t *testing.T, implementation ERSImplementation, testCase ContractTestCase) {
-	ctx := context.Background()
 
 	// Test CreateEntityChainsFromTokens if tokens are provided
 	if len(testCase.Input.Tokens) > 0 {
+		ctx := context.Background()
 		req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 			Tokens: testCase.Input.Tokens,
 		}
@@ -155,21 +156,22 @@ func (suite *ChainContractTestSuite) runSingleChainTest(t *testing.T, implementa
 
 		if testCase.Expected.ShouldError {
 			require.Error(t, err, "Expected error but got none")
-			connectErr, ok := err.(*connect.Error)
-			require.True(t, ok, "Expected connect.Error")
+			var connectErr *connect.Error
+			require.True(t, errors.As(err, &connectErr), "Expected connect.Error")
 			assert.Equal(t, testCase.Expected.ErrorCode, connectErr.Code(), "Unexpected error code")
 			return
 		}
 
 		// Check for connection-related errors and skip tests if service unavailable
 		if err != nil {
-			if connectErr, ok := err.(*connect.Error); ok {
+			var connectErr *connect.Error
+			if errors.As(err, &connectErr) {
 				if connectErr.Code() == connect.CodeInternal {
 					errorMsg := connectErr.Message()
 					// Skip if this appears to be a connection-related error (Keycloak unavailable)
-					if strings.Contains(errorMsg, "connection refused") || 
-					   strings.Contains(errorMsg, "could not get token") ||
-					   strings.Contains(errorMsg, "failed to login") {
+					if strings.Contains(errorMsg, "connection refused") ||
+						strings.Contains(errorMsg, "could not get token") ||
+						strings.Contains(errorMsg, "failed to login") {
 						t.Skipf("Service unavailable (likely connection issue): %v", errorMsg)
 						return
 					}
@@ -181,7 +183,7 @@ func (suite *ChainContractTestSuite) runSingleChainTest(t *testing.T, implementa
 		require.NotNil(t, resp, "Response should not be nil")
 
 		chains := resp.Msg.GetEntityChains()
-		
+
 		// Validate each chain according to the rules
 		for _, validationRule := range testCase.Expected.ChainValidation {
 			// Find the chain with matching ephemeral ID
@@ -192,12 +194,12 @@ func (suite *ChainContractTestSuite) runSingleChainTest(t *testing.T, implementa
 					break
 				}
 			}
-			
+
 			require.NotNil(t, matchingChain, "Chain with ephemeral ID %s not found", validationRule.EphemeralID)
-			
+
 			entities := matchingChain.GetEntities()
 			assert.Len(t, entities, validationRule.EntityCount, "Unexpected number of entities in chain")
-			
+
 			// Validate entity types if specified (implementation-agnostic: skip if empty)
 			if len(validationRule.EntityTypes) > 0 {
 				for i, expectedType := range validationRule.EntityTypes {
@@ -227,7 +229,7 @@ func (suite *ChainContractTestSuite) runSingleChainTest(t *testing.T, implementa
 				}
 				t.Logf("Implementation-agnostic validation: Chain contains entity types: %v", actualTypes)
 			}
-			
+
 			// Validate entity categories if specified
 			if len(validationRule.EntityCategories) > 0 {
 				for i, expectedCategory := range validationRule.EntityCategories {

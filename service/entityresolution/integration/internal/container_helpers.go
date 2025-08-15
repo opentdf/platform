@@ -105,7 +105,6 @@ func (cm *ContainerManager) IsRunning() bool {
 	return cm.Container != nil
 }
 
-
 // ContainerTestSuite provides a standardized way to manage multiple containers for testing
 type ContainerTestSuite struct {
 	containers map[string]*ContainerManager
@@ -128,7 +127,7 @@ func (suite *ContainerTestSuite) StartAll(ctx context.Context) error {
 	for name, manager := range suite.containers {
 		if err := manager.Start(ctx); err != nil {
 			// If any container fails to start, stop all previously started containers
-			suite.StopAll(ctx)
+			_ = suite.StopAll(ctx)
 			return fmt.Errorf("failed to start container %s: %w", name, err)
 		}
 	}

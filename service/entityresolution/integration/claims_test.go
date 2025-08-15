@@ -29,8 +29,8 @@ import (
 // TestClaimsEntityResolutionV2 runs Claims-specific tests focused on JWT and claims processing
 // Note: Claims implementation doesn't perform typical entity resolution - it processes claims directly
 func TestClaimsEntityResolutionV2(t *testing.T) {
-	adapter := NewClaimsTestAdapter()
 	ctx := context.Background()
+	adapter := NewClaimsTestAdapter()
 
 	// Setup test data
 	testDataSet := internal.NewContractTestDataSet()
@@ -38,7 +38,7 @@ func TestClaimsEntityResolutionV2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to setup test data: %v", err)
 	}
-	
+
 	t.Cleanup(func() {
 		if err := adapter.TeardownTestData(ctx); err != nil {
 			t.Logf("Warning: Failed to cleanup test data: %v", err)
@@ -59,12 +59,12 @@ func TestClaimsEntityResolutionV2(t *testing.T) {
 			"email":              "test@example.com",
 			"groups":             "users,testers", // Use string instead of slice for structpb compatibility
 		}
-		
+
 		structClaims, err := structpb.NewStruct(claimsData)
 		if err != nil {
 			t.Fatalf("Failed to create struct: %v", err)
 		}
-		
+
 		anyClaims, err := anypb.New(structClaims)
 		if err != nil {
 			t.Fatalf("Failed to create any: %v", err)
@@ -108,7 +108,7 @@ func TestClaimsEntityResolutionV2(t *testing.T) {
 		// Claims implementation handles non-claims entities by converting them to JSON
 		usernameEntity := internal.CreateTestEntityByUsername("alice")
 		emailEntity := internal.CreateTestEntityByEmail("alice@opentdf.test")
-		
+
 		resp, err := adapter.testResolveEntities(ctx, implementation, []*entity.Entity{usernameEntity, emailEntity})
 		if err != nil {
 			t.Fatalf("Failed to resolve entities: %v", err)
@@ -135,8 +135,8 @@ func TestClaimsEntityResolutionV2(t *testing.T) {
 
 // TestClaimsJWTProcessing tests Claims-specific JWT token processing functionality
 func TestClaimsJWTProcessing(t *testing.T) {
-	adapter := NewClaimsTestAdapter()
 	ctx := context.Background()
+	adapter := NewClaimsTestAdapter()
 
 	// Setup test data (which includes JWT keys)
 	testDataSet := internal.NewContractTestDataSet()
@@ -144,7 +144,7 @@ func TestClaimsJWTProcessing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to setup test data: %v", err)
 	}
-	
+
 	t.Cleanup(func() {
 		if err := adapter.TeardownTestData(ctx); err != nil {
 			t.Logf("Warning: Failed to cleanup test data: %v", err)
@@ -165,9 +165,9 @@ func TestClaimsJWTProcessing(t *testing.T) {
 				Jwt:         adapter.createTestJWT("test-client-1", "alice", "alice@opentdf.test", nil),
 			},
 			{
-				EphemeralId: "test-token-2", 
-				Jwt:         adapter.createTestJWT("test-client-2", "bob", "bob@opentdf.test", map[string]interface{}{
-					"groups": "users,admins", // Use string instead of slice for compatibility
+				EphemeralId: "test-token-2",
+				Jwt: adapter.createTestJWT("test-client-2", "bob", "bob@opentdf.test", map[string]interface{}{
+					"groups":     "users,admins", // Use string instead of slice for compatibility
 					"department": "engineering",
 				}),
 			},
@@ -230,7 +230,7 @@ func TestClaimsJWTProcessing(t *testing.T) {
 	t.Run("HandleExpiredJWTTokens", func(t *testing.T) {
 		// Create expired JWT token
 		expiredToken := adapter.createExpiredTestJWT("test-client-1", "alice", "alice@opentdf.test")
-		
+
 		tokens := []*entity.Token{
 			{
 				EphemeralId: "expired-token",
@@ -254,15 +254,15 @@ func TestClaimsJWTProcessing(t *testing.T) {
 		claimsData := map[string]interface{}{
 			"sub":                "user123",
 			"preferred_username": "testuser",
-			"email":             "test@example.com",
-			"groups":            "users,testers", // Use string instead of slice for structpb compatibility
+			"email":              "test@example.com",
+			"groups":             "users,testers", // Use string instead of slice for structpb compatibility
 		}
-		
+
 		structClaims, err := structpb.NewStruct(claimsData)
 		if err != nil {
 			t.Fatalf("Failed to create struct: %v", err)
 		}
-		
+
 		anyClaims, err := anypb.New(structClaims)
 		if err != nil {
 			t.Fatalf("Failed to create any: %v", err)
@@ -338,10 +338,10 @@ func (a *ClaimsTestAdapter) SetupTestData(ctx context.Context, testDataSet *inte
 func (a *ClaimsTestAdapter) CreateERSService(ctx context.Context) (internal.ERSImplementation, error) {
 	testLogger := logger.CreateTestLogger()
 	service, _ := claimsv2.RegisterClaimsERS(nil, testLogger)
-	
+
 	// Set a no-op tracer for testing to prevent nil pointer dereference
 	service.Tracer = noop.NewTracerProvider().Tracer("test-claims-v2")
-	
+
 	a.service = &service
 	return &service, nil
 }
@@ -362,22 +362,22 @@ func (a *ClaimsTestAdapter) createTestJWT(clientID, username, email string, addi
 	}
 
 	now := time.Now()
-	
+
 	// Create JWT token
 	token := jwt.New()
-	
+
 	// Standard claims
 	_ = token.Set(jwt.SubjectKey, username)
 	_ = token.Set(jwt.AudienceKey, clientID)
 	_ = token.Set(jwt.IssuedAtKey, now)
 	_ = token.Set(jwt.ExpirationKey, now.Add(time.Hour))
 	_ = token.Set(jwt.IssuerKey, "test-issuer")
-	
+
 	// Custom claims
 	_ = token.Set("azp", clientID)
 	_ = token.Set("preferred_username", username)
 	_ = token.Set("email", email)
-	
+
 	// Additional custom claims
 	if additionalClaims != nil {
 		for key, value := range additionalClaims {
@@ -390,7 +390,7 @@ func (a *ClaimsTestAdapter) createTestJWT(clientID, username, email string, addi
 	if err != nil {
 		return a.createUnsignedTestJWT(clientID, username, email, additionalClaims)
 	}
-	
+
 	_ = key.Set(jwk.KeyIDKey, a.keyID)
 	_ = key.Set(jwk.AlgorithmKey, jwa.RS256)
 
@@ -406,7 +406,7 @@ func (a *ClaimsTestAdapter) createTestJWT(clientID, username, email string, addi
 // createUnsignedTestJWT creates an unsigned JWT token for testing (fallback)
 func (a *ClaimsTestAdapter) createUnsignedTestJWT(clientID, username, email string, additionalClaims map[string]interface{}) string {
 	now := time.Now()
-	
+
 	claims := map[string]interface{}{
 		"sub":                username,
 		"aud":                clientID,
@@ -417,7 +417,7 @@ func (a *ClaimsTestAdapter) createUnsignedTestJWT(clientID, username, email stri
 		"preferred_username": username,
 		"email":              email,
 	}
-	
+
 	// Add additional claims
 	if additionalClaims != nil {
 		for key, value := range additionalClaims {
@@ -444,7 +444,7 @@ func (a *ClaimsTestAdapter) createUnsignedTestJWT(clientID, username, email stri
 // createExpiredTestJWT creates an expired JWT token for testing
 func (a *ClaimsTestAdapter) createExpiredTestJWT(clientID, username, email string) string {
 	pastTime := time.Now().Add(-2 * time.Hour)
-	
+
 	claims := map[string]interface{}{
 		"sub":                username,
 		"aud":                clientID,
@@ -475,12 +475,12 @@ func (a *ClaimsTestAdapter) testCreateEntityChainsFromTokens(ctx context.Context
 	req := &entityresolutionV2.CreateEntityChainsFromTokensRequest{
 		Tokens: tokens,
 	}
-	
+
 	resp, err := implementation.CreateEntityChainsFromTokens(ctx, connect.NewRequest(req))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return resp.Msg, nil
 }
 
@@ -489,12 +489,12 @@ func (a *ClaimsTestAdapter) testResolveEntities(ctx context.Context, implementat
 	req := &entityresolutionV2.ResolveEntitiesRequest{
 		Entities: entities,
 	}
-	
+
 	resp, err := implementation.ResolveEntities(ctx, connect.NewRequest(req))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return resp.Msg, nil
 }
 
@@ -508,32 +508,32 @@ func (a *ClaimsTestAdapter) getPrivateKeyPEM() string {
 	if a.privateKey == nil {
 		return ""
 	}
-	
+
 	privateKeyBytes := x509.MarshalPKCS1PrivateKey(a.privateKey)
-	
+
 	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: privateKeyBytes,
 	})
-	
+
 	return string(privateKeyPEM)
 }
 
-// Helper function to convert PEM-encoded public key to string  
+// Helper function to convert PEM-encoded public key to string
 func (a *ClaimsTestAdapter) getPublicKeyPEM() string {
 	if a.publicKey == nil {
 		return ""
 	}
-	
+
 	publicKeyBytes, err := x509.MarshalPKIXPublicKey(a.publicKey)
 	if err != nil {
 		return ""
 	}
-	
+
 	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: publicKeyBytes,
 	})
-	
+
 	return string(publicKeyPEM)
 }

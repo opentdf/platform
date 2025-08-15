@@ -18,12 +18,12 @@ type Service struct {
 }
 
 // NewService creates a new multi-strategy entity resolution service
-func NewService(config types.MultiStrategyConfig) (*Service, error) {
+func NewService(ctx context.Context, config types.MultiStrategyConfig) (*Service, error) {
 	// Create provider registry
 	registry := NewProviderRegistry()
 
 	// Initialize providers based on configuration
-	if err := initializeProviders(registry, config.Providers); err != nil {
+	if err := initializeProviders(ctx, registry, config.Providers); err != nil {
 		return nil, types.WrapMultiStrategyError(
 			types.ErrorTypeConfiguration,
 			"failed to initialize providers",
@@ -84,11 +84,11 @@ func (s *Service) ResolveEntity(ctx context.Context, entityID string, jwtClaims 
 	// Try each matching strategy based on global failure strategy configuration
 	for _, strategy := range strategies {
 		attemptedStrategies = append(attemptedStrategies, strategy.Name)
-		
+
 		result, err := s.executeStrategy(ctx, entityID, jwtClaims, strategy)
 		if err != nil {
 			lastError = err
-			
+
 			// If fail-fast, return error immediately
 			if failureStrategy == types.FailureStrategyFailFast {
 				return nil, types.WrapMultiStrategyError(
@@ -96,25 +96,25 @@ func (s *Service) ResolveEntity(ctx context.Context, entityID string, jwtClaims 
 					"strategy execution failed with global fail-fast policy",
 					err,
 					map[string]interface{}{
-						"entity_id":           entityID,
-						"strategy":            strategy.Name,
-						"failure_strategy":    failureStrategy,
+						"entity_id":            entityID,
+						"strategy":             strategy.Name,
+						"failure_strategy":     failureStrategy,
 						"attempted_strategies": attemptedStrategies,
 					},
 				)
 			}
-			
+
 			// Continue to next strategy (global continue policy)
 			continue
 		}
-		
+
 		// Success - add strategy metadata and return result
 		result.Metadata["strategy_name"] = strategy.Name
 		result.Metadata["strategy_provider"] = strategy.Provider
 		result.Metadata["entity_type"] = strategy.EntityType
 		result.Metadata["failure_strategy"] = failureStrategy
 		result.Metadata["attempted_strategies"] = attemptedStrategies
-		
+
 		return result, nil
 	}
 
@@ -124,17 +124,16 @@ func (s *Service) ResolveEntity(ctx context.Context, entityID string, jwtClaims 
 		"all matching strategies failed",
 		lastError,
 		map[string]interface{}{
-			"entity_id":           entityID,
-			"failure_strategy":    failureStrategy,
+			"entity_id":            entityID,
+			"failure_strategy":     failureStrategy,
 			"attempted_strategies": attemptedStrategies,
-			"jwt_claims":          extractClaimNames(jwtClaims),
+			"jwt_claims":           extractClaimNames(jwtClaims),
 		},
 	)
 }
 
 // executeStrategy executes a single strategy
 func (s *Service) executeStrategy(ctx context.Context, entityID string, jwtClaims types.JWTClaims, strategy *types.MappingStrategy) (*types.EntityResult, error) {
-
 	// Get the provider for this strategy
 	provider, err := s.providerRegistry.GetProvider(strategy.Provider)
 	if err != nil {
@@ -271,7 +270,7 @@ func (s *Service) GetProviders() map[string]string {
 }
 
 // initializeProviders creates and registers providers based on configuration
-func initializeProviders(registry *ProviderRegistry, providerConfigs map[string]types.ProviderConfig) error {
+func initializeProviders(ctx context.Context, registry *ProviderRegistry, providerConfigs map[string]types.ProviderConfig) error {
 	for name, config := range providerConfigs {
 		var provider types.Provider
 		var err error
@@ -298,7 +297,7 @@ func initializeProviders(registry *ProviderRegistry, providerConfigs map[string]
 					},
 				)
 			}
-			provider, err = sql.NewSQLProvider(name, sqlConfig)
+			provider, err = sql.NewSQLProvider(ctx, name, sqlConfig)
 
 		case "ldap":
 			// Parse LDAP configuration

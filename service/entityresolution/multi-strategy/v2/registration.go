@@ -26,8 +26,8 @@ type MultiStrategyERSV2 struct {
 }
 
 // NewMultiStrategyERSV2 creates a new v2 multi-strategy ERS
-func NewMultiStrategyERSV2(config types.MultiStrategyConfig, logger *logger.Logger) (*MultiStrategyERSV2, error) {
-	service, err := multistrategy.NewService(config)
+func NewMultiStrategyERSV2(ctx context.Context, config types.MultiStrategyConfig, logger *logger.Logger) (*MultiStrategyERSV2, error) {
+	service, err := multistrategy.NewService(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multi-strategy service: %w", err)
 	}
@@ -139,10 +139,10 @@ func (ers *MultiStrategyERSV2) CreateEntityChainsFromTokens(
 			ers.logger.ErrorContext(ctx, "Failed to create entity chain from token - FAILING REQUEST for security",
 				"token_id", token.GetEphemeralId(),
 				"error", err.Error())
-			return nil, connect.NewError(connect.CodeInternal, 
+			return nil, connect.NewError(connect.CodeInternal,
 				fmt.Errorf("failed to create entity chain for token %s: %w", token.GetEphemeralId(), err))
 		}
-		
+
 		// Validate that we have at least one entity in the chain
 		if len(entityChain.Entities) == 0 {
 			ers.logger.ErrorContext(ctx, "Entity chain is empty - FAILING REQUEST for security",
@@ -150,7 +150,7 @@ func (ers *MultiStrategyERSV2) CreateEntityChainsFromTokens(
 			return nil, connect.NewError(connect.CodeInternal,
 				fmt.Errorf("entity chain for token %s is empty - incomplete identity context", token.GetEphemeralId()))
 		}
-		
+
 		entityChains = append(entityChains, entityChain)
 	}
 
@@ -166,7 +166,7 @@ func (ers *MultiStrategyERSV2) CreateEntityChainsFromTokens(
 // createEntityChainFromSingleTokenV2 processes a single JWT token using multi-strategy resolution for v2
 func (ers *MultiStrategyERSV2) createEntityChainFromSingleTokenV2(ctx context.Context, token *entity.Token) (*entity.EntityChain, error) {
 	// Parse JWT to extract claims
-	jwtClaims, err := ers.parseJWTClaims(token.GetJwt())
+	jwtClaims, err := ers.parseJWTClaims(ctx, token.GetJwt())
 	if err != nil {
 		return nil, types.WrapMultiStrategyError(
 			types.ErrorTypeMapping,
@@ -186,7 +186,7 @@ func (ers *MultiStrategyERSV2) createEntityChainFromSingleTokenV2(ctx context.Co
 			"failed to select strategies for JWT claims",
 			err,
 			map[string]interface{}{
-				"token_id": token.GetEphemeralId(),
+				"token_id":   token.GetEphemeralId(),
 				"jwt_claims": extractClaimNames(jwtClaims),
 			},
 		)
@@ -196,7 +196,7 @@ func (ers *MultiStrategyERSV2) createEntityChainFromSingleTokenV2(ctx context.Co
 		return nil, types.NewConfigurationError(
 			"no matching strategies found for JWT claims",
 			map[string]interface{}{
-				"token_id": token.GetEphemeralId(),
+				"token_id":   token.GetEphemeralId(),
 				"jwt_claims": extractClaimNames(jwtClaims),
 			},
 		)
@@ -214,10 +214,10 @@ func (ers *MultiStrategyERSV2) createEntityChainFromSingleTokenV2(ctx context.Co
 
 	for _, strategy := range strategies {
 		attemptedStrategies = append(attemptedStrategies, strategy.Name)
-		
+
 		// Put JWT claims into context for providers to access
 		ctxWithClaims := context.WithValue(ctx, "jwt_claims", jwtClaims)
-		
+
 		// Resolve entity using this strategy
 		entityResult, err := ers.service.ResolveEntity(ctxWithClaims, token.GetEphemeralId(), jwtClaims)
 		if err != nil {
@@ -226,7 +226,7 @@ func (ers *MultiStrategyERSV2) createEntityChainFromSingleTokenV2(ctx context.Co
 				"token_id", token.GetEphemeralId(),
 				"strategy", strategy.Name,
 				"error", err.Error())
-			
+
 			// If fail-fast, return error immediately
 			if failureStrategy == types.FailureStrategyFailFast {
 				return nil, types.WrapMultiStrategyError(
@@ -234,20 +234,20 @@ func (ers *MultiStrategyERSV2) createEntityChainFromSingleTokenV2(ctx context.Co
 					"strategy execution failed with fail-fast policy",
 					err,
 					map[string]interface{}{
-						"token_id": token.GetEphemeralId(),
-						"strategy": strategy.Name,
-						"failure_strategy": failureStrategy,
+						"token_id":             token.GetEphemeralId(),
+						"strategy":             strategy.Name,
+						"failure_strategy":     failureStrategy,
 						"attempted_strategies": attemptedStrategies,
 					},
 				)
 			}
-			
+
 			// Continue to next strategy
 			continue
 		}
 
 		// Success! Create entity from result
-		entityV2 := ers.createEntityFromResultV2(entityResult, strategy, token.GetEphemeralId())
+		entityV2 := ers.createEntityFromResultV2(ctx, entityResult, strategy, token.GetEphemeralId())
 		entities = append(entities, entityV2)
 
 		ers.logger.DebugContext(ctx, "Successfully resolved entity for token",
@@ -255,7 +255,7 @@ func (ers *MultiStrategyERSV2) createEntityChainFromSingleTokenV2(ctx context.Co
 			"strategy", strategy.Name,
 			"entity_type", getEntityTypeStringV2(entityV2),
 			"entity_category", entityV2.Category.String())
-		
+
 		// ENHANCED: Continue trying additional strategies to build multi-entity chains (like Keycloak)
 		// This allows creating chains with multiple entities (e.g., ENVIRONMENT + SUBJECT)
 		// Only break if FailureStrategy is FailFast and we have at least one successful entity
@@ -272,10 +272,10 @@ func (ers *MultiStrategyERSV2) createEntityChainFromSingleTokenV2(ctx context.Co
 			"all strategies failed for token",
 			lastError,
 			map[string]interface{}{
-				"token_id": token.GetEphemeralId(),
-				"failure_strategy": failureStrategy,
+				"token_id":             token.GetEphemeralId(),
+				"failure_strategy":     failureStrategy,
 				"attempted_strategies": attemptedStrategies,
-				"jwt_claims": extractClaimNames(jwtClaims),
+				"jwt_claims":           extractClaimNames(jwtClaims),
 			},
 		)
 	}
@@ -287,7 +287,7 @@ func (ers *MultiStrategyERSV2) createEntityChainFromSingleTokenV2(ctx context.Co
 }
 
 // createEntityFromResultV2 converts a multi-strategy EntityResult to a v2 entity.Entity
-func (ers *MultiStrategyERSV2) createEntityFromResultV2(result *types.EntityResult, strategy *types.MappingStrategy, tokenId string) *entity.Entity {
+func (ers *MultiStrategyERSV2) createEntityFromResultV2(ctx context.Context, result *types.EntityResult, strategy *types.MappingStrategy, tokenId string) *entity.Entity {
 	// Determine entity category based on strategy configuration
 	category := entity.Entity_CATEGORY_SUBJECT // Default
 	if strategy.EntityType == types.EntityTypeEnvironment {
@@ -297,7 +297,7 @@ func (ers *MultiStrategyERSV2) createEntityFromResultV2(result *types.EntityResu
 	// Create entity based on available claims
 	// Priority: username > email > client_id > subject
 	var entityV2 *entity.Entity
-	
+
 	if username, exists := result.Claims["username"]; exists {
 		if usernameStr, ok := username.(string); ok && usernameStr != "" {
 			entityV2 = &entity.Entity{
@@ -306,7 +306,7 @@ func (ers *MultiStrategyERSV2) createEntityFromResultV2(result *types.EntityResu
 			}
 		}
 	}
-	
+
 	if entityV2 == nil {
 		if email, exists := result.Claims["email_address"]; exists {
 			if emailStr, ok := email.(string); ok && emailStr != "" {
@@ -317,7 +317,7 @@ func (ers *MultiStrategyERSV2) createEntityFromResultV2(result *types.EntityResu
 			}
 		}
 	}
-	
+
 	if entityV2 == nil {
 		if clientId, exists := result.Claims["client_id"]; exists {
 			if clientIdStr, ok := clientId.(string); ok && clientIdStr != "" {
@@ -328,7 +328,7 @@ func (ers *MultiStrategyERSV2) createEntityFromResultV2(result *types.EntityResu
 			}
 		}
 	}
-	
+
 	if entityV2 == nil {
 		if subject, exists := result.Claims["subject"]; exists {
 			if subjectStr, ok := subject.(string); ok && subjectStr != "" {
@@ -352,9 +352,9 @@ func (ers *MultiStrategyERSV2) createEntityFromResultV2(result *types.EntityResu
 	}
 
 	// Generate entity ID: strategy-tokenid-type-value
-	entityId := fmt.Sprintf("%s-%s-%s-%s", 
-		strategy.Name, 
-		tokenId, 
+	entityId := fmt.Sprintf("%s-%s-%s-%s",
+		strategy.Name,
+		tokenId,
 		getEntityTypeStringV2(entityV2),
 		getEntityValueV2(entityV2.EntityType))
 
@@ -364,19 +364,19 @@ func (ers *MultiStrategyERSV2) createEntityFromResultV2(result *types.EntityResu
 }
 
 // Helper functions for v2
-func (ers *MultiStrategyERSV2) parseJWTClaims(jwtString string) (types.JWTClaims, error) {
+func (ers *MultiStrategyERSV2) parseJWTClaims(ctx context.Context, jwtString string) (types.JWTClaims, error) {
 	// For now, use a simple JWT parser (in production, this should validate signatures)
 	// This is similar to how Keycloak ERS parses JWTs
 	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse JWT: %w", err)
 	}
-	
+
 	claims, err := token.AsMap(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract claims from JWT: %w", err)
 	}
-	
+
 	return types.JWTClaims(claims), nil
 }
 
@@ -423,7 +423,7 @@ func RegisterMultiStrategyERSV2(config map[string]interface{}, logger *logger.Lo
 		panic(fmt.Sprintf("Failed to decode multi-strategy configuration: %v", err))
 	}
 
-	ers, err := NewMultiStrategyERSV2(multiStrategyConfig, logger)
+	ers, err := NewMultiStrategyERSV2(context.Background(), multiStrategyConfig, logger)
 	if err != nil {
 		logger.Error("Failed to create multi-strategy ERS v2", "error", err)
 		panic(fmt.Sprintf("Failed to create multi-strategy ERS v2: %v", err))

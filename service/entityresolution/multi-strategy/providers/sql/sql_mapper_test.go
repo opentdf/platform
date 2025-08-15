@@ -123,8 +123,8 @@ func TestSQLMapper_TransformResults(t *testing.T) {
 				{SourceColumn: "department", ClaimName: "organizational_unit"},
 			},
 			expectedClaims: map[string]interface{}{
-				"subject_id":         123,
-				"email_address":      "user@example.com",
+				"subject_id":          123,
+				"email_address":       "user@example.com",
 				"organizational_unit": "Engineering",
 			},
 			expectError: false,

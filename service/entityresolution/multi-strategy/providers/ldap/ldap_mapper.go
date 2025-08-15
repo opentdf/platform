@@ -138,7 +138,6 @@ func (m *LDAPMapper) escapeLDAPFilter(value string) string {
 	return transformation.EscapeLDAPFilter(value)
 }
 
-
 // isValidTemplateVariable checks if a string is a valid template variable name
 func isValidTemplateVariable(name string) bool {
 	if name == "" {

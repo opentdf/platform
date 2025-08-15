@@ -1,12 +1,13 @@
 package integration
 
 import (
+	"context"
 	"testing"
 
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
+	keycloakv2 "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
-	keycloakv2 "github.com/opentdf/platform/service/entityresolution/keycloak/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -101,7 +102,7 @@ func createMultiStrategyImplementation(t *testing.T) internal.ERSImplementation 
 		},
 	}
 
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(config, logger.CreateTestLogger())
+	ctx := context.Background(); ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -116,12 +117,12 @@ func createMultiStrategyImplementation(t *testing.T) internal.ERSImplementation 
 func createKeycloakImplementation(_ *testing.T) internal.ERSImplementation {
 	// Keycloak configuration
 	keycloakConfig := map[string]interface{}{
-		"url":           "http://localhost:8080",
-		"realm":         "test-realm",
-		"clientid":      "test-client",
-		"clientsecret":  "test-secret",
+		"url":            "http://localhost:8080",
+		"realm":          "test-realm",
+		"clientid":       "test-client",
+		"clientsecret":   "test-secret",
 		"legacykeycloak": false,
-		"subgroups":     false,
+		"subgroups":      false,
 		"inferid": map[string]interface{}{
 			"from": map[string]interface{}{
 				"clientid": true,
@@ -135,7 +136,7 @@ func createKeycloakImplementation(_ *testing.T) internal.ERSImplementation {
 	var testCache *cache.Cache = nil
 
 	keycloakService, _ := keycloakv2.RegisterKeycloakERS(keycloakConfig, testLogger, testCache)
-	
+
 	// Test if Keycloak is available - if not, return nil to skip
 	// (The actual test will handle the Docker unavailability gracefully)
 	if keycloakService != nil {

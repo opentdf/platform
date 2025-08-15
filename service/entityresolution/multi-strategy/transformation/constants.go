@@ -19,16 +19,16 @@ const (
 
 // LDAP-specific transformation constants
 const (
-	LDAPDNToCNArray   = "ldap_dn_to_cn_array"
-	LDAPDNToCN        = "ldap_dn_to_cn"
-	LDAPAttrValues    = "ldap_attribute_values"
-	LDAPADGroupName   = "ad_group_name"
+	LDAPDNToCNArray = "ldap_dn_to_cn_array"
+	LDAPDNToCN      = "ldap_dn_to_cn"
+	LDAPAttrValues  = "ldap_attribute_values"
+	LDAPADGroupName = "ad_group_name"
 )
 
 // Claims-specific transformation constants
 const (
-	ClaimsExtractScope      = "jwt_extract_scope"
-	ClaimsNormalizeGroups   = "jwt_normalize_groups"
+	ClaimsExtractScope    = "jwt_extract_scope"
+	ClaimsNormalizeGroups = "jwt_normalize_groups"
 )
 
 // GetCommonTransformations returns all common transformations available to any provider

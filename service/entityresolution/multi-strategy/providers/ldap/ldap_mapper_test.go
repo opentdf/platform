@@ -103,9 +103,9 @@ func TestLDAPMapper_TransformResults(t *testing.T) {
 		{
 			name: "Basic attribute transformation",
 			rawData: map[string]interface{}{
-				"uid":         "testuser",
-				"cn":          "Test User",
-				"department":  "Engineering",
+				"uid":        "testuser",
+				"cn":         "Test User",
+				"department": "Engineering",
 			},
 			outputMapping: []types.OutputMapping{
 				{SourceAttribute: "uid", ClaimName: "username"},
@@ -113,8 +113,8 @@ func TestLDAPMapper_TransformResults(t *testing.T) {
 				{SourceAttribute: "department", ClaimName: "organizational_unit"},
 			},
 			expectedClaims: map[string]interface{}{
-				"username":           "testuser",
-				"display_name":       "Test User",
+				"username":            "testuser",
+				"display_name":        "Test User",
 				"organizational_unit": "Engineering",
 			},
 			expectError: false,

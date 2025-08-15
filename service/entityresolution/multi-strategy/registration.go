@@ -25,8 +25,8 @@ type MultiStrategyERS struct {
 }
 
 // NewMultiStrategyERS creates a new multi-strategy ERS
-func NewMultiStrategyERS(config types.MultiStrategyConfig, logger *logger.Logger) (*MultiStrategyERS, error) {
-	service, err := NewService(config)
+func NewMultiStrategyERS(ctx context.Context, config types.MultiStrategyConfig, logger *logger.Logger) (*MultiStrategyERS, error) {
+	service, err := NewService(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multi-strategy service: %w", err)
 	}
@@ -134,10 +134,10 @@ func (ers *MultiStrategyERS) CreateEntityChainFromJwt(
 			ers.logger.ErrorContext(ctx, "Failed to create entity chain from token - FAILING REQUEST for security",
 				"token_id", token.GetId(),
 				"error", err.Error())
-			return nil, connect.NewError(connect.CodeInternal, 
+			return nil, connect.NewError(connect.CodeInternal,
 				fmt.Errorf("failed to create entity chain for token %s: %w", token.GetId(), err))
 		}
-		
+
 		// Validate that we have at least one entity in the chain
 		if len(entityChain.Entities) == 0 {
 			ers.logger.ErrorContext(ctx, "Entity chain is empty - FAILING REQUEST for security",
@@ -145,7 +145,7 @@ func (ers *MultiStrategyERS) CreateEntityChainFromJwt(
 			return nil, connect.NewError(connect.CodeInternal,
 				fmt.Errorf("entity chain for token %s is empty - incomplete identity context", token.GetId()))
 		}
-		
+
 		entityChains = append(entityChains, entityChain)
 	}
 
@@ -161,7 +161,7 @@ func (ers *MultiStrategyERS) CreateEntityChainFromJwt(
 // createEntityChainFromSingleToken processes a single JWT token using multi-strategy resolution
 func (ers *MultiStrategyERS) createEntityChainFromSingleToken(ctx context.Context, token *authorization.Token) (*authorization.EntityChain, error) {
 	// Parse JWT to extract claims
-	jwtClaims, err := ers.parseJWTClaims(token.GetJwt())
+	jwtClaims, err := ers.parseJWTClaims(ctx, token.GetJwt())
 	if err != nil {
 		return nil, types.WrapMultiStrategyError(
 			types.ErrorTypeMapping,
@@ -181,7 +181,7 @@ func (ers *MultiStrategyERS) createEntityChainFromSingleToken(ctx context.Contex
 			"failed to select strategies for JWT claims",
 			err,
 			map[string]interface{}{
-				"token_id": token.GetId(),
+				"token_id":   token.GetId(),
 				"jwt_claims": extractClaimNames(jwtClaims),
 			},
 		)
@@ -191,7 +191,7 @@ func (ers *MultiStrategyERS) createEntityChainFromSingleToken(ctx context.Contex
 		return nil, types.NewConfigurationError(
 			"no matching strategies found for JWT claims",
 			map[string]interface{}{
-				"token_id": token.GetId(),
+				"token_id":   token.GetId(),
 				"jwt_claims": extractClaimNames(jwtClaims),
 			},
 		)
@@ -209,7 +209,7 @@ func (ers *MultiStrategyERS) createEntityChainFromSingleToken(ctx context.Contex
 
 	for _, strategy := range strategies {
 		attemptedStrategies = append(attemptedStrategies, strategy.Name)
-		
+
 		// Resolve entity using this strategy
 		entityResult, err := ers.service.ResolveEntity(ctx, token.GetId(), jwtClaims)
 		if err != nil {
@@ -218,7 +218,7 @@ func (ers *MultiStrategyERS) createEntityChainFromSingleToken(ctx context.Contex
 				"token_id", token.GetId(),
 				"strategy", strategy.Name,
 				"error", err.Error())
-			
+
 			// If fail-fast, return error immediately
 			if failureStrategy == types.FailureStrategyFailFast {
 				return nil, types.WrapMultiStrategyError(
@@ -226,20 +226,20 @@ func (ers *MultiStrategyERS) createEntityChainFromSingleToken(ctx context.Contex
 					"strategy execution failed with fail-fast policy",
 					err,
 					map[string]interface{}{
-						"token_id": token.GetId(),
-						"strategy": strategy.Name,
-						"failure_strategy": failureStrategy,
+						"token_id":             token.GetId(),
+						"strategy":             strategy.Name,
+						"failure_strategy":     failureStrategy,
 						"attempted_strategies": attemptedStrategies,
 					},
 				)
 			}
-			
+
 			// Continue to next strategy
 			continue
 		}
 
 		// Success! Create entity from result
-		entity := ers.createEntityFromResult(entityResult, strategy, token.GetId())
+		entity := ers.createEntityFromResult(ctx, entityResult, strategy, token.GetId())
 		entities = append(entities, entity)
 
 		ers.logger.DebugContext(ctx, "Successfully resolved entity for token",
@@ -247,7 +247,7 @@ func (ers *MultiStrategyERS) createEntityChainFromSingleToken(ctx context.Contex
 			"strategy", strategy.Name,
 			"entity_type", getEntityTypeString(entity),
 			"entity_category", entity.Category.String())
-		
+
 		// For now, we create one entity per successful strategy
 		// TODO: Consider if we should try multiple strategies and combine results
 		break
@@ -260,10 +260,10 @@ func (ers *MultiStrategyERS) createEntityChainFromSingleToken(ctx context.Contex
 			"all strategies failed for token",
 			lastError,
 			map[string]interface{}{
-				"token_id": token.GetId(),
-				"failure_strategy": failureStrategy,
+				"token_id":             token.GetId(),
+				"failure_strategy":     failureStrategy,
 				"attempted_strategies": attemptedStrategies,
-				"jwt_claims": extractClaimNames(jwtClaims),
+				"jwt_claims":           extractClaimNames(jwtClaims),
 			},
 		)
 	}
@@ -275,7 +275,7 @@ func (ers *MultiStrategyERS) createEntityChainFromSingleToken(ctx context.Contex
 }
 
 // createEntityFromResult converts a multi-strategy EntityResult to an authorization Entity
-func (ers *MultiStrategyERS) createEntityFromResult(result *types.EntityResult, strategy *types.MappingStrategy, tokenId string) *authorization.Entity {
+func (ers *MultiStrategyERS) createEntityFromResult(ctx context.Context, result *types.EntityResult, strategy *types.MappingStrategy, tokenId string) *authorization.Entity {
 	// Determine entity category based on strategy configuration
 	category := authorization.Entity_CATEGORY_SUBJECT // Default
 	if strategy.EntityType == types.EntityTypeEnvironment {
@@ -285,7 +285,7 @@ func (ers *MultiStrategyERS) createEntityFromResult(result *types.EntityResult, 
 	// Create entity based on available claims
 	// Priority: username > email > client_id > subject
 	var entity *authorization.Entity
-	
+
 	if username, exists := result.Claims["username"]; exists {
 		if usernameStr, ok := username.(string); ok && usernameStr != "" {
 			entity = &authorization.Entity{
@@ -294,7 +294,7 @@ func (ers *MultiStrategyERS) createEntityFromResult(result *types.EntityResult, 
 			}
 		}
 	}
-	
+
 	if entity == nil {
 		if email, exists := result.Claims["email_address"]; exists {
 			if emailStr, ok := email.(string); ok && emailStr != "" {
@@ -305,7 +305,7 @@ func (ers *MultiStrategyERS) createEntityFromResult(result *types.EntityResult, 
 			}
 		}
 	}
-	
+
 	if entity == nil {
 		if clientId, exists := result.Claims["client_id"]; exists {
 			if clientIdStr, ok := clientId.(string); ok && clientIdStr != "" {
@@ -316,7 +316,7 @@ func (ers *MultiStrategyERS) createEntityFromResult(result *types.EntityResult, 
 			}
 		}
 	}
-	
+
 	if entity == nil {
 		if subject, exists := result.Claims["subject"]; exists {
 			if subjectStr, ok := subject.(string); ok && subjectStr != "" {
@@ -340,9 +340,9 @@ func (ers *MultiStrategyERS) createEntityFromResult(result *types.EntityResult, 
 	}
 
 	// Generate entity ID: strategy-tokenid-type-value
-	entityId := fmt.Sprintf("%s-%s-%s-%s", 
-		strategy.Name, 
-		tokenId, 
+	entityId := fmt.Sprintf("%s-%s-%s-%s",
+		strategy.Name,
+		tokenId,
 		getEntityTypeString(entity),
 		getEntityValue(entity.EntityType))
 
@@ -352,19 +352,19 @@ func (ers *MultiStrategyERS) createEntityFromResult(result *types.EntityResult, 
 }
 
 // Helper functions
-func (ers *MultiStrategyERS) parseJWTClaims(jwtString string) (types.JWTClaims, error) {
+func (ers *MultiStrategyERS) parseJWTClaims(ctx context.Context, jwtString string) (types.JWTClaims, error) {
 	// For now, use a simple JWT parser (in production, this should validate signatures)
 	// This is similar to how Keycloak ERS parses JWTs
 	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse JWT: %w", err)
 	}
-	
+
 	claims, err := token.AsMap(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract claims from JWT: %w", err)
 	}
-	
+
 	return types.JWTClaims(claims), nil
 }
 
@@ -413,7 +413,7 @@ func RegisterMultiStrategyERS(config map[string]interface{}, logger *logger.Logg
 		panic(fmt.Sprintf("Failed to decode multi-strategy configuration: %v", err))
 	}
 
-	ers, err := NewMultiStrategyERS(multiStrategyConfig, logger)
+	ers, err := NewMultiStrategyERS(context.Background(), multiStrategyConfig, logger)
 	if err != nil {
 		logger.Error("Failed to create multi-strategy ERS", "error", err)
 		panic(fmt.Sprintf("Failed to create multi-strategy ERS: %v", err))

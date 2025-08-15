@@ -17,11 +17,13 @@ const (
 )
 
 // LDAP types (stubs)
-type Conn struct{}
-type SearchRequest struct{}
-type SearchResult struct {
-	Entries []*Entry
-}
+type (
+	Conn          struct{}
+	SearchRequest struct{}
+	SearchResult  struct {
+		Entries []*Entry
+	}
+)
 type Entry struct {
 	DN         string
 	Attributes []*Attribute
@@ -52,9 +54,11 @@ func (c *Conn) SetTimeout(_ interface{}) {}
 func (c *Conn) Bind(_, _ string) error {
 	return errors.New("LDAP not implemented - stub function")
 }
+
 func (c *Conn) Search(_ *SearchRequest) (*SearchResult, error) {
 	return &SearchResult{Entries: []*Entry{}}, errors.New("LDAP not implemented - stub function")
 }
+
 func (c *Conn) Close() error {
 	return nil
 }

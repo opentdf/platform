@@ -58,7 +58,7 @@ func CreateTestJWT(clientID, username, email string) string {
 func CreateTestJWTWithClaims(clientID, username, email string, additionalClaims map[string]interface{}) string {
 	// Create JWT header: {"alg":"HS256","typ":"JWT"}
 	header := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
-	
+
 	// Create dynamic payload using actual input parameters
 	now := time.Now().Unix()
 	payloadData := map[string]interface{}{
@@ -72,7 +72,7 @@ func CreateTestJWTWithClaims(clientID, username, email string, additionalClaims 
 		"exp":                now + 3600, // 1 hour validity
 		"_test_marker":       true,       // Clear indicator this is a test JWT
 	}
-	
+
 	// Handle empty parameters gracefully
 	if clientID != "" {
 		payloadData["client_id"] = clientID // Include client_id when provided
@@ -84,25 +84,25 @@ func CreateTestJWTWithClaims(clientID, username, email string, additionalClaims 
 	if email == "" {
 		delete(payloadData, "email") // Remove email claim if not provided
 	}
-	
+
 	// Merge additional claims (allows overriding defaults)
 	for key, value := range additionalClaims {
 		payloadData[key] = value
 	}
-	
+
 	// Encode payload to JSON then base64
 	payloadJSON, err := json.Marshal(payloadData)
 	if err != nil {
 		// Fallback to basic payload if marshaling fails
-		payloadJSON = []byte(fmt.Sprintf(`{"sub":"%s","email":"%s","azp":"%s","iat":%d,"exp":%d}`, 
+		payloadJSON = []byte(fmt.Sprintf(`{"sub":"%s","email":"%s","azp":"%s","iat":%d,"exp":%d}`,
 			username, email, clientID, now, now+3600))
 	}
-	
+
 	encodedPayload := base64.RawURLEncoding.EncodeToString(payloadJSON)
-	
+
 	// Mock signature for testing (not cryptographically valid)
 	signature := "dGVzdHNpZ25hdHVyZQ"
-	
+
 	return header + "." + encodedPayload + "." + signature
 }
 
@@ -250,4 +250,3 @@ func GetTestGroup(name string) *TestGroup {
 	}
 	return nil
 }
-

@@ -47,7 +47,7 @@ func TestMultiStrategyService_JWT_Claims_Provider(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(config)
+	service, err := NewService(context.Background(), config)
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
@@ -66,7 +66,6 @@ func TestMultiStrategyService_JWT_Claims_Provider(t *testing.T) {
 		"email": "user@example.com",
 		"aud":   "test-audience",
 	})
-
 	if err != nil {
 		t.Fatalf("Failed to resolve entity: %v", err)
 	}
@@ -120,7 +119,7 @@ func TestMultiStrategyService_No_Matching_Strategy(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(config)
+	service, err := NewService(context.Background(), config)
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
@@ -176,7 +175,7 @@ func TestMultiStrategyService_Provider_Not_Found(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(config)
+	service, err := NewService(context.Background(), config)
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
@@ -197,7 +196,7 @@ func TestMultiStrategyService_Provider_Not_Found(t *testing.T) {
 		t.Fatalf("Expected MultiStrategyError, got %T", err)
 	}
 
-	// The error could be either ErrorTypeProvider (if caught in executeStrategy) 
+	// The error could be either ErrorTypeProvider (if caught in executeStrategy)
 	// or ErrorTypeStrategy (if caught in ResolveEntity loop)
 	if providerErr.Type != types.ErrorTypeProvider && providerErr.Type != types.ErrorTypeStrategy {
 		t.Errorf("Expected ErrorTypeProvider or ErrorTypeStrategy, got %v", providerErr.Type)
@@ -263,7 +262,7 @@ func TestMultiStrategyService_FailureStrategyContinue(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(config)
+	service, err := NewService(context.Background(), config)
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
@@ -282,7 +281,6 @@ func TestMultiStrategyService_FailureStrategyContinue(t *testing.T) {
 		"sub": "user123",
 		"aud": "test-audience",
 	})
-
 	if err != nil {
 		t.Fatalf("Expected success with fallback strategy, got error: %v", err)
 	}
@@ -339,7 +337,7 @@ func TestMultiStrategyService_FailureStrategyFailFast(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(config)
+	service, err := NewService(context.Background(), config)
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
@@ -407,7 +405,7 @@ func TestMultiStrategyService_EntityTypeEnvironment(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(config)
+	service, err := NewService(context.Background(), config)
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
@@ -422,7 +420,6 @@ func TestMultiStrategyService_EntityTypeEnvironment(t *testing.T) {
 		"client_ip": "192.168.1.100",
 		"device_id": "device-abc-123",
 	})
-
 	if err != nil {
 		t.Fatalf("Failed to resolve environment entity: %v", err)
 	}
@@ -477,7 +474,7 @@ func TestMultiStrategyService_DefaultFailureStrategy(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(config)
+	service, err := NewService(context.Background(), config)
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}

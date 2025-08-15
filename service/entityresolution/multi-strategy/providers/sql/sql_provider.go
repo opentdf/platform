@@ -23,7 +23,7 @@ type SQLProvider struct {
 }
 
 // NewSQLProvider creates a new SQL provider
-func NewSQLProvider(name string, config SQLConfig) (*SQLProvider, error) {
+func NewSQLProvider(ctx context.Context, name string, config SQLConfig) (*SQLProvider, error) {
 	provider := &SQLProvider{
 		name:   name,
 		config: config,

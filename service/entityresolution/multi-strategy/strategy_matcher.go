@@ -38,7 +38,7 @@ func (sm *StrategyMatcher) SelectStrategy(_ context.Context, claims types.JWTCla
 // SelectStrategies returns all strategies that match the JWT claims in configuration order
 func (sm *StrategyMatcher) SelectStrategies(_ context.Context, claims types.JWTClaims) ([]*types.MappingStrategy, error) {
 	var matchingStrategies []*types.MappingStrategy
-	
+
 	for _, strategy := range sm.strategies {
 		if sm.matchesConditions(claims, strategy.Conditions) {
 			matchingStrategies = append(matchingStrategies, &strategy)

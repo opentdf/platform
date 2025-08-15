@@ -65,4 +65,3 @@ func cleanup() {
 	// Adapter-specific cleanup is handled by each test scope
 	slog.Info("Global test environment cleanup completed")
 }
-

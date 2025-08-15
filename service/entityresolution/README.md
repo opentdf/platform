@@ -7,36 +7,27 @@ The Entity Resolution Service is a core component of the OpenTDF platform that r
 ERS enables the OpenTDF platform to:
 - **Resolve Entities**: Look up users by username, email, or client ID
 - **Create Entity Chains**: Extract entity information from JWT tokens  
-- **Support Multiple Backends**: LDAP, SQL databases, and other identity systems
+- **Support Multiple Backends**: LDAP, SQL databases, and other identity systems (via Multi-Strategy)
 - **Enable Policy Decisions**: Provide entity context for attribute-based access control
 
 ## Available Implementations
 
-### Claims Entity Resolution Service
+### Claims Entity Resolution Service (STABLE)
+- **Status**: ✅ **Stable**
 - **Location**: [`./claims/`](./claims/)
 - **Backends**: JWT token processing with RSA/ECDSA signing
 - **Features**: Token validation, claims extraction, no external dependencies
 - **Use Case**: JWT-based authentication systems, microservice architectures
 
-### Keycloak Entity Resolution Service
+### Keycloak Entity Resolution Service (STABLE)
+- **Status**: ✅ **Stable**  
 - **Location**: [`./keycloak/`](./keycloak/)
 - **Backends**: Keycloak identity provider with Admin API
 - **Features**: Real-time user/client lookup, realm management, OAuth2/OIDC integration
 - **Use Case**: Organizations using Keycloak for identity management
 
-### LDAP Entity Resolution Service
-- **Location**: [`./ldap/`](./ldap/)
-- **Backends**: LDAP, Active Directory
-- **Features**: Multi-server failover, secure LDAPS connections, flexible attribute mapping
-- **Use Case**: Organizations with existing LDAP/AD infrastructure
-
-### SQL Entity Resolution Service  
-- **Location**: [`./sql/`](./sql/)
-- **Backends**: PostgreSQL, MySQL, SQLite
-- **Features**: Connection pooling, parameterized queries, multiple database support
-- **Use Case**: Custom database schemas, high-performance requirements
-
-### Multi-Strategy Entity Resolution Service
+### Multi-Strategy Entity Resolution Service (PREVIEW)
+- **Status**: 🚧 **Preview** (V2 only)
 - **Location**: [`./multi-strategy/`](./multi-strategy/)
 - **Backends**: SQL, LDAP, JWT Claims (all in one service)
 - **Features**: Dynamic strategy selection, data transformations, cross-backend failover
@@ -55,10 +46,10 @@ Select the ERS implementation that matches your identity backend:
 ```yaml
 services:
   entityresolution:
-    mode: claims    # JWT token processing
+    mode: claims    # JWT token processing (default, works with any IdP)
     # OR
     mode: keycloak  # Keycloak identity provider
-    # OR
+    # OR (V2 only)
     mode: multi-strategy  # LDAP, SQL, and JWT Claims with intelligent routing
     # Implementation-specific configuration
 ```
@@ -176,6 +167,7 @@ go test -v
 
 | Feature | Claims ERS | Keycloak ERS | Multi-Strategy ERS |
 |---------|------------|--------------|-------------------|
+| **Status** | ✅ **Stable** | ✅ **Stable** | 🚧 **Preview (V2 only)** |
 | **External Dependencies** | None | Keycloak server | SQL + LDAP + Claims (configurable) |
 | **Connection Management** | Stateless | HTTP client pool | Multiple connection pools |
 | **Security** | JWT signature validation | OAuth2/OIDC | All security types (LDAPS/StartTLS/SSL/TLS) |

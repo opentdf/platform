@@ -1,6 +1,14 @@
-# Multi-Strategy Entity Resolution Service
+# Multi-Strategy Entity Resolution Service (PREVIEW)
+
+> **⚠️ Preview Status**: This service is in preview. APIs and configurations may change.
 
 The Multi-Strategy Entity Resolution Service enables unified access to heterogeneous identity systems through intelligent strategy selection based on JWT context. It consolidates SQL, LDAP, and JWT Claims providers into a single service with advanced data transformation capabilities.
+
+## Stability Status
+- **Service**: 🚧 Preview (V2 only)
+- **SQL Provider**: 🚧 Preview  
+- **LDAP Provider**: 🚧 Preview
+- **Claims Provider**: ✅ Stable (delegates to stable Claims ERS)
 
 ## Overview
 

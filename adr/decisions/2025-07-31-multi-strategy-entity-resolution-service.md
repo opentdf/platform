@@ -137,7 +137,7 @@ conditions:
 ```yaml
 services:
   entityresolution:
-    mode: "multi-strategy"    # New mode alongside existing: keycloak, claims, ldap, sql
+    mode: "multi-strategy"    # New mode alongside existing: keycloak, claims
     
     # Global failure strategy configuration
     failure_strategy: "continue"    # "fail-fast" (default) or "continue"

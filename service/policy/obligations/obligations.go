@@ -10,6 +10,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/obligations/obligationsconnect"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
@@ -99,13 +100,34 @@ func (s *Service) ListObligations(ctx context.Context, req *connect.Request[obli
 }
 
 func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
+	rsp := &obligations.CreateObligationResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeObligationDefinition,
+	}
+
 	s.logger.DebugContext(ctx, "creating obligation", slog.String("name", req.Msg.GetName()))
 
-	obl, err := s.dbClient.CreateObligation(ctx, req.Msg)
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		obl, err := txClient.CreateObligation(ctx, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.ObjectID = obl.GetId()
+		auditParams.Original = obl
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Obligation = obl
+		return nil
+	})
 	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
 		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation", req.Msg.String()))
 	}
-	return connect.NewResponse(&obligations.CreateObligationResponse{Obligation: obl}), nil
+
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *Service) GetObligation(ctx context.Context, req *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {

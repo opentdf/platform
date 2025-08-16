@@ -63,6 +63,9 @@ func Generate(clientsToGenerateList []ClientsToGenerate, outputDir string) error
 						if client.PackageNameOverride != "" {
 							packageName = client.PackageNameOverride
 						}
+						// In order to counter package name fatigue (policy.attributes.AttributesService),
+						// newer services are simply named "Service" (policy.obligations.Service).
+						// This prefix logic is necessary for newer services.
 						prefix := ""
 						if ts.Name.Name == "ServiceClient" {
 							prefix = cases.Title(language.English).String(packageName)

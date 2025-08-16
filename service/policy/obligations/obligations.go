@@ -6,10 +6,13 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/obligations/obligationsconnect"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/logger/audit"
 	"github.com/opentdf/platform/service/pkg/config"
+	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	policyconfig "github.com/opentdf/platform/service/policy/config"
 	policydb "github.com/opentdf/platform/service/policy/db"
@@ -82,34 +85,140 @@ func (s *Service) Close() {
 	s.dbClient.Close()
 }
 
-func (s *Service) ListObligations(_ context.Context, _ *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error) {
-	// TODO: Implement ListObligations logic
-	return connect.NewResponse(&obligations.ListObligationsResponse{}), nil
+func (s *Service) ListObligations(ctx context.Context, req *connect.Request[obligations.ListObligationsRequest]) (*connect.Response[obligations.ListObligationsResponse], error) {
+	s.logger.DebugContext(ctx, "listing obligations")
+
+	os, pr, err := s.dbClient.ListObligations(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextListRetrievalFailed)
+	}
+	rsp := &obligations.ListObligationsResponse{
+		Obligations: os,
+		Pagination:  pr,
+	}
+	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) CreateObligation(_ context.Context, _ *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
-	// TODO: Implement CreateObligation logic
-	return connect.NewResponse(&obligations.CreateObligationResponse{}), nil
+func (s *Service) CreateObligation(ctx context.Context, req *connect.Request[obligations.CreateObligationRequest]) (*connect.Response[obligations.CreateObligationResponse], error) {
+	rsp := &obligations.CreateObligationResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeObligationDefinition,
+	}
+
+	s.logger.DebugContext(ctx, "creating obligation", slog.String("name", req.Msg.GetName()))
+
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		obl, err := txClient.CreateObligation(ctx, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.ObjectID = obl.GetId()
+		auditParams.Original = obl
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Obligation = obl
+		return nil
+	})
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation", req.Msg.String()))
+	}
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) GetObligation(_ context.Context, _ *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
-	// TODO: Implement GetObligation logic
-	return connect.NewResponse(&obligations.GetObligationResponse{}), nil
+func (s *Service) GetObligation(ctx context.Context, req *connect.Request[obligations.GetObligationRequest]) (*connect.Response[obligations.GetObligationResponse], error) {
+	s.logger.DebugContext(ctx, "getting obligation", slog.Any("identifier", req.Msg.GetIdentifier()))
+
+	obl, err := s.dbClient.GetObligation(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
+	}
+	rsp := &obligations.GetObligationResponse{Obligation: obl}
+	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) GetObligationsByFQNs(_ context.Context, _ *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
-	// TODO: Implement GetObligationsByFQNs logic
-	return connect.NewResponse(&obligations.GetObligationsByFQNsResponse{}), nil
+func (s *Service) GetObligationsByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationsByFQNsRequest]) (*connect.Response[obligations.GetObligationsByFQNsResponse], error) {
+	s.logger.DebugContext(ctx, "getting obligations")
+
+	os, err := s.dbClient.GetObligationsByFQNs(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed)
+	}
+	obls := make(map[string]*policy.Obligation)
+	for _, obl := range os {
+		obls[policydb.BuildOblFQN(obl.GetNamespace().GetFqn(), obl.GetName())] = obl
+	}
+	rsp := &obligations.GetObligationsByFQNsResponse{FqnObligationMap: obls}
+	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) UpdateObligation(_ context.Context, _ *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error) {
-	// TODO: Implement UpdateObligation logic
-	return connect.NewResponse(&obligations.UpdateObligationResponse{}), nil
+func (s *Service) UpdateObligation(ctx context.Context, req *connect.Request[obligations.UpdateObligationRequest]) (*connect.Response[obligations.UpdateObligationResponse], error) {
+	id := req.Msg.GetId()
+
+	rsp := &obligations.UpdateObligationResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeObligationDefinition,
+		ObjectID:   id,
+	}
+
+	s.logger.DebugContext(ctx, "updating obligation", slog.String("id", id))
+
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		original, err := txClient.GetObligation(ctx, &obligations.GetObligationRequest{
+			Identifier: &obligations.GetObligationRequest_Id{
+				Id: id,
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		updated, err := txClient.UpdateObligation(ctx, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.Original = original
+		auditParams.Updated = updated
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Obligation = updated
+		return nil
+	})
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("obligation", req.Msg.String()))
+	}
+	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) DeleteObligation(_ context.Context, _ *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error) {
-	// TODO: Implement DeleteObligation logic
-	return connect.NewResponse(&obligations.DeleteObligationResponse{}), nil
+func (s *Service) DeleteObligation(ctx context.Context, req *connect.Request[obligations.DeleteObligationRequest]) (*connect.Response[obligations.DeleteObligationResponse], error) {
+	id := req.Msg.GetId()
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeObligationDefinition,
+		ObjectID:   id,
+	}
+
+	s.logger.DebugContext(ctx, "deleting obligation", slog.String("id", id))
+
+	deleted, err := s.dbClient.DeleteObligation(ctx, req.Msg)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation", req.Msg.String()))
+	}
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp := &obligations.DeleteObligationResponse{Obligation: deleted}
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *Service) CreateObligationValue(_ context.Context, _ *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {

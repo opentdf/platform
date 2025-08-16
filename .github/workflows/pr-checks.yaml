@@ -60,6 +60,7 @@ jobs:
             docs
             sdk
             policy
+            ers
             kas
             authz
             examples

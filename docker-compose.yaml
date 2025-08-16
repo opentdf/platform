@@ -111,3 +111,103 @@ services:
     profiles:
       - tracing
     restart: always
+
+  # Entity Resolution Service Testing Infrastructure
+  # 
+  # Provides PostgreSQL and OpenLDAP services for comprehensive ERS testing
+  # Enables full multi-strategy ERS testing with SQL and LDAP providers
+  #
+  # Usage:
+  #   docker-compose --profile ers-test up -d                    # Start ERS test services
+  #   docker-compose --profile ers-admin up -d                   # Include LDAP admin UI  
+  #   ERS_TEST_POSTGRES_URL="postgres://ers_test_user:ers_test_pass@localhost:5433/ers_test?sslmode=disable" \
+  #   ERS_TEST_LDAP_URL="ldap://localhost:1389" \
+  #   go test ./service/entityresolution/integration -run TestMultiStrategy -v
+  #
+  # Services:
+  #   - ers-postgres: PostgreSQL 16 on port 5433 with test schema and data
+  #   - ers-ldap: OpenLDAP on port 1389 with organizational test data
+  #   - ers-ldap-admin: phpLDAPadmin on port 6443 (ers-admin profile only)
+
+  # PostgreSQL for ERS SQL provider testing
+  ers-postgres:
+    image: postgres:16-alpine
+    container_name: ers_test_postgres
+    profiles:
+      - ers-test
+      - ers-admin
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts with main opentdfdb
+    environment:
+      POSTGRES_DB: ers_test
+      POSTGRES_USER: ers_test_user
+      POSTGRES_PASSWORD: ers_test_pass
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - ers_postgres_data:/var/lib/postgresql/data
+      - ./service/entityresolution/integration/sql_test_data:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ers_test_user -d ers_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # OpenLDAP for ERS LDAP provider testing
+  ers-ldap:
+    image: osixia/openldap:1.5.0
+    container_name: ers_test_openldap
+    profiles:
+      - ers-test
+      - ers-admin
+    ports:
+      - "1389:389"   # LDAP port (different from standard 389)
+      - "1636:636"   # LDAPS port (different from standard 636)
+    environment:
+      LDAP_ORGANISATION: "OpenTDF Test"
+      LDAP_DOMAIN: "opentdf.test"
+      LDAP_ADMIN_PASSWORD: "admin_password"
+      LDAP_CONFIG_PASSWORD: "config_password"
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: "readonly"
+      LDAP_READONLY_USER_PASSWORD: "readonly_password"
+      LDAP_RFC2307BIS_SCHEMA: "false"
+      LDAP_BACKEND: "mdb"
+      LDAP_TLS: "true"
+      LDAP_TLS_ENFORCE: "false"
+      LDAP_REPLICATION: "false"
+      KEEP_EXISTING_CONFIG: "false"
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "true"
+    volumes:
+      - ers_ldap_data:/var/lib/ldap
+      - ers_ldap_config:/etc/ldap/slapd.d
+      - ./service/entityresolution/integration/ldap_test_data:/container/service/slapd/assets/config/bootstrap/ldif/custom
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost:389 -b dc=opentdf,dc=test -D cn=admin,dc=opentdf,dc=test -w admin_password '(objectclass=*)' dn"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # phpLDAPadmin for LDAP management (admin profile only)
+  ers-ldap-admin:
+    image: osixia/phpldapadmin:latest
+    container_name: ers_ldap_admin
+    profiles:
+      - ers-admin  # Only available with --profile ers-admin
+    ports:
+      - "6443:443"
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: ers-ldap
+      PHPLDAPADMIN_HTTPS: "false"
+    depends_on:
+      ers-ldap:
+        condition: service_healthy
+
+volumes:
+  ers_postgres_data:
+    name: ers_test_postgres_data
+  ers_ldap_data:
+    name: ers_test_ldap_data
+  ers_ldap_config:
+    name: ers_test_ldap_config

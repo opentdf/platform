@@ -1,0 +1,259 @@
+# OpenTDF Entity Resolution Service Test Configuration
+# 
+# This configuration demonstrates the multi-strategy ERS with Docker test services
+# Use with: docker-compose --profile ers-test up -d
+#
+# Environment Variables:
+#   ERS_TEST_POSTGRES_URL="postgres://ers_test_user:ers_test_pass@localhost:5433/ers_test?sslmode=disable"
+#   ERS_TEST_LDAP_URL="ldap://localhost:1389"
+
+# Core OpenTDF Configuration
+mode: standalone
+logger:
+  level: info
+  type: json
+
+crypto:
+  type: standard
+  keys:
+    - kid: ec1
+      alg: ES256
+    - kid: r1
+      alg: RS256
+
+# Database Configuration (Main OpenTDF DB)
+database:
+  host: localhost
+  port: 5432
+  database: opentdf
+  user: postgres
+  password: changeme
+  sslmode: prefer
+
+# Service Configuration
+services:
+  # Key Access Service
+  kas:
+    enabled: true
+    port: 9000
+  
+  # Policy Service  
+  policy:
+    enabled: true
+    port: 9001
+  
+  # Authorization Service
+  authorization:
+    enabled: true
+    port: 9002
+
+# Entity Resolution Service Configuration with Multi-Strategy
+entityresolution:
+  enabled: true
+  port: 9003
+  # Multi-strategy ERS configuration for comprehensive testing
+  type: multi-strategy
+  config:
+    # Failure strategy determines behavior when strategies fail
+    # - fail_fast: Stop on first failure (production default)
+    # - continue: Try all strategies, aggregate results (testing/development)
+    failure_strategy: continue
+    
+    # Provider configurations - each provider connects to a different data source
+    providers:
+      # JWT Claims Provider (no external dependencies)
+      jwt_claims:
+        type: claims
+        connection: {}
+        description: "JWT token claims extraction for testing"
+      
+      # SQL Provider using Docker PostgreSQL test service
+      sql_postgres:
+        type: sql
+        connection:
+          driver: postgres
+          host: localhost
+          port: 5433  # ERS test PostgreSQL port
+          database: ers_test
+          username: ers_test_user
+          password: ers_test_pass
+          ssl_mode: disable
+          max_open_connections: 10
+          max_idle_connections: 5
+          connection_max_lifetime: 1h
+          query_timeout: 30s
+        description: "PostgreSQL test database with organizational data"
+      
+      # LDAP Provider using Docker OpenLDAP test service  
+      ldap_directory:
+        type: ldap
+        connection:
+          host: localhost
+          port: 1389  # ERS test LDAP port
+          use_tls: false
+          bind_dn: "cn=readonly,dc=opentdf,dc=test"
+          bind_password: "readonly_password"
+          max_connections: 5
+          timeout: 30s
+        description: "OpenLDAP test directory with organizational structure"
+    
+    # Mapping strategies define how JWT claims map to entities from each provider
+    mapping_strategies:
+      # Strategy 1: Extract client/environment entities from JWT azp claim via SQL
+      - name: client_environment_sql
+        provider: sql_postgres
+        entity_type: environment
+        conditions:
+          jwt_claims:
+            - claim: azp
+              operator: exists
+              values: []
+        input_mapping:
+          - jwt_claim: azp
+            provider_field: client_id
+        output_mapping:
+          - source_claim: client_id
+            claim_name: client_id
+          - source_claim: client_name  
+            claim_name: display_name
+          - source_claim: environment
+            claim_name: environment
+        query: |
+          SELECT client_id, client_name, environment, description
+          FROM ers_clients 
+          WHERE client_id = $1 AND active = true
+
+      # Strategy 2: Extract user/subject entities from JWT sub claim via SQL
+      - name: user_subject_sql
+        provider: sql_postgres
+        entity_type: subject
+        conditions:
+          jwt_claims:
+            - claim: sub
+              operator: exists
+              values: []
+        input_mapping:
+          - jwt_claim: sub
+            provider_field: username
+        output_mapping:
+          - source_claim: username
+            claim_name: username
+          - source_claim: email
+            claim_name: email_address
+          - source_claim: first_name
+            claim_name: given_name
+          - source_claim: last_name
+            claim_name: family_name
+          - source_claim: department
+            claim_name: department
+        query: |
+          SELECT username, email, first_name, last_name, department, job_title
+          FROM ers_users 
+          WHERE username = $1 AND active = true
+
+      # Strategy 3: Extract client entities from JWT azp claim via LDAP
+      - name: client_environment_ldap
+        provider: ldap_directory
+        entity_type: environment
+        conditions:
+          jwt_claims:
+            - claim: azp
+              operator: exists
+              values: []
+        input_mapping:
+          - jwt_claim: azp
+            provider_field: client_id
+        output_mapping:
+          - source_claim: cn
+            claim_name: client_id
+          - source_claim: description
+            claim_name: display_name
+          - source_claim: applicationCategory
+            claim_name: environment
+        ldap_config:
+          base_dn: "ou=clients,dc=opentdf,dc=test"
+          filter: "(&(objectClass=applicationEntity)(cn={client_id}))"
+          attributes: ["cn", "description", "applicationCategory", "applicationStatus"]
+
+      # Strategy 4: Extract user entities from JWT preferred_username via LDAP
+      - name: user_subject_ldap
+        provider: ldap_directory
+        entity_type: subject
+        conditions:
+          jwt_claims:
+            - claim: preferred_username
+              operator: exists
+              values: []
+        input_mapping:
+          - jwt_claim: preferred_username
+            provider_field: username
+        output_mapping:
+          - source_claim: uid
+            claim_name: username
+          - source_claim: mail
+            claim_name: email_address
+          - source_claim: givenName
+            claim_name: given_name
+          - source_claim: sn
+            claim_name: family_name
+          - source_claim: departmentNumber
+            claim_name: department
+        ldap_config:
+          base_dn: "ou=users,dc=opentdf,dc=test"
+          filter: "(&(objectClass=inetOrgPerson)(uid={username}))"
+          attributes: ["uid", "mail", "givenName", "sn", "departmentNumber", "title"]
+
+      # Strategy 5: Fallback JWT claims extraction (no external provider)
+      - name: jwt_claims_fallback
+        provider: jwt_claims
+        entity_type: subject
+        conditions:
+          jwt_claims:
+            - claim: sub
+              operator: exists
+              values: []
+        input_mapping: []
+        output_mapping:
+          - source_claim: sub
+            claim_name: username
+          - source_claim: email
+            claim_name: email_address
+          - source_claim: preferred_username
+            claim_name: preferred_username
+          - source_claim: azp
+            claim_name: client_id
+
+# Server Configuration
+server:
+  port: 8080
+  tls:
+    enabled: false
+  cors:
+    enabled: true
+    allowed_origins:
+      - "http://localhost:3000"
+      - "http://localhost:8080"
+    allowed_methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    allowed_headers:
+      - "*"
+
+# Cache Configuration (optional)
+cache:
+  type: memory
+  memory:
+    size: 1000
+    ttl: 300s
+
+# Development and Testing Settings
+development:
+  # Enable additional logging for ERS
+  verbose_logging: true
+  # Allow insecure connections for testing
+  allow_insecure: true
+  # Disable some validations for easier testing
+  strict_validation: false

@@ -8,7 +8,7 @@ import (
 )
 
 func TestLDAPMapper_ExtractParameters(t *testing.T) {
-	mapper := NewLDAPMapper()
+	mapper := NewMapper()
 
 	tests := []struct {
 		name           string
@@ -91,7 +91,7 @@ func TestLDAPMapper_ExtractParameters(t *testing.T) {
 }
 
 func TestLDAPMapper_TransformResults(t *testing.T) {
-	mapper := NewLDAPMapper()
+	mapper := NewMapper()
 
 	tests := []struct {
 		name           string
@@ -211,35 +211,48 @@ func TestLDAPMapper_TransformResults(t *testing.T) {
 			}
 
 			for key, expectedValue := range tt.expectedClaims {
-				if actualValue, exists := claims[key]; !exists {
-					t.Errorf("Expected claim %s not found", key)
-				} else {
-					// Handle slice comparison
-					if expectedSlice, ok := expectedValue.([]string); ok {
-						if actualSlice, ok := actualValue.([]string); ok {
-							if len(expectedSlice) != len(actualSlice) {
-								t.Errorf("Claim %s: expected slice length %d, got %d", key, len(expectedSlice), len(actualSlice))
-							} else {
-								for i, expectedItem := range expectedSlice {
-									if actualSlice[i] != expectedItem {
-										t.Errorf("Claim %s[%d]: expected %v, got %v", key, i, expectedItem, actualSlice[i])
-									}
-								}
-							}
-						} else {
-							t.Errorf("Claim %s: expected slice, got %T", key, actualValue)
-						}
-					} else if actualValue != expectedValue {
-						t.Errorf("Claim %s: expected %v, got %v", key, expectedValue, actualValue)
-					}
-				}
+				verifyClaimValue(t, claims, key, expectedValue)
 			}
 		})
 	}
 }
 
+func verifyClaimValue(t *testing.T, claims map[string]interface{}, key string, expectedValue interface{}) {
+	actualValue, exists := claims[key]
+	if !exists {
+		t.Errorf("Expected claim %s not found", key)
+		return
+	}
+
+	// Handle slice comparison
+	expectedSlice, isSlice := expectedValue.([]string)
+	if !isSlice {
+		if actualValue != expectedValue {
+			t.Errorf("Claim %s: expected %v, got %v", key, expectedValue, actualValue)
+		}
+		return
+	}
+
+	actualSlice, sliceOK := actualValue.([]string)
+	if !sliceOK {
+		t.Errorf("Claim %s: expected slice, got %T", key, actualValue)
+		return
+	}
+
+	if len(expectedSlice) != len(actualSlice) {
+		t.Errorf("Claim %s: expected slice length %d, got %d", key, len(expectedSlice), len(actualSlice))
+		return
+	}
+
+	for i, expectedItem := range expectedSlice {
+		if actualSlice[i] != expectedItem {
+			t.Errorf("Claim %s[%d]: expected %v, got %v", key, i, expectedItem, actualSlice[i])
+		}
+	}
+}
+
 func TestLDAPMapper_ValidateInputMapping(t *testing.T) {
-	mapper := NewLDAPMapper()
+	mapper := NewMapper()
 
 	tests := []struct {
 		name         string
@@ -295,7 +308,7 @@ func TestLDAPMapper_ValidateInputMapping(t *testing.T) {
 }
 
 func TestLDAPMapper_ValidateOutputMapping(t *testing.T) {
-	mapper := NewLDAPMapper()
+	mapper := NewMapper()
 
 	tests := []struct {
 		name          string
@@ -358,7 +371,7 @@ func TestLDAPMapper_ValidateOutputMapping(t *testing.T) {
 }
 
 func TestLDAPMapper_GetSupportedTransformations(t *testing.T) {
-	mapper := NewLDAPMapper()
+	mapper := NewMapper()
 	transformations := mapper.GetSupportedTransformations()
 
 	expectedTransformations := []string{
@@ -438,7 +451,7 @@ func TestLDAPMapper_extractCNFromDN(t *testing.T) {
 }
 
 func TestLDAPMapper_escapeLDAPFilter(t *testing.T) {
-	mapper := NewLDAPMapper()
+	mapper := NewMapper()
 
 	tests := []struct {
 		name     string

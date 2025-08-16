@@ -11,7 +11,7 @@ func TestMain(m *testing.M) {
 	// Initialize test environment
 	cleanupFunc, err := initializeTestEnvironment()
 	if err != nil {
-		slog.Error("Failed to initialize test environment", slog.String("error", err.Error()))
+		slog.Error("failed to initialize test environment", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
@@ -34,5 +34,5 @@ func initializeTestEnvironment() (func(), error) {
 
 func cleanup() {
 	// Adapter-specific cleanup is handled by each test scope
-	slog.Info("Global test environment cleanup completed")
+	slog.Info("global test environment cleanup completed")
 }

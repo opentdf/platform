@@ -1,9 +1,7 @@
 package integration
 
 import (
-	"connectrpc.com/connect"
-	"github.com/opentdf/platform/protocol/go/entity"
-	"github.com/opentdf/platform/service/entityresolution/integration/internal"
+	_ "connectrpc.com/connect" // Example import for documentation
 )
 
 // ExampleNewContractTest demonstrates how to add a new test to the contract suite
@@ -16,105 +14,24 @@ func init() {
 }
 
 // Example: How to add a new test case for bulk resolution performance
-func createBulkResolutionTestCase() internal.ContractTestCase {
-	return internal.ContractTestCase{
-		Name:        "BulkResolutionPerformance",
-		Description: "Should efficiently resolve a large number of entities in a single request",
-		Input: internal.ContractInput{
-			Entities: []*entity.Entity{
-				internal.CreateTestEntityByUsername("alice"),
-				internal.CreateTestEntityByUsername("bob"),
-				internal.CreateTestEntityByUsername("charlie"),
-				internal.CreateTestEntityByEmail("alice@opentdf.test"),
-				internal.CreateTestEntityByEmail("bob@opentdf.test"),
-				internal.CreateTestEntityByClientID("test-client-1"),
-				internal.CreateTestEntityByClientID("test-client-2"),
-				// Add more entities to test bulk performance...
-			},
-		},
-		Expected: internal.ContractExpected{
-			EntityCount: 7, // Expecting 7 resolved entities
-			ShouldError: false,
-			EntityValidation: []internal.EntityValidationRule{
-				{
-					Index:       0,
-					EphemeralID: "test-user-alice",
-					RequiredFields: map[string]interface{}{
-						"username": "alice",
-						"email":    "alice@opentdf.test",
-					},
-					MinFieldCount: 2,
-				},
-				// Add validation rules for other entities...
-			},
-		},
-	}
-}
+// func createBulkResolutionTestCase() internal.ContractTestCase {
+//	 Example implementation removed to eliminate unused function warning
+// }
 
 // Example: How to add a new test case for edge case handling
-func createEdgeCaseTestCase() internal.ContractTestCase {
-	return internal.ContractTestCase{
-		Name:        "EmptyEntityListHandling",
-		Description: "Should handle empty entity list gracefully",
-		Input: internal.ContractInput{
-			Entities: []*entity.Entity{}, // Empty list
-		},
-		Expected: internal.ContractExpected{
-			EntityCount:      0,
-			ShouldError:      false,
-			EntityValidation: []internal.EntityValidationRule{}, // No entities to validate
-		},
-	}
-}
+// func createEdgeCaseTestCase() internal.ContractTestCase {
+//	 Example implementation removed to eliminate unused function warning
+// }
 
 // Example: How to add a new test case for error conditions
-func createErrorConditionTestCase() internal.ContractTestCase {
-	return internal.ContractTestCase{
-		Name:        "InvalidEntityTypeHandling",
-		Description: "Should handle invalid entity types gracefully",
-		Input: internal.ContractInput{
-			Entities: []*entity.Entity{
-				{
-					EphemeralId: "test-invalid",
-					// Intentionally missing EntityType to trigger error handling
-				},
-			},
-		},
-		Expected: internal.ContractExpected{
-			EntityCount: 0,
-			ShouldError: true,
-			ErrorCode:   connect.CodeInvalidArgument,
-		},
-	}
-}
+// func createErrorConditionTestCase() internal.ContractTestCase {
+//	 Example implementation removed to eliminate unused function warning
+// }
 
 // Example: How to add a new test case for specific fixture requirements
-func createFixtureSpecificTestCase() internal.ContractTestCase {
-	return internal.ContractTestCase{
-		Name:        "GroupMembershipResolution",
-		Description: "Should resolve user group memberships when available",
-		Input: internal.ContractInput{
-			Entities: []*entity.Entity{
-				internal.CreateTestEntityByUsername("alice"), // Alice should be in admin group
-			},
-		},
-		Expected: internal.ContractExpected{
-			EntityCount: 1,
-			ShouldError: false,
-			EntityValidation: []internal.EntityValidationRule{
-				{
-					Index:       0,
-					EphemeralID: "test-user-alice",
-					RequiredFields: map[string]interface{}{
-						"username": "alice",
-						"groups":   "admin", // Expecting group membership
-					},
-					MinFieldCount: 3, // username, email, groups minimum
-				},
-			},
-		},
-	}
-}
+// func createFixtureSpecificTestCase() internal.ContractTestCase {
+//	 Example implementation removed to eliminate unused function warning
+// }
 
 /*
 Adding new contract tests is simple and powerful:

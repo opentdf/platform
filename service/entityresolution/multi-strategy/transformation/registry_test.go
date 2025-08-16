@@ -6,7 +6,7 @@ import (
 )
 
 func TestTransformationRegistry_ApplyTransformation(t *testing.T) {
-	registry := NewTransformationRegistry()
+	registry := NewRegistry()
 
 	tests := []struct {
 		name           string
@@ -142,7 +142,7 @@ func TestTransformationRegistry_ApplyTransformation(t *testing.T) {
 }
 
 func TestTransformationRegistry_GetSupportedTransformations(t *testing.T) {
-	registry := NewTransformationRegistry()
+	registry := NewRegistry()
 
 	tests := []struct {
 		name          string
@@ -214,7 +214,7 @@ func TestTransformationRegistry_GetSupportedTransformations(t *testing.T) {
 }
 
 func TestTransformationRegistry_ValidateTransformation(t *testing.T) {
-	registry := NewTransformationRegistry()
+	registry := NewRegistry()
 
 	tests := []struct {
 		name           string

@@ -4,17 +4,17 @@ import (
 	"fmt"
 )
 
-// TransformationRegistry provides a unified interface for applying transformations
+// Registry provides a unified interface for applying transformations
 // across all provider types with fallback to common transformations
-type TransformationRegistry struct{}
+type Registry struct{}
 
-// NewTransformationRegistry creates a new transformation registry
-func NewTransformationRegistry() *TransformationRegistry {
-	return &TransformationRegistry{}
+// NewRegistry creates a new transformation registry
+func NewRegistry() *Registry {
+	return &Registry{}
 }
 
 // ApplyTransformation applies a transformation with provider-aware fallback
-func (r *TransformationRegistry) ApplyTransformation(value interface{}, transformation string, providerType string) (interface{}, error) {
+func (r *Registry) ApplyTransformation(value interface{}, transformation string, providerType string) (interface{}, error) {
 	if transformation == "" {
 		return value, nil
 	}
@@ -44,7 +44,7 @@ func (r *TransformationRegistry) ApplyTransformation(value interface{}, transfor
 }
 
 // GetSupportedTransformations returns all transformations supported by a provider type
-func (r *TransformationRegistry) GetSupportedTransformations(providerType string) []string {
+func (r *Registry) GetSupportedTransformations(providerType string) []string {
 	switch providerType {
 	case "sql":
 		return GetAllSQLTransformations()
@@ -58,7 +58,7 @@ func (r *TransformationRegistry) GetSupportedTransformations(providerType string
 }
 
 // ValidateTransformation checks if a transformation is supported by a provider type
-func (r *TransformationRegistry) ValidateTransformation(transformation string, providerType string) error {
+func (r *Registry) ValidateTransformation(transformation string, providerType string) error {
 	if !IsSupportedByProvider(transformation, providerType) {
 		return fmt.Errorf("transformation '%s' is not supported by provider type '%s'", transformation, providerType)
 	}
@@ -66,7 +66,7 @@ func (r *TransformationRegistry) ValidateTransformation(transformation string, p
 }
 
 // tryApplySQL attempts to apply SQL-specific transformations
-func (r *TransformationRegistry) tryApplySQL(value interface{}, transformation string) (interface{}, error) {
+func (r *Registry) tryApplySQL(value interface{}, transformation string) (interface{}, error) {
 	// Check if it's an SQL-specific transformation
 	sqlTransformations := GetSQLTransformations()
 	for _, t := range sqlTransformations {
@@ -78,7 +78,7 @@ func (r *TransformationRegistry) tryApplySQL(value interface{}, transformation s
 }
 
 // tryApplyLDAP attempts to apply LDAP-specific transformations
-func (r *TransformationRegistry) tryApplyLDAP(value interface{}, transformation string) (interface{}, error) {
+func (r *Registry) tryApplyLDAP(value interface{}, transformation string) (interface{}, error) {
 	// Check if it's an LDAP-specific transformation
 	ldapTransformations := GetLDAPTransformations()
 	for _, t := range ldapTransformations {
@@ -90,7 +90,7 @@ func (r *TransformationRegistry) tryApplyLDAP(value interface{}, transformation 
 }
 
 // tryApplyClaims attempts to apply Claims-specific transformations
-func (r *TransformationRegistry) tryApplyClaims(value interface{}, transformation string) (interface{}, error) {
+func (r *Registry) tryApplyClaims(value interface{}, transformation string) (interface{}, error) {
 	// Check if it's a Claims-specific transformation
 	claimsTransformations := GetClaimsTransformations()
 	for _, t := range claimsTransformations {
@@ -102,4 +102,4 @@ func (r *TransformationRegistry) tryApplyClaims(value interface{}, transformatio
 }
 
 // Global registry instance for convenience
-var DefaultRegistry = NewTransformationRegistry()
+var DefaultRegistry = NewRegistry()

@@ -1,29 +1,30 @@
 package claims
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/transformation"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
-// ClaimsMapper handles mapping for JWT Claims providers
-type ClaimsMapper struct {
+// Mapper handles mapping for JWT Claims providers
+type Mapper struct {
 	providerType string
 }
 
-// Ensure ClaimsMapper implements types.Mapper interface
-var _ types.Mapper = (*ClaimsMapper)(nil)
+// Ensure Mapper implements types.Mapper interface
+var _ types.Mapper = (*Mapper)(nil)
 
-// NewClaimsMapper creates a new Claims mapper
-func NewClaimsMapper() *ClaimsMapper {
-	return &ClaimsMapper{
+// NewMapper creates a new Claims mapper
+func NewMapper() *Mapper {
+	return &Mapper{
 		providerType: "claims",
 	}
 }
 
 // ExtractParameters extracts parameters for Claims provider (minimal since it uses JWT directly)
-func (m *ClaimsMapper) ExtractParameters(jwtClaims types.JWTClaims, inputMapping []types.InputMapping) (map[string]interface{}, error) {
+func (m *Mapper) ExtractParameters(jwtClaims types.JWTClaims, inputMapping []types.InputMapping) (map[string]interface{}, error) {
 	// Claims provider doesn't typically need input mapping since it uses JWT claims directly
 	// But we support it for consistency and potential filtering use cases
 	params := make(map[string]interface{})
@@ -44,7 +45,7 @@ func (m *ClaimsMapper) ExtractParameters(jwtClaims types.JWTClaims, inputMapping
 }
 
 // TransformResults transforms JWT claims to standardized claims
-func (m *ClaimsMapper) TransformResults(rawData map[string]interface{}, outputMapping []types.OutputMapping) (map[string]interface{}, error) {
+func (m *Mapper) TransformResults(rawData map[string]interface{}, outputMapping []types.OutputMapping) (map[string]interface{}, error) {
 	claims := make(map[string]interface{})
 
 	for _, mapping := range outputMapping {
@@ -68,14 +69,14 @@ func (m *ClaimsMapper) TransformResults(rawData map[string]interface{}, outputMa
 }
 
 // ValidateInputMapping validates Claims-specific input mapping requirements
-func (m *ClaimsMapper) ValidateInputMapping(inputMapping []types.InputMapping) error {
+func (m *Mapper) ValidateInputMapping(inputMapping []types.InputMapping) error {
 	// Base validation
 	for _, mapping := range inputMapping {
 		if mapping.JWTClaim == "" {
-			return fmt.Errorf("jwt_claim cannot be empty")
+			return errors.New("jwt_claim cannot be empty")
 		}
 		if mapping.Parameter == "" {
-			return fmt.Errorf("parameter cannot be empty")
+			return errors.New("parameter cannot be empty")
 		}
 	}
 
@@ -85,17 +86,17 @@ func (m *ClaimsMapper) ValidateInputMapping(inputMapping []types.InputMapping) e
 }
 
 // ValidateOutputMapping validates Claims-specific output mapping requirements
-func (m *ClaimsMapper) ValidateOutputMapping(outputMapping []types.OutputMapping) error {
+func (m *Mapper) ValidateOutputMapping(outputMapping []types.OutputMapping) error {
 	// Base validation
 	for _, mapping := range outputMapping {
 		if mapping.ClaimName == "" {
-			return fmt.Errorf("claim_name cannot be empty")
+			return errors.New("claim_name cannot be empty")
 		}
 	}
 
 	for _, mapping := range outputMapping {
 		if mapping.SourceClaim == "" {
-			return fmt.Errorf("source_claim cannot be empty for Claims mapper")
+			return errors.New("source_claim cannot be empty for Claims mapper")
 		}
 
 		// Validate transformation is supported
@@ -108,16 +109,16 @@ func (m *ClaimsMapper) ValidateOutputMapping(outputMapping []types.OutputMapping
 }
 
 // GetSupportedTransformations returns Claims-specific transformations
-func (m *ClaimsMapper) GetSupportedTransformations() []string {
+func (m *Mapper) GetSupportedTransformations() []string {
 	return transformation.GetAllClaimsTransformations()
 }
 
 // ApplyTransformation applies Claims-specific transformations
-func (m *ClaimsMapper) ApplyTransformation(value interface{}, transformationName string) (interface{}, error) {
+func (m *Mapper) ApplyTransformation(value interface{}, transformationName string) (interface{}, error) {
 	return transformation.DefaultRegistry.ApplyTransformation(value, transformationName, "claims")
 }
 
 // isTransformationSupported checks if a transformation is supported by Claims mapper
-func (m *ClaimsMapper) isTransformationSupported(transformationName string) bool {
+func (m *Mapper) isTransformationSupported(transformationName string) bool {
 	return transformation.IsSupportedByProvider(transformationName, "claims")
 }

@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -37,13 +38,7 @@ func NewContainerManager(config ContainerConfig) *ContainerManager {
 // Start starts the container and waits for it to be ready
 func (cm *ContainerManager) Start(ctx context.Context) error {
 	if cm.Container != nil {
-		return fmt.Errorf("container already started")
-	}
-
-	// Set default timeout if not specified
-	timeout := cm.Config.Timeout
-	if timeout == 0 {
-		timeout = 5 * time.Minute
+		return errors.New("container already started")
 	}
 
 	req := tc.ContainerRequest{
@@ -74,7 +69,9 @@ func (cm *ContainerManager) Stop(ctx context.Context) error {
 
 	if err := cm.Container.Terminate(ctx); err != nil {
 		// Log warning but don't fail - container might already be terminated
-		slog.Warn("Failed to terminate container", "image", cm.Config.Image, "error", err.Error())
+		slog.Warn("failed to terminate container",
+			slog.String("image", cm.Config.Image),
+			slog.String("error", err.Error()))
 	}
 
 	cm.Container = nil
@@ -84,7 +81,7 @@ func (cm *ContainerManager) Stop(ctx context.Context) error {
 // GetMappedPort returns the host port mapped to the container port
 func (cm *ContainerManager) GetMappedPort(ctx context.Context, containerPort string) (int, error) {
 	if cm.Container == nil {
-		return 0, fmt.Errorf("container not started")
+		return 0, errors.New("container not started")
 	}
 
 	mappedPort, err := cm.Container.MappedPort(ctx, nat.Port(containerPort))
@@ -139,7 +136,9 @@ func (suite *ContainerTestSuite) StopAll(ctx context.Context) error {
 	var lastErr error
 	for name, manager := range suite.containers {
 		if err := manager.Stop(ctx); err != nil {
-			slog.Warn("Failed to stop container", "name", name, "error", err.Error())
+			slog.Warn("failed to stop container",
+				slog.String("name", name),
+				slog.String("error", err.Error()))
 			lastErr = err
 		}
 	}

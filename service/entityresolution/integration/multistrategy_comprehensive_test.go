@@ -1,10 +1,10 @@
 package integration
 
 import (
-	"context"
 	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -68,8 +68,8 @@ func TestMultiStrategy_ClaimsOnly(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ctx := t.Context()
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -89,21 +89,21 @@ func TestMultiStrategy_ClaimsOnly(t *testing.T) {
 		t.Fatalf("CreateEntityChainsFromTokens failed: %v", err)
 	}
 
-	if len(resp.Msg.EntityChains) != 1 {
-		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.EntityChains))
+	if len(resp.Msg.GetEntityChains()) != 1 {
+		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
 	}
 
-	chain := resp.Msg.EntityChains[0]
-	if len(chain.Entities) == 0 {
+	chain := resp.Msg.GetEntityChains()[0]
+	if len(chain.GetEntities()) == 0 {
 		t.Fatal("Expected at least one entity in chain")
 	}
 
-	entity := chain.Entities[0]
+	entity := chain.GetEntities()[0]
 	if entity.GetUserName() != "testuser" {
 		t.Errorf("Expected username 'testuser', got '%s'", entity.GetUserName())
 	}
 
-	t.Logf("✅ Claims-only multi-strategy test passed: Created %d entities", len(chain.Entities))
+	t.Logf("✅ Claims-only multi-strategy test passed: Created %d entities", len(chain.GetEntities()))
 }
 
 // Test 2: SQL-only multi-strategy test with container
@@ -113,7 +113,7 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 	}
 
 	// Start PostgreSQL container
-	ctx := context.Background()
+	ctx := t.Context()
 	postgresContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:        "postgres:15",
@@ -148,10 +148,28 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 	}
 
 	// Connect to database and create test data
-	connStr := fmt.Sprintf("postgres://testuser:testpass@%s:%s/testdb?sslmode=disable", host, mappedPort.Port())
-	db, err := sql.Open("pgx", connStr)
+	connStr := fmt.Sprintf("postgres://testuser:testpass@%s/testdb?sslmode=disable", net.JoinHostPort(host, mappedPort.Port()))
+
+	// Retry connection to handle container startup timing
+	var db *sql.DB
+	for i := 0; i < 10; i++ {
+		db, err = sql.Open("postgres", connStr)
+		if err != nil {
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+
+		// Test connection
+		if err = db.Ping(); err != nil {
+			db.Close()
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		break
+	}
+
 	if err != nil {
-		t.Fatalf("Failed to connect to database: %v", err)
+		t.Fatalf("Failed to connect to database after retries: %v", err)
 	}
 	defer db.Close()
 
@@ -182,7 +200,7 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 				Name:       "sql_user_lookup",
 				Provider:   "sql_provider",
 				EntityType: types.EntityTypeSubject,
-				Query:      "SELECT username, email, display_name FROM users WHERE username = $2::text AND $1::text IS NOT NULL",
+				Query:      "SELECT username, email, display_name FROM users WHERE username = $1::text",
 				Conditions: types.StrategyConditions{
 					JWTClaims: []types.JWTClaimCondition{
 						{
@@ -217,7 +235,7 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 		},
 	}
 
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -237,16 +255,16 @@ func TestMultiStrategy_SQLOnly(t *testing.T) {
 		t.Fatalf("CreateEntityChainsFromTokens failed: %v", err)
 	}
 
-	if len(resp.Msg.EntityChains) != 1 {
-		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.EntityChains))
+	if len(resp.Msg.GetEntityChains()) != 1 {
+		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
 	}
 
-	chain := resp.Msg.EntityChains[0]
-	if len(chain.Entities) == 0 {
+	chain := resp.Msg.GetEntityChains()[0]
+	if len(chain.GetEntities()) == 0 {
 		t.Fatal("Expected at least one entity in chain")
 	}
 
-	t.Logf("✅ SQL-only multi-strategy test passed: Created %d entities", len(chain.Entities))
+	t.Logf("✅ SQL-only multi-strategy test passed: Created %d entities", len(chain.GetEntities()))
 }
 
 // Test 3: LDAP-only multi-strategy test with container
@@ -256,7 +274,7 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 	}
 
 	// Start OpenLDAP container
-	ctx := context.Background()
+	ctx := t.Context()
 	ldapContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
 			Image:        "osixia/openldap:1.5.0",
@@ -354,7 +372,7 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 		},
 	}
 
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		// Check if this is the expected LDAP stub error
 		if strings.Contains(err.Error(), "LDAP not implemented - stub function") {
@@ -389,8 +407,8 @@ func TestMultiStrategy_LDAPOnly(t *testing.T) {
 		return
 	}
 
-	if len(resp.Msg.EntityChains) > 0 {
-		t.Logf("✅ LDAP-only multi-strategy test passed: Created %d entities", len(resp.Msg.EntityChains[0].Entities))
+	if len(resp.Msg.GetEntityChains()) > 0 {
+		t.Logf("✅ LDAP-only multi-strategy test passed: Created %d entities", len(resp.Msg.GetEntityChains()[0].GetEntities()))
 	}
 }
 
@@ -472,8 +490,8 @@ func TestMultiStrategy_MultiProviderFailover(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ctx := t.Context()
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -491,21 +509,21 @@ func TestMultiStrategy_MultiProviderFailover(t *testing.T) {
 		t.Fatalf("Multi-provider failover test failed: %v", err)
 	}
 
-	if len(resp.Msg.EntityChains) != 1 {
-		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.EntityChains))
+	if len(resp.Msg.GetEntityChains()) != 1 {
+		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
 	}
 
-	chain := resp.Msg.EntityChains[0]
-	if len(chain.Entities) == 0 {
+	chain := resp.Msg.GetEntityChains()[0]
+	if len(chain.GetEntities()) == 0 {
 		t.Fatal("Expected at least one entity in chain after failover")
 	}
 
-	entity := chain.Entities[0]
+	entity := chain.GetEntities()[0]
 	if entity.GetUserName() != "failover-user" {
 		t.Errorf("Expected username 'failover-user', got '%s'", entity.GetUserName())
 	}
 
-	t.Logf("✅ Multi-provider failover test passed: Failed over to claims provider and created %d entities", len(chain.Entities))
+	t.Logf("✅ Multi-provider failover test passed: Failed over to claims provider and created %d entities", len(chain.GetEntities()))
 }
 
 // Test 5: Multi-provider early success test (short circuit)
@@ -570,8 +588,8 @@ func TestMultiStrategy_MultiProviderEarlySuccess(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ctx := t.Context()
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -592,16 +610,16 @@ func TestMultiStrategy_MultiProviderEarlySuccess(t *testing.T) {
 		t.Fatalf("Multi-provider early success test failed: %v", err)
 	}
 
-	if len(resp.Msg.EntityChains) != 1 {
-		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.EntityChains))
+	if len(resp.Msg.GetEntityChains()) != 1 {
+		t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
 	}
 
-	chain := resp.Msg.EntityChains[0]
-	if len(chain.Entities) == 0 {
+	chain := resp.Msg.GetEntityChains()[0]
+	if len(chain.GetEntities()) == 0 {
 		t.Fatal("Expected at least one entity in chain")
 	}
 
-	entity := chain.Entities[0]
+	entity := chain.GetEntities()[0]
 	if entity.GetUserName() != "early-user" {
 		t.Errorf("Expected username 'early-user', got '%s'", entity.GetUserName())
 	}
@@ -611,7 +629,7 @@ func TestMultiStrategy_MultiProviderEarlySuccess(t *testing.T) {
 		t.Errorf("Expected fast response due to short-circuit, took %v", duration)
 	}
 
-	t.Logf("✅ Multi-provider early success test passed: Short-circuited successfully in %v, created %d entities", duration, len(chain.Entities))
+	t.Logf("✅ Multi-provider early success test passed: Short-circuited successfully in %v, created %d entities", duration, len(chain.GetEntities()))
 }
 
 // Test 6: Entity chain creation comprehensive test
@@ -672,8 +690,8 @@ func TestMultiStrategy_EntityChainCreation(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ctx := t.Context()
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -701,31 +719,31 @@ func TestMultiStrategy_EntityChainCreation(t *testing.T) {
 		t.Fatalf("Entity chain creation test failed: %v", err)
 	}
 
-	if len(resp.Msg.EntityChains) != 3 {
-		t.Fatalf("Expected 3 entity chains, got %d", len(resp.Msg.EntityChains))
+	if len(resp.Msg.GetEntityChains()) != 3 {
+		t.Fatalf("Expected 3 entity chains, got %d", len(resp.Msg.GetEntityChains()))
 	}
 
 	totalEntities := 0
-	for i, chain := range resp.Msg.EntityChains {
-		if len(chain.Entities) == 0 {
+	for i, chain := range resp.Msg.GetEntityChains() {
+		if len(chain.GetEntities()) == 0 {
 			t.Errorf("Chain %d has no entities", i)
 			continue
 		}
 
-		totalEntities += len(chain.Entities)
+		totalEntities += len(chain.GetEntities())
 
-		entity := chain.Entities[0]
+		entity := chain.GetEntities()[0]
 		expectedUsername := fmt.Sprintf("chain-user-%d", i+1)
 		if entity.GetUserName() != expectedUsername {
 			t.Errorf("Chain %d: Expected username '%s', got '%s'", i, expectedUsername, entity.GetUserName())
 		}
 
 		t.Logf("Chain %d: EphemeralId=%s, Username=%s, Entities=%d",
-			i, chain.EphemeralId, entity.GetUserName(), len(chain.Entities))
+			i, chain.GetEphemeralId(), entity.GetUserName(), len(chain.GetEntities()))
 	}
 
 	t.Logf("✅ Entity chain creation test passed: Created %d chains with %d total entities",
-		len(resp.Msg.EntityChains), totalEntities)
+		len(resp.Msg.GetEntityChains()), totalEntities)
 }
 
 // Helper functions

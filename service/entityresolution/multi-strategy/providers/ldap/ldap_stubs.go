@@ -24,6 +24,7 @@ type (
 		Entries []*Entry
 	}
 )
+
 type Entry struct {
 	DN         string
 	Attributes []*Attribute
@@ -34,11 +35,11 @@ type Attribute struct {
 }
 
 // LDAP functions (stubs)
-func Dial(network, addr string) (*Conn, error) {
+func Dial(_, _ string) (*Conn, error) {
 	return nil, errors.New("LDAP not implemented - stub function")
 }
 
-func DialTLS(network, addr string, config *tls.Config) (*Conn, error) {
+func DialTLS(_, _ string, _ *tls.Config) (*Conn, error) {
 	return nil, errors.New("LDAP not implemented - stub function")
 }
 

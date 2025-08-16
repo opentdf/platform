@@ -9,6 +9,7 @@ import (
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -50,7 +51,7 @@ func NewMockERSImplementation() *MockERSImplementation {
 }
 
 // ResolveEntities implements the ERS interface for testing
-func (m *MockERSImplementation) ResolveEntities(ctx context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
+func (m *MockERSImplementation) ResolveEntities(_ context.Context, req *connect.Request[entityresolutionV2.ResolveEntitiesRequest]) (*connect.Response[entityresolutionV2.ResolveEntitiesResponse], error) {
 	var resolvedEntities []*entityresolutionV2.EntityRepresentation
 
 	for _, ent := range req.Msg.GetEntities() {
@@ -100,7 +101,7 @@ func (m *MockERSImplementation) ResolveEntities(ctx context.Context, req *connec
 }
 
 // CreateEntityChainsFromTokens implements the ERS interface for testing
-func (m *MockERSImplementation) CreateEntityChainsFromTokens(ctx context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
+func (m *MockERSImplementation) CreateEntityChainsFromTokens(_ context.Context, req *connect.Request[entityresolutionV2.CreateEntityChainsFromTokensRequest]) (*connect.Response[entityresolutionV2.CreateEntityChainsFromTokensResponse], error) {
 	var entityChains []*entity.EntityChain
 
 	for _, token := range req.Msg.GetTokens() {
@@ -178,7 +179,7 @@ func TestContractTestDataSet(t *testing.T) {
 	dataSet := NewContractTestDataSet()
 
 	// Verify users
-	assert.Greater(t, len(dataSet.Users), 0, "Should have test users")
+	assert.NotEmpty(t, dataSet.Users, "Should have test users")
 	for _, user := range dataSet.Users {
 		assert.NotEmpty(t, user.Username, "User should have username")
 		assert.NotEmpty(t, user.Email, "User should have email")
@@ -186,7 +187,7 @@ func TestContractTestDataSet(t *testing.T) {
 	}
 
 	// Verify clients
-	assert.Greater(t, len(dataSet.Clients), 0, "Should have test clients")
+	assert.NotEmpty(t, dataSet.Clients, "Should have test clients")
 	for _, client := range dataSet.Clients {
 		assert.NotEmpty(t, client.ClientID, "Client should have client ID")
 		assert.NotEmpty(t, client.Description, "Client should have description")
@@ -233,17 +234,17 @@ func TestEntityValidationRules(t *testing.T) {
 // TestTestDataInjectors tests the test data injection interfaces
 func TestTestDataInjectors(t *testing.T) {
 	t.Run("MockTestDataInjector", func(t *testing.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		testLogger := logger.CreateTestLogger()
 		injector := NewMockTestDataInjector(testLogger)
 		dataSet := NewContractTestDataSet()
 
 		// All methods should succeed for mock injector (no-ops)
 		err := injector.InjectTestData(ctx, dataSet)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = injector.ValidateTestData(ctx, dataSet)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = injector.CleanupTestData(ctx)
 		assert.NoError(t, err)

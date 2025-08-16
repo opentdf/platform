@@ -11,27 +11,26 @@ import (
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
-// LDAPProvider implements the Provider interface for LDAP directories
-type LDAPProvider struct {
+// Provider implements the Provider interface for LDAP directories
+type Provider struct {
 	name   string
-	config LDAPConfig
-	pool   *Conn // Simplified - in production, use connection pooling
+	config Config
 	mapper types.Mapper
 }
 
-// NewLDAPProvider creates a new LDAP provider
-func NewLDAPProvider(name string, config LDAPConfig) (*LDAPProvider, error) {
-	provider := &LDAPProvider{
+// NewProvider creates a new LDAP provider
+func NewProvider(ctx context.Context, name string, config Config) (*Provider, error) {
+	provider := &Provider{
 		name:   name,
 		config: config,
-		mapper: NewLDAPMapper(),
+		mapper: NewMapper(),
 	}
 
 	// Test the connection during initialization
-	ctx, cancel := context.WithTimeout(context.Background(), config.HealthCheckTimeout)
+	healthCtx, cancel := context.WithTimeout(ctx, config.HealthCheckTimeout)
 	defer cancel()
 
-	if err := provider.HealthCheck(ctx); err != nil {
+	if err := provider.HealthCheck(healthCtx); err != nil {
 		return nil, types.WrapMultiStrategyError(
 			types.ErrorTypeProvider,
 			"LDAP connection test failed",
@@ -48,17 +47,17 @@ func NewLDAPProvider(name string, config LDAPConfig) (*LDAPProvider, error) {
 }
 
 // Name returns the provider instance name
-func (p *LDAPProvider) Name() string {
+func (p *Provider) Name() string {
 	return p.name
 }
 
 // Type returns the provider type
-func (p *LDAPProvider) Type() string {
+func (p *Provider) Type() string {
 	return "ldap"
 }
 
 // ResolveEntity executes LDAP search to resolve entity information
-func (p *LDAPProvider) ResolveEntity(ctx context.Context, strategy types.MappingStrategy, params map[string]interface{}) (*types.RawResult, error) {
+func (p *Provider) ResolveEntity(ctx context.Context, strategy types.MappingStrategy, params map[string]interface{}) (*types.RawResult, error) {
 	// Validate that we have LDAP search configuration
 	if strategy.LDAPSearch == nil {
 		return nil, types.NewProviderError("no LDAP search configuration for strategy", map[string]interface{}{
@@ -200,7 +199,7 @@ func (p *LDAPProvider) ResolveEntity(ctx context.Context, strategy types.Mapping
 }
 
 // HealthCheck verifies the LDAP server is accessible
-func (p *LDAPProvider) HealthCheck(ctx context.Context) error {
+func (p *Provider) HealthCheck(_ context.Context) error {
 	// Get a connection
 	conn, err := p.getConnection()
 	if err != nil {
@@ -236,19 +235,19 @@ func (p *LDAPProvider) HealthCheck(ctx context.Context) error {
 }
 
 // GetMapper returns the provider's mapper implementation
-func (p *LDAPProvider) GetMapper() types.Mapper {
+func (p *Provider) GetMapper() types.Mapper {
 	return p.mapper
 }
 
 // Close closes LDAP connections
-func (p *LDAPProvider) Close() error {
+func (p *Provider) Close() error {
 	// In a full implementation, this would close connection pools
 	// For now, connections are closed after each use
 	return nil
 }
 
 // getConnection establishes an LDAP connection
-func (p *LDAPProvider) getConnection() (*Conn, error) {
+func (p *Provider) getConnection() (*Conn, error) {
 	address := fmt.Sprintf("%s:%d", p.config.Host, p.config.Port)
 
 	var conn *Conn
@@ -256,7 +255,7 @@ func (p *LDAPProvider) getConnection() (*Conn, error) {
 
 	if p.config.UseTLS {
 		tlsConfig := &tls.Config{
-			InsecureSkipVerify: p.config.SkipVerify,
+			InsecureSkipVerify: p.config.SkipVerify, //nolint:gosec // TLS verification can be disabled via configuration for testing environments
 		}
 		conn, err = DialTLS("tcp", address, tlsConfig)
 	} else {
@@ -285,7 +284,7 @@ func (p *LDAPProvider) getConnection() (*Conn, error) {
 }
 
 // buildSearchFilter replaces parameters in LDAP search filter
-func (p *LDAPProvider) buildSearchFilter(filterTemplate string, params map[string]interface{}) (string, error) {
+func (p *Provider) buildSearchFilter(filterTemplate string, params map[string]interface{}) (string, error) {
 	filter := filterTemplate
 
 	// Replace parameter placeholders with actual values
@@ -308,7 +307,7 @@ func (p *LDAPProvider) buildSearchFilter(filterTemplate string, params map[strin
 }
 
 // convertScope converts string scope to LDAP scope constant
-func (p *LDAPProvider) convertScope(scopeStr string) (int, error) {
+func (p *Provider) convertScope(scopeStr string) (int, error) {
 	switch strings.ToLower(scopeStr) {
 	case "base", "baseobject":
 		return ScopeBaseObject, nil

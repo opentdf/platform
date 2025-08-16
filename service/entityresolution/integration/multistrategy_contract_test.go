@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"context"
 	"testing"
 
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
@@ -81,7 +80,8 @@ func TestMultiStrategyContractValidation(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background(); ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ctx := t.Context()
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -149,7 +149,8 @@ func TestMultiStrategyChainSpecific(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background(); ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ctx := t.Context()
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}

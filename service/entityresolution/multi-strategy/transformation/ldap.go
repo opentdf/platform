@@ -27,7 +27,7 @@ func ApplyLDAPDNToCNArray(value interface{}) (interface{}, error) {
 	if arr, ok := value.([]interface{}); ok {
 		result := make([]string, 0, len(arr))
 		for _, item := range arr {
-			if str, ok := item.(string); ok {
+			if str, strOK := item.(string); strOK {
 				cn := ExtractCNFromDN(str)
 				if cn != "" {
 					result = append(result, cn)

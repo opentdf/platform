@@ -43,7 +43,7 @@ func NewRegistration() *serviceregistry.Service[entityresolutionv2connect.Entity
 				var inputConfig ERSConfig
 
 				if err := mapstructure.Decode(srp.Config, &inputConfig); err != nil {
-					srp.Logger.Error("Failed to decode entity resolution configuration", slog.Any("error", err))
+					srp.Logger.Error("failed to decode entity resolution configuration", slog.Any("error", err))
 					log.Fatalf("Failed to decode entity resolution configuration: %v", err)
 				}
 
@@ -76,7 +76,7 @@ func NewRegistration() *serviceregistry.Service[entityresolutionv2connect.Entity
 					kcSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
 				case MultiStrategyMode:
-					multiSVC, multiHandler := multistrategyv2.RegisterMultiStrategyERSV2(srp.Config, srp.Logger)
+					multiSVC, multiHandler := multistrategyv2.RegisterERSV2(srp.Config, srp.Logger)
 					multiSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: multiSVC}, multiHandler
 				default:

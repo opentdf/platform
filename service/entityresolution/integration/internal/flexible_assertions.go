@@ -1,10 +1,19 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/opentdf/platform/protocol/go/entity"
+)
+
+const (
+	// Test constants for flexible assertions
+	maxDisplayCount     = 5
+	minDisplayCount     = 3
+	pairDisplayCount    = 2
+	pairMinDisplayCount = 2
 )
 
 // FlexibleEntityChainExpectation provides range-based and conditional expectations
@@ -30,7 +39,7 @@ type FlexibleChainValidationRule struct {
 // ValidateEntityChainFlexible performs flexible validation with detailed reporting
 func ValidateEntityChainFlexible(chains []*entity.EntityChain, rule FlexibleChainValidationRule) error {
 	if len(chains) == 0 {
-		return fmt.Errorf("no entity chains returned")
+		return errors.New("no entity chains returned")
 	}
 
 	var validationErrors []string
@@ -39,15 +48,15 @@ func ValidateEntityChainFlexible(chains []*entity.EntityChain, rule FlexibleChai
 	// Create a map for quick chain lookup
 	chainMap := make(map[string]*entity.EntityChain)
 	for _, chain := range chains {
-		chainMap[chain.EphemeralId] = chain
+		chainMap[chain.GetEphemeralId()] = chain
 	}
 
 	// Validate each expected chain
 	for _, expectation := range rule.Expectations {
 		chain, exists := chainMap[expectation.EphemeralID]
 		if !exists {
-			error := fmt.Sprintf("Chain %s: not found in results", expectation.EphemeralID)
-			validationErrors = append(validationErrors, error)
+			errMsg := fmt.Sprintf("Chain %s: not found in results", expectation.EphemeralID)
+			validationErrors = append(validationErrors, errMsg)
 			continue
 		}
 
@@ -73,7 +82,7 @@ func ValidateEntityChainFlexible(chains []*entity.EntityChain, rule FlexibleChai
 
 // validateSingleChain validates a single chain against expectations
 func validateSingleChain(chain *entity.EntityChain, expectation FlexibleEntityChainExpectation) error {
-	entityCount := len(chain.Entities)
+	entityCount := len(chain.GetEntities())
 
 	// Validate entity count
 	if entityCount < expectation.MinEntityCount {
@@ -89,16 +98,17 @@ func validateSingleChain(chain *entity.EntityChain, expectation FlexibleEntityCh
 	allClaims := make(map[string]bool)
 	categories := make(map[string]bool)
 
-	for _, ent := range chain.Entities {
+	for _, ent := range chain.GetEntities() {
 		// Determine entity type based on the oneof field
 		entityType := ""
-		if ent.GetEmailAddress() != "" {
+		switch {
+		case ent.GetEmailAddress() != "":
 			entityType = "email"
-		} else if ent.GetUserName() != "" {
+		case ent.GetUserName() != "":
 			entityType = "username"
-		} else if ent.GetClientId() != "" {
+		case ent.GetClientId() != "":
 			entityType = "client"
-		} else if ent.GetClaims() != nil {
+		case ent.GetClaims() != nil:
 			entityType = "claims"
 		}
 
@@ -109,30 +119,15 @@ func validateSingleChain(chain *entity.EntityChain, expectation FlexibleEntityCh
 		// Get category
 		categories[ent.GetCategory().String()] = true
 
-		// Extract claims if available
-		if claims := ent.GetClaims(); claims != nil {
-			// Try to extract claim keys - this is implementation-specific
-			// For now, we'll check standard entity fields
-			if ent.GetUserName() != "" {
-				allClaims["username"] = true
-			}
-			if ent.GetEmailAddress() != "" {
-				allClaims["email"] = true
-			}
-			if ent.GetClientId() != "" {
-				allClaims["client_id"] = true
-			}
-		} else {
-			// Also check the direct fields even without claims
-			if ent.GetUserName() != "" {
-				allClaims["username"] = true
-			}
-			if ent.GetEmailAddress() != "" {
-				allClaims["email"] = true
-			}
-			if ent.GetClientId() != "" {
-				allClaims["client_id"] = true
-			}
+		// Extract claims from standard entity fields
+		if ent.GetUserName() != "" {
+			allClaims["username"] = true
+		}
+		if ent.GetEmailAddress() != "" {
+			allClaims["email"] = true
+		}
+		if ent.GetClientId() != "" {
+			allClaims["client_id"] = true
 		}
 	}
 
@@ -176,7 +171,7 @@ func ExpectBasicUserChain(ephemeralID string) FlexibleEntityChainExpectation {
 	return FlexibleEntityChainExpectation{
 		EphemeralID:             ephemeralID,
 		MinEntityCount:          1,
-		MaxEntityCount:          5, // Reasonable upper bound
+		MaxEntityCount:          maxDisplayCount, // Reasonable upper bound
 		RequiredClaims:          []string{"username", "email"},
 		RequiredCategories:      []string{"CATEGORY_SUBJECT"},
 		AllowImplementationGaps: true,
@@ -188,7 +183,7 @@ func ExpectClientChain(ephemeralID string) FlexibleEntityChainExpectation {
 	return FlexibleEntityChainExpectation{
 		EphemeralID:             ephemeralID,
 		MinEntityCount:          1,
-		MaxEntityCount:          3,
+		MaxEntityCount:          minDisplayCount,
 		RequiredClaims:          []string{"client_id"},
 		RequiredCategories:      []string{"CATEGORY_SUBJECT"},
 		AllowImplementationGaps: true,
@@ -200,7 +195,7 @@ func ExpectEnvironmentChain(ephemeralID string) FlexibleEntityChainExpectation {
 	return FlexibleEntityChainExpectation{
 		EphemeralID:             ephemeralID,
 		MinEntityCount:          1,
-		MaxEntityCount:          2,
+		MaxEntityCount:          pairDisplayCount,
 		RequiredCategories:      []string{"CATEGORY_ENVIRONMENT"},
 		AllowImplementationGaps: true,
 	}
@@ -210,8 +205,8 @@ func ExpectEnvironmentChain(ephemeralID string) FlexibleEntityChainExpectation {
 func ExpectMultiStrategyChain(ephemeralID string, expectedStrategies int) FlexibleEntityChainExpectation {
 	return FlexibleEntityChainExpectation{
 		EphemeralID:             ephemeralID,
-		MinEntityCount:          expectedStrategies,     // One entity per strategy
-		MaxEntityCount:          expectedStrategies * 2, // Allow for additional entities
+		MinEntityCount:          expectedStrategies,                       // One entity per strategy
+		MaxEntityCount:          expectedStrategies * pairMinDisplayCount, // Allow for additional entities
 		RequiredCategories:      []string{"CATEGORY_SUBJECT", "CATEGORY_ENVIRONMENT"},
 		AllowImplementationGaps: true,
 	}

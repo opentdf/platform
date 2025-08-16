@@ -1,6 +1,7 @@
 package multistrategy
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -42,10 +43,10 @@ func (m *BaseMapper) ExtractParameters(jwtClaims types.JWTClaims, inputMapping [
 func (m *BaseMapper) ValidateInputMapping(inputMapping []types.InputMapping) error {
 	for _, mapping := range inputMapping {
 		if mapping.JWTClaim == "" {
-			return fmt.Errorf("jwt_claim cannot be empty")
+			return errors.New("jwt_claim cannot be empty")
 		}
 		if mapping.Parameter == "" {
-			return fmt.Errorf("parameter cannot be empty")
+			return errors.New("parameter cannot be empty")
 		}
 	}
 	return nil
@@ -55,7 +56,7 @@ func (m *BaseMapper) ValidateInputMapping(inputMapping []types.InputMapping) err
 func (m *BaseMapper) ValidateOutputMapping(outputMapping []types.OutputMapping) error {
 	for _, mapping := range outputMapping {
 		if mapping.ClaimName == "" {
-			return fmt.Errorf("claim_name cannot be empty")
+			return errors.New("claim_name cannot be empty")
 		}
 		// Source field validation is provider-specific
 	}

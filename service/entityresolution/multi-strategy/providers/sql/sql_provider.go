@@ -14,20 +14,20 @@ import (
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
-// SQLProvider implements the Provider interface for SQL databases
-type SQLProvider struct {
+// Provider implements the Provider interface for SQL databases
+type Provider struct {
 	name   string
-	config SQLConfig
+	config Config
 	db     *sql.DB
 	mapper types.Mapper
 }
 
-// NewSQLProvider creates a new SQL provider
-func NewSQLProvider(ctx context.Context, name string, config SQLConfig) (*SQLProvider, error) {
-	provider := &SQLProvider{
+// NewProvider creates a new SQL provider
+func NewProvider(ctx context.Context, name string, config Config) (*Provider, error) {
+	provider := &Provider{
 		name:   name,
 		config: config,
-		mapper: NewSQLMapper(),
+		mapper: NewMapper(),
 	}
 
 	// Build connection string based on driver
@@ -67,10 +67,10 @@ func NewSQLProvider(ctx context.Context, name string, config SQLConfig) (*SQLPro
 	provider.db = db
 
 	// Test the connection
-	ctx, cancel := context.WithTimeout(context.Background(), config.HealthCheckTime)
+	healthCtx, cancel := context.WithTimeout(ctx, config.HealthCheckTime)
 	defer cancel()
 
-	if err := provider.HealthCheck(ctx); err != nil {
+	if err := provider.HealthCheck(healthCtx); err != nil {
 		_ = db.Close()
 		return nil, types.WrapMultiStrategyError(
 			types.ErrorTypeProvider,
@@ -87,17 +87,17 @@ func NewSQLProvider(ctx context.Context, name string, config SQLConfig) (*SQLPro
 }
 
 // Name returns the provider instance name
-func (p *SQLProvider) Name() string {
+func (p *Provider) Name() string {
 	return p.name
 }
 
 // Type returns the provider type
-func (p *SQLProvider) Type() string {
+func (p *Provider) Type() string {
 	return "sql"
 }
 
 // ResolveEntity executes SQL query to resolve entity information
-func (p *SQLProvider) ResolveEntity(ctx context.Context, strategy types.MappingStrategy, params map[string]interface{}) (*types.RawResult, error) {
+func (p *Provider) ResolveEntity(ctx context.Context, strategy types.MappingStrategy, params map[string]interface{}) (*types.RawResult, error) {
 	// Validate that we have a SQL query
 	if strategy.Query == "" {
 		return nil, types.NewProviderError("no SQL query configured for strategy", map[string]interface{}{
@@ -198,7 +198,7 @@ func (p *SQLProvider) ResolveEntity(ctx context.Context, strategy types.MappingS
 }
 
 // HealthCheck verifies the SQL database is accessible
-func (p *SQLProvider) HealthCheck(ctx context.Context) error {
+func (p *Provider) HealthCheck(ctx context.Context) error {
 	// Use configured health check query or default
 	query := p.config.HealthCheckQuery
 	if query == "" {
@@ -229,12 +229,12 @@ func (p *SQLProvider) HealthCheck(ctx context.Context) error {
 }
 
 // GetMapper returns the provider's mapper implementation
-func (p *SQLProvider) GetMapper() types.Mapper {
+func (p *Provider) GetMapper() types.Mapper {
 	return p.mapper
 }
 
 // Close closes the database connection
-func (p *SQLProvider) Close() error {
+func (p *Provider) Close() error {
 	if p.db != nil {
 		if err := p.db.Close(); err != nil {
 			return types.WrapMultiStrategyError(
@@ -252,7 +252,7 @@ func (p *SQLProvider) Close() error {
 }
 
 // buildConnectionString creates a connection string based on the driver
-func (p *SQLProvider) buildConnectionString() (string, error) {
+func (p *Provider) buildConnectionString() (string, error) {
 	switch strings.ToLower(p.config.Driver) {
 	case "postgres":
 		return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
@@ -273,7 +273,7 @@ func (p *SQLProvider) buildConnectionString() (string, error) {
 }
 
 // buildQueryArgs extracts query arguments from parameters in order
-func (p *SQLProvider) buildQueryArgs(params map[string]interface{}) []interface{} {
+func (p *Provider) buildQueryArgs(params map[string]interface{}) []interface{} {
 	// For parameterized queries, we need to maintain parameter order
 	// This is a simplified implementation - in practice, you might want
 	// to parse the query to determine parameter order
@@ -303,7 +303,7 @@ func (p *SQLProvider) buildQueryArgs(params map[string]interface{}) []interface{
 }
 
 // convertSQLValue converts SQL result values to appropriate Go types
-func (p *SQLProvider) convertSQLValue(value interface{}) interface{} {
+func (p *Provider) convertSQLValue(value interface{}) interface{} {
 	// Handle NULL values
 	if value == nil {
 		return nil

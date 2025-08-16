@@ -6,36 +6,36 @@ import (
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
-// ClaimsProvider implements the Provider interface for JWT claims
-type ClaimsProvider struct {
+// Provider implements the Provider interface for JWT claims
+type Provider struct {
 	name   string
-	config ClaimsConfig
+	config Config
 	mapper types.Mapper
 }
 
-// NewClaimsProvider creates a new JWT claims provider
-func NewClaimsProvider(name string, config ClaimsConfig) (*ClaimsProvider, error) {
-	return &ClaimsProvider{
+// NewProvider creates a new JWT claims provider
+func NewProvider(name string, config Config) (*Provider, error) {
+	return &Provider{
 		name:   name,
 		config: config,
-		mapper: NewClaimsMapper(),
+		mapper: NewMapper(),
 	}, nil
 }
 
 // Name returns the provider instance name
-func (p *ClaimsProvider) Name() string {
+func (p *Provider) Name() string {
 	return p.name
 }
 
 // Type returns the provider type
-func (p *ClaimsProvider) Type() string {
+func (p *Provider) Type() string {
 	return "claims"
 }
 
 // ResolveEntity extracts claims directly from JWT (passed via context)
-func (p *ClaimsProvider) ResolveEntity(ctx context.Context, strategy types.MappingStrategy, params map[string]interface{}) (*types.RawResult, error) {
+func (p *Provider) ResolveEntity(ctx context.Context, strategy types.MappingStrategy, _ map[string]interface{}) (*types.RawResult, error) {
 	// Extract JWT claims from context
-	claims, ok := ctx.Value("jwt_claims").(types.JWTClaims)
+	claims, ok := ctx.Value(types.JWTClaimsContextKey).(types.JWTClaims)
 	if !ok || claims == nil {
 		return nil, types.NewProviderError("JWT claims not found in context", map[string]interface{}{
 			"provider": p.name,
@@ -64,18 +64,18 @@ func (p *ClaimsProvider) ResolveEntity(ctx context.Context, strategy types.Mappi
 }
 
 // HealthCheck always returns nil since JWT claims provider has no external dependencies
-func (p *ClaimsProvider) HealthCheck(ctx context.Context) error {
+func (p *Provider) HealthCheck(_ context.Context) error {
 	// JWT claims provider is always healthy - no external dependencies
 	return nil
 }
 
 // GetMapper returns the provider's mapper implementation
-func (p *ClaimsProvider) GetMapper() types.Mapper {
+func (p *Provider) GetMapper() types.Mapper {
 	return p.mapper
 }
 
 // Close cleans up any resources (none for claims provider)
-func (p *ClaimsProvider) Close() error {
+func (p *Provider) Close() error {
 	// No resources to clean up
 	return nil
 }

@@ -174,16 +174,16 @@ func NewMockTestDataInjector(logger any) *MockTestDataInjector {
 }
 
 // InjectTestData is a no-op for the mock injector
-func (m *MockTestDataInjector) InjectTestData(ctx context.Context, dataSet *ContractTestDataSet) error {
+func (m *MockTestDataInjector) InjectTestData(_ context.Context, _ *ContractTestDataSet) error {
 	return nil
 }
 
 // CleanupTestData is a no-op for the mock injector
-func (m *MockTestDataInjector) CleanupTestData(ctx context.Context) error {
+func (m *MockTestDataInjector) CleanupTestData(_ context.Context) error {
 	return nil
 }
 
 // ValidateTestData is a no-op for the mock injector
-func (m *MockTestDataInjector) ValidateTestData(ctx context.Context, dataSet *ContractTestDataSet) error {
+func (m *MockTestDataInjector) ValidateTestData(_ context.Context, _ *ContractTestDataSet) error {
 	return nil
 }

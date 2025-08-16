@@ -4,8 +4,18 @@ import (
 	"time"
 )
 
+const (
+	// Default LDAP configuration values
+	defaultLDAPPort       = 389
+	defaultTimeoutSeconds = 30
+	defaultMaxConnections = 10
+	defaultIdleMinutes    = 10
+	defaultConnectSeconds = 10
+	defaultHealthSeconds  = 5
+)
+
 // LDAPConfig defines configuration for LDAP directory providers
-type LDAPConfig struct {
+type Config struct {
 	// Connection settings
 	Host       string        `mapstructure:"host"`
 	Port       int           `mapstructure:"port"`
@@ -31,18 +41,18 @@ type LDAPConfig struct {
 	Description string `mapstructure:"description"`
 }
 
-// DefaultLDAPConfig returns a default LDAP configuration
-func DefaultLDAPConfig() LDAPConfig {
-	return LDAPConfig{
-		Port:                389,
+// DefaultConfig returns a default LDAP configuration
+func DefaultConfig() Config {
+	return Config{
+		Port:                defaultLDAPPort,
 		UseTLS:              true,
 		SkipVerify:          false,
-		Timeout:             time.Second * 30,
-		MaxConnections:      10,
-		IdleTimeout:         time.Minute * 10,
-		ConnectTimeout:      time.Second * 10,
-		RequestTimeout:      time.Second * 30,
+		Timeout:             time.Second * defaultTimeoutSeconds,
+		MaxConnections:      defaultMaxConnections,
+		IdleTimeout:         time.Minute * defaultIdleMinutes,
+		ConnectTimeout:      time.Second * defaultConnectSeconds,
+		RequestTimeout:      time.Second * defaultTimeoutSeconds,
 		HealthCheckBindTest: true,
-		HealthCheckTimeout:  time.Second * 5,
+		HealthCheckTimeout:  time.Second * defaultHealthSeconds,
 	}
 }

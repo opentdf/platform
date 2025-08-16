@@ -1,5 +1,12 @@
 package transformation
 
+// Provider type constants
+const (
+	ProviderTypeSQL    = "sql"
+	ProviderTypeLDAP   = "ldap"
+	ProviderTypeClaims = "claims"
+)
+
 // Common transformation constants - usable by all providers
 const (
 	// Basic data type transformations
@@ -102,21 +109,21 @@ func IsCommonTransformation(transformation string) bool {
 // IsSupportedByProvider checks if a transformation is supported by a specific provider type
 func IsSupportedByProvider(transformation, providerType string) bool {
 	switch providerType {
-	case "sql":
+	case ProviderTypeSQL:
 		supported := GetAllSQLTransformations()
 		for _, t := range supported {
 			if t == transformation {
 				return true
 			}
 		}
-	case "ldap":
+	case ProviderTypeLDAP:
 		supported := GetAllLDAPTransformations()
 		for _, t := range supported {
 			if t == transformation {
 				return true
 			}
 		}
-	case "claims":
+	case ProviderTypeClaims:
 		supported := GetAllClaimsTransformations()
 		for _, t := range supported {
 			if t == transformation {

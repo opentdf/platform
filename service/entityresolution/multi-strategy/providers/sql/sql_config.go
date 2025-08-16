@@ -4,8 +4,18 @@ import (
 	"time"
 )
 
+const (
+	// Default SQL configuration values
+	defaultPostgreSQLPort     = 5432
+	defaultMaxOpenConnections = 25
+	defaultMaxIdleConnections = 5
+	defaultIdleTimeMinutes    = 30
+	defaultTimeoutSeconds     = 30
+	defaultHealthSeconds      = 5
+)
+
 // SQLConfig defines configuration for SQL database providers
-type SQLConfig struct {
+type Config struct {
 	// Database connection configuration
 	Driver   string `mapstructure:"driver"` // "postgres", "mysql", "sqlite"
 	Host     string `mapstructure:"host"`
@@ -32,18 +42,18 @@ type SQLConfig struct {
 	Description string `mapstructure:"description"`
 }
 
-// DefaultSQLConfig returns a default SQL configuration
-func DefaultSQLConfig() SQLConfig {
-	return SQLConfig{
+// DefaultConfig returns a default SQL configuration
+func DefaultConfig() Config {
+	return Config{
 		Driver:             "postgres",
-		Port:               5432,
+		Port:               defaultPostgreSQLPort,
 		SSLMode:            "require",
-		MaxOpenConnections: 25,
-		MaxIdleConnections: 5,
+		MaxOpenConnections: defaultMaxOpenConnections,
+		MaxIdleConnections: defaultMaxIdleConnections,
 		ConnMaxLifetime:    time.Hour,
-		ConnMaxIdleTime:    time.Minute * 30,
-		QueryTimeout:       time.Second * 30,
+		ConnMaxIdleTime:    time.Minute * defaultIdleTimeMinutes,
+		QueryTimeout:       time.Second * defaultTimeoutSeconds,
 		HealthCheckQuery:   "SELECT 1",
-		HealthCheckTime:    time.Second * 5,
+		HealthCheckTime:    time.Second * defaultHealthSeconds,
 	}
 }

@@ -2,12 +2,13 @@ package multistrategy
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/providers/claims"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/providers/ldap"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/providers/sql"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
+	"github.com/opentdf/platform/service/logger"
 )
 
 // Service implements the multi-strategy entity resolution service
@@ -15,15 +16,16 @@ type Service struct {
 	config           types.MultiStrategyConfig
 	providerRegistry *ProviderRegistry
 	strategyMatcher  *StrategyMatcher
+	logger           *logger.Logger
 }
 
 // NewService creates a new multi-strategy entity resolution service
-func NewService(ctx context.Context, config types.MultiStrategyConfig) (*Service, error) {
+func NewService(ctx context.Context, config types.MultiStrategyConfig, logger *logger.Logger) (*Service, error) {
 	// Create provider registry
 	registry := NewProviderRegistry()
 
 	// Initialize providers based on configuration
-	if err := initializeProviders(ctx, registry, config.Providers); err != nil {
+	if err := initializeProviders(ctx, logger, registry, config.Providers); err != nil {
 		return nil, types.WrapMultiStrategyError(
 			types.ErrorTypeConfiguration,
 			"failed to initialize providers",
@@ -41,6 +43,7 @@ func NewService(ctx context.Context, config types.MultiStrategyConfig) (*Service
 		config:           config,
 		providerRegistry: registry,
 		strategyMatcher:  strategyMatcher,
+		logger:           logger,
 	}
 
 	return service, nil
@@ -132,90 +135,6 @@ func (s *Service) ResolveEntity(ctx context.Context, entityID string, jwtClaims 
 	)
 }
 
-// executeStrategy executes a single strategy
-func (s *Service) executeStrategy(ctx context.Context, entityID string, jwtClaims types.JWTClaims, strategy *types.MappingStrategy) (*types.EntityResult, error) {
-	// Get the provider for this strategy
-	provider, err := s.providerRegistry.GetProvider(strategy.Provider)
-	if err != nil {
-		return nil, types.WrapMultiStrategyError(
-			types.ErrorTypeProvider,
-			"failed to get provider",
-			err,
-			map[string]interface{}{
-				"entity_id": entityID,
-				"strategy":  strategy.Name,
-				"provider":  strategy.Provider,
-			},
-		)
-	}
-
-	// Get the provider's mapper
-	mapper := provider.GetMapper()
-
-	// Extract parameters from JWT claims using the mapper
-	params, err := mapper.ExtractParameters(jwtClaims, strategy.InputMapping)
-	if err != nil {
-		return nil, types.WrapMultiStrategyError(
-			types.ErrorTypeMapping,
-			"input parameter extraction failed",
-			err,
-			map[string]interface{}{
-				"entity_id": entityID,
-				"strategy":  strategy.Name,
-				"provider":  strategy.Provider,
-			},
-		)
-	}
-
-	// Add the entity ID as a parameter
-	params["entity_id"] = entityID
-
-	// Resolve entity using the provider
-	rawResult, err := provider.ResolveEntity(ctx, *strategy, params)
-	if err != nil {
-		return nil, types.WrapMultiStrategyError(
-			types.ErrorTypeProvider,
-			"provider entity resolution failed",
-			err,
-			map[string]interface{}{
-				"entity_id":     entityID,
-				"strategy":      strategy.Name,
-				"provider":      strategy.Provider,
-				"provider_type": provider.Type(),
-			},
-		)
-	}
-
-	// Transform raw result to entity result using the provider's mapper
-	mappedClaims, err := mapper.TransformResults(rawResult.Data, strategy.OutputMapping)
-	if err != nil {
-		return nil, types.WrapMultiStrategyError(
-			types.ErrorTypeMapping,
-			"output mapping failed",
-			err,
-			map[string]interface{}{
-				"entity_id": entityID,
-				"strategy":  strategy.Name,
-				"provider":  strategy.Provider,
-			},
-		)
-	}
-
-	// Create entity result
-	entityResult := &types.EntityResult{
-		OriginalID: entityID,
-		Claims:     mappedClaims,
-		Metadata:   make(map[string]interface{}),
-	}
-
-	// Copy provider metadata to entity result
-	for k, v := range rawResult.Metadata {
-		entityResult.Metadata[k] = v
-	}
-
-	return entityResult, nil
-}
-
 // HealthCheck performs health checks on all providers
 func (s *Service) HealthCheck(ctx context.Context) error {
 	providers := s.providerRegistry.GetAllProviders()
@@ -269,8 +188,78 @@ func (s *Service) GetProviders() map[string]string {
 	return result
 }
 
+// executeStrategy executes a single mapping strategy
+func (s *Service) executeStrategy(ctx context.Context, entityID string, jwtClaims types.JWTClaims, strategy *types.MappingStrategy) (*types.EntityResult, error) {
+	// Get provider for this strategy
+	provider, err := s.providerRegistry.GetProvider(strategy.Provider)
+	if err != nil {
+		return nil, types.WrapMultiStrategyError(
+			types.ErrorTypeProvider,
+			"provider not found for strategy",
+			err,
+			map[string]interface{}{
+				"strategy":  strategy.Name,
+				"provider":  strategy.Provider,
+				"entity_id": entityID,
+			},
+		)
+	}
+
+	// Extract parameters from JWT claims using input mapping
+	mapper := &BaseMapper{}
+	params, err := mapper.ExtractParameters(jwtClaims, strategy.InputMapping)
+	if err != nil {
+		return nil, types.WrapMultiStrategyError(
+			types.ErrorTypeMapping,
+			"failed to extract parameters from JWT claims",
+			err,
+			map[string]interface{}{
+				"strategy":      strategy.Name,
+				"provider":      strategy.Provider,
+				"entity_id":     entityID,
+				"input_mapping": strategy.InputMapping,
+			},
+		)
+	}
+
+	// Call provider to resolve entity
+	rawResult, err := provider.ResolveEntity(ctx, *strategy, params)
+	if err != nil {
+		return nil, types.WrapMultiStrategyError(
+			types.ErrorTypeProvider,
+			"provider failed to resolve entity",
+			err,
+			map[string]interface{}{
+				"strategy":   strategy.Name,
+				"provider":   strategy.Provider,
+				"entity_id":  entityID,
+				"parameters": params,
+			},
+		)
+	}
+
+	// Map raw result to entity result using output mapping
+	outputMapper := &OutputMapper{}
+	entityResult, err := outputMapper.MapResult(rawResult, strategy.OutputMapping, entityID)
+	if err != nil {
+		return nil, types.WrapMultiStrategyError(
+			types.ErrorTypeMapping,
+			"failed to map provider result to entity",
+			err,
+			map[string]interface{}{
+				"strategy":       strategy.Name,
+				"provider":       strategy.Provider,
+				"entity_id":      entityID,
+				"output_mapping": strategy.OutputMapping,
+			},
+		)
+	}
+
+	return entityResult, nil
+}
+
 // initializeProviders creates and registers providers based on configuration
-func initializeProviders(ctx context.Context, registry *ProviderRegistry, providerConfigs map[string]types.ProviderConfig) error {
+func initializeProviders(ctx context.Context, logger *logger.Logger, registry *ProviderRegistry, providerConfigs map[string]types.ProviderConfig) error {
 	for name, config := range providerConfigs {
 		var provider types.Provider
 		var err error
@@ -278,46 +267,24 @@ func initializeProviders(ctx context.Context, registry *ProviderRegistry, provid
 		switch config.Type {
 		case "claims":
 			// Create claims provider
-			claimsConfig := claims.ClaimsConfig{
-				Description: fmt.Sprintf("JWT claims provider: %s", name),
+			claimsConfig := claims.Config{
+				Description: "JWT claims provider: " + name,
 			}
-			provider, err = claims.NewClaimsProvider(name, claimsConfig)
+			provider, err = claims.NewProvider(name, claimsConfig)
 
 		case "sql":
 			// Parse SQL configuration
-			sqlConfig, parseErr := parseSQLConfig(config.Connection)
-			if parseErr != nil {
-				return types.WrapMultiStrategyError(
-					types.ErrorTypeConfiguration,
-					"failed to parse SQL provider configuration",
-					parseErr,
-					map[string]interface{}{
-						"provider_name": name,
-						"provider_type": config.Type,
-					},
-				)
-			}
-			provider, err = sql.NewSQLProvider(ctx, name, sqlConfig)
+			sqlConfig := parseSQLConfig(config.Connection)
+			provider, err = sql.NewProvider(ctx, name, sqlConfig)
 
 		case "ldap":
 			// Parse LDAP configuration
-			ldapConfig, parseErr := parseLDAPConfig(config.Connection)
-			if parseErr != nil {
-				return types.WrapMultiStrategyError(
-					types.ErrorTypeConfiguration,
-					"failed to parse LDAP provider configuration",
-					parseErr,
-					map[string]interface{}{
-						"provider_name": name,
-						"provider_type": config.Type,
-					},
-				)
-			}
-			provider, err = ldap.NewLDAPProvider(name, ldapConfig)
+			ldapConfig := parseLDAPConfig(config.Connection)
+			provider, err = ldap.NewProvider(ctx, name, ldapConfig)
 
 		default:
 			return types.NewConfigurationError(
-				fmt.Sprintf("unknown provider type: %s", config.Type),
+				"unknown provider type: "+config.Type,
 				map[string]interface{}{
 					"provider_name": name,
 					"provider_type": config.Type,
@@ -341,7 +308,10 @@ func initializeProviders(ctx context.Context, registry *ProviderRegistry, provid
 		if err := registry.RegisterProvider(name, provider); err != nil {
 			// Clean up the provider if registration fails
 			if closeErr := provider.Close(); closeErr != nil {
-				// Log close error but don't mask the registration error
+				logger.Error("failed to close provider",
+					slog.String("provider_name", name),
+					slog.String("provider_type", config.Type),
+					slog.String("error", closeErr.Error()))
 			}
 			return types.WrapMultiStrategyError(
 				types.ErrorTypeConfiguration,
@@ -359,8 +329,8 @@ func initializeProviders(ctx context.Context, registry *ProviderRegistry, provid
 }
 
 // parseSQLConfig converts generic connection config to SQL-specific config
-func parseSQLConfig(connectionConfig map[string]interface{}) (sql.SQLConfig, error) {
-	config := sql.DefaultSQLConfig()
+func parseSQLConfig(connectionConfig map[string]interface{}) sql.Config {
+	config := sql.DefaultConfig()
 
 	// Parse required fields
 	if driver, ok := connectionConfig["driver"].(string); ok {
@@ -388,12 +358,12 @@ func parseSQLConfig(connectionConfig map[string]interface{}) (sql.SQLConfig, err
 		config.Description = desc
 	}
 
-	return config, nil
+	return config
 }
 
 // parseLDAPConfig converts generic connection config to LDAP-specific config
-func parseLDAPConfig(connectionConfig map[string]interface{}) (ldap.LDAPConfig, error) {
-	config := ldap.DefaultLDAPConfig()
+func parseLDAPConfig(connectionConfig map[string]interface{}) ldap.Config {
+	config := ldap.DefaultConfig()
 
 	// Parse required fields
 	if host, ok := connectionConfig["host"].(string); ok {
@@ -415,5 +385,5 @@ func parseLDAPConfig(connectionConfig map[string]interface{}) (ldap.LDAPConfig, 
 		config.Description = desc
 	}
 
-	return config, nil
+	return config
 }

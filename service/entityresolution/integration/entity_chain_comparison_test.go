@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"context"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -31,7 +30,7 @@ func TestEntityChainComparison(t *testing.T) {
 	}
 
 	t.Run("Keycloak_EntityChainLength", func(t *testing.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		// Create Keycloak ERS service
 		keycloakConfig := map[string]interface{}{
 			"url":            "http://localhost:8080",
@@ -50,7 +49,7 @@ func TestEntityChainComparison(t *testing.T) {
 		}
 
 		testLogger := logger.CreateTestLogger()
-		var testCache *cache.Cache = nil
+		var testCache *cache.Cache
 
 		keycloakService, _ := keycloakv2.RegisterKeycloakERS(keycloakConfig, testLogger, testCache)
 		keycloakService.Tracer = noop.NewTracerProvider().Tracer("test-keycloak-v2")
@@ -72,7 +71,7 @@ func TestEntityChainComparison(t *testing.T) {
 		}
 
 		// If we had a real Keycloak, we would assert:
-		// assert.Len(t, resp.Msg.EntityChains[0].Entities, 2)
+		// assert.Len(t, resp.Msg.GetEntityChains()[0].Entities, 2)
 	})
 
 	t.Run("MultiStrategy_EntityChainLength", func(t *testing.T) {
@@ -135,7 +134,8 @@ func TestEntityChainComparison(t *testing.T) {
 			},
 		}
 
-		ctx := context.Background(); ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+		ctx := t.Context()
+		ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 		if err != nil {
 			t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 		}
@@ -150,18 +150,18 @@ func TestEntityChainComparison(t *testing.T) {
 			t.Fatalf("Multi-strategy CreateEntityChainsFromTokens failed: %v", err)
 		}
 
-		if len(resp.Msg.EntityChains) != 1 {
-			t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.EntityChains))
+		if len(resp.Msg.GetEntityChains()) != 1 {
+			t.Fatalf("Expected 1 entity chain, got %d", len(resp.Msg.GetEntityChains()))
 		}
 
-		chain := resp.Msg.EntityChains[0]
-		actualEntityCount := len(chain.Entities)
+		chain := resp.Msg.GetEntityChains()[0]
+		actualEntityCount := len(chain.GetEntities())
 
 		t.Logf("🔍 Multi-Strategy Result:")
-		t.Logf("   - Chain ID: %s", chain.EphemeralId)
+		t.Logf("   - Chain ID: %s", chain.GetEphemeralId())
 		t.Logf("   - Entity Count: %d", actualEntityCount)
 
-		for i, ent := range chain.Entities {
+		for i, ent := range chain.GetEntities() {
 			t.Logf("   - Entity %d: %s (Category: %s)", i+1, getEntityIdentifier(ent), ent.GetCategory())
 		}
 
@@ -171,7 +171,7 @@ func TestEntityChainComparison(t *testing.T) {
 
 			// Validate entity categories are different (ENVIRONMENT + SUBJECT)
 			categoryCounts := make(map[string]int)
-			for _, ent := range chain.Entities {
+			for _, ent := range chain.GetEntities() {
 				categoryCounts[ent.GetCategory().String()]++
 			}
 

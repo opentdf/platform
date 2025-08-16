@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"log/slog"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +17,7 @@ import (
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 	multistrategyv2 "github.com/opentdf/platform/service/entityresolution/multi-strategy/v2"
 	"github.com/opentdf/platform/service/logger"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -153,7 +156,7 @@ func (a *MultiStrategyTestAdapter) GetScopeName() string {
 	return "MultiStrategy"
 }
 
-func (a *MultiStrategyTestAdapter) SetupTestData(ctx context.Context, testDataSet *internal.ContractTestDataSet) error {
+func (a *MultiStrategyTestAdapter) SetupTestData(_ context.Context, _ *internal.ContractTestDataSet) error {
 	// Multi-strategy with claims provider doesn't need external data setup
 	// JWT claims are self-contained
 	return nil
@@ -161,7 +164,7 @@ func (a *MultiStrategyTestAdapter) SetupTestData(ctx context.Context, testDataSe
 
 func (a *MultiStrategyTestAdapter) CreateERSService(ctx context.Context) (internal.ERSImplementation, error) {
 	// Create the v2 multi-strategy service
-	ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, a.config, a.logger)
+	ers, err := multistrategyv2.NewERSV2(ctx, a.config, a.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +181,7 @@ func (a *MultiStrategyTestAdapter) CreateERSService(ctx context.Context) (intern
 // MultiStrategyERSWrapper wraps the multi-strategy ERS to handle contract tests
 // The multi-strategy ERS is designed for JWT tokens, but contract tests use entity IDs
 type MultiStrategyERSWrapper struct {
-	ers    *multistrategyv2.MultiStrategyERSV2
+	ers    *multistrategyv2.ERSV2
 	logger *logger.Logger
 }
 
@@ -190,14 +193,15 @@ func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *conn
 	// Store entity ID to expected data mapping for later use
 	entityDataMap := make(map[string]map[string]interface{})
 
-	for _, entityReq := range req.Msg.Entities {
+	for _, entityReq := range req.Msg.GetEntities() {
 		entityID := entityReq.GetEphemeralId()
 
 		// Create mock JWT based on entity ID pattern and store expected data
 		var mockJWT string
 		var expectedData map[string]interface{}
 
-		if strings.HasPrefix(entityID, "test-user-") {
+		switch {
+		case strings.HasPrefix(entityID, "test-user-"):
 			// Extract username from entity ID
 			username := strings.TrimPrefix(entityID, "test-user-")
 			email := username + "@opentdf.test"
@@ -206,14 +210,14 @@ func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *conn
 				"username": username,
 				"email":    email,
 			}
-		} else if strings.HasPrefix(entityID, "test-client-") {
+		case strings.HasPrefix(entityID, "test-client-"):
 			// Extract client ID from entity ID
 			clientID := strings.TrimPrefix(entityID, "test-client-")
 			mockJWT = createMockJWTForClient(clientID)
 			expectedData = map[string]interface{}{
 				"client_id": clientID,
 			}
-		} else if strings.HasPrefix(entityID, "test-email-") {
+		case strings.HasPrefix(entityID, "test-email-"):
 			// Email-based entity ID
 			email := strings.TrimPrefix(entityID, "test-email-")
 			username := strings.Split(email, "@")[0]
@@ -222,7 +226,7 @@ func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *conn
 				"username": username,
 				"email":    email,
 			}
-		} else {
+		default:
 			// Generic entity - create basic JWT
 			email := entityID + "@opentdf.test"
 			mockJWT = createMockJWTForUser(entityID, email)
@@ -246,87 +250,19 @@ func (w *MultiStrategyERSWrapper) ResolveEntities(ctx context.Context, req *conn
 
 	chainResp, err := w.ers.CreateEntityChainsFromTokens(ctx, connect.NewRequest(chainReq))
 	if err != nil {
-		w.logger.Error("Failed to create entity chains for contract test", "error", err)
+		w.logger.Error("failed to create entity chains for contract test", slog.Any("error", err))
 		return nil, err
 	}
 
 	// Convert entity chains back to entity representations
 	var representations []*entityresolutionV2.EntityRepresentation
 
-	for _, chain := range chainResp.Msg.EntityChains {
-		if len(chain.Entities) > 0 {
-			// Use the first entity from each chain
-			entityFromChain := chain.Entities[0]
-
-			// Create additional properties from entity fields
-			additionalProps := make(map[string]interface{})
-
-			// Map entity fields to expected contract test fields
-			if entityFromChain.GetUserName() != "" {
-				additionalProps["username"] = entityFromChain.GetUserName()
+	for _, chain := range chainResp.Msg.GetEntityChains() {
+		if len(chain.GetEntities()) > 0 {
+			representation := w.processEntityChain(chain, entityDataMap)
+			if representation != nil {
+				representations = append(representations, representation)
 			}
-			if entityFromChain.GetEmailAddress() != "" {
-				additionalProps["email"] = entityFromChain.GetEmailAddress()
-			}
-			if entityFromChain.GetClientId() != "" {
-				additionalProps["client_id"] = entityFromChain.GetClientId()
-			}
-
-			// Extract claims for additional information - try to unmarshal the Any type
-			if claims := entityFromChain.GetClaims(); claims != nil {
-				// Try to unmarshal the claims as a Struct
-				var claimsStruct structpb.Struct
-				if err := claims.UnmarshalTo(&claimsStruct); err == nil {
-					if claimsMap := claimsStruct.AsMap(); claimsMap != nil {
-						for key, value := range claimsMap {
-							switch key {
-							case "email", "email_address":
-								if additionalProps["email"] == nil || additionalProps["email"] == "" {
-									additionalProps["email"] = value
-								}
-							case "username", "preferred_username", "user_name":
-								if additionalProps["username"] == nil || additionalProps["username"] == "" {
-									additionalProps["username"] = value
-								}
-							case "client_id", "azp":
-								if additionalProps["client_id"] == nil || additionalProps["client_id"] == "" {
-									additionalProps["client_id"] = value
-								}
-							}
-						}
-					}
-				}
-			}
-
-			// Use the expected data from entity ID mapping to fill in missing fields
-			if expectedData, exists := entityDataMap[chain.EphemeralId]; exists {
-				for key, value := range expectedData {
-					if additionalProps[key] == nil || additionalProps[key] == "" {
-						additionalProps[key] = value
-					}
-				}
-			}
-
-			// Add entity ID and any error information for debugging
-			additionalProps["entity_id"] = chain.EphemeralId
-			if len(additionalProps) == 1 { // Only entity_id was added
-				additionalProps["error"] = "No fields mapped from multi-strategy result"
-			}
-
-			// Convert to protobuf Struct
-			propsStruct, err := structpb.NewStruct(additionalProps)
-			if err != nil {
-				w.logger.Error("Failed to create protobuf struct", "error", err)
-				continue
-			}
-
-			// Convert to EntityRepresentation format expected by contract tests
-			representation := &entityresolutionV2.EntityRepresentation{
-				OriginalId:      chain.EphemeralId,
-				AdditionalProps: []*structpb.Struct{propsStruct},
-			}
-
-			representations = append(representations, representation)
 		}
 	}
 
@@ -342,14 +278,98 @@ func (w *MultiStrategyERSWrapper) CreateEntityChainsFromTokens(ctx context.Conte
 	return w.ers.CreateEntityChainsFromTokens(ctx, req)
 }
 
+// processEntityChain processes a single entity chain and converts it to EntityRepresentation
+func (w *MultiStrategyERSWrapper) processEntityChain(chain *entity.EntityChain, entityDataMap map[string]map[string]interface{}) *entityresolutionV2.EntityRepresentation {
+	// Use the first entity from each chain
+	entityFromChain := chain.GetEntities()[0]
+
+	// Create additional properties from entity fields
+	additionalProps := make(map[string]interface{})
+
+	// Map entity fields to expected contract test fields
+	if entityFromChain.GetUserName() != "" {
+		additionalProps["username"] = entityFromChain.GetUserName()
+	}
+	if entityFromChain.GetEmailAddress() != "" {
+		additionalProps["email"] = entityFromChain.GetEmailAddress()
+	}
+	if entityFromChain.GetClientId() != "" {
+		additionalProps["client_id"] = entityFromChain.GetClientId()
+	}
+
+	// Extract claims for additional information - try to unmarshal the Any type
+	if claims := entityFromChain.GetClaims(); claims != nil {
+		w.processClaims(claims, additionalProps)
+	}
+
+	// Use the expected data from entity ID mapping to fill in missing fields
+	if expectedData, exists := entityDataMap[chain.GetEphemeralId()]; exists {
+		for key, value := range expectedData {
+			if additionalProps[key] == nil || additionalProps[key] == "" {
+				additionalProps[key] = value
+			}
+		}
+	}
+
+	// Add entity ID and any error information for debugging
+	additionalProps["entity_id"] = chain.GetEphemeralId()
+	if len(additionalProps) == 1 { // Only entity_id was added
+		additionalProps["error"] = "No fields mapped from multi-strategy result"
+	}
+
+	// Convert to protobuf Struct
+	propsStruct, err := structpb.NewStruct(additionalProps)
+	if err != nil {
+		w.logger.Error("failed to create protobuf struct", slog.Any("error", err))
+		return nil
+	}
+
+	// Convert to EntityRepresentation format expected by contract tests
+	return &entityresolutionV2.EntityRepresentation{
+		OriginalId:      chain.GetEphemeralId(),
+		AdditionalProps: []*structpb.Struct{propsStruct},
+	}
+}
+
+// processClaims extracts claims from entity and adds them to additional properties
+func (w *MultiStrategyERSWrapper) processClaims(claims *anypb.Any, additionalProps map[string]interface{}) {
+	// Try to unmarshal the claims as a Struct
+	var claimsStruct structpb.Struct
+	if err := claims.UnmarshalTo(&claimsStruct); err != nil {
+		return
+	}
+
+	claimsMap := claimsStruct.AsMap()
+	if claimsMap == nil {
+		return
+	}
+
+	for key, value := range claimsMap {
+		switch key {
+		case "email", "email_address":
+			if additionalProps["email"] == nil || additionalProps["email"] == "" {
+				additionalProps["email"] = value
+			}
+		case "username", "preferred_username", "user_name":
+			if additionalProps["username"] == nil || additionalProps["username"] == "" {
+				additionalProps["username"] = value
+			}
+		case "client_id", "azp":
+			if additionalProps["client_id"] == nil || additionalProps["client_id"] == "" {
+				additionalProps["client_id"] = value
+			}
+		}
+	}
+}
+
 // Helper functions to create mock JWTs for testing
 func createMockJWTForUser(username, email string) string {
 	// Header: {"alg":"HS256","typ":"JWT"}
 	header := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
 
 	// Create payload with user information using current timestamps
-	now := fmt.Sprintf("%d", time.Now().Unix())
-	exp := fmt.Sprintf("%d", time.Now().Unix()+3600)
+	now := strconv.FormatInt(time.Now().Unix(), 10)
+	exp := strconv.FormatInt(time.Now().Unix()+3600, 10)
 
 	payload := fmt.Sprintf(`{
 		"sub": "%s",
@@ -374,8 +394,8 @@ func createMockJWTForClient(clientID string) string {
 	header := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
 
 	// Create payload with client information using current timestamps
-	now := fmt.Sprintf("%d", time.Now().Unix())
-	exp := fmt.Sprintf("%d", time.Now().Unix()+3600)
+	now := strconv.FormatInt(time.Now().Unix(), 10)
+	exp := strconv.FormatInt(time.Now().Unix()+3600, 10)
 
 	payload := fmt.Sprintf(`{
 		"client_id": "%s",
@@ -394,7 +414,7 @@ func createMockJWTForClient(clientID string) string {
 	return header + "." + encodedPayload + "." + signature
 }
 
-func (a *MultiStrategyTestAdapter) TeardownTestData(ctx context.Context) error {
+func (a *MultiStrategyTestAdapter) TeardownTestData(_ context.Context) error {
 	// No cleanup needed for claims provider
 	return nil
 }
@@ -438,7 +458,7 @@ func TestMultiStrategyEntityResolutionV2(t *testing.T) {
 }
 
 // createTestJWT creates a minimal JWT string for testing (not cryptographically signed)
-func createTestJWT(sub, email string) string {
+func createTestJWT(_, _ string) string {
 	// This creates a properly formatted JWT for testing purposes
 	// Header: {"alg":"HS256","typ":"JWT"}
 	header := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
@@ -483,8 +503,8 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 			},
 		}
 
-		ctx := context.Background()
-		ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+		ctx := t.Context()
+		ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 		if err != nil {
 			t.Fatalf("Failed to create ERS: %v", err)
 		}
@@ -505,16 +525,16 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 		}
 
 		// With proper v2 implementation, this should either fail or succeed with entities
-		if len(resp.Msg.EntityChains) == 0 {
+		if len(resp.Msg.GetEntityChains()) == 0 {
 			t.Fatal("Expected at least one chain, got none")
 		}
 
 		// Check what entities we get from the v2 implementation
-		chain := resp.Msg.EntityChains[0]
-		t.Logf("Got %d entities in chain for fail-fast strategy", len(chain.Entities))
+		chain := resp.Msg.GetEntityChains()[0]
+		t.Logf("Got %d entities in chain for fail-fast strategy", len(chain.GetEntities()))
 
 		// The v2 implementation should now properly parse JWT and create entities
-		if len(chain.Entities) > 0 {
+		if len(chain.GetEntities()) > 0 {
 			t.Logf("✅ v2 implementation correctly created entities from JWT")
 		}
 	})
@@ -568,8 +588,8 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 			},
 		}
 
-		ctx := context.Background()
-		ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+		ctx := t.Context()
+		ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 		if err != nil {
 			t.Fatalf("Failed to create ERS: %v", err)
 		}
@@ -588,16 +608,16 @@ func TestMultiStrategyChainFailureStrategies(t *testing.T) {
 			t.Fatalf("Expected success with continue strategy, got error: %v", err)
 		}
 
-		if len(resp.Msg.EntityChains) == 0 {
+		if len(resp.Msg.GetEntityChains()) == 0 {
 			t.Fatal("Expected at least one entity chain, got none")
 		}
 
 		// Check what entities we get from the v2 implementation with continue strategy
-		chain := resp.Msg.EntityChains[0]
-		t.Logf("Got %d entities in chain with continue strategy", len(chain.Entities))
+		chain := resp.Msg.GetEntityChains()[0]
+		t.Logf("Got %d entities in chain with continue strategy", len(chain.GetEntities()))
 
 		// The v2 implementation should now properly parse JWT and create entities
-		if len(chain.Entities) > 0 {
+		if len(chain.GetEntities()) > 0 {
 			t.Logf("✅ v2 implementation correctly created entities with continue strategy")
 		}
 	})

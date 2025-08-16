@@ -7,6 +7,20 @@ import (
 	"time"
 )
 
+const (
+	// Default service ports
+	defaultKeycloakPort = 8080
+	defaultPostgresPort = 5432
+	defaultLDAPPort     = 389
+
+	// Default timeout multipliers
+	containerStartupMinutes = 2
+	containerRunMinutes     = 4
+
+	// Default test data counts
+	defaultTestCount = 3
+)
+
 // TestConfig provides environment-aware configuration for integration tests
 type TestConfig struct {
 	// Service Endpoints
@@ -41,11 +55,11 @@ func GetTestConfig() *TestConfig {
 	return &TestConfig{
 		// Service Endpoints - configurable via environment
 		KeycloakURL:  getEnvString("TEST_KEYCLOAK_URL", "http://localhost:8080"),
-		KeycloakPort: getEnvInt("TEST_KEYCLOAK_PORT", 8080),
+		KeycloakPort: getEnvInt("TEST_KEYCLOAK_PORT", defaultKeycloakPort),
 		PostgresHost: getEnvString("TEST_POSTGRES_HOST", "localhost"),
-		PostgresPort: getEnvInt("TEST_POSTGRES_PORT", 5432),
+		PostgresPort: getEnvInt("TEST_POSTGRES_PORT", defaultPostgresPort),
 		LDAPHost:     getEnvString("TEST_LDAP_HOST", "localhost"),
-		LDAPPort:     getEnvInt("TEST_LDAP_PORT", 389),
+		LDAPPort:     getEnvInt("TEST_LDAP_PORT", defaultLDAPPort),
 
 		// Authentication - configurable for different test environments
 		AdminUser:     getEnvString("TEST_ADMIN_USER", "admin"),
@@ -55,15 +69,15 @@ func GetTestConfig() *TestConfig {
 		ClientSecret:  getEnvString("TEST_CLIENT_SECRET", "test-secret"),
 
 		// Test Behavior - tunable for different environments
-		ContainerStartupTimeout: getEnvDuration("TEST_CONTAINER_STARTUP_TIMEOUT", 2*time.Minute),
-		ContainerRunTimeout:     getEnvDuration("TEST_CONTAINER_RUN_TIMEOUT", 4*time.Minute),
+		ContainerStartupTimeout: getEnvDuration("TEST_CONTAINER_STARTUP_TIMEOUT", containerStartupMinutes*time.Minute),
+		ContainerRunTimeout:     getEnvDuration("TEST_CONTAINER_RUN_TIMEOUT", containerRunMinutes*time.Minute),
 		TestDataVariation:       getEnvBool("TEST_DATA_VARIATION", true),
 		JWTValidityDuration:     getEnvDuration("TEST_JWT_VALIDITY", time.Hour),
 
 		// Test Data - configurable scale and variety
 		EmailDomains:    getEnvStringSlice("TEST_EMAIL_DOMAINS", []string{"opentdf.test", "example.com", "company.local"}),
-		TestUserCount:   getEnvInt("TEST_USER_COUNT", 3),
-		TestClientCount: getEnvInt("TEST_CLIENT_COUNT", 3),
+		TestUserCount:   getEnvInt("TEST_USER_COUNT", defaultTestCount),
+		TestClientCount: getEnvInt("TEST_CLIENT_COUNT", defaultTestCount),
 	}
 }
 

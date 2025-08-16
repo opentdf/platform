@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"context"
 	"testing"
 
 	"github.com/opentdf/platform/service/entityresolution/integration/internal"
@@ -102,7 +101,8 @@ func createMultiStrategyImplementation(t *testing.T) internal.ERSImplementation 
 		},
 	}
 
-	ctx := context.Background(); ers, err := multistrategyv2.NewMultiStrategyERSV2(ctx, config, logger.CreateTestLogger())
+	ctx := t.Context()
+	ers, err := multistrategyv2.NewERSV2(ctx, config, logger.CreateTestLogger())
 	if err != nil {
 		t.Fatalf("Failed to create multi-strategy ERS: %v", err)
 	}
@@ -133,7 +133,7 @@ func createKeycloakImplementation(_ *testing.T) internal.ERSImplementation {
 	}
 
 	testLogger := logger.CreateTestLogger()
-	var testCache *cache.Cache = nil
+	var testCache *cache.Cache
 
 	keycloakService, _ := keycloakv2.RegisterKeycloakERS(keycloakConfig, testLogger, testCache)
 

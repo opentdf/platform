@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -13,13 +14,21 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+const (
+	// AnonymousUser represents an anonymous or unknown user
+	AnonymousUser = "anonymous"
+
+	// Token expiration time constants
+	tokenExpirationSeconds = 3600 // 1 hour in seconds
+)
+
 // No global configuration needed - all adapter-specific config is managed locally in adapter test files
 
 // CreateTestEntityByUsername creates a test entity for username-based resolution
 func CreateTestEntityByUsername(username string) *entity.Entity {
 	return &entity.Entity{
 		EntityType:  &entity.Entity_UserName{UserName: username},
-		EphemeralId: fmt.Sprintf("test-user-%s", username),
+		EphemeralId: ("test-user-" + username),
 		Category:    entity.Entity_CATEGORY_SUBJECT,
 	}
 }
@@ -28,7 +37,7 @@ func CreateTestEntityByUsername(username string) *entity.Entity {
 func CreateTestEntityByEmail(email string) *entity.Entity {
 	return &entity.Entity{
 		EntityType:  &entity.Entity_EmailAddress{EmailAddress: email},
-		EphemeralId: fmt.Sprintf("test-email-%s", email),
+		EphemeralId: ("test-email-" + email),
 		Category:    entity.Entity_CATEGORY_SUBJECT,
 	}
 }
@@ -37,7 +46,7 @@ func CreateTestEntityByEmail(email string) *entity.Entity {
 func CreateTestEntityByClientID(clientID string) *entity.Entity {
 	return &entity.Entity{
 		EntityType:  &entity.Entity_ClientId{ClientId: clientID},
-		EphemeralId: fmt.Sprintf("test-client-%s", clientID),
+		EphemeralId: ("test-client-" + clientID),
 		Category:    entity.Entity_CATEGORY_ENVIRONMENT,
 	}
 }
@@ -69,8 +78,8 @@ func CreateTestJWTWithClaims(clientID, username, email string, additionalClaims 
 		"aud":                []string{"test-audience"}, // Default audience
 		"iss":                "test-issuer",             // Default issuer
 		"iat":                now,
-		"exp":                now + 3600, // 1 hour validity
-		"_test_marker":       true,       // Clear indicator this is a test JWT
+		"exp":                now + tokenExpirationSeconds, // 1 hour validity
+		"_test_marker":       true,                         // Clear indicator this is a test JWT
 	}
 
 	// Handle empty parameters gracefully
@@ -78,8 +87,8 @@ func CreateTestJWTWithClaims(clientID, username, email string, additionalClaims 
 		payloadData["client_id"] = clientID // Include client_id when provided
 	}
 	if username == "" {
-		payloadData["sub"] = "anonymous"
-		payloadData["preferred_username"] = "anonymous"
+		payloadData["sub"] = AnonymousUser
+		payloadData["preferred_username"] = AnonymousUser
 	}
 	if email == "" {
 		delete(payloadData, "email") // Remove email claim if not provided
@@ -95,7 +104,7 @@ func CreateTestJWTWithClaims(clientID, username, email string, additionalClaims 
 	if err != nil {
 		// Fallback to basic payload if marshaling fails
 		payloadJSON = []byte(fmt.Sprintf(`{"sub":"%s","email":"%s","azp":"%s","iat":%d,"exp":%d}`,
-			username, email, clientID, now, now+3600))
+			username, email, clientID, now, now+tokenExpirationSeconds))
 	}
 
 	encodedPayload := base64.RawURLEncoding.EncodeToString(payloadJSON)
@@ -172,7 +181,7 @@ func ValidateEntityRepresentation(repr *entityresolutionV2.EntityRepresentation,
 	}
 
 	if len(repr.GetAdditionalProps()) == 0 {
-		return fmt.Errorf("expected additional_props to be populated, got empty")
+		return errors.New("expected additional_props to be populated, got empty")
 	}
 
 	// Check first additional prop (assuming single result)
@@ -207,16 +216,18 @@ func ValidateEntityRepresentation(repr *entityresolutionV2.EntityRepresentation,
 }
 
 // WaitForContainer waits for a container to be ready with retries
-func WaitForContainer(ctx context.Context, checkFunc func() error, maxRetries int, delay time.Duration) error {
+func WaitForContainer(_ context.Context, checkFunc func() error, maxRetries int, delay time.Duration) error {
 	var lastErr error
 	for i := 0; i < maxRetries; i++ {
-		if err := checkFunc(); err == nil {
+		err := checkFunc()
+		if err == nil {
 			return nil
-		} else {
-			lastErr = err
-			slog.Debug("container not ready, retrying", "attempt", i+1, "error", err.Error())
-			time.Sleep(delay)
 		}
+		lastErr = err
+		slog.Debug("container not ready, retrying",
+			slog.Int("attempt", i+1),
+			slog.String("error", err.Error()))
+		time.Sleep(delay)
 	}
 	return fmt.Errorf("container not ready after %d attempts: %w", maxRetries, lastErr)
 }

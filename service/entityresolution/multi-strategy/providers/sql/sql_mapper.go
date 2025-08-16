@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -8,23 +9,23 @@ import (
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
-// SQLMapper handles mapping for SQL providers
-type SQLMapper struct {
+// Mapper handles mapping for SQL providers
+type Mapper struct {
 	providerType string
 }
 
-// Ensure SQLMapper implements types.Mapper interface
-var _ types.Mapper = (*SQLMapper)(nil)
+// Ensure Mapper implements types.Mapper interface
+var _ types.Mapper = (*Mapper)(nil)
 
-// NewSQLMapper creates a new SQL mapper
-func NewSQLMapper() *SQLMapper {
-	return &SQLMapper{
+// NewMapper creates a new SQL mapper
+func NewMapper() *Mapper {
+	return &Mapper{
 		providerType: "sql",
 	}
 }
 
 // ExtractParameters extracts parameters for SQL queries with proper validation
-func (m *SQLMapper) ExtractParameters(jwtClaims types.JWTClaims, inputMapping []types.InputMapping) (map[string]interface{}, error) {
+func (m *Mapper) ExtractParameters(jwtClaims types.JWTClaims, inputMapping []types.InputMapping) (map[string]interface{}, error) {
 	params := make(map[string]interface{})
 
 	for _, mapping := range inputMapping {
@@ -54,7 +55,7 @@ func (m *SQLMapper) ExtractParameters(jwtClaims types.JWTClaims, inputMapping []
 }
 
 // TransformResults transforms SQL query results to standardized claims
-func (m *SQLMapper) TransformResults(rawData map[string]interface{}, outputMapping []types.OutputMapping) (map[string]interface{}, error) {
+func (m *Mapper) TransformResults(rawData map[string]interface{}, outputMapping []types.OutputMapping) (map[string]interface{}, error) {
 	claims := make(map[string]interface{})
 
 	for _, mapping := range outputMapping {
@@ -78,14 +79,14 @@ func (m *SQLMapper) TransformResults(rawData map[string]interface{}, outputMappi
 }
 
 // ValidateInputMapping validates SQL-specific input mapping requirements
-func (m *SQLMapper) ValidateInputMapping(inputMapping []types.InputMapping) error {
+func (m *Mapper) ValidateInputMapping(inputMapping []types.InputMapping) error {
 	// Base validation
 	for _, mapping := range inputMapping {
 		if mapping.JWTClaim == "" {
-			return fmt.Errorf("jwt_claim cannot be empty")
+			return errors.New("jwt_claim cannot be empty")
 		}
 		if mapping.Parameter == "" {
-			return fmt.Errorf("parameter cannot be empty")
+			return errors.New("parameter cannot be empty")
 		}
 	}
 
@@ -100,17 +101,17 @@ func (m *SQLMapper) ValidateInputMapping(inputMapping []types.InputMapping) erro
 }
 
 // ValidateOutputMapping validates SQL-specific output mapping requirements
-func (m *SQLMapper) ValidateOutputMapping(outputMapping []types.OutputMapping) error {
+func (m *Mapper) ValidateOutputMapping(outputMapping []types.OutputMapping) error {
 	// Base validation
 	for _, mapping := range outputMapping {
 		if mapping.ClaimName == "" {
-			return fmt.Errorf("claim_name cannot be empty")
+			return errors.New("claim_name cannot be empty")
 		}
 	}
 
 	for _, mapping := range outputMapping {
 		if mapping.SourceColumn == "" {
-			return fmt.Errorf("source_column cannot be empty for SQL mapper")
+			return errors.New("source_column cannot be empty for SQL mapper")
 		}
 
 		// Validate column name is a valid SQL identifier
@@ -128,17 +129,17 @@ func (m *SQLMapper) ValidateOutputMapping(outputMapping []types.OutputMapping) e
 }
 
 // GetSupportedTransformations returns SQL-specific transformations
-func (m *SQLMapper) GetSupportedTransformations() []string {
+func (m *Mapper) GetSupportedTransformations() []string {
 	return transformation.GetAllSQLTransformations()
 }
 
 // ApplyTransformation applies SQL-specific transformations
-func (m *SQLMapper) ApplyTransformation(value interface{}, transformationName string) (interface{}, error) {
+func (m *Mapper) ApplyTransformation(value interface{}, transformationName string) (interface{}, error) {
 	return transformation.DefaultRegistry.ApplyTransformation(value, transformationName, "sql")
 }
 
 // sanitizeParameterValue ensures parameter values are safe for SQL queries
-func (m *SQLMapper) sanitizeParameterValue(value interface{}) interface{} {
+func (m *Mapper) sanitizeParameterValue(value interface{}) interface{} {
 	// The actual SQL driver will handle parameterization, but we can do basic cleanup
 	if str, ok := value.(string); ok {
 		// Trim whitespace
@@ -170,6 +171,6 @@ func isValidSQLIdentifier(name string) bool {
 }
 
 // isTransformationSupported checks if a transformation is supported by SQL mapper
-func (m *SQLMapper) isTransformationSupported(transformationName string) bool {
+func (m *Mapper) isTransformationSupported(transformationName string) bool {
 	return transformation.IsSupportedByProvider(transformationName, "sql")
 }

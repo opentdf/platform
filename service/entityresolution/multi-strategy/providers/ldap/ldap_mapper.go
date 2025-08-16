@@ -1,29 +1,30 @@
 package ldap
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/transformation"
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
 
-// LDAPMapper handles mapping for LDAP providers
-type LDAPMapper struct {
+// Mapper handles mapping for LDAP providers
+type Mapper struct {
 	providerType string
 }
 
-// Ensure LDAPMapper implements types.Mapper interface
-var _ types.Mapper = (*LDAPMapper)(nil)
+// Ensure Mapper implements types.Mapper interface
+var _ types.Mapper = (*Mapper)(nil)
 
-// NewLDAPMapper creates a new LDAP mapper
-func NewLDAPMapper() *LDAPMapper {
-	return &LDAPMapper{
+// NewMapper creates a new LDAP mapper
+func NewMapper() *Mapper {
+	return &Mapper{
 		providerType: "ldap",
 	}
 }
 
 // ExtractParameters extracts parameters for LDAP queries with proper validation
-func (m *LDAPMapper) ExtractParameters(jwtClaims types.JWTClaims, inputMapping []types.InputMapping) (map[string]interface{}, error) {
+func (m *Mapper) ExtractParameters(jwtClaims types.JWTClaims, inputMapping []types.InputMapping) (map[string]interface{}, error) {
 	params := make(map[string]interface{})
 
 	for _, mapping := range inputMapping {
@@ -50,7 +51,7 @@ func (m *LDAPMapper) ExtractParameters(jwtClaims types.JWTClaims, inputMapping [
 }
 
 // TransformResults transforms LDAP search results to standardized claims
-func (m *LDAPMapper) TransformResults(rawData map[string]interface{}, outputMapping []types.OutputMapping) (map[string]interface{}, error) {
+func (m *Mapper) TransformResults(rawData map[string]interface{}, outputMapping []types.OutputMapping) (map[string]interface{}, error) {
 	claims := make(map[string]interface{})
 
 	for _, mapping := range outputMapping {
@@ -74,14 +75,14 @@ func (m *LDAPMapper) TransformResults(rawData map[string]interface{}, outputMapp
 }
 
 // ValidateInputMapping validates LDAP-specific input mapping requirements
-func (m *LDAPMapper) ValidateInputMapping(inputMapping []types.InputMapping) error {
+func (m *Mapper) ValidateInputMapping(inputMapping []types.InputMapping) error {
 	// Base validation
 	for _, mapping := range inputMapping {
 		if mapping.JWTClaim == "" {
-			return fmt.Errorf("jwt_claim cannot be empty")
+			return errors.New("jwt_claim cannot be empty")
 		}
 		if mapping.Parameter == "" {
-			return fmt.Errorf("parameter cannot be empty")
+			return errors.New("parameter cannot be empty")
 		}
 	}
 
@@ -96,17 +97,17 @@ func (m *LDAPMapper) ValidateInputMapping(inputMapping []types.InputMapping) err
 }
 
 // ValidateOutputMapping validates LDAP-specific output mapping requirements
-func (m *LDAPMapper) ValidateOutputMapping(outputMapping []types.OutputMapping) error {
+func (m *Mapper) ValidateOutputMapping(outputMapping []types.OutputMapping) error {
 	// Base validation
 	for _, mapping := range outputMapping {
 		if mapping.ClaimName == "" {
-			return fmt.Errorf("claim_name cannot be empty")
+			return errors.New("claim_name cannot be empty")
 		}
 	}
 
 	for _, mapping := range outputMapping {
 		if mapping.SourceAttribute == "" {
-			return fmt.Errorf("source_attribute cannot be empty for LDAP mapper")
+			return errors.New("source_attribute cannot be empty for LDAP mapper")
 		}
 
 		// Validate attribute name is a valid LDAP attribute
@@ -124,17 +125,17 @@ func (m *LDAPMapper) ValidateOutputMapping(outputMapping []types.OutputMapping) 
 }
 
 // GetSupportedTransformations returns LDAP-specific transformations
-func (m *LDAPMapper) GetSupportedTransformations() []string {
+func (m *Mapper) GetSupportedTransformations() []string {
 	return transformation.GetAllLDAPTransformations()
 }
 
 // ApplyTransformation applies LDAP-specific transformations
-func (m *LDAPMapper) ApplyTransformation(value interface{}, transformationName string) (interface{}, error) {
+func (m *Mapper) ApplyTransformation(value interface{}, transformationName string) (interface{}, error) {
 	return transformation.DefaultRegistry.ApplyTransformation(value, transformationName, "ldap")
 }
 
 // escapeLDAPFilter escapes special characters in LDAP filter values
-func (m *LDAPMapper) escapeLDAPFilter(value string) string {
+func (m *Mapper) escapeLDAPFilter(value string) string {
 	return transformation.EscapeLDAPFilter(value)
 }
 
@@ -183,6 +184,6 @@ func isValidLDAPAttribute(name string) bool {
 }
 
 // isTransformationSupported checks if a transformation is supported by LDAP mapper
-func (m *LDAPMapper) isTransformationSupported(transformationName string) bool {
+func (m *Mapper) isTransformationSupported(transformationName string) bool {
 	return transformation.IsSupportedByProvider(transformationName, "ldap")
 }

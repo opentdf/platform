@@ -4,10 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"testing"
 	"time"
@@ -29,7 +27,7 @@ import (
 // TestClaimsEntityResolutionV2 runs Claims-specific tests focused on JWT and claims processing
 // Note: Claims implementation doesn't perform typical entity resolution - it processes claims directly
 func TestClaimsEntityResolutionV2(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	adapter := NewClaimsTestAdapter()
 
 	// Setup test data
@@ -82,19 +80,19 @@ func TestClaimsEntityResolutionV2(t *testing.T) {
 			t.Fatalf("Failed to resolve claims entity: %v", err)
 		}
 
-		if len(resp.EntityRepresentations) != 1 {
-			t.Errorf("Expected 1 entity representation, got %d", len(resp.EntityRepresentations))
+		if len(resp.GetEntityRepresentations()) != 1 {
+			t.Errorf("Expected 1 entity representation, got %d", len(resp.GetEntityRepresentations()))
 		}
 
-		repr := resp.EntityRepresentations[0]
-		if repr.OriginalId != "test-claims-entity" {
-			t.Errorf("Expected original ID 'test-claims-entity', got %s", repr.OriginalId)
+		repr := resp.GetEntityRepresentations()[0]
+		if repr.GetOriginalId() != "test-claims-entity" {
+			t.Errorf("Expected original ID 'test-claims-entity', got %s", repr.GetOriginalId())
 		}
 
-		if len(repr.AdditionalProps) == 0 {
+		if len(repr.GetAdditionalProps()) == 0 {
 			t.Error("Expected additional properties, got none")
 		} else {
-			props := repr.AdditionalProps[0].AsMap()
+			props := repr.GetAdditionalProps()[0].AsMap()
 			if props["sub"] != "user123" {
 				t.Errorf("Expected sub claim 'user123', got %v", props["sub"])
 			}
@@ -114,16 +112,16 @@ func TestClaimsEntityResolutionV2(t *testing.T) {
 			t.Fatalf("Failed to resolve entities: %v", err)
 		}
 
-		if len(resp.EntityRepresentations) != 2 {
-			t.Errorf("Expected 2 entity representations, got %d", len(resp.EntityRepresentations))
+		if len(resp.GetEntityRepresentations()) != 2 {
+			t.Errorf("Expected 2 entity representations, got %d", len(resp.GetEntityRepresentations()))
 		}
 
 		// Verify that entities were processed (converted to protojson format)
-		for i, repr := range resp.EntityRepresentations {
-			if len(repr.AdditionalProps) == 0 {
+		for i, repr := range resp.GetEntityRepresentations() {
+			if len(repr.GetAdditionalProps()) == 0 {
 				t.Errorf("Entity %d: Expected additional properties, got none", i)
 			} else {
-				props := repr.AdditionalProps[0].AsMap()
+				props := repr.GetAdditionalProps()[0].AsMap()
 				// Should contain protojson representation of the entity
 				if props["ephemeralId"] == nil {
 					t.Errorf("Entity %d: Expected ephemeralId in protojson output", i)
@@ -135,7 +133,7 @@ func TestClaimsEntityResolutionV2(t *testing.T) {
 
 // TestClaimsJWTProcessing tests Claims-specific JWT token processing functionality
 func TestClaimsJWTProcessing(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	adapter := NewClaimsTestAdapter()
 
 	// Setup test data (which includes JWT keys)
@@ -180,24 +178,24 @@ func TestClaimsJWTProcessing(t *testing.T) {
 		}
 
 		// Validate response
-		if len(resp.EntityChains) != 2 {
-			t.Errorf("Expected 2 entity chains, got %d", len(resp.EntityChains))
+		if len(resp.GetEntityChains()) != 2 {
+			t.Errorf("Expected 2 entity chains, got %d", len(resp.GetEntityChains()))
 		}
 
-		for i, chain := range resp.EntityChains {
+		for i, chain := range resp.GetEntityChains() {
 			expectedID := fmt.Sprintf("test-token-%d", i+1)
-			if chain.EphemeralId != expectedID {
-				t.Errorf("Expected ephemeral ID %s, got %s", expectedID, chain.EphemeralId)
+			if chain.GetEphemeralId() != expectedID {
+				t.Errorf("Expected ephemeral ID %s, got %s", expectedID, chain.GetEphemeralId())
 			}
 
-			if len(chain.Entities) == 0 {
+			if len(chain.GetEntities()) == 0 {
 				t.Errorf("Expected entities in chain, got none")
 			}
 
 			// Verify that we have a claims entity
 			hasClaimsEntity := false
-			for _, ent := range chain.Entities {
-				if _, ok := ent.EntityType.(*entity.Entity_Claims); ok {
+			for _, ent := range chain.GetEntities() {
+				if _, ok := ent.GetEntityType().(*entity.Entity_Claims); ok {
 					hasClaimsEntity = true
 					break
 				}
@@ -244,8 +242,8 @@ func TestClaimsJWTProcessing(t *testing.T) {
 			t.Fatalf("Unexpected error with expired token: %v", err)
 		}
 
-		if len(resp.EntityChains) != 1 {
-			t.Errorf("Expected 1 entity chain, got %d", len(resp.EntityChains))
+		if len(resp.GetEntityChains()) != 1 {
+			t.Errorf("Expected 1 entity chain, got %d", len(resp.GetEntityChains()))
 		}
 	})
 
@@ -280,19 +278,19 @@ func TestClaimsJWTProcessing(t *testing.T) {
 			t.Fatalf("Failed to resolve claims entity: %v", err)
 		}
 
-		if len(resp.EntityRepresentations) != 1 {
-			t.Errorf("Expected 1 entity representation, got %d", len(resp.EntityRepresentations))
+		if len(resp.GetEntityRepresentations()) != 1 {
+			t.Errorf("Expected 1 entity representation, got %d", len(resp.GetEntityRepresentations()))
 		}
 
-		repr := resp.EntityRepresentations[0]
-		if repr.OriginalId != "test-claims-entity" {
-			t.Errorf("Expected original ID 'test-claims-entity', got %s", repr.OriginalId)
+		repr := resp.GetEntityRepresentations()[0]
+		if repr.GetOriginalId() != "test-claims-entity" {
+			t.Errorf("Expected original ID 'test-claims-entity', got %s", repr.GetOriginalId())
 		}
 
-		if len(repr.AdditionalProps) == 0 {
+		if len(repr.GetAdditionalProps()) == 0 {
 			t.Error("Expected additional properties, got none")
 		} else {
-			props := repr.AdditionalProps[0].AsMap()
+			props := repr.GetAdditionalProps()[0].AsMap()
 			if props["sub"] != "user123" {
 				t.Errorf("Expected sub claim 'user123', got %v", props["sub"])
 			}
@@ -321,7 +319,7 @@ func (a *ClaimsTestAdapter) GetScopeName() string {
 }
 
 // SetupTestData for Claims generates JWT signing keys and prepares test infrastructure
-func (a *ClaimsTestAdapter) SetupTestData(ctx context.Context, testDataSet *internal.ContractTestDataSet) error {
+func (a *ClaimsTestAdapter) SetupTestData(_ context.Context, _ *internal.ContractTestDataSet) error {
 	// Generate RSA key pair for JWT signing
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -335,7 +333,7 @@ func (a *ClaimsTestAdapter) SetupTestData(ctx context.Context, testDataSet *inte
 }
 
 // CreateERSService creates and returns a configured Claims ERS service
-func (a *ClaimsTestAdapter) CreateERSService(ctx context.Context) (internal.ERSImplementation, error) {
+func (a *ClaimsTestAdapter) CreateERSService(_ context.Context) (internal.ERSImplementation, error) {
 	testLogger := logger.CreateTestLogger()
 	service, _ := claimsv2.RegisterClaimsERS(nil, testLogger)
 
@@ -347,7 +345,7 @@ func (a *ClaimsTestAdapter) CreateERSService(ctx context.Context) (internal.ERSI
 }
 
 // TeardownTestData cleans up Claims test data and resources
-func (a *ClaimsTestAdapter) TeardownTestData(ctx context.Context) error {
+func (a *ClaimsTestAdapter) TeardownTestData(_ context.Context) error {
 	// Clear keys
 	a.privateKey = nil
 	a.publicKey = nil
@@ -501,39 +499,4 @@ func (a *ClaimsTestAdapter) testResolveEntities(ctx context.Context, implementat
 // encodeBase64URL encodes bytes to base64 URL encoding without padding
 func encodeBase64URL(data []byte) string {
 	return base64.RawURLEncoding.EncodeToString(data)
-}
-
-// Helper function to convert PEM-encoded private key to string
-func (a *ClaimsTestAdapter) getPrivateKeyPEM() string {
-	if a.privateKey == nil {
-		return ""
-	}
-
-	privateKeyBytes := x509.MarshalPKCS1PrivateKey(a.privateKey)
-
-	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: privateKeyBytes,
-	})
-
-	return string(privateKeyPEM)
-}
-
-// Helper function to convert PEM-encoded public key to string
-func (a *ClaimsTestAdapter) getPublicKeyPEM() string {
-	if a.publicKey == nil {
-		return ""
-	}
-
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(a.publicKey)
-	if err != nil {
-		return ""
-	}
-
-	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: publicKeyBytes,
-	})
-
-	return string(publicKeyPEM)
 }

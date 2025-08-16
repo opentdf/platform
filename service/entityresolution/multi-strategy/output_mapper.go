@@ -1,11 +1,14 @@
 package multistrategy
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
 )
+
+var ErrFieldNotFound = errors.New("field not found in raw result")
 
 // OutputMapper handles transformation of raw provider results to final entity claims
 type OutputMapper struct{}
@@ -63,6 +66,10 @@ func (om *OutputMapper) applyMapping(rawResult *types.RawResult, entityResult *t
 	// Get source value based on provider type
 	sourceValue, err := om.getSourceValue(rawResult, mapping)
 	if err != nil {
+		// Skip mapping if field not found
+		if errors.Is(err, ErrFieldNotFound) {
+			return nil
+		}
 		return err
 	}
 
@@ -116,8 +123,8 @@ func (om *OutputMapper) getSourceValue(rawResult *types.RawResult, mapping types
 	// Get value from raw result data
 	value, exists := rawResult.Data[sourceField]
 	if !exists {
-		// Field not found - this is not necessarily an error
-		return nil, nil
+		// Field not found - return sentinel error that caller can handle
+		return nil, ErrFieldNotFound
 	}
 
 	return value, nil
@@ -250,7 +257,7 @@ func (om *OutputMapper) transformLDAPDNToCNArray(value interface{}) (interface{}
 // transformToLowercase converts string values to lowercase
 func (om *OutputMapper) transformToLowercase(value interface{}) (interface{}, error) {
 	if value == nil {
-		return nil, nil
+		return "", nil // Return empty string for nil values in lowercase transformation
 	}
 
 	if str, ok := value.(string); ok {
@@ -263,7 +270,7 @@ func (om *OutputMapper) transformToLowercase(value interface{}) (interface{}, er
 // transformToUppercase converts string values to uppercase
 func (om *OutputMapper) transformToUppercase(value interface{}) (interface{}, error) {
 	if value == nil {
-		return nil, nil
+		return "", nil // Return empty string for nil values in uppercase transformation
 	}
 
 	if str, ok := value.(string); ok {
@@ -276,7 +283,7 @@ func (om *OutputMapper) transformToUppercase(value interface{}) (interface{}, er
 // transformTrim trims whitespace from string values
 func (om *OutputMapper) transformTrim(value interface{}) (interface{}, error) {
 	if value == nil {
-		return nil, nil
+		return "", nil // Return empty string for nil values in trim transformation
 	}
 
 	if str, ok := value.(string); ok {

@@ -2,8 +2,11 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -43,10 +46,7 @@ func TestKeycloakEntityResolutionV2(t *testing.T) {
 	contractSuite.RunContractTestsWithAdapter(t, adapter)
 }
 
-var (
-	keycloakContainer tc.Container
-	keycloakConfig    *KeycloakTestConfig
-)
+var keycloakContainer tc.Container
 
 // KeycloakTestConfig holds Keycloak-specific test configuration
 type KeycloakTestConfig struct {
@@ -129,7 +129,7 @@ func (a *KeycloakTestAdapter) SetupTestData(ctx context.Context, testDataSet *in
 }
 
 // CreateERSService creates and returns a configured Keycloak ERS service
-func (a *KeycloakTestAdapter) CreateERSService(ctx context.Context) (internal.ERSImplementation, error) {
+func (a *KeycloakTestAdapter) CreateERSService(_ context.Context) (internal.ERSImplementation, error) {
 	keycloakConfig := map[string]interface{}{
 		"url":            a.config.URL,
 		"realm":          a.config.Realm,
@@ -149,7 +149,7 @@ func (a *KeycloakTestAdapter) CreateERSService(ctx context.Context) (internal.ER
 	testLogger := logger.CreateTestLogger()
 
 	// Create a test cache - using nil for simplicity in tests
-	var testCache *cache.Cache = nil
+	var testCache *cache.Cache
 
 	service, _ := keycloakv2.RegisterKeycloakERS(keycloakConfig, testLogger, testCache)
 
@@ -228,7 +228,7 @@ func (a *KeycloakTestAdapter) setupKeycloakContainer(ctx context.Context) error 
 
 	// Update config with actual container details
 	a.config.Port = mappedPort.Int()
-	a.config.URL = fmt.Sprintf("http://%s:%d", a.config.Host, a.config.Port)
+	a.config.URL = "http://" + net.JoinHostPort(a.config.Host, strconv.Itoa(a.config.Port))
 	a.config.AdminURL = a.config.URL
 
 	// Wait for Keycloak to be fully ready
@@ -248,7 +248,7 @@ func (a *KeycloakTestAdapter) waitForKeycloakReady(ctx context.Context) error {
 			return fmt.Errorf("admin login failed: %w", err)
 		}
 		if token.AccessToken == "" {
-			return fmt.Errorf("empty access token")
+			return errors.New("empty access token")
 		}
 		return nil
 	}, 20, 1*time.Second) // Reduced retries and faster interval
@@ -280,9 +280,11 @@ func (a *KeycloakTestAdapter) createTestRealm(ctx context.Context) error {
 		if !isConflictError(err) {
 			return fmt.Errorf("failed to create realm: %w", err)
 		}
-		slog.Debug("Realm already exists, continuing", "realm", a.config.Realm)
+		slog.Debug("realm already exists, continuing", slog.String("realm", a.config.Realm))
 	} else {
-		slog.Debug("Created realm", "realm", a.config.Realm, "id", realmID)
+		slog.Debug("created realm",
+			slog.String("realm", a.config.Realm),
+			slog.String("id", realmID))
 	}
 
 	return nil
@@ -304,7 +306,7 @@ func (a *KeycloakTestAdapter) createTestClient(ctx context.Context) error {
 		if !isConflictError(err) {
 			return fmt.Errorf("failed to create client: %w", err)
 		}
-		slog.Debug("Client already exists, continuing", "client", a.config.ClientID)
+		slog.Debug("client already exists, continuing", slog.String("client", a.config.ClientID))
 
 		// Get existing client UUID for role assignment
 		clients, err := a.keycloakClient.GetClients(ctx, a.adminToken.AccessToken, a.config.Realm, gocloak.GetClientsParams{
@@ -317,7 +319,9 @@ func (a *KeycloakTestAdapter) createTestClient(ctx context.Context) error {
 			clientUUID = *clients[0].ID
 		}
 	} else {
-		slog.Debug("Created client", "client", a.config.ClientID, "id", clientUUID)
+		slog.Debug("created client",
+			slog.String("client", a.config.ClientID),
+			slog.String("id", clientUUID))
 	}
 
 	// Assign realm-management roles to the service account for admin operations
@@ -344,7 +348,7 @@ func (a *KeycloakTestAdapter) assignServiceAccountRoles(ctx context.Context, cli
 		return fmt.Errorf("failed to get realm-management client: %w", err)
 	}
 	if len(realmMgmtClients) == 0 {
-		return fmt.Errorf("realm-management client not found")
+		return errors.New("realm-management client not found")
 	}
 
 	realmMgmtClientUUID := *realmMgmtClients[0].ID
@@ -373,7 +377,9 @@ func (a *KeycloakTestAdapter) assignServiceAccountRoles(ctx context.Context, cli
 		if err != nil {
 			return fmt.Errorf("failed to assign roles to service account: %w", err)
 		}
-		slog.Debug("Assigned roles to service account", "client", a.config.ClientID, "roles", len(rolesToAssign))
+		slog.Debug("assigned roles to service account",
+			slog.String("client", a.config.ClientID),
+			slog.Int("roles", len(rolesToAssign)))
 	}
 
 	return nil
@@ -395,7 +401,7 @@ func (a *KeycloakTestAdapter) injectTestUsers(ctx context.Context, users []inter
 			if !isConflictError(err) {
 				return fmt.Errorf("failed to create user %s: %w", user.Username, err)
 			}
-			slog.Debug("User already exists, continuing", "username", user.Username)
+			slog.Debug("user already exists, continuing", slog.String("username", user.Username))
 			continue
 		}
 
@@ -405,7 +411,9 @@ func (a *KeycloakTestAdapter) injectTestUsers(ctx context.Context, users []inter
 			return fmt.Errorf("failed to set password for user %s: %w", user.Username, err)
 		}
 
-		slog.Debug("Created user", "username", user.Username, "id", userID)
+		slog.Debug("created user",
+			slog.String("username", user.Username),
+			slog.String("id", userID))
 	}
 
 	return nil
@@ -425,11 +433,13 @@ func (a *KeycloakTestAdapter) injectTestClients(ctx context.Context, clients []i
 			if !isConflictError(err) {
 				return fmt.Errorf("failed to create client %s: %w", client.ClientID, err)
 			}
-			slog.Debug("Client already exists, continuing", "client", client.ClientID)
+			slog.Debug("client already exists, continuing", slog.String("client", client.ClientID))
 			continue
 		}
 
-		slog.Info("Successfully created test client", "client_id", client.ClientID, "uuid", clientID)
+		slog.Info("successfully created test client",
+			slog.String("client_id", client.ClientID),
+			slog.String("uuid", clientID))
 	}
 
 	return nil

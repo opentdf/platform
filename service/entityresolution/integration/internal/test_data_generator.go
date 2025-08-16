@@ -8,6 +8,27 @@ import (
 	"github.com/opentdf/platform/protocol/go/entity"
 )
 
+const (
+	// Test data generation constants
+	basicScenarioUserCount    = 3
+	basicScenarioClientCount  = 2
+	edgeCaseUserCount         = 2
+	edgeCaseClientCount       = 1
+	emailVariationUserCount   = 4
+	emailVariationClientCount = 3
+	clientFocusClientCount    = 5
+
+	// Random number bounds for variation
+	userVariationBound   = 100
+	clientVariationBound = 1000
+
+	// Character conversion constant
+	upperCaseOffset = 32
+
+	// Group assignment modulo
+	groupModulo = 3
+)
+
 // TestDataGenerator provides flexible test data generation
 type TestDataGenerator struct {
 	config *TestConfig
@@ -18,7 +39,7 @@ type TestDataGenerator struct {
 func NewTestDataGenerator(config *TestConfig) *TestDataGenerator {
 	return &TestDataGenerator{
 		config: config,
-		rand:   rand.New(rand.NewSource(time.Now().UnixNano())),
+		rand:   rand.New(rand.NewSource(time.Now().UnixNano())), //nolint:gosec // Using weak random generator is acceptable for test data generation
 	}
 }
 
@@ -44,8 +65,8 @@ func (g *TestDataGenerator) GetStandardScenarios() []TestDataScenario {
 	return []TestDataScenario{
 		{
 			Name:            "Basic Multi-User",
-			UserCount:       3,
-			ClientCount:     2,
+			UserCount:       basicScenarioUserCount,
+			ClientCount:     basicScenarioClientCount,
 			EmailDomains:    g.config.EmailDomains,
 			IncludeClientID: true,
 			IncludeEmail:    true,
@@ -54,8 +75,8 @@ func (g *TestDataGenerator) GetStandardScenarios() []TestDataScenario {
 		},
 		{
 			Name:              "Edge Cases",
-			UserCount:         2,
-			ClientCount:       1,
+			UserCount:         edgeCaseUserCount,
+			ClientCount:       edgeCaseClientCount,
 			EmailDomains:      []string{"opentdf.test"},
 			IncludeClientID:   false, // Test missing client_id
 			IncludeEmail:      true,
@@ -65,8 +86,8 @@ func (g *TestDataGenerator) GetStandardScenarios() []TestDataScenario {
 		},
 		{
 			Name:            "Email Variations",
-			UserCount:       4,
-			ClientCount:     3,
+			UserCount:       emailVariationUserCount,
+			ClientCount:     emailVariationClientCount,
 			EmailDomains:    []string{"company.com", "partner.org", "external.net"},
 			IncludeClientID: true,
 			IncludeEmail:    true,
@@ -76,7 +97,7 @@ func (g *TestDataGenerator) GetStandardScenarios() []TestDataScenario {
 		{
 			Name:            "Client Focus",
 			UserCount:       1,
-			ClientCount:     5,
+			ClientCount:     clientFocusClientCount,
 			EmailDomains:    []string{"opentdf.test"},
 			IncludeClientID: true,
 			IncludeEmail:    false, // Test client-only scenarios
@@ -102,7 +123,7 @@ func (g *TestDataGenerator) GenerateTestUsers(scenario TestDataScenario) []TestU
 
 		// Add variation when enabled
 		if g.config.TestDataVariation && i > 0 {
-			username = fmt.Sprintf("%s_%d", username, g.rand.Intn(100))
+			username = fmt.Sprintf("%s_%d", username, g.rand.Intn(userVariationBound))
 		}
 
 		// Select domain
@@ -144,7 +165,7 @@ func (g *TestDataGenerator) GenerateTestClients(scenario TestDataScenario) []Tes
 
 		// Add variation when enabled
 		if g.config.TestDataVariation && i > 0 {
-			clientID = fmt.Sprintf("%s-%d", clientID, g.rand.Intn(1000))
+			clientID = fmt.Sprintf("%s-%d", clientID, g.rand.Intn(clientVariationBound))
 		}
 
 		clients = append(clients, TestClient{
@@ -218,13 +239,14 @@ func formatDisplayName(identifier string) string {
 	result := ""
 	capitalize := true
 	for _, char := range identifier {
-		if char == '-' || char == '_' {
+		switch {
+		case char == '-' || char == '_':
 			result += " "
 			capitalize = true
-		} else if capitalize {
-			result += string(char - 32) // Simple uppercase
+		case capitalize:
+			result += string(char - upperCaseOffset) // Simple uppercase
 			capitalize = false
-		} else {
+		default:
 			result += string(char)
 		}
 	}
@@ -246,12 +268,12 @@ func generateGroups(username string, index int) []string {
 	groups := []string{"users"}
 
 	// Add role-based groups based on index
-	switch index % 3 {
+	switch index % groupModulo {
 	case 0:
 		groups = append(groups, "admins")
 	case 1:
 		groups = append(groups, "managers")
-	case 2:
+	case groupModulo - 1:
 		groups = append(groups, "developers")
 	}
 
@@ -280,8 +302,8 @@ func (g *TestDataGenerator) CreateVariedTestDataSet(scenario TestDataScenario) *
 func (g *TestDataGenerator) CreateBasicScenario() *ContractTestDataSet {
 	scenario := TestDataScenario{
 		Name:            "Basic",
-		UserCount:       3,
-		ClientCount:     2,
+		UserCount:       basicScenarioUserCount,
+		ClientCount:     basicScenarioClientCount,
 		EmailDomains:    g.config.EmailDomains,
 		IncludeClientID: true,
 		IncludeEmail:    true,
@@ -293,8 +315,8 @@ func (g *TestDataGenerator) CreateBasicScenario() *ContractTestDataSet {
 func (g *TestDataGenerator) CreateEdgeCaseScenario() *ContractTestDataSet {
 	scenario := TestDataScenario{
 		Name:              "EdgeCase",
-		UserCount:         2,
-		ClientCount:       1,
+		UserCount:         edgeCaseUserCount,
+		ClientCount:       edgeCaseClientCount,
 		EmailDomains:      []string{"opentdf.test"},
 		IncludeClientID:   false,
 		IncludeEmail:      true,

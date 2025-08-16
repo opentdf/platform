@@ -92,8 +92,8 @@ func TestCreateTestJWTWithEmptyParams(t *testing.T) {
 	}
 
 	// Should handle empty username gracefully
-	if payload["sub"] != "anonymous" {
-		t.Errorf("Expected sub=anonymous for empty username, got %v", payload["sub"])
+	if payload["sub"] != AnonymousUser {
+		t.Errorf("Expected sub=%s for empty username, got %v", AnonymousUser, payload["sub"])
 	}
 
 	// Email should not be present if empty
@@ -343,16 +343,16 @@ func TestMultiStrategyTestSet(t *testing.T) {
 	// Convert to strings for comparison
 	internalAudStr := make([]string, len(internalAud))
 	for i, v := range internalAud {
-		str, ok := v.(string)
-		if !ok {
+		str, strOK := v.(string)
+		if !strOK {
 			t.Fatalf("Expected aud value to be string, got %T", v)
 		}
 		internalAudStr[i] = str
 	}
 	externalAudStr := make([]string, len(externalAud))
 	for i, v := range externalAud {
-		str, ok := v.(string)
-		if !ok {
+		str, strOK := v.(string)
+		if !strOK {
 			t.Fatalf("Expected aud value to be string, got %T", v)
 		}
 		externalAudStr[i] = str
@@ -381,12 +381,12 @@ func decodeJWTClaims(jwt string) (map[string]interface{}, error) {
 
 	payloadJSON, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode JWT payload: %v", err)
+		return nil, fmt.Errorf("failed to decode JWT payload: %w", err)
 	}
 
 	var claims map[string]interface{}
 	if err := json.Unmarshal(payloadJSON, &claims); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal JWT payload: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal JWT payload: %w", err)
 	}
 
 	return claims, nil

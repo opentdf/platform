@@ -81,6 +81,12 @@ type EntityResult struct {
 // JWTClaims represents JWT claims for strategy matching
 type JWTClaims map[string]interface{}
 
+// contextKey is a private type for context keys to avoid collisions
+type contextKey string
+
+// JWTClaimsContextKey is the typed context key for JWT claims
+const JWTClaimsContextKey contextKey = "jwt_claims"
+
 // MultiStrategyConfig is the main configuration for the multi-strategy ERS
 type MultiStrategyConfig struct {
 	// Providers defines the available data providers

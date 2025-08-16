@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/opentdf/platform/service/entityresolution/multi-strategy/types"
+	"github.com/opentdf/platform/service/logger"
 )
 
 func TestMultiStrategyService_JWT_Claims_Provider(t *testing.T) {
@@ -47,14 +48,14 @@ func TestMultiStrategyService_JWT_Claims_Provider(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(context.Background(), config)
+	service, err := NewService(t.Context(), config, &logger.Logger{})
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
 	defer service.Close()
 
 	// Test with JWT claims in context
-	ctx := context.WithValue(context.Background(), "jwt_claims", types.JWTClaims{
+	ctx := context.WithValue(t.Context(), types.JWTClaimsContextKey, types.JWTClaims{
 		"sub":   "user123",
 		"email": "user@example.com",
 		"aud":   "test-audience",
@@ -119,14 +120,14 @@ func TestMultiStrategyService_No_Matching_Strategy(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(context.Background(), config)
+	service, err := NewService(t.Context(), config, &logger.Logger{})
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
 	defer service.Close()
 
 	// Test with JWT claims that don't match strategy conditions
-	_, err = service.ResolveEntity(context.Background(), "user123", types.JWTClaims{
+	_, err = service.ResolveEntity(t.Context(), "user123", types.JWTClaims{
 		"sub": "user123",
 		"aud": "different-audience", // This won't match the strategy condition
 	})
@@ -175,14 +176,14 @@ func TestMultiStrategyService_Provider_Not_Found(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(context.Background(), config)
+	service, err := NewService(t.Context(), config, &logger.Logger{})
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
 	defer service.Close()
 
 	// Test with valid JWT claims
-	_, err = service.ResolveEntity(context.Background(), "user123", types.JWTClaims{
+	_, err = service.ResolveEntity(t.Context(), "user123", types.JWTClaims{
 		"aud": "test-audience",
 	})
 
@@ -262,17 +263,17 @@ func TestMultiStrategyService_FailureStrategyContinue(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(context.Background(), config)
+	service, err := NewService(t.Context(), config, &logger.Logger{})
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
 
 	// Remove the bad provider to simulate failure
-	err = service.providerRegistry.providers["bad_provider"].Close()
+	_ = service.providerRegistry.providers["bad_provider"].Close()
 	delete(service.providerRegistry.providers, "bad_provider")
 
 	// Test with matching JWT
-	ctx := context.WithValue(context.Background(), "jwt_claims", types.JWTClaims{
+	ctx := context.WithValue(t.Context(), types.JWTClaimsContextKey, types.JWTClaims{
 		"sub": "user123",
 		"aud": "test-audience",
 	})
@@ -337,17 +338,17 @@ func TestMultiStrategyService_FailureStrategyFailFast(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(context.Background(), config)
+	service, err := NewService(t.Context(), config, &logger.Logger{})
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
 
 	// Remove the provider to simulate failure
-	err = service.providerRegistry.providers["bad_provider"].Close()
+	_ = service.providerRegistry.providers["bad_provider"].Close()
 	delete(service.providerRegistry.providers, "bad_provider")
 
 	// Test with matching JWT
-	_, err = service.ResolveEntity(context.Background(), "user123", types.JWTClaims{
+	_, err = service.ResolveEntity(t.Context(), "user123", types.JWTClaims{
 		"sub": "user123",
 		"aud": "test-audience",
 	})
@@ -405,13 +406,13 @@ func TestMultiStrategyService_EntityTypeEnvironment(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(context.Background(), config)
+	service, err := NewService(t.Context(), config, &logger.Logger{})
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
 
 	// Test with environment context
-	ctx := context.WithValue(context.Background(), "jwt_claims", types.JWTClaims{
+	ctx := context.WithValue(t.Context(), types.JWTClaimsContextKey, types.JWTClaims{
 		"client_ip": "192.168.1.100",
 		"device_id": "device-abc-123",
 	})
@@ -474,17 +475,17 @@ func TestMultiStrategyService_DefaultFailureStrategy(t *testing.T) {
 	}
 
 	// Create service
-	service, err := NewService(context.Background(), config)
+	service, err := NewService(t.Context(), config, &logger.Logger{})
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
 
 	// Remove the provider to simulate failure
-	err = service.providerRegistry.providers["bad_provider"].Close()
+	_ = service.providerRegistry.providers["bad_provider"].Close()
 	delete(service.providerRegistry.providers, "bad_provider")
 
 	// Test with matching JWT
-	_, err = service.ResolveEntity(context.Background(), "user123", types.JWTClaims{
+	_, err = service.ResolveEntity(t.Context(), "user123", types.JWTClaims{
 		"sub": "user123",
 		"aud": "test-audience",
 	})

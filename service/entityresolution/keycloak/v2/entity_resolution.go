@@ -68,12 +68,12 @@ func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger, svc
 	var inputIdpConfig Config
 
 	if err := defaults.Set(&inputIdpConfig); err != nil {
-		logger.Error("Failed to set Keycloak default configuration", slog.Any("error", err))
+		logger.Error("failed to set Keycloak default configuration", slog.Any("error", err))
 		log.Fatalf("Failed to set Keycloak default configuration: %v", err)
 	}
 
 	if err := mapstructure.Decode(config, &inputIdpConfig); err != nil {
-		logger.Error("Failed to decode Keycloak configuration", slog.Any("error", err))
+		logger.Error("failed to decode Keycloak configuration", slog.Any("error", err))
 		log.Fatalf("Failed to decode Keycloak configuration: %v", err)
 	}
 	logger.Debug("entity_resolution configuration", slog.Any("config", inputIdpConfig))

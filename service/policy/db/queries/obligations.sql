@@ -135,7 +135,7 @@ SET
     metadata = COALESCE(@metadata, metadata)
 WHERE id = @id;
 
--- name: deleteObligation :execrows
+-- name: deleteObligation :one
 DELETE FROM obligation_definitions 
 WHERE id IN (
     SELECT od.id
@@ -152,7 +152,8 @@ WHERE id IN (
             (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
              AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
         )
-);
+)
+RETURNING id;
 
 -- name: getObligationsByFQNs :many
 SELECT

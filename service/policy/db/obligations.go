@@ -256,19 +256,18 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 }
 
 func (c PolicyDBClient) DeleteObligation(ctx context.Context, r *obligations.DeleteObligationRequest) (*policy.Obligation, error) {
-	id := r.GetId()
 	nsFQN, oblName := breakOblFQN(r.GetFqn())
 	queryParams := deleteObligationParams{
-		ID:           id,
+		ID:           r.GetId(),
 		NamespaceFqn: nsFQN,
 		Name:         oblName,
 	}
 
-	count, err := c.queries.deleteObligation(ctx, queryParams)
+	id, err := c.queries.deleteObligation(ctx, queryParams)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	if count == 0 {
+	if id == "" {
 		return nil, db.ErrNotFound
 	}
 

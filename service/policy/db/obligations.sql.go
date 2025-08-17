@@ -156,7 +156,7 @@ func (q *Queries) createObligation(ctx context.Context, arg createObligationPara
 	return i, err
 }
 
-const deleteObligation = `-- name: deleteObligation :execrows
+const deleteObligation = `-- name: deleteObligation :one
 DELETE FROM obligation_definitions 
 WHERE id IN (
     SELECT od.id
@@ -174,6 +174,7 @@ WHERE id IN (
              AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
         )
 )
+RETURNING id
 `
 
 type deleteObligationParams struct {
@@ -201,12 +202,12 @@ type deleteObligationParams struct {
 //	             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
 //	        )
 //	)
-func (q *Queries) deleteObligation(ctx context.Context, arg deleteObligationParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteObligation, arg.ID, arg.NamespaceFqn, arg.Name)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+//	RETURNING id
+func (q *Queries) deleteObligation(ctx context.Context, arg deleteObligationParams) (string, error) {
+	row := q.db.QueryRow(ctx, deleteObligation, arg.ID, arg.NamespaceFqn, arg.Name)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getObligation = `-- name: getObligation :one

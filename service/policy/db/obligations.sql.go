@@ -157,14 +157,52 @@ func (q *Queries) createObligation(ctx context.Context, arg createObligationPara
 }
 
 const deleteObligation = `-- name: deleteObligation :execrows
-DELETE FROM obligation_definitions WHERE id = $1
+DELETE FROM obligation_definitions 
+WHERE id IN (
+    SELECT od.id
+    FROM obligation_definitions od
+    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
+    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+    WHERE
+        -- lookup by obligation id OR by namespace fqn + obligation name
+        (
+            -- lookup by obligation id
+            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+            OR
+            -- lookup by namespace fqn + obligation name
+            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL 
+             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
+        )
+)
 `
+
+type deleteObligationParams struct {
+	ID           string `json:"id"`
+	NamespaceFqn string `json:"namespace_fqn"`
+	Name         string `json:"name"`
+}
 
 // deleteObligation
 //
-//	DELETE FROM obligation_definitions WHERE id = $1
-func (q *Queries) deleteObligation(ctx context.Context, id string) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteObligation, id)
+//	DELETE FROM obligation_definitions
+//	WHERE id IN (
+//	    SELECT od.id
+//	    FROM obligation_definitions od
+//	    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
+//	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	    WHERE
+//	        -- lookup by obligation id OR by namespace fqn + obligation name
+//	        (
+//	            -- lookup by obligation id
+//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+//	            OR
+//	            -- lookup by namespace fqn + obligation name
+//	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
+//	             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
+//	        )
+//	)
+func (q *Queries) deleteObligation(ctx context.Context, arg deleteObligationParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteObligation, arg.ID, arg.NamespaceFqn, arg.Name)
 	if err != nil {
 		return 0, err
 	}

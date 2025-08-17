@@ -136,7 +136,23 @@ SET
 WHERE id = @id;
 
 -- name: deleteObligation :execrows
-DELETE FROM obligation_definitions WHERE id = $1;
+DELETE FROM obligation_definitions 
+WHERE id IN (
+    SELECT od.id
+    FROM obligation_definitions od
+    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
+    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+    WHERE
+        -- lookup by obligation id OR by namespace fqn + obligation name
+        (
+            -- lookup by obligation id
+            (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = @id::UUID)
+            OR
+            -- lookup by namespace fqn + obligation name
+            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
+             AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
+        )
+);
 
 -- name: getObligationsByFQNs :many
 SELECT

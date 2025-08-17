@@ -11,6 +11,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
+	policydb "github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -410,7 +411,7 @@ func (s *ObligationsSuite) Test_UpdateObligation_Fails() {
 // Delete
 
 func (s *ObligationsSuite) Test_DeleteObligation_Succeeds() {
-	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
 	createdObl := s.createObligation(namespaceID, oblName, oblVals)
 
 	// Get the obligation to ensure it exists
@@ -422,7 +423,7 @@ func (s *ObligationsSuite) Test_DeleteObligation_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(obl)
 
-	// Delete the obligation
+	// Delete the obligation by ID
 	obl, err = s.db.PolicyClient.DeleteObligation(s.ctx, &obligations.DeleteObligationRequest{
 		Identifier: &obligations.DeleteObligationRequest_Id{
 			Id: createdObl.GetId(),
@@ -440,6 +441,19 @@ func (s *ObligationsSuite) Test_DeleteObligation_Succeeds() {
 	})
 	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(obl)
+
+	createdObl = s.createObligation(namespaceID, oblName, oblVals)
+
+	// Delete the obligation by FQN
+	fqn := policydb.BuildOblFQN(namespaceFQN, oblName)
+	obl, err = s.db.PolicyClient.DeleteObligation(s.ctx, &obligations.DeleteObligationRequest{
+		Identifier: &obligations.DeleteObligationRequest_Fqn{
+			Fqn: fqn,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(obl)
+	s.Equal(createdObl.GetId(), obl.GetId())
 }
 
 func (s *ObligationsSuite) Test_DeleteObligation_Fails() {

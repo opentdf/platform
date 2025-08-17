@@ -224,6 +224,9 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 	if err != nil {
 		return nil, err
 	}
+	if name == "" {
+		name = obl.GetName()
+	}
 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
 		return obl.GetMetadata(), nil
 	})

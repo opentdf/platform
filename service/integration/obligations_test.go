@@ -365,7 +365,7 @@ func (s *ObligationsSuite) Test_UpdateObligation_Succeeds() {
 	namespaceID, namespaceFQN, namespace := s.getNamespaceData(nsExampleCom)
 	createdObl := s.createObligation(namespaceID, oblName, oblVals)
 
-	// Update the obligation
+	// Update the obligation (with name change)
 	newName := oblName + "-updated"
 	newMetadata := &common.MetadataMutable{
 		Labels: map[string]string{"key": "value"},
@@ -375,6 +375,20 @@ func (s *ObligationsSuite) Test_UpdateObligation_Succeeds() {
 		Name:                   newName,
 		Metadata:               newMetadata,
 		MetadataUpdateBehavior: 1,
+	})
+	s.Require().NoError(err)
+	s.assertObligationBasics(updatedObl, newName, namespaceID, namespace.Name, namespaceFQN)
+	s.Equal(newMetadata.GetLabels(), updatedObl.GetMetadata().GetLabels())
+	s.assertObligationValues(updatedObl)
+
+	// Update the obligation (with no name change)
+	newMetadata = &common.MetadataMutable{
+		Labels: map[string]string{"diffKey": "diffVal"},
+	}
+	updatedObl, err = s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
+		Id:                     createdObl.GetId(),
+		Metadata:               newMetadata,
+		MetadataUpdateBehavior: 2,
 	})
 	s.Require().NoError(err)
 	s.assertObligationBasics(updatedObl, newName, namespaceID, namespace.Name, namespaceFQN)

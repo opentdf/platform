@@ -308,7 +308,7 @@ const getObligationsByFQNs = `-- name: getObligationsByFQNs :many
 SELECT
     od.id,
     od.name,
-    od.metadata,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
     JSON_BUILD_OBJECT(
         'id', n.id,
         'name', n.name,
@@ -357,7 +357,7 @@ type getObligationsByFQNsRow struct {
 //	SELECT
 //	    od.id,
 //	    od.name,
-//	    od.metadata,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
 //	    JSON_BUILD_OBJECT(
 //	        'id', n.id,
 //	        'name', n.name,

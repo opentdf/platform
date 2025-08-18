@@ -9,6 +9,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/pkg/db"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 ///
@@ -47,6 +48,9 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal obligation metadata: %w", err)
 	}
+	now := timestamppb.Now()
+	metadata.CreatedAt = now
+	metadata.UpdatedAt = now
 
 	return &policy.Obligation{
 		Id:        row.ID,
@@ -245,6 +249,8 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 	if count == 0 {
 		return nil, db.ErrNotFound
 	}
+	metadata.CreatedAt = obl.GetMetadata().GetCreatedAt()
+	metadata.UpdatedAt = timestamppb.Now()
 
 	return &policy.Obligation{
 		Id:        id,

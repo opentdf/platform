@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -480,6 +481,12 @@ func (s *ObligationsSuite) assertObligationBasics(obl *policy.Obligation, name, 
 	s.Equal(namespaceID, obl.GetNamespace().GetId())
 	s.Equal(namespaceName, obl.GetNamespace().GetName())
 	s.Equal(namespaceFQN, obl.GetNamespace().GetFqn())
+	threshold := int64(5)
+	now := time.Now().Unix()
+	diff := now - obl.GetMetadata().GetUpdatedAt().GetSeconds()
+	s.LessOrEqual(diff, threshold)
+	diff = now - obl.GetMetadata().GetCreatedAt().GetSeconds()
+	s.LessOrEqual(diff, threshold)
 }
 
 func (s *ObligationsSuite) assertObligationValues(obl *policy.Obligation) {

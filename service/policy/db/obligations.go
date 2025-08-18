@@ -33,8 +33,8 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	oblVals := make([]*policy.ObligationValue, 0, len(values))
-	if err := unmarshalObligationValues(row.Values, oblVals); err != nil {
+	oblVals, err := unmarshalObligationValues(row.Values)
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal obligation values: %w", err)
 	}
 
@@ -81,8 +81,8 @@ func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObl
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	oblVals := make([]*policy.ObligationValue, 0)
-	if err := unmarshalObligationValues(row.Values, oblVals); err != nil {
+	oblVals, err := unmarshalObligationValues(row.Values)
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal obligation values: %w", err)
 	}
 
@@ -136,8 +136,8 @@ func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations
 			return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 		}
 
-		values := []*policy.ObligationValue{}
-		if err = unmarshalObligationValues(r.Values, values); err != nil {
+		values, err := unmarshalObligationValues(r.Values)
+		if err != nil {
 			return nil, err
 		}
 
@@ -183,8 +183,8 @@ func (c PolicyDBClient) ListObligations(ctx context.Context, r *obligations.List
 			return nil, nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 		}
 
-		values := []*policy.ObligationValue{}
-		if err = unmarshalObligationValues(r.Values, values); err != nil {
+		values, err := unmarshalObligationValues(r.Values)
+		if err != nil {
 			return nil, nil, err
 		}
 

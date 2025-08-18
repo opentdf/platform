@@ -125,25 +125,26 @@ func unmarshalPrivatePublicKeyContext(pubCtx, privCtx []byte) (*policy.PublicKey
 	return pubKey, privKey, nil
 }
 
-func unmarshalObligationValues(valuesJSON []byte, values []*policy.ObligationValue) error {
+func unmarshalObligationValues(valuesJSON []byte) ([]*policy.ObligationValue, error) {
 	if valuesJSON == nil {
-		return nil
+		return nil, nil
 	}
 
 	raw := []json.RawMessage{}
 	if err := json.Unmarshal(valuesJSON, &raw); err != nil {
-		return fmt.Errorf("failed to unmarshal values array [%s]: %w", string(valuesJSON), err)
+		return nil, fmt.Errorf("failed to unmarshal values array [%s]: %w", string(valuesJSON), err)
 	}
 
+	values := make([]*policy.ObligationValue, 0, len(raw))
 	for _, r := range raw {
 		v := &policy.ObligationValue{}
 		if err := protojson.Unmarshal(r, v); err != nil {
-			return fmt.Errorf("failed to unmarshal value [%s]: %w", string(r), err)
+			return nil, fmt.Errorf("failed to unmarshal value [%s]: %w", string(r), err)
 		}
 		values = append(values, v)
 	}
 
-	return nil
+	return values, nil
 }
 
 func unmarshalNamespace(namespaceJSON []byte, namespace *policy.Namespace) error {

@@ -483,6 +483,7 @@ func (s *ObligationsSuite) assertObligationBasics(obl *policy.Obligation, name, 
 }
 
 func (s *ObligationsSuite) assertObligationValues(obl *policy.Obligation) {
+	s.NotEmpty(obl.GetValues())
 	for _, value := range obl.GetValues() {
 		s.Contains(value.GetValue(), oblValPrefix)
 	}

@@ -255,8 +255,8 @@ func getResourceDecisionableAttributes(
 			}
 
 			// try to find the definition by extracting partial FQN for adhoc attributes
-			parentDefinition, ok := allAttributesByDefinitionFQN[attrValueFQN]
-			if !ok {
+			parentDefinition, found := allAttributesByDefinitionFQN[attrValueFQN]
+			if !found {
 				return nil, fmt.Errorf("resource attribute value FQN not found in memory and no definition found [%s]: %w", attrValueFQN, err)
 			}
 

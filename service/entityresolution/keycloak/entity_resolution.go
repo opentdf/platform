@@ -1,3 +1,4 @@
+//nolint:sloglint // v1 entityresolution will be deprecated soon
 package keycloak
 
 import (
@@ -8,15 +9,20 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/Nerzal/gocloak/v13"
+	"github.com/creasty/defaults"
 	"github.com/go-viper/mapstructure/v2"
+
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/entityresolution"
 	"github.com/opentdf/platform/service/entity"
 	"github.com/opentdf/platform/service/logger"
+	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
 	"go.opentelemetry.io/otel/trace"
@@ -43,6 +49,9 @@ type KeycloakEntityResolutionService struct { //nolint:revive // Too late! Alrea
 	idpConfig KeycloakConfig
 	logger    *logger.Logger
 	trace.Tracer
+	connector   *KeyCloakConnector
+	connectorMu sync.Mutex
+	svcCache    *cache.Cache
 }
 
 type KeycloakConfig struct { //nolint:revive // yeah but what if we want to embed multiple configs?
@@ -53,31 +62,49 @@ type KeycloakConfig struct { //nolint:revive // yeah but what if we want to embe
 	LegacyKeycloak bool                   `mapstructure:"legacykeycloak" json:"legacykeycloak" default:"false"`
 	SubGroups      bool                   `mapstructure:"subgroups" json:"subgroups" default:"false"`
 	InferID        InferredIdentityConfig `mapstructure:"inferid,omitempty" json:"inferid,omitempty"`
+	TokenBuffer    time.Duration          `mapstructure:"token_buffer_seconds" json:"token_buffer_seconds" default:"120s"`
 }
 
-func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger) (*KeycloakEntityResolutionService, serviceregistry.HandlerServer) {
+func RegisterKeycloakERS(config config.ServiceConfig, logger *logger.Logger, svcCache *cache.Cache) (*KeycloakEntityResolutionService, serviceregistry.HandlerServer) {
 	var inputIdpConfig KeycloakConfig
+
+	if err := defaults.Set(&inputIdpConfig); err != nil {
+		panic(err)
+	}
+
 	if err := mapstructure.Decode(config, &inputIdpConfig); err != nil {
 		panic(err)
 	}
 	logger.Debug("entity_resolution configuration", "config", inputIdpConfig)
-	keycloakSVC := &KeycloakEntityResolutionService{idpConfig: inputIdpConfig, logger: logger}
+	keycloakSVC := &KeycloakEntityResolutionService{idpConfig: inputIdpConfig, logger: logger, svcCache: svcCache}
 	return keycloakSVC, nil
 }
 
-func (s KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
+func (s *KeycloakEntityResolutionService) ResolveEntities(ctx context.Context, req *connect.Request[entityresolution.ResolveEntitiesRequest]) (*connect.Response[entityresolution.ResolveEntitiesResponse], error) {
 	ctx, span := s.Tracer.Start(ctx, "ResolveEntities")
 	defer span.End()
 
-	resp, err := EntityResolution(ctx, req.Msg, s.idpConfig, s.logger)
+	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err))
+	}
+	resp, err := EntityResolution(ctx, req.Msg, s.idpConfig, connector, s.logger)
+
 	return connect.NewResponse(&resp), err
 }
 
-func (s KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
+func (s *KeycloakEntityResolutionService) CreateEntityChainFromJwt(ctx context.Context, req *connect.Request[entityresolution.CreateEntityChainFromJwtRequest]) (*connect.Response[entityresolution.CreateEntityChainFromJwtResponse], error) {
 	ctx, span := s.Tracer.Start(ctx, "CreateEntityChainFromJwt")
 	defer span.End()
 
-	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.idpConfig, s.logger)
+	connector, err := s.getConnector(ctx, s.idpConfig.TokenBuffer)
+	if err != nil {
+		s.logger.ErrorContext(ctx, "error getting keycloak connector", slog.String("error", err.Error()))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("%w: %w", ErrCreationFailed, err))
+	}
+	resp, err := CreateEntityChainFromJwt(ctx, req.Msg, s.idpConfig, connector, s.logger)
+
 	return connect.NewResponse(&resp), err
 }
 
@@ -104,20 +131,22 @@ type EntityImpliedFrom struct {
 }
 
 type KeyCloakConnector struct { //nolint:revive // Too late! Already exported
-	token  *gocloak.JWT
-	client *gocloak.GoCloak
+	token     *gocloak.JWT
+	client    *gocloak.GoCloak
+	expiresAt time.Time
 }
 
 func CreateEntityChainFromJwt(
 	ctx context.Context,
 	req *entityresolution.CreateEntityChainFromJwtRequest,
 	kcConfig KeycloakConfig,
+	connector *KeyCloakConnector,
 	logger *logger.Logger,
 ) (entityresolution.CreateEntityChainFromJwtResponse, error) {
 	entityChains := []*authorization.EntityChain{}
 	// for each token in the tokens form an entity chain
 	for _, tok := range req.GetTokens() {
-		entities, err := getEntitiesFromToken(ctx, kcConfig, tok.GetJwt(), logger)
+		entities, err := getEntitiesFromToken(ctx, kcConfig, tok.GetJwt(), connector, logger)
 		if err != nil {
 			return entityresolution.CreateEntityChainFromJwtResponse{}, err
 		}
@@ -128,13 +157,8 @@ func CreateEntityChainFromJwt(
 }
 
 func EntityResolution(ctx context.Context,
-	req *entityresolution.ResolveEntitiesRequest, kcConfig KeycloakConfig, logger *logger.Logger,
+	req *entityresolution.ResolveEntitiesRequest, kcConfig KeycloakConfig, connector *KeyCloakConnector, logger *logger.Logger,
 ) (entityresolution.ResolveEntitiesResponse, error) {
-	connector, err := getKCClient(ctx, kcConfig, logger)
-	if err != nil {
-		return entityresolution.ResolveEntitiesResponse{},
-			connect.NewError(connect.CodeInternal, ErrCreationFailed)
-	}
 	payload := req.GetEntities()
 
 	var resolvedEntities []*entityresolution.EntityRepresentation
@@ -334,35 +358,6 @@ func typeToGenericJSONMap[Marshalable any](inputStruct Marshalable, logger *logg
 	return genericMap, nil
 }
 
-func getKCClient(ctx context.Context, kcConfig KeycloakConfig, logger *logger.Logger) (*KeyCloakConnector, error) {
-	var client *gocloak.GoCloak
-	if kcConfig.LegacyKeycloak {
-		logger.Warn("using legacy connection mode for Keycloak < 17.x.x")
-		client = gocloak.NewClient(kcConfig.URL)
-	} else {
-		client = gocloak.NewClient(kcConfig.URL, gocloak.SetAuthAdminRealms("admin/realms"), gocloak.SetAuthRealms("realms"))
-	}
-	// If needed, ability to disable tls checks for testing
-	// restyClient := client.RestyClient()
-	// restyClient.SetDebug(true)
-	// restyClient.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
-	// client.SetRestyClient(restyClient)
-
-	// For debugging
-	// logger.Debug(kcConfig.ClientID)
-	// logger.Debug(kcConfig.ClientSecret)
-	// logger.Debug(kcConfig.URL)
-	// logger.Debug(kcConfig.Realm)
-	token, err := client.LoginClient(ctx, kcConfig.ClientID, kcConfig.ClientSecret, kcConfig.Realm)
-	if err != nil {
-		logger.Error("error connecting to keycloak!", slog.String("error", err.Error()))
-		return nil, err
-	}
-	keycloakConnector := KeyCloakConnector{token: token, client: client}
-
-	return &keycloakConnector, nil
-}
-
 func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConnector, kcConfig *KeycloakConfig, logger *logger.Logger) ([]*gocloak.User, error) {
 	logger.Info("expanding group", slog.String("groupID", groupID))
 	var entityRepresentations []*gocloak.User
@@ -387,7 +382,7 @@ func expandGroup(ctx context.Context, groupID string, kcConnector *KeyCloakConne
 	return entityRepresentations, nil
 }
 
-func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtString string, logger *logger.Logger) ([]*authorization.Entity, error) {
+func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtString string, connector *KeyCloakConnector, logger *logger.Logger) ([]*authorization.Entity, error) {
 	token, err := jwt.ParseString(jwtString, jwt.WithVerify(false), jwt.WithValidate(false))
 	if err != nil {
 		return nil, errors.New("error parsing jwt " + err.Error())
@@ -426,7 +421,7 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 
 	// double check for service account
 	if strings.HasPrefix(extractedValueUsernameCasted, serviceAccountUsernamePrefix) {
-		clientid, err := getServiceAccountClient(ctx, extractedValueUsernameCasted, kcConfig, logger)
+		clientid, err := getServiceAccountClient(ctx, extractedValueUsernameCasted, kcConfig, connector, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -455,11 +450,7 @@ func getEntitiesFromToken(ctx context.Context, kcConfig KeycloakConfig, jwtStrin
 	return entities, nil
 }
 
-func getServiceAccountClient(ctx context.Context, username string, kcConfig KeycloakConfig, logger *logger.Logger) (string, error) {
-	connector, err := getKCClient(ctx, kcConfig, logger)
-	if err != nil {
-		return "", err
-	}
+func getServiceAccountClient(ctx context.Context, username string, kcConfig KeycloakConfig, connector *KeyCloakConnector, logger *logger.Logger) (string, error) {
 	expectedClientName := strings.TrimPrefix(username, serviceAccountUsernamePrefix)
 
 	clients, err := connector.client.GetClients(ctx, connector.token.AccessToken, kcConfig.Realm, gocloak.GetClientsParams{
@@ -493,4 +484,40 @@ func entityToStructPb(ident *authorization.Entity) (*structpb.Struct, error) {
 		return nil, err
 	}
 	return &entityStruct, nil
+}
+
+// getConnector ensures a valid Keycloak connector is available, refreshing the token if necessary.
+func (s *KeycloakEntityResolutionService) getConnector(ctx context.Context, tokenBuffer time.Duration) (*KeyCloakConnector, error) {
+	s.connectorMu.Lock()
+	defer s.connectorMu.Unlock()
+
+	// Refresh token if it's nil, expired, or about to expire.
+
+	if s.connector == nil || s.connector.token == nil || time.Now().After(s.connector.expiresAt.Add(-tokenBuffer)) {
+		s.logger.InfoContext(ctx, "Keycloak connector is nil or token expired/expiring soon. Fetching new token.")
+
+		var gocloakClient *gocloak.GoCloak
+		if s.idpConfig.LegacyKeycloak {
+			s.logger.WarnContext(ctx, "Using legacy connection mode for Keycloak < 17.x.x")
+			gocloakClient = gocloak.NewClient(s.idpConfig.URL)
+		} else {
+			gocloakClient = gocloak.NewClient(s.idpConfig.URL, gocloak.SetAuthAdminRealms("admin/realms"), gocloak.SetAuthRealms("realms"))
+		}
+
+		token, err := gocloakClient.LoginClient(ctx, s.idpConfig.ClientID, s.idpConfig.ClientSecret, s.idpConfig.Realm)
+		if err != nil {
+			s.logger.ErrorContext(ctx, "Error connecting to Keycloak or logging in", slog.String("error", err.Error()))
+			return nil, fmt.Errorf("failed to login to Keycloak: %w", err)
+		}
+
+		s.connector = &KeyCloakConnector{
+			token:     token,
+			client:    gocloakClient,
+			expiresAt: time.Now().Add(time.Duration(token.ExpiresIn) * time.Second),
+		}
+		s.logger.InfoContext(ctx, "Successfully fetched new Keycloak token.", "expires_in_seconds", token.ExpiresIn)
+	} else {
+		s.logger.DebugContext(ctx, "Using existing Keycloak token.")
+	}
+	return s.connector, nil
 }

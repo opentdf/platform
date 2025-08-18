@@ -4,9 +4,9 @@ networks:
 services:
   keycloak:
     volumes:
-    - ./keys/localhost.crt:/etc/x509/tls/localhost.crt
-    - ./keys/localhost.key:/etc/x509/tls/localhost.key
-    - ./keys/ca.jks:/truststore/truststore.jks
+    - ${KEYS_DIR:-./keys}/localhost.crt:/etc/x509/tls/localhost.crt
+    - ${KEYS_DIR:-./keys}/localhost.key:/etc/x509/tls/localhost.key
+    - ${KEYS_DIR:-./keys}/ca.jks:/truststore/truststore.jks
     image: keycloak/keycloak:25.0
     restart: always
     command:
@@ -43,17 +43,23 @@ services:
       KC_HTTPS_CERTIFICATE_KEY_FILE: "/etc/x509/tls/localhost.key"
       KC_HTTPS_CLIENT_AUTH: "request"
       ###
-      # If you are running on a M4 chip use the run-compose.sh script to start the containers
-      # The EXTRA_JAVA_OPTS variable allows users to pass additional Java options and is used by the run-compose.sh script
-      # to set the JAVA_OPTS_APPEND environment variable in the Keycloak container
-      JAVA_OPTS_APPEND: "${EXTRA_JAVA_OPTS}"
-      # OR comment the above line and uncomment the JAVA_OPTS_APPEND line below
-      # JAVA_OPTS_APPEND: "-XX:UseSVE=0" # Uncommenting resolves SIGILL with Code 134 when running on a machine with an M4 chip: https://github.com/keycloak/keycloak/issues/36008
+      # The following environment variable resolves SIGILL with Code 134 when running Java processes on Apple M4 chips
+      # 
+      # On Apple Silicon (M4 chip):
+      #   export JAVA_OPTS_APPEND="-XX:UseSVE=0"
+      #   docker-compose up
+      # 
+      # On other architectures:
+      #   export JAVA_OPTS_APPEND=""
+      #   docker-compose up
+      # 
+      # Or set directly: JAVA_OPTS_APPEND="-XX:UseSVE=0" docker-compose up
+      JAVA_OPTS_APPEND: "${JAVA_OPTS_APPEND:-}"
       ###
     ports:
-      - "9001:9001"
-      - "8888:8888"
-      - "8443:8443"
+      - "${KC_EXPOSE_PORT:-8443}:8443"
+      - "${KC_EXPOSE_PORT_HTTP:-8888}:8888"
+      - "${KC_EXPOSE_PORT_MGMT:-9001}:9001"
     healthcheck:
       test:
         - CMD-SHELL
@@ -73,7 +79,7 @@ services:
               java.net.HttpURLConnection conn = (java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection(); 
               System.exit(java.net.HttpURLConnection.HTTP_OK == conn.getResponseCode() ? 0 : 1); 
             } 
-          }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java https://localhost:9001/auth/health/live
+          }" > /tmp/HealthCheck.java && java ${JAVA_OPTS_APPEND} /tmp/HealthCheck.java https://localhost:9001/auth/health/live
       timeout: 10s
       retries: 3
       start_period: 2m
@@ -91,7 +97,7 @@ services:
       timeout: 5s
       retries: 10
     ports:
-      - "5432:5432"
+      - "${POSTGRES_EXPOSE_PORT:-5432}:5432"
 
   jaeger:
     image: jaegertracing/all-in-one:latest

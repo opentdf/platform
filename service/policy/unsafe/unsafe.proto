@@ -3,7 +3,7 @@ syntax = "proto3";
 package policy.unsafe;
 
 import "buf/validate/validate.proto";
-import "google/api/annotations.proto";
+
 import "policy/objects.proto";
 
 // Namespaces Unsafe RPCs
@@ -167,59 +167,47 @@ message UnsafeDeleteAttributeValueResponse {
 }
 
 // WARNING!!
+// Deleting a key will make it so that ANY TDF that was encrypted with this key cannot be decrypted by the platform.
 message UnsafeDeleteKasKeyRequest {
   // Required
   // UUID of the Key
   string id = 1 [(buf.validate.field).string.uuid = true];
+  // Required
+  // The key id assigned to this key (Ex: "key-1")
+  string kid = 2 [(buf.validate.field).required = true];
+  // Required
+  // The kas uri for which this key belongs (Ex: "https://kas.example.com:8080")
+  string kas_uri = 3 [(buf.validate.field).required = true];
 }
 
 message UnsafeDeleteKasKeyResponse {
-  policy.Key key = 1;
+  policy.KasKey key = 1;
 }
 
 ///
 /// Unsafe Service
-/// IN FLIGHT AND NOT YET IMPLEMENTED!
 ///
 service UnsafeService {
   /*--------------------------------------*
    * Namespace RPCs
    *---------------------------------------*/
-  rpc UnsafeUpdateNamespace(UnsafeUpdateNamespaceRequest) returns (UnsafeUpdateNamespaceResponse) {
-    option (google.api.http) = {patch: "/unsafe/namespaces/{id}"};
-  }
-  rpc UnsafeReactivateNamespace(UnsafeReactivateNamespaceRequest) returns (UnsafeReactivateNamespaceResponse) {
-    option (google.api.http) = {post: "/unsafe/namespaces/{id}/reactivate"};
-  }
-  rpc UnsafeDeleteNamespace(UnsafeDeleteNamespaceRequest) returns (UnsafeDeleteNamespaceResponse) {
-    option (google.api.http) = {delete: "/unsafe/namespaces/{id}"};
-  }
+  rpc UnsafeUpdateNamespace(UnsafeUpdateNamespaceRequest) returns (UnsafeUpdateNamespaceResponse) {}
+  rpc UnsafeReactivateNamespace(UnsafeReactivateNamespaceRequest) returns (UnsafeReactivateNamespaceResponse) {}
+  rpc UnsafeDeleteNamespace(UnsafeDeleteNamespaceRequest) returns (UnsafeDeleteNamespaceResponse) {}
 
   /*--------------------------------------*
    * Attribute RPCs
    *---------------------------------------*/
-  rpc UnsafeUpdateAttribute(UnsafeUpdateAttributeRequest) returns (UnsafeUpdateAttributeResponse) {
-    option (google.api.http) = {patch: "/unsafe/attributes/{id}"};
-  }
-  rpc UnsafeReactivateAttribute(UnsafeReactivateAttributeRequest) returns (UnsafeReactivateAttributeResponse) {
-    option (google.api.http) = {post: "/unsafe/attributes/{id}/reactivate"};
-  }
-  rpc UnsafeDeleteAttribute(UnsafeDeleteAttributeRequest) returns (UnsafeDeleteAttributeResponse) {
-    option (google.api.http) = {delete: "/unsafe/attributes/{id}"};
-  }
+  rpc UnsafeUpdateAttribute(UnsafeUpdateAttributeRequest) returns (UnsafeUpdateAttributeResponse) {}
+  rpc UnsafeReactivateAttribute(UnsafeReactivateAttributeRequest) returns (UnsafeReactivateAttributeResponse) {}
+  rpc UnsafeDeleteAttribute(UnsafeDeleteAttributeRequest) returns (UnsafeDeleteAttributeResponse) {}
 
   /*--------------------------------------*
    * Value RPCs
    *---------------------------------------*/
-  rpc UnsafeUpdateAttributeValue(UnsafeUpdateAttributeValueRequest) returns (UnsafeUpdateAttributeValueResponse) {
-    option (google.api.http) = {patch: "/unsafe/attributes/values/{id}"};
-  }
-  rpc UnsafeReactivateAttributeValue(UnsafeReactivateAttributeValueRequest) returns (UnsafeReactivateAttributeValueResponse) {
-    option (google.api.http) = {post: "/unsafe/attributes/values/{id}/reactivate"};
-  }
-  rpc UnsafeDeleteAttributeValue(UnsafeDeleteAttributeValueRequest) returns (UnsafeDeleteAttributeValueResponse) {
-    option (google.api.http) = {delete: "/unsafe/attributes/values/{id}"};
-  }
+  rpc UnsafeUpdateAttributeValue(UnsafeUpdateAttributeValueRequest) returns (UnsafeUpdateAttributeValueResponse) {}
+  rpc UnsafeReactivateAttributeValue(UnsafeReactivateAttributeValueRequest) returns (UnsafeReactivateAttributeValueResponse) {}
+  rpc UnsafeDeleteAttributeValue(UnsafeDeleteAttributeValueRequest) returns (UnsafeDeleteAttributeValueResponse) {}
 
   /*--------------------------------------*
    * Kas Key RPCs

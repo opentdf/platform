@@ -49,12 +49,6 @@ func unmarshalSubjectSetsProto(conditionJSON []byte) ([]*policy.SubjectSet, erro
 	return ss, nil
 }
 
-var (
-	// TODO: remove once circular CI is resolved
-	deprecatedStandardActionDecrypt  = policy.Action_STANDARD_ACTION_DECRYPT.String()
-	deprecatedStandardActionTransmit = policy.Action_STANDARD_ACTION_TRANSMIT.String()
-)
-
 /*
 	Subject Condition Sets
 */
@@ -72,7 +66,7 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 		return nil, err
 	}
 
-	createdID, err := c.Queries.CreateSubjectConditionSet(ctx, CreateSubjectConditionSetParams{
+	createdID, err := c.queries.createSubjectConditionSet(ctx, createSubjectConditionSetParams{
 		Condition: conditionJSON,
 		Metadata:  metadataJSON,
 	})
@@ -88,7 +82,7 @@ func (c PolicyDBClient) CreateSubjectConditionSet(ctx context.Context, s *subjec
 }
 
 func (c PolicyDBClient) GetSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
-	cs, err := c.Queries.GetSubjectConditionSet(ctx, id)
+	cs, err := c.queries.getSubjectConditionSet(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -118,7 +112,7 @@ func (c PolicyDBClient) ListSubjectConditionSets(ctx context.Context, r *subject
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.Queries.ListSubjectConditionSets(ctx, ListSubjectConditionSetsParams{
+	list, err := c.queries.listSubjectConditionSets(ctx, listSubjectConditionSetsParams{
 		Limit:  limit,
 		Offset: offset,
 	})
@@ -186,7 +180,7 @@ func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjec
 		}
 	}
 
-	count, err := c.Queries.UpdateSubjectConditionSet(ctx, UpdateSubjectConditionSetParams{
+	count, err := c.queries.updateSubjectConditionSet(ctx, updateSubjectConditionSetParams{
 		ID:        id,
 		Condition: conditionJSON,
 		Metadata:  metadataJSON,
@@ -207,7 +201,7 @@ func (c PolicyDBClient) UpdateSubjectConditionSet(ctx context.Context, r *subjec
 
 // Deletes specified subject condition set and returns the id of the deleted
 func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string) (*policy.SubjectConditionSet, error) {
-	count, err := c.Queries.DeleteSubjectConditionSet(ctx, id)
+	count, err := c.queries.deleteSubjectConditionSet(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -222,7 +216,7 @@ func (c PolicyDBClient) DeleteSubjectConditionSet(ctx context.Context, id string
 
 // Deletes/prunes all subject condition sets not referenced within a subject mapping
 func (c PolicyDBClient) DeleteAllUnmappedSubjectConditionSets(ctx context.Context) ([]*policy.SubjectConditionSet, error) {
-	deletedIDs, err := c.Queries.DeleteAllUnmappedSubjectConditionSets(ctx)
+	deletedIDs, err := c.queries.deleteAllUnmappedSubjectConditionSets(ctx)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -268,13 +262,6 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 			actionIDs = append(actionIDs, a.GetId())
 		case a.GetName() != "":
 			actionNames = append(actionNames, strings.ToLower(a.GetName()))
-		// TODO: remove this support for interpreting standard action proto enums to new CRUDable actions once circular CI testing is resolved
-		case a.GetStandard().String() == deprecatedStandardActionDecrypt:
-			c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
-			actionNames = append(actionNames, ActionRead.String())
-		case a.GetStandard().String() == deprecatedStandardActionTransmit:
-			c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
-			actionNames = append(actionNames, ActionCreate.String())
 		default:
 			return nil, db.WrapIfKnownInvalidQueryErr(
 				errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing required 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
@@ -283,7 +270,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 	}
 	// Create or list Actions for those provided by name
 	if len(actionNames) > 0 {
-		createdOrListedActions, err := c.createOrListActionsByName(ctx, actionNames)
+		createdOrListedActions, err := c.queries.createOrListActionsByName(ctx, actionNames)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(
 				errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", actionNames, err)),
@@ -316,7 +303,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
-	createdID, err := c.Queries.createSubjectMapping(ctx, createSubjectMappingParams{
+	createdID, err := c.queries.createSubjectMapping(ctx, createSubjectMappingParams{
 		AttributeValueID:      attributeValueID,
 		ActionIds:             actionIDs,
 		Metadata:              metadataJSON,
@@ -338,7 +325,7 @@ func (c PolicyDBClient) CreateSubjectMapping(ctx context.Context, s *subjectmapp
 }
 
 func (c PolicyDBClient) GetSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
-	sm, err := c.Queries.getSubjectMapping(ctx, id)
+	sm, err := c.queries.getSubjectMapping(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -384,7 +371,7 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 		return nil, db.ErrListLimitTooLarge
 	}
 
-	list, err := c.Queries.listSubjectMappings(ctx, listSubjectMappingsParams{
+	list, err := c.queries.listSubjectMappings(ctx, listSubjectMappingsParams{
 		Limit:  limit,
 		Offset: offset,
 	})
@@ -404,8 +391,20 @@ func (c PolicyDBClient) ListSubjectMappings(ctx context.Context, r *subjectmappi
 			return nil, err
 		}
 
+		stdActionsBytes, err := json.Marshal(sm.StandardActions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal standard actions from interface{}: %w", err)
+		}
+		// If sm.StandardActions was nil, stdActionsBytes will be []byte("null").
+		// unmarshalAllActionsProto handles this by effectively treating it as an empty list.
+
+		customActionsBytes, err := json.Marshal(sm.CustomActions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal custom actions from interface{}: %w", err)
+		}
+
 		a := []*policy.Action{}
-		if err = unmarshalAllActionsProto(sm.StandardActions, sm.CustomActions, &a); err != nil {
+		if err = unmarshalAllActionsProto(stdActionsBytes, customActionsBytes, &a); err != nil {
 			return nil, err
 		}
 
@@ -475,13 +474,6 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 				actionIDs = append(actionIDs, a.GetId())
 			case a.GetName() != "":
 				actionNames = append(actionNames, strings.ToLower(a.GetName()))
-				// TODO: remove this support for interpreting standard action proto enums to new CRUDable actions once circular CI testing is resolved
-			case a.GetStandard().String() == deprecatedStandardActionDecrypt:
-				c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
-				actionNames = append(actionNames, ActionRead.String())
-			case a.GetStandard().String() == deprecatedStandardActionTransmit:
-				c.logger.WarnContext(ctx, "standard action is deprecated, use 'id' or 'name' instead")
-				actionNames = append(actionNames, ActionCreate.String())
 			default:
 				return nil, db.WrapIfKnownInvalidQueryErr(
 					errors.Join(db.ErrMissingValue, fmt.Errorf("action at index %d missing required 'id' or 'name' when creating a subject mapping; action details: %+v", idx, a)),
@@ -491,7 +483,7 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 
 		// Create or list Actions for those provided by name
 		if len(actionNames) > 0 {
-			createdOrListedActions, err := c.createOrListActionsByName(ctx, actionNames)
+			createdOrListedActions, err := c.queries.createOrListActionsByName(ctx, actionNames)
 			if err != nil {
 				return nil, db.WrapIfKnownInvalidQueryErr(
 					errors.Join(db.ErrMissingValue, fmt.Errorf("failed to create or list action names [%v]: %w", actionNames, err)),
@@ -504,7 +496,7 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 		updateParams.ActionIds = actionIDs
 	}
 
-	_, err = c.Queries.updateSubjectMapping(ctx, updateParams)
+	_, err = c.queries.updateSubjectMapping(ctx, updateParams)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -521,7 +513,7 @@ func (c PolicyDBClient) UpdateSubjectMapping(ctx context.Context, r *subjectmapp
 
 // Deletes specified subject mapping and returns the id of the deleted
 func (c PolicyDBClient) DeleteSubjectMapping(ctx context.Context, id string) (*policy.SubjectMapping, error) {
-	count, err := c.Queries.deleteSubjectMapping(ctx, id)
+	count, err := c.queries.deleteSubjectMapping(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -544,7 +536,7 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 	for _, sp := range properties {
 		selectors = append(selectors, sp.GetExternalSelectorValue())
 	}
-	list, err := c.Queries.matchSubjectMappings(ctx, selectors)
+	list, err := c.queries.matchSubjectMappings(ctx, selectors)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -556,8 +548,20 @@ func (c PolicyDBClient) GetMatchedSubjectMappings(ctx context.Context, propertie
 			return nil, err
 		}
 
+		stdActionsBytes, err := json.Marshal(sm.StandardActions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal standard actions from interface{}: %w", err)
+		}
+		// If sm.StandardActions was nil, stdActionsBytes will be []byte("null").
+		// unmarshalAllActionsProto handles this by effectively treating it as an empty list.
+
+		customActionsBytes, err := json.Marshal(sm.CustomActions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal custom actions from interface{}: %w", err)
+		}
+
 		a := []*policy.Action{}
-		if err = unmarshalAllActionsProto(sm.StandardActions, sm.CustomActions, &a); err != nil {
+		if err = unmarshalAllActionsProto(stdActionsBytes, customActionsBytes, &a); err != nil {
 			return nil, err
 		}
 

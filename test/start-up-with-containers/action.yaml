@@ -12,10 +12,9 @@ inputs:
     description: A JSON array containing extra keys for the KAS to load. Each object should have 'kid', 'alg', 'private', and 'cert' fields.
     default: '[]'
   ec-tdf-enabled:
-    default: false
+    default: "false"
     description: 'Whether to enable ECC wrapping for TDFs'
     required: false
-    type: boolean
 
 outputs:
   platform-working-dir:
@@ -26,7 +25,7 @@ runs:
   using: 'composite'
   steps:
     - name: Check out platform
-      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
         repository: opentdf/platform
         # use a distinct path to avoid conflicts
@@ -40,7 +39,7 @@ runs:
         curl https://raw.githubusercontent.com/opentdf/platform/refs/tags/keycloak-image-fix/docker-compose.yaml > otdf-test-platform/docker-compose.yaml
     - name: Set up go (platform's go version)
       id: setup-go
-      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
+      uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
       with:
         go-version-file: 'otdf-test-platform/service/go.mod'
         check-latest: false
@@ -48,6 +47,21 @@ runs:
           otdf-test-platform/service/go.sum
           otdf-test-platform/protocol/go/go.sum
           otdf-test-platform/sdk/go.sum
+    - name: Lookup current platform version
+      shell: bash
+      id: platform-version
+      run: |-
+        if ! go run ./service version; then
+          # NOTE: the version command was added in 0.4.37
+          echo "Error: Unable to get platform version; defaulting to tag 0.3.0"
+          echo "PLATFORM_VERSION=0.3.0" >> "$GITHUB_ENV"
+          exit
+        fi
+        # Older version commands output version to stderr; newer versions output to stdout
+        PLATFORM_VERSION=$(go run ./service version 2>&1)
+        echo "PLATFORM_VERSION=$PLATFORM_VERSION" >> "$GITHUB_ENV"
+        echo "## Platform version output: [$PLATFORM_VERSION]"
+      working-directory: otdf-test-platform
     - name: Provide the platform with keys
       shell: bash
       run: .github/scripts/init-temp-keys.sh
@@ -58,11 +72,20 @@ runs:
         EXTRA_KEYS: ${{ inputs.extra-keys }}
       run: |
         set -e
-
+        allowed_algorithms=(ec:secp256r1 rsa:2048)
+        if echo $PLATFORM_VERSION | awk -F. '{ if ($1 > 0 || ($1 == 0 && $2 > 7) || ($1 == 0 && $2 == 7 && $3 >= 1)) exit 0; else exit 1; }'; then
+          # For versions 0.7.1 and later, we allow rsa:4096 ec:secp384r1 ec:secp521r1 
+          allowed_algorithms+=(rsa:4096 ec:secp384r1 ec:secp521r1)
+        fi
         keyring='[{"kid":"ec1","alg":"ec:secp256r1"},{"kid":"r1","alg":"rsa:2048"}]'
-        keys='[{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}]'
+        keys='[{"kid":"e1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"ec1","alg":"ec:secp256r1","private":"kas-ec-private.pem","cert":"kas-ec-cert.pem"},{"kid":"r1","alg":"rsa:2048","private":"kas-private.pem","cert":"kas-cert.pem"}]'
         while IFS= read -r -d $'\0' key_json <&3; do
           printf 'processing %s\n' "${key_json}"
+          alg="$(jq -r '.alg' <<< "${key_json}")"
+          if [[ ! " ${allowed_algorithms[*]} " =~ " ${alg} " ]]; then
+            printf 'algorithm [%s] is not allowed. Skipping extra key [%s]\n' "${alg}" "${kid}" 1>&2
+            continue
+          fi
           private_pem="$(jq -r '.privateKey' <<< "${key_json}")"
           cert_pem="$(jq -r '.cert' <<< "${key_json}")"
           kid="$(jq -r '.kid' <<< "${key_json}")"
@@ -122,7 +145,7 @@ runs:
       run: go run ./service provision fixtures
       working-directory: otdf-test-platform
     - name: Start platform server in background
-      uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
+      uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635 # v1.0.7
       with:
         run: >
           go build -o opentdf -v service/main.go

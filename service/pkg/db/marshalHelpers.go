@@ -1,11 +1,9 @@
 package db
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -107,6 +105,28 @@ func GrantedPolicyObjectProtoJSON(grantsJSON []byte) ([]*kasregistry.GrantedPoli
 	return policyObjectGrants, nil
 }
 
+func MappedPolicyObjectProtoJSON(mappingsJSON []byte) ([]*kasregistry.MappedPolicyObject, error) {
+	var (
+		policyObjectMappings []*kasregistry.MappedPolicyObject
+		raw                  []json.RawMessage
+	)
+	if mappingsJSON == nil {
+		return nil, nil
+	}
+
+	if err := json.Unmarshal(mappingsJSON, &raw); err != nil {
+		return nil, err
+	}
+	for _, r := range raw {
+		mapping := kasregistry.MappedPolicyObject{}
+		if err := protojson.Unmarshal(r, &mapping); err != nil {
+			return nil, err
+		}
+		policyObjectMappings = append(policyObjectMappings, &mapping)
+	}
+	return policyObjectMappings, nil
+}
+
 func KasKeysProtoJSON(keysJSON []byte) ([]*policy.KasKey, error) {
 	var (
 		keys []*policy.KasKey
@@ -125,7 +145,7 @@ func KasKeysProtoJSON(keysJSON []byte) ([]*policy.KasKey, error) {
 	return keys, nil
 }
 
-func formatAlg(alg policy.Algorithm) (string, error) {
+func FormatAlg(alg policy.Algorithm) (string, error) {
 	switch alg {
 	case policy.Algorithm_ALGORITHM_RSA_2048:
 		return "rsa:2048", nil
@@ -144,31 +164,33 @@ func formatAlg(alg policy.Algorithm) (string, error) {
 	}
 }
 
-func UnmarshalSimpleKasKey(keysJSON []byte) (*kasregistry.SimpleKasKey, error) {
-	var key *kasregistry.SimpleKasKey
+func SimpleKasKeysProtoJSON(keysJSON []byte) ([]*policy.SimpleKasKey, error) {
+	var (
+		keys []*policy.SimpleKasKey
+		raw  []json.RawMessage
+	)
+	if err := json.Unmarshal(keysJSON, &raw); err != nil {
+		return nil, err
+	}
+	for _, r := range raw {
+		k, err := UnmarshalSimpleKasKey([]byte(r))
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal simple kas key: %w", err)
+		}
+		if k != nil {
+			keys = append(keys, k)
+		}
+	}
+	return keys, nil
+}
+
+func UnmarshalSimpleKasKey(keysJSON []byte) (*policy.SimpleKasKey, error) {
+	var key *policy.SimpleKasKey
 	if keysJSON != nil {
-		key = &kasregistry.SimpleKasKey{}
+		key = &policy.SimpleKasKey{}
 		if err := protojson.Unmarshal(keysJSON, key); err != nil {
 			return nil, err
 		}
-
-		// In the db, this is stored as an integer, which is parsed to a string
-		// and then converted to the correct algorithm format.
-		alg, err := strconv.ParseInt(key.GetPublicKey().GetAlgorithm(), 10, 32)
-		if err != nil {
-			return nil, err
-		}
-		algorithm, err := formatAlg(policy.Algorithm(alg))
-		if err != nil {
-			return nil, err
-		}
-		// The pem should always be present and base64 encoded, as it is required for creating a key.
-		pem, err := base64.StdEncoding.DecodeString(key.GetPublicKey().GetPem())
-		if err != nil {
-			return nil, err
-		}
-		key.PublicKey.Pem = string(pem)
-		key.PublicKey.Algorithm = algorithm
 	}
 	return key, nil
 }

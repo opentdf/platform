@@ -3,7 +3,7 @@ package namespaces
 import (
 	"testing"
 
-	"github.com/bufbuild/protovalidate-go"
+	"buf.build/go/protovalidate"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/stretchr/testify/require"
@@ -277,47 +277,6 @@ func Test_DeactivateNamespaceRequest_Succeeds(t *testing.T) {
 	req.Id = validUUID
 	err = v.Validate(req)
 	require.NoError(t, err)
-}
-
-func Test_NamespaceKeyAccessServer_Succeeds(t *testing.T) {
-	validNamespaceKas := &namespaces.NamespaceKeyAccessServer{
-		NamespaceId:       validUUID,
-		KeyAccessServerId: validUUID,
-	}
-
-	err := getValidator().Validate(validNamespaceKas)
-	require.NoError(t, err)
-}
-
-func Test_NamespaceKeyAccessServer_Fails(t *testing.T) {
-	bad := []struct {
-		nsID  string
-		kasID string
-	}{
-		{
-			"",
-			validUUID,
-		},
-		{
-			validUUID,
-			"",
-		},
-		{
-			"",
-			"",
-		},
-		{},
-	}
-
-	for _, test := range bad {
-		invalidNamespaceKAS := &namespaces.NamespaceKeyAccessServer{
-			NamespaceId:       test.nsID,
-			KeyAccessServerId: test.kasID,
-		}
-		err := getValidator().Validate(invalidNamespaceKAS)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), errMessageUUID)
-	}
 }
 
 func Test_AssignPublicKeyToNamespace(t *testing.T) {

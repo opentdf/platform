@@ -1,0 +1,603 @@
+openapi: 3.1.0
+info:
+  title: policy.keymanagement
+paths:
+  /policy.keymanagement.KeyManagementService/CreateProviderConfig:
+    post:
+      tags:
+        - policy.keymanagement.KeyManagementService
+      summary: CreateProviderConfig
+      description: |-
+        Key Management
+         Provider Management
+      operationId: policy.keymanagement.KeyManagementService.CreateProviderConfig
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.keymanagement.CreateProviderConfigRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.keymanagement.CreateProviderConfigResponse'
+  /policy.keymanagement.KeyManagementService/GetProviderConfig:
+    post:
+      tags:
+        - policy.keymanagement.KeyManagementService
+      summary: GetProviderConfig
+      operationId: policy.keymanagement.KeyManagementService.GetProviderConfig
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.keymanagement.GetProviderConfigRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.keymanagement.GetProviderConfigResponse'
+  /policy.keymanagement.KeyManagementService/ListProviderConfigs:
+    post:
+      tags:
+        - policy.keymanagement.KeyManagementService
+      summary: ListProviderConfigs
+      operationId: policy.keymanagement.KeyManagementService.ListProviderConfigs
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.keymanagement.ListProviderConfigsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.keymanagement.ListProviderConfigsResponse'
+  /policy.keymanagement.KeyManagementService/UpdateProviderConfig:
+    post:
+      tags:
+        - policy.keymanagement.KeyManagementService
+      summary: UpdateProviderConfig
+      operationId: policy.keymanagement.KeyManagementService.UpdateProviderConfig
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.keymanagement.UpdateProviderConfigRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.keymanagement.UpdateProviderConfigResponse'
+  /policy.keymanagement.KeyManagementService/DeleteProviderConfig:
+    post:
+      tags:
+        - policy.keymanagement.KeyManagementService
+      summary: DeleteProviderConfig
+      operationId: policy.keymanagement.KeyManagementService.DeleteProviderConfig
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.keymanagement.DeleteProviderConfigRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.keymanagement.DeleteProviderConfigResponse'
+components:
+  schemas:
+    common.MetadataUpdateEnum:
+      type: string
+      title: MetadataUpdateEnum
+      enum:
+        - METADATA_UPDATE_ENUM_UNSPECIFIED
+        - METADATA_UPDATE_ENUM_EXTEND
+        - METADATA_UPDATE_ENUM_REPLACE
+    common.Metadata:
+      type: object
+      properties:
+        createdAt:
+          title: created_at
+          description: created_at set by server (entity who created will recorded in an audit event)
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        updatedAt:
+          title: updated_at
+          description: updated_at set by server (entity who updated will recorded in an audit event)
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        labels:
+          type: object
+          title: labels
+          additionalProperties:
+            type: string
+            title: value
+          description: optional short description
+      title: Metadata
+      additionalProperties: false
+      description: Struct to uniquely identify a resource with optional additional metadata
+    common.Metadata.LabelsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: LabelsEntry
+      additionalProperties: false
+    common.MetadataMutable:
+      type: object
+      properties:
+        labels:
+          type: object
+          title: labels
+          additionalProperties:
+            type: string
+            title: value
+          description: optional labels
+      title: MetadataMutable
+      additionalProperties: false
+    common.MetadataMutable.LabelsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: LabelsEntry
+      additionalProperties: false
+    google.protobuf.Timestamp:
+      type: string
+      examples:
+        - 1s
+        - 1.000340012s
+      format: date-time
+      description: |-
+        A Timestamp represents a point in time independent of any time zone or local
+         calendar, encoded as a count of seconds and fractions of seconds at
+         nanosecond resolution. The count is relative to an epoch at UTC midnight on
+         January 1, 1970, in the proleptic Gregorian calendar which extends the
+         Gregorian calendar backwards to year one.
+
+         All minutes are 60 seconds long. Leap seconds are "smeared" so that no leap
+         second table is needed for interpretation, using a [24-hour linear
+         smear](https://developers.google.com/time/smear).
+
+         The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By
+         restricting to that range, we ensure that we can convert to and from [RFC
+         3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.
+
+         # Examples
+
+         Example 1: Compute Timestamp from POSIX `time()`.
+
+             Timestamp timestamp;
+             timestamp.set_seconds(time(NULL));
+             timestamp.set_nanos(0);
+
+         Example 2: Compute Timestamp from POSIX `gettimeofday()`.
+
+             struct timeval tv;
+             gettimeofday(&tv, NULL);
+
+             Timestamp timestamp;
+             timestamp.set_seconds(tv.tv_sec);
+             timestamp.set_nanos(tv.tv_usec * 1000);
+
+         Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.
+
+             FILETIME ft;
+             GetSystemTimeAsFileTime(&ft);
+             UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+
+             // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
+             // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
+             Timestamp timestamp;
+             timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
+             timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
+
+         Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.
+
+             long millis = System.currentTimeMillis();
+
+             Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
+                 .setNanos((int) ((millis % 1000) * 1000000)).build();
+
+         Example 5: Compute Timestamp from Java `Instant.now()`.
+
+             Instant now = Instant.now();
+
+             Timestamp timestamp =
+                 Timestamp.newBuilder().setSeconds(now.getEpochSecond())
+                     .setNanos(now.getNano()).build();
+
+         Example 6: Compute Timestamp from current time in Python.
+
+             timestamp = Timestamp()
+             timestamp.GetCurrentTime()
+
+         # JSON Mapping
+
+         In JSON format, the Timestamp type is encoded as a string in the
+         [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the
+         format is "{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z"
+         where {year} is always expressed using four digits while {month}, {day},
+         {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
+         seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
+         are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
+         is required. A proto3 JSON serializer should always use UTC (as indicated by
+         "Z") when printing the Timestamp type and a proto3 JSON parser should be
+         able to accept both UTC and other timezones (as indicated by an offset).
+
+         For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
+         01:30 UTC on January 15, 2017.
+
+         In JavaScript, one can convert a Date object to this format using the
+         standard
+         [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
+         method. In Python, a standard `datetime.datetime` object can be converted
+         to this format using
+         [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with
+         the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
+         the Joda Time's [`ISODateTimeFormat.dateTime()`](
+         http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
+         ) to obtain a formatter capable of generating timestamps in this format.
+    policy.KeyProviderConfig:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        configJson:
+          type: string
+          title: config_json
+          format: byte
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: KeyProviderConfig
+      additionalProperties: false
+    policy.PageRequest:
+      type: object
+      properties:
+        limit:
+          type: integer
+          title: limit
+          format: int32
+          description: |-
+            Optional
+             Set to configured default limit if not provided
+             Maximum limit set in platform config and enforced by services
+        offset:
+          type: integer
+          title: offset
+          format: int32
+          description: |-
+            Optional
+             Defaulted if not provided
+      title: PageRequest
+      additionalProperties: false
+    policy.PageResponse:
+      type: object
+      properties:
+        currentOffset:
+          type: integer
+          title: current_offset
+          format: int32
+          description: Requested pagination offset
+        nextOffset:
+          type: integer
+          title: next_offset
+          format: int32
+          description: |-
+            Calculated with request limit + offset or defaults
+             Empty when none remain after current page
+        total:
+          type: integer
+          title: total
+          format: int32
+          description: Total count of entire list
+      title: PageResponse
+      additionalProperties: false
+    policy.keymanagement.CreateProviderConfigRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          title: name
+          description: |-
+            Required
+             The name of the key provider. (e.g. "AWS KMS", "Google Cloud KMS", "Azure Key Vault")
+        configJson:
+          type: string
+          title: config_json
+          format: byte
+          description: |-
+            Required
+             JSON configuration for the key provider. This is unique to individual key providers.
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: CreateProviderConfigRequest
+      required:
+        - name
+        - configJson
+      additionalProperties: false
+      description: Provider Configuration Requests and Response Messages
+    policy.keymanagement.CreateProviderConfigResponse:
+      type: object
+      properties:
+        providerConfig:
+          title: provider_config
+          $ref: '#/components/schemas/policy.KeyProviderConfig'
+      title: CreateProviderConfigResponse
+      additionalProperties: false
+    policy.keymanagement.DeleteProviderConfigRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+      title: DeleteProviderConfigRequest
+      additionalProperties: false
+      description: In order to delete a provider configuration you must first delete all keys associated with the provider.
+    policy.keymanagement.DeleteProviderConfigResponse:
+      type: object
+      properties:
+        providerConfig:
+          title: provider_config
+          $ref: '#/components/schemas/policy.KeyProviderConfig'
+      title: DeleteProviderConfigResponse
+      additionalProperties: false
+    policy.keymanagement.GetProviderConfigRequest:
+      type: object
+      oneOf:
+        - properties:
+            id:
+              type: string
+              title: id
+              format: uuid
+          title: id
+          required:
+            - id
+        - properties:
+            name:
+              type: string
+              title: name
+              minLength: 1
+          title: name
+          required:
+            - name
+      title: GetProviderConfigRequest
+      additionalProperties: false
+    policy.keymanagement.GetProviderConfigResponse:
+      type: object
+      properties:
+        providerConfig:
+          title: provider_config
+          $ref: '#/components/schemas/policy.KeyProviderConfig'
+      title: GetProviderConfigResponse
+      additionalProperties: false
+    policy.keymanagement.ListProviderConfigsRequest:
+      type: object
+      properties:
+        pagination:
+          title: pagination
+          description: Optional
+          $ref: '#/components/schemas/policy.PageRequest'
+      title: ListProviderConfigsRequest
+      additionalProperties: false
+    policy.keymanagement.ListProviderConfigsResponse:
+      type: object
+      properties:
+        providerConfigs:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.KeyProviderConfig'
+          title: provider_configs
+        pagination:
+          title: pagination
+          $ref: '#/components/schemas/policy.PageResponse'
+      title: ListProviderConfigsResponse
+      additionalProperties: false
+    policy.keymanagement.UpdateProviderConfigRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+        name:
+          type: string
+          title: name
+          description: Optional
+        configJson:
+          type: string
+          title: config_json
+          format: byte
+          description: Optional
+        metadata:
+          title: metadata
+          description: |-
+            Optional
+             Common metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+        metadataUpdateBehavior:
+          title: metadata_update_behavior
+          $ref: '#/components/schemas/common.MetadataUpdateEnum'
+      title: UpdateProviderConfigRequest
+      additionalProperties: false
+    policy.keymanagement.UpdateProviderConfigResponse:
+      type: object
+      properties:
+        providerConfig:
+          title: provider_config
+          $ref: '#/components/schemas/policy.KeyProviderConfig'
+      title: UpdateProviderConfigResponse
+      additionalProperties: false
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        detail:
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    google.protobuf.Any:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+          format: binary
+        debug:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+security: []
+tags:
+  - name: policy.keymanagement.KeyManagementService

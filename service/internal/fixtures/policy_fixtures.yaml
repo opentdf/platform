@@ -228,7 +228,6 @@ subject_mappings:
       # subject_condition_working_group_blue_scenario
       subject_condition_set_id: 10d03422-7eae-43b9-ac3b-d10400171858
 
-
     subject_mapping_sdk_attribute1:
       id: bc28cacb-1687-4c87-9c63-eae55e271320
       attribute_value_id: 74babca6-016f-4f3e-a99b-4e46ea8d0fd8
@@ -245,116 +244,116 @@ subject_condition_set:
     subject_condition_set1:
       id: b3903282-06f9-41a4-924a-7b8eb43dffe0
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_selector_value: ".attributes.superhero_name[]"
+                  - subjectExternalSelectorValue: ".attributes.superhero_name[]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - thor
                       - captain_america
-                  - subject_external_selector_value: ".attributes.superhero_group[]"
+                  - subjectExternalSelectorValue: ".attributes.superhero_group[]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - avengers
     subject_condition_set2:
       id: 798aacd2-abaf-4623-975e-3bb8ca43e318
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_selector_value: ".org"
+                  - subjectExternalSelectorValue: ".org"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - marketing
                       - sales
-                  - subject_external_selector_value: ".role"
+                  - subjectExternalSelectorValue: ".role"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - senior_vice_president
                       - vice_president
                       - director
     subject_condition_set3:
       id: eaf866c0-327f-4826-846a-5041c3c22f06
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
                   # any index
-                  - subject_external_selector_value: ".data[0].favorite_things[]"
+                  - subjectExternalSelectorValue: ".data[0].favorite_things[]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - futbol
                       - soccer
                   # specific index
-                  - subject_external_selector_value: ".data[0].favorite_things[1]"
+                  - subjectExternalSelectorValue: ".data[0].favorite_things[1]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - ice_cream
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_selector_value: ".department"
+                  - subjectExternalSelectorValue: ".department"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - engineering
-                  - subject_external_selector_value: ".role"
+                  - subjectExternalSelectorValue: ".role"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - manager
                       - director
                       - vice_president
     subject_condition_simple_in:
       id: 3c623ede-df88-4906-8a78-ebdfacadcd57
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_selector_value: ".some_field"
+                  - subjectExternalSelectorValue: ".some_field"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - some_value
     subject_condition_simple_not_in:
       id: cf17ec4c-d206-4b74-b3db-5ce07d6995cc
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_selector_value: ".some_other_field[1]"
+                  - subjectExternalSelectorValue: ".some_other_field[1]"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - some_other_value_123
     subject_condition_working_group_blue_scenario:
       id: 10d03422-7eae-43b9-ac3b-d10400171858
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_AND
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_AND
                 conditions:
-                  - subject_external_selector_value: ".team.name"
+                  - subjectExternalSelectorValue: ".team.name"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - CoolTool
                       - RadService
                       - ShinyThing
-                  - subject_external_selector_value: ".org.name"
+                  - subjectExternalSelectorValue: ".org.name"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - marketing
     subject_condition_sdk_client:
       id: 86621a00-b63e-42e9-bea5-40ba52d98ede
       condition:
-        subject_sets:
-          - condition_groups:
-              - boolean_operator: CONDITION_BOOLEAN_TYPE_ENUM_OR
+        subjectSets:
+          - conditionGroups:
+              - booleanOperator: CONDITION_BOOLEAN_TYPE_ENUM_OR
                 conditions:
-                  - subject_external_selector_value: ".clientId"
+                  - subjectExternalSelectorValue: ".clientId"
                     operator: SUBJECT_MAPPING_OPERATOR_ENUM_IN
-                    subject_external_values:
+                    subjectExternalValues:
                       - opentdf-sdk
 
 ##
@@ -544,23 +543,30 @@ kas_registry_keys:
       id: 7b9c4f44-ee74-418c-b05c-8320e01953be
       key_access_server_id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb # key_access_server_1
       key_algorithm: 1 # ALGORITHM_RSA_2048
-      key_id: kas_key_1
-      key_mode: 1 # KEY_MODE_LOCAL 
+      key_id: rsa_key_1
+      key_mode: 1 # KEY_MODE_LOCAL
       key_status: 1 # KEY_STATUS_ACTIVE
-      private_key_ctx: eyJ3cmFwcGVkS2V5IjoiYTJWNUNnPT0iLCJrZXlJZCI6ImtleSJ9Cg==
-      public_key_ctx: eyJwZW0iOiJhMlY1Q2c9PSJ9Cg==
-      provider_config_id: 4ab6b1c4-fa5c-4036-8921-53f8c267b728 # provider_config_1
+      private_key_ctx: eyAid3JhcHBlZEtleSI6ICJsY2JxNjgyR3NpaStqRWtRNjJzV0lYa1dXVkpqZ1dQdXZobUJ0OUtpWUZKL28zWENseVJkNGMwS0RGdHVvaGRCdzJqdlZHd2VGZnNwaTllV0dNSXpFbDZiY0VSYzUycTVIdmlINWtjVDlSY25KaFV2M2lONjM1UndIek52akdFVktLVU5CdjRwZkVOMzB3N29wSFBpZ3owS1ExVkJNSk5PM1lEOUZWQTdVb0h4MGVKY0Y3WlFKSkdYeHdwUVYwTXR3bHFtUnBxNFEyVTl2cFlyajY3ODdRSEdmOWhlZ0lYTkErcjByM1RDTHB3YzVZM0E5aEhreWp3N1FnWEU4dWVKSUx1TW04N0NlckpweVpPQ3NySDN2QWppWUFWdjcvZEVKcWpYMUFnYUI4NFQ3aHhERmVqOUpLaEl5OWVLWk5yTndNWW1Bc0hwYkEzamc1R0VIQjdFM2ZYRXFoaTFTTllhR1ZpZHRvSnVTLzNrVm5JTEtOWTZpZnRvNllMTEJBdWlQQVJjNTZVblVTS0hZQ1dtTko3QkM4Y0hhN2FIdDllUW1lVVRicVZmMGg3aDQ2M3FZQ2F6RDhYT0FMUTBuQ3lPQ3I5dUxkV1o1QThLbHFmMytqKzcyOGtaYUJFN2tKZ1I1UFh0dDFMTHlYcThmSEhPRXNOWXMzT3RSOGN3akV1ZGpvVVRJMTd1YkJOYjhYZU01emFaL1dmdWZDcWp2UGVjREt6cHJVbzdlanBrZjZKOEJ0RStZSFZRSjdNMWJWb1ZlQ0tFTWUvK3p5Y2Zpc3BzbmZsQ1ZtNkJNdFlMdmtVLzIzRWRiOWNNN1BRR3lFTEZOeDMyQXRwUXpMRUUrNWVaWWFhUU5Za3hEaWF0c3ZkMkQyNEVSTVhmWGp1YWg4MTBOSVpUZTE4cStGMitZMEtuTU9LZHpqV3AyUXdvNHVIb3JidndRRkwzOXZrVHJmZTIzelhVY2Q2N1pCTmpJUUNGc0prOW5sRk9ORjhrc25XVzQ5aHdxSjk1dXJtaG5zSGRSZlBrbVc2SHZ0UnVTclN3L2VmOGZ0MUZmMlZGMUNKUXArSnc2YnpKWmRQSzdsTmxmN1F3N2trREtqSGxnTTVnanZlZVJXZjE5Q3FqaTdHM1FhSS9Oa3FDdEplWllLZmZGU1RtbStIY3o0bXpMQkpzc3hNdGgvUkRaQzVTaVVJODJhZ0h0QkJ5VC9DK3A2NEE3cjZGeFNvdmRNTi9mTU5ZSUx3NGRQV3VxdDZwNmVnTUlyMFNVYXBpUHJpTjBiRjNaN2d5R1QxQXZyMHVnaU9qQUI3L3pybDJHaWFlajFUV01YS08zd2J4L0VzUVdpMDNWcmxWanBIdjl2Y2hlWjdGTzliREJUUkxKZHI0QkU4RWs0YkZCaytxRkZOQXZXcC9GZDFiNnFiKytEdU5Iajg1V2R3WE1PaW9nNUlSSzdjZUlNT0xQY214TnE3YXh5WnkrTm0yQ2VocjN5Qk9OQzFQRml4U2NMSGJZUEJlTU9EaGJHWXo5NEVaYkxHOWJpL1B5RkJiNERYSGlLemxrNEtTZ3BYZ1FLUHBSRWx6aUNiYVB3WlowZVljUEhoaktVNHQ3a2k3TlR2MlFYVU1nK3V2dVZWajJtcGpSMTJ5bmJiS2xJNDJoUEcxYW1FV0JlM1JjNmZ4cW5uQnVScnlMWjdEYW5wa252V0t5UXE3S1pHSHJGemlaMEE3Q1VSejFnT2R4d2xDQXEvRnAxZ2oxMGpNMFpJK3lod1RGcnhCUDJXdHF1S1dBREhGMHBGblNWdUpKUnlzUFR2aXNSYVM1N3d2aVZZQnRCcnRGYmZhTHBGcytwQ2ViYk81K0dRZ29wWlZaSDM5c0lnY0dIY3B4RU1zdDBCd3JuUGZIM0RRbGJqVmdrWlFmNkJiZUpDNWFBL2tEVTVSZFNiUTI1NjNCcGRMRUREQ3dvaVU5NW5LcE1tOE8zVTIxMEdRMHgveFdFYUMxdDJkOVM2RlVFbFRVSlJYWVZNZVB2Z3JaMnZGajl5YTZvNm5LVWt4RXAyaUlkS2d1ckR4MEVNSHZ2NU90TEZYTnVXWVdIU0o3czNET3JWNjZxUXRYaHF6VUlsRjRHWERVYUpmZ3NtUTk0MU03eUFqL3RibjBHUGFkMENsRXZWd25ucGpnNEpoZ2Y1dlpCaC9TcG5Na2hia1RIQis0ajhrT1dFTHdWc2ZDU3RTa0ZGdHAxY1VtRVI5RWhqSzhjSmJ3L2FKVTU5ZkZmZDJXR0N6VUxIZkEyMURLcld6SWwzODhray94cXdUN1E5aU92Y1NSN1pzdE10R1RRWG54Q1gvV3A4VG9qNjRIM2RsR2p6TGhGeDZ1Qk53WFQxMTRSeGw4ZWZLdW9VZzd0ZHcxcVdtOUplUC92TVF6VTlLd2Z5SExLNmdDQUlmWkpneVkrcnVyN0YrZVNPRUlEeWlkRnJLM1NWTFE3T1lHRmVXaFRNS01HdzdaV2VuTC9xWDdBUFErdkdoMmpQNTJVN2VsT0t4L1RsTkZ5UHJHL2FZUDN0MDRTdWVZUkd2RXAremZkVU0xbmYvN3YvRHhzc1VSS29zQUdHa1JwbzBLQ3NUU0I4UzhxdTlNKzA3YjBSREVXai9QdHVrZWdvRUR1KzZ4azN0WmRqclpWTTIxZURDaDhxME9HbS9KeDBITWVlUHFIY28zeEdTMUpYMW90QVp3UEhaaUkyaWNjWksrV21KTExaSXJYSzRsSG8vd1lpQitOeUlwZDJWd2dTdXZua3hhTlF5dmxtdWtSaTJCTzM1ZEdDNVFaY1V5d2lCZlRoSzdzRC9CMjJHNDZlUVNHeTdqeTlJSmJaMXhNKzVHcXVxOTdPOCtWOVIreEcydW1ZN0grWG90NlBaRjVPT0hERmI2cEVUSThsNDJDdDV2bElJMmRmWXFqZWR6WHAvb1drdXFub2FQejNnUU4wS2JGaDlsazZvVXVJMWlMaHBDMWxIR283em8xV3E0NDFlUW9nS3dhWFNDcGxQNDE0UW44dFE0elcvRTdjZ2hLbnpWMTg1K2lHdXBxTnNoWTBlS1VtSzB2Rkx3dkcrdnc9PSIsICJrZXlfaWQiOiAiY29uZmlnIiB9
+      public_key_ctx: eyAicGVtIjogIkxTMHRMUzFDUlVkSlRpQkRSVkpVU1VaSlEwRlVSUzB0TFMwdENrMUpTVU12VkVORFFXVlhaMEYzU1VKQlowbFZSakE1UVdwSWFsbEpPRU5TZWtWR1NtcGpWRVJFWTJsa1pFZ3dkMFJSV1VwTGIxcEphSFpqVGtGUlJVd0tRbEZCZDBScVJVMU5RVzlIUVRGVlJVRjNkMFJoTWtaNlRVSTBXRVJVU1RCTlJGVjNUbXBGZVUxVVFYaE5iRzlZUkZSSk1VMUVWWGRPYWtWNVRWUkJlQXBOYkc5M1JHcEZUVTFCYjBkQk1WVkZRWGQzUkdFeVJucE5TVWxDU1dwQlRrSm5hM0ZvYTJsSE9YY3dRa0ZSUlVaQlFVOURRVkU0UVUxSlNVSkRaMHREQ2tGUlJVRnNWRUk1ZWtzM2R6RjFNRzFtT1dJNWJtZzRVM3AwSzB0NVpGZHZialV5VURWTlkyazRaMVlyZW1GUVdqbG1NMHBpY2xsSFZXWldXRzE2Um1FS2JWRXJUakJtVGpaUmFEaFZPV2x6YnpGUFozVkhXREIxZVRSd1YxazNlbTFYVFhGdFJqVnBTazlJTkVOQmRUVm5WMlZ1YzNJNVIyRlhNMWxtZUV0V1JncFdVbnBLY1V4MFUzcEJUM2x2UTBsaE5WRXJTVEpVZG1kTmVFWmpTRll3U0dONE9YVTVla2RZZERkS05VZGxWMXBUTTNJMk9VZzRNR1JHVWpkR2MwbFJDazFoVERaUlVIaG1VV05XT1ZKaWRXOXdlVUZ3T0U0M1RrdGlVM3A0T0VaVVpFSllVV0U0UW5WeFRYTnZObFp5SzBjclpDOW9lVnA2WWxwVmMxcEVVelFLWjNSdE5uSkNRbFVyYUU4ek1FTjZXbkJhWkhCRVRWTlBkamxqTkdOWlVYbHBkRWx3UmpCcmJWZFFjRTAyWWl0S1V6UnlOMmhHVVU1a1kxQldWWEJXZUFvdlZHb3dSVUZOYVdzcmNIcFpRVXh5YWxSTFpqbEhjbUprZDBsRVFWRkJRbTh4VFhkVlZFRmtRbWRPVmtoUk5FVkdaMUZWYTJSVE0wSnVXSE5uWlV0U0NuVk5MMGhDTlc5c00zbGFjVlJ2TUhkSWQxbEVWbEl3YWtKQ1ozZEdiMEZWYTJSVE0wSnVXSE5uWlV0U2RVMHZTRUkxYjJ3emVWcHhWRzh3ZDBSM1dVUUtWbEl3VkVGUlNDOUNRVlYzUVhkRlFpOTZRVTVDWjJ0eGFHdHBSemwzTUVKQlVYTkdRVUZQUTBGUlJVRlRaWG94UVZaaE5WaEhWWEJyTlVnNFRIcHlTUXA0VTBWelVuUkhVaXRTVjJOSmRHeE1aVlZMYzNOUFRUTnpZMDFtVUVaNlNuUXlUbGR3ZDBOd1NUUmlZMkZHUVZnemVGbExSMWx4Vm5aelZtcHhiVEZWQ25SS1ltaDZkekZoVVZCVVQyWnZORFpsT1hOR0sybHhaR0pwYkVwbFJVbFFabGxEYjB3MlZYUjBSbTk2VEM5TFoyazFlV0ZsU1hCU2NURmlhSEZ3VmpjS1RWUm1TbTFDYkhWSWNrWmhkV05GYUVGTVRESm9LMHRzUTFSNmFtSnNRbkJaTjFocFZGWkhjM0paYzBWMk1tRjNORWgyYjFwWlZrWlZWM0l4UTFKWFlncHBjREI0ZEZaMVNYRTVSRmhoYTBaSllXVlFXbFpuTUhSQ2N6VkJlakJ6VUdscE5VZFVWalV6VlhkbWNqWTRWamhCWVhGUlNFOXlWR1JRTDJaYWRrTjNDbVJYVFdkS1NubHRjMjFWVWlzMWNUSkNUbkp2WkhsVFdEZDRSelp4ZW5FME1tNUJWMVp3U2xOdmIwZzVaV2RTWVhadVowUTVVWFJyZVdVNUt6QnVSVzBLVkdjOVBRb3RMUzB0TFVWT1JDQkRSVkpVU1VaSlEwRlVSUzB0TFMwdENnPT0iIH0=
+      provider_config_id: 4ab6b1c4-fa5c-4036-8921-53f8c267b728
     kas_key_2:
       id: 7b7197e4-f2de-4f74-b2f5-17c2d87ba13c
       key_access_server_id: 34f2acdc-3d9c-4e92-80b6-90fe4dc9afcb # key_access_server_1
-      key_algorithm: 1 # ALGORITHM_RSA_2048
-      key_id: kas_key_2
-      key_mode: 1 # KEY_MODE_LOCAL 
+      key_algorithm: 3 # ALGORITHM_EC_P256
+      key_id: ec_key_1
+      key_mode: 1 # KEY_MODE_LOCAL
       key_status: 1 # KEY_STATUS_ACTIVE
-      private_key_ctx: eyJ3cmFwcGVkS2V5IjoiYTJWNUNnPT0iLCJrZXlJZCI6ImtleSJ9Cg==
-      public_key_ctx: eyJwZW0iOiJhMlY1Q2c9PSJ9Cg==
-      provider_config_id: 19098106-54a1-4d33-8846-4894b5b6db3e # provider_config_2
-
+      private_key_ctx: eyAid3JhcHBlZF9rZXkiOiAiMXZ2V2pJZ2E2emM0bkhKVHEwL3RmM2hKZXU2VlpDY2o5WTVvbXZNekN2MEw5OVNxcGNpUHY5dUw1ZTQzeHVabTBYMDR3ekJ4VVdhUnJBaWJQRGN2TzFOQWJwS1ZObVNPODRyaXE4aklVeTRJRTRWeHBiTWYwL0duR1U2RjJIODhWb251K2YxMFRQeXdvVWgrU0dXTUZRZWU0eHFkaDJvQ2JlY3FiWklkK1JRR3dRUUh4dUlmOVljUW53MXJXcVMyRHhEekc5cGtleVZCTFBnaTQvZmo5SWhHVmtQQ0RaRFpZYys5MksrZ2UzT0htSlVSSWlURUI4b3BXbVNTc2Zhblc5YkJSYURWdWwxV3EyaHVrK1piVWhqeEZ6bEJWVHRuUVQ2c2R3Yzl0YlpSd0Rqa2ViVGExNVJHVkRKZFhZK1drTHZ2a2J0TVdWZHJQdlNNT2hwRndtcGNvN2g5VjRMdnRLalhvcTA9IiwgImtleV9pZCI6ICJjb25maWciIH0=
+      public_key_ctx: eyAicGVtIjogIkxTMHRMUzFDUlVkSlRpQkRSVkpVU1VaSlEwRlVSUzB0TFMwdENrMUpTVUpqUkVORFFWSmxaMEYzU1VKQlowbFZXRGRMUW14blVUaENWa3BEYldkWlp6SldTM0pyUWt3eVl6UkpkME5uV1VsTGIxcEplbW93UlVGM1NYY0tSR3BGVFUxQmIwZEJNVlZGUVhkM1JHRXlSbnBOUWpSWVJGUkpNRTFFVlhkT2FrVjVUVlJCZUUxc2IxaEVWRWt4VFVSVmQwNXFSWGxOVkVGNFRXeHZkd3BFYWtWTlRVRnZSMEV4VlVWQmQzZEVZVEpHZWsxR2EzZEZkMWxJUzI5YVNYcHFNRU5CVVZsSlMyOWFTWHBxTUVSQlVXTkVVV2RCUldRNFJGSnlhRTFFQ2xCUlUyTkpVR3hTZFZaaVdtSlZZakoxV1RoVlRFSldaVzFSZW5oblZEZHZURGRaTjFWR1NHSmtTWFZuVjBGRFVsVm5UMEl6VjJ0a1MzTTVjVXBFYUcwS1EwUkZZazh2WXl0YWMzSnpUa3RPVkUxR1JYZElVVmxFVmxJd1QwSkNXVVZHUlM5MlluVjJWVms1U2tVdk4xb3hSR0pTY25kcE1tWTNUV1JGVFVJNFJ3cEJNVlZrU1hkUldVMUNZVUZHUlM5MlluVjJWVms1U2tVdk4xb3hSR0pTY25kcE1tWTNUV1JGVFVFNFIwRXhWV1JGZDBWQ0wzZFJSazFCVFVKQlpqaDNDa05uV1VsTGIxcEplbW93UlVGM1NVUlNkMEYzVWtGSloxSnliVEJvU1VwSWFYaHlVVEpGT0VneWVtZE1SMVZMUkdsUlJYcE5aRWMwYzNGRWIySTBjVm9LZVN0clEwbElTMjVIZEUxU05GcHlia3BxSzJaM2FrSTJhelZzZVhSM1dYRnhibGxJWVU1NWNFVmlTVlUwYWpWcUNpMHRMUzB0UlU1RUlFTkZVbFJKUmtsRFFWUkZMUzB0TFMwSyIgfQ==
+    kas_key_3:
+      id: 8f3c5e4a-6b5f-4d3c-9d1f-0f7d8e0e2a2b
+      key_access_server_id: e36640a6-61c5-4d4c-a45b-0e0a26d1c45f # key_access_server_2
+      key_algorithm: 2 # ALGORITHM_RSA_4096
+      key_id: kas_key_3
+      key_mode: 1 # KEY_MODE_LOCAL
+      key_status: 1 # KEY_STATUS_INACTIVE
+      private_key_ctx: eyAid3JhcHBlZEtleSI6ICIwUXNLV1p6Q3I5NXdNdkxjYnh6cUpIcTRrNlJqSXZ0MU1UUGZ6aE9HZHhXYmZnYW5wVUhpWWw2ZUMxOGdKUWhkTm5TTENla1MwdTY5V0JTZUdGV0VtcENlb29TbmhTWElWcTJaQnJ1bVBTOWxWQndXRXl6biszbVlSK3FkQW80ZHY1YlFIcDBidExVUWNoRTNJWHU1NC9FeUFUbm8xRmlMSjZLa00xUHA4MmE3L2FPRDVNckpOZ0x5dXYySVZKbzhEckFXVmQyeXFra29MdXo5NzZERldJUndBd1JUN1dyOUo4MHpYdkFBVS9ibHdGSWFBbmRRZFJLMXppS21nUUJvWExNaCttb3IyVnM2KzFOSEYycWtRalVEMEQyVXlOUThycHVjSXM4RGhrWFFZYXVtWm1iZVdWQUo0a1lPRDRnUUQ3NVdSYUNNWXp3Nm9tTHBHS0RYUzc4bGZTR05VUGMvSnF1M2QxUU8vNVIyTVJST0NLVXVLL0VPSTB0QmFOQUFESXVpT3pVaEoydHZMQ0preTFGMndHeGgxM1hqUmVmS0gzVVdtYVd6SVl4TnM2TW9hdU91enJFNndNV1lWUnA5UWlpOXkvMS9oZ1hicGIxYWZZbWlzT1EvOGcwWmhvMWRmTWdLdlJWWHEyRUFiSWpYb0ZoNE9JUnd0VWhsU29pcVBIVTRPTW1rOVE5Q2RaMVk3anpXdHNra1NnOEY3MjdSdy80S1hTS1hGYWdRbTRNUWN1K2graVpFWGxTOGhmNVRTQXh6M2psejg3M281ZTlXNzh3MkJPL2dBZFloVGxjUnVKeEwxK09CQmF6ZDBWSjkxVitJNmM3bTR3NHVxc1BnRmFNSW1DaTdGYlJSaW16UWh0ZWdKYXpzZVJBNm01VjM3TlhmK3VUbS9PaFJ2ekZBMnRNN0NHem9LdTNubkZHUVdJVUlSSGUxSC82UVJEc2VoSzZ6SFN4VDVaOHk5enpJblh4bUw1bmVGOFNHUms0OWx3MWE1YVZZUlRsVHRmaEQvKzVoVUxuZFlMUzBhTnVSdnNGODU3QjhzN0YveWV2eFBiUnBSdWY3dFhheGwvUHptSFVHRzlKTjYvNy9RWjNXNWVNdU44ZXdqUmlwOGM1SEpydzBBazQvcFVzcnM0dnBpQ1hPYjBNejlvbWNTSU16UjlFUkUxNnp5b2ptTXFXZ3BGYjhja0R0ZXpEWU5tN3RVWDhSY2NZSnRwOEtCU052dTREZXVJL2pYYnF5b3Z6Q09SUnhCUmxUNDByb1hFQURGU2dSc0pXTkg0SGxBSjVDWW9oNE43RUVGS2lCVnkxeWNWajg0aEk0ODNkdy95dC9ZU3E5ak5LTjlVT1daVG0zU20xZk9XODdpR0lwWUZsejk4K3ZRYjZvOU5tSjZycEkzUTJ0c3JrS0dMQzhFTThycmFzMGFYRm9HOUhIaTRTR1VseXFSYXJVK0RjUEtneHphTkVDa2U0QmJRWHFBRlBXRU5vNXJMUEJZTHMyNG9XRDJjZEpVYzIyWWdDV1FBNlI1SFE4dXpTMDZxUmF5SUdnTmtjYThneXUrWEJXcjl5UTUzWllVdWNQdURwQjdVaWFGcVVNbnpZUmwwdzA0NGc5S09ycnpWdk0rZmNCVENaTDJCVUUxY3FUUHNHQlkrRDJoVVV0V1drd1Jha1NkVlpNQjF5bE1PNVNzYVpFaVl0Z3ZhSkZ3SGZKR2t3NE9EWlI3ejhHRW45Mlg1MC8vWktZZW4vWnNFMllodE5DVGJadm1TZk84RmZjZ01lektmR0t6MXNySE5IMm1DSThmSkVyekxBQmZ0WC9udUFDTEdCS08zaTU1VFl3UEhqbHRWU1J4c3krSGlGeGdQR0JNNnNucGhtcmxyS0x1M1lsZlYxRmhQT3o1ZXdqV205RGdDUDJkYktEQUxxMVFGTzlpSnIvckRGTDlLanZITmdIWjE4REsvU1Vld1pFcjAvRmpWaWxZUm1BRUlEZllhWTJmZ1pVVGJlQjJYaUpLTDJncDFFTWZCbjhNZzdDK1c4RWY5dWJSR1JSOCsvUHVFTjFmemYzNzNkNmZlSVA5UmYyZFJ4UnFUSFpodG9NSGoxS0FRcDZpWXlDbTZOM2VRQVVpMHgxa1h1ZDRQQm4wL2pwbEZNYTRib0dzSzFRdUFtTDI1eTRHMjJ1NzUzMmdiemUwNzlNNmUya0NVSFhsVmJWT1lnTktKTmJGNzQ0dlFOYU5UbnNZNVdWcE1vU200TU82Z0p3UWpac2UwMkJqbk92cWJBMjV1OVV6WTlwcElJN3E5TUpSNG1mQnJWcjFMdi9SZnpIVllUTjlEdzQvVy9ld01lbFZTNk1ldCtIWHJuZFV1QjErbXIvVWE3UUJHR0hobCswTWdYcG00aSt4U3EzKy95bk0zZG50Z0xOSEIrTEpjbUdEaG5EWXZ1THRVWWpPbmhmR05QYzNsRE9yN29jb2V1cXBWYVpIOUFEMFhmVHdpVVJYVmdWb1pVN1dWd1l4YTc4WGpDL0U2NWFjU1Q3aTl2Vk5lVUNYTlA2SFVnV1NiNStzZzRpV2dNTVBtNzR3Z0ZwMHVBb25reGZxb1h6ZXROaElyR2RvamhDbFdLb3E5WXAxaHJYb2RkM1Q4L0UrL1l4aFo2NkdsQ2NpY1UwTlZLQ1lJREI1SnY5WnY3SmFBRk1qVnhyd09hak5FeHZLTDFobFVEYVhKNG9OM2NNaW5QR2hJeTlRRmh5aGxxWDFyL0kzVmcydHN0NUFtZnZKQzcyeXJWUkFzZU5BUlJQWllBem96Y1FBb3pZQWpGY2lveGhXMHZ1RTFFOE85RUliMXlSTDFvU3F2Q05YcVJXYis0Y0FrcmdjMmp5eEJvSDdtdXBLa25CTVZ2UWd4WHQrZzZVSUlRR2laTkxxME9FdWhkRG1FRitUamU1ME05Vm9hbnNoejVoc09lZ2dZellTWFFIN1NRVm5OZitjK1RQa1UwWHBlRzdFVEQ4WUdueGhXTW5mRk5lK0FON0o5b0FjRTFSN0dZLzdLTVRQZ09DaVc2aTd5eVI5YllQcmsyYkU1eEtINnF1dVU5amJvaG90ZWJrS2ZEU05LTDNiWGh2UDd1bmEzUFFxbXJRRm1DZWpPcGRrb0lEL1E4eDI1KzlQYTNDWXd0aEFEaUdnTHBSM1lNVy9NR0IvNGs5ZFpNVUNaS3lBcTlNTnkvUWh5bm5NV1BBZmVGM0E3ZHBxY2pUb01KT3diakFuY0VPUjcrQU51VWtnbTBOWlRzdUUyTGtFeTJJdnRmZ0ZRY3FkZGt4U0xLNTFpbDBSU2VJaXlNN3Vxa3lOaTVKQ2JWckRJL1pBSmUyUHJFQmhlQWJ2SUhlSjZtamFnVndXNEY2Q3RUT0VJa0VoMENyTlNnb0VLL25VUlJGMzNkMjMxYm4wRVhTbnErZHlQVjZNSFR5d255cWxCWDJ2ZjBGUHhpNDVnTldrQTY2cUJHUStvVlVtQlY5YnZ1NkNlN0xWRndIVjNpRkN2dVI0ajd4V3ZqSXNtdnJ5b3JWTkkvN0s0YW1NMjRYTitZdVBvTW1iSmI4SGFGM2hvNXVFMlhTeVgzK2EwL2l6clRidjlVWEJwNUJ6bTVpYm5PL0g5NFJUTlhsSDQxZkVnNitacHJMcjlmckE1V2pFYXJ5QlMzRlFUN002c3ppL085eXpUMXE5cVB4d1ZRRDA4M0NObjNDaE5hbEFCK2t0SHFIUE4wbGRVL3UzSE01UFRXejhjcFBWVWtqUStOejAxaDl2VDBlNFpud01WVFBEZTVLZExNZDZueENsK2UxeGp4R2FMbkFNSmVqVVlsWURQeEc1dmhqYWcyVFkvTkl5ajZoemlZUXB1Y2F5aTg5VzV2NVJUWmFDeUpNdzh0T2Y0YjZScE9oY3JVa0hGV3hIUDduaXQySE1yblBmNmhKeWZ0cDcxSHQzNUt3aUxMUXY0VnVERzhxT0Y3bzhsL3RDcDBYOEdvNzVvYjBxVDY2SnB3aFpKdndLbWdKZ3k3VTNnbzhEVXZpY21RRDVmMk83eEFjZit0N3dyZlZPcEYrNnFJdnFJNE5kcHhDYlM5Nm00dm1FR2hwL2RiYjdwQjFrbEZFY0x4MGpQbW5MejRmTk1XMFMvSGdDckJjUkdGelVvWWRCeGFodHVNd09VeFdTc203dnQ4RnM1U0Z6NlJ4cWI2YUxxVEFXeFVYWDBCandLZUlUTyswUTU1eUhLdkRPbVJxOExKZXpEMFc2bStqVVVuSlB0TllxVUUxdVRrM00rUFlTdzVsUWJsaWNEcDlNaHNDUm84dGlGS0t0S3BZRmJMclZ6eGJKKytFajBYQ080bGorcUppYVlEN2lGUVp5b1NPelhQeUdGQzRaU2c3V1VkWlBWRW00RjlwN0U2ODgyQWV3ekFjcFZML1lGenVYWkNqaTltK3hHVHN3WENNdnBHNzFqZjBqUm9sSnZjd2pJVXFjdXZlWExWa2FmTVZybkllbXM2VzdPNjBtTTFqY0xtUWlqOGkxNUJrM214MTVmcnhsamJJaldHSEsvRFBwNkh3SzY4UmIyaGZrTXV2b0FSNExGMDFRMEk4MkZWWWY1SCt0OU5sSmw0dUNDSDNuUlNLZTBDRzM0NmIwOENCZ1JwamRuZHFwNVNKT251SjdpMENVMGRYZ0NxVi9ZRVJmT01GZ1BKcnBuNXVyTWNiZmtZVlJZOE1qRmxvaG9FczVUQmRKaWE4NE9mWVZkUHpZZSttSDAvUURGa0VvZmN1RHJVUUJPbjlGL1AvbUVidUZFR3NtSHNhaUx2NnJyaTJWM3Q2eDRsUmJleDNZTW84dGIrbFRwdkVhdGp2eGRTdmRXZlFlR2J6cDRDZDNHQ2ZEMWpuekh1ZEc2UFNLMVhubXphVUEzek9DT1JJYURaczRBQ04wRS82M1VSMit1aFppVW83ZjVmS2Q5anhtT0k4NStDajN2ZlhRU1ZTMCt6dXE4K3lYbk55NGhoUnhZWEF4ZE9uNWNjOFE0dTc1bjc0RGo0ekM3UVFrVGl4VjkyZjlsZGFLdUFPbVB1ak5tclhJSnhYN1o1SjI1TXdqcHVCMkV4a3pzTDZNN0RWQXZZMitUUlhMNjRYRlpSY2hCbzNkN0orUmZFcFU4T0lpNEpKV3YxTzcxMzVWeXhsRm1Lb3Q3Q1lFSGsvWjZTM29ZZHY0RWh2NkxLRzRBQ1BvWjRtb1VGVjRqajkvY3Q5dVZObFdlZXpEWXpNQUdFMVdPa29Cc0xaWDIrQjVWcWpIdGV0aFpPK1REMS9YeDVRaWp4TWRWWEZaRm42NVdVT3cvaGUvVUZIMllUTVlJOTg1UFNUek8rYmpvY0VQaWxIclkycmN0U0JabkFjYkF1bTNBNmN6VVlRMmtDT09JZ3Y2WjVBcEpCdmxSV2RQYk9TQjhnZkJJZElXeitOUW1DMFp0OUpsOWtMR2xIeS9qUnZtVkViNi9kaGFuOCtaLzkzREN1UmFmZkpZWHBqK3djR2YwSGp6Rms3Z2JsZCswMFV6WmZQaW13dkU2ZDNVVEFZOHRRdDRTKzZtcHVnMy9QK3ZvRFB0cFhaQjJNR3pLdlU5dGdPR0w1Z1gvOFBKbEkrUFU1bkVxL2Z5WG9vQy9Ud0EwTnJRWkhPSWg0c3hzbklvdnpJSzhDcVp2aWxqc0M5ZUhwVkpYT0lyUHhKNkdnM3d1cG5lUzdFMFcvRzRtanNUc0F2WHJOck5jZUw4K0JiRU5vcUR5NndKblJRcU5WZFlmVE1paWFFQThxNFNsTTRwLzI3d0RhSHNaS09HeVdIaGpxWnBNT2xiN3R3QmJZa3hyQlU5K05JY1ZOTXVOV1oyT00rRGtUUyIsICJrZXlfaWQiOiAiY29uZmlnIiB9
+      public_key_ctx: eyAicGVtIjogIkxTMHRMUzFDUlVkSlRpQkRSVkpVU1VaSlEwRlVSUzB0TFMwdENrMUpTVVZ0UkVORFFXOUJRME5SUkVRd2J6WkRhREl2UzJKNlFVNUNaMnR4YUd0cFJ6bDNNRUpCVVhOR1FVUkJUMDFSZDNkRFoxbEVWbEZSUkVSQlRuSUtXVmhOZDBob1kwNU5hbFYzVG1wRmVrMVVUWGhOUkUwd1YyaGpUazFxV1hkT2FrVjZUVlJOZUUxRVRUQlhha0ZQVFZGM2QwTm5XVVJXVVZGRVJFRk9jZ3BaV0UxM1oyZEphVTFCTUVkRFUzRkhVMGxpTTBSUlJVSkJVVlZCUVRSSlEwUjNRWGRuWjBsTFFXOUpRMEZSUkRZNFEydFJkVU5rWW1kdFVFdFJNa2N5Q25JM05sZHNPVzR5Tm1aa1FYaDRkWGRZT1VOeWExaHBWbGhHV0U1M2ExSnRkSE40Yms5cmIxUkdVM2xWYWtseVRIa3JabVZIVUdKcGVsVnhjMVZFVEZnS1RVVkhlREI2ZUdkalptZHFNakptVERObGJVNXhLMVV5UldSeGNtdFdSblpWWVhvek1reEVZVnAzY21OYWEzRXJlbTl6UzJkQ09VWXlhQzlyVlVScWJRcDVZelJJVG5WeVprMXZWR1Z1UVZOeWJESTRaekZaV21kV2VGbDFVbFZtY1V0aVVURm5TSGxaUkdreVNFTjVMM2gxVXpGTGVFbEtNbEV2T1dJMVNuaG1Da015VDI1R2RVazJUVVpRZFVwb1Fra3pkMUZ3T1RVdlJEWlVVVFpxUlV0clZIUlhjVmg0Uldsb01rdEdNVFJQYkUxUGMwRjZLMGxpTW1aNE1XcDVRUzhLTWpCYUwyaFZkRko1VjBwbVJESlJiamRuYVdKa1RXdDNPV1ZITHpSV1oycDRibnB0WWxOTmJ5OHJNSFpvZWpkSVFsRTNVVEJqYzA5V1lVaEVaR1IxUlFwbGEzTjRjVGt3TWt4TE9XZzBNbHBwVld0WlMwMVdlVEk1VjBaM1VUWlNXbnBHWWtwNFEyNUdRakZVU2s1eVFrMWtLemhaYkUxVWFWTjFlWEZ4VlNzeENsZDBTbTUxTTFKSFVGY3JXSEU0YjBKSE1XaElLeTlQVEM5Vk5GcDJlRE4yTlhkTE5WVlBSak54YVdSWVdXUkNZeXRyYm5wVGJqTnpUa3BGU1VoU01Xa0tiV3RvYjFOdWFFVnhkMFZHTldod2JrazJhamQ1UlUwcllVNHlhR3A1ZGtKVlVtUllVR3hvYldwYVZDdEtRVU1yTjNSS1dYTjZXSFp0VW5FMk5sRTNSZ3A0VW1WNlZYZDZPRTh3UW5GNGMwZHhSemQxZDBsQ2QwZzFZVFF4UTFaNWJHMVpURTF3TVhaTmJGVnJZa2R1YUdwaEwydzVhSFpOT1RSMWFuSk9XVGxaQ25wR1dtbFdlWEJoUXl0VVNqWlpkV3BTV0d0eU9EaEljMWx2WWpOQ01UZzBjVXM1Y1dzNE1qZGllRlZ1YTB0Wk4xZDBaVkY0ZUd0blR6SnFLMWhNUTNRS1YwaHdWMWc0TlN0dlYycDFRbVUyTDFaQ1RXZEpVMlpIUVZGSlJFRlJRVUpOUVRCSFExTnhSMU5KWWpORVVVVkNRM2RWUVVFMFNVTkJVVU5vYVRkVFFRcHdSbUkwVFhWMVJFbExWbFJJWjBoUlpGTnVPRXBwVkdkUlJteFpTbGx5WlVwa2JFTllSSEZZZFZkQ1ZqRmpVMkpVVkRWbVNsUXdlWEF4Y1dWeVRUWm5DbGhwVUROVmRqUnRXakJLVW5neVFqWXlTVWx6UldSa1J5OWhRM1kwY2tsUWJHRkhhRUZIWTFkWmR6QTJMMUF4TlhoQ09UaGxhRk4zTlhWMFNsVmhkbVFLZDBjMk5VcGlhbVpoYzFGamRFNWpSU3RLTm10aFlVZG9RMlpsTkVVd2RVSXlhazlSWVRneldFNTRTa2MxZDFweU5qaFFNVzVsUlZoSmJEZGFXakppVXdvNWJTdHphWFp0WVVOSE9GcHlkR1ZHV21weE5uSllhM2MxYW10WGRYTjJVamtyYXpSMVJERXJUbGRaVjJzNVdYSlFjRWRCZVdjM1UzaFFUVXhCU0dGWUNqQkZiREJoTkN0dmIxcDZNa1J2TkU5MVltZEVVRkYwVVZoblJVdHFiMDlCUWxFNE5EWmlSMVZWYzFwMlVUa3dUa28zSzNwcWMyOU5OSFZyY1cxTk0yd0tNRzVKTW5nNFJHSXJLMEUzV1dKVVJVMDNjMHN6TXpKVFZ6TkVVWEZzTm5CYU1GQnpiRWRJTHk5Rk4xWTROMVJPVlZoeWJIcEpRalo2ZDNsaFEwSkxkZ3AwWWpoS01VTmhVbmgzVjNWVlkwdEhTVWgzWkhaSVZYazVObTF3WXpGSlZGaFRja1ZtVTJ0U2IwcDFZazVuVlZaaFMyeHZjREU0U2xNclEwMVRUbXhGQ210NFVYSlViVlZPUnpoNFZFZFhaamxwTDI0Mk5rUlJRbmxqT1VOSVZtMTFRVGRxUVhvcmRYZE5hbVpuYkdselRYQmxjRms1VTAxMmVFOTZUVmxsUmxZS2F6ZE1kbWxHV2tNdmFTdEpjRXRsYjBKdWJHWkxObXhoVlRBNFpGQlpVR1JVUmtWSk9HSlRSVTlvTmxRdlUwbFNiMHhQUm1kR0wzSnBNMVJrUm1ST1dRcGpNR3RRYUhsSmEyWlpkMnBwTkV4MVZFMHhWUzh3WTJaWmJWbElNRGhXYzNwa1VVdE1NVEpwVDFvd00wdHFXRVJNUjB0VmFtSjRRamRGT0UxMlZrWkJDaTg1U0N0TFZrTkZaRmxCWlVwS1MyUlFiVVExT0RNck4zSlNZbWwyVEdKQ1FUVnpZMUJSUFQwS0xTMHRMUzFGVGtRZ1EwVlNWRWxHU1VOQlZFVXRMUzB0TFFvPSIgfQ==
 ##############
 # Provider Config
 ##############
@@ -580,7 +586,6 @@ provider_configs:
       id: 19098106-54a1-4d33-8846-4894b5b6db3e
       provider_name: gcp
       config: eyJzb21lIjogInZhbHVlIn0g
-
 
 ##
 # Registered Resources
@@ -653,5 +658,5 @@ registered_resource_action_attribute_values:
       registered_resource_value_id: 1d2c3b4a-5e6f-7a89-0b1c-2d3e4f5a6789
       # loaded by migration
       action_name: custom_action_1
-      # example.com/attr/attr1/value/value2  
+      # example.com/attr/attr1/value/value2
       attribute_value_id: 2fe8dea1-3555-498c-afe9-99724f35f3d3

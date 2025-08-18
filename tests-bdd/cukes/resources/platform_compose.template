@@ -1,0 +1,14 @@
+services:
+  otdf:
+    image: ${IMAGE}
+    command: ["start", "--config-file","/app/opentdf.yaml"]
+    environment:
+      SSL_CERT_DIR: /app/keys
+      # ENCRYPTED_TOKEN_KEY: ${ENCRYPTED_TOKEN_KEY} # Uncomment if needed
+    ports:
+      - "${EXPOSED_PORT}:${EXPOSED_PORT}"
+    volumes:
+      - ${KEYS_DIR}:/app/keys
+      - ${CONFIG_PATH}:/app/opentdf.yaml
+    extra_hosts:
+      - "${HOSTNAME}:host-gateway"

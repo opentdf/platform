@@ -5,6 +5,19 @@ package policy;
 import "buf/validate/validate.proto";
 import "common/common.proto";
 import "google/protobuf/wrappers.proto";
+// import "google/protobuf/struct.proto";
+
+message SimpleKasPublicKey {
+  Algorithm algorithm = 1;
+  string kid = 2;
+  string pem = 3;
+}
+
+message SimpleKasKey {
+    string kas_uri = 1; // The URL of the Key Access Server
+    SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
+    string kas_id = 3; // The ID of the Key Access Server
+};
 
 message KeyProviderConfig {
   string id = 1;
@@ -29,11 +42,11 @@ message Namespace {
 
   common.Metadata metadata = 5;
 
-  // KAS grants for the namespace
+  // Deprecated KAS grants for the namespace. Use kas_keys instead.
   repeated KeyAccessServer grants = 6;
 
   // Keys for the namespace
-  repeated KasKey kas_keys = 7;
+  repeated SimpleKasKey kas_keys = 7;
 }
 
 message Attribute {
@@ -53,7 +66,7 @@ message Attribute {
 
   repeated Value values = 5;
 
-  // Deprecated
+  // Deprecated KAS grants for the attribute. Use kas_keys instead.
   repeated KeyAccessServer grants = 6;
 
   string fqn = 7;
@@ -62,7 +75,7 @@ message Attribute {
   google.protobuf.BoolValue active = 8;
 
   //Keys associated with the attribute
-  repeated KasKey kas_keys = 9;
+  repeated SimpleKasKey kas_keys = 9;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -87,8 +100,7 @@ message Value {
   reserved "members";
   reserved 4;
 
-  // Deprecated
-  // list of key access servers
+  // Deprecated KAS grants for the value. Use kas_keys instead.
   repeated KeyAccessServer grants = 5;
 
   string fqn = 6;
@@ -99,7 +111,7 @@ message Value {
   // subject mapping
   repeated SubjectMapping subject_mappings = 8;
 
-  repeated KasKey kas_keys = 9;
+  repeated SimpleKasKey kas_keys = 9;
 
   repeated ResourceMapping resource_mappings = 10;
 
@@ -322,7 +334,7 @@ message KeyAccessServer {
   // The source of the KAS: (INTERNAL, EXTERNAL)
   SourceType source_type = 4;
   // Kas keys associated with this KAS
-  repeated KasKey kas_keys = 5;
+  repeated SimpleKasKey kas_keys = 5;
 
   // Optional
   // Unique name of the KAS instance
@@ -436,7 +448,6 @@ message RegisteredResourceValue {
     // Common metadata
     common.Metadata metadata = 100;
   }
-
   string id = 1;
 
   string value = 2;
@@ -448,6 +459,50 @@ message RegisteredResourceValue {
   // Common metadata
   common.Metadata metadata = 100;
 }
+
+message Obligation {
+  string id = 1;
+
+  Namespace namespace = 2;
+
+  string name = 3;
+
+  repeated ObligationValue values = 4;
+  
+  common.Metadata metadata = 100;
+}
+
+message ObligationValue {
+  string id = 1;
+
+  Obligation obligation = 2;
+
+  string value = 3;
+
+  common.Metadata metadata = 100;
+}
+
+message ObligationTrigger {
+  string id = 1;
+
+  ObligationValue obligation_value = 2;
+
+  Action action = 3;
+
+  Value attribute_value = 4;
+
+  common.Metadata metadata = 100;
+}
+
+// message ObligationFulfiller {
+//   string id = 1;
+
+//   ObligationValue obligation_value = 2;
+
+//   google.protobuf.Struct conditionals = 3;
+
+//   common.Metadata metadata = 100;
+// }
 
 // Supported key algorithms.
 enum Algorithm {
@@ -527,6 +582,8 @@ message AsymmetricKey {
   PrivateKeyCtx private_key_ctx = 7; // Specific structure based on key provider implementation
   // Optional
   KeyProviderConfig provider_config = 8; // Configuration for the key provider
+  // Optional
+  bool legacy = 9; // Indicates a key may be found in TDFs without key identifiers
 
   // Common metadata fields
   common.Metadata metadata = 100;

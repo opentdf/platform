@@ -21,12 +21,12 @@ type OIDCConfiguration struct {
 	Issuer                           string   `json:"issuer"`
 	AuthorizationEndpoint            string   `json:"authorization_endpoint"`
 	TokenEndpoint                    string   `json:"token_endpoint"`
+	UserinfoEndpoint                 string   `json:"userinfo_endpoint"`
 	JwksURI                          string   `json:"jwks_uri"`
 	ResponseTypesSupported           []string `json:"response_types_supported"`
 	SubjectTypesSupported            []string `json:"subject_types_supported"`
 	IDTokenSigningAlgValuesSupported []string `json:"id_token_signing_alg_values_supported"`
 	RequireRequestURIRegistration    bool     `json:"require_request_uri_registration"`
-	PublicClientID                   string   `json:"public_client_id,omitempty"`
 }
 
 // DiscoverOPENIDConfiguration discovers the openid configuration for the issuer provided

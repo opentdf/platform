@@ -1,0 +1,424 @@
+openapi: 3.1.0
+info:
+  title: entityresolution
+paths:
+  /entityresolution/resolve:
+    post:
+      tags:
+        - entityresolution.EntityResolutionService
+      summary: ResolveEntities
+      description: 'Deprecated: use v2 ResolveEntities instead'
+      operationId: entityresolution.EntityResolutionService.ResolveEntities
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/entityresolution.ResolveEntitiesRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/entityresolution.ResolveEntitiesResponse'
+  /entityresolution/entitychain:
+    post:
+      tags:
+        - entityresolution.EntityResolutionService
+      summary: CreateEntityChainFromJwt
+      description: 'Deprecated: use v2 CreateEntityChainsFromTokens instead'
+      operationId: entityresolution.EntityResolutionService.CreateEntityChainFromJwt
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/entityresolution.CreateEntityChainFromJwtRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/entityresolution.CreateEntityChainFromJwtResponse'
+components:
+  schemas:
+    authorization.Entity.Category:
+      type: string
+      title: Category
+      enum:
+        - CATEGORY_UNSPECIFIED
+        - CATEGORY_SUBJECT
+        - CATEGORY_ENVIRONMENT
+    google.protobuf.NullValue:
+      type: string
+      title: NullValue
+      enum:
+        - NULL_VALUE
+      description: |-
+        `NullValue` is a singleton enumeration to represent the null value for the
+         `Value` type union.
+
+         The JSON representation for `NullValue` is JSON `null`.
+    authorization.Entity:
+      type: object
+      oneOf:
+        - properties:
+            claims:
+              title: claims
+              $ref: '#/components/schemas/google.protobuf.Any'
+          title: claims
+          required:
+            - claims
+        - properties:
+            clientId:
+              type: string
+              title: client_id
+          title: client_id
+          required:
+            - clientId
+        - properties:
+            custom:
+              title: custom
+              $ref: '#/components/schemas/authorization.EntityCustom'
+          title: custom
+          required:
+            - custom
+        - properties:
+            emailAddress:
+              type: string
+              title: email_address
+              description: one of the entity options must be set
+          title: email_address
+          required:
+            - emailAddress
+        - properties:
+            remoteClaimsUrl:
+              type: string
+              title: remote_claims_url
+          title: remote_claims_url
+          required:
+            - remoteClaimsUrl
+        - properties:
+            userName:
+              type: string
+              title: user_name
+          title: user_name
+          required:
+            - userName
+        - properties:
+            uuid:
+              type: string
+              title: uuid
+          title: uuid
+          required:
+            - uuid
+      properties:
+        id:
+          type: string
+          title: id
+          description: ephemeral id for tracking between request and response
+        category:
+          title: category
+          $ref: '#/components/schemas/authorization.Entity.Category'
+      title: Entity
+      additionalProperties: false
+      description: PE (Person Entity) or NPE (Non-Person Entity)
+    authorization.EntityChain:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: ephemeral id for tracking between request and response
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/authorization.Entity'
+          title: entities
+      title: EntityChain
+      additionalProperties: false
+      description: A set of related PE and NPE
+    authorization.EntityCustom:
+      type: object
+      properties:
+        extension:
+          title: extension
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: EntityCustom
+      additionalProperties: false
+      description: Entity type for custom entities beyond the standard types
+    authorization.Token:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: ephemeral id for tracking between request and response
+        jwt:
+          type: string
+          title: jwt
+          description: the token
+      title: Token
+      additionalProperties: false
+    entityresolution.CreateEntityChainFromJwtRequest:
+      type: object
+      properties:
+        tokens:
+          type: array
+          items:
+            $ref: '#/components/schemas/authorization.Token'
+          title: tokens
+      title: CreateEntityChainFromJwtRequest
+      additionalProperties: false
+      description: |-
+        Example: Get Entity chains for tokens aaaaaa and bbbbbb
+        {
+        "tokens": [
+        "aaaaaaa",
+        "bbbbbbbb"
+        ]
+        }
+    entityresolution.CreateEntityChainFromJwtResponse:
+      type: object
+      properties:
+        entityChains:
+          type: array
+          items:
+            $ref: '#/components/schemas/authorization.EntityChain'
+          title: entity_chains
+      title: CreateEntityChainFromJwtResponse
+      additionalProperties: false
+      description: |-
+        Example: Return the entity chains from the provided tokens
+        {
+        "entity_chains": [
+        {
+        "id": "tok1",
+        "entities": [
+        {
+        "clientId": "client1"
+        }
+        ]
+        },
+        {
+        "id": "tok2",
+        "entities": [
+        {
+        "userName": "alice",
+        "clientId": "client2"
+        }
+        ]
+        }
+        ]
+        }
+    entityresolution.EntityNotFoundError:
+      type: object
+      properties:
+        code:
+          type: integer
+          title: code
+          format: int32
+        message:
+          type: string
+          title: message
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.protobuf.Any'
+          title: details
+        entity:
+          type: string
+          title: entity
+      title: EntityNotFoundError
+      additionalProperties: false
+    entityresolution.EntityRepresentation:
+      type: object
+      properties:
+        additionalProps:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.protobuf.Struct'
+          title: additional_props
+        originalId:
+          type: string
+          title: original_id
+          description: ephemeral entity id from the request
+      title: EntityRepresentation
+      additionalProperties: false
+    entityresolution.ResolveEntitiesRequest:
+      type: object
+      properties:
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/authorization.Entity'
+          title: entities
+      title: ResolveEntitiesRequest
+      additionalProperties: false
+      description: |-
+        Example: Get idp attributes for bob and alice (both represented using an email address
+        {
+        "entities": [
+        {
+        "id": "e1",
+        "emailAddress": "bob@example.org"
+        },
+        {
+        "id": "e2",
+        "emailAddress": "alice@example.org"
+        }
+        ]
+        }
+    entityresolution.ResolveEntitiesResponse:
+      type: object
+      properties:
+        entityRepresentations:
+          type: array
+          items:
+            $ref: '#/components/schemas/entityresolution.EntityRepresentation'
+          title: entity_representations
+      title: ResolveEntitiesResponse
+      additionalProperties: false
+      description: |-
+        Example: Get idp attributes for bob and alice
+        {
+        "entity_representations": [
+        {
+        "idp_entity_id": "e1",
+        "additional_props": {"someAttr1":"someValue1"}
+        },
+        {
+        "idp_entity_id": "e2",
+        "additional_props": {"someAttr2":"someValue2"}
+        }
+        ]
+        }
+    google.protobuf.Any:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+          format: binary
+        debug:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+    google.protobuf.ListValue:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/google.protobuf.Value'
+          title: values
+          description: Repeated field of dynamically typed values.
+      title: ListValue
+      additionalProperties: false
+      description: |-
+        `ListValue` is a wrapper around a repeated field of values.
+
+         The JSON representation for `ListValue` is JSON array.
+    google.protobuf.Struct:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/google.protobuf.Value'
+      description: |-
+        `Struct` represents a structured data value, consisting of fields
+         which map to dynamically typed values. In some languages, `Struct`
+         might be supported by a native representation. For example, in
+         scripting languages like JS a struct is represented as an
+         object. The details of that representation are described together
+         with the proto support for the language.
+
+         The JSON representation for `Struct` is JSON object.
+    google.protobuf.Struct.FieldsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/google.protobuf.Value'
+      title: FieldsEntry
+      additionalProperties: false
+    google.protobuf.Value:
+      oneOf:
+        - type: "null"
+        - type: number
+        - type: string
+        - type: boolean
+        - type: array
+        - type: object
+          additionalProperties: true
+      description: |-
+        `Value` represents a dynamically typed value which can be either
+         null, a number, a string, a boolean, a recursive struct value, or a
+         list of values. A producer of value is expected to set one of these
+         variants. Absence of any variant indicates an error.
+
+         The JSON representation for `Value` is JSON value.
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        detail:
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+security: []
+tags:
+  - name: entityresolution.EntityResolutionService

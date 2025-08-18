@@ -12,6 +12,7 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
+	"github.com/opentdf/platform/protocol/go/policy/unsafe"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/stretchr/testify/suite"
@@ -900,255 +901,6 @@ func (s *NamespacesSuite) Test_UnsafeUpdateNamespace_NormalizeCasing() {
 	s.Equal("https://helloworld.com", got.GetFqn())
 }
 
-/*
-	Key Access Server Grant Assignments (KAS Grants)
-*/
-
-func (s *NamespacesSuite) Test_AssignKASGrant() {
-	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "kas-namespace.com"})
-	s.Require().NoError(err)
-	s.NotNil(n)
-
-	// test no grants on the namespace
-	got, err := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
-	s.Require().NoError(err)
-	s.NotNil(got)
-	s.Empty(got.GetGrants())
-
-	pubKey := &policy.PublicKey{
-		PublicKey: &policy.PublicKey_Remote{
-			Remote: "https://remote.com/key",
-		},
-	}
-	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
-		Uri:       "kas.uri/ns",
-		PublicKey: pubKey,
-		Name:      "kas-name-ns",
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
-	s.Require().NoError(err)
-	s.NotNil(kas)
-
-	// assign a grant
-	grant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
-		NamespaceId:       n.GetId(),
-		KeyAccessServerId: kas.GetId(),
-	})
-	s.Require().NoError(err)
-	s.NotNil(grant)
-
-	// get the namespace and verify the grant is present
-	got, err = s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
-	s.Require().NoError(err)
-	s.NotNil(got)
-	s.Len(got.GetGrants(), 1)
-	s.Equal(kas.GetId(), got.GetGrants()[0].GetId())
-	s.Equal(kasRegistry.GetName(), got.GetGrants()[0].GetName())
-}
-
-func (s *NamespacesSuite) Test_AssignKASGrant_FailsInvalidIds() {
-	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "kas-failure-namespace.com"})
-	s.Require().NoError(err)
-	s.NotNil(n)
-
-	pubKey := &policy.PublicKey{
-		PublicKey: &policy.PublicKey_Remote{
-			Remote: "https://testingassignmentfailure.com/key",
-		},
-	}
-	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
-		Uri:       "https://testingassignmentfailure.com",
-		PublicKey: pubKey,
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
-	s.Require().NoError(err)
-	s.NotNil(kas)
-
-	// ns doesn't exist
-	grant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
-		NamespaceId:       nonExistentNamespaceID,
-		KeyAccessServerId: kas.GetId(),
-	})
-	s.Nil(grant)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
-
-	// kas doesn't exist
-	grant, err = s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
-		NamespaceId:       n.GetId(),
-		KeyAccessServerId: nonExistentKasRegistryID,
-	})
-	s.Nil(grant)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
-}
-
-func (s *NamespacesSuite) Test_AssignKASGrant_FailsAlreadyAssigned() {
-	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "kas-conflict.com"})
-	s.Require().NoError(err)
-	s.NotNil(n)
-
-	pubKey := &policy.PublicKey{
-		PublicKey: &policy.PublicKey_Remote{
-			Remote: "https://remote.com/key",
-		},
-	}
-	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
-		Uri:       "kas.conflict/ns",
-		PublicKey: pubKey,
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
-	s.Require().NoError(err)
-	s.NotNil(kas)
-
-	// assign a grant
-	grant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
-		NamespaceId:       n.GetId(),
-		KeyAccessServerId: kas.GetId(),
-	})
-	s.Require().NoError(err)
-	s.NotNil(grant)
-
-	// assign again
-	grant, err = s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
-		NamespaceId:       n.GetId(),
-		KeyAccessServerId: kas.GetId(),
-	})
-	s.Nil(grant)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrUniqueConstraintViolation)
-}
-
-func (s *NamespacesSuite) Test_RemoveKASGrant() {
-	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "kas-removal-namespace.com"})
-	s.Require().NoError(err)
-	s.NotNil(n)
-
-	pubKey := &policy.PublicKey{
-		PublicKey: &policy.PublicKey_Remote{
-			Remote: "https://remote.com/key",
-		},
-	}
-	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
-		Uri:       "kas.uri/removal",
-		PublicKey: pubKey,
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
-	s.Require().NoError(err)
-	s.NotNil(kas)
-
-	// verify namespace has no grants
-	got, err := s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
-	s.Require().NoError(err)
-	s.NotNil(got)
-	s.Empty(got.GetGrants())
-
-	granted := &namespaces.NamespaceKeyAccessServer{
-		NamespaceId:       n.GetId(),
-		KeyAccessServerId: kas.GetId(),
-	}
-	// grant kas to namespace
-	grant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, granted)
-	s.Require().NoError(err)
-	s.NotNil(grant)
-
-	// verify namespace has grant
-	got, err = s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
-	s.Require().NoError(err)
-	s.NotNil(got)
-	s.Len(got.GetGrants(), 1)
-	s.Equal(kas.GetId(), got.GetGrants()[0].GetId())
-
-	// remove grant
-	removed, err := s.db.PolicyClient.RemoveKeyAccessServerFromNamespace(s.ctx, granted)
-	s.Require().NoError(err)
-	s.NotNil(removed)
-	s.Equal(granted.GetKeyAccessServerId(), removed.GetKeyAccessServerId())
-	s.Equal(granted.GetNamespaceId(), removed.GetNamespaceId())
-
-	// verify namespace has no grants
-	got, err = s.db.PolicyClient.GetNamespace(s.ctx, n.GetId())
-	s.Require().NoError(err)
-	s.NotNil(got)
-	s.Empty(got.GetGrants())
-}
-
-func (s *NamespacesSuite) Test_RemoveKASGrant_FailsInvalidIds() {
-	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "kas-failure-namespace-remove.com"})
-	s.Require().NoError(err)
-	s.NotNil(n)
-
-	pubKey := &policy.PublicKey{
-		PublicKey: &policy.PublicKey_Remote{
-			Remote: "https://testingremovalfailure.com/key",
-		},
-	}
-	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
-		Uri:       "https://testingremovalfailure.com",
-		PublicKey: pubKey,
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
-	s.Require().NoError(err)
-	s.NotNil(kas)
-
-	// ns doesn't exist
-	grant, err := s.db.PolicyClient.RemoveKeyAccessServerFromNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
-		NamespaceId:       nonExistentNamespaceID,
-		KeyAccessServerId: kas.GetId(),
-	})
-	s.Nil(grant)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-
-	// kas doesn't exist
-	grant, err = s.db.PolicyClient.RemoveKeyAccessServerFromNamespace(s.ctx, &namespaces.NamespaceKeyAccessServer{
-		NamespaceId:       n.GetId(),
-		KeyAccessServerId: nonExistentKasRegistryID,
-	})
-	s.Nil(grant)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-}
-
-func (s *NamespacesSuite) Test_RemoveKASGrant_FailsAlreadyRemoved() {
-	n, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "kas-conflict-removal.com"})
-	s.Require().NoError(err)
-	s.NotNil(n)
-
-	pubKey := &policy.PublicKey{
-		PublicKey: &policy.PublicKey_Remote{
-			Remote: "https://remote.com/key",
-		},
-	}
-	kasRegistry := &kasregistry.CreateKeyAccessServerRequest{
-		Uri:       "kas.conflictremoval/ns",
-		PublicKey: pubKey,
-	}
-	kas, err := s.db.PolicyClient.CreateKeyAccessServer(s.ctx, kasRegistry)
-	s.Require().NoError(err)
-	s.NotNil(kas)
-
-	granted := &namespaces.NamespaceKeyAccessServer{
-		NamespaceId:       n.GetId(),
-		KeyAccessServerId: kas.GetId(),
-	}
-	// assign a grant
-	grant, err := s.db.PolicyClient.AssignKeyAccessServerToNamespace(s.ctx, granted)
-	s.Require().NoError(err)
-	s.NotNil(grant)
-
-	// remove once
-	grant, err = s.db.PolicyClient.RemoveKeyAccessServerFromNamespace(s.ctx, granted)
-	s.NotNil(grant)
-	s.Require().NoError(err)
-
-	// remove again
-	grant, err = s.db.PolicyClient.RemoveKeyAccessServerFromNamespace(s.ctx, granted)
-	s.Nil(grant)
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-}
-
 func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Returns_Error_When_Namespace_Not_Found() {
 	kasKeys := s.f.GetKasRegistryServerKeys("kas_key_1")
 	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
@@ -1176,11 +928,15 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Returns_Error_When_
 func (s *NamespacesSuite) Test_AssignPublicKeyToNamespace_NotActiveKey_Fail() {
 	var kasID string
 	var namespaceID string
-	keyIDs := make([]string, 0)
+	keys := make([]*policy.KasKey, 0)
 	defer func() {
-		for _, keyID := range keyIDs {
-			// delete the kas key
-			_, err := s.db.PolicyClient.DeleteKey(s.ctx, keyID)
+		for _, key := range keys {
+			r := &unsafe.UnsafeDeleteKasKeyRequest{
+				Id:     key.GetKey().GetId(),
+				Kid:    key.GetKey().GetKeyId(),
+				KasUri: key.GetKasUri(),
+			}
+			_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, key, r)
 			s.Require().NoError(err)
 		}
 
@@ -1224,7 +980,7 @@ func (s *NamespacesSuite) Test_AssignPublicKeyToNamespace_NotActiveKey_Fail() {
 	s.Require().NoError(err)
 	s.NotNil(toBeRotatedKey)
 	originalKeyID := toBeRotatedKey.GetKasKey().GetKey().GetId()
-	keyIDs = append(keyIDs, originalKeyID)
+	keys = append(keys, toBeRotatedKey.GetKasKey())
 
 	// rotate the key
 	rotateNewKeyReq := &kasregistry.RotateKeyRequest_NewKey{
@@ -1238,7 +994,7 @@ func (s *NamespacesSuite) Test_AssignPublicKeyToNamespace_NotActiveKey_Fail() {
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, toBeRotatedKey.GetKasKey(), rotateNewKeyReq)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
-	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
+	keys = append(keys, rotatedInKey.GetKasKey())
 
 	createdNamespace, err := s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{Name: "test-kas-ns.com"})
 	s.Require().NoError(err)
@@ -1263,10 +1019,14 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
 	s.NotNil(gotNS)
 	s.Empty(gotNS.GetKasKeys())
 
-	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	kasKeyFixture := s.f.GetKasRegistryServerKeys("kas_key_1")
+	kasKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{
+		Id: kasKeyFixture.ID,
+	})
+	s.Require().NoError(err)
 	resp, err := s.db.PolicyClient.AssignPublicKeyToNamespace(s.ctx, &namespaces.NamespaceKey{
 		NamespaceId: namespaceFix.ID,
-		KeyId:       kasKey.ID,
+		KeyId:       kasKey.GetKey().GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
@@ -1277,11 +1037,7 @@ func (s *NamespacesSuite) Test_AssociatePublicKeyToNamespace_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(gotNS)
 	s.Len(gotNS.GetKasKeys(), 1)
-	s.Equal(kasKey.KeyAccessServerID, gotNS.GetKasKeys()[0].GetKasId())
-	s.Equal(kasKey.ID, gotNS.GetKasKeys()[0].GetKey().GetId())
-	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), gotNS.GetKasKeys()[0])
-	s.Empty(gotNS.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
-	s.Empty(gotNS.GetKasKeys()[0].GetKey().GetProviderConfig())
+	validateSimpleKasKey(&s.Suite, kasKey, gotNS.GetKasKeys()[0])
 
 	resp, err = s.db.PolicyClient.RemovePublicKeyFromNamespace(s.ctx, &namespaces.NamespaceKey{
 		NamespaceId: resp.GetNamespaceId(),

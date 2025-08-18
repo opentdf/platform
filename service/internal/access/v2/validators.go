@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opentdf/platform/lib/identifier"
 	authzV2 "github.com/opentdf/platform/protocol/go/authorization/v2"
 	entityresolutionV2 "github.com/opentdf/platform/protocol/go/entityresolution/v2"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -26,6 +27,28 @@ var (
 func validateGetDecision(entityRepresentation *entityresolutionV2.EntityRepresentation, action *policy.Action, resources []*authzV2.Resource) error {
 	if err := validateEntityRepresentations([]*entityresolutionV2.EntityRepresentation{entityRepresentation}); err != nil {
 		return fmt.Errorf("invalid entity representation: %w", err)
+	}
+	if action.GetName() == "" {
+		return fmt.Errorf("action required with name: %w", ErrInvalidAction)
+	}
+	if len(resources) == 0 {
+		return fmt.Errorf("resources are empty: %w", ErrInvalidResource)
+	}
+	for _, resource := range resources {
+		if resource == nil {
+			return fmt.Errorf("resource is nil: %w", ErrInvalidResource)
+		}
+	}
+	return nil
+}
+
+// validateGetDecisionRegisteredResource validates the input parameters for GetDecisionRegisteredResource:
+//   - registeredResourceValueFQN: must be a valid registered resource value FQN
+//   - action: must not be nil
+//   - resources: must not be nil and must contain at least one resource
+func validateGetDecisionRegisteredResource(registeredResourceValueFQN string, action *policy.Action, resources []*authzV2.Resource) error {
+	if _, err := identifier.Parse[*identifier.FullyQualifiedRegisteredResourceValue](registeredResourceValueFQN); err != nil {
+		return err
 	}
 	if action.GetName() == "" {
 		return fmt.Errorf("action required with name: %w", ErrInvalidAction)
@@ -93,6 +116,38 @@ func validateAttribute(attribute *policy.Attribute) error {
 	}
 	if attribute.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED {
 		return fmt.Errorf("attribute rule is unspecified: %w", ErrInvalidAttributeDefinition)
+	}
+	return nil
+}
+
+// validateRegisteredResource validates the registered resource is valid for an entitlement decision
+//
+// registered resource:
+//
+//   - must not be nil
+//   - must have a non-empty name
+func validateRegisteredResource(registeredResource *policy.RegisteredResource) error {
+	if registeredResource == nil {
+		return fmt.Errorf("registered resource is nil: %w", ErrInvalidRegisteredResource)
+	}
+	if registeredResource.GetName() == "" {
+		return fmt.Errorf("registered resource name is empty: %w", ErrInvalidRegisteredResource)
+	}
+	return nil
+}
+
+// validateRegisteredResourceValue validates the registered resource value is valid for an entitlement decision
+//
+// registered resource value:
+//
+//   - must not be nil
+//   - must have a non-empty name
+func validateRegisteredResourceValue(registeredResourceValue *policy.RegisteredResourceValue) error {
+	if registeredResourceValue == nil {
+		return fmt.Errorf("registered resource value is nil: %w", ErrInvalidRegisteredResourceValue)
+	}
+	if registeredResourceValue.GetValue() == "" {
+		return fmt.Errorf("registered resource value is empty: %w", ErrInvalidRegisteredResourceValue)
 	}
 	return nil
 }

@@ -3,7 +3,7 @@ package resourcemapping
 import (
 	"testing"
 
-	"github.com/bufbuild/protovalidate-go"
+	"buf.build/go/protovalidate"
 	"github.com/opentdf/platform/protocol/go/policy/resourcemapping"
 	"github.com/stretchr/testify/require"
 )

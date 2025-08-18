@@ -1,11 +1,10 @@
-# Generate release PRs, and follow up with update PRs
-
 name: Release
 
 on:
   push:
     branches:
       - main
+      - "release/**"
 
 permissions: {}
 
@@ -14,17 +13,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Generate a token
-        id: generate_token
-        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
-        with:
-          app-id: "${{ secrets.APP_ID }}"
-          private-key: "${{ secrets.AUTOMATION_KEY }}"
-      - uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f
-        id: release-please
-        with:
-          token: "${{ steps.generate_token.outputs.token }}"
-          config-file: release-please.json
-          manifest-file: .release-please-manifest.json
+    uses: opentdf/platform/.github/workflows/reusable_release-please.yaml@main
+    secrets:
+      APP_ID: ${{ secrets.APP_ID }}
+      AUTOMATION_KEY: ${{ secrets.AUTOMATION_KEY }}

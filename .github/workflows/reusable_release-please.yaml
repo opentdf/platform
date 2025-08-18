@@ -1,0 +1,183 @@
+# Generate release PRs, and follow up with update PRs
+name: "Reusable workflow: release-please"
+
+defaults:
+  run:
+    shell: bash
+
+on:
+  workflow_call:
+    secrets:
+      APP_ID:
+        required: true
+      AUTOMATION_KEY:
+        required: true
+    outputs:
+      major:
+        description: "Number representing major semver value"
+        value: ${{ jobs.release-please.outputs.major }}
+      minor:
+        description: "Number representing minor semver value"
+        value: ${{ jobs.release-please.outputs.minor }}
+      patch:
+        description: "Number representing patch semver value"
+        value: ${{ jobs.release-please.outputs.patch }}
+      sha:
+        description: "SHA that a GitHub release was tagged at"
+        value: ${{ jobs.release-please.outputs.sha }}
+      release_created:
+        description: "true if a root component release was created, false otherwise"
+        value: ${{ jobs.release-please.outputs.release_created }}
+      prs_created:
+        description: "true if any pull request was created or updated"
+        value: ${{ jobs.release-please.outputs.prs_created }}
+      prs:
+        description: "A JSON string of the array of PullRequest objects (unset if no release created)"
+        value: ${{ jobs.release-please.outputs.prs }}
+      tag_name:
+        description: "Tag name of the release"
+        value: ${{ jobs.release-please.outputs.tag_name }}
+
+# Default empty permissions for all jobs
+permissions: {}
+
+jobs:
+  release-please:
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    outputs:
+      major: ${{ steps.release-please.outputs.major }}
+      minor: ${{ steps.release-please.outputs.minor }}
+      patch: ${{ steps.release-please.outputs.patch }}
+      sha: ${{ steps.release-please.outputs.sha }}
+      release_created: ${{ steps.release-please.outputs.release_created }}
+      tag_name: ${{ steps.release-please.outputs.tag_name }}
+      prs_created: ${{ steps.release-please.outputs.prs_created }}
+      prs: ${{ steps.release-please.outputs.prs }}
+    env:
+      MAIN_CONFIG: ".github/release-please/release-please-config.main.json"
+      MANIFEST_FILE: ".github/release-please/release-please-manifest.json"
+    steps:
+
+      - name: "Validate ref"
+        if: ${{ !github.ref_name == 'main' && !startsWith(github.ref_name, 'release/') }}
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          echo "Error: invalid github ref ['$REF_NAME'] for release-please action, must be 'main' or 'release/**'" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: "Checkout"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: "Validate release-please folder"
+        env:
+          MAIN_CONFIG: ${{ env.MAIN_CONFIG }}
+        run: |
+          if [ ! -d ".github/release-please" ]; then
+            echo "Error: release-please directory does not exist." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          
+          if [ ! -f "$MAIN_CONFIG" ]; then
+            echo "Error: $MAIN_CONFIG does not exist." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+
+        # Extract the package name from the triggered branch name.
+        # This assumes branch format 'release/<package>/vX.Y.Z'
+        # <package> is e.g. 'service' or 'protocol/go'
+      - name: "Output package config file name"
+        id: package-config
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+          MAIN_CONFIG: ${{ env.MAIN_CONFIG }}
+        run: |
+          # Check if branch is main first
+          if [[ "$BRANCH_NAME" == "main" ]]; then
+            config_file="$MAIN_CONFIG"
+          else
+            # Remove 'release/' prefix
+            WITHOUT_PREFIX=${BRANCH_NAME#release/}
+            
+            # Remove everything from '/v' to the end
+            PACKAGE_NAME=${WITHOUT_PREFIX%/v*}
+            
+            # Check if PACKAGE_NAME is empty or equals to WITHOUT_PREFIX (meaning no "/v" was found)
+            if [[ -z "$PACKAGE_NAME" || "$PACKAGE_NAME" == "$WITHOUT_PREFIX" ]]; then
+              # This handles the case of "release/v1.20" - use release_branches config
+              config_file="${MAIN_CONFIG/main/release_branches}"
+            else
+              # Replace any slashes in package name with underscores
+              SANITIZED_PACKAGE=${PACKAGE_NAME//\//_}
+              
+              # Replace 'main' in the config filename with the sanitized package name
+              config_file=${MAIN_CONFIG/main/$SANITIZED_PACKAGE}
+            fi
+          fi
+
+          # Check if package config file exists
+          if [ ! -f "$config_file" ]; then
+            echo "Error: $config_file does not exist." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "config_file=$config_file" >> "$GITHUB_OUTPUT"
+
+      - name: "Generate GitHub app token"
+        id: generate_token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_KEY }}
+
+      - name: "Run release-please"
+        uses: googleapis/release-please-action@a02a34c4d625f9be7cb89156071d8567266a2445 # v4.2.0
+        id: release-please
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          config-file: ${{ github.ref_name == 'main' && env.MAIN_CONFIG || startsWith(github.ref_name, 'release/') && steps.package-config.outputs.config_file }}
+          manifest-file: ${{ env.MANIFEST_FILE }}
+          target-branch: ${{ github.ref_name }}
+
+  update-web-sdk-dependencies:
+    if: ${{ github.repository == 'opentdf/web-sdk' && needs.release-please.outputs.prs_created == 'true' }}
+    needs: release-please
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: "Generate a token"
+        id: generate-token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_KEY }}
+
+      - name: "Checkout repo"
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: true
+          ref: ${{ fromJSON(needs.release-please.outputs.prs)[0].headBranchName }}
+
+      - name: "Update dependencies"
+        run: |
+          git config --global user.name "opentdf-automation[bot]"
+          git config --global user.email "149537512+opentdf-automation[bot]@users.noreply.github.com"
+          make i
+          git add .
+          git commit -m "Update dependencies"
+          git push
+
+      - name: "Sign 'Update dependencies' commit"
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          PULL_NUMBERS: ${{ fromJSON(needs.release-please.outputs.prs)[0].number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        uses: opentdf/platform/.github/actions/sign-github-app-commit@main

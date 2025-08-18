@@ -265,43 +265,6 @@ func (s *AttributeValuesSuite) Test_GetAttributeValue_NotFound() {
 	}
 }
 
-func (s *AttributeValuesSuite) Test_GetAttributeValue_ContainsKASGrants() {
-	// create a value with KAS grants
-	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
-	value := &attributes.CreateAttributeValueRequest{
-		Value: "kas_grants_test",
-	}
-	createdValue, err := s.db.PolicyClient.CreateAttributeValue(s.ctx, attrDef.ID, value)
-	s.Require().NoError(err)
-	s.NotNil(createdValue)
-
-	// ensure it has no grants
-	got, err := s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
-	s.Require().NoError(err)
-	s.NotNil(got)
-	s.Empty(got.GetGrants())
-
-	fixtureKeyAccessServer := s.f.GetKasRegistryKey("key_access_server_1")
-	fixtureKeyAccessServerID := fixtureKeyAccessServer.ID
-	assignment := &attributes.ValueKeyAccessServer{
-		ValueId:           createdValue.GetId(),
-		KeyAccessServerId: fixtureKeyAccessServerID,
-	}
-	grant, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, assignment)
-	s.Require().NoError(err)
-	s.NotNil(grant)
-
-	// get the value and ensure it contains the grants
-	got, err = s.db.PolicyClient.GetAttributeValue(s.ctx, createdValue.GetId())
-	s.Require().NoError(err)
-	s.NotNil(got)
-	s.Equal(createdValue.GetId(), got.GetId())
-	gotGrants := got.GetGrants()
-	s.Len(gotGrants, 1)
-	s.Equal(fixtureKeyAccessServerID, gotGrants[0].GetId())
-	s.Equal(fixtureKeyAccessServer.Name, gotGrants[0].GetName())
-}
-
 func (s *AttributeValuesSuite) Test_CreateAttributeValue_SetsActiveStateTrueByDefault() {
 	attrDef := s.f.GetAttributeKey("example.net/attr/attr1")
 
@@ -891,84 +854,6 @@ func (s *AttributeValuesSuite) Test_UnsafeReactivateAttributeValue_DoesNotReacti
 	s.False(gotVal.GetActive().GetValue())
 }
 
-func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_Value_Not_Found() {
-	v := &attributes.ValueKeyAccessServer{
-		ValueId:           absentAttributeValueUUID,
-		KeyAccessServerId: fixtureKeyAccessServerID,
-	}
-
-	resp, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, v)
-
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
-}
-
-func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Error_When_KeyAccessServer_Not_Found() {
-	v := &attributes.ValueKeyAccessServer{
-		ValueId:           s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID,
-		KeyAccessServerId: nonExistentKasRegistryID,
-	}
-
-	resp, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, v)
-
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrForeignKeyViolation)
-}
-
-func (s *AttributeValuesSuite) Test_AssignKeyAccessServerToValue_Returns_Success_When_Value_And_KeyAccessServer_Exist() {
-	v := &attributes.ValueKeyAccessServer{
-		ValueId:           s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID,
-		KeyAccessServerId: fixtureKeyAccessServerID,
-	}
-
-	resp, err := s.db.PolicyClient.AssignKeyAccessServerToValue(s.ctx, v)
-
-	s.Require().NoError(err)
-	s.NotNil(resp)
-	s.Equal(v, resp)
-}
-
-func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error_When_Value_Not_Found() {
-	v := &attributes.ValueKeyAccessServer{
-		ValueId:           absentAttributeValueUUID,
-		KeyAccessServerId: fixtureKeyAccessServerID,
-	}
-
-	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromValue(s.ctx, v)
-
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-}
-
-func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Error_When_KeyAccessServer_Not_Found() {
-	v := &attributes.ValueKeyAccessServer{
-		ValueId:           s.f.GetAttributeValueKey("example.net/attr/attr1/value/value1").ID,
-		KeyAccessServerId: nonExistentAttrID,
-	}
-
-	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromValue(s.ctx, v)
-
-	s.Require().Error(err)
-	s.Nil(resp)
-	s.Require().ErrorIs(err, db.ErrNotFound)
-}
-
-func (s *AttributeValuesSuite) Test_RemoveKeyAccessServerFromValue_Returns_Success_When_Value_And_KeyAccessServer_Exist() {
-	v := &attributes.ValueKeyAccessServer{
-		ValueId:           s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1").ID,
-		KeyAccessServerId: s.f.GetKasRegistryKey("key_access_server_1").ID,
-	}
-
-	resp, err := s.db.PolicyClient.RemoveKeyAccessServerFromValue(s.ctx, v)
-
-	s.Require().NoError(err)
-	s.NotNil(resp)
-	s.Equal(v, resp)
-}
-
 // Add tests for assinging key to value / removing key from value
 
 func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_Returns_Error_When_Attribute_Not_Found() {
@@ -985,11 +870,15 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_Returns_Erro
 
 func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_NotActiveKey_Fail() {
 	var kasID string
-	keyIDs := make([]string, 0)
+	keys := make([]*policy.KasKey, 0)
 	defer func() {
-		for _, keyID := range keyIDs {
-			// delete the kas key
-			_, err := s.db.PolicyClient.DeleteKey(s.ctx, keyID)
+		for _, key := range keys {
+			r := &unsafe.UnsafeDeleteKasKeyRequest{
+				Id:     key.GetKey().GetId(),
+				Kid:    key.GetKey().GetKeyId(),
+				KasUri: key.GetKasUri(),
+			}
+			_, err := s.db.PolicyClient.UnsafeDeleteKey(s.ctx, key, r)
 			s.Require().NoError(err)
 		}
 
@@ -1028,7 +917,7 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_NotActiveKey
 	toBeRotatedKey, err := s.db.PolicyClient.CreateKey(s.ctx, kasKey)
 	s.Require().NoError(err)
 	s.NotNil(toBeRotatedKey)
-	keyIDs = append(keyIDs, toBeRotatedKey.GetKasKey().GetKey().GetId())
+	keys = append(keys, toBeRotatedKey.GetKasKey())
 
 	// rotate the key
 	newKey := &kasregistry.RotateKeyRequest_NewKey{
@@ -1042,7 +931,7 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_NotActiveKey
 	rotatedInKey, err := s.db.PolicyClient.RotateKey(s.ctx, toBeRotatedKey.GetKasKey(), newKey)
 	s.Require().NoError(err)
 	s.NotNil(rotatedInKey)
-	keyIDs = append(keyIDs, rotatedInKey.GetKasKey().GetKey().GetId())
+	keys = append(keys, rotatedInKey.GetKasKey())
 
 	// Get an attribute value
 	attrValue := s.f.GetAttributeValueKey("example.com/attr/attr1/value/value1")
@@ -1078,10 +967,12 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_Succeeds() {
 	s.NotNil(gotAttrValue)
 	s.Empty(gotAttrValue.GetKasKeys())
 
-	kasKey := s.f.GetKasRegistryServerKeys("kas_key_1")
+	kasKeyFixture := s.f.GetKasRegistryServerKeys("kas_key_1")
+	kasKey, err := s.db.PolicyClient.GetKey(s.ctx, &kasregistry.GetKeyRequest_Id{Id: kasKeyFixture.ID})
+	s.Require().NoError(err)
 	resp, err := s.db.PolicyClient.AssignPublicKeyToValue(s.ctx, &attributes.ValueKey{
 		ValueId: gotAttrValue.GetId(),
-		KeyId:   kasKey.ID,
+		KeyId:   kasKey.GetKey().GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)
@@ -1092,22 +983,11 @@ func (s *AttributeValuesSuite) Test_AssignPublicKeyToAttributeValue_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(gotAttrValue)
 	s.Len(gotAttrValue.GetKasKeys(), 1)
-	s.Equal(kasKey.KeyAccessServerID, gotAttrValue.GetKasKeys()[0].GetKasId())
-	s.Equal(kasKey.ID, gotAttrValue.GetKasKeys()[0].GetKey().GetId())
-	validatePublicKeyCtx(&s.Suite, []byte(kasKey.PublicKeyCtx), gotAttrValue.GetKasKeys()[0])
-	s.Empty(gotAttrValue.GetKasKeys()[0].GetKey().GetProviderConfig())
-	s.Empty(gotAttrValue.GetKasKeys()[0].GetKey().GetPrivateKeyCtx())
-
-	// Get the kas server information associated with the key
-	kasReg, err := s.db.PolicyClient.GetKeyAccessServer(s.ctx, kasKey.KeyAccessServerID)
-	s.Require().NoError(err)
-	s.NotNil(kasReg)
-
-	s.Equal(kasReg.GetUri(), gotAttrValue.GetKasKeys()[0].GetKasUri())
+	validateSimpleKasKey(&s.Suite, kasKey, gotAttrValue.GetKasKeys()[0])
 
 	resp, err = s.db.PolicyClient.RemovePublicKeyFromValue(s.ctx, &attributes.ValueKey{
 		ValueId: gotAttrValue.GetId(),
-		KeyId:   gotAttrValue.GetKasKeys()[0].GetKey().GetId(),
+		KeyId:   kasKey.GetKey().GetId(),
 	})
 	s.Require().NoError(err)
 	s.NotNil(resp)

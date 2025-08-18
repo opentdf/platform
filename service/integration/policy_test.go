@@ -6,6 +6,9 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	"github.com/opentdf/platform/service/internal/fixtures"
 	"github.com/opentdf/platform/service/policy/db"
 	"github.com/stretchr/testify/suite"
@@ -45,26 +48,29 @@ func (s *PolicyDBClientSuite) Test_RunInTx_CommitsOnSuccess() {
 	)
 
 	txErr := s.db.PolicyClient.RunInTx(s.ctx, func(txClient *db.PolicyDBClient) error {
-		nsID, err = txClient.Queries.CreateNamespace(s.ctx, db.CreateNamespaceParams{
+		ns, err := txClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 			Name: nsName,
 		})
 		s.Require().NoError(err)
-		s.Require().NotNil(nsID)
+		s.Require().NotNil(ns)
+		nsID = ns.GetId()
 
-		attrID, err = txClient.Queries.CreateAttribute(s.ctx, db.CreateAttributeParams{
-			NamespaceID: nsID,
+		attr, err := txClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			NamespaceId: nsID,
 			Name:        attrName,
-			Rule:        db.AttributeDefinitionRuleALLOF,
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 		})
 		s.Require().NoError(err)
-		s.Require().NotNil(attrID)
+		s.Require().NotNil(attr)
+		attrID = attr.GetId()
 
-		valID, err = txClient.Queries.CreateAttributeValue(s.ctx, db.CreateAttributeValueParams{
-			AttributeDefinitionID: attrID,
-			Value:                 attrValue,
+		val, err := txClient.CreateAttributeValue(s.ctx, attrID, &attributes.CreateAttributeValueRequest{
+			AttributeId: attrID,
+			Value:       attrValue,
 		})
 		s.Require().NoError(err)
 		s.Require().NotNil(valID)
+		valID = val.GetId()
 
 		return nil
 	})
@@ -94,19 +100,22 @@ func (s *PolicyDBClientSuite) Test_RunInTx_RollsBackOnFailure() {
 	)
 
 	txErr := s.db.PolicyClient.RunInTx(s.ctx, func(txClient *db.PolicyDBClient) error {
-		nsID, err = txClient.Queries.CreateNamespace(s.ctx, db.CreateNamespaceParams{
+		ns, err := txClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
 			Name: nsName,
 		})
 		s.Require().NoError(err)
-		s.Require().NotNil(nsID)
+		s.Require().NotNil(ns)
+		nsID = ns.GetId()
 
-		attrID, err = txClient.Queries.CreateAttribute(s.ctx, db.CreateAttributeParams{
-			NamespaceID: "invalid_ns_id",
+		attr, err := txClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
+			NamespaceId: "invalid_ns_id",
 			Name:        attrName,
-			Rule:        db.AttributeDefinitionRuleALLOF,
+			Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 		})
 		s.Require().Error(err)
-		s.Require().Empty(attrID)
+		s.Require().Empty(attr)
+		attrID = attr.GetId()
+
 		return err
 	})
 	s.Require().Error(txErr)

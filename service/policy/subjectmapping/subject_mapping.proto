@@ -3,8 +3,6 @@ syntax = "proto3";
 package policy.subjectmapping;
 
 import "buf/validate/validate.proto";
-import "google/api/annotations.proto";
-
 import "common/common.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
@@ -20,14 +18,12 @@ message MatchSubjectMappingsResponse {
 }
 
 /*
-  Subject Mappings CRUD Operations
+   Subject Mappings CRUD Operations
 */
 
 message GetSubjectMappingRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 message GetSubjectMappingResponse {
   policy.SubjectMapping subject_mapping = 1;
@@ -43,22 +39,27 @@ message ListSubjectMappingsResponse {
   policy.PageResponse pagination = 10;
 }
 
-message CreateSubjectMappingRequest{
+message CreateSubjectMappingRequest {
   // Required
   // Attribute Value to be mapped to
-  string attribute_value_id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string attribute_value_id = 1 [(buf.validate.field).string.uuid = true];
   // Required
   // The actions permitted by subjects in this mapping
-  repeated policy.Action actions = 2 [(buf.validate.field).repeated.min_items = 1];
+  repeated policy.Action actions = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "action_name_or_id_not_empty"
+      message: "Action name or ID must not be empty if provided"
+      expression: "this.all(item, item.name != '' || item.id != '')"
+    }
+  ];
 
   // Either of the following:
   // Reuse existing SubjectConditionSet (NOTE: prioritized over new_subject_condition_set)
   string existing_subject_condition_set_id = 3 [(buf.validate.field).cel = {
-     id: "optional_uuid_format",
-      message: "Optional field must be a valid UUID",
-      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+    id: "optional_uuid_format"
+    message: "Optional field must be a valid UUID"
+    expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
   }];
   // Create new SubjectConditionSet (NOTE: ignored if existing_subject_condition_set_id is provided)
   SubjectConditionSetCreate new_subject_condition_set = 4;
@@ -72,20 +73,22 @@ message CreateSubjectMappingResponse {
 
 message UpdateSubjectMappingRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 
   // Optional
   // Replaces the existing SubjectConditionSet id with a new one
   string subject_condition_set_id = 2 [(buf.validate.field).cel = {
-     id: "optional_uuid_format",
-      message: "Optional field must be a valid UUID",
-      expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
+    id: "optional_uuid_format"
+    message: "Optional field must be a valid UUID"
+    expression: "size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')"
   }];
   // Optional
   // Replaces entire list of actions permitted by subjects
-  repeated policy.Action actions = 3;
+  repeated policy.Action actions = 3 [(buf.validate.field).cel = {
+    id: "action_name_or_id_not_empty"
+    message: "Action name or ID must not be empty if provided"
+    expression: "this.size() == 0 || this.all(item, item.name != '' || item.id != '')"
+  }];
 
   // Common metadata
   common.MetadataMutable metadata = 100;
@@ -98,9 +101,7 @@ message UpdateSubjectMappingResponse {
 
 message DeleteSubjectMappingRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 message DeleteSubjectMappingResponse {
   // Only ID of the updated Subject Mapping provided
@@ -108,14 +109,12 @@ message DeleteSubjectMappingResponse {
 }
 
 /**
-  SubjectConditionSet CRUD operations
+   SubjectConditionSet CRUD operations
 */
 
 message GetSubjectConditionSetRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 message GetSubjectConditionSetResponse {
   policy.SubjectConditionSet subject_condition_set = 1;
@@ -142,7 +141,7 @@ message SubjectConditionSetCreate {
   common.MetadataMutable metadata = 100;
 }
 message CreateSubjectConditionSetRequest {
-  SubjectConditionSetCreate subject_condition_set = 1;
+  SubjectConditionSetCreate subject_condition_set = 1 [(buf.validate.field).required = true];
 }
 message CreateSubjectConditionSetResponse {
   SubjectConditionSet subject_condition_set = 1;
@@ -150,9 +149,7 @@ message CreateSubjectConditionSetResponse {
 
 message UpdateSubjectConditionSetRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 
   // Optional
   // If provided, replaces entire existing structure of Subject Sets, Condition Groups, & Conditions
@@ -169,9 +166,7 @@ message UpdateSubjectConditionSetResponse {
 
 message DeleteSubjectConditionSetRequest {
   // Required
-  string id = 1 [
-    (buf.validate.field).string.uuid = true
-  ];
+  string id = 1 [(buf.validate.field).string.uuid = true];
 }
 message DeleteSubjectConditionSetResponse {
   // Only ID of deleted Subject Condition Set provided
@@ -186,72 +181,35 @@ message DeleteAllUnmappedSubjectConditionSetsResponse {
 }
 
 service SubjectMappingService {
-
   // Find matching Subject Mappings for a given Subject
-  rpc MatchSubjectMappings(MatchSubjectMappingsRequest) returns (MatchSubjectMappingsResponse) {
-    option (google.api.http) = {
-      post: "/subject-mappings/match"
-      body: "subject_properties"
-    };
-  }
+  rpc MatchSubjectMappings(MatchSubjectMappingsRequest) returns (MatchSubjectMappingsResponse) {}
 
   rpc ListSubjectMappings(ListSubjectMappingsRequest) returns (ListSubjectMappingsResponse) {
-    option (google.api.http) = {get: "/subject-mappings"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
   rpc GetSubjectMapping(GetSubjectMappingRequest) returns (GetSubjectMappingResponse) {
-    option (google.api.http) = {get: "/subject-mappings/{id}"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  rpc CreateSubjectMapping(CreateSubjectMappingRequest) returns (CreateSubjectMappingResponse) {
-    option (google.api.http) = {
-      post: "/subject-mappings"
-      body: "*"
-    };
-  }
+  rpc CreateSubjectMapping(CreateSubjectMappingRequest) returns (CreateSubjectMappingResponse) {}
 
-  rpc UpdateSubjectMapping(UpdateSubjectMappingRequest) returns (UpdateSubjectMappingResponse) {
-    option (google.api.http) = {
-      patch: "/subject-mappings/{id}"
-      body: "*"
-    };
-  }
+  rpc UpdateSubjectMapping(UpdateSubjectMappingRequest) returns (UpdateSubjectMappingResponse) {}
 
-  rpc DeleteSubjectMapping(DeleteSubjectMappingRequest) returns (DeleteSubjectMappingResponse) {
-    option (google.api.http) = {delete: "/subject-mappings/{id}"};
-  }
+  rpc DeleteSubjectMapping(DeleteSubjectMappingRequest) returns (DeleteSubjectMappingResponse) {}
 
   rpc ListSubjectConditionSets(ListSubjectConditionSetsRequest) returns (ListSubjectConditionSetsResponse) {
-    option (google.api.http) = {get: "/subject-condition-sets"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc GetSubjectConditionSet(GetSubjectConditionSetRequest) returns (GetSubjectConditionSetResponse) {
-    option (google.api.http) = {get: "/subject-condition-sets/{id}"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  rpc CreateSubjectConditionSet(CreateSubjectConditionSetRequest) returns (CreateSubjectConditionSetResponse) {
-    option (google.api.http) = {
-      post: "/subject-condition-sets"
-      body: "*"
-    };
-  }
+  rpc CreateSubjectConditionSet(CreateSubjectConditionSetRequest) returns (CreateSubjectConditionSetResponse) {}
 
-  rpc UpdateSubjectConditionSet(UpdateSubjectConditionSetRequest) returns (UpdateSubjectConditionSetResponse) {
-    option (google.api.http) = {
-      patch: "/subject-condition-sets/{id}"
-      body: "*"
-    };
-  }
+  rpc UpdateSubjectConditionSet(UpdateSubjectConditionSetRequest) returns (UpdateSubjectConditionSetResponse) {}
 
-  rpc DeleteSubjectConditionSet(DeleteSubjectConditionSetRequest) returns (DeleteSubjectConditionSetResponse) {
-    option (google.api.http) = {delete: "/subject-condition-sets/{id}"};
-  }
+  rpc DeleteSubjectConditionSet(DeleteSubjectConditionSetRequest) returns (DeleteSubjectConditionSetResponse) {}
 
-  rpc DeleteAllUnmappedSubjectConditionSets(DeleteAllUnmappedSubjectConditionSetsRequest) returns (DeleteAllUnmappedSubjectConditionSetsResponse) {
-    option (google.api.http) = {delete: "/subject-condition-sets/unmapped"};
-  }
-
+  rpc DeleteAllUnmappedSubjectConditionSets(DeleteAllUnmappedSubjectConditionSetsRequest) returns (DeleteAllUnmappedSubjectConditionSetsResponse) {}
 }

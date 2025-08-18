@@ -273,13 +273,51 @@ type KeyAccessServerKey struct {
 	// Timestamp when the key was last updated
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 	KeyAccessServerID string             `json:"key_access_server_id"`
+	Legacy            bool               `json:"legacy"`
+}
+
+type ObligationDefinition struct {
+	ID          string             `json:"id"`
+	NamespaceID string             `json:"namespace_id"`
+	Name        string             `json:"name"`
+	Metadata    []byte             `json:"metadata"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+type ObligationFulfiller struct {
+	ID                string             `json:"id"`
+	ObligationValueID string             `json:"obligation_value_id"`
+	Conditionals      []byte             `json:"conditionals"`
+	Metadata          []byte             `json:"metadata"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+}
+
+type ObligationTrigger struct {
+	ID                string             `json:"id"`
+	ObligationValueID string             `json:"obligation_value_id"`
+	ActionID          string             `json:"action_id"`
+	AttributeValueID  string             `json:"attribute_value_id"`
+	Metadata          []byte             `json:"metadata"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+}
+
+type ObligationValuesStandard struct {
+	ID                     string             `json:"id"`
+	ObligationDefinitionID string             `json:"obligation_definition_id"`
+	Value                  string             `json:"value"`
+	Metadata               []byte             `json:"metadata"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
 }
 
 // Table to store key provider configurations
 type ProviderConfig struct {
 	// Unique identifier for the provider configuration
 	ID string `json:"id"`
-	// Name of the key provider
+	// Unique name for the key provider.
 	ProviderName string `json:"provider_name"`
 	// Configuration details for the key provider
 	Config []byte `json:"config"`
@@ -376,6 +414,8 @@ type SubjectConditionSet struct {
 	Metadata  []byte             `json:"metadata"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	// Array of cached selector values extracted from the condition JSONB and maintained via trigger.
+	SelectorValues []string `json:"selector_values"`
 }
 
 // Table to store conditions that logically entitle subject entity representations to attribute values

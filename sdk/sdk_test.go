@@ -36,7 +36,6 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 				"issuer":                 "https://example.org",
 				"authorization_endpoint": "https://example.org/auth",
 				"token_endpoint":         "https://example.org/token",
-				"public_client_id":       "myclient",
 			},
 		}),
 		sdk.WithClientCredentials("myid", "mysecret", nil),
@@ -60,11 +59,6 @@ func TestNew_ShouldCreateSDK(t *testing.T) {
 	assert.Equal(t, "https://example.org/token", tokenEndpoint)
 	require.NoError(t, err)
 
-	// Check platform public client id
-	publicClientID, err := s.PlatformConfiguration.PublicClientID()
-	assert.Equal(t, "myclient", publicClientID)
-	require.NoError(t, err)
-
 	// check if the clients are available
 	assert.NotNil(t, s.Attributes)
 	assert.NotNil(t, s.ResourceMapping)
@@ -85,10 +79,6 @@ func Test_PlatformConfiguration_BadCases(t *testing.T) {
 		tokenEndpoint, err := s.PlatformConfiguration.TokenEndpoint()
 		assert.Empty(t, tokenEndpoint)
 		require.ErrorIs(t, err, sdk.ErrPlatformTokenEndpointNotFound)
-
-		publicClientID, err := s.PlatformConfiguration.PublicClientID()
-		assert.Empty(t, publicClientID)
-		require.ErrorIs(t, err, sdk.ErrPlatformPublicClientIDNotFound)
 	}
 
 	noIdpValsSDK, err := sdk.New(goodPlatformEndpoint,

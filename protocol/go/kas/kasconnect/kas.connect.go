@@ -54,7 +54,13 @@ var (
 // AccessServiceClient is a client for the kas.AccessService service.
 type AccessServiceClient interface {
 	PublicKey(context.Context, *connect.Request[kas.PublicKeyRequest]) (*connect.Response[kas.PublicKeyResponse], error)
+	// Endpoint intended for gRPC Gateway's REST endpoint to provide v1 compatibility with older TDF clients
+	//
+	// This endpoint is not recommended for use in new applications, prefer the v2 endpoint ('PublicKey') instead.
+	//
 	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+	//
+	// Deprecated: do not use.
 	LegacyPublicKey(context.Context, *connect.Request[kas.LegacyPublicKeyRequest]) (*connect.Response[wrapperspb.StringValue], error)
 	Rewrap(context.Context, *connect.Request[kas.RewrapRequest]) (*connect.Response[kas.RewrapResponse], error)
 }
@@ -105,6 +111,8 @@ func (c *accessServiceClient) PublicKey(ctx context.Context, req *connect.Reques
 }
 
 // LegacyPublicKey calls kas.AccessService.LegacyPublicKey.
+//
+// Deprecated: do not use.
 func (c *accessServiceClient) LegacyPublicKey(ctx context.Context, req *connect.Request[kas.LegacyPublicKeyRequest]) (*connect.Response[wrapperspb.StringValue], error) {
 	return c.legacyPublicKey.CallUnary(ctx, req)
 }
@@ -117,7 +125,13 @@ func (c *accessServiceClient) Rewrap(ctx context.Context, req *connect.Request[k
 // AccessServiceHandler is an implementation of the kas.AccessService service.
 type AccessServiceHandler interface {
 	PublicKey(context.Context, *connect.Request[kas.PublicKeyRequest]) (*connect.Response[kas.PublicKeyResponse], error)
+	// Endpoint intended for gRPC Gateway's REST endpoint to provide v1 compatibility with older TDF clients
+	//
+	// This endpoint is not recommended for use in new applications, prefer the v2 endpoint ('PublicKey') instead.
+	//
 	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+	//
+	// Deprecated: do not use.
 	LegacyPublicKey(context.Context, *connect.Request[kas.LegacyPublicKeyRequest]) (*connect.Response[wrapperspb.StringValue], error)
 	Rewrap(context.Context, *connect.Request[kas.RewrapRequest]) (*connect.Response[kas.RewrapResponse], error)
 }

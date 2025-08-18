@@ -58,7 +58,7 @@ func runDecisionBenchmarkV2(_ *cobra.Command, _ []string) error {
 					Entities: []*entity.Entity{
 						{
 							EphemeralId: "jwtentity-0-clientid-opentdf-sdk",
-							EntityType:  &entity.Entity_ClientId{ClientId: "opentdf-public"},
+							EntityType:  &entity.Entity_ClientId{ClientId: "cli-client"},
 							Category:    entity.Entity_CATEGORY_ENVIRONMENT,
 						},
 						{

@@ -1,0 +1,2230 @@
+openapi: 3.1.0
+info:
+  title: policy.kasregistry
+paths:
+  /key-access-servers:
+    get:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: ListKeyAccessServers
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.ListKeyAccessServers
+      parameters:
+        - name: pagination.limit
+          in: query
+          description: |-
+            Optional
+             Set to configured default limit if not provided
+             Maximum limit set in platform config and enforced by services
+          schema:
+            type: integer
+            title: limit
+            format: int32
+            description: |-
+              Optional
+               Set to configured default limit if not provided
+               Maximum limit set in platform config and enforced by services
+        - name: pagination.offset
+          in: query
+          description: |-
+            Optional
+             Defaulted if not provided
+          schema:
+            type: integer
+            title: offset
+            format: int32
+            description: |-
+              Optional
+               Defaulted if not provided
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.ListKeyAccessServersResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/GetKeyAccessServer:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: GetKeyAccessServer
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.GetKeyAccessServer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.GetKeyAccessServerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.GetKeyAccessServerResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/CreateKeyAccessServer:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: CreateKeyAccessServer
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.CreateKeyAccessServer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.CreateKeyAccessServerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.CreateKeyAccessServerResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/UpdateKeyAccessServer:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: UpdateKeyAccessServer
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.UpdateKeyAccessServer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.UpdateKeyAccessServerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.UpdateKeyAccessServerResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/DeleteKeyAccessServer:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: DeleteKeyAccessServer
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.DeleteKeyAccessServer
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.DeleteKeyAccessServerRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.DeleteKeyAccessServerResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServerGrants:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: ListKeyAccessServerGrants
+      description: Deprecated
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.ListKeyAccessServerGrants
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.ListKeyAccessServerGrantsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.ListKeyAccessServerGrantsResponse'
+      deprecated: true
+  /policy.kasregistry.KeyAccessServerRegistryService/CreateKey:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: CreateKey
+      description: |-
+        KAS Key Management
+         Request to create a new key in the Key Access Service.
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.CreateKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.CreateKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.CreateKeyResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/GetKey:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: GetKey
+      description: Request to retrieve a key from the Key Access Service.
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.GetKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.GetKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.GetKeyResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/ListKeys:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: ListKeys
+      description: Request to list keys in the Key Access Service.
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.ListKeys
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.ListKeysRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.ListKeysResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/UpdateKey:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: UpdateKey
+      description: Request to update a key in the Key Access Service.
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.UpdateKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.UpdateKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.UpdateKeyResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/RotateKey:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: RotateKey
+      description: Request to rotate a key in the Key Access Service.
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.RotateKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.RotateKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.RotateKeyResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/SetBaseKey:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: SetBaseKey
+      description: Request to set the default a default kas key.
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.SetBaseKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.SetBaseKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.SetBaseKeyResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/GetBaseKey:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: GetBaseKey
+      description: Get Default kas keys
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.GetBaseKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.GetBaseKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.GetBaseKeyResponse'
+  /policy.kasregistry.KeyAccessServerRegistryService/ListKeyMappings:
+    post:
+      tags:
+        - policy.kasregistry.KeyAccessServerRegistryService
+      summary: ListKeyMappings
+      description: Request to list key mappings in the Key Access Service.
+      operationId: policy.kasregistry.KeyAccessServerRegistryService.ListKeyMappings
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.kasregistry.ListKeyMappingsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.kasregistry.ListKeyMappingsResponse'
+components:
+  schemas:
+    common.MetadataUpdateEnum:
+      type: string
+      title: MetadataUpdateEnum
+      enum:
+        - METADATA_UPDATE_ENUM_UNSPECIFIED
+        - METADATA_UPDATE_ENUM_EXTEND
+        - METADATA_UPDATE_ENUM_REPLACE
+    policy.Algorithm:
+      type: string
+      title: Algorithm
+      enum:
+        - ALGORITHM_UNSPECIFIED
+        - ALGORITHM_RSA_2048
+        - ALGORITHM_RSA_4096
+        - ALGORITHM_EC_P256
+        - ALGORITHM_EC_P384
+        - ALGORITHM_EC_P521
+      description: Supported key algorithms.
+    policy.KasPublicKeyAlgEnum:
+      type: string
+      title: KasPublicKeyAlgEnum
+      enum:
+        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+    policy.KeyMode:
+      type: string
+      title: KeyMode
+      enum:
+        - KEY_MODE_UNSPECIFIED
+        - KEY_MODE_CONFIG_ROOT_KEY
+        - KEY_MODE_PROVIDER_ROOT_KEY
+        - KEY_MODE_REMOTE
+        - KEY_MODE_PUBLIC_KEY_ONLY
+      description: Describes the management and operational mode of a cryptographic key.
+    policy.KeyStatus:
+      type: string
+      title: KeyStatus
+      enum:
+        - KEY_STATUS_UNSPECIFIED
+        - KEY_STATUS_ACTIVE
+        - KEY_STATUS_ROTATED
+      description: The status of the key
+    policy.SourceType:
+      type: string
+      title: SourceType
+      enum:
+        - SOURCE_TYPE_UNSPECIFIED
+        - SOURCE_TYPE_INTERNAL
+        - SOURCE_TYPE_EXTERNAL
+      description: |-
+        Describes whether this kas is managed by the organization or if they imported
+         the kas information from an external party. These two modes are necessary in order
+         to encrypt a tdf dek with an external parties kas public key.
+    common.Metadata:
+      type: object
+      properties:
+        createdAt:
+          title: created_at
+          description: created_at set by server (entity who created will recorded in an audit event)
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        updatedAt:
+          title: updated_at
+          description: updated_at set by server (entity who updated will recorded in an audit event)
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        labels:
+          type: object
+          title: labels
+          additionalProperties:
+            type: string
+            title: value
+          description: optional short description
+      title: Metadata
+      additionalProperties: false
+      description: Struct to uniquely identify a resource with optional additional metadata
+    common.Metadata.LabelsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: LabelsEntry
+      additionalProperties: false
+    common.MetadataMutable:
+      type: object
+      properties:
+        labels:
+          type: object
+          title: labels
+          additionalProperties:
+            type: string
+            title: value
+          description: optional labels
+      title: MetadataMutable
+      additionalProperties: false
+    common.MetadataMutable.LabelsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: LabelsEntry
+      additionalProperties: false
+    google.protobuf.BoolValue:
+      type: boolean
+      description: |-
+        Wrapper message for `bool`.
+
+         The JSON representation for `BoolValue` is JSON `true` and `false`.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
+    google.protobuf.Timestamp:
+      type: string
+      examples:
+        - 1s
+        - 1.000340012s
+      format: date-time
+      description: |-
+        A Timestamp represents a point in time independent of any time zone or local
+         calendar, encoded as a count of seconds and fractions of seconds at
+         nanosecond resolution. The count is relative to an epoch at UTC midnight on
+         January 1, 1970, in the proleptic Gregorian calendar which extends the
+         Gregorian calendar backwards to year one.
+
+         All minutes are 60 seconds long. Leap seconds are "smeared" so that no leap
+         second table is needed for interpretation, using a [24-hour linear
+         smear](https://developers.google.com/time/smear).
+
+         The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By
+         restricting to that range, we ensure that we can convert to and from [RFC
+         3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.
+
+         # Examples
+
+         Example 1: Compute Timestamp from POSIX `time()`.
+
+             Timestamp timestamp;
+             timestamp.set_seconds(time(NULL));
+             timestamp.set_nanos(0);
+
+         Example 2: Compute Timestamp from POSIX `gettimeofday()`.
+
+             struct timeval tv;
+             gettimeofday(&tv, NULL);
+
+             Timestamp timestamp;
+             timestamp.set_seconds(tv.tv_sec);
+             timestamp.set_nanos(tv.tv_usec * 1000);
+
+         Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.
+
+             FILETIME ft;
+             GetSystemTimeAsFileTime(&ft);
+             UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+
+             // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
+             // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
+             Timestamp timestamp;
+             timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
+             timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
+
+         Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.
+
+             long millis = System.currentTimeMillis();
+
+             Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
+                 .setNanos((int) ((millis % 1000) * 1000000)).build();
+
+         Example 5: Compute Timestamp from Java `Instant.now()`.
+
+             Instant now = Instant.now();
+
+             Timestamp timestamp =
+                 Timestamp.newBuilder().setSeconds(now.getEpochSecond())
+                     .setNanos(now.getNano()).build();
+
+         Example 6: Compute Timestamp from current time in Python.
+
+             timestamp = Timestamp()
+             timestamp.GetCurrentTime()
+
+         # JSON Mapping
+
+         In JSON format, the Timestamp type is encoded as a string in the
+         [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the
+         format is "{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z"
+         where {year} is always expressed using four digits while {month}, {day},
+         {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
+         seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
+         are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
+         is required. A proto3 JSON serializer should always use UTC (as indicated by
+         "Z") when printing the Timestamp type and a proto3 JSON parser should be
+         able to accept both UTC and other timezones (as indicated by an offset).
+
+         For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
+         01:30 UTC on January 15, 2017.
+
+         In JavaScript, one can convert a Date object to this format using the
+         standard
+         [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
+         method. In Python, a standard `datetime.datetime` object can be converted
+         to this format using
+         [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with
+         the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
+         the Joda Time's [`ISODateTimeFormat.dateTime()`](
+         http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
+         ) to obtain a formatter capable of generating timestamps in this format.
+    policy.AsymmetricKey:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: Required
+        keyId:
+          type: string
+          title: key_id
+          description: Required
+        keyAlgorithm:
+          title: key_algorithm
+          description: Required
+          $ref: '#/components/schemas/policy.Algorithm'
+        keyStatus:
+          title: key_status
+          description: Required
+          $ref: '#/components/schemas/policy.KeyStatus'
+        keyMode:
+          title: key_mode
+          description: Required Specifies how the key is managed (local or remote)
+          $ref: '#/components/schemas/policy.KeyMode'
+        publicKeyCtx:
+          title: public_key_ctx
+          description: Required Specific structure based on key provider implementation
+          $ref: '#/components/schemas/policy.PublicKeyCtx'
+        privateKeyCtx:
+          title: private_key_ctx
+          description: Optional Specific structure based on key provider implementation
+          $ref: '#/components/schemas/policy.PrivateKeyCtx'
+        providerConfig:
+          title: provider_config
+          description: Optional Configuration for the key provider
+          $ref: '#/components/schemas/policy.KeyProviderConfig'
+        legacy:
+          type: boolean
+          title: legacy
+          description: Optional Indicates a key may be found in TDFs without key identifiers
+        metadata:
+          title: metadata
+          description: Common metadata fields
+          $ref: '#/components/schemas/common.Metadata'
+      title: AsymmetricKey
+      additionalProperties: false
+    policy.KasKey:
+      type: object
+      properties:
+        kasId:
+          type: string
+          title: kas_id
+        key:
+          title: key
+          $ref: '#/components/schemas/policy.AsymmetricKey'
+        kasUri:
+          type: string
+          title: kas_uri
+      title: KasKey
+      additionalProperties: false
+    policy.KasPublicKey:
+      type: object
+      properties:
+        pem:
+          type: string
+          title: pem
+          maxLength: 8192
+          minLength: 1
+          description: x509 ASN.1 content in PEM envelope, usually
+        kid:
+          type: string
+          title: kid
+          maxLength: 32
+          minLength: 1
+          description: A unique string identifier for this key
+        alg:
+          not:
+            enum:
+              - 0
+          title: alg
+          description: |-
+            A known algorithm type with any additional parameters encoded.
+             To start, these may be `rsa:2048` for encrypting ZTDF files and
+             `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
+          $ref: '#/components/schemas/policy.KasPublicKeyAlgEnum'
+      title: KasPublicKey
+      additionalProperties: false
+      description: |-
+        Deprecated
+         A KAS public key and some associated metadata for further identifcation
+    policy.KasPublicKeySet:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.KasPublicKey'
+          title: keys
+      title: KasPublicKeySet
+      additionalProperties: false
+      description: |-
+        Deprecated
+         A list of known KAS public keys
+    policy.Key:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: the database record ID, not the key ID (`kid`)
+        isActive:
+          title: is_active
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
+        wasMapped:
+          title: was_mapped
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
+        publicKey:
+          title: public_key
+          $ref: '#/components/schemas/policy.KasPublicKey'
+        kas:
+          title: kas
+          $ref: '#/components/schemas/policy.KeyAccessServer'
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: Key
+      additionalProperties: false
+    policy.KeyAccessServer:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        uri:
+          type: string
+          title: uri
+          description: |+
+            Address of a KAS instance
+            URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+            ```
+            this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')
+            ```
+
+        publicKey:
+          title: public_key
+          description: Deprecated
+          $ref: '#/components/schemas/policy.PublicKey'
+        sourceType:
+          title: source_type
+          description: 'The source of the KAS: (INTERNAL, EXTERNAL)'
+          $ref: '#/components/schemas/policy.SourceType'
+        kasKeys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SimpleKasKey'
+          title: kas_keys
+          description: Kas keys associated with this KAS
+        name:
+          type: string
+          title: name
+          description: |-
+            Optional
+             Unique name of the KAS instance
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: KeyAccessServer
+      additionalProperties: false
+      description: Key Access Server Registry
+    policy.KeyProviderConfig:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        configJson:
+          type: string
+          title: config_json
+          format: byte
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: KeyProviderConfig
+      additionalProperties: false
+    policy.PageRequest:
+      type: object
+      properties:
+        limit:
+          type: integer
+          title: limit
+          format: int32
+          description: |-
+            Optional
+             Set to configured default limit if not provided
+             Maximum limit set in platform config and enforced by services
+        offset:
+          type: integer
+          title: offset
+          format: int32
+          description: |-
+            Optional
+             Defaulted if not provided
+      title: PageRequest
+      additionalProperties: false
+    policy.PageResponse:
+      type: object
+      properties:
+        currentOffset:
+          type: integer
+          title: current_offset
+          format: int32
+          description: Requested pagination offset
+        nextOffset:
+          type: integer
+          title: next_offset
+          format: int32
+          description: |-
+            Calculated with request limit + offset or defaults
+             Empty when none remain after current page
+        total:
+          type: integer
+          title: total
+          format: int32
+          description: Total count of entire list
+      title: PageResponse
+      additionalProperties: false
+    policy.PrivateKeyCtx:
+      type: object
+      properties:
+        keyId:
+          type: string
+          title: key_id
+          minLength: 1
+          description: Required Key ID for the symmetric key wrapping this key.
+        wrappedKey:
+          type: string
+          title: wrapped_key
+          description: Optional Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.
+      title: PrivateKeyCtx
+      additionalProperties: false
+    policy.PublicKey:
+      type: object
+      oneOf:
+        - properties:
+            cached:
+              title: cached
+              description: public key with additional information. Current preferred version
+              $ref: '#/components/schemas/policy.KasPublicKeySet'
+          title: cached
+          required:
+            - cached
+        - properties:
+            remote:
+              type: string
+              title: remote
+              description: |+
+                kas public key url - optional since can also be retrieved via public key
+                URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+                ```
+                this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')
+                ```
+
+          title: remote
+          required:
+            - remote
+      title: PublicKey
+      additionalProperties: false
+      description: Deprecated
+    policy.PublicKeyCtx:
+      type: object
+      properties:
+        pem:
+          type: string
+          title: pem
+          minLength: 1
+          description: Required Base64 encoded public key in PEM format
+      title: PublicKeyCtx
+      additionalProperties: false
+    policy.SimpleKasKey:
+      type: object
+      properties:
+        kasUri:
+          type: string
+          title: kas_uri
+          description: The URL of the Key Access Server
+        publicKey:
+          title: public_key
+          description: The public key of the Key that belongs to the KAS
+          $ref: '#/components/schemas/policy.SimpleKasPublicKey'
+        kasId:
+          type: string
+          title: kas_id
+          description: The ID of the Key Access Server
+      title: SimpleKasKey
+      additionalProperties: false
+    policy.SimpleKasPublicKey:
+      type: object
+      properties:
+        algorithm:
+          title: algorithm
+          $ref: '#/components/schemas/policy.Algorithm'
+        kid:
+          type: string
+          title: kid
+        pem:
+          type: string
+          title: pem
+      title: SimpleKasPublicKey
+      additionalProperties: false
+    policy.kasregistry.ActivatePublicKeyRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+      title: ActivatePublicKeyRequest
+      additionalProperties: false
+    policy.kasregistry.ActivatePublicKeyResponse:
+      type: object
+      properties:
+        key:
+          title: key
+          $ref: '#/components/schemas/policy.Key'
+      title: ActivatePublicKeyResponse
+      additionalProperties: false
+    policy.kasregistry.ChangeMappings:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        fqn:
+          type: string
+          title: fqn
+      title: ChangeMappings
+      additionalProperties: false
+      description: |-
+        *
+         Simplified information about the resources that were rotated as part of the key rotation process.
+    policy.kasregistry.CreateKeyAccessServerRequest:
+      type: object
+      properties:
+        uri:
+          type: string
+          title: uri
+          description: |+
+            Required
+            URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+            ```
+            this.isUri()
+            ```
+
+        publicKey:
+          title: public_key
+          description: Deprecated
+          $ref: '#/components/schemas/policy.PublicKey'
+        sourceType:
+          title: source_type
+          description: Optional
+          $ref: '#/components/schemas/policy.SourceType'
+        name:
+          type: string
+          title: name
+          maxLength: 253
+          description: |+
+            Optional
+            Registered KAS name must be an alphanumeric string, allowing hyphens, and underscores but not as the first or last character. The stored KAS name will be normalized to lower case.:
+            ```
+            size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true
+            ```
+
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: CreateKeyAccessServerRequest
+      additionalProperties: false
+    policy.kasregistry.CreateKeyAccessServerResponse:
+      type: object
+      properties:
+        keyAccessServer:
+          title: key_access_server
+          $ref: '#/components/schemas/policy.KeyAccessServer'
+      title: CreateKeyAccessServerResponse
+      additionalProperties: false
+    policy.kasregistry.CreateKeyRequest:
+      type: object
+      properties:
+        kasId:
+          type: string
+          title: kas_id
+          format: uuid
+          description: Required The unique identifier of the Key Access Server
+        keyId:
+          type: string
+          title: key_id
+          minLength: 1
+          description: Required A user-defined identifier for the key
+        keyAlgorithm:
+          title: key_algorithm
+          description: |+
+            Required The algorithm to be used for the key
+            The key_algorithm must be one of the defined values.:
+            ```
+            this in [1, 2, 3, 4, 5]
+            ```
+
+          $ref: '#/components/schemas/policy.Algorithm'
+        keyMode:
+          title: key_mode
+          description: |+
+            Required The mode of the key (e.g., local or external)
+            The key_mode must be one of the defined values (1-4).:
+            ```
+            this >= 1 && this <= 4
+            ```
+
+          $ref: '#/components/schemas/policy.KeyMode'
+        publicKeyCtx:
+          title: public_key_ctx
+          description: Required Context or additional data specific to the public key, based on the key provider implementation
+          $ref: '#/components/schemas/policy.PublicKeyCtx'
+        privateKeyCtx:
+          title: private_key_ctx
+          description: Conditionally Required Context or additional data specific to the private key, based on the key provider implementation
+          $ref: '#/components/schemas/policy.PrivateKeyCtx'
+        providerConfigId:
+          type: string
+          title: provider_config_id
+          description: Optional Configuration ID for the key provider, if applicable
+        legacy:
+          type: boolean
+          title: legacy
+          description: Optional Whether the key is a legacy key
+        metadata:
+          title: metadata
+          description: Common metadata Mutable metadata for the key
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: CreateKeyRequest
+      required:
+        - publicKeyCtx
+      additionalProperties: false
+      description: |+
+        Create a new asymmetric key for the specified Key Access Server (KAS)
+        The wrapped_key is required if key_mode is KEY_MODE_CONFIG_ROOT_KEY or KEY_MODE_PROVIDER_ROOT_KEY. The wrapped_key must be empty if key_mode is KEY_MODE_REMOTE or KEY_MODE_PUBLIC_KEY_ONLY.:
+        ```
+        ((this.key_mode == 1 || this.key_mode == 2) && this.private_key_ctx.wrapped_key != '') || ((this.key_mode == 3 || this.key_mode == 4) && this.private_key_ctx.wrapped_key == '')
+        ```
+
+        Provider config id is required if key_mode is KEY_MODE_PROVIDER_ROOT_KEY or KEY_MODE_REMOTE. It must be empty for KEY_MODE_CONFIG_ROOT_KEY and KEY_MODE_PUBLIC_KEY_ONLY.:
+        ```
+        ((this.key_mode == 1 || this.key_mode == 4) && this.provider_config_id == '') || ((this.key_mode == 2 || this.key_mode == 3) && this.provider_config_id != '')
+        ```
+
+        private_key_ctx must not be set if key_mode is KEY_MODE_PUBLIC_KEY_ONLY.:
+        ```
+        !(this.key_mode == 4 && has(this.private_key_ctx))
+        ```
+
+    policy.kasregistry.CreateKeyResponse:
+      type: object
+      properties:
+        kasKey:
+          title: kas_key
+          description: The created asymmetric key for a KAS.
+          $ref: '#/components/schemas/policy.KasKey'
+      title: CreateKeyResponse
+      additionalProperties: false
+      description: Response to a CreateKeyRequest, containing the created asymmetric key
+    policy.kasregistry.CreatePublicKeyRequest:
+      type: object
+      properties:
+        kasId:
+          type: string
+          title: kas_id
+          format: uuid
+          description: Required
+        key:
+          title: key
+          description: Required
+          $ref: '#/components/schemas/policy.KasPublicKey'
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: CreatePublicKeyRequest
+      required:
+        - key
+      additionalProperties: false
+    policy.kasregistry.CreatePublicKeyResponse:
+      type: object
+      properties:
+        key:
+          title: key
+          $ref: '#/components/schemas/policy.Key'
+      title: CreatePublicKeyResponse
+      additionalProperties: false
+    policy.kasregistry.DeactivatePublicKeyRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+      title: DeactivatePublicKeyRequest
+      additionalProperties: false
+    policy.kasregistry.DeactivatePublicKeyResponse:
+      type: object
+      properties:
+        key:
+          title: key
+          $ref: '#/components/schemas/policy.Key'
+      title: DeactivatePublicKeyResponse
+      additionalProperties: false
+    policy.kasregistry.DeleteKeyAccessServerRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+      title: DeleteKeyAccessServerRequest
+      additionalProperties: false
+    policy.kasregistry.DeleteKeyAccessServerResponse:
+      type: object
+      properties:
+        keyAccessServer:
+          title: key_access_server
+          $ref: '#/components/schemas/policy.KeyAccessServer'
+      title: DeleteKeyAccessServerResponse
+      additionalProperties: false
+    policy.kasregistry.GetBaseKeyRequest:
+      type: object
+      title: GetBaseKeyRequest
+      additionalProperties: false
+    policy.kasregistry.GetBaseKeyResponse:
+      type: object
+      properties:
+        baseKey:
+          title: base_key
+          description: The current base key
+          $ref: '#/components/schemas/policy.SimpleKasKey'
+      title: GetBaseKeyResponse
+      additionalProperties: false
+    policy.kasregistry.GetKeyAccessServerRequest:
+      type: object
+      oneOf:
+        - properties:
+            kasId:
+              type: string
+              title: kas_id
+              format: uuid
+              description: 'option (buf.validate.oneof).required = true; // TODO: enable this when we remove the deprecated field'
+          title: kas_id
+          required:
+            - kasId
+        - properties:
+            name:
+              type: string
+              title: name
+              minLength: 1
+          title: name
+          required:
+            - name
+        - properties:
+            uri:
+              type: string
+              title: uri
+              minLength: 1
+              format: uri
+          title: uri
+          required:
+            - uri
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Deprecated
+          deprecated: true
+      title: GetKeyAccessServerRequest
+      additionalProperties: false
+      description: |+
+        Either use deprecated 'id' field or one of 'kas_id' or 'uri', but not both:
+        ```
+        !(has(this.id) && (has(this.kas_id) || has(this.uri) || has(this.name)))
+        ```
+
+        Either id or one of kas_id or uri must be set:
+        ```
+        has(this.id) || has(this.kas_id) || has(this.uri) || has(this.name)
+        ```
+
+    policy.kasregistry.GetKeyAccessServerResponse:
+      type: object
+      properties:
+        keyAccessServer:
+          title: key_access_server
+          $ref: '#/components/schemas/policy.KeyAccessServer'
+      title: GetKeyAccessServerResponse
+      additionalProperties: false
+    policy.kasregistry.GetKeyRequest:
+      type: object
+      oneOf:
+        - properties:
+            id:
+              type: string
+              title: id
+              format: uuid
+              description: The unique identifier of the key to retrieve
+          title: id
+          required:
+            - id
+        - properties:
+            key:
+              title: key
+              $ref: '#/components/schemas/policy.kasregistry.KasKeyIdentifier'
+          title: key
+          required:
+            - key
+      title: GetKeyRequest
+      additionalProperties: false
+      description: Retrieve an existing asymmetric key from the Key Management System
+    policy.kasregistry.GetKeyResponse:
+      type: object
+      properties:
+        kasKey:
+          title: kas_key
+          description: The requested asymmetric key for a KAS.
+          $ref: '#/components/schemas/policy.KasKey'
+      title: GetKeyResponse
+      additionalProperties: false
+      description: Response to a GetKeyRequest, containing the requested asymmetric key
+    policy.kasregistry.GetPublicKeyRequest:
+      type: object
+      oneOf:
+        - properties:
+            id:
+              type: string
+              title: id
+              format: uuid
+          title: id
+          required:
+            - id
+      title: GetPublicKeyRequest
+      additionalProperties: false
+    policy.kasregistry.GetPublicKeyResponse:
+      type: object
+      properties:
+        key:
+          title: key
+          $ref: '#/components/schemas/policy.Key'
+      title: GetPublicKeyResponse
+      additionalProperties: false
+    policy.kasregistry.GrantedPolicyObject:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        fqn:
+          type: string
+          title: fqn
+      title: GrantedPolicyObject
+      additionalProperties: false
+      description: Can be namespace, attribute definition, or value
+    policy.kasregistry.KasKeyIdentifier:
+      type: object
+      oneOf:
+        - properties:
+            kasId:
+              type: string
+              title: kas_id
+              format: uuid
+          title: kas_id
+          required:
+            - kasId
+        - properties:
+            name:
+              type: string
+              title: name
+              minLength: 1
+          title: name
+          required:
+            - name
+        - properties:
+            uri:
+              type: string
+              title: uri
+              minLength: 1
+              format: uri
+          title: uri
+          required:
+            - uri
+      properties:
+        kid:
+          type: string
+          title: kid
+          minLength: 1
+          description: Required Key ID of the key in question
+      title: KasKeyIdentifier
+      additionalProperties: false
+      description: Nested message for specifying the active key using KAS ID and Key ID
+    policy.kasregistry.KeyAccessServerGrants:
+      type: object
+      properties:
+        keyAccessServer:
+          title: key_access_server
+          $ref: '#/components/schemas/policy.KeyAccessServer'
+        namespaceGrants:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.GrantedPolicyObject'
+          title: namespace_grants
+        attributeGrants:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.GrantedPolicyObject'
+          title: attribute_grants
+        valueGrants:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.GrantedPolicyObject'
+          title: value_grants
+      title: KeyAccessServerGrants
+      additionalProperties: false
+      description: Deprecated
+    policy.kasregistry.KeyMapping:
+      type: object
+      properties:
+        kid:
+          type: string
+          title: kid
+        kasUri:
+          type: string
+          title: kas_uri
+        namespaceMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.MappedPolicyObject'
+          title: namespace_mappings
+          description: List of namespaces mapped to the key
+        attributeMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.MappedPolicyObject'
+          title: attribute_mappings
+          description: List of attribute definitions mapped to the key
+        valueMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.MappedPolicyObject'
+          title: value_mappings
+          description: List of attribute values mapped to the key
+      title: KeyMapping
+      additionalProperties: false
+    policy.kasregistry.ListKeyAccessServerGrantsRequest:
+      type: object
+      properties:
+        kasId:
+          type: string
+          title: kas_id
+          description: |+
+            Optional
+             Filter LIST by ID of a registered Key Access Server.
+             If neither is provided, grants from all registered KASs to policy attribute
+             objects are returned.
+            Optional field must be a valid UUID:
+            ```
+            size(this) == 0 || this.matches('[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}')
+            ```
+
+        kasUri:
+          type: string
+          title: kas_uri
+          description: |+
+            Optional
+             Filter LIST by URI of a registered Key Access Server.
+             If none is provided, grants from all registered KASs to policy attribute
+             objects are returned.
+            Optional URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+            ```
+            size(this) == 0 || this.isUri()
+            ```
+
+        kasName:
+          type: string
+          title: kas_name
+          maxLength: 253
+          description: |+
+            Optional
+             Filter LIST by name of a registered Key Access Server.
+             If none are provided, grants from all registered KASs to policy attribute
+             objects are returned.
+            Registered KAS name must be an alphanumeric string, allowing hyphens, and underscores but not as the first or last character. The stored KAS name will be normalized to lower case.:
+            ```
+            size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+            ```
+
+        pagination:
+          title: pagination
+          description: Optional
+          $ref: '#/components/schemas/policy.PageRequest'
+      title: ListKeyAccessServerGrantsRequest
+      additionalProperties: false
+      description: |-
+        LIST of KAS Grants returns flat response of grants to all policy objects. It
+         does not employ selectors for grants to specific policy objects or build the
+         attribute tree relation. If grants to a known namespace, attribute, or value
+         are needed, use the respective GET request to the specific policy object.
+    policy.kasregistry.ListKeyAccessServerGrantsResponse:
+      type: object
+      properties:
+        grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.KeyAccessServerGrants'
+          title: grants
+          deprecated: true
+        pagination:
+          title: pagination
+          $ref: '#/components/schemas/policy.PageResponse'
+      title: ListKeyAccessServerGrantsResponse
+      additionalProperties: false
+      description: Deprecated
+    policy.kasregistry.ListKeyAccessServersRequest:
+      type: object
+      properties:
+        pagination:
+          title: pagination
+          description: Optional
+          $ref: '#/components/schemas/policy.PageRequest'
+      title: ListKeyAccessServersRequest
+      additionalProperties: false
+    policy.kasregistry.ListKeyAccessServersResponse:
+      type: object
+      properties:
+        keyAccessServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.KeyAccessServer'
+          title: key_access_servers
+        pagination:
+          title: pagination
+          $ref: '#/components/schemas/policy.PageResponse'
+      title: ListKeyAccessServersResponse
+      additionalProperties: false
+    policy.kasregistry.ListKeyMappingsRequest:
+      type: object
+      oneOf:
+        - properties:
+            id:
+              type: string
+              title: id
+              format: uuid
+              description: The unique identifier of the key to retrieve
+          title: id
+          required:
+            - id
+        - properties:
+            key:
+              title: key
+              $ref: '#/components/schemas/policy.kasregistry.KasKeyIdentifier'
+          title: key
+          required:
+            - key
+      properties:
+        pagination:
+          title: pagination
+          description: Pagination request for the list of keys
+          $ref: '#/components/schemas/policy.PageRequest'
+      title: ListKeyMappingsRequest
+      additionalProperties: false
+    policy.kasregistry.ListKeyMappingsResponse:
+      type: object
+      properties:
+        keyMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.KeyMapping'
+          title: key_mappings
+          description: The list of key mappings
+        pagination:
+          title: pagination
+          description: Pagination response for the list of keys
+          $ref: '#/components/schemas/policy.PageResponse'
+      title: ListKeyMappingsResponse
+      additionalProperties: false
+    policy.kasregistry.ListKeysRequest:
+      type: object
+      oneOf:
+        - properties:
+            kasId:
+              type: string
+              title: kas_id
+              format: uuid
+              description: Filter keys by the KAS ID
+          title: kas_id
+          required:
+            - kasId
+        - properties:
+            kasName:
+              type: string
+              title: kas_name
+              minLength: 1
+              description: Filter keys by the KAS name
+          title: kas_name
+          required:
+            - kasName
+        - properties:
+            kasUri:
+              type: string
+              title: kas_uri
+              minLength: 1
+              format: uri
+              description: Filter keys by the KAS URI
+          title: kas_uri
+          required:
+            - kasUri
+      properties:
+        keyAlgorithm:
+          title: key_algorithm
+          description: |+
+            Filter keys by algorithm
+            The key_algorithm must be one of the defined values.:
+            ```
+            this in [0, 1, 2, 3, 4, 5]
+            ```
+
+          $ref: '#/components/schemas/policy.Algorithm'
+        legacy:
+          type: boolean
+          title: legacy
+          description: Optional Filter for legacy keys
+          nullable: true
+        pagination:
+          title: pagination
+          description: Optional Pagination request for the list of keys
+          $ref: '#/components/schemas/policy.PageRequest'
+      title: ListKeysRequest
+      additionalProperties: false
+      description: List all asymmetric keys managed by a specific Key Access Server or with a given algorithm
+    policy.kasregistry.ListKeysResponse:
+      type: object
+      properties:
+        kasKeys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.KasKey'
+          title: kas_keys
+          description: The list of kas keys
+        pagination:
+          title: pagination
+          description: Pagination response for the list of keys
+          $ref: '#/components/schemas/policy.PageResponse'
+      title: ListKeysResponse
+      additionalProperties: false
+      description: Response to a ListKeysRequest, containing the list of asymmetric keys and pagination information
+    policy.kasregistry.ListPublicKeyMappingRequest:
+      type: object
+      oneOf:
+        - properties:
+            kasId:
+              type: string
+              title: kas_id
+              format: uuid
+              description: Optional
+          title: kas_id
+          required:
+            - kasId
+        - properties:
+            kasName:
+              type: string
+              title: kas_name
+              minLength: 1
+              description: Optional
+          title: kas_name
+          required:
+            - kasName
+        - properties:
+            kasUri:
+              type: string
+              title: kas_uri
+              minLength: 1
+              format: uri
+              description: Optional
+          title: kas_uri
+          required:
+            - kasUri
+      properties:
+        publicKeyId:
+          type: string
+          title: public_key_id
+          format: uuid
+          description: Optional Public Key ID
+        pagination:
+          title: pagination
+          description: Optional
+          $ref: '#/components/schemas/policy.PageRequest'
+      title: ListPublicKeyMappingRequest
+      additionalProperties: false
+    policy.kasregistry.ListPublicKeyMappingResponse:
+      type: object
+      properties:
+        publicKeyMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.ListPublicKeyMappingResponse.PublicKeyMapping'
+          title: public_key_mappings
+        pagination:
+          title: pagination
+          $ref: '#/components/schemas/policy.PageResponse'
+      title: ListPublicKeyMappingResponse
+      additionalProperties: false
+    policy.kasregistry.ListPublicKeyMappingResponse.Association:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        fqn:
+          type: string
+          title: fqn
+      title: Association
+      additionalProperties: false
+    policy.kasregistry.ListPublicKeyMappingResponse.PublicKey:
+      type: object
+      properties:
+        key:
+          title: key
+          $ref: '#/components/schemas/policy.Key'
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.ListPublicKeyMappingResponse.Association'
+          title: values
+        definitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.ListPublicKeyMappingResponse.Association'
+          title: definitions
+        namespaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.ListPublicKeyMappingResponse.Association'
+          title: namespaces
+      title: PublicKey
+      additionalProperties: false
+    policy.kasregistry.ListPublicKeyMappingResponse.PublicKeyMapping:
+      type: object
+      properties:
+        kasId:
+          type: string
+          title: kas_id
+        kasName:
+          type: string
+          title: kas_name
+        kasUri:
+          type: string
+          title: kas_uri
+        publicKeys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.ListPublicKeyMappingResponse.PublicKey'
+          title: public_keys
+      title: PublicKeyMapping
+      additionalProperties: false
+    policy.kasregistry.ListPublicKeysRequest:
+      type: object
+      oneOf:
+        - properties:
+            kasId:
+              type: string
+              title: kas_id
+              format: uuid
+              description: Optional
+          title: kas_id
+          required:
+            - kasId
+        - properties:
+            kasName:
+              type: string
+              title: kas_name
+              minLength: 1
+              description: Optional
+          title: kas_name
+          required:
+            - kasName
+        - properties:
+            kasUri:
+              type: string
+              title: kas_uri
+              minLength: 1
+              format: uri
+              description: Optional
+          title: kas_uri
+          required:
+            - kasUri
+      properties:
+        pagination:
+          title: pagination
+          description: Optional
+          $ref: '#/components/schemas/policy.PageRequest'
+      title: ListPublicKeysRequest
+      additionalProperties: false
+    policy.kasregistry.ListPublicKeysResponse:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Key'
+          title: keys
+        pagination:
+          title: pagination
+          $ref: '#/components/schemas/policy.PageResponse'
+      title: ListPublicKeysResponse
+      additionalProperties: false
+    policy.kasregistry.MappedPolicyObject:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: The unique identifier of the policy object
+        fqn:
+          type: string
+          title: fqn
+          description: The fully qualified name of the policy object
+      title: MappedPolicyObject
+      additionalProperties: false
+    policy.kasregistry.RotateKeyRequest:
+      type: object
+      oneOf:
+        - properties:
+            id:
+              type: string
+              title: id
+              format: uuid
+              description: Current Active Key UUID
+          title: id
+          required:
+            - id
+        - properties:
+            key:
+              title: key
+              description: Alternative way to specify the active key using KAS ID and Key ID
+              $ref: '#/components/schemas/policy.kasregistry.KasKeyIdentifier'
+          title: key
+          required:
+            - key
+      properties:
+        newKey:
+          title: new_key
+          description: Information about the new key to be rotated in
+          $ref: '#/components/schemas/policy.kasregistry.RotateKeyRequest.NewKey'
+      title: RotateKeyRequest
+      additionalProperties: false
+      description: |+
+        For the new key, the wrapped_key is required if key_mode is KEY_MODE_CONFIG_ROOT_KEY or KEY_MODE_PROVIDER_ROOT_KEY. The wrapped_key must be empty if key_mode is KEY_MODE_REMOTE or KEY_MODE_PUBLIC_KEY_ONLY.:
+        ```
+        ((this.new_key.key_mode == 1 || this.new_key.key_mode == 2) && this.new_key.private_key_ctx.wrapped_key != '') || ((this.new_key.key_mode == 3 || this.new_key.key_mode == 4) && this.new_key.private_key_ctx.wrapped_key == '')
+        ```
+
+        For the new key, provider config id is required if key_mode is KEY_MODE_PROVIDER_ROOT_KEY or KEY_MODE_REMOTE. It must be empty for KEY_MODE_CONFIG_ROOT_KEY and KEY_MODE_PUBLIC_KEY_ONLY.:
+        ```
+        ((this.new_key.key_mode == 1 || this.new_key.key_mode == 4) && this.new_key.provider_config_id == '') || ((this.new_key.key_mode == 2 || this.new_key.key_mode == 3) && this.new_key.provider_config_id != '')
+        ```
+
+        private_key_ctx must not be set if key_mode is KEY_MODE_PUBLIC_KEY_ONLY.:
+        ```
+        !(this.new_key.key_mode == 4 && has(this.new_key.private_key_ctx))
+        ```
+
+    policy.kasregistry.RotateKeyRequest.NewKey:
+      type: object
+      properties:
+        keyId:
+          type: string
+          title: key_id
+          minLength: 1
+          description: Required
+        algorithm:
+          title: algorithm
+          description: |+
+            Required
+            The key_algorithm must be one of the defined values.:
+            ```
+            this in [1, 2, 3, 4, 5]
+            ```
+
+          $ref: '#/components/schemas/policy.Algorithm'
+        keyMode:
+          title: key_mode
+          description: |+
+            Required
+            The new key_mode must be one of the defined values (1-4).:
+            ```
+            this in [1, 2, 3, 4]
+            ```
+
+          $ref: '#/components/schemas/policy.KeyMode'
+        publicKeyCtx:
+          title: public_key_ctx
+          description: Required
+          $ref: '#/components/schemas/policy.PublicKeyCtx'
+        privateKeyCtx:
+          title: private_key_ctx
+          description: Required
+          $ref: '#/components/schemas/policy.PrivateKeyCtx'
+        providerConfigId:
+          type: string
+          title: provider_config_id
+          description: Conditionally Required. Validation handled by message-level CEL
+        metadata:
+          title: metadata
+          description: Common metadata fields
+          $ref: '#/components/schemas/common.MetadataMutable'
+      title: NewKey
+      required:
+        - publicKeyCtx
+      additionalProperties: false
+      description: Nested message for specifying the new key details
+    policy.kasregistry.RotateKeyResponse:
+      type: object
+      properties:
+        kasKey:
+          title: kas_key
+          description: The newly rotated Kas Key
+          $ref: '#/components/schemas/policy.KasKey'
+        rotatedResources:
+          title: rotated_resources
+          description: All resources that were rotated as part of the key rotation process
+          $ref: '#/components/schemas/policy.kasregistry.RotatedResources'
+      title: RotateKeyResponse
+      additionalProperties: false
+      description: Response message for the RotateKey request
+    policy.kasregistry.RotatedResources:
+      type: object
+      properties:
+        rotatedOutKey:
+          title: rotated_out_key
+          description: The old key that was rotated out
+          $ref: '#/components/schemas/policy.KasKey'
+        attributeDefinitionMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.ChangeMappings'
+          title: attribute_definition_mappings
+        attributeValueMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.ChangeMappings'
+          title: attribute_value_mappings
+        namespaceMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.kasregistry.ChangeMappings'
+          title: namespace_mappings
+      title: RotatedResources
+      additionalProperties: false
+      description: All resources that were rotated as part of the key rotation process
+    policy.kasregistry.SetBaseKeyRequest:
+      type: object
+      oneOf:
+        - properties:
+            id:
+              type: string
+              title: id
+              format: uuid
+              description: Current Key UUID tp be set as default
+          title: id
+          required:
+            - id
+        - properties:
+            key:
+              title: key
+              description: Alternative way to specify the key using KAS ID and Key ID
+              $ref: '#/components/schemas/policy.kasregistry.KasKeyIdentifier'
+          title: key
+          required:
+            - key
+      title: SetBaseKeyRequest
+      additionalProperties: false
+      description: |-
+        Sets the specified key as the base key for the Key Access Server
+         Note: The key must be active.
+    policy.kasregistry.SetBaseKeyResponse:
+      type: object
+      properties:
+        newBaseKey:
+          title: new_base_key
+          description: The key that was set as base
+          $ref: '#/components/schemas/policy.SimpleKasKey'
+        previousBaseKey:
+          title: previous_base_key
+          description: The previous base key, if any
+          $ref: '#/components/schemas/policy.SimpleKasKey'
+      title: SetBaseKeyResponse
+      additionalProperties: false
+    policy.kasregistry.UpdateKeyAccessServerRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+        uri:
+          type: string
+          title: uri
+          description: |+
+            Optional
+            Optional URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+            ```
+            size(this) == 0 || this.isUri()
+            ```
+
+        publicKey:
+          title: public_key
+          description: |-
+            Deprecated
+             Optional
+          $ref: '#/components/schemas/policy.PublicKey'
+        sourceType:
+          title: source_type
+          description: |-
+            Optional
+             Using UNSPECIFIED will result in a successful update,
+             but will not actually update the underlying source.
+             You should not update KAS's from INTERNAL/EXTERNAL
+             to unspecified.
+          $ref: '#/components/schemas/policy.SourceType'
+        name:
+          type: string
+          title: name
+          maxLength: 253
+          description: |+
+            Optional
+            Registered KAS name must be an alphanumeric string, allowing hyphens, and underscores but not as the first or last character. The stored KAS name will be normalized to lower case.:
+            ```
+            size(this) == 0 || this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+            ```
+
+        metadata:
+          title: metadata
+          description: |-
+            Optional
+             Common metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+        metadataUpdateBehavior:
+          title: metadata_update_behavior
+          $ref: '#/components/schemas/common.MetadataUpdateEnum'
+      title: UpdateKeyAccessServerRequest
+      additionalProperties: false
+    policy.kasregistry.UpdateKeyAccessServerResponse:
+      type: object
+      properties:
+        keyAccessServer:
+          title: key_access_server
+          $ref: '#/components/schemas/policy.KeyAccessServer'
+      title: UpdateKeyAccessServerResponse
+      additionalProperties: false
+    policy.kasregistry.UpdateKeyRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required The unique identifier of the key to update
+        metadata:
+          title: metadata
+          description: |-
+            Optional
+             Common metadata Mutable metadata for the key
+          $ref: '#/components/schemas/common.MetadataMutable'
+        metadataUpdateBehavior:
+          title: metadata_update_behavior
+          description: The behavior for updating the metadata
+          $ref: '#/components/schemas/common.MetadataUpdateEnum'
+      title: UpdateKeyRequest
+      additionalProperties: false
+      description: |+
+        Update an existing asymmetric key in the Key Management System
+        Metadata update behavior must be either APPEND or REPLACE, when updating metadata.:
+        ```
+        ((!has(this.metadata)) || (has(this.metadata) && this.metadata_update_behavior != 0))
+        ```
+
+    policy.kasregistry.UpdateKeyResponse:
+      type: object
+      properties:
+        kasKey:
+          title: kas_key
+          description: The updated kas key
+          $ref: '#/components/schemas/policy.KasKey'
+      title: UpdateKeyResponse
+      additionalProperties: false
+      description: Response to an UpdateKeyRequest, containing the updated asymmetric key
+    policy.kasregistry.UpdatePublicKeyRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+        metadata:
+          title: metadata
+          description: |-
+            Optional
+             Common metadata
+          $ref: '#/components/schemas/common.MetadataMutable'
+        metadataUpdateBehavior:
+          title: metadata_update_behavior
+          $ref: '#/components/schemas/common.MetadataUpdateEnum'
+      title: UpdatePublicKeyRequest
+      additionalProperties: false
+    policy.kasregistry.UpdatePublicKeyResponse:
+      type: object
+      properties:
+        key:
+          title: key
+          $ref: '#/components/schemas/policy.Key'
+      title: UpdatePublicKeyResponse
+      additionalProperties: false
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        detail:
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    google.protobuf.Any:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+          format: binary
+        debug:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+security: []
+tags:
+  - name: policy.kasregistry.KeyAccessServerRegistryService

@@ -3,7 +3,6 @@ syntax = "proto3";
 package policy.resourcemapping;
 
 import "buf/validate/validate.proto";
-import "google/api/annotations.proto";
 
 import "common/common.proto";
 import "policy/objects.proto";
@@ -240,67 +239,38 @@ service ResourceMappingService {
   */
 
   rpc ListResourceMappingGroups(ListResourceMappingGroupsRequest) returns (ListResourceMappingGroupsResponse) {
-    option (google.api.http) = {get: "/resource-mapping-groups"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc GetResourceMappingGroup(GetResourceMappingGroupRequest) returns (GetResourceMappingGroupResponse) {
-    option (google.api.http) = {get: "/resource-mapping-groups/{id}"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  rpc CreateResourceMappingGroup(CreateResourceMappingGroupRequest) returns (CreateResourceMappingGroupResponse) {
-    option (google.api.http) = {
-      post: "/resource-mapping-groups"
-      body: "*"
-    };
-  }
+  rpc CreateResourceMappingGroup(CreateResourceMappingGroupRequest) returns (CreateResourceMappingGroupResponse) {}
 
-  rpc UpdateResourceMappingGroup(UpdateResourceMappingGroupRequest) returns (UpdateResourceMappingGroupResponse) {
-    option (google.api.http) = {
-      patch: "/resource-mapping-groups/{id}"
-      body: "*"
-    };
-  }
+  rpc UpdateResourceMappingGroup(UpdateResourceMappingGroupRequest) returns (UpdateResourceMappingGroupResponse) {}
 
-  rpc DeleteResourceMappingGroup(DeleteResourceMappingGroupRequest) returns (DeleteResourceMappingGroupResponse) {
-    option (google.api.http) = {delete: "/resource-mapping-groups/{id}"};
-  }
+  rpc DeleteResourceMappingGroup(DeleteResourceMappingGroupRequest) returns (DeleteResourceMappingGroupResponse) {}
 
   /*
      Resource Mappings
   */
 
   rpc ListResourceMappings(ListResourceMappingsRequest) returns (ListResourceMappingsResponse) {
-    option (google.api.http) = {get: "/resource-mappings"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc ListResourceMappingsByGroupFqns(ListResourceMappingsByGroupFqnsRequest) returns (ListResourceMappingsByGroupFqnsResponse) {
-    option (google.api.http) = {get: "/resource-mappings/group-fqns"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   rpc GetResourceMapping(GetResourceMappingRequest) returns (GetResourceMappingResponse) {
-    option (google.api.http) = {get: "/resource-mappings/{id}"};
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  rpc CreateResourceMapping(CreateResourceMappingRequest) returns (CreateResourceMappingResponse) {
-    option (google.api.http) = {
-      post: "/resource-mappings"
-      body: "*"
-    };
-  }
+  rpc CreateResourceMapping(CreateResourceMappingRequest) returns (CreateResourceMappingResponse) {}
   
-  rpc UpdateResourceMapping(UpdateResourceMappingRequest) returns (UpdateResourceMappingResponse) {
-    option (google.api.http) = {
-      patch: "/resource-mappings/{id}"
-      body: "*"
-    };
-  }
+  rpc UpdateResourceMapping(UpdateResourceMappingRequest) returns (UpdateResourceMappingResponse) {}
 
-  rpc DeleteResourceMapping(DeleteResourceMappingRequest) returns (DeleteResourceMappingResponse) {
-    option (google.api.http) = {delete: "/resource-mappings/{id}"};
-  }
+  rpc DeleteResourceMapping(DeleteResourceMappingRequest) returns (DeleteResourceMappingResponse) {}
 }

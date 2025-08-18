@@ -15,14 +15,13 @@ type StartConfig struct {
 	WaitForShutdownSignal bool
 	PublicRoutes          []string
 	IPCReauthRoutes       []string
-	bultinPolicyOverride  string
+	builtinPolicyOverride string
 	extraCoreServices     []serviceregistry.IService
 	extraServices         []serviceregistry.IService
 	casbinAdapter         persist.Adapter
 	configLoaders         []config.Loader
 
-	trustKeyIndex   trust.KeyIndex
-	trustKeyManager trust.KeyManager
+	trustKeyManagers []trust.NamedKeyManagerFactory
 }
 
 // Deprecated: Use WithConfigKey
@@ -86,7 +85,7 @@ func WithIPCReauthRoutes(routes []string) StartOptions {
 //		 }, "\n")),
 func WithBuiltinAuthZPolicy(policy string) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.bultinPolicyOverride = policy
+		c.builtinPolicyOverride = policy
 		return c
 	}
 }
@@ -128,27 +127,10 @@ func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
 	}
 }
 
-// WithTrustKeyIndex option sets the trust index to be used for the server.
-func WithTrustKeyIndex(index trust.KeyIndex) StartOptions {
+// WithTrustKeyManagerFactories option provides factories for creating trust key managers.
+func WithTrustKeyManagerFactories(factories ...trust.NamedKeyManagerFactory) StartOptions {
 	return func(c StartConfig) StartConfig {
-		c.trustKeyIndex = index
-		return c
-	}
-}
-
-// WithTrustKeyManager option sets the trust key manager to be used for the server.
-func WithTrustKeyManager(manager trust.KeyManager) StartOptions {
-	return func(c StartConfig) StartConfig {
-		c.trustKeyManager = manager
-		return c
-	}
-}
-
-// WithTrustKeyService option sets both the index and manager for the trust key service.
-func WithTrustKeyService(index trust.KeyIndex, manager trust.KeyManager) StartOptions {
-	return func(c StartConfig) StartConfig {
-		c.trustKeyIndex = index
-		c.trustKeyManager = manager
+		c.trustKeyManagers = append(c.trustKeyManagers, factories...)
 		return c
 	}
 }

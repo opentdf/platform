@@ -85,16 +85,16 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 	logger := slog.Default()
 
 	if !cfg.Enabled {
-		logger.Info("Tracing disabled.")
+		logger.Info("tracing disabled.")
 		otel.SetTracerProvider(noop.NewTracerProvider())
 		otel.SetTextMapPropagator(propagation.TraceContext{})
 		otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-			logger.Error("[otel SDK Error]", "error", err)
+			logger.ErrorContext(ctx, "otel SDK Error", slog.Any("error", err))
 		}))
 		return func() {}, nil
 	}
 
-	logger.Info("Initializing tracing", "provider", cfg.Provider.Name)
+	logger.InfoContext(ctx, "initializing tracing", slog.String("provider", cfg.Provider.Name))
 
 	var exporter sdktrace.SpanExporter
 	var err error
@@ -138,7 +138,7 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 
 	envRes, err := resource.New(ctx, resource.WithFromEnv()) // Attributes from OTEL_RESOURCE_ATTRIBUTES
 	if err != nil {
-		logger.Warn("Failed to create resource from env vars (OTEL_RESOURCE_ATTRIBUTES)", "error", err)
+		logger.WarnContext(ctx, "failed to create resource from env vars (OTEL_RESOURCE_ATTRIBUTES)", slog.Any("error", err))
 		envRes = resource.Empty()
 	}
 
@@ -161,7 +161,7 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 		return nil, fmt.Errorf("failed to merge environment resource: %w", err)
 	}
 
-	logger.Info("Initialized resource with attributes", "attributes", res.Encoded(attribute.DefaultEncoder()))
+	logger.InfoContext(ctx, "initialized resource with attributes", slog.String("attributes", res.Encoded(attribute.DefaultEncoder())))
 
 	// 4. Create Tracer Provider
 	tp := sdktrace.NewTracerProvider(
@@ -177,24 +177,24 @@ func InitTracer(ctx context.Context, cfg Config) (func(), error) {
 		propagation.Baggage{},
 	))
 
-	logger.Info("Tracing successfully initialized.")
+	logger.Info("tracing successfully initialized.")
 
 	// 6. Return Shutdown Function
 	return func() {
-		logger.Info("Shutting down tracing...")
+		logger.InfoContext(ctx, "shutting down tracing...")
 		// Use a separate context for shutdown, typically context.Background() or a context with a timeout
 		shutdownCtx, cancel := context.WithTimeout(ctx, ShutdownTimeout) // Example timeout
 		defer cancel()
 
 		if err := tp.Shutdown(shutdownCtx); err != nil {
-			logger.Error("Error shutting down tracer provider", "error", err)
+			logger.ErrorContext(ctx, "error shutting down tracer provider", slog.Any("error", err))
 		}
 		if writerCloser != nil {
 			if err := writerCloser.Close(); err != nil {
-				logger.Error("Error closing trace file writer", "error", err)
+				logger.ErrorContext(ctx, "error closing trace file writer", slog.Any("error", err))
 			}
 		}
-		logger.Info("Tracing shutdown complete.")
+		logger.InfoContext(ctx, "tracing shutdown complete.")
 	}, nil
 }
 
@@ -211,10 +211,11 @@ func createOTLPExporter(ctx context.Context, cfg *OTLPConfig) (sdktrace.SpanExpo
 	if protocol == "" {
 		protocol = "grpc" // Default to gRPC
 	}
-	logger.Info("Configuring OTLP exporter",
-		"protocol", protocol,
-		"endpoint", cfg.Endpoint,
-		"insecure", cfg.Insecure,
+	logger.InfoContext(ctx,
+		"configuring OTLP exporter",
+		slog.String("protocol", protocol),
+		slog.String("endpoint", cfg.Endpoint),
+		slog.Bool("insecure", cfg.Insecure),
 	)
 
 	switch protocol {
@@ -224,7 +225,7 @@ func createOTLPExporter(ctx context.Context, cfg *OTLPConfig) (sdktrace.SpanExpo
 			grpcOpts = append(grpcOpts, otlptracegrpc.WithInsecure())
 		} // Else: Uses default secure credentials
 		if len(cfg.Headers) > 0 {
-			logger.Info("Adding OTLP headers", "count", len(cfg.Headers))
+			logger.InfoContext(ctx, "adding OTLP headers", slog.Int("count", len(cfg.Headers)))
 			grpcOpts = append(grpcOpts, otlptracegrpc.WithHeaders(cfg.Headers))
 		}
 		// Add WithDialOption if needing custom grpc.DialOptions
@@ -237,7 +238,10 @@ func createOTLPExporter(ctx context.Context, cfg *OTLPConfig) (sdktrace.SpanExpo
 			httpOpts = append(httpOpts, otlptracehttp.WithInsecure())
 		} // Else: Uses default secure credentials (HTTPS)
 		if len(cfg.Headers) > 0 {
-			logger.Info("Adding OTLP headers", "count", len(cfg.Headers))
+			logger.InfoContext(ctx,
+				"adding OTLP headers",
+				slog.Int("count", len(cfg.Headers)),
+			)
 			httpOpts = append(httpOpts, otlptracehttp.WithHeaders(cfg.Headers))
 		}
 		// Add WithTLSClientConfig, WithTimeout, etc. if needed
@@ -299,13 +303,13 @@ func createFileExporter(cfg *FileConfig) (sdktrace.SpanExporter, io.Closer, erro
 		return nil, nil, fmt.Errorf("failed create stdouttrace exporter for file: %w", err)
 	}
 
-	logger.Info("Configuring file trace exporter",
-		"path", cfg.Path,
-		"prettyPrint", cfg.PrettyPrint,
-		"maxSizeMB", maxSize,
-		"maxBackups", maxBackups,
-		"maxAgeDays", maxAge,
-		"compress", cfg.Compress,
+	logger.Info("configuring file trace exporter",
+		slog.String("path", cfg.Path),
+		slog.Bool("prettyPrint", cfg.PrettyPrint),
+		slog.Int("maxSizeMB", maxSize),
+		slog.Int("maxBackups", maxBackups),
+		slog.Int("maxAgeDays", maxAge),
+		slog.Bool("compress", cfg.Compress),
 	)
 
 	return exporter, lumberjackLogger, nil // Return lumberjack for closing on shutdown

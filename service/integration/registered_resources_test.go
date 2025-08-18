@@ -246,6 +246,92 @@ func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_NoPagination_Suc
 	s.Equal(2, foundCount)
 }
 
+func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_RegResValuesContainActionAttributeValues() {
+	// Create a registered resource with values that have action attribute values
+	newRegRes, err := s.db.PolicyClient.CreateRegisteredResource(s.ctx, &registeredresources.CreateRegisteredResourceRequest{
+		Name: "test_list_reg_res_with_action_attr_values",
+	})
+	s.Require().NoError(err)
+	s.NotNil(newRegRes)
+	regResID := newRegRes.GetId()
+
+	val1, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: regResID,
+		Value:      "test_value_1",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameCreate,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val1)
+
+	val2, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
+		ResourceId: regResID,
+		Value:      "test_value_2",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameUpdate,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr2/value/value2",
+				},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(val2)
+
+	// List registered resources and check if values contain action attribute values
+	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{})
+	s.Require().NoError(err)
+	s.NotNil(list)
+
+	foundRegRes := false
+	foundVal1 := false
+	foundVal2 := false
+	for _, r := range list.GetResources() {
+		if r.GetId() == regResID {
+			s.Equal("test_list_reg_res_with_action_attr_values", r.GetName())
+			values := r.GetValues()
+			s.Require().Len(values, 2)
+			foundRegRes = true
+
+			// Check if action attribute values are present in the values
+			for _, v := range values {
+				if v.GetId() == val1.GetId() {
+					foundVal1 = true
+					actionAttrValues := v.GetActionAttributeValues()
+					s.Require().NotEmpty(actionAttrValues)
+					for _, aav := range actionAttrValues {
+						s.NotNil(aav.GetAction())
+						s.NotNil(aav.GetAttributeValue())
+					}
+				}
+				if v.GetId() == val2.GetId() {
+					foundVal2 = true
+					actionAttrValues := v.GetActionAttributeValues()
+					s.Require().NotEmpty(actionAttrValues)
+					for _, aav := range actionAttrValues {
+						s.NotNil(aav.GetAction())
+						s.NotNil(aav.GetAttributeValue())
+					}
+				}
+			}
+		}
+	}
+	s.True(foundRegRes, "Registered resource not found in list")
+	s.True(foundVal1, "Value 1 not found in registered resource values")
+	s.True(foundVal2, "Value 2 not found in registered resource values")
+}
+
 func (s *RegisteredResourcesSuite) Test_ListRegisteredResources_Limit_Succeeds() {
 	var limit int32 = 1
 	list, err := s.db.PolicyClient.ListRegisteredResources(s.ctx, &registeredresources.ListRegisteredResourcesRequest{
@@ -1055,6 +1141,16 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	created, err := s.db.PolicyClient.CreateRegisteredResourceValue(s.ctx, &registeredresources.CreateRegisteredResourceValueRequest{
 		ResourceId: res.GetId(),
 		Value:      "value",
+		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: actions.ActionNameRead,
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
+				},
+			},
+		},
 		Metadata: &common.MetadataMutable{
 			Labels: labels,
 		},
@@ -1079,7 +1175,7 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.Require().NotNil(got)
 	s.Equal(created.GetValue(), got.GetValue())
 	s.Equal(labels, got.GetMetadata().GetLabels())
-	s.Empty(got.GetActionAttributeValues())
+	s.Require().Len(got.GetActionAttributeValues(), 1)
 
 	// update with changes
 	updated, err = s.db.PolicyClient.UpdateRegisteredResourceValue(s.ctx, &registeredresources.UpdateRegisteredResourceValueRequest{
@@ -1092,10 +1188,18 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 		ActionAttributeValues: []*registeredresources.ActionAttributeValue{
 			{
 				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
-					ActionName: actions.ActionNameCreate,
+					ActionName: actions.ActionNameDelete,
 				},
 				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
 					AttributeValueFqn: "https://example.com/attr/attr1/value/value1",
+				},
+			},
+			{
+				ActionIdentifier: &registeredresources.ActionAttributeValue_ActionName{
+					ActionName: "custom_action_1",
+				},
+				AttributeValueIdentifier: &registeredresources.ActionAttributeValue_AttributeValueFqn{
+					AttributeValueFqn: "https://example.com/attr/attr2/value/value2",
 				},
 			},
 		},
@@ -1120,11 +1224,15 @@ func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_Succeeds()
 	s.False(updatedAt.AsTime().IsZero())
 	s.True(updatedAt.AsTime().After(createdAt.AsTime()))
 	actionAttrValues := got.GetActionAttributeValues()
-	s.Require().Len(actionAttrValues, 1)
-	s.Equal(actions.ActionNameCreate, actionAttrValues[0].GetAction().GetName())
-	attrValue := actionAttrValues[0].GetAttributeValue()
-	s.Equal("https://example.com/attr/attr1/value/value1", attrValue.GetFqn())
-	s.Equal("value1", attrValue.GetValue())
+	s.Require().Len(actionAttrValues, 2)
+	s.Equal(actions.ActionNameDelete, actionAttrValues[0].GetAction().GetName())
+	attrValue1 := actionAttrValues[0].GetAttributeValue()
+	s.Equal("https://example.com/attr/attr1/value/value1", attrValue1.GetFqn())
+	s.Equal("value1", attrValue1.GetValue())
+	s.Equal("custom_action_1", actionAttrValues[1].GetAction().GetName())
+	attrValue2 := actionAttrValues[1].GetAttributeValue()
+	s.Equal("https://example.com/attr/attr2/value/value2", attrValue2.GetFqn())
+	s.Equal("value2", attrValue2.GetValue())
 }
 
 func (s *RegisteredResourcesSuite) Test_UpdateRegisteredResourceValue_NormalizedName_Succeeds() {

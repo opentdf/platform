@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/opentdf/platform/service/logger"
 )
 
 var (
@@ -33,12 +35,14 @@ var (
 	ErrMarshalValueFailed         = errors.New("ErrMashalValueFailed: failed to marshal value")
 	ErrUnmarshalValueFailed       = errors.New("ErrUnmarshalValueFailed: failed to unmarshal value")
 	ErrNamespaceMismatch          = errors.New("ErrNamespaceMismatch: namespace mismatch")
+	ErrKIDMismatch                = errors.New("ErrKIDMismatch: Key ID mismatch")
+	ErrKasURIMismatch             = errors.New("ErrKasURIMismatch: KAS URI mismatch")
 )
 
 // Get helpful error message for PostgreSQL violation
 func WrapIfKnownInvalidQueryErr(err error) error {
 	if e := isPgError(err); e != nil {
-		slog.Error("Encountered database error", slog.String("error", e.Error()))
+		slog.Error("encountered database error", slog.Any("error", e))
 		switch e.Code {
 		case pgerrcode.UniqueViolation:
 			return errors.Join(ErrUniqueConstraintViolation, e)
@@ -56,7 +60,10 @@ func WrapIfKnownInvalidQueryErr(err error) error {
 			}
 			return errors.Join(ErrEnumValueInvalid, e)
 		default:
-			slog.Error("Unknown error code", slog.String("error", e.Message), slog.String("code", e.Code))
+			slog.Error("unknown error code",
+				slog.String("error", e.Message),
+				slog.String("code", e.Code),
+			)
 			return e
 		}
 	}
@@ -118,62 +125,73 @@ const (
 	ErrorTextMarshalFailed              = "failed to marshal value"
 	ErrorTextUnmarsalFailed             = "failed to unmarshal value"
 	ErrorTextNamespaceMismatch          = "namespace mismatch"
+	ErrorTextKasURIMismatch             = "kas uri mismatch"
+	ErrorTextKIDMismatch                = "key id mismatch"
 )
 
-func StatusifyError(err error, fallbackErr string, log ...any) error {
-	l := append([]any{"error", err}, log...)
+func StatusifyError(ctx context.Context, l *logger.Logger, err error, fallbackErr string, logs ...any) error {
+	l = l.With("error", err.Error())
 	if errors.Is(err, ErrUniqueConstraintViolation) {
-		slog.Error(ErrTextConflict, l...)
+		l.ErrorContext(ctx, ErrTextConflict, logs...)
 		return connect.NewError(connect.CodeAlreadyExists, errors.New(ErrTextConflict))
 	}
 	if errors.Is(err, ErrNotFound) {
-		slog.Error(ErrTextNotFound, l...)
+		l.ErrorContext(ctx, ErrTextNotFound, logs...)
 		return connect.NewError(connect.CodeNotFound, errors.New(ErrTextNotFound))
 	}
 	if errors.Is(err, ErrForeignKeyViolation) {
-		slog.Error(ErrTextRelationInvalid, l...)
+		l.ErrorContext(ctx, ErrTextRelationInvalid, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextRelationInvalid))
 	}
 	if errors.Is(err, ErrEnumValueInvalid) {
-		slog.Error(ErrTextEnumValueInvalid, l...)
+		l.ErrorContext(ctx, ErrTextEnumValueInvalid, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextEnumValueInvalid))
 	}
 	if errors.Is(err, ErrUUIDInvalid) {
-		slog.Error(ErrTextUUIDInvalid, l...)
+		l.ErrorContext(ctx, ErrTextUUIDInvalid, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextUUIDInvalid))
 	}
 	if errors.Is(err, ErrRestrictViolation) {
-		slog.Error(ErrTextRestrictViolation, l...)
+		l.ErrorContext(ctx, ErrTextRestrictViolation, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextRestrictViolation))
 	}
 	if errors.Is(err, ErrListLimitTooLarge) {
-		slog.Error(ErrTextListLimitTooLarge, l...)
+		l.ErrorContext(ctx, ErrTextListLimitTooLarge, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextListLimitTooLarge))
 	}
 	if errors.Is(err, ErrSelectIdentifierInvalid) {
-		slog.Error(ErrTextInvalidIdentifier, l...)
+		l.ErrorContext(ctx, ErrTextInvalidIdentifier, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrTextInvalidIdentifier))
 	}
 	if errors.Is(err, ErrUnknownSelectIdentifier) {
-		slog.Error(ErrorTextUnknownIdentifier, l...)
+		l.ErrorContext(ctx, ErrorTextUnknownIdentifier, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUnknownIdentifier))
 	}
 	if errors.Is(err, ErrCannotUpdateToUnspecified) {
-		slog.Error(ErrorTextUpdateToUnspecified, l...)
+		l.ErrorContext(ctx, ErrorTextUpdateToUnspecified, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextUpdateToUnspecified))
 	}
 	if errors.Is(err, ErrKeyRotationFailed) {
-		slog.Error(ErrTextKeyRotationFailed, l...)
+		l.ErrorContext(ctx, ErrTextKeyRotationFailed, logs...)
 		return connect.NewError(connect.CodeInternal, errors.New(ErrTextKeyRotationFailed))
 	}
 	if errors.Is(err, ErrExpectedBase64EncodedValue) {
-		slog.Error(ErrorTextExpectedBase64EncodedValue, l...)
+		l.ErrorContext(ctx, ErrorTextExpectedBase64EncodedValue, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextExpectedBase64EncodedValue))
 	}
 	if errors.Is(err, ErrMarshalValueFailed) {
-		slog.Error(ErrorTextMarshalFailed, l...)
+		l.ErrorContext(ctx, ErrorTextMarshalFailed, logs...)
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextMarshalFailed))
 	}
-	slog.Error(err.Error(), l...)
+	if errors.Is(err, ErrKIDMismatch) {
+		l.ErrorContext(ctx, ErrorTextKIDMismatch, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextKIDMismatch))
+	}
+	if errors.Is(err, ErrKasURIMismatch) {
+		l.ErrorContext(ctx, ErrorTextKasURIMismatch, logs...)
+		return connect.NewError(connect.CodeInvalidArgument, errors.New(ErrorTextKasURIMismatch))
+	}
+
+	l.ErrorContext(ctx, "request error", append(logs, slog.Any("error", err))...)
 	return connect.NewError(connect.CodeInternal, errors.New(fallbackErr))
 }

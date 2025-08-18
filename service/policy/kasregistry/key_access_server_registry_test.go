@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bufbuild/protovalidate-go"
+	"buf.build/go/protovalidate"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/kasregistry"
 	"github.com/stretchr/testify/require"
@@ -215,80 +215,6 @@ func Test_DeleteKeyAccessServerRequest_Succeeds(t *testing.T) {
 	req.Id = validUUID
 	err = v.Validate(req)
 	require.NoError(t, err)
-}
-
-func Test_ListKeyAccessServerGrantsRequest_Fails(t *testing.T) {
-	v := getValidator()
-	bad := []struct {
-		id       string
-		uri      string
-		scenario string
-	}{
-		{
-			"",
-			"missing.scheme",
-			"bad URI format",
-		},
-		{
-			"bad-id-format",
-			validSecureURI,
-			"invalid UUID",
-		},
-	}
-
-	for _, test := range bad {
-		req := &kasregistry.ListKeyAccessServerGrantsRequest{
-			KasId:  test.id,
-			KasUri: test.uri,
-		}
-		err := v.Validate(req)
-		require.Error(t, err, test.scenario)
-	}
-}
-
-func Test_ListKeyAccessServerGrantsRequest_Succeeds(t *testing.T) {
-	v := getValidator()
-
-	good := []struct {
-		id       string
-		uri      string
-		scenario string
-	}{
-		{
-			validUUID,
-			validSecureURI,
-			"both https URI and ID",
-		},
-		{
-			validUUID,
-			validInsecureURI,
-			"both http URI and ID",
-		},
-		{
-			validUUID,
-			"",
-			"no optional URI",
-		},
-		{
-			"",
-			validSecureURI,
-			"no optional KAS ID",
-		},
-		{
-			"",
-			"",
-			"neither optional ID nor URI",
-		},
-	}
-
-	for _, test := range good {
-		req := &kasregistry.ListKeyAccessServerGrantsRequest{
-			KasId:  test.id,
-			KasUri: test.uri,
-		}
-		err := v.Validate(req)
-		require.NoError(t, err, test.scenario)
-	}
 }
 
 func Test_CreateKeyAccessServer_Succeeds(t *testing.T) {

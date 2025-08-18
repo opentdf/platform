@@ -1,4 +1,4 @@
-//nolint:forbidigo,nestif // We use Println here extensively because we are printing markdown.
+//nolint:forbidigo // We use Println here extensively because we are printing markdown.
 package cmd
 
 import (
@@ -22,7 +22,6 @@ import (
 var (
 	ns         string
 	attr       string
-	kases      []string
 	longformat bool
 	rule       string
 	values     []string
@@ -46,18 +45,6 @@ func init() {
 	add.Flags().StringVarP(&rule, "rule", "", "allof", "attribute type, either allof, anyof, or hierarchy")
 	add.Flags().StringSliceVarP(&values, "values", "v", []string{}, "list of attribute values")
 	attributes.AddCommand(add)
-
-	assign := &cobra.Command{
-		Use:  "assign",
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return assignAttribute(cmd, true)
-		},
-	}
-	assign.Flags().StringVarP(&attr, "attr", "a", "", "attribute prefix, e.g. https://name.space/attr/name")
-	assign.Flags().StringSliceVarP(&kases, "kas", "k", []string{}, "which kas to assign")
-	assign.Flags().StringSliceVarP(&values, "values", "v", []string{}, "any attribute values to include; if empty, applies to all")
-	attributes.AddCommand(assign)
 
 	list := &cobra.Command{
 		Use:     "list",
@@ -85,18 +72,6 @@ func init() {
 	remove.Flags().BoolVarP(&unsafeBool, "unsafe", "f", false, "delete for real; otherwise deactivate (soft delete)")
 	attributes.AddCommand(remove)
 
-	unassign := &cobra.Command{
-		Use:  "unassign",
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return assignAttribute(cmd, false)
-		},
-	}
-	unassign.Flags().StringVarP(&attr, "attr", "a", "", "attribute prefix, e.g. https://name.space/attr/name")
-	unassign.Flags().StringSliceVarP(&kases, "kas", "k", []string{}, "which kases to assign")
-	unassign.Flags().StringSliceVarP(&values, "values", "v", []string{}, "any attribute values to include; if empty, applies to all")
-	attributes.AddCommand(unassign)
-
 	ExamplesCmd.AddCommand(attributes)
 }
 
@@ -117,7 +92,7 @@ func listAttributes(cmd *cobra.Command) error {
 		if err != nil {
 			return err
 		}
-		slog.Info(fmt.Sprintf("found %d namespaces", len(listResp.GetNamespaces())))
+		slog.Info("found namespaces", slog.Int("count", len(listResp.GetNamespaces())))
 		for _, n := range listResp.GetNamespaces() {
 			nsuris = append(nsuris, n.GetFqn())
 		}
@@ -136,7 +111,10 @@ func listAttributes(cmd *cobra.Command) error {
 		if err != nil {
 			return err
 		}
-		slog.Info(fmt.Sprintf("found %d attributes in namespace", len(lsr.GetAttributes())), "ns", n)
+		slog.Info("found attributes in namespace",
+			slog.Int("count", len(lsr.GetAttributes())),
+			slog.String("ns", n),
+		)
 		for _, a := range lsr.GetAttributes() {
 			if longformat {
 				fmt.Printf("%s\t%s\n", a.GetFqn(), a.GetId())
@@ -158,12 +136,15 @@ func listAttributes(cmd *cobra.Command) error {
 func nsuuid(ctx context.Context, s *sdk.SDK, u string) (string, error) {
 	url, err := url.Parse(u)
 	if err != nil {
-		slog.Error("namespace url.Parse", "err", err, "url", u)
+		slog.Error("namespace url.Parse",
+			slog.String("url", u),
+			slog.Any("error", err),
+		)
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
 	listResp, err := s.Namespaces.ListNamespaces(ctx, &namespaces.ListNamespacesRequest{})
 	if err != nil {
-		slog.Error("ListNamespaces", "err", err)
+		slog.Error("failed to ListNamespaces", slog.Any("error", err))
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
 	for _, n := range listResp.GetNamespaces() {
@@ -180,7 +161,7 @@ func attruuid(ctx context.Context, s *sdk.SDK, nsu, fqn string) (string, error) 
 		State:     common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
 	})
 	if err != nil {
-		slog.Error("ListAttributes", "err", err)
+		slog.Error("failed to ListAttributes", slog.Any("error", err))
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
 	for _, a := range resp.GetAttributes() {
@@ -194,7 +175,7 @@ func attruuid(ctx context.Context, s *sdk.SDK, nsu, fqn string) (string, error) 
 func avuuid(ctx context.Context, s *sdk.SDK, auuid, vs string) (string, error) {
 	resp, err := s.Attributes.GetAttribute(ctx, &attributes.GetAttributeRequest{Id: auuid})
 	if err != nil {
-		slog.Error("GetAttribute", "err", err)
+		slog.Error("failed to GetAttribute", slog.Any("error", err))
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
 	for _, v := range resp.GetAttribute().GetValues() {
@@ -208,12 +189,12 @@ func avuuid(ctx context.Context, s *sdk.SDK, auuid, vs string) (string, error) {
 func addNamespace(ctx context.Context, s *sdk.SDK, u string) (string, error) {
 	url, err := url.Parse(u)
 	if err != nil {
-		slog.Error("url.Parse", "err", err)
+		slog.Error("url.Parse", slog.Any("error", err))
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
 	resp, err := s.Namespaces.CreateNamespace(ctx, &namespaces.CreateNamespaceRequest{Name: url.Hostname()})
 	if err != nil {
-		slog.Error("CreateNamespace", "err", err)
+		slog.Error("failed to CreateNamespace", slog.Any("error", err))
 		return "", errors.Join(err, ErrInvalidArgument)
 	}
 	return resp.GetNamespace().GetId(), nil
@@ -238,26 +219,32 @@ func addAttribute(cmd *cobra.Command) error {
 		nsu, err = addNamespace(cmd.Context(), s, auth)
 	}
 	if err != nil {
-		slog.Error("upsertNamespace", "err", err)
+		slog.Error("upsertNamespace", slog.Any("error", err))
 		return err
 	}
 	attrEl, err := url.PathUnescape(m[2])
 	if err != nil {
-		slog.Error("url.PathUnescape(attr)", "err", err, "attr", m[2])
+		slog.Error("url.PathUnescape(attr)",
+			slog.String("attr", m[2]),
+			slog.Any("error", err),
+		)
 		return err
 	}
 	aid, err := upsertAttr(cmd.Context(), s, nsu, attrEl, values)
 	if err != nil {
 		return err
 	}
-	slog.Info("created attribute", "passedin", attrEl, "id", aid)
+	slog.Info("created attribute",
+		slog.String("passedin", attrEl),
+		slog.String("id", aid),
+	)
 	return nil
 }
 
 func removeAttribute(cmd *cobra.Command) error {
 	s, err := newSDK()
 	if err != nil {
-		slog.Error("could not connect", "err", err)
+		slog.Error("could not connect", slog.Any("error", err))
 		return err
 	}
 	defer s.Close()
@@ -283,20 +270,32 @@ func removeAttribute(cmd *cobra.Command) error {
 				Fqn: strings.ToLower(attr),
 			})
 			if err != nil {
-				slog.Error("UnsafeDeleteAttribute", "err", err, "id", auuid)
+				slog.Error("failed to UnsafeDeleteAttribute",
+					slog.String("id", auuid),
+					slog.Any("error", err),
+				)
 				return err
 			}
-			slog.Info("deleted attribute", "attr", attr, "resp", resp)
+			slog.Info("deleted attribute",
+				slog.String("attr", attr),
+				slog.Any("resp", resp),
+			)
 			return nil
 		}
 		resp, err := s.Attributes.DeactivateAttribute(cmd.Context(), &attributes.DeactivateAttributeRequest{
 			Id: auuid,
 		})
 		if err != nil {
-			slog.Error("DeactivateAttribute", "err", err, "id", auuid)
+			slog.Error("failed to DeactivateAttribute",
+				slog.String("id", auuid),
+				slog.Any("error", err),
+			)
 			return err
 		}
-		slog.Info("deactivated attribute", "attr", attr, "resp", resp)
+		slog.Info("deactivated attribute",
+			slog.String("attr", attr),
+			slog.Any("resp", resp),
+		)
 		return nil
 	}
 
@@ -311,149 +310,33 @@ func removeAttribute(cmd *cobra.Command) error {
 				Fqn: strings.ToLower(attr + "/value/" + url.PathEscape(v)),
 			})
 			if err != nil {
-				slog.Error("UnsafeDeleteAttributeValue", "err", err, "id", avu)
+				slog.Error("failed to UnsafeDeleteAttributeValue",
+					slog.Any("error", err),
+					slog.String("id", avu),
+				)
 				return err
 			}
-			slog.Info("deactivated attribute value", "attr", attr, "value", v, "resp", r)
+			slog.Info("deactivated attribute value",
+				slog.String("attr", attr),
+				slog.String("value", v),
+				slog.Any("resp", r),
+			)
 		} else {
 			r, err := s.Attributes.DeactivateAttributeValue(cmd.Context(), &attributes.DeactivateAttributeValueRequest{
 				Id: avu,
 			})
 			if err != nil {
-				slog.Error("DeactivateAttributeValue", "err", err, "id", avu)
+				slog.Error("failed to DeactivateAttributeValue",
+					slog.String("id", avu),
+					slog.Any("error", err),
+				)
 				return err
 			}
-			slog.Info("deactivated attribute value", "attr", attr, "value", v, "resp", r)
-		}
-	}
-	return nil
-}
-
-func assignAttribute(cmd *cobra.Command, assign bool) error {
-	s, err := newSDK()
-	if err != nil {
-		slog.Error("could not connect", "err", err)
-		return err
-	}
-	defer s.Close()
-
-	are := regexp.MustCompile(`^(https?://[\w./]+)/attr/([^/\s]*)$`)
-	m := are.FindStringSubmatch(attr)
-	if len(m) < 3 || len(m[0]) == 0 {
-		return fmt.Errorf("not a valid attribute fqn [%s]", attr)
-	}
-	auth := m[1]
-	nsu, err := nsuuid(cmd.Context(), s, auth)
-	if errors.Is(err, ErrNotFound) {
-		nsu, err = addNamespace(cmd.Context(), s, auth)
-	}
-	if err != nil {
-		return err
-	}
-
-	auuid, err := attruuid(cmd.Context(), s, nsu, attr)
-	if err != nil {
-		return err
-	}
-
-	kasByID := make(map[string]string)
-
-	var kasids []string
-	switch {
-	case len(kases) != 0:
-		for _, kas := range kases {
-			kasid, err := upsertKasRegistration(cmd.Context(), s, kas, nil)
-			if err != nil {
-				return err
-			}
-			kasids = append(kasids, kasid)
-			kasByID[kasid] = kas
-		}
-	case assign:
-		return errors.New("assign must take a `--kas` parameter")
-	case len(values) == 0:
-		// look up all kasids associated with the attribute
-		ar, err := s.Attributes.GetAttribute(cmd.Context(), &attributes.GetAttributeRequest{Id: auuid})
-		if err != nil {
-			return err
-		}
-		for _, b := range ar.GetAttribute().GetGrants() {
-			kasids = append(kasids, b.GetId())
-			kasByID[b.GetId()] = b.GetUri()
-		}
-	case len(values) > 1:
-		return errors.New("TODO: unassign from multiple values at a time")
-	default:
-		// look up all kasids associated with the value
-		avu, err := avuuid(cmd.Context(), s, auuid, values[0])
-		if err != nil {
-			return err
-		}
-		ar, err := s.Attributes.GetAttributeValue(cmd.Context(), &attributes.GetAttributeValueRequest{Id: avu})
-		if err != nil {
-			return err
-		}
-		for _, b := range ar.GetValue().GetGrants() {
-			kasids = append(kasids, b.GetId())
-			kasByID[b.GetId()] = b.GetUri()
-		}
-	}
-
-	for _, kasid := range kasids {
-		if len(values) == 0 {
-			if assign {
-				r, err := s.Attributes.AssignKeyAccessServerToAttribute(cmd.Context(), &attributes.AssignKeyAccessServerToAttributeRequest{
-					AttributeKeyAccessServer: &attributes.AttributeKeyAccessServer{
-						AttributeId:       auuid,
-						KeyAccessServerId: kasid,
-					},
-				})
-				if err != nil {
-					return err
-				}
-				cmd.Printf("successfully assigned all of [%s] to [%s] (binding [%v])\n", attr, kasByID[kasid], *r.GetAttributeKeyAccessServer())
-			} else {
-				r, err := s.Attributes.RemoveKeyAccessServerFromAttribute(cmd.Context(), &attributes.RemoveKeyAccessServerFromAttributeRequest{
-					AttributeKeyAccessServer: &attributes.AttributeKeyAccessServer{
-						AttributeId:       auuid,
-						KeyAccessServerId: kasid,
-					},
-				})
-				if err != nil {
-					return err
-				}
-				cmd.Printf("successfully unassigned [%s] from [%s] (binding %v)\n", attr, kasByID[kasid], *r.GetAttributeKeyAccessServer())
-			}
-		} else {
-			for _, v := range values {
-				avu, err := avuuid(cmd.Context(), s, auuid, v)
-				if err != nil {
-					return err
-				}
-				if assign {
-					r, err := s.Attributes.AssignKeyAccessServerToValue(cmd.Context(), &attributes.AssignKeyAccessServerToValueRequest{
-						ValueKeyAccessServer: &attributes.ValueKeyAccessServer{
-							ValueId:           avu,
-							KeyAccessServerId: kasid,
-						},
-					})
-					if err != nil {
-						return err
-					}
-					cmd.Printf("successfully assigned [%s] to [%s] (binding [%v])\n", attr, kasByID[kasid], *r.GetValueKeyAccessServer())
-				} else {
-					r, err := s.Attributes.RemoveKeyAccessServerFromValue(cmd.Context(), &attributes.RemoveKeyAccessServerFromValueRequest{
-						ValueKeyAccessServer: &attributes.ValueKeyAccessServer{
-							ValueId:           avu,
-							KeyAccessServerId: kasid,
-						},
-					})
-					if err != nil {
-						return err
-					}
-					cmd.Printf("successfully unassigned [%s] from [%s] (binding [%v])\n", attr, kasByID[kasid], *r.GetValueKeyAccessServer())
-				}
-			}
+			slog.Info("deactivated attribute value",
+				slog.String("attr", attr),
+				slog.String("value", v),
+				slog.Any("resp", r),
+			)
 		}
 	}
 	return nil
@@ -480,7 +363,14 @@ func upsertAttr(ctx context.Context, s *sdk.SDK, auth, name string, values []str
 		Values:      values,
 	})
 	if err != nil {
-		slog.Error("CreateAttribute", "err", err, "auth", auth, "name", name, "values", values, "rule", ruler())
+		//nolint:sloglint // safe to log auth in examples
+		slog.Error("failed to CreateAttribute",
+			slog.String("auth", auth),
+			slog.String("name", name),
+			slog.Any("values", values),
+			slog.Any("rule", ruler()),
+			slog.Any("error", err),
+		)
 		return "", err
 	}
 	return av.GetAttribute().GetId(), nil

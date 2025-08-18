@@ -1,0 +1,764 @@
+openapi: 3.1.0
+info:
+  title: authorization.v2
+paths:
+  /authorization.v2.AuthorizationService/GetDecision:
+    post:
+      tags:
+        - authorization.v2.AuthorizationService
+      summary: GetDecision
+      operationId: authorization.v2.AuthorizationService.GetDecision
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/authorization.v2.GetDecisionRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/authorization.v2.GetDecisionResponse'
+  /authorization.v2.AuthorizationService/GetDecisionMultiResource:
+    post:
+      tags:
+        - authorization.v2.AuthorizationService
+      summary: GetDecisionMultiResource
+      operationId: authorization.v2.AuthorizationService.GetDecisionMultiResource
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/authorization.v2.GetDecisionMultiResourceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/authorization.v2.GetDecisionMultiResourceResponse'
+  /authorization.v2.AuthorizationService/GetDecisionBulk:
+    post:
+      tags:
+        - authorization.v2.AuthorizationService
+      summary: GetDecisionBulk
+      operationId: authorization.v2.AuthorizationService.GetDecisionBulk
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/authorization.v2.GetDecisionBulkRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/authorization.v2.GetDecisionBulkResponse'
+  /authorization.v2.AuthorizationService/GetEntitlements:
+    post:
+      tags:
+        - authorization.v2.AuthorizationService
+      summary: GetEntitlements
+      operationId: authorization.v2.AuthorizationService.GetEntitlements
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/authorization.v2.GetEntitlementsRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/authorization.v2.GetEntitlementsResponse'
+components:
+  schemas:
+    authorization.v2.Decision:
+      type: string
+      title: Decision
+      enum:
+        - DECISION_UNSPECIFIED
+        - DECISION_DENY
+        - DECISION_PERMIT
+    entity.Entity.Category:
+      type: string
+      title: Category
+      enum:
+        - CATEGORY_UNSPECIFIED
+        - CATEGORY_SUBJECT
+        - CATEGORY_ENVIRONMENT
+    policy.Action.StandardAction:
+      type: string
+      title: StandardAction
+      enum:
+        - STANDARD_ACTION_UNSPECIFIED
+        - STANDARD_ACTION_DECRYPT
+        - STANDARD_ACTION_TRANSMIT
+    authorization.v2.EntityEntitlements:
+      type: object
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
+        actionsPerAttributeValueFqn:
+          type: object
+          title: actions_per_attribute_value_fqn
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/authorization.v2.EntityEntitlements.ActionsList'
+      title: EntityEntitlements
+      additionalProperties: false
+      description: Entitlements for a given entity, mapping each attribute value FQN to any entitled actions[]
+    authorization.v2.EntityEntitlements.ActionsList:
+      type: object
+      properties:
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Action'
+          title: actions
+      title: ActionsList
+      additionalProperties: false
+    authorization.v2.EntityEntitlements.ActionsPerAttributeValueFqnEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/authorization.v2.EntityEntitlements.ActionsList'
+      title: ActionsPerAttributeValueFqnEntry
+      additionalProperties: false
+    authorization.v2.EntityIdentifier:
+      type: object
+      oneOf:
+        - properties:
+            entityChain:
+              title: entity_chain
+              description: |+
+                chain of one or more entities and at most 10
+                entities must be provided and between 1 and 10 in count:
+                ```
+                has(this.entities) && this.entities.size() > 0 && this.entities.size() <= 10
+                ```
+
+              $ref: '#/components/schemas/entity.EntityChain'
+          title: entity_chain
+          required:
+            - entityChain
+        - properties:
+            registeredResourceValueFqn:
+              type: string
+              title: registered_resource_value_fqn
+              minLength: 1
+              format: uri
+              description: |-
+                fully qualified name of the registered resource value stored in platform policy, where in
+                 this case the resource acts as and represents a single entity for authorization/entitlement decisioning
+          title: registered_resource_value_fqn
+          required:
+            - registeredResourceValueFqn
+        - properties:
+            token:
+              title: token
+              description: |+
+                access token (JWT), which is used to create an entity chain (comprising one or more entities)
+                token must be provided:
+                ```
+                has(this.jwt) && this.jwt.size() > 0
+                ```
+
+              $ref: '#/components/schemas/entity.Token'
+          title: token
+          required:
+            - token
+      title: EntityIdentifier
+      additionalProperties: false
+      description: |-
+        The EntityIdentifier specifies the actor in an entitlement or decision request - the PE, NPE, or PE+NPE being authorized.
+         The abstraction houses the distinct entity types, PE and/or NPE combinations, or a registered resource value
+         being treated as an entity in entitlement/authorization decisioning.
+    authorization.v2.GetDecisionBulkRequest:
+      type: object
+      properties:
+        decisionRequests:
+          type: array
+          items:
+            $ref: '#/components/schemas/authorization.v2.GetDecisionMultiResourceRequest'
+          title: decision_requests
+          maxItems: 200
+          minItems: 1
+      title: GetDecisionBulkRequest
+      additionalProperties: false
+      description: |-
+        Is access allowed?
+         1. Multiplexing of a Decision<EntityIdentifier, Action, repeated Resource> request
+         This is a more performant bulk request for complex decisioning (i.e. multiple entity chains or actions on
+         multiple resources)
+    authorization.v2.GetDecisionBulkResponse:
+      type: object
+      properties:
+        decisionResponses:
+          type: array
+          items:
+            $ref: '#/components/schemas/authorization.v2.GetDecisionMultiResourceResponse'
+          title: decision_responses
+      title: GetDecisionBulkResponse
+      additionalProperties: false
+    authorization.v2.GetDecisionMultiResourceRequest:
+      type: object
+      properties:
+        entityIdentifier:
+          title: entity_identifier
+          description: an entity must be identified for authorization decisioning
+          $ref: '#/components/schemas/authorization.v2.EntityIdentifier'
+        action:
+          title: action
+          description: name on action is required
+          $ref: '#/components/schemas/policy.Action'
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/authorization.v2.Resource'
+          title: resources
+          maxItems: 1000
+          minItems: 1
+      title: GetDecisionMultiResourceRequest
+      required:
+        - entityIdentifier
+        - action
+      additionalProperties: false
+      description: |+
+        Can the identified entity/entities access?
+         1. one entity reference (actor)
+         2. one action
+         3. multiple resources
+         Note: this is a more performant bulk request for multiple resource decisions, up to 1000 per request
+        action.name must be provided:
+        ```
+        has(this.action.name)
+        ```
+
+    authorization.v2.GetDecisionMultiResourceResponse:
+      type: object
+      properties:
+        allPermitted:
+          title: all_permitted
+          description: convenience flag indicating global resource decisions result (permit/deny)
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
+        resourceDecisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/authorization.v2.ResourceDecision'
+          title: resource_decisions
+          description: individual resource decisions
+      title: GetDecisionMultiResourceResponse
+      additionalProperties: false
+    authorization.v2.GetDecisionRequest:
+      type: object
+      properties:
+        entityIdentifier:
+          title: entity_identifier
+          description: an entity must be identified for authorization decisioning
+          $ref: '#/components/schemas/authorization.v2.EntityIdentifier'
+        action:
+          title: action
+          description: name on action is required
+          $ref: '#/components/schemas/policy.Action'
+        resource:
+          title: resource
+          $ref: '#/components/schemas/authorization.v2.Resource'
+      title: GetDecisionRequest
+      required:
+        - entityIdentifier
+        - action
+        - resource
+      additionalProperties: false
+      description: |+
+        Can the identified entity/entities access?
+         1. one entity reference (actor)
+         2. one action
+         3. one resource
+        action.name must be provided:
+        ```
+        has(this.action.name)
+        ```
+
+    authorization.v2.GetDecisionResponse:
+      type: object
+      properties:
+        decision:
+          title: decision
+          description: |-
+            decision on the resource optional list of obligations represented in URI format
+             repeated string obligations = 2;
+          $ref: '#/components/schemas/authorization.v2.ResourceDecision'
+      title: GetDecisionResponse
+      additionalProperties: false
+    authorization.v2.GetEntitlementsRequest:
+      type: object
+      properties:
+        entityIdentifier:
+          title: entity_identifier
+          description: an entity must be identified for entitlement decisioning
+          $ref: '#/components/schemas/authorization.v2.EntityIdentifier'
+        withComprehensiveHierarchy:
+          type: boolean
+          title: with_comprehensive_hierarchy
+          description: |-
+            optional parameter to return all entitled values for attribute definitions with hierarchy rules, propagating
+             down the hierarchical values instead of returning solely the value that is directly entitled
+          nullable: true
+      title: GetEntitlementsRequest
+      required:
+        - entityIdentifier
+      additionalProperties: false
+      description: |-
+        What is permitted to the identified entity/entities (actor), broken down as permitted actions on attribute value FQNs?
+
+         Note: the v1 API parameter 'scope' has been dropped, and it is recommended to use
+         GetDecision if the resource is known
+    authorization.v2.GetEntitlementsResponse:
+      type: object
+      properties:
+        entitlements:
+          type: array
+          items:
+            $ref: '#/components/schemas/authorization.v2.EntityEntitlements'
+          title: entitlements
+      title: GetEntitlementsResponse
+      additionalProperties: false
+    authorization.v2.Resource:
+      type: object
+      oneOf:
+        - properties:
+            attributeValues:
+              title: attribute_values
+              description: |+
+                a set of attribute value FQNs, such as those on a TDF, between 1 and 20 in count
+                if provided, resource.attribute_values must be between 1 and 20 in count with all valid FQNs:
+                ```
+                this.fqns.size() > 0 && this.fqns.size() <= 20 && this.fqns.all(item, item.isUri())
+                ```
+
+              $ref: '#/components/schemas/authorization.v2.Resource.AttributeValues'
+          title: attribute_values
+          required:
+            - attributeValues
+        - properties:
+            registeredResourceValueFqn:
+              type: string
+              title: registered_resource_value_fqn
+              minLength: 1
+              format: uri
+              description: fully qualified name of the registered resource value stored in platform policy
+          title: registered_resource_value_fqn
+          required:
+            - registeredResourceValueFqn
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
+      title: Resource
+      additionalProperties: false
+      description: Either a set of attribute values (such as those on a TDF) or a registered resource value
+    authorization.v2.Resource.AttributeValues:
+      type: object
+      properties:
+        fqns:
+          type: array
+          items:
+            type: string
+          title: fqns
+      title: AttributeValues
+      additionalProperties: false
+    authorization.v2.ResourceDecision:
+      type: object
+      properties:
+        ephemeralResourceId:
+          type: string
+          title: ephemeral_resource_id
+          description: ephemeral id for tracking between request and response
+        decision:
+          title: decision
+          description: decision result
+          $ref: '#/components/schemas/authorization.v2.Decision'
+      title: ResourceDecision
+      additionalProperties: false
+    common.Metadata:
+      type: object
+      properties:
+        createdAt:
+          title: created_at
+          description: created_at set by server (entity who created will recorded in an audit event)
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        updatedAt:
+          title: updated_at
+          description: updated_at set by server (entity who updated will recorded in an audit event)
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        labels:
+          type: object
+          title: labels
+          additionalProperties:
+            type: string
+            title: value
+          description: optional short description
+      title: Metadata
+      additionalProperties: false
+      description: Struct to uniquely identify a resource with optional additional metadata
+    common.Metadata.LabelsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: LabelsEntry
+      additionalProperties: false
+    entity.Entity:
+      type: object
+      oneOf:
+        - properties:
+            claims:
+              title: claims
+              description: used by ERS claims mode
+              $ref: '#/components/schemas/google.protobuf.Any'
+          title: claims
+          required:
+            - claims
+        - properties:
+            clientId:
+              type: string
+              title: client_id
+          title: client_id
+          required:
+            - clientId
+        - properties:
+            emailAddress:
+              type: string
+              title: email_address
+          title: email_address
+          required:
+            - emailAddress
+        - properties:
+            userName:
+              type: string
+              title: user_name
+          title: user_name
+          required:
+            - userName
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
+        category:
+          title: category
+          $ref: '#/components/schemas/entity.Entity.Category'
+      title: Entity
+      additionalProperties: false
+      description: PE (Person Entity) or NPE (Non-Person Entity)
+    entity.EntityChain:
+      type: object
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/entity.Entity'
+          title: entities
+      title: EntityChain
+      additionalProperties: false
+      description: A set of related PE and NPE
+    entity.Token:
+      type: object
+      properties:
+        ephemeralId:
+          type: string
+          title: ephemeral_id
+          description: ephemeral id for tracking between request and response
+        jwt:
+          type: string
+          title: jwt
+          description: the token
+      title: Token
+      required:
+        - jwt
+      additionalProperties: false
+    google.protobuf.Any:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+          format: binary
+        debug:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+    google.protobuf.BoolValue:
+      type: boolean
+      description: |-
+        Wrapper message for `bool`.
+
+         The JSON representation for `BoolValue` is JSON `true` and `false`.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
+    google.protobuf.Timestamp:
+      type: string
+      examples:
+        - 1s
+        - 1.000340012s
+      format: date-time
+      description: |-
+        A Timestamp represents a point in time independent of any time zone or local
+         calendar, encoded as a count of seconds and fractions of seconds at
+         nanosecond resolution. The count is relative to an epoch at UTC midnight on
+         January 1, 1970, in the proleptic Gregorian calendar which extends the
+         Gregorian calendar backwards to year one.
+
+         All minutes are 60 seconds long. Leap seconds are "smeared" so that no leap
+         second table is needed for interpretation, using a [24-hour linear
+         smear](https://developers.google.com/time/smear).
+
+         The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By
+         restricting to that range, we ensure that we can convert to and from [RFC
+         3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.
+
+         # Examples
+
+         Example 1: Compute Timestamp from POSIX `time()`.
+
+             Timestamp timestamp;
+             timestamp.set_seconds(time(NULL));
+             timestamp.set_nanos(0);
+
+         Example 2: Compute Timestamp from POSIX `gettimeofday()`.
+
+             struct timeval tv;
+             gettimeofday(&tv, NULL);
+
+             Timestamp timestamp;
+             timestamp.set_seconds(tv.tv_sec);
+             timestamp.set_nanos(tv.tv_usec * 1000);
+
+         Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.
+
+             FILETIME ft;
+             GetSystemTimeAsFileTime(&ft);
+             UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+
+             // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
+             // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
+             Timestamp timestamp;
+             timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
+             timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
+
+         Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.
+
+             long millis = System.currentTimeMillis();
+
+             Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
+                 .setNanos((int) ((millis % 1000) * 1000000)).build();
+
+         Example 5: Compute Timestamp from Java `Instant.now()`.
+
+             Instant now = Instant.now();
+
+             Timestamp timestamp =
+                 Timestamp.newBuilder().setSeconds(now.getEpochSecond())
+                     .setNanos(now.getNano()).build();
+
+         Example 6: Compute Timestamp from current time in Python.
+
+             timestamp = Timestamp()
+             timestamp.GetCurrentTime()
+
+         # JSON Mapping
+
+         In JSON format, the Timestamp type is encoded as a string in the
+         [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the
+         format is "{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z"
+         where {year} is always expressed using four digits while {month}, {day},
+         {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
+         seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
+         are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
+         is required. A proto3 JSON serializer should always use UTC (as indicated by
+         "Z") when printing the Timestamp type and a proto3 JSON parser should be
+         able to accept both UTC and other timezones (as indicated by an offset).
+
+         For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
+         01:30 UTC on January 15, 2017.
+
+         In JavaScript, one can convert a Date object to this format using the
+         standard
+         [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
+         method. In Python, a standard `datetime.datetime` object can be converted
+         to this format using
+         [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with
+         the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
+         the Joda Time's [`ISODateTimeFormat.dateTime()`](
+         http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
+         ) to obtain a formatter capable of generating timestamps in this format.
+    policy.Action:
+      type: object
+      oneOf:
+        - properties:
+            custom:
+              type: string
+              title: custom
+              description: Deprecated
+          title: custom
+          required:
+            - custom
+        - properties:
+            standard:
+              title: standard
+              description: Deprecated
+              $ref: '#/components/schemas/policy.Action.StandardAction'
+          title: standard
+          required:
+            - standard
+      properties:
+        id:
+          type: string
+          title: id
+          description: Generated uuid in database
+        name:
+          type: string
+          title: name
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: Action
+      additionalProperties: false
+      description: An action an entity can take
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        detail:
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+security: []
+tags:
+  - name: authorization.v2.AuthorizationService

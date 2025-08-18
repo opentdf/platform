@@ -144,7 +144,7 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 		}
 	}
 
-	list, err := c.Queries.ListAttributesDetail(ctx, ListAttributesDetailParams{
+	list, err := c.queries.listAttributesDetail(ctx, listAttributesDetailParams{
 		Active:        active,
 		NamespaceID:   namespaceID,
 		NamespaceName: namespaceName,
@@ -191,39 +191,11 @@ func (c PolicyDBClient) ListAttributes(ctx context.Context, r *attributes.ListAt
 	}, nil
 }
 
-// Loads all attributes into memory by making iterative db roundtrip requests of defaultObjectListAllLimit size
-func (c PolicyDBClient) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
-	var nextOffset int32
-	attrsList := make([]*policy.Attribute, 0)
-
-	for {
-		listed, err := c.ListAttributes(ctx, &attributes.ListAttributesRequest{
-			State: common.ActiveStateEnum_ACTIVE_STATE_ENUM_ANY,
-			Pagination: &policy.PageRequest{
-				Limit:  c.listCfg.limitMax,
-				Offset: nextOffset,
-			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to list all attributes: %w", err)
-		}
-
-		nextOffset = listed.GetPagination().GetNextOffset()
-		attrsList = append(attrsList, listed.GetAttributes()...)
-
-		// offset becomes zero when list is exhausted
-		if nextOffset <= 0 {
-			break
-		}
-	}
-	return attrsList, nil
-}
-
 func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*policy.Attribute, error) {
 	var (
-		attr   GetAttributeRow
+		attr   getAttributeRow
 		err    error
-		params GetAttributeParams
+		params getAttributeParams
 	)
 
 	switch i := identifier.(type) {
@@ -232,25 +204,25 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 		if !id.Valid {
 			return nil, db.ErrUUIDInvalid
 		}
-		params = GetAttributeParams{ID: id}
+		params = getAttributeParams{ID: id}
 	case *attributes.GetAttributeRequest_Fqn:
 		fqn := pgtypeText(i.Fqn)
 		if !fqn.Valid {
 			return nil, db.ErrSelectIdentifierInvalid
 		}
-		params = GetAttributeParams{Fqn: pgtypeText(i.Fqn)}
+		params = getAttributeParams{Fqn: pgtypeText(i.Fqn)}
 	case string:
 		id := pgtypeUUID(i)
 		if !id.Valid {
 			return nil, db.ErrUUIDInvalid
 		}
-		params = GetAttributeParams{ID: id}
+		params = getAttributeParams{ID: id}
 	default:
 		// unexpected type
 		return nil, errors.Join(db.ErrSelectIdentifierInvalid, fmt.Errorf("type [%T] value [%v]", i, i))
 	}
 
-	attr, err = c.Queries.GetAttribute(ctx, params)
+	attr, err = c.queries.getAttribute(ctx, params)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -271,9 +243,9 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 		return nil, err
 	}
 
-	var keys []*policy.KasKey
+	var keys []*policy.SimpleKasKey
 	if len(attr.Keys) > 0 {
-		keys, err = db.KasKeysProtoJSON(attr.Keys)
+		keys, err = db.SimpleKasKeysProtoJSON(attr.Keys)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
 		}
@@ -284,7 +256,7 @@ func (c PolicyDBClient) GetAttribute(ctx context.Context, identifier any) (*poli
 }
 
 func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string) ([]*policy.Attribute, error) {
-	list, err := c.Queries.listAttributesByDefOrValueFqns(ctx, fqns)
+	list, err := c.queries.listAttributesByDefOrValueFqns(ctx, fqns)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -302,21 +274,43 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			return nil, fmt.Errorf("failed to unmarshal values [%s]: %w", string(attr.Values), err)
 		}
 
+		var keys []*policy.SimpleKasKey
 		var grants []*policy.KeyAccessServer
-		if attr.Grants != nil {
+		if len(attr.Grants) > 0 {
 			grants, err = db.KeyAccessServerProtoJSON(attr.Grants)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal grants [%s]: %w", string(attr.Grants), err)
 			}
 		}
-
-		var keys []*policy.KasKey
 		if len(attr.Keys) > 0 {
-			keys, err = db.KasKeysProtoJSON(attr.Keys)
+			keys, err = db.SimpleKasKeysProtoJSON(attr.Keys)
 			if err != nil {
 				return nil, fmt.Errorf("failed to unmarshal keys [%s]: %w", string(attr.Keys), err)
 			}
+
+			grants, err = mapKasKeysToGrants(keys, grants, c.logger)
+			if err != nil {
+				return nil, fmt.Errorf("failed to map keys to grants: %w", err)
+			}
 		}
+
+		for _, val := range values {
+			if val.GetKasKeys() == nil {
+				continue
+			}
+
+			valGrants, err := mapKasKeysToGrants(val.GetKasKeys(), val.GetGrants(), c.logger)
+			if err != nil {
+				return nil, fmt.Errorf("failed to map keys to grants: %w", err)
+			}
+			val.Grants = valGrants
+		}
+
+		nsGrants, err := mapKasKeysToGrants(ns.GetKasKeys(), ns.GetGrants(), c.logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to map keys to grants: %w", err)
+		}
+		ns.Grants = nsGrants
 
 		attrs[i] = &policy.Attribute{
 			Id:        attr.ID,
@@ -324,8 +318,8 @@ func (c PolicyDBClient) ListAttributesByFqns(ctx context.Context, fqns []string)
 			Rule:      attributesRuleTypeEnumTransformOut(string(attr.Rule)),
 			Fqn:       attr.Fqn,
 			Active:    &wrapperspb.BoolValue{Value: attr.Active},
-			Grants:    grants,
 			Namespace: ns,
+			Grants:    grants,
 			Values:    values,
 			KasKeys:   keys,
 		}
@@ -349,7 +343,7 @@ func (c PolicyDBClient) GetAttributeByFqn(ctx context.Context, fqn string) (*pol
 }
 
 func (c PolicyDBClient) GetAttributesByNamespace(ctx context.Context, namespaceID string) ([]*policy.Attribute, error) {
-	list, err := c.Queries.ListAttributesSummary(ctx, ListAttributesSummaryParams{
+	list, err := c.queries.listAttributesSummary(ctx, listAttributesSummaryParams{
 		NamespaceID: namespaceID,
 	})
 	if err != nil {
@@ -385,7 +379,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	}
 	ruleString := attributesRuleTypeEnumTransformIn(r.GetRule().String())
 
-	createdID, err := c.Queries.CreateAttribute(ctx, CreateAttributeParams{
+	createdID, err := c.queries.createAttribute(ctx, createAttributeParams{
 		NamespaceID: namespaceID,
 		Name:        name,
 		Rule:        AttributeDefinitionRule(ruleString),
@@ -408,7 +402,7 @@ func (c PolicyDBClient) CreateAttribute(ctx context.Context, r *attributes.Creat
 	}
 
 	// Update the FQNs
-	_, err = c.Queries.UpsertAttributeDefinitionFqn(ctx, createdID)
+	_, err = c.queries.upsertAttributeDefinitionFqn(ctx, createdID)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -453,7 +447,7 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 		ruleString = attributesRuleTypeEnumTransformIn(rule.String())
 	}
 
-	count, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+	count, err := c.queries.updateAttribute(ctx, updateAttributeParams{
 		ID:   id,
 		Name: pgtypeText(name),
 		Rule: NullAttributeDefinitionRule{
@@ -471,7 +465,7 @@ func (c PolicyDBClient) UnsafeUpdateAttribute(ctx context.Context, r *unsafe.Uns
 
 	// Upsert all the FQNs with the definition name mutation
 	if name != "" {
-		_, err = c.Queries.UpsertAttributeDefinitionFqn(ctx, id)
+		_, err = c.queries.upsertAttributeDefinitionFqn(ctx, id)
 		if err != nil {
 			return nil, db.WrapIfKnownInvalidQueryErr(err)
 		}
@@ -493,7 +487,7 @@ func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attri
 		return nil, err
 	}
 
-	count, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+	count, err := c.queries.updateAttribute(ctx, updateAttributeParams{
 		ID:       id,
 		Metadata: metadataJSON,
 	})
@@ -511,7 +505,7 @@ func (c PolicyDBClient) UpdateAttribute(ctx context.Context, id string, r *attri
 }
 
 func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	count, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+	count, err := c.queries.updateAttribute(ctx, updateAttributeParams{
 		ID:     id,
 		Active: pgtypeBool(false),
 	})
@@ -529,7 +523,7 @@ func (c PolicyDBClient) DeactivateAttribute(ctx context.Context, id string) (*po
 }
 
 func (c PolicyDBClient) UnsafeReactivateAttribute(ctx context.Context, id string) (*policy.Attribute, error) {
-	count, err := c.Queries.UpdateAttribute(ctx, UpdateAttributeParams{
+	count, err := c.queries.updateAttribute(ctx, updateAttributeParams{
 		ID:     id,
 		Active: pgtypeBool(true),
 	})
@@ -557,7 +551,7 @@ func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *pol
 
 	id := existing.GetId()
 
-	count, err := c.Queries.DeleteAttribute(ctx, id)
+	count, err := c.queries.deleteAttribute(ctx, id)
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -574,20 +568,8 @@ func (c PolicyDBClient) UnsafeDeleteAttribute(ctx context.Context, existing *pol
 /// Key Access Server assignments
 ///
 
-func (c PolicyDBClient) AssignKeyAccessServerToAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
-	_, err := c.Queries.AssignKeyAccessServerToAttribute(ctx, AssignKeyAccessServerToAttributeParams{
-		AttributeDefinitionID: k.GetAttributeId(),
-		KeyAccessServerID:     k.GetKeyAccessServerId(),
-	})
-	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
-	}
-
-	return k, nil
-}
-
 func (c PolicyDBClient) RemoveKeyAccessServerFromAttribute(ctx context.Context, k *attributes.AttributeKeyAccessServer) (*attributes.AttributeKeyAccessServer, error) {
-	count, err := c.Queries.RemoveKeyAccessServerFromAttribute(ctx, RemoveKeyAccessServerFromAttributeParams{
+	count, err := c.queries.removeKeyAccessServerFromAttribute(ctx, removeKeyAccessServerFromAttributeParams{
 		AttributeDefinitionID: k.GetAttributeId(),
 		KeyAccessServerID:     k.GetKeyAccessServerId(),
 	})
@@ -606,7 +588,7 @@ func (c PolicyDBClient) AssignPublicKeyToAttribute(ctx context.Context, k *attri
 		return nil, err
 	}
 
-	ak, err := c.Queries.assignPublicKeyToAttributeDefinition(ctx, assignPublicKeyToAttributeDefinitionParams{
+	ak, err := c.queries.assignPublicKeyToAttributeDefinition(ctx, assignPublicKeyToAttributeDefinitionParams{
 		DefinitionID:         k.GetAttributeId(),
 		KeyAccessServerKeyID: k.GetKeyId(),
 	})
@@ -621,7 +603,7 @@ func (c PolicyDBClient) AssignPublicKeyToAttribute(ctx context.Context, k *attri
 }
 
 func (c PolicyDBClient) RemovePublicKeyFromAttribute(ctx context.Context, k *attributes.AttributeKey) (*attributes.AttributeKey, error) {
-	count, err := c.Queries.removePublicKeyFromAttributeDefinition(ctx, removePublicKeyFromAttributeDefinitionParams{
+	count, err := c.queries.removePublicKeyFromAttributeDefinition(ctx, removePublicKeyFromAttributeDefinitionParams{
 		DefinitionID:         k.GetAttributeId(),
 		KeyAccessServerKeyID: k.GetKeyId(),
 	})

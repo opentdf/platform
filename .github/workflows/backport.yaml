@@ -1,0 +1,29 @@
+name: "Backport merged pull request"
+on:
+  pull_request:
+    types: [closed]
+  issue_comment:
+    types: [created]
+
+# Default empty permissions for all jobs
+permissions: {}
+
+jobs:
+  backport:
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    if: |
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.merged
+      ) || (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        startsWith(github.event.comment.body, '/backport')
+      )
+    uses: ./.github/workflows/reusable_backport.yaml
+    secrets:
+      APP_ID: ${{ secrets.APP_ID }}
+      AUTOMATION_KEY: ${{ secrets.AUTOMATION_KEY }}

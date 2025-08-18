@@ -22,6 +22,7 @@ import (
 	attr "github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/subjectmapping"
 	otdf "github.com/opentdf/platform/sdk"
+	policies "github.com/opentdf/platform/service/authorization/policies"
 	ent "github.com/opentdf/platform/service/entity"
 	"github.com/opentdf/platform/service/internal/access"
 	"github.com/opentdf/platform/service/internal/entitlements"
@@ -31,7 +32,6 @@ import (
 	"github.com/opentdf/platform/service/pkg/config"
 	"github.com/opentdf/platform/service/pkg/db"
 	"github.com/opentdf/platform/service/pkg/serviceregistry"
-	"github.com/opentdf/platform/service/policies"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
@@ -166,7 +166,7 @@ func (as *AuthorizationService) GetDecisionsByToken(ctx context.Context, req *co
 	for _, tdr := range req.Msg.GetDecisionRequests() {
 		ecResp, err := as.sdk.EntityResoution.CreateEntityChainFromJwt(ctx, &entityresolution.CreateEntityChainFromJwtRequest{Tokens: tdr.GetTokens()})
 		if err != nil {
-			as.logger.Error("Error calling ERS to get entity chains from jwts")
+			as.logger.ErrorContext(ctx, "error calling ERS to get entity chains from jwts")
 			return nil, err
 		}
 
@@ -353,7 +353,8 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 		FqnAttributeValues: fqnAttrVals,
 	}
 	subjectMappings := avf.GetFqnAttributeValues()
-	as.logger.DebugContext(ctx, fmt.Sprintf("retrieved %d subject mappings", len(subjectMappings)))
+	as.logger.DebugContext(ctx, "retrieved subject mappings", slog.Int("count", len(subjectMappings)))
+
 	// TODO: this could probably be moved to proto validation https://github.com/opentdf/platform/issues/1057
 	if req.Msg.Entities == nil {
 		as.logger.ErrorContext(ctx, "requires entities")
@@ -366,7 +367,7 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 	// call ERS on all entities
 	ersResp, err := as.sdk.EntityResoution.ResolveEntities(ctx, &entityresolution.ResolveEntitiesRequest{Entities: req.Msg.GetEntities()})
 	if err != nil {
-		as.logger.ErrorContext(ctx, "error calling ERS to resolve entities", "entities", req.Msg.GetEntities())
+		as.logger.ErrorContext(ctx, "error calling ERS to resolve entities", slog.Any("entities", req.Msg.GetEntities()))
 		return nil, err
 	}
 
@@ -433,7 +434,10 @@ func (as *AuthorizationService) GetEntitlements(ctx context.Context, req *connec
 			entitlement, valueOK := value.(string)
 			// If value is not okay skip adding to entitlements
 			if !valueOK {
-				as.logger.WarnContext(ctx, "issue with adding entitlement", slog.String("entity_id", entity.GetId()), slog.String("entitlement", entitlement))
+				as.logger.WarnContext(ctx, "issue with adding entitlement",
+					slog.String("entity_id", entity.GetId()),
+					slog.String("entitlement", entitlement),
+				)
 				continue
 			}
 			// if comprehensive and a hierarchy attribute is entitled then add the lower entitlements
@@ -543,7 +547,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 			}
 			return response, nil
 		}
-		return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("fqns", strings.Join(allPertinentFQNS.GetAttributeValueFqns(), ", ")))
+		return nil, db.StatusifyError(ctx, as.logger, err, db.ErrTextGetRetrievalFailed, slog.String("fqns", strings.Join(allPertinentFQNS.GetAttributeValueFqns(), ", ")))
 	}
 
 	var allAttrDefs []*policy.Attribute
@@ -579,7 +583,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 		ecEntitlements, err := as.GetEntitlements(ctx, &req)
 		if err != nil {
 			// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-			return nil, db.StatusifyError(err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
+			return nil, db.StatusifyError(ctx, as.logger, err, db.ErrTextGetRetrievalFailed, slog.String("extra", "getEntitlements request failed"))
 		}
 		ecChainEntitlementsResponse = append(ecChainEntitlementsResponse, ecEntitlements)
 	}
@@ -662,7 +666,7 @@ func (as *AuthorizationService) getDecisions(ctx context.Context, dr *authorizat
 				)
 				if err != nil {
 					// TODO: should all decisions in a request fail if one entity entitlement lookup fails?
-					return nil, db.StatusifyError(errors.New("could not determine access"), "could not determine access", slog.String("error", err.Error()))
+					return nil, db.StatusifyError(ctx, as.logger, errors.New("could not determine access"), "could not determine access", slog.String("error", err.Error()))
 				}
 				// check the decisions
 				decision = authorization.DecisionResponse_DECISION_PERMIT
@@ -750,7 +754,7 @@ func getComprehensiveHierarchy(attributesMap map[string]*policy.Attribute, avf *
 	}
 	attrDef := attributesMap[entitlement]
 	if attrDef == nil {
-		as.logger.Warn("no attribute definition found for entity", "fqn", entitlement)
+		as.logger.Warn("no attribute definition found for entity", slog.String("fqn", entitlement))
 		return entitlements
 	}
 	if attrDef.GetRule() == policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY {

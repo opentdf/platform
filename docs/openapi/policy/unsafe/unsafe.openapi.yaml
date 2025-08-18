@@ -1,0 +1,1555 @@
+openapi: 3.1.0
+info:
+  title: policy.unsafe
+paths:
+  /policy.unsafe.UnsafeService/UnsafeUpdateNamespace:
+    post:
+      tags:
+        - policy.unsafe.UnsafeService
+      summary: UnsafeUpdateNamespace
+      description: |-
+        --------------------------------------*
+         Namespace RPCs
+        ---------------------------------------
+      operationId: policy.unsafe.UnsafeService.UnsafeUpdateNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateNamespaceResponse'
+  /policy.unsafe.UnsafeService/UnsafeReactivateNamespace:
+    post:
+      tags:
+        - policy.unsafe.UnsafeService
+      summary: UnsafeReactivateNamespace
+      operationId: policy.unsafe.UnsafeService.UnsafeReactivateNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateNamespaceResponse'
+  /policy.unsafe.UnsafeService/UnsafeDeleteNamespace:
+    post:
+      tags:
+        - policy.unsafe.UnsafeService
+      summary: UnsafeDeleteNamespace
+      operationId: policy.unsafe.UnsafeService.UnsafeDeleteNamespace
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteNamespaceRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteNamespaceResponse'
+  /policy.unsafe.UnsafeService/UnsafeUpdateAttribute:
+    post:
+      tags:
+        - policy.unsafe.UnsafeService
+      summary: UnsafeUpdateAttribute
+      description: |-
+        --------------------------------------*
+         Attribute RPCs
+        ---------------------------------------
+      operationId: policy.unsafe.UnsafeService.UnsafeUpdateAttribute
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateAttributeRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateAttributeResponse'
+  /policy.unsafe.UnsafeService/UnsafeReactivateAttribute:
+    post:
+      tags:
+        - policy.unsafe.UnsafeService
+      summary: UnsafeReactivateAttribute
+      operationId: policy.unsafe.UnsafeService.UnsafeReactivateAttribute
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateAttributeRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateAttributeResponse'
+  /policy.unsafe.UnsafeService/UnsafeDeleteAttribute:
+    post:
+      tags:
+        - policy.unsafe.UnsafeService
+      summary: UnsafeDeleteAttribute
+      operationId: policy.unsafe.UnsafeService.UnsafeDeleteAttribute
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeResponse'
+  /policy.unsafe.UnsafeService/UnsafeUpdateAttributeValue:
+    post:
+      tags:
+        - policy.unsafe.UnsafeService
+      summary: UnsafeUpdateAttributeValue
+      description: |-
+        --------------------------------------*
+         Value RPCs
+        ---------------------------------------
+      operationId: policy.unsafe.UnsafeService.UnsafeUpdateAttributeValue
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateAttributeValueRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeUpdateAttributeValueResponse'
+  /policy.unsafe.UnsafeService/UnsafeReactivateAttributeValue:
+    post:
+      tags:
+        - policy.unsafe.UnsafeService
+      summary: UnsafeReactivateAttributeValue
+      operationId: policy.unsafe.UnsafeService.UnsafeReactivateAttributeValue
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateAttributeValueRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeReactivateAttributeValueResponse'
+  /policy.unsafe.UnsafeService/UnsafeDeleteAttributeValue:
+    post:
+      tags:
+        - policy.unsafe.UnsafeService
+      summary: UnsafeDeleteAttributeValue
+      operationId: policy.unsafe.UnsafeService.UnsafeDeleteAttributeValue
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeValueRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteAttributeValueResponse'
+  /policy.unsafe.UnsafeService/UnsafeDeleteKasKey:
+    post:
+      tags:
+        - policy.unsafe.UnsafeService
+      summary: UnsafeDeleteKasKey
+      description: |-
+        --------------------------------------*
+         Kas Key RPCs
+        ---------------------------------------
+      operationId: policy.unsafe.UnsafeService.UnsafeDeleteKasKey
+      parameters:
+        - name: Connect-Protocol-Version
+          in: header
+          required: true
+          schema:
+            $ref: '#/components/schemas/connect-protocol-version'
+        - name: Connect-Timeout-Ms
+          in: header
+          schema:
+            $ref: '#/components/schemas/connect-timeout-header'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteKasKeyRequest'
+        required: true
+      responses:
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/connect.error'
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/policy.unsafe.UnsafeDeleteKasKeyResponse'
+components:
+  schemas:
+    policy.Action.StandardAction:
+      type: string
+      title: StandardAction
+      enum:
+        - STANDARD_ACTION_UNSPECIFIED
+        - STANDARD_ACTION_DECRYPT
+        - STANDARD_ACTION_TRANSMIT
+    policy.Algorithm:
+      type: string
+      title: Algorithm
+      enum:
+        - ALGORITHM_UNSPECIFIED
+        - ALGORITHM_RSA_2048
+        - ALGORITHM_RSA_4096
+        - ALGORITHM_EC_P256
+        - ALGORITHM_EC_P384
+        - ALGORITHM_EC_P521
+      description: Supported key algorithms.
+    policy.AttributeRuleTypeEnum:
+      type: string
+      title: AttributeRuleTypeEnum
+      enum:
+        - ATTRIBUTE_RULE_TYPE_ENUM_UNSPECIFIED
+        - ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF
+        - ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF
+        - ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY
+    policy.ConditionBooleanTypeEnum:
+      type: string
+      title: ConditionBooleanTypeEnum
+      enum:
+        - CONDITION_BOOLEAN_TYPE_ENUM_UNSPECIFIED
+        - CONDITION_BOOLEAN_TYPE_ENUM_AND
+        - CONDITION_BOOLEAN_TYPE_ENUM_OR
+    policy.KasPublicKeyAlgEnum:
+      type: string
+      title: KasPublicKeyAlgEnum
+      enum:
+        - KAS_PUBLIC_KEY_ALG_ENUM_UNSPECIFIED
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_2048
+        - KAS_PUBLIC_KEY_ALG_ENUM_RSA_4096
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP256R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP384R1
+        - KAS_PUBLIC_KEY_ALG_ENUM_EC_SECP521R1
+    policy.KeyMode:
+      type: string
+      title: KeyMode
+      enum:
+        - KEY_MODE_UNSPECIFIED
+        - KEY_MODE_CONFIG_ROOT_KEY
+        - KEY_MODE_PROVIDER_ROOT_KEY
+        - KEY_MODE_REMOTE
+        - KEY_MODE_PUBLIC_KEY_ONLY
+      description: Describes the management and operational mode of a cryptographic key.
+    policy.KeyStatus:
+      type: string
+      title: KeyStatus
+      enum:
+        - KEY_STATUS_UNSPECIFIED
+        - KEY_STATUS_ACTIVE
+        - KEY_STATUS_ROTATED
+      description: The status of the key
+    policy.SourceType:
+      type: string
+      title: SourceType
+      enum:
+        - SOURCE_TYPE_UNSPECIFIED
+        - SOURCE_TYPE_INTERNAL
+        - SOURCE_TYPE_EXTERNAL
+      description: |-
+        Describes whether this kas is managed by the organization or if they imported
+         the kas information from an external party. These two modes are necessary in order
+         to encrypt a tdf dek with an external parties kas public key.
+    policy.SubjectMappingOperatorEnum:
+      type: string
+      title: SubjectMappingOperatorEnum
+      enum:
+        - SUBJECT_MAPPING_OPERATOR_ENUM_UNSPECIFIED
+        - SUBJECT_MAPPING_OPERATOR_ENUM_IN
+        - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
+        - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
+    common.Metadata:
+      type: object
+      properties:
+        createdAt:
+          title: created_at
+          description: created_at set by server (entity who created will recorded in an audit event)
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        updatedAt:
+          title: updated_at
+          description: updated_at set by server (entity who updated will recorded in an audit event)
+          $ref: '#/components/schemas/google.protobuf.Timestamp'
+        labels:
+          type: object
+          title: labels
+          additionalProperties:
+            type: string
+            title: value
+          description: optional short description
+      title: Metadata
+      additionalProperties: false
+      description: Struct to uniquely identify a resource with optional additional metadata
+    common.Metadata.LabelsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          type: string
+          title: value
+      title: LabelsEntry
+      additionalProperties: false
+    google.protobuf.BoolValue:
+      type: boolean
+      description: |-
+        Wrapper message for `bool`.
+
+         The JSON representation for `BoolValue` is JSON `true` and `false`.
+
+         Not recommended for use in new APIs, but still useful for legacy APIs and
+         has no plan to be removed.
+    google.protobuf.Timestamp:
+      type: string
+      examples:
+        - 1s
+        - 1.000340012s
+      format: date-time
+      description: |-
+        A Timestamp represents a point in time independent of any time zone or local
+         calendar, encoded as a count of seconds and fractions of seconds at
+         nanosecond resolution. The count is relative to an epoch at UTC midnight on
+         January 1, 1970, in the proleptic Gregorian calendar which extends the
+         Gregorian calendar backwards to year one.
+
+         All minutes are 60 seconds long. Leap seconds are "smeared" so that no leap
+         second table is needed for interpretation, using a [24-hour linear
+         smear](https://developers.google.com/time/smear).
+
+         The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By
+         restricting to that range, we ensure that we can convert to and from [RFC
+         3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.
+
+         # Examples
+
+         Example 1: Compute Timestamp from POSIX `time()`.
+
+             Timestamp timestamp;
+             timestamp.set_seconds(time(NULL));
+             timestamp.set_nanos(0);
+
+         Example 2: Compute Timestamp from POSIX `gettimeofday()`.
+
+             struct timeval tv;
+             gettimeofday(&tv, NULL);
+
+             Timestamp timestamp;
+             timestamp.set_seconds(tv.tv_sec);
+             timestamp.set_nanos(tv.tv_usec * 1000);
+
+         Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.
+
+             FILETIME ft;
+             GetSystemTimeAsFileTime(&ft);
+             UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+
+             // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z
+             // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.
+             Timestamp timestamp;
+             timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));
+             timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));
+
+         Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.
+
+             long millis = System.currentTimeMillis();
+
+             Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
+                 .setNanos((int) ((millis % 1000) * 1000000)).build();
+
+         Example 5: Compute Timestamp from Java `Instant.now()`.
+
+             Instant now = Instant.now();
+
+             Timestamp timestamp =
+                 Timestamp.newBuilder().setSeconds(now.getEpochSecond())
+                     .setNanos(now.getNano()).build();
+
+         Example 6: Compute Timestamp from current time in Python.
+
+             timestamp = Timestamp()
+             timestamp.GetCurrentTime()
+
+         # JSON Mapping
+
+         In JSON format, the Timestamp type is encoded as a string in the
+         [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the
+         format is "{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z"
+         where {year} is always expressed using four digits while {month}, {day},
+         {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
+         seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
+         are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
+         is required. A proto3 JSON serializer should always use UTC (as indicated by
+         "Z") when printing the Timestamp type and a proto3 JSON parser should be
+         able to accept both UTC and other timezones (as indicated by an offset).
+
+         For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
+         01:30 UTC on January 15, 2017.
+
+         In JavaScript, one can convert a Date object to this format using the
+         standard
+         [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
+         method. In Python, a standard `datetime.datetime` object can be converted
+         to this format using
+         [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with
+         the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use
+         the Joda Time's [`ISODateTimeFormat.dateTime()`](
+         http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()
+         ) to obtain a formatter capable of generating timestamps in this format.
+    policy.Action:
+      type: object
+      oneOf:
+        - properties:
+            custom:
+              type: string
+              title: custom
+              description: Deprecated
+          title: custom
+          required:
+            - custom
+        - properties:
+            standard:
+              title: standard
+              description: Deprecated
+              $ref: '#/components/schemas/policy.Action.StandardAction'
+          title: standard
+          required:
+            - standard
+      properties:
+        id:
+          type: string
+          title: id
+          description: Generated uuid in database
+        name:
+          type: string
+          title: name
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: Action
+      additionalProperties: false
+      description: An action an entity can take
+    policy.AsymmetricKey:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: Required
+        keyId:
+          type: string
+          title: key_id
+          description: Required
+        keyAlgorithm:
+          title: key_algorithm
+          description: Required
+          $ref: '#/components/schemas/policy.Algorithm'
+        keyStatus:
+          title: key_status
+          description: Required
+          $ref: '#/components/schemas/policy.KeyStatus'
+        keyMode:
+          title: key_mode
+          description: Required Specifies how the key is managed (local or remote)
+          $ref: '#/components/schemas/policy.KeyMode'
+        publicKeyCtx:
+          title: public_key_ctx
+          description: Required Specific structure based on key provider implementation
+          $ref: '#/components/schemas/policy.PublicKeyCtx'
+        privateKeyCtx:
+          title: private_key_ctx
+          description: Optional Specific structure based on key provider implementation
+          $ref: '#/components/schemas/policy.PrivateKeyCtx'
+        providerConfig:
+          title: provider_config
+          description: Optional Configuration for the key provider
+          $ref: '#/components/schemas/policy.KeyProviderConfig'
+        legacy:
+          type: boolean
+          title: legacy
+          description: Optional Indicates a key may be found in TDFs without key identifiers
+        metadata:
+          title: metadata
+          description: Common metadata fields
+          $ref: '#/components/schemas/common.Metadata'
+      title: AsymmetricKey
+      additionalProperties: false
+    policy.Attribute:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        namespace:
+          title: namespace
+          description: namespace of the attribute
+          $ref: '#/components/schemas/policy.Namespace'
+        name:
+          type: string
+          title: name
+          description: attribute name
+        rule:
+          title: rule
+          description: attribute rule enum
+          $ref: '#/components/schemas/policy.AttributeRuleTypeEnum'
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Value'
+          title: values
+        grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.KeyAccessServer'
+          title: grants
+          description: Deprecated KAS grants for the attribute. Use kas_keys instead.
+        fqn:
+          type: string
+          title: fqn
+        active:
+          title: active
+          description: active by default until explicitly deactivated
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
+        kasKeys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SimpleKasKey'
+          title: kas_keys
+          description: Keys associated with the attribute
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: Attribute
+      required:
+        - rule
+      additionalProperties: false
+    policy.Condition:
+      type: object
+      properties:
+        subjectExternalSelectorValue:
+          type: string
+          title: subject_external_selector_value
+          description: |-
+            a selector for a field value on a flattened Entity Representation (such as
+             from idP/LDAP)
+        operator:
+          title: operator
+          description: the evaluation operator of relation
+          $ref: '#/components/schemas/policy.SubjectMappingOperatorEnum'
+        subjectExternalValues:
+          type: array
+          items:
+            type: string
+            minItems: 1
+          title: subject_external_values
+          minItems: 1
+          description: |-
+            list of comparison values for the result of applying the
+             subject_external_selector_value on a flattened Entity Representation
+             (Subject), evaluated by the operator
+      title: Condition
+      required:
+        - subjectExternalSelectorValue
+        - operator
+      additionalProperties: false
+      description: |-
+        *
+        A Condition defines a rule of <the value at the flattened 'selector value'
+        location> <operator> <subject external values>
+    policy.ConditionGroup:
+      type: object
+      properties:
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Condition'
+          title: conditions
+          minItems: 1
+        booleanOperator:
+          title: boolean_operator
+          description: the boolean evaluation type across the conditions
+          $ref: '#/components/schemas/policy.ConditionBooleanTypeEnum'
+      title: ConditionGroup
+      required:
+        - booleanOperator
+      additionalProperties: false
+      description: A collection of Conditions evaluated by the boolean_operator provided
+    policy.KasKey:
+      type: object
+      properties:
+        kasId:
+          type: string
+          title: kas_id
+        key:
+          title: key
+          $ref: '#/components/schemas/policy.AsymmetricKey'
+        kasUri:
+          type: string
+          title: kas_uri
+      title: KasKey
+      additionalProperties: false
+    policy.KasPublicKey:
+      type: object
+      properties:
+        pem:
+          type: string
+          title: pem
+          maxLength: 8192
+          minLength: 1
+          description: x509 ASN.1 content in PEM envelope, usually
+        kid:
+          type: string
+          title: kid
+          maxLength: 32
+          minLength: 1
+          description: A unique string identifier for this key
+        alg:
+          not:
+            enum:
+              - 0
+          title: alg
+          description: |-
+            A known algorithm type with any additional parameters encoded.
+             To start, these may be `rsa:2048` for encrypting ZTDF files and
+             `ec:secp256r1` for nanoTDF, but more formats may be added as needed.
+          $ref: '#/components/schemas/policy.KasPublicKeyAlgEnum'
+      title: KasPublicKey
+      additionalProperties: false
+      description: |-
+        Deprecated
+         A KAS public key and some associated metadata for further identifcation
+    policy.KasPublicKeySet:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.KasPublicKey'
+          title: keys
+      title: KasPublicKeySet
+      additionalProperties: false
+      description: |-
+        Deprecated
+         A list of known KAS public keys
+    policy.KeyAccessServer:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        uri:
+          type: string
+          title: uri
+          description: |+
+            Address of a KAS instance
+            URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+            ```
+            this.matches('^https?://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(:[0-9]+)?(/.*)?$')
+            ```
+
+        publicKey:
+          title: public_key
+          description: Deprecated
+          $ref: '#/components/schemas/policy.PublicKey'
+        sourceType:
+          title: source_type
+          description: 'The source of the KAS: (INTERNAL, EXTERNAL)'
+          $ref: '#/components/schemas/policy.SourceType'
+        kasKeys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SimpleKasKey'
+          title: kas_keys
+          description: Kas keys associated with this KAS
+        name:
+          type: string
+          title: name
+          description: |-
+            Optional
+             Unique name of the KAS instance
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: KeyAccessServer
+      additionalProperties: false
+      description: Key Access Server Registry
+    policy.KeyProviderConfig:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        name:
+          type: string
+          title: name
+        configJson:
+          type: string
+          title: config_json
+          format: byte
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: KeyProviderConfig
+      additionalProperties: false
+    policy.Namespace:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: generated uuid in database
+        name:
+          type: string
+          title: name
+          description: |-
+            used to partition Attribute Definitions, support by namespace AuthN and
+             enable federation
+        fqn:
+          type: string
+          title: fqn
+        active:
+          title: active
+          description: active by default until explicitly deactivated
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+        grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.KeyAccessServer'
+          title: grants
+          description: Deprecated KAS grants for the namespace. Use kas_keys instead.
+        kasKeys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SimpleKasKey'
+          title: kas_keys
+          description: Keys for the namespace
+      title: Namespace
+      additionalProperties: false
+    policy.PrivateKeyCtx:
+      type: object
+      properties:
+        keyId:
+          type: string
+          title: key_id
+          minLength: 1
+          description: Required Key ID for the symmetric key wrapping this key.
+        wrappedKey:
+          type: string
+          title: wrapped_key
+          description: Optional Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should not be present if key_mode is REMOTE.
+      title: PrivateKeyCtx
+      additionalProperties: false
+    policy.PublicKey:
+      type: object
+      oneOf:
+        - properties:
+            cached:
+              title: cached
+              description: public key with additional information. Current preferred version
+              $ref: '#/components/schemas/policy.KasPublicKeySet'
+          title: cached
+          required:
+            - cached
+        - properties:
+            remote:
+              type: string
+              title: remote
+              description: |+
+                kas public key url - optional since can also be retrieved via public key
+                URI must be a valid URL (e.g., 'https://demo.com/') followed by additional segments. Each segment must start and end with an alphanumeric character, can contain hyphens, alphanumeric characters, and slashes.:
+                ```
+                this.matches('^https://[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(\\.[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*(/.*)?$')
+                ```
+
+          title: remote
+          required:
+            - remote
+      title: PublicKey
+      additionalProperties: false
+      description: Deprecated
+    policy.PublicKeyCtx:
+      type: object
+      properties:
+        pem:
+          type: string
+          title: pem
+          minLength: 1
+          description: Required Base64 encoded public key in PEM format
+      title: PublicKeyCtx
+      additionalProperties: false
+    policy.ResourceMapping:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+        attributeValue:
+          title: attribute_value
+          $ref: '#/components/schemas/policy.Value'
+        terms:
+          type: array
+          items:
+            type: string
+          title: terms
+        group:
+          title: group
+          $ref: '#/components/schemas/policy.ResourceMappingGroup'
+      title: ResourceMapping
+      required:
+        - attributeValue
+      additionalProperties: false
+      description: |-
+        Resource Mappings (aka Access Control Resource Encodings aka ACRE) are
+        structures supporting the mapping of Resources and Attribute Values
+    policy.ResourceMappingGroup:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        namespaceId:
+          type: string
+          title: namespace_id
+          description: the namespace containing the group of resource mappings
+        name:
+          type: string
+          title: name
+          description: |-
+            the common name for the group of resource mappings, which must be unique
+             per namespace
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: ResourceMappingGroup
+      required:
+        - namespaceId
+        - name
+      additionalProperties: false
+      description: |-
+        Resource Mapping Groups are namespaced collections of Resource Mappings
+        associated under a common group name.
+    policy.SimpleKasKey:
+      type: object
+      properties:
+        kasUri:
+          type: string
+          title: kas_uri
+          description: The URL of the Key Access Server
+        publicKey:
+          title: public_key
+          description: The public key of the Key that belongs to the KAS
+          $ref: '#/components/schemas/policy.SimpleKasPublicKey'
+        kasId:
+          type: string
+          title: kas_id
+          description: The ID of the Key Access Server
+      title: SimpleKasKey
+      additionalProperties: false
+    policy.SimpleKasPublicKey:
+      type: object
+      properties:
+        algorithm:
+          title: algorithm
+          $ref: '#/components/schemas/policy.Algorithm'
+        kid:
+          type: string
+          title: kid
+        pem:
+          type: string
+          title: pem
+      title: SimpleKasPublicKey
+      additionalProperties: false
+    policy.SubjectConditionSet:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        subjectSets:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SubjectSet'
+          title: subject_sets
+          minItems: 1
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: SubjectConditionSet
+      additionalProperties: false
+      description: |-
+        A container for multiple Subject Sets, each containing Condition Groups, each
+        containing Conditions. Multiple Subject Sets in a SubjectConditionSet are
+        evaluated with AND logic. As each Subject Mapping has only one Attribute
+        Value, the SubjectConditionSet is reusable across multiple Subject Mappings /
+        Attribute Values and is an independent unit.
+    policy.SubjectMapping:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+        attributeValue:
+          title: attribute_value
+          description: 'the Attribute Value mapped to; aka: "The Entity Entitlement Attribute"'
+          $ref: '#/components/schemas/policy.Value'
+        subjectConditionSet:
+          title: subject_condition_set
+          description: the reusable SubjectConditionSet mapped to the given Attribute Value
+          $ref: '#/components/schemas/policy.SubjectConditionSet'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.Action'
+          title: actions
+          description: The actions permitted by subjects in this mapping
+        metadata:
+          title: metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: SubjectMapping
+      additionalProperties: false
+      description: |-
+        Subject Mapping: A Policy assigning Subject Set(s) to a permitted attribute
+        value + action(s) combination
+    policy.SubjectSet:
+      type: object
+      properties:
+        conditionGroups:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ConditionGroup'
+          title: condition_groups
+          minItems: 1
+          description: multiple Condition Groups are evaluated with AND logic
+      title: SubjectSet
+      additionalProperties: false
+      description: A collection of Condition Groups
+    policy.Value:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          description: generated uuid in database
+        attribute:
+          title: attribute
+          $ref: '#/components/schemas/policy.Attribute'
+        value:
+          type: string
+          title: value
+        grants:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.KeyAccessServer'
+          title: grants
+          description: Deprecated KAS grants for the value. Use kas_keys instead.
+        fqn:
+          type: string
+          title: fqn
+        active:
+          title: active
+          description: active by default until explicitly deactivated
+          $ref: '#/components/schemas/google.protobuf.BoolValue'
+        subjectMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SubjectMapping'
+          title: subject_mappings
+          description: subject mapping
+        kasKeys:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.SimpleKasKey'
+          title: kas_keys
+        resourceMappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ResourceMapping'
+          title: resource_mappings
+        metadata:
+          title: metadata
+          description: Common metadata
+          $ref: '#/components/schemas/common.Metadata'
+      title: Value
+      additionalProperties: false
+    policy.unsafe.UnsafeDeleteAttributeRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: |-
+            Required
+             UUID of the Attribute
+        fqn:
+          type: string
+          title: fqn
+          description: |-
+            Required
+             Fully Qualified Name (FQN) of Attribute Definition (i.e. https://<namespace>/attr/<attribute name>), normalized to lower case.
+      title: UnsafeDeleteAttributeRequest
+      required:
+        - fqn
+      additionalProperties: false
+      description: |-
+        WARNING!!
+         Deleting an Attribute will free up the Attribute name for reuse, which can introduce an access path to existing TDFs containing the deleted Attribute name.
+         Values under this Attribute will be cascadingly deleted.
+         Any KAS Grants associated with this Attribute will be cascadingly deleted.
+    policy.unsafe.UnsafeDeleteAttributeResponse:
+      type: object
+      properties:
+        attribute:
+          title: attribute
+          $ref: '#/components/schemas/policy.Attribute'
+      title: UnsafeDeleteAttributeResponse
+      additionalProperties: false
+    policy.unsafe.UnsafeDeleteAttributeValueRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: |-
+            Required
+             UUID of the Attribute Value
+        fqn:
+          type: string
+          title: fqn
+          description: |-
+            Required
+             Fully Qualified Name (FQN) of Attribute Value (i.e. https://<namespace>/attr/<attribute name>/value/<value>), normalized to lower case.
+      title: UnsafeDeleteAttributeValueRequest
+      required:
+        - fqn
+      additionalProperties: false
+      description: |-
+        WARNING!!
+         Deleting an Attribute Value will free up the Attribute Value for reuse, which can introduce an access path to existing TDFs containing the deleted Attribute Value.
+         Any KAS Grants associated with this Attribute Value will be cascadingly deleted.
+    policy.unsafe.UnsafeDeleteAttributeValueResponse:
+      type: object
+      properties:
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.Value'
+      title: UnsafeDeleteAttributeValueResponse
+      additionalProperties: false
+    policy.unsafe.UnsafeDeleteKasKeyRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: |-
+            Required
+             UUID of the Key
+        kid:
+          type: string
+          title: kid
+          description: |-
+            Required
+             The key id assigned to this key (Ex: "key-1")
+        kasUri:
+          type: string
+          title: kas_uri
+          description: |-
+            Required
+             The kas uri for which this key belongs (Ex: "https://kas.example.com:8080")
+      title: UnsafeDeleteKasKeyRequest
+      required:
+        - kid
+        - kasUri
+      additionalProperties: false
+      description: |-
+        WARNING!!
+         Deleting a key will make it so that ANY TDF that was encrypted with this key cannot be decrypted by the platform.
+    policy.unsafe.UnsafeDeleteKasKeyResponse:
+      type: object
+      properties:
+        key:
+          title: key
+          $ref: '#/components/schemas/policy.KasKey'
+      title: UnsafeDeleteKasKeyResponse
+      additionalProperties: false
+    policy.unsafe.UnsafeDeleteNamespaceRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: |-
+            Required
+             UUID of the Namespace
+        fqn:
+          type: string
+          title: fqn
+          description: |-
+            Required
+             Fully Qualified Name (FQN) of Namespace (i.e. https://<namespace>), normalized to lower case.
+      title: UnsafeDeleteNamespaceRequest
+      required:
+        - fqn
+      additionalProperties: false
+      description: |-
+        WARNING!!
+         Deleting a Namespace will free up the Attribute Namespace, Definitions, and Values for reuse, which can introduce an access path to existing TDFs containing the deleted policy.
+         Definitions and their Values under this Namespace will be cascadingly deleted.
+    policy.unsafe.UnsafeDeleteNamespaceResponse:
+      type: object
+      properties:
+        namespace:
+          title: namespace
+          $ref: '#/components/schemas/policy.Namespace'
+      title: UnsafeDeleteNamespaceResponse
+      additionalProperties: false
+    policy.unsafe.UnsafeReactivateAttributeRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+      title: UnsafeReactivateAttributeRequest
+      additionalProperties: false
+      description: |-
+        WARNING!!
+         Reactivating an Attribute can potentially open up an access path to existing TDFs containing the Attribute name.
+         Active state of any Values under this Attribute Definition will NOT be changed.
+    policy.unsafe.UnsafeReactivateAttributeResponse:
+      type: object
+      properties:
+        attribute:
+          title: attribute
+          $ref: '#/components/schemas/policy.Attribute'
+      title: UnsafeReactivateAttributeResponse
+      additionalProperties: false
+    policy.unsafe.UnsafeReactivateAttributeValueRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+      title: UnsafeReactivateAttributeValueRequest
+      additionalProperties: false
+      description: |-
+        WARNING!!
+         Reactivating an Attribute Value can potentially open up an access path to existing TDFs containing the Attribute Value.
+    policy.unsafe.UnsafeReactivateAttributeValueResponse:
+      type: object
+      properties:
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.Value'
+      title: UnsafeReactivateAttributeValueResponse
+      additionalProperties: false
+    policy.unsafe.UnsafeReactivateNamespaceRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+      title: UnsafeReactivateNamespaceRequest
+      additionalProperties: false
+      description: |-
+        WARNING!!
+         Reactivating a Namespace can potentially open up an access path to existing TDFs containing any Attributes under the Namespace.
+         Active state of any Definitions and their Values under this Namespace will NOT be changed.
+    policy.unsafe.UnsafeReactivateNamespaceResponse:
+      type: object
+      properties:
+        namespace:
+          title: namespace
+          $ref: '#/components/schemas/policy.Namespace'
+      title: UnsafeReactivateNamespaceResponse
+      additionalProperties: false
+    policy.unsafe.UnsafeUpdateAttributeRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+        name:
+          type: string
+          title: name
+          maxLength: 253
+          description: |+
+            Optional
+             WARNING!!
+             Updating the name of an Attribute will retroactively alter access to existing TDFs of the old and new Attribute name.
+            Attribute name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute name will be normalized to lower case.:
+            ```
+            size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true
+            ```
+
+        rule:
+          title: rule
+          description: |-
+            Optional
+             WARNING!!
+             Updating the rule of an Attribute will retroactively alter access to existing TDFs of the Attribute name.
+          $ref: '#/components/schemas/policy.AttributeRuleTypeEnum'
+        valuesOrder:
+          type: array
+          items:
+            type: string
+          title: values_order
+          description: |-
+            Optional
+             WARNING!!
+             Unsafe reordering requires the full list of values in the new order they should be stored. Updating the order of values in a HIERARCHY-rule Attribute Definition
+             will retroactively alter access to existing TDFs containing those values. Replacing values on an attribute in place is not supported; values can be unsafely deleted
+             deleted, created, and unsafely re-ordered as necessary.
+      title: UnsafeUpdateAttributeRequest
+      additionalProperties: false
+      description: |-
+        WARNING!!
+         Updating an Attribute can have dangerous consequences. Use with caution.
+    policy.unsafe.UnsafeUpdateAttributeResponse:
+      type: object
+      properties:
+        attribute:
+          title: attribute
+          $ref: '#/components/schemas/policy.Attribute'
+      title: UnsafeUpdateAttributeResponse
+      additionalProperties: false
+    policy.unsafe.UnsafeUpdateAttributeValueRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+        value:
+          type: string
+          title: value
+          maxLength: 253
+          description: |+
+            Required
+            Attribute Value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored attribute value will be normalized to lower case.:
+            ```
+            this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')
+            ```
+
+      title: UnsafeUpdateAttributeValueRequest
+      additionalProperties: false
+      description: |-
+        WARNING!!
+         Updating an Attribute Value will retroactively alter access to existing TDFs containing the old and new Attribute Value.
+    policy.unsafe.UnsafeUpdateAttributeValueResponse:
+      type: object
+      properties:
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.Value'
+      title: UnsafeUpdateAttributeValueResponse
+      additionalProperties: false
+    policy.unsafe.UnsafeUpdateNamespaceRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+          description: Required
+        name:
+          type: string
+          title: name
+          maxLength: 253
+          description: |+
+            Required
+            Namespace must be a valid hostname. It should include at least one dot, with each segment (label) starting and ending with an alphanumeric character. Each label must be 1 to 63 characters long, allowing hyphens but not as the first or last character. The top-level domain (the last segment after the final dot) must consist of at least two alphabetic characters. The stored namespace will be normalized to lower case.:
+            ```
+            this.matches('^([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$')
+            ```
+
+      title: UnsafeUpdateNamespaceRequest
+      additionalProperties: false
+      description: |-
+        WARNING!!
+         Updating the Namespace of an Attribute will retroactively alter access to existing TDFs of the old and new Namespace name.
+         Existing Attribute Definitions and their Values under the Namespace will now be associated with the new Namespace name.
+    policy.unsafe.UnsafeUpdateNamespaceResponse:
+      type: object
+      properties:
+        namespace:
+          title: namespace
+          $ref: '#/components/schemas/policy.Namespace'
+      title: UnsafeUpdateNamespaceResponse
+      additionalProperties: false
+    connect-protocol-version:
+      type: number
+      title: Connect-Protocol-Version
+      enum:
+        - 1
+      description: Define the version of the Connect protocol
+      const: 1
+    connect-timeout-header:
+      type: number
+      title: Connect-Timeout-Ms
+      description: Define the timeout, in ms
+    connect.error:
+      type: object
+      properties:
+        code:
+          type: string
+          examples:
+            - not_found
+          enum:
+            - canceled
+            - unknown
+            - invalid_argument
+            - deadline_exceeded
+            - not_found
+            - already_exists
+            - permission_denied
+            - resource_exhausted
+            - failed_precondition
+            - aborted
+            - out_of_range
+            - unimplemented
+            - internal
+            - unavailable
+            - data_loss
+            - unauthenticated
+          description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+        message:
+          type: string
+          description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+        detail:
+          $ref: '#/components/schemas/google.protobuf.Any'
+      title: Connect Error
+      additionalProperties: true
+      description: 'Error type returned by Connect: https://connectrpc.com/docs/go/errors/#http-representation'
+    google.protobuf.Any:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: string
+          format: binary
+        debug:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+      description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+security: []
+tags:
+  - name: policy.unsafe.UnsafeService
+    description: |-
+      /
+      / Unsafe Service
+      /

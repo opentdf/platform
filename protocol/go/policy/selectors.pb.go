@@ -72,6 +72,7 @@ type AttributeDefinitionSelector struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Deprecated
 	WithKeyAccessGrants bool                                           `protobuf:"varint,1,opt,name=with_key_access_grants,json=withKeyAccessGrants,proto3" json:"with_key_access_grants,omitempty"`
 	WithNamespace       *AttributeDefinitionSelector_NamespaceSelector `protobuf:"bytes,10,opt,name=with_namespace,json=withNamespace,proto3" json:"with_namespace,omitempty"`
 	WithValues          *AttributeDefinitionSelector_ValueSelector     `protobuf:"bytes,11,opt,name=with_values,json=withValues,proto3" json:"with_values,omitempty"`
@@ -135,6 +136,7 @@ type AttributeValueSelector struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Deprecated
 	WithKeyAccessGrants bool                                      `protobuf:"varint,1,opt,name=with_key_access_grants,json=withKeyAccessGrants,proto3" json:"with_key_access_grants,omitempty"`
 	WithSubjectMaps     bool                                      `protobuf:"varint,2,opt,name=with_subject_maps,json=withSubjectMaps,proto3" json:"with_subject_maps,omitempty"`
 	WithResourceMaps    bool                                      `protobuf:"varint,3,opt,name=with_resource_maps,json=withResourceMaps,proto3" json:"with_resource_maps,omitempty"`
@@ -333,6 +335,7 @@ type AttributeNamespaceSelector_AttributeSelector struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Deprecated
 	WithKeyAccessGrants bool                                                        `protobuf:"varint,1,opt,name=with_key_access_grants,json=withKeyAccessGrants,proto3" json:"with_key_access_grants,omitempty"`
 	WithValues          *AttributeNamespaceSelector_AttributeSelector_ValueSelector `protobuf:"bytes,10,opt,name=with_values,json=withValues,proto3" json:"with_values,omitempty"`
 }
@@ -388,6 +391,7 @@ type AttributeNamespaceSelector_AttributeSelector_ValueSelector struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Deprecated
 	WithKeyAccessGrants bool `protobuf:"varint,1,opt,name=with_key_access_grants,json=withKeyAccessGrants,proto3" json:"with_key_access_grants,omitempty"`
 	WithSubjectMaps     bool `protobuf:"varint,2,opt,name=with_subject_maps,json=withSubjectMaps,proto3" json:"with_subject_maps,omitempty"`
 	WithResourceMaps    bool `protobuf:"varint,3,opt,name=with_resource_maps,json=withResourceMaps,proto3" json:"with_resource_maps,omitempty"`
@@ -489,6 +493,7 @@ type AttributeDefinitionSelector_ValueSelector struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Deprecated
 	WithKeyAccessGrants bool `protobuf:"varint,1,opt,name=with_key_access_grants,json=withKeyAccessGrants,proto3" json:"with_key_access_grants,omitempty"`
 	WithSubjectMaps     bool `protobuf:"varint,2,opt,name=with_subject_maps,json=withSubjectMaps,proto3" json:"with_subject_maps,omitempty"`
 	WithResourceMaps    bool `protobuf:"varint,3,opt,name=with_resource_maps,json=withResourceMaps,proto3" json:"with_resource_maps,omitempty"`
@@ -552,6 +557,7 @@ type AttributeValueSelector_AttributeSelector struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Deprecated
 	WithKeyAccessGrants bool                                                        `protobuf:"varint,1,opt,name=with_key_access_grants,json=withKeyAccessGrants,proto3" json:"with_key_access_grants,omitempty"`
 	WithNamespace       *AttributeValueSelector_AttributeSelector_NamespaceSelector `protobuf:"bytes,10,opt,name=with_namespace,json=withNamespace,proto3" json:"with_namespace,omitempty"`
 }

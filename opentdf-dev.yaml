@@ -19,6 +19,11 @@ logger:
 #     health_check_period_seconds: 60
 services:
   kas:
+    registered_kas_uri: http://localhost:8080 # Should match what you have registered for *this* KAS in the policy db.
+    preview:
+      ec_tdf_enabled: false
+      key_management: false
+    root_key: a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1 # For local development testing only
     keyring:
       - kid: e1
         alg: ec:secp256r1
@@ -44,9 +49,14 @@ services:
   # policy is enabled by default in mode 'all'
   # policy:
   #   enabled: true
-  # list_request_limit_default: 1000
-  # list_request_limit_max: 2500
+  #   list_request_limit_default: 1000
+  #   list_request_limit_max: 2500
+  # authorization:
+  #   entitlement_policy_cache:
+  #     enabled: false
+  #     refresh_interval: 30s
 server:
+  public_hostname: localhost
   tls:
     enabled: false
     cert: ./keys/platform.crt
@@ -54,7 +64,6 @@ server:
   auth:
     enabled: true
     enforceDPoP: false
-    public_client_id: "opentdf-public"
     audience: "http://localhost:8080"
     issuer: http://localhost:8888/auth/realms/opentdf
     policy:
@@ -93,20 +102,20 @@ server:
       file:
         path: "./traces/traces.log"
         prettyPrint: true # Optional, default is compact JSON
-        maxSize: 50    # Optional, default 20MB
-        maxBackups: 5    # Optional, default 10
-        maxAge: 14    # Optional, default 30 days
-        compress: true   # Optional, default false
+        maxSize: 50 # Optional, default 20MB
+        maxBackups: 5 # Optional, default 10
+        maxAge: 14 # Optional, default 30 days
+        compress: true # Optional, default false
       # otlp:
-        # protocol: grpc # Optional, defaults to grpc
-        # endpoint: "localhost:4317"
-        # insecure: true # Set to false if Jaeger requires TLS
-        # headers: {} # Add if authentication is needed
-        # HTTP
-        #        protocol: "http/protobuf"
-        #        endpoint: "http://localhost:4318" # Default OTLP HTTP port
-        #        insecure: true # If collector is just HTTP, not HTTPS
-        # headers: {} # Add if authentication is needed
+      # protocol: grpc # Optional, defaults to grpc
+      # endpoint: "localhost:4317"
+      # insecure: true # Set to false if Jaeger requires TLS
+      # headers: {} # Add if authentication is needed
+      # HTTP
+      #        protocol: "http/protobuf"
+      #        endpoint: "http://localhost:4318" # Default OTLP HTTP port
+      #        insecure: true # If collector is just HTTP, not HTTPS
+      # headers: {} # Add if authentication is needed
   cors:
     # "*" to allow any origin or a specific domain like "https://yourdomain.com"
     allowedorigins:
@@ -123,6 +132,7 @@ server:
     allowedheaders:
       - ACCEPT
       - Authorization
+      - Connect-Protocol-Version
       - Content-Type
       - X-CSRF-Token
       - X-Request-ID
@@ -135,6 +145,14 @@ server:
     maxage: 3600
   grpc:
     reflectionEnabled: true # Default is false
+  # http:
+  #   # HTTP server configuration
+  #   # Negative values indicate no timeout, default will be used if the timeout is set to 0
+  #   readTimeout: 15s
+  #   writeTimeout: 15s
+  #   readHeaderTimeout: 10s
+  #   idleTimeout: 20s
+  #   maxHeaderBytes: 1048576 # 1 MB
   cryptoProvider:
     type: standard
     standard:

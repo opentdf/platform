@@ -24,7 +24,11 @@ if [ -n "$1" ]; then
   component="$1"
 else
   branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
-  component=${branch#release-please--branches--main--components--}
+  # Extract the component name by taking the substring after the last '--components--'
+  # This handles branches like:
+  #   release-please--branches--main--components--sdk  => sdk
+  #   release-please--branches--release/service/v0.6--components--service => service
+  component=${branch##*--components--}
 fi
 
 if ! cd "$ROOT_DIR"; then
@@ -34,29 +38,29 @@ fi
 
 echo "[INFO] Rebuilding partial go.work for [${component}]"
 case $component in
-  lib/ocrypto | lib/fixtures | lib/flattening | lib/identifier | protocol/go )
-    echo "[INFO] skipping for leaf package"
-    ;;
-  sdk)
-    rm -f go.work go.work.sum &&
-      go work init &&
-      go work use ./sdk &&
-      go work use ./service &&
-      go work use ./examples
-    ;;
-  service)
-    rm -f go.work go.work.sum &&
-      go work init &&
-      go work use ./service &&
-      go work use ./examples
-    ;;
-  examples)
-    rm -f go.work go.work.sum &&
-      go work init &&
-      go work use ./examples
-    ;;
-  *)
-    echo "[ERROR] unknown component [${component}]"
-    exit 1
-    ;;
+lib/ocrypto | lib/fixtures | lib/flattening | lib/identifier | protocol/go)
+  echo "[INFO] skipping for leaf package"
+  ;;
+sdk)
+  rm -f go.work go.work.sum &&
+    go work init &&
+    go work use ./sdk &&
+    go work use ./service &&
+    go work use ./examples
+  ;;
+service)
+  rm -f go.work go.work.sum &&
+    go work init &&
+    go work use ./service &&
+    go work use ./examples
+  ;;
+examples)
+  rm -f go.work go.work.sum &&
+    go work init &&
+    go work use ./examples
+  ;;
+*)
+  echo "[ERROR] unknown component [${component}]"
+  exit 1
+  ;;
 esac

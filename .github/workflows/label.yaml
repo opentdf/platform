@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Label the PR size
     steps:
-      - uses: codelytv/pr-size-labeler@1c3422395d899286d5ee2c809fd5aed264d5eb9b # v1.10.2
+      - uses: codelytv/pr-size-labeler@4ec67706cd878fbc1c8db0a5dcd28b6bb412e85a # v1.10.3
         with:
           files_to_ignore: |
             "protocol/**/*"
@@ -39,10 +39,16 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - name: Check Author Association and Label PR
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea #v7.0.1
+      - name: "Generate a GitHub app token"
+        id: generate-token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_KEY }}
+      - name: Check Author Association and Label PR
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             const pr = context.payload.pull_request;
             if (!pr) {
@@ -50,20 +56,29 @@ jobs:
               return;
             }
 
-            // Define associations considered "internal"
-            const internalAssociations = ["MEMBER"];
-
             // Label to add if the author is external
             const externalLabel = "external-contributor";
 
-            const authorAssociation = pr.author_association;
-            const isExternal = !internalAssociations.includes(authorAssociation);
+            // Check if the user is a member of the org using the GitHub API
+            let isOrgMember = false;
+            try {
+              const { data } = await github.rest.orgs.getMembershipForUser({
+                org: context.repo.owner,
+                username: pr.user.login
+              });
+              if (data && data.state === "active") {
+                isOrgMember = true;
+              }
+            } catch (error) {
+              if (error.status !== 404) throw error; // only ignore 404s
+            }
 
+            const isExternal = !isOrgMember;
             const prLabels = pr.labels.map(label => label.name);
             const hasExternalLabel = prLabels.includes(externalLabel);
 
             core.info(`Event: ${context.eventName}, Action: ${context.payload.action}`);
-            core.info(`Author: ${pr.user.login}, Association: ${authorAssociation}, Is External: ${isExternal}`);
+            core.info(`Author: ${pr.user.login}, Is Org Member: ${isOrgMember}, Is External: ${isExternal}`);
             core.info(`Current PR Labels: ${prLabels.join(', ')}`);
 
             // Logic for 'unlabeled' event: only re-add if *our* label was removed and author is still external
@@ -86,7 +101,7 @@ jobs:
             // Logic for 'opened' or 'reopened' events: add label if external and not already present
             else if (['opened', 'reopened'].includes(context.payload.action)) {
               if (isExternal && !hasExternalLabel) {
-                core.info(`Author association "${authorAssociation}" is external and label is missing. Adding label: ${externalLabel}`);
+                core.info(`Author is external and label is missing. Adding label: ${externalLabel}`);
                 await github.rest.issues.addLabels({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -98,9 +113,9 @@ jobs:
                  core.info(`Author is external, but label "${externalLabel}" is already present.`);
               } else {
                 if (hasExternalLabel) {
-                  core.warning(`Author association "${authorAssociation}" is internal. However, external contributor label is present.`)
+                  core.warning(`Author is internal. However, external contributor label is present.`)
                 } else {
-                  core.info(`Author association "${authorAssociation}" is internal. No label added.`)
+                  core.info(`Author is internal. No label added.`)
                 }
               }
             }

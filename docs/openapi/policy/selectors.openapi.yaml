@@ -1,0 +1,152 @@
+openapi: 3.1.0
+info:
+  title: policy
+paths: {}
+components:
+  schemas:
+    policy.AttributeDefinitionSelector:
+      type: object
+      properties:
+        withKeyAccessGrants:
+          type: boolean
+          title: with_key_access_grants
+          description: Deprecated
+        withNamespace:
+          title: with_namespace
+          $ref: '#/components/schemas/policy.AttributeDefinitionSelector.NamespaceSelector'
+        withValues:
+          title: with_values
+          $ref: '#/components/schemas/policy.AttributeDefinitionSelector.ValueSelector'
+      title: AttributeDefinitionSelector
+      additionalProperties: false
+    policy.AttributeDefinitionSelector.NamespaceSelector:
+      type: object
+      title: NamespaceSelector
+      additionalProperties: false
+    policy.AttributeDefinitionSelector.ValueSelector:
+      type: object
+      properties:
+        withKeyAccessGrants:
+          type: boolean
+          title: with_key_access_grants
+          description: Deprecated
+        withSubjectMaps:
+          type: boolean
+          title: with_subject_maps
+        withResourceMaps:
+          type: boolean
+          title: with_resource_maps
+      title: ValueSelector
+      additionalProperties: false
+    policy.AttributeNamespaceSelector:
+      type: object
+      properties:
+        withAttributes:
+          title: with_attributes
+          $ref: '#/components/schemas/policy.AttributeNamespaceSelector.AttributeSelector'
+      title: AttributeNamespaceSelector
+      additionalProperties: false
+    policy.AttributeNamespaceSelector.AttributeSelector:
+      type: object
+      properties:
+        withKeyAccessGrants:
+          type: boolean
+          title: with_key_access_grants
+          description: Deprecated
+        withValues:
+          title: with_values
+          $ref: '#/components/schemas/policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector'
+      title: AttributeSelector
+      additionalProperties: false
+    policy.AttributeNamespaceSelector.AttributeSelector.ValueSelector:
+      type: object
+      properties:
+        withKeyAccessGrants:
+          type: boolean
+          title: with_key_access_grants
+          description: Deprecated
+        withSubjectMaps:
+          type: boolean
+          title: with_subject_maps
+        withResourceMaps:
+          type: boolean
+          title: with_resource_maps
+      title: ValueSelector
+      additionalProperties: false
+    policy.AttributeValueSelector:
+      type: object
+      properties:
+        withKeyAccessGrants:
+          type: boolean
+          title: with_key_access_grants
+          description: Deprecated
+        withSubjectMaps:
+          type: boolean
+          title: with_subject_maps
+        withResourceMaps:
+          type: boolean
+          title: with_resource_maps
+        withAttribute:
+          title: with_attribute
+          $ref: '#/components/schemas/policy.AttributeValueSelector.AttributeSelector'
+      title: AttributeValueSelector
+      additionalProperties: false
+    policy.AttributeValueSelector.AttributeSelector:
+      type: object
+      properties:
+        withKeyAccessGrants:
+          type: boolean
+          title: with_key_access_grants
+          description: Deprecated
+        withNamespace:
+          title: with_namespace
+          $ref: '#/components/schemas/policy.AttributeValueSelector.AttributeSelector.NamespaceSelector'
+      title: AttributeSelector
+      additionalProperties: false
+    policy.AttributeValueSelector.AttributeSelector.NamespaceSelector:
+      type: object
+      title: NamespaceSelector
+      additionalProperties: false
+    policy.PageRequest:
+      type: object
+      properties:
+        limit:
+          type: integer
+          title: limit
+          format: int32
+          description: |-
+            Optional
+             Set to configured default limit if not provided
+             Maximum limit set in platform config and enforced by services
+        offset:
+          type: integer
+          title: offset
+          format: int32
+          description: |-
+            Optional
+             Defaulted if not provided
+      title: PageRequest
+      additionalProperties: false
+    policy.PageResponse:
+      type: object
+      properties:
+        currentOffset:
+          type: integer
+          title: current_offset
+          format: int32
+          description: Requested pagination offset
+        nextOffset:
+          type: integer
+          title: next_offset
+          format: int32
+          description: |-
+            Calculated with request limit + offset or defaults
+             Empty when none remain after current page
+        total:
+          type: integer
+          title: total
+          format: int32
+          description: Total count of entire list
+      title: PageResponse
+      additionalProperties: false
+security: []

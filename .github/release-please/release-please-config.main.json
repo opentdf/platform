@@ -1,0 +1,44 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "go",
+  "bump-minor-pre-major": true,
+  "versioning": "always-bump-minor",
+  "separate-pull-requests": true,
+  "include-component-in-tag": true,
+  "tag-separator": "/",
+  "packages": {
+    "lib/fixtures": {
+      "component": "lib/fixtures"
+    },
+    "lib/ocrypto": {
+      "component": "lib/ocrypto"
+    },
+    "lib/flattening": {
+      "component": "lib/flattening"
+    },
+    "lib/identifier": {
+      "component": "lib/identifier"
+    },
+    "protocol/go": {
+      "component": "protocol/go"
+    },
+    "sdk": {
+      "component": "sdk",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "version.go"
+        }
+      ]
+    },
+    "service": {
+      "component": "service",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "cmd/version.go"
+        }
+      ]
+    }
+  }
+}

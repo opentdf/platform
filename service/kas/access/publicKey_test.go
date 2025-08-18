@@ -10,12 +10,13 @@ import (
 	"encoding/pem"
 	"errors"
 	"math/big"
-	"net/url"
 	"os"
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/lib/ocrypto"
 	kaspb "github.com/opentdf/platform/protocol/go/kas"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/internal/security"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/trust"
@@ -44,12 +45,16 @@ func (m *MockKeyDetails) ID() trust.KeyIdentifier {
 	return m.id
 }
 
-func (m *MockKeyDetails) Algorithm() string {
-	return m.algorithm
+func (m *MockKeyDetails) Algorithm() ocrypto.KeyType {
+	return ocrypto.KeyType(m.algorithm)
 }
 
 func (m *MockKeyDetails) IsLegacy() bool {
 	return m.legacy
+}
+
+func (m *MockKeyDetails) ExportPrivateKey(_ context.Context) (*trust.PrivateKey, error) {
+	return nil, errors.New("not implemented for tests")
 }
 
 func (m *MockKeyDetails) ExportPublicKey(_ context.Context, format trust.KeyType) (string, error) {
@@ -74,6 +79,10 @@ func (m *MockKeyDetails) ExportCertificate(_ context.Context) (string, error) {
 		return "", errors.New("certificate not available")
 	}
 	return m.certData, nil
+}
+
+func (m *MockKeyDetails) ProviderConfig() *policy.KeyProviderConfig {
+	return nil
 }
 
 // MockSecurityProvider is a test implementation of SecurityProvider
@@ -117,11 +126,22 @@ func (m *MockSecurityProvider) ListKeys(_ context.Context) ([]trust.KeyDetails, 
 	return keys, nil
 }
 
-func (m *MockSecurityProvider) Decrypt(_ context.Context, _ trust.KeyIdentifier, _, _ []byte) (trust.ProtectedKey, error) {
+func (m *MockSecurityProvider) ListKeysWith(_ context.Context, opts trust.ListKeyOptions) ([]trust.KeyDetails, error) {
+	var keys []trust.KeyDetails
+	for _, key := range m.keys {
+		if opts.LegacyOnly && !key.IsLegacy() {
+			continue
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
+}
+
+func (m *MockSecurityProvider) Decrypt(_ context.Context, _ trust.KeyDetails, _, _ []byte) (trust.ProtectedKey, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
-func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ trust.KeyIdentifier, _ []byte, _ elliptic.Curve) (trust.ProtectedKey, error) {
+func (m *MockSecurityProvider) DeriveKey(_ context.Context, _ trust.KeyDetails, _ []byte, _ elliptic.Curve) (trust.ProtectedKey, error) {
 	return nil, errors.New("not implemented for tests")
 }
 
@@ -160,13 +180,11 @@ func TestPublicKeyWithSecurityProvider(t *testing.T) {
 		certData:  "-----BEGIN CERTIFICATE-----\nMIIBcTCCARegAwIBAgIUTxgZ1CzWBXgysrV4bKVGw+1iBTwwCgYIKoZIzj0EAwIw\nDjEMMAoGA1UEAwwDa2FzMB4XDTIzMDYxMzAwMDAwMFoXDTI4MDYxMzAwMDAwMFow\nDjEMMAoGA1UEAwwDa2FzMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEn6WYEj3s\nxP/IR0W1O5TYHKPyhceFki4Y/9YYeK/D3QkYQrv+DkKXPKkR/MQS6uzmHZY9NS8X\nbcwJ4cGpR6l4FaNmMGQwHQYDVR0OBBYEFFQ8TIybvYhMKH0E+lOVDS0F7r9PMB8G\nA1UdIwQYMBaAFFQ8TIybvYhMKH0E+lOVDS0F7r9PMA8GA1UdEwEB/wQFMAMBAf8w\nEQYDVR0gBAowCDAGBgRVHSAAMAoGCCqGSM49BAMCA0gAMEUCIQD5adIeKGCpbI1E\nJr3jVwQNJL6+bLGXRORhIeKjpvd3egIgRZ7qwTpjZwrkXpDS2i1ODQjj2Ap9ZeMN\nzuDaXdOl90E=\n-----END CERTIFICATE-----",
 	})
 
-	kasURI := urlHost(t)
-
 	// Create Provider with the mock security provider
+	delegator := trust.NewDelegatingKeyService(mockProvider, logger.CreateTestLogger(), nil)
+	delegator.RegisterKeyManager(mockProvider.Name(), func(_ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) { return mockProvider, nil })
 	kas := Provider{
-		URI:        *kasURI,
-		KeyIndex:   mockProvider,
-		KeyManager: mockProvider,
+		KeyDelegator: delegator,
 		KASConfig: KASConfig{
 			Keyring: []CurrentKeyFor{
 				{
@@ -323,21 +341,24 @@ func TestError(t *testing.T) {
 	assert.Equal(t, "certificate encode error", output)
 }
 
-const hostname = "localhost"
-
 func TestStandardCertificateHandlerEmpty(t *testing.T) {
 	configStandard := security.Config{
 		Type: "standard",
 	}
 	c := mustNewCryptoProvider(t, configStandard)
 	defer c.Close()
-	kasURI := urlHost(t)
+
+	inProcess := security.NewSecurityProviderAdapter(c, nil, nil)
+
+	delegator := trust.NewDelegatingKeyService(inProcess, logger.CreateTestLogger(), nil)
+	delegator.RegisterKeyManager(inProcess.Name(), func(_ *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+		return inProcess, nil
+	})
 
 	kas := Provider{
-		URI:        *kasURI,
-		KeyManager: security.NewSecurityProviderAdapter(c, nil, nil),
-		Logger:     logger.CreateTestLogger(),
-		Tracer:     noop.NewTracerProvider().Tracer(""),
+		KeyDelegator: delegator,
+		Logger:       logger.CreateTestLogger(),
+		Tracer:       noop.NewTracerProvider().Tracer(""),
 	}
 
 	result, err := kas.PublicKey(t.Context(), &connect.Request[kaspb.PublicKeyRequest]{Msg: &kaspb.PublicKeyRequest{Fmt: "pkcs8"}})
@@ -351,12 +372,3 @@ func mustNewCryptoProvider(t *testing.T, configStandard security.Config) *securi
 	require.NotNil(t, c)
 	return c
 }
-
-func urlHost(t *testing.T) *url.URL {
-	url, err := url.Parse("https://" + hostname + ":5000")
-	require.NoError(t, err)
-	return url
-}
-
-// Original tests kept for backward compatibility
-// They test the direct CryptoProvider usage path

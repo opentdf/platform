@@ -5,7 +5,7 @@
 
 MODS=protocol/go lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
 HAND_MODS=lib/ocrypto lib/fixtures lib/flattening lib/identifier sdk service examples
-REQUIRED_BUF_VERSION = 1.56.0
+REQUIRED_BUF_VERSION=1.56.0
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -21,7 +21,7 @@ toolcheck:
 	@BUF_VERSION=$$(buf --version | head -n 1 | awk '{print $$1}'); \
 	if [ "$$(printf '%s\n' '$(REQUIRED_BUF_VERSION)' "$$BUF_VERSION" | sort -V | head -n 1)" != "$(REQUIRED_BUF_VERSION)" ]; then \
 		echo "Error: buf version $(REQUIRED_BUF_VERSION) or later is required, but found $$BUF_VERSION."; \
-		echo "Please upgrade: brew upgrade bufbuild/buf/buf"; \
+		echo "Please upgrade buf. See https://docs.buf.build/installation for instructions."; \
 		exit 1; \
 	fi
 	@which golangci-lint > /dev/null || (echo "golangci-lint not found, run  'go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.1.6'" && exit 1)

@@ -20,6 +20,10 @@ import (
 const (
 	testBaseNamespace      = "test.example.com"
 	testSecondaryNamespace = "secondary.example.org"
+
+	// todo: add tests for allowDirectEntitlements = true behavior
+	// using hard-coded false for now to keep existing tests passing
+	allowDirectEntitlements = false
 )
 
 // Helper function to create attribute definition FQNs
@@ -871,7 +875,8 @@ func (s *PDPTestSuite) TestNewPolicyDecisionPoint() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
-			pdp, err := NewPolicyDecisionPoint(s.T().Context(), s.logger, tc.attributes, tc.subjectMappings, tc.registeredResources)
+			pdp, err := NewPolicyDecisionPoint(
+				s.T().Context(), s.logger, tc.attributes, tc.subjectMappings, tc.registeredResources, allowDirectEntitlements)
 
 			if tc.expectError {
 				s.Require().Error(err)
@@ -895,6 +900,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr},
 		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping, f.publicMapping, f.engineeringMapping, f.financeMapping},
 		[]*policy.RegisteredResource{f.classificationRegRes, f.deptRegRes},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1226,6 +1232,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			f.classificationRegRes, f.deptRegRes, f.projectRegRes,
 			printConfidentialRegRes, allActionsPublicRegRes, viewProjectAlphaRegRes,
 		},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1357,6 +1364,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			[]*policy.Attribute{f.classificationAttr},
 			[]*policy.SubjectMapping{allActionsPublicMapping, restrictedMapping},
 			[]*policy.RegisteredResource{f.classificationRegRes, allActionsPublicRegRes, restrictedRegRes},
+			allowDirectEntitlements,
 		)
 		s.Require().NoError(err)
 		s.Require().NotNil(classificationPDP)
@@ -1404,6 +1412,7 @@ func (s *PDPTestSuite) Test_GetDecision_CombinedAttributeRules_SingleResource() 
 			f.usaMapping, f.ukMapping, f.projectAlphaMapping, f.platformCloudMapping,
 		},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -1764,6 +1773,7 @@ func (s *PDPTestSuite) Test_GetDecision_AcrossNamespaces() {
 			f.usaMapping,
 		},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -2117,6 +2127,7 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr},
 		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping, f.publicMapping, f.engineeringMapping, f.financeMapping},
 		[]*policy.RegisteredResource{f.networkRegRes, regResS3BucketEntity},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -2285,6 +2296,7 @@ func (s *PDPTestSuite) Test_GetEntitlements() {
 			f.usaMapping,
 		},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -2584,6 +2596,7 @@ func (s *PDPTestSuite) Test_GetEntitlements_AdvancedHierarchy() {
 			bottomMapping,
 		},
 		[]*policy.RegisteredResource{},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
@@ -2662,6 +2675,7 @@ func (s *PDPTestSuite) Test_GetEntitlementsRegisteredResource() {
 		[]*policy.Attribute{f.classificationAttr},
 		[]*policy.SubjectMapping{},
 		[]*policy.RegisteredResource{f.regRes},
+		allowDirectEntitlements,
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)

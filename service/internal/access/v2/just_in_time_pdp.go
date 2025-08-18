@@ -37,6 +37,7 @@ func NewJustInTimePDP(
 	l *logger.Logger,
 	sdk *otdfSDK.SDK,
 	store EntitlementPolicyStore,
+	allowDirectEntitlements bool,
 ) (*JustInTimePDP, error) {
 	var err error
 
@@ -74,7 +75,7 @@ func NewJustInTimePDP(
 		return nil, fmt.Errorf("failed to fetch all registered resources: %w", err)
 	}
 
-	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings, allRegisteredResources)
+	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings, allRegisteredResources, allowDirectEntitlements)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
 	}

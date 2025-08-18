@@ -197,6 +197,7 @@ func getResourceDecisionableAttributes(
 	allAttributesByDefinitionFQN map[string]*policy.Attribute,
 	// action *policy.Action,
 	resources []*authz.Resource,
+	allowDirectEntitlements bool,
 ) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	var (
 		decisionableAttributes = make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
@@ -245,9 +246,8 @@ func getResourceDecisionableAttributes(
 		}
 
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
-		if !ok {
-			// TODO: this logic requires a provisioned Virtru org namespace, definition and FQN record in the database
-			// TODO: add provisioning scripts for test orgs in dev/staging and decide how to provision for production
+		if !ok && allowDirectEntitlements {
+			// If enabled, parse direct entitlements
 			// Try to find the definition by extracting partial FQN for adhoc attributes
 			parentDefinition, err := getDefinition(attrValueFQN, allAttributesByDefinitionFQN)
 			if err != nil {

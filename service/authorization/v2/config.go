@@ -14,7 +14,8 @@ type EntitlementPolicyCacheConfig struct {
 }
 
 type Config struct {
-	Cache EntitlementPolicyCacheConfig `mapstructure:"entitlement_policy_cache" json:"entitlement_policy_cache"`
+	AllowDirectEntitlements bool                         `mapstructure:"allow_direct_entitlements" json:"allow_direct_entitlements" default:"false"`
+	Cache                   EntitlementPolicyCacheConfig `mapstructure:"entitlement_policy_cache" json:"entitlement_policy_cache"`
 }
 
 // Validate tests for a sensible configuration

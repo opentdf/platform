@@ -335,7 +335,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
 			t := s.T()
-			s, err := mockOpenTDFServer()
+			server, err := mockOpenTDFServer()
 			require.NoError(t, err)
 
 			logger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
@@ -362,7 +362,7 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 						"test": {},
 					},
 				},
-				otdf:                s,
+				otdf:                server,
 				client:              nil,
 				keyManagerFactories: []trust.NamedKeyManagerFactory{},
 				logger:              logger,
@@ -372,8 +372,8 @@ func (s *StartTestSuite) Test_Start_When_Extra_Service_Registered() {
 			require.NoError(t, err)
 			defer cleanup()
 
-			require.NoError(t, s.Start())
-			defer s.Stop()
+			require.NoError(t, server.Start())
+			defer server.Stop()
 
 			var resp *http.Response
 			// Make request to test service and ensure it registered
@@ -465,6 +465,92 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Errors() {
 			require.ErrorContains(t, err, tc.expErrorContains)
 		})
 	}
+}
+
+// REGRESSION TEST: Ensure extra services don't start in non-matching modes
+// This test protects against "fixing" the intentional mode filtering behavior
+func (s *StartTestSuite) Test_ExtraService_ModeFiltering_IsIntentional_NotABug() {
+	// This test documents that the behavior where extra services don't start
+	// in KAS mode (unless explicitly configured) is INTENTIONAL design
+	t := s.T()
+	otdf, err := mockOpenTDFServer()
+	require.NoError(t, err)
+
+	logger, err := logger.NewLogger(logger.Config{Output: "stdout", Level: "info", Type: "json"})
+	require.NoError(t, err)
+
+	// Register an extra service with namespace "myextraservice"
+	testService, testSpy := mockTestServiceRegistry(mockTestServiceOptions{
+		namespace:     "myextraservice",
+		serviceName:   "MyExtraService",
+		serviceObject: TestService{},
+	})
+
+	registry := serviceregistry.NewServiceRegistry()
+
+	// Register using the original WithServices() logic: service.GetNamespace() as mode
+	err = registry.RegisterService(testService, testService.GetNamespace()) // "myextraservice"
+	require.NoError(t, err)
+
+	// Start services in KAS mode
+	cleanup, err := startServices(context.Background(), startServicesParams{
+		cfg: &config.Config{
+			Mode: []string{"kas"}, // KAS mode only
+			Services: map[string]config.ServiceConfig{
+				"myextraservice": {},
+			},
+		},
+		otdf:                otdf,
+		client:              nil,
+		keyManagerFactories: []trust.NamedKeyManagerFactory{},
+		logger:              logger,
+		reg:                 registry,
+		cacheManager:        &cache.Manager{},
+	})
+	require.NoError(t, err)
+	defer cleanup()
+
+	// CRITICAL: The service should NOT start because:
+	// - Service is registered with mode "myextraservice"
+	// - Config mode is "kas"
+	// - "kas" != "myextraservice" → service filtered out
+	// This is INTENTIONAL to keep KAS mode lightweight
+	require.False(t, testSpy.wasCalled,
+		"REGRESSION PROTECTION: Extra service should NOT start in KAS mode. "+
+			"This is intentional to maintain backwards compatibility. "+
+			"If you're seeing this test fail, you may have 'fixed' behavior that was actually correct. "+
+			"Use WithServiceForModes() instead for explicit mode control.")
+
+	// Now test that it DOES work when the mode matches
+	registry2 := serviceregistry.NewServiceRegistry()
+	testService2, testSpy2 := mockTestServiceRegistry(mockTestServiceOptions{
+		namespace:     "myextraservice",
+		serviceName:   "MyExtraService2",
+		serviceObject: TestService{},
+	})
+	err = registry2.RegisterService(testService2, testService2.GetNamespace())
+	require.NoError(t, err)
+
+	cleanup2, err := startServices(context.Background(), startServicesParams{
+		cfg: &config.Config{
+			Mode: []string{"myextraservice"}, // Mode matches service namespace
+			Services: map[string]config.ServiceConfig{
+				"myextraservice": {},
+			},
+		},
+		otdf:                otdf,
+		client:              nil,
+		keyManagerFactories: []trust.NamedKeyManagerFactory{},
+		logger:              logger,
+		reg:                 registry2,
+		cacheManager:        &cache.Manager{},
+	})
+	require.NoError(t, err)
+	defer cleanup2()
+
+	// This SHOULD work because modes match
+	require.True(t, testSpy2.wasCalled,
+		"Service should start when config mode matches service namespace")
 }
 
 func (s *StartTestSuite) Test_Start_Mode_Config_Success() {

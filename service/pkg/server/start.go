@@ -166,7 +166,7 @@ func Start(f ...StartOptions) error {
 		}
 	}
 
-	// Register extra services
+	// Register extra services (only run in matching modes)
 	if len(startConfig.extraServices) > 0 {
 		logger.Debug("registering extra services")
 		for _, service := range startConfig.extraServices {
@@ -177,6 +177,58 @@ func Start(f ...StartOptions) error {
 					slog.Any("error", err),
 				)
 				return fmt.Errorf("could not register extra service: %w", err)
+			}
+		}
+	}
+
+	// Register mode-aware services
+	if len(startConfig.modeAwareServices) > 0 {
+		logger.Debug("registering mode-aware services")
+		for _, modeService := range startConfig.modeAwareServices {
+			// Check if any of the service's modes match the current configuration modes
+			shouldRegister := false
+			for _, serviceMode := range modeService.Modes {
+				if slices.Contains(cfg.Mode, serviceMode) || serviceMode == "all" {
+					shouldRegister = true
+					break
+				}
+			}
+
+			if shouldRegister {
+				// Use the first matching mode for registration, or the service's namespace if no match
+				registrationMode := modeService.Service.GetNamespace()
+				for _, serviceMode := range modeService.Modes {
+					if slices.Contains(cfg.Mode, serviceMode) {
+						registrationMode = serviceMode
+						break
+					}
+				}
+				if slices.Contains(modeService.Modes, "all") {
+					registrationMode = "all"
+				}
+
+				err := svcRegistry.RegisterService(modeService.Service, registrationMode)
+				if err != nil {
+					logger.Error("could not register mode-aware service",
+						slog.String("namespace", modeService.Service.GetNamespace()),
+						slog.Any("modes", modeService.Modes),
+						slog.Any("error", err),
+					)
+					return fmt.Errorf("could not register mode-aware service: %w", err)
+				}
+				logger.Debug("registered mode-aware service",
+					slog.String("namespace", modeService.Service.GetNamespace()),
+					slog.String("service", modeService.Service.GetServiceDesc().ServiceName),
+					slog.Any("supportedModes", modeService.Modes),
+					slog.String("registeredWithMode", registrationMode),
+				)
+			} else {
+				logger.Debug("skipping mode-aware service (no matching mode)",
+					slog.String("namespace", modeService.Service.GetNamespace()),
+					slog.String("service", modeService.Service.GetServiceDesc().ServiceName),
+					slog.Any("supportedModes", modeService.Modes),
+					slog.Any("configModes", cfg.Mode),
+				)
 			}
 		}
 	}

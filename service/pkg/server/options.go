@@ -9,6 +9,12 @@ import (
 
 type StartOptions func(StartConfig) StartConfig
 
+// ModeAwareService allows specifying which modes a service should run in
+type ModeAwareService struct {
+	Service serviceregistry.IService
+	Modes   []string // Modes this service should run in (e.g., ["kas", "core", "all"])
+}
+
 type StartConfig struct {
 	ConfigKey             string
 	ConfigFile            string
@@ -18,6 +24,7 @@ type StartConfig struct {
 	builtinPolicyOverride string
 	extraCoreServices     []serviceregistry.IService
 	extraServices         []serviceregistry.IService
+	modeAwareServices     []ModeAwareService // New mode-aware services
 	casbinAdapter         persist.Adapter
 	configLoaders         []config.Loader
 
@@ -125,6 +132,27 @@ func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
 		c.configLoaders = append(c.configLoaders, loader)
 		return c
 	}
+}
+
+// WithServicesForModes option adds services that should run in specific modes.
+// This allows fine-grained control over when services are enabled.
+// Example: WithServicesForModes([]ModeAwareService{
+//   {Service: myService, Modes: []string{"kas", "core"}},
+//   {Service: otherService, Modes: []string{"all"}},
+// })
+func WithServicesForModes(services ...ModeAwareService) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.modeAwareServices = append(c.modeAwareServices, services...)
+		return c
+	}
+}
+
+// WithServiceForModes is a convenience function for adding a single service with specific modes
+func WithServiceForModes(service serviceregistry.IService, modes ...string) StartOptions {
+	return WithServicesForModes(ModeAwareService{
+		Service: service,
+		Modes:   modes,
+	})
 }
 
 // WithTrustKeyManagerFactories option provides factories for creating trust key managers.

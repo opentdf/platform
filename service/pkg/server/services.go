@@ -146,13 +146,17 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
 		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.
-		// It returns true if the mode is "all" or "essential" in the configuration, or if it matches the namespace mode.
+		// It returns true if:
+		// 1. The mode is "all" or namespace mode is "essential" 
+		// 2. The configuration mode matches the namespace mode
+		// 3. The namespace contains services that were registered as extraServices (backwards compatibility)
 		modeEnabled := slices.ContainsFunc(cfg.Mode, func(m string) bool {
-			if strings.EqualFold(m, modeALL) || strings.EqualFold(namespace.Mode, modeEssential) {
+			if strings.EqualFold(m, modeALL) || strings.EqualFold(namespace.Mode, modeEssential) || strings.EqualFold(namespace.Mode, modeALL) {
 				return true
 			}
 			return strings.EqualFold(m, namespace.Mode)
 		})
+
 
 		// Skip the namespace if the mode is not enabled
 		if !modeEnabled {

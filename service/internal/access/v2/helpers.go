@@ -247,25 +247,23 @@ func getResourceDecisionableAttributes(
 
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
 		if !ok && allowDirectEntitlements {
-			// If enabled, parse direct entitlements
-			// Try to find the definition by extracting partial FQN for adhoc attributes
-			parentDefinition, err := getDefinition(attrValueFQN, allAttributesByDefinitionFQN)
+			// if enabled, process direct entitlements
+
+			parsedIdentifier, err := identifier.Parse[*identifier.FullyQualifiedAttribute](attrValueFQN)
 			if err != nil {
+				return nil, err
+			}
+
+			// try to find the definition by extracting partial FQN for adhoc attributes
+			parentDefinition, ok := allAttributesByDefinitionFQN[attrValueFQN]
+			if !ok {
 				return nil, fmt.Errorf("resource attribute value FQN not found in memory and no definition found [%s]: %w", attrValueFQN, err)
 			}
 
-			// Extract the value part from the FQN
-			// FQN format: https://<namespace>/attr/<name>/value/<value>
-			lastSlashIdx := strings.LastIndex(attrValueFQN, "/")
-			valueStr := ""
-			if lastSlashIdx != -1 {
-				valueStr = attrValueFQN[lastSlashIdx+1:]
-			}
-
-			// Create synthetic AttributeAndValue for adhoc attribute
+			// create synthetic attribute value for adhoc attribute
 			syntheticValue := &policy.Value{
 				Fqn:   attrValueFQN,
-				Value: valueStr,
+				Value: parsedIdentifier.Value,
 			}
 
 			attributeAndValue = &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{

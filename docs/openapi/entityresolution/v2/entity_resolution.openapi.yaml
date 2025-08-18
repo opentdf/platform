@@ -222,10 +222,7 @@ components:
           items:
             $ref: '#/components/schemas/authorization.v2.Resource'
           title: resources
-          minItems: 1
       title: CreateEntityChainsFromTokensRequest
-      required:
-        - resources
       additionalProperties: false
       description: Create an entity chain for each token (JWT) in the request.
     entityresolution.v2.CreateEntityChainsFromTokensResponse:

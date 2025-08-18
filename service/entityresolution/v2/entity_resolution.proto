@@ -42,11 +42,7 @@ message EntityNotFoundError {
 // Create an entity chain for each token (JWT) in the request.
 message CreateEntityChainsFromTokensRequest {
   repeated entity.Token tokens = 1;
-
-  repeated authorization.v2.Resource resources = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).repeated = {min_items: 1}
-  ];
+  repeated authorization.v2.Resource resources = 2;
 }
 
 message CreateEntityChainsFromTokensResponse {

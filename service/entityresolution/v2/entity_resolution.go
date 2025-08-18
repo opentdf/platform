@@ -70,20 +70,15 @@ func NewRegistration() *serviceregistry.Service[entityresolutionv2connect.Entity
 					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
 					claimsSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
-				case KeycloakMode:
-					// Keycloak ERS with cache support
-					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)
-					kcSVC.Tracer = srp.Tracer
-					return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
 				case MultiStrategyMode:
 					multiSVC, multiHandler := multistrategyv2.RegisterERSV2(srp.Config, srp.Logger)
 					multiSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: multiSVC}, multiHandler
 				default:
-					// Default to claims ERS (works with any IdP)
-					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
-					claimsSVC.Tracer = srp.Tracer
-					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
+					// Default to Keycloak ERS with cache support
+					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)
+					kcSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
 				}
 			},
 		},

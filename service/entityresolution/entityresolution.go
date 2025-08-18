@@ -64,16 +64,16 @@ func NewRegistration() *serviceregistry.Service[entityresolutionconnect.EntityRe
 				}
 
 				switch inputConfig.Mode {
-				case KeycloakMode:
-					// Keycloak ERS with cache support
-					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)
-					kcSVC.Tracer = srp.Tracer
-					return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
-				default:
-					// Default to claims ERS (works with any IdP)
+				case ClaimsMode:
+					// Claims ERS (works with any IdP)
 					claimsSVC, claimsHandler := claims.RegisterClaimsERS(srp.Config, srp.Logger)
 					claimsSVC.Tracer = srp.Tracer
 					return EntityResolution{EntityResolutionServiceHandler: claimsSVC}, claimsHandler
+				default:
+					// Default to Keycloak ERS with cache support
+					kcSVC, kcHandler := keycloak.RegisterKeycloakERS(srp.Config, srp.Logger, ersCache)
+					kcSVC.Tracer = srp.Tracer
+					return EntityResolution{EntityResolutionServiceHandler: kcSVC, Tracer: srp.Tracer}, kcHandler
 				}
 			},
 		},

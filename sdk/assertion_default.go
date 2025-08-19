@@ -33,7 +33,7 @@ const bindingVersion = "1.0"
 // 2. Computes a hash (SHA-256 of canonical JSON)
 // 3. Signs with the provided key algorithm
 // 4. Returns a Binding containing the algorithm, signature, and optional KeyID
-func internalSign(ctx context.Context, a Assertion, key AssertionKey) (Binding, error) {
+func internalSign(_ context.Context, a Assertion, key AssertionKey) (Binding, error) {
 	// Validate the algorithm
 	if err := validateAlgorithm(key.Alg.String()); err != nil {
 		return Binding{}, err
@@ -77,7 +77,7 @@ func internalSign(ctx context.Context, a Assertion, key AssertionKey) (Binding, 
 
 // InternalSignWithAggregateHash performs signing with an aggregate hash.
 // This is used during TDF creation where multiple assertions are combined.
-func internalSignWithAggregateHash(ctx context.Context, a Assertion, key AssertionKey, aggregateHash string, useHex bool) (Binding, error) {
+func internalSignWithAggregateHash(_ context.Context, a Assertion, key AssertionKey, aggregateHash string, useHex bool) (Binding, error) {
 	// Validate the algorithm
 	if err := validateAlgorithm(key.Alg.String()); err != nil {
 		return Binding{}, err
@@ -133,7 +133,7 @@ func internalSignWithAggregateHash(ctx context.Context, a Assertion, key Asserti
 // 2. Recomputes the hash (same as InternalSign)
 // 3. Verifies the signature against the key
 // 4. Returns nil on success; typed error on failure
-func internalVerify(ctx context.Context, a Assertion, key AssertionKey) error {
+func internalVerify(_ context.Context, a Assertion, key AssertionKey) error {
 	// Check for binding
 	if a.Binding.Signature == "" {
 		return ErrAssertionMissingBinding
@@ -149,7 +149,7 @@ func internalVerify(ctx context.Context, a Assertion, key AssertionKey) error {
 		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
 	)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrAssertionInvalidSignature, err)
+		return fmt.Errorf("%w: %w", ErrAssertionInvalidSignature, err)
 	}
 
 	// Extract the hash claim
@@ -182,7 +182,7 @@ func internalVerify(ctx context.Context, a Assertion, key AssertionKey) error {
 
 // InternalVerifyWithContext performs verification with aggregate hash validation.
 // This is used during TDF reading where multiple assertions need aggregate validation.
-func internalVerifyWithContext(ctx context.Context, a Assertion, key AssertionKey, aggregateHash []byte, isLegacyTDF bool) error {
+func internalVerifyWithContext(_ context.Context, a Assertion, key AssertionKey, aggregateHash []byte, isLegacyTDF bool) error {
 	// Check for binding
 	if a.Binding.Signature == "" {
 		return ErrAssertionMissingBinding
@@ -198,7 +198,7 @@ func internalVerifyWithContext(ctx context.Context, a Assertion, key AssertionKe
 		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
 	)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrAssertionInvalidSignature, err)
+		return fmt.Errorf("%w: %w", ErrAssertionInvalidSignature, err)
 	}
 
 	// Extract the hash claim

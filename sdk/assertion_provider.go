@@ -92,36 +92,3 @@ var (
 	// ErrAssertionHashMismatch indicates the computed hash doesn't match the expected value
 	ErrAssertionHashMismatch = &AssertionError{Kind: "hash_mismatch", Message: "hash validation failed"}
 )
-
-// newAssertionError creates a new AssertionError with context
-func newAssertionError(kind string, msg string, opts ...func(*AssertionError)) *AssertionError {
-	e := &AssertionError{
-		Kind:    kind,
-		Message: msg,
-	}
-	for _, opt := range opts {
-		opt(e)
-	}
-	return e
-}
-
-// withAssertionID sets the assertion ID in the error
-func withAssertionID(id string) func(*AssertionError) {
-	return func(e *AssertionError) {
-		e.AssertionID = id
-	}
-}
-
-// withAlgorithm sets the algorithm in the error
-func withAlgorithm(alg string) func(*AssertionError) {
-	return func(e *AssertionError) {
-		e.Algorithm = alg
-	}
-}
-
-// withCause sets the underlying cause in the error
-func withCause(cause error) func(*AssertionError) {
-	return func(e *AssertionError) {
-		e.Cause = cause
-	}
-}

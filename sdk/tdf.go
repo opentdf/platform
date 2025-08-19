@@ -1306,7 +1306,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		if r.config.disableAssertionVerification {
 			// Log warning once for disabled verification
 			if r.config.disableAssertionVerification && len(r.manifest.Assertions) > 0 {
-				slog.Warn("Assertion verification is disabled. TDF assertions will not be validated.")
+				slog.Warn("assertion verification is disabled. TDF assertions will not be validated.")
 				break // Only warn once
 			}
 			continue
@@ -1314,7 +1314,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 
 		// Warn if no verifier is configured
 		if r.assertionVerifier == nil {
-			slog.Warn("No assertion verifier configured. Skipping assertion validation.")
+			slog.Warn("no assertion verifier configured. Skipping assertion validation.")
 			break
 		}
 

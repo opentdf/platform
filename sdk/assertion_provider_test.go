@@ -26,7 +26,7 @@ type signCall struct {
 	key   AssertionKey
 }
 
-func (m *mockAssertionSigner) Sign(ctx context.Context, input SignInput, key AssertionKey) (Binding, error) {
+func (m *mockAssertionSigner) Sign(_ context.Context, input SignInput, key AssertionKey) (Binding, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -62,7 +62,7 @@ type verifyCall struct {
 	key   AssertionKey
 }
 
-func (m *mockAssertionVerifier) Verify(ctx context.Context, input VerifyInput, key AssertionKey) error {
+func (m *mockAssertionVerifier) Verify(_ context.Context, input VerifyInput, key AssertionKey) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -139,7 +139,7 @@ func TestDefaultProviders(t *testing.T) {
 func TestConcurrentSigning(t *testing.T) {
 	mockSigner := &mockAssertionSigner{}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	numGoroutines := 10
 	numSignsPerGoroutine := 5
 
@@ -147,7 +147,7 @@ func TestConcurrentSigning(t *testing.T) {
 	wg.Add(numGoroutines)
 
 	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
+		go func(_ int) {
 			defer wg.Done()
 
 			for j := 0; j < numSignsPerGoroutine; j++ {
@@ -179,7 +179,7 @@ func TestConcurrentSigning(t *testing.T) {
 func TestConcurrentVerification(t *testing.T) {
 	mockVerifier := &mockAssertionVerifier{}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	numGoroutines := 10
 	numVerifiesPerGoroutine := 5
 
@@ -187,7 +187,7 @@ func TestConcurrentVerification(t *testing.T) {
 	wg.Add(numGoroutines)
 
 	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
+		go func(_ int) {
 			defer wg.Done()
 
 			for j := 0; j < numVerifiesPerGoroutine; j++ {
@@ -221,7 +221,7 @@ func TestConcurrentVerification(t *testing.T) {
 
 // Test error conditions
 func TestAssertionErrorConditions(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tests := []struct {
 		name          string
@@ -269,14 +269,14 @@ func TestAssertionErrorConditions(t *testing.T) {
 
 			input := VerifyInput{Assertion: tt.assertion}
 			err := verifier.Verify(ctx, input, key)
-			assert.True(t, errors.Is(err, tt.expectedErr), "Expected error %v, got %v", tt.expectedErr, err)
+			assert.ErrorIs(t, err, tt.expectedErr, "Expected error %v, got %v", tt.expectedErr, err)
 		})
 	}
 }
 
 // Test algorithm validation
 func TestAlgorithmValidation(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer := defaultAssertionSigner{}
 
 	// Test with unsupported algorithm
@@ -292,12 +292,12 @@ func TestAlgorithmValidation(t *testing.T) {
 
 	input := SignInput{Assertion: assertion}
 	_, err := signer.Sign(ctx, input, key)
-	assert.True(t, errors.Is(err, ErrAssertionUnsupportedAlg))
+	assert.ErrorIs(t, err, ErrAssertionUnsupportedAlg)
 }
 
 // Test TDF-specific signing
 func TestTDFSpecificSigning(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer := defaultAssertionSigner{}
 
 	assertion := Assertion{
@@ -347,7 +347,7 @@ func TestTDFSpecificSigning(t *testing.T) {
 
 // Test TDF-specific verification
 func TestTDFSpecificVerification(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer := defaultAssertionSigner{}
 	verifier := defaultAssertionVerifier{}
 
@@ -392,7 +392,7 @@ func TestTDFSpecificVerification(t *testing.T) {
 	}
 
 	err = verifier.Verify(ctx, verifyInput, key)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Verify with wrong aggregate hash should fail
 	verifyInput.AggregateHash = []byte("wrong-aggregate")
@@ -402,7 +402,7 @@ func TestTDFSpecificVerification(t *testing.T) {
 
 // Test interoperability between default signer and custom verifier
 func TestSignerVerifierInterop(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Use default signer
 	signer := defaultAssertionSigner{}
@@ -437,7 +437,7 @@ func TestSignerVerifierInterop(t *testing.T) {
 	customVerifier := &mockAssertionVerifier{shouldErr: false}
 	verifyInput := VerifyInput{Assertion: assertion}
 	err = customVerifier.Verify(ctx, verifyInput, key)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 1, customVerifier.getCallCount())
 }
 
@@ -461,7 +461,7 @@ func TestReaderVerifierOverride(t *testing.T) {
 
 // Test canonicalization invariants - different map orders should produce the same digest
 func TestCanonicalizationInvariants(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer := defaultAssertionSigner{}
 
 	// Test that identical assertions produce identical hashes
@@ -576,7 +576,7 @@ func TestCanonicalizationInvariants(t *testing.T) {
 	assertion1.Binding = binding1
 	verifyInput1 := VerifyInput{Assertion: assertion1}
 	err = verifier.Verify(ctx, verifyInput1, key)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assertion2.Binding = binding2
 	verifyInput2 := VerifyInput{Assertion: assertion2}
@@ -586,7 +586,7 @@ func TestCanonicalizationInvariants(t *testing.T) {
 
 // Test assertion order tampering - swapping assertion order should fail verification
 func TestAssertionOrderTampering(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer := defaultAssertionSigner{}
 	verifier := defaultAssertionVerifier{}
 
@@ -626,7 +626,9 @@ func TestAssertionOrderTampering(t *testing.T) {
 	require.NoError(t, err)
 
 	// Correct order: assertion-001, then assertion-002
-	correctAggregateHash := append(hash1, hash2...)
+	correctAggregateHash := make([]byte, 0, len(hash1)+len(hash2))
+	correctAggregateHash = append(correctAggregateHash, hash1...)
+	correctAggregateHash = append(correctAggregateHash, hash2...)
 
 	// Sign assertions with the correct aggregate hash
 	input1 := SignInput{
@@ -654,10 +656,12 @@ func TestAssertionOrderTampering(t *testing.T) {
 		IsLegacyTDF:   false,
 	}
 	err = verifier.Verify(ctx, verifyInput1, key)
-	assert.NoError(t, err, "Verification with correct aggregate hash should succeed")
+	require.NoError(t, err, "Verification with correct aggregate hash should succeed")
 
 	// Simulate tampered aggregate hash (wrong order: assertion-002, then assertion-001)
-	tamperedAggregateHash := append(hash2, hash1...)
+	tamperedAggregateHash := make([]byte, 0, len(hash2)+len(hash1))
+	tamperedAggregateHash = append(tamperedAggregateHash, hash2...)
+	tamperedAggregateHash = append(tamperedAggregateHash, hash1...)
 
 	// Verify with tampered aggregate hash - should fail
 	verifyInputTampered := VerifyInput{
@@ -666,13 +670,13 @@ func TestAssertionOrderTampering(t *testing.T) {
 		IsLegacyTDF:   false,
 	}
 	err = verifier.Verify(ctx, verifyInputTampered, key)
-	assert.Error(t, err, "Verification with tampered aggregate hash (wrong order) should fail")
+	require.Error(t, err, "Verification with tampered aggregate hash (wrong order) should fail")
 	assert.Contains(t, err.Error(), "aggregate signature mismatch")
 }
 
 // Test algorithm policy - unknown/weak algorithms should return ErrUnsupportedAlg
 func TestAlgorithmPolicy(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer := defaultAssertionSigner{}
 	verifier := defaultAssertionVerifier{}
 
@@ -751,18 +755,18 @@ func TestAlgorithmPolicy(t *testing.T) {
 			binding, err := signer.Sign(ctx, input, key)
 
 			if tt.shouldError {
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, tt.expectedErr), "Expected error %v, got %v", tt.expectedErr, err)
+				require.Error(t, err)
+				require.ErrorIs(t, err, tt.expectedErr, "Expected error %v, got %v", tt.expectedErr, err)
 				assert.Empty(t, binding.Signature)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotEmpty(t, binding.Signature)
 
 				// If signing succeeded, verification should also succeed
 				assertion.Binding = binding
 				verifyInput := VerifyInput{Assertion: assertion}
 				err = verifier.Verify(ctx, verifyInput, key)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			// Test verification with algorithm (for blocked algorithms)
@@ -775,8 +779,8 @@ func TestAlgorithmPolicy(t *testing.T) {
 				}
 				verifyInput := VerifyInput{Assertion: assertion}
 				err = verifier.Verify(ctx, verifyInput, key)
-				assert.Error(t, err)
-				assert.True(t, errors.Is(err, tt.expectedErr), "Verify should also reject unsupported algorithm")
+				require.Error(t, err)
+				assert.ErrorIs(t, err, tt.expectedErr, "Verify should also reject unsupported algorithm")
 			}
 		})
 	}
@@ -784,7 +788,7 @@ func TestAlgorithmPolicy(t *testing.T) {
 
 // Test that binding version is properly set and validated
 func TestBindingVersion(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer := defaultAssertionSigner{}
 
 	assertion := Assertion{
@@ -825,7 +829,7 @@ func TestBindingVersion(t *testing.T) {
 
 // Test legacy TDF hex encoding compatibility
 func TestLegacyTDFHexEncoding(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	signer := defaultAssertionSigner{}
 	verifier := defaultAssertionVerifier{}
 
@@ -876,7 +880,7 @@ func TestLegacyTDFHexEncoding(t *testing.T) {
 		IsLegacyTDF:   true, // Must match signing mode
 	}
 	err = verifier.Verify(ctx, verifyInputLegacy, key)
-	assert.NoError(t, err, "Legacy TDF verification should succeed")
+	require.NoError(t, err, "Legacy TDF verification should succeed")
 
 	// Verify modern TDF (without hex)
 	assertion.Binding = bindingBinary
@@ -886,7 +890,7 @@ func TestLegacyTDFHexEncoding(t *testing.T) {
 		IsLegacyTDF:   false, // Must match signing mode
 	}
 	err = verifier.Verify(ctx, verifyInputModern, key)
-	assert.NoError(t, err, "Modern TDF verification should succeed")
+	require.NoError(t, err, "Modern TDF verification should succeed")
 
 	// Cross-verification should fail (legacy binding with modern verify)
 	assertion.Binding = bindingHex

@@ -1,0 +1,279 @@
+# Multi-Strategy Entity Resolution Service Example Configuration
+# This demonstrates a comprehensive setup with multiple providers and strategies
+
+services:
+  entityresolution:
+    mode: "multi-strategy"
+    
+    # Global failure strategy: how to handle strategy failures
+    # fail-fast: Stop on first strategy failure (default)
+    # continue: Try all matching strategies until one succeeds
+    failure_strategy: "continue"
+    
+    # Define available data providers
+    providers:
+      # JWT Claims Provider - Zero-latency resolution using JWT claims directly
+      jwt_claims:
+        type: claims
+        connection:
+          description: "Direct JWT claims resolution for high performance"
+
+      # SQL Database Provider - Primary user directory
+      user_db:
+        type: sql
+        connection:
+          driver: postgres
+          host: localhost
+          port: 5432
+          database: user_directory
+          username: ers_user
+          password: ers_password
+          ssl_mode: require
+          max_open_connections: 25
+          max_idle_connections: 5
+          connection_max_lifetime: 1h
+          query_timeout: 30s
+          description: "Primary user directory database"
+
+      # LDAP Provider - Corporate directory
+      corporate_ldap:
+        type: ldap
+        connection:
+          host: ldap.company.com
+          port: 636
+          use_tls: true
+          bind_dn: "cn=ers-service,ou=services,dc=company,dc=com"
+          bind_password: "ldap_service_password"
+          description: "Corporate LDAP directory"
+
+    # Define mapping strategies (evaluated in order)
+    # With failure_strategy: "continue", if a strategy fails, the next matching strategy is tried
+    # This enables fallback patterns: JWT -> DB -> Email -> Environment
+    mapping_strategies:
+      # Strategy 1: High-performance JWT claims for internal applications
+      # When audience contains "internal", use JWT claims directly for zero-latency
+      - name: internal_jwt_claims
+        provider: jwt_claims
+        entity_type: subject           # This resolves subject entities (users/clients)
+        conditions:
+          jwt_claims:
+            - claim: aud
+              operator: contains
+              values: ["internal", "opentdf-internal"]
+        input_mapping: []
+        output_mapping:
+          - source_claim: sub
+            claim_name: user_id
+          - source_claim: email
+            claim_name: email_address
+          - source_claim: name
+            claim_name: display_name
+          - source_claim: groups
+            claim_name: user_groups
+            transformation: array
+
+      # Strategy 2: Database lookup for external applications with user_id
+      # When audience is external and we have a user_id, query the database
+      - name: external_user_db_lookup
+        provider: user_db
+        entity_type: subject           # This also resolves subject entities
+        conditions:
+          jwt_claims:
+            - claim: aud
+              operator: contains
+              values: ["external", "partner", "customer"]
+            - claim: user_id
+              operator: exists
+        query: |
+          SELECT 
+            u.user_id,
+            u.email,
+            u.first_name || ' ' || u.last_name as display_name,
+            u.department,
+            u.role,
+            array_agg(g.group_name ORDER BY g.group_name) as user_groups,
+            u.created_at,
+            u.last_login
+          FROM users u
+          LEFT JOIN user_groups ug ON u.user_id = ug.user_id
+          LEFT JOIN groups g ON ug.group_id = g.group_id
+          WHERE u.user_id = $1 AND u.active = true
+          GROUP BY u.user_id, u.email, u.first_name, u.last_name, u.department, u.role, u.created_at, u.last_login
+        input_mapping:
+          - jwt_claim: user_id
+            parameter: user_id
+            required: true
+        output_mapping:
+          - source_column: user_id
+            claim_name: user_id
+          - source_column: email
+            claim_name: email_address
+          - source_column: display_name
+            claim_name: display_name
+          - source_column: department
+            claim_name: department
+          - source_column: role
+            claim_name: role
+          - source_column: user_groups
+            claim_name: user_groups
+            transformation: array
+          - source_column: created_at
+            claim_name: account_created
+          - source_column: last_login
+            claim_name: last_login
+
+      # Strategy 3: LDAP lookup for corporate SSO
+      - name: corporate_ldap_lookup
+        provider: corporate_ldap
+        entity_type: subject
+        conditions:
+          jwt_claims:
+            - claim: aud
+              operator: equals
+              values: ["corporate", "intranet"]
+            - claim: employee_id
+              operator: exists
+        ldap_search:
+          base_dn: "ou=employees,dc=company,dc=com"
+          filter: "(&(objectClass=person)(employeeID={employee_id}))"
+          scope: subtree
+          attributes:
+            - cn
+            - mail
+            - employeeID
+            - department
+            - title
+            - memberOf
+        input_mapping:
+          - jwt_claim: employee_id
+            parameter: employee_id
+            required: true
+        output_mapping:
+          - source_attribute: employeeID
+            claim_name: employee_id
+          - source_attribute: mail
+            claim_name: email_address
+          - source_attribute: cn
+            claim_name: display_name
+          - source_attribute: memberOf
+            claim_name: ldap_groups
+            transformation: ldap_dn_to_cn_array
+
+      # Strategy 4: Fallback email lookup in database
+      # When we have an email but no specific user_id, try email lookup
+      - name: fallback_email_lookup
+        provider: user_db
+        entity_type: subject           # Final attempt at subject resolution
+        conditions:
+          jwt_claims:
+            - claim: email
+              operator: exists
+        query: |
+          SELECT 
+            u.user_id,
+            u.email,
+            u.first_name || ' ' || u.last_name as display_name,
+            u.department,
+            u.role,
+            'email_fallback' as resolution_method
+          FROM users u
+          WHERE LOWER(u.email) = LOWER($1) AND u.active = true
+          LIMIT 1
+        input_mapping:
+          - jwt_claim: email
+            parameter: email
+            required: true
+        output_mapping:
+          - source_column: user_id
+            claim_name: user_id
+          - source_column: email
+            claim_name: email_address
+          - source_column: display_name
+            claim_name: display_name
+          - source_column: department
+            claim_name: department
+          - source_column: role
+            claim_name: role
+          - source_column: resolution_method
+            claim_name: resolution_method
+
+      # Strategy 5: Environment data lookup for environmental context
+      # Example: Resolve network location, device info, or regulatory context
+      - name: environment_context_lookup
+        provider: user_db
+        entity_type: environment       # This resolves environment entities
+        conditions:
+          jwt_claims:
+            - claim: client_ip
+              operator: exists
+            - claim: device_id
+              operator: exists
+        query: |
+          SELECT 
+            loc.region,
+            loc.country_code,
+            loc.regulatory_zone,
+            dev.device_type,
+            dev.security_level,
+            dev.last_compliance_check
+          FROM ip_locations loc
+          JOIN device_registry dev ON dev.device_id = $2
+          WHERE loc.ip_range >> INET($1)
+          LIMIT 1
+        input_mapping:
+          - jwt_claim: client_ip
+            parameter: client_ip
+            required: true
+          - jwt_claim: device_id
+            parameter: device_id
+            required: true
+        output_mapping:
+          - source_column: region
+            claim_name: geographic_region
+          - source_column: country_code
+            claim_name: country_code
+          - source_column: regulatory_zone
+            claim_name: regulatory_zone
+          - source_column: device_type
+            claim_name: device_type
+          - source_column: security_level
+            claim_name: device_security_level
+          - source_column: last_compliance_check
+            claim_name: device_compliance_date
+
+    # Health check configuration
+    health_check:
+      enabled: true
+      interval: 30s
+      provider_checks:
+        - provider: user_db
+          query: "SELECT 1"
+        - provider: corporate_ldap
+          bind_test: true
+
+# Example usage patterns with global failure_strategy: "continue":
+#
+# 1. Internal application with JWT claims:
+#    - JWT contains: {"aud": ["internal"], "sub": "user123", "email": "user@company.com"}
+#    - Uses: internal_jwt_claims strategy
+#    - Result: Zero-latency resolution from JWT claims
+#
+# 2. External partner application:
+#    - JWT contains: {"aud": ["partner"], "user_id": "ext_user_456"}
+#    - Uses: external_user_db_lookup strategy
+#    - If DB fails: Tries fallback_email_lookup strategy (global continue policy)
+#    - Result: Database lookup with full user profile, or email fallback
+#
+# 3. Fallback chain example:
+#    - JWT contains: {"email": "unknown@partner.com"}
+#    - No specific audience, so tries: fallback_email_lookup strategy
+#    - If email lookup fails: Would try environment_context_lookup if client_ip present
+#    - Result: Email-based lookup or environment context as last resort
+#
+# 4. Global failure behavior:
+#    - With "continue": All matching strategies are tried until one succeeds
+#    - With "fail-fast": First strategy failure immediately returns error
+#
+# 5. No matching strategy:
+#    - JWT contains: {"aud": ["unknown"]}
+#    - Result: Error - no matching strategy found (regardless of failure_strategy)

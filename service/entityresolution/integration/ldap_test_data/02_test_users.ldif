@@ -1,0 +1,152 @@
+# Test users for Entity Resolution Service LDAP provider
+# Consistent with contract test framework user data
+
+# Alice Johnson - Frontend Engineering
+dn: uid=alice,ou=users,dc=opentdf,dc=test
+objectClass: inetOrgPerson
+objectClass: person
+objectClass: organizationalPerson
+uid: alice
+cn: Alice Johnson
+sn: Johnson
+givenName: Alice
+displayName: Alice Johnson
+mail: alice@opentdf.test
+userPassword: alice_password
+employeeNumber: ENG001
+departmentNumber: engineering
+title: Software Engineer
+description: Frontend developer specializing in React and TypeScript
+telephoneNumber: +1-555-0101
+mobile: +1-555-0102
+
+# Bob Smith - Marketing
+dn: uid=bob,ou=users,dc=opentdf,dc=test
+objectClass: inetOrgPerson
+objectClass: person
+objectClass: organizationalPerson
+uid: bob
+cn: Bob Smith
+sn: Smith
+givenName: Bob
+displayName: Bob Smith
+mail: bob@opentdf.test
+userPassword: bob_password
+employeeNumber: MKT001
+departmentNumber: marketing
+title: Product Manager
+description: Product manager focusing on developer tools and APIs
+telephoneNumber: +1-555-0201
+mobile: +1-555-0202
+
+# Charlie Brown - Security
+dn: uid=charlie,ou=users,dc=opentdf,dc=test
+objectClass: inetOrgPerson
+objectClass: person
+objectClass: organizationalPerson
+uid: charlie
+cn: Charlie Brown
+sn: Brown
+givenName: Charlie
+displayName: Charlie Brown
+mail: charlie@opentdf.test
+userPassword: charlie_password
+employeeNumber: SEC001
+departmentNumber: security
+title: Security Analyst
+description: Security analyst specializing in access control and policy enforcement
+telephoneNumber: +1-555-0301
+mobile: +1-555-0302
+
+# Diana Williams - Backend Engineering
+dn: uid=diana,ou=users,dc=opentdf,dc=test
+objectClass: inetOrgPerson
+objectClass: person
+objectClass: organizationalPerson
+uid: diana
+cn: Diana Williams
+sn: Williams
+givenName: Diana
+displayName: Diana Williams
+mail: diana@opentdf.test
+userPassword: diana_password
+employeeNumber: ENG002
+departmentNumber: engineering
+title: Senior Developer
+description: Backend developer specializing in Go and distributed systems
+telephoneNumber: +1-555-0401
+mobile: +1-555-0402
+
+# Eve Davis - DevOps
+dn: uid=eve,ou=users,dc=opentdf,dc=test
+objectClass: inetOrgPerson
+objectClass: person
+objectClass: organizationalPerson
+uid: eve
+cn: Eve Davis
+sn: Davis
+givenName: Eve
+displayName: Eve Davis
+mail: eve@opentdf.test
+userPassword: eve_password
+employeeNumber: OPS001
+departmentNumber: operations
+title: DevOps Engineer
+description: DevOps engineer managing Kubernetes and CI/CD pipelines
+telephoneNumber: +1-555-0501
+mobile: +1-555-0502
+
+# Grace Wilson - HR
+dn: uid=grace,ou=users,dc=opentdf,dc=test
+objectClass: inetOrgPerson
+objectClass: person
+objectClass: organizationalPerson
+uid: grace
+cn: Grace Wilson
+sn: Wilson
+givenName: Grace
+displayName: Grace Wilson
+mail: grace@opentdf.test
+userPassword: grace_password
+employeeNumber: HR001
+departmentNumber: hr
+title: HR Specialist
+description: Human resources specialist managing employee relations
+telephoneNumber: +1-555-0601
+mobile: +1-555-0602
+
+# Henry Taylor - Finance
+dn: uid=henry,ou=users,dc=opentdf,dc=test
+objectClass: inetOrgPerson
+objectClass: person
+objectClass: organizationalPerson
+uid: henry
+cn: Henry Taylor
+sn: Taylor
+givenName: Henry
+displayName: Henry Taylor
+mail: henry@opentdf.test
+userPassword: henry_password
+employeeNumber: FIN001
+departmentNumber: finance
+title: Financial Analyst
+description: Financial analyst managing budget and cost analysis
+telephoneNumber: +1-555-0701
+mobile: +1-555-0702
+
+# Test service account
+dn: uid=test-service,ou=users,dc=opentdf,dc=test
+objectClass: inetOrgPerson
+objectClass: person
+objectClass: organizationalPerson
+uid: test-service
+cn: Test Service Account
+sn: Service
+givenName: Test
+displayName: Test Service Account
+mail: test-service@opentdf.test
+userPassword: service_password
+employeeNumber: SVC001
+departmentNumber: engineering
+title: Service Account
+description: Automated service account for testing

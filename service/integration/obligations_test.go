@@ -481,6 +481,7 @@ func (s *ObligationsSuite) assertObligationBasics(obl *policy.Obligation, name, 
 	s.Equal(namespaceID, obl.GetNamespace().GetId())
 	s.Equal(namespaceName, obl.GetNamespace().GetName())
 	s.Equal(namespaceFQN, obl.GetNamespace().GetFqn())
+	// Assert that timestamps in metadata are recent
 	threshold := int64(5)
 	now := time.Now().Unix()
 	diff := now - obl.GetMetadata().GetUpdatedAt().GetSeconds()

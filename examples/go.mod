@@ -6,7 +6,7 @@ toolchain go1.24.6
 
 require (
 	github.com/opentdf/platform/lib/ocrypto v0.2.0
-	github.com/opentdf/platform/protocol/go v0.5.0
+	github.com/opentdf/platform/protocol/go v0.7.0
 	github.com/opentdf/platform/sdk v0.4.7
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0

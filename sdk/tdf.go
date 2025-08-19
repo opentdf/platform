@@ -76,6 +76,7 @@ type Reader struct {
 	payloadKey          []byte
 	kasSessionKey       ocrypto.KeyPair
 	config              TDFReaderConfig
+	assertionVerifier   AssertionVerifier
 }
 
 type TDFObject struct {
@@ -324,16 +325,6 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, fmt.Errorf("error decoding hex string: %w", err)
 		}
 
-		var completeHashBuilder strings.Builder
-		completeHashBuilder.WriteString(aggregateHash)
-		if tdfConfig.useHex {
-			completeHashBuilder.Write(hashOfAssertionAsHex)
-		} else {
-			completeHashBuilder.Write(hashOfAssertion)
-		}
-
-		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
-
 		assertionSigningKey := AssertionKey{}
 
 		// Set default to HS256 and payload key
@@ -344,9 +335,19 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			assertionSigningKey = assertion.SigningKey
 		}
 
-		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
-			return nil, fmt.Errorf("failed to sign assertion: %w", err)
+		// Use the assertion signer provider with unified interface
+		signInput := SignInput{
+			Assertion:     tmpAssertion,
+			AggregateHash: []byte(aggregateHash),
+			UseHex:        tdfConfig.useHex,
 		}
+
+		binding, err := s.assertionSigner.Sign(ctx, signInput, assertionSigningKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign assertion [%s]: %w", assertion.ID, err)
+		}
+
+		tmpAssertion.Binding = binding
 
 		signedAssertion = append(signedAssertion, tmpAssertion)
 	}
@@ -821,15 +822,23 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		payloadSize += seg.Size
 	}
 
+	// Determine which assertion verifier to use
+	assertionVerifier := config.assertionVerifier
+	if assertionVerifier == nil {
+		// Use SDK-level verifier as default
+		assertionVerifier = s.assertionVerifier
+	}
+
 	return &Reader{
-		tokenSource:    s.tokenSource,
-		httpClient:     s.conn.Client,
-		connectOptions: s.conn.Options,
-		tdfReader:      tdfReader,
-		manifest:       *manifestObj,
-		kasSessionKey:  config.kasSessionKey,
-		config:         *config,
-		payloadSize:    payloadSize,
+		tokenSource:       s.tokenSource,
+		httpClient:        s.conn.Client,
+		connectOptions:    s.conn.Options,
+		tdfReader:         tdfReader,
+		manifest:          *manifestObj,
+		kasSessionKey:     config.kasSessionKey,
+		config:            *config,
+		payloadSize:       payloadSize,
+		assertionVerifier: assertionVerifier,
 	}, nil
 }
 
@@ -1191,7 +1200,7 @@ func getIdx(kaoID string) int {
 	return idx
 }
 
-func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
+func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	knownSplits := make(map[string]bool)
@@ -1295,7 +1304,18 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 	for _, assertion := range r.manifest.Assertions {
 		// Skip assertion verification if disabled
 		if r.config.disableAssertionVerification {
+			// Log warning once for disabled verification
+			if r.config.disableAssertionVerification && len(r.manifest.Assertions) > 0 {
+				slog.Warn("Assertion verification is disabled. TDF assertions will not be validated.")
+				break // Only warn once
+			}
 			continue
+		}
+
+		// Warn if no verifier is configured
+		if r.assertionVerifier == nil {
+			slog.Warn("No assertion verifier configured. Skipping assertion validation.")
+			break
 		}
 
 		assertionKey := AssertionKey{}
@@ -1315,43 +1335,21 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 			}
 		}
 
-		assertionHash, assertionSig, err := assertion.Verify(assertionKey)
+		// Use the assertion verifier provider with unified interface
+		isLegacyTDF := r.manifest.TDFVersion == ""
+
+		verifyInput := VerifyInput{
+			Assertion:     assertion,
+			AggregateHash: aggregateHash.Bytes(),
+			IsLegacyTDF:   isLegacyTDF,
+		}
+
+		err := r.assertionVerifier.Verify(ctx, verifyInput, assertionKey)
 		if err != nil {
-			if errors.Is(err, errAssertionVerifyKeyFailure) {
+			if errors.Is(err, ErrAssertionInvalidSignature) || errors.Is(err, ErrAssertionHashMismatch) {
 				return fmt.Errorf("assertion verification failed: %w", err)
 			}
 			return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-		}
-
-		// Get the hash of the assertion
-		hashOfAssertionAsHex, err := assertion.GetHash()
-		if err != nil {
-			return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-		}
-
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-		if err != nil {
-			return fmt.Errorf("error decoding hex string: %w", err)
-		}
-
-		isLegacyTDF := r.manifest.TDFVersion == ""
-		if isLegacyTDF {
-			hashOfAssertion = hashOfAssertionAsHex
-		}
-
-		var completeHashBuilder bytes.Buffer
-		completeHashBuilder.Write(aggregateHash.Bytes())
-		completeHashBuilder.Write(hashOfAssertion)
-
-		base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
-
-		if string(hashOfAssertionAsHex) != assertionHash {
-			return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: assertion.ID})
-		}
-
-		if assertionSig != string(base64Hash) {
-			return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertion.ID})
 		}
 	}
 

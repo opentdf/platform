@@ -246,10 +246,16 @@ func internalVerifyWithContext(_ context.Context, a Assertion, key AssertionKey,
 	expectedSig := ocrypto.Base64Encode(completeHash.Bytes())
 	if storedSig != string(expectedSig) {
 		// Try alternate approach for cross-SDK compatibility
-		// Some Java SDKs may use hex encoding even for modern TDFs
+		// Some Java SDKs may use hex encoding even for modern TDFs, or vice versa
 		var altCompleteHash bytes.Buffer
 		altCompleteHash.Write(aggregateHash)
-		altCompleteHash.Write([]byte(computedHashHex))
+		if isLegacyTDF {
+			// If detected as legacy but signature doesn't match, try binary encoding
+			altCompleteHash.Write(computedHashBytes)
+		} else {
+			// If detected as modern but signature doesn't match, try hex encoding
+			altCompleteHash.Write([]byte(computedHashHex))
+		}
 
 		altExpectedSig := ocrypto.Base64Encode(altCompleteHash.Bytes())
 		if storedSig != string(altExpectedSig) {

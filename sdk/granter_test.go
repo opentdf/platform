@@ -26,9 +26,6 @@ const (
 	kasUs               = "https://kas.us/"
 	kasUsHCS            = "https://hcs.kas.us/"
 	kasUsSA             = "https://si.kas.us/"
-	authority           = "https://virtru.com/"
-	otherAuth           = "https://other.com/"
-	authWithGrants      = "https://hasgrants.com/"
 	specifiedKas        = "https://attr.kas.com/"
 	evenMoreSpecificKas = "https://value.kas.com/"
 	lessSpecificKas     = "https://namespace.kas.com/"
@@ -41,7 +38,6 @@ var (
 	REL, _ = NewAttributeNameFQN("https://virtru.com/attr/Releasable%20To")
 
 	clsA, _ = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Allowed")
-	// clsC, _  = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Confidential")
 	clsS, _  = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Secret")
 	clsTS, _ = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Top%20Secret")
 
@@ -49,7 +45,6 @@ var (
 	n2kInt, _ = NewAttributeValueFQN("https://virtru.com/attr/Need%20to%20Know/value/INT")
 	n2kSI, _  = NewAttributeValueFQN("https://virtru.com/attr/Need%20to%20Know/value/SI")
 
-	// rel25eye, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/FVEY")
 	rel2aus, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/AUS")
 	rel2can, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/CAN")
 	rel2gbr, _ = NewAttributeValueFQN("https://virtru.com/attr/Releasable%20To/value/GBR")

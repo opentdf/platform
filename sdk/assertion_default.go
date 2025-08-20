@@ -245,7 +245,22 @@ func internalVerifyWithContext(_ context.Context, a Assertion, key AssertionKey,
 
 	expectedSig := ocrypto.Base64Encode(completeHash.Bytes())
 	if storedSig != string(expectedSig) {
-		return fmt.Errorf("%w: aggregate signature mismatch", ErrAssertionInvalidSignature)
+		// Try alternate approach for cross-SDK compatibility
+		// Some Java SDKs may use hex encoding even for modern TDFs, or vice versa
+		var altCompleteHash bytes.Buffer
+		altCompleteHash.Write(aggregateHash)
+		if isLegacyTDF {
+			// If detected as legacy but signature doesn't match, try binary encoding
+			altCompleteHash.Write(computedHashBytes)
+		} else {
+			// If detected as modern but signature doesn't match, try hex encoding
+			altCompleteHash.Write([]byte(computedHashHex))
+		}
+
+		altExpectedSig := ocrypto.Base64Encode(altCompleteHash.Bytes())
+		if storedSig != string(altExpectedSig) {
+			return fmt.Errorf("%w: aggregate signature mismatch (tried both binary and hex formats)", ErrAssertionInvalidSignature)
+		}
 	}
 
 	return nil

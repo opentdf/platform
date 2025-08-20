@@ -53,20 +53,12 @@ func Start(f ...StartOptions) error {
 
 	loaders := make([]config.Loader, len(loaderOrder))
 
-	defaultKVs, err := config.GetDefaultKVs()
-	if err != nil {
-		return err
-	}
-
 	for idx, loaderName := range loaderOrder {
 		var loader config.Loader
+		var err error
 		switch loaderName {
 		case "environment-value":
-			allowedEnvOverrides := make([]string, len(defaultKVs))
-			for defaultKeys := range defaultKVs {
-				allowedEnvOverrides = append(allowedEnvOverrides, defaultKeys)
-			}
-			loader, err = config.NewEnvironmentValueLoader(startConfig.ConfigKey, allowedEnvOverrides)
+			loader, err = config.NewEnvironmentValueLoader(startConfig.ConfigKey, nil)
 			if err != nil {
 				return err
 			}

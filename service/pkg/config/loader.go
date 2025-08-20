@@ -6,7 +6,9 @@ import "context"
 type Loader interface {
 	// Get fetches a particular config value by dot-delimited key
 	Get(key string) (any, error)
-	// Load is called to load the configuration from its source before being used
+	// GetConfigKeys returns all the top-level configuration keys that the loader can provide
+	GetConfigKeys() ([]string, error)
+	// Load is called to load/refresh the configuration from its source
 	Load(mostRecentConfig Config) error
 	// Watch starts watching for configuration changes and invokes an onChange callback
 	Watch(ctx context.Context, cfg *Config, onChange func(context.Context) error) error

@@ -47,6 +47,11 @@ func (l *ConfigFileLoader) Get(key string) (any, error) {
 	return l.viper.Get(key), nil
 }
 
+// GetConfigKeys returns all the configuration keys found in the config file.
+func (l *ConfigFileLoader) GetConfigKeys() ([]string, error) {
+	return l.viper.AllKeys(), nil
+}
+
 // Load loads the configuration into the provided struct
 func (l *ConfigFileLoader) Load(_ Config) error {
 	// Read the config file

@@ -2,13 +2,11 @@ package config
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 
-	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
@@ -182,11 +180,6 @@ func (c *Config) Reload(ctx context.Context) error {
 	c.reloadMux.Lock()
 	defer c.reloadMux.Unlock()
 
-	defaultKVs, err := GetDefaultKVs()
-	if err != nil {
-		return err
-	}
-
 	// This loop handles dependencies between loaders. It continues to iterate
 	// until a full pass over all loaders adds no new configuration values.
 	// This ensures that a loader can use configuration provided by another
@@ -197,32 +190,35 @@ func (c *Config) Reload(ctx context.Context) error {
 		assigned = make(map[string]struct{})
 		orderedViper := viper.NewWithOptions(viper.WithLogger(slog.Default()))
 
-		// Set defaults on every iteration.
-		for defaultConfigKey, defaultConfigValue := range defaultKVs {
-			orderedViper.SetDefault(defaultConfigKey, defaultConfigValue)
-		}
-
 		// Loop through loaders in their order of priority.
 		for _, loader := range c.loaders {
-			// The Load call allows the loader to refresh its internal state.
-			// It uses the config `c` from the *previous* iteration to configure itself.
+			// The Load call allows the loader to refresh its internal state (e.g., re-read file, re-query DB).
+			// It uses the config `c` from the *previous* iteration to configure itself if needed.
 			if err := loader.Load(*c); err != nil {
 				return fmt.Errorf("loader %s failed to load: %w", loader.Name(), err)
 			}
+
+			// Get all keys this loader knows about.
+			keys, err := loader.GetConfigKeys()
+			if err != nil {
+				slog.WarnContext(ctx, "loader failed to get config keys", "loader", loader.Name(), "error", err)
+				continue
+			}
+
 			// Merge values from the current loader into Viper.
-			for defaultConfigKey := range defaultKVs {
+			for _, key := range keys {
 				// If a higher-priority loader already set this key, skip.
-				if _, assignedAlready := assigned[defaultConfigKey]; assignedAlready {
+				if _, assignedAlready := assigned[key]; assignedAlready {
 					continue
 				}
-				loaderValue, err := loader.Get(defaultConfigKey)
+				loaderValue, err := loader.Get(key)
 				if err != nil {
-					slog.DebugContext(ctx, "loader.Get failed, will try again", "loader", loader.Name(), "key", defaultConfigKey, "error", err)
+					slog.DebugContext(ctx, "loader.Get failed for a reported key", "loader", loader.Name(), "key", key, "error", err)
 					continue
 				}
 				if loaderValue != nil {
-					orderedViper.Set(defaultConfigKey, loaderValue)
-					assigned[defaultConfigKey] = struct{}{}
+					orderedViper.Set(key, loaderValue)
+					assigned[key] = struct{}{}
 				}
 			}
 		}
@@ -272,38 +268,4 @@ func LoadConfig(ctx context.Context, loaders []Loader) (*Config, error) {
 	}
 
 	return config, nil
-}
-
-func gatherDefaultKVsInternal(data map[string]any, prefix string, defaultKVs *map[string]any) {
-	for key, value := range data {
-		fullKey := key
-		if prefix != "" {
-			fullKey = prefix + "." + key
-		}
-
-		if nestedMap, ok := value.(map[string]any); ok {
-			// Only add nested keys.
-			gatherDefaultKVsInternal(nestedMap, fullKey, defaultKVs)
-		} else {
-			(*defaultKVs)[fullKey] = value
-		}
-	}
-}
-
-// GetDefaultKVs flattens config to a map of dotted key paths pointing to default config values.
-func GetDefaultKVs() (map[string]any, error) {
-	// Create default config
-	config := &Config{}
-	if err := defaults.Set(config); err != nil {
-		return nil, errors.Join(err, ErrSettingConfig)
-	}
-	defaultConfigKVMapBytes, err := json.Marshal(config)
-	if err != nil {
-		return nil, err
-	}
-	var defaultConfigMap map[string]interface{}
-	err = json.Unmarshal(defaultConfigKVMapBytes, &defaultConfigMap)
-	defaultKVs := map[string]any{}
-	gatherDefaultKVsInternal(defaultConfigMap, "", &defaultKVs)
-	return defaultKVs, nil
 }

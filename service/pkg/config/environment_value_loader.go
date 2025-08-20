@@ -54,6 +54,11 @@ func (l *EnvironmentValueLoader) Get(key string) (any, error) {
 	return l.viper.Get(key), nil
 }
 
+// GetConfigKeys returns all the configuration keys found in the environment variables.
+func (l *EnvironmentValueLoader) GetConfigKeys() ([]string, error) {
+	return l.viper.AllKeys(), nil
+}
+
 // Load loads the configuration into the provided struct
 func (l *EnvironmentValueLoader) Load(_ Config) error {
 	// For environment variables, Viper's `AutomaticEnv` handles this, so no explicit load is needed here.

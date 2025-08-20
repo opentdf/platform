@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
+	"sync"
 
 	"github.com/creasty/defaults"
 	"github.com/go-playground/validator/v10"
@@ -55,6 +57,8 @@ type Config struct {
 	onConfigChangeHooks []ChangeHook
 	// loaders is a list of configuration loaders.
 	loaders []Loader
+	// reloadMux ensures that the Reload function is thread-safe.
+	reloadMux sync.Mutex
 }
 
 // SDKConfig represents the configuration for the SDK.
@@ -119,8 +123,23 @@ func (c *Config) Watch(ctx context.Context) error {
 	if len(c.loaders) == 0 {
 		return nil
 	}
+
 	for _, loader := range c.loaders {
-		if err := loader.Watch(ctx, c, c.OnChange); err != nil {
+		// onChangeCallback is the function that will be called by loaders when a change is detected.
+		// It orchestrates the reloading of the entire configuration and then triggers the registered hooks.
+		loaderName := loader.Name()
+		onChangeCallback := func(ctx context.Context) error {
+			slog.InfoContext(ctx, "Configuration change detected, reloading...", slog.String("source", loaderName))
+			if err := c.Reload(ctx); err != nil {
+				slog.ErrorContext(ctx, "failed to reload configuration", slog.Any("error", err))
+				return err
+			}
+			slog.InfoContext(ctx, "Configuration reloaded successfully")
+
+			// Now call the user-provided hooks with the new configuration.
+			return c.OnChange(ctx)
+		}
+		if err := loader.Watch(ctx, c, onChangeCallback); err != nil {
 			return err
 		}
 	}
@@ -142,14 +161,87 @@ func (c *Config) Close(ctx context.Context) error {
 }
 
 // OnChange invokes all registered onConfigChangeHooks after a configuration change.
-func (c *Config) OnChange(_ context.Context) error {
-	if len(c.loaders) == 0 {
+func (c *Config) OnChange(ctx context.Context) error {
+	if len(c.onConfigChangeHooks) == 0 {
 		return nil
 	}
+	slog.DebugContext(ctx, "executing configuration change hooks")
 	for _, hook := range c.onConfigChangeHooks {
 		if err := hook(c.Services); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// Reload re-reads and merges configuration from all registered loaders.
+// It is thread-safe and handles dependencies between loaders by iterating
+// until the configuration stabilizes.
+func (c *Config) Reload(ctx context.Context) error {
+	// Lock to ensure only one reload operation happens at a time.
+	c.reloadMux.Lock()
+	defer c.reloadMux.Unlock()
+
+	defaultKVs, err := GetDefaultKVs()
+	if err != nil {
+		return err
+	}
+
+	// This loop handles dependencies between loaders. It continues to iterate
+	// until a full pass over all loaders adds no new configuration values.
+	// This ensures that a loader can use configuration provided by another
+	// loader that appears later in the priority list.
+	var assigned map[string]struct{}
+	for {
+		lastAssignedCount := len(assigned)
+		assigned = make(map[string]struct{})
+		orderedViper := viper.NewWithOptions(viper.WithLogger(slog.Default()))
+
+		// Set defaults on every iteration.
+		for defaultConfigKey, defaultConfigValue := range defaultKVs {
+			orderedViper.SetDefault(defaultConfigKey, defaultConfigValue)
+		}
+
+		// Loop through loaders in their order of priority.
+		for _, loader := range c.loaders {
+			// The Load call allows the loader to refresh its internal state.
+			// It uses the config `c` from the *previous* iteration to configure itself.
+			if err := loader.Load(*c); err != nil {
+				return fmt.Errorf("loader %s failed to load: %w", loader.Name(), err)
+			}
+			// Merge values from the current loader into Viper.
+			for defaultConfigKey := range defaultKVs {
+				// If a higher-priority loader already set this key, skip.
+				if _, assignedAlready := assigned[defaultConfigKey]; assignedAlready {
+					continue
+				}
+				loaderValue, err := loader.Get(defaultConfigKey)
+				if err != nil {
+					slog.DebugContext(ctx, "loader.Get failed, will try again", "loader", loader.Name(), "key", defaultConfigKey, "error", err)
+					continue
+				}
+				if loaderValue != nil {
+					orderedViper.Set(defaultConfigKey, loaderValue)
+					assigned[defaultConfigKey] = struct{}{}
+				}
+			}
+		}
+
+		// Unmarshal the merged configuration into the main config struct `c`
+		// so it's available for the next iteration of the dependency loop.
+		if err := orderedViper.Unmarshal(c); err != nil {
+			return errors.Join(err, ErrUnmarshallingConfig)
+		}
+
+		// If no new keys were assigned in this pass, the configuration has stabilized.
+		if len(assigned) == lastAssignedCount {
+			break
+		}
+	}
+
+	// Final validation after the configuration has converged.
+	if err := validator.New().Struct(c); err != nil {
+		return errors.Join(err, ErrUnmarshallingConfig)
 	}
 	return nil
 }
@@ -170,56 +262,15 @@ func (c SDKConfig) LogValue() slog.Value {
 }
 
 // LoadConfig loads configuration using the provided loader or creates a default Viper loader
-func LoadConfig(_ context.Context, loaders []Loader) (*Config, error) {
-	defaultKVs, err := GetDefaultKVs()
-	if err != nil {
+func LoadConfig(ctx context.Context, loaders []Loader) (*Config, error) {
+	config := &Config{
+		loaders: loaders,
+	}
+
+	if err := config.Reload(ctx); err != nil {
 		return nil, err
 	}
 
-	orderedViper := viper.NewWithOptions(viper.WithLogger(slog.Default()))
-	for defaultConfigKey, defaultConfigValue := range defaultKVs {
-		orderedViper.SetDefault(defaultConfigKey, defaultConfigValue)
-	}
-	assigned := make(map[string]struct{})
-	for _, loader := range loaders {
-		mostRecentConfig := &Config{}
-		err = orderedViper.Unmarshal(mostRecentConfig)
-		if err != nil {
-			return nil, errors.Join(err, ErrUnmarshallingConfig)
-		}
-		err = validator.New().Struct(mostRecentConfig)
-		if err != nil {
-			return nil, errors.Join(err, ErrUnmarshallingConfig)
-		}
-
-		err = loader.Load(*mostRecentConfig)
-		if err != nil {
-			return nil, err
-		}
-		for defaultConfigKey, _ := range defaultKVs {
-			if _, assignedAlready := assigned[defaultConfigKey]; assignedAlready {
-				continue
-			}
-			loaderValue, err := loader.Get(defaultConfigKey)
-			if err != nil {
-				return nil, err
-			}
-			if loaderValue != nil {
-				orderedViper.Set(defaultConfigKey, loaderValue)
-				assigned[defaultConfigKey] = struct{}{}
-			}
-		}
-	}
-
-	config := &Config{}
-	err = orderedViper.Unmarshal(config)
-	if err != nil {
-		return nil, errors.Join(err, ErrUnmarshallingConfig)
-	}
-	err = validator.New().Struct(config)
-	if err != nil {
-		return nil, errors.Join(err, ErrUnmarshallingConfig)
-	}
 	return config, nil
 }
 

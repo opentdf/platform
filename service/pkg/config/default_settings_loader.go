@@ -40,7 +40,7 @@ func (l *DefaultSettingsLoader) Get(key string) (any, error) {
 }
 
 // Load loads the configuration into the provided struct
-func (l *DefaultSettingsLoader) Load(mostRecentConfig Config) error {
+func (l *DefaultSettingsLoader) Load(_ Config) error {
 	return nil
 }
 

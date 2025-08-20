@@ -48,59 +48,24 @@ func (l *ConfigFileLoader) Get(key string) (any, error) {
 }
 
 // Load loads the configuration into the provided struct
-func (l *ConfigFileLoader) Load(mostRecentConfig Config) error {
+func (l *ConfigFileLoader) Load(_ Config) error {
 	// Read the config file
 	if err := l.viper.ReadInConfig(); err != nil {
 		return errors.Join(err, ErrLoadingConfig)
 	}
-
-	// Validate config
-	//validate := validator.New()
-	//if err := validate.Struct(cfg); err != nil {
-	//	return errors.Join(err, ErrUnmarshallingConfig)
-	//}
-
 	return nil
 }
 
 // Watch starts watching the config file for configuration changes
 func (l *ConfigFileLoader) Watch(ctx context.Context, cfg *Config, onChange func(context.Context) error) error {
-	if len(cfg.onConfigChangeHooks) == 0 {
-		slog.DebugContext(ctx, "no config change hooks registered. Skipping environment config watch")
-		return nil
-	}
-
 	l.viper.WatchConfig()
 
-	// If config changes, reload it and invoke all hooks
-	//nolint:contextcheck // false positive with external library function signature
+	// If config changes, trigger the main config reload function
 	l.viper.OnConfigChange(func(e fsnotify.Event) {
-		slog.DebugContext(ctx, "environment config file changed", slog.String("file", e.Name))
+		slog.DebugContext(ctx, "config file changed, triggering reload", slog.String("file", e.Name))
 
-		// First reload and validate the config
-		if err := l.Load(*cfg); err != nil {
-			slog.ErrorContext(ctx, "error reloading environment config", slog.Any("error", err))
-			return
-		}
-
-		slog.InfoContext(ctx,
-			"environment config successfully reloaded",
-			slog.Any("config", cfg.LogValue()),
-			slog.String("config_loader_changed", l.Name()),
-		)
-
-		// Then execute all registered hooks with the event
-		if err := onChange(context.Background()); err != nil {
-			slog.ErrorContext(ctx,
-				"error executing config change hooks",
-				slog.Any("error", err),
-				slog.String("config_loader_changed", l.Name()),
-			)
-		} else {
-			slog.DebugContext(ctx,
-				"config change hooks executed successfully",
-				slog.String("config_loader_changed", l.Name()),
-			)
+		if err := onChange(ctx); err != nil {
+			slog.ErrorContext(ctx, "error processing config file change", slog.Any("error", err))
 		}
 	})
 

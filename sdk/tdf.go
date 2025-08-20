@@ -824,13 +824,14 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 
 	// Determine which assertion verifier to use
 	var assertionVerifier AssertionVerifier
-	if config.assertionVerifier != nil {
+	switch {
+	case config.assertionVerifier != nil:
 		// Use reader-specific override if provided
 		assertionVerifier = config.assertionVerifier
-	} else if s.assertionVerifier != nil {
+	case s.assertionVerifier != nil:
 		// Use SDK-level verifier if available
 		assertionVerifier = s.assertionVerifier
-	} else {
+	default:
 		// Fall back to default verifier
 		assertionVerifier = defaultAssertionVerifier{}
 	}
@@ -937,7 +938,14 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 
 		if seg.Hash != string(ocrypto.Base64Encode([]byte(payloadSig))) {
-			return totalBytes, ErrSegSigValidation
+			// Try alternate encoding for cross-SDK compatibility
+			altPayloadSig, err := calculateSignature(readBuf, r.payloadKey, sigAlg, !isLegacyTDF)
+			if err != nil {
+				return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
+			}
+			if seg.Hash != string(ocrypto.Base64Encode([]byte(altPayloadSig))) {
+				return totalBytes, ErrSegSigValidation
+			}
 		}
 
 		writeBuf, err := r.aesGcm.Decrypt(readBuf)
@@ -1034,7 +1042,14 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		}
 
 		if seg.Hash != string(ocrypto.Base64Encode([]byte(payloadSig))) {
-			return 0, ErrSegSigValidation
+			// Try alternate encoding for cross-SDK compatibility
+			altPayloadSig, err := calculateSignature(readBuf, r.payloadKey, sigAlg, !isLegacyTDF)
+			if err != nil {
+				return 0, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
+			}
+			if seg.Hash != string(ocrypto.Base64Encode([]byte(altPayloadSig))) {
+				return 0, ErrSegSigValidation
+			}
 		}
 
 		writeBuf, err := r.aesGcm.Decrypt(readBuf)
@@ -1447,6 +1462,17 @@ func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (boo
 	}
 
 	if rootSigValue == string(ocrypto.Base64Encode([]byte(sig))) {
+		return true, nil
+	}
+
+	// Try alternate encoding for cross-SDK compatibility
+	// Some Java SDKs may use hex encoding even for modern TDFs
+	altSig, err := calculateSignature(aggregateHash, secret, sigAlg, !isLegacyTDF)
+	if err != nil {
+		return false, fmt.Errorf("splitkey.getSignature failed:%w", err)
+	}
+
+	if rootSigValue == string(ocrypto.Base64Encode([]byte(altSig))) {
 		return true, nil
 	}
 

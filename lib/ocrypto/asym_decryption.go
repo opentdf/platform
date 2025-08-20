@@ -1,31 +1,81 @@
 package ocrypto
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/hkdf"
+	"crypto/mlkem"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
-
-	"golang.org/x/crypto/hkdf"
 )
+
+type PrivateKeyDecryptor interface {
+	// Decrypt decrypts ciphertext with private key.
+	Decrypt(data []byte) ([]byte, error)
+
+	// Decrypt decrypts ciphertext with private key and additional public data that is usually unique per session, often configured by the sending party.
+	DecryptWithEphemeralKey(data, public []byte) ([]byte, error)
+
+	// Exports the private key in PEM format.
+	Export() ([]byte, error)
+
+	// AsymEncryption returns the AsymEncryption interface for this private key.
+	AsymEncryption() PublicKeyEncryptor
+}
+
+type SymmetricDecrypt func([]byte) ([]byte, error)
+
+type HybridDecryptor interface {
+	// HybridDecrypt returns a symmetric key backed decryptor.
+	HybridDecrypt(ephemeralPublicKey []byte) (SymmetricDecrypt, error)
+}
 
 type AsymDecryption struct {
 	PrivateKey *rsa.PrivateKey
 }
 
-type PrivateKeyDecryptor interface {
-	// Decrypt decrypts ciphertext with private key.
-	Decrypt(data []byte) ([]byte, error)
+type ECDecryptor struct {
+	sk   *ecdh.PrivateKey
+	salt []byte
+	info string
+}
+
+type MLKEMDecryptor768 struct {
+	decap *mlkem.DecapsulationKey768
+}
+
+func Generate(kt KeyType) (PrivateKeyDecryptor, error) {
+	switch kt {
+	case RSA2048Key:
+		return GenerateRSA(2048) //nolint:mnd // Standard RSA
+	case RSA4096Key:
+		return GenerateRSA(4096) //nolint:mnd // More RSA
+	case EC256Key:
+		return GenerateEC(elliptic.P256())
+	case EC384Key:
+		return GenerateEC(elliptic.P384())
+	case EC521Key:
+		return GenerateEC(elliptic.P521())
+	case MLKEM768Key:
+		return GenerateMLKEM()
+	default:
+		return nil, fmt.Errorf("unsupported key type: %s", kt)
+	}
+}
+
+func FromGoRSA(k *rsa.PrivateKey) AsymDecryption {
+	return AsymDecryption{k}
 }
 
 // FromPrivatePEM creates and returns a new AsymDecryption.
@@ -35,13 +85,22 @@ func FromPrivatePEM(privateKeyInPem string) (PrivateKeyDecryptor, error) {
 	digest.Write([]byte("TDF"))
 	salt := digest.Sum(nil)
 
-	return FromPrivatePEMWithSalt(privateKeyInPem, salt, nil)
+	return FromPrivatePEMWithSalt(privateKeyInPem, salt, "")
 }
 
-func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateKeyDecryptor, error) {
+func FromPrivatePEMWithSalt(privateKeyInPem string, salt []byte, info string) (PrivateKeyDecryptor, error) {
 	block, _ := pem.Decode([]byte(privateKeyInPem))
 	if block == nil {
 		return AsymDecryption{}, errors.New("failed to parse PEM formatted private key")
+	}
+
+	if block.Type == "MLKEM DECAPSULATION KEY" {
+		// TK Handle ML-KEM decapsulation key
+		decap, err := mlkem.NewDecapsulationKey768(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("mlkem.NewDecapsulationKey768 failed: %w", err)
+		}
+		return NewMLKEMDecryptor768(decap)
 	}
 
 	priv, err := x509.ParsePKCS8PrivateKey(block.Bytes)
@@ -80,8 +139,9 @@ func FromPrivatePEMWithSalt(privateKeyInPem string, salt, info []byte) (PrivateK
 	return nil, errors.New("not a supported PEM formatted private key")
 }
 
+// FromPublicPEM creates and returns a new RSA decryptor from a PEM formatted public key.
 func NewAsymDecryption(privateKeyInPem string) (AsymDecryption, error) {
-	d, err := FromPrivatePEMWithSalt(privateKeyInPem, nil, nil)
+	d, err := FromPrivatePEMWithSalt(privateKeyInPem, nil, "")
 	if err != nil {
 		return AsymDecryption{}, err
 	}
@@ -93,7 +153,79 @@ func NewAsymDecryption(privateKeyInPem string) (AsymDecryption, error) {
 	}
 }
 
-// Decrypt decrypts ciphertext with private key.
+// Uses the default salts for TDF encryption.
+func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
+	// TK Move salt and info out of library, into API option functions
+	digest := sha256.New()
+	digest.Write([]byte("TDF"))
+	salt := digest.Sum(nil)
+
+	return NewSaltedECDecryptor(sk, salt, "")
+}
+
+func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt []byte, info string) (ECDecryptor, error) {
+	return ECDecryptor{sk, salt, info}, nil
+}
+
+func NewMLKEMDecryptor768(decap *mlkem.DecapsulationKey768) (*MLKEMDecryptor768, error) {
+	if decap == nil {
+		return nil, errors.New("decapsulation key is nil")
+	}
+
+	return &MLKEMDecryptor768{decap}, nil
+}
+
+func GenerateRSA(bits int) (PrivateKeyDecryptor, error) {
+	key, err := rsa.GenerateKey(rand.Reader, bits)
+	if err != nil {
+		return nil, fmt.Errorf("unable to generate rsa key [%w]", err)
+	}
+	return AsymDecryption{key}, nil
+}
+
+func GenerateEC(curve elliptic.Curve) (PrivateKeyDecryptor, error) {
+	sk, err := ecdsa.GenerateKey(curve, rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("unable to generate ec key [%w]", err)
+	}
+	eh, err := sk.ECDH()
+	if err != nil {
+		return nil, fmt.Errorf("unable to create ECDH key [%w]", err)
+	}
+	return NewECDecryptor(eh)
+}
+
+func GenerateMLKEM() (PrivateKeyDecryptor, error) {
+	decap, err := mlkem.GenerateKey768()
+	if err != nil {
+		return nil, fmt.Errorf("unable to generate mlkem decapsulation key [%w]", err)
+	}
+	return NewMLKEMDecryptor768(decap)
+}
+
+func (asymDecryption AsymDecryption) AsymEncryption() PublicKeyEncryptor {
+	pub := asymDecryption.PrivateKey.Public()
+	switch pub := pub.(type) {
+	case *rsa.PublicKey:
+		return AsymEncryption{pub}
+	default:
+		panic(fmt.Errorf("unsupported public key type: %T", pub))
+	}
+}
+
+func (e ECDecryptor) AsymEncryption() PublicKeyEncryptor {
+	pub, err := newECIES(e.sk.PublicKey(), e.salt, e.info)
+	if err != nil {
+		return nil
+	}
+	return pub
+}
+
+func (d *MLKEMDecryptor768) AsymEncryption() PublicKeyEncryptor {
+	encap := d.decap.EncapsulationKey()
+	return newMLKEM768(encap)
+}
+
 func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 	if asymDecryption.PrivateKey == nil {
 		return nil, errors.New("failed to decrypt, private key is empty")
@@ -109,23 +241,15 @@ func (asymDecryption AsymDecryption) Decrypt(data []byte) ([]byte, error) {
 	return bytes, nil
 }
 
-type ECDecryptor struct {
-	sk   *ecdh.PrivateKey
-	salt []byte
-	info []byte
-}
-
-func NewECDecryptor(sk *ecdh.PrivateKey) (ECDecryptor, error) {
-	// TK Move salt and info out of library, into API option functions
-	digest := sha256.New()
-	digest.Write([]byte("TDF"))
-	salt := digest.Sum(nil)
-
-	return ECDecryptor{sk, salt, nil}, nil
-}
-
-func NewSaltedECDecryptor(sk *ecdh.PrivateKey, salt, info []byte) (ECDecryptor, error) {
-	return ECDecryptor{sk, salt, info}, nil
+func (asymDecryption AsymDecryption) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
+	if asymDecryption.PrivateKey == nil {
+		return nil, errors.New("failed to decrypt, private key is empty")
+	}
+	// TK How to get the ephmeral key into here?
+	if len(ephemeral) != 0 {
+		return nil, errors.New("ephemeral key is not set for RSA")
+	}
+	return asymDecryption.Decrypt(data)
 }
 
 func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {
@@ -134,9 +258,21 @@ func (e ECDecryptor) Decrypt(_ []byte) ([]byte, error) {
 }
 
 func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, error) {
+	sd, err := e.HybridDecrypt(ephemeral)
+	if err != nil {
+		return nil, fmt.Errorf("ecdh hybrid decrypt failed: %w", err)
+	}
+	return sd(data)
+}
+
+func (e ECDecryptor) HybridDecrypt(ephemeral []byte) (SymmetricDecrypt, error) {
 	var ek *ecdh.PublicKey
 
-	if pubFromDSN, err := x509.ParsePKIXPublicKey(ephemeral); err == nil {
+	if bytes.HasPrefix(ephemeral, []byte("-----BEGIN")) {
+		pubFromDSN, err := x509.ParsePKIXPublicKey(ephemeral)
+		if err != nil {
+			return nil, fmt.Errorf("x509.ParsePKIXPublicKey failed: %w", err)
+		}
 		switch pubFromDSN := pubFromDSN.(type) {
 		case *ecdsa.PublicKey:
 			ek, err = ConvertToECDHPublicKey(pubFromDSN)
@@ -164,10 +300,8 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 		return nil, fmt.Errorf("ecdh failure: %w", err)
 	}
 
-	hkdfObj := hkdf.New(sha256.New, ikm, e.salt, e.info)
-
-	derivedKey := make([]byte, 32) //nolint:mnd // AES-256 requires a 32-byte key
-	if _, err := io.ReadFull(hkdfObj, derivedKey); err != nil {
+	derivedKey, err := hkdf.Key(sha256.New, ikm, e.salt, e.info, 32) //nolint:mnd // AES-256 requires a 32-byte key
+	if err != nil {
 		return nil, fmt.Errorf("hkdf failure: %w", err)
 	}
 
@@ -183,17 +317,122 @@ func (e ECDecryptor) DecryptWithEphemeralKey(data, ephemeral []byte) ([]byte, er
 	}
 
 	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
-		return nil, errors.New("ciphertext too short")
-	}
+	return func(data []byte) ([]byte, error) {
+		if len(data) < nonceSize {
+			return nil, errors.New("ciphertext too short")
+		}
 
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+		nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+		plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+		if err != nil {
+			return nil, fmt.Errorf("gcm.Open failure: %w", err)
+		}
+		return plaintext, nil
+	}, nil
+}
+
+func (d *MLKEMDecryptor768) Decrypt(_ []byte) ([]byte, error) {
+	return nil, errors.New("decapsulation key requires ciphertext (ephemeral key) to decrypt")
+}
+
+func (d *MLKEMDecryptor768) DecryptWithEphemeralKey(data, cipherText []byte) ([]byte, error) {
+	sd, err := d.HybridDecrypt(cipherText)
 	if err != nil {
-		return nil, fmt.Errorf("gcm.Open failure: %w", err)
+		return nil, fmt.Errorf("mlkem hybrid decrypt failed: %w", err)
+	}
+	return sd(data)
+}
+
+func (d *MLKEMDecryptor768) HybridDecrypt(cipherText []byte) (SymmetricDecrypt, error) {
+	if d.decap == nil {
+		return nil, errors.New("mlkem.DecryptWithEphemeralKey - decapsulation key is nil")
 	}
 
-	return plaintext, nil
+	sharedSecret, err := d.decap.Decapsulate(cipherText)
+	if err != nil {
+		return nil, fmt.Errorf("mlkem.DecryptWithEphemeralKey - decap failed: %w", err)
+	}
+
+	block, err := aes.NewCipher(sharedSecret)
+	if err != nil {
+		return nil, fmt.Errorf("mlkem.DecryptWithEphemeralKey - aes.NewCipher failed: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("mlkem.DecryptWithEphemeralKey - cipher.NewGCM failure: %w", err)
+	}
+
+	nonceSize := gcm.NonceSize()
+	return func(data []byte) ([]byte, error) {
+		if len(data) < nonceSize {
+			return nil, errors.New("mlkem.DecryptWithEphemeralKey - ciphertext too short")
+		}
+
+		nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+		plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+		if err != nil {
+			return nil, fmt.Errorf("mlkem.DecryptWithEphemeralKey - gcm.Open failure: %w", err)
+		}
+		return plaintext, nil
+	}, nil
+}
+
+func (asymDecryption AsymDecryption) Export() ([]byte, error) {
+	if asymDecryption.PrivateKey == nil {
+		return nil, errors.New("failed to export, private key is empty")
+	}
+
+	privateBytes, err := x509.MarshalPKCS8PrivateKey(asymDecryption.PrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal private key: %w", err)
+	}
+
+	keyPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PRIVATE KEY",
+			Bytes: privateBytes,
+		},
+	)
+
+	return keyPEM, nil
+}
+
+func (e ECDecryptor) Export() ([]byte, error) {
+	if e.sk == nil {
+		return nil, errors.New("failed to export, private key is empty")
+	}
+
+	privateBytes, err := x509.MarshalPKCS8PrivateKey(e.sk)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal private key: %w", err)
+	}
+
+	keyPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "PRIVATE KEY",
+			Bytes: privateBytes,
+		},
+	)
+
+	return keyPEM, nil
+}
+
+func (d *MLKEMDecryptor768) Export() ([]byte, error) {
+	if d.decap == nil {
+		return nil, errors.New("mlkem.Decryptor768.Export - decapsulation key is nil")
+	}
+
+	privateBytes := d.decap.Bytes()
+
+	keyPEM := pem.EncodeToMemory(
+		&pem.Block{
+			Type:  "MLKEM DECAPSULATION KEY",
+			Bytes: privateBytes,
+		},
+	)
+
+	return keyPEM, nil
 }
 
 func convCurve(c ecdh.Curve) elliptic.Curve {

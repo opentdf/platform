@@ -97,11 +97,11 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 
 	// If KAS session key is not provided, generate a new one
 	if cfg.kasSessionKey == nil {
-		key, err := ocrypto.NewRSAKeyPair(tdf3KeySize)
+		key, err := ocrypto.GenerateRSA(tdf3KeySize)
 		if err != nil {
 			return nil, err
 		}
-		cfg.kasSessionKey = &key
+		cfg.kasSessionKey = key
 	}
 
 	// IF IPC is disabled we build a validated healthy connection to the platform

@@ -74,7 +74,7 @@ type Reader struct {
 	aesGcm              ocrypto.AesGcm
 	payloadSize         int64
 	payloadKey          []byte
-	kasSessionKey       ocrypto.KeyPair
+	kasSessionKey       ocrypto.PrivateKeyDecryptor
 	config              TDFReaderConfig
 }
 
@@ -88,11 +88,6 @@ type TDFObject struct {
 type tdf3DecryptHandler struct {
 	writer io.Writer
 	reader *Reader
-}
-
-type ecKeyWrappedKeyInfo struct {
-	publicKey  string
-	wrappedKey string
 }
 
 func (r *tdf3DecryptHandler) Decrypt(ctx context.Context, results []kaoResult) (int, error) {
@@ -631,25 +626,31 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 		SchemaVersion:     keyAccessSchemaVersion,
 	}
 
-	ktype := ocrypto.KeyType(kasInfo.Algorithm)
-	if ocrypto.IsECKeyType(ktype) {
-		mode, err := ocrypto.ECKeyTypeToMode(ktype)
-		if err != nil {
-			return KeyAccess{}, err
+	salt := tdfSalt()
+	enc, err := ocrypto.FromPublicPEMWithSalt(kasInfo.PublicKey, salt, "")
+	if err != nil {
+		return KeyAccess{}, fmt.Errorf("ocrypto.FromPublicPEMWithSalt failed: %w", err)
+	}
+
+	scheme := enc.Type()
+	if scheme == ocrypto.SchemeType("") {
+		return KeyAccess{}, fmt.Errorf("unsupported key type: %s", kasInfo.Algorithm)
+	}
+
+	wrappedKey, err := enc.Encrypt(symKey)
+	if err != nil {
+		return KeyAccess{}, fmt.Errorf("ocrypto.Encrypt with %v failed: %w", enc, err)
+	}
+
+	keyAccess.KeyType = string(scheme)
+	keyAccess.WrappedKey = string(ocrypto.Base64Encode(wrappedKey))
+	ek := enc.EphemeralKey()
+	if len(ek) > 0 {
+		if bytes.HasPrefix(ek, []byte("-----BEGIN")) { // uncompressed public key
+			keyAccess.EphemeralPublicKey = string(ek)
+		} else {
+			keyAccess.EphemeralPublicKey = string(ocrypto.Base64Encode(ek))
 		}
-		wrappedKeyInfo, err := generateWrapKeyWithEC(mode, kasInfo.PublicKey, symKey)
-		if err != nil {
-			return KeyAccess{}, err
-		}
-		keyAccess.KeyType = kECWrapped
-		keyAccess.WrappedKey = wrappedKeyInfo.wrappedKey
-		keyAccess.EphemeralPublicKey = wrappedKeyInfo.publicKey
-	} else {
-		wrappedKey, err := generateWrapKeyWithRSA(kasInfo.PublicKey, symKey)
-		if err != nil {
-			return KeyAccess{}, err
-		}
-		keyAccess.WrappedKey = wrappedKey
 	}
 
 	return keyAccess, nil
@@ -660,63 +661,6 @@ func tdfSalt() []byte {
 	digest.Write([]byte("TDF"))
 	salt := digest.Sum(nil)
 	return salt
-}
-
-func generateWrapKeyWithEC(mode ocrypto.ECCMode, kasPublicKey string, symKey []byte) (ecKeyWrappedKeyInfo, error) {
-	ecKeyPair, err := ocrypto.NewECKeyPair(mode)
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("ocrypto.NewECKeyPair failed:%w", err)
-	}
-
-	emphermalPublicKey, err := ecKeyPair.PublicKeyInPemFormat()
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: failed to get EC public key: %w", err)
-	}
-
-	emphermalPrivateKey, err := ecKeyPair.PrivateKeyInPemFormat()
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: failed to get EC private key: %w", err)
-	}
-
-	ecdhKey, err := ocrypto.ComputeECDHKey([]byte(emphermalPrivateKey), []byte(kasPublicKey))
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: ocrypto.ComputeECDHKey failed:%w", err)
-	}
-
-	salt := tdfSalt()
-	sessionKey, err := ocrypto.CalculateHKDF(salt, ecdhKey)
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: ocrypto.CalculateHKDF failed:%w", err)
-	}
-
-	gcm, err := ocrypto.NewAESGcm(sessionKey)
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: ocrypto.NewAESGcm failed:%w", err)
-	}
-
-	wrappedKey, err := gcm.Encrypt(symKey)
-	if err != nil {
-		return ecKeyWrappedKeyInfo{}, fmt.Errorf("generateWrapKeyWithEC: ocrypto.AESGcm.Encrypt failed:%w", err)
-	}
-
-	return ecKeyWrappedKeyInfo{
-		publicKey:  emphermalPublicKey,
-		wrappedKey: string(ocrypto.Base64Encode(wrappedKey)),
-	}, nil
-}
-
-func generateWrapKeyWithRSA(publicKey string, symKey []byte) (string, error) {
-	asymEncrypt, err := ocrypto.NewAsymEncryption(publicKey)
-	if err != nil {
-		return "", fmt.Errorf("generateWrapKeyWithRSA: ocrypto.NewAsymEncryption failed:%w", err)
-	}
-
-	wrappedKey, err := asymEncrypt.Encrypt(symKey)
-	if err != nil {
-		return "", fmt.Errorf("generateWrapKeyWithRSA: ocrypto.AsymEncryption.encrypt failed:%w", err)
-	}
-
-	return string(ocrypto.Base64Encode(wrappedKey)), nil
 }
 
 // create policy object

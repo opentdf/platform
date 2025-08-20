@@ -2,6 +2,8 @@ package trust
 
 import (
 	"context"
+	"errors"
+	"regexp"
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -25,6 +27,15 @@ const (
 
 // KeyIdentifier uniquely identifies a key
 type KeyIdentifier string
+
+func NewKeyIdentifier(id string) (KeyIdentifier, error) {
+	// verifies that the id is a set of simple letters, numbers, and dashes
+	if !regexp.MustCompile(`^[a-zA-Z0-9-]+$`).MatchString(id) {
+		return "", errors.New("invalid KeyIdentifier: must contain only letters, numbers, and dashes")
+	}
+
+	return KeyIdentifier(id), nil
+}
 
 type PrivateKey struct {
 	// Key ID of the Key used to wrap the private key

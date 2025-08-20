@@ -81,7 +81,7 @@ jobs:
           working-directory: ${{ matrix.directory }}
           skip-cache: true
       - if: matrix.directory == 'service'
-        run: .github/scripts/init-temp-keys.sh
+        run: go run ./service keys init
       - run: go test ./... -short
         working-directory: ${{ matrix.directory }}
       - if: matrix.directory == 'service'
@@ -129,10 +129,10 @@ jobs:
           chmod +x mkcert-v*-linux-amd64
           sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
       - run: |
+          cp opentdf-dev.yaml opentdf.yaml
           .github/scripts/init-temp-keys.sh
           mkcert -install
           mkcert -cert-file ./keys/platform.crt -key-file ./keys/platform-key.pem localhost
-          cp opentdf-dev.yaml opentdf.yaml
           yq eval '.server.tls.enabled = true' -i opentdf.yaml
       - name: Added Trusted Certs
         run: |
@@ -207,12 +207,13 @@ jobs:
           chmod +x mkcert-v*-linux-amd64
           sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
       - run: |
+          cp opentdf-dev.yaml opentdf.yaml
           .github/scripts/init-temp-keys.sh
           mkcert -install
           mkcert -cert-file ./keys/platform.crt -key-file ./keys/platform-key.pem localhost
-          cp opentdf-dev.yaml opentdf.yaml
           yq eval '.server.tls.enabled = true' -i opentdf.yaml
           yq eval '.trace = {"enabled":true}' -i opentdf.yaml
+          yq eval '.services.kas.preview.ec_tdf_enabled = true' -i opentdf.yaml
       - name: Added Trusted Certs
         run: |
           sudo chmod -R 777 ./keys
@@ -281,6 +282,26 @@ jobs:
             echo "$OUTPUT";
             echo "EOO"
           } >> "$GITHUB_ENV"
+      - name: run tdf3 ec benchmark tests
+        run: |
+          OUTPUT=$(./examples/examples benchmark --wrapper=ec:secp256r1 --count=5000 --concurrent=50)
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "BENCHMARK_TDF3_EC_OUTPUT<<EOO";
+            echo "$OUTPUT";
+            echo "EOO"
+          } >> "$GITHUB_ENV"
+      - name: run tdf3 mlkem benchmark tests
+        run: |
+          OUTPUT=$(./examples/examples benchmark --wrapper=mlkem:768 --count=5000 --concurrent=50)
+          echo "$OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "BENCHMARK_TDF3_MLKEM_OUTPUT<<EOO";
+            echo "$OUTPUT";
+            echo "EOO"
+          } >> "$GITHUB_ENV"
       - name: run nanotdf benchmark tests
         run: |
           OUTPUT=$(./examples/examples benchmark --storeCollectionHeaders=false --tdf=nanotdf --count=5000 --concurrent=50)
@@ -323,6 +344,8 @@ jobs:
             h2 "${BENCHMARK_METRICS_OUTPUT}" "Standard Benchmark Metrics"
             h2 "${BENCHMARK_BULK_OUTPUT}" "Bulk Benchmark"
             h2 "${BENCHMARK_TDF3_OUTPUT}" "TDF3 Benchmark"
+            h2 "${BENCHMARK_TDF3_EC_OUTPUT}" "TDF3 EC Benchmark"
+            h2 "${BENCHMARK_TDF3_MLKEM_OUTPUT}" "TDF3 MLKEM Benchmark"
             h2 "${BENCHMARK_NANO_OUTPUT}" "Nano Benchmark"
 
             echo EOO

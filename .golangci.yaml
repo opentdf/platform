@@ -121,6 +121,7 @@ linters:
         - prometheus.ExponentialBucketsRange
         - prometheus.LinearBuckets
     nolintlint:
+      allow-unused: true # Allows version skew between local and ci
       require-explanation: true
       require-specific: true
     rowserrcheck:

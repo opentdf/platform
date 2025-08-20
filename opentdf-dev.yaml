@@ -24,17 +24,7 @@ services:
       ec_tdf_enabled: false
       key_management: false
     root_key: a8c4824daafcfa38ed0d13002e92b08720e6c4fcee67d52e954c1a6e045907d1 # For local development testing only
-    keyring:
-      - kid: e1
-        alg: ec:secp256r1
-      - kid: e1
-        alg: ec:secp256r1
-        legacy: true
-      - kid: r1
-        alg: rsa:2048
-      - kid: r1
-        alg: rsa:2048
-        legacy: true
+    keyring: []
   entityresolution:
     log_level: info
     url: http://localhost:8888/auth
@@ -156,13 +146,5 @@ server:
   cryptoProvider:
     type: standard
     standard:
-      keys:
-        - kid: r1
-          alg: rsa:2048
-          private: kas-private.pem
-          cert: kas-cert.pem
-        - kid: e1
-          alg: ec:secp256r1
-          private: kas-ec-private.pem
-          cert: kas-ec-cert.pem
+      keys: []
   port: 8080

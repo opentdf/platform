@@ -892,14 +892,13 @@ func TestLegacyTDFHexEncoding(t *testing.T) {
 	err = verifier.Verify(ctx, verifyInputModern, key)
 	require.NoError(t, err, "Modern TDF verification should succeed")
 
-	// Cross-verification now succeeds due to fallback compatibility logic
-	// This allows Java-Go SDK interoperability
+	// Cross-verification should fail (legacy binding with modern verify)
 	assertion.Binding = bindingHex
 	verifyInputCross := VerifyInput{
 		Assertion:     assertion,
 		AggregateHash: aggregateHash,
-		IsLegacyTDF:   false, // Mismatch, but fallback should handle it
+		IsLegacyTDF:   false, // Mismatch!
 	}
 	err = verifier.Verify(ctx, verifyInputCross, key)
-	assert.NoError(t, err, "Cross-verification should succeed with fallback compatibility logic")
+	assert.Error(t, err, "Cross-verification with mismatched legacy flag should fail")
 }

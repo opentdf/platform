@@ -898,7 +898,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 	}
 
-	isLegacyTDF := r.manifest.TDFVersion == ""
+	isLegacyTDF := isLegacyTDFVersion(r.manifest.TDFVersion)
 
 	var totalBytes int64
 	var payloadReadOffset int64
@@ -993,7 +993,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		return 0, ErrTDFPayloadReadFail
 	}
 
-	isLegacyTDF := r.manifest.TDFVersion == ""
+	isLegacyTDF := isLegacyTDFVersion(r.manifest.TDFVersion)
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64
 	for index, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
@@ -1336,7 +1336,7 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		}
 
 		// Use the assertion verifier provider with unified interface
-		isLegacyTDF := r.manifest.TDFVersion == ""
+		isLegacyTDF := isLegacyTDFVersion(r.manifest.TDFVersion)
 
 		verifyInput := VerifyInput{
 			Assertion:     assertion,
@@ -1433,7 +1433,7 @@ func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLe
 func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
 	rootSigAlg := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm
 	rootSigValue := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature
-	isLegacyTDF := manifest.TDFVersion == ""
+	isLegacyTDF := isLegacyTDFVersion(manifest.TDFVersion)
 
 	sigAlg := HS256
 	if strings.EqualFold(gmacIntegrityAlgorithm, rootSigAlg) {
@@ -1450,6 +1450,20 @@ func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (boo
 	}
 
 	return false, nil
+}
+
+// isLegacyTDFVersion determines if a TDF version should be treated as legacy
+// Legacy TDFs are those with empty version or version less than hexSemverThreshold
+func isLegacyTDFVersion(version string) bool {
+	if version == "" {
+		return true
+	}
+	lessThan, err := isLessThanSemver(version, hexSemverThreshold)
+	if err != nil {
+		// If we can't parse the version, assume it's legacy for safety
+		return true
+	}
+	return lessThan
 }
 
 // check if the provided semver is less than the target

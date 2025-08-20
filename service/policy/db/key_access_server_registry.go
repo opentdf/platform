@@ -493,6 +493,7 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Kas
 		return nil, err
 	}
 
+	legacy := key.Legacy
 	return &policy.KasKey{
 		KasId:  key.KeyAccessServerID,
 		KasUri: key.KasUri,
@@ -506,7 +507,7 @@ func (c PolicyDBClient) GetKey(ctx context.Context, identifier any) (*policy.Kas
 			PublicKeyCtx:   publicKeyCtx,
 			ProviderConfig: providerConfig,
 			Metadata:       metadata,
-			Legacy:         key.Legacy,
+			Legacy:         &legacy,
 		},
 	}, nil
 }
@@ -596,6 +597,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 			return nil, err
 		}
 
+		legacy := key.Legacy
 		keys[i] = &policy.KasKey{
 			KasId:  key.KeyAccessServerID,
 			KasUri: key.KasUri,
@@ -609,7 +611,7 @@ func (c PolicyDBClient) ListKeys(ctx context.Context, r *kasregistry.ListKeysReq
 				PrivateKeyCtx:  privateKeyCtx,
 				ProviderConfig: providerConfig,
 				Metadata:       metadata,
-				Legacy:         key.Legacy,
+				Legacy:         &legacy,
 			},
 		}
 	}

@@ -773,6 +773,7 @@ components:
           type: boolean
           title: legacy
           description: Optional Indicates a key may be found in TDFs without key identifiers
+          nullable: true
         metadata:
           title: metadata
           description: Common metadata fields

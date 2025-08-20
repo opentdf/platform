@@ -325,6 +325,16 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, fmt.Errorf("error decoding hex string: %w", err)
 		}
 
+		var completeHashBuilder strings.Builder
+		completeHashBuilder.WriteString(aggregateHash)
+		if tdfConfig.useHex {
+			completeHashBuilder.Write(hashOfAssertionAsHex)
+		} else {
+			completeHashBuilder.Write(hashOfAssertion)
+		}
+
+		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
+
 		assertionSigningKey := AssertionKey{}
 
 		// Set default to HS256 and payload key
@@ -335,19 +345,9 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			assertionSigningKey = assertion.SigningKey
 		}
 
-		// Use the assertion signer provider with unified interface
-		signInput := SignInput{
-			Assertion:     tmpAssertion,
-			AggregateHash: []byte(aggregateHash),
-			UseHex:        tdfConfig.useHex,
+		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
+			return nil, fmt.Errorf("failed to sign assertion: %w", err)
 		}
-
-		binding, err := s.assertionSigner.Sign(ctx, signInput, assertionSigningKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to sign assertion [%s]: %w", assertion.ID, err)
-		}
-
-		tmpAssertion.Binding = binding
 
 		signedAssertion = append(signedAssertion, tmpAssertion)
 	}
@@ -823,10 +823,16 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 	}
 
 	// Determine which assertion verifier to use
-	assertionVerifier := config.assertionVerifier
-	if assertionVerifier == nil {
-		// Use SDK-level verifier as default
+	var assertionVerifier AssertionVerifier
+	if config.assertionVerifier != nil {
+		// Use reader-specific override if provided
+		assertionVerifier = config.assertionVerifier
+	} else if s.assertionVerifier != nil {
+		// Use SDK-level verifier if available
 		assertionVerifier = s.assertionVerifier
+	} else {
+		// Fall back to default verifier
+		assertionVerifier = defaultAssertionVerifier{}
 	}
 
 	return &Reader{
@@ -898,7 +904,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 		}
 	}
 
-	isLegacyTDF := isLegacyTDFVersion(r.manifest.TDFVersion)
+	isLegacyTDF := r.manifest.TDFVersion == ""
 
 	var totalBytes int64
 	var payloadReadOffset int64
@@ -993,7 +999,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		return 0, ErrTDFPayloadReadFail
 	}
 
-	isLegacyTDF := isLegacyTDFVersion(r.manifest.TDFVersion)
+	isLegacyTDF := r.manifest.TDFVersion == ""
 	var decryptedBuf bytes.Buffer
 	var payloadReadOffset int64
 	for index, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
@@ -1304,17 +1310,12 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 	for _, assertion := range r.manifest.Assertions {
 		// Skip assertion verification if disabled
 		if r.config.disableAssertionVerification {
-			// Log warning once for disabled verification
-			if r.config.disableAssertionVerification && len(r.manifest.Assertions) > 0 {
-				slog.Warn("assertion verification is disabled. TDF assertions will not be validated.")
-				break // Only warn once
-			}
 			continue
 		}
 
 		// Warn if no verifier is configured
 		if r.assertionVerifier == nil {
-			slog.Warn("no assertion verifier configured. Skipping assertion validation.")
+			slog.WarnContext(ctx, "no assertion verifier configured. Skipping assertion validation.")
 			break
 		}
 
@@ -1335,8 +1336,8 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 			}
 		}
 
-		// Use the assertion verifier provider with unified interface
-		isLegacyTDF := isLegacyTDFVersion(r.manifest.TDFVersion)
+		// Determine if this is a legacy TDF based on version
+		isLegacyTDF := r.manifest.TDFVersion == ""
 
 		verifyInput := VerifyInput{
 			Assertion:     assertion,
@@ -1433,7 +1434,7 @@ func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLe
 func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (bool, error) {
 	rootSigAlg := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm
 	rootSigValue := manifest.EncryptionInformation.IntegrityInformation.RootSignature.Signature
-	isLegacyTDF := isLegacyTDFVersion(manifest.TDFVersion)
+	isLegacyTDF := manifest.TDFVersion == ""
 
 	sigAlg := HS256
 	if strings.EqualFold(gmacIntegrityAlgorithm, rootSigAlg) {
@@ -1450,20 +1451,6 @@ func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (boo
 	}
 
 	return false, nil
-}
-
-// isLegacyTDFVersion determines if a TDF version should be treated as legacy
-// Legacy TDFs are those with empty version or version less than hexSemverThreshold
-func isLegacyTDFVersion(version string) bool {
-	if version == "" {
-		return true
-	}
-	lessThan, err := isLessThanSemver(version, hexSemverThreshold)
-	if err != nil {
-		// If we can't parse the version, assume it's legacy for safety
-		return true
-	}
-	return lessThan
 }
 
 // check if the provided semver is less than the target

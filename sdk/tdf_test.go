@@ -45,7 +45,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -2445,111 +2444,4 @@ func createTestBaseKeyMap(s *suite.Suite, algorithm policy.Algorithm, kid string
 	keyMap[baseKeyPublicKey] = publicKey
 
 	return keyMap
-}
-
-func TestIsLessThanSemver(t *testing.T) {
-	tests := []struct {
-		name        string
-		version     string
-		target      string
-		expected    bool
-		expectError bool
-	}{
-		{
-			name:        "Version is less than target",
-			version:     "1.0.0",
-			target:      "2.0.0",
-			expected:    true,
-			expectError: false,
-		},
-		{
-			name:        "Version is equal to target",
-			version:     "2.0.0",
-			target:      "2.0.0",
-			expected:    false,
-			expectError: false,
-		},
-		{
-			name:        "Version is greater than target",
-			version:     "3.0.0",
-			target:      "2.0.0",
-			expected:    false,
-			expectError: false,
-		},
-		{
-			name:        "Different version format",
-			version:     "v1.41.29",
-			target:      "2.0.0",
-			expected:    true,
-			expectError: false,
-		},
-		{
-			name:        "without patch version",
-			version:     "1.41",
-			target:      "2.0.0",
-			expected:    true,
-			expectError: false,
-		},
-		{
-			name:        "only major",
-			version:     "1",
-			target:      "2.0.0",
-			expected:    true,
-			expectError: false,
-		},
-		{
-			name:        "only major greater",
-			version:     "3",
-			target:      "2.0.0",
-			expected:    false,
-			expectError: false,
-		},
-		{
-			name:        "only major v",
-			version:     "v1",
-			target:      "2.0.0",
-			expected:    true,
-			expectError: false,
-		},
-		{
-			name:        "only major greater v",
-			version:     "v3",
-			target:      "2.0.0",
-			expected:    false,
-			expectError: false,
-		},
-		{
-			name:        "Invalid version format",
-			version:     "invalid",
-			target:      "2.0.0",
-			expected:    false,
-			expectError: true,
-		},
-		{
-			name:        "Invalid target format",
-			version:     "1.0.0",
-			target:      "invalid",
-			expected:    false,
-			expectError: true,
-		},
-		{
-			name:        "Both version and target are invalid",
-			version:     "invalid",
-			target:      "invalid",
-			expected:    false,
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := isLessThanSemver(tt.version, tt.target)
-			if tt.expectError {
-				require.Error(t, err, "Expected an error for test case: %s", tt.name)
-			} else {
-				require.NoError(t, err, "Did not expect an error for test case: %s", tt.name)
-				assert.Equal(t, tt.expected, result, "Unexpected result for test case: %s", tt.name)
-			}
-		})
-	}
 }

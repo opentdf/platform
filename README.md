@@ -91,7 +91,7 @@ Generate development keys/certs for the platform infrastructure.
 Start the required infrastructure with [compose-spec](https://compose-spec.io).
 
 ```sh
-docker compose -f docker-compose.yaml up
+docker compose up
 ```
 
 Copy the development configuration file from the example and update it with your own values (if necessary, not common).

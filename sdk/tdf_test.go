@@ -51,18 +51,12 @@ import (
 )
 
 const (
-	oneKB = 1024
-	// tenKB     = 10 * oneKB
-	oneMB     = 1024 * 1024
-	hundredMB = 100 * oneMB
-	oneGB     = 10 * hundredMB
-	// tenGB     = 10 * oneGB
-	baseKeyKID         = "base-key-kid"
-	baseKeyURL         = "http://base-key.com/"
-	multipleKeysKID1   = "multiple-keys-kid1"
-	multipleKeysKID2   = "multiple-keys-kid2"
-	multipleKeysKasURL = "http://multiple-keys-kas.com/"
-	defaultKID         = "r1"
+	oneKB      = 1024
+	oneMB      = 1024 * 1024
+	hundredMB  = 100 * oneMB
+	baseKeyKID = "base-key-kid"
+	baseKeyURL = "http://base-key.com/"
+	defaultKID = "r1"
 )
 
 const (
@@ -328,6 +322,7 @@ func TestTDF(t *testing.T) {
 
 func (s *TDFSuite) Test_SimpleTDF() {
 	type TestConfig struct {
+		name           string
 		tdfOptions     []TDFOption
 		tdfReadOptions []TDFReaderOption
 		useHex         bool
@@ -347,6 +342,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	// add opts ...TDFOption to  TestConfig
 	testConfigs := []TestConfig{
 		{
+			name: "a",
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
 					URL:       s.kasTestURLLookup["https://a.kas/"],
@@ -360,6 +356,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			},
 		},
 		{
+			name: "metadata-rsa",
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
 					URL:       s.kasTestURLLookup["https://a.kas/"],
@@ -375,6 +372,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			useHex: true,
 		},
 		{
+			name: "metadata-ec",
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
 					URL:       s.kasTestURLLookup["https://d.kas/"],
@@ -390,6 +388,7 @@ func (s *TDFSuite) Test_SimpleTDF() {
 			},
 		},
 		{
+			name: "target-mode-0",
 			tdfOptions: []TDFOption{
 				WithKasInformation(KASInfo{
 					URL:       s.kasTestURLLookup["https://d.kas/"],
@@ -409,95 +408,101 @@ func (s *TDFSuite) Test_SimpleTDF() {
 	}
 
 	for _, config := range testConfigs {
-		inBuf := bytes.NewBufferString(plainText)
-		bufReader := bytes.NewReader(inBuf.Bytes())
+		s.Run(
+			config.name,
+			func() {
+				inBuf := bytes.NewBufferString(plainText)
+				bufReader := bytes.NewReader(inBuf.Bytes())
 
-		fileWriter, err := os.Create(tdfFilename)
-		s.Require().NoError(err)
+				fileWriter, err := os.Create(tdfFilename)
+				s.Require().NoError(err)
 
-		defer func(fileWriter *os.File) {
-			err := fileWriter.Close()
-			s.Require().NoError(err)
-		}(fileWriter)
+				defer func(fileWriter *os.File) {
+					err := fileWriter.Close()
+					s.Require().NoError(err)
+				}(fileWriter)
 
-		tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader, config.tdfOptions...)
+				tdfObj, err := s.sdk.CreateTDF(fileWriter, bufReader, config.tdfOptions...)
 
-		s.Require().NoError(err)
-		if config.useHex {
-			s.InDelta(float64(expectedTdfSizeWithHex), float64(tdfObj.size), 36.0)
-		} else {
-			s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 36.0)
-		}
+				s.Require().NoError(err)
+				if config.useHex {
+					s.InDelta(float64(expectedTdfSizeWithHex), float64(tdfObj.size), 36.0)
+				} else {
+					s.InDelta(float64(expectedTdfSize), float64(tdfObj.size), 36.0)
+				}
 
-		// test meta data and build meta data
-		readSeeker, err := os.Open(tdfFilename)
-		s.Require().NoError(err)
+				// test meta data and build meta data
+				readSeeker, err := os.Open(tdfFilename)
+				s.Require().NoError(err)
 
-		defer func(readSeeker *os.File) {
-			err := readSeeker.Close()
-			s.Require().NoError(err)
-		}(readSeeker)
+				defer func(readSeeker *os.File) {
+					err := readSeeker.Close()
+					s.Require().NoError(err)
+				}(readSeeker)
 
-		r, err := s.sdk.LoadTDF(readSeeker, config.tdfReadOptions...)
-		s.Require().NoError(err)
+				r, err := s.sdk.LoadTDF(readSeeker, config.tdfReadOptions...)
+				s.Require().NoError(err)
 
-		unencryptedMetaData, err := r.UnencryptedMetadata()
-		s.Require().NoError(err)
-		s.Equal(metaData, unencryptedMetaData)
+				unencryptedMetaData, err := r.UnencryptedMetadata()
+				s.Require().NoError(err)
+				s.Equal(metaData, unencryptedMetaData)
 
-		dataAttributes, err := r.DataAttributes()
-		s.Require().NoError(err)
-		s.Equal(attributes, dataAttributes)
+				dataAttributes, err := r.DataAttributes()
+				s.Require().NoError(err)
+				s.Equal(attributes, dataAttributes)
 
-		payloadKey, err := r.UnsafePayloadKeyRetrieval()
-		s.Require().NoError(err)
-		s.Len(payloadKey, kKeySize)
+				payloadKey, err := r.UnsafePayloadKeyRetrieval()
+				s.Require().NoError(err)
+				s.Len(payloadKey, kKeySize)
 
-		// check that root sig and seg sig are hex encoded if useHex is true
-		b64decodedroot, err := ocrypto.Base64Decode([]byte(r.Manifest().EncryptionInformation.RootSignature.Signature))
-		s.Require().NoError(err)
-		b64decodedseg, err := ocrypto.Base64Decode([]byte(r.Manifest().EncryptionInformation.Segments[0].Hash))
-		s.Require().NoError(err)
-		_, err1 := hex.DecodeString(string(b64decodedroot))
-		_, err2 := hex.DecodeString(string(b64decodedseg))
-		if config.useHex {
-			s.Require().NoError(err1)
-			s.Require().NoError(err2)
-		} else {
-			s.Require().Error(err1)
-			s.Require().Error(err2)
-		}
+				// check that root sig and seg sig are hex encoded if useHex is true
+				b64decodedroot, err := ocrypto.Base64Decode([]byte(r.Manifest().EncryptionInformation.RootSignature.Signature))
+				s.Require().NoError(err)
+				b64decodedseg, err := ocrypto.Base64Decode([]byte(r.Manifest().EncryptionInformation.Segments[0].Hash))
+				s.Require().NoError(err)
+				_, err1 := hex.DecodeString(string(b64decodedroot))
+				_, err2 := hex.DecodeString(string(b64decodedseg))
+				if config.useHex {
+					s.Require().NoError(err1)
+					s.Require().NoError(err2)
+				} else {
+					s.Require().Error(err1)
+					s.Require().Error(err2)
+				}
 
-		// check version is present if usehex is false
-		if config.useHex {
-			s.Empty(r.Manifest().TDFVersion)
-		} else {
-			s.Equal(TDFSpecVersion, r.Manifest().TDFVersion)
-		}
+				// check version is present if usehex is false
+				if config.useHex {
+					s.Empty(r.Manifest().TDFVersion)
+				} else {
+					s.Equal(TDFSpecVersion, r.Manifest().TDFVersion)
+				}
 
-		// test reader
-		readSeeker, err = os.Open(tdfFilename)
-		s.Require().NoError(err)
+				// test reader
+				readSeeker, err = os.Open(tdfFilename)
+				s.Require().NoError(err)
 
-		defer func(readSeeker *os.File) {
-			err := readSeeker.Close()
-			s.Require().NoError(err)
-		}(readSeeker)
+				defer func(readSeeker *os.File) {
+					err := readSeeker.Close()
+					s.Require().NoError(err)
+				}(readSeeker)
 
-		buf := make([]byte, 8)
-		r, err = s.sdk.LoadTDF(readSeeker, config.tdfReadOptions...)
-		s.Require().NoError(err)
+				buf := make([]byte, 8)
+				r, err = s.sdk.LoadTDF(readSeeker, config.tdfReadOptions...)
+				s.Require().NoError(err)
 
-		offset := 2
-		n, err := r.ReadAt(buf, int64(offset))
-		if err != nil {
-			s.Require().ErrorIs(err, io.EOF)
-		}
+				offset := 2
+				n, err := r.ReadAt(buf, int64(offset))
+				if err != nil {
+					s.Require().ErrorIs(err, io.EOF)
+				}
 
-		expectedPlainTxt := plainText[offset : offset+n]
-		s.Equal(expectedPlainTxt, string(buf[:n]))
+				expectedPlainTxt := plainText[offset : offset+n]
+				s.Equal(expectedPlainTxt, string(buf[:n]))
 
-		_ = os.Remove(tdfFilename)
+				_ = os.Remove(tdfFilename)
+			},
+		)
+
 	}
 }
 
@@ -2392,6 +2397,9 @@ func (f *FakeKas) getRewrapResponse(rewrapRequest string) *kaspb.RewrapResponse 
 				f.s.Require().NoError(err, "ocrypto.NewAsymEncryption failed")
 				entityWrappedKey, err = asymEncrypt.Encrypt(symmetricKey)
 				f.s.Require().NoError(err, "ocrypto.encrypt failed")
+
+			default:
+				f.s.Require().FailNowf("unknown key type %s", kaoReq.GetKeyAccessObject().GetKeyType())
 			}
 
 			kaoResult := &kaspb.KeyAccessRewrapResult{

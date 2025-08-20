@@ -1322,6 +1322,99 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 	}
 
 	// Validate assertions
+	isLegacyTDF := r.manifest.TDFVersion == ""
+
+	if isLegacyTDF {
+		err := r.validateLegacyTDFAssertions(aggregateHash.Bytes(), payloadKey[:])
+		if err != nil {
+			return err
+		}
+	} else {
+		err := r.validateModernTDFAssertions(ctx, aggregateHash.Bytes(), payloadKey[:])
+		if err != nil {
+			return err
+		}
+	}
+
+	gcm, err := ocrypto.NewAESGcm(payloadKey[:])
+	if err != nil {
+		return fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
+	}
+
+	r.unencryptedMetadata = unencryptedMetadata
+	r.payloadKey = payloadKey[:]
+	r.aesGcm = gcm
+
+	return nil
+}
+
+// validateLegacyTDFAssertions validates assertions for legacy TDFs without version
+func (r *Reader) validateLegacyTDFAssertions(aggregateHash, payloadKey []byte) error {
+	for _, assertion := range r.manifest.Assertions {
+		// Skip assertion verification if disabled
+		if r.config.disableAssertionVerification {
+			continue
+		}
+
+		assertionKey := AssertionKey{}
+		// Set default to HS256
+		assertionKey.Alg = AssertionKeyAlgHS256
+		assertionKey.Key = payloadKey
+
+		if !r.config.verifiers.IsEmpty() {
+			// Look up the key for the assertion
+			foundKey, err := r.config.verifiers.Get(assertion.ID)
+			if err != nil {
+				return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: assertion.ID}, err)
+			}
+			if !foundKey.IsEmpty() {
+				assertionKey.Alg = foundKey.Alg
+				assertionKey.Key = foundKey.Key
+			}
+		}
+
+		assertionHash, assertionSig, err := assertion.Verify(assertionKey)
+		if err != nil {
+			if errors.Is(err, errAssertionVerifyKeyFailure) {
+				return fmt.Errorf("assertion verification failed: %w", err)
+			}
+			return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: assertion.ID}, err)
+		}
+
+		// Get the hash of the assertion
+		hashOfAssertionAsHex, err := assertion.GetHash()
+		if err != nil {
+			return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: assertion.ID}, err)
+		}
+
+		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
+		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
+		if err != nil {
+			return fmt.Errorf("error decoding hex string: %w", err)
+		}
+
+		// For legacy TDFs, use the hex-encoded hash directly
+		hashOfAssertion = hashOfAssertionAsHex
+
+		var completeHashBuilder bytes.Buffer
+		completeHashBuilder.Write(aggregateHash)
+		completeHashBuilder.Write(hashOfAssertion)
+
+		base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
+
+		if string(hashOfAssertionAsHex) != assertionHash {
+			return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: assertion.ID})
+		}
+
+		if assertionSig != string(base64Hash) {
+			return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertion.ID})
+		}
+	}
+	return nil
+}
+
+// validateModernTDFAssertions validates assertions for modern TDFs with version
+func (r *Reader) validateModernTDFAssertions(ctx context.Context, aggregateHash, payloadKey []byte) error {
 	for _, assertion := range r.manifest.Assertions {
 		// Skip assertion verification if disabled
 		if r.config.disableAssertionVerification {
@@ -1337,27 +1430,24 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 		assertionKey := AssertionKey{}
 		// Set default to HS256
 		assertionKey.Alg = AssertionKeyAlgHS256
-		assertionKey.Key = payloadKey[:]
+		assertionKey.Key = payloadKey
 
 		if !r.config.verifiers.IsEmpty() {
 			// Look up the key for the assertion
 			foundKey, err := r.config.verifiers.Get(assertion.ID)
-
 			if err != nil {
 				return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-			} else if !foundKey.IsEmpty() {
+			}
+			if !foundKey.IsEmpty() {
 				assertionKey.Alg = foundKey.Alg
 				assertionKey.Key = foundKey.Key
 			}
 		}
 
-		// Determine if this is a legacy TDF based on version
-		isLegacyTDF := r.manifest.TDFVersion == ""
-
 		verifyInput := VerifyInput{
 			Assertion:     assertion,
-			AggregateHash: aggregateHash.Bytes(),
-			IsLegacyTDF:   isLegacyTDF,
+			AggregateHash: aggregateHash,
+			IsLegacyTDF:   false, // Modern TDFs are not legacy
 		}
 
 		err := r.assertionVerifier.Verify(ctx, verifyInput, assertionKey)
@@ -1368,16 +1458,6 @@ func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 			return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: assertion.ID}, err)
 		}
 	}
-
-	gcm, err := ocrypto.NewAESGcm(payloadKey[:])
-	if err != nil {
-		return fmt.Errorf("ocrypto.NewAESGcm failed:%w", err)
-	}
-
-	r.unencryptedMetadata = unencryptedMetadata
-	r.payloadKey = payloadKey[:]
-	r.aesGcm = gcm
-
 	return nil
 }
 

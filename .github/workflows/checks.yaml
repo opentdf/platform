@@ -29,6 +29,8 @@ jobs:
       checks: write
       contents: read
       pull-requests: read
+    needs:
+      - example-vault
     strategy:
       matrix:
         directory:
@@ -101,6 +103,8 @@ jobs:
   integration:
     permissions:
       contents: read
+    needs:
+      - go
     name: integration tests
     runs-on: ubuntu-22.04
     env:
@@ -174,9 +178,89 @@ jobs:
       - name: validate custom entity rego policy
         run: test/rego/custom-entity.bats
 
+  example-vault:
+    permissions:
+      contents: read
+    runs-on: ubuntu-22.04
+    env:
+      TLS_ENABLED: "true"
+      VAULT_ADDR: "https://127.0.0.1:8200"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.4.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b #v5.4.0
+        with:
+          go-version-file: "service/go.mod"
+          check-latest: false
+          cache-dependency-path: |
+            service/go.sum
+            examples/go.sum
+            protocol/go/go.sum
+            sdk/go.sum
+      - run: go mod download
+      - run: go mod verify
+      - name: Install mkcert
+        run: |
+          sudo apt-get install -y libnss3-tools
+          curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
+          chmod +x mkcert-v*-linux-amd64
+          sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+      - run: |
+          .github/scripts/init-temp-keys.sh
+          mkcert -install
+          mkcert -cert-file ./keys/platform.crt -key-file ./keys/platform-key.pem localhost
+          cp opentdf-dev.yaml opentdf.yaml
+          yq eval '.server.tls.enabled = true' -i opentdf.yaml
+          yq eval '.trace = {"enabled":true}' -i opentdf.yaml
+      - name: Install vault
+       # See https://developer.hashicorp.com/vault/install#linux
+        run: |
+          wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo apt update && sudo apt install vault
+      - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
+        name: start vault in background
+        with:
+          run: >
+            vault server -dev -dev-root-token-id root  
+              -dev-tls -dev-tls-cert-dir="keys"
+          wait-on: |
+            tcp:localhost:8200
+          log-output-if: true
+          wait-for: 90s
+      - run: |
+          echo "VAULT_CACERT=$(pwd)/keys/vault-ca.pem" >> "$GITHUB_ENV"
+      - name: Added Trusted Certs
+        run: |
+          sudo chmod -R 777 ./keys
+          sudo apt-get install -y ca-certificates
+          sudo cp "${VAULT_CACERT}" /usr/local/share/ca-certificates || echo unable to find "${VAULT_CACERT}"
+          sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates || echo unable to find ./keys/localhost.crt
+          sudo update-ca-certificates
+      - run: docker compose up -d --wait --wait-timeout 240 || (docker compose logs && exit 1)
+      - run: go run ./service provision keycloak
+      - run: go run ./service provision fixtures
+      - uses: JarvusInnovations/background-action@2428e7b970a846423095c79d43f759abf979a635
+        name: start server in background
+        with:
+          run: |
+            . ./examples/ckms/setup-vault-env.sh
+            go run ./examples/ckms
+          wait-on: |
+            tcp:localhost:8080
+          log-output-if: true
+          wait-for: 90s
+      - name: Setup Bats and bats libs
+        uses: bats-core/bats-action@42fcc8700f773c075a16a90eb11674c0318ad507 #v3.0.1
+      - run: ./examples/ckms/trust-sample.bats
+
   benchmark:
     permissions:
       contents: read
+      pull-requests: write
+    needs:
+      - go
     name: benchmark tests
     outputs:
       markdown: ${{ steps.save-benchmark.outputs.BENCHMARK_MARKDOWN }}
@@ -371,6 +455,8 @@ jobs:
   image:
     permissions:
       contents: read
+    needs:
+      - go
     name: image build
     runs-on: ubuntu-22.04
     steps:
@@ -390,6 +476,8 @@ jobs:
     permissions:
       contents: read
       packages: read
+    needs:
+      - go
     uses: opentdf/tests/.github/workflows/xtest.yml@main
     with:
       focus-sdk: go
@@ -458,6 +546,8 @@ jobs:
   otdfctl-test:
     permissions:
       contents: read
+    needs:
+      - go
     name: otdfctl e2e tests
     runs-on: ubuntu-latest
     steps:
@@ -471,6 +561,8 @@ jobs:
   buflint:
     permissions:
       contents: read
+    needs:
+      - go
     name: Protocol Buffer Lint and Gencode Up-to-date check
     runs-on: ubuntu-22.04
     steps:

@@ -12,10 +12,12 @@ import (
 
 // Manual mock implementation of Loader
 type MockLoader struct {
-	loadFn    func(*Config) error
-	watchFn   func(context.Context, *Config, func(context.Context) error) error
-	closeFn   func() error
-	getNameFn func() string
+	loadFn          func(Config) error
+	getFn           func(string) (any, error)
+	getConfigKeysFn func() ([]string, error)
+	watchFn         func(context.Context, *Config, func(context.Context) error) error
+	closeFn         func() error
+	getNameFn       func() string
 
 	loadCalled    bool
 	watchCalled   bool
@@ -25,12 +27,28 @@ type MockLoader struct {
 	onChangeCalled bool
 }
 
-func (l *MockLoader) Load(config *Config) error {
+func (l *MockLoader) Load(mostRecentConfig Config) error {
 	l.loadCalled = true
 	if l.loadFn != nil {
-		return l.loadFn(config)
+		return l.loadFn(mostRecentConfig)
 	}
 	return nil
+}
+
+func (l *MockLoader) Get(key string) (any, error) {
+	l.loadCalled = true
+	if l.getFn != nil {
+		return l.getFn(key)
+	}
+	return nil, nil
+}
+
+func (l *MockLoader) GetConfigKeys() ([]string, error) {
+	l.loadCalled = true
+	if l.loadFn != nil {
+		return l.getConfigKeysFn()
+	}
+	return nil, nil
 }
 
 func (l *MockLoader) Watch(ctx context.Context, config *Config, onChange func(context.Context) error) error {

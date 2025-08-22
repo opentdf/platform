@@ -46,9 +46,14 @@ You can clear/recycle your database with 'docker compose down' and 'docker compo
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
+			defaultSettingsLoader, err := config.NewDefaultSettingsLoader()
+			if err != nil {
+				panic(fmt.Errorf("could not load config: %w", err))
+			}
 			cfg, err := config.LoadConfig(cmd.Context(), []config.Loader{
 				envLoader,
 				configFileLoader,
+				defaultSettingsLoader,
 			})
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))

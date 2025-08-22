@@ -49,6 +49,10 @@ func Start(f ...StartOptions) error {
 	loaderOrder := []string{"environment-value", "config-file", "default-settings"}
 	if startConfig.configLoaderOrder != nil {
 		loaderOrder = startConfig.configLoaderOrder
+	} else if startConfig.configLoaders != nil {
+		for _, loader := range startConfig.configLoaders {
+			loaderOrder = append(loaderOrder, loader.Name())
+		}
 	}
 
 	loaders := make([]config.Loader, len(loaderOrder))

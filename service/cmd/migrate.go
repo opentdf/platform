@@ -129,9 +129,14 @@ func migrateDBClient(cmd *cobra.Command, opts ...db.OptsFunc) (*db.Client, error
 	if err != nil {
 		panic(fmt.Errorf("could not load config: %w", err))
 	}
+	defaultSettingsLoader, err := config.NewDefaultSettingsLoader()
+	if err != nil {
+		panic(fmt.Errorf("could not load config: %w", err))
+	}
 	conf, err := config.LoadConfig(cmd.Context(), []config.Loader{
 		envLoader,
 		configFileLoader,
+		defaultSettingsLoader,
 	})
 	if err != nil {
 		panic(fmt.Errorf("could not load config: %w", err))

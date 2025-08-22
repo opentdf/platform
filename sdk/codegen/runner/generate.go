@@ -8,6 +8,8 @@ import (
 	"path"
 	"path/filepath"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -61,7 +63,14 @@ func Generate(clientsToGenerateList []ClientsToGenerate, outputDir string) error
 						if client.PackageNameOverride != "" {
 							packageName = client.PackageNameOverride
 						}
-						code := generateWrapper(ts.Name.Name, iface, client.GrpcPackagePath, packageName, client.Suffix)
+						// In order to counter package name fatigue (policy.attributes.AttributesService),
+						// newer services are simply named "Service" (policy.obligations.Service).
+						// This prefix logic is necessary for newer services.
+						prefix := ""
+						if ts.Name.Name == "ServiceClient" {
+							prefix = cases.Title(language.English).String(packageName)
+						}
+						code := generateWrapper(ts.Name.Name, iface, client.GrpcPackagePath, packageName, prefix, client.Suffix)
 						outputPath := filepath.Join(outputDir, packageName+".go")
 						err = os.WriteFile(outputPath, []byte(code), 0o644) //nolint:gosec // ignore G306
 						if err != nil {
@@ -105,13 +114,13 @@ func getMethodNames(interfaceType *ast.InterfaceType) []string {
 }
 
 // Generate wrapper code for the Connect RPC client interface
-func generateWrapper(interfaceName string, interfaceType *ast.InterfaceType, packagePath string, packageName string, suffix string) string {
+func generateWrapper(interfaceName string, interfaceType *ast.InterfaceType, packagePath, packageName, prefix, suffix string) string {
 	// Get method names dynamically from the interface
 	methods := getMethodNames(interfaceType)
 	connectPackageName := packageName + "connect"
 
 	// Start generating the wrapper code
-	wrapperCode := fmt.Sprintf(`// Wrapper for %s (generated code) DO NOT EDIT
+	wrapperCode := fmt.Sprintf(`// Wrapper for %s%s (generated code) DO NOT EDIT
 package sdkconnect
 
 import (
@@ -121,25 +130,30 @@ import (
 	"%s"
 )
 
-type %s%sConnectWrapper struct {
+type %s%s%sConnectWrapper struct {
 	%s.%s
 }
 
-func New%s%sConnectWrapper(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) *%s%sConnectWrapper {
-	return &%s%sConnectWrapper{%s: %s.New%s(httpClient, baseURL, opts...)}
+func New%s%s%sConnectWrapper(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) *%s%s%sConnectWrapper {
+	return &%s%s%sConnectWrapper{%s: %s.New%s(httpClient, baseURL, opts...)}
 }
 `,
+		prefix,
 		interfaceName,
 		packagePath,
 		packagePath+"/"+connectPackageName,
+		prefix,
 		interfaceName,
 		suffix,
 		connectPackageName,
 		interfaceName,
+		prefix,
 		interfaceName,
 		suffix,
+		prefix,
 		interfaceName,
 		suffix,
+		prefix,
 		interfaceName,
 		suffix,
 		interfaceName,
@@ -147,21 +161,21 @@ func New%s%sConnectWrapper(httpClient connect.HTTPClient, baseURL string, opts .
 		interfaceName)
 
 	// Generate the interface type definition
-	wrapperCode += generateInterfaceType(interfaceName, methods, packageName, suffix)
+	wrapperCode += generateInterfaceType(interfaceName, methods, packageName, prefix, suffix)
 	// Now generate a wrapper function for each method in the interface
 	for _, method := range methods {
-		wrapperCode += generateWrapperMethod(interfaceName, method, packageName, suffix)
+		wrapperCode += generateWrapperMethod(interfaceName, method, packageName, prefix, suffix)
 	}
 
 	// Output the generated wrapper code
 	return wrapperCode
 }
 
-func generateInterfaceType(interfaceName string, methods []string, packageName string, suffix string) string {
+func generateInterfaceType(interfaceName string, methods []string, packageName, prefix, suffix string) string {
 	// Generate the interface type definition
 	interfaceType := fmt.Sprintf(`
-type %s%s interface {
-`, interfaceName, suffix)
+type %s%s%s interface {
+`, prefix, interfaceName, suffix)
 	for _, method := range methods {
 		interfaceType += fmt.Sprintf(`	%s(ctx context.Context, req *%s.%sRequest) (*%s.%sResponse, error)
 `, method, packageName, method, packageName, method)
@@ -171,9 +185,9 @@ type %s%s interface {
 }
 
 // Generate the wrapper method for a specific method in the interface
-func generateWrapperMethod(interfaceName, methodName, packageName string, suffix string) string {
+func generateWrapperMethod(interfaceName, methodName, packageName, prefix, suffix string) string {
 	return fmt.Sprintf(`
-func (w *%s%sConnectWrapper) %s(ctx context.Context, req *%s.%sRequest) (*%s.%sResponse, error) {
+func (w *%s%s%sConnectWrapper) %s(ctx context.Context, req *%s.%sRequest) (*%s.%sResponse, error) {
 	// Wrap Connect RPC client request
 	res, err := w.%s.%s(ctx, connect.NewRequest(req))
 	if res == nil {
@@ -181,5 +195,5 @@ func (w *%s%sConnectWrapper) %s(ctx context.Context, req *%s.%sRequest) (*%s.%sR
 	}
 	return res.Msg, err
 }
-`, interfaceName, suffix, methodName, packageName, methodName, packageName, methodName, interfaceName, methodName)
+`, prefix, interfaceName, suffix, methodName, packageName, methodName, packageName, methodName, interfaceName, methodName)
 }

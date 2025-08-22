@@ -9,6 +9,7 @@
 ## Documentation
 
 - [Configuration](./docs/Configuring.md)
+- [Multi-Strategy Entity Resolution Service](./ERS_TESTING.md)
 - [Development](#for-contributors)
 - [Policy Config Schema](./service/policy/db/schema_erd.md)
 - [Policy Config Testing Diagram](./service/integration/testing_diagram.png)
@@ -38,7 +39,7 @@ brew install buf go golangci-lint
 #### Optional tools
 
 - _Optional_ [Air](https://github.com/cosmtrek/air) is used for hot-reload development
-  - install with `go install github.com/cosmtrek/air@latest`
+  - install with `go install github.com/air-verse/air@latest`
 - _Optional_ [grpcurl](https://github.com/fullstorydev/grpcurl) is used for testing gRPC services
   - install with `brew install grpcurl`
 - _Optional_ [openssl](https://www.openssl.org/) is used for generating certificates
@@ -52,7 +53,7 @@ There are two primary audiences for this project. Consumers and Contributors
 Consumers of the OpenTDF platform should begin their journey [here](./docs/Consuming.md).
 
 2. Contributing
-To contribute to the OpenTDF platform, you'll need bit more set setup and should start [here](./docs/Contributing.md).
+To contribute to the OpenTDF platform, you'll need a bit more setup and should start [here](./docs/Contributing.md).
 
 ## Additional info for Project Consumers & Contributors
 
@@ -76,6 +77,13 @@ https://github.com/opentdf/platform/blob/main/service/go.mod#L3
 
 Generate development keys/certs for the platform infrastructure.
 
+> **Note for Apple M4 chip users:**  
+> If you are running on an Apple M4 chip, set the Java environment variable before running any commands:
+> ```sh
+> export JAVA_OPTS_APPEND="-XX:UseSVE=0"
+> ```
+> This resolves SIGILL with Code 134 errors when running Java processes.
+
 ```sh
 ./.github/scripts/init-temp-keys.sh
 ```
@@ -83,16 +91,8 @@ Generate development keys/certs for the platform infrastructure.
 Start the required infrastructure with [compose-spec](https://compose-spec.io).
 
 ```sh
-# If you are on an M4 chip (Apple Silicon), use the provided script to ensure the correct Java environment:
-./run-compose.sh -f docker-compose.yaml up
-
-# Otherwise, use docker compose directly:
 docker compose -f docker-compose.yaml up
 ```
-
-> **Note:**  
-> The `run-compose.sh` script is required on Apple Silicon (M1/M2/M3/M4) Macs to ensure the correct Java environment is used for containers that require x86_64 Java images.  
-> This is necessary because some images (such as Keycloak) may not have ARM-compatible builds, and the script sets up emulation as needed.
 
 Copy the development configuration file from the example and update it with your own values (if necessary, not common).
 
@@ -112,6 +112,45 @@ Run the OpenTDF platform service.
 go run ./service start
 ```
 <!-- END copy ./service/README#quick-start -->
+
+### Multi-Strategy Entity Resolution Service
+
+The OpenTDF platform supports a powerful multi-strategy Entity Resolution Service (ERS) that can integrate with multiple identity providers and data sources simultaneously.
+
+#### Quick Start with Multi-Strategy ERS (Preview)
+
+> **⚠️ Preview Feature**: Multi-Strategy ERS is in preview (V2 only). APIs may change.
+
+To run OpenTDF with comprehensive entity resolution using SQL and LDAP providers:
+
+```sh
+# Start core infrastructure + ERS test services
+docker compose --profile ers-test up
+
+# Use the multi-strategy configuration
+go run ./service start --config opentdf-ers-test.yaml
+```
+
+This enables entity resolution from:
+- **JWT Claims** - Direct token claim extraction
+- **PostgreSQL** - SQL database queries for organizational data
+- **LDAP/Active Directory** - Directory service integration
+
+#### ERS Provider Testing
+
+Test the multi-strategy ERS functionality:
+
+```sh
+# Run integration tests (Docker services provide the backends automatically)
+go test ./service/entityresolution/integration -run TestMultiStrategy -v
+```
+
+#### Configuration Options
+
+- **`opentdf-ers-test.yaml`** - Complete OpenTDF platform with multi-strategy ERS
+- **`ERS_TESTING.md`** - Comprehensive documentation and examples
+
+The multi-strategy ERS (preview) provides enterprise-grade identity resolution with failover, multiple provider support, and flexible mapping strategies.
 
 ## For Contributors
 
@@ -137,7 +176,7 @@ platform. The SDKs contain a native Go SDK and generated Go service SDKs. A full
 
 ### How To Add a New Go Module
 
-Within this repo, todefine a new, distinct [go module](https://go.dev/ref/mod),
+Within this repo, to define a new, distinct [go module](https://go.dev/ref/mod),
 for example to provide shared functionality between several existing modules,
 or to define new and unique functionality
 follow these steps.
@@ -198,7 +237,7 @@ COPY lib/foo/ lib/foo/
 
 #### Updating the Workflow Files
 
-1. Add your new `go.mod` directory to the `.github/workflows/checks.yaml`'s `go` job's `matrix.strategry.directory` line.
+1. Add your new `go.mod` directory to the `.github/workflows/checks.yaml`'s `go` job's `strategy.matrix.directory` line.
 2. Add the module to the `license` job in the `checks` workflow as well, especially if you declare _any_ dependencies.
 3. Do the same for any other workflows that should be running on your folder, such as `vuln-check` and `lint`.
 

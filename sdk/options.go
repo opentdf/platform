@@ -43,6 +43,8 @@ type config struct {
 	entityResolutionConn               *ConnectRPCConnection
 	collectionStore                    *collectionStore
 	shouldValidatePlatformConnectivity bool
+	assertionSigner                    AssertionSigner
+	assertionVerifier                  AssertionVerifier
 }
 
 // Options specific to TDF protocol features
@@ -228,5 +230,23 @@ func WithExtraClientOptions(opts ...connect.ClientOption) Option {
 func WithNoKIDInNano() Option {
 	return func(c *config) {
 		c.nanoFeatures.noKID = true
+	}
+}
+
+// WithAssertionSigner returns an Option that sets a custom assertion signer.
+// The provided signer will be used for signing assertions during TDF creation.
+// If not set, a default signer will be used.
+func WithAssertionSigner(s AssertionSigner) Option {
+	return func(c *config) {
+		c.assertionSigner = s
+	}
+}
+
+// WithAssertionVerifier returns an Option that sets a custom assertion verifier.
+// The provided verifier will be used for verifying assertions during TDF reading.
+// If not set, a default verifier will be used.
+func WithAssertionVerifier(v AssertionVerifier) Option {
+	return func(c *config) {
+		c.assertionVerifier = v
 	}
 }

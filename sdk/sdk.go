@@ -69,6 +69,8 @@ type SDK struct {
 	Unsafe                  sdkconnect.UnsafeServiceClient
 	KeyManagement           sdkconnect.KeyManagementServiceClient
 	wellknownConfiguration  sdkconnect.WellKnownServiceClient
+	assertionSigner         AssertionSigner
+	assertionVerifier       AssertionVerifier
 }
 
 func New(platformEndpoint string, opts ...Option) (*SDK, error) {
@@ -179,6 +181,17 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		ersConn = platformConn
 	}
 
+	// Initialize assertion providers with defaults if not provided
+	assertionSigner := cfg.assertionSigner
+	if assertionSigner == nil {
+		assertionSigner = defaultAssertionSigner{}
+	}
+
+	assertionVerifier := cfg.assertionVerifier
+	if assertionVerifier == nil {
+		assertionVerifier = defaultAssertionVerifier{}
+	}
+
 	return &SDK{
 		config:                  *cfg,
 		collectionStore:         cfg.collectionStore,
@@ -199,6 +212,8 @@ func New(platformEndpoint string, opts ...Option) (*SDK, error) {
 		EntityResolutionV2:      sdkconnect.NewEntityResolutionServiceClientV2ConnectWrapper(ersConn.Client, ersConn.Endpoint, ersConn.Options...),
 		KeyManagement:           sdkconnect.NewKeyManagementServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
 		wellknownConfiguration:  sdkconnect.NewWellKnownServiceClientConnectWrapper(platformConn.Client, platformConn.Endpoint, platformConn.Options...),
+		assertionSigner:         assertionSigner,
+		assertionVerifier:       assertionVerifier,
 	}, nil
 }
 

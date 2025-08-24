@@ -156,6 +156,119 @@ func (q *Queries) createObligation(ctx context.Context, arg createObligationPara
 	return i, err
 }
 
+const createObligationValue = `-- name: createObligationValue :one
+
+WITH obligation_lookup AS (
+    SELECT od.id, od.name, od.metadata
+    FROM obligation_definitions od
+    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
+    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+    WHERE
+        -- lookup by obligation id OR by namespace fqn + obligation name
+        (
+            -- lookup by obligation id
+            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+            OR
+            -- lookup by namespace fqn + obligation name
+            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL 
+             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
+        )
+),
+inserted_value AS (
+    INSERT INTO obligation_values_standard (obligation_definition_id, value, metadata)
+    SELECT ol.id, $4, $5
+    FROM obligation_lookup ol
+    RETURNING id, obligation_definition_id, value, metadata
+)
+SELECT
+    iv.id,
+    ol.name,
+    JSON_BUILD_OBJECT(
+        'id', n.id,
+        'name', n.name,
+        'fqn', fqns.fqn
+    ) as namespace,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', iv.metadata -> 'labels', 'created_at', EXTRACT(EPOCH FROM NOW()),'updated_at', EXTRACT(EPOCH FROM NOW()))) as metadata
+FROM inserted_value iv
+JOIN obligation_lookup ol ON ol.id = iv.obligation_definition_id
+JOIN obligation_definitions od ON od.id = ol.id
+JOIN attribute_namespaces n ON od.namespace_id = n.id
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+`
+
+type createObligationValueParams struct {
+	ID           string `json:"id"`
+	NamespaceFqn string `json:"namespace_fqn"`
+	Name         string `json:"name"`
+	Value        string `json:"value"`
+	Metadata     []byte `json:"metadata"`
+}
+
+type createObligationValueRow struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Namespace []byte `json:"namespace"`
+	Metadata  []byte `json:"metadata"`
+}
+
+// --------------------------------------------------------------
+// OBLIGATION VALUES
+// --------------------------------------------------------------
+//
+//	WITH obligation_lookup AS (
+//	    SELECT od.id, od.name, od.metadata
+//	    FROM obligation_definitions od
+//	    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
+//	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	    WHERE
+//	        -- lookup by obligation id OR by namespace fqn + obligation name
+//	        (
+//	            -- lookup by obligation id
+//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+//	            OR
+//	            -- lookup by namespace fqn + obligation name
+//	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
+//	             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
+//	        )
+//	),
+//	inserted_value AS (
+//	    INSERT INTO obligation_values_standard (obligation_definition_id, value, metadata)
+//	    SELECT ol.id, $4, $5
+//	    FROM obligation_lookup ol
+//	    RETURNING id, obligation_definition_id, value, metadata
+//	)
+//	SELECT
+//	    iv.id,
+//	    ol.name,
+//	    JSON_BUILD_OBJECT(
+//	        'id', n.id,
+//	        'name', n.name,
+//	        'fqn', fqns.fqn
+//	    ) as namespace,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', iv.metadata -> 'labels', 'created_at', EXTRACT(EPOCH FROM NOW()),'updated_at', EXTRACT(EPOCH FROM NOW()))) as metadata
+//	FROM inserted_value iv
+//	JOIN obligation_lookup ol ON ol.id = iv.obligation_definition_id
+//	JOIN obligation_definitions od ON od.id = ol.id
+//	JOIN attribute_namespaces n ON od.namespace_id = n.id
+//	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+func (q *Queries) createObligationValue(ctx context.Context, arg createObligationValueParams) (createObligationValueRow, error) {
+	row := q.db.QueryRow(ctx, createObligationValue,
+		arg.ID,
+		arg.NamespaceFqn,
+		arg.Name,
+		arg.Value,
+		arg.Metadata,
+	)
+	var i createObligationValueRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Namespace,
+		&i.Metadata,
+	)
+	return i, err
+}
+
 const deleteObligation = `-- name: deleteObligation :one
 DELETE FROM obligation_definitions 
 WHERE id IN (

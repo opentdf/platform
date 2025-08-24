@@ -224,7 +224,7 @@ SELECT
         'name', n.name,
         'fqn', fqns.fqn
     ) as namespace,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', iv.metadata -> 'labels', 'created_at', EXTRACT(EPOCH FROM NOW()),'updated_at', EXTRACT(EPOCH FROM NOW()))) as metadata
+    iv.metadata as metadata
 FROM inserted_value iv
 JOIN obligation_lookup ol ON ol.id = iv.obligation_definition_id
 JOIN obligation_definitions od ON od.id = ol.id

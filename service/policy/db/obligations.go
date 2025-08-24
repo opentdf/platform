@@ -31,6 +31,7 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 		Values:       values,
 	}
 	row, err := c.queries.createObligation(ctx, queryParams)
+	now := timestamppb.Now()
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -48,7 +49,6 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal obligation metadata: %w", err)
 	}
-	now := timestamppb.Now()
 	metadata.CreatedAt = now
 	metadata.UpdatedAt = now
 
@@ -243,6 +243,7 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 		Name:     name,
 		Metadata: metadataJSON,
 	})
+	now := timestamppb.Now()
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
@@ -250,7 +251,7 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 		return nil, db.ErrNotFound
 	}
 	metadata.CreatedAt = obl.GetMetadata().GetCreatedAt()
-	metadata.UpdatedAt = timestamppb.Now()
+	metadata.UpdatedAt = now
 
 	return &policy.Obligation{
 		Id:        id,
@@ -280,4 +281,64 @@ func (c PolicyDBClient) DeleteObligation(ctx context.Context, r *obligations.Del
 	return &policy.Obligation{
 		Id: id,
 	}, nil
+}
+
+///
+/// Obligation Values
+///
+
+func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligations.CreateObligationValueRequest) (*policy.ObligationValue, error) {
+	nsFQN, oblName := breakOblFQN(r.GetFqn())
+	value := r.GetValue()
+	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
+	if err != nil {
+		return nil, err
+	}
+
+	queryParams := createObligationValueParams{
+		ID:           r.GetId(),
+		Name:         oblName,
+		NamespaceFqn: nsFQN,
+		Value:        value,
+		Metadata:     metadataJSON,
+	}
+
+	row, err := c.queries.createObligationValue(ctx, queryParams)
+	now := timestamppb.Now()
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	// oblVals, err := unmarshalObligationValues(row.Values)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to unmarshal obligation values: %w", err)
+	// }
+
+	// namespace := &policy.Namespace{}
+	// if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
+	// 	return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
+	// }
+
+	metadata := &common.Metadata{}
+	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligation metadata: %w", err)
+	}
+
+	metadata.CreatedAt = now
+	metadata.UpdatedAt = now
+
+	obl := &policy.Obligation{
+		Id:        row.ID,
+		Name:      oblName,
+		Namespace: nsFQN,
+		// Values:    oblVals,
+		// Metadata:  metadata,
+	}
+
+	return &policy.ObligationValue{
+		Id:         row.ID,
+		Obligation: obl,
+		Value:      value,
+		Metadata:   metadata,
+	}, nil
+
 }

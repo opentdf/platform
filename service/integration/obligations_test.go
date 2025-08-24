@@ -492,13 +492,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Succeeds() {
 	s.NotNil(oblValue)
 	s.Equal(oblValPrefix+"test-1", oblValue.GetValue())
 	s.Equal("value", oblValue.GetMetadata().GetLabels()["test"])
-	// Check basic obligation properties (without metadata timestamps)
-	s.Equal(oblName, oblValue.GetObligation().GetName())
-	s.Equal(namespaceID, oblValue.GetObligation().GetNamespace().GetId())
-	s.Equal(namespace.Name, oblValue.GetObligation().GetNamespace().GetName())
-	s.Equal(namespaceFQN, oblValue.GetObligation().GetNamespace().GetFqn())
-	// Check obligation value metadata timestamps
-	s.assertObligationValueMetadata(oblValue)
+	s.assertObligationValueBasics(oblValue, oblValPrefix+"test-1", namespaceID, namespace.Name, namespaceFQN)
 
 	// Test 2: Create obligation value by obligation FQN
 	oblFQN := policydb.BuildOblFQN(namespaceFQN, oblName)
@@ -511,13 +505,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(oblValue2)
 	s.Equal(oblValPrefix+"test-2", oblValue2.GetValue())
-	// Check basic obligation properties (without metadata timestamps)
-	s.Equal(oblName, oblValue2.GetObligation().GetName())
-	s.Equal(namespaceID, oblValue2.GetObligation().GetNamespace().GetId())
-	s.Equal(namespace.Name, oblValue2.GetObligation().GetNamespace().GetName())
-	s.Equal(namespaceFQN, oblValue2.GetObligation().GetNamespace().GetFqn())
-	// Check obligation value metadata timestamps
-	s.assertObligationValueMetadata(oblValue2)
+	s.assertObligationValueBasics(oblValue2, oblValPrefix+"test-2", namespaceID, namespace.Name, namespaceFQN)
 
 	// Cleanup
 	s.deleteObligation(createdObl.GetId())
@@ -537,7 +525,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Fails() {
 	// Test 2: Non-existent obligation ID
 	oblValue, err = s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
 		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: "00000000-0000-0000-0000-000000000000",
+			Id: invalidID,
 		},
 		Value: oblValPrefix + "test",
 	})
@@ -582,9 +570,6 @@ func (s *ObligationsSuite) getNamespaceData(nsName string) (string, string, fixt
 func (s *ObligationsSuite) assertObligationBasics(obl *policy.Obligation, name, namespaceID, namespaceName, namespaceFQN string) {
 	s.Require().NotNil(obl)
 	s.Equal(name, obl.GetName())
-	// s.Equal(namespaceID, obl.GetNamespace().GetId())
-	// s.Equal(namespaceName, obl.GetNamespace().GetName())
-	// s.Equal(namespaceFQN, obl.GetNamespace().GetFqn())
 	s.assertNamespace(obl.GetNamespace(), namespaceID, namespaceName, namespaceFQN)
 	s.assertMetadata(obl.GetMetadata())
 }
@@ -614,10 +599,9 @@ func (s *ObligationsSuite) assertObligationValues(obl *policy.Obligation) {
 	}
 }
 
-func (s *ObligationsSuite) assertObligationValueBasics(oblValue *policy.ObligationValue, value, oblName, namespaceID, namespaceName, namespaceFQN string) {
+func (s *ObligationsSuite) assertObligationValueBasics(oblValue *policy.ObligationValue, value, namespaceID, namespaceName, namespaceFQN string) {
 	s.Require().NotNil(oblValue)
 	s.Equal(value, oblValue.GetValue())
-	// s.Equal(oblName, oblValue.GetObligation().GetName())
 	s.assertNamespace(oblValue.GetObligation().GetNamespace(), namespaceID, namespaceName, namespaceFQN)
 	s.assertMetadata(oblValue.GetMetadata())
 }

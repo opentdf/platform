@@ -308,15 +308,12 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 	if err != nil {
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
-	// oblVals, err := unmarshalObligationValues(row.Values)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to unmarshal obligation values: %w", err)
-	// }
+	id := row.ID
 
-	// namespace := &policy.Namespace{}
-	// if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
-	// 	return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
-	// }
+	namespace := &policy.Namespace{}
+	if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
+	}
 
 	metadata := &common.Metadata{}
 	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
@@ -327,18 +324,15 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 	metadata.UpdatedAt = now
 
 	obl := &policy.Obligation{
-		Id:        row.ID,
-		Name:      oblName,
-		Namespace: nsFQN,
-		// Values:    oblVals,
-		// Metadata:  metadata,
+		Id:        id,
+		Name:      row.Name,
+		Namespace: namespace,
 	}
 
 	return &policy.ObligationValue{
-		Id:         row.ID,
+		Id:         id,
 		Obligation: obl,
 		Value:      value,
 		Metadata:   metadata,
 	}, nil
-
 }

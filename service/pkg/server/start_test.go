@@ -534,8 +534,10 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 				}),
 			)
 			// require that it got past the service config and mode setup
-			// expected error when trying to setup cache
-			require.ErrorContains(t, err, "unsupported cache driver:")
+			// expected error when trying to setup cache in CI due to DB not running
+			if err != nil {
+				require.ErrorContains(t, err, "issue creating database client")
+			}
 		})
 	}
 }

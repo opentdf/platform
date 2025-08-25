@@ -219,6 +219,7 @@ inserted_value AS (
 SELECT
     iv.id,
     ol.name,
+    ol.id as obligation_id,
     JSON_BUILD_OBJECT(
         'id', n.id,
         'name', n.name,
@@ -230,6 +231,33 @@ JOIN obligation_lookup ol ON ol.id = iv.obligation_definition_id
 JOIN obligation_definitions od ON od.id = ol.id
 JOIN attribute_namespaces n ON od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL;
+
+-- name: getObligationValue :one
+SELECT
+    ov.id,
+    ov.value,
+    od.id as obligation_id,
+    od.name,
+    JSON_BUILD_OBJECT(
+        'id', n.id,
+        'name', n.name,
+        'fqn', fqns.fqn
+    ) as namespace,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ov.metadata -> 'labels', 'created_at', ov.created_at,'updated_at', ov.updated_at)) as metadata
+FROM obligation_values_standard ov
+JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+JOIN attribute_namespaces n ON od.namespace_id = n.id
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+WHERE
+    -- lookup by value id OR by namespace fqn + obligation name + value name
+    (
+        -- lookup by value id
+        (@id::TEXT != '' AND ov.id = @id::UUID)
+        OR
+        -- lookup by namespace fqn + obligation name + value name
+        (@namespace_fqn::TEXT != '' AND @name::TEXT != '' AND @value::TEXT != ''
+         AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR AND ov.value = @value::VARCHAR)
+    );
 
 -- name: deleteObligationValue :one
 DELETE FROM obligation_values_standard

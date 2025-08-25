@@ -183,6 +183,7 @@ inserted_value AS (
 SELECT
     iv.id,
     ol.name,
+    ol.id as obligation_id,
     JSON_BUILD_OBJECT(
         'id', n.id,
         'name', n.name,
@@ -205,10 +206,11 @@ type createObligationValueParams struct {
 }
 
 type createObligationValueRow struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Namespace []byte `json:"namespace"`
-	Metadata  []byte `json:"metadata"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	ObligationID string `json:"obligation_id"`
+	Namespace    []byte `json:"namespace"`
+	Metadata     []byte `json:"metadata"`
 }
 
 // --------------------------------------------------------------
@@ -240,6 +242,7 @@ type createObligationValueRow struct {
 //	SELECT
 //	    iv.id,
 //	    ol.name,
+//	    ol.id as obligation_id,
 //	    JSON_BUILD_OBJECT(
 //	        'id', n.id,
 //	        'name', n.name,
@@ -263,6 +266,7 @@ func (q *Queries) createObligationValue(ctx context.Context, arg createObligatio
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.ObligationID,
 		&i.Namespace,
 		&i.Metadata,
 	)
@@ -475,6 +479,96 @@ func (q *Queries) getObligation(ctx context.Context, arg getObligationParams) (g
 		&i.Namespace,
 		&i.Metadata,
 		&i.Values,
+	)
+	return i, err
+}
+
+const getObligationValue = `-- name: getObligationValue :one
+SELECT
+    ov.id,
+    ov.value,
+    od.id as obligation_id,
+    od.name,
+    JSON_BUILD_OBJECT(
+        'id', n.id,
+        'name', n.name,
+        'fqn', fqns.fqn
+    ) as namespace,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ov.metadata -> 'labels', 'created_at', ov.created_at,'updated_at', ov.updated_at)) as metadata
+FROM obligation_values_standard ov
+JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+JOIN attribute_namespaces n ON od.namespace_id = n.id
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+WHERE
+    -- lookup by value id OR by namespace fqn + obligation name + value name
+    (
+        -- lookup by value id
+        ($1::TEXT != '' AND ov.id = $1::UUID)
+        OR
+        -- lookup by namespace fqn + obligation name + value name
+        ($2::TEXT != '' AND $3::TEXT != '' AND $4::TEXT != ''
+         AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR AND ov.value = $4::VARCHAR)
+    )
+`
+
+type getObligationValueParams struct {
+	ID           string `json:"id"`
+	NamespaceFqn string `json:"namespace_fqn"`
+	Name         string `json:"name"`
+	Value        string `json:"value"`
+}
+
+type getObligationValueRow struct {
+	ID           string `json:"id"`
+	Value        string `json:"value"`
+	ObligationID string `json:"obligation_id"`
+	Name         string `json:"name"`
+	Namespace    []byte `json:"namespace"`
+	Metadata     []byte `json:"metadata"`
+}
+
+// getObligationValue
+//
+//	SELECT
+//	    ov.id,
+//	    ov.value,
+//	    od.id as obligation_id,
+//	    od.name,
+//	    JSON_BUILD_OBJECT(
+//	        'id', n.id,
+//	        'name', n.name,
+//	        'fqn', fqns.fqn
+//	    ) as namespace,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ov.metadata -> 'labels', 'created_at', ov.created_at,'updated_at', ov.updated_at)) as metadata
+//	FROM obligation_values_standard ov
+//	JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+//	JOIN attribute_namespaces n ON od.namespace_id = n.id
+//	LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	WHERE
+//	    -- lookup by value id OR by namespace fqn + obligation name + value name
+//	    (
+//	        -- lookup by value id
+//	        ($1::TEXT != '' AND ov.id = $1::UUID)
+//	        OR
+//	        -- lookup by namespace fqn + obligation name + value name
+//	        ($2::TEXT != '' AND $3::TEXT != '' AND $4::TEXT != ''
+//	         AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR AND ov.value = $4::VARCHAR)
+//	    )
+func (q *Queries) getObligationValue(ctx context.Context, arg getObligationValueParams) (getObligationValueRow, error) {
+	row := q.db.QueryRow(ctx, getObligationValue,
+		arg.ID,
+		arg.NamespaceFqn,
+		arg.Name,
+		arg.Value,
+	)
+	var i getObligationValueRow
+	err := row.Scan(
+		&i.ID,
+		&i.Value,
+		&i.ObligationID,
+		&i.Name,
+		&i.Namespace,
+		&i.Metadata,
 	)
 	return i, err
 }

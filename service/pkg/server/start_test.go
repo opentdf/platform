@@ -527,10 +527,15 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 
 			err = Start(
 				WithConfigFile(tempFilePath),
+				WithConfigLoaderOrder([]string{
+					"environment-value",
+					"config-file",
+					"default-settings",
+				}),
 			)
 			// require that it got past the service config and mode setup
-			// expected error when trying to establish db connection
-			require.ErrorContains(t, err, "failed to connect to database")
+			// expected error when trying to setup cache
+			require.ErrorContains(t, err, "unsupported cache driver:")
 		})
 	}
 }

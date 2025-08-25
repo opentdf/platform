@@ -23,8 +23,8 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	Issuer       string        `mapstructure:"issuer" json:"issuer"`
 	Audience     string        `mapstructure:"audience" json:"audience"`
 	Policy       PolicyConfig  `mapstructure:"policy" json:"policy"`
-	CacheRefresh string        `mapstructure:"cache_refresh_interval"`
-	DPoPSkew     time.Duration `mapstructure:"dpopskew" default:"1h"`
+	CacheRefresh string        `mapstructure:"cacheRefreshInterval" json:"cacheRefreshInterval" default:"15m"`
+	DPoPSkew     time.Duration `mapstructure:"dpopskew" json:"dpopskew" default:"1h"`
 	TokenSkew    time.Duration `mapstructure:"skew" default:"1m"`
 }
 
@@ -33,7 +33,7 @@ type PolicyConfig struct {
 	// Username claim to use for user information
 	UserNameClaim string `mapstructure:"username_claim" json:"username_claim" default:"preferred_username"`
 	// Claim to use for group/role information
-	GroupsClaim string `mapstructure:"groups_claim" json:"group_claim" default:"realm_access.roles"`
+	GroupsClaim string `mapstructure:"groups_claim" json:"groups_claim" default:"realm_access.roles"`
 	// Deprecated: Use GroupClain instead
 	RoleClaim string `mapstructure:"claim" json:"claim" default:"realm_access.roles"`
 	// Deprecated: Use Casbin grouping statements g, <user/group>, <role>

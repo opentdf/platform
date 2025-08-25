@@ -349,6 +349,7 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 
 func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.GetObligationValueRequest) (*policy.ObligationValue, error) {
 	nsFQN, oblName, oblVal := breakOblValFQN(r.GetFqn())
+	println("FQN parts: ", nsFQN, oblName, oblVal)
 	queryParams := getObligationValueParams{
 		ID:           r.GetId(),
 		Name:         oblName,

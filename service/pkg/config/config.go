@@ -56,7 +56,7 @@ type Config struct {
 	// loaders is a list of configuration loaders.
 	loaders []Loader
 	// reloadMux ensures that the Reload function is thread-safe.
-	reloadMux sync.Mutex
+	reloadMux *sync.Mutex
 }
 
 // SDKConfig represents the configuration for the SDK.
@@ -127,12 +127,12 @@ func (c *Config) Watch(ctx context.Context) error {
 		// It orchestrates the reloading of the entire configuration and then triggers the registered hooks.
 		loaderName := loader.Name()
 		onChangeCallback := func(ctx context.Context) error {
-			slog.InfoContext(ctx, "Configuration change detected, reloading...", slog.String("source", loaderName))
+			slog.InfoContext(ctx, "configuration change detected, reloading...", slog.String("loader", loaderName))
 			if err := c.Reload(ctx); err != nil {
 				slog.ErrorContext(ctx, "failed to reload configuration", slog.Any("error", err))
 				return err
 			}
-			slog.InfoContext(ctx, "Configuration reloaded successfully")
+			slog.InfoContext(ctx, "configuration reloaded successfully")
 
 			// Now call the user-provided hooks with the new configuration.
 			return c.OnChange(ctx)
@@ -201,7 +201,12 @@ func (c *Config) Reload(ctx context.Context) error {
 			// Get all keys this loader knows about.
 			keys, err := loader.GetConfigKeys()
 			if err != nil {
-				slog.WarnContext(ctx, "loader failed to get config keys", "loader", loader.Name(), "error", err)
+				slog.WarnContext(
+					ctx,
+					"loader failed to get config keys",
+					slog.String("loader", loader.Name()),
+					slog.Any("error", err),
+				)
 				continue
 			}
 
@@ -213,7 +218,13 @@ func (c *Config) Reload(ctx context.Context) error {
 				}
 				loaderValue, err := loader.Get(key)
 				if err != nil {
-					slog.DebugContext(ctx, "loader.Get failed for a reported key", "loader", loader.Name(), "key", key, "error", err)
+					slog.DebugContext(
+						ctx,
+						"loader.Get failed for a reported key",
+						slog.String("loader", loader.Name()),
+						slog.String("key", key),
+						slog.Any("error", err),
+					)
 					continue
 				}
 				if loaderValue != nil {
@@ -260,7 +271,8 @@ func (c SDKConfig) LogValue() slog.Value {
 // LoadConfig loads configuration using the provided loader or creates a default Viper loader
 func LoadConfig(ctx context.Context, loaders []Loader) (*Config, error) {
 	config := &Config{
-		loaders: loaders,
+		loaders:   loaders,
+		reloadMux: &sync.Mutex{},
 	}
 
 	if err := config.Reload(ctx); err != nil {

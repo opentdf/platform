@@ -11,15 +11,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-// ConfigFileLoader implements Loader using Viper
-type ConfigFileLoader struct {
+// FileLoader implements Loader using Viper
+type FileLoader struct {
 	viper *viper.Viper
-	name  string
 }
 
 // NewConfigFileLoader creates a new Viper-based configuration loader
 // to load from a default or specified file.
-func NewConfigFileLoader(key, file string) (*ConfigFileLoader, error) {
+func NewConfigFileLoader(key, file string) (*FileLoader, error) {
 	homedir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, errors.Join(err, ErrLoadingConfig)
@@ -39,21 +38,21 @@ func NewConfigFileLoader(key, file string) (*ConfigFileLoader, error) {
 		v.SetConfigFile(file)
 	}
 
-	return &ConfigFileLoader{viper: v}, nil
+	return &FileLoader{viper: v}, nil
 }
 
 // Get fetches a particular config value by dot-delimited key from the source
-func (l *ConfigFileLoader) Get(key string) (any, error) {
+func (l *FileLoader) Get(key string) (any, error) {
 	return l.viper.Get(key), nil
 }
 
 // GetConfigKeys returns all the configuration keys found in the config file.
-func (l *ConfigFileLoader) GetConfigKeys() ([]string, error) {
+func (l *FileLoader) GetConfigKeys() ([]string, error) {
 	return l.viper.AllKeys(), nil
 }
 
 // Load loads the configuration into the provided struct
-func (l *ConfigFileLoader) Load(_ Config) error {
+func (l *FileLoader) Load(_ Config) error {
 	// Read the config file
 	if err := l.viper.ReadInConfig(); err != nil {
 		return errors.Join(err, ErrLoadingConfig)
@@ -62,7 +61,7 @@ func (l *ConfigFileLoader) Load(_ Config) error {
 }
 
 // Watch starts watching the config file for configuration changes
-func (l *ConfigFileLoader) Watch(ctx context.Context, cfg *Config, onChange func(context.Context) error) error {
+func (l *FileLoader) Watch(ctx context.Context, _ *Config, onChange func(context.Context) error) error {
 	l.viper.WatchConfig()
 
 	// If config changes, trigger the main config reload function
@@ -77,10 +76,10 @@ func (l *ConfigFileLoader) Watch(ctx context.Context, cfg *Config, onChange func
 	return nil
 }
 
-func (l *ConfigFileLoader) Name() string {
+func (l *FileLoader) Name() string {
 	return "config-file"
 }
 
-func (l *ConfigFileLoader) Close() error {
+func (l *FileLoader) Close() error {
 	return nil
 }

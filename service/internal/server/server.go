@@ -69,7 +69,7 @@ type Config struct {
 	// Enable pprof
 	EnablePprof bool `mapstructure:"enable_pprof" json:"enable_pprof" default:"false"`
 	// Trace is for configuring open telemetry based tracing.
-	Trace tracing.Config `mapstructure:"trace"`
+	Trace tracing.Config `mapstructure:"trace" json:"trace"`
 }
 
 func (c Config) LogValue() slog.Value {

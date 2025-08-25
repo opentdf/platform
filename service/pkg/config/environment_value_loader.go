@@ -29,7 +29,7 @@ func NewEnvironmentValueLoader(key string, allowList []string) (*EnvironmentValu
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
-	var allowListMap map[string]struct{} = nil
+	var allowListMap map[string]struct{}
 	if allowList != nil || len(allowList) > 0 {
 		allowListMap = make(map[string]struct{})
 		for _, allow := range allowList {
@@ -66,9 +66,9 @@ func (l *EnvironmentValueLoader) Load(_ Config) error {
 }
 
 // Watch starts watching the config file for configuration changes
-func (l *EnvironmentValueLoader) Watch(ctx context.Context, cfg *Config, onChange func(context.Context) error) error {
+func (l *EnvironmentValueLoader) Watch(ctx context.Context, _ *Config, onChange func(context.Context) error) error {
 	// Environment variables can't be watched directly, so we poll them.
-	interval := 15 * time.Second
+	interval := defaultWatchViaPollInterval
 	slog.DebugContext(ctx, "starting environment configuration polling", slog.Duration("interval", interval))
 
 	ticker := time.NewTicker(interval)

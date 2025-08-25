@@ -40,7 +40,7 @@ func (l *MockLoader) Get(key string) (any, error) {
 	if l.getFn != nil {
 		return l.getFn(key)
 	}
-	return nil, nil
+	return nil, errors.New("not setup for Get")
 }
 
 func (l *MockLoader) GetConfigKeys() ([]string, error) {

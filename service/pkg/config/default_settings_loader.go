@@ -14,7 +14,6 @@ import (
 type DefaultSettingsLoader struct {
 	KVMap map[string]any
 	viper *viper.Viper
-	name  string
 }
 
 func getDefaultKVsInternal(data map[string]any, prefix string, defaultKVs *map[string]any) {
@@ -46,6 +45,9 @@ func getDefaultKVs() (map[string]any, error) {
 	}
 	var defaultConfigMap map[string]interface{}
 	err = json.Unmarshal(defaultConfigKVMapBytes, &defaultConfigMap)
+	if err != nil {
+		return nil, err
+	}
 	defaultKVs := map[string]any{}
 	getDefaultKVsInternal(defaultConfigMap, "", &defaultKVs)
 	return defaultKVs, nil
@@ -86,7 +88,7 @@ func (l *DefaultSettingsLoader) Load(_ Config) error {
 	return nil
 }
 
-func (l *DefaultSettingsLoader) Watch(ctx context.Context, cfg *Config, onChange func(context.Context) error) error {
+func (l *DefaultSettingsLoader) Watch(_ context.Context, _ *Config, _ func(context.Context) error) error {
 	return nil
 }
 

@@ -100,7 +100,7 @@ type Config struct {
 	Pool           PoolConfig `mapstructure:"pool" json:"pool"`
 
 	RunMigrations    bool      `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
-	MigrationsFS     *embed.FS `mapstructure:"-"`
+	MigrationsFS     *embed.FS `mapstructure:"-" json:"-"`
 	VerifyConnection bool      `mapstructure:"verifyConnection" json:"verifyConnection" default:"true"`
 }
 

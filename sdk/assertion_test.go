@@ -33,7 +33,7 @@ func TestTDFWithAssertion(t *testing.T) {
 	hashOfAssertion, err := assertion.GetHash()
 	require.NoError(t, err)
 
-	assert.Equal(t, "641981b75d68cedd246db01c3598383a2e7745dc18987c0113924e69d2c7adba", string(hashOfAssertion))
+	assert.Equal(t, "34e8f263fe9fc3787fde8783e758d885ac4005013ec9bc0c3d44dc2b82d4a237", string(hashOfAssertion))
 }
 
 func TestTDFWithAssertionJsonObject(t *testing.T) {
@@ -95,7 +95,7 @@ func TestTDFWithAssertionJsonObject(t *testing.T) {
 	hashOfAssertion, err := assertion.GetHash()
 	require.NoError(t, err)
 
-	expectedHash := "b140675260ffd395e3a935e4102a123dcdcd70e7cfa6ec91e8d309b655497741"
+	expectedHash := "08942aeb07a59d8520a8a0f9b30009766fb10b016d0b107856eec7c357d70dd3"
 	assert.Equal(t, expectedHash, string(hashOfAssertion))
 }
 

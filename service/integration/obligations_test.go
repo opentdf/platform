@@ -564,8 +564,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Fails() {
 
 func (s *ObligationsSuite) Test_GetObligationValue_Succeeds() {
 	namespaceID, namespaceFQN, namespace := s.getNamespaceData(nsExampleCom)
-	createdObl := s.createObligation(namespaceID, oblName+"-get-test", nil) // Create obligation without values
-	defer s.deleteObligations([]string{createdObl.GetId()})
+	createdObl := s.createObligation(namespaceID, oblName, nil) // Create obligation without values
 
 	// Create obligation value first
 	oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
@@ -594,7 +593,7 @@ func (s *ObligationsSuite) Test_GetObligationValue_Succeeds() {
 	s.assertObligationValueBasics(retrievedValue, oblValPrefix+"get-test", namespaceID, namespace.Name, namespaceFQN)
 
 	// Test 2: Get obligation value by FQN
-	oblValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName+"-get-test", oblValPrefix+"get-test")
+	oblValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, oblValPrefix+"get-test")
 	retrievedValue2, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
 		Identifier: &obligations.GetObligationValueRequest_Fqn{
 			Fqn: oblValFQN,
@@ -605,6 +604,9 @@ func (s *ObligationsSuite) Test_GetObligationValue_Succeeds() {
 	s.Equal(oblValue.GetId(), retrievedValue2.GetId())
 	s.Equal(oblValPrefix+"get-test", retrievedValue2.GetValue())
 	s.assertObligationValueBasics(retrievedValue2, oblValPrefix+"get-test", namespaceID, namespace.Name, namespaceFQN)
+
+	// Cleanup
+	s.deleteObligations([]string{createdObl.GetId()})
 }
 
 func (s *ObligationsSuite) Test_GetObligationValue_Fails() {
@@ -820,6 +822,6 @@ func (s *ObligationsSuite) deleteObligation(oblID string) {
 
 func (s *ObligationsSuite) deleteObligations(oblIDs []string) {
 	for _, oblID := range oblIDs {
-		s.deleteObligation(oblID)
+		defer s.deleteObligation(oblID)
 	}
 }

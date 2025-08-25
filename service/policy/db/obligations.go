@@ -348,13 +348,6 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 }
 
 func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.GetObligationValueRequest) (*policy.ObligationValue, error) {
-	// Validate UUID if provided
-	if id := r.GetId(); id != "" {
-		if err := ValidateUUID(id); err != nil {
-			return nil, db.ErrUUIDInvalid
-		}
-	}
-
 	nsFQN, oblName, oblVal := breakOblValFQN(r.GetFqn())
 	queryParams := getObligationValueParams{
 		ID:           r.GetId(),

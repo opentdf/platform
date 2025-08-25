@@ -508,7 +508,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Succeeds() {
 	s.assertObligationValueBasics(oblValue2, oblValPrefix+"test-2", namespaceID, namespace.Name, namespaceFQN)
 
 	// Cleanup
-	s.deleteObligation(createdObl.GetId())
+	s.deleteObligations([]string{createdObl.GetId()})
 }
 
 func (s *ObligationsSuite) Test_CreateObligationValue_Fails() {
@@ -557,7 +557,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Fails() {
 	s.Nil(oblValue)
 
 	// Cleanup
-	s.deleteObligation(createdObl.GetId())
+	s.deleteObligations([]string{createdObl.GetId()})
 }
 
 // Delete
@@ -609,7 +609,7 @@ func (s *ObligationsSuite) Test_DeleteObligationValue_Succeeds() {
 	s.Equal(oblValue2.GetId(), deleted2.GetId())
 
 	// Cleanup
-	s.deleteObligation(createdObl.GetId())
+	s.deleteObligations([]string{createdObl.GetId()})
 }
 
 func (s *ObligationsSuite) Test_DeleteObligationValue_Fails() {
@@ -653,7 +653,7 @@ func (s *ObligationsSuite) Test_DeleteObligationValue_Fails() {
 	s.Nil(deleted)
 
 	// Cleanup
-	s.deleteObligation(createdObl.GetId())
+	s.deleteObligations([]string{createdObl.GetId()})
 }
 
 // Helper functions for common operations

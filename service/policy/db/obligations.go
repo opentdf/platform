@@ -314,8 +314,6 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 		Metadata:     metadataJSON,
 	}
 
-	println("createObl params: ", r.GetId(), oblName, nsFQN, value)
-
 	row, err := c.queries.createObligationValue(ctx, queryParams)
 	now := timestamppb.Now()
 	if err != nil {

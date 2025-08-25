@@ -167,10 +167,10 @@ WITH obligation_lookup AS (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+            ($1::TEXT != '' AND od.id = $1::UUID)
             OR
             -- lookup by namespace fqn + obligation name
-            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL 
+            ($2::TEXT != '' AND $3::TEXT != ''
              AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
         )
 ),
@@ -226,10 +226,10 @@ type createObligationValueRow struct {
 //	        -- lookup by obligation id OR by namespace fqn + obligation name
 //	        (
 //	            -- lookup by obligation id
-//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+//	            ($1::TEXT != '' AND od.id = $1::UUID)
 //	            OR
 //	            -- lookup by namespace fqn + obligation name
-//	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
+//	            ($2::TEXT != '' AND $3::TEXT != ''
 //	             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
 //	        )
 //	),
@@ -284,10 +284,10 @@ WHERE id IN (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+            ($1::TEXT != '' AND od.id = $1::UUID)
             OR
             -- lookup by namespace fqn + obligation name
-            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL 
+            ($2::TEXT != '' AND $3::TEXT != ''
              AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
         )
 )
@@ -312,10 +312,10 @@ type deleteObligationParams struct {
 //	        -- lookup by obligation id OR by namespace fqn + obligation name
 //	        (
 //	            -- lookup by obligation id
-//	            (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+//	            ($1::TEXT != '' AND od.id = $1::UUID)
 //	            OR
 //	            -- lookup by namespace fqn + obligation name
-//	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
+//	            ($2::TEXT != '' AND $3::TEXT != ''
 //	             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
 //	        )
 //	)
@@ -339,10 +339,10 @@ WHERE id IN (
         -- lookup by value id OR by namespace fqn + obligation name + value name
         (
             -- lookup by value id
-            (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+            ($1::TEXT != '' AND ov.id = $1::UUID)
             OR
             -- lookup by namespace fqn + obligation name + value name
-            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL
+            ($2::TEXT != '' AND $3::TEXT != '' AND $4::TEXT != ''
              AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR AND ov.value = $4::VARCHAR)
         )
 )
@@ -369,10 +369,10 @@ type deleteObligationValueParams struct {
 //	        -- lookup by value id OR by namespace fqn + obligation name + value name
 //	        (
 //	            -- lookup by value id
-//	            (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+//	            ($1::TEXT != '' AND ov.id = $1::UUID)
 //	            OR
 //	            -- lookup by namespace fqn + obligation name + value name
-//	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL
+//	            ($2::TEXT != '' AND $3::TEXT != '' AND $4::TEXT != ''
 //	             AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR AND ov.value = $4::VARCHAR)
 //	        )
 //	)
@@ -414,10 +414,10 @@ WHERE
     -- lookup by obligation id OR by namespace fqn + obligation name
     (
         -- lookup by obligation id
-        (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+        ($1::TEXT != '' AND od.id = $1::UUID)
         OR
         -- lookup by namespace fqn + obligation name
-        (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL 
+        ($2::TEXT != '' AND $3::TEXT != ''
          AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
     )
 GROUP BY od.id, n.id, fqns.fqn
@@ -463,10 +463,10 @@ type getObligationRow struct {
 //	    -- lookup by obligation id OR by namespace fqn + obligation name
 //	    (
 //	        -- lookup by obligation id
-//	        (NULLIF($1::TEXT, '') IS NOT NULL AND od.id = $1::UUID)
+//	        ($1::TEXT != '' AND od.id = $1::UUID)
 //	        OR
 //	        -- lookup by namespace fqn + obligation name
-//	        (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL
+//	        ($2::TEXT != '' AND $3::TEXT != ''
 //	         AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR)
 //	    )
 //	GROUP BY od.id, n.id, fqns.fqn
@@ -503,7 +503,7 @@ WHERE
     -- lookup by value id OR by namespace fqn + obligation name + value name
     (
         -- lookup by value id
-        ($1::TEXT != '' AND ov.id = $1::UUID)
+        ($1::TEXT != '' AND ov.id::TEXT = $1::TEXT)
         OR
         -- lookup by namespace fqn + obligation name + value name
         ($2::TEXT != '' AND $3::TEXT != '' AND $4::TEXT != ''
@@ -548,7 +548,7 @@ type getObligationValueRow struct {
 //	    -- lookup by value id OR by namespace fqn + obligation name + value name
 //	    (
 //	        -- lookup by value id
-//	        ($1::TEXT != '' AND ov.id = $1::UUID)
+//	        ($1::TEXT != '' AND ov.id::TEXT = $1::TEXT)
 //	        OR
 //	        -- lookup by namespace fqn + obligation name + value name
 //	        ($2::TEXT != '' AND $3::TEXT != '' AND $4::TEXT != ''

@@ -81,10 +81,10 @@ WHERE
     -- lookup by obligation id OR by namespace fqn + obligation name
     (
         -- lookup by obligation id
-        (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = @id::UUID)
+        (@id::TEXT != '' AND od.id = @id::UUID)
         OR
         -- lookup by namespace fqn + obligation name
-        (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
+        (@namespace_fqn::TEXT != '' AND @name::TEXT != ''
          AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
     )
 GROUP BY od.id, n.id, fqns.fqn;
@@ -146,10 +146,10 @@ WHERE id IN (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = @id::UUID)
+            (@id::TEXT != '' AND od.id = @id::UUID)
             OR
             -- lookup by namespace fqn + obligation name
-            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
+            (@namespace_fqn::TEXT != '' AND @name::TEXT != ''
              AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
         )
 )
@@ -203,10 +203,10 @@ WITH obligation_lookup AS (
         -- lookup by obligation id OR by namespace fqn + obligation name
         (
             -- lookup by obligation id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = @id::UUID)
+            (@id::TEXT != '' AND od.id = @id::UUID)
             OR
             -- lookup by namespace fqn + obligation name
-            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
+            (@namespace_fqn::TEXT != '' AND @name::TEXT != ''
              AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
         )
 ),
@@ -252,7 +252,7 @@ WHERE
     -- lookup by value id OR by namespace fqn + obligation name + value name
     (
         -- lookup by value id
-        (@id::TEXT != '' AND ov.id = @id::UUID)
+        (@id::TEXT != '' AND ov.id::TEXT = @id::TEXT)
         OR
         -- lookup by namespace fqn + obligation name + value name
         (@namespace_fqn::TEXT != '' AND @name::TEXT != '' AND @value::TEXT != ''
@@ -271,10 +271,10 @@ WHERE id IN (
         -- lookup by value id OR by namespace fqn + obligation name + value name
         (
             -- lookup by value id
-            (NULLIF(@id::TEXT, '') IS NOT NULL AND ov.id = @id::UUID)
+            (@id::TEXT != '' AND ov.id = @id::UUID)
             OR
             -- lookup by namespace fqn + obligation name + value name
-            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL AND NULLIF(@value::TEXT, '') IS NOT NULL
+            (@namespace_fqn::TEXT != '' AND @name::TEXT != '' AND @value::TEXT != ''
              AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR AND ov.value = @value::VARCHAR)
         )
 )

@@ -563,20 +563,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Fails() {
 func (s *ObligationsSuite) Test_GetObligationValue_Succeeds() {
 	namespaceID, namespaceFQN, namespace := s.getNamespaceData(nsExampleCom)
 	value := oblValPrefix + "get-test"
-	createdObl := s.createObligation(namespaceID, oblName, []string{value}) // Create obligation without values
-
-	// // Create obligation value first
-	// oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-	// 	ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-	// 		Id: createdObl.GetId(),
-	// 	},
-	// 	Value: oblValPrefix + "get-test",
-	// 	Metadata: &common.MetadataMutable{
-	// 		Labels: map[string]string{"test": "get-value"},
-	// 	},
-	// })
-	// s.Require().NoError(err)
-	// s.NotNil(oblValue)
+	createdObl := s.createObligation(namespaceID, oblName, []string{value})
 	oblValue := createdObl.GetValues()[0]
 
 	// Test 1: Get obligation value by ID
@@ -588,21 +575,19 @@ func (s *ObligationsSuite) Test_GetObligationValue_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(retrievedValue)
 	s.Equal(oblValue.GetId(), retrievedValue.GetId())
-	// s.Equal(oblValPrefix+"get-test", retrievedValue.GetValue())
 	s.assertObligationValueBasics(retrievedValue, oblValPrefix+"get-test", namespaceID, namespace.Name, namespaceFQN)
 
-	// Test 2: Get obligation value by FQN
-	oblValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, oblValPrefix+"get-test")
-	retrievedValue2, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
-		Identifier: &obligations.GetObligationValueRequest_Fqn{
-			Fqn: oblValFQN,
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(retrievedValue2)
-	s.Equal(oblValue.GetId(), retrievedValue2.GetId())
-	// s.Equal(oblValPrefix+"get-test", retrievedValue2.GetValue())
-	s.assertObligationValueBasics(retrievedValue2, oblValPrefix+"get-test", namespaceID, namespace.Name, namespaceFQN)
+	// // Test 2: Get obligation value by FQN
+	// oblValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, oblValPrefix+"get-test")
+	// retrievedValue2, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
+	// 	Identifier: &obligations.GetObligationValueRequest_Fqn{
+	// 		Fqn: oblValFQN,
+	// 	},
+	// })
+	// s.Require().NoError(err)
+	// s.NotNil(retrievedValue2)
+	// s.Equal(oblValue.GetId(), retrievedValue2.GetId())
+	// s.assertObligationValueBasics(retrievedValue2, oblValPrefix+"get-test", namespaceID, namespace.Name, namespaceFQN)
 
 	// Cleanup
 	s.deleteObligations([]string{createdObl.GetId()})

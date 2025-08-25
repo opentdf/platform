@@ -1,4 +1,4 @@
-package sdk
+package tdf
 
 import (
 	"encoding/json"
@@ -16,6 +16,8 @@ import (
 const (
 	SystemMetadataAssertionID = "system-metadata"
 	SystemMetadataSchemaV1    = "system-metadata-v1"
+	kAssertionSignature       = "assertionSig"
+	kAssertionHash            = "assertionHash"
 )
 
 // AssertionConfig is a shadow of Assertion with the addition of the signing key.

@@ -13,6 +13,11 @@ const (
 )
 
 const (
+	TDFManifestFileName = "0.manifest.json"
+	TDFPayloadFileName  = "0.payload"
+)
+
+const (
 	endOfCDRecordSize                    = 22
 	zip64EndOfCDRecordLocatorSize        = 20
 	zip64EndOfCDRecordSize               = 56

@@ -24,7 +24,9 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	"github.com/opentdf/platform/sdk/auth"
 	"github.com/opentdf/platform/sdk/internal/archive"
+	"github.com/opentdf/platform/sdk/internal/segment"
 	"github.com/opentdf/platform/sdk/sdkconnect"
+	"github.com/opentdf/platform/sdk/tdf"
 	"google.golang.org/grpc/codes"
 )
 
@@ -76,6 +78,7 @@ type Reader struct {
 	payloadKey          []byte
 	kasSessionKey       ocrypto.KeyPair
 	config              TDFReaderConfig
+	segmentLocator      segment.SegmentLocator
 }
 
 type TDFObject struct {
@@ -153,6 +156,13 @@ func uuidSplitIDGenerator() string {
 	return uuid.New().String()
 }
 
+// // NewStreamingTDFWriter creates a new streaming TDF writer
+// // This follows the same pattern as existing TDF creation but for streaming operations
+// // Note: This method is deprecated - use the package-level NewStreamingTDFWriter directly
+// func (s SDK) NewStreamingTDFWriter(ctx context.Context, opts ...TDFOption) (*StreamingTDFWriter, error) {
+// 	return NewStreamingTDFWriter(ctx, &s, opts...)
+// }
+
 // CreateTDFContext reads plain text from the given reader and saves it to the writer, subject to the given options
 func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
 	inputSize, err := reader.Seek(0, io.SeekEnd)
@@ -202,16 +212,12 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 	}
 
 	encryptedSegmentSize := segmentSize + gcmIvSize + aesBlockSize
-	payloadSize := inputSize + (totalSegments * (gcmIvSize + aesBlockSize))
-	tdfWriter := archive.NewTDFWriter(writer)
-
-	err = tdfWriter.SetPayloadSize(payloadSize)
-	if err != nil {
-		return nil, fmt.Errorf("archive.SetPayloadSize failed: %w", err)
-	}
+	tdfWriter := archive.NewSegmentTDFWriter(int(totalSegments))
 
 	var readPos int64
 	var aggregateHash string
+	var totalBytesWritten int64
+	segmentIndex := 0
 	readBuf := bytes.NewBuffer(make([]byte, 0, tdfConfig.defaultSegmentSize))
 	for totalSegments != 0 { // adjust read size
 		readSize := segmentSize
@@ -233,10 +239,17 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
 		}
 
-		err = tdfWriter.AppendPayload(cipherData)
+		segmentBytes, err := tdfWriter.WriteSegment(context.Background(), segmentIndex, cipherData)
 		if err != nil {
-			return nil, fmt.Errorf("io.writer.Write failed: %w", err)
+			return nil, fmt.Errorf("WriteSegment failed: %w", err)
 		}
+
+		// Immediately write the returned bytes to maintain streaming behavior
+		bytesWritten, err := writer.Write(segmentBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to write segment bytes: %w", err)
+		}
+		totalBytesWritten += int64(bytesWritten)
 
 		segmentSig, err := calculateSignature(cipherData, tdfObject.payloadKey[:],
 			tdfConfig.segmentIntegrityAlgorithm, tdfConfig.useHex)
@@ -253,6 +266,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 		tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments = append(tdfObject.manifest.EncryptionInformation.IntegrityInformation.Segments, segmentInfo)
 
+		segmentIndex++
 		totalSegments--
 		readPos += readSize
 	}
@@ -296,11 +310,11 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 	var signedAssertion []Assertion
 	if tdfConfig.addDefaultAssertion {
-		systemMeta, err := GetSystemMetadataAssertionConfig()
+		systemMeta, err := tdf.GetSystemMetadataAssertionConfig()
 		if err != nil {
 			return nil, err
 		}
-		tdfConfig.assertions = append(tdfConfig.assertions, systemMeta)
+		tdfConfig.assertions = append(tdfConfig.assertions, AssertionConfig(systemMeta))
 	}
 
 	for _, assertion := range tdfConfig.assertions {
@@ -337,7 +351,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		assertionSigningKey := AssertionKey{}
 
 		// Set default to HS256 and payload key
-		assertionSigningKey.Alg = AssertionKeyAlgHS256
+		assertionSigningKey.Alg = tdf.AssertionKeyAlgHS256
 		assertionSigningKey.Key = tdfObject.payloadKey[:]
 
 		if !assertion.SigningKey.IsEmpty() {
@@ -358,15 +372,19 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		return nil, fmt.Errorf("json.Marshal failed:%w", err)
 	}
 
-	err = tdfWriter.AppendManifest(string(manifestAsStr))
+	finalBytes, err := tdfWriter.Finalize(ctx, manifestAsStr)
 	if err != nil {
-		return nil, fmt.Errorf("TDFWriter.AppendManifest failed:%w", err)
+		return nil, fmt.Errorf("tdfWriter.Finalize failed: %w", err)
 	}
 
-	tdfObject.size, err = tdfWriter.Finish()
+	// Write final bytes (manifest + ZIP central directory) to output
+	finalBytesWritten, err := writer.Write(finalBytes)
 	if err != nil {
-		return nil, fmt.Errorf("TDFWriter.Finish failed:%w", err)
+		return nil, fmt.Errorf("failed to write final bytes: %w", err)
 	}
+
+	// Track total size written (segments + final bytes)
+	tdfObject.size = totalBytesWritten + int64(finalBytesWritten)
 
 	return tdfObject, nil
 }
@@ -503,7 +521,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		return fmt.Errorf("json.Marshal failed:%w", err)
 	}
 
-	base64PolicyObject := ocrypto.Base64Encode(policyObjectAsStr)
+	base64PolicyObject := policyObjectAsStr
 
 	conjunction := make(map[string][]KASInfo)
 	var splitIDs []string
@@ -575,7 +593,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		}
 	}
 
-	manifest.EncryptionInformation.Policy = string(base64PolicyObject)
+	manifest.EncryptionInformation.Policy = base64PolicyObject
 	manifest.EncryptionInformation.Method.Algorithm = kGCMCipherAlgorithm
 
 	// create the payload key by XOR all the keys in key access object.
@@ -821,6 +839,9 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		payloadSize += seg.Size
 	}
 
+	// Build appropriate segment locator based on segment uniformity
+	segmentLocator := buildSegmentLocator(manifestObj)
+
 	return &Reader{
 		tokenSource:    s.tokenSource,
 		httpClient:     s.conn.Client,
@@ -830,6 +851,7 @@ func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, er
 		kasSessionKey:  config.kasSessionKey,
 		config:         *config,
 		payloadSize:    payloadSize,
+		segmentLocator: segmentLocator,
 	}, nil
 }
 
@@ -890,23 +912,26 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 	}
 
 	isLegacyTDF := r.manifest.TDFVersion == ""
-
 	var totalBytes int64
-	var payloadReadOffset int64
-	var decryptedDataOffset int64
-	for _, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
-		if decryptedDataOffset+seg.Size < r.cursor {
-			decryptedDataOffset += seg.Size
-			payloadReadOffset += seg.EncryptedSize
+
+	// Get segments from current cursor to end of file
+	segmentsToWrite, err := r.segmentLocator.GetSegmentRange(r.cursor, r.payloadSize)
+	if err != nil {
+		return totalBytes, fmt.Errorf("segmentLocator.GetSegmentRange failed: %w", err)
+	}
+
+	for _, segInfo := range segmentsToWrite {
+		// Skip if this segment ends before our cursor
+		if segInfo.CumulativeOffset+segInfo.PlaintextSize <= r.cursor {
 			continue
 		}
 
-		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
+		readBuf, err := r.tdfReader.ReadPayload(segInfo.FileOffset, segInfo.EncryptedSize)
 		if err != nil {
 			return totalBytes, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
 		}
 
-		if int64(len(readBuf)) != seg.EncryptedSize {
+		if int64(len(readBuf)) != segInfo.EncryptedSize {
 			return totalBytes, ErrSegSizeMismatch
 		}
 
@@ -921,7 +946,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
 
-		if seg.Hash != string(ocrypto.Base64Encode([]byte(payloadSig))) {
+		if segInfo.Hash != string(ocrypto.Base64Encode([]byte(payloadSig))) {
 			return totalBytes, ErrSegSigValidation
 		}
 
@@ -930,11 +955,12 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, fmt.Errorf("splitKey.decrypt failed: %w", err)
 		}
 
-		// special case where segment is in the middle of where cursor is
-		if decryptedDataOffset < r.cursor {
-			offset := r.cursor - decryptedDataOffset
+		// Handle partial segment reads when cursor is in the middle of a segment
+		if r.cursor > segInfo.CumulativeOffset {
+			offset := r.cursor - segInfo.CumulativeOffset
 			writeBuf = writeBuf[offset:]
 		}
+
 		n, err := writer.Write(writeBuf)
 		totalBytes += int64(n)
 		if err != nil {
@@ -945,9 +971,7 @@ func (r *Reader) WriteTo(writer io.Writer) (int64, error) {
 			return totalBytes, errWriteFailed
 		}
 
-		payloadReadOffset += seg.EncryptedSize
 		r.cursor += int64(n)
-		decryptedDataOffset += seg.Size
 	}
 
 	return totalBytes, nil
@@ -970,40 +994,32 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		return 0, ErrTDFPayloadInvalidOffset
 	}
 
-	defaultSegmentSize := r.manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
-	start := offset / defaultSegmentSize
-	end := (offset + int64(len(buf)) + defaultSegmentSize - 1) / defaultSegmentSize // rounds up
-
-	firstSegment := start
-	lastSegment := end
-	if firstSegment > lastSegment {
+	if offset > r.payloadSize {
 		return 0, ErrTDFPayloadReadFail
 	}
 
-	if offset > r.payloadSize {
+	// Get segments needed for this read using the segment locator
+	endOffset := offset + int64(len(buf))
+	segmentsNeeded, err := r.segmentLocator.GetSegmentRange(offset, endOffset)
+	if err != nil {
+		return 0, fmt.Errorf("segmentLocator.GetSegmentRange failed: %w", err)
+	}
+
+	if len(segmentsNeeded) == 0 {
 		return 0, ErrTDFPayloadReadFail
 	}
 
 	isLegacyTDF := r.manifest.TDFVersion == ""
 	var decryptedBuf bytes.Buffer
-	var payloadReadOffset int64
-	for index, seg := range r.manifest.EncryptionInformation.IntegrityInformation.Segments {
-		// finish segments to decrypt
-		if int64(index) == lastSegment {
-			break
-		}
 
-		if firstSegment > int64(index) {
-			payloadReadOffset += seg.EncryptedSize
-			continue
-		}
-
-		readBuf, err := r.tdfReader.ReadPayload(payloadReadOffset, seg.EncryptedSize)
+	// Process each segment needed for this read
+	for _, segInfo := range segmentsNeeded {
+		readBuf, err := r.tdfReader.ReadPayload(segInfo.FileOffset, segInfo.EncryptedSize)
 		if err != nil {
 			return 0, fmt.Errorf("TDFReader.ReadPayload failed: %w", err)
 		}
 
-		if int64(len(readBuf)) != seg.EncryptedSize {
+		if int64(len(readBuf)) != segInfo.EncryptedSize {
 			return 0, ErrSegSizeMismatch
 		}
 
@@ -1018,7 +1034,7 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 			return 0, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 		}
 
-		if seg.Hash != string(ocrypto.Base64Encode([]byte(payloadSig))) {
+		if segInfo.Hash != string(ocrypto.Base64Encode([]byte(payloadSig))) {
 			return 0, ErrSegSigValidation
 		}
 
@@ -1035,18 +1051,19 @@ func (r *Reader) ReadAt(buf []byte, offset int64) (int, error) { //nolint:funlen
 		if n != len(writeBuf) {
 			return 0, errWriteFailed
 		}
-
-		payloadReadOffset += seg.EncryptedSize
 	}
 
-	var err error
 	bufLen := int64(len(buf))
 	if (offset + int64(len(buf))) > r.payloadSize {
 		bufLen = r.payloadSize - offset
 		err = io.EOF
 	}
 
-	startIndex := offset - (firstSegment * defaultSegmentSize)
+	// Calculate the start offset within the decrypted buffer
+	// For variable segments, we need the offset relative to the first segment's start
+	firstSegmentStart := segmentsNeeded[0].CumulativeOffset
+	startIndex := offset - firstSegmentStart
+
 	copy(buf[:bufLen], decryptedBuf.Bytes()[startIndex:startIndex+bufLen])
 	return int(bufLen), err
 }
@@ -1067,12 +1084,9 @@ func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 // Otherwise, returns an error.
 func (r *Reader) Policy() (PolicyObject, error) {
 	policyObj := PolicyObject{}
-	policy, err := ocrypto.Base64Decode([]byte(r.manifest.Policy))
-	if err != nil {
-		return policyObj, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
-	}
+	policyBytes := r.manifest.Policy
 
-	err = json.Unmarshal(policy, &policyObj)
+	err := json.Unmarshal(policyBytes, &policyObj)
 	if err != nil {
 		return policyObj, fmt.Errorf("json.Unmarshal failed: %w", err)
 	}
@@ -1082,13 +1096,10 @@ func (r *Reader) Policy() (PolicyObject, error) {
 
 // DataAttributes return the data attributes present in tdf.
 func (r *Reader) DataAttributes() ([]string, error) {
-	policy, err := ocrypto.Base64Decode([]byte(r.manifest.Policy))
-	if err != nil {
-		return nil, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
-	}
+	policy := r.manifest.Policy
 
 	policyObj := PolicyObject{}
-	err = json.Unmarshal(policy, &policyObj)
+	err := json.Unmarshal(policy, &policyObj)
 	if err != nil {
 		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
 	}
@@ -1174,7 +1185,7 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 		} else {
 			rewrapReq := kas.UnsignedRewrapRequest_WithPolicyRequest{
 				Policy: &kas.UnsignedRewrapRequest_WithPolicy{
-					Body: r.manifest.EncryptionInformation.Policy,
+					Body: string(r.manifest.EncryptionInformation.Policy),
 					Id:   "policy",
 				},
 				KeyAccessObjects: []*kas.UnsignedRewrapRequest_WithKeyAccessObject{kaoReq},
@@ -1300,7 +1311,7 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 
 		assertionKey := AssertionKey{}
 		// Set default to HS256
-		assertionKey.Alg = AssertionKeyAlgHS256
+		assertionKey.Alg = tdf.AssertionKeyAlgHS256
 		assertionKey.Key = payloadKey[:]
 
 		if !r.config.verifiers.IsEmpty() {
@@ -1524,4 +1535,24 @@ func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
 	}
 
 	return kaoTemplate
+}
+
+// buildSegmentLocator creates the appropriate segment locator based on segment characteristics
+func buildSegmentLocator(manifest *Manifest) segment.SegmentLocator {
+	segments := manifest.EncryptionInformation.IntegrityInformation.Segments
+	defaultSize := manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
+
+	if len(segments) == 0 {
+		// For empty manifests or test cases, create a minimal uniform locator
+		// This maintains backward compatibility with existing test cases
+		return segment.NewUniformSegmentLocator(defaultSize, []tdf.Segment{})
+	}
+
+	// Check if all segments have uniform size (backward compatibility optimization)
+	if segment.IsUniformSegments(segments, defaultSize) {
+		return segment.NewUniformSegmentLocator(defaultSize, segments)
+	}
+
+	// Use variable-length segment locator with binary search
+	return segment.NewVariableSegmentLocator(segments)
 }

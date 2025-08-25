@@ -560,6 +560,110 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Fails() {
 	s.deleteObligations([]string{createdObl.GetId()})
 }
 
+// Get
+
+func (s *ObligationsSuite) Test_GetObligationValue_Succeeds() {
+	namespaceID, namespaceFQN, namespace := s.getNamespaceData(nsExampleCom)
+	createdObl := s.createObligation(namespaceID, oblName, nil) // Create obligation without values
+
+	// Create obligation value first
+	oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
+			Id: createdObl.GetId(),
+		},
+		Value: oblValPrefix + "get-test",
+		Metadata: &common.MetadataMutable{
+			Labels: map[string]string{"test": "get-value"},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblValue)
+
+	// Test 1: Get obligation value by ID
+	retrievedValue, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
+		Identifier: &obligations.GetObligationValueRequest_Id{
+			Id: oblValue.GetId(),
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(retrievedValue)
+	s.Equal(oblValue.GetId(), retrievedValue.GetId())
+	s.Equal(oblValPrefix+"get-test", retrievedValue.GetValue())
+	s.Equal("get-value", retrievedValue.GetMetadata().GetLabels()["test"])
+	s.assertObligationValueBasics(retrievedValue, oblValPrefix+"get-test", namespaceID, namespace.Name, namespaceFQN)
+
+	// Test 2: Get obligation value by FQN
+	oblValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, oblValPrefix+"get-test")
+	retrievedValue2, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
+		Identifier: &obligations.GetObligationValueRequest_Fqn{
+			Fqn: oblValFQN,
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(retrievedValue2)
+	s.Equal(oblValue.GetId(), retrievedValue2.GetId())
+	s.Equal(oblValPrefix+"get-test", retrievedValue2.GetValue())
+	s.assertObligationValueBasics(retrievedValue2, oblValPrefix+"get-test", namespaceID, namespace.Name, namespaceFQN)
+
+	// Cleanup
+	s.deleteObligations([]string{createdObl.GetId()})
+}
+
+func (s *ObligationsSuite) Test_GetObligationValue_Fails() {
+	// Test 1: Invalid value ID
+	retrievedValue, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
+		Identifier: &obligations.GetObligationValueRequest_Id{
+			Id: invalidUUID,
+		},
+	})
+	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
+	s.Nil(retrievedValue)
+
+	// Test 2: Non-existent value ID
+	retrievedValue, err = s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
+		Identifier: &obligations.GetObligationValueRequest_Id{
+			Id: invalidID,
+		},
+	})
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(retrievedValue)
+
+	// Test 3: Invalid value FQN
+	retrievedValue, err = s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
+		Identifier: &obligations.GetObligationValueRequest_Fqn{
+			Fqn: invalidFQN,
+		},
+	})
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(retrievedValue)
+
+	// Test 4: Non-existent value name in valid obligation
+	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
+	createdObl := s.createObligation(namespaceID, oblName, nil)
+	nonExistentValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, "non-existent-value")
+
+	retrievedValue, err = s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
+		Identifier: &obligations.GetObligationValueRequest_Fqn{
+			Fqn: nonExistentValFQN,
+		},
+	})
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(retrievedValue)
+
+	// Test 5: Non-existent obligation name in valid namespace
+	nonExistentOblFQN := policydb.BuildOblValFQN(namespaceFQN, "non-existent-obligation", oblValPrefix+"test")
+	retrievedValue, err = s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
+		Identifier: &obligations.GetObligationValueRequest_Fqn{
+			Fqn: nonExistentOblFQN,
+		},
+	})
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(retrievedValue)
+
+	// Cleanup
+	s.deleteObligations([]string{createdObl.GetId()})
+}
+
 // Delete
 
 func (s *ObligationsSuite) Test_DeleteObligationValue_Succeeds() {

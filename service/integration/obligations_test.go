@@ -564,38 +564,39 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Fails() {
 
 func (s *ObligationsSuite) Test_DeleteObligationValue_Succeeds() {
 	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
-	createdObl := s.createObligation(namespaceID, oblName, nil)
+	createdObl := s.createObligation(namespaceID, oblName, []string{oblValPrefix + "delete-1", oblValPrefix + "delete-2"})
 
-	// Create value by ID
-	oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: createdObl.GetId(),
-		},
-		Value: oblValPrefix + "delete-1",
-	})
-	s.Require().NoError(err)
-	s.NotNil(oblValue)
+	// // Create value by ID
+	// oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+	// 	ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
+	// 		Id: createdObl.GetId(),
+	// 	},
+	// 	Value: oblValPrefix + "delete-1",
+	// })
+	// s.Require().NoError(err)
+	// s.NotNil(oblValue)
+	oblValues := createdObl.GetValues()
 
 	// Delete by value ID
 	deleted, err := s.db.PolicyClient.DeleteObligationValue(s.ctx, &obligations.DeleteObligationValueRequest{
 		Identifier: &obligations.DeleteObligationValueRequest_Id{
-			Id: oblValue.GetId(),
+			Id: oblValues[0].GetId(),
 		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(deleted)
-	s.Equal(oblValue.GetId(), deleted.GetId())
+	s.Equal(oblValues[0].GetId(), deleted.GetId())
 
 	// Create value by FQN
-	oblFQN := policydb.BuildOblFQN(namespaceFQN, oblName)
-	oblValue2, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Fqn{
-			Fqn: oblFQN,
-		},
-		Value: oblValPrefix + "delete-2",
-	})
-	s.Require().NoError(err)
-	s.NotNil(oblValue2)
+	// oblFQN := policydb.BuildOblFQN(namespaceFQN, oblName)
+	// oblValue2, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+	// 	ObligationIdentifier: &obligations.CreateObligationValueRequest_Fqn{
+	// 		Fqn: oblFQN,
+	// 	},
+	// 	Value: oblValPrefix + "delete-2",
+	// })
+	// s.Require().NoError(err)
+	// s.NotNil(oblValue2)
 
 	// Delete by FQN + value name
 	oblValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, oblValPrefix+"delete-2")
@@ -606,7 +607,7 @@ func (s *ObligationsSuite) Test_DeleteObligationValue_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(deleted2)
-	s.Equal(oblValue2.GetId(), deleted2.GetId())
+	s.Equal(oblValues[1].GetId(), deleted2.GetId())
 
 	// Cleanup
 	s.deleteObligations([]string{createdObl.GetId()})

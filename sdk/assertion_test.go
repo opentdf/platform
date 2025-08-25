@@ -16,7 +16,7 @@ func TestTDFWithAssertion(t *testing.T) {
 		Scope:          "tdo",
 		AppliesToState: "encrypted",
 		Statement: Statement{
-			Format: "json",
+			Format: "json-structured",
 			Schema: "https://geojson.org/schema/GeoJSON.json",
 			Value:  "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[125.6,10.1]},\"properties\":{\"name\":\"Dinagat Islands\"}}",
 		},
@@ -62,7 +62,7 @@ func TestTDFWithAssertionJsonObject(t *testing.T) {
 		Scope:          "payload",
 		AppliesToState: "", // Use "" or a pointer to a string if necessary
 		Statement: Statement{
-			Format: "json",
+			Format: "json-structured",
 			Schema: "https://geojson.org/schema/GeoJSON.json",
 			Value:  value,
 		},
@@ -107,7 +107,7 @@ func TestDeserializingAssertionWithJSONInStatementValue(t *testing.T) {
       "scope": "tdo",
       "appliesToState": null,
       "statement": {
-        "format": "json",
+        "format": "json-structured",
         "schema": "https://geojson.org/schema/GeoJSON.json",
         "value": {
           "type": "FeatureCollection",
@@ -231,7 +231,8 @@ func TestDeserializingAssertionWithStringInStatementValue(t *testing.T) {
       "scope": "tdo",
       "appliesToState": null,
       "statement": {
-        "format": "json",
+        "format": "string",
+		"schema": "",
         "value": "this is a value"
       },
       "binding": {

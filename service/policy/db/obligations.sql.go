@@ -14,23 +14,17 @@ const createObligation = `-- name: createObligation :one
 WITH inserted_obligation AS (
     INSERT INTO obligation_definitions (namespace_id, name, metadata)
     SELECT 
-        CASE 
-            WHEN $1::TEXT != '' THEN $1::UUID
-            ELSE fqns.namespace_id
-        END,
+        COALESCE(NULLIF($1::TEXT, '')::UUID, fqns.namespace_id),
         $2, 
         $3
     FROM (
         SELECT 
-            CASE 
-                WHEN $1::TEXT != '' THEN $1::UUID
-                ELSE NULL
-            END as direct_namespace_id
+            NULLIF($1::TEXT, '')::UUID as direct_namespace_id
     ) direct
-    LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4 AND $1::TEXT = ''
+    LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4 AND NULLIF($1::TEXT, '') IS NULL
     WHERE 
-        ($1::TEXT != '' AND direct.direct_namespace_id IS NOT NULL) OR
-        ($4::TEXT != '' AND fqns.namespace_id IS NOT NULL)
+        (NULLIF($1::TEXT, '') IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
+        (NULLIF($4::TEXT, '') IS NOT NULL AND fqns.namespace_id IS NOT NULL)
     RETURNING id, namespace_id, name, metadata
 ),
 inserted_values AS (
@@ -88,23 +82,17 @@ type createObligationRow struct {
 //	WITH inserted_obligation AS (
 //	    INSERT INTO obligation_definitions (namespace_id, name, metadata)
 //	    SELECT
-//	        CASE
-//	            WHEN $1::TEXT != '' THEN $1::UUID
-//	            ELSE fqns.namespace_id
-//	        END,
+//	        COALESCE(NULLIF($1::TEXT, '')::UUID, fqns.namespace_id),
 //	        $2,
 //	        $3
 //	    FROM (
 //	        SELECT
-//	            CASE
-//	                WHEN $1::TEXT != '' THEN $1::UUID
-//	                ELSE NULL
-//	            END as direct_namespace_id
+//	            NULLIF($1::TEXT, '')::UUID as direct_namespace_id
 //	    ) direct
-//	    LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4 AND $1::TEXT = ''
+//	    LEFT JOIN attribute_fqns fqns ON fqns.fqn = $4 AND NULLIF($1::TEXT, '') IS NULL
 //	    WHERE
-//	        ($1::TEXT != '' AND direct.direct_namespace_id IS NOT NULL) OR
-//	        ($4::TEXT != '' AND fqns.namespace_id IS NOT NULL)
+//	        (NULLIF($1::TEXT, '') IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
+//	        (NULLIF($4::TEXT, '') IS NOT NULL AND fqns.namespace_id IS NOT NULL)
 //	    RETURNING id, namespace_id, name, metadata
 //	),
 //	inserted_values AS (
@@ -506,7 +494,7 @@ WHERE
         (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
         OR
         -- lookup by namespace fqn + obligation name + value name
-        ($2::TEXT != '' AND $3::TEXT != '' AND $4::TEXT != ''
+        (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL
          AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR AND ov.value = $4::VARCHAR)
     )
 `
@@ -551,7 +539,7 @@ type getObligationValueRow struct {
 //	        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
 //	        OR
 //	        -- lookup by namespace fqn + obligation name + value name
-//	        ($2::TEXT != '' AND $3::TEXT != '' AND $4::TEXT != ''
+//	        (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL
 //	         AND fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR AND ov.value = $4::VARCHAR)
 //	    )
 func (q *Queries) getObligationValue(ctx context.Context, arg getObligationValueParams) (getObligationValueRow, error) {

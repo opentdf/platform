@@ -6,23 +6,17 @@
 WITH inserted_obligation AS (
     INSERT INTO obligation_definitions (namespace_id, name, metadata)
     SELECT 
-        CASE 
-            WHEN @namespace_id::TEXT != '' THEN @namespace_id::UUID
-            ELSE fqns.namespace_id
-        END,
+        COALESCE(NULLIF(@namespace_id::TEXT, '')::UUID, fqns.namespace_id),
         @name, 
         @metadata
     FROM (
         SELECT 
-            CASE 
-                WHEN @namespace_id::TEXT != '' THEN @namespace_id::UUID
-                ELSE NULL
-            END as direct_namespace_id
+            NULLIF(@namespace_id::TEXT, '')::UUID as direct_namespace_id
     ) direct
-    LEFT JOIN attribute_fqns fqns ON fqns.fqn = @namespace_fqn AND @namespace_id::TEXT = ''
+    LEFT JOIN attribute_fqns fqns ON fqns.fqn = @namespace_fqn AND NULLIF(@namespace_id::TEXT, '') IS NULL
     WHERE 
-        (@namespace_id::TEXT != '' AND direct.direct_namespace_id IS NOT NULL) OR
-        (@namespace_fqn::TEXT != '' AND fqns.namespace_id IS NOT NULL)
+        (NULLIF(@namespace_id::TEXT, '') IS NOT NULL AND direct.direct_namespace_id IS NOT NULL) OR
+        (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND fqns.namespace_id IS NOT NULL)
     RETURNING id, namespace_id, name, metadata
 ),
 inserted_values AS (
@@ -255,7 +249,7 @@ WHERE
         (NULLIF(@id::TEXT, '') IS NOT NULL AND ov.id = NULLIF(@id::TEXT, '')::UUID)
         OR
         -- lookup by namespace fqn + obligation name + value name
-        (@namespace_fqn::TEXT != '' AND @name::TEXT != '' AND @value::TEXT != ''
+        (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL AND NULLIF(@value::TEXT, '') IS NOT NULL
          AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR AND ov.value = @value::VARCHAR)
     );
 

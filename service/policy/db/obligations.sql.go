@@ -503,7 +503,7 @@ WHERE
     -- lookup by value id OR by namespace fqn + obligation name + value name
     (
         -- lookup by value id
-        ($1::TEXT != '' AND ov.id = $1::UUID)
+        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
         OR
         -- lookup by namespace fqn + obligation name + value name
         ($2::TEXT != '' AND $3::TEXT != '' AND $4::TEXT != ''
@@ -548,7 +548,7 @@ type getObligationValueRow struct {
 //	    -- lookup by value id OR by namespace fqn + obligation name + value name
 //	    (
 //	        -- lookup by value id
-//	        ($1::TEXT != '' AND ov.id = $1::UUID)
+//	        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = NULLIF($1::TEXT, '')::UUID)
 //	        OR
 //	        -- lookup by namespace fqn + obligation name + value name
 //	        ($2::TEXT != '' AND $3::TEXT != '' AND $4::TEXT != ''

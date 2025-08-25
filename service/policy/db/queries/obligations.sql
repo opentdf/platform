@@ -252,7 +252,7 @@ WHERE
     -- lookup by value id OR by namespace fqn + obligation name + value name
     (
         -- lookup by value id
-        (@id::TEXT != '' AND ov.id = @id::UUID)
+        (NULLIF(@id::TEXT, '') IS NOT NULL AND ov.id = NULLIF(@id::TEXT, '')::UUID)
         OR
         -- lookup by namespace fqn + obligation name + value name
         (@namespace_fqn::TEXT != '' AND @name::TEXT != '' AND @value::TEXT != ''

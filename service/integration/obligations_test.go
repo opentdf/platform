@@ -577,14 +577,13 @@ func (s *ObligationsSuite) Test_GetObligationValue_Succeeds() {
 	s.Equal(oblValue.GetId(), retrievedValue.GetId())
 	s.assertObligationValueBasics(retrievedValue, oblValPrefix+"get-test", namespaceID, namespace.Name, namespaceFQN)
 
-	// // Test 2: Get obligation value by FQN
+	// Test 2: Get obligation value by FQN
 	oblValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, oblValPrefix+"get-test")
 	retrievedValue2, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
 		Identifier: &obligations.GetObligationValueRequest_Fqn{
 			Fqn: oblValFQN,
 		},
 	})
-	println("FQN:", oblValFQN)
 	s.Require().NoError(err)
 	s.NotNil(retrievedValue2)
 	s.Equal(oblValue.GetId(), retrievedValue2.GetId())

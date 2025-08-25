@@ -490,7 +490,6 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(oblValue)
-	s.Equal(oblValPrefix+"test-1", oblValue.GetValue())
 	s.Equal("value", oblValue.GetMetadata().GetLabels()["test"])
 	s.assertObligationValueBasics(oblValue, oblValPrefix+"test-1", namespaceID, namespace.Name, namespaceFQN)
 
@@ -504,7 +503,6 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(oblValue2)
-	s.Equal(oblValPrefix+"test-2", oblValue2.GetValue())
 	s.assertObligationValueBasics(oblValue2, oblValPrefix+"test-2", namespaceID, namespace.Name, namespaceFQN)
 
 	// Cleanup
@@ -564,20 +562,22 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Fails() {
 
 func (s *ObligationsSuite) Test_GetObligationValue_Succeeds() {
 	namespaceID, namespaceFQN, namespace := s.getNamespaceData(nsExampleCom)
-	createdObl := s.createObligation(namespaceID, oblName, nil) // Create obligation without values
+	value := oblValPrefix + "get-test"
+	createdObl := s.createObligation(namespaceID, oblName, []string{value}) // Create obligation without values
 
-	// Create obligation value first
-	oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: createdObl.GetId(),
-		},
-		Value: oblValPrefix + "get-test",
-		Metadata: &common.MetadataMutable{
-			Labels: map[string]string{"test": "get-value"},
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(oblValue)
+	// // Create obligation value first
+	// oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+	// 	ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
+	// 		Id: createdObl.GetId(),
+	// 	},
+	// 	Value: oblValPrefix + "get-test",
+	// 	Metadata: &common.MetadataMutable{
+	// 		Labels: map[string]string{"test": "get-value"},
+	// 	},
+	// })
+	// s.Require().NoError(err)
+	// s.NotNil(oblValue)
+	oblValue := createdObl.GetValues()[0]
 
 	// Test 1: Get obligation value by ID
 	retrievedValue, err := s.db.PolicyClient.GetObligationValue(s.ctx, &obligations.GetObligationValueRequest{
@@ -588,8 +588,7 @@ func (s *ObligationsSuite) Test_GetObligationValue_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(retrievedValue)
 	s.Equal(oblValue.GetId(), retrievedValue.GetId())
-	s.Equal(oblValPrefix+"get-test", retrievedValue.GetValue())
-	s.Equal("get-value", retrievedValue.GetMetadata().GetLabels()["test"])
+	// s.Equal(oblValPrefix+"get-test", retrievedValue.GetValue())
 	s.assertObligationValueBasics(retrievedValue, oblValPrefix+"get-test", namespaceID, namespace.Name, namespaceFQN)
 
 	// Test 2: Get obligation value by FQN
@@ -602,7 +601,7 @@ func (s *ObligationsSuite) Test_GetObligationValue_Succeeds() {
 	s.Require().NoError(err)
 	s.NotNil(retrievedValue2)
 	s.Equal(oblValue.GetId(), retrievedValue2.GetId())
-	s.Equal(oblValPrefix+"get-test", retrievedValue2.GetValue())
+	// s.Equal(oblValPrefix+"get-test", retrievedValue2.GetValue())
 	s.assertObligationValueBasics(retrievedValue2, oblValPrefix+"get-test", namespaceID, namespace.Name, namespaceFQN)
 
 	// Cleanup

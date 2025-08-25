@@ -68,8 +68,20 @@ func breakOblFQN(fqn string) (string, string) {
 	return nsFQN, oblName
 }
 
+func breakOblValFQN(fqn string) (string, string, string) {
+	nsFQN := strings.Split(fqn, "/obl/")[0]
+	parts := strings.Split(fqn, "/")
+	oblName := parts[len(parts)-3]
+	valName := parts[len(parts)-1]
+	return nsFQN, oblName, valName
+}
+
 func BuildOblFQN(nsFQN, oblName string) string {
 	return nsFQN + "/obl/" + oblName
+}
+
+func BuildOblValFQN(nsFQN, oblName, valName string) string {
+	return nsFQN + "/obl/" + oblName + "/value/" + valName
 }
 
 func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {
@@ -334,5 +346,27 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 		Obligation: obl,
 		Value:      value,
 		Metadata:   metadata,
+	}, nil
+}
+
+func (c PolicyDBClient) DeleteObligationValue(ctx context.Context, r *obligations.DeleteObligationValueRequest) (*policy.ObligationValue, error) {
+	nsFQN, oblName, valName := breakOblValFQN(r.GetFqn())
+	queryParams := deleteObligationValueParams{
+		ID:           r.GetId(),
+		NamespaceFqn: nsFQN,
+		Name:         oblName,
+		Value:        valName,
+	}
+
+	id, err := c.queries.deleteObligationValue(ctx, queryParams)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if id == "" {
+		return nil, db.ErrNotFound
+	}
+
+	return &policy.ObligationValue{
+		Id: id,
 	}, nil
 }

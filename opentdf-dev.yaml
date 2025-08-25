@@ -69,9 +69,9 @@ server:
     policy:
       ## Dot notation is used to access nested claims (i.e. realm_access.roles)
       # Claim that represents the user (i.e. email)
-      # username_claim: preferred_username
+      username_claim: # preferred_username
       # That claim to access groups (i.e. realm_access.roles)
-      # groups_claim: realm_access.roles
+      groups_claim: # realm_access.roles
       ## Extends the builtin policy
       extension: |
         g, opentdf-admin, role:admin

@@ -824,3 +824,32 @@ func (q *Queries) updateObligation(ctx context.Context, arg updateObligationPara
 	}
 	return result.RowsAffected(), nil
 }
+
+const updateObligationValue = `-- name: updateObligationValue :execrows
+UPDATE obligation_values_standard
+SET
+    value = COALESCE(NULLIF($1::TEXT, ''), value),
+    metadata = COALESCE($2, metadata)
+WHERE id = $3
+`
+
+type updateObligationValueParams struct {
+	Value    string `json:"value"`
+	Metadata []byte `json:"metadata"`
+	ID       string `json:"id"`
+}
+
+// updateObligationValue
+//
+//	UPDATE obligation_values_standard
+//	SET
+//	    value = COALESCE(NULLIF($1::TEXT, ''), value),
+//	    metadata = COALESCE($2, metadata)
+//	WHERE id = $3
+func (q *Queries) updateObligationValue(ctx context.Context, arg updateObligationValueParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateObligationValue, arg.Value, arg.Metadata, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

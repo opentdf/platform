@@ -436,49 +436,49 @@ func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.G
 // 	return oblVals, nil
 // }
 
-// func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligations.UpdateObligationValueRequest) (*policy.ObligationValue, error) {
-// 	id := r.GetId()
-// 	value := r.GetValue()
-// 	oblVal, err := c.GetObligationValue(ctx, &obligations.GetObligationValueRequest{
-// 		Identifier: &obligations.GetObligationValueRequest_Id{
-// 			Id: id,
-// 		},
-// 	})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	if value == "" {
-// 		value = oblVal.GetValue()
-// 	}
-// 	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
-// 		return oblVal.GetMetadata(), nil
-// 	})
-// 	if err != nil {
-// 		return nil, err
-// 	}
+func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligations.UpdateObligationValueRequest) (*policy.ObligationValue, error) {
+	id := r.GetId()
+	value := r.GetValue()
+	oblVal, err := c.GetObligationValue(ctx, &obligations.GetObligationValueRequest{
+		Identifier: &obligations.GetObligationValueRequest_Id{
+			Id: id,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if value == "" {
+		value = oblVal.GetValue()
+	}
+	metadataJSON, metadata, err := db.MarshalUpdateMetadata(r.GetMetadata(), r.GetMetadataUpdateBehavior(), func() (*common.Metadata, error) {
+		return oblVal.GetMetadata(), nil
+	})
+	if err != nil {
+		return nil, err
+	}
 
-// 	count, err := c.queries.updateObligationValue(ctx, updateObligationValueParams{
-// 		ID:       id,
-// 		Value:    value,
-// 		Metadata: metadataJSON,
-// 	})
-// 	now := timestamppb.Now()
-// 	if err != nil {
-// 		return nil, db.WrapIfKnownInvalidQueryErr(err)
-// 	}
-// 	if count == 0 {
-// 		return nil, db.ErrNotFound
-// 	}
-// 	metadata.CreatedAt = oblVal.GetMetadata().GetCreatedAt()
-// 	metadata.UpdatedAt = now
+	count, err := c.queries.updateObligationValue(ctx, updateObligationValueParams{
+		ID:       id,
+		Value:    value,
+		Metadata: metadataJSON,
+	})
+	now := timestamppb.Now()
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if count == 0 {
+		return nil, db.ErrNotFound
+	}
+	metadata.CreatedAt = oblVal.GetMetadata().GetCreatedAt()
+	metadata.UpdatedAt = now
 
-// 	return &policy.ObligationValue{
-// 		Id:         id,
-// 		Value:      value,
-// 		Metadata:   metadata,
-// 		Obligation: oblVal.GetObligation(),
-// 	}, nil
-// }
+	return &policy.ObligationValue{
+		Id:         id,
+		Value:      value,
+		Metadata:   metadata,
+		Obligation: oblVal.GetObligation(),
+	}, nil
+}
 
 func (c PolicyDBClient) DeleteObligationValue(ctx context.Context, r *obligations.DeleteObligationValueRequest) (*policy.ObligationValue, error) {
 	nsFQN, oblName, valName := breakOblValFQN(r.GetFqn())

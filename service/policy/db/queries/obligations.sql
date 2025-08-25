@@ -253,6 +253,13 @@ WHERE
          AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR AND ov.value = @value::VARCHAR)
     );
 
+-- name: updateObligationValue :execrows
+UPDATE obligation_values_standard
+SET
+    value = COALESCE(NULLIF(@value::TEXT, ''), value),
+    metadata = COALESCE(@metadata, metadata)
+WHERE id = @id;
+
 -- name: deleteObligationValue :one
 DELETE FROM obligation_values_standard
 WHERE id IN (

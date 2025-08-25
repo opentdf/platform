@@ -189,11 +189,7 @@ LEFT JOIN
 GROUP BY
     od.id, n.id, fqns.fqn;
 
-----------------------------------------------------------------
--- OBLIGATION VALUES
-----------------------------------------------------------------
 
--- name: createObligationValue :one
 WITH obligation_lookup AS (
     SELECT od.id, od.name, od.metadata
     FROM obligation_definitions od
@@ -230,3 +226,24 @@ JOIN obligation_lookup ol ON ol.id = iv.obligation_definition_id
 JOIN obligation_definitions od ON od.id = ol.id
 JOIN attribute_namespaces n ON od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL;
+
+-- name: deleteObligationValue :one
+DELETE FROM obligation_values_standard
+WHERE id IN (
+    SELECT ov.id
+    FROM obligation_values_standard ov
+    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
+    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+    WHERE
+        -- lookup by value id OR by namespace fqn + obligation name + value name
+        (
+            -- lookup by value id
+            (NULLIF(@id::TEXT, '') IS NOT NULL AND ov.id = @id::UUID)
+            OR
+            -- lookup by namespace fqn + obligation name + value name
+            (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL AND NULLIF(@value::TEXT, '') IS NOT NULL
+             AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR AND ov.value = @value::VARCHAR)
+        )
+)
+RETURNING id;

@@ -564,7 +564,8 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Fails() {
 
 func (s *ObligationsSuite) Test_DeleteObligationValue_Succeeds() {
 	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
-	createdObl := s.createObligation(namespaceID, oblName, []string{oblValPrefix + "delete-1", oblValPrefix + "delete-2"})
+	values := []string{oblValPrefix + "delete-1", oblValPrefix + "delete-2"}
+	createdObl := s.createObligation(namespaceID, oblName, values)
 	oblValues := createdObl.GetValues()
 
 	// Delete by value ID
@@ -578,7 +579,7 @@ func (s *ObligationsSuite) Test_DeleteObligationValue_Succeeds() {
 	s.Equal(oblValues[0].GetId(), deleted.GetId())
 
 	// Delete by FQN + value name
-	oblValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, oblValPrefix+"delete-2")
+	oblValFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, values[1])
 	deleted2, err := s.db.PolicyClient.DeleteObligationValue(s.ctx, &obligations.DeleteObligationValueRequest{
 		Identifier: &obligations.DeleteObligationValueRequest_Fqn{
 			Fqn: oblValFQN,

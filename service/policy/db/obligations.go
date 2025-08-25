@@ -69,11 +69,10 @@ func breakOblFQN(fqn string) (string, string) {
 }
 
 func breakOblValFQN(fqn string) (string, string, string) {
-	nsFQN := strings.Split(fqn, "/obl/")[0]
-	parts := strings.Split(fqn, "/")
-	oblName := parts[len(parts)-3]
-	valName := parts[len(parts)-1]
-	return nsFQN, oblName, valName
+	parts := strings.Split(fqn, "/value/")
+	nsFQN, oblName := breakOblFQN(parts[0])
+	oblVal := parts[len(parts)-1]
+	return nsFQN, oblName, oblVal
 }
 
 func BuildOblFQN(nsFQN, oblName string) string {

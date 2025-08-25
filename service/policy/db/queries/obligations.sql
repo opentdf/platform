@@ -189,7 +189,11 @@ LEFT JOIN
 GROUP BY
     od.id, n.id, fqns.fqn;
 
+----------------------------------------------------------------
+-- OBLIGATION VALUES
+----------------------------------------------------------------
 
+-- name: createObligationValue :one
 WITH obligation_lookup AS (
     SELECT od.id, od.name, od.metadata
     FROM obligation_definitions od

@@ -130,8 +130,8 @@ func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations
 	}
 
 	queryParams := getObligationsByFQNsParams{
-		NamespaceFqns:   nsFQNs,
-		ObligationNames: oblNames,
+		NamespaceFqns: nsFQNs,
+		Names:         oblNames,
 	}
 
 	list, err := c.queries.getObligationsByFQNs(ctx, queryParams)
@@ -388,56 +388,56 @@ func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.G
 	}, nil
 }
 
-// func (c PolicyDBClient) GetObligationValuesByFQNs(ctx context.Context, r *obligations.GetObligationValuesByFQNsRequest) ([]*policy.ObligationValue, error) {
-// 	nsFQNs := make([]string, 0, len(r.GetFqns()))
-// 	oblNames := make([]string, 0, len(r.GetFqns()))
-// 	oblVals := make([]string, 0, len(r.GetFqns()))
-// 	for _, fqn := range r.GetFqns() {
-// 		nsFQN, oblName, oblVal := breakOblValFQN(fqn)
-// 		nsFQNs = append(nsFQNs, nsFQN)
-// 		oblNames = append(oblNames, oblName)
-// 		oblVals = append(oblVals, oblVal)
-// 	}
+func (c PolicyDBClient) GetObligationValuesByFQNs(ctx context.Context, r *obligations.GetObligationValuesByFQNsRequest) ([]*policy.ObligationValue, error) {
+	nsFQNs := make([]string, 0, len(r.GetFqns()))
+	oblNames := make([]string, 0, len(r.GetFqns()))
+	oblVals := make([]string, 0, len(r.GetFqns()))
+	for _, fqn := range r.GetFqns() {
+		nsFQN, oblName, oblVal := breakOblValFQN(fqn)
+		nsFQNs = append(nsFQNs, nsFQN)
+		oblNames = append(oblNames, oblName)
+		oblVals = append(oblVals, oblVal)
+	}
 
-// 	queryParams := getObligationValuesByFQNsParams{
-// 		NamespaceFqns:   nsFQNs,
-// 		ObligationNames: oblNames,
-// 		ValueNames:      oblVals,
-// 	}
+	queryParams := getObligationValuesByFQNsParams{
+		NamespaceFqns: nsFQNs,
+		Names:         oblNames,
+		Values:        oblVals,
+	}
 
-// 	list, err := c.queries.getObligationValuesByFQNs(ctx, queryParams)
-// 	if err != nil {
-// 		return nil, db.WrapIfKnownInvalidQueryErr(err)
-// 	}
-// 	oblVals := make([]*policy.ObligationValue, len(list))
+	list, err := c.queries.getObligationValuesByFQNs(ctx, queryParams)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	vals := make([]*policy.ObligationValue, len(list))
 
-// 	for i, r := range list {
-// 		metadata := &common.Metadata{}
-// 		if err = unmarshalMetadata(r.Metadata, metadata); err != nil {
-// 			return nil, err
-// 		}
+	for i, r := range list {
+		metadata := &common.Metadata{}
+		if err = unmarshalMetadata(r.Metadata, metadata); err != nil {
+			return nil, err
+		}
 
-// 		namespace := &policy.Namespace{}
-// 		if err := unmarshalNamespace(r.Namespace, namespace); err != nil {
-// 			return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
-// 		}
+		namespace := &policy.Namespace{}
+		if err := unmarshalNamespace(r.Namespace, namespace); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
+		}
 
-// 		obl := &policy.Obligation{
-// 			Id:        r.ObligationID,
-// 			Name:      r.ObligationName,
-// 			Namespace: namespace,
-// 		}
+		obl := &policy.Obligation{
+			Id:        r.ObligationID,
+			Name:      r.Name,
+			Namespace: namespace,
+		}
 
-// 		oblVals[i] = &policy.ObligationValue{
-// 			Id:         r.ID,
-// 			Value:      r.Value,
-// 			Metadata:   metadata,
-// 			Obligation: obl,
-// 		}
-// 	}
+		vals[i] = &policy.ObligationValue{
+			Id:         r.ID,
+			Value:      r.Value,
+			Metadata:   metadata,
+			Obligation: obl,
+		}
+	}
 
-// 	return oblVals, nil
-// }
+	return vals, nil
+}
 
 func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligations.UpdateObligationValueRequest) (*policy.ObligationValue, error) {
 	id := r.GetId()

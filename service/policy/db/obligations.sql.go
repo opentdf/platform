@@ -597,8 +597,8 @@ GROUP BY
 `
 
 type getObligationsByFQNsParams struct {
-	NamespaceFqns   []string `json:"namespace_fqns"`
-	ObligationNames []string `json:"obligation_names"`
+	NamespaceFqns []string `json:"namespace_fqns"`
+	Names         []string `json:"names"`
 }
 
 type getObligationsByFQNsRow struct {
@@ -644,7 +644,7 @@ type getObligationsByFQNsRow struct {
 //	GROUP BY
 //	    od.id, n.id, fqns.fqn
 func (q *Queries) getObligationsByFQNs(ctx context.Context, arg getObligationsByFQNsParams) ([]getObligationsByFQNsRow, error) {
-	rows, err := q.db.Query(ctx, getObligationsByFQNs, arg.NamespaceFqns, arg.ObligationNames)
+	rows, err := q.db.Query(ctx, getObligationsByFQNs, arg.NamespaceFqns, arg.Names)
 	if err != nil {
 		return nil, err
 	}

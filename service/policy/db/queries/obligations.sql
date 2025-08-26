@@ -175,7 +175,7 @@ JOIN
 JOIN
     attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 JOIN
-    (SELECT unnest(@namespace_fqns::text[]) as ns_fqn, unnest(@obligation_names::text[]) as obl_name) as fqn_pairs
+    (SELECT unnest(@namespace_fqns::text[]) as ns_fqn, unnest(@names::text[]) as obl_name) as fqn_pairs
 ON
     fqns.fqn = fqn_pairs.ns_fqn AND od.name = fqn_pairs.obl_name
 LEFT JOIN

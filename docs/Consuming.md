@@ -12,7 +12,10 @@ To contribute/develop, see [here](./Contributing.md).
 perl -i -pe 's/e1/ec1/g' opentdf.yaml
    yq eval '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
    .github/scripts/init-temp-keys.sh
-   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./keys/localhost.crt
+# The following command is for macOS to trust the local certificate.
+# For Linux, you may need to use a different command, e.g.:
+# sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./keys/localhost.crt
    ```
    - Optional: Update the [configuration](./Configuring.md) as needed.
    - Optional: To remove the certificate, run:

@@ -5,16 +5,13 @@ import (
 	"time"
 
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/pkg/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	mockCacheExpiry = 5 * time.Minute
-	l               = logger.CreateTestLogger()
-)
+var l = logger.CreateTestLogger()
 
 func Test_NewEntitlementPolicyCache(t *testing.T) {
 	ctx := t.Context()
@@ -80,17 +77,17 @@ func Test_EntitlementPolicyCache_CacheMiss(t *testing.T) {
 
 func Test_EntitlementPolicyCache_CacheHits(t *testing.T) {
 	ctx := t.Context()
-	mockCache, _ := cache.TestCacheClient(mockCacheExpiry)
-
 	attrsList := []*policy.Attribute{{Name: "attr1"}}
 	subjMappingsList := []*policy.SubjectMapping{{Id: "id-123"}}
 	resourcesList := []*policy.RegisteredResource{{Name: "res1"}}
-	_ = mockCache.Set(ctx, attributesCacheKey, attrsList, nil)
-	_ = mockCache.Set(ctx, subjectMappingsCacheKey, subjMappingsList, nil)
-	_ = mockCache.Set(ctx, registeredResourcesCacheKey, resourcesList, nil)
 
 	c, err := NewEntitlementPolicyCache(ctx, l, nil, 1*time.Hour)
 	require.NoError(t, err)
+	c.policy = access.EntitlementPolicy{
+		Attributes:          attrsList,
+		SubjectMappings:     subjMappingsList,
+		RegisteredResources: resourcesList,
+	}
 
 	// Allow for some concurrency overhead in cache library to prevent flakiness in tests
 	time.Sleep(10 * time.Millisecond)

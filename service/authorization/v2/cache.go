@@ -12,12 +12,6 @@ import (
 	"github.com/opentdf/platform/service/logger"
 )
 
-const (
-	attributesCacheKey          = "attributes_cache_key"
-	subjectMappingsCacheKey     = "subject_mappings_cache_key"
-	registeredResourcesCacheKey = "registered_resources_cache_key"
-)
-
 var (
 	// stopTimeout is the maximum time to wait for the periodic refresh goroutine to stop
 	stopTimeout = 5 * time.Second

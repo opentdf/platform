@@ -19,9 +19,6 @@ const (
 )
 
 var (
-	// Cache tags for authorization-related data set in the cache
-	authzCacheTags = []string{"authorization", "policy", "entitlements"}
-
 	// stopTimeout is the maximum time to wait for the periodic refresh goroutine to stop
 	stopTimeout = 5 * time.Second
 
@@ -55,8 +52,6 @@ type EntitlementPolicyCache struct {
 	// isCacheFilled indicates if the cache has been filled
 	isCacheFilled bool
 }
-
-
 
 // NewEntitlementPolicyCache holds a platform-provided cache client and manages a periodic refresh of
 // cached entitlement policy data, fetching fresh data from the policy services at configured interval.
@@ -195,7 +190,7 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 }
 
 // ListAllAttributes returns the cached attributes
-func (c *EntitlementPolicyCache) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
+func (c *EntitlementPolicyCache) ListAllAttributes(_ context.Context) ([]*policy.Attribute, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -205,7 +200,7 @@ func (c *EntitlementPolicyCache) ListAllAttributes(ctx context.Context) ([]*poli
 }
 
 // ListAllSubjectMappings returns the cached subject mappings
-func (c *EntitlementPolicyCache) ListAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
+func (c *EntitlementPolicyCache) ListAllSubjectMappings(_ context.Context) ([]*policy.SubjectMapping, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -215,7 +210,7 @@ func (c *EntitlementPolicyCache) ListAllSubjectMappings(ctx context.Context) ([]
 }
 
 // ListAllRegisteredResources returns the cached registered resources, or none in the event of a cache miss
-func (c *EntitlementPolicyCache) ListAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error) {
+func (c *EntitlementPolicyCache) ListAllRegisteredResources(_ context.Context) ([]*policy.RegisteredResource, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -224,7 +219,7 @@ func (c *EntitlementPolicyCache) ListAllRegisteredResources(ctx context.Context)
 	return registeredResources, nil
 }
 
-func (c *EntitlementPolicyCache) GetEntitlementPolicy(ctx context.Context) (access.EntitlementPolicy, error) {
+func (c *EntitlementPolicyCache) GetEntitlementPolicy(_ context.Context) (access.EntitlementPolicy, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 

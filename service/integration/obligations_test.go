@@ -648,6 +648,101 @@ func (s *ObligationsSuite) Test_GetObligationValue_Fails() {
 	s.deleteObligations([]string{createdObl.GetId()})
 }
 
+// Update
+
+func (s *ObligationsSuite) Test_UpdateObligationValue_Succeeds() {
+	namespaceID, namespaceFQN, namespace := s.getNamespaceData(nsExampleCom)
+	value := oblValPrefix + "update-test"
+	createdObl := s.createObligation(namespaceID, oblName+"-update-succeeds", []string{value})
+	oblValue := createdObl.GetValues()[0]
+
+	// Test 1: Update obligation value by ID
+	newValue := oblValPrefix + "updated-value"
+	newMetadata := &common.MetadataMutable{
+		Labels: map[string]string{"updated": "true", "version": "2"},
+	}
+	updatedValue, err := s.db.PolicyClient.UpdateObligationValue(s.ctx, &obligations.UpdateObligationValueRequest{
+		Id:                     oblValue.GetId(),
+		Value:                  newValue,
+		Metadata:               newMetadata,
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
+	})
+	s.Require().NoError(err)
+	s.NotNil(updatedValue)
+	s.Equal(oblValue.GetId(), updatedValue.GetId())
+	s.Equal(newValue, updatedValue.GetValue())
+	s.Equal("true", updatedValue.GetMetadata().GetLabels()["updated"])
+	s.Equal("2", updatedValue.GetMetadata().GetLabels()["version"])
+	s.assertObligationValueBasics(updatedValue, newValue, namespaceID, namespace.Name, namespaceFQN)
+
+	// Test 2: Update only metadata (no value change)
+	newMetadata2 := &common.MetadataMutable{
+		Labels: map[string]string{"metadata_only": "true"},
+	}
+	updatedValue2, err := s.db.PolicyClient.UpdateObligationValue(s.ctx, &obligations.UpdateObligationValueRequest{
+		Id:                     oblValue.GetId(),
+		Metadata:               newMetadata2,
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
+	})
+	s.Require().NoError(err)
+	s.NotNil(updatedValue2)
+	s.Equal(oblValue.GetId(), updatedValue2.GetId())
+	s.Equal(newValue, updatedValue2.GetValue()) // Value should remain the same
+	s.Equal("true", updatedValue2.GetMetadata().GetLabels()["metadata_only"])
+	s.NotContains(updatedValue2.GetMetadata().GetLabels(), "updated") // Should be replaced, not extended
+
+	// Test 3: Update only value (no metadata change)
+	newValue2 := oblValPrefix + "value-only-update"
+	updatedValue3, err := s.db.PolicyClient.UpdateObligationValue(s.ctx, &obligations.UpdateObligationValueRequest{
+		Id:    oblValue.GetId(),
+		Value: newValue2,
+	})
+	s.Require().NoError(err)
+	s.NotNil(updatedValue3)
+	s.Equal(oblValue.GetId(), updatedValue3.GetId())
+	s.Equal(newValue2, updatedValue3.GetValue())
+	s.assertObligationValueBasics(updatedValue3, newValue2, namespaceID, namespace.Name, namespaceFQN)
+
+	// Cleanup
+	s.deleteObligations([]string{createdObl.GetId()})
+}
+
+func (s *ObligationsSuite) Test_UpdateObligationValue_Fails() {
+	oblName := oblName + "-update-fails"
+	// Test 1: Invalid value ID
+	updatedValue, err := s.db.PolicyClient.UpdateObligationValue(s.ctx, &obligations.UpdateObligationValueRequest{
+		Id:    invalidID,
+		Value: oblValPrefix + "test",
+	})
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(updatedValue)
+
+	// Test 2: Empty value ID
+	updatedValue, err = s.db.PolicyClient.UpdateObligationValue(s.ctx, &obligations.UpdateObligationValueRequest{
+		Id:    "",
+		Value: oblValPrefix + "test",
+	})
+	s.Require().Error(err) // Should fail due to empty ID
+	s.Nil(updatedValue)
+
+	// Test 3: No updates provided (both value and metadata are empty/nil)
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	createdObl := s.createObligation(namespaceID, oblName+"-no-updates", []string{oblValPrefix + "test"})
+	oblValue := createdObl.GetValues()[0]
+
+	updatedValue, err = s.db.PolicyClient.UpdateObligationValue(s.ctx, &obligations.UpdateObligationValueRequest{
+		Id: oblValue.GetId(),
+		// No value or metadata provided
+	})
+	s.Require().NoError(err) // Should succeed but not change anything
+	s.NotNil(updatedValue)
+	s.Equal(oblValue.GetId(), updatedValue.GetId())
+	s.Equal(oblValue.GetValue(), updatedValue.GetValue()) // Value should remain unchanged
+
+	// Cleanup
+	s.deleteObligations([]string{createdObl.GetId()})
+}
+
 // Delete
 
 func (s *ObligationsSuite) Test_DeleteObligationValue_Succeeds() {

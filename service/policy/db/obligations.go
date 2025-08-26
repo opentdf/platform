@@ -470,6 +470,12 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 		return nil, db.ErrNotFound
 	}
 	metadata.CreatedAt = oblVal.GetMetadata().GetCreatedAt()
+	// if metadata == nil {
+	// 	metadata = &common.Metadata{}
+	// }
+	// if oblVal.GetMetadata() != nil {
+	// 	metadata.CreatedAt = oblVal.GetMetadata().GetCreatedAt()
+	// }
 	metadata.UpdatedAt = now
 
 	return &policy.ObligationValue{

@@ -6,25 +6,34 @@ To contribute/develop, see [here](./Contributing.md).
 
 ## Running the Platform Locally
 
-1. Initialize KAS Keys ```.github/scripts/init-temp-keys.sh -o kas-keys```
-1. Stand up the local Postgres database and Keycloak instances using `docker compose up -d --wait`.
-1. Copy the `opentdf-example.yaml` file to `opentdf.yaml` and update the [configuration](./docs/Configuring.md) as needed.
-1. Bootstrap Keycloak
-
-   ```sh
-   docker run --network opentdf_platform \
-         -v "$(pwd)/opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml" \
-         -it registry.opentdf.io/platform:nightly provision keycloak -e http://keycloak:8888/auth
+1. **Initialize Platform Configuration**
+   ```shell
+   cp opentdf-dev.yaml opentdf.yaml
+   sed -i '' 's/e1/ec1/g' opentdf.yaml
+   yq eval '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
+   .github/scripts/init-temp-keys.sh
+   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./keys/localhost.crt
    ```
-1. Start the platform
-
-   Exposes the server at localhost:8080
-   ```sh
-   docker run --network opentdf_platform \
-      -p "127.0.0.1:8080:8080" \
-      -v "$(pwd)/kas-keys/:/keys/" \
-      -v "$(pwd)/opentdf.yaml:/home/nonroot/.opentdf/opentdf.yaml" \
-      -it registry.opentdf.io/platform:nightly start
+   - Optional: Update the [configuration](./Configuring.md) as needed.
+   - Optional: To remove the certificate, run:
+     ```shell
+     sudo security delete-certificate -c "localhost"
+     ```
+2. **Start Background Services**
+   ```shell
+   docker compose up
+   ```
+3. **Provision Keycloak**
+   ```shell
+   go run ./service provision keycloak
+   ```
+4. **Add Sample Attributes and Metadata**
+   ```shell
+   go run ./service provision fixtures
+   ```
+5. **Start Server**
+   ```shell
+   go run ./service start
    ```
 
 ## 🎉 Your platform is ready to use!

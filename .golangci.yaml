@@ -1,3 +1,4 @@
+$schema: ./.github/schemas/golangci.v2.1.jsonschema.json
 version: "2"
 linters:
   default: none

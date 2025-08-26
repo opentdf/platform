@@ -365,48 +365,86 @@ func (s *ObligationsSuite) Test_ListObligations_Fails() {
 
 func (s *ObligationsSuite) Test_UpdateObligation_Succeeds() {
 	namespaceID, namespaceFQN, namespace := s.getNamespaceData(nsExampleCom)
-	createdObl := s.createObligation(namespaceID, oblName, oblVals)
+	createdObl := s.createObligation(namespaceID, oblName+"-update-succeeds", oblVals)
 
-	// Update the obligation (with name change)
+	// Test 1: Update obligation with name and metadata change
 	newName := oblName + "-updated"
 	newMetadata := &common.MetadataMutable{
-		Labels: map[string]string{"key": "value"},
+		Labels: map[string]string{"updated": "true", "version": "2"},
 	}
 	updatedObl, err := s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
 		Id:                     createdObl.GetId(),
 		Name:                   newName,
 		Metadata:               newMetadata,
-		MetadataUpdateBehavior: 1,
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_EXTEND,
 	})
 	s.Require().NoError(err)
 	s.assertObligationBasics(updatedObl, newName, namespaceID, namespace.Name, namespaceFQN)
-	s.Equal(newMetadata.GetLabels(), updatedObl.GetMetadata().GetLabels())
+	s.Equal("true", updatedObl.GetMetadata().GetLabels()["updated"])
+	s.Equal("2", updatedObl.GetMetadata().GetLabels()["version"])
 	s.assertObligationValues(updatedObl)
 
-	// Update the obligation (with no name change)
-	newMetadata = &common.MetadataMutable{
-		Labels: map[string]string{"diffKey": "diffVal"},
+	// Test 2: Update only metadata (no name change)
+	newMetadata2 := &common.MetadataMutable{
+		Labels: map[string]string{"metadata_only": "true"},
 	}
-	updatedObl, err = s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
+	updatedObl2, err := s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
 		Id:                     createdObl.GetId(),
-		Metadata:               newMetadata,
-		MetadataUpdateBehavior: 2,
+		Metadata:               newMetadata2,
+		MetadataUpdateBehavior: common.MetadataUpdateEnum_METADATA_UPDATE_ENUM_REPLACE,
 	})
 	s.Require().NoError(err)
-	s.assertObligationBasics(updatedObl, newName, namespaceID, namespace.Name, namespaceFQN)
-	s.Equal(newMetadata.GetLabels(), updatedObl.GetMetadata().GetLabels())
-	s.assertObligationValues(updatedObl)
+	s.assertObligationBasics(updatedObl2, newName, namespaceID, namespace.Name, namespaceFQN) // Name should remain the same
+	s.Equal("true", updatedObl2.GetMetadata().GetLabels()["metadata_only"])
+	s.NotContains(updatedObl2.GetMetadata().GetLabels(), "updated") // Should be replaced, not extended
+	s.assertObligationValues(updatedObl2)
 
-	s.deleteObligations([]string{updatedObl.GetId()})
+	// Test 3: Update only name (no metadata change)
+	newName2 := oblName + "-name-only-update"
+	updatedObl3, err := s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
+		Id:   createdObl.GetId(),
+		Name: newName2,
+	})
+	s.Require().NoError(err)
+	s.assertObligationBasics(updatedObl3, newName2, namespaceID, namespace.Name, namespaceFQN)
+	s.assertObligationValues(updatedObl3)
+
+	s.deleteObligations([]string{updatedObl3.GetId()})
 }
 
 func (s *ObligationsSuite) Test_UpdateObligation_Fails() {
-	// Attempt to update an obligation with an invalid ID
-	obl, err := s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
-		Id: invalidUUID,
+	oblName := oblName + "-update-fails"
+	// Test 1: Invalid obligation ID
+	updatedObl, err := s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
+		Id:   invalidID,
+		Name: oblName + "-test",
 	})
-	s.Require().ErrorIs(err, db.ErrUUIDInvalid)
-	s.Nil(obl)
+	s.Require().ErrorIs(err, db.ErrNotFound)
+	s.Nil(updatedObl)
+
+	// Test 2: Empty obligation ID
+	updatedObl, err = s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
+		Id:   "",
+		Name: oblName + "-test",
+	})
+	s.Require().Error(err) // Should fail due to empty ID
+	s.Nil(updatedObl)
+
+	// Test 3: No updates provided (both name and metadata are empty/nil)
+	namespaceID, _, _ := s.getNamespaceData(nsExampleCom)
+	createdObl := s.createObligation(namespaceID, oblName+"-no-updates", oblVals)
+
+	updatedObl, err = s.db.PolicyClient.UpdateObligation(s.ctx, &obligations.UpdateObligationRequest{
+		Id: createdObl.GetId(),
+		// No name or metadata provided
+	})
+	s.Require().NoError(err) // Should succeed but not change anything
+	s.NotNil(updatedObl)
+	s.Equal(createdObl.GetId(), updatedObl.GetId())
+	s.Equal(createdObl.GetName(), updatedObl.GetName()) // Name should remain unchanged
+
+	// Cleanup
+	s.deleteObligations([]string{createdObl.GetId()})
 }
 
 // Delete

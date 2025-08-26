@@ -80,6 +80,7 @@ jobs:
           version: latest
           working-directory: ${{ matrix.directory }}
           skip-cache: true
+          args: --skip-config-verify
       - if: matrix.directory == 'service'
         run: .github/scripts/init-temp-keys.sh
       - run: go test ./... -short

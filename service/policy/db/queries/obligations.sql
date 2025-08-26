@@ -260,6 +260,31 @@ SET
     metadata = COALESCE(@metadata, metadata)
 WHERE id = @id;
 
+-- name: getObligationValuesByFQNs :many
+SELECT
+    ov.id,
+    ov.value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ov.metadata -> 'labels', 'created_at', ov.created_at,'updated_at', ov.updated_at)) as metadata,
+    od.id as obligation_id,
+    od.name as name,
+    JSON_BUILD_OBJECT(
+        'id', n.id,
+        'name', n.name,
+        'fqn', fqns.fqn
+    ) as namespace
+FROM
+    obligation_values_standard ov
+JOIN
+    obligation_definitions od ON ov.obligation_definition_id = od.id
+JOIN
+    attribute_namespaces n ON od.namespace_id = n.id
+JOIN
+    attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+JOIN
+    (SELECT unnest(@namespace_fqns::text[]) as ns_fqn, unnest(@names::text[]) as obl_name, unnest(@values::text[]) as value) as fqn_pairs
+ON
+    fqns.fqn = fqn_pairs.ns_fqn AND od.name = fqn_pairs.obl_name AND ov.value = fqn_pairs.value;
+
 -- name: deleteObligationValue :one
 DELETE FROM obligation_values_standard
 WHERE id IN (

@@ -561,6 +561,99 @@ func (q *Queries) getObligationValue(ctx context.Context, arg getObligationValue
 	return i, err
 }
 
+const getObligationValuesByFQNs = `-- name: getObligationValuesByFQNs :many
+SELECT
+    ov.id,
+    ov.value,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ov.metadata -> 'labels', 'created_at', ov.created_at,'updated_at', ov.updated_at)) as metadata,
+    od.id as obligation_id,
+    od.name as name,
+    JSON_BUILD_OBJECT(
+        'id', n.id,
+        'name', n.name,
+        'fqn', fqns.fqn
+    ) as namespace
+FROM
+    obligation_values_standard ov
+JOIN
+    obligation_definitions od ON ov.obligation_definition_id = od.id
+JOIN
+    attribute_namespaces n ON od.namespace_id = n.id
+JOIN
+    attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+JOIN
+    (SELECT unnest($1::text[]) as ns_fqn, unnest($2::text[]) as obl_name, unnest($3::text[]) as value) as fqn_pairs
+ON
+    fqns.fqn = fqn_pairs.ns_fqn AND od.name = fqn_pairs.obl_name AND ov.value = fqn_pairs.value
+`
+
+type getObligationValuesByFQNsParams struct {
+	NamespaceFqns []string `json:"namespace_fqns"`
+	Names         []string `json:"names"`
+	Values        []string `json:"values"`
+}
+
+type getObligationValuesByFQNsRow struct {
+	ID           string `json:"id"`
+	Value        string `json:"value"`
+	Metadata     []byte `json:"metadata"`
+	ObligationID string `json:"obligation_id"`
+	Name         string `json:"name"`
+	Namespace    []byte `json:"namespace"`
+}
+
+// getObligationValuesByFQNs
+//
+//	SELECT
+//	    ov.id,
+//	    ov.value,
+//	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ov.metadata -> 'labels', 'created_at', ov.created_at,'updated_at', ov.updated_at)) as metadata,
+//	    od.id as obligation_id,
+//	    od.name as name,
+//	    JSON_BUILD_OBJECT(
+//	        'id', n.id,
+//	        'name', n.name,
+//	        'fqn', fqns.fqn
+//	    ) as namespace
+//	FROM
+//	    obligation_values_standard ov
+//	JOIN
+//	    obligation_definitions od ON ov.obligation_definition_id = od.id
+//	JOIN
+//	    attribute_namespaces n ON od.namespace_id = n.id
+//	JOIN
+//	    attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	JOIN
+//	    (SELECT unnest($1::text[]) as ns_fqn, unnest($2::text[]) as obl_name, unnest($3::text[]) as value) as fqn_pairs
+//	ON
+//	    fqns.fqn = fqn_pairs.ns_fqn AND od.name = fqn_pairs.obl_name AND ov.value = fqn_pairs.value
+func (q *Queries) getObligationValuesByFQNs(ctx context.Context, arg getObligationValuesByFQNsParams) ([]getObligationValuesByFQNsRow, error) {
+	rows, err := q.db.Query(ctx, getObligationValuesByFQNs, arg.NamespaceFqns, arg.Names, arg.Values)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []getObligationValuesByFQNsRow
+	for rows.Next() {
+		var i getObligationValuesByFQNsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Value,
+			&i.Metadata,
+			&i.ObligationID,
+			&i.Name,
+			&i.Namespace,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getObligationsByFQNs = `-- name: getObligationsByFQNs :many
 SELECT
     od.id,

@@ -3,14 +3,13 @@ package authorization
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/service/internal/access/v2"
 	"github.com/opentdf/platform/service/logger"
-	"github.com/opentdf/platform/service/pkg/cache"
 )
 
 const (
@@ -41,8 +40,9 @@ var (
 
 // EntitlementPolicyCache caches attributes and subject mappings with periodic refresh
 type EntitlementPolicyCache struct {
-	logger      *logger.Logger
-	cacheClient *cache.Cache
+	logger *logger.Logger
+	policy access.EntitlementPolicy
+	mu     sync.RWMutex
 
 	// SDK-connected retriever to fetch fresh data from policy services
 	retriever *access.EntitlementPolicyRetriever
@@ -56,13 +56,7 @@ type EntitlementPolicyCache struct {
 	isCacheFilled bool
 }
 
-// The EntitlementPolicy struct holds all the cached entitlement policy, as generics allow one
-// data type per service cache instance.
-type EntitlementPolicy struct {
-	Attributes          []*policy.Attribute
-	SubjectMappings     []*policy.SubjectMapping
-	RegisteredResources []*policy.RegisteredResource
-}
+
 
 // NewEntitlementPolicyCache holds a platform-provided cache client and manages a periodic refresh of
 // cached entitlement policy data, fetching fresh data from the policy services at configured interval.
@@ -70,7 +64,6 @@ func NewEntitlementPolicyCache(
 	ctx context.Context,
 	l *logger.Logger,
 	retriever *access.EntitlementPolicyRetriever,
-	cacheClient *cache.Cache,
 	cacheRefreshInterval time.Duration,
 ) (*EntitlementPolicyCache, error) {
 	if cacheRefreshInterval == 0 {
@@ -82,7 +75,6 @@ func NewEntitlementPolicyCache(
 
 	instance := &EntitlementPolicyCache{
 		logger:                    l,
-		cacheClient:               cacheClient,
 		retriever:                 retriever,
 		configuredRefreshInterval: cacheRefreshInterval,
 		stopRefresh:               make(chan struct{}),
@@ -181,23 +173,12 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 		return err
 	}
 
-	// If there is an error when Setting with fresh data, mark not filled so IsReady() will re-attempt refresh
-	err = c.cacheClient.Set(ctx, attributesCacheKey, attributes, authzCacheTags)
-	if err != nil {
-		c.isCacheFilled = false
-		return errors.Join(ErrFailedToSet, err)
-	}
-
-	err = c.cacheClient.Set(ctx, subjectMappingsCacheKey, subjectMappings, authzCacheTags)
-	if err != nil {
-		c.isCacheFilled = false
-		return errors.Join(ErrFailedToSet, err)
-	}
-
-	err = c.cacheClient.Set(ctx, registeredResourcesCacheKey, registeredResources, authzCacheTags)
-	if err != nil {
-		c.isCacheFilled = false
-		return errors.Join(ErrFailedToSet, err)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.policy = access.EntitlementPolicy{
+		Attributes:          attributes,
+		RegisteredResources: registeredResources,
+		SubjectMappings:     subjectMappings,
 	}
 
 	c.logger.DebugContext(ctx,
@@ -215,68 +196,39 @@ func (c *EntitlementPolicyCache) Refresh(ctx context.Context) error {
 
 // ListAllAttributes returns the cached attributes
 func (c *EntitlementPolicyCache) ListAllAttributes(ctx context.Context) ([]*policy.Attribute, error) {
-	var (
-		attributes []*policy.Attribute
-		ok         bool
-	)
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	cached, err := c.cacheClient.Get(ctx, attributesCacheKey)
-	if err != nil {
-		if errors.Is(err, cache.ErrCacheMiss) {
-			return attributes, nil
-		}
-		return nil, fmt.Errorf("%w, attributes: %w", ErrFailedToGet, err)
-	}
-
-	attributes, ok = cached.([]*policy.Attribute)
-	if !ok {
-		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, attributes)
-	}
+	var attributes []*policy.Attribute
+	attributes = c.policy.Attributes
 	return attributes, nil
 }
 
 // ListAllSubjectMappings returns the cached subject mappings
 func (c *EntitlementPolicyCache) ListAllSubjectMappings(ctx context.Context) ([]*policy.SubjectMapping, error) {
-	var (
-		subjectMappings []*policy.SubjectMapping
-		ok              bool
-	)
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	cached, err := c.cacheClient.Get(ctx, subjectMappingsCacheKey)
-	if err != nil {
-		if errors.Is(err, cache.ErrCacheMiss) {
-			return subjectMappings, nil
-		}
-		return nil, fmt.Errorf("%w, subject mappings: %w", ErrFailedToGet, err)
-	}
-
-	subjectMappings, ok = cached.([]*policy.SubjectMapping)
-	if !ok {
-		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, subjectMappings)
-	}
+	var subjectMappings []*policy.SubjectMapping
+	subjectMappings = c.policy.SubjectMappings
 	return subjectMappings, nil
 }
 
 // ListAllRegisteredResources returns the cached registered resources, or none in the event of a cache miss
 func (c *EntitlementPolicyCache) ListAllRegisteredResources(ctx context.Context) ([]*policy.RegisteredResource, error) {
-	var (
-		registeredResources []*policy.RegisteredResource
-		ok                  bool
-	)
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	cached, err := c.cacheClient.Get(ctx, registeredResourcesCacheKey)
-	if err != nil {
-		if errors.Is(err, cache.ErrCacheMiss) {
-			return registeredResources, nil
-		}
-		return nil, fmt.Errorf("%w, registered resources: %w", ErrFailedToGet, err)
-	}
-
-	registeredResources, ok = cached.([]*policy.RegisteredResource)
-	if !ok {
-		return nil, fmt.Errorf("%w: %T", ErrCachedTypeNotExpected, registeredResources)
-	}
+	var registeredResources []*policy.RegisteredResource
+	registeredResources = c.policy.RegisteredResources
 	return registeredResources, nil
+}
+
+func (c *EntitlementPolicyCache) GetEntitlementPolicy(ctx context.Context) (access.EntitlementPolicy, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.policy, nil
 }
 
 // periodicRefresh refreshes the cache at the specified interval

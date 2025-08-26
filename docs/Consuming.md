@@ -9,7 +9,7 @@ To contribute/develop, see [here](./Contributing.md).
 1. **Initialize Platform Configuration**
    ```shell
    cp opentdf-dev.yaml opentdf.yaml
-   sed -i '' 's/e1/ec1/g' opentdf.yaml
+perl -i -pe 's/e1/ec1/g' opentdf.yaml
    yq eval '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
    .github/scripts/init-temp-keys.sh
    sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./keys/localhost.crt

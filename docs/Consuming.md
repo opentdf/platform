@@ -10,7 +10,8 @@ To contribute/develop, see [here](./Contributing.md).
    ```shell
    cp opentdf-dev.yaml opentdf.yaml
 perl -i -pe 's/e1/ec1/g' opentdf.yaml
-   yq eval '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
+# Requires yq to be installed (see https://github.com/mikefarah/yq#install)
+yq eval '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
    .github/scripts/init-temp-keys.sh
 # The following command is for macOS to trust the local certificate.
 # For Linux, you may need to use a different command, e.g.:

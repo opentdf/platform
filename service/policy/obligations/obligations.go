@@ -321,9 +321,27 @@ func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Reques
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) DeleteObligationValue(_ context.Context, _ *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error) {
-	// TODO: Implement DeleteObligationValue logic
-	return connect.NewResponse(&obligations.DeleteObligationValueResponse{}), nil
+func (s *Service) DeleteObligationValue(ctx context.Context, req *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error) {
+	id := req.Msg.GetId()
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeObligationValue,
+		ObjectID:   id,
+	}
+
+	s.logger.DebugContext(ctx, "deleting obligation value", slog.String("id", id))
+
+	deleted, err := s.dbClient.DeleteObligationValue(ctx, req.Msg)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation value", req.Msg.String()))
+	}
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp := &obligations.DeleteObligationValueResponse{Value: deleted}
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *Service) AddObligationTrigger(_ context.Context, _ *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error) {

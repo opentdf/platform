@@ -253,8 +253,14 @@ func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Reques
 }
 
 func (s *Service) GetObligationValue(ctx context.Context, req *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
-	// TODO: Implement GetObligationValue logic
-	return connect.NewResponse(&obligations.GetObligationValueResponse{}), nil
+	s.logger.DebugContext(ctx, "getting obligation value", slog.Any("identifier", req.Msg.GetIdentifier()))
+
+	val, err := s.dbClient.GetObligationValue(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed, slog.Any("identifier", req.Msg.GetIdentifier()))
+	}
+	rsp := &obligations.GetObligationValueResponse{Value: val}
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *Service) GetObligationValuesByFQNs(_ context.Context, _ *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error) {

@@ -630,24 +630,6 @@ func TestStreamingWriter_ReaderCompatibility(t *testing.T) {
 	t.Log("✅ Full round-trip test passed: write → read → decrypt")
 }
 
-func TestStreamingWriter_MockKASSetup(t *testing.T) {
-	// Test just the mock server setup first
-	sdk, cleanup := setupMockKASServer(t)
-	defer cleanup()
-
-	require.NotNil(t, sdk)
-	t.Log("✅ Mock KAS server setup successful")
-
-	// Try to create a streaming writer
-	writer, err := sdk.NewStreamingWriter(t.Context())
-	if err != nil {
-		t.Logf("Expected error during setup: %v", err)
-		return
-	}
-	require.NotNil(t, writer)
-	t.Log("✅ StreamingWriter created successfully")
-}
-
 func TestStreamingWriter_FullEndToEndWithMocks(t *testing.T) {
 	// t.Skip("Skipping until mock server setup is debugged")
 
@@ -710,7 +692,7 @@ func TestStreamingWriter_FullEndToEndWithMocks(t *testing.T) {
 	assert.NotEmpty(t, manifest.EncryptionInformation.KeyAccessObjs)
 
 	// Verify segment structure
-	assert.Len(t, len(manifest.EncryptionInformation.IntegrityInformation.Segments), 2)
+	assert.Len(t, manifest.EncryptionInformation.IntegrityInformation.Segments, 2)
 	assert.Equal(t, int64(8), manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize)
 
 	// Verify segments have different sizes (variable-length)
@@ -772,7 +754,7 @@ func TestStreamingWriter_VariableLengthSegments(t *testing.T) {
 
 	// Verify variable segment sizes
 	segments := manifest.EncryptionInformation.IntegrityInformation.Segments
-	assert.Len(t, len(segments), 4)
+	assert.Len(t, segments, 4)
 	assert.Equal(t, int64(5), segments[0].Size) // First segment used as default
 	assert.Equal(t, int64(5), manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize)
 	assert.Equal(t, int64(10), segments[1].Size) // Different from default
@@ -914,7 +896,7 @@ func TestStreamingWriter_LargeVariableSegments(t *testing.T) {
 
 	// Verify highly variable segment sizes
 	segments := manifest.EncryptionInformation.IntegrityInformation.Segments
-	assert.Len(t, len(segments), 6)
+	assert.Len(t, segments, 6)
 	expectedSizes := []int64{1, 100, 3, 1000, 1, 50}
 	for i, expectedSize := range expectedSizes {
 		assert.Equal(t, expectedSize, segments[i].Size, "Segment %d size mismatch", i)
@@ -935,7 +917,7 @@ func TestStreamingWriter_LargeVariableSegments(t *testing.T) {
 
 	// Verify total size
 	expectedTotalSize := 1 + 100 + 3 + 1000 + 1 + 50 // 1155 bytes
-	assert.Len(t, len(decryptedData.Bytes()), expectedTotalSize)
+	assert.Len(t, decryptedData.Bytes(), expectedTotalSize)
 
 	t.Log("✅ Large variable segments test passed")
 }

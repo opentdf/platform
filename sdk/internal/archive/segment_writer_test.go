@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -82,7 +81,7 @@ func TestSegmentWriter_SequentialOrder(t *testing.T) {
 
 func TestSegmentWriter_OutOfOrder(t *testing.T) {
 	// Test out-of-order segment writing (2, 0, 4, 1, 3)
-	writer := NewSegmentTDFWriter(5, WithZip64())
+	writer := NewSegmentTDFWriter(1, WithZip64()) // Should expand segments dynamically
 	ctx := t.Context()
 
 	testSegments := map[int][]byte{
@@ -131,11 +130,6 @@ func TestSegmentWriter_OutOfOrder(t *testing.T) {
 	allBytes = append(allBytes, finalBytes...)
 
 	t.Logf("Total file bytes: %d", len(allBytes))
-
-	// Debug: write bytes to temporary file for inspection
-	if err := os.WriteFile("/tmp/debug_out_of_order.zip", allBytes, 0o644); err == nil {
-		t.Logf("Debug ZIP written to /tmp/debug_out_of_order.zip")
-	}
 
 	// Validate ZIP structure
 	zipReader, err := zip.NewReader(bytes.NewReader(allBytes), int64(len(allBytes)))
@@ -211,7 +205,7 @@ func TestSegmentWriter_InvalidSegmentIndex(t *testing.T) {
 
 func TestSegmentWriter_IncompleteSegments(t *testing.T) {
 	// Test error handling when trying to finalize with missing segments
-	writer := NewSegmentTDFWriter(5)
+	writer := NewSegmentTDFWriter(1)
 	ctx := t.Context()
 
 	// Write only segments 0, 1, 3 (missing 2 and 4)

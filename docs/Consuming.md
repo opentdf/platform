@@ -44,8 +44,9 @@ https://github.com/opentdf/platform/blob/main/service/go.mod#L3
      sudo security delete-certificate -c "localhost"
      ```
 2. **Start Background Services**
-   Start the required infrastructure with [compose-spec](https://compose-spec.io).
    
+   Start the required infrastructure with [compose-spec](https://compose-spec.io).
+
    ```shell
    docker compose -f docker-compose.yaml up
    ```

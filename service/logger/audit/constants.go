@@ -40,6 +40,7 @@ func (ot ObjectType) String() string {
 		"attribute_definition",
 		"attribute_value",
 		"obligation_definition",
+		"obligation_value",
 		"namespace",
 		"condition_set",
 		"kas_registry",

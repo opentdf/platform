@@ -263,9 +263,20 @@ func (s *Service) GetObligationValue(ctx context.Context, req *connect.Request[o
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) GetObligationValuesByFQNs(_ context.Context, _ *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error) {
-	// TODO: Implement GetObligationValuesByFQNs logic
-	return connect.NewResponse(&obligations.GetObligationValuesByFQNsResponse{}), nil
+func (s *Service) GetObligationValuesByFQNs(ctx context.Context, req *connect.Request[obligations.GetObligationValuesByFQNsRequest]) (*connect.Response[obligations.GetObligationValuesByFQNsResponse], error) {
+	s.logger.DebugContext(ctx, "getting obligation values")
+
+	vs, err := s.dbClient.GetObligationValuesByFQNs(ctx, req.Msg)
+	if err != nil {
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextGetRetrievalFailed)
+	}
+	vals := make(map[string]*policy.ObligationValue)
+	for _, val := range vs {
+		obl := val.GetObligation()
+		vals[policydb.BuildOblValFQN(obl.GetNamespace().GetFqn(), obl.GetName(), val.GetValue())] = val
+	}
+	rsp := &obligations.GetObligationValuesByFQNsResponse{FqnValueMap: vals}
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *Service) UpdateObligationValue(_ context.Context, _ *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error) {

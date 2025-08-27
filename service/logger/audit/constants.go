@@ -12,6 +12,7 @@ const (
 	ObjectTypeAttributeDefinition
 	ObjectTypeAttributeValue
 	ObjectTypeObligationDefinition
+	ObjectTypeObligationValue
 	ObjectTypeNamespace
 	ObjectTypeConditionSet
 	ObjectTypeKasRegistry

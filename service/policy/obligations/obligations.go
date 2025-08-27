@@ -221,12 +221,38 @@ func (s *Service) DeleteObligation(ctx context.Context, req *connect.Request[obl
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) CreateObligationValue(_ context.Context, _ *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {
-	// TODO: Implement CreateObligationValue logic
-	return connect.NewResponse(&obligations.CreateObligationValueResponse{}), nil
+func (s *Service) CreateObligationValue(ctx context.Context, req *connect.Request[obligations.CreateObligationValueRequest]) (*connect.Response[obligations.CreateObligationValueResponse], error) {
+	rsp := &obligations.CreateObligationValueResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeObligationValue,
+	}
+
+	s.logger.DebugContext(ctx, "creating obligation value", slog.String("value", req.Msg.GetValue()))
+
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		val, err := txClient.CreateObligationValue(ctx, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.ObjectID = val.GetId()
+		auditParams.Original = val
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Value = val
+		return nil
+	})
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation value", req.Msg.String()))
+	}
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) GetObligationValue(_ context.Context, _ *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
+func (s *Service) GetObligationValue(ctx context.Context, req *connect.Request[obligations.GetObligationValueRequest]) (*connect.Response[obligations.GetObligationValueResponse], error) {
 	// TODO: Implement GetObligationValue logic
 	return connect.NewResponse(&obligations.GetObligationValueResponse{}), nil
 }

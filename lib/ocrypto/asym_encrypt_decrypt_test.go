@@ -329,6 +329,8 @@ MJseKiCRhbMS8XoCOTogO4Au9SqpOKqHq2CFRb4=
 			} else if ecd, ok := asymDecryptor.(ECDecryptor); ok {
 				decryptedText, err = ecd.DecryptWithEphemeralKey(cipherText, ek)
 				require.NoError(t, err, "AsymDecryption WithEphemeralKey decrypt failed")
+			} else {
+				require.FailNowf(t, "AsymDecryption wrong type", "expected ECDecryptor but got %T", asymDecryptor)
 			}
 
 			assert.Equal(t, plainText, string(decryptedText), "Asym encrypt/decrypt failed")

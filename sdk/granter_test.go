@@ -37,7 +37,7 @@ var (
 	N2K, _ = NewAttributeNameFQN("https://virtru.com/attr/Need%20to%20Know")
 	REL, _ = NewAttributeNameFQN("https://virtru.com/attr/Releasable%20To")
 
-	clsA, _ = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Allowed")
+	clsA, _  = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Allowed")
 	clsS, _  = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Secret")
 	clsTS, _ = NewAttributeValueFQN("https://virtru.com/attr/Classification/value/Top%20Secret")
 

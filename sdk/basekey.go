@@ -15,9 +15,9 @@ import (
 // Should match:
 // https://github.com/opentdf/platform/blob/main/service/wellknownconfiguration/wellknown_configuration.go#L25
 const (
-	baseKeyWellKnown   = "base_key"
-	baseKeyAlg         = "algorithm"
-	baseKeyPublicKey   = "public_key"
+	baseKeyWellKnown = "base_key"
+	baseKeyAlg       = "algorithm"
+	baseKeyPublicKey = "public_key"
 )
 
 // TODO: Move this function to ocrypto?

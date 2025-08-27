@@ -502,7 +502,6 @@ func (s *TDFSuite) Test_SimpleTDF() {
 				_ = os.Remove(tdfFilename)
 			},
 		)
-
 	}
 }
 

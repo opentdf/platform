@@ -296,7 +296,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 	var signedAssertion []Assertion
 	if tdfConfig.addDefaultAssertion {
-		systemMeta, err := tdf.GetSystemMetadataAssertionConfig()
+		systemMeta, err := GetSystemMetadataAssertionConfig()
 		if err != nil {
 			return nil, err
 		}

@@ -51,7 +51,6 @@ type WriterFinalizeConfig struct {
 	attributes                 []*policy.Value
 	assertions                 []AssertionConfig
 	excludeVersionFromManifest bool
-	addDefaultAssertion        bool
 	encryptedMetadata          string
 	payloadMimeType            string
 }
@@ -89,11 +88,5 @@ func WithExcludeVersionFromManifest(exclude bool) Option[*WriterFinalizeConfig] 
 func WithAssertions(assertions ...AssertionConfig) Option[*WriterFinalizeConfig] {
 	return func(c *WriterFinalizeConfig) {
 		c.assertions = assertions
-	}
-}
-
-func WithDefaultAssertion(add bool) Option[*WriterFinalizeConfig] {
-	return func(c *WriterFinalizeConfig) {
-		c.addDefaultAssertion = add
 	}
 }

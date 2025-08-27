@@ -148,10 +148,9 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 	}
 
 	cfg := &WriterFinalizeConfig{
-		addDefaultAssertion: false,
-		attributes:          make([]*policy.Value, 0),
-		encryptedMetadata:   "",
-		payloadMimeType:     "application/octet-stream",
+		attributes:        make([]*policy.Value, 0),
+		encryptedMetadata: "",
+		payloadMimeType:   "application/octet-stream",
 	}
 	for _, opt := range opts {
 		opt(cfg)
@@ -238,15 +237,6 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 
 	encryptInfo.KeyAccessObjs = keyAccessList
 	manifest.EncryptionInformation = encryptInfo
-
-	// Assertions
-	if cfg.addDefaultAssertion {
-		systemMeta, err := GetSystemMetadataAssertionConfig()
-		if err != nil {
-			return nil, nil, err
-		}
-		cfg.assertions = append(cfg.assertions, systemMeta)
-	}
 
 	signedAssertions, err := w.buildAssertions(aggregateHash.Bytes(), cfg.assertions)
 	if err != nil {

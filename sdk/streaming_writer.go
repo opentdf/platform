@@ -153,12 +153,12 @@ func (w *StreamingWriter) WriteSegment(ctx context.Context, segmentIndex int, da
 // with proper configuration. Returns the final TDF bytes (manifest and metadata) and the manifest object.
 func (w *StreamingWriter) Finalize(ctx context.Context, attributeFQNs []string, opts ...FinalizeOption) ([]byte, *tdf.Manifest, error) {
 	// Apply the configuration options
-	config := &FinalizeConfig{
+	cfg := &FinalizeConfig{
 		payloadMimeType: "application/octet-stream", // Default MIME type
 	}
 
 	for _, opt := range opts {
-		if err := opt(config); err != nil {
+		if err := opt(cfg); err != nil {
 			return nil, nil, fmt.Errorf("failed to apply finalize option: %w", err)
 		}
 	}
@@ -174,8 +174,8 @@ func (w *StreamingWriter) Finalize(ctx context.Context, attributeFQNs []string, 
 
 	// Set the default KAS
 	//nolint:nestif // KAS fallback logic requires nested conditionals for clear hierarchy
-	if config.defaultKAS != nil {
-		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithDefaultKAS(config.defaultKAS))
+	if cfg.defaultKAS != nil {
+		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithDefaultKAS(cfg.defaultKAS))
 	} else {
 		// Try to get base key from well-known configuration
 		if baseKey, err := getBaseKey(ctx, *w.sdk); err == nil {
@@ -193,26 +193,30 @@ func (w *StreamingWriter) Finalize(ctx context.Context, attributeFQNs []string, 
 	tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithAttributeValues(attributeValues))
 
 	// Set payload MIME type
-	tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithPayloadMimeType(config.payloadMimeType))
+	tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithPayloadMimeType(cfg.payloadMimeType))
 
 	// Set encrypted metadata if provided
-	if config.encryptedMetadata != "" {
-		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithEncryptedMetadata(config.encryptedMetadata))
+	if cfg.encryptedMetadata != "" {
+		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithEncryptedMetadata(cfg.encryptedMetadata))
 	}
 
 	// Set version exclusion option
-	if config.excludeVersionFromManifest {
-		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithExcludeVersionFromManifest(config.excludeVersionFromManifest))
+	if cfg.excludeVersionFromManifest {
+		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithExcludeVersionFromManifest(cfg.excludeVersionFromManifest))
+	}
+
+	// Assertions
+	if cfg.addDefaultAssertion {
+		systemMeta, err := GetSystemMetadataAssertionConfig()
+		if err != nil {
+			return nil, nil, err
+		}
+		cfg.assertions = append(cfg.assertions, systemMeta)
 	}
 
 	// Set custom assertions if provided
-	if len(config.assertions) > 0 {
-		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithAssertions(config.assertions...))
-	}
-
-	// Set default assertion option
-	if config.addDefaultAssertion {
-		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithDefaultAssertion(config.addDefaultAssertion))
+	if len(cfg.assertions) > 0 {
+		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithAssertions(cfg.assertions...))
 	}
 
 	return w.writer.Finalize(ctx, tdfFinalizeOpts...)

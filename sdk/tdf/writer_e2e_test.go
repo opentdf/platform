@@ -327,7 +327,18 @@ func testAssertionsAndMetadata(t *testing.T) {
 	_, err = writer.WriteSegment(ctx, 0, testData)
 	require.NoError(t, err, "Failed to write segment")
 
-	// Note: Custom assertions would be added via additional options if needed
+	// Create a custom test assertion to replace the removed system metadata assertion
+	testAssertion := AssertionConfig{
+		ID:             "test-system-metadata",
+		Type:           BaseAssertion,
+		Scope:          PayloadScope,
+		AppliesToState: Unencrypted,
+		Statement: Statement{
+			Format: "json",
+			Schema: "test-system-metadata-v1",
+			Value:  `{"test_component": "tdf-writer", "test_type": "system-metadata", "timestamp": "2024-01-01T00:00:00Z"}`,
+		},
+	}
 
 	// Finalize with assertions and metadata
 	attributes := []*policy.Value{
@@ -335,36 +346,36 @@ func testAssertionsAndMetadata(t *testing.T) {
 	}
 	_, manifest, err := writer.Finalize(ctx,
 		WithAttributeValues(attributes),
-		WithDefaultAssertion(true),
 		WithEncryptedMetadata("Sensitive metadata content"),
+		WithAssertions(testAssertion),
 	)
 	require.NoError(t, err, "Failed to finalize TDF with assertions")
 
-	// Verify default system assertion was added
-	assert.Len(t, manifest.Assertions, 1, "Should have default system assertion")
+	// Verify custom test assertion was added
+	assert.Len(t, manifest.Assertions, 1, "Should have custom test assertion")
 
-	systemAssertion := manifest.Assertions[0]
-	assert.Equal(t, SystemMetadataAssertionID, systemAssertion.ID, "Should have system metadata assertion")
-	assert.Equal(t, BaseAssertion, systemAssertion.Type, "Should be base assertion type")
-	assert.Equal(t, PayloadScope, systemAssertion.Scope, "Should have payload scope")
-	assert.Equal(t, Unencrypted, systemAssertion.AppliesToState, "Should apply to unencrypted state")
+	customAssertion := manifest.Assertions[0]
+	assert.Equal(t, "test-system-metadata", customAssertion.ID, "Should have correct assertion ID")
+	assert.Equal(t, BaseAssertion, customAssertion.Type, "Should be base assertion type")
+	assert.Equal(t, PayloadScope, customAssertion.Scope, "Should have payload scope")
+	assert.Equal(t, Unencrypted, customAssertion.AppliesToState, "Should apply to unencrypted state")
 
 	// Verify assertion binding
-	assert.NotEmpty(t, systemAssertion.Binding.Method, "Assertion should have binding method")
-	assert.NotEmpty(t, systemAssertion.Binding.Signature, "Assertion should have binding signature")
+	assert.NotEmpty(t, customAssertion.Binding.Method, "Assertion should have binding method")
+	assert.NotEmpty(t, customAssertion.Binding.Signature, "Assertion should have binding signature")
 
 	// Verify assertion statement
-	assert.Equal(t, "json", systemAssertion.Statement.Format, "Statement format should be json")
-	assert.Equal(t, SystemMetadataSchemaV1, systemAssertion.Statement.Schema, "Statement schema should match")
-	assert.NotEmpty(t, systemAssertion.Statement.Value, "Statement value should not be empty")
+	assert.Equal(t, "json", customAssertion.Statement.Format, "Statement format should be json")
+	assert.Equal(t, "test-system-metadata-v1", customAssertion.Statement.Schema, "Statement schema should match")
+	assert.NotEmpty(t, customAssertion.Statement.Value, "Statement value should not be empty")
 
-	// Parse and verify system metadata content
+	// Parse and verify test metadata content
 	var metadata map[string]interface{}
-	err = json.Unmarshal([]byte(systemAssertion.Statement.Value), &metadata)
-	require.NoError(t, err, "Should be able to parse system metadata")
-	assert.Equal(t, TDFSpecVersion, metadata["tdf_spec_version"], "TDF spec version should match")
-	assert.Contains(t, metadata["sdk_version"], "Go-", "SDK version should contain Go prefix")
-	assert.NotEmpty(t, metadata["creation_date"], "Creation date should be set")
+	err = json.Unmarshal([]byte(customAssertion.Statement.Value), &metadata)
+	require.NoError(t, err, "Should be able to parse test metadata")
+	assert.Equal(t, "tdf-writer", metadata["test_component"], "Test component should match")
+	assert.Equal(t, "system-metadata", metadata["test_type"], "Test type should match")
+	assert.NotEmpty(t, metadata["timestamp"], "Timestamp should be set")
 
 	// Verify encrypted metadata in key access object
 	keyAccess := manifest.EncryptionInformation.KeyAccessObjs[0]

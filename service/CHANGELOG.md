@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.9.0](https://github.com/opentdf/platform/compare/service/v0.8.0...service/v0.9.0) (2025-08-27)
+
+
+### Features
+
+* **core:** add multi-strategy ERS to support ldap and sql ([#2596](https://github.com/opentdf/platform/issues/2596)) ([855611d](https://github.com/opentdf/platform/commit/855611d58c36767e04dfa6efabb26e1bd2978fba))
+* **policy:** Add legacy keys. ([#2613](https://github.com/opentdf/platform/issues/2613)) ([57370b0](https://github.com/opentdf/platform/commit/57370b0f76605ec2ed375728ec9b60a829072d99))
+* **policy:** add values to CreateObligationRequest ([#2614](https://github.com/opentdf/platform/issues/2614)) ([94535cc](https://github.com/opentdf/platform/commit/94535cc0c1622b7499dad8e91a02a93f1eb1531b))
+* **policy:** Modify KAS indexer to support legacy keys. ([#2616](https://github.com/opentdf/platform/issues/2616)) ([ba96c18](https://github.com/opentdf/platform/commit/ba96c186330bce0b86cb3a3f275bb2863e532654))
+
+
+### Bug Fixes
+
+* **deps:** bump github.com/docker/docker from 28.2.2+incompatible to 28.3.3+incompatible in /service ([#2598](https://github.com/opentdf/platform/issues/2598)) ([3c392aa](https://github.com/opentdf/platform/commit/3c392aae4f52ed4f51e68738ee424e56fee23e6b))
+* **deps:** bump github.com/go-viper/mapstructure/v2 from 2.3.0 to 2.4.0 in /service ([#2649](https://github.com/opentdf/platform/issues/2649)) ([b838bbc](https://github.com/opentdf/platform/commit/b838bbcf8170c1d69e01617e75d8f08c3c38a339))
+* **deps:** bump github.com/opentdf/platform/sdk from 0.5.0 to 0.7.0 in /service ([#2660](https://github.com/opentdf/platform/issues/2660)) ([2c998ac](https://github.com/opentdf/platform/commit/2c998acc00d95ffbf99a016faf4094ad26601ff7))
+* **kas:** Allow admin to set registered kas uri ([#2624](https://github.com/opentdf/platform/issues/2624)) ([6203fba](https://github.com/opentdf/platform/commit/6203fbaebcdd57b5b3437679465149f8ff395484))
+* updated generated sqlc ([#2609](https://github.com/opentdf/platform/issues/2609)) ([e44a569](https://github.com/opentdf/platform/commit/e44a56937453ebbdac1761f042003aa622e3a239))
+
 ## [0.8.0](https://github.com/opentdf/platform/compare/service/v0.7.0...service/v0.8.0) (2025-07-29)
 
 

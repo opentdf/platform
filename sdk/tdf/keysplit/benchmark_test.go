@@ -20,7 +20,7 @@ func BenchmarkXORSplitter_GenerateSplits(b *testing.B) {
 			numAttrs:  1,
 			numValues: 1,
 			dekSize:   32,
-			setupAttrs: func(numAttrs, numValues int) []*policy.Value {
+			setupAttrs: func(_, _ int) []*policy.Value {
 				return []*policy.Value{
 					createMockValue("https://test.com/attr/test/value/test", kasUs, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
 				}

@@ -140,12 +140,12 @@ func (s *SDK) NewStreamingWriter(ctx context.Context) (*StreamingWriter, error) 
 // WriteSegment encrypts and writes a segment for the given index.
 // Indices are 0-based for the low-level API.
 // Returns the encrypted bytes that can be immediately uploaded.
-func (w *StreamingWriter) WriteSegment(segmentIndex int, data []byte) ([]byte, error) {
+func (w *StreamingWriter) WriteSegment(ctx context.Context, segmentIndex int, data []byte) ([]byte, error) {
 	if segmentIndex < 0 {
 		return nil, ErrStreamingWriterInvalidPart
 	}
 
-	return w.writer.WriteSegment(segmentIndex, data)
+	return w.writer.WriteSegment(ctx, segmentIndex, data)
 }
 
 // Finalize completes the TDF creation with the specified attribute FQNs and configuration options.
@@ -173,6 +173,7 @@ func (w *StreamingWriter) Finalize(ctx context.Context, attributeFQNs []string, 
 	var tdfFinalizeOpts []tdf.Option[*tdf.WriterFinalizeConfig]
 
 	// Set the default KAS
+	//nolint:nestif // KAS fallback logic requires nested conditionals for clear hierarchy
 	if config.defaultKAS != nil {
 		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithDefaultKAS(config.defaultKAS))
 	} else {
@@ -202,6 +203,11 @@ func (w *StreamingWriter) Finalize(ctx context.Context, attributeFQNs []string, 
 	// Set version exclusion option
 	if config.excludeVersionFromManifest {
 		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithExcludeVersionFromManifest(config.excludeVersionFromManifest))
+	}
+
+	// Set custom assertions if provided
+	if len(config.assertions) > 0 {
+		tdfFinalizeOpts = append(tdfFinalizeOpts, tdf.WithAssertions(config.assertions...))
 	}
 
 	// Set default assertion option
@@ -239,8 +245,8 @@ func (w *StreamingWriter) fetchAttributesByFQNs(ctx context.Context, fqns []stri
 	// Extract the values from the response
 	values := make([]*policy.Value, 0, len(fqns))
 	for _, fqn := range fqns {
-		if attrAndValue, exists := resp.FqnAttributeValues[fqn]; exists && attrAndValue.Value != nil {
-			values = append(values, attrAndValue.Value)
+		if attrAndValue, exists := resp.GetFqnAttributeValues()[fqn]; exists && attrAndValue.GetValue() != nil {
+			values = append(values, attrAndValue.GetValue())
 		} else {
 			return nil, fmt.Errorf("%w: attribute not found for FQN '%s'", ErrStreamingWriterInvalidFQN, fqn)
 		}

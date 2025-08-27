@@ -9,6 +9,10 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
+const (
+	aes256KeyLength = 32 // AES-256 key length in bytes
+)
+
 // Splitter defines the interface for key splitting implementations
 type Splitter interface {
 	// GenerateSplits analyzes attributes and creates key splits from a DEK
@@ -21,7 +25,7 @@ type SplitterOption func(*splitterConfig)
 // splitterConfig holds configuration for the splitter
 type splitterConfig struct {
 	defaultKAS *policy.SimpleKasKey // Default KAS with full key information
-	splitIDGen func() string         // Function to generate split IDs
+	splitIDGen func() string        // Function to generate split IDs
 }
 
 // WithDefaultKAS sets the default KAS with complete key information
@@ -57,34 +61,34 @@ func NewXORSplitter(opts ...SplitterOption) *XORSplitter {
 }
 
 // GenerateSplits implements the main key splitting workflow
-func (x *XORSplitter) GenerateSplits(ctx context.Context, attrs []*policy.Value, dek []byte) (*SplitResult, error) {
+func (x *XORSplitter) GenerateSplits(_ context.Context, attrs []*policy.Value, dek []byte) (*SplitResult, error) {
 	// Validate inputs
 	if len(dek) == 0 {
 		return nil, ErrEmptyDEK
 	}
-	if len(dek) != 32 {
-		return nil, fmt.Errorf("%w: got %d bytes, expected 32", ErrInvalidDEK, len(dek))
+	if len(dek) != aes256KeyLength {
+		return nil, fmt.Errorf("%w: got %d bytes, expected %d", ErrInvalidDEK, len(dek), aes256KeyLength)
 	}
-	
+
 	// If no attributes provided, check if we have a default KAS
 	if len(attrs) == 0 {
 		if x.config.defaultKAS == nil {
 			return nil, ErrNoDefaultKAS
 		}
 		// Use default KAS for single split
-		kasURL := x.config.defaultKAS.KasUri
+		kasURL := x.config.defaultKAS.GetKasUri()
 		kasPublicKeys := make(map[string]KASPublicKey)
-		
+
 		// Add the default KAS public key if available
-		if x.config.defaultKAS.PublicKey != nil {
+		if x.config.defaultKAS.GetPublicKey() != nil {
 			kasPublicKeys[kasURL] = KASPublicKey{
 				URL:       kasURL,
-				KID:       x.config.defaultKAS.PublicKey.GetKid(),
-				PEM:       x.config.defaultKAS.PublicKey.GetPem(),
-				Algorithm: formatAlgorithm(x.config.defaultKAS.PublicKey.GetAlgorithm()),
+				KID:       x.config.defaultKAS.GetPublicKey().GetKid(),
+				PEM:       x.config.defaultKAS.GetPublicKey().GetPem(),
+				Algorithm: formatAlgorithm(x.config.defaultKAS.GetPublicKey().GetAlgorithm()),
 			}
 		}
-		
+
 		return &SplitResult{
 			Splits: []Split{{
 				ID:      generateSplitID(),
@@ -108,7 +112,7 @@ func (x *XORSplitter) GenerateSplits(ctx context.Context, attrs []*policy.Value,
 	// 2. Create split plan based on attribute rules
 	var defaultKASURL string
 	if x.config.defaultKAS != nil {
-		defaultKASURL = x.config.defaultKAS.KasUri
+		defaultKASURL = x.config.defaultKAS.GetKasUri()
 	}
 	assignments, err := createSplitPlan(expr, defaultKASURL)
 	if err != nil {
@@ -172,7 +176,7 @@ func (x *XORSplitter) performXORSplit(dek []byte, assignments []SplitAssignment)
 			// Generate random split key
 			splitData = make([]byte, len(dek))
 			if _, err := rand.Read(splitData); err != nil {
-				return nil, fmt.Errorf("%w: failed to generate random split: %v",
+				return nil, fmt.Errorf("%w: failed to generate random split: %w",
 					ErrSplitGeneration, err)
 			}
 

@@ -209,7 +209,7 @@ func TestKeySplittingSpecificity(t *testing.T) {
 			var actualKAS string
 			for _, split := range result.Splits {
 				for _, kasURL := range split.KASURLs {
-					if kasURL == tt.expectedKAS.KasUri {
+					if kasURL == tt.expectedKAS.GetKasUri() {
 						actualKAS = kasURL
 						break
 					}
@@ -219,7 +219,7 @@ func TestKeySplittingSpecificity(t *testing.T) {
 				}
 			}
 
-			assert.Equal(t, tt.expectedKAS.KasUri, actualKAS, tt.description)
+			assert.Equal(t, tt.expectedKAS.GetKasUri(), actualKAS, tt.description)
 		})
 	}
 }

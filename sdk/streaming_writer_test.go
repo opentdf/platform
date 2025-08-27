@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -54,7 +55,7 @@ func (m *mockKASWithRewrap) Rewrap(_ context.Context, in *connect.Request[kas.Re
 	signedRequestToken := in.Msg.GetSignedRequestToken()
 
 	// Debug: Log the token format for troubleshooting
-	fmt.Printf("DEBUG: Received signed request token: %q\n", signedRequestToken)
+	fmt.Printf("DEBUG: Received signed request token: %q\n", signedRequestToken) //nolint:forbidigo // for testing
 
 	token, err := jwt.ParseInsecure([]byte(signedRequestToken))
 	if err != nil {
@@ -63,12 +64,12 @@ func (m *mockKASWithRewrap) Rewrap(_ context.Context, in *connect.Request[kas.Re
 
 	requestBody, found := token.Get("requestBody")
 	if !found {
-		return nil, fmt.Errorf("requestBody not found in token")
+		return nil, errors.New("requestBody not found in token")
 	}
 
 	requestBodyStr, ok := requestBody.(string)
 	if !ok {
-		return nil, fmt.Errorf("requestBody not a string")
+		return nil, errors.New("requestBody not a string")
 	}
 
 	// Parse the rewrap request
@@ -201,7 +202,7 @@ func (m *mockKASRegistryWithKeys) GetKeyAccessServer(_ context.Context, _ *conne
 }
 
 // setupMockKASServer creates a complete mock server with KAS rewrap functionality
-func setupMockKASServer(t *testing.T) (*SDK, string, func()) {
+func setupMockKASServer(t *testing.T) (*SDK, func()) {
 	t.Helper()
 
 	// Generate RSA key pair for testing
@@ -246,7 +247,7 @@ func setupMockKASServer(t *testing.T) (*SDK, string, func()) {
 	mux.Handle(kasRegPath, kasRegHandler)
 
 	// Add OIDC discovery endpoint
-	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		oidcConfig := map[string]any{
 			"issuer":                 server.URL,
@@ -260,7 +261,7 @@ func setupMockKASServer(t *testing.T) (*SDK, string, func()) {
 	})
 
 	// Add mock token endpoint
-	mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		tokenResponse := map[string]any{
 			"access_token": "mock-access-token",
@@ -311,7 +312,7 @@ func setupMockKASServer(t *testing.T) (*SDK, string, func()) {
 	// Set up a fake token source to avoid authentication issues during TDF reading
 	sdk.tokenSource = getTokenSource(t)
 
-	return sdk, server.URL, cleanup
+	return sdk, cleanup
 }
 
 // Mock attributes client that implements the interface directly (no HTTP calls)
@@ -391,7 +392,7 @@ func TestStreamingWriter_Basic(t *testing.T) {
 	defer sdk.Close()
 
 	// Create streaming writer
-	writer, err := sdk.NewStreamingWriter(context.Background())
+	writer, err := sdk.NewStreamingWriter(t.Context())
 	require.NoError(t, err)
 	assert.NotNil(t, writer)
 	assert.NotNil(t, writer.writer)
@@ -404,45 +405,45 @@ func TestStreamingWriter_WriteSegment(t *testing.T) {
 	require.NoError(t, err)
 	defer sdk.Close()
 
-	writer, err := sdk.NewStreamingWriter(context.Background())
+	writer, err := sdk.NewStreamingWriter(t.Context())
 	require.NoError(t, err)
 
-	// Test negative index validation 
-	_, err = writer.WriteSegment(-1, []byte("test data"))
-	assert.ErrorIs(t, err, ErrStreamingWriterInvalidPart)
+	// Test negative index validation
+	_, err = writer.WriteSegment(t.Context(), -1, []byte("test data"))
+	require.ErrorIs(t, err, ErrStreamingWriterInvalidPart)
 
 	// Test valid segment index
 	testData := []byte("hello world")
-	encryptedBytes, err := writer.WriteSegment(0, testData)
+	encryptedBytes, err := writer.WriteSegment(t.Context(), 0, testData)
 	require.NoError(t, err)
 	assert.NotNil(t, encryptedBytes)
-	assert.Greater(t, len(encryptedBytes), 0)
+	assert.NotEmpty(t, encryptedBytes)
 
 	// Test second segment
-	encryptedBytes2, err := writer.WriteSegment(1, testData)
+	encryptedBytes2, err := writer.WriteSegment(t.Context(), 1, testData)
 	require.NoError(t, err)
 	assert.NotNil(t, encryptedBytes2)
-	assert.Greater(t, len(encryptedBytes2), 0)
+	assert.NotEmpty(t, encryptedBytes2)
 }
 
 func TestStreamingWriter_Finalize(t *testing.T) {
 	// Use mock KAS server for complete testing
-	sdk, _, cleanup := setupMockKASServer(t)
+	sdk, cleanup := setupMockKASServer(t)
 	defer cleanup()
 
-	writer, err := sdk.NewStreamingWriter(context.Background())
+	writer, err := sdk.NewStreamingWriter(t.Context())
 	require.NoError(t, err)
 
 	// Write a segment first
 	testData := []byte("hello world")
-	_, err = writer.WriteSegment(0, testData)
+	_, err = writer.WriteSegment(t.Context(), 0, testData)
 	require.NoError(t, err)
 
 	// Finalize the TDF with empty attributes
-	finalBytes, manifest, err := writer.Finalize(context.Background(), []string{})
+	finalBytes, manifest, err := writer.Finalize(t.Context(), []string{})
 	require.NoError(t, err)
 	assert.NotNil(t, finalBytes)
-	assert.Greater(t, len(finalBytes), 0)
+	assert.NotEmpty(t, finalBytes)
 	assert.NotNil(t, manifest)
 
 	// Verify manifest structure
@@ -455,20 +456,20 @@ func TestStreamingWriter_Finalize(t *testing.T) {
 
 func TestStreamingWriter_FinalizeWithOptions(t *testing.T) {
 	// Use mock KAS server for complete testing
-	sdk, _, cleanup := setupMockKASServer(t)
+	sdk, cleanup := setupMockKASServer(t)
 	defer cleanup()
 
-	writer, err := sdk.NewStreamingWriter(context.Background())
+	writer, err := sdk.NewStreamingWriter(t.Context())
 	require.NoError(t, err)
 
 	// Write a segment first
 	testData := []byte("hello world")
-	_, err = writer.WriteSegment(0, testData)
+	_, err = writer.WriteSegment(t.Context(), 0, testData)
 	require.NoError(t, err)
 
 	// Test finalize with options using mock KAS URL
 	finalBytes, manifest, err := writer.Finalize(
-		context.Background(),
+		t.Context(),
 		[]string{}, // Empty attributes for testing
 		WithPayloadMimeType("text/plain"),
 		WithEncryptedMetadata("test metadata"),
@@ -476,7 +477,7 @@ func TestStreamingWriter_FinalizeWithOptions(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotNil(t, finalBytes)
-	assert.Greater(t, len(finalBytes), 0)
+	assert.NotEmpty(t, finalBytes)
 	assert.NotNil(t, manifest)
 
 	// Verify manifest structure with custom options
@@ -509,20 +510,20 @@ func TestStreamingWriter_FinalizeOptionValidation(t *testing.T) {
 	}
 
 	// Use mock KAS server for complete testing
-	sdk, _, cleanup := setupMockKASServer(t)
+	sdk, cleanup := setupMockKASServer(t)
 	defer cleanup()
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			writer, err := sdk.NewStreamingWriter(context.Background())
+			writer, err := sdk.NewStreamingWriter(t.Context())
 			require.NoError(t, err)
 
 			// Write a segment first
 			testData := []byte("hello world")
-			_, err = writer.WriteSegment(0, testData)
+			_, err = writer.WriteSegment(t.Context(), 0, testData)
 			require.NoError(t, err)
 
-			_, _, err = writer.Finalize(context.Background(), []string{}, tc.options...)
+			_, _, err = writer.Finalize(t.Context(), []string{}, tc.options...)
 
 			if tc.wantErr {
 				assert.Error(t, err)
@@ -539,24 +540,24 @@ func TestStreamingWriter_AttributeFetching(t *testing.T) {
 	require.NoError(t, err)
 	defer sdk.Close()
 
-	writer, err := sdk.NewStreamingWriter(context.Background())
+	writer, err := sdk.NewStreamingWriter(t.Context())
 	require.NoError(t, err)
 
 	// Test fetchAttributesByFQNs with empty slice (cspell: ignore FQNs)
-	attrs, err := writer.fetchAttributesByFQNs(context.Background(), []string{})
-	assert.NoError(t, err)
+	attrs, err := writer.fetchAttributesByFQNs(t.Context(), []string{})
+	require.NoError(t, err)
 	assert.Empty(t, attrs)
 
 	// Test fetchAttributesByFQNs with invalid FQN (empty string) (cspell: ignore FQNs)
-	_, err = writer.fetchAttributesByFQNs(context.Background(), []string{""})
-	assert.ErrorIs(t, err, ErrStreamingWriterInvalidFQN)
+	_, err = writer.fetchAttributesByFQNs(t.Context(), []string{""})
+	require.ErrorIs(t, err, ErrStreamingWriterInvalidFQN)
 	assert.Contains(t, err.Error(), "empty FQN provided")
 
 	// Test fetchAttributesByFQNs with valid FQN format but no platform connection (cspell: ignore FQNs)
 	// This will fail due to network connection, which is expected in unit tests
-	_, err = writer.fetchAttributesByFQNs(context.Background(), []string{"https://example.com/attr/clearance/value/secret"})
+	_, err = writer.fetchAttributesByFQNs(t.Context(), []string{"https://example.com/attr/clearance/value/secret"})
 	// We expect this to fail due to network connection, not due to validation
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.NotContains(t, err.Error(), "empty FQN provided")
 }
 
@@ -565,11 +566,11 @@ func TestStreamingWriter_ReaderCompatibility(t *testing.T) {
 	// that would be readable by SDK.LoadTDF
 
 	// Use mock KAS server for complete testing
-	sdk, _, cleanup := setupMockKASServer(t)
+	sdk, cleanup := setupMockKASServer(t)
 	defer cleanup()
 
 	// Create streaming writer
-	writer, err := sdk.NewStreamingWriter(context.Background())
+	writer, err := sdk.NewStreamingWriter(t.Context())
 	require.NoError(t, err)
 
 	// Write test data in multiple segments
@@ -579,21 +580,21 @@ func TestStreamingWriter_ReaderCompatibility(t *testing.T) {
 	// Collect all TDF bytes for complete file
 	var allTDFBytes []byte
 
-	encryptedBytes1, err := writer.WriteSegment(0, testData1)
+	encryptedBytes1, err := writer.WriteSegment(t.Context(), 0, testData1)
 	require.NoError(t, err)
-	assert.Greater(t, len(encryptedBytes1), 0)
+	assert.NotEmpty(t, encryptedBytes1)
 	allTDFBytes = append(allTDFBytes, encryptedBytes1...)
 
-	encryptedBytes2, err := writer.WriteSegment(1, testData2)
+	encryptedBytes2, err := writer.WriteSegment(t.Context(), 1, testData2)
 	require.NoError(t, err)
-	assert.Greater(t, len(encryptedBytes2), 0)
+	assert.NotEmpty(t, encryptedBytes2)
 	allTDFBytes = append(allTDFBytes, encryptedBytes2...)
 
 	// Finalize the TDF completely
-	finalBytes, manifest, err := writer.Finalize(context.Background(), []string{})
+	finalBytes, manifest, err := writer.Finalize(t.Context(), []string{})
 	require.NoError(t, err)
 	require.NotNil(t, manifest)
-	assert.Greater(t, len(finalBytes), 0)
+	assert.NotEmpty(t, finalBytes)
 
 	// Add final bytes to complete the TDF
 	allTDFBytes = append(allTDFBytes, finalBytes...)
@@ -621,7 +622,9 @@ func TestStreamingWriter_ReaderCompatibility(t *testing.T) {
 	require.NoError(t, err, "Should be able to decrypt TDF payload")
 
 	// Verify we get back the original data
-	expectedData := append(testData1, testData2...)
+	expectedData := make([]byte, 0, len(testData1)+len(testData2))
+	expectedData = append(expectedData, testData1...)
+	expectedData = append(expectedData, testData2...)
 	assert.Equal(t, expectedData, decryptedData.Bytes(), "Decrypted data should match original")
 
 	t.Log("✅ Full round-trip test passed: write → read → decrypt")
@@ -629,14 +632,14 @@ func TestStreamingWriter_ReaderCompatibility(t *testing.T) {
 
 func TestStreamingWriter_MockKASSetup(t *testing.T) {
 	// Test just the mock server setup first
-	sdk, _, cleanup := setupMockKASServer(t)
+	sdk, cleanup := setupMockKASServer(t)
 	defer cleanup()
 
 	require.NotNil(t, sdk)
 	t.Log("✅ Mock KAS server setup successful")
 
 	// Try to create a streaming writer
-	writer, err := sdk.NewStreamingWriter(context.Background())
+	writer, err := sdk.NewStreamingWriter(t.Context())
 	if err != nil {
 		t.Logf("Expected error during setup: %v", err)
 		return
@@ -649,11 +652,11 @@ func TestStreamingWriter_FullEndToEndWithMocks(t *testing.T) {
 	// t.Skip("Skipping until mock server setup is debugged")
 
 	// Setup mock KAS server with full rewrap functionality
-	sdk, _, cleanup := setupMockKASServer(t)
+	sdk, cleanup := setupMockKASServer(t)
 	defer cleanup()
 
 	// Create streaming writer with mock server
-	writer, err := sdk.NewStreamingWriter(context.Background())
+	writer, err := sdk.NewStreamingWriter(t.Context())
 	require.NoError(t, err)
 
 	// Write test data in multiple segments with different sizes to trigger the bug
@@ -664,21 +667,21 @@ func TestStreamingWriter_FullEndToEndWithMocks(t *testing.T) {
 	var allTDFBytes []byte
 
 	// Write segments (simulating S3 multipart upload)
-	encryptedPart1, err := writer.WriteSegment(0, testData1)
+	encryptedPart1, err := writer.WriteSegment(t.Context(), 0, testData1)
 	require.NoError(t, err)
-	assert.Greater(t, len(encryptedPart1), 0)
+	assert.NotEmpty(t, encryptedPart1)
 	allTDFBytes = append(allTDFBytes, encryptedPart1...)
 	t.Logf("Part 1: %d bytes encrypted", len(encryptedPart1))
 
-	encryptedPart2, err := writer.WriteSegment(1, testData2)
+	encryptedPart2, err := writer.WriteSegment(t.Context(), 1, testData2)
 	require.NoError(t, err)
-	assert.Greater(t, len(encryptedPart2), 0)
+	assert.NotEmpty(t, encryptedPart2)
 	allTDFBytes = append(allTDFBytes, encryptedPart2...)
 	t.Logf("Part 2: %d bytes encrypted", len(encryptedPart2))
 
 	// Finalize with attributes and options
 	finalBytes, manifest, err := writer.Finalize(
-		context.Background(),
+		t.Context(),
 		[]string{}, // Empty attributes like ReaderCompatibility test
 		WithPayloadMimeType("text/plain"),
 		// WithDefaultKAS will be set from the server URL automatically
@@ -688,7 +691,7 @@ func TestStreamingWriter_FullEndToEndWithMocks(t *testing.T) {
 	require.NoError(t, err, "Finalization should succeed with mock KAS")
 	require.NotNil(t, finalBytes)
 	require.NotNil(t, manifest)
-	assert.Greater(t, len(finalBytes), 0)
+	assert.NotEmpty(t, finalBytes)
 
 	// Add final bytes to complete the TDF
 	allTDFBytes = append(allTDFBytes, finalBytes...)
@@ -707,7 +710,7 @@ func TestStreamingWriter_FullEndToEndWithMocks(t *testing.T) {
 	assert.NotEmpty(t, manifest.EncryptionInformation.KeyAccessObjs)
 
 	// Verify segment structure
-	assert.Equal(t, 2, len(manifest.EncryptionInformation.IntegrityInformation.Segments))
+	assert.Len(t, len(manifest.EncryptionInformation.IntegrityInformation.Segments), 2)
 	assert.Equal(t, int64(8), manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize)
 
 	// Verify segments have different sizes (variable-length)
@@ -727,7 +730,9 @@ func TestStreamingWriter_FullEndToEndWithMocks(t *testing.T) {
 	require.NoError(t, err, "Should be able to decrypt TDF payload with attributes and assertions")
 
 	// Verify we get back the original data from both segments
-	expectedData := append(testData1, testData2...)
+	expectedData := make([]byte, 0, len(testData1)+len(testData2))
+	expectedData = append(expectedData, testData1...)
+	expectedData = append(expectedData, testData2...)
 	assert.Equal(t, expectedData, decryptedData.Bytes(), "Decrypted data should match original two-segment data")
 
 	t.Log("✅ Full end-to-end test passed with mock KAS, attributes, and reader validation")
@@ -735,10 +740,10 @@ func TestStreamingWriter_FullEndToEndWithMocks(t *testing.T) {
 
 func TestStreamingWriter_VariableLengthSegments(t *testing.T) {
 	// Test with multiple segments of varying sizes in sequential order
-	sdk, _, cleanup := setupMockKASServer(t)
+	sdk, cleanup := setupMockKASServer(t)
 	defer cleanup()
 
-	writer, err := sdk.NewStreamingWriter(context.Background())
+	writer, err := sdk.NewStreamingWriter(t.Context())
 	require.NoError(t, err)
 
 	// Create segments with varying sizes: 5, 10, 15, 3 bytes
@@ -753,21 +758,21 @@ func TestStreamingWriter_VariableLengthSegments(t *testing.T) {
 
 	// Write segments in order using 0-based indices
 	for i, data := range testSegments {
-		encryptedBytes, err := writer.WriteSegment(i, data)
+		encryptedBytes, err := writer.WriteSegment(t.Context(), i, data)
 		require.NoError(t, err)
-		assert.Greater(t, len(encryptedBytes), 0)
+		assert.NotEmpty(t, encryptedBytes)
 		allTDFBytes = append(allTDFBytes, encryptedBytes...)
 		t.Logf("Segment %d (%d bytes): %d encrypted bytes, first 16 bytes: %x", i, len(data), len(encryptedBytes), encryptedBytes[:min(16, len(encryptedBytes))])
 	}
 
 	// Finalize TDF
-	finalBytes, manifest, err := writer.Finalize(context.Background(), []string{})
+	finalBytes, manifest, err := writer.Finalize(t.Context(), []string{})
 	require.NoError(t, err)
 	allTDFBytes = append(allTDFBytes, finalBytes...)
 
 	// Verify variable segment sizes
 	segments := manifest.EncryptionInformation.IntegrityInformation.Segments
-	assert.Equal(t, 4, len(segments))
+	assert.Len(t, len(segments), 4)
 	assert.Equal(t, int64(5), segments[0].Size) // First segment used as default
 	assert.Equal(t, int64(5), manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize)
 	assert.Equal(t, int64(10), segments[1].Size) // Different from default
@@ -793,10 +798,10 @@ func TestStreamingWriter_VariableLengthSegments(t *testing.T) {
 func TestStreamingWriter_OutOfOrderSegments(t *testing.T) {
 	// Test writing segments out of order as happens in advanced streaming scenarios
 	// Uses 0-based indices as the low-level API expects
-	sdk, _, cleanup := setupMockKASServer(t)
+	sdk, cleanup := setupMockKASServer(t)
 	defer cleanup()
 
-	writer, err := sdk.NewStreamingWriter(context.Background())
+	writer, err := sdk.NewStreamingWriter(t.Context())
 	require.NoError(t, err)
 
 	// Define segments with different sizes (using 0-based segment indices)
@@ -814,9 +819,9 @@ func TestStreamingWriter_OutOfOrderSegments(t *testing.T) {
 
 	for _, segmentIndex := range writeOrder {
 		data := testSegments[segmentIndex]
-		encryptedBytes, err := writer.WriteSegment(segmentIndex, data)
+		encryptedBytes, err := writer.WriteSegment(t.Context(), segmentIndex, data)
 		require.NoError(t, err)
-		assert.Greater(t, len(encryptedBytes), 0)
+		assert.NotEmpty(t, encryptedBytes)
 		// Store the complete encrypted bytes for this segment index
 		segmentBytes[segmentIndex] = encryptedBytes
 		t.Logf("Wrote segment %d out of order (%d bytes data → %d encrypted bytes)", segmentIndex, len(data), len(encryptedBytes))
@@ -831,7 +836,7 @@ func TestStreamingWriter_OutOfOrderSegments(t *testing.T) {
 	t.Logf("Total TDF bytes before finalize: %d", len(allTDFBytes))
 
 	// Finalize TDF
-	finalBytes, manifest, err := writer.Finalize(context.Background(), []string{})
+	finalBytes, manifest, err := writer.Finalize(t.Context(), []string{})
 	require.NoError(t, err)
 	allTDFBytes = append(allTDFBytes, finalBytes...)
 
@@ -875,10 +880,10 @@ func TestStreamingWriter_OutOfOrderSegments(t *testing.T) {
 
 func TestStreamingWriter_LargeVariableSegments(t *testing.T) {
 	// Test with larger segments of significantly different sizes
-	sdk, _, cleanup := setupMockKASServer(t)
+	sdk, cleanup := setupMockKASServer(t)
 	defer cleanup()
 
-	writer, err := sdk.NewStreamingWriter(context.Background())
+	writer, err := sdk.NewStreamingWriter(t.Context())
 	require.NoError(t, err)
 
 	// Create segments with dramatically different sizes
@@ -895,21 +900,21 @@ func TestStreamingWriter_LargeVariableSegments(t *testing.T) {
 
 	// Write all segments
 	for i, data := range testSegments {
-		encryptedBytes, err := writer.WriteSegment(i, data)
+		encryptedBytes, err := writer.WriteSegment(t.Context(), i, data)
 		require.NoError(t, err)
-		assert.Greater(t, len(encryptedBytes), 0)
+		assert.NotEmpty(t, encryptedBytes)
 		allTDFBytes = append(allTDFBytes, encryptedBytes...)
 		t.Logf("Large segment %d: %d bytes → %d encrypted bytes", i, len(data), len(encryptedBytes))
 	}
 
 	// Finalize TDF
-	finalBytes, manifest, err := writer.Finalize(context.Background(), []string{})
+	finalBytes, manifest, err := writer.Finalize(t.Context(), []string{})
 	require.NoError(t, err)
 	allTDFBytes = append(allTDFBytes, finalBytes...)
 
 	// Verify highly variable segment sizes
 	segments := manifest.EncryptionInformation.IntegrityInformation.Segments
-	assert.Equal(t, 6, len(segments))
+	assert.Len(t, len(segments), 6)
 	expectedSizes := []int64{1, 100, 3, 1000, 1, 50}
 	for i, expectedSize := range expectedSizes {
 		assert.Equal(t, expectedSize, segments[i].Size, "Segment %d size mismatch", i)
@@ -930,17 +935,17 @@ func TestStreamingWriter_LargeVariableSegments(t *testing.T) {
 
 	// Verify total size
 	expectedTotalSize := 1 + 100 + 3 + 1000 + 1 + 50 // 1155 bytes
-	assert.Equal(t, expectedTotalSize, len(decryptedData.Bytes()))
+	assert.Len(t, len(decryptedData.Bytes()), expectedTotalSize)
 
 	t.Log("✅ Large variable segments test passed")
 }
 
 func TestStreamingWriter_RandomReadAccess(t *testing.T) {
 	// Test random read access to verify segment locator works correctly
-	sdk, _, cleanup := setupMockKASServer(t)
+	sdk, cleanup := setupMockKASServer(t)
 	defer cleanup()
 
-	writer, err := sdk.NewStreamingWriter(context.Background())
+	writer, err := sdk.NewStreamingWriter(t.Context())
 	require.NoError(t, err)
 
 	// Create segments with known data patterns for testing specific offsets
@@ -955,13 +960,13 @@ func TestStreamingWriter_RandomReadAccess(t *testing.T) {
 
 	// Write segments in order
 	for i, data := range testSegments {
-		encryptedBytes, err := writer.WriteSegment(i, data)
+		encryptedBytes, err := writer.WriteSegment(t.Context(), i, data)
 		require.NoError(t, err)
 		allTDFBytes = append(allTDFBytes, encryptedBytes...)
 	}
 
 	// Finalize TDF
-	finalBytes, _, err := writer.Finalize(context.Background(), []string{})
+	finalBytes, _, err := writer.Finalize(t.Context(), []string{})
 	require.NoError(t, err)
 	allTDFBytes = append(allTDFBytes, finalBytes...)
 
@@ -1064,10 +1069,10 @@ func TestStreamingWriter_PartNumberConversion(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			writer, err := sdk.NewStreamingWriter(context.Background())
+			writer, err := sdk.NewStreamingWriter(t.Context())
 			require.NoError(t, err)
 
-			_, err = writer.WriteSegment(tc.segmentIndex, []byte("test"))
+			_, err = writer.WriteSegment(t.Context(), tc.segmentIndex, []byte("test"))
 
 			if tc.expectedErr != nil {
 				assert.ErrorIs(t, err, tc.expectedErr)

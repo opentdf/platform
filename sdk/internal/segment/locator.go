@@ -23,7 +23,7 @@ var (
 )
 
 // SegmentInfo contains metadata for a single segment
-type SegmentInfo struct {
+type Info struct {
 	Index            int    // Segment index
 	PlaintextSize    int64  // Unencrypted size
 	EncryptedSize    int64  // Encrypted size (with IV + auth tag)
@@ -34,12 +34,12 @@ type SegmentInfo struct {
 
 // SegmentLocator provides an abstraction for finding segments by offset
 // This enables support for both uniform and variable-length segments
-type SegmentLocator interface {
+type Locator interface {
 	// FindSegmentByOffset finds the segment containing the given offset
-	FindSegmentByOffset(offset int64) (*SegmentInfo, error)
+	FindSegmentByOffset(offset int64) (*Info, error)
 
 	// GetSegmentRange returns segments that overlap with the given range
-	GetSegmentRange(start, end int64) ([]SegmentInfo, error)
+	GetSegmentRange(start, end int64) ([]Info, error)
 
 	// GetTotalSize returns the total unencrypted payload size
 	GetTotalSize() int64
@@ -76,7 +76,7 @@ func NewUniformSegmentLocator(segmentSize int64, segments []tdf.Segment) *Unifor
 	return locator
 }
 
-func (u *UniformSegmentLocator) FindSegmentByOffset(offset int64) (*SegmentInfo, error) {
+func (u *UniformSegmentLocator) FindSegmentByOffset(offset int64) (*Info, error) {
 	if offset < 0 || offset >= u.totalSize {
 		return nil, fmt.Errorf("%w: offset %d not in range [0, %d)", ErrOffsetOutOfRange, offset, u.totalSize)
 	}
@@ -88,7 +88,7 @@ func (u *UniformSegmentLocator) FindSegmentByOffset(offset int64) (*SegmentInfo,
 	}
 
 	seg := u.segments[segmentIndex]
-	return &SegmentInfo{
+	return &Info{
 		Index:            segmentIndex,
 		PlaintextSize:    seg.Size,
 		EncryptedSize:    seg.EncryptedSize,
@@ -98,7 +98,7 @@ func (u *UniformSegmentLocator) FindSegmentByOffset(offset int64) (*SegmentInfo,
 	}, nil
 }
 
-func (u *UniformSegmentLocator) GetSegmentRange(start, end int64) ([]SegmentInfo, error) {
+func (u *UniformSegmentLocator) GetSegmentRange(start, end int64) ([]Info, error) {
 	if start < 0 || end <= start || start >= u.totalSize {
 		return nil, fmt.Errorf("%w: invalid range [%d, %d)", ErrInvalidRange, start, end)
 	}
@@ -109,10 +109,10 @@ func (u *UniformSegmentLocator) GetSegmentRange(start, end int64) ([]SegmentInfo
 		endSegment = len(u.segments)
 	}
 
-	result := make([]SegmentInfo, 0, endSegment-startSegment)
+	result := make([]Info, 0, endSegment-startSegment)
 	for i := startSegment; i < endSegment; i++ {
 		seg := u.segments[i]
-		result = append(result, SegmentInfo{
+		result = append(result, Info{
 			Index:            i,
 			PlaintextSize:    seg.Size,
 			EncryptedSize:    seg.EncryptedSize,
@@ -135,14 +135,14 @@ func (u *UniformSegmentLocator) GetSegmentCount() int {
 
 // VariableSegmentLocator provides O(log n) lookup for variable-sized segments
 type VariableSegmentLocator struct {
-	offsetTable *SegmentOffsetTable
+	offsetTable *OffsetTable
 }
 
 // NewVariableSegmentLocator creates a locator for variable-length segments
 func NewVariableSegmentLocator(segments []tdf.Segment) *VariableSegmentLocator {
-	offsetTable := &SegmentOffsetTable{
+	offsetTable := &OffsetTable{
 		cumulativeOffsets: make([]int64, len(segments)),
-		segments:          make([]SegmentInfo, len(segments)),
+		segments:          make([]Info, len(segments)),
 		cache:             NewSegmentCache(DefaultCacheSize),
 	}
 
@@ -152,7 +152,7 @@ func NewVariableSegmentLocator(segments []tdf.Segment) *VariableSegmentLocator {
 
 	for i, seg := range segments {
 		offsetTable.cumulativeOffsets[i] = cumOffset
-		offsetTable.segments[i] = SegmentInfo{
+		offsetTable.segments[i] = Info{
 			Index:            i,
 			PlaintextSize:    seg.Size,
 			EncryptedSize:    seg.EncryptedSize,
@@ -171,11 +171,11 @@ func NewVariableSegmentLocator(segments []tdf.Segment) *VariableSegmentLocator {
 	}
 }
 
-func (v *VariableSegmentLocator) FindSegmentByOffset(offset int64) (*SegmentInfo, error) {
+func (v *VariableSegmentLocator) FindSegmentByOffset(offset int64) (*Info, error) {
 	return v.offsetTable.FindSegmentByOffset(offset)
 }
 
-func (v *VariableSegmentLocator) GetSegmentRange(start, end int64) ([]SegmentInfo, error) {
+func (v *VariableSegmentLocator) GetSegmentRange(start, end int64) ([]Info, error) {
 	return v.offsetTable.GetSegmentRange(start, end)
 }
 
@@ -187,11 +187,11 @@ func (v *VariableSegmentLocator) GetSegmentCount() int {
 	return len(v.offsetTable.segments)
 }
 
-// SegmentOffsetTable provides binary search on cumulative offsets
-type SegmentOffsetTable struct {
+// OffsetTable provides binary search on cumulative offsets
+type OffsetTable struct {
 	cumulativeOffsets []int64
-	segments          []SegmentInfo
-	cache             *SegmentCache
+	segments          []Info
+	cache             *Cache
 	totalSize         int64
 
 	// Performance metrics
@@ -201,17 +201,17 @@ type SegmentOffsetTable struct {
 }
 
 // FindSegmentByOffset finds the segment containing the given offset using binary search
-func (sot *SegmentOffsetTable) FindSegmentByOffset(offset int64) (*SegmentInfo, error) {
-	sot.lookupCount.Add(1)
+func (ot *OffsetTable) FindSegmentByOffset(offset int64) (*Info, error) {
+	ot.lookupCount.Add(1)
 
-	if offset < 0 || offset >= sot.totalSize {
-		return nil, fmt.Errorf("%w: offset %d not in range [0, %d)", ErrOffsetOutOfRange, offset, sot.totalSize)
+	if offset < 0 || offset >= ot.totalSize {
+		return nil, fmt.Errorf("%w: offset %d not in range [0, %d)", ErrOffsetOutOfRange, offset, ot.totalSize)
 	}
 
 	// Binary search on cumulative offsets to find which segment contains the offset
 	// We want the largest index i where cumulativeOffsets[i] <= offset
-	segmentIndex := sort.Search(len(sot.cumulativeOffsets), func(i int) bool {
-		return sot.cumulativeOffsets[i] > offset
+	segmentIndex := sort.Search(len(ot.cumulativeOffsets), func(i int) bool {
+		return ot.cumulativeOffsets[i] > offset
 	})
 	// sort.Search returns the first index where cumulativeOffsets[i] > offset,
 	// so we want the previous index (which has cumulativeOffsets[i] <= offset)
@@ -219,66 +219,66 @@ func (sot *SegmentOffsetTable) FindSegmentByOffset(offset int64) (*SegmentInfo, 
 		segmentIndex--
 	}
 
-	if segmentIndex >= len(sot.segments) {
+	if segmentIndex >= len(ot.segments) {
 		return nil, fmt.Errorf("%w: calculated index %d out of bounds", ErrSegmentNotFound, segmentIndex)
 	}
 
 	// Check cache first
-	if cachedSeg, found := sot.cache.Get(segmentIndex); found {
-		sot.cacheHits.Add(1)
+	if cachedSeg, found := ot.cache.Get(segmentIndex); found {
+		ot.cacheHits.Add(1)
 		return cachedSeg, nil
 	}
 
 	// Cache miss - get segment info and cache it
-	sot.cacheMisses.Add(1)
-	segInfo := &sot.segments[segmentIndex]
-	sot.cache.Put(segmentIndex, segInfo)
+	ot.cacheMisses.Add(1)
+	segInfo := &ot.segments[segmentIndex]
+	ot.cache.Put(segmentIndex, segInfo)
 
 	return segInfo, nil
 }
 
 // GetSegmentRange returns segments that overlap with the given range
-func (sot *SegmentOffsetTable) GetSegmentRange(start, end int64) ([]SegmentInfo, error) {
-	if start < 0 || end <= start || start >= sot.totalSize {
+func (ot *OffsetTable) GetSegmentRange(start, end int64) ([]Info, error) {
+	if start < 0 || end <= start || start >= ot.totalSize {
 		return nil, fmt.Errorf("%w: invalid range [%d, %d)", ErrInvalidRange, start, end)
 	}
 
-	startSegInfo, err := sot.FindSegmentByOffset(start)
+	startSegInfo, err := ot.FindSegmentByOffset(start)
 	if err != nil {
 		return nil, fmt.Errorf("finding start segment: %w", err)
 	}
 
 	endOffset := end - 1 // Convert to inclusive end
-	if endOffset >= sot.totalSize {
-		endOffset = sot.totalSize - 1
+	if endOffset >= ot.totalSize {
+		endOffset = ot.totalSize - 1
 	}
 
-	endSegInfo, err := sot.FindSegmentByOffset(endOffset)
+	endSegInfo, err := ot.FindSegmentByOffset(endOffset)
 	if err != nil {
 		return nil, fmt.Errorf("finding end segment: %w", err)
 	}
 
 	// Return range of segments
-	result := make([]SegmentInfo, 0, endSegInfo.Index-startSegInfo.Index+1)
+	result := make([]Info, 0, endSegInfo.Index-startSegInfo.Index+1)
 	for i := startSegInfo.Index; i <= endSegInfo.Index; i++ {
-		result = append(result, sot.segments[i])
+		result = append(result, ot.segments[i])
 	}
 
 	return result, nil
 }
 
 // GetMetrics returns performance metrics for monitoring
-func (sot *SegmentOffsetTable) GetMetrics() SegmentMetrics {
-	return SegmentMetrics{
-		LookupCount: sot.lookupCount.Load(),
-		CacheHits:   sot.cacheHits.Load(),
-		CacheMisses: sot.cacheMisses.Load(),
-		CacheSize:   sot.cache.Size(),
+func (ot *OffsetTable) GetMetrics() Metrics {
+	return Metrics{
+		LookupCount: ot.lookupCount.Load(),
+		CacheHits:   ot.cacheHits.Load(),
+		CacheMisses: ot.cacheMisses.Load(),
+		CacheSize:   ot.cache.Size(),
 	}
 }
 
-// SegmentMetrics contains performance metrics
-type SegmentMetrics struct {
+// Metrics contains performance metrics
+type Metrics struct {
 	LookupCount uint64
 	CacheHits   uint64
 	CacheMisses uint64
@@ -286,7 +286,7 @@ type SegmentMetrics struct {
 }
 
 // HitRate returns the cache hit rate as a percentage
-func (sm SegmentMetrics) HitRate() float64 {
+func (sm Metrics) HitRate() float64 {
 	total := sm.CacheHits + sm.CacheMisses
 	if total == 0 {
 		return 0.0

@@ -6,7 +6,7 @@ import (
 )
 
 // SegmentCache provides thread-safe LRU caching for segment information
-type SegmentCache struct {
+type Cache struct {
 	mu        sync.RWMutex
 	capacity  int
 	items     map[int]*list.Element
@@ -16,12 +16,12 @@ type SegmentCache struct {
 // cacheItem represents a cached segment
 type cacheItem struct {
 	key   int
-	value *SegmentInfo
+	value *Info
 }
 
 // NewSegmentCache creates a new LRU cache for segments
-func NewSegmentCache(capacity int) *SegmentCache {
-	return &SegmentCache{
+func NewSegmentCache(capacity int) *Cache {
+	return &Cache{
 		capacity:  capacity,
 		items:     make(map[int]*list.Element),
 		evictList: list.New(),
@@ -29,30 +29,34 @@ func NewSegmentCache(capacity int) *SegmentCache {
 }
 
 // Get retrieves a segment from cache
-func (sc *SegmentCache) Get(key int) (*SegmentInfo, bool) {
+func (sc *Cache) Get(key int) (*Info, bool) {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 
 	if elem, exists := sc.items[key]; exists {
 		// Move to front (most recently used)
 		sc.evictList.MoveToFront(elem)
-		return elem.Value.(*cacheItem).value, true
+		if item, ok := elem.Value.(*cacheItem); ok {
+			return item.value, true
+		}
 	}
 
 	return nil, false
 }
 
 // Put adds a segment to cache
-func (sc *SegmentCache) Put(key int, value *SegmentInfo) {
+func (sc *Cache) Put(key int, value *Info) {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 
 	// Check if item already exists
 	if elem, exists := sc.items[key]; exists {
 		// Update existing item and move to front
-		elem.Value.(*cacheItem).value = value
-		sc.evictList.MoveToFront(elem)
-		return
+		if item, ok := elem.Value.(*cacheItem); ok {
+			item.value = value
+			sc.evictList.MoveToFront(elem)
+			return
+		}
 	}
 
 	// Add new item
@@ -67,14 +71,14 @@ func (sc *SegmentCache) Put(key int, value *SegmentInfo) {
 }
 
 // Size returns the current number of items in cache
-func (sc *SegmentCache) Size() int {
+func (sc *Cache) Size() int {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
 	return len(sc.items)
 }
 
 // Clear removes all items from cache
-func (sc *SegmentCache) Clear() {
+func (sc *Cache) Clear() {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
 
@@ -83,7 +87,7 @@ func (sc *SegmentCache) Clear() {
 }
 
 // Keys returns all keys in cache (for testing)
-func (sc *SegmentCache) Keys() []int {
+func (sc *Cache) Keys() []int {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
 
@@ -96,7 +100,7 @@ func (sc *SegmentCache) Keys() []int {
 
 // evictOldest removes the least recently used item
 // Must be called with lock held
-func (sc *SegmentCache) evictOldest() {
+func (sc *Cache) evictOldest() {
 	if sc.evictList.Len() == 0 {
 		return
 	}
@@ -104,6 +108,8 @@ func (sc *SegmentCache) evictOldest() {
 	elem := sc.evictList.Back()
 	if elem != nil {
 		sc.evictList.Remove(elem)
-		delete(sc.items, elem.Value.(*cacheItem).key)
+		if item, ok := elem.Value.(*cacheItem); ok {
+			delete(sc.items, item.key)
+		}
 	}
 }

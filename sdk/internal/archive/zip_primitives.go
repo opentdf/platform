@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+// Pre-computed CRC32 table for performance - avoids recreating table on each calculation
+var crc32IEEETable = crc32.MakeTable(crc32.IEEE)
+
 // FileEntry represents a file in the ZIP archive with metadata
 type FileEntry struct {
 	Name           string    // Filename in the archive
@@ -27,25 +30,30 @@ type SegmentEntry struct {
 	Written time.Time // When this segment was written
 }
 
-// SegmentMetadata tracks overall segment state
+// SegmentMetadata tracks segment state with memory-efficient contiguous chunk processing
 type SegmentMetadata struct {
 	ExpectedCount int                   // Total number of expected segments
-	Segments      map[int]*SegmentEntry // Map of index to segment
+	Segments      map[int]*SegmentEntry // Map of unprocessed segments only
 	TotalSize     uint64                // Cumulative size of all segments
-	TotalCRC32    uint32                // Cumulative CRC32 of all segments
-	NextIndex     int                   // Next expected segment index for validation
+
+	// Memory-efficient contiguous processing
+	processedUpTo int    // Last segment index processed contiguously (-1 initially)
+	runningCRC32  uint32 // Incremental CRC32 state for processed segments
+	TotalCRC32    uint32 // Final CRC32 when all segments are processed
 }
 
-// NewSegmentMetadata creates metadata for tracking segments
+// NewSegmentMetadata creates metadata for tracking segments with contiguous processing
 func NewSegmentMetadata(expectedCount int) *SegmentMetadata {
 	return &SegmentMetadata{
 		ExpectedCount: expectedCount,
 		Segments:      make(map[int]*SegmentEntry),
-		TotalCRC32:    crc32.NewIEEE().Sum32(), // Initialize empty checksum
+		processedUpTo: -1,                      // No segments processed initially
+		runningCRC32:  crc32.NewIEEE().Sum32(), // Initialize empty CRC32 state
+		TotalCRC32:    0,                       // Will be set when all segments processed
 	}
 }
 
-// AddSegment adds a segment to the metadata
+// AddSegment adds a segment and processes contiguous chunks to minimize memory usage
 func (sm *SegmentMetadata) AddSegment(index int, data []byte, originalSize uint64, originalCRC32 uint32) error {
 	if index < 0 {
 		return ErrInvalidSegment
@@ -60,6 +68,25 @@ func (sm *SegmentMetadata) AddSegment(index int, data []byte, originalSize uint6
 		return ErrDuplicateSegment
 	}
 
+	// Check if this segment can be processed immediately (contiguous from processedUpTo+1)
+	if index == sm.processedUpTo+1 {
+		// Process this segment immediately
+		sm.runningCRC32 = crc32.Update(sm.runningCRC32, crc32IEEETable, data)
+		sm.TotalSize += originalSize
+		sm.processedUpTo = index
+
+		// Check if we can now process additional contiguous segments
+		sm.processContiguousSegments()
+
+		// If all segments are now processed, finalize CRC32
+		if sm.processedUpTo == sm.ExpectedCount-1 {
+			sm.TotalCRC32 = sm.runningCRC32
+		}
+
+		return nil
+	}
+
+	// Store segment for later processing (not contiguous yet)
 	sm.Segments[index] = &SegmentEntry{
 		Index:   index,
 		Data:    data,
@@ -69,21 +96,23 @@ func (sm *SegmentMetadata) AddSegment(index int, data []byte, originalSize uint6
 	}
 
 	sm.TotalSize += originalSize
-	// Recalculate total CRC32 for all segments in logical order
-	sm.TotalCRC32 = sm.calculateTotalCRC32()
 
 	return nil
 }
 
-// IsComplete returns true if all expected segments have been written
+// IsComplete returns true if all expected segments have been processed
 func (sm *SegmentMetadata) IsComplete() bool {
-	return len(sm.Segments) == sm.ExpectedCount
+	return sm.processedUpTo == sm.ExpectedCount-1
 }
 
 // GetMissingSegments returns a list of missing segment indices
 func (sm *SegmentMetadata) GetMissingSegments() []int {
 	missing := make([]int, 0)
 	for i := 0; i < sm.ExpectedCount; i++ {
+		// Check if segment is processed or in unprocessed map
+		if i <= sm.processedUpTo {
+			continue // Already processed
+		}
 		if _, exists := sm.Segments[i]; !exists {
 			missing = append(missing, i)
 		}
@@ -91,20 +120,34 @@ func (sm *SegmentMetadata) GetMissingSegments() []int {
 	return missing
 }
 
-// calculateTotalCRC32 computes the total CRC32 by processing all segments in logical order
-func (sm *SegmentMetadata) calculateTotalCRC32() uint32 {
-	crc32Table := crc32.MakeTable(crc32.IEEE)
-	totalCRC := uint32(0)
+// GetTotalCRC32 returns the final CRC32 value (only valid when IsComplete() is true)
+func (sm *SegmentMetadata) GetTotalCRC32() uint32 {
+	return sm.TotalCRC32
+}
 
-	// Process segments in logical order (0, 1, 2, ...) regardless of write order
-	for i := 0; i < sm.ExpectedCount; i++ {
-		if segment, exists := sm.Segments[i]; exists {
-			// Update CRC with this segment's data
-			totalCRC = crc32.Update(totalCRC, crc32Table, segment.Data)
+// processContiguousSegments processes any newly contiguous segments after adding a new one
+func (sm *SegmentMetadata) processContiguousSegments() {
+	// Keep processing segments that are now contiguous
+	for {
+		nextIndex := sm.processedUpTo + 1
+		segment, exists := sm.Segments[nextIndex]
+		if !exists {
+			break // No more contiguous segments available
+		}
+
+		// Process this segment with incremental CRC32
+		sm.runningCRC32 = crc32.Update(sm.runningCRC32, crc32IEEETable, segment.Data)
+		sm.processedUpTo = nextIndex
+
+		// Remove from unprocessed segments map to free memory
+		delete(sm.Segments, nextIndex)
+
+		// Check if all segments are now processed
+		if sm.processedUpTo == sm.ExpectedCount-1 {
+			sm.TotalCRC32 = sm.runningCRC32
+			break
 		}
 	}
-
-	return totalCRC
 }
 
 // CentralDirectory manages the ZIP central directory structure
@@ -167,7 +210,7 @@ func (cd *CentralDirectory) writeCDFileHeader(buf *bytes.Buffer, entry FileEntry
 		GeneralPurposeBitFlag:  0,
 		CompressionMethod:      0, // No compression
 		LastModifiedTime:       uint16(entry.ModTime.Hour()<<11 | entry.ModTime.Minute()<<5 | entry.ModTime.Second()>>1),
-		LastModifiedDate:       uint16((entry.ModTime.Year()-1980)<<9 | int(entry.ModTime.Month())<<5 | entry.ModTime.Day()),
+		LastModifiedDate:       uint16((entry.ModTime.Year()-zipBaseYear)<<9 | int(entry.ModTime.Month())<<5 | entry.ModTime.Day()),
 		Crc32:                  entry.CRC32,
 		CompressedSize:         uint32(entry.CompressedSize),
 		UncompressedSize:       uint32(entry.Size),
@@ -206,7 +249,7 @@ func (cd *CentralDirectory) writeCDFileHeader(buf *bytes.Buffer, entry FileEntry
 	if header.ExtraFieldLength > 0 {
 		zip64Extra := Zip64ExtendedInfoExtraField{
 			Signature:             zip64ExternalID,
-			Size:                  zip64ExtendedInfoExtraFieldSize - 4,
+			Size:                  zip64ExtendedInfoExtraFieldSize - extraFieldHeaderSize,
 			OriginalSize:          entry.Size,
 			CompressedSize:        entry.CompressedSize,
 			LocalFileHeaderOffset: entry.Offset,
@@ -228,7 +271,7 @@ func (cd *CentralDirectory) writeEndOfCDRecord(buf *bytes.Buffer, isZip64 bool) 
 		// Write ZIP64 end of central directory record
 		zip64EndOfCD := Zip64EndOfCDRecord{
 			Signature:                          zip64EndOfCDSignature,
-			RecordSize:                         zip64EndOfCDRecordSize - 12, // Size excluding signature and size field
+			RecordSize:                         zip64EndOfCDRecordSize - zip64RecordHeaderSize, // Size excluding signature and size field
 			VersionMadeBy:                      zipVersion,
 			VersionToExtract:                   zipVersion,
 			DiskNumber:                         0,

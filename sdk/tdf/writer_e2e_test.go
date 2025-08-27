@@ -71,7 +71,7 @@ func testBasicTDFCreationFlow(t *testing.T) {
 
 	// Write a single segment
 	testData := []byte("Hello, TDF World!")
-	zipBytes, err := writer.WriteSegment(0, testData)
+	zipBytes, err := writer.WriteSegment(ctx, 0, testData)
 	require.NoError(t, err, "Failed to write segment")
 	assert.NotEmpty(t, zipBytes, "Zip bytes should not be empty")
 
@@ -122,7 +122,7 @@ func testSingleSegmentWithAttributes(t *testing.T) {
 
 	// Write test data
 	testData := []byte("Sensitive data with attributes")
-	_, err = writer.WriteSegment(0, testData)
+	_, err = writer.WriteSegment(ctx, 0, testData)
 	require.NoError(t, err, "Failed to write segment")
 
 	// Create test attributes with different KAS assignments
@@ -143,11 +143,9 @@ func testSingleSegmentWithAttributes(t *testing.T) {
 	policyBytes := manifest.EncryptionInformation.Policy
 	assert.NotEmpty(t, policyBytes, "Policy should not be empty")
 
-	// Decode and verify policy content
-	decodedPolicy, err := ocrypto.Base64Decode(policyBytes)
-	require.NoError(t, err, "Should be able to decode policy")
+	// Policy bytes are now raw JSON, not base64 encoded
 	var policy Policy
-	err = json.Unmarshal(decodedPolicy, &policy)
+	err = json.Unmarshal(policyBytes, &policy)
 	require.NoError(t, err, "Should be able to unmarshal policy")
 	assert.Len(t, policy.Body.DataAttributes, 2, "Policy should contain both attributes")
 
@@ -176,7 +174,7 @@ func testMultiSegmentFlow(t *testing.T) {
 
 	// Write segments in order
 	for i, data := range segments {
-		_, err := writer.WriteSegment(i, data)
+		_, err := writer.WriteSegment(ctx, i, data)
 		require.NoError(t, err, "Failed to write segment %d", i)
 	}
 
@@ -211,7 +209,7 @@ func testKeySplittingWithMultipleAttributes(t *testing.T) {
 
 	// Write test data
 	testData := []byte("Data requiring multiple key splits")
-	_, err = writer.WriteSegment(0, testData)
+	_, err = writer.WriteSegment(ctx, 0, testData)
 	require.NoError(t, err, "Failed to write segment")
 
 	// Create attributes that will result in multiple splits
@@ -261,7 +259,7 @@ func testManifestGeneration(t *testing.T) {
 
 	// Write test data
 	testData := []byte("Test data for manifest generation")
-	_, err = writer.WriteSegment(0, testData)
+	_, err = writer.WriteSegment(ctx, 0, testData)
 	require.NoError(t, err, "Failed to write segment")
 
 	// Create attribute with metadata
@@ -308,10 +306,9 @@ func testManifestGeneration(t *testing.T) {
 
 	// Verify policy content
 	policyBytes := encInfo.Policy
-	decodedPolicy, err := ocrypto.Base64Decode(policyBytes)
-	require.NoError(t, err, "Should be able to decode policy")
+	// Policy bytes are now raw JSON, not base64 encoded
 	var policy Policy
-	err = json.Unmarshal(decodedPolicy, &policy)
+	err = json.Unmarshal(policyBytes, &policy)
 	require.NoError(t, err, "Should be able to unmarshal policy")
 	assert.NotEmpty(t, policy.UUID, "Policy should have UUID")
 	assert.Len(t, policy.Body.DataAttributes, 1, "Policy should have one attribute")
@@ -327,7 +324,7 @@ func testAssertionsAndMetadata(t *testing.T) {
 
 	// Write test data
 	testData := []byte("Data with assertions and metadata")
-	_, err = writer.WriteSegment(0, testData)
+	_, err = writer.WriteSegment(ctx, 0, testData)
 	require.NoError(t, err, "Failed to write segment")
 
 	// Note: Custom assertions would be added via additional options if needed
@@ -383,7 +380,7 @@ func testErrorConditions(t *testing.T) {
 		require.NoError(t, err)
 
 		// Write and finalize
-		_, err = writer.WriteSegment(0, []byte("test"))
+		_, err = writer.WriteSegment(ctx, 0, []byte("test"))
 		require.NoError(t, err)
 		attributes := []*policy.Value{
 			createTestAttribute("https://example.com/attr/Test/value/Basic", testKAS1, "kid1"),
@@ -392,7 +389,7 @@ func testErrorConditions(t *testing.T) {
 		require.NoError(t, err)
 
 		// Try to write after finalize
-		_, err = writer.WriteSegment(1, []byte("should fail"))
+		_, err = writer.WriteSegment(ctx, 1, []byte("should fail"))
 		require.ErrorIs(t, err, ErrAlreadyFinalized, "Should not allow writing after finalization")
 
 		// Try to finalize again
@@ -405,7 +402,7 @@ func testErrorConditions(t *testing.T) {
 		require.NoError(t, err)
 
 		// Try negative segment index
-		_, err = writer.WriteSegment(-1, []byte("test"))
+		_, err = writer.WriteSegment(ctx, -1, []byte("test"))
 		assert.ErrorIs(t, err, ErrInvalidSegmentIndex, "Should reject negative segment index")
 	})
 
@@ -414,9 +411,9 @@ func testErrorConditions(t *testing.T) {
 		require.NoError(t, err)
 
 		// Write segment twice
-		_, err = writer.WriteSegment(0, []byte("first"))
+		_, err = writer.WriteSegment(ctx, 0, []byte("first"))
 		require.NoError(t, err)
-		_, err = writer.WriteSegment(0, []byte("second"))
+		_, err = writer.WriteSegment(ctx, 0, []byte("second"))
 		assert.ErrorIs(t, err, ErrSegmentAlreadyWritten, "Should not allow overwriting segments")
 	})
 
@@ -424,7 +421,7 @@ func testErrorConditions(t *testing.T) {
 		writer, err := NewWriter(ctx)
 		require.NoError(t, err)
 
-		_, err = writer.WriteSegment(0, []byte("test"))
+		_, err = writer.WriteSegment(ctx, 0, []byte("test"))
 		require.NoError(t, err)
 
 		// Try to finalize without KAS or attributes - this should fail in key splitting
@@ -461,7 +458,7 @@ func testXORReconstruction(t *testing.T) {
 	copy(originalDEK, writer.dek)
 
 	// Write test data
-	_, err = writer.WriteSegment(0, []byte("XOR test data"))
+	_, err = writer.WriteSegment(ctx, 0, []byte("XOR test data"))
 	require.NoError(t, err)
 
 	// Create multiple attributes to force key splitting
@@ -512,7 +509,7 @@ func testDifferentAttributeRules(t *testing.T) {
 			writer, err := NewWriter(ctx)
 			require.NoError(t, err)
 
-			_, err = writer.WriteSegment(0, []byte("Rule test data"))
+			_, err = writer.WriteSegment(ctx, 0, []byte("Rule test data"))
 			require.NoError(t, err)
 
 			// Create attributes with specific rule type
@@ -547,7 +544,7 @@ func testOutOfOrderSegments(t *testing.T) {
 
 	// Write in specific out-of-order sequence
 	for _, idx := range []int{2, 0, 1} {
-		_, err := writer.WriteSegment(idx, segments[idx])
+		_, err := writer.WriteSegment(ctx, idx, segments[idx])
 		require.NoError(t, err, "Failed to write segment %d", idx)
 	}
 
@@ -657,7 +654,7 @@ func BenchmarkTDFCreation(b *testing.B) {
 				b.Fatal(err)
 			}
 
-			_, err = writer.WriteSegment(0, testData)
+			_, err = writer.WriteSegment(ctx, 0, testData)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -681,7 +678,7 @@ func BenchmarkTDFCreation(b *testing.B) {
 				b.Fatal(err)
 			}
 
-			_, err = writer.WriteSegment(0, testData)
+			_, err = writer.WriteSegment(ctx, 0, testData)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -707,7 +704,7 @@ func BenchmarkTDFCreation(b *testing.B) {
 
 			// Write 4 segments
 			for j := 0; j < 4; j++ {
-				_, err = writer.WriteSegment(j, testData)
+				_, err = writer.WriteSegment(ctx, j, testData)
 				if err != nil {
 					b.Fatal(err)
 				}

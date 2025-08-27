@@ -7,6 +7,8 @@ import (
 	"github.com/opentdf/platform/protocol/go/policy"
 )
 
+const unknownAlgorithm = "unknown"
+
 // resolveAttributeGrants follows the hierarchy: value → definition → namespace
 // Returns the most specific grants available for the given attribute value
 func resolveAttributeGrants(value *policy.Value) (*AttributeGrant, error) {
@@ -119,6 +121,7 @@ func extractKASGrants(grants []*policy.KeyAccessServer, kasKeys []*policy.Simple
 	}
 
 	// Process legacy grants if no mapped keys found
+	//nolint:nestif // Legacy attribute grant extraction requires complex nested logic for backward compatibility
 	if len(result) == 0 {
 		for _, g := range grants {
 			if g == nil || g.GetUri() == "" {
@@ -182,6 +185,8 @@ func extractKASGrants(grants []*policy.KeyAccessServer, kasKeys []*policy.Simple
 // formatAlgorithm converts policy algorithm enum to string
 func formatAlgorithm(alg policy.Algorithm) string {
 	switch alg {
+	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
+		return unknownAlgorithm
 	case policy.Algorithm_ALGORITHM_EC_P256:
 		return "ec:secp256r1"
 	case policy.Algorithm_ALGORITHM_EC_P384:
@@ -193,7 +198,7 @@ func formatAlgorithm(alg policy.Algorithm) string {
 	case policy.Algorithm_ALGORITHM_RSA_4096:
 		return "rsa:4096"
 	default:
-		return "unknown"
+		return unknownAlgorithm
 	}
 }
 

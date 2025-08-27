@@ -31,37 +31,23 @@ import (
 )
 
 const (
-	keyAccessSchemaVersion  = "1.0"
-	maxFileSizeSupported    = 68719476736 // 64gb
-	defaultMimeType         = "application/octet-stream"
-	tdfAsZip                = "zip"
-	gcmIvSize               = 12
-	aesBlockSize            = 16
-	hmacIntegrityAlgorithm  = "HS256"
-	gmacIntegrityAlgorithm  = "GMAC"
-	tdfZipReference         = "reference"
-	kKeySize                = 32
-	kWrapped                = "wrapped"
-	kECWrapped              = "ec-wrapped"
-	kKasProtocol            = "kas"
-	kSplitKeyType           = "split"
-	kGCMCipherAlgorithm     = "AES-256-GCM"
-	kGMACPayloadLength      = 16
-	kAssertionSignature     = "assertionSig"
-	kAssertionHash          = "assertionHash"
-	kClientPublicKey        = "clientPublicKey"
-	kSignedRequestToken     = "signedRequestToken"
-	kKasURL                 = "url"
-	kRewrapV2               = "/v2/rewrap"
-	kAuthorizationKey       = "Authorization"
-	kContentTypeKey         = "Content-Type"
-	kAcceptKey              = "Accept"
-	kContentTypeJSONValue   = "application/json"
-	kEntityWrappedKey       = "entityWrappedKey"
-	kPolicy                 = "policy"
-	kHmacIntegrityAlgorithm = "HS256"
-	kGmacIntegrityAlgorithm = "GMAC"
-	hexSemverThreshold      = "4.3.0"
+	keyAccessSchemaVersion = "1.0"
+	maxFileSizeSupported   = 68719476736 // 64gb
+	defaultMimeType        = "application/octet-stream"
+	tdfAsZip               = "zip"
+	gcmIvSize              = 12
+	aesBlockSize           = 16
+	hmacIntegrityAlgorithm = "HS256"
+	gmacIntegrityAlgorithm = "GMAC"
+	tdfZipReference        = "reference"
+	kKeySize               = 32
+	kWrapped               = "wrapped"
+	kECWrapped             = "ec-wrapped"
+	kKasProtocol           = "kas"
+	kSplitKeyType          = "split"
+	kGCMCipherAlgorithm    = "AES-256-GCM"
+	kGMACPayloadLength     = 16
+	hexSemverThreshold     = "4.3.0"
 )
 
 // Loads and reads ZTDF files
@@ -78,7 +64,7 @@ type Reader struct {
 	payloadKey          []byte
 	kasSessionKey       ocrypto.KeyPair
 	config              TDFReaderConfig
-	segmentLocator      segment.SegmentLocator
+	segmentLocator      segment.Locator
 }
 
 type TDFObject struct {
@@ -239,7 +225,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			return nil, fmt.Errorf("io.ReadSeeker.Read failed: %w", err)
 		}
 
-		segmentBytes, err := tdfWriter.WriteSegment(context.Background(), segmentIndex, cipherData)
+		segmentBytes, err := tdfWriter.WriteSegment(ctx, segmentIndex, cipherData)
 		if err != nil {
 			return nil, fmt.Errorf("WriteSegment failed: %w", err)
 		}
@@ -1538,7 +1524,7 @@ func createKaoTemplateFromKasInfo(kasInfoArr []KASInfo) []kaoTpl {
 }
 
 // buildSegmentLocator creates the appropriate segment locator based on segment characteristics
-func buildSegmentLocator(manifest *Manifest) segment.SegmentLocator {
+func buildSegmentLocator(manifest *Manifest) segment.Locator {
 	segments := manifest.EncryptionInformation.IntegrityInformation.Segments
 	defaultSize := manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize
 

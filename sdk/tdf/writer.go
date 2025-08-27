@@ -82,7 +82,7 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 	}, nil
 }
 
-func (w *Writer) WriteSegment(index int, data []byte) ([]byte, error) {
+func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]byte, error) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
@@ -94,8 +94,7 @@ func (w *Writer) WriteSegment(index int, data []byte) ([]byte, error) {
 		return nil, ErrInvalidSegmentIndex
 	}
 
-	// check if segment exists
-	// Extend the slice if needed to accommodate out-of-order segments
+	// Extend the slice if needed and check for duplicate segments
 
 	if newLen := index + 1; newLen > len(w.segments) {
 		newSlice := make([]Segment, newLen)
@@ -132,7 +131,7 @@ func (w *Writer) WriteSegment(index int, data []byte) ([]byte, error) {
 		EncryptedSize: int64(len(segmentCipher)),
 	}
 
-	zipBytes, err := w.archiveWriter.WriteSegment(context.Background(), index, segmentCipher)
+	zipBytes, err := w.archiveWriter.WriteSegment(ctx, index, segmentCipher)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +196,7 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 
 	// Copy segments to manifest and calculate root signatures
 	copy(encryptInfo.IntegrityInformation.Segments, w.segments)
-	
+
 	// Set default segment sizes for reader compatibility
 	// Use the first segment as the default (streaming TDFs have variable segment sizes)
 	if len(w.segments) > 0 {
@@ -205,7 +204,7 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 		encryptInfo.IntegrityInformation.DefaultSegmentSize = firstSegment.Size
 		encryptInfo.IntegrityInformation.DefaultEncryptedSegSize = firstSegment.EncryptedSize
 	}
-	
+
 	// Set segment hash algorithm
 	encryptInfo.IntegrityInformation.SegmentHashAlgorithm = w.segmentIntegrityAlgorithm.String()
 
@@ -293,7 +292,7 @@ func buildPolicy(values []*policy.Value) ([]byte, error) {
 		return nil, err
 	}
 
-	return ocrypto.Base64Encode(policyBytes), nil
+	return policyBytes, nil
 }
 
 func (w *Writer) buildAssertions(aggregateHash []byte, assertions []AssertionConfig) ([]Assertion, error) {

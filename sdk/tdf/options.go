@@ -86,6 +86,12 @@ func WithExcludeVersionFromManifest(exclude bool) Option[*WriterFinalizeConfig] 
 	}
 }
 
+func WithAssertions(assertions ...AssertionConfig) Option[*WriterFinalizeConfig] {
+	return func(c *WriterFinalizeConfig) {
+		c.assertions = assertions
+	}
+}
+
 func WithDefaultAssertion(add bool) Option[*WriterFinalizeConfig] {
 	return func(c *WriterFinalizeConfig) {
 		c.addDefaultAssertion = add

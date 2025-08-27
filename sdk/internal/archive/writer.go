@@ -8,42 +8,49 @@ import (
 	"sync"
 )
 
-// ArchiveWriter is the base interface for all archive writers
-type ArchiveWriter interface {
+const (
+	defaultBufferSizeKB = 64    // 64KB default buffer size
+	defaultMaxSegments  = 10000 // Reasonable default for max segments
+	bytesPerKB          = 1024  // Conversion factor from KB to bytes
+)
+
+// Writer is the base interface for all archive writers
+type Writer interface {
 	io.Closer
 }
 
 // SegmentWriter handles out-of-order segments with deterministic output
 type SegmentWriter interface {
-	ArchiveWriter
+	Writer
 	WriteSegment(ctx context.Context, index int, data []byte) ([]byte, error)
 	Finalize(ctx context.Context, manifest []byte) ([]byte, error)
-	CleanupSegment(index int) // Free memory after S3 upload
+	CleanupSegment(index int) error // Free memory after S3 upload
 }
 
-// ArchiveError provides detailed error information for archive operations
-type ArchiveError struct {
+// Error provides detailed error information for archive operations
+type Error struct {
 	Op   string // Operation that failed
 	Type string // Writer type: "sequential", "streaming", "segment"
 	Err  error  // Underlying error
 }
 
-func (e *ArchiveError) Error() string {
+func (e *Error) Error() string {
 	return fmt.Sprintf("archive %s %s: %v", e.Type, e.Op, e.Err)
 }
 
-func (e *ArchiveError) Unwrap() error {
+func (e *Error) Unwrap() error {
 	return e.Err
 }
 
 // Common errors
 var (
-	ErrWriterClosed     = errors.New("archive writer closed")
-	ErrInvalidSegment   = errors.New("invalid segment index")
-	ErrOutOfOrder       = errors.New("segment out of order")
-	ErrDuplicateSegment = errors.New("duplicate segment already written")
-	ErrSegmentMissing   = errors.New("segment missing")
-	ErrInvalidSize      = errors.New("invalid size")
+	ErrWriterClosed      = errors.New("archive writer closed")
+	ErrInvalidSegment    = errors.New("invalid segment index")
+	ErrOutOfOrder        = errors.New("segment out of order")
+	ErrDuplicateSegment  = errors.New("duplicate segment already written")
+	ErrSegmentMissing    = errors.New("segment missing")
+	ErrInvalidSize       = errors.New("invalid size")
+	ErrCRC32NotFinalized = errors.New("CRC32 not finalized - cannot cleanup segment data")
 )
 
 // Config holds configuration options for writers
@@ -74,10 +81,10 @@ func WithBufferSize(size int) Option {
 }
 
 // WithMaxSegments sets the maximum number of segments for SegmentWriter
-func WithMaxSegments(max int) Option {
+func WithMaxSegments(maxSegments int) Option {
 	return func(c *Config) {
-		if max > 0 {
-			c.MaxSegments = max
+		if maxSegments > 0 {
+			c.MaxSegments = maxSegments
 		}
 	}
 }
@@ -93,8 +100,8 @@ func WithLogging() Option {
 func defaultConfig() *Config {
 	return &Config{
 		EnableZip64:   false,
-		BufferSize:    64 * 1024, // 64KB
-		MaxSegments:   10000,     // Reasonable default
+		BufferSize:    defaultBufferSizeKB * bytesPerKB, // Convert KB to bytes
+		MaxSegments:   defaultMaxSegments,
 		EnableLogging: false,
 	}
 }
@@ -128,6 +135,14 @@ func newBaseWriter(cfg *Config) *baseWriter {
 	}
 }
 
+// Close marks the writer as closed
+func (bw *baseWriter) Close() error {
+	bw.mu.Lock()
+	defer bw.mu.Unlock()
+	bw.closed = true
+	return nil
+}
+
 // checkClosed returns an error if the writer is closed
 func (bw *baseWriter) checkClosed() error {
 	bw.mu.RLock()
@@ -138,17 +153,14 @@ func (bw *baseWriter) checkClosed() error {
 	return nil
 }
 
-// Close marks the writer as closed
-func (bw *baseWriter) Close() error {
-	bw.mu.Lock()
-	defer bw.mu.Unlock()
-	bw.closed = true
-	return nil
-}
-
 // getBuffer gets a buffer from the pool
 func (bw *baseWriter) getBuffer() []byte {
-	return bw.bufferPool.Get().([]byte)[:0]
+	buf, ok := bw.bufferPool.Get().([]byte)
+	if !ok {
+		// Fallback if type assertion fails
+		return make([]byte, 0, bw.config.BufferSize)
+	}
+	return buf[:0]
 }
 
 // putBuffer returns a buffer to the pool

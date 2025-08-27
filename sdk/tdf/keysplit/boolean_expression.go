@@ -1,6 +1,7 @@
 package keysplit
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -10,6 +11,14 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/policy"
 )
+
+const (
+	expectedFQNMatches = 4 // Full match + 3 capture groups (authority, attr name, attr value)
+	minAttributeParts  = 2 // Minimum parts when splitting attribute rule
+)
+
+// Package-level regex for performance - compiled once and reused
+var attributeFQNRegex = regexp.MustCompile(`^(https?://[\w./-]+)/attr/([^/\s]*)/value/([^/\s]*)$`)
 
 // buildBooleanExpression groups attribute values by their definition and creates clauses
 func buildBooleanExpression(values []*policy.Value) (*BooleanExpression, error) {
@@ -32,7 +41,7 @@ func buildBooleanExpression(values []*policy.Value) (*BooleanExpression, error) 
 
 		// Validate the attribute FQN format
 		if err := validateAttributeFQN(value.GetFqn()); err != nil {
-			return nil, fmt.Errorf("%w: %s", ErrInvalidAttributeFQN, err)
+			return nil, fmt.Errorf("%w: %w", ErrInvalidAttributeFQN, err)
 		}
 
 		defFQN := def.GetFqn()
@@ -68,7 +77,7 @@ func buildBooleanExpression(values []*policy.Value) (*BooleanExpression, error) 
 
 		// Validate the attribute rule
 		if err := validateAttributeRule(clause.Rule); err != nil {
-			return nil, fmt.Errorf("%w: %s for attribute %s", ErrInvalidRule, err, fqn)
+			return nil, fmt.Errorf("%w: %w for attribute %s", ErrInvalidRule, err, fqn)
 		}
 
 		expr.Clauses = append(expr.Clauses, *clause)
@@ -84,14 +93,13 @@ func buildBooleanExpression(values []*policy.Value) (*BooleanExpression, error) 
 // validateAttributeFQN ensures the FQN follows the expected format
 func validateAttributeFQN(fqn string) error {
 	if fqn == "" {
-		return fmt.Errorf("FQN is empty")
+		return errors.New("FQN is empty")
 	}
 
 	// Check for attribute value FQN format: https://domain/attr/name/value/value
-	re := regexp.MustCompile(`^(https?://[\w./-]+)/attr/([^/\s]*)/value/([^/\s]*)$`)
-	matches := re.FindStringSubmatch(fqn)
+	matches := attributeFQNRegex.FindStringSubmatch(fqn)
 
-	if len(matches) < 4 {
+	if len(matches) < expectedFQNMatches {
 		return fmt.Errorf("invalid FQN format: %s", fqn)
 	}
 
@@ -162,7 +170,7 @@ func (c *AttributeClause) String() string {
 	for _, v := range c.Values {
 		// Extract just the value part from FQN
 		parts := strings.Split(v.GetFqn(), "/value/")
-		if len(parts) == 2 {
+		if len(parts) == minAttributeParts {
 			if unescaped, err := url.PathUnescape(parts[1]); err == nil {
 				valueNames = append(valueNames, unescaped)
 			} else {
@@ -193,31 +201,4 @@ func ruleToString(rule policy.AttributeRuleTypeEnum) string {
 	default:
 		return "unknown"
 	}
-}
-
-// extractAttributePrefix returns the attribute definition FQN from a value FQN
-func extractAttributePrefix(valueFQN string) (string, error) {
-	re := regexp.MustCompile(`^(https?://[\w./-]+/attr/[^/\s]*)/value/[^/\s]*$`)
-	matches := re.FindStringSubmatch(valueFQN)
-	if len(matches) < 2 {
-		return "", fmt.Errorf("cannot extract prefix from FQN: %s", valueFQN)
-	}
-	return matches[1], nil
-}
-
-// extractAttributeValue returns just the value part from a value FQN
-func extractAttributeValue(valueFQN string) (string, error) {
-	re := regexp.MustCompile(`^https?://[\w./-]+/attr/[^/\s]*/value/([^/\s]*)$`)
-	matches := re.FindStringSubmatch(valueFQN)
-	if len(matches) < 2 {
-		return "", fmt.Errorf("cannot extract value from FQN: %s", valueFQN)
-	}
-
-	// URL decode the value
-	unescaped, err := url.PathUnescape(matches[1])
-	if err != nil {
-		return "", fmt.Errorf("failed to decode attribute value: %w", err)
-	}
-
-	return unescaped, nil
 }

@@ -279,9 +279,46 @@ func (s *Service) GetObligationValuesByFQNs(ctx context.Context, req *connect.Re
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) UpdateObligationValue(_ context.Context, _ *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error) {
-	// TODO: Implement UpdateObligationValue logic
-	return connect.NewResponse(&obligations.UpdateObligationValueResponse{}), nil
+func (s *Service) UpdateObligationValue(ctx context.Context, req *connect.Request[obligations.UpdateObligationValueRequest]) (*connect.Response[obligations.UpdateObligationValueResponse], error) {
+	id := req.Msg.GetId()
+
+	rsp := &obligations.UpdateObligationValueResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeUpdate,
+		ObjectType: audit.ObjectTypeObligationValue,
+		ObjectID:   id,
+	}
+
+	s.logger.DebugContext(ctx, "updating obligation value", slog.String("id", id))
+
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		original, err := txClient.GetObligationValue(ctx, &obligations.GetObligationValueRequest{
+			Identifier: &obligations.GetObligationValueRequest_Id{
+				Id: id,
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		updated, err := txClient.UpdateObligationValue(ctx, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.Original = original
+		auditParams.Updated = updated
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Value = updated
+		return nil
+	})
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextUpdateFailed, slog.String("obligation value", req.Msg.String()))
+	}
+	return connect.NewResponse(rsp), nil
 }
 
 func (s *Service) DeleteObligationValue(_ context.Context, _ *connect.Request[obligations.DeleteObligationValueRequest]) (*connect.Response[obligations.DeleteObligationValueResponse], error) {

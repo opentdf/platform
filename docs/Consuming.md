@@ -6,17 +6,37 @@ To contribute/develop, see [here](./Contributing.md).
 
 ## Running the Platform Locally
 
+> [!WARNING]
+> This quickstart guide is intended for development and testing purposes only. The OpenTDF platform team does not
+> provide recommendations for production deployments.
+
+To get started with the OpenTDF platform make sure you are running the same Go version found in the `go.mod` file.
+
+<!-- markdownlint-disable MD034 github embedded sourcecode -->
+https://github.com/opentdf/platform/blob/main/service/go.mod#L3
+
+> **Note for Apple M4 chip users:**  
+> If you are running on an Apple M4 chip, set the Java environment variable before running any commands:
+> ```sh
+> export JAVA_OPTS_APPEND="-XX:UseSVE=0"
+> ```
+> This resolves SIGILL with Code 134 errors when running Java processes.
+
+
 1. **Initialize Platform Configuration**
    ```shell
    cp opentdf-dev.yaml opentdf.yaml
-perl -i -pe 's/e1/ec1/g' opentdf.yaml
-# Requires yq to be installed (see https://github.com/mikefarah/yq#install)
-yq eval '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
-   .github/scripts/init-temp-keys.sh
-# The following command is for macOS to trust the local certificate.
-# For Linux, you may need to use a different command, e.g.:
-# sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./keys/localhost.crt
+   perl -i -pe 's/e1/ec1/g' opentdf.yaml
+   # Requires yq to be installed (see https://github.com/mikefarah/yq#install)
+   yq eval '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
+
+   # Generate development keys/certs for the platform infrastructure.
+   ./.github/scripts/init-temp-keys.sh
+
+   # The following command is for macOS to trust the local certificate.
+   # For Linux, you may need to use a different command, e.g.:
+   # sudo cp ./keys/localhost.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates
+   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./keys/localhost.crt
    ```
    - Optional: Update the [configuration](./Configuring.md) as needed.
    - Optional: To remove the certificate, run:
@@ -24,8 +44,10 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
      sudo security delete-certificate -c "localhost"
      ```
 2. **Start Background Services**
+   Start the required infrastructure with [compose-spec](https://compose-spec.io).
+   
    ```shell
-   docker compose up
+   docker compose -f docker-compose.yaml up
    ```
 3. **Provision Keycloak**
    ```shell

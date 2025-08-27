@@ -221,6 +221,179 @@ func (s *ObligationsSuite) Test_GetObligationsByFQNs_Succeeds() {
 	s.deleteObligations([]string{obl1.GetId(), obl2.GetId(), obl3.GetId()})
 }
 
+// GetObligationValuesByFQNs
+
+func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_Succeeds() {
+	// Setup test data
+	namespaceID1, namespaceFQN1, namespace1 := s.getNamespaceData(nsExampleCom)
+	namespaceID2, namespaceFQN2, namespace2 := s.getNamespaceData(nsExampleNet)
+	namespaceID3, _, _ := s.getNamespaceData(nsExampleOrg)
+
+	// Create obligations with values in different namespaces
+	obl1 := s.createObligation(namespaceID1, oblName+"-1", []string{oblValPrefix + "val1", oblValPrefix + "val2"})
+	obl2 := s.createObligation(namespaceID2, oblName+"-2", []string{oblValPrefix + "val3", oblValPrefix + "val4"})
+	obl3 := s.createObligation(namespaceID3, oblName+"-3", []string{oblValPrefix + "val5"})
+
+	// Test 1: Get multiple obligation values by FQNs
+	fqns := []string{
+		policydb.BuildOblValFQN(namespaceFQN1, oblName+"-1", oblValPrefix+"val1"),
+		policydb.BuildOblValFQN(namespaceFQN1, oblName+"-1", oblValPrefix+"val2"),
+		policydb.BuildOblValFQN(namespaceFQN2, oblName+"-2", oblValPrefix+"val3"),
+	}
+
+	oblValueList, err := s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: fqns,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblValueList)
+	s.Len(oblValueList, 3)
+
+	// Create maps for easier verification
+	expectedValues := map[string]struct{}{
+		oblValPrefix + "val1": {},
+		oblValPrefix + "val2": {},
+		oblValPrefix + "val3": {},
+	}
+	foundValues := make(map[string]*policy.ObligationValue)
+
+	for _, oblValue := range oblValueList {
+		s.Contains(expectedValues, oblValue.GetValue())
+		foundValues[oblValue.GetValue()] = oblValue
+	}
+	s.Len(foundValues, 3)
+
+	// Verify each obligation value
+	val1 := foundValues[oblValPrefix+"val1"]
+	s.assertObligationValueBasics(val1, oblValPrefix+"val1", namespaceID1, namespace1.Name, namespaceFQN1)
+	s.Equal(oblName+"-1", val1.GetObligation().GetName())
+
+	val2 := foundValues[oblValPrefix+"val2"]
+	s.assertObligationValueBasics(val2, oblValPrefix+"val2", namespaceID1, namespace1.Name, namespaceFQN1)
+	s.Equal(oblName+"-1", val2.GetObligation().GetName())
+
+	val3 := foundValues[oblValPrefix+"val3"]
+	s.assertObligationValueBasics(val3, oblValPrefix+"val3", namespaceID2, namespace2.Name, namespaceFQN2)
+	s.Equal(oblName+"-2", val3.GetObligation().GetName())
+
+	// Test 2: Get single obligation value by FQN
+	singleFQN := []string{policydb.BuildOblValFQN(namespaceFQN2, oblName+"-2", oblValPrefix+"val4")}
+	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: singleFQN,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblValueList)
+	s.Len(oblValueList, 1)
+	s.assertObligationValueBasics(oblValueList[0], oblValPrefix+"val4", namespaceID2, namespace2.Name, namespaceFQN2)
+	s.Equal(oblName+"-2", oblValueList[0].GetObligation().GetName())
+
+	// Test 3: Empty FQN list should return empty result
+	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: []string{},
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblValueList)
+	s.Empty(oblValueList)
+
+	// Test 4: Get all values from a single obligation
+	allValuesFromObl1 := []string{
+		policydb.BuildOblValFQN(namespaceFQN1, oblName+"-1", oblValPrefix+"val1"),
+		policydb.BuildOblValFQN(namespaceFQN1, oblName+"-1", oblValPrefix+"val2"),
+	}
+	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: allValuesFromObl1,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblValueList)
+	s.Len(oblValueList, 2)
+	for _, oblValue := range oblValueList {
+		s.Contains([]string{oblValPrefix + "val1", oblValPrefix + "val2"}, oblValue.GetValue())
+		s.Equal(oblName+"-1", oblValue.GetObligation().GetName())
+		s.assertObligationValueBasics(oblValue, oblValue.GetValue(), namespaceID1, namespace1.Name, namespaceFQN1)
+	}
+
+	// Cleanup
+	s.deleteObligations([]string{obl1.GetId(), obl2.GetId(), obl3.GetId()})
+}
+
+func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_Fails() {
+	// Setup test data
+	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)
+	obl := s.createObligation(namespaceID, oblName, []string{oblValPrefix + "test-value"})
+
+	// Test 1: Invalid FQN should return empty result (not error)
+	invalidFQNs := []string{invalidFQN}
+	oblValueList, err := s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: invalidFQNs,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblValueList)
+	s.Empty(oblValueList)
+
+	// Test 2: Mix of valid and invalid FQNs should return only valid ones
+	validFQN := policydb.BuildOblValFQN(namespaceFQN, oblName, oblValPrefix+"test-value")
+	mixedFQNs := []string{
+		validFQN,
+		invalidFQN,
+		"https://nonexistent.com/obl/nonexistent/val/nonexistent",
+	}
+	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: mixedFQNs,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblValueList)
+	s.Len(oblValueList, 1)
+	s.Equal(oblValPrefix+"test-value", oblValueList[0].GetValue())
+
+	// Test 3: Non-existent obligation value names should return empty result
+	nonExistentFQNs := []string{
+		policydb.BuildOblValFQN(namespaceFQN, oblName, "nonexistent-value"),
+	}
+	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: nonExistentFQNs,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblValueList)
+	s.Empty(oblValueList)
+
+	// Test 4: Non-existent obligation names should return empty result
+	nonExistentOblFQNs := []string{
+		policydb.BuildOblValFQN(namespaceFQN, "nonexistent-obligation", oblValPrefix+"test-value"),
+	}
+	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: nonExistentOblFQNs,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblValueList)
+	s.Empty(oblValueList)
+
+	// Test 5: Non-existent namespace should return empty result
+	nonExistentNsFQNs := []string{
+		policydb.BuildOblValFQN("https://nonexistent.com", oblName, oblValPrefix+"test-value"),
+	}
+	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: nonExistentNsFQNs,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblValueList)
+	s.Empty(oblValueList)
+
+	// Test 6: Malformed FQNs should return empty result
+	malformedFQNs := []string{
+		namespaceFQN + "/obl/" + oblName,                                             // Missing /val/ part
+		namespaceFQN + "/invalid/" + oblName + "/val/" + oblValPrefix + "test-value", // Invalid path
+		namespaceFQN + "/obl/" + oblName + "/val/",                                   // Empty value name
+	}
+	oblValueList, err = s.db.PolicyClient.GetObligationValuesByFQNs(s.ctx, &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: malformedFQNs,
+	})
+	s.Require().NoError(err)
+	s.NotNil(oblValueList)
+	s.Empty(oblValueList)
+
+	// Cleanup
+	s.deleteObligations([]string{obl.GetId()})
+}
+
 func (s *ObligationsSuite) Test_GetObligationsByFQNs_Fails() {
 	// Setup test data
 	namespaceID, namespaceFQN, _ := s.getNamespaceData(nsExampleCom)

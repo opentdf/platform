@@ -64,8 +64,9 @@ func TestAESProtectedKey_Export_NoEncapsulator(t *testing.T) {
 	require.NoError(t, err)
 
 	exported, err := protectedKey.Export(nil)
-	require.NoError(t, err)
-	assert.Equal(t, key, exported)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "encapsulator cannot be nil")
+	assert.Nil(t, exported)
 }
 
 func TestAESProtectedKey_Export_WithEncapsulator(t *testing.T) {

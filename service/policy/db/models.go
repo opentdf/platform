@@ -313,43 +313,6 @@ type ObligationValuesStandard struct {
 	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
 }
 
-type ObligationDefinition struct {
-	ID          string             `json:"id"`
-	NamespaceID string             `json:"namespace_id"`
-	Name        string             `json:"name"`
-	Metadata    []byte             `json:"metadata"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-}
-
-type ObligationFulfiller struct {
-	ID                string             `json:"id"`
-	ObligationValueID string             `json:"obligation_value_id"`
-	Conditionals      []byte             `json:"conditionals"`
-	Metadata          []byte             `json:"metadata"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
-}
-
-type ObligationTrigger struct {
-	ID                string             `json:"id"`
-	ObligationValueID string             `json:"obligation_value_id"`
-	ActionID          string             `json:"action_id"`
-	AttributeValueID  string             `json:"attribute_value_id"`
-	Metadata          []byte             `json:"metadata"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
-}
-
-type ObligationValuesStandard struct {
-	ID                     string             `json:"id"`
-	ObligationDefinitionID string             `json:"obligation_definition_id"`
-	Value                  string             `json:"value"`
-	Metadata               []byte             `json:"metadata"`
-	CreatedAt              pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
-}
-
 // Table to store key provider configurations
 type ProviderConfig struct {
 	// Unique identifier for the provider configuration
@@ -364,7 +327,7 @@ type ProviderConfig struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 	// Additional metadata for the provider configuration
 	Metadata []byte `json:"metadata"`
-	// Type of key manager (e.g., local, aws, azure, gcp).
+	// Type of key manager (e.g., opentdf.io/basic, aws, azure, gcp)
 	Manager string `json:"manager"`
 }
 

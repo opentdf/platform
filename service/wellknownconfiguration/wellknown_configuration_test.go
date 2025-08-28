@@ -2,12 +2,14 @@ package wellknownconfiguration
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
 	wellknown "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -44,7 +46,7 @@ func (s *WellKnownConfigurationSuite) TestRegisterConfiguration_Success() {
 	}
 
 	err := RegisterConfiguration("test_namespace", config)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	// Verify configuration was registered
 	rwMutex.RLock()
@@ -60,11 +62,11 @@ func (s *WellKnownConfigurationSuite) TestRegisterConfiguration_DuplicateNamespa
 
 	// Register first configuration
 	err := RegisterConfiguration("duplicate_namespace", config1)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	// Attempt to register second configuration with same namespace
 	err = RegisterConfiguration("duplicate_namespace", config2)
-	s.Error(err)
+	s.Require().Error(err)
 	s.Contains(err.Error(), "namespace duplicate_namespace configuration already registered")
 }
 
@@ -88,12 +90,12 @@ func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_EmptyConfig(
 	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
 	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.NotNil(resp.Msg.Configuration)
+	s.NotNil(resp.Msg.GetConfiguration())
 
 	// Should return an empty struct
-	s.Empty(resp.Msg.Configuration.Fields)
+	s.Empty(resp.Msg.GetConfiguration().GetFields())
 }
 
 func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_WithConfigurations() {
@@ -111,10 +113,10 @@ func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_WithConfigur
 	}
 
 	err := RegisterConfiguration("service1", config1)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	err = RegisterConfiguration("service2", config2)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	UpdateConfigurationBaseKey(baseConfig)
 
@@ -122,12 +124,12 @@ func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_WithConfigur
 	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
 	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.NotNil(resp.Msg.Configuration)
+	s.NotNil(resp.Msg.GetConfiguration())
 
 	// Verify all configurations are present
-	fields := resp.Msg.Configuration.Fields
+	fields := resp.Msg.GetConfiguration().GetFields()
 	s.Len(fields, 3) // service1, service2, base_key
 
 	// Verify service1 configuration
@@ -160,39 +162,39 @@ func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_KeyManagersS
 	}
 
 	err := RegisterConfiguration("key_managers", keyManagersConfig)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
 	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.NotNil(resp.Msg.Configuration)
+	s.NotNil(resp.Msg.GetConfiguration())
 
 	// Verify key managers configuration is present and structured correctly
-	fields := resp.Msg.Configuration.Fields
+	fields := resp.Msg.GetConfiguration().GetFields()
 	keyManagersField, exists := fields["key_managers"]
 	s.True(exists)
 	s.NotNil(keyManagersField.GetStructValue())
 
 	keyManagersStruct := keyManagersField.GetStructValue()
-	s.Len(keyManagersStruct.Fields, 2) // manager_0, manager_1
+	s.Len(keyManagersStruct.GetFields(), 2) // manager_0, manager_1
 
 	// Verify manager_0
-	manager0Field, exists := keyManagersStruct.Fields["manager_0"]
+	manager0Field, exists := keyManagersStruct.GetFields()["manager_0"]
 	s.True(exists)
 	manager0Struct := manager0Field.GetStructValue()
 	s.NotNil(manager0Struct)
-	s.Equal("basic", manager0Struct.Fields["name"].GetStringValue())
-	s.Equal("Key manager: basic", manager0Struct.Fields["description"].GetStringValue())
+	s.Equal("basic", manager0Struct.GetFields()["name"].GetStringValue())
+	s.Equal("Key manager: basic", manager0Struct.GetFields()["description"].GetStringValue())
 
 	// Verify manager_1
-	manager1Field, exists := keyManagersStruct.Fields["manager_1"]
+	manager1Field, exists := keyManagersStruct.GetFields()["manager_1"]
 	s.True(exists)
 	manager1Struct := manager1Field.GetStructValue()
 	s.NotNil(manager1Struct)
-	s.Equal("aws", manager1Struct.Fields["name"].GetStringValue())
-	s.Equal("Key manager: aws", manager1Struct.Fields["description"].GetStringValue())
+	s.Equal("aws", manager1Struct.GetFields()["name"].GetStringValue())
+	s.Equal("Key manager: aws", manager1Struct.GetFields()["description"].GetStringValue())
 }
 
 func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_InvalidData() {
@@ -202,16 +204,17 @@ func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_InvalidData(
 	}
 
 	err := RegisterConfiguration("invalid_service", invalidConfig)
-	s.NoError(err)
+	s.Require().NoError(err)
 
 	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
 	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
 
-	s.Error(err)
+	s.Require().Error(err)
 	s.Nil(resp)
 
 	// Verify it's a connect error with internal code
-	connectErr, ok := err.(*connect.Error)
+	connectErr := &connect.Error{}
+	ok := errors.As(err, &connectErr)
 	s.True(ok)
 	s.Equal(connect.CodeInternal, connectErr.Code())
 	s.Contains(connectErr.Message(), "failed to create struct for wellknown configuration")
@@ -243,9 +246,9 @@ func (s *WellKnownConfigurationSuite) TestConcurrentAccess() {
 	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
 	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
 
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.NotNil(resp)
-	s.Len(resp.Msg.Configuration.Fields, numGoroutines)
+	s.Len(resp.Msg.GetConfiguration().GetFields(), numGoroutines)
 }
 
 func TestRegisterConfiguration_Standalone(t *testing.T) {
@@ -256,6 +259,7 @@ func TestRegisterConfiguration_Standalone(t *testing.T) {
 
 	config := map[string]any{"test": "value"}
 	err := RegisterConfiguration("standalone_test", config)
+	require.NoError(t, err)
 
 	assert.NoError(t, err)
 	assert.Equal(t, config, wellKnownConfiguration["standalone_test"])

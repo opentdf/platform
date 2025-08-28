@@ -69,14 +69,17 @@ func NewRegistration(ns string, dbRegister serviceregistry.DBRegister) *servicer
 
 				// Register key managers in well-known configuration
 				ksvc.keyManagerFactories = make([]registeredManagers, 0, len(srp.KeyManagerFactories))
-				managersMap := make([]registeredManagers, 0)
-				for _, factory := range srp.KeyManagerFactories {
+				managersMap := make(map[string]any)
+				for i, factory := range srp.KeyManagerFactories {
 					rm := registeredManagers{
 						Name:        factory.Name,
 						Description: "Key manager: " + factory.Name,
 					}
 					ksvc.keyManagerFactories = append(ksvc.keyManagerFactories, rm)
-					managersMap = append(managersMap, rm)
+					managersMap[fmt.Sprintf("manager_%d", i)] = map[string]any{
+						"name":        factory.Name,
+						"description": "Key manager: " + factory.Name,
+					}
 				}
 
 				if err := wellknownconfiguration.RegisterConfiguration("key_managers", managersMap); err != nil {

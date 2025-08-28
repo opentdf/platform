@@ -1,381 +1,276 @@
 package wellknownconfiguration
 
 import (
-	"reflect"
+	"context"
 	"testing"
 
 	"connectrpc.com/connect"
 	wellknown "github.com/opentdf/platform/protocol/go/wellknownconfiguration"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-// Test struct for conversion testing
-type TestStruct struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Count       int    `json:"count"`
-	Active      bool   `json:"active"`
+type WellKnownConfigurationSuite struct {
+	suite.Suite
+	service *WellKnownService
+	logger  *logger.Logger
 }
 
-type NestedStruct struct {
-	ID     string     `json:"id"`
-	Data   TestStruct `json:"data"`
-	Items  []string   `json:"items"`
-	Active *bool      `json:"active,omitempty"`
+func (s *WellKnownConfigurationSuite) SetupSuite() {
+	s.logger = logger.CreateTestLogger()
+
+	s.service = &WellKnownService{
+		logger: s.logger,
+	}
 }
 
-func TestRegisterConfiguration(t *testing.T) {
-	// Clear configuration before test
+func (s *WellKnownConfigurationSuite) TearDownTest() {
+	// Reset the global configuration map after each test
+	rwMutex.Lock()
 	wellKnownConfiguration = make(map[string]any)
+	rwMutex.Unlock()
+}
 
-	tests := []struct {
-		name      string
-		namespace string
-		config    any
-		wantErr   bool
-		errMsg    string
-	}{
-		{
-			name:      "Register simple string",
-			namespace: "test1",
-			config:    "simple string",
-			wantErr:   false,
+func TestWellKnownConfigurationSuite(t *testing.T) {
+	suite.Run(t, new(WellKnownConfigurationSuite))
+}
+
+func (s *WellKnownConfigurationSuite) TestRegisterConfiguration_Success() {
+	config := map[string]any{
+		"key1": "value1",
+		"key2": 42,
+		"key3": true,
+	}
+
+	err := RegisterConfiguration("test_namespace", config)
+	s.NoError(err)
+
+	// Verify configuration was registered
+	rwMutex.RLock()
+	registeredConfig := wellKnownConfiguration["test_namespace"]
+	rwMutex.RUnlock()
+
+	s.Equal(config, registeredConfig)
+}
+
+func (s *WellKnownConfigurationSuite) TestRegisterConfiguration_DuplicateNamespace() {
+	config1 := map[string]any{"key": "value1"}
+	config2 := map[string]any{"key": "value2"}
+
+	// Register first configuration
+	err := RegisterConfiguration("duplicate_namespace", config1)
+	s.NoError(err)
+
+	// Attempt to register second configuration with same namespace
+	err = RegisterConfiguration("duplicate_namespace", config2)
+	s.Error(err)
+	s.Contains(err.Error(), "namespace duplicate_namespace configuration already registered")
+}
+
+func (s *WellKnownConfigurationSuite) TestUpdateConfigurationBaseKey() {
+	baseConfig := map[string]any{
+		"base_key1": "base_value1",
+		"base_key2": 100,
+	}
+
+	UpdateConfigurationBaseKey(baseConfig)
+
+	// Verify base key configuration was set
+	rwMutex.RLock()
+	registeredConfig := wellKnownConfiguration[baseKeyWellKnown]
+	rwMutex.RUnlock()
+
+	s.Equal(baseConfig, registeredConfig)
+}
+
+func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_EmptyConfig() {
+	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
+	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
+
+	s.NoError(err)
+	s.NotNil(resp)
+	s.NotNil(resp.Msg.Configuration)
+
+	// Should return an empty struct
+	s.Empty(resp.Msg.Configuration.Fields)
+}
+
+func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_WithConfigurations() {
+	// Register multiple configurations
+	config1 := map[string]any{
+		"service1_key": "service1_value",
+		"enabled":      true,
+	}
+	config2 := map[string]any{
+		"service2_key": "service2_value",
+		"port":         8080,
+	}
+	baseConfig := map[string]any{
+		"base_setting": "base_value",
+	}
+
+	err := RegisterConfiguration("service1", config1)
+	s.NoError(err)
+
+	err = RegisterConfiguration("service2", config2)
+	s.NoError(err)
+
+	UpdateConfigurationBaseKey(baseConfig)
+
+	// Get the configuration
+	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
+	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
+
+	s.NoError(err)
+	s.NotNil(resp)
+	s.NotNil(resp.Msg.Configuration)
+
+	// Verify all configurations are present
+	fields := resp.Msg.Configuration.Fields
+	s.Len(fields, 3) // service1, service2, base_key
+
+	// Verify service1 configuration
+	service1Field, exists := fields["service1"]
+	s.True(exists)
+	s.NotNil(service1Field.GetStructValue())
+
+	// Verify service2 configuration
+	service2Field, exists := fields["service2"]
+	s.True(exists)
+	s.NotNil(service2Field.GetStructValue())
+
+	// Verify base_key configuration
+	baseField, exists := fields[baseKeyWellKnown]
+	s.True(exists)
+	s.NotNil(baseField.GetStructValue())
+}
+
+func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_KeyManagersStructure() {
+	// Test the key managers configuration structure that was causing the original error
+	keyManagersConfig := map[string]any{
+		"manager_0": map[string]any{
+			"name":        "basic",
+			"description": "Key manager: basic",
 		},
-		{
-			name:      "Register map",
-			namespace: "test2",
-			config:    map[string]string{"key": "value"},
-			wantErr:   false,
-		},
-		{
-			name:      "Register slice",
-			namespace: "test3",
-			config:    []string{"item1", "item2"},
-			wantErr:   false,
-		},
-		{
-			name:      "Register duplicate namespace",
-			namespace: "test1", // Already registered above
-			config:    "duplicate",
-			wantErr:   true,
-			errMsg:    "already registered",
+		"manager_1": map[string]any{
+			"name":        "aws",
+			"description": "Key manager: aws",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := RegisterConfiguration(tt.namespace, tt.config)
-			if tt.wantErr {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errMsg)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.config, wellKnownConfiguration[tt.namespace])
+	err := RegisterConfiguration("key_managers", keyManagersConfig)
+	s.NoError(err)
+
+	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
+	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
+
+	s.NoError(err)
+	s.NotNil(resp)
+	s.NotNil(resp.Msg.Configuration)
+
+	// Verify key managers configuration is present and structured correctly
+	fields := resp.Msg.Configuration.Fields
+	keyManagersField, exists := fields["key_managers"]
+	s.True(exists)
+	s.NotNil(keyManagersField.GetStructValue())
+
+	keyManagersStruct := keyManagersField.GetStructValue()
+	s.Len(keyManagersStruct.Fields, 2) // manager_0, manager_1
+
+	// Verify manager_0
+	manager0Field, exists := keyManagersStruct.Fields["manager_0"]
+	s.True(exists)
+	manager0Struct := manager0Field.GetStructValue()
+	s.NotNil(manager0Struct)
+	s.Equal("basic", manager0Struct.Fields["name"].GetStringValue())
+	s.Equal("Key manager: basic", manager0Struct.Fields["description"].GetStringValue())
+
+	// Verify manager_1
+	manager1Field, exists := keyManagersStruct.Fields["manager_1"]
+	s.True(exists)
+	manager1Struct := manager1Field.GetStructValue()
+	s.NotNil(manager1Struct)
+	s.Equal("aws", manager1Struct.Fields["name"].GetStringValue())
+	s.Equal("Key manager: aws", manager1Struct.Fields["description"].GetStringValue())
+}
+
+func (s *WellKnownConfigurationSuite) TestGetWellKnownConfiguration_InvalidData() {
+	// Test with data that cannot be converted to structpb
+	invalidConfig := map[string]any{
+		"invalid_channel": make(chan int), // channels cannot be converted to protobuf
+	}
+
+	err := RegisterConfiguration("invalid_service", invalidConfig)
+	s.NoError(err)
+
+	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
+	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
+
+	s.Error(err)
+	s.Nil(resp)
+
+	// Verify it's a connect error with internal code
+	connectErr, ok := err.(*connect.Error)
+	s.True(ok)
+	s.Equal(connect.CodeInternal, connectErr.Code())
+	s.Contains(connectErr.Message(), "failed to create struct for wellknown configuration")
+}
+
+func (s *WellKnownConfigurationSuite) TestConcurrentAccess() {
+	// Test concurrent access to the configuration map
+	done := make(chan bool)
+	numGoroutines := 10
+
+	// Start multiple goroutines that register configurations
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			config := map[string]any{
+				"concurrent_key": id,
 			}
-		})
+			err := RegisterConfiguration(string(rune(65+id)), config) // A, B, C, etc.
+			s.NoError(err)
+			done <- true
+		}(i)
 	}
+
+	// Wait for all goroutines to complete
+	for i := 0; i < numGoroutines; i++ {
+		<-done
+	}
+
+	// Verify all configurations were registered
+	req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
+	resp, err := s.service.GetWellKnownConfiguration(context.Background(), req)
+
+	s.NoError(err)
+	s.NotNil(resp)
+	s.Len(resp.Msg.Configuration.Fields, numGoroutines)
 }
 
-func TestUpdateConfigurationBaseKey(t *testing.T) {
-	// Clear configuration before test
+func TestRegisterConfiguration_Standalone(t *testing.T) {
+	// Reset configuration before test
+	rwMutex.Lock()
 	wellKnownConfiguration = make(map[string]any)
+	rwMutex.Unlock()
 
-	testConfig := map[string]string{"test": "value"}
+	config := map[string]any{"test": "value"}
+	err := RegisterConfiguration("standalone_test", config)
 
-	UpdateConfigurationBaseKey(testConfig)
-
-	assert.Equal(t, testConfig, wellKnownConfiguration[baseKeyWellKnown])
-
-	// Test update
-	newConfig := map[string]string{"new": "value"}
-	UpdateConfigurationBaseKey(newConfig)
-
-	assert.Equal(t, newConfig, wellKnownConfiguration[baseKeyWellKnown])
+	assert.NoError(t, err)
+	assert.Equal(t, config, wellKnownConfiguration["standalone_test"])
 }
 
-func TestConvertToSerializable(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    interface{}
-		expected interface{}
-	}{
-		{
-			name:     "Basic string",
-			input:    "test string",
-			expected: "test string",
-		},
-		{
-			name:     "Basic int",
-			input:    42,
-			expected: int64(42),
-		},
-		{
-			name:     "Basic bool",
-			input:    true,
-			expected: true,
-		},
-		{
-			name:     "String slice",
-			input:    []string{"a", "b", "c"},
-			expected: []interface{}{"a", "b", "c"},
-		},
-		{
-			name:     "Simple struct",
-			input:    TestStruct{Name: "test", Description: "desc", Count: 5, Active: true},
-			expected: map[string]interface{}{"name": "test", "description": "desc", "count": int64(5), "active": true},
-		},
-		{
-			name: "Struct slice",
-			input: []TestStruct{
-				{Name: "first", Description: "first desc", Count: 1, Active: true},
-				{Name: "second", Description: "second desc", Count: 2, Active: false},
-			},
-			expected: []interface{}{
-				map[string]interface{}{"name": "first", "description": "first desc", "count": int64(1), "active": true},
-				map[string]interface{}{"name": "second", "description": "second desc", "count": int64(2), "active": false},
-			},
-		},
-		{
-			name: "Nested struct",
-			input: NestedStruct{
-				ID:     "123",
-				Data:   TestStruct{Name: "nested", Description: "nested desc", Count: 10, Active: false},
-				Items:  []string{"item1", "item2"},
-				Active: nil,
-			},
-			expected: map[string]interface{}{
-				"id": "123",
-				"data": map[string]interface{}{
-					"name":        "nested",
-					"description": "nested desc",
-					"count":       int64(10),
-					"active":      false,
-				},
-				"items":  []interface{}{"item1", "item2"},
-				"active": nil,
-			},
-		},
-		{
-			name:     "Map with interface values",
-			input:    map[string]interface{}{"key1": "value1", "key2": 42, "key3": true},
-			expected: map[string]interface{}{"key1": "value1", "key2": int64(42), "key3": true},
-		},
-		{
-			name:     "Nil value",
-			input:    nil,
-			expected: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := convertToSerializable(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestConvertValue(t *testing.T) {
-	t.Run("Invalid value", func(t *testing.T) {
-		var invalidValue reflect.Value
-		result := convertValue(invalidValue)
-		if result.IsValid() {
-			assert.Nil(t, result.Interface())
-		} else {
-			assert.False(t, result.IsValid())
-		}
-	})
-
-	t.Run("Nil pointer", func(t *testing.T) {
-		var nilPtr *string
-		result := convertValue(reflect.ValueOf(nilPtr))
-		if result.IsValid() {
-			assert.Nil(t, result.Interface())
-		} else {
-			assert.False(t, result.IsValid())
-		}
-	})
-
-	t.Run("Valid pointer", func(t *testing.T) {
-		str := "test"
-		ptr := &str
-		result := convertValue(reflect.ValueOf(ptr))
-		assert.Equal(t, "test", result.Interface())
-	})
-
-	t.Run("Nil interface", func(t *testing.T) {
-		var nilInterface interface{}
-		result := convertValue(reflect.ValueOf(&nilInterface).Elem())
-		if result.IsValid() {
-			assert.Nil(t, result.Interface())
-		} else {
-			assert.False(t, result.IsValid())
-		}
-	})
-}
-
-func TestConvertStruct(t *testing.T) {
-	t.Run("Struct with unexported fields", func(t *testing.T) {
-		type StructWithPrivate struct {
-			Public  string `json:"public"`
-			private string `json:"private"` //nolint: govet // needed for testing
-		}
-
-		input := StructWithPrivate{Public: "visible", private: "hidden"}
-		result := convertStruct(reflect.ValueOf(input))
-
-		expected := map[string]interface{}{"public": "visible"}
-		assert.Equal(t, expected, result.Interface())
-	})
-
-	t.Run("Struct with json tags", func(t *testing.T) {
-		type TaggedStruct struct {
-			Field1 string `json:"custom_name"`
-			Field2 string `json:"another_name,omitempty"`
-			Field3 string `json:",omitempty"`
-			Field4 string `json:"-"`
-		}
-
-		input := TaggedStruct{
-			Field1: "value1",
-			Field2: "value2",
-			Field3: "value3",
-			Field4: "value4",
-		}
-		result := convertStruct(reflect.ValueOf(input))
-
-		expected := map[string]interface{}{
-			"custom_name":  "value1",
-			"another_name": "value2",
-			"Field3":       "value3",
-			// Field4 should be excluded due to json:"-"
-		}
-		assert.Equal(t, expected, result.Interface())
-	})
-}
-
-func TestConvertSlice(t *testing.T) {
-	t.Run("Empty slice", func(t *testing.T) {
-		input := []string{}
-		result := convertSlice(reflect.ValueOf(input))
-		assert.Equal(t, []interface{}{}, result.Interface())
-	})
-
-	t.Run("Mixed type slice", func(t *testing.T) {
-		input := []interface{}{1, "string", true}
-		result := convertSlice(reflect.ValueOf(input))
-		assert.Equal(t, []interface{}{int64(1), "string", true}, result.Interface())
-	})
-}
-
-func TestConvertMap(t *testing.T) {
-	t.Run("String key map", func(t *testing.T) {
-		input := map[string]int{"one": 1, "two": 2}
-		result := convertMap(reflect.ValueOf(input))
-		expected := map[string]interface{}{"one": int64(1), "two": int64(2)}
-		assert.Equal(t, expected, result.Interface())
-	})
-
-	t.Run("Non-string key map", func(t *testing.T) {
-		input := map[int]string{1: "one", 2: "two"}
-		result := convertMap(reflect.ValueOf(input))
-		expected := map[string]interface{}{"1": "one", "2": "two"}
-		assert.Equal(t, expected, result.Interface())
-	})
-}
-
-func TestWellKnownService_GetWellKnownConfiguration(t *testing.T) {
-	// Setup
+func TestUpdateConfigurationBaseKey_Standalone(t *testing.T) {
+	// Reset configuration before test
+	rwMutex.Lock()
 	wellKnownConfiguration = make(map[string]any)
-	logger := logger.CreateTestLogger()
-	service := WellKnownService{logger: logger}
+	rwMutex.Unlock()
 
-	t.Run("Empty configuration", func(t *testing.T) {
-		req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
+	baseConfig := map[string]any{"base": "config"}
+	UpdateConfigurationBaseKey(baseConfig)
 
-		resp, err := service.GetWellKnownConfiguration(t.Context(), req)
-
-		require.NoError(t, err)
-		assert.NotNil(t, resp.Msg.GetConfiguration())
-		assert.Empty(t, resp.Msg.GetConfiguration().GetFields())
-	})
-
-	t.Run("With simple configuration", func(t *testing.T) {
-		// Register some test configuration
-		testConfig := map[string]interface{}{
-			"string_val": "test",
-			"int_val":    42,
-			"bool_val":   true,
-		}
-		wellKnownConfiguration["test"] = testConfig
-
-		req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
-
-		resp, err := service.GetWellKnownConfiguration(t.Context(), req)
-
-		require.NoError(t, err)
-		assert.NotNil(t, resp.Msg.GetConfiguration())
-		assert.Contains(t, resp.Msg.GetConfiguration().GetFields(), "test")
-	})
-
-	t.Run("With struct configuration", func(t *testing.T) {
-		// Clear previous config
-		wellKnownConfiguration = make(map[string]any)
-
-		// Register struct configuration that needs conversion
-		testStructs := []TestStruct{
-			{Name: "manager1", Description: "First manager", Count: 1, Active: true},
-			{Name: "manager2", Description: "Second manager", Count: 2, Active: false},
-		}
-		wellKnownConfiguration["key_managers"] = testStructs
-
-		req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
-
-		resp, err := service.GetWellKnownConfiguration(t.Context(), req)
-
-		require.NoError(t, err)
-		assert.NotNil(t, resp.Msg.GetConfiguration())
-		assert.Contains(t, resp.Msg.GetConfiguration().GetFields(), "key_managers")
-
-		// Verify the struct was converted properly
-		keyManagersField := resp.Msg.GetConfiguration().GetFields()["key_managers"]
-		assert.NotNil(t, keyManagersField)
-	})
-
-	t.Run("With complex nested configuration", func(t *testing.T) {
-		// Clear previous config
-		wellKnownConfiguration = make(map[string]any)
-
-		// Register complex nested configuration
-		complexConfig := map[string]interface{}{
-			"simple": "value",
-			"nested": NestedStruct{
-				ID: "test-id",
-				Data: TestStruct{
-					Name:        "nested-test",
-					Description: "nested description",
-					Count:       99,
-					Active:      true,
-				},
-				Items: []string{"item1", "item2", "item3"},
-			},
-			"struct_slice": []TestStruct{
-				{Name: "first", Count: 1},
-				{Name: "second", Count: 2},
-			},
-		}
-		wellKnownConfiguration["complex"] = complexConfig
-
-		req := connect.NewRequest(&wellknown.GetWellKnownConfigurationRequest{})
-
-		resp, err := service.GetWellKnownConfiguration(t.Context(), req)
-
-		require.NoError(t, err)
-		assert.NotNil(t, resp.Msg.GetConfiguration())
-		assert.Contains(t, resp.Msg.GetConfiguration().GetFields(), "complex")
-	})
+	assert.Equal(t, baseConfig, wellKnownConfiguration[baseKeyWellKnown])
 }
 
 func TestNewRegistration(t *testing.T) {
@@ -385,38 +280,5 @@ func TestNewRegistration(t *testing.T) {
 	assert.Equal(t, "wellknown", registration.ServiceOptions.Namespace)
 	assert.NotNil(t, registration.ServiceOptions.ServiceDesc)
 	assert.NotNil(t, registration.ServiceOptions.ConnectRPCFunc)
-	assert.NotNil(t, registration.ServiceOptions.GRPCGatewayFunc)
 	assert.NotNil(t, registration.ServiceOptions.RegisterFunc)
-}
-
-// Benchmark tests for performance
-func BenchmarkConvertToSerializable(b *testing.B) {
-	testData := []TestStruct{
-		{Name: "manager1", Description: "First manager", Count: 1, Active: true},
-		{Name: "manager2", Description: "Second manager", Count: 2, Active: false},
-		{Name: "manager3", Description: "Third manager", Count: 3, Active: true},
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = convertToSerializable(testData)
-	}
-}
-
-func BenchmarkConvertNestedStruct(b *testing.B) {
-	testData := NestedStruct{
-		ID: "benchmark-test",
-		Data: TestStruct{
-			Name:        "benchmark",
-			Description: "benchmark test",
-			Count:       1000,
-			Active:      true,
-		},
-		Items: []string{"item1", "item2", "item3", "item4", "item5"},
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = convertToSerializable(testData)
-	}
 }

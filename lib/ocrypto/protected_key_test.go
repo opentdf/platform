@@ -179,7 +179,7 @@ type mockEncapsulator struct {
 	ephemeralKeyFunc func() []byte
 }
 
-func (m *mockEncapsulator) Encapsulate(dek ProtectedKey) ([]byte, error) {
+func (m *mockEncapsulator) Encapsulate(_ ProtectedKey) ([]byte, error) {
 	return nil, nil
 }
 

@@ -122,6 +122,7 @@ type StreamingWriter struct {
 	sdk    *SDK
 }
 
+// Experimental and api could change
 // NewStreamingWriter creates a new StreamingWriter using the SDK's configuration.
 // The writer uses the SDK's default KAS, attributes, and other TDF settings.
 func (s *SDK) NewStreamingWriter(ctx context.Context) (*StreamingWriter, error) {

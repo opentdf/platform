@@ -18,35 +18,108 @@ import (
 )
 
 const (
-	kKeySize            = 32
+	// kKeySize is the AES key size in bytes (256-bit key)
+	kKeySize = 32
+	// kGCMCipherAlgorithm specifies the encryption algorithm used for TDF payloads
 	kGCMCipherAlgorithm = "AES-256-GCM"
-	tdfAsZip            = "zip"
-	tdfZipReference     = "reference"
+	// tdfAsZip indicates the TDF uses ZIP as the container format
+	tdfAsZip = "zip"
+	// tdfZipReference indicates the payload is stored as a reference in the ZIP
+	tdfZipReference = "reference"
 )
 
 var (
-	ErrAlreadyFinalized      = errors.New("tdf is already finalized")
-	ErrInvalidSegmentIndex   = errors.New("invalid segment index")
+	// ErrAlreadyFinalized is returned when attempting operations on a finalized writer
+	ErrAlreadyFinalized = errors.New("tdf is already finalized")
+	// ErrInvalidSegmentIndex is returned for negative segment indices
+	ErrInvalidSegmentIndex = errors.New("invalid segment index")
+	// ErrSegmentAlreadyWritten is returned when trying to write to an existing segment index
 	ErrSegmentAlreadyWritten = errors.New("segment already written")
 )
 
+// Writer provides streaming TDF creation with out-of-order segment support.
+//
+// The Writer enables creation of TDF files by writing individual segments
+// that can arrive in any order. It handles encryption, integrity verification,
+// and proper ZIP archive structure generation.
+//
+// Key features:
+//   - Variable-length segments with sparse index support
+//   - Out-of-order segment writing with contiguous processing optimization
+//   - Memory-efficient handling through segment cleanup
+//   - Cryptographic assertions and integrity verification
+//   - Custom attribute-based access controls
+//
+// Thread safety: Writers require external synchronization for concurrent access.
+// Each WriteSegment call must be serialized, but multiple Writers can operate
+// independently.
+//
+// Example usage:
+//
+//	writer, err := NewWriter(ctx, WithIntegrityAlgorithm(HS256))
+//	if err != nil {
+//		return err
+//	}
+//	defer writer.Close()
+//	
+//	// Write segments (can be out-of-order)
+//	_, err = writer.WriteSegment(ctx, 1, []byte("second"))
+//	_, err = writer.WriteSegment(ctx, 0, []byte("first"))
+//	
+//	// Finalize with attributes
+//	finalBytes, manifest, err := writer.Finalize(ctx, WithAttributeValues(attrs))
 type Writer struct {
-	// WriterConfig configuration for the TDF writer
+	// WriterConfig embeds configuration options for the TDF writer
 	WriterConfig
 
+	// archiveWriter handles the underlying ZIP archive creation
 	archiveWriter archive.SegmentWriter
 
 	// State management
-	mutex     sync.RWMutex
-	finalized bool
+	mutex     sync.RWMutex // Protects concurrent access to writer state
+	finalized bool         // Whether Finalize() has been called
 
-	segments        map[int]Segment // Sparse storage for variable segment indices  
+	// segments stores segment metadata using sparse map for memory efficiency
+	// Maps segment index to Segment metadata (hash, size information)
+	segments map[int]Segment
+	// maxSegmentIndex tracks the highest segment index written
 	maxSegmentIndex int
 
-	dek   []byte
-	block ocrypto.AesGcm
+	// Cryptographic state
+	dek   []byte           // Data Encryption Key (32-byte AES key)  
+	block ocrypto.AesGcm   // AES-GCM cipher for segment encryption
 }
 
+// NewWriter creates a new experimental TDF Writer with streaming support.
+//
+// The writer is initialized with secure defaults:
+//   - HS256 integrity algorithms for both root and segment verification
+//   - AES-256-GCM encryption for all segments
+//   - Dynamic segment expansion supporting sparse indices
+//   - Memory-efficient segment processing
+//
+// Configuration options can be provided to customize:
+//   - Integrity algorithm selection (HS256, GMAC)
+//   - Segment integrity algorithm (independent of root algorithm)
+//
+// The writer generates a unique Data Encryption Key (DEK) and initializes
+// the underlying archive writer for ZIP structure management.
+//
+// Returns an error if:
+//   - DEK generation fails (cryptographic entropy issues)
+//   - AES-GCM cipher initialization fails (invalid key)
+//   - Archive writer creation fails (resource constraints)
+//
+// Example:
+//
+//	// Default configuration
+//	writer, err := NewWriter(ctx)
+//	
+//	// Custom integrity algorithms  
+//	writer, err := NewWriter(ctx, 
+//		WithIntegrityAlgorithm(GMAC),
+//		WithSegmentIntegrityAlgorithm(HS256),
+//	)
 func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error) {
 	// Initialize Config
 	config := &WriterConfig{
@@ -82,6 +155,46 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 	}, nil
 }
 
+// WriteSegment encrypts and writes a data segment at the specified index.
+//
+// Segments can be written in any order and will be properly assembled during
+// finalization. Each segment is independently encrypted with AES-256-GCM and
+// has its integrity hash calculated for verification.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//   - index: Zero-based segment index (must be non-negative, sparse indices supported)  
+//   - data: Raw data to encrypt and store in this segment
+//
+// Returns the encrypted segment bytes that should be stored/uploaded, and any error.
+// The returned bytes include ZIP structure elements and can be assembled in any order.
+//
+// The function performs:
+//   1. Input validation (index >= 0, writer not finalized, no duplicate segments)
+//   2. AES-256-GCM encryption of the segment data
+//   3. HMAC signature calculation for integrity verification
+//   4. ZIP archive segment creation through the archive layer
+//
+// Memory optimization: Uses sparse storage to avoid O(n²) memory growth
+// for high or non-contiguous segment indices.
+//
+// Error conditions:
+//   - ErrAlreadyFinalized: Writer has been finalized, no more segments accepted
+//   - ErrInvalidSegmentIndex: Negative index provided
+//   - ErrSegmentAlreadyWritten: Segment index already contains data
+//   - Context cancellation: If ctx.Done() is signaled
+//   - Encryption errors: AES-GCM operation failures
+//   - Archive errors: ZIP structure creation failures
+//
+// Example:
+//
+//	// Write segments out-of-order
+//	segment1, err := writer.WriteSegment(ctx, 1, []byte("second part"))
+//	segment0, err := writer.WriteSegment(ctx, 0, []byte("first part"))
+//	
+//	// Store/upload segment bytes (e.g., to S3)
+//	uploadToS3(segment0, "part-000")
+//	uploadToS3(segment1, "part-001")
 func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]byte, error) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
@@ -128,6 +241,62 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]by
 	return zipBytes, nil
 }
 
+// Finalize completes TDF creation and returns the final bytes and manifest.
+//
+// This method must be called after all segments have been written. It performs:
+//   1. Validates all segments are present (no missing indices from 0 to maxSegmentIndex)
+//   2. Generates cryptographic splits for key access controls
+//   3. Builds the TDF policy from provided attributes  
+//   4. Creates cryptographic assertions if specified
+//   5. Calculates root integrity signature over all segment hashes
+//   6. Generates the complete TDF manifest
+//   7. Finalizes the ZIP archive structure
+//
+// The finalization process handles:
+//   - Key splitting for attribute-based access controls
+//   - Policy generation from attribute values
+//   - Encrypted metadata storage in key access objects
+//   - Manifest JSON generation and validation
+//   - ZIP central directory and data descriptor creation
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//   - opts: Configuration options for finalization behavior
+//
+// Available options:
+//   - WithAttributeValues: Set attribute-based access controls
+//   - WithEncryptedMetadata: Include encrypted metadata  
+//   - WithPayloadMimeType: Specify payload MIME type
+//   - WithAssertions: Add cryptographic assertions
+//   - WithDefaultKAS: Set default Key Access Server
+//
+// Returns:
+//   - finalBytes: Complete ZIP archive bytes ready for storage/transmission
+//   - manifest: TDF manifest containing encryption and integrity information
+//   - error: Any error during finalization process
+//
+// Error conditions:
+//   - ErrAlreadyFinalized: Finalize already called
+//   - Missing segments: Gaps in segment indices (e.g., segments 0,1,3 written but 2 missing)
+//   - Key splitting failures: Invalid attributes or KAS configuration  
+//   - Manifest generation errors: JSON marshaling failures
+//   - Archive finalization errors: ZIP structure generation failures
+//   - Context cancellation: If ctx.Done() is signaled
+//
+// Example:
+//
+//	// Basic finalization
+//	finalBytes, manifest, err := writer.Finalize(ctx)
+//	
+//	// With attributes and metadata
+//	finalBytes, manifest, err := writer.Finalize(ctx,
+//		WithAttributeValues(attrs),
+//		WithEncryptedMetadata("sensitive info"),
+//		WithPayloadMimeType("application/json"),
+//	)
+//
+// Performance note: Finalization is O(n) where n is the number of segments.
+// Memory usage is proportional to manifest size, not total data size.
 func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeConfig]) ([]byte, *Manifest, error) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()

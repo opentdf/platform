@@ -26,9 +26,6 @@ https://github.com/opentdf/platform/blob/main/service/go.mod#L3
 1. **Initialize Platform Configuration**
    ```shell
    cp opentdf-dev.yaml opentdf.yaml
-   perl -i -pe 's/e1/ec1/g' opentdf.yaml
-   # Requires yq to be installed (see https://github.com/mikefarah/yq#install)
-   yq eval '.services.kas.ec_tdf_enabled = true' -i opentdf.yaml
 
    # Generate development keys/certs for the platform infrastructure.
    ./.github/scripts/init-temp-keys.sh

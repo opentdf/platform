@@ -148,7 +148,11 @@ func Start(f ...StartOptions) error {
 
 	var registeredCoreServices []string
 
-	registeredCoreServices, err = registerCoreServices(svcRegistry, cfg.Mode)
+	modes := make([]serviceregistry.ModeName, len(cfg.Mode))
+	for i, m := range cfg.Mode {
+		modes[i] = serviceregistry.ModeName(m)
+	}
+	registeredCoreServices, err = registerCoreServices(svcRegistry, modes)
 	if err != nil {
 		logger.Error("could not register core services", slog.String("error", err.Error()))
 		return fmt.Errorf("could not register core services: %w", err)
@@ -170,7 +174,7 @@ func Start(f ...StartOptions) error {
 	if len(startConfig.extraServices) > 0 {
 		logger.Debug("registering extra services")
 		for _, service := range startConfig.extraServices {
-			err := svcRegistry.RegisterService(service, service.GetNamespace())
+			err := svcRegistry.RegisterService(service, serviceregistry.ModeName(service.GetNamespace()))
 			if err != nil {
 				logger.Error("could not register extra service",
 					slog.String("namespace", service.GetNamespace()),

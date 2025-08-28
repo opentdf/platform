@@ -5,8 +5,6 @@ import (
 	"embed"
 	"fmt"
 	"log/slog"
-	"slices"
-	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/opentdf/platform/sdk"
@@ -30,92 +28,58 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const (
-	modeALL       = "all"
-	modeCore      = "core"
-	modeKAS       = "kas"
-	modeERS       = "entityresolution"
-	modeEssential = "essential"
+// createServiceManager creates a ServiceManager with OpenTDF service factory functions
+func createServiceManager() (*serviceregistry.ServiceManager, error) {
+	// Define service factory functions
+	serviceFactories := map[serviceregistry.ServiceName]serviceregistry.ServiceFactory{
+		serviceregistry.ServicePolicy: func() []serviceregistry.IService {
+			return policy.NewRegistrations()
+		},
+		serviceregistry.ServiceAuthorization: func() []serviceregistry.IService {
+			return []serviceregistry.IService{
+				authorization.NewRegistration(),
+				authorizationV2.NewRegistration(),
+			}
+		},
+		serviceregistry.ServiceKAS: func() []serviceregistry.IService {
+			return []serviceregistry.IService{kas.NewRegistration()}
+		},
+		serviceregistry.ServiceWellKnown: func() []serviceregistry.IService {
+			return []serviceregistry.IService{wellknown.NewRegistration()}
+		},
+		serviceregistry.ServiceEntityResolution: func() []serviceregistry.IService {
+			return []serviceregistry.IService{
+				entityresolution.NewRegistration(),
+				entityresolutionV2.NewRegistration(),
+			}
+		},
+	}
 
-	serviceKAS              = "kas"
-	servicePolicy           = "policy"
-	serviceWellKnown        = "wellknown"
-	serviceEntityResolution = "entityresolution"
-	serviceAuthorization    = "authorization"
-)
+	return serviceregistry.NewDefaultServiceManager(serviceFactories)
+}
 
 // registerEssentialServices registers the essential services to the given service registry.
-// It takes a serviceregistry.Registry as input and returns an error if registration fails.
 func registerEssentialServices(reg serviceregistry.Registry) error {
+	sm, err := createServiceManager()
+	if err != nil {
+		return fmt.Errorf("failed to create service manager: %w", err)
+	}
+
 	essentialServices := []serviceregistry.IService{
 		health.NewRegistration(),
 	}
-	// Register the essential services
-	for _, s := range essentialServices {
-		if err := reg.RegisterService(s, modeEssential); err != nil {
-			return err //nolint:wrapcheck // We are all friends here
-		}
-	}
-	return nil
+
+	return sm.RegisterEssentialServices(reg, essentialServices)
 }
 
-// registerCoreServices registers the core services based on the provided mode.
-// It returns the list of registered services and any error encountered during registration.
-func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string, error) {
-	var (
-		services           []serviceregistry.IService
-		registeredServices []string
-	)
-
-	for _, m := range mode {
-		switch m {
-		case "all":
-			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceKAS, serviceWellKnown, serviceEntityResolution}...)
-			services = append(services, []serviceregistry.IService{
-				authorization.NewRegistration(),
-				authorizationV2.NewRegistration(),
-				kas.NewRegistration(),
-				wellknown.NewRegistration(),
-				entityresolution.NewRegistration(),
-				entityresolutionV2.NewRegistration(),
-			}...)
-			services = append(services, policy.NewRegistrations()...)
-		case "core":
-			registeredServices = append(registeredServices, []string{servicePolicy, serviceAuthorization, serviceWellKnown}...)
-			services = append(services, []serviceregistry.IService{
-				authorization.NewRegistration(),
-				authorizationV2.NewRegistration(),
-				wellknown.NewRegistration(),
-			}...)
-			services = append(services, policy.NewRegistrations()...)
-		case "kas":
-			// If the mode is "kas", register only the KAS service
-			registeredServices = append(registeredServices, serviceKAS)
-			if err := reg.RegisterService(kas.NewRegistration(), modeKAS); err != nil {
-				return nil, err //nolint:wrapcheck // We are all friends here
-			}
-		case "entityresolution":
-			// If the mode is "entityresolution", register only the ERS service (v1 and v2)
-			registeredServices = append(registeredServices, serviceEntityResolution)
-			if err := reg.RegisterService(entityresolution.NewRegistration(), modeERS); err != nil {
-				return nil, err //nolint:wrapcheck // We are all friends here
-			}
-			if err := reg.RegisterService(entityresolutionV2.NewRegistration(), modeERS); err != nil {
-				return nil, err //nolint:wrapcheck // We are all friends here
-			}
-		default:
-			continue
-		}
+// registerCoreServices registers the core services based on the provided mode with full negation support.
+func registerCoreServices(reg serviceregistry.Registry, modes []serviceregistry.ModeName) ([]string, error) {
+	sm, err := createServiceManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create service manager: %w", err)
 	}
 
-	// Register the services
-	for _, s := range services {
-		if err := reg.RegisterCoreService(s); err != nil {
-			return nil, err //nolint:wrapcheck // We are all friends here
-		}
-	}
-
-	return registeredServices, nil
+	return sm.RegisterCoreServices(reg, modes)
 }
 
 type startServicesParams struct {
@@ -143,16 +107,16 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	cacheManager := params.cacheManager
 	keyManagerFactories := params.keyManagerFactories
 
+	// Create ServiceManager to handle mode checking logic
+	sm, err := createServiceManager()
+	if err != nil {
+		return func() {}, fmt.Errorf("failed to create service manager: %w", err)
+	}
+
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
-		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.
-		// It returns true if the mode is "all" or "essential" in the configuration, or if it matches the namespace mode.
-		modeEnabled := slices.ContainsFunc(cfg.Mode, func(m string) bool {
-			if strings.EqualFold(m, modeALL) || strings.EqualFold(namespace.Mode, modeEssential) {
-				return true
-			}
-			return strings.EqualFold(m, namespace.Mode)
-		})
+		// Use ServiceManager to check if the namespace should be enabled
+		modeEnabled := sm.IsNamespaceEnabled(cfg.Mode, namespace.Mode)
 
 		// Skip the namespace if the mode is not enabled
 		if !modeEnabled {

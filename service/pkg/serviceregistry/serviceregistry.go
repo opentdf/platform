@@ -258,10 +258,10 @@ func (reg Registry) RegisterCoreService(svc IService) error {
 // such as the namespace and service description.
 // The mode string specifies the mode in which the service should be registered.
 // It returns an error if the service is already registered in the specified namespace.
-func (reg Registry) RegisterService(svc IService, mode string) error {
+func (reg Registry) RegisterService(svc IService, mode ModeName) error {
 	// Can't directly modify structs within a map, so we need to copy the namespace
 	copyNamespace := reg[svc.GetNamespace()]
-	copyNamespace.Mode = mode
+	copyNamespace.Mode = mode.String()
 	if copyNamespace.Services == nil {
 		copyNamespace.Services = make([]IService, 0)
 	}

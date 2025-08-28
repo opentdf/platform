@@ -202,7 +202,7 @@ func (m *mockKASRegistryWithKeys) GetKeyAccessServer(_ context.Context, _ *conne
 }
 
 // setupMockKASServer creates a complete mock server with KAS rewrap functionality
-func setupMockKASServer(t *testing.T) (*SDK, func()) {
+func setupMockKASServer(t testing.TB) (*SDK, func()) {
 	t.Helper()
 
 	// Generate RSA key pair for testing

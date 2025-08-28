@@ -83,6 +83,7 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 	segmentBuf := sw.getBuffer()
 	defer sw.putBuffer(segmentBuf)
 
+	// Use pooled buffer with bytes.Buffer for compatibility with existing header writing
 	buffer := bytes.NewBuffer(segmentBuf)
 
 	// Deterministic behavior: segment 0 gets ZIP header, others get raw data

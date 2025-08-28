@@ -40,7 +40,7 @@ type Writer struct {
 	mutex     sync.RWMutex
 	finalized bool
 
-	segments        []Segment
+	segments        map[int]Segment // Sparse storage for variable segment indices  
 	maxSegmentIndex int
 
 	dek   []byte
@@ -77,7 +77,7 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 		WriterConfig:  *config,
 		archiveWriter: archiveWriter,
 		dek:           dek,
-		segments:      make([]Segment, 0),
+		segments:      make(map[int]Segment), // Initialize sparse storage
 		block:         block,
 	}, nil
 }
@@ -94,28 +94,17 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]by
 		return nil, ErrInvalidSegmentIndex
 	}
 
-	// Extend the slice if needed and check for duplicate segments
-
-	if newLen := index + 1; newLen > len(w.segments) {
-		newSlice := make([]Segment, newLen)
-		copy(newSlice, w.segments)
-		w.segments = newSlice
-	}
-
-	// Check if segment is already populated (zero value check)
-	if w.segments[index] != (Segment{}) {
+	// Check for duplicate segments using map lookup
+	if _, exists := w.segments[index]; exists {
 		return nil, ErrSegmentAlreadyWritten
 	}
-
-	// copy data to new slice
-	segmentCopy := make([]byte, len(data))
-	copy(segmentCopy, data)
 
 	if index > w.maxSegmentIndex {
 		w.maxSegmentIndex = index
 	}
 
-	segmentCipher, err := w.block.Encrypt(segmentCopy)
+	// Encrypt directly without unnecessary copying - the archive layer will handle copying if needed
+	segmentCipher, err := w.block.Encrypt(data)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +116,7 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]by
 
 	w.segments[index] = Segment{
 		Hash:          string(ocrypto.Base64Encode([]byte(segmentSig))),
-		Size:          int64(len(segmentCopy)),
+		Size:          int64(len(data)), // Use original data length
 		EncryptedSize: int64(len(segmentCipher)),
 	}
 
@@ -188,18 +177,21 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 		},
 		IntegrityInformation: IntegrityInformation{
 			// Copy segments to manifest for integrity verification
-			Segments:      make([]Segment, len(w.segments)),
+			Segments:      make([]Segment, w.maxSegmentIndex+1),
 			RootSignature: RootSignature{},
 		},
 	}
 
-	// Copy segments to manifest and calculate root signatures
-	copy(encryptInfo.IntegrityInformation.Segments, w.segments)
+	// Copy segments to manifest in proper order (map -> slice)
+	for i := 0; i <= w.maxSegmentIndex; i++ {
+		if segment, exists := w.segments[i]; exists {
+			encryptInfo.IntegrityInformation.Segments[i] = segment
+		}
+	}
 
 	// Set default segment sizes for reader compatibility
 	// Use the first segment as the default (streaming TDFs have variable segment sizes)
-	if len(w.segments) > 0 {
-		firstSegment := w.segments[0]
+	if firstSegment, exists := w.segments[0]; exists {
 		encryptInfo.IntegrityInformation.DefaultSegmentSize = firstSegment.Size
 		encryptInfo.IntegrityInformation.DefaultEncryptedSegSize = firstSegment.EncryptedSize
 	}
@@ -208,7 +200,12 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 	encryptInfo.IntegrityInformation.SegmentHashAlgorithm = w.segmentIntegrityAlgorithm.String()
 
 	var aggregateHash bytes.Buffer
-	for _, segment := range w.segments {
+	// Iterate through segments in order (0 to maxSegmentIndex)
+	for i := 0; i <= w.maxSegmentIndex; i++ {
+		segment, exists := w.segments[i]
+		if !exists {
+			return nil, nil, fmt.Errorf("missing segment %d", i)
+		}
 		if segment.Hash != "" {
 			// Decode the base64-encoded segment hash to match reader validation
 			decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))

@@ -19,23 +19,21 @@ var preventRedirectCheck = func(_ *http.Request, _ []*http.Request) error {
 	return http.ErrUseLastResponse // Prevent following redirects
 }
 
-var safeHTTPClient = &http.Client{
-	Transport:     http.DefaultTransport,
-	Timeout:       defaultTimeout,
-	CheckRedirect: preventRedirectCheck,
-}
-
 // SafeHTTPClient returns a default http client which has sensible timeouts, won't follow redirects, and enables idle
 // connection pooling.
 func SafeHTTPClient() *http.Client {
-	return safeHTTPClient
+	return &http.Client{
+		Transport:     http.DefaultTransport,
+		Timeout:       defaultTimeout,
+		CheckRedirect: preventRedirectCheck,
+	}
 }
 
 // SafeHTTPClientWithTLSConfig returns a http client which has sensible timeouts, won't follow redirects, and if
 // specified a http.Transport with the tls.Config provided.
 func SafeHTTPClientWithTLSConfig(cfg *tls.Config) *http.Client {
 	if cfg == nil {
-		return safeHTTPClient
+		return SafeHTTPClient()
 	}
 	return SafeHTTPClientWithTransport(&http.Transport{
 		TLSClientConfig: cfg,
@@ -53,7 +51,7 @@ func SafeHTTPClientWithTLSConfig(cfg *tls.Config) *http.Client {
 // specified the provided http.Transport.
 func SafeHTTPClientWithTransport(transport *http.Transport) *http.Client {
 	if transport == nil {
-		return safeHTTPClient
+		return SafeHTTPClient()
 	}
 	return &http.Client{
 		Transport: transport,

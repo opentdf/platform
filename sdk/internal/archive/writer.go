@@ -9,9 +9,7 @@ import (
 )
 
 const (
-	defaultBufferSizeKB = 64    // 64KB default buffer size
-	defaultMaxSegments  = 10000 // Reasonable default for max segments
-	bytesPerKB          = 1024  // Conversion factor from KB to bytes
+	defaultMaxSegments = 10000 // Reasonable default for max segments
 )
 
 // Writer is the base interface for all archive writers
@@ -56,7 +54,6 @@ var (
 // Config holds configuration options for writers
 type Config struct {
 	EnableZip64   bool
-	BufferSize    int
 	MaxSegments   int
 	EnableLogging bool
 }
@@ -68,15 +65,6 @@ type Option func(*Config)
 func WithZip64() Option {
 	return func(c *Config) {
 		c.EnableZip64 = true
-	}
-}
-
-// WithBufferSize sets the internal buffer size
-func WithBufferSize(size int) Option {
-	return func(c *Config) {
-		if size > 0 {
-			c.BufferSize = size
-		}
 	}
 }
 
@@ -100,7 +88,6 @@ func WithLogging() Option {
 func defaultConfig() *Config {
 	return &Config{
 		EnableZip64:   false,
-		BufferSize:    defaultBufferSizeKB * bytesPerKB, // Convert KB to bytes
 		MaxSegments:   defaultMaxSegments,
 		EnableLogging: false,
 	}
@@ -117,21 +104,15 @@ func applyOptions(opts []Option) *Config {
 
 // baseWriter provides common functionality for all writer implementations
 type baseWriter struct {
-	closed     bool
-	mu         sync.RWMutex
-	bufferPool *sync.Pool
-	config     *Config
+	closed bool
+	mu     sync.RWMutex
+	config *Config
 }
 
 // newBaseWriter creates a new base writer with the given configuration
 func newBaseWriter(cfg *Config) *baseWriter {
 	return &baseWriter{
 		config: cfg,
-		bufferPool: &sync.Pool{
-			New: func() interface{} {
-				return make([]byte, 0, cfg.BufferSize)
-			},
-		},
 	}
 }
 
@@ -151,21 +132,4 @@ func (bw *baseWriter) checkClosed() error {
 		return ErrWriterClosed
 	}
 	return nil
-}
-
-// getBuffer gets a buffer from the pool
-func (bw *baseWriter) getBuffer() []byte {
-	buf, ok := bw.bufferPool.Get().([]byte)
-	if !ok {
-		// Fallback if type assertion fails
-		return make([]byte, 0, bw.config.BufferSize)
-	}
-	return buf[:0]
-}
-
-// putBuffer returns a buffer to the pool
-func (bw *baseWriter) putBuffer(buf []byte) {
-	if cap(buf) <= bw.config.BufferSize*2 { // Prevent excessive growth
-		bw.bufferPool.Put(buf)
-	}
 }

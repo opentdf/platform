@@ -80,11 +80,7 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 	originalSize := uint64(len(data))
 
 	// Create segment buffer for this segment's output
-	segmentBuf := sw.getBuffer()
-	defer sw.putBuffer(segmentBuf)
-
-	// Use pooled buffer with bytes.Buffer for compatibility with existing header writing
-	buffer := bytes.NewBuffer(segmentBuf)
+	buffer := &bytes.Buffer{}
 
 	// Deterministic behavior: segment 0 gets ZIP header, others get raw data
 	if index == 0 {
@@ -149,10 +145,7 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	// TotalCRC32 is ready when IsComplete() returns true
 
 	// Create finalization buffer
-	finalBuf := sw.getBuffer()
-	defer sw.putBuffer(finalBuf)
-
-	buffer := bytes.NewBuffer(finalBuf)
+	buffer := &bytes.Buffer{}
 
 	// Since segments have already been written and assembled, we need to calculate
 	// the total payload size that will exist when all segments are concatenated.

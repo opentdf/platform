@@ -87,9 +87,12 @@ func (sm *SegmentMetadata) AddSegment(index int, data []byte, originalSize uint6
 	}
 
 	// Store segment for later processing (not contiguous yet)
+	// Copy data to prevent issues if caller reuses the slice
+	dataCopy := make([]byte, len(data))
+	copy(dataCopy, data)
 	sm.Segments[index] = &SegmentEntry{
 		Index:   index,
-		Data:    data,
+		Data:    dataCopy,
 		Size:    originalSize,
 		CRC32:   originalCRC32,
 		Written: time.Now(),

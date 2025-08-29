@@ -105,13 +105,8 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 	sw.payloadEntry.Size += originalSize
 	sw.payloadEntry.CompressedSize += uint64(len(data)) // Encrypted size
 
-	// Don't track totalPayloadBytes here - calculate deterministically during finalization
-
-	// Return the bytes for this segment (copy to avoid buffer reuse issues)
-	result := make([]byte, buffer.Len())
-	copy(result, buffer.Bytes())
-
-	return result, nil
+	// Return the bytes for this segment
+	return buffer.Bytes(), nil
 }
 
 // Finalize completes the TDF creation with manifest and ZIP structures

@@ -104,7 +104,6 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 	// Update payload entry metadata
 	sw.payloadEntry.Size += originalSize
 	sw.payloadEntry.CompressedSize += uint64(len(data)) // Encrypted size
-	sw.payloadEntry.CRC32 = crc32.Update(sw.payloadEntry.CRC32, crc32IEEETable, data)
 
 	// Don't track totalPayloadBytes here - calculate deterministically during finalization
 

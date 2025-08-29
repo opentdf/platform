@@ -18,7 +18,7 @@ const (
 	SystemMetadataSchemaV1 = "system-metadata-v1"
 	// kAssertionSignature is the JWT claim key for assertion signatures
 	kAssertionSignature = "assertionSig"
-	// kAssertionHash is the JWT claim key for assertion hashes  
+	// kAssertionHash is the JWT claim key for assertion hashes
 	kAssertionHash = "assertionHash"
 )
 
@@ -47,7 +47,7 @@ const (
 //		AppliesToState: Unencrypted,
 //		Statement: Statement{
 //			Format: "json",
-//			Schema: "retention-v1", 
+//			Schema: "retention-v1",
 //			Value:  `{"retain_days": 90, "auto_delete": true}`,
 //		},
 //	}
@@ -282,7 +282,7 @@ const (
 	// Encrypted means the assertion should be processed before payload decryption.
 	// Used for access control, audit logging, and pre-processing requirements.
 	Encrypted AppliesToState = "encrypted"
-	// Unencrypted means the assertion should be processed after payload decryption.  
+	// Unencrypted means the assertion should be processed after payload decryption.
 	// Used for content analysis, post-processing, and data handling requirements.
 	Unencrypted AppliesToState = "unencrypted"
 )
@@ -343,8 +343,8 @@ func (a AssertionKeyAlg) String() string {
 //		Alg: AssertionKeyAlgHS256,
 //		Key: dek, // 32-byte AES key
 //	}
-//	
-//	// RSA key for public key scenarios  
+//
+//	// RSA key for public key scenarios
 //	rsaKey := AssertionKey{
 //		Alg: AssertionKeyAlgRS256,
 //		Key: privateKey, // *rsa.PrivateKey

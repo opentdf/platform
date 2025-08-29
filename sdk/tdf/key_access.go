@@ -101,7 +101,7 @@ func createPolicyBinding(symKey []byte, base64PolicyObject string) any {
 
 	// Create policy binding structure
 	binding := PolicyBinding{
-		Alg:  "HS256",
+		Alg:  kPolicyBindingAlg,
 		Hash: string(ocrypto.Base64Encode([]byte(hashHex))),
 	}
 

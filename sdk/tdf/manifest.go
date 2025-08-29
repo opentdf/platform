@@ -9,6 +9,8 @@ import (
 
 const (
 	kGMACPayloadLength = 16
+	kSplitKeyType      = "split"
+	kPolicyBindingAlg  = "HS256"
 )
 
 type RootSignature struct {

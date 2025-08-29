@@ -61,11 +61,11 @@ var (
 //		return err
 //	}
 //	defer writer.Close()
-//	
+//
 //	// Write segments (can be out-of-order)
 //	_, err = writer.WriteSegment(ctx, 1, []byte("second"))
 //	_, err = writer.WriteSegment(ctx, 0, []byte("first"))
-//	
+//
 //	// Finalize with attributes
 //	finalBytes, manifest, err := writer.Finalize(ctx, WithAttributeValues(attrs))
 type Writer struct {
@@ -86,8 +86,8 @@ type Writer struct {
 	maxSegmentIndex int
 
 	// Cryptographic state
-	dek   []byte           // Data Encryption Key (32-byte AES key)  
-	block ocrypto.AesGcm   // AES-GCM cipher for segment encryption
+	dek   []byte         // Data Encryption Key (32-byte AES key)
+	block ocrypto.AesGcm // AES-GCM cipher for segment encryption
 }
 
 // NewWriter creates a new experimental TDF Writer with streaming support.
@@ -114,9 +114,9 @@ type Writer struct {
 //
 //	// Default configuration
 //	writer, err := NewWriter(ctx)
-//	
-//	// Custom integrity algorithms  
-//	writer, err := NewWriter(ctx, 
+//
+//	// Custom integrity algorithms
+//	writer, err := NewWriter(ctx,
 //		WithIntegrityAlgorithm(GMAC),
 //		WithSegmentIntegrityAlgorithm(HS256),
 //	)
@@ -163,17 +163,17 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 //
 // Parameters:
 //   - ctx: Context for cancellation and timeout control
-//   - index: Zero-based segment index (must be non-negative, sparse indices supported)  
+//   - index: Zero-based segment index (must be non-negative, sparse indices supported)
 //   - data: Raw data to encrypt and store in this segment
 //
 // Returns the encrypted segment bytes that should be stored/uploaded, and any error.
 // The returned bytes include ZIP structure elements and can be assembled in any order.
 //
 // The function performs:
-//   1. Input validation (index >= 0, writer not finalized, no duplicate segments)
-//   2. AES-256-GCM encryption of the segment data
-//   3. HMAC signature calculation for integrity verification
-//   4. ZIP archive segment creation through the archive layer
+//  1. Input validation (index >= 0, writer not finalized, no duplicate segments)
+//  2. AES-256-GCM encryption of the segment data
+//  3. HMAC signature calculation for integrity verification
+//  4. ZIP archive segment creation through the archive layer
 //
 // Memory optimization: Uses sparse storage to avoid O(n²) memory growth
 // for high or non-contiguous segment indices.
@@ -191,7 +191,7 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 //	// Write segments out-of-order
 //	segment1, err := writer.WriteSegment(ctx, 1, []byte("second part"))
 //	segment0, err := writer.WriteSegment(ctx, 0, []byte("first part"))
-//	
+//
 //	// Store/upload segment bytes (e.g., to S3)
 //	uploadToS3(segment0, "part-000")
 //	uploadToS3(segment1, "part-001")
@@ -244,13 +244,13 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]by
 // Finalize completes TDF creation and returns the final bytes and manifest.
 //
 // This method must be called after all segments have been written. It performs:
-//   1. Validates all segments are present (no missing indices from 0 to maxSegmentIndex)
-//   2. Generates cryptographic splits for key access controls
-//   3. Builds the TDF policy from provided attributes  
-//   4. Creates cryptographic assertions if specified
-//   5. Calculates root integrity signature over all segment hashes
-//   6. Generates the complete TDF manifest
-//   7. Finalizes the ZIP archive structure
+//  1. Validates all segments are present (no missing indices from 0 to maxSegmentIndex)
+//  2. Generates cryptographic splits for key access controls
+//  3. Builds the TDF policy from provided attributes
+//  4. Creates cryptographic assertions if specified
+//  5. Calculates root integrity signature over all segment hashes
+//  6. Generates the complete TDF manifest
+//  7. Finalizes the ZIP archive structure
 //
 // The finalization process handles:
 //   - Key splitting for attribute-based access controls
@@ -265,7 +265,7 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]by
 //
 // Available options:
 //   - WithAttributeValues: Set attribute-based access controls
-//   - WithEncryptedMetadata: Include encrypted metadata  
+//   - WithEncryptedMetadata: Include encrypted metadata
 //   - WithPayloadMimeType: Specify payload MIME type
 //   - WithAssertions: Add cryptographic assertions
 //   - WithDefaultKAS: Set default Key Access Server
@@ -278,7 +278,7 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]by
 // Error conditions:
 //   - ErrAlreadyFinalized: Finalize already called
 //   - Missing segments: Gaps in segment indices (e.g., segments 0,1,3 written but 2 missing)
-//   - Key splitting failures: Invalid attributes or KAS configuration  
+//   - Key splitting failures: Invalid attributes or KAS configuration
 //   - Manifest generation errors: JSON marshaling failures
 //   - Archive finalization errors: ZIP structure generation failures
 //   - Context cancellation: If ctx.Done() is signaled
@@ -287,7 +287,7 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]by
 //
 //	// Basic finalization
 //	finalBytes, manifest, err := writer.Finalize(ctx)
-//	
+//
 //	// With attributes and metadata
 //	finalBytes, manifest, err := writer.Finalize(ctx,
 //		WithAttributeValues(attrs),
@@ -318,8 +318,8 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 		TDFVersion: TDFSpecVersion,
 		Payload: Payload{
 			MimeType:    cfg.payloadMimeType,
-			Protocol:    "zip",
-			Type:        "reference",
+			Protocol:    tdfAsZip,
+			Type:        tdfZipReference,
 			URL:         archive.TDFPayloadFileName,
 			IsEncrypted: true,
 		},
@@ -339,7 +339,8 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 	}
 
 	encryptInfo := EncryptionInformation{
-		Policy: policyBytes,
+		KeyAccessType: kSplitKeyType,
+		Policy:        policyBytes,
 		Method: Method{
 			Algorithm:    kGCMCipherAlgorithm,
 			IsStreamable: true,

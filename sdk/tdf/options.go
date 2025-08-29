@@ -48,7 +48,7 @@ type WriterConfig struct {
 	BaseConfig
 	// integrityAlgorithm specifies the algorithm for root integrity verification
 	integrityAlgorithm IntegrityAlgorithm
-	// segmentIntegrityAlgorithm specifies the algorithm for segment-level integrity  
+	// segmentIntegrityAlgorithm specifies the algorithm for segment-level integrity
 	segmentIntegrityAlgorithm IntegrityAlgorithm
 }
 
@@ -62,7 +62,7 @@ type ReaderConfig struct {
 //
 // This generic type allows type-safe configuration of different TDF components:
 //   - Option[*WriterConfig] for Writer configuration
-//   - Option[*WriterFinalizeConfig] for Finalize operation configuration  
+//   - Option[*WriterFinalizeConfig] for Finalize operation configuration
 //   - Option[*ReaderConfig] for future Reader configuration
 //
 // Example usage:
@@ -128,24 +128,24 @@ type WriterFinalizeConfig struct {
 	// defaultKas specifies the default Key Access Server for attribute-based access control.
 	// If not provided, the system will attempt to resolve KAS from attributes.
 	defaultKas *policy.SimpleKasKey
-	
+
 	// attributes contains the data attributes that define access policies for this TDF.
 	// Each attribute represents an access requirement (e.g., clearance level, classification).
 	attributes []*policy.Value
-	
+
 	// assertions contains cryptographic assertions providing additional integrity
 	// or handling instructions for the TDF.
 	assertions []AssertionConfig
-	
+
 	// excludeVersionFromManifest controls whether to exclude version information
 	// from the TDF manifest (for compatibility with older readers).
 	excludeVersionFromManifest bool
-	
+
 	// encryptedMetadata contains sensitive metadata encrypted within the TDF.
 	// This metadata is stored in key access objects and only accessible after
 	// successful attribute-based access control validation.
 	encryptedMetadata string
-	
+
 	// payloadMimeType specifies the MIME type of the payload content.
 	// Used by readers to determine appropriate content handling.
 	payloadMimeType string

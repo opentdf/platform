@@ -144,7 +144,7 @@ func BenchmarkStreamingWriter_VariableSegmentSizes(b *testing.B) {
 				for segIdx, size := range tc.sizes {
 					segmentData := make([]byte, size)
 					for j := range segmentData {
-						segmentData[j] = byte((segIdx*j) % 256)
+						segmentData[j] = byte((segIdx * j) % 256)
 					}
 
 					_, err := writer.WriteSegment(context.Background(), segIdx, segmentData)
@@ -224,7 +224,7 @@ func BenchmarkStreamingWriter_AttributeFetching(b *testing.B) {
 			// Create test attributes
 			attributes := make([]string, tc.attributeCount)
 			for i := 0; i < tc.attributeCount; i++ {
-				attributes = append(attributes, "https://example.com/attr/test/value/"+string(rune('A'+i)))
+				attributes[i] = "https://example.com/attr/test/value/" + string(rune('A'+i))
 			}
 
 			b.ResetTimer()
@@ -252,4 +252,3 @@ func BenchmarkStreamingWriter_AttributeFetching(b *testing.B) {
 		})
 	}
 }
-

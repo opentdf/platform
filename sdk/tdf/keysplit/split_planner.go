@@ -1,17 +1,12 @@
 package keysplit
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"sort"
 
+	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/policy"
-)
-
-const (
-	splitIDByteLength = 8 // Length of random bytes for split ID generation
 )
 
 // createSplitPlan applies boolean logic and attribute rules to determine split assignments
@@ -264,11 +259,5 @@ func createDefaultSplitPlan(defaultKAS string) []SplitAssignment {
 
 // generateSplitID creates a unique identifier for a split
 func generateSplitID() string {
-	// Generate a random 8-byte ID
-	bytes := make([]byte, splitIDByteLength)
-	if _, err := rand.Read(bytes); err != nil {
-		// Fallback to a simple counter if random fails
-		return fmt.Sprintf("split_%d", len(bytes))
-	}
-	return hex.EncodeToString(bytes)
+	return uuid.New().String()
 }

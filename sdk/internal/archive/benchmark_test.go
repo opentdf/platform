@@ -27,7 +27,7 @@ func BenchmarkSegmentWriter_CRC32ContiguousProcessing(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			// Generate write order based on pattern
 			writeOrder := generateWriteOrder(tc.segmentCount, tc.writeOrder)
-			
+
 			b.ResetTimer()
 			b.ReportAllocs()
 
@@ -88,7 +88,7 @@ func BenchmarkSegmentWriter_VariableSegmentSizes(b *testing.B) {
 				for segIdx, size := range tc.sizes {
 					segmentData := make([]byte, size)
 					for j := range segmentData {
-						segmentData[j] = byte((segIdx*j) % 256)
+						segmentData[j] = byte((segIdx * j) % 256)
 					}
 
 					_, err := writer.WriteSegment(ctx, segIdx, segmentData)
@@ -110,7 +110,7 @@ func BenchmarkSegmentWriter_VariableSegmentSizes(b *testing.B) {
 	}
 }
 
-// BenchmarkSegmentWriter_MemoryPressure tests memory usage under various scenarios  
+// BenchmarkSegmentWriter_MemoryPressure tests memory usage under various scenarios
 func BenchmarkSegmentWriter_MemoryPressure(b *testing.B) {
 	testCases := []struct {
 		name         string
@@ -141,7 +141,7 @@ func BenchmarkSegmentWriter_MemoryPressure(b *testing.B) {
 				// Write segments with focus on memory allocation patterns
 				for orderIdx, segIdx := range writeOrder {
 					var segmentData []byte
-					
+
 					if tc.segmentSize == 0 { // Mixed sizes mode
 						size := 512 + (segIdx%8)*512 // Sizes from 512 to 4096
 						segmentData = make([]byte, size)
@@ -151,7 +151,7 @@ func BenchmarkSegmentWriter_MemoryPressure(b *testing.B) {
 
 					// Fill with deterministic test data
 					for j := range segmentData {
-						segmentData[j] = byte((orderIdx*j) % 256)
+						segmentData[j] = byte((orderIdx * j) % 256)
 					}
 
 					_, err := writer.WriteSegment(ctx, segIdx, segmentData)
@@ -232,7 +232,7 @@ func BenchmarkSegmentWriter_ZIPGeneration(b *testing.B) {
 // generateWriteOrder creates segment write orders for different test patterns
 func generateWriteOrder(count int, pattern string) []int {
 	order := make([]int, count)
-	
+
 	switch pattern {
 	case "sequential":
 		for i := 0; i < count; i++ {
@@ -252,7 +252,7 @@ func generateWriteOrder(count int, pattern string) []int {
 				idx++
 			}
 		}
-		// Second pass: odd indices  
+		// Second pass: odd indices
 		for i := 1; i < count; i += 2 {
 			if idx < count {
 				order[idx] = i
@@ -266,7 +266,7 @@ func generateWriteOrder(count int, pattern string) []int {
 		order[0] = mid
 		left, right := mid-1, mid+1
 		idx := 1
-		
+
 		// Alternate left and right from middle
 		for left >= 0 || right < count {
 			if left >= 0 && idx < count {
@@ -308,6 +308,6 @@ func generateWriteOrder(count int, pattern string) []int {
 			order[i] = i
 		}
 	}
-	
+
 	return order
 }

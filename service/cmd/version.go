@@ -2,7 +2,7 @@ package cmd
 
 import "github.com/spf13/cobra"
 
-const Version = "0.8.0" // Service Version // x-release-please-version
+const Version = "0.9.0" // Service Version // x-release-please-version
 
 func init() {
 	rootCmd.AddCommand(&cobra.Command{

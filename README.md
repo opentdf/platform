@@ -64,54 +64,7 @@ for more information.
 
 ### Quick Start
 
-<!-- START copy ./service/README.md#quick-start -->
-
-> [!WARNING]
-> This quickstart guide is intended for development and testing purposes only. The OpenTDF platform team does not
-> provide recommendations for production deployments.
-
-To get started with the OpenTDF platform make sure you are running the same Go version found in the `go.mod` file.
-
-<!-- markdownlint-disable MD034 github embedded sourcecode -->
-https://github.com/opentdf/platform/blob/main/service/go.mod#L3
-
-Generate development keys/certs for the platform infrastructure.
-
-> **Note for Apple M4 chip users:**  
-> If you are running on an Apple M4 chip, set the Java environment variable before running any commands:
-> ```sh
-> export JAVA_OPTS_APPEND="-XX:UseSVE=0"
-> ```
-> This resolves SIGILL with Code 134 errors when running Java processes.
-
-```sh
-./.github/scripts/init-temp-keys.sh
-```
-
-Start the required infrastructure with [compose-spec](https://compose-spec.io).
-
-```sh
-docker compose up
-```
-
-Copy the development configuration file from the example and update it with your own values (if necessary, not common).
-
-```sh
-cp opentdf-dev.yaml opentdf.yaml
-```
-
-Provision keycloak with the default configuration.
-
-```sh
-go run ./service provision keycloak
-```
-
-Run the OpenTDF platform service.
-
-```sh
-go run ./service start
-```
-<!-- END copy ./service/README#quick-start -->
+Consumers of the OpenTDF platform: [Running the Platform Locally](./docs/Consuming.md).
 
 ### Multi-Strategy Entity Resolution Service
 

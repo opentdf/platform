@@ -272,15 +272,15 @@ func (c SDKConfig) LogValue() slog.Value {
 func LoadConfig(ctx context.Context, key, file string) (*Config, error) {
 	envLoader, err := NewEnvironmentValueLoader(key, nil)
 	if err != nil {
-		panic(fmt.Errorf("could not load config: %w", err))
+		return nil, fmt.Errorf("could not load config: %w", err)
 	}
 	configFileLoader, err := NewConfigFileLoader(key, file)
 	if err != nil {
-		panic(fmt.Errorf("could not load config: %w", err))
+		return nil, fmt.Errorf("could not load config: %w", err)
 	}
 	defaultSettingsLoader, err := NewDefaultSettingsLoader()
 	if err != nil {
-		panic(fmt.Errorf("could not load config: %w", err))
+		return nil, fmt.Errorf("could not load config: %w", err)
 	}
 	return Load(
 		ctx,

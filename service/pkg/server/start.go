@@ -55,6 +55,11 @@ func Start(f ...StartOptions) error {
 		}
 	}
 
+	additionalLoaderMap := make(map[string]config.Loader, len(startConfig.configLoaders))
+	for _, loader := range startConfig.configLoaders {
+		additionalLoaderMap[loader.Name()] = loader
+	}
+
 	loaders := make([]config.Loader, len(loaderOrder))
 
 	for idx, loaderName := range loaderOrder {
@@ -77,15 +82,11 @@ func Start(f ...StartOptions) error {
 				return err
 			}
 		default:
-			for _, additionalLoader := range startConfig.configLoaders {
-				if additionalLoader.Name() == loaderName {
-					loader = additionalLoader
-					break
-				}
+			mappedLoader, ok := additionalLoaderMap[loaderName]
+			if !ok {
+				return fmt.Errorf("loader not found: %s", loaderName)
 			}
-		}
-		if loader == nil {
-			return fmt.Errorf("loader not found: %s", loaderName)
+			loader = mappedLoader
 		}
 		loaders[idx] = loader
 	}

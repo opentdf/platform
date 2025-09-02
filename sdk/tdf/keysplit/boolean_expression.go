@@ -18,7 +18,7 @@ const (
 )
 
 // Package-level regex for performance - compiled once and reused
-var attributeFQNRegex = regexp.MustCompile(`^(https?://[\w./-]+)/attr/([^/\s]*)/value/([^/\s]*)$`)
+var attributeFQNRegex = regexp.MustCompile(`^(https?://[\w.:/-]+)/attr/([^/\s]*)/value/([^/\s]*)$`)
 
 // buildBooleanExpression groups attribute values by their definition and creates clauses
 func buildBooleanExpression(values []*policy.Value) (*BooleanExpression, error) {

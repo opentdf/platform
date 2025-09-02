@@ -30,7 +30,7 @@ func TestKeySplittingIntegration(t *testing.T) {
 		{
 			name: "single attribute with grant",
 			policy: []*policy.Value{
-				createMockValue("https://virtru.com/attr/Classification/value/Secret", kasUk, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY),
+				createMockValue("https://example.com/attr/Department/value/Engineering", kasUk, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY),
 			},
 			defaultKAS:        &policy.SimpleKasKey{KasUri: kasUs},
 			expectedSplits:    1,
@@ -40,8 +40,8 @@ func TestKeySplittingIntegration(t *testing.T) {
 		{
 			name: "multiple attributes with anyOf rule",
 			policy: []*policy.Value{
-				createMockValue("https://virtru.com/attr/Releasable/value/GBR", kasUk, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
-				createMockValue("https://virtru.com/attr/Releasable/value/USA", kasUs, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
+				createMockValue("https://example.com/attr/Region/value/Europe", kasUk, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
+				createMockValue("https://example.com/attr/Region/value/Americas", kasUs, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
 			},
 			defaultKAS:     &policy.SimpleKasKey{KasUri: kasUs},
 			expectedSplits: 1, // anyOf means they share a split
@@ -52,8 +52,8 @@ func TestKeySplittingIntegration(t *testing.T) {
 		{
 			name: "multiple attributes with allOf rule",
 			policy: []*policy.Value{
-				createMockValue("https://virtru.com/attr/NeedToKnow/value/HCS", kasUsHCS, "r2", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF),
-				createMockValue("https://virtru.com/attr/NeedToKnow/value/SI", kasUsSA, "r2", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF),
+				createMockValue("https://example.com/attr/Project/value/Alpha", kasUsHCS, "r2", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF),
+				createMockValue("https://example.com/attr/Project/value/Beta", kasUsSA, "r2", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF),
 			},
 			defaultKAS:        &policy.SimpleKasKey{KasUri: kasUs},
 			expectedSplits:    2, // allOf means each gets its own split
@@ -63,8 +63,8 @@ func TestKeySplittingIntegration(t *testing.T) {
 		{
 			name: "mixed rules - hierarchy and anyOf",
 			policy: []*policy.Value{
-				createMockValue("https://virtru.com/attr/Classification/value/Secret", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY), // uses default
-				createMockValue("https://virtru.com/attr/Releasable/value/CAN", kasCa, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
+				createMockValue("https://example.com/attr/Level/value/Manager", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY), // uses default
+				createMockValue("https://example.com/attr/Office/value/Toronto", kasCa, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
 			},
 			defaultKAS:        &policy.SimpleKasKey{KasUri: kasUs},
 			expectedSplits:    1,               // Should merge based on boolean logic
@@ -234,14 +234,14 @@ func TestKeySplittingComplexPolicies(t *testing.T) {
 
 		// Create complex policy with multiple rules
 		policy := []*policy.Value{
-			// Classification (hierarchy) - uses default
-			createMockValue("https://virtru.com/attr/Classification/value/Secret", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY),
-			// Releasable (anyOf) - multiple countries
-			createMockValue("https://virtru.com/attr/Releasable/value/GBR", kasUk, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
-			createMockValue("https://virtru.com/attr/Releasable/value/USA", kasUs, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
-			// Need to Know (allOf) - compartments
-			createMockValue("https://virtru.com/attr/NeedToKnow/value/HCS", kasUsHCS, "r2", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF),
-			createMockValue("https://virtru.com/attr/NeedToKnow/value/SI", kasUsSA, "r2", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF),
+			// Level (hierarchy) - uses default
+			createMockValue("https://example.com/attr/Level/value/Senior", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_HIERARCHY),
+			// Region (anyOf) - multiple regions
+			createMockValue("https://example.com/attr/Region/value/Europe", kasUk, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
+			createMockValue("https://example.com/attr/Region/value/Americas", kasUs, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
+			// Project (allOf) - project access
+			createMockValue("https://example.com/attr/Project/value/Alpha", kasUsHCS, "r2", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF),
+			createMockValue("https://example.com/attr/Project/value/Beta", kasUsSA, "r2", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF),
 		}
 
 		result, err := splitter.GenerateSplits(t.Context(), policy, dek)
@@ -260,7 +260,7 @@ func TestKeySplittingComplexPolicies(t *testing.T) {
 		}
 		assert.Equal(t, dek, reconstructed, "XOR reconstruction should work for complex policies")
 
-		// Verify that compartment KAS are present
+		// Verify that project KAS are present
 		kasInSplits := make(map[string]bool)
 		for _, split := range result.Splits {
 			for _, kasURL := range split.KASURLs {
@@ -268,7 +268,7 @@ func TestKeySplittingComplexPolicies(t *testing.T) {
 			}
 		}
 
-		assert.True(t, kasInSplits[kasUsHCS] || kasInSplits[kasUsSA], "Compartment KAS should be present")
+		assert.True(t, kasInSplits[kasUsHCS] || kasInSplits[kasUsSA], "Project KAS should be present")
 	})
 
 	t.Run("key mapping specificity", func(t *testing.T) {
@@ -282,7 +282,7 @@ func TestKeySplittingComplexPolicies(t *testing.T) {
 		policy := []*policy.Value{
 			// Value with specific key mapping
 			func() *policy.Value {
-				v := createMockValue("https://virtru.com/attr/mapped/value/a", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
+				v := createMockValue("https://example.com/attr/Team/value/DevOps", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 				v.KasKeys = []*policy.SimpleKasKey{
 					{
 						KasUri: evenMoreSpecificKas,
@@ -297,7 +297,7 @@ func TestKeySplittingComplexPolicies(t *testing.T) {
 			}(),
 			// Value using attribute-level mapping
 			func() *policy.Value {
-				v := createMockValue("https://virtru.com/attr/mapped/value/unspecified", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
+				v := createMockValue("https://example.com/attr/Team/value/Support", "", "", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)
 				v.Attribute.Grants = []*policy.KeyAccessServer{
 					{Uri: specifiedKas},
 				}

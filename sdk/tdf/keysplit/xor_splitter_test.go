@@ -46,7 +46,7 @@ awIDAQAB
 
 func createMockValue(fqn, grantKas, kid string, rule policy.AttributeRuleTypeEnum) *policy.Value {
 	// Extract attribute definition FQN from value FQN
-	// https://virtru.com/attr/Releasable/value/GBR -> https://virtru.com/attr/Releasable
+	// https://example.com/attr/Region/value/Europe -> https://example.com/attr/Region
 	parts := strings.Split(fqn, "/value/")
 	if len(parts) != 2 {
 		panic("Invalid FQN format: " + fqn)
@@ -159,13 +159,7 @@ func TestXORSplitter_GenerateSplits_BasicCases(t *testing.T) {
 
 			// Verify XOR reconstruction
 			if len(result.Splits) > 1 {
-				reconstructed := make([]byte, len(tt.dek))
-				for _, split := range result.Splits {
-					for i, b := range split.Data {
-						reconstructed[i] ^= b
-					}
-				}
-				assert.Equal(t, tt.dek, reconstructed, "XOR reconstruction should match original DEK")
+				verifyXORReconstruction(t, tt.dek, result.Splits)
 			}
 		})
 	}
@@ -319,13 +313,7 @@ func TestXORSplitter_AttributeRules(t *testing.T) {
 
 			// Verify XOR reconstruction works
 			if len(result.Splits) > 1 {
-				reconstructed := make([]byte, len(dek))
-				for _, split := range result.Splits {
-					for i, b := range split.Data {
-						reconstructed[i] ^= b
-					}
-				}
-				assert.Equal(t, dek, reconstructed, "XOR reconstruction should match original DEK")
+				verifyXORReconstruction(t, dek, result.Splits)
 			}
 		})
 	}
@@ -402,6 +390,85 @@ func TestXORSplitter_ErrorHandling(t *testing.T) {
 	}
 }
 
+// verifyXORReconstruction is a shared helper to verify XOR reconstruction works
+func verifyXORReconstruction(t *testing.T, originalDEK []byte, splits []Split) {
+	t.Helper()
+
+	if len(splits) == 1 {
+		assert.Equal(t, originalDEK, splits[0].Data, "Single split should contain original DEK")
+		return
+	}
+
+	reconstructed := make([]byte, len(originalDEK))
+	for _, split := range splits {
+		for i, b := range split.Data {
+			reconstructed[i] ^= b
+		}
+	}
+	assert.Equal(t, originalDEK, reconstructed, "XOR reconstruction should match original DEK")
+}
+
+func TestXORSplitter_ConfigurationOptions(t *testing.T) {
+	t.Run("WithDefaultKAS option", func(t *testing.T) {
+		defaultKAS := &policy.SimpleKasKey{
+			KasUri: kasUs,
+			PublicKey: &policy.SimpleKasPublicKey{
+				Kid:       "default-key",
+				Pem:       mockRSAPublicKey1,
+				Algorithm: policy.Algorithm_ALGORITHM_RSA_2048,
+			},
+		}
+
+		splitter := NewXORSplitter(WithDefaultKAS(defaultKAS))
+
+		dek := make([]byte, 32)
+		_, err := rand.Read(dek)
+		require.NoError(t, err)
+
+		// Test with empty attributes (should use default KAS)
+		result, err := splitter.GenerateSplits(t.Context(), []*policy.Value{}, dek)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		assert.Len(t, result.Splits, 1, "Empty attributes should use default KAS")
+		assert.Contains(t, result.Splits[0].KASURLs, kasUs, "Should use configured default KAS")
+		assert.Contains(t, result.KASPublicKeys, kasUs, "Should include default KAS public key")
+
+		pubKey := result.KASPublicKeys[kasUs]
+		assert.Equal(t, kasUs, pubKey.URL)
+		assert.Equal(t, "default-key", pubKey.KID)
+		assert.Equal(t, mockRSAPublicKey1, pubKey.PEM)
+	})
+
+	t.Run("split ID generation", func(t *testing.T) {
+		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
+
+		dek := make([]byte, 32)
+		_, err := rand.Read(dek)
+		require.NoError(t, err)
+
+		result, err := splitter.GenerateSplits(t.Context(), []*policy.Value{}, dek)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		assert.Len(t, result.Splits, 1)
+		assert.NotEmpty(t, result.Splits[0].ID, "Split should have a non-empty ID")
+	})
+
+	t.Run("no options - minimal configuration", func(t *testing.T) {
+		splitter := NewXORSplitter()
+
+		dek := make([]byte, 32)
+		_, err := rand.Read(dek)
+		require.NoError(t, err)
+
+		// Should error with empty attributes and no default KAS
+		_, err = splitter.GenerateSplits(t.Context(), []*policy.Value{}, dek)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no default KAS")
+	})
+}
+
 func TestXORSplitter_ComplexScenarios(t *testing.T) {
 	t.Run("multiple attributes with different KAS", func(t *testing.T) {
 		splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
@@ -410,9 +477,9 @@ func TestXORSplitter_ComplexScenarios(t *testing.T) {
 		require.NoError(t, err)
 
 		attrs := []*policy.Value{
-			createMockValue("https://test.com/attr/clearance/value/secret", kasUs, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
-			createMockValue("https://test.com/attr/releasable/value/gbr", kasUk, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
-			createMockValue("https://test.com/attr/compartment/value/hcs", kasUsHCS, "r2", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF),
+			createMockValue("https://test.com/attr/level/value/manager", kasUs, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
+			createMockValue("https://test.com/attr/region/value/europe", kasUk, "r1", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF),
+			createMockValue("https://test.com/attr/project/value/alpha", kasUsHCS, "r2", policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF),
 		}
 
 		result, err := splitter.GenerateSplits(t.Context(), attrs, dek)
@@ -423,13 +490,7 @@ func TestXORSplitter_ComplexScenarios(t *testing.T) {
 		assert.Greater(t, len(result.Splits), 1, "Should have multiple splits for different KAS")
 
 		// Verify XOR reconstruction
-		reconstructed := make([]byte, len(dek))
-		for _, split := range result.Splits {
-			for i, b := range split.Data {
-				reconstructed[i] ^= b
-			}
-		}
-		assert.Equal(t, dek, reconstructed, "XOR reconstruction should match original DEK")
+		verifyXORReconstruction(t, dek, result.Splits)
 	})
 
 	t.Run("attribute with multiple KAS in grants", func(t *testing.T) {

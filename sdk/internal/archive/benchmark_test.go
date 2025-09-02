@@ -5,7 +5,21 @@ import (
 	"testing"
 )
 
-// BenchmarkSegmentWriter_CRC32ContiguousProcessing tests CRC32 processing performance
+// BenchmarkSegmentWriter_CRC32ContiguousProcessing benchmarks CRC32 processing performance under different segment write ordering patterns.
+//
+// This benchmark tests the contiguous processing optimization where segments written in order (0,1,2...)
+// can be processed immediately with incremental CRC32 calculation, while out-of-order segments must be
+// buffered in memory until they become contiguous. The test measures both CRC32 calculation efficiency
+// and memory pressure from buffering non-contiguous segments.
+//
+// Test patterns:
+//   - sequential: Optimal case where segments arrive in order (enables immediate processing)
+//   - reverse: Worst case where all segments must be buffered until the end
+//   - random: Pseudo-random order using deterministic pattern for reproducible results
+//   - interleaved: Moderate out-of-order (even indices first, then odd)
+//   - worst_case: Middle-out pattern that maximizes memory buffering requirements
+//
+// Measures: CRC32 calculation speed, memory allocation patterns, contiguous processing effectiveness
 func BenchmarkSegmentWriter_CRC32ContiguousProcessing(b *testing.B) {
 	testCases := []struct {
 		name         string
@@ -62,7 +76,21 @@ func BenchmarkSegmentWriter_CRC32ContiguousProcessing(b *testing.B) {
 	}
 }
 
-// BenchmarkSegmentWriter_VariableSegmentSizes tests performance with variable segment sizes
+// BenchmarkSegmentWriter_VariableSegmentSizes benchmarks performance impact of variable segment sizes
+// on memory allocation and CRC32 processing efficiency.
+//
+// This benchmark tests how the segment writer handles dynamic memory allocation when segments have
+// unpredictable sizes. Variable sizes can impact both memory allocation patterns and CRC32 processing
+// efficiency, as larger segments require more memory and processing time.
+//
+// Test patterns:
+//   - uniform_1KB: Baseline with consistent 1KB segments for comparison
+//   - doubling: Exponentially increasing sizes (512B → 8KB) to test scaling
+//   - extreme_variance: Mixed small/large segments to stress memory allocator
+//   - fibonacci_like: Fibonacci-inspired progression for gradual size increases
+//   - large_mixed: Various large segments to test high memory usage patterns
+//
+// Measures: Memory allocation efficiency, CRC32 processing with varying data volumes, GC impact
 func BenchmarkSegmentWriter_VariableSegmentSizes(b *testing.B) {
 	testCases := []struct {
 		name  string
@@ -110,7 +138,25 @@ func BenchmarkSegmentWriter_VariableSegmentSizes(b *testing.B) {
 	}
 }
 
-// BenchmarkSegmentWriter_MemoryPressure tests memory usage under various scenarios
+// BenchmarkSegmentWriter_MemoryPressure benchmarks memory allocation patterns and buffering efficiency
+// under various segment count and size combinations.
+//
+// This benchmark specifically targets memory allocation behavior to identify potential memory leaks,
+// inefficient buffering strategies, and garbage collection impact. It uses WithMaxSegments(count*2)
+// to allow extra buffering capacity and tests different buffer policies.
+//
+// Test scenarios:
+//   - small_segments: High segment count (1000) with minimal individual memory (512B each)
+//   - large_segments: Fewer segments (100) with larger memory footprint (8KB each)
+//   - mixed_sizes: Dynamic sizes from 512B to 4KB based on segment index modulo
+//
+// Write patterns test memory behavior:
+//   - sequential: Minimal buffering, immediate processing and cleanup
+//   - reverse: Maximum buffering until all segments received
+//   - interleaved: Moderate buffering with periodic cleanup opportunities
+//   - worst_case: Scattered pattern maximizing memory retention
+//
+// Measures: Peak memory usage, allocation patterns, buffer cleanup efficiency, GC pressure
 func BenchmarkSegmentWriter_MemoryPressure(b *testing.B) {
 	testCases := []struct {
 		name         string
@@ -173,7 +219,25 @@ func BenchmarkSegmentWriter_MemoryPressure(b *testing.B) {
 	}
 }
 
-// BenchmarkSegmentWriter_ZIPGeneration tests ZIP structure generation performance
+// BenchmarkSegmentWriter_ZIPGeneration benchmarks ZIP archive structure generation performance,
+// focusing on the finalization process where the complete ZIP structure is assembled.
+//
+// This benchmark measures the overhead of generating ZIP format structures including local file headers,
+// central directory records, and data descriptors. It compares ZIP32 vs ZIP64 performance and tests
+// the final assembly process during Finalize() calls.
+//
+// Test scenarios:
+//   - zip32_small/large: Standard ZIP format (supports files <4GB) with varying segment counts
+//   - zip64_small/large: ZIP64 format (handles >4GB files) with extended headers
+//   - zip64_huge_segments: Large 64KB segments that require ZIP64 format
+//
+// The benchmark focuses on finalization overhead including:
+//   - Data descriptor generation for streaming entries
+//   - Central directory assembly with file metadata
+//   - ZIP64 extended information extra fields when needed
+//   - Final ZIP structure validation and writing
+//
+// Measures: ZIP structure generation speed, ZIP32 vs ZIP64 overhead, finalization efficiency
 func BenchmarkSegmentWriter_ZIPGeneration(b *testing.B) {
 	testCases := []struct {
 		name         string
@@ -229,7 +293,22 @@ func BenchmarkSegmentWriter_ZIPGeneration(b *testing.B) {
 	}
 }
 
-// generateWriteOrder creates segment write orders for different test patterns
+// generateWriteOrder creates deterministic segment write orders for consistent benchmark testing.
+//
+// This function generates various write patterns to test different aspects of the segment writer's
+// performance characteristics. All patterns are deterministic to ensure reproducible benchmark results.
+//
+// Supported patterns:
+//   - "sequential": Natural order (0,1,2,3...) - enables optimal contiguous processing
+//   - "reverse": Backward order (...3,2,1,0) - worst case requiring full buffering
+//   - "interleaved": Even indices first (0,2,4...), then odd (1,3,5...) - moderate out-of-order
+//   - "worst_case": Middle-out pattern starting from center, alternating left/right - maximizes buffering
+//   - "random"/"mixed": Pseudo-random using modular arithmetic (i*17+7)%count for deterministic chaos
+//
+// The patterns are designed to stress different aspects:
+//   - Memory usage (how many segments must be buffered)
+//   - Processing efficiency (how often contiguous processing can occur)
+//   - Cache locality (how segments are accessed in memory)
 func generateWriteOrder(count int, pattern string) []int {
 	order := make([]int, count)
 

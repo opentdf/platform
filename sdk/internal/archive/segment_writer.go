@@ -155,8 +155,6 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	// Total payload size = header + all data (no data descriptor in this calculation)
 	totalPayloadSize := headerSize + sw.payloadEntry.CompressedSize
 
-	// Remove debug output
-
 	// 1. Write data descriptor for payload
 	if err := sw.writeDataDescriptor(buffer); err != nil {
 		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
@@ -204,23 +202,16 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	return result, nil
 }
 
-// CleanupSegment clears unprocessed segment data from memory after it's been uploaded
-// With the new contiguous processing approach, most segments are automatically cleaned
-// up as they're processed. Only unprocessed (non-contiguous) segments remain in memory.
+// CleanupSegment clears unprocessed segment data from memory after it's been uploaded.
+// With contiguous processing, most segments are automatically cleaned up as they're processed.
+// Only unprocessed (non-contiguous) segments remain in memory and can be cleaned with this method.
+// Safe to call on any segment index - no-op if segment was already processed or doesn't exist.
 func (sw *segmentWriter) CleanupSegment(index int) error {
 	sw.mu.Lock()
 	defer sw.mu.Unlock()
 
-	// Check if segment is still unprocessed (stored in Segments map)
-	if _, exists := sw.metadata.Segments[index]; exists {
-		// Clear the data to free memory and remove from map
-		// Note: This means the segment cannot be processed later for contiguous chunks
-		// Only call CleanupSegment if you're sure you won't need this segment again
-		delete(sw.metadata.Segments, index)
-	}
-
-	// If segment was already processed (not in Segments map), no action needed
-	// Processed segments are automatically cleaned up during contiguous processing
+	// Remove segment from unprocessed map (no-op if already processed or not found)
+	delete(sw.metadata.Segments, index)
 
 	return nil
 }

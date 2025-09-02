@@ -25,7 +25,6 @@ type SplitterOption func(*splitterConfig)
 // splitterConfig holds configuration for the splitter
 type splitterConfig struct {
 	defaultKAS *policy.SimpleKasKey // Default KAS with full key information
-	splitIDGen func() string        // Function to generate split IDs
 }
 
 // WithDefaultKAS sets the default KAS with complete key information
@@ -35,12 +34,6 @@ func WithDefaultKAS(kas *policy.SimpleKasKey) SplitterOption {
 	}
 }
 
-// WithSplitIDGenerator sets a custom split ID generator
-func WithSplitIDGenerator(gen func() string) SplitterOption {
-	return func(c *splitterConfig) {
-		c.splitIDGen = gen
-	}
-}
 
 // XORSplitter implements XOR-based secret sharing for key splitting
 type XORSplitter struct {
@@ -49,9 +42,7 @@ type XORSplitter struct {
 
 // NewXORSplitter creates a new XOR-based key splitter
 func NewXORSplitter(opts ...SplitterOption) *XORSplitter {
-	cfg := splitterConfig{
-		splitIDGen: generateSplitID, // Use the default from split_planner.go
-	}
+	cfg := splitterConfig{}
 
 	for _, opt := range opts {
 		opt(&cfg)

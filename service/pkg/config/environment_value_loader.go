@@ -85,8 +85,9 @@ func (l *EnvironmentValueLoader) Watch(ctx context.Context, _ *Config, onChange 
 				currentEnvViper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 				currentEnvViper.AutomaticEnv()
 
-				changed := len(currentEnvViper.AllKeys()) != len(l.viper.AllKeys())
-				if changed == false && l.allowListMap != nil {
+				changed := false
+				if l.allowListMap != nil {
+					// If there's an allow list, only check those keys for changes.
 					for key := range l.allowListMap {
 						oldValue := l.viper.Get(key)
 						newValue := currentEnvViper.Get(key)
@@ -98,6 +99,12 @@ func (l *EnvironmentValueLoader) Watch(ctx context.Context, _ *Config, onChange 
 							changed = true
 							break
 						}
+					}
+				} else {
+					// No allow list, compare all settings.
+					if !reflect.DeepEqual(l.viper.AllSettings(), currentEnvViper.AllSettings()) {
+						slog.DebugContext(ctx, "environment config change detected: settings map differs")
+						changed = true
 					}
 				}
 

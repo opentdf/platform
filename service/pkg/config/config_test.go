@@ -237,10 +237,11 @@ func TestLoadConfig_NoFileExistsInEnv(t *testing.T) {
 	require.NoError(t, err)
 	configFileLoader, err := NewConfigFileLoader("test", "non-existent-file")
 	require.NoError(t, err)
-	_, err = LoadConfig(ctx, []Loader{
+	_, err = Load(
+		ctx,
 		envLoader,
 		configFileLoader,
-	})
+	)
 	assert.Error(t, err)
 }
 
@@ -282,10 +283,11 @@ server:
 	require.NoError(t, err)
 	configFileLoader, err := NewConfigFileLoader("test", tempFile.Name())
 	require.NoError(t, err)
-	config, err := LoadConfig(ctx, []Loader{
+	config, err := Load(
+		ctx,
 		envLoader,
 		configFileLoader,
-	})
+	)
 
 	// Assertions
 	require.NoError(t, err)

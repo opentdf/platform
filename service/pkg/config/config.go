@@ -218,7 +218,7 @@ func (c *Config) Reload(ctx context.Context) error {
 				}
 				loaderValue, err := loader.Get(key)
 				if err != nil {
-					slog.DebugContext(
+					slog.WarnContext(
 						ctx,
 						"loader.Get failed for a reported key",
 						slog.String("loader", loader.Name()),
@@ -268,8 +268,30 @@ func (c SDKConfig) LogValue() slog.Value {
 	)
 }
 
-// LoadConfig loads configuration using the provided loader or creates a default Viper loader
-func LoadConfig(ctx context.Context, loaders []Loader) (*Config, error) {
+// Deprecated: Use the `Load` method with your preferred loaders
+func LoadConfig(ctx context.Context, key, file string) (*Config, error) {
+	envLoader, err := NewEnvironmentValueLoader(key, nil)
+	if err != nil {
+		panic(fmt.Errorf("could not load config: %w", err))
+	}
+	configFileLoader, err := NewConfigFileLoader(key, file)
+	if err != nil {
+		panic(fmt.Errorf("could not load config: %w", err))
+	}
+	defaultSettingsLoader, err := NewDefaultSettingsLoader()
+	if err != nil {
+		panic(fmt.Errorf("could not load config: %w", err))
+	}
+	return Load(
+		ctx,
+		envLoader,
+		configFileLoader,
+		defaultSettingsLoader,
+	)
+}
+
+// Load loads configuration using the provided loaders
+func Load(ctx context.Context, loaders ...Loader) (*Config, error) {
 	config := &Config{
 		loaders:   loaders,
 		reloadMux: &sync.Mutex{},

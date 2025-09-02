@@ -47,11 +47,12 @@ var (
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}
-			cfg, err := config.LoadConfig(cmd.Context(), []config.Loader{
+			cfg, err := config.Load(
+				cmd.Context(),
 				envLoader,
 				configFileLoader,
 				defaultSettingsLoader,
-			})
+			)
 			if err != nil {
 				panic(fmt.Errorf("could not load config: %w", err))
 			}

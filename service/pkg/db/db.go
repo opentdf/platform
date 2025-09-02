@@ -70,22 +70,22 @@ type PgxIface interface {
 // PoolConfig holds all connection pool related configuration
 type PoolConfig struct {
 	// Maximum amount of connections to keep in the pool.
-	MaxConns int32 `mapstructure:"maxConnectionsCount" json:"maxConnectionsCount" default:"4"`
+	MaxConns int32 `mapstructure:"max_connection_count" json:"maxConnectionsCount" default:"4"`
 
 	// Minimum amount of connections to keep in the pool.
-	MinConns int32 `mapstructure:"minConnectionsCount" json:"minConnectionsCount" default:"0"`
+	MinConns int32 `mapstructure:"min_connection_count" json:"minConnectionsCount" default:"0"`
 
 	// Minimum amount of idle connections to keep in the pool.
-	MinIdleConns int32 `mapstructure:"minIdleConnectionsCount" json:"minIdleConnectionsCount" default:"0"`
+	MinIdleConns int32 `mapstructure:"min_idle_connections_count" json:"minIdleConnectionsCount" default:"0"`
 
 	// Maximum amount of time a connection may be reused, in seconds. Default: 3600 seconds (1 hour).
-	MaxConnLifetime int `mapstructure:"maxConnectionLifetimeSeconds" json:"maxConnectionLifetimeSeconds" default:"3600"`
+	MaxConnLifetime int `mapstructure:"max_connection_lifetime_seconds" json:"maxConnectionLifetimeSeconds" default:"3600"`
 
 	// Maximum amount of time a connection may be idle before being closed, in seconds. Default: 1800 seconds (30 minutes).
-	MaxConnIdleTime int `mapstructure:"maxConnectionIdleSeconds" json:"maxConnectionIdleSeconds" default:"1800"`
+	MaxConnIdleTime int `mapstructure:"max_connection_idle_seconds" json:"maxConnectionIdleSeconds" default:"1800"`
 
 	// Period at which the pool will check the health of idle connections, in seconds. Default: 60 seconds (1 minute).
-	HealthCheckPeriod int `mapstructure:"healthCheckPeriodSeconds" json:"healthCheckPeriodSeconds" default:"60"`
+	HealthCheckPeriod int `mapstructure:"health_check_period_seconds" json:"healthCheckPeriodSeconds" default:"60"`
 }
 
 type Config struct {
@@ -96,7 +96,7 @@ type Config struct {
 	Password       string     `mapstructure:"password" json:"password" default:"changeme"`
 	SSLMode        string     `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
 	Schema         string     `mapstructure:"schema" json:"schema" default:"opentdf"`
-	ConnectTimeout int        `mapstructure:"connectTimeoutSeconds" json:"connectTimeoutSeconds" default:"15"`
+	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connect_timeout_seconds" default:"15"`
 	Pool           PoolConfig `mapstructure:"pool" json:"pool"`
 
 	RunMigrations    bool      `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
@@ -115,11 +115,11 @@ func (c Config) LogValue() slog.Value {
 		slog.String("schema", c.Schema),
 		slog.Int("connect_timeout_seconds", c.ConnectTimeout),
 		slog.Group("pool",
-			slog.Int("maxConnectionCount", int(c.Pool.MaxConns)),
-			slog.Int("minConnectionCount", int(c.Pool.MinConns)),
-			slog.Int("maxConnectionLifetimeSeconds", c.Pool.MaxConnLifetime),
-			slog.Int("maxConnectionIdleSeconds", c.Pool.MaxConnIdleTime),
-			slog.Int("healthCheckPeriodSeconds", c.Pool.HealthCheckPeriod),
+			slog.Int("max_connection_count", int(c.Pool.MaxConns)),
+			slog.Int("min_connection_count", int(c.Pool.MinConns)),
+			slog.Int("max_connection_lifetime_seconds", c.Pool.MaxConnLifetime),
+			slog.Int("max_connection_idle_seconds", c.Pool.MaxConnIdleTime),
+			slog.Int("health_check_period_seconds", c.Pool.HealthCheckPeriod),
 		),
 		slog.Bool("runMigrations", c.RunMigrations),
 		slog.Bool("verifyConnection", c.VerifyConnection),

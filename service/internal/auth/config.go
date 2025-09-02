@@ -23,7 +23,7 @@ type AuthNConfig struct { //nolint:revive // AuthNConfig is a valid name
 	Issuer       string        `mapstructure:"issuer" json:"issuer"`
 	Audience     string        `mapstructure:"audience" json:"audience"`
 	Policy       PolicyConfig  `mapstructure:"policy" json:"policy"`
-	CacheRefresh string        `mapstructure:"cacheRefreshInterval" json:"cacheRefreshInterval" default:"15m"`
+	CacheRefresh string        `mapstructure:"cache_refresh_interval" json:"cache_refresh_interval"`
 	DPoPSkew     time.Duration `mapstructure:"dpopskew" json:"dpopskew" default:"1h"`
 	TokenSkew    time.Duration `mapstructure:"skew" json:"skew" default:"1m"`
 }

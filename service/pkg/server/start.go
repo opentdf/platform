@@ -89,7 +89,7 @@ func Start(f ...StartOptions) error {
 		}
 		loaders[idx] = loader
 	}
-	cfg, err := config.LoadConfig(ctx, loaders)
+	cfg, err := config.Load(ctx, loaders...)
 	if err != nil {
 		return fmt.Errorf("could not load config: %w", err)
 	}

@@ -1,0 +1,11 @@
+# ignores for CKMS Sample Code
+
+# Generated keydata
+*.crt
+*.key
+*.pem
+
+# Logfiles
+vault-startup.log
+
+

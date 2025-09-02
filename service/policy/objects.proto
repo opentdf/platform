@@ -479,6 +479,8 @@ message ObligationValue {
 
   string value = 3;
 
+  repeated ObligationTrigger triggers = 4;
+
   common.Metadata metadata = 100;
 }
 

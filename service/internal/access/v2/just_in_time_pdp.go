@@ -37,6 +37,7 @@ func NewJustInTimePDP(
 	l *logger.Logger,
 	sdk *otdfSDK.SDK,
 	store EntitlementPolicyStore,
+	allowDirectEntitlements bool,
 ) (*JustInTimePDP, error) {
 	var err error
 
@@ -74,7 +75,7 @@ func NewJustInTimePDP(
 		return nil, fmt.Errorf("failed to fetch all registered resources: %w", err)
 	}
 
-	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings, allRegisteredResources)
+	pdp, err := NewPolicyDecisionPoint(ctx, l, allAttributes, allSubjectMappings, allRegisteredResources, allowDirectEntitlements)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new policy decision point: %w", err)
 	}
@@ -103,7 +104,7 @@ func (p *JustInTimePDP) GetDecision(
 		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_Token:
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
+		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, resources)
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		regResValueFQN := strings.ToLower(entityIdentifier.GetRegisteredResourceValueFqn())
@@ -164,7 +165,7 @@ func (p *JustInTimePDP) GetEntitlements(
 		entityRepresentations, err = p.resolveEntitiesFromEntityChain(ctx, entityIdentifier.GetEntityChain(), skipEnvironmentEntities)
 
 	case *authzV2.EntityIdentifier_Token:
-		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities)
+		entityRepresentations, err = p.resolveEntitiesFromToken(ctx, entityIdentifier.GetToken(), skipEnvironmentEntities, []*authzV2.Resource{})
 
 	case *authzV2.EntityIdentifier_RegisteredResourceValueFqn:
 		p.logger.DebugContext(ctx, "getting entitlements - resolving registered resource value FQN")
@@ -279,10 +280,11 @@ func (p *JustInTimePDP) resolveEntitiesFromToken(
 	ctx context.Context,
 	token *entity.Token,
 	skipEnvironmentEntities bool,
+	resources []*authzV2.Resource,
 ) ([]*entityresolutionV2.EntityRepresentation, error) {
 	// WARNING: do not log the token JWT, just its ID
 	p.logger.DebugContext(ctx, "resolving entities from token", slog.String("token_ephemeral_id", token.GetEphemeralId()))
-	ersResp, err := p.sdk.EntityResolutionV2.CreateEntityChainsFromTokens(ctx, &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: []*entity.Token{token}})
+	ersResp, err := p.sdk.EntityResolutionV2.CreateEntityChainsFromTokens(ctx, &entityresolutionV2.CreateEntityChainsFromTokensRequest{Tokens: []*entity.Token{token}, Resources: resources})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create entity chains from token: %w", err)
 	}

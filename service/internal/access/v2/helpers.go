@@ -194,8 +194,10 @@ func getResourceDecisionableAttributes(
 	logger *logger.Logger,
 	accessibleRegisteredResourceValues map[string]*policy.RegisteredResourceValue,
 	entitleableAttributesByValueFQN map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
+	allAttributesByDefinitionFQN map[string]*policy.Attribute,
 	// action *policy.Action,
 	resources []*authz.Resource,
+	allowDirectEntitlements bool,
 ) (map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue, error) {
 	var (
 		decisionableAttributes = make(map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue)
@@ -244,8 +246,32 @@ func getResourceDecisionableAttributes(
 		}
 
 		attributeAndValue, ok := entitleableAttributesByValueFQN[attrValueFQN]
-		if !ok {
-			return nil, fmt.Errorf("resource attribute value FQN not found in memory [%s]: %w", attrValueFQN, ErrInvalidResource)
+		if !ok && allowDirectEntitlements {
+			// If enabled, process direct entitlements
+
+			// Try to find the definition by extracting partial FQN for adhoc attributes
+			parentDefinition, err := getDefinition(attrValueFQN, allAttributesByDefinitionFQN)
+			if err != nil {
+				return nil, fmt.Errorf("resource attribute value FQN not found in memory and no definition found [%s]: %w", attrValueFQN, err)
+			}
+
+			// Extract the value part from the FQN
+			// FQN format: https://<namespace>/attr/<name>/value/<value>
+			parsedAttrValueFQN, err := identifier.Parse[*identifier.FullyQualifiedAttribute](attrValueFQN)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse attribute value FQN [%s]: %w", attrValueFQN, err)
+			}
+
+			// Create synthetic AttributeAndValue for adhoc attribute
+			syntheticValue := &policy.Value{
+				Fqn:   attrValueFQN,
+				Value: parsedAttrValueFQN.Value,
+			}
+
+			attributeAndValue = &attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue{
+				Value:     syntheticValue,
+				Attribute: parentDefinition,
+			}
 		}
 
 		decisionableAttributes[attrValueFQN] = attributeAndValue

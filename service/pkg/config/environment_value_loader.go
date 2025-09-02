@@ -100,12 +100,9 @@ func (l *EnvironmentValueLoader) Watch(ctx context.Context, _ *Config, onChange 
 							break
 						}
 					}
-				} else {
-					// No allow list, compare all settings.
-					if !reflect.DeepEqual(l.viper.AllSettings(), currentEnvViper.AllSettings()) {
-						slog.DebugContext(ctx, "environment config change detected: settings map differs")
-						changed = true
-					}
+				} else if !reflect.DeepEqual(l.viper.AllSettings(), currentEnvViper.AllSettings()) {
+					slog.DebugContext(ctx, "environment config change detected: settings map differs")
+					changed = true
 				}
 
 				if changed {

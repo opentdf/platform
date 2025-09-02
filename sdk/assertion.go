@@ -166,12 +166,16 @@ func (s *Statement) UnmarshalJSON(data []byte) error {
 
 // Statement includes information applying to the scope of the assertion.
 // It could contain rights, handling instructions, or general metadata.
+// https://github.com/opentdf/spec/blob/main/schema/OpenTDF/assertion_statement.md
 type Statement struct {
-	// Format describes the payload encoding format. (e.g. json)
+	// Format describes the payload encoding format.  json-structured | string
 	Format string `json:"format,omitempty" validate:"required"`
-	// Schema describes the schema of the payload. (e.g. tdf)
-	Schema string `json:"schema,omitempty" validate:"required"`
+	// Schema describes the schema of the payload.
+	// An optional URI identifying the schema or standard that defines the structure and semantics of the value.
+	Schema string `json:"schema,omitempty"`
 	// Value is the payload of the assertion.
+	// The assertion content itself, formatted according to the format field.
+	// Can be a string, number, boolean, object, or array (if format is json-structured).
 	Value string `json:"value,omitempty"  validate:"required"`
 }
 

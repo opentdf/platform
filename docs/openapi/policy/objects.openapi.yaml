@@ -609,6 +609,9 @@ components:
         id:
           type: string
           title: id
+        obligationValue:
+          title: obligation_value
+          $ref: '#/components/schemas/policy.ObligationValue'
         action:
           title: action
           $ref: '#/components/schemas/policy.Action'

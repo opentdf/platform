@@ -487,9 +487,11 @@ message ObligationValue {
 message ObligationTrigger {
   string id = 1;
 
-  Action action = 2;
+  ObligationValue obligation_value = 2;
 
-  Value attribute_value = 3;
+  Action action = 3;
+
+  Value attribute_value = 4;
 
   common.Metadata metadata = 100;
 }

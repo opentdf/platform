@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package policy.obligations;
-
+import "buf/validate/validate.proto";
 import "common/common.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
@@ -17,8 +17,8 @@ message GetObligationRequest {
         option (buf.validate.oneof).required = true;
         string id = 1 [(buf.validate.field).string.uuid = true];
         string fqn = 2 [(buf.validate.field).string = {
-          min_len : 1
-          uri : true
+            min_len : 1
+            uri : true
         }];
     }
 }
@@ -28,7 +28,16 @@ message GetObligationResponse {
 }
 
 message GetObligationsByFQNsRequest {
-    repeated string fqns = 1;
+    repeated string fqns = 1 [(buf.validate.field).repeated = {
+        min_items: 1,
+        unique: true,
+        items: {
+            string: {
+                min_len: 1,
+                uri: true
+            }
+        },
+    }];
 }
 
 message GetObligationsByFQNsResponse {

@@ -44,18 +44,26 @@ message GetObligationsByFQNsResponse {
     map<string, policy.Obligation> fqn_obligation_map = 1;
 }
 
+// TODO: PENDING
 message CreateObligationRequest {
     // Required
     oneof namespace_identifier {
-        string id = 1;
-        string fqn = 2;
+        option (buf.validate.oneof).required = true;
+        string id = 1 [(buf.validate.field).string.uuid = true];
+        string fqn = 2 [(buf.validate.field).string = {
+            min_len : 1
+            uri : true
+        }];
     }
+    // TODO: PENDING
     string name = 3;
 
     // Optional
+    // TODO: PENDING
     repeated string values = 4;
     // Optional
     // Common metadata
+    // TODO: PENDING
     common.MetadataMutable metadata = 100;
 }
 

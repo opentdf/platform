@@ -712,6 +712,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 		failAllKaos(requests, results, err400("invalid request"))
 		return "", results
 	}
+	encap := security.OCEncapsulator{PublicKeyEncryptor: asymEncrypt}
 
 	var sessionKey string
 	if e, ok := asymEncrypt.(ocrypto.ECEncryptor); ok {
@@ -771,7 +772,7 @@ func (p *Provider) tdf3Rewrap(ctx context.Context, requests []*kaspb.UnsignedRew
 			}
 
 			// Use the Export method with the asymEncrypt encryptor
-			encryptedKey, err := kaoRes.DEK.Export(asymEncrypt)
+			encryptedKey, err := encap.Encapsulate(kaoRes.DEK)
 			if err != nil {
 				//nolint:sloglint // reference to camelcase key is intentional
 				p.Logger.WarnContext(ctx, "rewrap: Export with encryptor failed", slog.String("clientPublicKey", clientPublicKey), slog.Any("error", err))

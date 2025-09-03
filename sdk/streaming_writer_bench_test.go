@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"context"
 	"testing"
 )
 
@@ -28,7 +27,7 @@ func BenchmarkStreamingWriter_Sequential(b *testing.B) {
 			b.ReportAllocs()
 
 			for i := 0; i < b.N; i++ {
-				writer, err := sdk.NewStreamingWriter(context.Background())
+				writer, err := sdk.NewStreamingWriter(b.Context())
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -41,14 +40,14 @@ func BenchmarkStreamingWriter_Sequential(b *testing.B) {
 
 				// Write segments sequentially
 				for segIdx := 0; segIdx < tc.segmentCount; segIdx++ {
-					_, err := writer.WriteSegment(context.Background(), segIdx, segmentData)
+					_, err := writer.WriteSegment(b.Context(), segIdx, segmentData)
 					if err != nil {
 						b.Fatal(err)
 					}
 				}
 
 				// Finalize
-				_, _, err = writer.Finalize(context.Background(), []string{})
+				_, _, err = writer.Finalize(b.Context(), []string{})
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -84,7 +83,7 @@ func BenchmarkStreamingWriter_OutOfOrder(b *testing.B) {
 			b.ReportAllocs()
 
 			for i := 0; i < b.N; i++ {
-				writer, err := sdk.NewStreamingWriter(context.Background())
+				writer, err := sdk.NewStreamingWriter(b.Context())
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -97,14 +96,14 @@ func BenchmarkStreamingWriter_OutOfOrder(b *testing.B) {
 
 				// Write segments in reverse order (worst case for memory usage)
 				for _, segIdx := range writeOrder {
-					_, err := writer.WriteSegment(context.Background(), segIdx, segmentData)
+					_, err := writer.WriteSegment(b.Context(), segIdx, segmentData)
 					if err != nil {
 						b.Fatal(err)
 					}
 				}
 
 				// Finalize
-				_, _, err = writer.Finalize(context.Background(), []string{})
+				_, _, err = writer.Finalize(b.Context(), []string{})
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -135,7 +134,7 @@ func BenchmarkStreamingWriter_VariableSegmentSizes(b *testing.B) {
 			b.ReportAllocs()
 
 			for i := 0; i < b.N; i++ {
-				writer, err := sdk.NewStreamingWriter(context.Background())
+				writer, err := sdk.NewStreamingWriter(b.Context())
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -147,14 +146,14 @@ func BenchmarkStreamingWriter_VariableSegmentSizes(b *testing.B) {
 						segmentData[j] = byte((segIdx * j) % 256)
 					}
 
-					_, err := writer.WriteSegment(context.Background(), segIdx, segmentData)
+					_, err := writer.WriteSegment(b.Context(), segIdx, segmentData)
 					if err != nil {
 						b.Fatal(err)
 					}
 				}
 
 				// Finalize
-				_, _, err = writer.Finalize(context.Background(), []string{})
+				_, _, err = writer.Finalize(b.Context(), []string{})
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -176,7 +175,7 @@ func BenchmarkStreamingWriter_MemoryUsagePattern(b *testing.B) {
 		b.ReportAllocs()
 
 		for i := 0; i < b.N; i++ {
-			writer, err := sdk.NewStreamingWriter(context.Background())
+			writer, err := sdk.NewStreamingWriter(b.Context())
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -189,14 +188,14 @@ func BenchmarkStreamingWriter_MemoryUsagePattern(b *testing.B) {
 
 			// Write segments in worst-case order (completely reverse)
 			for segIdx := segmentCount - 1; segIdx >= 0; segIdx-- {
-				_, err := writer.WriteSegment(context.Background(), segIdx, segmentData)
+				_, err := writer.WriteSegment(b.Context(), segIdx, segmentData)
 				if err != nil {
 					b.Fatal(err)
 				}
 			}
 
 			// Finalize
-			_, _, err = writer.Finalize(context.Background(), []string{})
+			_, _, err = writer.Finalize(b.Context(), []string{})
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -231,20 +230,20 @@ func BenchmarkStreamingWriter_AttributeFetching(b *testing.B) {
 			b.ReportAllocs()
 
 			for i := 0; i < b.N; i++ {
-				writer, err := sdk.NewStreamingWriter(context.Background())
+				writer, err := sdk.NewStreamingWriter(b.Context())
 				if err != nil {
 					b.Fatal(err)
 				}
 
 				// Write a single test segment
 				testData := make([]byte, 1024)
-				_, err = writer.WriteSegment(context.Background(), 0, testData)
+				_, err = writer.WriteSegment(b.Context(), 0, testData)
 				if err != nil {
 					b.Fatal(err)
 				}
 
 				// Finalize with attributes (this triggers attribute fetching)
-				_, _, err = writer.Finalize(context.Background(), attributes)
+				_, _, err = writer.Finalize(b.Context(), attributes)
 				if err != nil {
 					b.Fatal(err)
 				}

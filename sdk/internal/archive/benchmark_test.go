@@ -1,7 +1,6 @@
 package archive
 
 import (
-	"context"
 	"testing"
 )
 
@@ -47,7 +46,7 @@ func BenchmarkSegmentWriter_CRC32ContiguousProcessing(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				writer := NewSegmentTDFWriter(tc.segmentCount)
-				ctx := context.Background()
+				ctx := b.Context()
 
 				// Create test segment data
 				segmentData := make([]byte, tc.segmentSize)
@@ -110,7 +109,7 @@ func BenchmarkSegmentWriter_VariableSegmentSizes(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				writer := NewSegmentTDFWriter(len(tc.sizes))
-				ctx := context.Background()
+				ctx := b.Context()
 
 				// Write segments with variable sizes
 				for segIdx, size := range tc.sizes {
@@ -182,7 +181,7 @@ func BenchmarkSegmentWriter_MemoryPressure(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				writer := NewSegmentTDFWriter(tc.segmentCount, WithMaxSegments(tc.segmentCount*2))
-				ctx := context.Background()
+				ctx := b.Context()
 
 				// Write segments with focus on memory allocation patterns
 				for orderIdx, segIdx := range writeOrder {
@@ -264,7 +263,7 @@ func BenchmarkSegmentWriter_ZIPGeneration(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				writer := NewSegmentTDFWriter(tc.segmentCount, options...)
-				ctx := context.Background()
+				ctx := b.Context()
 
 				// Create test segment data
 				segmentData := make([]byte, tc.segmentSize)

@@ -142,13 +142,6 @@ func uuidSplitIDGenerator() string {
 	return uuid.New().String()
 }
 
-// // NewStreamingTDFWriter creates a new streaming TDF writer
-// // This follows the same pattern as existing TDF creation but for streaming operations
-// // Note: This method is deprecated - use the package-level NewStreamingTDFWriter directly
-// func (s SDK) NewStreamingTDFWriter(ctx context.Context, opts ...TDFOption) (*StreamingTDFWriter, error) {
-// 	return NewStreamingTDFWriter(ctx, &s, opts...)
-// }
-
 // CreateTDFContext reads plain text from the given reader and saves it to the writer, subject to the given options
 func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.ReadSeeker, opts ...TDFOption) (*TDFObject, error) { //nolint:funlen, gocognit, lll // Better readability keeping it as is
 	inputSize, err := reader.Seek(0, io.SeekEnd)
@@ -579,7 +572,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		}
 	}
 
-	manifest.EncryptionInformation.Policy = string(ocrypto.Base64Encode(base64PolicyObject))
+	manifest.EncryptionInformation.Policy = string(base64PolicyObject)
 	manifest.EncryptionInformation.Method.Algorithm = kGCMCipherAlgorithm
 
 	// create the payload key by XOR all the keys in key access object.

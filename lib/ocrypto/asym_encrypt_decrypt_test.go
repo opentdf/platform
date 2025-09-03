@@ -3,6 +3,9 @@ package ocrypto
 import (
 	"crypto/sha256"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func salty(s string) []byte {
@@ -345,4 +348,22 @@ MJseKiCRhbMS8XoCOTogO4Au9SqpOKqHq2CFRb4=
 			}
 		})
 	}
+}
+
+func TestAsymEncryption_InterfaceCompliance(t *testing.T) {
+	const testPublicKey = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArvKYimFpxEp58ZGTgiaP
+RYEzrikTZ3GP0KhWIYrQFAbWdE0qvSS+8LxcUDQoisFk1ux1CO9iuUlyZdKeGsbz
+sTmJjdk4nHoH5f/BiLzTEJemDIjXPV5vYcY++4QKhFbZf/XLLZ2hSzAuXz5ZOCel
+A/KZs+Zb19Vlra5DCDJ43mqdoqFIDS4cl8mtuRDC5Uw3x1S52tnO/TKPDGj32aVS
+GBKh0CWGAXWRmphzGj7kFpkAxT1b827MrQMYxkn4w2WB8B/bGKz0+dWyqnnzGYAS
+p4j7mw33Lw8tqLgLJJ4TXkSHmNYNWHUmXs3KTOogEjKOO0QZQRXVHrIv/pqGiGKr
+kQIDAQAB
+-----END PUBLIC KEY-----`
+
+	asymEncryption, err := NewAsymEncryption(testPublicKey)
+	require.NoError(t, err)
+
+	// Ensure AsymEncryption implements the Encapsulator interface
+	assert.Implements(t, (*Encapsulator)(nil), asymEncryption)
 }

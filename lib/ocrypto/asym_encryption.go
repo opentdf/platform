@@ -202,6 +202,10 @@ func (e AsymEncryption) PublicKeyInPemFormat() (string, error) {
 	return publicKeyInPemFormat(e.PublicKey)
 }
 
+func (e AsymEncryption) PublicKeyAsPEM() (string, error) {
+	return e.PublicKeyInPemFormat()
+}
+
 // Encrypts the data with the EC public key.
 func (e ECEncryptor) Encrypt(data []byte) ([]byte, error) {
 	ikm, err := e.ek.ECDH(e.pub)

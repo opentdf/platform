@@ -579,7 +579,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		}
 	}
 
-	manifest.EncryptionInformation.Policy = base64PolicyObject
+	manifest.EncryptionInformation.Policy = string(ocrypto.Base64Encode(base64PolicyObject))
 	manifest.EncryptionInformation.Method.Algorithm = kGCMCipherAlgorithm
 
 	// create the payload key by XOR all the keys in key access object.
@@ -1070,9 +1070,12 @@ func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 // Otherwise, returns an error.
 func (r *Reader) Policy() (PolicyObject, error) {
 	policyObj := PolicyObject{}
-	policyBytes := r.manifest.Policy
+	policy, err := ocrypto.Base64Decode([]byte(r.manifest.Policy))
+	if err != nil {
+		return policyObj, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
+	}
 
-	err := json.Unmarshal(policyBytes, &policyObj)
+	err = json.Unmarshal(policy, &policyObj)
 	if err != nil {
 		return policyObj, fmt.Errorf("json.Unmarshal failed: %w", err)
 	}
@@ -1082,10 +1085,13 @@ func (r *Reader) Policy() (PolicyObject, error) {
 
 // DataAttributes return the data attributes present in tdf.
 func (r *Reader) DataAttributes() ([]string, error) {
-	policy := r.manifest.Policy
+	policy, err := ocrypto.Base64Decode([]byte(r.manifest.Policy))
+	if err != nil {
+		return nil, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
+	}
 
 	policyObj := PolicyObject{}
-	err := json.Unmarshal(policy, &policyObj)
+	err = json.Unmarshal(policy, &policyObj)
 	if err != nil {
 		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
 	}
@@ -1171,7 +1177,7 @@ func createRewrapRequest(_ context.Context, r *Reader) (map[string]*kas.Unsigned
 		} else {
 			rewrapReq := kas.UnsignedRewrapRequest_WithPolicyRequest{
 				Policy: &kas.UnsignedRewrapRequest_WithPolicy{
-					Body: string(r.manifest.EncryptionInformation.Policy),
+					Body: r.manifest.EncryptionInformation.Policy,
 					Id:   "policy",
 				},
 				KeyAccessObjects: []*kas.UnsignedRewrapRequest_WithKeyAccessObject{kaoReq},

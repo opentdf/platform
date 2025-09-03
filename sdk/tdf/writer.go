@@ -340,7 +340,7 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 
 	encryptInfo := EncryptionInformation{
 		KeyAccessType: kSplitKeyType,
-		Policy:        policyBytes,
+		Policy:        string(ocrypto.Base64Encode(policyBytes)),
 		Method: Method{
 			Algorithm:    kGCMCipherAlgorithm,
 			IsStreamable: true,

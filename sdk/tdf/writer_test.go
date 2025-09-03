@@ -150,7 +150,8 @@ func testSingleSegmentWithAttributes(t *testing.T) {
 	assert.GreaterOrEqual(t, len(manifest.EncryptionInformation.KeyAccessObjs), 1, "Should have at least one key access object")
 
 	// Verify policy contains attributes
-	policyBytes := manifest.EncryptionInformation.Policy
+	policyBytes, err := ocrypto.Base64Decode([]byte(manifest.EncryptionInformation.Policy))
+	require.NoError(t, err)
 	assert.NotEmpty(t, policyBytes, "Policy should not be empty")
 
 	// Policy bytes are now raw JSON, not base64 encoded
@@ -324,7 +325,8 @@ func testManifestGeneration(t *testing.T) {
 	assert.NotEmpty(t, keyAccess.EncryptedMetadata, "Encrypted metadata should be present")
 
 	// Verify policy content
-	policyBytes := encInfo.Policy
+	policyBytes, err := ocrypto.Base64Decode([]byte(encInfo.Policy))
+	require.NoError(t, (err))
 	// Policy bytes are now raw JSON, not base64 encoded
 	var policy Policy
 	err = json.Unmarshal(policyBytes, &policy)

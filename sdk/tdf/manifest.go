@@ -56,7 +56,7 @@ type Payload struct {
 
 type EncryptionInformation struct {
 	KeyAccessType        string      `json:"type"`
-	Policy               []byte      `json:"policy"`
+	Policy               string      `json:"policy"`
 	KeyAccessObjs        []KeyAccess `json:"keyAccess"`
 	Method               Method      `json:"method"`
 	IntegrityInformation `json:"integrityInformation"`

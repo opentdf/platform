@@ -2,7 +2,6 @@ package keysplit
 
 import (
 	"crypto/rand"
-	"fmt"
 	"strings"
 	"testing"
 

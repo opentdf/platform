@@ -166,13 +166,13 @@ func TestMergeAssignments(t *testing.T) {
 			result := mergeAssignments(tt.assignments)
 			assert.Equal(t, tt.expected.SplitID, result.SplitID)
 			assert.Equal(t, tt.expected.KASURLs, result.KASURLs)
-			assert.Equal(t, len(tt.expected.Keys), len(result.Keys))
+			assert.Len(t, result.Keys, len(tt.expected.Keys))
 
 			for kasURL, expectedKey := range tt.expected.Keys {
 				actualKey, exists := result.Keys[kasURL]
 				require.True(t, exists, "Expected KAS %s not found in result", kasURL)
-				assert.Equal(t, expectedKey.Kid, actualKey.Kid)
-				assert.Equal(t, expectedKey.Pem, actualKey.Pem)
+				assert.Equal(t, expectedKey.GetKid(), actualKey.GetKid())
+				assert.Equal(t, expectedKey.GetPem(), actualKey.GetPem())
 			}
 		})
 	}
@@ -305,7 +305,7 @@ func TestCreateDefaultSplitPlan(t *testing.T) {
 
 			require.Len(t, result, tt.expectedLen, tt.description)
 			assignment := result[0]
-			assert.Equal(t, "", assignment.SplitID, "Default split should have empty ID")
+			assert.Empty(t, assignment.SplitID, "Default split should have empty ID")
 			assert.Equal(t, []string{tt.defaultKAS}, assignment.KASURLs)
 			assert.Empty(t, assignment.Keys, "Default split should have empty keys map")
 		})

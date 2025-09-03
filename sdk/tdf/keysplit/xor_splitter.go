@@ -34,7 +34,6 @@ func WithDefaultKAS(kas *policy.SimpleKasKey) SplitterOption {
 	}
 }
 
-
 // XORSplitter implements XOR-based secret sharing for key splitting
 type XORSplitter struct {
 	config splitterConfig

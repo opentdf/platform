@@ -266,13 +266,13 @@ func TestBuildBooleanExpression(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			expr, err := buildBooleanExpression(tt.values)
-			
+
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errMsg)
 				return
 			}
-			
+
 			require.NoError(t, err)
 			require.NotNil(t, expr)
 			assert.Len(t, expr.Clauses, tt.expectedLen)
@@ -491,7 +491,7 @@ func TestBuildBooleanExpression_GroupingLogic(t *testing.T) {
 		// Find Department clause
 		var deptClause *AttributeClause
 		for i := range expr.Clauses {
-			if expr.Clauses[i].Definition.Name == "Dept" {
+			if expr.Clauses[i].Definition.GetName() == "Dept" {
 				deptClause = &expr.Clauses[i]
 				break
 			}
@@ -499,10 +499,10 @@ func TestBuildBooleanExpression_GroupingLogic(t *testing.T) {
 		require.NotNil(t, deptClause, "Should find Department clause")
 		assert.Len(t, deptClause.Values, 2, "Department should have 2 values")
 
-		// Find Level clause  
+		// Find Level clause
 		var levelClause *AttributeClause
 		for i := range expr.Clauses {
-			if expr.Clauses[i].Definition.Name == "Level" {
+			if expr.Clauses[i].Definition.GetName() == "Level" {
 				levelClause = &expr.Clauses[i]
 				break
 			}
@@ -532,9 +532,9 @@ func TestBuildBooleanExpression_GroupingLogic(t *testing.T) {
 		require.NoError(t, err)
 
 		// Should be identical regardless of input order
-		assert.Equal(t, len(expr1.Clauses), len(expr2.Clauses))
+		assert.Len(t, expr2.Clauses, len(expr1.Clauses))
 		for i := range expr1.Clauses {
-			assert.Equal(t, expr1.Clauses[i].Definition.Fqn, expr2.Clauses[i].Definition.Fqn)
+			assert.Equal(t, expr1.Clauses[i].Definition.GetFqn(), expr2.Clauses[i].Definition.GetFqn())
 		}
 	})
 }

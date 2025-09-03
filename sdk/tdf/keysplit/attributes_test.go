@@ -254,7 +254,7 @@ func TestExtractKASGrants(t *testing.T) {
 			},
 		},
 		{
-			name:    "legacy grants with nested KAS keys",
+			name: "legacy grants with nested KAS keys",
 			grants: []*policy.KeyAccessServer{
 				{
 					Uri: "https://nested.kas.com",
@@ -292,7 +292,7 @@ func TestExtractKASGrants(t *testing.T) {
 				{
 					KasUri: "https://dup.kas.com",
 					PublicKey: &policy.SimpleKasPublicKey{
-						Kid: "second-key", 
+						Kid: "second-key",
 						Pem: "-----BEGIN PUBLIC KEY-----\nSECOND\n-----END PUBLIC KEY-----",
 					},
 				},
@@ -312,14 +312,14 @@ func TestExtractKASGrants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := extractKASGrants(tt.grants, tt.kasKeys)
-			assert.Equal(t, len(tt.expected), len(result))
-			
+			assert.Len(t, result, len(tt.expected))
+
 			for i, expected := range tt.expected {
 				assert.Equal(t, expected.URL, result[i].URL)
 				if expected.PublicKey != nil {
 					require.NotNil(t, result[i].PublicKey)
-					assert.Equal(t, expected.PublicKey.Kid, result[i].PublicKey.Kid)
-					assert.Equal(t, expected.PublicKey.Pem, result[i].PublicKey.Pem)
+					assert.Equal(t, expected.PublicKey.GetKid(), result[i].PublicKey.GetKid())
+					assert.Equal(t, expected.PublicKey.GetPem(), result[i].PublicKey.GetPem())
 				} else {
 					assert.Nil(t, result[i].PublicKey)
 				}

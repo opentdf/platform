@@ -112,7 +112,7 @@ func TestKASSecurityBypass(t *testing.T) {
 			require.NotNil(t, result)
 
 			// Validate split count matches current implementation behavior
-			assert.Equal(t, tt.expectedSplits, len(result.Splits),
+			assert.Len(t, result.Splits, tt.expectedSplits,
 				"SECURITY CONCERN: %s\nBYPASS RISK: %s\nDescription: %s",
 				tt.securityConcern, tt.bypassRisk, tt.description)
 
@@ -468,7 +468,7 @@ func TestConsolidationSecurityMatrix(t *testing.T) {
 	}
 
 	for riskLevel, scenarios := range riskGroups {
-		t.Run(fmt.Sprintf("risk_level_%s", riskLevel), func(t *testing.T) {
+		t.Run("risk_level_"+riskLevel, func(t *testing.T) {
 			for _, tt := range scenarios {
 				t.Run(tt.name, func(t *testing.T) {
 					splitter := NewXORSplitter(WithDefaultKAS(&policy.SimpleKasKey{KasUri: kasUs}))
@@ -485,7 +485,7 @@ func TestConsolidationSecurityMatrix(t *testing.T) {
 					result, err := splitter.GenerateSplits(t.Context(), policy, dek)
 					require.NoError(t, err)
 
-					assert.Equal(t, tt.expectedSplits, len(result.Splits), tt.securityNote)
+					assert.Len(t, result.Splits, tt.expectedSplits, tt.securityNote)
 
 					// Verify XOR reconstruction
 					verifyXORReconstruction(t, dek, result.Splits)

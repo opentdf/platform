@@ -6,9 +6,6 @@ import (
 
 // Encapsulator enables key encapsulation with a public key
 type Encapsulator interface {
-	// Encapsulate wraps a secret key with the encapsulation key
-	Encapsulate(dek ProtectedKey) ([]byte, error)
-
 	// Encrypt wraps a secret key with the encapsulation key
 	Encrypt(data []byte) ([]byte, error)
 

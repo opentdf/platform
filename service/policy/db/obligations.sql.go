@@ -144,6 +144,47 @@ func (q *Queries) createObligation(ctx context.Context, arg createObligationPara
 	return i, err
 }
 
+const createObligationTrigger = `-- name: createObligationTrigger :one
+
+INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata)
+VALUES ($1, $2, $3, $4)
+RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at
+`
+
+type createObligationTriggerParams struct {
+	ObligationValueID string `json:"obligation_value_id"`
+	ActionID          string `json:"action_id"`
+	AttributeValueID  string `json:"attribute_value_id"`
+	Metadata          []byte `json:"metadata"`
+}
+
+// --------------------------------------------------------------
+// OBLIGATION TRIGGERS
+// --------------------------------------------------------------
+//
+//	INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata)
+//	VALUES ($1, $2, $3, $4)
+//	RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at
+func (q *Queries) createObligationTrigger(ctx context.Context, arg createObligationTriggerParams) (ObligationTrigger, error) {
+	row := q.db.QueryRow(ctx, createObligationTrigger,
+		arg.ObligationValueID,
+		arg.ActionID,
+		arg.AttributeValueID,
+		arg.Metadata,
+	)
+	var i ObligationTrigger
+	err := row.Scan(
+		&i.ID,
+		&i.ObligationValueID,
+		&i.ActionID,
+		&i.AttributeValueID,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createObligationValue = `-- name: createObligationValue :one
 
 WITH obligation_lookup AS (
@@ -311,6 +352,23 @@ type deleteObligationParams struct {
 func (q *Queries) deleteObligation(ctx context.Context, arg deleteObligationParams) (string, error) {
 	row := q.db.QueryRow(ctx, deleteObligation, arg.ID, arg.NamespaceFqn, arg.Name)
 	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const deleteObligationTrigger = `-- name: deleteObligationTrigger :one
+DELETE FROM obligation_triggers
+WHERE id = $1
+RETURNING id
+`
+
+// deleteObligationTrigger
+//
+//	DELETE FROM obligation_triggers
+//	WHERE id = $1
+//	RETURNING id
+func (q *Queries) deleteObligationTrigger(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, deleteObligationTrigger, id)
 	err := row.Scan(&id)
 	return id, err
 }

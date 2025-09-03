@@ -1283,13 +1283,18 @@ components:
         obligationValueId:
           type: string
           title: obligation_value_id
+          format: uuid
           description: Required
         actionId:
           type: string
           title: action_id
+          format: uuid
+          description: Required
         attributeValueId:
           type: string
           title: attribute_value_id
+          format: uuid
+          description: Required
         metadata:
           title: metadata
           description: |-
@@ -1604,6 +1609,7 @@ components:
         id:
           type: string
           title: id
+          format: uuid
       title: RemoveObligationTriggerRequest
       additionalProperties: false
     policy.obligations.RemoveObligationTriggerResponse:

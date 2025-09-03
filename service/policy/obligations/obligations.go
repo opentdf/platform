@@ -344,14 +344,62 @@ func (s *Service) DeleteObligationValue(ctx context.Context, req *connect.Reques
 	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) AddObligationTrigger(_ context.Context, _ *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error) {
-	// TODO: Implement AddObligationTrigger logic
-	return connect.NewResponse(&obligations.AddObligationTriggerResponse{}), nil
+func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request[obligations.AddObligationTriggerRequest]) (*connect.Response[obligations.AddObligationTriggerResponse], error) {
+	rsp := &obligations.AddObligationTriggerResponse{}
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeCreate,
+		ObjectType: audit.ObjectTypeObligationTrigger,
+	}
+
+	s.logger.DebugContext(ctx, "adding obligation trigger",
+		slog.String("obligation_value_id", req.Msg.GetObligationValueId()),
+		slog.String("action_id", req.Msg.GetActionId()),
+		slog.String("attribute_value_id", req.Msg.GetAttributeValueId()),
+	)
+
+	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {
+		trigger, err := txClient.CreateObligationTrigger(ctx, req.Msg)
+		if err != nil {
+			return err
+		}
+
+		auditParams.ObjectID = trigger.GetId()
+		auditParams.Original = trigger
+		s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+		rsp.Trigger = trigger
+		return nil
+	})
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextCreationFailed, slog.String("obligation trigger", req.Msg.String()))
+	}
+
+	return connect.NewResponse(rsp), nil
 }
 
-func (s *Service) RemoveObligationTrigger(_ context.Context, _ *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error) {
-	// TODO: Implement RemoveObligationTrigger logic
-	return connect.NewResponse(&obligations.RemoveObligationTriggerResponse{}), nil
+func (s *Service) RemoveObligationTrigger(ctx context.Context, req *connect.Request[obligations.RemoveObligationTriggerRequest]) (*connect.Response[obligations.RemoveObligationTriggerResponse], error) {
+	id := req.Msg.GetId()
+
+	auditParams := audit.PolicyEventParams{
+		ActionType: audit.ActionTypeDelete,
+		ObjectType: audit.ObjectTypeObligationTrigger,
+		ObjectID:   id,
+	}
+
+	s.logger.DebugContext(ctx, "removing obligation trigger", slog.String("id", id))
+
+	deleted, err := s.dbClient.DeleteObligationTrigger(ctx, req.Msg)
+	if err != nil {
+		s.logger.Audit.PolicyCRUDFailure(ctx, auditParams)
+		return nil, db.StatusifyError(ctx, s.logger, err, db.ErrTextDeletionFailed, slog.String("obligation trigger", req.Msg.String()))
+	}
+
+	s.logger.Audit.PolicyCRUDSuccess(ctx, auditParams)
+
+	rsp := &obligations.RemoveObligationTriggerResponse{Trigger: deleted}
+	return connect.NewResponse(rsp), nil
 }
 
 // func (s *Service) AddObligationFulfiller(_ context.Context, _ *connect.Request[obligations.AddObligationFulfillerRequest]) (*connect.Response[obligations.AddObligationFulfillerResponse], error) {

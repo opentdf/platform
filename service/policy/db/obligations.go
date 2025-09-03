@@ -7,6 +7,8 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/actions"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -504,6 +506,80 @@ func (c PolicyDBClient) DeleteObligationValue(ctx context.Context, r *obligation
 	}
 
 	return &policy.ObligationValue{
+		Id: id,
+	}, nil
+}
+
+// ********************************************
+// ! Obligation Triggers
+// ********************************************
+
+func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligations.AddObligationTriggerRequest) (*policy.ObligationTrigger, error) {
+	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
+	if err != nil {
+		return nil, err
+	}
+
+	params := createObligationTriggerParams{
+		ObligationValueID: r.GetObligationValueId(),
+		ActionID:          r.GetActionId(),
+		AttributeValueID:  r.GetAttributeValueId(),
+		Metadata:          metadataJSON,
+	}
+	row, err := c.queries.createObligationTrigger(ctx, params)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	metadata := &common.Metadata{}
+	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
+		return nil, err
+	}
+
+	action, err := c.GetAction(ctx, &actions.GetActionRequest{
+		Identifier: &actions.GetActionRequest_Id{
+			Id: row.ActionID,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	attributeValue, err := c.GetAttributeValue(ctx, &attributes.GetAttributeValueRequest_ValueId{
+		ValueId: row.AttributeValueID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	oblVal, err := c.GetObligationValue(ctx, &obligations.GetObligationValueRequest{
+		Identifier: &obligations.GetObligationValueRequest_Id{
+			Id: row.ObligationValueID,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &policy.ObligationTrigger{
+		Id:              row.ID,
+		ObligationValue: oblVal,
+		Metadata:        metadata,
+		Action:          action,
+		AttributeValue:  attributeValue,
+	}, nil
+}
+
+func (c PolicyDBClient) DeleteObligationTrigger(ctx context.Context, r *obligations.RemoveObligationTriggerRequest) (*policy.ObligationTrigger, error) {
+	id, err := c.queries.deleteObligationTrigger(ctx, r.GetId())
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if id == "" {
+		return nil, db.ErrNotFound
+	}
+
+	return &policy.ObligationTrigger{
 		Id: id,
 	}, nil
 }

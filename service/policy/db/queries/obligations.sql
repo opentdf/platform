@@ -305,3 +305,18 @@ WHERE id IN (
         )
 )
 RETURNING id;
+
+----------------------------------------------------------------
+-- OBLIGATION TRIGGERS
+----------------------------------------------------------------
+
+-- name: createObligationTrigger :one
+INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
+
+-- name: deleteObligationTrigger :one
+DELETE FROM obligation_triggers
+WHERE id = $1
+RETURNING id;

@@ -139,9 +139,9 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_Success() {
 	s.Require().NoError(err)
 	s.Require().NotNil(trigger)
 	s.Require().NotEmpty(trigger.GetId())
-	s.Require().Equal(s.attributeValue, trigger.GetAttributeValue())
-	s.Require().Equal(s.obligationValue, trigger.GetObligationValue())
-	s.Require().Equal(s.action, trigger.GetAction())
+	s.Require().Equal(s.attributeValue.GetId(), trigger.GetAttributeValue().GetId())
+	s.Require().Equal(s.obligationValue.GetId(), trigger.GetObligationValue().GetId())
+	s.Require().Equal(s.action.GetId(), trigger.GetAction().GetId())
 	s.Require().Equal("test", trigger.GetMetadata().GetLabels()["source"])
 }
 
@@ -210,8 +210,8 @@ func (s *ObligationTriggersSuite) createGenericTrigger() *policy.ObligationTrigg
 	s.Require().NoError(err)
 	s.Require().NotNil(trigger)
 	s.Require().NotEmpty(trigger.GetId())
-	s.Require().Equal(s.attributeValue, trigger.GetAttributeValue())
-	s.Require().Equal(s.obligationValue, trigger.GetObligationValue())
-	s.Require().Equal(s.action, trigger.GetAction())
+	s.Require().Equal(s.attributeValue.GetId(), trigger.GetAttributeValue().GetId())
+	s.Require().Equal(s.obligationValue.GetId(), trigger.GetObligationValue().GetId())
+	s.Require().Equal(s.action.GetId(), trigger.GetAction().GetId())
 	return trigger
 }

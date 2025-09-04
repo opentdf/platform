@@ -1102,7 +1102,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			case topsecretClassRegResFQN:
 				foundTopSecret = true
 			default:
-				s.Fail("Unexpected resource name: %s", result.ResourceName)
+				s.Failf("Unexpected resource name: %s", result.ResourceName)
 			}
 		}
 		s.True(foundRnd)
@@ -1150,7 +1150,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			case topsecretClassRegResFQN:
 				foundTopSecret = true
 			default:
-				s.Fail("Unexpected resource name: %s", result.ResourceName)
+				s.Failf("Unexpected resource name: %s", result.ResourceName)
 			}
 		}
 		s.True(foundRnd)
@@ -1197,7 +1197,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			case topsecretClassRegResFQN:
 				foundTopSecret = true
 			default:
-				s.Fail("Unexpected resource name: %s", result.ResourceName)
+				s.Failf("Unexpected resource name: %s", result.ResourceName)
 			}
 		}
 		s.True(foundRnd)

@@ -95,11 +95,13 @@ var (
 // registered resource value FQNs using identifier package
 var (
 	// Classification values
-	testClassSecretRegResFQN = createRegisteredResourceValueFQN("classification", "secret")
+	testClassSecretRegResFQN       = createRegisteredResourceValueFQN("classification", "secret")
+	testClassConfidentialRegResFQN = createRegisteredResourceValueFQN("classification", "confidential")
 
 	// Department values
 	testDeptEngineeringRegResFQN = createRegisteredResourceValueFQN("department", "engineering")
 	testDeptFinanceRegResFQN     = createRegisteredResourceValueFQN("department", "finance")
+	testProjectAlphaRegResFQN    = createRegisteredResourceValueFQN("project", "alpha")
 )
 
 // Registered resource value FQNs using identifier package
@@ -1386,7 +1388,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 	viewProjectAlphaMapping := createSimpleSubjectMapping(
 		testProjectAlphaFQN,
 		"alpha",
-		[]*policy.Action{testActionView},
+		[]*policy.Action{testActionView, actionCreate, actionRead},
 		".properties.project",
 		[]string{"alpha"},
 	)
@@ -1408,164 +1410,178 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
 
-	// s.Run("User has subset of requested actions", func() {
-	// 	// Entity with secret clearance - only entitled to read and update on secret
-	// 	entity := s.createEntityWithProps("user123", map[string]interface{}{
-	// 		"clearance": "secret",
-	// 	})
+	s.Run("User has subset of requested actions", func() {
+		// Entity with secret clearance - only entitled to read and update on secret
+		entity := s.createEntityWithProps("user123", map[string]interface{}{
+			"clearance": "secret",
+		})
 
-	// 	// Resource to evaluate
-	// 	resources := createResourcePerFqn(testClassSecretFQN, testClassSecretRegResFQN)
+		// Resource to evaluate
+		resources := createResourcePerFqn(testClassSecretFQN, testClassSecretRegResFQN)
 
-	// 	decision, err := pdp.GetDecision(s.T().Context(), entity, actionRead, resources)
+		decision, err := pdp.GetDecision(s.T().Context(), entity, actionRead, resources)
 
-	// 	// Read should pass
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(decision)
-	// 	s.True(decision.Access) // Should be true because read is allowed
-	// 	s.Len(decision.Results, 2)
+		// Read should pass
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access) // Should be true because read is allowed
+		s.Len(decision.Results, 2)
 
-	// 	// Create should fail
-	// 	decision, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, resources)
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(decision)
-	// 	s.False(decision.Access) // Should be false because create is not allowed
-	// 	s.Len(decision.Results, 2)
-	// })
+		// Create should fail
+		decision, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access) // Should be false because create is not allowed
+		s.Len(decision.Results, 2)
+	})
 
-	// s.Run("User has overlapping action sets", func() {
-	// 	// Entity with both confidential clearance and finance department
-	// 	entity := s.createEntityWithProps("user456", map[string]interface{}{
-	// 		"clearance":  "confidential",
-	// 		"department": "finance",
-	// 	})
+	s.Run("User has overlapping action sets", func() {
+		// Entity with both confidential clearance and finance department
+		entity := s.createEntityWithProps("user456", map[string]interface{}{
+			"clearance":  "confidential",
+			"department": "finance",
+		})
 
-	// 	combinedResource := createAttributeValueResource("combined-attr-resource", testClassConfidentialFQN, testDeptFinanceFQN)
-	// 	testClassConfidentialRegResResource := createRegisteredResource(testClassConfidentialRegResFQN, testClassConfidentialRegResFQN)
-	// 	testDeptFinanceRegResResource := createRegisteredResource(testDeptFinanceRegResFQN, testDeptFinanceRegResFQN)
+		combinedResource := createAttributeValueResource("combined-attr-resource", testClassConfidentialFQN, testDeptFinanceFQN)
+		testClassConfidentialRegResResource := createRegisteredResource(testClassConfidentialRegResFQN, testClassConfidentialRegResFQN)
+		testDeptFinanceRegResResource := createRegisteredResource(testDeptFinanceRegResFQN, testDeptFinanceRegResFQN)
 
-	// 	// Test read access - should be allowed by all attributes
-	// 	decision, err := pdp.GetDecision(s.T().Context(), entity, actionRead, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(decision)
-	// 	s.True(decision.Access)
-	// 	s.Len(decision.Results, 3)
+		// Test read access - should be allowed by all attributes
+		decision, err := pdp.GetDecision(s.T().Context(), entity, actionRead, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+		s.Len(decision.Results, 3)
 
-	// 	// Test create access - should be denied (confidential doesn't allow it)
-	// 	decision, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(decision)
-	// 	s.False(decision.Access) // Overall access is denied
+		// Test create access - should be denied (confidential doesn't allow it)
+		decision, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access) // Overall access is denied
 
-	// 	// Test print access - allowed by confidential but not by finance
-	// 	decision, err = pdp.GetDecision(s.T().Context(), entity, testActionPrint, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(decision)
-	// 	s.False(decision.Access) // Overall access is denied because one rule fails
+		// Test print access - allowed by confidential but not by finance
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionPrint, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access) // Overall access is denied because one rule fails
 
-	// 	// Test update access - allowed by finance but not by confidential
-	// 	decision, err = pdp.GetDecision(s.T().Context(), entity, testActionUpdate, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(decision)
-	// 	s.False(decision.Access) // Overall access is denied because one rule fails
+		// Test update access - allowed by finance but not by confidential
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionUpdate, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access) // Overall access is denied because one rule fails
 
-	// 	// Test delete access - denied by both
-	// 	decision, err = pdp.GetDecision(s.T().Context(), entity, testActionDelete, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(decision)
-	// 	s.False(decision.Access)
-	// })
+		// Test delete access - denied by both
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionDelete, []*authz.Resource{combinedResource, testClassConfidentialRegResResource, testDeptFinanceRegResResource})
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+	})
 
-	// s.Run("Action inheritance with partial permissions", func() {
-	// 	entity := s.createEntityWithProps("user789", map[string]interface{}{
-	// 		"project": "alpha",
-	// 	})
+	s.Run("Action inheritance with partial permissions", func() {
+		entity := s.createEntityWithProps("user789", map[string]interface{}{
+			"project": "alpha",
+		})
 
-	// 	resources := createResourcePerFqn(testProjectAlphaFQN, testProjectAlphaRegResFQN)
+		// testProjectAlphaRegResFQN - read/create,
+		resources := createResourcePerFqn(testProjectAlphaFQN, testProjectAlphaRegResFQN)
 
-	// 	// Test view access - should be allowed
-	// 	decision, err := pdp.GetDecision(s.T().Context(), entity, testActionView, resources)
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(decision)
-	// 	s.True(decision.Access)
+		// Test view access - should be denied as view action not supported by registered resource
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionView, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
 
-	// 	// Test list access - should be denied
-	// 	decision, err = pdp.GetDecision(s.T().Context(), entity, testActionList, resources)
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(decision)
-	// 	s.False(decision.Access)
+		// Test list access - should be denied
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionList, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
 
-	// 	// Test search access - should be denied
-	// 	decision, err = pdp.GetDecision(s.T().Context(), entity, testActionSearch, resources)
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(decision)
-	// 	s.False(decision.Access)
-	// })
+		// Test search access - should be denied
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionSearch, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
 
-	// s.Run("Conflicting action policies across multiple attributes", func() {
-	// 	// Set up a PDP with the comprehensive actions public mapping and restricted mapping
-	// 	restrictedMapping := createSimpleSubjectMapping(
-	// 		testClassConfidentialFQN,
-	// 		"confidential",
-	// 		[]*policy.Action{testActionRead}, // Only read is allowed
-	// 		".properties.clearance",
-	// 		[]string{"restricted"},
-	// 	)
-	// 	restrictedRegRes := &policy.RegisteredResource{
-	// 		Name: "confidential-restricted",
-	// 		Values: []*policy.RegisteredResourceValue{
-	// 			{
-	// 				Value: "restricted-read",
-	// 				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
-	// 					{
-	// 						Action: testActionRead,
-	// 						AttributeValue: &policy.Value{
-	// 							Fqn:   testClassConfidentialFQN,
-	// 							Value: "confidential",
-	// 						},
-	// 					},
-	// 				},
-	// 			},
-	// 		},
-	// 	}
+		// Test read access - should be allowed
+		decision, err = pdp.GetDecision(s.T().Context(), entity, actionRead, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
 
-	// 	classificationPDP, err := NewPolicyDecisionPoint(
-	// 		s.T().Context(),
-	// 		s.logger,
-	// 		[]*policy.Attribute{f.classificationAttr},
-	// 		[]*policy.SubjectMapping{allActionsPublicMapping, restrictedMapping},
-	// 		[]*policy.RegisteredResource{f.classificationRegRes, restrictedRegRes},
-	// 	)
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(classificationPDP)
+		// Test create access - should be allowed
+		decision, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+	})
 
-	// 	// Entity with both public and restricted clearance
-	// 	entity := s.createEntityWithProps("admin001", map[string]interface{}{
-	// 		"clearance": "restricted",
-	// 	})
+	s.Run("Conflicting action policies across multiple attributes", func() {
+		// Set up a PDP with the comprehensive actions public mapping and restricted mapping
+		restrictedMapping := createSimpleSubjectMapping(
+			testClassConfidentialFQN,
+			"confidential",
+			[]*policy.Action{testActionRead}, // Only read is allowed
+			".properties.clearance",
+			[]string{"restricted"},
+		)
+		restrictedRegRes := &policy.RegisteredResource{
+			Name: "confidential-restricted",
+			Values: []*policy.RegisteredResourceValue{
+				{
+					Value: "restricted-read",
+					ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
+						{
+							Action: testActionRead,
+							AttributeValue: &policy.Value{
+								Fqn:   testClassConfidentialFQN,
+								Value: "confidential",
+							},
+						},
+					},
+				},
+			},
+		}
 
-	// 	// Resource with restricted classification
-	// 	restrictedResources := createResourcePerFqn(testClassConfidentialFQN, testClassConfidentialRegResFQN)
+		classificationPDP, err := NewPolicyDecisionPoint(
+			s.T().Context(),
+			s.logger,
+			[]*policy.Attribute{f.classificationAttr},
+			[]*policy.SubjectMapping{allActionsPublicMapping, restrictedMapping},
+			[]*policy.RegisteredResource{f.classificationRegRes, restrictedRegRes},
+		)
+		s.Require().NoError(err)
+		s.Require().NotNil(classificationPDP)
 
-	// 	// Test read access - should be allowed for restricted
-	// 	decision, err := classificationPDP.GetDecision(s.T().Context(), entity, actionRead, restrictedResources)
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(decision)
-	// 	s.True(decision.Access)
+		// Entity with both public and restricted clearance
+		entity := s.createEntityWithProps("admin001", map[string]interface{}{
+			"clearance": "restricted",
+		})
 
-	// 	// Test create access - should be denied for restricted despite comprehensive actions on public
-	// 	decision, err = classificationPDP.GetDecision(s.T().Context(), entity, actionCreate, restrictedResources)
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(decision)
-	// 	s.False(decision.Access)
+		// Resource with restricted classification
+		restrictedResources := createResourcePerFqn(testClassConfidentialFQN, testClassConfidentialRegResFQN)
 
-	// 	// Test delete access - should be denied for restricted despite comprehensive actions on public
-	// 	decision, err = classificationPDP.GetDecision(s.T().Context(), entity, testActionDelete, restrictedResources)
-	// 	s.Require().NoError(err)
-	// 	s.Require().NotNil(decision)
-	// 	s.False(decision.Access)
-	// })
+		// Test read access - should be allowed for restricted
+		decision, err := classificationPDP.GetDecision(s.T().Context(), entity, actionRead, restrictedResources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
 
+		// Test create access - should be denied for restricted despite comprehensive actions on public
+		decision, err = classificationPDP.GetDecision(s.T().Context(), entity, actionCreate, restrictedResources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+
+		// Test delete access - should be denied for restricted despite comprehensive actions on public
+		decision, err = classificationPDP.GetDecision(s.T().Context(), entity, testActionDelete, restrictedResources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+	})
+
+	// TODO: test with non-hierarchical as well
 	s.Run("Requested entitled action not supported by registered resource fails", func() {
 		entity := s.createEntityWithProps("conf-printer-reader", map[string]interface{}{
 			"clearance": "confidential",
@@ -1589,16 +1605,16 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		s.False(decision.Access)
 
 		// Test unentitled action - should be denied
-		// decision, err = pdp.GetDecision(s.T().Context(), entity, testActionList, resources)
-		// s.Require().NoError(err)
-		// s.Require().NotNil(decision)
-		// s.False(decision.Access)
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionList, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
 
 		// Test read access - should be allowed
-		// decision, err = pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
-		// s.Require().NoError(err)
-		// s.Require().NotNil(decision)
-		// s.True(decision.Access)
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
 	})
 }
 

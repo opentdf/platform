@@ -439,7 +439,7 @@ func (s *StandardCrypto) ECDecrypt(ctx context.Context, keyID string, ephemeralP
 }
 
 // Decrypt implements the SecurityProvider Decrypt method
-func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
 	kid := string(keyID)
 	ska, ok := s.keysByID[kid]
 	if !ok {
@@ -488,5 +488,5 @@ func (s *StandardCrypto) Decrypt(_ context.Context, keyID trust.KeyIdentifier, c
 		return nil, fmt.Errorf("unsupported key type for key ID [%s]", kid)
 	}
 
-	return ocrypto.NewAESProtectedKey(rawKey), nil
+	return ocrypto.NewAESProtectedKey(rawKey)
 }

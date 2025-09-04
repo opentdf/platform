@@ -251,13 +251,24 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 		return nil, err
 	}
 
-	return ocrypto.NewAESProtectedKey(rawKey), nil
+	protectedKey, err := ocrypto.NewAESProtectedKey(rawKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create protected key: %w", err)
+	}
+	return protectedKey, nil
 }
 
 // DeriveKey generates a symmetric key for NanoTDF
 func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
 	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(keyDetails.ID()), ephemeralPublicKeyBytes, curve)
-	return ocrypto.NewAESProtectedKey(k), err
+	if err != nil {
+		return nil, err
+	}
+	protectedKey, err := ocrypto.NewAESProtectedKey(k)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create protected key: %w", err)
+	}
+	return protectedKey, nil
 }
 
 // GenerateECSessionKey generates a session key for NanoTDF

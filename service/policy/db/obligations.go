@@ -7,8 +7,6 @@ import (
 
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/protocol/go/policy/actions"
-	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/service/pkg/db"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -536,38 +534,14 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		return nil, err
 	}
 
-	action, err := c.GetAction(ctx, &actions.GetActionRequest{
-		Identifier: &actions.GetActionRequest_Id{
-			Id: row.ActionID,
-		},
-	})
+	trigger, err := unmarshalObligationTrigger(row.Trigger)
 	if err != nil {
 		return nil, err
 	}
 
-	attributeValue, err := c.GetAttributeValue(ctx, &attributes.GetAttributeValueRequest_ValueId{
-		ValueId: row.AttributeValueID,
-	})
-	if err != nil {
-		return nil, err
-	}
+	trigger.Metadata = metadata
 
-	oblVal, err := c.GetObligationValue(ctx, &obligations.GetObligationValueRequest{
-		Identifier: &obligations.GetObligationValueRequest_Id{
-			Id: row.ObligationValueID,
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &policy.ObligationTrigger{
-		Id:              row.ID,
-		ObligationValue: oblVal,
-		Metadata:        metadata,
-		Action:          action,
-		AttributeValue:  attributeValue,
-	}, nil
+	return trigger, nil
 }
 
 func (c PolicyDBClient) DeleteObligationTrigger(ctx context.Context, r *obligations.RemoveObligationTriggerRequest) (*policy.ObligationTrigger, error) {

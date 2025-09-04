@@ -17,6 +17,15 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+const (
+	namespaceName      = "test-namespace"
+	attributeName      = "test-attribute"
+	attributeValueName = "test-value"
+	actionName         = "test-action"
+	obligationName     = "test-obligation"
+	obligationValue    = "test-obligation-value"
+)
+
 type ObligationTriggersSuite struct {
 	suite.Suite
 	ctx               context.Context //nolint:containedctx // context is used in the test suite
@@ -44,13 +53,13 @@ func (s *ObligationTriggersSuite) SetupSuite() {
 
 	// Create a namespace
 	s.namespace, err = s.db.PolicyClient.CreateNamespace(s.ctx, &namespaces.CreateNamespaceRequest{
-		Name: "test-namespace",
+		Name: namespaceName,
 	})
 	s.Require().NoError(err)
 
 	// Create an attribute
 	s.attribute, err = s.db.PolicyClient.CreateAttribute(s.ctx, &attributes.CreateAttributeRequest{
-		Name:        "test-attribute",
+		Name:        attributeName,
 		NamespaceId: s.namespace.GetId(),
 		Rule:        policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ALL_OF,
 	})
@@ -58,20 +67,20 @@ func (s *ObligationTriggersSuite) SetupSuite() {
 
 	// Create an attribute value
 	s.attributeValue, err = s.db.PolicyClient.CreateAttributeValue(s.ctx, s.attribute.GetId(), &attributes.CreateAttributeValueRequest{
-		Value:       "test-value",
+		Value:       attributeValueName,
 		AttributeId: s.attribute.GetId(),
 	})
 	s.Require().NoError(err)
 
 	// Create an action
 	s.action, err = s.db.PolicyClient.CreateAction(s.ctx, &actions.CreateActionRequest{
-		Name: "test-action",
+		Name: actionName,
 	})
 	s.Require().NoError(err)
 
 	// Create an obligation
 	s.obligation, err = s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		Name: "test-obligation",
+		Name: obligationName,
 		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
 			Id: s.namespace.GetId(),
 		},
@@ -83,7 +92,7 @@ func (s *ObligationTriggersSuite) SetupSuite() {
 		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
 			Id: s.obligation.GetId(),
 		},
-		Value: "test-obligation-value",
+		Value: obligationValue,
 	})
 	s.Require().NoError(err)
 }
@@ -137,11 +146,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_Success() {
 	})
 	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
 	s.Require().NoError(err)
-	s.Require().NotNil(trigger)
-	s.Require().NotEmpty(trigger.GetId())
-	s.Require().Equal(s.attributeValue.GetId(), trigger.GetAttributeValue().GetId())
-	s.Require().Equal(s.obligationValue.GetId(), trigger.GetObligationValue().GetId())
-	s.Require().Equal(s.action.GetId(), trigger.GetAction().GetId())
+	s.validateTrigger(trigger)
 	s.Require().Equal("test", trigger.GetMetadata().GetLabels()["source"])
 }
 
@@ -208,10 +213,22 @@ func (s *ObligationTriggersSuite) createGenericTrigger() *policy.ObligationTrigg
 		Metadata:          &common.MetadataMutable{},
 	})
 	s.Require().NoError(err)
+	s.validateTrigger(trigger)
+	return trigger
+}
+
+func (s *ObligationTriggersSuite) validateTrigger(trigger *policy.ObligationTrigger) {
 	s.Require().NotNil(trigger)
 	s.Require().NotEmpty(trigger.GetId())
 	s.Require().Equal(s.attributeValue.GetId(), trigger.GetAttributeValue().GetId())
+	s.Require().Equal(s.attributeValue.GetFqn(), trigger.GetAttributeValue().GetFqn())
+	s.Require().Equal(s.attributeValue.GetValue(), trigger.GetAttributeValue().GetValue())
 	s.Require().Equal(s.obligationValue.GetId(), trigger.GetObligationValue().GetId())
+	s.Require().Equal(s.obligationValue.GetValue(), trigger.GetObligationValue().GetValue())
+	s.Require().Equal(s.obligationValue.GetObligation().GetId(), trigger.GetObligationValue().GetObligation().GetId())
+	s.Require().Equal(s.obligationValue.GetObligation().GetName(), trigger.GetObligationValue().GetObligation().GetName())
+	s.Require().Equal(s.obligationValue.GetObligation().GetNamespace().GetFqn(), trigger.GetObligationValue().GetObligation().GetNamespace().GetFqn())
+	s.Require().Empty(trigger.GetObligationValue().GetTriggers())
 	s.Require().Equal(s.action.GetId(), trigger.GetAction().GetId())
-	return trigger
+	s.Require().Equal(s.action.GetName(), trigger.GetAction().GetName())
 }

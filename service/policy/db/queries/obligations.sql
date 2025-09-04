@@ -311,10 +311,54 @@ RETURNING id;
 ----------------------------------------------------------------
 
 -- name: createObligationTrigger :one
-INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata)
-VALUES ($1, $2, $3, $4)
-RETURNING *;
-
+WITH inserted AS (    
+    INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata)
+    VALUES ($1, $2, $3, $4)
+    RETURNING *
+)
+SELECT
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'labels', i.metadata -> 'labels',         
+            'created_at', i.created_at,               
+            'updated_at', i.updated_at                
+        )
+    ) AS metadata,
+    JSON_STRIP_NULLS(
+        JSON_BUILD_OBJECT(
+            'id', i.id,
+            'obligation_value', JSON_BUILD_OBJECT(
+                'id', ov.id,
+                'value', ov.value,
+                'obligation', JSON_BUILD_OBJECT(
+                    'id', od.id,
+                    'name', od.name,
+                    'namespace', JSON_BUILD_OBJECT(
+                        'id', n.id,
+                        'name', n.name,
+                        'fqn', COALESCE(ns_fqns.fqn, '')
+                    )
+                )
+            ),
+            'action', JSON_BUILD_OBJECT(
+                'id', a.id,
+                'name', a.name
+            ),
+            'attribute_value', JSON_BUILD_OBJECT(
+                'id', av.id,
+                'value', av.value,
+                'fqn', COALESCE(av_fqns.fqn, '')
+            )
+        )
+    ) as trigger
+FROM inserted i
+JOIN obligation_values_standard ov ON i.obligation_value_id = ov.id
+JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+JOIN attribute_namespaces n ON od.namespace_id = n.id
+LEFT JOIN attribute_fqns ns_fqns ON ns_fqns.namespace_id = n.id AND ns_fqns.attribute_id IS NULL AND ns_fqns.value_id IS NULL
+JOIN actions a ON i.action_id = a.id
+JOIN attribute_values av ON i.attribute_value_id = av.id
+LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id;
 
 -- name: deleteObligationTrigger :one
 DELETE FROM obligation_triggers

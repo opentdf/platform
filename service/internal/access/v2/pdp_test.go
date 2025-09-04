@@ -292,7 +292,7 @@ func (s *PDPTestSuite) SetupTest() {
 
 	// Initialize subject mappings
 	s.fixtures.topSecretMapping = createSimpleSubjectMapping(
-		testClassSecretFQN,
+		testClassTopSecretFQN,
 		"topsecret",
 		[]*policy.Action{testActionRead},
 		".properties.clearance",

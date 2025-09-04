@@ -58,15 +58,37 @@ func getResourceDecision(
 		if !found {
 			return nil, fmt.Errorf("%w: %s", ErrFQNNotFound, registeredResourceValueFQN)
 		}
+		l.DebugContext(
+			ctx,
+			registeredResourceValueFQN,
+			slog.Any("action_attribute_values", regResValue.GetActionAttributeValues()),
+		)
 
 		resourceAttributeValues = &authz.Resource_AttributeValues{
 			Fqns: make([]string, 0),
 		}
 		for _, aav := range regResValue.GetActionAttributeValues() {
 			aavAttrValueFQN := aav.GetAttributeValue().GetFqn()
+
+			// skip evaluating attribute rules on any action-attribute-values without the requested action
+			if aav.GetAction().GetName() != action.GetName() {
+				continue
+			}
+
 			if !slices.Contains(resourceAttributeValues.GetFqns(), aavAttrValueFQN) {
 				resourceAttributeValues.Fqns = append(resourceAttributeValues.Fqns, aavAttrValueFQN)
 			}
+		}
+
+		// if no relevant attributes from action-attribute-values with the requested action,
+		// indicates a failure before attribute definition rule evaluation
+		if len(resourceAttributeValues.GetFqns()) == 0 {
+			failure := &ResourceDecision{
+				Passed:       false,
+				ResourceID:   resourceID,
+				ResourceName: registeredResourceValueFQN,
+			}
+			return failure, nil
 		}
 
 	case *authz.Resource_AttributeValues_:

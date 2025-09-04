@@ -95,10 +95,21 @@ message CreateObligationResponse {
 
 message UpdateObligationRequest {
     // Required
-    string id = 1;
+    string id = 1 [
+        (buf.validate.field).string.uuid = true,
+        (buf.validate.field).required = true
+    ];
 
     // Optional
-    string name = 2;
+    string name = 2 [
+        (buf.validate.field).required = false,
+        (buf.validate.field).string.max_len = 253,
+        (buf.validate.field).cel = {
+            id: "obl_name_format",
+            message: "Obligation name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.",
+            expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+        }
+    ];
     common.MetadataMutable metadata = 100;
     common.MetadataUpdateEnum metadata_update_behavior = 101;
 }

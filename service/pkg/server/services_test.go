@@ -315,7 +315,6 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 		name                  string
 		modes                 []serviceregistry.ModeName
 		expectedServices      []string
-		expectedNotRegistered []string
 		shouldError           bool
 		expectedErrorContains string
 	}{

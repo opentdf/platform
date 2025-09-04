@@ -384,7 +384,7 @@ func (reg Registry) RegisterServicesFromConfiguration(modes []ModeName, configur
 			namespace := service.GetNamespace()
 
 			// Register based on the service's own namespace
-			if namespace == string(ModeCore) {
+			if namespace == ModeCore.String() {
 				if err := reg.RegisterCoreService(service); err != nil {
 					return nil, err
 				}

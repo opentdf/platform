@@ -2779,6 +2779,13 @@ Unique name of the KAS instance </p></td>
                 </tr>
               
                 <tr>
+                  <td>manager</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -2991,6 +2998,13 @@ enable federation </p></td>
                   <td>value</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>triggers</td>
+                  <td><a href="#policy.ObligationTrigger">ObligationTrigger</a></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
@@ -11143,7 +11157,7 @@ Request to create a new key in the Key Access Service.</p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required
-The name of the key provider. (e.g. &#34;AWS KMS&#34;, &#34;Google Cloud KMS&#34;, &#34;Azure Key Vault&#34;) </p></td>
+The name of the key provider. (e.g. &#34;AWS KMS Instance 1&#34;, &#34;Google Cloud KMS Instance 2&#34;) </p></td>
                 </tr>
               
                 <tr>
@@ -11152,6 +11166,14 @@ The name of the key provider. (e.g. &#34;AWS KMS&#34;, &#34;Google Cloud KMS&#34
                   <td></td>
                   <td><p>Required
 JSON configuration for the key provider. This is unique to individual key providers. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>manager</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+The type of key manager (e.g. &#34;aws&#34;, &#34;gcp&#34;, &#34;azure&#34;, &#34;opentdf.io/basic&#34;) </p></td>
                 </tr>
               
                 <tr>
@@ -11262,6 +11284,13 @@ JSON configuration for the key provider. This is unique to individual key provid
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>manager</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional - filter by manager type when searching by name </p></td>
                 </tr>
               
             </tbody>
@@ -11377,6 +11406,13 @@ JSON configuration for the key provider. This is unique to individual key provid
                 <tr>
                   <td>config_json</td>
                   <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>manager</td>
+                  <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional </p></td>
                 </tr>

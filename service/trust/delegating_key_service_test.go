@@ -172,6 +172,14 @@ type MockEncapsulator struct {
 	mock.Mock
 }
 
+func (m *MockEncapsulator) Encapsulate(dek ProtectedKey) ([]byte, error) {
+	args := m.Called(dek)
+	if a0, ok := args.Get(0).([]byte); ok {
+		return a0, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 func (m *MockEncapsulator) Encrypt(data []byte) ([]byte, error) {
 	args := m.Called(data)
 	if a0, ok := args.Get(0).([]byte); ok {

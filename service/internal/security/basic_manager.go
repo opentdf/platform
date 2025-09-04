@@ -133,9 +133,24 @@ func (b *BasicManager) DeriveKey(ctx context.Context, keyDetails trust.KeyDetail
 	return NewInProcessAESKey(key), nil
 }
 
+type OCEncapsulator struct {
+	ocrypto.PublicKeyEncryptor
+}
+
+func (e *OCEncapsulator) Encapsulate(dek trust.ProtectedKey) ([]byte, error) {
+	ipk, ok := dek.(*InProcessAESKey)
+	if !ok {
+		return nil, errors.New("invalid DEK type for encapsulation")
+	}
+	return e.Encrypt(ipk.rawKey)
+}
+
 func (b *BasicManager) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
-	// Implementation of GenerateECSessionKey method
-	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
+	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create public key encryptor: %w", err)
+	}
+	return &OCEncapsulator{PublicKeyEncryptor: pke}, nil
 }
 
 func (b *BasicManager) Close() {

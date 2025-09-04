@@ -362,7 +362,7 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 				return
 			}
 
-			suite.NoError(err)
+			suite.Require().NoError(err)
 			suite.ElementsMatch(tc.expectedServices, registeredServices)
 		})
 	}
@@ -408,7 +408,7 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_BackwardCompatibility() 
 
 			registeredServices, err := RegisterCoreServices(registry, tc.mode)
 
-			suite.NoError(err)
+			suite.Require().NoError(err)
 			suite.ElementsMatch(tc.expectedServices, registeredServices)
 		})
 	}

@@ -31,11 +31,32 @@ The platform is designed as a modular monolith, meaning that all services are bu
 - core: Runs essential services, including policy, authorization, and wellknown services.
 - kas: Runs the Key Access Server (KAS) service.
 
+### Service Negation
 
+You can exclude specific services from any mode using the negation syntax `-servicename`:
+
+- **Syntax**: `mode: <base-mode>,-<service1>,-<service2>`
+- **Constraint**: At least one positive mode must be specified (negation-only modes like `-kas` will result in an error)
+- **Available services**: `policy`, `authorization`, `kas`, `entityresolution`, `wellknown`
+
+**Examples:**
+```yaml
+# Run all services except Entity Resolution Service
+mode: all,-entityresolution
+
+# Run core services except Policy Service  
+mode: core,-policy
+
+# Run all services except both KAS and Entity Resolution
+mode: all,-kas,-entityresolution
+
+# Run only Authorization and WellKnown services
+mode: core,-policy
+```
 
 | Field  | Description                                                                   | Default | Environment Variable |
 | ------ | ----------------------------------------------------------------------------- | ------- | -------------------- |
-| `mode` | Drives which services to run. Following modes are supported. (all, core, kas) | `all`   | OPENTDF_MODE         |
+| `mode` | Drives which services to run. Supported modes: `all`, `core`, `kas`. Use `-servicename` to exclude specific services (e.g., `all,-entityresolution`) | `all`   | OPENTDF_MODE         |
 
 ## SDK Configuration
 

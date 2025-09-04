@@ -1,9 +1,10 @@
 package serviceregistry
 
-import "fmt"
-
-// ServiceName represents a typed service identifier
-type ServiceName string
+import (
+	"fmt"
+	"log/slog"
+	"strings"
+)
 
 // ModeName represents a typed mode identifier
 type ModeName string
@@ -14,18 +15,7 @@ const (
 	ModeKAS       ModeName = "kas"
 	ModeERS       ModeName = "entityresolution"
 	ModeEssential ModeName = "essential"
-
-	ServiceKAS              ServiceName = "kas"
-	ServicePolicy           ServiceName = "policy"
-	ServiceWellKnown        ServiceName = "wellknown"
-	ServiceEntityResolution ServiceName = "entityresolution"
-	ServiceAuthorization    ServiceName = "authorization"
 )
-
-// String returns the string representation of ServiceName
-func (s ServiceName) String() string {
-	return string(s)
-}
 
 // String returns the string representation of ModeName
 func (m ModeName) String() string {
@@ -47,4 +37,32 @@ func (e *ServiceConfigError) Error() string {
 		return fmt.Sprintf("service config error [%s] for mode '%s': %s", e.Type, e.Mode, e.Message)
 	}
 	return fmt.Sprintf("service config error [%s]: %s", e.Type, e.Message)
+}
+
+// ParseModesWithNegation parses mode strings and separates included and excluded services
+func ParseModesWithNegation(modes []ModeName) ([]ModeName, []string, error) {
+	var included []ModeName
+	var excluded []string
+
+	for _, mode := range modes {
+		modeStr := string(mode)
+		if serviceName, found := strings.CutPrefix(modeStr, "-"); found {
+			// This is an exclusion
+			if serviceName == "" {
+				return nil, nil, fmt.Errorf("empty service name after '-'")
+			}
+			slog.Debug("negated registered service", slog.String("service", serviceName))
+			excluded = append(excluded, serviceName)
+		} else {
+			// This is an inclusion
+			included = append(included, mode)
+		}
+	}
+
+	// If we only have exclusions without inclusions, that's an error
+	if len(included) == 0 && len(excluded) > 0 {
+		return nil, nil, fmt.Errorf("cannot exclude services without including base modes")
+	}
+
+	return included, excluded, nil
 }

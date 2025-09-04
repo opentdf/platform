@@ -28,58 +28,76 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// createServiceManager creates a ServiceManager with OpenTDF service factory functions
-func createServiceManager() (*serviceregistry.ServiceManager, error) {
-	// Define service factory functions
-	serviceFactories := map[serviceregistry.ServiceName]serviceregistry.ServiceFactory{
-		serviceregistry.ServicePolicy: func() []serviceregistry.IService {
-			return policy.NewRegistrations()
+var (
+	ServiceHealth           ServiceName = "health"
+	ServiceKAS              ServiceName = "kas"
+	ServicePolicy           ServiceName = "policy"
+	ServiceWellKnown        ServiceName = "wellknown"
+	ServiceEntityResolution ServiceName = "entityresolution"
+	ServiceAuthorization    ServiceName = "authorization"
+
+	// serviceConfigurations defines which services belong to which modes
+	// This is the declarative configuration that defines what services run when.
+	// Adding new services or changing mode mappings should be done here.
+	serviceConfigurations = []serviceregistry.ServiceConfiguration{
+		{
+			Name:     ServiceHealth,
+			Modes:    []serviceregistry.ModeName{serviceregistry.ModeEssential},
+			Services: []serviceregistry.IService{health.NewRegistration()},
 		},
-		serviceregistry.ServiceAuthorization: func() []serviceregistry.IService {
-			return []serviceregistry.IService{
-				authorization.NewRegistration(),
-				authorizationV2.NewRegistration(),
-			}
+		{
+			Name:     ServicePolicy,
+			Modes:    []serviceregistry.ModeName{serviceregistry.ModeALL, serviceregistry.ModeCore},
+			Services: policy.NewRegistrations(),
 		},
-		serviceregistry.ServiceKAS: func() []serviceregistry.IService {
-			return []serviceregistry.IService{kas.NewRegistration()}
+		{
+			Name:     ServiceAuthorization,
+			Modes:    []serviceregistry.ModeName{serviceregistry.ModeALL, serviceregistry.ModeCore},
+			Services: []serviceregistry.IService{authorization.NewRegistration(), authorizationV2.NewRegistration()},
 		},
-		serviceregistry.ServiceWellKnown: func() []serviceregistry.IService {
-			return []serviceregistry.IService{wellknown.NewRegistration()}
+		{
+			Name:     ServiceKAS,
+			Modes:    []serviceregistry.ModeName{serviceregistry.ModeALL, serviceregistry.ModeKAS},
+			Services: []serviceregistry.IService{kas.NewRegistration()},
 		},
-		serviceregistry.ServiceEntityResolution: func() []serviceregistry.IService {
-			return []serviceregistry.IService{
-				entityresolution.NewRegistration(),
-				entityresolutionV2.NewRegistration(),
-			}
+		{
+			Name:     ServiceWellKnown,
+			Modes:    []serviceregistry.ModeName{serviceregistry.ModeALL, serviceregistry.ModeCore},
+			Services: []serviceregistry.IService{wellknown.NewRegistration()},
+		},
+		{
+			Name:     ServiceEntityResolution,
+			Modes:    []serviceregistry.ModeName{serviceregistry.ModeALL, serviceregistry.ModeERS},
+			Services: []serviceregistry.IService{entityresolution.NewRegistration(), entityresolutionV2.NewRegistration()},
 		},
 	}
+)
 
-	return serviceregistry.NewDefaultServiceManager(serviceFactories)
+// ServiceName represents a typed service identifier
+type ServiceName string
+
+// String returns the string representation of ServiceName
+func (s ServiceName) String() string {
+	return string(s)
 }
 
-// registerEssentialServices registers the essential services to the given service registry.
-func registerEssentialServices(reg serviceregistry.Registry) error {
-	sm, err := createServiceManager()
-	if err != nil {
-		return fmt.Errorf("failed to create service manager: %w", err)
-	}
-
+// RegisterEssentialServices registers the essential services directly
+func RegisterEssentialServices(reg serviceregistry.Registry) error {
 	essentialServices := []serviceregistry.IService{
 		health.NewRegistration(),
 	}
 
-	return sm.RegisterEssentialServices(reg, essentialServices)
+	for _, svc := range essentialServices {
+		if err := reg.RegisterService(svc, serviceregistry.ModeEssential); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-// registerCoreServices registers the core services based on the provided mode with full negation support.
-func registerCoreServices(reg serviceregistry.Registry, modes []serviceregistry.ModeName) ([]string, error) {
-	sm, err := createServiceManager()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create service manager: %w", err)
-	}
-
-	return sm.RegisterCoreServices(reg, modes)
+// RegisterCoreServices registers the core services using declarative configuration
+func RegisterCoreServices(reg serviceregistry.Registry, modes []serviceregistry.ModeName) ([]string, error) {
+	return reg.RegisterServicesFromConfiguration(modes, serviceConfigurations)
 }
 
 type startServicesParams struct {
@@ -107,16 +125,10 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	cacheManager := params.cacheManager
 	keyManagerFactories := params.keyManagerFactories
 
-	// Create ServiceManager to handle mode checking logic
-	sm, err := createServiceManager()
-	if err != nil {
-		return func() {}, fmt.Errorf("failed to create service manager: %w", err)
-	}
-
 	// Iterate through the registered namespaces
 	for ns, namespace := range reg {
-		// Use ServiceManager to check if the namespace should be enabled
-		modeEnabled := sm.IsNamespaceEnabled(cfg.Mode, namespace.Mode)
+		// Check if this namespace should be enabled based on configured modes
+		modeEnabled := namespace.IsEnabled(cfg.Mode)
 
 		// Skip the namespace if the mode is not enabled
 		if !modeEnabled {

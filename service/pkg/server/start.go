@@ -139,7 +139,7 @@ func Start(f ...StartOptions) error {
 
 	// Register essential services every service needs (e.g. health check)
 	logger.Debug("registering essential services")
-	if err := registerEssentialServices(svcRegistry); err != nil {
+	if err := RegisterEssentialServices(svcRegistry); err != nil {
 		logger.Error("could not register essential services", slog.String("error", err.Error()))
 		return fmt.Errorf("could not register essential services: %w", err)
 	}
@@ -152,7 +152,7 @@ func Start(f ...StartOptions) error {
 	for i, m := range cfg.Mode {
 		modes[i] = serviceregistry.ModeName(m)
 	}
-	registeredCoreServices, err = registerCoreServices(svcRegistry, modes)
+	registeredCoreServices, err = RegisterCoreServices(svcRegistry, modes)
 	if err != nil {
 		logger.Error("could not register core services", slog.String("error", err.Error()))
 		return fmt.Errorf("could not register core services: %w", err)

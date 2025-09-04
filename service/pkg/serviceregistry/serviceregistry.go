@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -237,6 +238,32 @@ type Namespace struct {
 	Services []IService
 }
 
+// IsEnabled checks if this namespace should be enabled based on configured modes.
+// Returns true if any of the configured modes match this namespace's mode,
+// or if "all" mode is configured, or if this namespace is "essential".
+func (n Namespace) IsEnabled(configuredModes []string) bool {
+	for _, configMode := range configuredModes {
+		// Case-insensitive comparison for mode matching
+		if strings.EqualFold(configMode, string(ModeALL)) ||
+			strings.EqualFold(n.Mode, string(ModeEssential)) ||
+			strings.EqualFold(configMode, n.Mode) {
+			return true
+		}
+	}
+	return false
+}
+
+type ServiceName interface {
+	String() string
+}
+
+// ServiceConfiguration represents a service with its associated modes and implementations.
+type ServiceConfiguration struct {
+	Name     ServiceName
+	Modes    []ModeName
+	Services []IService
+}
+
 // Registry represents a map of service namespaces.
 type Registry map[string]Namespace
 
@@ -312,7 +339,62 @@ func (reg Registry) Shutdown() {
 func (reg Registry) GetNamespace(namespace string) (Namespace, error) {
 	ns, ok := reg[namespace]
 	if !ok {
-		return Namespace{}, fmt.Errorf("namespace not found: %s", namespace)
+		return Namespace{}, &ServiceConfigError{
+			Type:    "lookup",
+			Message: fmt.Sprintf("namespace not found: %s", namespace),
+		}
 	}
 	return ns, nil
+}
+
+// RegisterServicesFromConfiguration handles service registration using declarative configuration with negation support.
+func (reg Registry) RegisterServicesFromConfiguration(modes []ModeName, configurations []ServiceConfiguration) ([]string, error) {
+	// Parse modes to separate inclusions and exclusions
+	includedModes, excludedServices, err := ParseModesWithNegation(modes)
+	if err != nil {
+		return nil, err
+	}
+
+	registeredServices := make([]string, 0)
+
+	// Loop through each service configuration
+	for _, config := range configurations {
+		// Check if this service is explicitly excluded
+		if slices.Contains(excludedServices, config.Name.String()) {
+			continue
+		}
+
+		shouldRegister := false
+		for _, requestedMode := range includedModes {
+			if slices.Contains(config.Modes, requestedMode) {
+				shouldRegister = true
+				break
+			}
+		}
+
+		if !shouldRegister {
+			continue
+		}
+
+		registeredServices = append(registeredServices, config.Name.String())
+
+		// Register the services using their own defined namespace
+		for _, service := range config.Services {
+			// Get the namespace from the service itself
+			namespace := service.GetNamespace()
+
+			// Register based on the service's own namespace
+			if namespace == string(ModeCore) {
+				if err := reg.RegisterCoreService(service); err != nil {
+					return nil, err
+				}
+			} else {
+				if err := reg.RegisterService(service, ModeName(namespace)); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
+	return registeredServices, nil
 }

@@ -60,7 +60,8 @@ func getResourceDecision(
 		}
 		l.DebugContext(
 			ctx,
-			registeredResourceValueFQN,
+			"registered_resource_value",
+			slog.String("registered_resource_value_fqn", registeredResourceValueFQN),
 			slog.Any("action_attribute_values", regResValue.GetActionAttributeValues()),
 		)
 

@@ -1266,7 +1266,6 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		foundRnd := false
 		foundTopSecret := false
 		for _, result := range decision.Results {
-
 			switch result.ResourceName {
 			case rndDeptRegResFQN:
 				s.Len(result.DataRuleResults, 1)

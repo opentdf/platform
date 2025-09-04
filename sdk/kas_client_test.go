@@ -35,7 +35,7 @@ func (fake FakeAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, er
 	return tokenMaker(fake.dpopKey)
 }
 
-func getTokenSource(t *testing.T) FakeAccessTokenSource {
+func getTokenSource(t testing.TB) FakeAccessTokenSource {
 	dpopKey, _ := ocrypto.NewRSAKeyPair(2048)
 	dpopPEM, _ := dpopKey.PrivateKeyInPemFormat()
 	decryption, _ := ocrypto.NewAsymDecryption(dpopPEM)

@@ -1,10 +1,17 @@
-package sdk
+package tdf
 
-type Segment struct {
-	Hash          string `json:"hash"`
-	Size          int64  `json:"segmentSize"`
-	EncryptedSize int64  `json:"encryptedSegmentSize"`
-}
+import (
+	"encoding/hex"
+	"errors"
+
+	"github.com/opentdf/platform/lib/ocrypto"
+)
+
+const (
+	kGMACPayloadLength = 16
+	kSplitKeyType      = "split"
+	kPolicyBindingAlg  = "HS256"
+)
 
 type RootSignature struct {
 	Algorithm string `json:"alg"`
@@ -30,11 +37,6 @@ type KeyAccess struct {
 	SplitID            string      `json:"sid,omitempty"`
 	SchemaVersion      string      `json:"schemaVersion,omitempty"`
 	EphemeralPublicKey string      `json:"ephemeralPublicKey,omitempty"`
-}
-
-type PolicyBinding struct {
-	Alg  string `json:"alg"`
-	Hash string `json:"hash"`
 }
 
 type Method struct {
@@ -67,7 +69,7 @@ type Manifest struct {
 	TDFVersion            string      `json:"schemaVersion,omitempty"`
 }
 
-type attributeObject struct {
+type PolicyAttribute struct {
 	Attribute   string `json:"attribute"`
 	DisplayName string `json:"displayName"`
 	IsDefault   bool   `json:"isDefault"`
@@ -75,15 +77,44 @@ type attributeObject struct {
 	KasURL      string `json:"kasURL"`
 }
 
-type PolicyObject struct {
-	UUID string `json:"uuid"`
-	Body struct {
-		DataAttributes []attributeObject `json:"dataAttributes"`
-		Dissem         []string          `json:"dissem"`
-	} `json:"body"`
+type Policy struct {
+	UUID string     `json:"uuid"`
+	Body PolicyBody `json:"body"`
 }
 
+type PolicyBody struct {
+	DataAttributes []PolicyAttribute `json:"dataAttributes"`
+	Dissem         []string          `json:"dissem"`
+}
+
+type Segment struct {
+	Hash          string `json:"hash"`
+	Size          int64  `json:"segmentSize"`
+	EncryptedSize int64  `json:"encryptedSegmentSize"`
+}
+type PolicyBinding struct {
+	Alg  string `json:"alg"`
+	Hash string `json:"hash"`
+}
 type EncryptedMetadata struct {
 	Cipher string `json:"ciphertext"`
 	Iv     string `json:"iv"`
+}
+
+func calculateSignature(data []byte, secret []byte, alg IntegrityAlgorithm, isLegacyTDF bool) (string, error) {
+	if alg == HS256 {
+		hmac := ocrypto.CalculateSHA256Hmac(secret, data)
+		if isLegacyTDF {
+			return hex.EncodeToString(hmac), nil
+		}
+		return string(hmac), nil
+	}
+	if kGMACPayloadLength > len(data) {
+		return "", errors.New("fail to create gmac signature")
+	}
+
+	if isLegacyTDF {
+		return hex.EncodeToString(data[len(data)-kGMACPayloadLength:]), nil
+	}
+	return string(data[len(data)-kGMACPayloadLength:]), nil
 }

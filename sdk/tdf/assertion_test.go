@@ -1,4 +1,4 @@
-package sdk
+package tdf
 
 import (
 	"encoding/json"

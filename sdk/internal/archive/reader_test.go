@@ -9,6 +9,108 @@ import (
 	"testing"
 )
 
+const (
+	oneKB     = 1024
+	tenKB     = 10 * oneKB
+	oneMB     = 1024 * 1024
+	hundredMB = 100 * oneMB
+	oneGB     = 10 * hundredMB
+	tenGB     = 10 * oneGB
+)
+
+type ZipEntryInfo struct {
+	filename string
+	size     int64
+}
+
+var ArchiveTests = []struct { //nolint:gochecknoglobals // This global is used as test harness for other tests
+	files       []ZipEntryInfo
+	archiveSize int64
+}{
+	{
+		[]ZipEntryInfo{
+			{
+				"1.txt",
+				10,
+			},
+			{
+				"2.txt",
+				10,
+			},
+			{
+				"3.txt",
+				10,
+			},
+		},
+		358,
+	},
+	{
+		[]ZipEntryInfo{
+			{
+				"1.txt",
+				oneKB,
+			},
+			{
+				"2.txt",
+				oneKB,
+			},
+			{
+				"3.txt",
+				oneKB,
+			},
+			{
+				"4.txt",
+				oneKB,
+			},
+			{
+				"5.txt",
+				oneKB,
+			},
+			{
+				"6.txt",
+				oneKB,
+			},
+		},
+		6778,
+	},
+	{
+		[]ZipEntryInfo{
+			{
+				"1.txt",
+				hundredMB,
+			},
+			{
+				"2.txt",
+				hundredMB,
+			},
+			{
+				"3.txt",
+				hundredMB,
+			},
+			{
+				"4.txt",
+				hundredMB,
+			},
+			{
+				"5.txt",
+				hundredMB + oneMB + tenKB,
+			},
+			{
+				".txt",
+				oneMB + oneKB,
+			},
+		},
+		526397048,
+	},
+}
+
+// create a buffer of 2mb and fill it with 0xFF, and
+// it used to fill with the contents of the files
+var (
+	stepSize    int64 = 2 * oneMB              //nolint:gochecknoglobals // This global is used in other tests
+	writeBuffer       = make([]byte, stepSize) //nolint:gochecknoglobals // This is used as reuse buffer
+)
+
 func TestCreateArchiveReader(t *testing.T) { // use native library("archive/zip") to create zip files
 	nativeZipFiles(t)
 

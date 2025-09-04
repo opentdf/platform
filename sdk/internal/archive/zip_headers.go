@@ -10,6 +10,16 @@ const (
 	zip64EndOfCDSignature           = 0x06064b50
 	zip64ExternalID                 = 0x0001
 	zipVersion                      = 0x2D // version 4.5 of the PKZIP specification
+	dataDescriptorBitFlag           = 0x08 // Data descriptor will follow
+)
+
+const (
+	TDFManifestFileName = "0.manifest.json"
+	TDFPayloadFileName  = "0.payload"
+)
+
+const (
+	zipBaseYear = 1980 // ZIP file format base year for date calculations
 )
 
 const (
@@ -22,6 +32,8 @@ const (
 	zip64DataDescriptorSize              = 24
 	zip32DataDescriptorSize              = 16
 	zip64ExtendedInfoExtraFieldSize      = 28
+	extraFieldHeaderSize                 = 4  // Size of extra field header (2 bytes signature + 2 bytes size)
+	zip64RecordHeaderSize                = 12 // Size of signature and size fields in ZIP64 end of CD record
 )
 
 type LocalFileHeader struct {

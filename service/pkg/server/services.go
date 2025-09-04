@@ -36,10 +36,12 @@ var (
 	ServiceEntityResolution ServiceName = "entityresolution"
 	ServiceAuthorization    ServiceName = "authorization"
 
-	// serviceConfigurations defines which services belong to which modes
-	// This is the declarative configuration that defines what services run when.
-	// Adding new services or changing mode mappings should be done here.
-	serviceConfigurations = []serviceregistry.ServiceConfiguration{
+)
+
+// getServiceConfigurations returns fresh service configurations each time it's called.
+// This prevents state sharing between test runs by creating new service instances.
+func getServiceConfigurations() []serviceregistry.ServiceConfiguration {
+	return []serviceregistry.ServiceConfiguration{
 		{
 			Name:     ServiceHealth,
 			Modes:    []serviceregistry.ModeName{serviceregistry.ModeEssential},
@@ -71,7 +73,7 @@ var (
 			Services: []serviceregistry.IService{entityresolution.NewRegistration(), entityresolutionV2.NewRegistration()},
 		},
 	}
-)
+}
 
 // ServiceName represents a typed service identifier
 type ServiceName string
@@ -97,7 +99,7 @@ func RegisterEssentialServices(reg serviceregistry.Registry) error {
 
 // RegisterCoreServices registers the core services using declarative configuration
 func RegisterCoreServices(reg serviceregistry.Registry, modes []serviceregistry.ModeName) ([]string, error) {
-	return reg.RegisterServicesFromConfiguration(modes, serviceConfigurations)
+	return reg.RegisterServicesFromConfiguration(modes, getServiceConfigurations())
 }
 
 type startServicesParams struct {

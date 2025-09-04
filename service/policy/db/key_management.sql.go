@@ -14,13 +14,14 @@ import (
 const createProviderConfig = `-- name: createProviderConfig :one
 
 WITH inserted AS (
-  INSERT INTO provider_config (provider_name, config, metadata)
-  VALUES ($1, $2, $3)
-  RETURNING id, provider_name, config, created_at, updated_at, metadata
+  INSERT INTO provider_config (provider_name, manager, config, metadata)
+  VALUES ($1, $2, $3, $4)
+  RETURNING id, provider_name, config, created_at, updated_at, metadata, manager
 )
 SELECT 
   id,
   provider_name,
+  manager,
   config,
   JSON_STRIP_NULLS(
     JSON_BUILD_OBJECT(
@@ -34,6 +35,7 @@ FROM inserted
 
 type createProviderConfigParams struct {
 	ProviderName string `json:"provider_name"`
+	Manager      string `json:"manager"`
 	Config       []byte `json:"config"`
 	Metadata     []byte `json:"metadata"`
 }
@@ -41,6 +43,7 @@ type createProviderConfigParams struct {
 type createProviderConfigRow struct {
 	ID           string `json:"id"`
 	ProviderName string `json:"provider_name"`
+	Manager      string `json:"manager"`
 	Config       []byte `json:"config"`
 	Metadata     []byte `json:"metadata"`
 }
@@ -50,13 +53,14 @@ type createProviderConfigRow struct {
 // --------------------------------------------------------------
 //
 //	WITH inserted AS (
-//	  INSERT INTO provider_config (provider_name, config, metadata)
-//	  VALUES ($1, $2, $3)
-//	  RETURNING id, provider_name, config, created_at, updated_at, metadata
+//	  INSERT INTO provider_config (provider_name, manager, config, metadata)
+//	  VALUES ($1, $2, $3, $4)
+//	  RETURNING id, provider_name, config, created_at, updated_at, metadata, manager
 //	)
 //	SELECT
 //	  id,
 //	  provider_name,
+//	  manager,
 //	  config,
 //	  JSON_STRIP_NULLS(
 //	    JSON_BUILD_OBJECT(
@@ -67,11 +71,17 @@ type createProviderConfigRow struct {
 //	  ) AS metadata
 //	FROM inserted
 func (q *Queries) createProviderConfig(ctx context.Context, arg createProviderConfigParams) (createProviderConfigRow, error) {
-	row := q.db.QueryRow(ctx, createProviderConfig, arg.ProviderName, arg.Config, arg.Metadata)
+	row := q.db.QueryRow(ctx, createProviderConfig,
+		arg.ProviderName,
+		arg.Manager,
+		arg.Config,
+		arg.Metadata,
+	)
 	var i createProviderConfigRow
 	err := row.Scan(
 		&i.ID,
 		&i.ProviderName,
+		&i.Manager,
 		&i.Config,
 		&i.Metadata,
 	)
@@ -99,21 +109,25 @@ const getProviderConfig = `-- name: getProviderConfig :one
 SELECT 
     pc.id,
     pc.provider_name,
+    pc.manager,
     pc.config,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS metadata
 FROM provider_config AS pc
 WHERE ($1::uuid IS NULL OR pc.id = $1::uuid)
   AND ($2::text IS NULL OR pc.provider_name = $2::text)
+  AND ($3::text IS NULL OR pc.manager = $3::text)
 `
 
 type getProviderConfigParams struct {
-	ID   pgtype.UUID `json:"id"`
-	Name pgtype.Text `json:"name"`
+	ID      pgtype.UUID `json:"id"`
+	Name    pgtype.Text `json:"name"`
+	Manager pgtype.Text `json:"manager"`
 }
 
 type getProviderConfigRow struct {
 	ID           string `json:"id"`
 	ProviderName string `json:"provider_name"`
+	Manager      string `json:"manager"`
 	Config       []byte `json:"config"`
 	Metadata     []byte `json:"metadata"`
 }
@@ -123,17 +137,20 @@ type getProviderConfigRow struct {
 //	SELECT
 //	    pc.id,
 //	    pc.provider_name,
+//	    pc.manager,
 //	    pc.config,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS metadata
 //	FROM provider_config AS pc
 //	WHERE ($1::uuid IS NULL OR pc.id = $1::uuid)
 //	  AND ($2::text IS NULL OR pc.provider_name = $2::text)
+//	  AND ($3::text IS NULL OR pc.manager = $3::text)
 func (q *Queries) getProviderConfig(ctx context.Context, arg getProviderConfigParams) (getProviderConfigRow, error) {
-	row := q.db.QueryRow(ctx, getProviderConfig, arg.ID, arg.Name)
+	row := q.db.QueryRow(ctx, getProviderConfig, arg.ID, arg.Name, arg.Manager)
 	var i getProviderConfigRow
 	err := row.Scan(
 		&i.ID,
 		&i.ProviderName,
+		&i.Manager,
 		&i.Config,
 		&i.Metadata,
 	)
@@ -148,6 +165,7 @@ WITH counted AS (
 SELECT 
     pc.id,
     pc.provider_name,
+    pc.manager,
     pc.config,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS metadata,
     counted.total
@@ -165,6 +183,7 @@ type listProviderConfigsParams struct {
 type listProviderConfigsRow struct {
 	ID           string `json:"id"`
 	ProviderName string `json:"provider_name"`
+	Manager      string `json:"manager"`
 	Config       []byte `json:"config"`
 	Metadata     []byte `json:"metadata"`
 	Total        int64  `json:"total"`
@@ -179,6 +198,7 @@ type listProviderConfigsRow struct {
 //	SELECT
 //	    pc.id,
 //	    pc.provider_name,
+//	    pc.manager,
 //	    pc.config,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', pc.metadata -> 'labels', 'created_at', pc.created_at, 'updated_at', pc.updated_at)) AS metadata,
 //	    counted.total
@@ -198,6 +218,7 @@ func (q *Queries) listProviderConfigs(ctx context.Context, arg listProviderConfi
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProviderName,
+			&i.Manager,
 			&i.Config,
 			&i.Metadata,
 			&i.Total,
@@ -216,14 +237,16 @@ const updateProviderConfig = `-- name: updateProviderConfig :execrows
 UPDATE provider_config
 SET
     provider_name = COALESCE($2, provider_name),
-    config = COALESCE($3, config),
-    metadata = COALESCE($4, metadata)
+    manager = COALESCE($3, manager),
+    config = COALESCE($4, config),
+    metadata = COALESCE($5, metadata)
 WHERE id = $1
 `
 
 type updateProviderConfigParams struct {
 	ID           string      `json:"id"`
 	ProviderName pgtype.Text `json:"provider_name"`
+	Manager      pgtype.Text `json:"manager"`
 	Config       []byte      `json:"config"`
 	Metadata     []byte      `json:"metadata"`
 }
@@ -233,13 +256,15 @@ type updateProviderConfigParams struct {
 //	UPDATE provider_config
 //	SET
 //	    provider_name = COALESCE($2, provider_name),
-//	    config = COALESCE($3, config),
-//	    metadata = COALESCE($4, metadata)
+//	    manager = COALESCE($3, manager),
+//	    config = COALESCE($4, config),
+//	    metadata = COALESCE($5, metadata)
 //	WHERE id = $1
 func (q *Queries) updateProviderConfig(ctx context.Context, arg updateProviderConfigParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateProviderConfig,
 		arg.ID,
 		arg.ProviderName,
+		arg.Manager,
 		arg.Config,
 		arg.Metadata,
 	)

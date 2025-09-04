@@ -31,7 +31,8 @@ func (s *KeyIndexTestSuite) SetupTest() {
 				},
 				ProviderConfig: &policy.KeyProviderConfig{
 					Id:         "test-provider-id",
-					Name:       "openbao",
+					Name:       "openbao-west",
+					Manager:    "openbao",
 					ConfigJson: []byte("config"),
 				},
 			},

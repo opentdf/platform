@@ -500,7 +500,7 @@ func (s SDK) prepareManifest(ctx context.Context, t *TDFObject, tdfConfig TDFCon
 		return fmt.Errorf("json.Marshal failed:%w", err)
 	}
 
-	base64PolicyObject := policyObjectAsStr
+	base64PolicyObject := ocrypto.Base64Encode(policyObjectAsStr)
 
 	conjunction := make(map[string][]KASInfo)
 	var splitIDs []string

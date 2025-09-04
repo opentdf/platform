@@ -360,6 +360,11 @@ JOIN actions a ON i.action_id = a.id
 JOIN attribute_values av ON i.attribute_value_id = av.id
 LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id;
 
+-- name: deleteAllObligationTriggersForValue :execrows
+DELETE FROM obligation_triggers
+WHERE obligation_value_id = $1;
+
+
 -- name: deleteObligationTrigger :one
 DELETE FROM obligation_triggers
 WHERE id = $1

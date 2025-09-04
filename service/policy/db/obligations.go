@@ -323,6 +323,22 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	// Create triggers for obligation value if provided
+	triggers := make([]*policy.ObligationTrigger, len(r.GetTriggers()))
+	if len(r.GetTriggers()) > 0 {
+		for i, trigger := range r.GetTriggers() {
+			createdTrigger, err := c.CreateObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
+				ObligationValueId: row.ID,
+				ActionId:          trigger.GetActionId(),
+				AttributeValueId:  trigger.GetAttributeValueId(),
+			})
+			if err != nil {
+				return nil, err
+			}
+			triggers[i] = createdTrigger
+		}
+	}
+
 	namespace := &policy.Namespace{}
 	if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
@@ -347,6 +363,7 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 		Obligation: obl,
 		Value:      value,
 		Metadata:   metadata,
+		Triggers:   triggers,
 	}, nil
 }
 
@@ -478,11 +495,36 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 	metadata.CreatedAt = oblVal.GetMetadata().GetCreatedAt()
 	metadata.UpdatedAt = now
 
+	// Update triggers for obligation value if provided
+	triggers := oblVal.GetTriggers()
+	if len(r.GetTriggers()) > 0 {
+		// Delete all existing triggers for this obligation value
+		_, err := c.queries.deleteAllObligationTriggersForValue(ctx, id)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+
+		// Create new triggers
+		triggers = make([]*policy.ObligationTrigger, len(r.GetTriggers()))
+		for i, trigger := range r.GetTriggers() {
+			createdTrigger, err := c.CreateObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
+				ObligationValueId: id,
+				ActionId:          trigger.GetActionId(),
+				AttributeValueId:  trigger.GetAttributeValueId(),
+			})
+			if err != nil {
+				return nil, err
+			}
+			triggers[i] = createdTrigger
+		}
+	}
+
 	return &policy.ObligationValue{
 		Id:         id,
 		Value:      value,
 		Metadata:   metadata,
 		Obligation: oblVal.GetObligation(),
+		Triggers:   triggers,
 	}, nil
 }
 

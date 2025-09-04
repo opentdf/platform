@@ -389,6 +389,23 @@ func (q *Queries) createObligationValue(ctx context.Context, arg createObligatio
 	return i, err
 }
 
+const deleteAllObligationTriggersForValue = `-- name: deleteAllObligationTriggersForValue :execrows
+DELETE FROM obligation_triggers
+WHERE obligation_value_id = $1
+`
+
+// deleteAllObligationTriggersForValue
+//
+//	DELETE FROM obligation_triggers
+//	WHERE obligation_value_id = $1
+func (q *Queries) deleteAllObligationTriggersForValue(ctx context.Context, obligationValueID string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAllObligationTriggersForValue, obligationValueID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteObligation = `-- name: deleteObligation :one
 DELETE FROM obligation_definitions 
 WHERE id IN (

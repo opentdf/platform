@@ -1376,6 +1376,14 @@ components:
         value:
           type: string
           title: value
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.obligations.ValueTriggerRequest'
+          title: triggers
+          description: |-
+            Optional
+             Combination of action and attribute_value that will trigger this obligation value policy decisioning.
         metadata:
           title: metadata
           description: |-
@@ -1658,6 +1666,14 @@ components:
           type: string
           title: value
           description: Optional
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.obligations.ValueTriggerRequest'
+          title: triggers
+          description: |-
+            Optional
+             Obligation Triggers provided here will replace all existing records in the database.
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.MetadataMutable'
@@ -1673,6 +1689,19 @@ components:
           title: value
           $ref: '#/components/schemas/policy.ObligationValue'
       title: UpdateObligationValueResponse
+      additionalProperties: false
+    policy.obligations.ValueTriggerRequest:
+      type: object
+      properties:
+        actionId:
+          type: string
+          title: action_id
+          format: uuid
+        attributeValueId:
+          type: string
+          title: attribute_value_id
+          format: uuid
+      title: ValueTriggerRequest
       additionalProperties: false
     connect-protocol-version:
       type: number

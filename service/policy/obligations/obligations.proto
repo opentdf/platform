@@ -20,6 +20,11 @@ message GetObligationRequest {
     }
 }
 
+message ValueTriggerRequest {
+    string action_id = 1 [(buf.validate.field).string.uuid = true];
+    string attribute_value_id = 2 [(buf.validate.field).string.uuid = true];
+}
+
 message GetObligationResponse {
     policy.Obligation obligation = 1;
 }
@@ -123,6 +128,10 @@ message CreateObligationValueRequest {
     string value = 3;
 
     // Optional
+    // Combination of action and attribute_value that will trigger this obligation value policy decisioning.
+    repeated ValueTriggerRequest triggers = 4;
+
+    // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;
 }
@@ -137,6 +146,10 @@ message UpdateObligationValueRequest {
     
     // Optional
     string value = 2;
+    
+    // Optional
+    // Obligation Triggers provided here will replace all existing records in the database.
+    repeated ValueTriggerRequest triggers = 3;
     common.MetadataMutable metadata = 100;
     common.MetadataUpdateEnum metadata_update_behavior = 101;
 }

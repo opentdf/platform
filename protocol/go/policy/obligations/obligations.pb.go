@@ -105,6 +105,61 @@ func (*GetObligationRequest_Id) isGetObligationRequest_Identifier() {}
 
 func (*GetObligationRequest_Fqn) isGetObligationRequest_Identifier() {}
 
+type ValueTriggerRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ActionId         string `protobuf:"bytes,1,opt,name=action_id,json=actionId,proto3" json:"action_id,omitempty"`
+	AttributeValueId string `protobuf:"bytes,2,opt,name=attribute_value_id,json=attributeValueId,proto3" json:"attribute_value_id,omitempty"`
+}
+
+func (x *ValueTriggerRequest) Reset() {
+	*x = ValueTriggerRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_policy_obligations_obligations_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ValueTriggerRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValueTriggerRequest) ProtoMessage() {}
+
+func (x *ValueTriggerRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_policy_obligations_obligations_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValueTriggerRequest.ProtoReflect.Descriptor instead.
+func (*ValueTriggerRequest) Descriptor() ([]byte, []int) {
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ValueTriggerRequest) GetActionId() string {
+	if x != nil {
+		return x.ActionId
+	}
+	return ""
+}
+
+func (x *ValueTriggerRequest) GetAttributeValueId() string {
+	if x != nil {
+		return x.AttributeValueId
+	}
+	return ""
+}
+
 type GetObligationResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -116,7 +171,7 @@ type GetObligationResponse struct {
 func (x *GetObligationResponse) Reset() {
 	*x = GetObligationResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[1]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -129,7 +184,7 @@ func (x *GetObligationResponse) String() string {
 func (*GetObligationResponse) ProtoMessage() {}
 
 func (x *GetObligationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[1]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -142,7 +197,7 @@ func (x *GetObligationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObligationResponse.ProtoReflect.Descriptor instead.
 func (*GetObligationResponse) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{1}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetObligationResponse) GetObligation() *policy.Obligation {
@@ -163,7 +218,7 @@ type GetObligationsByFQNsRequest struct {
 func (x *GetObligationsByFQNsRequest) Reset() {
 	*x = GetObligationsByFQNsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[2]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -176,7 +231,7 @@ func (x *GetObligationsByFQNsRequest) String() string {
 func (*GetObligationsByFQNsRequest) ProtoMessage() {}
 
 func (x *GetObligationsByFQNsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[2]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -189,7 +244,7 @@ func (x *GetObligationsByFQNsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObligationsByFQNsRequest.ProtoReflect.Descriptor instead.
 func (*GetObligationsByFQNsRequest) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{2}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetObligationsByFQNsRequest) GetFqns() []string {
@@ -210,7 +265,7 @@ type GetObligationsByFQNsResponse struct {
 func (x *GetObligationsByFQNsResponse) Reset() {
 	*x = GetObligationsByFQNsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[3]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -223,7 +278,7 @@ func (x *GetObligationsByFQNsResponse) String() string {
 func (*GetObligationsByFQNsResponse) ProtoMessage() {}
 
 func (x *GetObligationsByFQNsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[3]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -236,7 +291,7 @@ func (x *GetObligationsByFQNsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObligationsByFQNsResponse.ProtoReflect.Descriptor instead.
 func (*GetObligationsByFQNsResponse) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{3}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetObligationsByFQNsResponse) GetFqnObligationMap() map[string]*policy.Obligation {
@@ -269,7 +324,7 @@ type CreateObligationRequest struct {
 func (x *CreateObligationRequest) Reset() {
 	*x = CreateObligationRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[4]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -282,7 +337,7 @@ func (x *CreateObligationRequest) String() string {
 func (*CreateObligationRequest) ProtoMessage() {}
 
 func (x *CreateObligationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[4]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -295,7 +350,7 @@ func (x *CreateObligationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateObligationRequest.ProtoReflect.Descriptor instead.
 func (*CreateObligationRequest) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{4}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{5}
 }
 
 func (m *CreateObligationRequest) GetNamespaceIdentifier() isCreateObligationRequest_NamespaceIdentifier {
@@ -367,7 +422,7 @@ type CreateObligationResponse struct {
 func (x *CreateObligationResponse) Reset() {
 	*x = CreateObligationResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[5]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -380,7 +435,7 @@ func (x *CreateObligationResponse) String() string {
 func (*CreateObligationResponse) ProtoMessage() {}
 
 func (x *CreateObligationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[5]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -393,7 +448,7 @@ func (x *CreateObligationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateObligationResponse.ProtoReflect.Descriptor instead.
 func (*CreateObligationResponse) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{5}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CreateObligationResponse) GetObligation() *policy.Obligation {
@@ -419,7 +474,7 @@ type UpdateObligationRequest struct {
 func (x *UpdateObligationRequest) Reset() {
 	*x = UpdateObligationRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[6]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -432,7 +487,7 @@ func (x *UpdateObligationRequest) String() string {
 func (*UpdateObligationRequest) ProtoMessage() {}
 
 func (x *UpdateObligationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[6]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -445,7 +500,7 @@ func (x *UpdateObligationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateObligationRequest.ProtoReflect.Descriptor instead.
 func (*UpdateObligationRequest) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{6}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UpdateObligationRequest) GetId() string {
@@ -487,7 +542,7 @@ type UpdateObligationResponse struct {
 func (x *UpdateObligationResponse) Reset() {
 	*x = UpdateObligationResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[7]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -500,7 +555,7 @@ func (x *UpdateObligationResponse) String() string {
 func (*UpdateObligationResponse) ProtoMessage() {}
 
 func (x *UpdateObligationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[7]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -513,7 +568,7 @@ func (x *UpdateObligationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateObligationResponse.ProtoReflect.Descriptor instead.
 func (*UpdateObligationResponse) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{7}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UpdateObligationResponse) GetObligation() *policy.Obligation {
@@ -538,7 +593,7 @@ type DeleteObligationRequest struct {
 func (x *DeleteObligationRequest) Reset() {
 	*x = DeleteObligationRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[8]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -551,7 +606,7 @@ func (x *DeleteObligationRequest) String() string {
 func (*DeleteObligationRequest) ProtoMessage() {}
 
 func (x *DeleteObligationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[8]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -564,7 +619,7 @@ func (x *DeleteObligationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteObligationRequest.ProtoReflect.Descriptor instead.
 func (*DeleteObligationRequest) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{8}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{9}
 }
 
 func (m *DeleteObligationRequest) GetIdentifier() isDeleteObligationRequest_Identifier {
@@ -615,7 +670,7 @@ type DeleteObligationResponse struct {
 func (x *DeleteObligationResponse) Reset() {
 	*x = DeleteObligationResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[9]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -628,7 +683,7 @@ func (x *DeleteObligationResponse) String() string {
 func (*DeleteObligationResponse) ProtoMessage() {}
 
 func (x *DeleteObligationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[9]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -641,7 +696,7 @@ func (x *DeleteObligationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteObligationResponse.ProtoReflect.Descriptor instead.
 func (*DeleteObligationResponse) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{9}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *DeleteObligationResponse) GetObligation() *policy.Obligation {
@@ -671,7 +726,7 @@ type ListObligationsRequest struct {
 func (x *ListObligationsRequest) Reset() {
 	*x = ListObligationsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[10]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -684,7 +739,7 @@ func (x *ListObligationsRequest) String() string {
 func (*ListObligationsRequest) ProtoMessage() {}
 
 func (x *ListObligationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[10]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -697,7 +752,7 @@ func (x *ListObligationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListObligationsRequest.ProtoReflect.Descriptor instead.
 func (*ListObligationsRequest) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{10}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{11}
 }
 
 func (m *ListObligationsRequest) GetNamespaceIdentifier() isListObligationsRequest_NamespaceIdentifier {
@@ -756,7 +811,7 @@ type ListObligationsResponse struct {
 func (x *ListObligationsResponse) Reset() {
 	*x = ListObligationsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[11]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -769,7 +824,7 @@ func (x *ListObligationsResponse) String() string {
 func (*ListObligationsResponse) ProtoMessage() {}
 
 func (x *ListObligationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[11]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -782,7 +837,7 @@ func (x *ListObligationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListObligationsResponse.ProtoReflect.Descriptor instead.
 func (*ListObligationsResponse) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{11}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListObligationsResponse) GetObligations() []*policy.Obligation {
@@ -815,7 +870,7 @@ type GetObligationValueRequest struct {
 func (x *GetObligationValueRequest) Reset() {
 	*x = GetObligationValueRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[12]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -828,7 +883,7 @@ func (x *GetObligationValueRequest) String() string {
 func (*GetObligationValueRequest) ProtoMessage() {}
 
 func (x *GetObligationValueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[12]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -841,7 +896,7 @@ func (x *GetObligationValueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObligationValueRequest.ProtoReflect.Descriptor instead.
 func (*GetObligationValueRequest) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{12}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{13}
 }
 
 func (m *GetObligationValueRequest) GetIdentifier() isGetObligationValueRequest_Identifier {
@@ -892,7 +947,7 @@ type GetObligationValueResponse struct {
 func (x *GetObligationValueResponse) Reset() {
 	*x = GetObligationValueResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[13]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -905,7 +960,7 @@ func (x *GetObligationValueResponse) String() string {
 func (*GetObligationValueResponse) ProtoMessage() {}
 
 func (x *GetObligationValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[13]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -918,7 +973,7 @@ func (x *GetObligationValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObligationValueResponse.ProtoReflect.Descriptor instead.
 func (*GetObligationValueResponse) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{13}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetObligationValueResponse) GetValue() *policy.ObligationValue {
@@ -939,7 +994,7 @@ type GetObligationValuesByFQNsRequest struct {
 func (x *GetObligationValuesByFQNsRequest) Reset() {
 	*x = GetObligationValuesByFQNsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[14]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -952,7 +1007,7 @@ func (x *GetObligationValuesByFQNsRequest) String() string {
 func (*GetObligationValuesByFQNsRequest) ProtoMessage() {}
 
 func (x *GetObligationValuesByFQNsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[14]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -965,7 +1020,7 @@ func (x *GetObligationValuesByFQNsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObligationValuesByFQNsRequest.ProtoReflect.Descriptor instead.
 func (*GetObligationValuesByFQNsRequest) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{14}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetObligationValuesByFQNsRequest) GetFqns() []string {
@@ -986,7 +1041,7 @@ type GetObligationValuesByFQNsResponse struct {
 func (x *GetObligationValuesByFQNsResponse) Reset() {
 	*x = GetObligationValuesByFQNsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[15]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -999,7 +1054,7 @@ func (x *GetObligationValuesByFQNsResponse) String() string {
 func (*GetObligationValuesByFQNsResponse) ProtoMessage() {}
 
 func (x *GetObligationValuesByFQNsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[15]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1012,7 +1067,7 @@ func (x *GetObligationValuesByFQNsResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use GetObligationValuesByFQNsResponse.ProtoReflect.Descriptor instead.
 func (*GetObligationValuesByFQNsResponse) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{15}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetObligationValuesByFQNsResponse) GetFqnValueMap() map[string]*policy.ObligationValue {
@@ -1036,6 +1091,9 @@ type CreateObligationValueRequest struct {
 	ObligationIdentifier isCreateObligationValueRequest_ObligationIdentifier `protobuf_oneof:"obligation_identifier"`
 	Value                string                                              `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
 	// Optional
+	// Combination of action and attribute_value that will trigger this obligation value policy decisioning.
+	Triggers []*ValueTriggerRequest `protobuf:"bytes,4,rep,name=triggers,proto3" json:"triggers,omitempty"`
+	// Optional
 	// Common metadata
 	Metadata *common.MetadataMutable `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
@@ -1043,7 +1101,7 @@ type CreateObligationValueRequest struct {
 func (x *CreateObligationValueRequest) Reset() {
 	*x = CreateObligationValueRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[16]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1056,7 +1114,7 @@ func (x *CreateObligationValueRequest) String() string {
 func (*CreateObligationValueRequest) ProtoMessage() {}
 
 func (x *CreateObligationValueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[16]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1069,7 +1127,7 @@ func (x *CreateObligationValueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateObligationValueRequest.ProtoReflect.Descriptor instead.
 func (*CreateObligationValueRequest) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{16}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{17}
 }
 
 func (m *CreateObligationValueRequest) GetObligationIdentifier() isCreateObligationValueRequest_ObligationIdentifier {
@@ -1098,6 +1156,13 @@ func (x *CreateObligationValueRequest) GetValue() string {
 		return x.Value
 	}
 	return ""
+}
+
+func (x *CreateObligationValueRequest) GetTriggers() []*ValueTriggerRequest {
+	if x != nil {
+		return x.Triggers
+	}
+	return nil
 }
 
 func (x *CreateObligationValueRequest) GetMetadata() *common.MetadataMutable {
@@ -1134,7 +1199,7 @@ type CreateObligationValueResponse struct {
 func (x *CreateObligationValueResponse) Reset() {
 	*x = CreateObligationValueResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[17]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1147,7 +1212,7 @@ func (x *CreateObligationValueResponse) String() string {
 func (*CreateObligationValueResponse) ProtoMessage() {}
 
 func (x *CreateObligationValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[17]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1160,7 +1225,7 @@ func (x *CreateObligationValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateObligationValueResponse.ProtoReflect.Descriptor instead.
 func (*CreateObligationValueResponse) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{17}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CreateObligationValueResponse) GetValue() *policy.ObligationValue {
@@ -1178,7 +1243,10 @@ type UpdateObligationValueRequest struct {
 	// Required
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Optional
-	Value                  string                    `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	// Optional
+	// Obligation Triggers provided here will replace all existing records in the database.
+	Triggers               []*ValueTriggerRequest    `protobuf:"bytes,3,rep,name=triggers,proto3" json:"triggers,omitempty"`
 	Metadata               *common.MetadataMutable   `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	MetadataUpdateBehavior common.MetadataUpdateEnum `protobuf:"varint,101,opt,name=metadata_update_behavior,json=metadataUpdateBehavior,proto3,enum=common.MetadataUpdateEnum" json:"metadata_update_behavior,omitempty"`
 }
@@ -1186,7 +1254,7 @@ type UpdateObligationValueRequest struct {
 func (x *UpdateObligationValueRequest) Reset() {
 	*x = UpdateObligationValueRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[18]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1199,7 +1267,7 @@ func (x *UpdateObligationValueRequest) String() string {
 func (*UpdateObligationValueRequest) ProtoMessage() {}
 
 func (x *UpdateObligationValueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[18]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1212,7 +1280,7 @@ func (x *UpdateObligationValueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateObligationValueRequest.ProtoReflect.Descriptor instead.
 func (*UpdateObligationValueRequest) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{18}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *UpdateObligationValueRequest) GetId() string {
@@ -1227,6 +1295,13 @@ func (x *UpdateObligationValueRequest) GetValue() string {
 		return x.Value
 	}
 	return ""
+}
+
+func (x *UpdateObligationValueRequest) GetTriggers() []*ValueTriggerRequest {
+	if x != nil {
+		return x.Triggers
+	}
+	return nil
 }
 
 func (x *UpdateObligationValueRequest) GetMetadata() *common.MetadataMutable {
@@ -1254,7 +1329,7 @@ type UpdateObligationValueResponse struct {
 func (x *UpdateObligationValueResponse) Reset() {
 	*x = UpdateObligationValueResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[19]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1267,7 +1342,7 @@ func (x *UpdateObligationValueResponse) String() string {
 func (*UpdateObligationValueResponse) ProtoMessage() {}
 
 func (x *UpdateObligationValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[19]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1280,7 +1355,7 @@ func (x *UpdateObligationValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateObligationValueResponse.ProtoReflect.Descriptor instead.
 func (*UpdateObligationValueResponse) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{19}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *UpdateObligationValueResponse) GetValue() *policy.ObligationValue {
@@ -1305,7 +1380,7 @@ type DeleteObligationValueRequest struct {
 func (x *DeleteObligationValueRequest) Reset() {
 	*x = DeleteObligationValueRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[20]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1318,7 +1393,7 @@ func (x *DeleteObligationValueRequest) String() string {
 func (*DeleteObligationValueRequest) ProtoMessage() {}
 
 func (x *DeleteObligationValueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[20]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1331,7 +1406,7 @@ func (x *DeleteObligationValueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteObligationValueRequest.ProtoReflect.Descriptor instead.
 func (*DeleteObligationValueRequest) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{20}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{21}
 }
 
 func (m *DeleteObligationValueRequest) GetIdentifier() isDeleteObligationValueRequest_Identifier {
@@ -1382,7 +1457,7 @@ type DeleteObligationValueResponse struct {
 func (x *DeleteObligationValueResponse) Reset() {
 	*x = DeleteObligationValueResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[21]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1395,7 +1470,7 @@ func (x *DeleteObligationValueResponse) String() string {
 func (*DeleteObligationValueResponse) ProtoMessage() {}
 
 func (x *DeleteObligationValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[21]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1408,7 +1483,7 @@ func (x *DeleteObligationValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteObligationValueResponse.ProtoReflect.Descriptor instead.
 func (*DeleteObligationValueResponse) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{21}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *DeleteObligationValueResponse) GetValue() *policy.ObligationValue {
@@ -1438,7 +1513,7 @@ type AddObligationTriggerRequest struct {
 func (x *AddObligationTriggerRequest) Reset() {
 	*x = AddObligationTriggerRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[22]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1451,7 +1526,7 @@ func (x *AddObligationTriggerRequest) String() string {
 func (*AddObligationTriggerRequest) ProtoMessage() {}
 
 func (x *AddObligationTriggerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[22]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1464,7 +1539,7 @@ func (x *AddObligationTriggerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddObligationTriggerRequest.ProtoReflect.Descriptor instead.
 func (*AddObligationTriggerRequest) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{22}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AddObligationTriggerRequest) GetObligationValueId() string {
@@ -1506,7 +1581,7 @@ type AddObligationTriggerResponse struct {
 func (x *AddObligationTriggerResponse) Reset() {
 	*x = AddObligationTriggerResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[23]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1519,7 +1594,7 @@ func (x *AddObligationTriggerResponse) String() string {
 func (*AddObligationTriggerResponse) ProtoMessage() {}
 
 func (x *AddObligationTriggerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[23]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1532,7 +1607,7 @@ func (x *AddObligationTriggerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddObligationTriggerResponse.ProtoReflect.Descriptor instead.
 func (*AddObligationTriggerResponse) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{23}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *AddObligationTriggerResponse) GetTrigger() *policy.ObligationTrigger {
@@ -1553,7 +1628,7 @@ type RemoveObligationTriggerRequest struct {
 func (x *RemoveObligationTriggerRequest) Reset() {
 	*x = RemoveObligationTriggerRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[24]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1566,7 +1641,7 @@ func (x *RemoveObligationTriggerRequest) String() string {
 func (*RemoveObligationTriggerRequest) ProtoMessage() {}
 
 func (x *RemoveObligationTriggerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[24]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1579,7 +1654,7 @@ func (x *RemoveObligationTriggerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveObligationTriggerRequest.ProtoReflect.Descriptor instead.
 func (*RemoveObligationTriggerRequest) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{24}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *RemoveObligationTriggerRequest) GetId() string {
@@ -1600,7 +1675,7 @@ type RemoveObligationTriggerResponse struct {
 func (x *RemoveObligationTriggerResponse) Reset() {
 	*x = RemoveObligationTriggerResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_obligations_obligations_proto_msgTypes[25]
+		mi := &file_policy_obligations_obligations_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1613,7 +1688,7 @@ func (x *RemoveObligationTriggerResponse) String() string {
 func (*RemoveObligationTriggerResponse) ProtoMessage() {}
 
 func (x *RemoveObligationTriggerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_obligations_obligations_proto_msgTypes[25]
+	mi := &file_policy_obligations_obligations_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1626,7 +1701,7 @@ func (x *RemoveObligationTriggerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveObligationTriggerResponse.ProtoReflect.Descriptor instead.
 func (*RemoveObligationTriggerResponse) Descriptor() ([]byte, []int) {
-	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{25}
+	return file_policy_obligations_obligations_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *RemoveObligationTriggerResponse) GetTrigger() *policy.ObligationTrigger {
@@ -1653,140 +1728,156 @@ var file_policy_obligations_obligations_proto_rawDesc = []byte{
 	0x73, 0x74, 0x12, 0x10, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00,
 	0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x03, 0x66, 0x71, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28,
 	0x09, 0x48, 0x00, 0x52, 0x03, 0x66, 0x71, 0x6e, 0x42, 0x0c, 0x0a, 0x0a, 0x69, 0x64, 0x65, 0x6e,
-	0x74, 0x69, 0x66, 0x69, 0x65, 0x72, 0x22, 0x4b, 0x0a, 0x15, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6c,
-	0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
-	0x32, 0x0a, 0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c,
-	0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x22, 0x31, 0x0a, 0x1b, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61,
-	0x74, 0x69, 0x6f, 0x6e, 0x73, 0x42, 0x79, 0x46, 0x51, 0x4e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x66, 0x71, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09,
-	0x52, 0x04, 0x66, 0x71, 0x6e, 0x73, 0x22, 0xed, 0x01, 0x0a, 0x1c, 0x47, 0x65, 0x74, 0x4f, 0x62,
-	0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x42, 0x79, 0x46, 0x51, 0x4e, 0x73, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x74, 0x0a, 0x12, 0x66, 0x71, 0x6e, 0x5f, 0x6f,
-	0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x6d, 0x61, 0x70, 0x18, 0x01, 0x20,
-	0x03, 0x28, 0x0b, 0x32, 0x46, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x6f, 0x62, 0x6c,
-	0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6c, 0x69,
-	0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x42, 0x79, 0x46, 0x51, 0x4e, 0x73, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x2e, 0x46, 0x71, 0x6e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x4d, 0x61, 0x70, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x10, 0x66, 0x71, 0x6e,
-	0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x4d, 0x61, 0x70, 0x1a, 0x57, 0x0a,
-	0x15, 0x46, 0x71, 0x6e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x4d, 0x61,
-	0x70, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x28, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75,
-	0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79,
-	0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x05, 0x76, 0x61, 0x6c,
-	0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0xb8, 0x01, 0x0a, 0x17, 0x43, 0x72, 0x65, 0x61, 0x74,
-	0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x12, 0x10, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00,
-	0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x03, 0x66, 0x71, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x09, 0x48, 0x00, 0x52, 0x03, 0x66, 0x71, 0x6e, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65,
-	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x16, 0x0a, 0x06,
-	0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x09, 0x52, 0x06, 0x76, 0x61,
-	0x6c, 0x75, 0x65, 0x73, 0x12, 0x33, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
-	0x18, 0x64, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e,
-	0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x4d, 0x75, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x52,
-	0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x42, 0x16, 0x0a, 0x14, 0x6e, 0x61, 0x6d,
-	0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x66, 0x69, 0x65,
-	0x72, 0x22, 0x4e, 0x0a, 0x18, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67,
+	0x74, 0x69, 0x66, 0x69, 0x65, 0x72, 0x22, 0x74, 0x0a, 0x13, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x54,
+	0x72, 0x69, 0x67, 0x67, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x25, 0x0a,
+	0x09, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x42, 0x08, 0xba, 0x48, 0x05, 0x72, 0x03, 0xb0, 0x01, 0x01, 0x52, 0x08, 0x61, 0x63, 0x74, 0x69,
+	0x6f, 0x6e, 0x49, 0x64, 0x12, 0x36, 0x0a, 0x12, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74,
+	0x65, 0x5f, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
+	0x42, 0x08, 0xba, 0x48, 0x05, 0x72, 0x03, 0xb0, 0x01, 0x01, 0x52, 0x10, 0x61, 0x74, 0x74, 0x72,
+	0x69, 0x62, 0x75, 0x74, 0x65, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x49, 0x64, 0x22, 0x4b, 0x0a, 0x15,
+	0x47, 0x65, 0x74, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x32, 0x0a, 0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x70, 0x6f, 0x6c, 0x69,
+	0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0a, 0x6f,
+	0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x31, 0x0a, 0x1b, 0x47, 0x65, 0x74,
+	0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x42, 0x79, 0x46, 0x51, 0x4e,
+	0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x66, 0x71, 0x6e, 0x73,
+	0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x04, 0x66, 0x71, 0x6e, 0x73, 0x22, 0xed, 0x01, 0x0a,
+	0x1c, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x42,
+	0x79, 0x46, 0x51, 0x4e, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x74, 0x0a,
+	0x12, 0x66, 0x71, 0x6e, 0x5f, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f,
+	0x6d, 0x61, 0x70, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x46, 0x2e, 0x70, 0x6f, 0x6c, 0x69,
+	0x63, 0x79, 0x2e, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x47,
+	0x65, 0x74, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x42, 0x79, 0x46,
+	0x51, 0x4e, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x2e, 0x46, 0x71, 0x6e, 0x4f,
+	0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x4d, 0x61, 0x70, 0x45, 0x6e, 0x74, 0x72,
+	0x79, 0x52, 0x10, 0x66, 0x71, 0x6e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x4d, 0x61, 0x70, 0x1a, 0x57, 0x0a, 0x15, 0x46, 0x71, 0x6e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61,
+	0x74, 0x69, 0x6f, 0x6e, 0x4d, 0x61, 0x70, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03,
+	0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x28,
+	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e,
+	0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0xb8, 0x01, 0x0a,
+	0x17, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x03, 0x66, 0x71,
+	0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x03, 0x66, 0x71, 0x6e, 0x12, 0x12,
+	0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61,
+	0x6d, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x18, 0x04, 0x20, 0x03,
+	0x28, 0x09, 0x52, 0x06, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x12, 0x33, 0x0a, 0x08, 0x6d, 0x65,
+	0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x64, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x63,
+	0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x4d, 0x75,
+	0x74, 0x61, 0x62, 0x6c, 0x65, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x42,
+	0x16, 0x0a, 0x14, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x65,
+	0x6e, 0x74, 0x69, 0x66, 0x69, 0x65, 0x72, 0x22, 0x4e, 0x0a, 0x18, 0x43, 0x72, 0x65, 0x61, 0x74,
+	0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x12, 0x32, 0x0a, 0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79,
+	0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0a, 0x6f, 0x62, 0x6c,
+	0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0xc8, 0x01, 0x0a, 0x17, 0x55, 0x70, 0x64, 0x61,
+	0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x33, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64,
+	0x61, 0x74, 0x61, 0x18, 0x64, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x63, 0x6f, 0x6d, 0x6d,
+	0x6f, 0x6e, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x4d, 0x75, 0x74, 0x61, 0x62,
+	0x6c, 0x65, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x54, 0x0a, 0x18,
+	0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x5f, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x5f,
+	0x62, 0x65, 0x68, 0x61, 0x76, 0x69, 0x6f, 0x72, 0x18, 0x65, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x1a,
+	0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
+	0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x45, 0x6e, 0x75, 0x6d, 0x52, 0x16, 0x6d, 0x65, 0x74, 0x61,
+	0x64, 0x61, 0x74, 0x61, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x42, 0x65, 0x68, 0x61, 0x76, 0x69,
+	0x6f, 0x72, 0x22, 0x4e, 0x0a, 0x18, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69,
+	0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x32,
+	0x0a, 0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x12, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69,
+	0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69,
+	0x6f, 0x6e, 0x22, 0x4d, 0x0a, 0x17, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69,
+	0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a,
+	0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x02, 0x69, 0x64, 0x12,
+	0x12, 0x0a, 0x03, 0x66, 0x71, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x03,
+	0x66, 0x71, 0x6e, 0x42, 0x0c, 0x0a, 0x0a, 0x69, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x66, 0x69, 0x65,
+	0x72, 0x22, 0x4e, 0x0a, 0x18, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67,
 	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x32, 0x0a,
 	0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28,
 	0x0b, 0x32, 0x12, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67,
 	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x22, 0xc8, 0x01, 0x0a, 0x17, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69,
-	0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a,
-	0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a,
-	0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d,
-	0x65, 0x12, 0x33, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x64, 0x20,
-	0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x4d, 0x65, 0x74,
-	0x61, 0x64, 0x61, 0x74, 0x61, 0x4d, 0x75, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x52, 0x08, 0x6d, 0x65,
-	0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x54, 0x0a, 0x18, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61,
-	0x74, 0x61, 0x5f, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x5f, 0x62, 0x65, 0x68, 0x61, 0x76, 0x69,
-	0x6f, 0x72, 0x18, 0x65, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x1a, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f,
-	0x6e, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65,
-	0x45, 0x6e, 0x75, 0x6d, 0x52, 0x16, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x55, 0x70,
-	0x64, 0x61, 0x74, 0x65, 0x42, 0x65, 0x68, 0x61, 0x76, 0x69, 0x6f, 0x72, 0x22, 0x4e, 0x0a, 0x18,
-	0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x32, 0x0a, 0x0a, 0x6f, 0x62, 0x6c, 0x69,
-	0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x70,
-	0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e,
-	0x52, 0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x4d, 0x0a, 0x17,
-	0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x03, 0x66, 0x71, 0x6e,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x03, 0x66, 0x71, 0x6e, 0x42, 0x0c, 0x0a,
-	0x0a, 0x69, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x66, 0x69, 0x65, 0x72, 0x22, 0x4e, 0x0a, 0x18, 0x44,
-	0x65, 0x6c, 0x65, 0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x32, 0x0a, 0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67,
-	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x70, 0x6f,
-	0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52,
-	0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x8b, 0x01, 0x0a, 0x16,
-	0x4c, 0x69, 0x73, 0x74, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x48, 0x00, 0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x03, 0x66, 0x71, 0x6e, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x03, 0x66, 0x71, 0x6e, 0x12, 0x33, 0x0a, 0x0a,
-	0x70, 0x61, 0x67, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x0b,
-	0x32, 0x13, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x50, 0x61, 0x67, 0x65, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x52, 0x0a, 0x70, 0x61, 0x67, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x42, 0x16, 0x0a, 0x14, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x5f, 0x69,
-	0x64, 0x65, 0x6e, 0x74, 0x69, 0x66, 0x69, 0x65, 0x72, 0x22, 0x85, 0x01, 0x0a, 0x17, 0x4c, 0x69,
-	0x73, 0x74, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x34, 0x0a, 0x0b, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x70, 0x6f, 0x6c,
-	0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0b,
-	0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x12, 0x34, 0x0a, 0x0a, 0x70,
-	0x61, 0x67, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x0b, 0x32,
-	0x14, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x50, 0x61, 0x67, 0x65, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x52, 0x0a, 0x70, 0x61, 0x67, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x22, 0x4f, 0x0a, 0x19, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10,
-	0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x02, 0x69, 0x64,
-	0x12, 0x12, 0x0a, 0x03, 0x66, 0x71, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52,
-	0x03, 0x66, 0x71, 0x6e, 0x42, 0x0c, 0x0a, 0x0a, 0x69, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x66, 0x69,
-	0x65, 0x72, 0x22, 0x4b, 0x0a, 0x1a, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x12, 0x2d, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32,
-	0x17, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22,
-	0x36, 0x0a, 0x20, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e,
-	0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x42, 0x79, 0x46, 0x51, 0x4e, 0x73, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x66, 0x71, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28,
-	0x09, 0x52, 0x04, 0x66, 0x71, 0x6e, 0x73, 0x22, 0xe8, 0x01, 0x0a, 0x21, 0x47, 0x65, 0x74, 0x4f,
-	0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x42,
-	0x79, 0x46, 0x51, 0x4e, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x6a, 0x0a,
-	0x0d, 0x66, 0x71, 0x6e, 0x5f, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x5f, 0x6d, 0x61, 0x70, 0x18, 0x01,
-	0x20, 0x03, 0x28, 0x0b, 0x32, 0x46, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x6f, 0x62,
-	0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6c,
-	0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x42, 0x79, 0x46,
-	0x51, 0x4e, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x2e, 0x46, 0x71, 0x6e, 0x56,
-	0x61, 0x6c, 0x75, 0x65, 0x4d, 0x61, 0x70, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x0b, 0x66, 0x71,
-	0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x4d, 0x61, 0x70, 0x1a, 0x57, 0x0a, 0x10, 0x46, 0x71, 0x6e,
-	0x56, 0x61, 0x6c, 0x75, 0x65, 0x4d, 0x61, 0x70, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a,
-	0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12,
-	0x2d, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17,
-	0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02,
-	0x38, 0x01, 0x22, 0xa8, 0x01, 0x0a, 0x1c, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x4f, 0x62, 0x6c,
-	0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x48,
-	0x00, 0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x03, 0x66, 0x71, 0x6e, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x09, 0x48, 0x00, 0x52, 0x03, 0x66, 0x71, 0x6e, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c,
-	0x75, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x12,
-	0x33, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x64, 0x20, 0x01, 0x28,
-	0x0b, 0x32, 0x17, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64,
-	0x61, 0x74, 0x61, 0x4d, 0x75, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61,
-	0x64, 0x61, 0x74, 0x61, 0x42, 0x17, 0x0a, 0x15, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x66, 0x69, 0x65, 0x72, 0x22, 0x4e, 0x0a,
-	0x1d, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2d,
-	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e,
-	0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0xcf, 0x01,
-	0x0a, 0x1c, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e,
-	0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x14,
-	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76,
-	0x61, 0x6c, 0x75, 0x65, 0x12, 0x33, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
+	0x6e, 0x22, 0x8b, 0x01, 0x0a, 0x16, 0x4c, 0x69, 0x73, 0x74, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61,
+	0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x02,
+	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x02, 0x69, 0x64, 0x12, 0x12,
+	0x0a, 0x03, 0x66, 0x71, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x03, 0x66,
+	0x71, 0x6e, 0x12, 0x33, 0x0a, 0x0a, 0x70, 0x61, 0x67, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x18, 0x0a, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e,
+	0x50, 0x61, 0x67, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x52, 0x0a, 0x70, 0x61, 0x67,
+	0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x16, 0x0a, 0x14, 0x6e, 0x61, 0x6d, 0x65, 0x73,
+	0x70, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x66, 0x69, 0x65, 0x72, 0x22,
+	0x85, 0x01, 0x0a, 0x17, 0x4c, 0x69, 0x73, 0x74, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69,
+	0x6f, 0x6e, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x34, 0x0a, 0x0b, 0x6f,
+	0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b,
+	0x32, 0x12, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61,
+	0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0b, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x73, 0x12, 0x34, 0x0a, 0x0a, 0x70, 0x61, 0x67, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18,
+	0x0a, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x50,
+	0x61, 0x67, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x52, 0x0a, 0x70, 0x61, 0x67,
+	0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x4f, 0x0a, 0x19, 0x47, 0x65, 0x74, 0x4f, 0x62,
+	0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x48, 0x00, 0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x03, 0x66, 0x71, 0x6e, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x03, 0x66, 0x71, 0x6e, 0x42, 0x0c, 0x0a, 0x0a, 0x69, 0x64,
+	0x65, 0x6e, 0x74, 0x69, 0x66, 0x69, 0x65, 0x72, 0x22, 0x4b, 0x0a, 0x1a, 0x47, 0x65, 0x74, 0x4f,
+	0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2d, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f,
+	0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x05,
+	0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x36, 0x0a, 0x20, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6c, 0x69,
+	0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x42, 0x79, 0x46, 0x51,
+	0x4e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x66, 0x71, 0x6e,
+	0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x04, 0x66, 0x71, 0x6e, 0x73, 0x22, 0xe8, 0x01,
+	0x0a, 0x21, 0x47, 0x65, 0x74, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56,
+	0x61, 0x6c, 0x75, 0x65, 0x73, 0x42, 0x79, 0x46, 0x51, 0x4e, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x12, 0x6a, 0x0a, 0x0d, 0x66, 0x71, 0x6e, 0x5f, 0x76, 0x61, 0x6c, 0x75, 0x65,
+	0x5f, 0x6d, 0x61, 0x70, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x46, 0x2e, 0x70, 0x6f, 0x6c,
+	0x69, 0x63, 0x79, 0x2e, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e,
+	0x47, 0x65, 0x74, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c,
+	0x75, 0x65, 0x73, 0x42, 0x79, 0x46, 0x51, 0x4e, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x2e, 0x46, 0x71, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x4d, 0x61, 0x70, 0x45, 0x6e, 0x74,
+	0x72, 0x79, 0x52, 0x0b, 0x66, 0x71, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x4d, 0x61, 0x70, 0x1a,
+	0x57, 0x0a, 0x10, 0x46, 0x71, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x4d, 0x61, 0x70, 0x45, 0x6e,
+	0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x2d, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62,
+	0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x05, 0x76,
+	0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0xed, 0x01, 0x0a, 0x1c, 0x43, 0x72, 0x65,
+	0x61, 0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c,
+	0x75, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x02, 0x69, 0x64, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x03, 0x66,
+	0x71, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x03, 0x66, 0x71, 0x6e, 0x12,
+	0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05,
+	0x76, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x43, 0x0a, 0x08, 0x74, 0x72, 0x69, 0x67, 0x67, 0x65, 0x72,
+	0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79,
+	0x2e, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x56, 0x61, 0x6c,
+	0x75, 0x65, 0x54, 0x72, 0x69, 0x67, 0x67, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x52, 0x08, 0x74, 0x72, 0x69, 0x67, 0x67, 0x65, 0x72, 0x73, 0x12, 0x33, 0x0a, 0x08, 0x6d, 0x65,
+	0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x64, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x63,
+	0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x4d, 0x75,
+	0x74, 0x61, 0x62, 0x6c, 0x65, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x42,
+	0x17, 0x0a, 0x15, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64,
+	0x65, 0x6e, 0x74, 0x69, 0x66, 0x69, 0x65, 0x72, 0x22, 0x4e, 0x0a, 0x1d, 0x43, 0x72, 0x65, 0x61,
+	0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75,
+	0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x2d, 0x0a, 0x05, 0x76, 0x61, 0x6c,
+	0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63,
+	0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75,
+	0x65, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x94, 0x02, 0x0a, 0x1c, 0x55, 0x70, 0x64,
+	0x61, 0x74, 0x65, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c,
+	0x75, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c,
+	0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x12,
+	0x43, 0x0a, 0x08, 0x74, 0x72, 0x69, 0x67, 0x67, 0x65, 0x72, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28,
+	0x0b, 0x32, 0x27, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x6f, 0x62, 0x6c, 0x69, 0x67,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x54, 0x72, 0x69, 0x67,
+	0x67, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x52, 0x08, 0x74, 0x72, 0x69, 0x67,
+	0x67, 0x65, 0x72, 0x73, 0x12, 0x33, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
 	0x18, 0x64, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e,
 	0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x4d, 0x75, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x52,
 	0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x54, 0x0a, 0x18, 0x6d, 0x65, 0x74,
@@ -1968,100 +2059,103 @@ func file_policy_obligations_obligations_proto_rawDescGZIP() []byte {
 	return file_policy_obligations_obligations_proto_rawDescData
 }
 
-var file_policy_obligations_obligations_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_policy_obligations_obligations_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_policy_obligations_obligations_proto_goTypes = []interface{}{
 	(*GetObligationRequest)(nil),              // 0: policy.obligations.GetObligationRequest
-	(*GetObligationResponse)(nil),             // 1: policy.obligations.GetObligationResponse
-	(*GetObligationsByFQNsRequest)(nil),       // 2: policy.obligations.GetObligationsByFQNsRequest
-	(*GetObligationsByFQNsResponse)(nil),      // 3: policy.obligations.GetObligationsByFQNsResponse
-	(*CreateObligationRequest)(nil),           // 4: policy.obligations.CreateObligationRequest
-	(*CreateObligationResponse)(nil),          // 5: policy.obligations.CreateObligationResponse
-	(*UpdateObligationRequest)(nil),           // 6: policy.obligations.UpdateObligationRequest
-	(*UpdateObligationResponse)(nil),          // 7: policy.obligations.UpdateObligationResponse
-	(*DeleteObligationRequest)(nil),           // 8: policy.obligations.DeleteObligationRequest
-	(*DeleteObligationResponse)(nil),          // 9: policy.obligations.DeleteObligationResponse
-	(*ListObligationsRequest)(nil),            // 10: policy.obligations.ListObligationsRequest
-	(*ListObligationsResponse)(nil),           // 11: policy.obligations.ListObligationsResponse
-	(*GetObligationValueRequest)(nil),         // 12: policy.obligations.GetObligationValueRequest
-	(*GetObligationValueResponse)(nil),        // 13: policy.obligations.GetObligationValueResponse
-	(*GetObligationValuesByFQNsRequest)(nil),  // 14: policy.obligations.GetObligationValuesByFQNsRequest
-	(*GetObligationValuesByFQNsResponse)(nil), // 15: policy.obligations.GetObligationValuesByFQNsResponse
-	(*CreateObligationValueRequest)(nil),      // 16: policy.obligations.CreateObligationValueRequest
-	(*CreateObligationValueResponse)(nil),     // 17: policy.obligations.CreateObligationValueResponse
-	(*UpdateObligationValueRequest)(nil),      // 18: policy.obligations.UpdateObligationValueRequest
-	(*UpdateObligationValueResponse)(nil),     // 19: policy.obligations.UpdateObligationValueResponse
-	(*DeleteObligationValueRequest)(nil),      // 20: policy.obligations.DeleteObligationValueRequest
-	(*DeleteObligationValueResponse)(nil),     // 21: policy.obligations.DeleteObligationValueResponse
-	(*AddObligationTriggerRequest)(nil),       // 22: policy.obligations.AddObligationTriggerRequest
-	(*AddObligationTriggerResponse)(nil),      // 23: policy.obligations.AddObligationTriggerResponse
-	(*RemoveObligationTriggerRequest)(nil),    // 24: policy.obligations.RemoveObligationTriggerRequest
-	(*RemoveObligationTriggerResponse)(nil),   // 25: policy.obligations.RemoveObligationTriggerResponse
-	nil,                                       // 26: policy.obligations.GetObligationsByFQNsResponse.FqnObligationMapEntry
-	nil,                                       // 27: policy.obligations.GetObligationValuesByFQNsResponse.FqnValueMapEntry
-	(*policy.Obligation)(nil),                 // 28: policy.Obligation
-	(*common.MetadataMutable)(nil),            // 29: common.MetadataMutable
-	(common.MetadataUpdateEnum)(0),            // 30: common.MetadataUpdateEnum
-	(*policy.PageRequest)(nil),                // 31: policy.PageRequest
-	(*policy.PageResponse)(nil),               // 32: policy.PageResponse
-	(*policy.ObligationValue)(nil),            // 33: policy.ObligationValue
-	(*policy.ObligationTrigger)(nil),          // 34: policy.ObligationTrigger
+	(*ValueTriggerRequest)(nil),               // 1: policy.obligations.ValueTriggerRequest
+	(*GetObligationResponse)(nil),             // 2: policy.obligations.GetObligationResponse
+	(*GetObligationsByFQNsRequest)(nil),       // 3: policy.obligations.GetObligationsByFQNsRequest
+	(*GetObligationsByFQNsResponse)(nil),      // 4: policy.obligations.GetObligationsByFQNsResponse
+	(*CreateObligationRequest)(nil),           // 5: policy.obligations.CreateObligationRequest
+	(*CreateObligationResponse)(nil),          // 6: policy.obligations.CreateObligationResponse
+	(*UpdateObligationRequest)(nil),           // 7: policy.obligations.UpdateObligationRequest
+	(*UpdateObligationResponse)(nil),          // 8: policy.obligations.UpdateObligationResponse
+	(*DeleteObligationRequest)(nil),           // 9: policy.obligations.DeleteObligationRequest
+	(*DeleteObligationResponse)(nil),          // 10: policy.obligations.DeleteObligationResponse
+	(*ListObligationsRequest)(nil),            // 11: policy.obligations.ListObligationsRequest
+	(*ListObligationsResponse)(nil),           // 12: policy.obligations.ListObligationsResponse
+	(*GetObligationValueRequest)(nil),         // 13: policy.obligations.GetObligationValueRequest
+	(*GetObligationValueResponse)(nil),        // 14: policy.obligations.GetObligationValueResponse
+	(*GetObligationValuesByFQNsRequest)(nil),  // 15: policy.obligations.GetObligationValuesByFQNsRequest
+	(*GetObligationValuesByFQNsResponse)(nil), // 16: policy.obligations.GetObligationValuesByFQNsResponse
+	(*CreateObligationValueRequest)(nil),      // 17: policy.obligations.CreateObligationValueRequest
+	(*CreateObligationValueResponse)(nil),     // 18: policy.obligations.CreateObligationValueResponse
+	(*UpdateObligationValueRequest)(nil),      // 19: policy.obligations.UpdateObligationValueRequest
+	(*UpdateObligationValueResponse)(nil),     // 20: policy.obligations.UpdateObligationValueResponse
+	(*DeleteObligationValueRequest)(nil),      // 21: policy.obligations.DeleteObligationValueRequest
+	(*DeleteObligationValueResponse)(nil),     // 22: policy.obligations.DeleteObligationValueResponse
+	(*AddObligationTriggerRequest)(nil),       // 23: policy.obligations.AddObligationTriggerRequest
+	(*AddObligationTriggerResponse)(nil),      // 24: policy.obligations.AddObligationTriggerResponse
+	(*RemoveObligationTriggerRequest)(nil),    // 25: policy.obligations.RemoveObligationTriggerRequest
+	(*RemoveObligationTriggerResponse)(nil),   // 26: policy.obligations.RemoveObligationTriggerResponse
+	nil,                                       // 27: policy.obligations.GetObligationsByFQNsResponse.FqnObligationMapEntry
+	nil,                                       // 28: policy.obligations.GetObligationValuesByFQNsResponse.FqnValueMapEntry
+	(*policy.Obligation)(nil),                 // 29: policy.Obligation
+	(*common.MetadataMutable)(nil),            // 30: common.MetadataMutable
+	(common.MetadataUpdateEnum)(0),            // 31: common.MetadataUpdateEnum
+	(*policy.PageRequest)(nil),                // 32: policy.PageRequest
+	(*policy.PageResponse)(nil),               // 33: policy.PageResponse
+	(*policy.ObligationValue)(nil),            // 34: policy.ObligationValue
+	(*policy.ObligationTrigger)(nil),          // 35: policy.ObligationTrigger
 }
 var file_policy_obligations_obligations_proto_depIdxs = []int32{
-	28, // 0: policy.obligations.GetObligationResponse.obligation:type_name -> policy.Obligation
-	26, // 1: policy.obligations.GetObligationsByFQNsResponse.fqn_obligation_map:type_name -> policy.obligations.GetObligationsByFQNsResponse.FqnObligationMapEntry
-	29, // 2: policy.obligations.CreateObligationRequest.metadata:type_name -> common.MetadataMutable
-	28, // 3: policy.obligations.CreateObligationResponse.obligation:type_name -> policy.Obligation
-	29, // 4: policy.obligations.UpdateObligationRequest.metadata:type_name -> common.MetadataMutable
-	30, // 5: policy.obligations.UpdateObligationRequest.metadata_update_behavior:type_name -> common.MetadataUpdateEnum
-	28, // 6: policy.obligations.UpdateObligationResponse.obligation:type_name -> policy.Obligation
-	28, // 7: policy.obligations.DeleteObligationResponse.obligation:type_name -> policy.Obligation
-	31, // 8: policy.obligations.ListObligationsRequest.pagination:type_name -> policy.PageRequest
-	28, // 9: policy.obligations.ListObligationsResponse.obligations:type_name -> policy.Obligation
-	32, // 10: policy.obligations.ListObligationsResponse.pagination:type_name -> policy.PageResponse
-	33, // 11: policy.obligations.GetObligationValueResponse.value:type_name -> policy.ObligationValue
-	27, // 12: policy.obligations.GetObligationValuesByFQNsResponse.fqn_value_map:type_name -> policy.obligations.GetObligationValuesByFQNsResponse.FqnValueMapEntry
-	29, // 13: policy.obligations.CreateObligationValueRequest.metadata:type_name -> common.MetadataMutable
-	33, // 14: policy.obligations.CreateObligationValueResponse.value:type_name -> policy.ObligationValue
-	29, // 15: policy.obligations.UpdateObligationValueRequest.metadata:type_name -> common.MetadataMutable
-	30, // 16: policy.obligations.UpdateObligationValueRequest.metadata_update_behavior:type_name -> common.MetadataUpdateEnum
-	33, // 17: policy.obligations.UpdateObligationValueResponse.value:type_name -> policy.ObligationValue
-	33, // 18: policy.obligations.DeleteObligationValueResponse.value:type_name -> policy.ObligationValue
-	29, // 19: policy.obligations.AddObligationTriggerRequest.metadata:type_name -> common.MetadataMutable
-	34, // 20: policy.obligations.AddObligationTriggerResponse.trigger:type_name -> policy.ObligationTrigger
-	34, // 21: policy.obligations.RemoveObligationTriggerResponse.trigger:type_name -> policy.ObligationTrigger
-	28, // 22: policy.obligations.GetObligationsByFQNsResponse.FqnObligationMapEntry.value:type_name -> policy.Obligation
-	33, // 23: policy.obligations.GetObligationValuesByFQNsResponse.FqnValueMapEntry.value:type_name -> policy.ObligationValue
-	10, // 24: policy.obligations.Service.ListObligations:input_type -> policy.obligations.ListObligationsRequest
-	0,  // 25: policy.obligations.Service.GetObligation:input_type -> policy.obligations.GetObligationRequest
-	2,  // 26: policy.obligations.Service.GetObligationsByFQNs:input_type -> policy.obligations.GetObligationsByFQNsRequest
-	4,  // 27: policy.obligations.Service.CreateObligation:input_type -> policy.obligations.CreateObligationRequest
-	6,  // 28: policy.obligations.Service.UpdateObligation:input_type -> policy.obligations.UpdateObligationRequest
-	8,  // 29: policy.obligations.Service.DeleteObligation:input_type -> policy.obligations.DeleteObligationRequest
-	12, // 30: policy.obligations.Service.GetObligationValue:input_type -> policy.obligations.GetObligationValueRequest
-	14, // 31: policy.obligations.Service.GetObligationValuesByFQNs:input_type -> policy.obligations.GetObligationValuesByFQNsRequest
-	16, // 32: policy.obligations.Service.CreateObligationValue:input_type -> policy.obligations.CreateObligationValueRequest
-	18, // 33: policy.obligations.Service.UpdateObligationValue:input_type -> policy.obligations.UpdateObligationValueRequest
-	20, // 34: policy.obligations.Service.DeleteObligationValue:input_type -> policy.obligations.DeleteObligationValueRequest
-	22, // 35: policy.obligations.Service.AddObligationTrigger:input_type -> policy.obligations.AddObligationTriggerRequest
-	24, // 36: policy.obligations.Service.RemoveObligationTrigger:input_type -> policy.obligations.RemoveObligationTriggerRequest
-	11, // 37: policy.obligations.Service.ListObligations:output_type -> policy.obligations.ListObligationsResponse
-	1,  // 38: policy.obligations.Service.GetObligation:output_type -> policy.obligations.GetObligationResponse
-	3,  // 39: policy.obligations.Service.GetObligationsByFQNs:output_type -> policy.obligations.GetObligationsByFQNsResponse
-	5,  // 40: policy.obligations.Service.CreateObligation:output_type -> policy.obligations.CreateObligationResponse
-	7,  // 41: policy.obligations.Service.UpdateObligation:output_type -> policy.obligations.UpdateObligationResponse
-	9,  // 42: policy.obligations.Service.DeleteObligation:output_type -> policy.obligations.DeleteObligationResponse
-	13, // 43: policy.obligations.Service.GetObligationValue:output_type -> policy.obligations.GetObligationValueResponse
-	15, // 44: policy.obligations.Service.GetObligationValuesByFQNs:output_type -> policy.obligations.GetObligationValuesByFQNsResponse
-	17, // 45: policy.obligations.Service.CreateObligationValue:output_type -> policy.obligations.CreateObligationValueResponse
-	19, // 46: policy.obligations.Service.UpdateObligationValue:output_type -> policy.obligations.UpdateObligationValueResponse
-	21, // 47: policy.obligations.Service.DeleteObligationValue:output_type -> policy.obligations.DeleteObligationValueResponse
-	23, // 48: policy.obligations.Service.AddObligationTrigger:output_type -> policy.obligations.AddObligationTriggerResponse
-	25, // 49: policy.obligations.Service.RemoveObligationTrigger:output_type -> policy.obligations.RemoveObligationTriggerResponse
-	37, // [37:50] is the sub-list for method output_type
-	24, // [24:37] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	29, // 0: policy.obligations.GetObligationResponse.obligation:type_name -> policy.Obligation
+	27, // 1: policy.obligations.GetObligationsByFQNsResponse.fqn_obligation_map:type_name -> policy.obligations.GetObligationsByFQNsResponse.FqnObligationMapEntry
+	30, // 2: policy.obligations.CreateObligationRequest.metadata:type_name -> common.MetadataMutable
+	29, // 3: policy.obligations.CreateObligationResponse.obligation:type_name -> policy.Obligation
+	30, // 4: policy.obligations.UpdateObligationRequest.metadata:type_name -> common.MetadataMutable
+	31, // 5: policy.obligations.UpdateObligationRequest.metadata_update_behavior:type_name -> common.MetadataUpdateEnum
+	29, // 6: policy.obligations.UpdateObligationResponse.obligation:type_name -> policy.Obligation
+	29, // 7: policy.obligations.DeleteObligationResponse.obligation:type_name -> policy.Obligation
+	32, // 8: policy.obligations.ListObligationsRequest.pagination:type_name -> policy.PageRequest
+	29, // 9: policy.obligations.ListObligationsResponse.obligations:type_name -> policy.Obligation
+	33, // 10: policy.obligations.ListObligationsResponse.pagination:type_name -> policy.PageResponse
+	34, // 11: policy.obligations.GetObligationValueResponse.value:type_name -> policy.ObligationValue
+	28, // 12: policy.obligations.GetObligationValuesByFQNsResponse.fqn_value_map:type_name -> policy.obligations.GetObligationValuesByFQNsResponse.FqnValueMapEntry
+	1,  // 13: policy.obligations.CreateObligationValueRequest.triggers:type_name -> policy.obligations.ValueTriggerRequest
+	30, // 14: policy.obligations.CreateObligationValueRequest.metadata:type_name -> common.MetadataMutable
+	34, // 15: policy.obligations.CreateObligationValueResponse.value:type_name -> policy.ObligationValue
+	1,  // 16: policy.obligations.UpdateObligationValueRequest.triggers:type_name -> policy.obligations.ValueTriggerRequest
+	30, // 17: policy.obligations.UpdateObligationValueRequest.metadata:type_name -> common.MetadataMutable
+	31, // 18: policy.obligations.UpdateObligationValueRequest.metadata_update_behavior:type_name -> common.MetadataUpdateEnum
+	34, // 19: policy.obligations.UpdateObligationValueResponse.value:type_name -> policy.ObligationValue
+	34, // 20: policy.obligations.DeleteObligationValueResponse.value:type_name -> policy.ObligationValue
+	30, // 21: policy.obligations.AddObligationTriggerRequest.metadata:type_name -> common.MetadataMutable
+	35, // 22: policy.obligations.AddObligationTriggerResponse.trigger:type_name -> policy.ObligationTrigger
+	35, // 23: policy.obligations.RemoveObligationTriggerResponse.trigger:type_name -> policy.ObligationTrigger
+	29, // 24: policy.obligations.GetObligationsByFQNsResponse.FqnObligationMapEntry.value:type_name -> policy.Obligation
+	34, // 25: policy.obligations.GetObligationValuesByFQNsResponse.FqnValueMapEntry.value:type_name -> policy.ObligationValue
+	11, // 26: policy.obligations.Service.ListObligations:input_type -> policy.obligations.ListObligationsRequest
+	0,  // 27: policy.obligations.Service.GetObligation:input_type -> policy.obligations.GetObligationRequest
+	3,  // 28: policy.obligations.Service.GetObligationsByFQNs:input_type -> policy.obligations.GetObligationsByFQNsRequest
+	5,  // 29: policy.obligations.Service.CreateObligation:input_type -> policy.obligations.CreateObligationRequest
+	7,  // 30: policy.obligations.Service.UpdateObligation:input_type -> policy.obligations.UpdateObligationRequest
+	9,  // 31: policy.obligations.Service.DeleteObligation:input_type -> policy.obligations.DeleteObligationRequest
+	13, // 32: policy.obligations.Service.GetObligationValue:input_type -> policy.obligations.GetObligationValueRequest
+	15, // 33: policy.obligations.Service.GetObligationValuesByFQNs:input_type -> policy.obligations.GetObligationValuesByFQNsRequest
+	17, // 34: policy.obligations.Service.CreateObligationValue:input_type -> policy.obligations.CreateObligationValueRequest
+	19, // 35: policy.obligations.Service.UpdateObligationValue:input_type -> policy.obligations.UpdateObligationValueRequest
+	21, // 36: policy.obligations.Service.DeleteObligationValue:input_type -> policy.obligations.DeleteObligationValueRequest
+	23, // 37: policy.obligations.Service.AddObligationTrigger:input_type -> policy.obligations.AddObligationTriggerRequest
+	25, // 38: policy.obligations.Service.RemoveObligationTrigger:input_type -> policy.obligations.RemoveObligationTriggerRequest
+	12, // 39: policy.obligations.Service.ListObligations:output_type -> policy.obligations.ListObligationsResponse
+	2,  // 40: policy.obligations.Service.GetObligation:output_type -> policy.obligations.GetObligationResponse
+	4,  // 41: policy.obligations.Service.GetObligationsByFQNs:output_type -> policy.obligations.GetObligationsByFQNsResponse
+	6,  // 42: policy.obligations.Service.CreateObligation:output_type -> policy.obligations.CreateObligationResponse
+	8,  // 43: policy.obligations.Service.UpdateObligation:output_type -> policy.obligations.UpdateObligationResponse
+	10, // 44: policy.obligations.Service.DeleteObligation:output_type -> policy.obligations.DeleteObligationResponse
+	14, // 45: policy.obligations.Service.GetObligationValue:output_type -> policy.obligations.GetObligationValueResponse
+	16, // 46: policy.obligations.Service.GetObligationValuesByFQNs:output_type -> policy.obligations.GetObligationValuesByFQNsResponse
+	18, // 47: policy.obligations.Service.CreateObligationValue:output_type -> policy.obligations.CreateObligationValueResponse
+	20, // 48: policy.obligations.Service.UpdateObligationValue:output_type -> policy.obligations.UpdateObligationValueResponse
+	22, // 49: policy.obligations.Service.DeleteObligationValue:output_type -> policy.obligations.DeleteObligationValueResponse
+	24, // 50: policy.obligations.Service.AddObligationTrigger:output_type -> policy.obligations.AddObligationTriggerResponse
+	26, // 51: policy.obligations.Service.RemoveObligationTrigger:output_type -> policy.obligations.RemoveObligationTriggerResponse
+	39, // [39:52] is the sub-list for method output_type
+	26, // [26:39] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_policy_obligations_obligations_proto_init() }
@@ -2083,7 +2177,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetObligationResponse); i {
+			switch v := v.(*ValueTriggerRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2095,7 +2189,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetObligationsByFQNsRequest); i {
+			switch v := v.(*GetObligationResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2107,7 +2201,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetObligationsByFQNsResponse); i {
+			switch v := v.(*GetObligationsByFQNsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2119,7 +2213,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CreateObligationRequest); i {
+			switch v := v.(*GetObligationsByFQNsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2131,7 +2225,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CreateObligationResponse); i {
+			switch v := v.(*CreateObligationRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2143,7 +2237,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateObligationRequest); i {
+			switch v := v.(*CreateObligationResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2155,7 +2249,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateObligationResponse); i {
+			switch v := v.(*UpdateObligationRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2167,7 +2261,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteObligationRequest); i {
+			switch v := v.(*UpdateObligationResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2179,7 +2273,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteObligationResponse); i {
+			switch v := v.(*DeleteObligationRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2191,7 +2285,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListObligationsRequest); i {
+			switch v := v.(*DeleteObligationResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2203,7 +2297,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListObligationsResponse); i {
+			switch v := v.(*ListObligationsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2215,7 +2309,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetObligationValueRequest); i {
+			switch v := v.(*ListObligationsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2227,7 +2321,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetObligationValueResponse); i {
+			switch v := v.(*GetObligationValueRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2239,7 +2333,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetObligationValuesByFQNsRequest); i {
+			switch v := v.(*GetObligationValueResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2251,7 +2345,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetObligationValuesByFQNsResponse); i {
+			switch v := v.(*GetObligationValuesByFQNsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2263,7 +2357,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CreateObligationValueRequest); i {
+			switch v := v.(*GetObligationValuesByFQNsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2275,7 +2369,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CreateObligationValueResponse); i {
+			switch v := v.(*CreateObligationValueRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2287,7 +2381,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateObligationValueRequest); i {
+			switch v := v.(*CreateObligationValueResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2299,7 +2393,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdateObligationValueResponse); i {
+			switch v := v.(*UpdateObligationValueRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2311,7 +2405,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteObligationValueRequest); i {
+			switch v := v.(*UpdateObligationValueResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2323,7 +2417,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteObligationValueResponse); i {
+			switch v := v.(*DeleteObligationValueRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2335,7 +2429,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AddObligationTriggerRequest); i {
+			switch v := v.(*DeleteObligationValueResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2347,7 +2441,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AddObligationTriggerResponse); i {
+			switch v := v.(*AddObligationTriggerRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2359,7 +2453,7 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RemoveObligationTriggerRequest); i {
+			switch v := v.(*AddObligationTriggerResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2371,6 +2465,18 @@ func file_policy_obligations_obligations_proto_init() {
 			}
 		}
 		file_policy_obligations_obligations_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RemoveObligationTriggerRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_policy_obligations_obligations_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*RemoveObligationTriggerResponse); i {
 			case 0:
 				return &v.state
@@ -2387,27 +2493,27 @@ func file_policy_obligations_obligations_proto_init() {
 		(*GetObligationRequest_Id)(nil),
 		(*GetObligationRequest_Fqn)(nil),
 	}
-	file_policy_obligations_obligations_proto_msgTypes[4].OneofWrappers = []interface{}{
+	file_policy_obligations_obligations_proto_msgTypes[5].OneofWrappers = []interface{}{
 		(*CreateObligationRequest_Id)(nil),
 		(*CreateObligationRequest_Fqn)(nil),
 	}
-	file_policy_obligations_obligations_proto_msgTypes[8].OneofWrappers = []interface{}{
+	file_policy_obligations_obligations_proto_msgTypes[9].OneofWrappers = []interface{}{
 		(*DeleteObligationRequest_Id)(nil),
 		(*DeleteObligationRequest_Fqn)(nil),
 	}
-	file_policy_obligations_obligations_proto_msgTypes[10].OneofWrappers = []interface{}{
+	file_policy_obligations_obligations_proto_msgTypes[11].OneofWrappers = []interface{}{
 		(*ListObligationsRequest_Id)(nil),
 		(*ListObligationsRequest_Fqn)(nil),
 	}
-	file_policy_obligations_obligations_proto_msgTypes[12].OneofWrappers = []interface{}{
+	file_policy_obligations_obligations_proto_msgTypes[13].OneofWrappers = []interface{}{
 		(*GetObligationValueRequest_Id)(nil),
 		(*GetObligationValueRequest_Fqn)(nil),
 	}
-	file_policy_obligations_obligations_proto_msgTypes[16].OneofWrappers = []interface{}{
+	file_policy_obligations_obligations_proto_msgTypes[17].OneofWrappers = []interface{}{
 		(*CreateObligationValueRequest_Id)(nil),
 		(*CreateObligationValueRequest_Fqn)(nil),
 	}
-	file_policy_obligations_obligations_proto_msgTypes[20].OneofWrappers = []interface{}{
+	file_policy_obligations_obligations_proto_msgTypes[21].OneofWrappers = []interface{}{
 		(*DeleteObligationValueRequest_Id)(nil),
 		(*DeleteObligationValueRequest_Fqn)(nil),
 	}
@@ -2417,7 +2523,7 @@ func file_policy_obligations_obligations_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_policy_obligations_obligations_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   28,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -879,6 +879,9 @@ components:
           type: string
           title: config_json
           format: byte
+        manager:
+          type: string
+          title: manager
         metadata:
           title: metadata
           description: Common metadata

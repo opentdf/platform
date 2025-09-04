@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"strings"
 	"sync"
 
@@ -27,6 +28,25 @@ const (
 	// tdfZipReference indicates the payload is stored as a reference in the ZIP
 	tdfZipReference = "reference"
 )
+
+// SegmentResult contains the result of writing a segment
+type SegmentResult struct {
+	Data          []byte `json:"data"`          // Encrypted segment bytes (for streaming)
+	Index         int    `json:"index"`         // Segment index
+	Hash          string `json:"hash"`          // Base64-encoded integrity hash
+	PlaintextSize int64  `json:"plaintextSize"` // Original data size
+	EncryptedSize int64  `json:"encryptedSize"` // Encrypted data size
+	CRC32         uint32 `json:"crc32"`         // CRC32 checksum
+}
+
+// FinalizeResult contains the complete TDF creation result
+type FinalizeResult struct {
+	Data          []byte    `json:"data"`          // Final TDF bytes (manifest + metadata)
+	Manifest      *Manifest `json:"manifest"`      // Complete manifest object
+	TotalSegments int       `json:"totalSegments"` // Number of segments written
+	TotalSize     int64     `json:"totalSize"`     // Total plaintext size
+	EncryptedSize int64     `json:"encryptedSize"` // Total encrypted size
+}
 
 var (
 	// ErrAlreadyFinalized is returned when attempting operations on a finalized writer
@@ -195,7 +215,7 @@ func NewWriter(_ context.Context, opts ...Option[*WriterConfig]) (*Writer, error
 //	// Store/upload segment bytes (e.g., to S3)
 //	uploadToS3(segment0, "part-000")
 //	uploadToS3(segment1, "part-001")
-func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]byte, error) {
+func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) (*SegmentResult, error) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
@@ -216,6 +236,9 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]by
 		w.maxSegmentIndex = index
 	}
 
+	// Calculate CRC32 before encryption for integrity tracking
+	crc32Checksum := crc32.ChecksumIEEE(data)
+
 	// Encrypt directly without unnecessary copying - the archive layer will handle copying if needed
 	segmentCipher, err := w.block.Encrypt(data)
 	if err != nil {
@@ -227,8 +250,9 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]by
 		return nil, err
 	}
 
+	segmentHash := string(ocrypto.Base64Encode([]byte(segmentSig)))
 	w.segments[index] = Segment{
-		Hash:          string(ocrypto.Base64Encode([]byte(segmentSig))),
+		Hash:          segmentHash,
 		Size:          int64(len(data)), // Use original data length
 		EncryptedSize: int64(len(segmentCipher)),
 	}
@@ -238,7 +262,14 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]by
 		return nil, err
 	}
 
-	return zipBytes, nil
+	return &SegmentResult{
+		Data:          zipBytes,
+		Index:         index,
+		Hash:          segmentHash,
+		PlaintextSize: int64(len(data)),
+		EncryptedSize: int64(len(segmentCipher)),
+		CRC32:         crc32Checksum,
+	}, nil
 }
 
 // Finalize completes TDF creation and returns the final bytes and manifest.
@@ -297,12 +328,12 @@ func (w *Writer) WriteSegment(ctx context.Context, index int, data []byte) ([]by
 //
 // Performance note: Finalization is O(n) where n is the number of segments.
 // Memory usage is proportional to manifest size, not total data size.
-func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeConfig]) ([]byte, *Manifest, error) {
+func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeConfig]) (*FinalizeResult, error) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
 	if w.finalized {
-		return nil, nil, ErrAlreadyFinalized
+		return nil, ErrAlreadyFinalized
 	}
 
 	cfg := &WriterFinalizeConfig{
@@ -329,13 +360,13 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 	splitter := keysplit.NewXORSplitter(keysplit.WithDefaultKAS(cfg.defaultKas))
 	result, err := splitter.GenerateSplits(ctx, cfg.attributes, w.dek)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Build key access objects from the splits
 	policyBytes, err := buildPolicy(cfg.attributes)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	encryptInfo := EncryptionInformation{
@@ -370,27 +401,32 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 	encryptInfo.IntegrityInformation.SegmentHashAlgorithm = w.segmentIntegrityAlgorithm.String()
 
 	var aggregateHash bytes.Buffer
-	// Iterate through segments in order (0 to maxSegmentIndex)
+	// Calculate totals and iterate through segments in order (0 to maxSegmentIndex)
+	var totalPlaintextSize, totalEncryptedSize int64
 	for i := 0; i <= w.maxSegmentIndex; i++ {
 		segment, exists := w.segments[i]
 		if !exists {
-			return nil, nil, fmt.Errorf("missing segment %d", i)
+			return nil, fmt.Errorf("missing segment %d", i)
 		}
 		if segment.Hash != "" {
+			// Accumulate sizes for result
+			totalPlaintextSize += segment.Size
+			totalEncryptedSize += segment.EncryptedSize
+
 			// Decode the base64-encoded segment hash to match reader validation
 			decodedHash, err := ocrypto.Base64Decode([]byte(segment.Hash))
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to decode segment hash: %w", err)
+				return nil, fmt.Errorf("failed to decode segment hash: %w", err)
 			}
 			aggregateHash.Write(decodedHash)
 			continue
 		}
-		return nil, nil, errors.New("empty segment hash")
+		return nil, errors.New("empty segment hash")
 	}
 
 	rootSignature, err := calculateSignature(aggregateHash.Bytes(), w.dek, w.integrityAlgorithm, false)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	encryptInfo.RootSignature = RootSignature{
 		Algorithm: w.integrityAlgorithm.String(),
@@ -399,7 +435,7 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 
 	keyAccessList, err := buildKeyAccessObjects(result, policyBytes, cfg.encryptedMetadata)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	encryptInfo.KeyAccessObjs = keyAccessList
@@ -407,27 +443,33 @@ func (w *Writer) Finalize(ctx context.Context, opts ...Option[*WriterFinalizeCon
 
 	signedAssertions, err := w.buildAssertions(aggregateHash.Bytes(), cfg.assertions)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	manifest.Assertions = signedAssertions
 
 	manifestBytes, err := json.Marshal(manifest)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	finalBytes, err := w.archiveWriter.Finalize(ctx, manifestBytes)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if err := w.archiveWriter.Close(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	w.finalized = true
-	return finalBytes, manifest, nil
+	return &FinalizeResult{
+		Data:          finalBytes,
+		Manifest:      manifest,
+		TotalSegments: w.maxSegmentIndex + 1,
+		TotalSize:     totalPlaintextSize,
+		EncryptedSize: totalEncryptedSize,
+	}, nil
 }
 
 func buildPolicy(values []*policy.Value) ([]byte, error) {

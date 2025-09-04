@@ -141,7 +141,7 @@ func (s *SDK) NewStreamingWriter(ctx context.Context) (*StreamingWriter, error) 
 // WriteSegment encrypts and writes a segment for the given index.
 // Indices are 0-based for the low-level API.
 // Returns the encrypted bytes that can be immediately uploaded.
-func (w *StreamingWriter) WriteSegment(ctx context.Context, segmentIndex int, data []byte) ([]byte, error) {
+func (w *StreamingWriter) WriteSegment(ctx context.Context, segmentIndex int, data []byte) (*tdf.SegmentResult, error) {
 	if segmentIndex < 0 {
 		return nil, ErrStreamingWriterInvalidPart
 	}
@@ -152,7 +152,7 @@ func (w *StreamingWriter) WriteSegment(ctx context.Context, segmentIndex int, da
 // Finalize completes the TDF creation with the specified attribute FQNs and configuration options.
 // It fetches the attribute values from the platform using their FQNs, then finalizes the TDF
 // with proper configuration. Returns the final TDF bytes (manifest and metadata) and the manifest object.
-func (w *StreamingWriter) Finalize(ctx context.Context, attributeFQNs []string, opts ...FinalizeOption) ([]byte, *tdf.Manifest, error) {
+func (w *StreamingWriter) Finalize(ctx context.Context, attributeFQNs []string, opts ...FinalizeOption) (*tdf.FinalizeResult, error) {
 	// Apply the configuration options
 	cfg := &FinalizeConfig{
 		payloadMimeType: "application/octet-stream", // Default MIME type
@@ -160,14 +160,14 @@ func (w *StreamingWriter) Finalize(ctx context.Context, attributeFQNs []string, 
 
 	for _, opt := range opts {
 		if err := opt(cfg); err != nil {
-			return nil, nil, fmt.Errorf("failed to apply finalize option: %w", err)
+			return nil, fmt.Errorf("failed to apply finalize option: %w", err)
 		}
 	}
 
 	// Fetch attributes from the platform using FQNs
 	attributeValues, err := w.fetchAttributesByFQNs(ctx, attributeFQNs)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to fetch attributes: %w", err)
+		return nil, fmt.Errorf("failed to fetch attributes: %w", err)
 	}
 
 	// Build finalize options for the underlying TDF writer
@@ -210,7 +210,7 @@ func (w *StreamingWriter) Finalize(ctx context.Context, attributeFQNs []string, 
 	if cfg.addDefaultAssertion {
 		systemMeta, err := GetSystemMetadataAssertionConfig()
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		cfg.assertions = append(cfg.assertions, systemMeta)
 	}

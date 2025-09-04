@@ -89,35 +89,35 @@ func testBasicTDFCreationFlow(t *testing.T) {
 	attributes := []*policy.Value{
 		createTestAttribute("https://example.com/attr/Classification/value/Public", testKAS1, "kid1"),
 	}
-	finalBytes, manifest, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+	finalizeResult, err := writer.Finalize(ctx, WithAttributeValues(attributes))
 	require.NoError(t, err, "Failed to finalize TDF")
-	assert.NotEmpty(t, finalBytes, "Final TDF bytes should not be empty")
-	assert.NotNil(t, manifest, "Manifest should not be nil")
+	assert.NotEmpty(t, finalizeResult.Data, "Final TDF bytes should not be empty")
+	assert.NotNil(t, finalizeResult.Manifest, "Manifest should not be nil")
 
 	// Validate manifest against schema
-	validateManifestSchema(t, manifest)
+	validateManifestSchema(t, finalizeResult.Manifest)
 
 	// Verify finalized state
 	assert.True(t, writer.finalized, "Writer should be finalized")
 
 	// Verify manifest structure
-	assert.Equal(t, TDFSpecVersion, manifest.TDFVersion, "TDF version should match expected")
-	assert.Equal(t, "application/octet-stream", manifest.Payload.MimeType, "Default MIME type should be set")
-	assert.True(t, manifest.Payload.IsEncrypted, "Payload should be marked as encrypted")
-	assert.Equal(t, "zip", manifest.Payload.Protocol, "Protocol should be zip")
-	assert.Equal(t, "reference", manifest.Payload.Type, "Type should be reference")
+	assert.Equal(t, TDFSpecVersion, finalizeResult.Manifest.TDFVersion, "TDF version should match expected")
+	assert.Equal(t, "application/octet-stream", finalizeResult.Manifest.Payload.MimeType, "Default MIME type should be set")
+	assert.True(t, finalizeResult.Manifest.Payload.IsEncrypted, "Payload should be marked as encrypted")
+	assert.Equal(t, "zip", finalizeResult.Manifest.Payload.Protocol, "Protocol should be zip")
+	assert.Equal(t, "reference", finalizeResult.Manifest.Payload.Type, "Type should be reference")
 
 	// Verify key access objects
-	assert.Len(t, manifest.EncryptionInformation.KeyAccessObjs, 1, "Should have one key access object for default KAS")
-	keyAccess := manifest.EncryptionInformation.KeyAccessObjs[0]
+	assert.Len(t, finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs, 1, "Should have one key access object for default KAS")
+	keyAccess := finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs[0]
 	assert.Equal(t, testKAS1, keyAccess.KasURL, "KAS URL should match")
 	assert.Equal(t, "kas", keyAccess.Protocol, "Protocol should be kas")
 	assert.NotEmpty(t, keyAccess.WrappedKey, "Wrapped key should not be empty")
 
 	// Verify encryption information
-	assert.Equal(t, kGCMCipherAlgorithm, manifest.EncryptionInformation.Method.Algorithm, "Algorithm should be AES-256-GCM")
-	assert.True(t, manifest.EncryptionInformation.Method.IsStreamable, "Should be marked as streamable")
-	assert.NotEmpty(t, manifest.EncryptionInformation.Policy, "Policy should not be empty")
+	assert.Equal(t, kGCMCipherAlgorithm, finalizeResult.Manifest.EncryptionInformation.Method.Algorithm, "Algorithm should be AES-256-GCM")
+	assert.True(t, finalizeResult.Manifest.EncryptionInformation.Method.IsStreamable, "Should be marked as streamable")
+	assert.NotEmpty(t, finalizeResult.Manifest.EncryptionInformation.Policy, "Policy should not be empty")
 }
 
 // testSingleSegmentWithAttributes tests TDF creation with attribute-based key splitting
@@ -139,18 +139,18 @@ func testSingleSegmentWithAttributes(t *testing.T) {
 	}
 
 	// Finalize with attributes
-	finalBytes, manifest, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+	finalizeResult, err := writer.Finalize(ctx, WithAttributeValues(attributes))
 	require.NoError(t, err, "Failed to finalize TDF with attributes")
-	assert.NotEmpty(t, finalBytes, "Final TDF bytes should not be empty")
+	assert.NotEmpty(t, finalizeResult.Data, "Final TDF bytes should not be empty")
 
 	// Validate manifest against schema
-	validateManifestSchema(t, manifest)
+	validateManifestSchema(t, finalizeResult.Manifest)
 
 	// Verify key access objects were created for each attribute's KAS
-	assert.GreaterOrEqual(t, len(manifest.EncryptionInformation.KeyAccessObjs), 1, "Should have at least one key access object")
+	assert.GreaterOrEqual(t, len(finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs), 1, "Should have at least one key access object")
 
 	// Verify policy contains attributes
-	policyBytes, err := ocrypto.Base64Decode([]byte(manifest.EncryptionInformation.Policy))
+	policyBytes, err := ocrypto.Base64Decode([]byte(finalizeResult.Manifest.EncryptionInformation.Policy))
 	require.NoError(t, err)
 	assert.NotEmpty(t, policyBytes, "Policy should not be empty")
 
@@ -203,15 +203,15 @@ func testMultiSegmentFlow(t *testing.T) {
 	attributes := []*policy.Value{
 		createTestAttribute("https://example.com/attr/Security/value/Internal", testKAS1, "kid1"),
 	}
-	_, manifest, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+	finalizeResult, err := writer.Finalize(ctx, WithAttributeValues(attributes))
 	require.NoError(t, err, "Failed to finalize multi-segment TDF")
 
 	// Validate manifest against schema
-	validateManifestSchema(t, manifest)
+	validateManifestSchema(t, finalizeResult.Manifest)
 
 	// Verify root signature was calculated from all segments
-	assert.NotEmpty(t, manifest.EncryptionInformation.RootSignature.Signature, "Root signature should be set")
-	assert.Equal(t, "HS256", manifest.EncryptionInformation.RootSignature.Algorithm, "Root signature algorithm should be HS256")
+	assert.NotEmpty(t, finalizeResult.Manifest.EncryptionInformation.RootSignature.Signature, "Root signature should be set")
+	assert.Equal(t, "HS256", finalizeResult.Manifest.EncryptionInformation.RootSignature.Algorithm, "Root signature algorithm should be HS256")
 }
 
 // testKeySplittingWithMultipleAttributes tests XOR key splitting with complex attribute scenarios
@@ -237,14 +237,14 @@ func testKeySplittingWithMultipleAttributes(t *testing.T) {
 	originalDEK := make([]byte, len(writer.dek))
 	copy(originalDEK, writer.dek)
 
-	_, manifest, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+	finalizeResult, err := writer.Finalize(ctx, WithAttributeValues(attributes))
 	require.NoError(t, err, "Failed to finalize TDF with multiple attributes")
 
 	// Validate manifest against schema
-	validateManifestSchema(t, manifest)
+	validateManifestSchema(t, finalizeResult.Manifest)
 
 	// Verify multiple key access objects were created
-	keyAccessObjs := manifest.EncryptionInformation.KeyAccessObjs
+	keyAccessObjs := finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs
 	assert.GreaterOrEqual(t, len(keyAccessObjs), 1, "Should have at least one key access object")
 
 	// Verify each key access object has proper structure
@@ -288,7 +288,7 @@ func testManifestGeneration(t *testing.T) {
 	customMimeType := "application/json"
 	encryptedMetadata := "Custom metadata content"
 
-	_, manifest, err := writer.Finalize(ctx,
+	finalizeResult, err := writer.Finalize(ctx,
 		WithAttributeValues(attributes),
 		WithPayloadMimeType(customMimeType),
 		WithEncryptedMetadata(encryptedMetadata),
@@ -296,19 +296,19 @@ func testManifestGeneration(t *testing.T) {
 	require.NoError(t, err, "Failed to finalize TDF")
 
 	// Validate manifest against schema
-	validateManifestSchema(t, manifest)
+	validateManifestSchema(t, finalizeResult.Manifest)
 
 	// Verify manifest structure in detail
-	assert.Equal(t, TDFSpecVersion, manifest.TDFVersion, "TDF version should match")
+	assert.Equal(t, TDFSpecVersion, finalizeResult.Manifest.TDFVersion, "TDF version should match")
 
 	// Verify payload information
-	assert.Equal(t, customMimeType, manifest.Payload.MimeType, "MIME type should match custom value")
-	assert.Equal(t, "zip", manifest.Payload.Protocol, "Protocol should be zip")
-	assert.Equal(t, "reference", manifest.Payload.Type, "Type should be reference")
-	assert.True(t, manifest.Payload.IsEncrypted, "Payload should be encrypted")
+	assert.Equal(t, customMimeType, finalizeResult.Manifest.Payload.MimeType, "MIME type should match custom value")
+	assert.Equal(t, "zip", finalizeResult.Manifest.Payload.Protocol, "Protocol should be zip")
+	assert.Equal(t, "reference", finalizeResult.Manifest.Payload.Type, "Type should be reference")
+	assert.True(t, finalizeResult.Manifest.Payload.IsEncrypted, "Payload should be encrypted")
 
 	// Verify encryption information
-	encInfo := manifest.EncryptionInformation
+	encInfo := finalizeResult.Manifest.EncryptionInformation
 	assert.Equal(t, kGCMCipherAlgorithm, encInfo.Method.Algorithm, "Algorithm should be AES-256-GCM")
 	assert.True(t, encInfo.Method.IsStreamable, "Should be streamable")
 	assert.NotEmpty(t, encInfo.Policy, "Policy should not be empty")
@@ -365,7 +365,7 @@ func testAssertionsAndMetadata(t *testing.T) {
 	attributes := []*policy.Value{
 		createTestAttribute("https://example.com/attr/Sensitivity/value/Restricted", testKAS1, "kid1"),
 	}
-	_, manifest, err := writer.Finalize(ctx,
+	finalizeResult, err := writer.Finalize(ctx,
 		WithAttributeValues(attributes),
 		WithEncryptedMetadata("Sensitive metadata content"),
 		WithAssertions(testAssertion),
@@ -373,12 +373,12 @@ func testAssertionsAndMetadata(t *testing.T) {
 	require.NoError(t, err, "Failed to finalize TDF with assertions")
 
 	// Validate manifest against schema
-	validateManifestSchema(t, manifest)
+	validateManifestSchema(t, finalizeResult.Manifest)
 
 	// Verify custom test assertion was added
-	assert.Len(t, manifest.Assertions, 1, "Should have custom test assertion")
+	assert.Len(t, finalizeResult.Manifest.Assertions, 1, "Should have custom test assertion")
 
-	customAssertion := manifest.Assertions[0]
+	customAssertion := finalizeResult.Manifest.Assertions[0]
 	assert.Equal(t, "test-system-metadata", customAssertion.ID, "Should have correct assertion ID")
 	assert.Equal(t, BaseAssertion, customAssertion.Type, "Should be base assertion type")
 	assert.Equal(t, PayloadScope, customAssertion.Scope, "Should have payload scope")
@@ -402,7 +402,7 @@ func testAssertionsAndMetadata(t *testing.T) {
 	assert.NotEmpty(t, metadata["timestamp"], "Timestamp should be set")
 
 	// Verify encrypted metadata in key access object
-	keyAccess := manifest.EncryptionInformation.KeyAccessObjs[0]
+	keyAccess := finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs[0]
 	assert.NotEmpty(t, keyAccess.EncryptedMetadata, "Encrypted metadata should be present")
 }
 
@@ -420,18 +420,18 @@ func testErrorConditions(t *testing.T) {
 		attributes := []*policy.Value{
 			createTestAttribute("https://example.com/attr/Test/value/Basic", testKAS1, "kid1"),
 		}
-		_, manifest, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+		finalizeResult, err := writer.Finalize(ctx, WithAttributeValues(attributes))
 		require.NoError(t, err)
 
 		// Validate manifest against schema
-		validateManifestSchema(t, manifest)
+		validateManifestSchema(t, finalizeResult.Manifest)
 
 		// Try to write after finalize
 		_, err = writer.WriteSegment(ctx, 1, []byte("should fail"))
 		require.ErrorIs(t, err, ErrAlreadyFinalized, "Should not allow writing after finalization")
 
 		// Try to finalize again
-		_, _, err = writer.Finalize(ctx, WithAttributeValues(attributes))
+		_, err = writer.Finalize(ctx, WithAttributeValues(attributes))
 		require.ErrorIs(t, err, ErrAlreadyFinalized, "Should not allow double finalization")
 	})
 
@@ -463,7 +463,7 @@ func testErrorConditions(t *testing.T) {
 		require.NoError(t, err)
 
 		// Try to finalize without KAS or attributes - this should fail in key splitting
-		_, _, err = writer.Finalize(ctx)
+		_, err = writer.Finalize(ctx)
 		require.Error(t, err, "Should fail without KAS or attributes")
 		assert.Contains(t, err.Error(), "no default KAS", "Error should mention missing default KAS")
 	})
@@ -479,7 +479,7 @@ func testErrorConditions(t *testing.T) {
 		attributes := []*policy.Value{
 			createTestAttribute("https://example.com/attr/Test/value/Error", testKAS1, "kid1"),
 		}
-		_, _, err = writer.Finalize(ctx, WithAttributeValues(attributes))
+		_, err = writer.Finalize(ctx, WithAttributeValues(attributes))
 		require.Error(t, err, "Should detect empty segment hash")
 		assert.Contains(t, err.Error(), "empty segment hash", "Error message should mention empty segment hash")
 	})
@@ -507,18 +507,18 @@ func testXORReconstruction(t *testing.T) {
 	}
 
 	// Finalize to trigger key splitting
-	_, manifest, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+	finalizeResult, err := writer.Finalize(ctx, WithAttributeValues(attributes))
 	require.NoError(t, err)
 
 	// Validate manifest against schema
-	validateManifestSchema(t, manifest)
+	validateManifestSchema(t, finalizeResult.Manifest)
 
 	// The actual verification of XOR reconstruction is done internally by the splitter,
 	// but we can verify the structure is correct and key access objects were generated
-	assert.GreaterOrEqual(t, len(manifest.EncryptionInformation.KeyAccessObjs), 1, "Should have key access objects")
+	assert.GreaterOrEqual(t, len(finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs), 1, "Should have key access objects")
 
 	// Verify that each key access object has the required fields
-	for i, keyAccess := range manifest.EncryptionInformation.KeyAccessObjs {
+	for i, keyAccess := range finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs {
 		assert.NotEmpty(t, keyAccess.WrappedKey, "Key access %d should have wrapped key", i)
 		assert.NotEmpty(t, keyAccess.KasURL, "Key access %d should have KAS URL", i)
 		assert.NotEmpty(t, keyAccess.SplitID, "Key access %d should have split ID", i)
@@ -560,15 +560,15 @@ func testDifferentAttributeRules(t *testing.T) {
 				createTestAttributeWithRule("https://example.com/attr/Level/value/L2", testKAS1, "kid1", tc.rule),
 			}
 
-			_, manifest, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+			finalizeResult, err := writer.Finalize(ctx, WithAttributeValues(attributes))
 			require.NoError(t, err, "Should handle %s rule type", tc.name)
 
 			// Validate manifest against schema
-			validateManifestSchema(t, manifest)
+			validateManifestSchema(t, finalizeResult.Manifest)
 
 			// Verify manifest was created successfully
-			assert.NotNil(t, manifest, "Manifest should not be nil for %s", tc.name)
-			assert.NotEmpty(t, manifest.EncryptionInformation.KeyAccessObjs, "Should have key access objects for %s", tc.name)
+			assert.NotNil(t, finalizeResult.Manifest, "Manifest should not be nil for %s", tc.name)
+			assert.NotEmpty(t, finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs, "Should have key access objects for %s", tc.name)
 		})
 	}
 }
@@ -606,12 +606,12 @@ func testOutOfOrderSegments(t *testing.T) {
 	attributes := []*policy.Value{
 		createTestAttribute("https://example.com/attr/Order/value/Test", testKAS1, "kid1"),
 	}
-	_, manifest, err := writer.Finalize(ctx, WithAttributeValues(attributes))
+	finalizeResult, err := writer.Finalize(ctx, WithAttributeValues(attributes))
 	require.NoError(t, err, "Should finalize successfully with out-of-order segments")
-	assert.NotNil(t, manifest, "Manifest should be created")
+	assert.NotNil(t, finalizeResult.Manifest, "Manifest should be created")
 
 	// Validate manifest against schema
-	validateManifestSchema(t, manifest)
+	validateManifestSchema(t, finalizeResult.Manifest)
 }
 
 // Helper functions for creating test data
@@ -741,7 +741,7 @@ func BenchmarkTDFCreation(b *testing.B) {
 				b.Fatal(err)
 			}
 
-			_, _, err = writer.Finalize(ctx, WithAttributeValues(attributes))
+			_, err = writer.Finalize(ctx, WithAttributeValues(attributes))
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -765,7 +765,7 @@ func BenchmarkTDFCreation(b *testing.B) {
 				b.Fatal(err)
 			}
 
-			_, _, err = writer.Finalize(ctx, WithAttributeValues(attributes))
+			_, err = writer.Finalize(ctx, WithAttributeValues(attributes))
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -792,7 +792,7 @@ func BenchmarkTDFCreation(b *testing.B) {
 				}
 			}
 
-			_, _, err = writer.Finalize(ctx, WithAttributeValues(attributes))
+			_, err = writer.Finalize(ctx, WithAttributeValues(attributes))
 			if err != nil {
 				b.Fatal(err)
 			}

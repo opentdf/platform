@@ -47,7 +47,7 @@ func BenchmarkStreamingWriter_Sequential(b *testing.B) {
 				}
 
 				// Finalize
-				_, _, err = writer.Finalize(b.Context(), []string{})
+				_, err = writer.Finalize(b.Context(), []string{})
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -103,7 +103,7 @@ func BenchmarkStreamingWriter_OutOfOrder(b *testing.B) {
 				}
 
 				// Finalize
-				_, _, err = writer.Finalize(b.Context(), []string{})
+				_, err = writer.Finalize(b.Context(), []string{})
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -153,7 +153,7 @@ func BenchmarkStreamingWriter_VariableSegmentSizes(b *testing.B) {
 				}
 
 				// Finalize
-				_, _, err = writer.Finalize(b.Context(), []string{})
+				_, err = writer.Finalize(b.Context(), []string{})
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -195,7 +195,7 @@ func BenchmarkStreamingWriter_MemoryUsagePattern(b *testing.B) {
 			}
 
 			// Finalize
-			_, _, err = writer.Finalize(b.Context(), []string{})
+			_, err = writer.Finalize(b.Context(), []string{})
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -243,7 +243,7 @@ func BenchmarkStreamingWriter_AttributeFetching(b *testing.B) {
 				}
 
 				// Finalize with attributes (this triggers attribute fetching)
-				_, _, err = writer.Finalize(b.Context(), attributes)
+				_, err = writer.Finalize(b.Context(), attributes)
 				if err != nil {
 					b.Fatal(err)
 				}

@@ -42,13 +42,13 @@ func ExampleWriter() {
 	mockKasKey := newMockKasKey("https://kas.example.com")
 
 	fmt.Println("TDF writer created and 2 segments written.")
-	_, manifest, err := writer.Finalize(ctx, tdf.WithDefaultKAS(mockKasKey))
+	finalizeResult, err := writer.Finalize(ctx, tdf.WithDefaultKAS(mockKasKey))
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	fmt.Printf("TDF finalized with %d key access object(s).\n", len(manifest.EncryptionInformation.KeyAccessObjs))
+	fmt.Printf("TDF finalized with %d key access object(s).\n", len(finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs))
 	// Output:
 	// TDF writer created and 2 segments written.
 	// TDF finalized with 1 key access object(s).
@@ -104,7 +104,7 @@ func ExampleWriter_withAttributes() {
 	}
 
 	fmt.Printf("TDF with %d attributes configured.\n", len(attributes))
-	_, manifest, err := writer.Finalize(ctx,
+	finalizeResult, err := writer.Finalize(ctx,
 		tdf.WithAttributeValues(attributes),
 		tdf.WithPayloadMimeType("text/plain"),
 		tdf.WithEncryptedMetadata("Document ID: FIN-2024-001"),
@@ -113,7 +113,7 @@ func ExampleWriter_withAttributes() {
 		log.Println(err)
 	}
 
-	fmt.Printf("TDF finalized with %d key access object(s) for %d attribute(s).\n", len(manifest.EncryptionInformation.KeyAccessObjs), len(attributes))
+	fmt.Printf("TDF finalized with %d key access object(s) for %d attribute(s).\n", len(finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs), len(attributes))
 	// Output:
 	// TDF with 2 attributes configured.
 	// TDF finalized with 1 key access object(s) for 2 attribute(s).
@@ -167,7 +167,7 @@ func ExampleWriter_withAssertions() {
 	mockKasKey := newMockKasKey("https://kas.example.com")
 
 	fmt.Printf("TDF configured with %d assertions.\n", 2)
-	_, manifest, err := writer.Finalize(ctx,
+	finalizeResult, err := writer.Finalize(ctx,
 		tdf.WithAssertions(retentionAssertion, metadataAssertion),
 		tdf.WithPayloadMimeType("application/json"),
 		tdf.WithDefaultKAS(mockKasKey),
@@ -176,7 +176,7 @@ func ExampleWriter_withAssertions() {
 		log.Println(err)
 	}
 
-	fmt.Printf("TDF finalized with %d assertion(s).\n", len(manifest.Assertions))
+	fmt.Printf("TDF finalized with %d assertion(s).\n", len(finalizeResult.Manifest.Assertions))
 	// Output:
 	// TDF configured with 2 assertions.
 	// TDF finalized with 2 assertion(s).
@@ -216,7 +216,7 @@ func ExampleWriter_outOfOrder() {
 	mockKasKey := newMockKasKey("https://kas.example.com")
 
 	fmt.Println("All out-of-order segments written.")
-	_, manifest, err := writer.Finalize(ctx,
+	finalizeResult, err := writer.Finalize(ctx,
 		tdf.WithPayloadMimeType("text/plain"),
 		tdf.WithDefaultKAS(mockKasKey),
 	)
@@ -224,7 +224,7 @@ func ExampleWriter_outOfOrder() {
 		log.Println(err)
 	}
 
-	fmt.Printf("Finalized TDF with %d segment(s).\n", len(manifest.EncryptionInformation.IntegrityInformation.Segments))
+	fmt.Printf("Finalized TDF with %d segment(s).\n", len(finalizeResult.Manifest.EncryptionInformation.IntegrityInformation.Segments))
 	// Output:
 	// Wrote segment 2
 	// Wrote segment 0
@@ -267,7 +267,7 @@ func ExampleWriter_largeFile() {
 	mockKasKey := newMockKasKey("https://kas.example.com")
 
 	fmt.Printf("All %d segments processed.\n", totalSegments)
-	_, manifest, err := writer.Finalize(ctx,
+	finalizeResult, err := writer.Finalize(ctx,
 		tdf.WithPayloadMimeType("application/octet-stream"),
 		tdf.WithDefaultKAS(mockKasKey),
 	)
@@ -275,7 +275,7 @@ func ExampleWriter_largeFile() {
 		log.Println(err)
 	}
 
-	fmt.Printf("Finalized large file with %d segment(s).\n", len(manifest.EncryptionInformation.IntegrityInformation.Segments))
+	fmt.Printf("Finalized large file with %d segment(s).\n", len(finalizeResult.Manifest.EncryptionInformation.IntegrityInformation.Segments))
 	// Output:
 	// Processed segment 0: 1048576 bytes
 	// Processed segment 1: 1048576 bytes

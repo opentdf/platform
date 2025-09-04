@@ -440,18 +440,19 @@ func TestStreamingWriter_Finalize(t *testing.T) {
 	require.NoError(t, err)
 
 	// Finalize the TDF with empty attributes
-	finalBytes, manifest, err := writer.Finalize(t.Context(), []string{})
+	finalizeResult, err := writer.Finalize(t.Context(), []string{})
 	require.NoError(t, err)
-	assert.NotNil(t, finalBytes)
-	assert.NotEmpty(t, finalBytes)
-	assert.NotNil(t, manifest)
+	require.NotNil(t, finalizeResult)
+	assert.NotEmpty(t, finalizeResult.Data)
+	assert.NotNil(t, finalizeResult.Manifest)
+	assert.Equal(t, 1, finalizeResult.TotalSegments)
 
 	// Verify manifest structure
-	assert.NotEmpty(t, manifest.TDFVersion)
-	assert.Equal(t, "application/octet-stream", manifest.Payload.MimeType)
-	assert.Equal(t, "zip", manifest.Payload.Protocol)
-	assert.Equal(t, "reference", manifest.Payload.Type)
-	assert.True(t, manifest.Payload.IsEncrypted)
+	assert.NotEmpty(t, finalizeResult.Manifest.TDFVersion)
+	assert.Equal(t, "application/octet-stream", finalizeResult.Manifest.Payload.MimeType)
+	assert.Equal(t, "zip", finalizeResult.Manifest.Payload.Protocol)
+	assert.Equal(t, "reference", finalizeResult.Manifest.Payload.Type)
+	assert.True(t, finalizeResult.Manifest.Payload.IsEncrypted)
 }
 
 func TestStreamingWriter_FinalizeWithOptions(t *testing.T) {
@@ -468,7 +469,7 @@ func TestStreamingWriter_FinalizeWithOptions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test finalize with options using mock KAS URL
-	finalBytes, manifest, err := writer.Finalize(
+	finalizeResult, err := writer.Finalize(
 		t.Context(),
 		[]string{}, // Empty attributes for testing
 		WithPayloadMimeType("text/plain"),
@@ -476,16 +477,16 @@ func TestStreamingWriter_FinalizeWithOptions(t *testing.T) {
 	)
 
 	require.NoError(t, err)
-	assert.NotNil(t, finalBytes)
-	assert.NotEmpty(t, finalBytes)
-	assert.NotNil(t, manifest)
+	assert.NotNil(t, finalizeResult.Data)
+	assert.NotEmpty(t, finalizeResult.Data)
+	assert.NotNil(t, finalizeResult.Manifest)
 
 	// Verify manifest structure with custom options
-	assert.NotEmpty(t, manifest.TDFVersion)
-	assert.Equal(t, "text/plain", manifest.Payload.MimeType)
-	assert.Equal(t, "zip", manifest.Payload.Protocol)
-	assert.Equal(t, "reference", manifest.Payload.Type)
-	assert.True(t, manifest.Payload.IsEncrypted)
+	assert.NotEmpty(t, finalizeResult.Manifest.TDFVersion)
+	assert.Equal(t, "text/plain", finalizeResult.Manifest.Payload.MimeType)
+	assert.Equal(t, "zip", finalizeResult.Manifest.Payload.Protocol)
+	assert.Equal(t, "reference", finalizeResult.Manifest.Payload.Type)
+	assert.True(t, finalizeResult.Manifest.Payload.IsEncrypted)
 }
 
 func TestStreamingWriter_FinalizeOptionValidation(t *testing.T) {
@@ -523,7 +524,7 @@ func TestStreamingWriter_FinalizeOptionValidation(t *testing.T) {
 			_, err = writer.WriteSegment(t.Context(), 0, testData)
 			require.NoError(t, err)
 
-			_, _, err = writer.Finalize(t.Context(), []string{}, tc.options...)
+			_, err = writer.Finalize(t.Context(), []string{}, tc.options...)
 
 			if tc.wantErr {
 				assert.Error(t, err)
@@ -580,35 +581,51 @@ func TestStreamingWriter_ReaderCompatibility(t *testing.T) {
 	// Collect all TDF bytes for complete file
 	var allTDFBytes []byte
 
-	encryptedBytes1, err := writer.WriteSegment(t.Context(), 0, testData1)
+	result1, err := writer.WriteSegment(t.Context(), 0, testData1)
 	require.NoError(t, err)
-	assert.NotEmpty(t, encryptedBytes1)
-	allTDFBytes = append(allTDFBytes, encryptedBytes1...)
+	require.NotNil(t, result1)
+	assert.NotEmpty(t, result1.Data)
+	assert.Equal(t, 0, result1.Index)
+	assert.NotEmpty(t, result1.Hash)
+	assert.Equal(t, int64(len(testData1)), result1.PlaintextSize)
+	assert.Positive(t, result1.EncryptedSize)
+	assert.Positive(t, result1.CRC32)
+	allTDFBytes = append(allTDFBytes, result1.Data...)
 
-	encryptedBytes2, err := writer.WriteSegment(t.Context(), 1, testData2)
+	result2, err := writer.WriteSegment(t.Context(), 1, testData2)
 	require.NoError(t, err)
-	assert.NotEmpty(t, encryptedBytes2)
-	allTDFBytes = append(allTDFBytes, encryptedBytes2...)
+	require.NotNil(t, result2)
+	assert.NotEmpty(t, result2.Data)
+	assert.Equal(t, 1, result2.Index)
+	assert.NotEmpty(t, result2.Hash)
+	assert.Equal(t, int64(len(testData2)), result2.PlaintextSize)
+	assert.Positive(t, result2.EncryptedSize)
+	assert.Positive(t, result2.CRC32)
+	allTDFBytes = append(allTDFBytes, result2.Data...)
 
 	// Finalize the TDF completely
-	finalBytes, manifest, err := writer.Finalize(t.Context(), []string{})
+	finalizeResult, err := writer.Finalize(t.Context(), []string{})
 	require.NoError(t, err)
-	require.NotNil(t, manifest)
-	assert.NotEmpty(t, finalBytes)
+	require.NotNil(t, finalizeResult)
+	assert.NotEmpty(t, finalizeResult.Data)
+	assert.NotNil(t, finalizeResult.Manifest)
+	assert.Equal(t, 2, finalizeResult.TotalSegments)
+	assert.Equal(t, int64(len(testData1)+len(testData2)), finalizeResult.TotalSize)
+	assert.Positive(t, finalizeResult.EncryptedSize)
 
 	// Add final bytes to complete the TDF
-	allTDFBytes = append(allTDFBytes, finalBytes...)
+	allTDFBytes = append(allTDFBytes, finalizeResult.Data...)
 
 	// Verify manifest has correct structure for reader compatibility
-	assert.NotEmpty(t, manifest.TDFVersion)
-	assert.Equal(t, "zip", manifest.Payload.Protocol)
-	assert.Equal(t, "reference", manifest.Payload.Type)
-	assert.True(t, manifest.Payload.IsEncrypted)
+	assert.NotEmpty(t, finalizeResult.Manifest.TDFVersion)
+	assert.Equal(t, "zip", finalizeResult.Manifest.Payload.Protocol)
+	assert.Equal(t, "reference", finalizeResult.Manifest.Payload.Type)
+	assert.True(t, finalizeResult.Manifest.Payload.IsEncrypted)
 
 	// Verify encryption information for reader compatibility
-	assert.NotNil(t, manifest.EncryptionInformation)
-	assert.True(t, manifest.EncryptionInformation.Method.IsStreamable)
-	assert.NotEmpty(t, manifest.EncryptionInformation.KeyAccessObjs)
+	assert.NotNil(t, finalizeResult.Manifest.EncryptionInformation)
+	assert.True(t, finalizeResult.Manifest.EncryptionInformation.Method.IsStreamable)
+	assert.NotEmpty(t, finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs)
 
 	// Test actual reader compatibility by loading and decrypting the TDF
 	tdfReader := bytes.NewReader(allTDFBytes)
@@ -649,20 +666,20 @@ func TestStreamingWriter_FullEndToEndWithMocks(t *testing.T) {
 	var allTDFBytes []byte
 
 	// Write segments (simulating S3 multipart upload)
-	encryptedPart1, err := writer.WriteSegment(t.Context(), 0, testData1)
+	segmentResult1, err := writer.WriteSegment(t.Context(), 0, testData1)
 	require.NoError(t, err)
-	assert.NotEmpty(t, encryptedPart1)
-	allTDFBytes = append(allTDFBytes, encryptedPart1...)
-	t.Logf("Part 1: %d bytes encrypted", len(encryptedPart1))
+	assert.NotEmpty(t, segmentResult1.Data)
+	allTDFBytes = append(allTDFBytes, segmentResult1.Data...)
+	t.Logf("Part 1: %d bytes encrypted", len(segmentResult1.Data))
 
-	encryptedPart2, err := writer.WriteSegment(t.Context(), 1, testData2)
+	segmentResult2, err := writer.WriteSegment(t.Context(), 1, testData2)
 	require.NoError(t, err)
-	assert.NotEmpty(t, encryptedPart2)
-	allTDFBytes = append(allTDFBytes, encryptedPart2...)
-	t.Logf("Part 2: %d bytes encrypted", len(encryptedPart2))
+	assert.NotEmpty(t, segmentResult2.Data)
+	allTDFBytes = append(allTDFBytes, segmentResult2.Data...)
+	t.Logf("Part 2: %d bytes encrypted", len(segmentResult2.Data))
 
 	// Finalize with attributes and options
-	finalBytes, manifest, err := writer.Finalize(
+	finalizeResult, err := writer.Finalize(
 		t.Context(),
 		[]string{}, // Empty attributes like ReaderCompatibility test
 		WithPayloadMimeType("text/plain"),
@@ -671,32 +688,32 @@ func TestStreamingWriter_FullEndToEndWithMocks(t *testing.T) {
 	)
 
 	require.NoError(t, err, "Finalization should succeed with mock KAS")
-	require.NotNil(t, finalBytes)
-	require.NotNil(t, manifest)
-	assert.NotEmpty(t, finalBytes)
+	require.NotNil(t, finalizeResult)
+	require.NotNil(t, finalizeResult.Manifest)
+	assert.NotEmpty(t, finalizeResult.Data)
 
 	// Add final bytes to complete the TDF
-	allTDFBytes = append(allTDFBytes, finalBytes...)
+	allTDFBytes = append(allTDFBytes, finalizeResult.Data...)
 	t.Logf("Successfully created TDF: %d bytes total", len(allTDFBytes))
 
 	// Verify manifest structure
-	assert.NotEmpty(t, manifest.TDFVersion)
-	assert.Equal(t, "text/plain", manifest.Payload.MimeType)
-	assert.Equal(t, "zip", manifest.Payload.Protocol)
-	assert.Equal(t, "reference", manifest.Payload.Type)
-	assert.True(t, manifest.Payload.IsEncrypted)
+	assert.NotEmpty(t, finalizeResult.Manifest.TDFVersion)
+	assert.Equal(t, "text/plain", finalizeResult.Manifest.Payload.MimeType)
+	assert.Equal(t, "zip", finalizeResult.Manifest.Payload.Protocol)
+	assert.Equal(t, "reference", finalizeResult.Manifest.Payload.Type)
+	assert.True(t, finalizeResult.Manifest.Payload.IsEncrypted)
 
 	// Verify encryption information
-	assert.NotNil(t, manifest.EncryptionInformation)
-	assert.True(t, manifest.EncryptionInformation.Method.IsStreamable)
-	assert.NotEmpty(t, manifest.EncryptionInformation.KeyAccessObjs)
+	assert.NotNil(t, finalizeResult.Manifest.EncryptionInformation)
+	assert.True(t, finalizeResult.Manifest.EncryptionInformation.Method.IsStreamable)
+	assert.NotEmpty(t, finalizeResult.Manifest.EncryptionInformation.KeyAccessObjs)
 
 	// Verify segment structure
-	assert.Len(t, manifest.EncryptionInformation.IntegrityInformation.Segments, 2)
-	assert.Equal(t, int64(8), manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize)
+	assert.Len(t, finalizeResult.Manifest.EncryptionInformation.IntegrityInformation.Segments, 2)
+	assert.Equal(t, int64(8), finalizeResult.Manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize)
 
 	// Verify segments have different sizes (variable-length)
-	segments := manifest.EncryptionInformation.IntegrityInformation.Segments
+	segments := finalizeResult.Manifest.EncryptionInformation.IntegrityInformation.Segments
 	assert.Equal(t, int64(8), segments[0].Size)  // First segment
 	assert.Equal(t, int64(16), segments[1].Size) // Second segment (different size)
 
@@ -740,23 +757,23 @@ func TestStreamingWriter_VariableLengthSegments(t *testing.T) {
 
 	// Write segments in order using 0-based indices
 	for i, data := range testSegments {
-		encryptedBytes, err := writer.WriteSegment(t.Context(), i, data)
+		segmentResult, err := writer.WriteSegment(t.Context(), i, data)
 		require.NoError(t, err)
-		assert.NotEmpty(t, encryptedBytes)
-		allTDFBytes = append(allTDFBytes, encryptedBytes...)
-		t.Logf("Segment %d (%d bytes): %d encrypted bytes, first 16 bytes: %x", i, len(data), len(encryptedBytes), encryptedBytes[:min(16, len(encryptedBytes))])
+		assert.NotEmpty(t, segmentResult)
+		allTDFBytes = append(allTDFBytes, segmentResult.Data...)
+		t.Logf("Segment %d (%d bytes): %d encrypted bytes, first 16 bytes: %x", i, len(data), len(segmentResult.Data), segmentResult.Data[:min(16, len(segmentResult.Data))])
 	}
 
 	// Finalize TDF
-	finalBytes, manifest, err := writer.Finalize(t.Context(), []string{})
+	finalizeResult, err := writer.Finalize(t.Context(), []string{})
 	require.NoError(t, err)
-	allTDFBytes = append(allTDFBytes, finalBytes...)
+	allTDFBytes = append(allTDFBytes, finalizeResult.Data...)
 
 	// Verify variable segment sizes
-	segments := manifest.EncryptionInformation.IntegrityInformation.Segments
+	segments := finalizeResult.Manifest.EncryptionInformation.IntegrityInformation.Segments
 	assert.Len(t, segments, 4)
 	assert.Equal(t, int64(5), segments[0].Size) // First segment used as default
-	assert.Equal(t, int64(5), manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize)
+	assert.Equal(t, int64(5), finalizeResult.Manifest.EncryptionInformation.IntegrityInformation.DefaultSegmentSize)
 	assert.Equal(t, int64(10), segments[1].Size) // Different from default
 	assert.Equal(t, int64(15), segments[2].Size) // Different from default
 	assert.Equal(t, int64(3), segments[3].Size)  // Different from default
@@ -801,12 +818,12 @@ func TestStreamingWriter_OutOfOrderSegments(t *testing.T) {
 
 	for _, segmentIndex := range writeOrder {
 		data := testSegments[segmentIndex]
-		encryptedBytes, err := writer.WriteSegment(t.Context(), segmentIndex, data)
+		segmentResult, err := writer.WriteSegment(t.Context(), segmentIndex, data)
 		require.NoError(t, err)
-		assert.NotEmpty(t, encryptedBytes)
+		assert.NotEmpty(t, segmentResult.Data)
 		// Store the complete encrypted bytes for this segment index
-		segmentBytes[segmentIndex] = encryptedBytes
-		t.Logf("Wrote segment %d out of order (%d bytes data → %d encrypted bytes)", segmentIndex, len(data), len(encryptedBytes))
+		segmentBytes[segmentIndex] = segmentResult.Data
+		t.Logf("Wrote segment %d out of order (%d bytes data → %d encrypted bytes)", segmentIndex, len(data), len(segmentResult.Data))
 	}
 
 	// Reassemble segments in correct order (0,1,2,3,4) for valid ZIP structure
@@ -818,12 +835,12 @@ func TestStreamingWriter_OutOfOrderSegments(t *testing.T) {
 	t.Logf("Total TDF bytes before finalize: %d", len(allTDFBytes))
 
 	// Finalize TDF
-	finalBytes, manifest, err := writer.Finalize(t.Context(), []string{})
+	finalizeResult, err := writer.Finalize(t.Context(), []string{})
 	require.NoError(t, err)
-	allTDFBytes = append(allTDFBytes, finalBytes...)
+	allTDFBytes = append(allTDFBytes, finalizeResult.Data...)
 
 	// Debug segment information
-	segments := manifest.EncryptionInformation.IntegrityInformation.Segments
+	segments := finalizeResult.Manifest.EncryptionInformation.IntegrityInformation.Segments
 	t.Logf("Found %d segments in manifest", len(segments))
 	for i, seg := range segments {
 		t.Logf("Segment %d: Size=%d, Hash=%q", i, seg.Size, seg.Hash)
@@ -882,20 +899,20 @@ func TestStreamingWriter_LargeVariableSegments(t *testing.T) {
 
 	// Write all segments
 	for i, data := range testSegments {
-		encryptedBytes, err := writer.WriteSegment(t.Context(), i, data)
+		segmentResult, err := writer.WriteSegment(t.Context(), i, data)
 		require.NoError(t, err)
-		assert.NotEmpty(t, encryptedBytes)
-		allTDFBytes = append(allTDFBytes, encryptedBytes...)
-		t.Logf("Large segment %d: %d bytes → %d encrypted bytes", i, len(data), len(encryptedBytes))
+		assert.NotEmpty(t, segmentResult.Data)
+		allTDFBytes = append(allTDFBytes, segmentResult.Data...)
+		t.Logf("Large segment %d: %d bytes → %d encrypted bytes", i, len(data), len(segmentResult.Data))
 	}
 
 	// Finalize TDF
-	finalBytes, manifest, err := writer.Finalize(t.Context(), []string{})
+	finalizeResult, err := writer.Finalize(t.Context(), []string{})
 	require.NoError(t, err)
-	allTDFBytes = append(allTDFBytes, finalBytes...)
+	allTDFBytes = append(allTDFBytes, finalizeResult.Data...)
 
 	// Verify highly variable segment sizes
-	segments := manifest.EncryptionInformation.IntegrityInformation.Segments
+	segments := finalizeResult.Manifest.EncryptionInformation.IntegrityInformation.Segments
 	assert.Len(t, segments, 6)
 	expectedSizes := []int64{1, 100, 3, 1000, 1, 50}
 	for i, expectedSize := range expectedSizes {
@@ -942,15 +959,15 @@ func TestStreamingWriter_RandomReadAccess(t *testing.T) {
 
 	// Write segments in order
 	for i, data := range testSegments {
-		encryptedBytes, err := writer.WriteSegment(t.Context(), i, data)
+		segmentResult, err := writer.WriteSegment(t.Context(), i, data)
 		require.NoError(t, err)
-		allTDFBytes = append(allTDFBytes, encryptedBytes...)
+		allTDFBytes = append(allTDFBytes, segmentResult.Data...)
 	}
 
 	// Finalize TDF
-	finalBytes, _, err := writer.Finalize(t.Context(), []string{})
+	finalizeResult, err := writer.Finalize(t.Context(), []string{})
 	require.NoError(t, err)
-	allTDFBytes = append(allTDFBytes, finalBytes...)
+	allTDFBytes = append(allTDFBytes, finalizeResult.Data...)
 
 	// Load TDF for reading
 	tdfReader := bytes.NewReader(allTDFBytes)

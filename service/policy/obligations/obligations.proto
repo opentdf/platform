@@ -120,8 +120,14 @@ message UpdateObligationResponse {
 
 message DeleteObligationRequest {
     oneof identifier {
-        string id = 1;
-        string fqn = 2;
+        option (buf.validate.oneof).required = true;
+        string id = 1 [(buf.validate.field).string.uuid = true];
+        string fqn = 2 [
+            (buf.validate.field).string = {
+                min_len : 1
+                uri : true
+            }
+        ];
     }
 }
 

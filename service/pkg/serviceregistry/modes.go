@@ -1,6 +1,7 @@
 package serviceregistry
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -49,7 +50,7 @@ func ParseModesWithNegation(modes []ModeName) ([]ModeName, []string, error) {
 		if serviceName, found := strings.CutPrefix(modeStr, "-"); found {
 			// This is an exclusion
 			if serviceName == "" {
-				return nil, nil, fmt.Errorf("empty service name after '-'")
+				return nil, nil, errors.New("empty service name after '-'")
 			}
 			slog.Debug("negated registered service", slog.String("service", serviceName))
 			excluded = append(excluded, serviceName)
@@ -61,7 +62,7 @@ func ParseModesWithNegation(modes []ModeName) ([]ModeName, []string, error) {
 
 	// If we only have exclusions without inclusions, that's an error
 	if len(included) == 0 && len(excluded) > 0 {
-		return nil, nil, fmt.Errorf("cannot exclude services without including base modes")
+		return nil, nil, errors.New("cannot exclude services without including base modes")
 	}
 
 	return included, excluded, nil

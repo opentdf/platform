@@ -341,7 +341,7 @@ func (reg Registry) GetNamespace(namespace string) (Namespace, error) {
 	if !ok {
 		return Namespace{}, &ServiceConfigError{
 			Type:    "lookup",
-			Message: fmt.Sprintf("namespace not found: %s", namespace),
+			Message: "namespace not found: " + namespace,
 		}
 	}
 	return ns, nil

@@ -50,3 +50,4 @@ traces/
 
 # Cucumber / BDD log files
 *.log
+/examples/examples-cli

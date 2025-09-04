@@ -638,6 +638,11 @@ components:
         value:
           type: string
           title: value
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ObligationTrigger'
+          title: triggers
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'

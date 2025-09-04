@@ -9,7 +9,9 @@ import (
 
 // Type aliases for backward compatibility - these interfaces are now defined in lib/ocrypto
 type (
+	// Deprecated: use ocrypto.Encapsulator
 	Encapsulator = ocrypto.Encapsulator
+	// Deprecated: use ocrypto.ProtectedKey
 	ProtectedKey = ocrypto.ProtectedKey
 )
 

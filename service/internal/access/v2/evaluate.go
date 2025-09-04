@@ -46,16 +46,17 @@ func getResourceDecision(
 	)
 
 	var (
-		resourceID              = resource.GetEphemeralId()
-		resourceAttributeValues *authz.Resource_AttributeValues
+		resourceID                 = resource.GetEphemeralId()
+		registeredResourceValueFQN string
+		resourceAttributeValues    *authz.Resource_AttributeValues
 	)
 
 	switch resource.GetResource().(type) {
 	case *authz.Resource_RegisteredResourceValueFqn:
-		regResValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
-		regResValue, found := accessibleRegisteredResourceValues[regResValueFQN]
+		registeredResourceValueFQN = strings.ToLower(resource.GetRegisteredResourceValueFqn())
+		regResValue, found := accessibleRegisteredResourceValues[registeredResourceValueFQN]
 		if !found {
-			return nil, fmt.Errorf("%w: %s", ErrFQNNotFound, regResValueFQN)
+			return nil, fmt.Errorf("%w: %s", ErrFQNNotFound, registeredResourceValueFQN)
 		}
 
 		resourceAttributeValues = &authz.Resource_AttributeValues{
@@ -75,7 +76,7 @@ func getResourceDecision(
 		return nil, fmt.Errorf("unsupported resource type: %w", ErrInvalidResource)
 	}
 
-	return evaluateResourceAttributeValues(ctx, l, resourceAttributeValues, resourceID, action, entitlements, accessibleAttributeValues)
+	return evaluateResourceAttributeValues(ctx, l, resourceAttributeValues, resourceID, registeredResourceValueFQN, action, entitlements, accessibleAttributeValues)
 }
 
 // evaluateResourceAttributeValues evaluates a list of attribute values against the action and entitlements
@@ -85,6 +86,7 @@ func evaluateResourceAttributeValues(
 	l *logger.Logger,
 	resourceAttributeValues *authz.Resource_AttributeValues,
 	resourceID string,
+	resourceName string,
 	action *policy.Action,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
@@ -125,11 +127,15 @@ func evaluateResourceAttributeValues(
 	}
 
 	// Return results in the appropriate structure
-	return &ResourceDecision{
+	result := &ResourceDecision{
 		Passed:          passed,
 		ResourceID:      resourceID,
 		DataRuleResults: dataRuleResults,
-	}, nil
+	}
+	if resourceName != "" {
+		result.ResourceName = resourceName
+	}
+	return result, nil
 }
 
 func evaluateDefinition(

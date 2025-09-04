@@ -328,17 +328,30 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 
 		encoded := ocrypto.Base64Encode([]byte(completeHashBuilder.String()))
 
-		assertionSigningKey := AssertionKey{}
+		// Determine which signing provider to use
+		var signingProvider AssertionSigningProvider
 
-		// Set default to HS256 and payload key
-		assertionSigningKey.Alg = AssertionKeyAlgHS256
-		assertionSigningKey.Key = tdfObject.payloadKey[:]
+		if assertion.SigningProvider != nil {
+			// Use the assertion-specific provider
+			signingProvider = assertion.SigningProvider
+		} else if tdfConfig.AssertionSigningProvider != nil {
+			// Use the config-level provider
+			signingProvider = tdfConfig.AssertionSigningProvider
+		} else {
+			// Fall back to default provider
+			assertionSigningKey := AssertionKey{}
+			// Set default to HS256 and payload key
+			assertionSigningKey.Alg = AssertionKeyAlgHS256
+			assertionSigningKey.Key = tdfObject.payloadKey[:]
 
-		if !assertion.SigningKey.IsEmpty() {
-			assertionSigningKey = assertion.SigningKey
+			if !assertion.SigningKey.IsEmpty() {
+				assertionSigningKey = assertion.SigningKey
+			}
+
+			signingProvider = NewDefaultSigningProvider(assertionSigningKey)
 		}
 
-		if err := tmpAssertion.Sign(string(hashOfAssertionAsHex), string(encoded), assertionSigningKey); err != nil {
+		if err := tmpAssertion.SignWithProvider(context.Background(), string(hashOfAssertionAsHex), string(encoded), signingProvider); err != nil {
 			return nil, fmt.Errorf("failed to sign assertion: %w", err)
 		}
 
@@ -1302,24 +1315,35 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 			continue
 		}
 
-		assertionKey := AssertionKey{}
-		// Set default to HS256
-		assertionKey.Alg = AssertionKeyAlgHS256
-		assertionKey.Key = payloadKey[:]
+		// Determine which validation provider to use
+		var validationProvider AssertionValidationProvider
 
-		if !r.config.verifiers.IsEmpty() {
-			// Look up the key for the assertion
-			foundKey, err := r.config.verifiers.Get(assertion.ID)
+		if r.config.AssertionValidationProvider != nil {
+			// Use the custom provider supplied by the developer
+			validationProvider = r.config.AssertionValidationProvider
+		} else {
+			// Use the default DEK-based provider (existing SDK behavior)
+			assertionKey := AssertionKey{}
+			// Set default to HS256
+			assertionKey.Alg = AssertionKeyAlgHS256
+			assertionKey.Key = payloadKey[:]
 
-			if err != nil {
-				return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-			} else if !foundKey.IsEmpty() {
-				assertionKey.Alg = foundKey.Alg
-				assertionKey.Key = foundKey.Key
+			if !r.config.verifiers.IsEmpty() {
+				// Look up the key for the assertion
+				foundKey, err := r.config.verifiers.Get(assertion.ID)
+
+				if err != nil {
+					return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: assertion.ID}, err)
+				} else if !foundKey.IsEmpty() {
+					assertionKey.Alg = foundKey.Alg
+					assertionKey.Key = foundKey.Key
+				}
 			}
+
+			validationProvider = NewDefaultValidationProviderWithKey(assertionKey)
 		}
 
-		assertionHash, assertionSig, err := assertion.Verify(assertionKey)
+		assertionHash, assertionSig, err := assertion.VerifyWithProvider(context.Background(), validationProvider)
 		if err != nil {
 			if errors.Is(err, errAssertionVerifyKeyFailure) {
 				return fmt.Errorf("assertion verification failed: %w", err)
@@ -1327,6 +1351,15 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 			return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: assertion.ID}, err)
 		}
 
+		// When using a custom provider (like X509ValidationProvider), the provider
+		// handles all validation internally and may return different hash/sig formats.
+		// We skip the additional DEK-based checks in this case.
+		if r.config.AssertionValidationProvider != nil {
+			// Custom provider has already validated the assertion
+			continue
+		}
+
+		// Standard DEK-based validation (default SDK behavior)
 		// Get the hash of the assertion
 		hashOfAssertionAsHex, err := assertion.GetHash()
 		if err != nil {

@@ -125,6 +125,37 @@ func unmarshalPrivatePublicKeyContext(pubCtx, privCtx []byte) (*policy.PublicKey
 	return pubKey, privKey, nil
 }
 
+func unmarshalObligationValues(valuesJSON []byte) ([]*policy.ObligationValue, error) {
+	if valuesJSON == nil {
+		return nil, nil
+	}
+
+	raw := []json.RawMessage{}
+	if err := json.Unmarshal(valuesJSON, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal values array [%s]: %w", string(valuesJSON), err)
+	}
+
+	values := make([]*policy.ObligationValue, 0, len(raw))
+	for _, r := range raw {
+		v := &policy.ObligationValue{}
+		if err := protojson.Unmarshal(r, v); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal value [%s]: %w", string(r), err)
+		}
+		values = append(values, v)
+	}
+
+	return values, nil
+}
+
+func unmarshalNamespace(namespaceJSON []byte, namespace *policy.Namespace) error {
+	if namespaceJSON != nil {
+		if err := protojson.Unmarshal(namespaceJSON, namespace); err != nil {
+			return fmt.Errorf("failed to unmarshal namespaceJSON [%s]: %w", string(namespaceJSON), err)
+		}
+	}
+	return nil
+}
+
 func pgtypeUUID(s string) pgtype.UUID {
 	u, err := uuid.Parse(s)
 

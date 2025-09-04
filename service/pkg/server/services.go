@@ -46,7 +46,7 @@ const (
 
 // registerEssentialServices registers the essential services to the given service registry.
 // It takes a serviceregistry.Registry as input and returns an error if registration fails.
-func registerEssentialServices(reg serviceregistry.Registry) error {
+func registerEssentialServices(reg *serviceregistry.Registry) error {
 	essentialServices := []serviceregistry.IService{
 		health.NewRegistration(),
 	}
@@ -61,7 +61,7 @@ func registerEssentialServices(reg serviceregistry.Registry) error {
 
 // registerCoreServices registers the core services based on the provided mode.
 // It returns the list of registered services and any error encountered during registration.
-func registerCoreServices(reg serviceregistry.Registry, mode []string) ([]string, error) {
+func registerCoreServices(reg *serviceregistry.Registry, mode []string) ([]string, error) {
 	var (
 		services           []serviceregistry.IService
 		registeredServices []string
@@ -123,7 +123,7 @@ type startServicesParams struct {
 	otdf                *server.OpenTDFServer
 	client              *sdk.SDK
 	logger              *logging.Logger
-	reg                 serviceregistry.Registry
+	reg                 *serviceregistry.Registry
 	cacheManager        *cache.Manager
 	keyManagerFactories []trust.NamedKeyManagerFactory
 }
@@ -143,8 +143,12 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	cacheManager := params.cacheManager
 	keyManagerFactories := params.keyManagerFactories
 
-	// Iterate through the registered namespaces
-	for ns, namespace := range reg {
+	for _, ns := range reg.GetNamespaces() {
+		namespace, err := reg.GetNamespace(ns)
+		if err != nil {
+			// This is an internal inconsistency and should not happen.
+			return nil, fmt.Errorf("namespace not found: %w", err)
+		}
 		// modeEnabled checks if the mode is enabled based on the configuration and namespace mode.
 		// It returns true if the mode is "all" or "essential" in the configuration, or if it matches the namespace mode.
 		modeEnabled := slices.ContainsFunc(cfg.Mode, func(m string) bool {

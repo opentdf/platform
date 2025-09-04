@@ -276,7 +276,7 @@ func TestBasicManager_Decrypt(t *testing.T) {
 	bm, err := NewBasicManager(log, testCache, rootKeyHex)
 	require.NoError(t, err)
 
-	samplePayload := []byte("secret payload")
+	samplePayload := []byte("secret payload16") // 16 bytes for valid AES key
 
 	t.Run("successful RSA decryption", func(t *testing.T) {
 		mockDetails := new(MockKeyDetails)

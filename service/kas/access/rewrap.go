@@ -827,7 +827,7 @@ func (p *Provider) nanoTDFRewrap(ctx context.Context, requests []*kaspb.Unsigned
 		failAllKaos(requests, results, err400("keypair mismatch"))
 		return "", results
 	}
-	sessionKeyPEM, err := sessionKey.PublicKeyInPemFormat()
+	sessionKeyPEM, err := sessionKey.PublicKeyAsPEM()
 	if err != nil {
 		p.Logger.WarnContext(ctx, "failure in PublicKeyToPem", slog.Any("error", err))
 		failAllKaos(requests, results, err500(""))

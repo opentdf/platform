@@ -16,10 +16,12 @@ message GetObligationRequest {
     oneof identifier {
         option (buf.validate.oneof).required = true;
         string id = 1 [(buf.validate.field).string.uuid = true];
-        string fqn = 2 [(buf.validate.field).string = {
-            min_len : 1
-            uri : true
-        }];
+        string fqn = 2 [
+            (buf.validate.field).string = {
+                min_len : 1
+                uri : true
+            }
+        ];
     }
 }
 
@@ -28,42 +30,62 @@ message GetObligationResponse {
 }
 
 message GetObligationsByFQNsRequest {
-    repeated string fqns = 1 [(buf.validate.field).repeated = {
-        min_items: 1,
-        unique: true,
-        items: {
-            string: {
-                min_len: 1,
-                uri: true
-            }
-        },
-    }];
+    repeated string fqns = 1 [
+        (buf.validate.field).repeated = {
+            min_items: 1,
+            unique: true,
+            items: {
+                string: {
+                    min_len: 1,
+                    uri: true
+                }
+            },
+        }
+    ];
 }
 
 message GetObligationsByFQNsResponse {
     map<string, policy.Obligation> fqn_obligation_map = 1;
 }
 
-// TODO: PENDING
 message CreateObligationRequest {
     // Required
     oneof namespace_identifier {
         option (buf.validate.oneof).required = true;
         string id = 1 [(buf.validate.field).string.uuid = true];
-        string fqn = 2 [(buf.validate.field).string = {
-            min_len : 1
-            uri : true
-        }];
+        string fqn = 2 [
+            (buf.validate.field).string = {
+                min_len : 1
+                uri : true
+            }
+        ];
     }
-    // TODO: PENDING
-    string name = 3;
+    string name = 3 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).string.max_len = 253,
+        (buf.validate.field).cel = {
+            id: "obl_name_format",
+            message: "Obligation name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.",
+            expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+        };
+    ];
 
     // Optional
-    // TODO: PENDING
-    repeated string values = 4;
+    repeated string values = 4 [
+        (buf.validate.field).repeated = {
+            min_items: 0,
+            unique: true,
+            items: {
+                string: {
+                    max_len: 253,
+                    pattern: "^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$"
+                }
+            }
+        }
+    ];
+
     // Optional
     // Common metadata
-    // TODO: PENDING
     common.MetadataMutable metadata = 100;
 }
 

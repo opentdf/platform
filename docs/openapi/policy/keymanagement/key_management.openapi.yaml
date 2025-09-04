@@ -353,6 +353,9 @@ components:
           type: string
           title: config_json
           format: byte
+        manager:
+          type: string
+          title: manager
         metadata:
           title: metadata
           description: Common metadata
@@ -409,7 +412,7 @@ components:
           title: name
           description: |-
             Required
-             The name of the key provider. (e.g. "AWS KMS", "Google Cloud KMS", "Azure Key Vault")
+             The name of the key provider. (e.g. "AWS KMS Instance 1", "Google Cloud KMS Instance 2")
         configJson:
           type: string
           title: config_json
@@ -417,6 +420,12 @@ components:
           description: |-
             Required
              JSON configuration for the key provider. This is unique to individual key providers.
+        manager:
+          type: string
+          title: manager
+          description: |-
+            Required
+             The type of key manager (e.g. "aws", "gcp", "azure", "opentdf.io/basic")
         metadata:
           title: metadata
           description: Common metadata
@@ -425,6 +434,7 @@ components:
       required:
         - name
         - configJson
+        - manager
       additionalProperties: false
       description: Provider Configuration Requests and Response Messages
     policy.keymanagement.CreateProviderConfigResponse:
@@ -473,6 +483,11 @@ components:
           title: name
           required:
             - name
+      properties:
+        manager:
+          type: string
+          title: manager
+          description: Optional - filter by manager type when searching by name
       title: GetProviderConfigRequest
       additionalProperties: false
     policy.keymanagement.GetProviderConfigResponse:
@@ -521,6 +536,10 @@ components:
           type: string
           title: config_json
           format: byte
+          description: Optional
+        manager:
+          type: string
+          title: manager
           description: Optional
         metadata:
           title: metadata

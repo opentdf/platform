@@ -352,27 +352,28 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 		ObjectType: audit.ObjectTypeObligationTrigger,
 	}
 
-	var oblVal, act, attrVal string
-	if idf := req.Msg.GetObligationValue(); idf != nil {
-		oblVal = idf.GetId()
-	} else {
-		oblVal = idf.GetFqn()
+	oblIdentifier := req.Msg.GetObligationValue()
+	oblVal := oblIdentifier.GetId()
+	if oblVal == "" {
+		oblVal = oblIdentifier.GetFqn()
 	}
-	if ida := req.Msg.GetAction(); ida != nil {
-		act = ida.GetId()
-	} else {
-		act = ida.GetName()
+
+	actionIdentifier := req.Msg.GetAction()
+	act := actionIdentifier.GetId()
+	if act == "" {
+		act = actionIdentifier.GetName()
 	}
-	if idav := req.Msg.GetAttributeValue(); idav != nil {
-		attrVal = idav.GetId()
-	} else {
-		attrVal = idav.GetFqn()
+
+	attrValIdentifier := req.Msg.GetAttributeValue()
+	attrVal := attrValIdentifier.GetId()
+	if attrVal == "" {
+		attrVal = attrValIdentifier.GetFqn()
 	}
 
 	s.logger.DebugContext(ctx, "adding obligation trigger",
-		slog.String("obligation_value_id", oblVal),
-		slog.String("action_id", act),
-		slog.String("attribute_value_id", attrVal),
+		slog.String("obligation_value", oblVal),
+		slog.String("action", act),
+		slog.String("attribute_value", attrVal),
 	)
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {

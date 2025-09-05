@@ -35,7 +35,6 @@ var (
 	ServiceWellKnown        ServiceName = "wellknown"
 	ServiceEntityResolution ServiceName = "entityresolution"
 	ServiceAuthorization    ServiceName = "authorization"
-
 )
 
 // getServiceConfigurations returns fresh service configurations each time it's called.

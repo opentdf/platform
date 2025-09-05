@@ -44,7 +44,7 @@ func TestDefaultSigningProvider(t *testing.T) {
 	}
 
 	// Sign the assertion
-	signature, err := provider.Sign(context.Background(), assertion, "test-hash", "test-sig")
+	signature, err := provider.Sign(t.Context(), assertion, "test-hash", "test-sig")
 	require.NoError(t, err)
 	assert.NotEmpty(t, signature)
 
@@ -100,14 +100,14 @@ func TestDefaultValidationProvider(t *testing.T) {
 	provider := NewDefaultValidationProviderWithKey(validationKey)
 
 	// Validate the assertion
-	hash, sig, err := provider.Validate(context.Background(), assertion)
+	hash, sig, err := provider.Validate(t.Context(), assertion)
 	require.NoError(t, err)
 	assert.Equal(t, "test-hash", hash)
 	assert.Equal(t, "test-sig", sig)
 
 	// Test trust check
-	err = provider.IsTrusted(context.Background(), assertion)
-	assert.NoError(t, err)
+	err = provider.IsTrusted(t.Context(), assertion)
+	require.NoError(t, err)
 
 	// Test authorities
 	authorities := provider.GetTrustedAuthorities()
@@ -130,7 +130,7 @@ func TestX509SigningProvider(t *testing.T) {
 	}
 
 	// Sign the assertion
-	signature, err := provider.Sign(context.Background(), assertion, "test-hash", "test-sig")
+	signature, err := provider.Sign(t.Context(), assertion, "test-hash", "test-sig")
 	require.NoError(t, err)
 	assert.NotEmpty(t, signature)
 
@@ -205,7 +205,7 @@ func TestPayloadKeyProvider(t *testing.T) {
 	}
 
 	// Sign the assertion
-	signature, err := provider.Sign(context.Background(), assertion, "test-hash", "test-sig")
+	signature, err := provider.Sign(t.Context(), assertion, "test-hash", "test-sig")
 	require.NoError(t, err)
 	assert.NotEmpty(t, signature)
 
@@ -217,7 +217,7 @@ func TestPayloadKeyProvider(t *testing.T) {
 		Signature: signature,
 	}
 
-	hash, sig, err := validationProvider.Validate(context.Background(), *assertion)
+	hash, sig, err := validationProvider.Validate(t.Context(), *assertion)
 	require.NoError(t, err)
 	assert.Equal(t, "test-hash", hash)
 	assert.Equal(t, "test-sig", sig)
@@ -231,8 +231,8 @@ func TestPayloadKeyProvider(t *testing.T) {
 func TestProviderErrors(t *testing.T) {
 	t.Run("EmptyKeyError", func(t *testing.T) {
 		provider := NewDefaultSigningProvider(AssertionKey{})
-		_, err := provider.Sign(context.Background(), &Assertion{}, "hash", "sig")
-		assert.Error(t, err)
+		_, err := provider.Sign(t.Context(), &Assertion{}, "hash", "sig")
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "signing key not configured")
 	})
 
@@ -250,7 +250,7 @@ func TestProviderErrors(t *testing.T) {
 			},
 		}
 
-		_, _, err := provider.Validate(context.Background(), assertion)
+		_, _, err := provider.Validate(t.Context(), assertion)
 		assert.Error(t, err)
 	})
 
@@ -275,8 +275,8 @@ func TestProviderErrors(t *testing.T) {
 			},
 		}
 
-		_, _, err = provider.Validate(context.Background(), assertion)
-		assert.Error(t, err)
+		_, _, err = provider.Validate(t.Context(), assertion)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "x5c header not found")
 	})
 }
@@ -285,7 +285,7 @@ func TestProviderErrors(t *testing.T) {
 func TestCustomProvider(t *testing.T) {
 	// Create a mock custom provider
 	customProvider := &mockSigningProvider{
-		signFunc: func(ctx context.Context, assertion *Assertion, hash, sig string) (string, error) {
+		signFunc: func(_ context.Context, _ *Assertion, _, _ string) (string, error) {
 			// Custom logic here
 			return "custom-signature", nil
 		},
@@ -293,7 +293,7 @@ func TestCustomProvider(t *testing.T) {
 		alg:    "CUSTOM",
 	}
 
-	signature, err := customProvider.Sign(context.Background(), &Assertion{}, "hash", "sig")
+	signature, err := customProvider.Sign(t.Context(), &Assertion{}, "hash", "sig")
 	require.NoError(t, err)
 	assert.Equal(t, "custom-signature", signature)
 	assert.Equal(t, "custom-key-ref", customProvider.GetSigningKeyReference())
@@ -367,30 +367,4 @@ func (m *mockSigningProvider) GetSigningKeyReference() string {
 
 func (m *mockSigningProvider) GetAlgorithm() string {
 	return m.alg
-}
-
-// Mock validation provider
-
-type mockValidationProvider struct {
-	validateFunc func(context.Context, Assertion) (string, string, error)
-	trustFunc    func(context.Context, Assertion) error
-	authorities  []string
-}
-
-func (m *mockValidationProvider) Validate(ctx context.Context, assertion Assertion) (string, string, error) {
-	if m.validateFunc != nil {
-		return m.validateFunc(ctx, assertion)
-	}
-	return "", "", errors.New("not implemented")
-}
-
-func (m *mockValidationProvider) IsTrusted(ctx context.Context, assertion Assertion) error {
-	if m.trustFunc != nil {
-		return m.trustFunc(ctx, assertion)
-	}
-	return nil
-}
-
-func (m *mockValidationProvider) GetTrustedAuthorities() []string {
-	return m.authorities
 }

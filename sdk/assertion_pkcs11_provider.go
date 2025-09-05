@@ -85,7 +85,7 @@ func NewPKCS11Provider(config HardwareSigningOptions) (*PKCS11Provider, error) {
 }
 
 // Sign creates a JWS signature using the hardware token
-func (p *PKCS11Provider) Sign(ctx context.Context, assertion *Assertion, assertionHash, assertionSig string) (string, error) {
+func (p *PKCS11Provider) Sign(_ context.Context, _ *Assertion, assertionHash, assertionSig string) (string, error) {
 	// Create JWT with assertion claims
 	tok := jwt.New()
 	if err := tok.Set(kAssertionHash, assertionHash); err != nil {
@@ -119,8 +119,8 @@ func (p *PKCS11Provider) Sign(ctx context.Context, assertion *Assertion, asserti
 
 		// Split the JWS to inject x5c header
 		parts := strings.Split(string(signedTok), ".")
-		if len(parts) != 3 {
-			return "", fmt.Errorf("invalid JWS format")
+		if len(parts) != jwsPartsCount {
+			return "", errors.New("invalid JWS format")
 		}
 
 		// Decode the header
@@ -161,7 +161,7 @@ func (p *PKCS11Provider) GetSigningKeyReference() string {
 	if len(p.certChain) > 0 {
 		return fmt.Sprintf("pkcs11:slot=%s:subject=%s", p.config.SlotID, p.certChain[0].Subject.String())
 	}
-	return fmt.Sprintf("pkcs11:slot=%s", p.config.SlotID)
+	return "pkcs11:slot=" + p.config.SlotID
 }
 
 // GetAlgorithm returns the signing algorithm

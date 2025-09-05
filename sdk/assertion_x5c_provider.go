@@ -18,6 +18,14 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
+// Constants for ECDSA curve bit sizes and JWS format
+const (
+	ecdsaCurveP256BitSize = 256
+	ecdsaCurveP384BitSize = 384
+	ecdsaCurveP521BitSize = 521
+	jwsPartsCount         = 3
+)
+
 // X509SigningProvider implements certificate-based signing with x5c header support.
 // This provider is suitable for PIV/CAC cards and other X.509 certificate-based signing.
 type X509SigningProvider struct {
@@ -41,13 +49,16 @@ func NewX509SigningProvider(privateKey crypto.Signer, certChain []*x509.Certific
 	case *rsa.PublicKey:
 		algorithm = "RS256"
 	case *ecdsa.PublicKey:
-		key := privateKey.Public().(*ecdsa.PublicKey)
+		key, ok := privateKey.Public().(*ecdsa.PublicKey)
+		if !ok {
+			return nil, errors.New("failed to convert to ECDSA public key")
+		}
 		switch key.Curve.Params().BitSize {
-		case 256:
+		case ecdsaCurveP256BitSize:
 			algorithm = "ES256"
-		case 384:
+		case ecdsaCurveP384BitSize:
 			algorithm = "ES384"
-		case 521:
+		case ecdsaCurveP521BitSize:
 			algorithm = "ES512"
 		default:
 			return nil, fmt.Errorf("unsupported ECDSA curve size: %d", key.Curve.Params().BitSize)
@@ -65,7 +76,7 @@ func NewX509SigningProvider(privateKey crypto.Signer, certChain []*x509.Certific
 
 // Sign creates a JWS signature with x5c certificate chain in the header
 // Uses standard SDK binding (assertionHash and assertionSig)
-func (p *X509SigningProvider) Sign(ctx context.Context, assertion *Assertion, assertionHash, assertionSig string) (string, error) {
+func (p *X509SigningProvider) Sign(_ context.Context, _ *Assertion, assertionHash, assertionSig string) (string, error) {
 	// Create JWT with SDK standard claims
 	tok := jwt.New()
 
@@ -103,8 +114,8 @@ func (p *X509SigningProvider) Sign(ctx context.Context, assertion *Assertion, as
 	// Parse and reconstruct with x5c header
 	// Split the JWS to inject x5c header
 	parts := strings.Split(string(signedTok), ".")
-	if len(parts) != 3 {
-		return "", fmt.Errorf("invalid JWS format")
+	if len(parts) != jwsPartsCount {
+		return "", errors.New("invalid JWS format")
 	}
 
 	// Decode the header
@@ -210,99 +221,8 @@ func NewX509ValidationProviderWithCerts(certs []*x509.Certificate, options X509V
 	return provider
 }
 
-// validateWithX5C is a helper to validate JWS with x5c certificates
-func (p *X509ValidationProvider) validateWithX5C(x5c []string, signature string) (string, string, error) {
-	if len(x5c) == 0 {
-		return "", "", errors.New("empty x5c certificate chain")
-	}
-
-	// Decode and parse certificates
-	var certs []*x509.Certificate
-	for i, certB64 := range x5c {
-		certDER, err := base64.StdEncoding.DecodeString(certB64)
-		if err != nil {
-			return "", "", fmt.Errorf("failed to decode certificate %d: %w", i, err)
-		}
-
-		cert, err := x509.ParseCertificate(certDER)
-		if err != nil {
-			return "", "", fmt.Errorf("failed to parse certificate %d: %w", i, err)
-		}
-
-		certs = append(certs, cert)
-	}
-
-	// Validate certificate chain if required
-	if p.options.RequireChainValidation && p.options.TrustedCAs != nil {
-		if err := p.validateCertificateChain(certs); err != nil {
-			return "", "", fmt.Errorf("certificate chain validation failed: %w", err)
-		}
-	}
-
-	// Check certificate policies if required
-	if len(p.options.RequiredPolicies) > 0 {
-		if err := p.checkCertificatePolicies(certs[0]); err != nil {
-			return "", "", fmt.Errorf("certificate policy check failed: %w", err)
-		}
-	}
-
-	// Parse to get algorithm
-	parts := strings.Split(signature, ".")
-	if len(parts) != 3 {
-		return "", "", errors.New("invalid JWS format")
-	}
-
-	headerJSON, err := base64.RawURLEncoding.DecodeString(parts[0])
-	if err != nil {
-		return "", "", fmt.Errorf("failed to decode header: %w", err)
-	}
-
-	var header map[string]interface{}
-	if err := json.Unmarshal(headerJSON, &header); err != nil {
-		return "", "", fmt.Errorf("failed to parse header: %w", err)
-	}
-
-	alg, ok := header["alg"].(string)
-	if !ok {
-		return "", "", errors.New("algorithm not found in header")
-	}
-
-	// Verify the signature using the certificate's public key
-	_, err = jws.Verify([]byte(signature), jws.WithKey(jwa.KeyAlgorithmFrom(alg), certs[0].PublicKey))
-	if err != nil {
-		return "", "", fmt.Errorf("signature verification failed: %w", err)
-	}
-
-	// Parse the JWT to extract claims
-	tok, err := jwt.Parse([]byte(signature), jwt.WithKey(jwa.KeyAlgorithmFrom(alg), certs[0].PublicKey))
-	if err != nil {
-		return "", "", fmt.Errorf("failed to parse JWT: %w", err)
-	}
-
-	// Extract the standard SDK binding claims (assertionHash and assertionSig)
-	// Now that otdfctl has been aligned with SDK, we only need to support one style
-	hashClaim, foundHash := tok.Get(kAssertionHash)
-	sigClaim, foundSig := tok.Get(kAssertionSignature)
-
-	if !foundHash || !foundSig {
-		return "", "", errors.New("assertion binding claims not found (missing assertionHash or assertionSig)")
-	}
-
-	hash, ok := hashClaim.(string)
-	if !ok {
-		return "", "", errors.New("assertion hash claim is not a string")
-	}
-
-	sig, ok := sigClaim.(string)
-	if !ok {
-		return "", "", errors.New("assertion sig claim is not a string")
-	}
-
-	return hash, sig, nil
-}
-
 // Validate verifies the assertion signature using the certificate from x5c header
-func (p *X509ValidationProvider) Validate(ctx context.Context, assertion Assertion) (string, string, error) {
+func (p *X509ValidationProvider) Validate(_ context.Context, assertion Assertion) (string, string, error) {
 	if assertion.Binding.Method != "jws" {
 		return "", "", fmt.Errorf("unsupported binding method: %s", assertion.Binding.Method)
 	}
@@ -323,34 +243,8 @@ func (p *X509ValidationProvider) Validate(ctx context.Context, assertion Asserti
 
 	// Check if this is our manually created JWS with x5c in header
 	// Try to parse it directly from the compact serialization
-	parts := strings.Split(assertion.Binding.Signature, ".")
-	if len(parts) == 3 {
-		// Decode header directly
-		headerJSON, err := base64.RawURLEncoding.DecodeString(parts[0])
-		if err == nil {
-			var header map[string]interface{}
-			if err := json.Unmarshal(headerJSON, &header); err == nil {
-				if x5cRaw, ok := header["x5c"]; ok {
-					// Try to extract x5c from our custom format
-					var x5c []string
-					switch v := x5cRaw.(type) {
-					case []interface{}:
-						for _, cert := range v {
-							if certStr, ok := cert.(string); ok {
-								x5c = append(x5c, certStr)
-							}
-						}
-					case []string:
-						x5c = v
-					}
-
-					if len(x5c) > 0 {
-						// Successfully extracted x5c, now validate and extract claims
-						return p.validateWithX5C(x5c, assertion.Binding.Signature)
-					}
-				}
-			}
-		}
+	if x5c, found := p.tryExtractCustomX5C(assertion.Binding.Signature); found {
+		return p.validateWithX5C(x5c, assertion.Binding.Signature)
 	}
 
 	// Fall back to jwx parsing
@@ -365,8 +259,8 @@ func (p *X509ValidationProvider) Validate(ctx context.Context, assertion Asserti
 	switch v := x5cRaw.(type) {
 	case []interface{}:
 		for _, cert := range v {
-			certStr, ok := cert.(string)
-			if !ok {
+			certStr, certOk := cert.(string)
+			if !certOk {
 				return "", "", errors.New("invalid x5c certificate format")
 			}
 			x5c = append(x5c, certStr)
@@ -444,12 +338,12 @@ func (p *X509ValidationProvider) Validate(ctx context.Context, assertion Asserti
 
 	if foundPolicy && foundKeyAccess {
 		// Secure binding found
-		policyHash, ok := policyHashClaim.(string)
-		if !ok {
+		policyHash, policyOk := policyHashClaim.(string)
+		if !policyOk {
 			return "", "", errors.New("TDF policy hash claim is not a string")
 		}
-		keyAccessDigest, ok := keyAccessClaim.(string)
-		if !ok {
+		keyAccessDigest, keyOk := keyAccessClaim.(string)
+		if !keyOk {
 			return "", "", errors.New("key access digest claim is not a string")
 		}
 		return policyHash, keyAccessDigest, nil
@@ -461,12 +355,12 @@ func (p *X509ValidationProvider) Validate(ctx context.Context, assertion Asserti
 
 	if foundHash && foundSig {
 		// Legacy binding found
-		hash, ok := hashClaim.(string)
-		if !ok {
+		hash, hashOk := hashClaim.(string)
+		if !hashOk {
 			return "", "", errors.New("assertion hash claim is not a string")
 		}
-		sig, ok := sigClaim.(string)
-		if !ok {
+		sig, sigOk := sigClaim.(string)
+		if !sigOk {
 			return "", "", errors.New("assertion sig claim is not a string")
 		}
 		return hash, sig, nil
@@ -476,59 +370,8 @@ func (p *X509ValidationProvider) Validate(ctx context.Context, assertion Asserti
 	return "", "", errors.New("no recognized assertion binding claims found")
 }
 
-// validateCertificateChain validates the certificate chain against trusted CAs
-func (p *X509ValidationProvider) validateCertificateChain(certs []*x509.Certificate) error {
-	if len(certs) == 0 {
-		return errors.New("empty certificate chain")
-	}
-
-	// Build intermediate pool
-	intermediates := x509.NewCertPool()
-	for i := 1; i < len(certs); i++ {
-		intermediates.AddCert(certs[i])
-	}
-
-	// Verify the chain
-	opts := x509.VerifyOptions{
-		Roots:         p.options.TrustedCAs,
-		Intermediates: intermediates,
-	}
-
-	_, err := certs[0].Verify(opts)
-	if err != nil {
-		// Check if self-signed is allowed
-		if p.options.AllowSelfSigned && certs[0].CheckSignatureFrom(certs[0]) == nil {
-			return nil
-		}
-		return err
-	}
-
-	return nil
-}
-
-// checkCertificatePolicies checks if required policy OIDs are present
-func (p *X509ValidationProvider) checkCertificatePolicies(cert *x509.Certificate) error {
-	// PIV Authentication OID: 2.16.840.1.101.3.2.1.3.13
-	// CAC ID Certificate OID: 2.16.840.1.101.3.2.1.3.13
-
-	for _, requiredPolicy := range p.options.RequiredPolicies {
-		found := false
-		for _, policy := range cert.PolicyIdentifiers {
-			if policy.String() == requiredPolicy {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("required policy OID not found: %s", requiredPolicy)
-		}
-	}
-
-	return nil
-}
-
 // IsTrusted checks if the signing certificate is trusted
-func (p *X509ValidationProvider) IsTrusted(ctx context.Context, assertion Assertion) error {
+func (p *X509ValidationProvider) IsTrusted(_ context.Context, assertion Assertion) error {
 	// Parse JWS to get certificate
 	msg, err := jws.Parse([]byte(assertion.Binding.Signature))
 	if err != nil {
@@ -601,63 +444,260 @@ func (p *X509ValidationProvider) GetTrustedAuthorities() []string {
 
 	// Add required policy OIDs
 	for _, policy := range p.options.RequiredPolicies {
-		authorities = append(authorities, fmt.Sprintf("policy:%s", policy))
+		authorities = append(authorities, "policy:"+policy)
 	}
 
 	return authorities
 }
 
-// ExtractX5CCertificates is a utility function to extract certificates from a JWS with x5c header
-func ExtractX5CCertificates(jwsSignature string) ([]*x509.Certificate, error) {
-	// First try parsing as a compact JWS with our custom x5c format
-	parts := strings.Split(jwsSignature, ".")
-	if len(parts) == 3 {
-		// Decode header
-		headerJSON, err := base64.RawURLEncoding.DecodeString(parts[0])
+// tryExtractCustomX5C attempts to extract x5c certificates from custom JWS format
+func (p *X509ValidationProvider) tryExtractCustomX5C(signature string) ([]string, bool) {
+	parts := strings.Split(signature, ".")
+	if len(parts) != jwsPartsCount {
+		return nil, false
+	}
+
+	// Decode header directly
+	headerJSON, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return nil, false
+	}
+
+	var header map[string]interface{}
+	if err := json.Unmarshal(headerJSON, &header); err != nil {
+		return nil, false
+	}
+
+	x5cRaw, ok := header["x5c"]
+	if !ok {
+		return nil, false
+	}
+
+	// Try to extract x5c from our custom format
+	var x5c []string
+	switch v := x5cRaw.(type) {
+	case []interface{}:
+		for _, cert := range v {
+			if certStr, certOk := cert.(string); certOk {
+				x5c = append(x5c, certStr)
+			}
+		}
+	case []string:
+		x5c = v
+	}
+
+	if len(x5c) == 0 {
+		return nil, false
+	}
+
+	return x5c, true
+}
+
+// validateWithX5C is a helper to validate JWS with x5c certificates
+func (p *X509ValidationProvider) validateWithX5C(x5c []string, signature string) (string, string, error) {
+	if len(x5c) == 0 {
+		return "", "", errors.New("empty x5c certificate chain")
+	}
+
+	// Decode and parse certificates
+	var certs []*x509.Certificate
+	for i, certB64 := range x5c {
+		certDER, err := base64.StdEncoding.DecodeString(certB64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode header: %w", err)
+			return "", "", fmt.Errorf("failed to decode certificate %d: %w", i, err)
 		}
 
-		var header map[string]interface{}
-		if err := json.Unmarshal(headerJSON, &header); err != nil {
-			return nil, fmt.Errorf("failed to parse header: %w", err)
+		cert, err := x509.ParseCertificate(certDER)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to parse certificate %d: %w", i, err)
 		}
 
-		// Extract x5c
-		if x5cRaw, ok := header["x5c"]; ok {
-			var certs []*x509.Certificate
+		certs = append(certs, cert)
+	}
 
-			// Handle different x5c formats
-			switch v := x5cRaw.(type) {
-			case []interface{}:
-				for _, certRaw := range v {
-					if certB64, ok := certRaw.(string); ok {
-						certDER, err := base64.StdEncoding.DecodeString(certB64)
-						if err == nil {
-							if cert, err := x509.ParseCertificate(certDER); err == nil {
-								certs = append(certs, cert)
-							}
-						}
-					}
-				}
-			case []string:
-				for _, certB64 := range v {
-					certDER, err := base64.StdEncoding.DecodeString(certB64)
-					if err == nil {
-						if cert, err := x509.ParseCertificate(certDER); err == nil {
-							certs = append(certs, cert)
-						}
-					}
+	// Validate certificate chain if required
+	if p.options.RequireChainValidation && p.options.TrustedCAs != nil {
+		if err := p.validateCertificateChain(certs); err != nil {
+			return "", "", fmt.Errorf("certificate chain validation failed: %w", err)
+		}
+	}
+
+	// Check certificate policies if required
+	if len(p.options.RequiredPolicies) > 0 {
+		if err := p.checkCertificatePolicies(certs[0]); err != nil {
+			return "", "", fmt.Errorf("certificate policy check failed: %w", err)
+		}
+	}
+
+	// Parse to get algorithm
+	parts := strings.Split(signature, ".")
+	if len(parts) != jwsPartsCount {
+		return "", "", errors.New("invalid JWS format")
+	}
+
+	headerJSON, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return "", "", fmt.Errorf("failed to decode header: %w", err)
+	}
+
+	var header map[string]interface{}
+	if err := json.Unmarshal(headerJSON, &header); err != nil {
+		return "", "", fmt.Errorf("failed to parse header: %w", err)
+	}
+
+	alg, ok := header["alg"].(string)
+	if !ok {
+		return "", "", errors.New("algorithm not found in header")
+	}
+
+	// Verify the signature using the certificate's public key
+	_, err = jws.Verify([]byte(signature), jws.WithKey(jwa.KeyAlgorithmFrom(alg), certs[0].PublicKey))
+	if err != nil {
+		return "", "", fmt.Errorf("signature verification failed: %w", err)
+	}
+
+	// Parse the JWT to extract claims
+	tok, err := jwt.Parse([]byte(signature), jwt.WithKey(jwa.KeyAlgorithmFrom(alg), certs[0].PublicKey))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse JWT: %w", err)
+	}
+
+	// Extract the standard SDK binding claims (assertionHash and assertionSig)
+	// Now that otdfctl has been aligned with SDK, we only need to support one style
+	hashClaim, foundHash := tok.Get(kAssertionHash)
+	sigClaim, foundSig := tok.Get(kAssertionSignature)
+
+	if !foundHash || !foundSig {
+		return "", "", errors.New("assertion binding claims not found (missing assertionHash or assertionSig)")
+	}
+
+	hash, ok := hashClaim.(string)
+	if !ok {
+		return "", "", errors.New("assertion hash claim is not a string")
+	}
+
+	sig, ok := sigClaim.(string)
+	if !ok {
+		return "", "", errors.New("assertion sig claim is not a string")
+	}
+
+	return hash, sig, nil
+}
+
+// validateCertificateChain validates the certificate chain against trusted CAs
+func (p *X509ValidationProvider) validateCertificateChain(certs []*x509.Certificate) error {
+	if len(certs) == 0 {
+		return errors.New("empty certificate chain")
+	}
+
+	// Build intermediate pool
+	intermediates := x509.NewCertPool()
+	for i := 1; i < len(certs); i++ {
+		intermediates.AddCert(certs[i])
+	}
+
+	// Verify the chain
+	opts := x509.VerifyOptions{
+		Roots:         p.options.TrustedCAs,
+		Intermediates: intermediates,
+	}
+
+	_, err := certs[0].Verify(opts)
+	if err != nil {
+		// Check if self-signed is allowed
+		if p.options.AllowSelfSigned && certs[0].CheckSignatureFrom(certs[0]) == nil {
+			return nil
+		}
+		return err
+	}
+
+	return nil
+}
+
+// checkCertificatePolicies checks if required policy OIDs are present
+func (p *X509ValidationProvider) checkCertificatePolicies(cert *x509.Certificate) error {
+	// PIV Authentication OID: 2.16.840.1.101.3.2.1.3.13
+	// CAC ID Certificate OID: 2.16.840.1.101.3.2.1.3.13
+
+	for _, requiredPolicy := range p.options.RequiredPolicies {
+		found := false
+		for _, policy := range cert.PolicyIdentifiers {
+			if policy.String() == requiredPolicy {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("required policy OID not found: %s", requiredPolicy)
+		}
+	}
+
+	return nil
+}
+
+// tryExtractFromCompactJWS attempts to extract certificates from compact JWS format
+func tryExtractFromCompactJWS(jwsSignature string) ([]*x509.Certificate, error) {
+	parts := strings.Split(jwsSignature, ".")
+	if len(parts) != jwsPartsCount {
+		return nil, errors.New("invalid JWS format")
+	}
+
+	// Decode header
+	headerJSON, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode header: %w", err)
+	}
+
+	var header map[string]interface{}
+	if err := json.Unmarshal(headerJSON, &header); err != nil {
+		return nil, fmt.Errorf("failed to parse header: %w", err)
+	}
+
+	// Extract x5c
+	x5cRaw, ok := header["x5c"]
+	if !ok {
+		return nil, errors.New("no x5c header found")
+	}
+
+	return parseCertificatesFromX5C(x5cRaw)
+}
+
+// parseCertificatesFromX5C parses certificates from x5c header value
+func parseCertificatesFromX5C(x5cRaw interface{}) ([]*x509.Certificate, error) {
+	var certs []*x509.Certificate
+
+	// Handle different x5c formats
+	switch v := x5cRaw.(type) {
+	case []interface{}:
+		for _, certRaw := range v {
+			if certB64, certB64Ok := certRaw.(string); certB64Ok {
+				if cert, err := parseSingleCertificate(certB64); err == nil {
+					certs = append(certs, cert)
 				}
 			}
-
-			if len(certs) > 0 {
-				return certs, nil
+		}
+	case []string:
+		for _, certB64 := range v {
+			if cert, err := parseSingleCertificate(certB64); err == nil {
+				certs = append(certs, cert)
 			}
 		}
 	}
 
-	// Try using jwx library parsing
+	return certs, nil
+}
+
+// parseSingleCertificate parses a single certificate from base64 string
+func parseSingleCertificate(certB64 string) (*x509.Certificate, error) {
+	certDER, err := base64.StdEncoding.DecodeString(certB64)
+	if err != nil {
+		return nil, err
+	}
+	return x509.ParseCertificate(certDER)
+}
+
+// extractFromJWXLibrary extracts certificates using jwx library parsing
+func extractFromJWXLibrary(jwsSignature string) ([]*x509.Certificate, error) {
 	msg, err := jws.Parse([]byte(jwsSignature))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse JWS: %w", err)
@@ -678,8 +718,8 @@ func ExtractX5CCertificates(jwsSignature string) ([]*x509.Certificate, error) {
 	switch v := x5cRaw.(type) {
 	case []interface{}:
 		for _, cert := range v {
-			certStr, ok := cert.(string)
-			if ok {
+			certStr, certStrOk := cert.(string)
+			if certStrOk {
 				x5c = append(x5c, certStr)
 			}
 		}
@@ -689,18 +729,21 @@ func ExtractX5CCertificates(jwsSignature string) ([]*x509.Certificate, error) {
 
 	var certs []*x509.Certificate
 	for _, certB64 := range x5c {
-		certDER, err := base64.StdEncoding.DecodeString(certB64)
-		if err != nil {
-			continue
+		if cert, err := parseSingleCertificate(certB64); err == nil {
+			certs = append(certs, cert)
 		}
-
-		cert, err := x509.ParseCertificate(certDER)
-		if err != nil {
-			continue
-		}
-
-		certs = append(certs, cert)
 	}
 
 	return certs, nil
+}
+
+// ExtractX5CCertificates is a utility function to extract certificates from a JWS with x5c header
+func ExtractX5CCertificates(jwsSignature string) ([]*x509.Certificate, error) {
+	// First try parsing as a compact JWS with our custom x5c format
+	if certs, err := tryExtractFromCompactJWS(jwsSignature); err == nil && len(certs) > 0 {
+		return certs, nil
+	}
+
+	// Try using jwx library parsing
+	return extractFromJWXLibrary(jwsSignature)
 }

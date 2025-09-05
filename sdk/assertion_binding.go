@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
@@ -53,18 +54,18 @@ func ComputeSecureBinding(manifest interface{}) (*AssertionBinding, error) {
 	// Extract policy and key access from manifest
 	manifestMap, ok := manifest.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("invalid manifest format")
+		return nil, errors.New("invalid manifest format")
 	}
 
 	encInfo, ok := manifestMap["encryptionInformation"].(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("encryptionInformation not found in manifest")
+		return nil, errors.New("encryptionInformation not found in manifest")
 	}
 
 	// Compute policy hash
 	policy, ok := encInfo["policy"]
 	if !ok {
-		return nil, fmt.Errorf("policy not found in manifest")
+		return nil, errors.New("policy not found in manifest")
 	}
 
 	policyJSON, err := json.Marshal(policy)
@@ -80,7 +81,7 @@ func ComputeSecureBinding(manifest interface{}) (*AssertionBinding, error) {
 	// Compute key access digest
 	keyAccess, ok := encInfo["keyAccess"]
 	if !ok {
-		return nil, fmt.Errorf("keyAccess not found in manifest")
+		return nil, errors.New("keyAccess not found in manifest")
 	}
 
 	keyAccessJSON, err := json.Marshal(keyAccess)
@@ -123,6 +124,20 @@ func GetBindingClaims(style AssertionBindingStyle, binding *AssertionBinding) ma
 			claims[kKeyAccessDigest] = binding.KeyAccessDigest
 		}
 	case BindingStyleLegacy:
+		if binding.AssertionHash != "" {
+			claims[kAssertionHash] = binding.AssertionHash
+		}
+		if binding.AssertionSig != "" {
+			claims[kAssertionSignature] = binding.AssertionSig
+		}
+	case BindingStyleAuto:
+		// For auto style, include both secure and legacy claims if available
+		if binding.TDFPolicyHash != "" {
+			claims[kTDFPolicyHash] = binding.TDFPolicyHash
+		}
+		if binding.KeyAccessDigest != "" {
+			claims[kKeyAccessDigest] = binding.KeyAccessDigest
+		}
 		if binding.AssertionHash != "" {
 			claims[kAssertionHash] = binding.AssertionHash
 		}

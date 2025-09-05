@@ -1280,21 +1280,18 @@ components:
     policy.obligations.AddObligationTriggerRequest:
       type: object
       properties:
-        obligationValueId:
-          type: string
-          title: obligation_value_id
-          format: uuid
+        obligationValue:
+          title: obligation_value
           description: Required
-        actionId:
-          type: string
-          title: action_id
-          format: uuid
+          $ref: '#/components/schemas/policy.obligations.IdFqnIdentifier'
+        action:
+          title: action
           description: Required
-        attributeValueId:
-          type: string
-          title: attribute_value_id
-          format: uuid
+          $ref: '#/components/schemas/policy.obligations.IdNameIdentifier'
+        attributeValue:
+          title: attribute_value
           description: Required
+          $ref: '#/components/schemas/policy.obligations.IdFqnIdentifier'
         metadata:
           title: metadata
           description: |-
@@ -1302,6 +1299,10 @@ components:
              Common metadata
           $ref: '#/components/schemas/common.MetadataMutable'
       title: AddObligationTriggerRequest
+      required:
+        - obligationValue
+        - action
+        - attributeValue
       additionalProperties: false
       description: Triggers
     policy.obligations.AddObligationTriggerResponse:
@@ -1565,6 +1566,33 @@ components:
           title: value
           $ref: '#/components/schemas/policy.Obligation'
       title: FqnObligationMapEntry
+      additionalProperties: false
+    policy.obligations.IdFqnIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
+      title: IdFqnIdentifier
+      additionalProperties: false
+    policy.obligations.IdNameIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        name:
+          type: string
+          title: name
+          minLength: 1
+      title: IdNameIdentifier
       additionalProperties: false
     policy.obligations.ListObligationsRequest:
       type: object

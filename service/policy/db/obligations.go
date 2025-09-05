@@ -518,11 +518,17 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		return nil, err
 	}
 
+	nsFQN, oblName, oblVal := breakOblValFQN(r.GetObligationValue().GetFqn())
 	params := createObligationTriggerParams{
-		ObligationValueID: r.GetObligationValueId(),
-		ActionID:          r.GetActionId(),
-		AttributeValueID:  r.GetAttributeValueId(),
-		Metadata:          metadataJSON,
+		ObligationValueID:      r.GetObligationValue().GetId(),
+		ObligationNamespaceFqn: nsFQN,
+		ObligationName:         oblName,
+		ObligationValue:        oblVal,
+		ActionName:             r.GetAction().GetName(),
+		ActionID:               r.GetAction().GetId(),
+		AttributeValueID:       r.GetAttributeValue().GetId(),
+		AttributeValueFqn:      r.GetAttributeValue().GetFqn(),
+		Metadata:               metadataJSON,
 	}
 	row, err := c.queries.createObligationTrigger(ctx, params)
 	if err != nil {

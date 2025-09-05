@@ -146,17 +146,54 @@ func (q *Queries) createObligation(ctx context.Context, arg createObligationPara
 
 const createObligationTrigger = `-- name: createObligationTrigger :one
 
-WITH inserted AS (    
+WITH
+ov_id AS (
+    SELECT ov.id, od.namespace_id
+    FROM obligation_values_standard ov
+    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+    JOIN attribute_namespaces n ON od.namespace_id = n.id
+    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+    WHERE
+        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+        OR
+        (
+            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL AND
+            fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR AND ov.value = $4::VARCHAR)
+        )
+),
+a_id AS (
+    SELECT id FROM actions
+    WHERE
+        (NULLIF($5::TEXT, '') IS NOT NULL AND id = $5::UUID)
+        OR
+        (NULLIF($6::TEXT, '') IS NOT NULL AND name = $6::TEXT)
+),
+av_id AS (
+    SELECT av.id
+    FROM attribute_values av
+    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+    LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
+    WHERE
+        ((NULLIF($7::TEXT, '') IS NOT NULL AND av.id = $7::UUID)
+        OR
+        (NULLIF($8::TEXT, '') IS NOT NULL AND fqns.fqn = $8))
+        AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
+),
+inserted AS (
     INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata)
-    VALUES ($1, $2, $3, $4)
+    SELECT
+        (SELECT id FROM ov_id),
+        (SELECT id FROM a_id),
+        (SELECT id FROM av_id),
+        $9
     RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at
 )
 SELECT
     JSON_STRIP_NULLS(
         JSON_BUILD_OBJECT(
-            'labels', i.metadata -> 'labels',         
-            'created_at', i.created_at,               
-            'updated_at', i.updated_at                
+            'labels', i.metadata -> 'labels',
+            'created_at', i.created_at,
+            'updated_at', i.updated_at
         )
     ) AS metadata,
     JSON_STRIP_NULLS(
@@ -197,10 +234,15 @@ LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 `
 
 type createObligationTriggerParams struct {
-	ObligationValueID string `json:"obligation_value_id"`
-	ActionID          string `json:"action_id"`
-	AttributeValueID  string `json:"attribute_value_id"`
-	Metadata          []byte `json:"metadata"`
+	ObligationValueID      string `json:"obligation_value_id"`
+	ObligationNamespaceFqn string `json:"obligation_namespace_fqn"`
+	ObligationName         string `json:"obligation_name"`
+	ObligationValue        string `json:"obligation_value"`
+	ActionID               string `json:"action_id"`
+	ActionName             string `json:"action_name"`
+	AttributeValueID       string `json:"attribute_value_id"`
+	AttributeValueFqn      string `json:"attribute_value_fqn"`
+	Metadata               []byte `json:"metadata"`
 }
 
 type createObligationTriggerRow struct {
@@ -211,10 +253,48 @@ type createObligationTriggerRow struct {
 // --------------------------------------------------------------
 // OBLIGATION TRIGGERS
 // --------------------------------------------------------------
+// Gets the attribute value, but also ensures that the attribute value belongs to the same namespace as the obligation, to which the obligation value belongs
 //
-//	WITH inserted AS (
+//	WITH
+//	ov_id AS (
+//	    SELECT ov.id, od.namespace_id
+//	    FROM obligation_values_standard ov
+//	    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+//	    JOIN attribute_namespaces n ON od.namespace_id = n.id
+//	    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+//	    WHERE
+//	        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+//	        OR
+//	        (
+//	            (NULLIF($2::TEXT, '') IS NOT NULL AND NULLIF($3::TEXT, '') IS NOT NULL AND NULLIF($4::TEXT, '') IS NOT NULL AND
+//	            fqns.fqn = $2::VARCHAR AND od.name = $3::VARCHAR AND ov.value = $4::VARCHAR)
+//	        )
+//	),
+//	a_id AS (
+//	    SELECT id FROM actions
+//	    WHERE
+//	        (NULLIF($5::TEXT, '') IS NOT NULL AND id = $5::UUID)
+//	        OR
+//	        (NULLIF($6::TEXT, '') IS NOT NULL AND name = $6::TEXT)
+//	),
+//	av_id AS (
+//	    SELECT av.id
+//	    FROM attribute_values av
+//	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	    LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
+//	    WHERE
+//	        ((NULLIF($7::TEXT, '') IS NOT NULL AND av.id = $7::UUID)
+//	        OR
+//	        (NULLIF($8::TEXT, '') IS NOT NULL AND fqns.fqn = $8))
+//	        AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
+//	),
+//	inserted AS (
 //	    INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata)
-//	    VALUES ($1, $2, $3, $4)
+//	    SELECT
+//	        (SELECT id FROM ov_id),
+//	        (SELECT id FROM a_id),
+//	        (SELECT id FROM av_id),
+//	        $9
 //	    RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at
 //	)
 //	SELECT
@@ -263,8 +343,13 @@ type createObligationTriggerRow struct {
 func (q *Queries) createObligationTrigger(ctx context.Context, arg createObligationTriggerParams) (createObligationTriggerRow, error) {
 	row := q.db.QueryRow(ctx, createObligationTrigger,
 		arg.ObligationValueID,
+		arg.ObligationNamespaceFqn,
+		arg.ObligationName,
+		arg.ObligationValue,
 		arg.ActionID,
+		arg.ActionName,
 		arg.AttributeValueID,
+		arg.AttributeValueFqn,
 		arg.Metadata,
 	)
 	var i createObligationTriggerRow

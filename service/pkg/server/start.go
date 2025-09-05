@@ -46,22 +46,57 @@ func Start(f ...StartOptions) error {
 	ctx := context.Background()
 
 	slog.Debug("loading configuration from environment")
-	cfg, err := config.LoadConfig(ctx, startConfig.ConfigKey, startConfig.ConfigFile)
-	if err != nil {
-		return fmt.Errorf("could not load config: %w", err)
+	loaderOrder := []string{
+		config.LoaderNameEnvironmentValue,
+		config.LoaderNameFile,
+		config.LoaderNameDefaultSettings,
+	}
+	if startConfig.configLoaderOrder != nil {
+		loaderOrder = startConfig.configLoaderOrder
+	} else if startConfig.configLoaders != nil {
+		for _, loader := range startConfig.configLoaders {
+			loaderOrder = append(loaderOrder, loader.Name())
+		}
 	}
 
-	if startConfig.configLoaders != nil {
-		slog.Debug("loading configuration from additional provided loaders")
+	additionalLoaderMap := make(map[string]config.Loader, len(startConfig.configLoaders))
+	for _, loader := range startConfig.configLoaders {
+		additionalLoaderMap[loader.Name()] = loader
+	}
 
-		for _, loader := range startConfig.configLoaders {
-			slog.Debug("loading config for loader", slog.String("loader", loader.Name()))
-			err := loader.Load(cfg)
+	loaders := make([]config.Loader, len(loaderOrder))
+
+	for idx, loaderName := range loaderOrder {
+		var loader config.Loader
+		var err error
+		switch loaderName {
+		case config.LoaderNameEnvironmentValue:
+			loader, err = config.NewEnvironmentValueLoader(startConfig.ConfigKey, nil)
 			if err != nil {
-				return fmt.Errorf("failed load config with loader %s: %w", loader.Name(), err)
+				return err
 			}
-			cfg.AddLoader(loader)
+		case config.LoaderNameFile:
+			loader, err = config.NewConfigFileLoader(startConfig.ConfigKey, startConfig.ConfigFile)
+			if err != nil {
+				return err
+			}
+		case config.LoaderNameDefaultSettings:
+			loader, err = config.NewDefaultSettingsLoader()
+			if err != nil {
+				return err
+			}
+		default:
+			mappedLoader, ok := additionalLoaderMap[loaderName]
+			if !ok {
+				return fmt.Errorf("loader not found: %s", loaderName)
+			}
+			loader = mappedLoader
 		}
+		loaders[idx] = loader
+	}
+	cfg, err := config.Load(ctx, loaders...)
+	if err != nil {
+		return fmt.Errorf("could not load config: %w", err)
 	}
 
 	if cfg.DevMode {

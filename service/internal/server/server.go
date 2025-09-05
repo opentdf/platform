@@ -69,7 +69,7 @@ type Config struct {
 	// Enable pprof
 	EnablePprof bool `mapstructure:"enable_pprof" json:"enable_pprof" default:"false"`
 	// Trace is for configuring open telemetry based tracing.
-	Trace tracing.Config `mapstructure:"trace"`
+	Trace tracing.Config `mapstructure:"trace" json:"trace"`
 }
 
 func (c Config) LogValue() slog.Value {
@@ -126,7 +126,7 @@ type CORSConfig struct {
 	AllowedMethods   []string `mapstructure:"allowedmethods" json:"allowedmethods" default:"[\"GET\",\"POST\",\"PATCH\",\"DELETE\",\"OPTIONS\"]"`
 	AllowedHeaders   []string `mapstructure:"allowedheaders" json:"allowedheaders" default:"[\"Accept\",\"Content-Type\",\"Content-Length\",\"Accept-Encoding\",\"X-CSRF-Token\",\"Authorization\",\"X-Requested-With\",\"Dpop\",\"Connect-Protocol-Version\"]"`
 	ExposedHeaders   []string `mapstructure:"exposedheaders" json:"exposedheaders"`
-	AllowCredentials bool     `mapstructure:"allowcredentials" json:"allowedcredentials" default:"true"`
+	AllowCredentials bool     `mapstructure:"allowcredentials" json:"allowcredentials" default:"true"`
 	MaxAge           int      `mapstructure:"maxage" json:"maxage" default:"3600"`
 	Debug            bool     `mapstructure:"debug" json:"debug"`
 }

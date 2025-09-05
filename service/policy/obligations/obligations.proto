@@ -20,23 +20,6 @@ message GetObligationRequest {
     }
 }
 
-message IdNameIdentifier {
-    option (buf.validate.message).oneof = { fields: ["id", "name"], required: true };
-    string id = 1 [(buf.validate.field).string.uuid = true];
-    string name = 2 [(buf.validate.field).string = {
-        min_len: 1
-    }];
-}
-
-message IdFqnIdentifier {
-    option (buf.validate.message).oneof = { fields: ["id", "fqn"], required: true };
-    string id = 1 [(buf.validate.field).string.uuid = true];
-    string fqn = 2 [(buf.validate.field).string = {
-        min_len: 1
-        uri: true
-    }];
-}
-
 message GetObligationResponse {
     policy.Obligation obligation = 1;
 }
@@ -176,11 +159,11 @@ message DeleteObligationValueResponse {
 // Triggers
 message AddObligationTriggerRequest {
     // Required
-    IdFqnIdentifier obligation_value = 1 [(buf.validate.field).required = true];
+    common.IdFqnIdentifier obligation_value = 1 [(buf.validate.field).required = true];
     // Required
-    IdNameIdentifier action = 2 [(buf.validate.field).required = true];
+    common.IdNameIdentifier action = 2 [(buf.validate.field).required = true];
     // Required
-    IdFqnIdentifier attribute_value = 3 [(buf.validate.field).required = true];
+    common.IdFqnIdentifier attribute_value = 3 [(buf.validate.field).required = true];
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;

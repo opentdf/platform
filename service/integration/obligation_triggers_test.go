@@ -137,9 +137,9 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_NoMetadata_Succes
 
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithIDs_Success() {
 	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
-		ObligationValue: &obligations.IdFqnIdentifier{Id: s.obligationValue.GetId()},
-		AttributeValue:  &obligations.IdFqnIdentifier{Id: s.attributeValue.GetId()},
-		Action:          &obligations.IdNameIdentifier{Id: s.action.GetId()},
+		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{"source": "test"},
 		},
@@ -152,9 +152,9 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithIDs_Success()
 
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithNameFQN_Success() {
 	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
-		ObligationValue: &obligations.IdFqnIdentifier{Fqn: s.obligation.GetNamespace().GetFqn() + "/obl/" + s.obligationValue.GetObligation().GetName() + "/value/" + s.obligationValue.GetValue()},
-		AttributeValue:  &obligations.IdFqnIdentifier{Fqn: s.attributeValue.GetFqn()},
-		Action:          &obligations.IdNameIdentifier{Name: s.action.GetName()},
+		ObligationValue: &common.IdFqnIdentifier{Fqn: s.obligation.GetNamespace().GetFqn() + "/obl/" + s.obligationValue.GetObligation().GetName() + "/value/" + s.obligationValue.GetValue()},
+		AttributeValue:  &common.IdFqnIdentifier{Fqn: s.attributeValue.GetFqn()},
+		Action:          &common.IdNameIdentifier{Name: s.action.GetName()},
 		Metadata: &common.MetadataMutable{
 			Labels: map[string]string{"source": "test"},
 		},
@@ -168,9 +168,9 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithNameFQN_Succe
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ObligationValueNotFound_Fails() {
 	randomID := uuid.NewString()
 	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
-		ObligationValue: &obligations.IdFqnIdentifier{Id: randomID},
-		AttributeValue:  &obligations.IdFqnIdentifier{Id: s.attributeValue.GetId()},
-		Action:          &obligations.IdNameIdentifier{Id: s.action.GetId()},
+		ObligationValue: &common.IdFqnIdentifier{Id: randomID},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
 	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotNullViolation)
@@ -180,9 +180,9 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ObligationValueNo
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_AttributeValueNotFound_Fails() {
 	randomID := uuid.NewString()
 	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
-		ObligationValue: &obligations.IdFqnIdentifier{Id: s.obligationValue.GetId()},
-		AttributeValue:  &obligations.IdFqnIdentifier{Id: randomID},
-		Action:          &obligations.IdNameIdentifier{Id: s.action.GetId()},
+		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: randomID},
+		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
 	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotNullViolation)
@@ -192,9 +192,9 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_AttributeValueNot
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ActionNotFound_Fails() {
 	randomID := uuid.NewString()
 	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
-		ObligationValue: &obligations.IdFqnIdentifier{Id: s.obligationValue.GetId()},
-		AttributeValue:  &obligations.IdFqnIdentifier{Id: s.attributeValue.GetId()},
-		Action:          &obligations.IdNameIdentifier{Id: randomID},
+		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Id: randomID},
 	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotNullViolation)
@@ -229,9 +229,9 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_AttributeValueDif
 
 	// Try to create a trigger with obligation value from one namespace and attribute value from another
 	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
-		ObligationValue: &obligations.IdFqnIdentifier{Id: s.obligationValue.GetId()},
-		AttributeValue:  &obligations.IdFqnIdentifier{Id: differentAttributeValue.GetId()},
-		Action:          &obligations.IdNameIdentifier{Id: s.action.GetId()},
+		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: differentAttributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
 	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrNotNullViolation)
@@ -259,9 +259,9 @@ func (s *ObligationTriggersSuite) Test_DeleteObligationTrigger_NotFound_Fails() 
 
 func (s *ObligationTriggersSuite) createGenericTrigger() *policy.ObligationTrigger {
 	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
-		ObligationValue: &obligations.IdFqnIdentifier{Id: s.obligationValue.GetId()},
-		AttributeValue:  &obligations.IdFqnIdentifier{Id: s.attributeValue.GetId()},
-		Action:          &obligations.IdNameIdentifier{Id: s.action.GetId()},
+		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
 		Metadata:        &common.MetadataMutable{},
 	})
 	s.Require().NoError(err)

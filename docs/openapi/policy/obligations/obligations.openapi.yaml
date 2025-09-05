@@ -528,6 +528,33 @@ components:
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_NOT_IN
         - SUBJECT_MAPPING_OPERATOR_ENUM_IN_CONTAINS
+    common.IdFqnIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
+      title: IdFqnIdentifier
+      additionalProperties: false
+    common.IdNameIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        name:
+          type: string
+          title: name
+          minLength: 1
+      title: IdNameIdentifier
+      additionalProperties: false
     common.Metadata:
       type: object
       properties:
@@ -1283,15 +1310,15 @@ components:
         obligationValue:
           title: obligation_value
           description: Required
-          $ref: '#/components/schemas/policy.obligations.IdFqnIdentifier'
+          $ref: '#/components/schemas/common.IdFqnIdentifier'
         action:
           title: action
           description: Required
-          $ref: '#/components/schemas/policy.obligations.IdNameIdentifier'
+          $ref: '#/components/schemas/common.IdNameIdentifier'
         attributeValue:
           title: attribute_value
           description: Required
-          $ref: '#/components/schemas/policy.obligations.IdFqnIdentifier'
+          $ref: '#/components/schemas/common.IdFqnIdentifier'
         metadata:
           title: metadata
           description: |-
@@ -1566,33 +1593,6 @@ components:
           title: value
           $ref: '#/components/schemas/policy.Obligation'
       title: FqnObligationMapEntry
-      additionalProperties: false
-    policy.obligations.IdFqnIdentifier:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-        fqn:
-          type: string
-          title: fqn
-          minLength: 1
-          format: uri
-      title: IdFqnIdentifier
-      additionalProperties: false
-    policy.obligations.IdNameIdentifier:
-      type: object
-      properties:
-        id:
-          type: string
-          title: id
-          format: uuid
-        name:
-          type: string
-          title: name
-          minLength: 1
-      title: IdNameIdentifier
       additionalProperties: false
     policy.obligations.ListObligationsRequest:
       type: object

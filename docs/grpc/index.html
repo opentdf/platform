@@ -179,6 +179,14 @@
             <ul>
               
                 <li>
+                  <a href="#common.IdFqnIdentifier"><span class="badge">M</span>IdFqnIdentifier</a>
+                </li>
+              
+                <li>
+                  <a href="#common.IdNameIdentifier"><span class="badge">M</span>IdNameIdentifier</a>
+                </li>
+              
+                <li>
                   <a href="#common.Metadata"><span class="badge">M</span>Metadata</a>
                 </li>
               
@@ -1493,14 +1501,6 @@
                 </li>
               
                 <li>
-                  <a href="#policy.obligations.IdFqnIdentifier"><span class="badge">M</span>IdFqnIdentifier</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.obligations.IdNameIdentifier"><span class="badge">M</span>IdNameIdentifier</a>
-                </li>
-              
-                <li>
                   <a href="#policy.obligations.ListObligationsRequest"><span class="badge">M</span>ListObligationsRequest</a>
                 </li>
               
@@ -2016,6 +2016,68 @@
       </div>
       <p></p>
 
+      
+        <h3 id="common.IdFqnIdentifier">IdFqnIdentifier</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="common.IdNameIdentifier">IdNameIdentifier</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
       
         <h3 id="common.Metadata">Metadata</h3>
         <p>Struct to uniquely identify a resource with optional additional metadata</p>
@@ -12238,21 +12300,21 @@ Namespace &lt;&gt; Key RPCs
               
                 <tr>
                   <td>obligation_value</td>
-                  <td><a href="#policy.obligations.IdFqnIdentifier">IdFqnIdentifier</a></td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
                   <td></td>
                   <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>action</td>
-                  <td><a href="#policy.obligations.IdNameIdentifier">IdNameIdentifier</a></td>
+                  <td><a href="#common.IdNameIdentifier">common.IdNameIdentifier</a></td>
                   <td></td>
                   <td><p>Required </p></td>
                 </tr>
               
                 <tr>
                   <td>attribute_value</td>
-                  <td><a href="#policy.obligations.IdFqnIdentifier">IdFqnIdentifier</a></td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
                   <td></td>
                   <td><p>Required </p></td>
                 </tr>
@@ -12810,68 +12872,6 @@ Common metadata </p></td>
                 <tr>
                   <td>value</td>
                   <td><a href="#policy.Obligation">policy.Obligation</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.obligations.IdFqnIdentifier">IdFqnIdentifier</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>fqn</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.obligations.IdNameIdentifier">IdNameIdentifier</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>name</td>
-                  <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>

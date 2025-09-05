@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.10.0](https://github.com/opentdf/platform/compare/service/v0.9.0...service/v0.10.0) (2025-09-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** Add manager column to provider configuration for  multi-instance support ([#2601](https://github.com/opentdf/platform/issues/2601))
+
+### Features
+
+* **core:** Bump default write timeout. ([#2671](https://github.com/opentdf/platform/issues/2671)) ([6a233c1](https://github.com/opentdf/platform/commit/6a233c1f16c1a7ea3b059906eb0a489e06544134))
+* **core:** Encapsulate&gt;Encrypt ([#2676](https://github.com/opentdf/platform/issues/2676)) ([3c5a614](https://github.com/opentdf/platform/commit/3c5a6145c9bcac47001639bdcf2576a444493dd5))
+* **policy:** Add manager column to provider configuration for  multi-instance support ([#2601](https://github.com/opentdf/platform/issues/2601)) ([a5fc994](https://github.com/opentdf/platform/commit/a5fc994acc5491bf8cbf751b675302b459e1f3b0))
+* **policy:** obligations + values CRUD ([#2545](https://github.com/opentdf/platform/issues/2545)) ([c194e35](https://github.com/opentdf/platform/commit/c194e3522b9dfab74a5a21747d012f88a188f989))
+
+
+### Bug Fixes
+
+* sanitize db schema identifiers ([#2682](https://github.com/opentdf/platform/issues/2682)) ([0d3dd94](https://github.com/opentdf/platform/commit/0d3dd945078fd3b9696a3ab258d8e35c0f272345))
+
 ## [0.9.0](https://github.com/opentdf/platform/compare/service/v0.8.0...service/v0.9.0) (2025-08-27)
 
 

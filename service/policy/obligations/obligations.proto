@@ -51,16 +51,14 @@ message GetObligationsByFQNsResponse {
 
 message CreateObligationRequest {
     // Required
-    oneof namespace_identifier {
-        option (buf.validate.oneof).required = true;
-        string id = 1 [(buf.validate.field).string.uuid = true];
-        string fqn = 2 [
-            (buf.validate.field).string = {
-                min_len : 1
-                uri : true
-            }
-        ];
-    }
+    option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"] };
+    string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+    string namespace_fqn = 2 [
+        (buf.validate.field).string = {
+            min_len : 1
+            uri : true
+        }
+    ];
     string name = 3 [
         (buf.validate.field).required = true,
         (buf.validate.field).string.max_len = 253,

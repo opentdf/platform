@@ -79,6 +79,10 @@ type TDFConfig struct {
 	useHex                     bool
 	excludeVersionFromManifest bool
 	addDefaultAssertion        bool
+	// AssertionSigningProvider allows custom signing implementation (optional)
+	AssertionSigningProvider AssertionSigningProvider
+	// AssertionValidationProvider allows custom validation implementation (optional)
+	AssertionValidationProvider AssertionValidationProvider
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -251,6 +255,24 @@ func WithTargetMode(mode string) TDFOption {
 	}
 }
 
+// WithAssertionSigningProvider sets a custom assertion signing provider.
+// If not set, the default key-based provider will be used.
+func WithAssertionSigningProvider(provider AssertionSigningProvider) TDFOption {
+	return func(c *TDFConfig) error {
+		c.AssertionSigningProvider = provider
+		return nil
+	}
+}
+
+// WithAssertionValidationProvider sets a custom assertion validation provider.
+// If not set, the default key-based provider will be used.
+func WithAssertionValidationProvider(provider AssertionValidationProvider) TDFOption {
+	return func(c *TDFConfig) error {
+		c.AssertionValidationProvider = provider
+		return nil
+	}
+}
+
 // Schema Validation where 0 = none (skip), 1 = lax (allowing novel entries, 'falsy' values for unkowns), 2 = strict (rejecting novel entries, strict match to manifest schema)
 type SchemaValidationIntensity int
 
@@ -271,6 +293,8 @@ type TDFReaderConfig struct {
 	kasSessionKey             ocrypto.KeyPair
 	kasAllowlist              AllowList // KAS URLs that are allowed to be used for reading TDFs
 	ignoreAllowList           bool      // If true, the kasAllowlist will be ignored, and all KAS URLs will be allowed
+	// AssertionValidationProvider allows custom validation implementation (optional)
+	AssertionValidationProvider AssertionValidationProvider
 }
 
 type AllowList map[string]bool
@@ -367,6 +391,15 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.verifiers = keys
+		return nil
+	}
+}
+
+// WithReaderAssertionValidationProvider sets a custom assertion validation provider for reading.
+// If not set, the default key-based provider will be used.
+func WithReaderAssertionValidationProvider(provider AssertionValidationProvider) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.AssertionValidationProvider = provider
 		return nil
 	}
 }

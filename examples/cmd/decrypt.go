@@ -14,6 +14,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	decryptAlg    string
+	useX509Verify bool
+)
+
 func init() {
 	decryptCmd := &cobra.Command{
 		Use:   "decrypt",
@@ -21,7 +26,8 @@ func init() {
 		RunE:  decrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
-	decryptCmd.Flags().StringVarP(&alg, "rewrap-encapsulation-algorithm", "A", "rsa:2048", "Key wrap response algorithm algorithm:parameters")
+	decryptCmd.Flags().StringVarP(&decryptAlg, "rewrap-encapsulation-algorithm", "A", "rsa:2048", "Key wrap response algorithm algorithm:parameters")
+	decryptCmd.Flags().BoolVar(&useX509Verify, "x509-verify", false, "Use X.509 certificate validation for assertions (for TDFs created with X.509 signatures)")
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 
@@ -86,13 +92,23 @@ func decrypt(cmd *cobra.Command, args []string) error {
 
 	if !isNano {
 		opts := []sdk.TDFReaderOption{}
-		if alg != "" {
-			kt, err := keyTypeForKeyType(alg)
+		if decryptAlg != "" {
+			kt, err := keyTypeForKeyType(decryptAlg)
 			if err != nil {
 				return err
 			}
 			opts = append(opts, sdk.WithSessionKeyType(kt))
 		}
+
+		// If the user specifies --x509-verify, use the X509ValidationProvider
+		// This is needed for TDFs created with X.509 signatures (e.g., from otdfctl)
+		if useX509Verify {
+			x509Provider := sdk.NewX509ValidationProvider(sdk.X509ValidationOptions{
+				AllowSelfSigned: true, // Allow self-signed certificates for testing
+			})
+			opts = append(opts, sdk.WithReaderAssertionValidationProvider(x509Provider))
+		}
+
 		tdfreader, err := client.LoadTDF(file, opts...)
 		if err != nil {
 			return err

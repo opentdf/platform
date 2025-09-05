@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,8 +9,6 @@ import (
 	"time"
 
 	"github.com/gowebpki/jcs"
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/opentdf/platform/lib/ocrypto"
 )
 
@@ -27,6 +26,8 @@ type AssertionConfig struct {
 	AppliesToState AppliesToState `validate:"required"`
 	Statement      Statement
 	SigningKey     AssertionKey
+	// SigningProvider allows custom signing implementation (optional)
+	SigningProvider AssertionSigningProvider
 }
 
 type Assertion struct {
@@ -44,23 +45,27 @@ var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with 
 // It returns an error if the signing fails.
 // The assertion binding is updated with the method and the signature.
 func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
-	tok := jwt.New()
-	if err := tok.Set(kAssertionHash, hash); err != nil {
-		return fmt.Errorf("failed to set assertion hash: %w", err)
-	}
-	if err := tok.Set(kAssertionSignature, sig); err != nil {
-		return fmt.Errorf("failed to set assertion signature: %w", err)
+	// Use default provider with the provided key
+	provider := NewDefaultSigningProvider(key)
+	return a.SignWithProvider(context.Background(), hash, sig, provider)
+}
+
+// SignWithProvider signs the assertion using a custom provider.
+// This method allows for flexible signing implementations including hardware tokens.
+func (a *Assertion) SignWithProvider(ctx context.Context, hash, sig string, provider AssertionSigningProvider) error {
+	if provider == nil {
+		return errors.New("signing provider is required")
 	}
 
-	// sign the hash and signature
-	signedTok, err := jwt.Sign(tok, jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key))
+	// Use the provider to sign
+	signature, err := provider.Sign(ctx, a, hash, sig)
 	if err != nil {
-		return fmt.Errorf("signing assertion failed: %w", err)
+		return fmt.Errorf("provider signing failed: %w", err)
 	}
 
 	// set the binding
 	a.Binding.Method = JWS.String()
-	a.Binding.Signature = string(signedTok)
+	a.Binding.Signature = signature
 
 	return nil
 }
@@ -68,30 +73,19 @@ func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 // Verify checks the binding signature of the assertion and
 // returns the hash and the signature. It returns an error if the verification fails.
 func (a Assertion) Verify(key AssertionKey) (string, string, error) {
-	tok, err := jwt.Parse([]byte(a.Binding.Signature),
-		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
-	)
-	if err != nil {
-		return "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
-	}
-	hashClaim, found := tok.Get(kAssertionHash)
-	if !found {
-		return "", "", errors.New("hash claim not found")
-	}
-	hash, ok := hashClaim.(string)
-	if !ok {
-		return "", "", errors.New("hash claim is not a string")
+	// Use default provider with the provided key
+	provider := NewDefaultValidationProviderWithKey(key)
+	return a.VerifyWithProvider(context.Background(), provider)
+}
+
+// VerifyWithProvider validates the assertion using a custom provider.
+// This method allows for flexible validation implementations including certificate-based validation.
+func (a Assertion) VerifyWithProvider(ctx context.Context, provider AssertionValidationProvider) (string, string, error) {
+	if provider == nil {
+		return "", "", errors.New("validation provider is required")
 	}
 
-	sigClaim, found := tok.Get(kAssertionSignature)
-	if !found {
-		return "", "", errors.New("signature claim not found")
-	}
-	sig, ok := sigClaim.(string)
-	if !ok {
-		return "", "", errors.New("signature claim is not a string")
-	}
-	return hash, sig, nil
+	return provider.Validate(ctx, a)
 }
 
 // GetHash returns the hash of the assertion in hex format.

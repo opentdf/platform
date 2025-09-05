@@ -28,6 +28,7 @@ type Decision struct {
 type ResourceDecision struct {
 	Passed          bool             `json:"passed" example:"false"`
 	ResourceID      string           `json:"resource_id,omitempty"`
+	ResourceName    string           `json:"resource_name,omitempty"`
 	DataRuleResults []DataRuleResult `json:"data_rule_results"`
 }
 

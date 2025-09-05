@@ -46,26 +46,50 @@ func getResourceDecision(
 	)
 
 	var (
-		resourceID              = resource.GetEphemeralId()
-		resourceAttributeValues *authz.Resource_AttributeValues
+		resourceID                 = resource.GetEphemeralId()
+		registeredResourceValueFQN string
+		resourceAttributeValues    *authz.Resource_AttributeValues
 	)
 
 	switch resource.GetResource().(type) {
 	case *authz.Resource_RegisteredResourceValueFqn:
-		regResValueFQN := strings.ToLower(resource.GetRegisteredResourceValueFqn())
-		regResValue, found := accessibleRegisteredResourceValues[regResValueFQN]
+		registeredResourceValueFQN = strings.ToLower(resource.GetRegisteredResourceValueFqn())
+		regResValue, found := accessibleRegisteredResourceValues[registeredResourceValueFQN]
 		if !found {
-			return nil, fmt.Errorf("%w: %s", ErrFQNNotFound, regResValueFQN)
+			return nil, fmt.Errorf("%w: %s", ErrFQNNotFound, registeredResourceValueFQN)
 		}
+		l.DebugContext(
+			ctx,
+			"registered_resource_value",
+			slog.String("registered_resource_value_fqn", registeredResourceValueFQN),
+			slog.Any("action_attribute_values", regResValue.GetActionAttributeValues()),
+		)
 
 		resourceAttributeValues = &authz.Resource_AttributeValues{
 			Fqns: make([]string, 0),
 		}
 		for _, aav := range regResValue.GetActionAttributeValues() {
 			aavAttrValueFQN := aav.GetAttributeValue().GetFqn()
+
+			// skip evaluating attribute rules on any action-attribute-values without the requested action
+			if aav.GetAction().GetName() != action.GetName() {
+				continue
+			}
+
 			if !slices.Contains(resourceAttributeValues.GetFqns(), aavAttrValueFQN) {
 				resourceAttributeValues.Fqns = append(resourceAttributeValues.Fqns, aavAttrValueFQN)
 			}
+		}
+
+		// if no relevant attributes from action-attribute-values with the requested action,
+		// indicates a failure before attribute definition rule evaluation
+		if len(resourceAttributeValues.GetFqns()) == 0 {
+			failure := &ResourceDecision{
+				Passed:       false,
+				ResourceID:   resourceID,
+				ResourceName: registeredResourceValueFQN,
+			}
+			return failure, nil
 		}
 
 	case *authz.Resource_AttributeValues_:
@@ -75,7 +99,7 @@ func getResourceDecision(
 		return nil, fmt.Errorf("unsupported resource type: %w", ErrInvalidResource)
 	}
 
-	return evaluateResourceAttributeValues(ctx, l, resourceAttributeValues, resourceID, action, entitlements, accessibleAttributeValues)
+	return evaluateResourceAttributeValues(ctx, l, resourceAttributeValues, resourceID, registeredResourceValueFQN, action, entitlements, accessibleAttributeValues)
 }
 
 // evaluateResourceAttributeValues evaluates a list of attribute values against the action and entitlements
@@ -85,6 +109,7 @@ func evaluateResourceAttributeValues(
 	l *logger.Logger,
 	resourceAttributeValues *authz.Resource_AttributeValues,
 	resourceID string,
+	resourceName string,
 	action *policy.Action,
 	entitlements subjectmappingbuiltin.AttributeValueFQNsToActions,
 	accessibleAttributeValues map[string]*attrs.GetAttributeValuesByFqnsResponse_AttributeAndValue,
@@ -125,11 +150,15 @@ func evaluateResourceAttributeValues(
 	}
 
 	// Return results in the appropriate structure
-	return &ResourceDecision{
+	result := &ResourceDecision{
 		Passed:          passed,
 		ResourceID:      resourceID,
 		DataRuleResults: dataRuleResults,
-	}, nil
+	}
+	if resourceName != "" {
+		result.ResourceName = resourceName
+	}
+	return result, nil
 }
 
 func evaluateDefinition(

@@ -331,13 +331,14 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 		// Determine which signing provider to use
 		var signingProvider AssertionSigningProvider
 
-		if assertion.SigningProvider != nil {
+		switch {
+		case assertion.SigningProvider != nil:
 			// Use the assertion-specific provider
 			signingProvider = assertion.SigningProvider
-		} else if tdfConfig.AssertionSigningProvider != nil {
+		case tdfConfig.AssertionSigningProvider != nil:
 			// Use the config-level provider
 			signingProvider = tdfConfig.AssertionSigningProvider
-		} else {
+		default:
 			// Fall back to default provider
 			assertionSigningKey := AssertionKey{}
 			// Set default to HS256 and payload key
@@ -351,7 +352,7 @@ func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.R
 			signingProvider = NewDefaultSigningProvider(assertionSigningKey)
 		}
 
-		if err := tmpAssertion.SignWithProvider(context.Background(), string(hashOfAssertionAsHex), string(encoded), signingProvider); err != nil {
+		if err := tmpAssertion.SignWithProvider(ctx, string(hashOfAssertionAsHex), string(encoded), signingProvider); err != nil {
 			return nil, fmt.Errorf("failed to sign assertion: %w", err)
 		}
 
@@ -1214,7 +1215,7 @@ func getIdx(kaoID string) int {
 	return idx
 }
 
-func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
+func (r *Reader) buildKey(ctx context.Context, results []kaoResult) error {
 	var unencryptedMetadata []byte
 	var payloadKey [kKeySize]byte
 	knownSplits := make(map[string]bool)
@@ -1309,87 +1310,8 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 	}
 
 	// Validate assertions
-	for _, assertion := range r.manifest.Assertions {
-		// Skip assertion verification if disabled
-		if r.config.disableAssertionVerification {
-			continue
-		}
-
-		// Determine which validation provider to use
-		var validationProvider AssertionValidationProvider
-
-		if r.config.AssertionValidationProvider != nil {
-			// Use the custom provider supplied by the developer
-			validationProvider = r.config.AssertionValidationProvider
-		} else {
-			// Use the default DEK-based provider (existing SDK behavior)
-			assertionKey := AssertionKey{}
-			// Set default to HS256
-			assertionKey.Alg = AssertionKeyAlgHS256
-			assertionKey.Key = payloadKey[:]
-
-			if !r.config.verifiers.IsEmpty() {
-				// Look up the key for the assertion
-				foundKey, err := r.config.verifiers.Get(assertion.ID)
-
-				if err != nil {
-					return fmt.Errorf("%w: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-				} else if !foundKey.IsEmpty() {
-					assertionKey.Alg = foundKey.Alg
-					assertionKey.Key = foundKey.Key
-				}
-			}
-
-			validationProvider = NewDefaultValidationProviderWithKey(assertionKey)
-		}
-
-		assertionHash, assertionSig, err := assertion.VerifyWithProvider(context.Background(), validationProvider)
-		if err != nil {
-			if errors.Is(err, errAssertionVerifyKeyFailure) {
-				return fmt.Errorf("assertion verification failed: %w", err)
-			}
-			return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-		}
-
-		// When using a custom provider (like X509ValidationProvider), the provider
-		// handles all validation internally and may return different hash/sig formats.
-		// We skip the additional DEK-based checks in this case.
-		if r.config.AssertionValidationProvider != nil {
-			// Custom provider has already validated the assertion
-			continue
-		}
-
-		// Standard DEK-based validation (default SDK behavior)
-		// Get the hash of the assertion
-		hashOfAssertionAsHex, err := assertion.GetHash()
-		if err != nil {
-			return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: assertion.ID}, err)
-		}
-
-		hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
-		_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
-		if err != nil {
-			return fmt.Errorf("error decoding hex string: %w", err)
-		}
-
-		isLegacyTDF := r.manifest.TDFVersion == ""
-		if isLegacyTDF {
-			hashOfAssertion = hashOfAssertionAsHex
-		}
-
-		var completeHashBuilder bytes.Buffer
-		completeHashBuilder.Write(aggregateHash.Bytes())
-		completeHashBuilder.Write(hashOfAssertion)
-
-		base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
-
-		if string(hashOfAssertionAsHex) != assertionHash {
-			return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: assertion.ID})
-		}
-
-		if assertionSig != string(base64Hash) {
-			return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertion.ID})
-		}
+	if err := r.validateAssertions(ctx, aggregateHash.Bytes(), payloadKey[:]); err != nil {
+		return err
 	}
 
 	gcm, err := ocrypto.NewAESGcm(payloadKey[:])
@@ -1400,6 +1322,109 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 	r.unencryptedMetadata = unencryptedMetadata
 	r.payloadKey = payloadKey[:]
 	r.aesGcm = gcm
+
+	return nil
+}
+
+// validateAssertions handles assertion validation with appropriate provider selection
+func (r *Reader) validateAssertions(ctx context.Context, aggregateHashBytes []byte, payloadKey []byte) error {
+	for _, assertion := range r.manifest.Assertions {
+		// Skip assertion verification if disabled
+		if r.config.disableAssertionVerification {
+			continue
+		}
+
+		// Get validation provider for this assertion
+		validationProvider, err := r.getValidationProvider(assertion, payloadKey)
+		if err != nil {
+			return err
+		}
+
+		// Verify with the selected provider
+		assertionHash, assertionSig, err := assertion.VerifyWithProvider(ctx, validationProvider)
+		if err != nil {
+			return r.handleAssertionVerificationError(assertion.ID, err)
+		}
+
+		// Skip additional checks for custom providers
+		if r.config.AssertionValidationProvider != nil {
+			continue
+		}
+
+		// Perform standard DEK-based validation checks
+		if err := r.performStandardAssertionChecks(assertion, assertionHash, assertionSig, aggregateHashBytes); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// getValidationProvider determines which validation provider to use for an assertion
+func (r *Reader) getValidationProvider(assertion Assertion, payloadKey []byte) (AssertionValidationProvider, error) {
+	if r.config.AssertionValidationProvider != nil {
+		return r.config.AssertionValidationProvider, nil
+	}
+
+	// Use the default DEK-based provider
+	assertionKey := AssertionKey{
+		Alg: AssertionKeyAlgHS256,
+		Key: payloadKey,
+	}
+
+	if !r.config.verifiers.IsEmpty() {
+		foundKey, err := r.config.verifiers.Get(assertion.ID)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrAssertionFailure{ID: assertion.ID}, err)
+		}
+		if !foundKey.IsEmpty() {
+			assertionKey.Alg = foundKey.Alg
+			assertionKey.Key = foundKey.Key
+		}
+	}
+
+	return NewDefaultValidationProviderWithKey(assertionKey), nil
+}
+
+// handleAssertionVerificationError handles errors from assertion verification
+func (r *Reader) handleAssertionVerificationError(assertionID string, err error) error {
+	if errors.Is(err, errAssertionVerifyKeyFailure) {
+		return fmt.Errorf("assertion verification failed: %w", err)
+	}
+	return fmt.Errorf("%w: assertion verification failed: %w", ErrAssertionFailure{ID: assertionID}, err)
+}
+
+// performStandardAssertionChecks performs the standard DEK-based assertion validation checks
+func (r *Reader) performStandardAssertionChecks(assertion Assertion, assertionHash, assertionSig string, aggregateHashBytes []byte) error {
+	// Get the hash of the assertion
+	hashOfAssertionAsHex, err := assertion.GetHash()
+	if err != nil {
+		return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: assertion.ID}, err)
+	}
+
+	hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
+	_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
+	if err != nil {
+		return fmt.Errorf("error decoding hex string: %w", err)
+	}
+
+	isLegacyTDF := r.manifest.TDFVersion == ""
+	if isLegacyTDF {
+		hashOfAssertion = hashOfAssertionAsHex
+	}
+
+	var completeHashBuilder bytes.Buffer
+	completeHashBuilder.Write(aggregateHashBytes)
+	completeHashBuilder.Write(hashOfAssertion)
+
+	base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
+
+	if string(hashOfAssertionAsHex) != assertionHash {
+		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: assertion.ID})
+	}
+
+	if assertionSig != string(base64Hash) {
+		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertion.ID})
+	}
 
 	return nil
 }

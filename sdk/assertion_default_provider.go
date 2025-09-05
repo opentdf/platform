@@ -23,7 +23,7 @@ func NewDefaultSigningProvider(key AssertionKey) *DefaultSigningProvider {
 }
 
 // Sign creates a JWS signature using the configured key
-func (p *DefaultSigningProvider) Sign(ctx context.Context, assertion *Assertion, assertionHash, assertionSig string) (string, error) {
+func (p *DefaultSigningProvider) Sign(_ context.Context, _ *Assertion, assertionHash, assertionSig string) (string, error) {
 	if p.key.IsEmpty() {
 		return "", errors.New("signing key not configured")
 	}
@@ -51,7 +51,7 @@ func (p *DefaultSigningProvider) GetSigningKeyReference() string {
 	if p.key.IsEmpty() {
 		return "no-key"
 	}
-	return fmt.Sprintf("key-alg:%s", p.key.Alg.String())
+	return "key-alg:" + p.key.Alg.String()
 }
 
 // GetAlgorithm returns the signing algorithm
@@ -85,7 +85,7 @@ func NewDefaultValidationProviderWithKey(key AssertionKey) *DefaultValidationPro
 }
 
 // Validate verifies the assertion signature using the configured keys
-func (p *DefaultValidationProvider) Validate(ctx context.Context, assertion Assertion) (string, string, error) {
+func (p *DefaultValidationProvider) Validate(_ context.Context, assertion Assertion) (string, string, error) {
 	// Get the appropriate key for this assertion
 	key, err := p.keys.Get(assertion.ID)
 	if err != nil {
@@ -129,7 +129,7 @@ func (p *DefaultValidationProvider) Validate(ctx context.Context, assertion Asse
 }
 
 // IsTrusted always returns nil for the default provider (key-based trust)
-func (p *DefaultValidationProvider) IsTrusted(ctx context.Context, assertion Assertion) error {
+func (p *DefaultValidationProvider) IsTrusted(_ context.Context, assertion Assertion) error {
 	// In the default implementation, trust is implicit if we have the key
 	key, err := p.keys.Get(assertion.ID)
 	if err != nil {
@@ -146,7 +146,7 @@ func (p *DefaultValidationProvider) GetTrustedAuthorities() []string {
 	var authorities []string
 
 	if !p.keys.DefaultKey.IsEmpty() {
-		authorities = append(authorities, fmt.Sprintf("default:%s", p.keys.DefaultKey.Alg.String()))
+		authorities = append(authorities, "default:"+p.keys.DefaultKey.Alg.String())
 	}
 
 	for id, key := range p.keys.Keys {
@@ -172,7 +172,7 @@ func NewPayloadKeyProvider(payloadKey []byte) *PayloadKeyProvider {
 }
 
 // Sign creates a JWS signature using the payload key (HMAC-SHA256)
-func (p *PayloadKeyProvider) Sign(ctx context.Context, assertion *Assertion, assertionHash, assertionSig string) (string, error) {
+func (p *PayloadKeyProvider) Sign(_ context.Context, _ *Assertion, assertionHash, assertionSig string) (string, error) {
 	if len(p.payloadKey) == 0 {
 		return "", errors.New("payload key not configured")
 	}
@@ -218,7 +218,7 @@ func NewPayloadKeyValidationProvider(payloadKey []byte) *PayloadKeyValidationPro
 }
 
 // Validate verifies the assertion using the payload key
-func (p *PayloadKeyValidationProvider) Validate(ctx context.Context, assertion Assertion) (string, string, error) {
+func (p *PayloadKeyValidationProvider) Validate(_ context.Context, assertion Assertion) (string, string, error) {
 	if len(p.payloadKey) == 0 {
 		return "", "", errors.New("payload key not configured")
 	}
@@ -255,7 +255,7 @@ func (p *PayloadKeyValidationProvider) Validate(ctx context.Context, assertion A
 }
 
 // IsTrusted always returns nil for payload key validation
-func (p *PayloadKeyValidationProvider) IsTrusted(ctx context.Context, assertion Assertion) error {
+func (p *PayloadKeyValidationProvider) IsTrusted(_ context.Context, _ Assertion) error {
 	return nil
 }
 

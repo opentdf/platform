@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -77,7 +76,7 @@ func TestX509SigningProviderWithX5C(t *testing.T) {
 	}
 
 	// Sign the assertion
-	ctx := context.Background()
+	ctx := t.Context()
 	signature, err := provider.Sign(ctx, assertion, "testhash123", "testsig456")
 	require.NoError(t, err)
 	assert.NotEmpty(t, signature)
@@ -139,7 +138,7 @@ func TestX509ValidationProviderWithX5C(t *testing.T) {
 	require.NoError(t, err)
 
 	// Use the provider to create a signed assertion
-	ctx := context.Background()
+	ctx := t.Context()
 	signedTok, err := signingProvider.Sign(ctx, &Assertion{}, "testhash789", "testsig012")
 	require.NoError(t, err)
 
@@ -147,7 +146,7 @@ func TestX509ValidationProviderWithX5C(t *testing.T) {
 	assertion := Assertion{
 		Binding: Binding{
 			Method:    "jws",
-			Signature: string(signedTok),
+			Signature: signedTok,
 		},
 	}
 
@@ -161,7 +160,7 @@ func TestX509ValidationProviderWithX5C(t *testing.T) {
 	})
 
 	// Validate the assertion
-	hash, sig, err := validationProvider.Validate(context.Background(), assertion)
+	hash, sig, err := validationProvider.Validate(t.Context(), assertion)
 	require.NoError(t, err)
 	assert.Equal(t, "testhash789", hash)
 	assert.Equal(t, "testsig012", sig)
@@ -202,12 +201,12 @@ func TestExtractX5CCertificates(t *testing.T) {
 	require.NoError(t, err)
 
 	// Use the provider to create a signed assertion with x5c
-	ctx := context.Background()
+	ctx := t.Context()
 	signedTok, err := signingProvider.Sign(ctx, &Assertion{}, "test", "value")
 	require.NoError(t, err)
 
 	// Extract certificates
-	certs, err := ExtractX5CCertificates(string(signedTok))
+	certs, err := ExtractX5CCertificates(signedTok)
 	require.NoError(t, err)
 	require.Len(t, certs, 1)
 	assert.Equal(t, cert.Subject.String(), certs[0].Subject.String())
@@ -229,10 +228,10 @@ func TestPKCS11ProviderStub(t *testing.T) {
 	assert.Contains(t, provider.GetSigningKeyReference(), "pkcs11:slot=0")
 
 	// Test that signing returns not implemented error (since we don't have real hardware)
-	ctx := context.Background()
+	ctx := t.Context()
 	assertion := &Assertion{}
 	_, err = provider.Sign(ctx, assertion, "hash", "sig")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not implemented")
 }
 

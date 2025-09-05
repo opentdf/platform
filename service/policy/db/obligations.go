@@ -507,3 +507,59 @@ func (c PolicyDBClient) DeleteObligationValue(ctx context.Context, r *obligation
 		Id: id,
 	}, nil
 }
+
+// ********************************************
+// ! Obligation Triggers
+// ********************************************
+
+func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligations.AddObligationTriggerRequest) (*policy.ObligationTrigger, error) {
+	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
+	if err != nil {
+		return nil, err
+	}
+
+	nsFQN, oblName, oblVal := breakOblValFQN(r.GetObligationValue().GetFqn())
+	params := createObligationTriggerParams{
+		ObligationValueID:      r.GetObligationValue().GetId(),
+		ObligationNamespaceFqn: nsFQN,
+		ObligationName:         oblName,
+		ObligationValue:        oblVal,
+		ActionName:             r.GetAction().GetName(),
+		ActionID:               r.GetAction().GetId(),
+		AttributeValueID:       r.GetAttributeValue().GetId(),
+		AttributeValueFqn:      r.GetAttributeValue().GetFqn(),
+		Metadata:               metadataJSON,
+	}
+	row, err := c.queries.createObligationTrigger(ctx, params)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	metadata := &common.Metadata{}
+	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
+		return nil, err
+	}
+
+	trigger, err := unmarshalObligationTrigger(row.Trigger)
+	if err != nil {
+		return nil, err
+	}
+
+	trigger.Metadata = metadata
+
+	return trigger, nil
+}
+
+func (c PolicyDBClient) DeleteObligationTrigger(ctx context.Context, r *obligations.RemoveObligationTriggerRequest) (*policy.ObligationTrigger, error) {
+	id, err := c.queries.deleteObligationTrigger(ctx, r.GetId())
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if id == "" {
+		return nil, db.ErrNotFound
+	}
+
+	return &policy.ObligationTrigger{
+		Id: id,
+	}, nil
+}

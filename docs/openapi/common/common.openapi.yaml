@@ -20,6 +20,33 @@ components:
         - METADATA_UPDATE_ENUM_UNSPECIFIED
         - METADATA_UPDATE_ENUM_EXTEND
         - METADATA_UPDATE_ENUM_REPLACE
+    common.IdFqnIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        fqn:
+          type: string
+          title: fqn
+          minLength: 1
+          format: uri
+      title: IdFqnIdentifier
+      additionalProperties: false
+    common.IdNameIdentifier:
+      type: object
+      properties:
+        id:
+          type: string
+          title: id
+          format: uuid
+        name:
+          type: string
+          title: name
+          minLength: 1
+      title: IdNameIdentifier
+      additionalProperties: false
     common.Metadata:
       type: object
       properties:

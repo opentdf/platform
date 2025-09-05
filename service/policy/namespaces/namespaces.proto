@@ -60,7 +60,7 @@ message GetNamespaceRequest {
   // Deprecated
   string id = 1 [
     deprecated = true,
-    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string.uuid = true
   ];
 

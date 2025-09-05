@@ -314,7 +314,7 @@ RETURNING id;
 WITH inserted AS (    
     INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata)
     VALUES ($1, $2, $3, $4)
-    RETURNING *
+    RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at
 )
 SELECT
     JSON_STRIP_NULLS(

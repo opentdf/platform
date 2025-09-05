@@ -591,16 +591,18 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_Succeeds() {
 	s.assertObligationValueBasics(oblValue, oblValPrefix+"test-1", triggerSetup.namespace.ID, triggerSetup.namespace.Name, httpsPrefix+triggerSetup.namespace.Name)
 	s.assertTriggers(oblValue, []*TriggerAssertion{
 		{
-			expectedAction:          triggerSetup.action,
-			expectedObligation:      triggerSetup.createdObl,
-			expectedAttributeValue:  triggerSetup.attributeValues[0],
-			expectedObligationValue: oblValue,
+			expectedAction:            triggerSetup.action,
+			expectedObligation:        triggerSetup.createdObl,
+			expectedAttributeValue:    triggerSetup.attributeValues[0],
+			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value1",
+			expectedObligationValue:   oblValue,
 		},
 		{
-			expectedAction:          triggerSetup.action,
-			expectedObligation:      triggerSetup.createdObl,
-			expectedAttributeValue:  triggerSetup.attributeValues[1],
-			expectedObligationValue: oblValue,
+			expectedAction:            triggerSetup.action,
+			expectedObligation:        triggerSetup.createdObl,
+			expectedAttributeValue:    triggerSetup.attributeValues[1],
+			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value2",
+			expectedObligationValue:   oblValue,
 		},
 	})
 }
@@ -1005,16 +1007,18 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 	s.assertObligationValueBasics(oblValue, oblValPrefix+"test-1", triggerSetup.namespace.ID, triggerSetup.namespace.Name, httpsPrefix+triggerSetup.namespace.Name)
 	s.assertTriggers(oblValue, []*TriggerAssertion{
 		{
-			expectedAction:          triggerSetup.action,
-			expectedObligation:      triggerSetup.createdObl,
-			expectedAttributeValue:  triggerSetup.attributeValues[0],
-			expectedObligationValue: oblValue,
+			expectedAction:            triggerSetup.action,
+			expectedObligation:        triggerSetup.createdObl,
+			expectedAttributeValue:    triggerSetup.attributeValues[0],
+			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value1",
+			expectedObligationValue:   oblValue,
 		},
 		{
-			expectedAction:          triggerSetup.action,
-			expectedObligation:      triggerSetup.createdObl,
-			expectedAttributeValue:  triggerSetup.attributeValues[1],
-			expectedObligationValue: oblValue,
+			expectedAction:            triggerSetup.action,
+			expectedObligation:        triggerSetup.createdObl,
+			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value2",
+			expectedAttributeValue:    triggerSetup.attributeValues[1],
+			expectedObligationValue:   oblValue,
 		},
 	})
 
@@ -1033,9 +1037,11 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 	s.assertObligationValueBasics(updatedOblValue, oblValPrefix+"test-1-updated", triggerSetup.namespace.ID, triggerSetup.namespace.Name, httpsPrefix+triggerSetup.namespace.Name)
 	s.assertTriggers(updatedOblValue, []*TriggerAssertion{
 		{
-			expectedAction:         triggerSetup.action,
-			expectedObligation:     triggerSetup.createdObl,
-			expectedAttributeValue: triggerSetup.attributeValues[0],
+			expectedAction:            triggerSetup.action,
+			expectedObligation:        triggerSetup.createdObl,
+			expectedAttributeValue:    triggerSetup.attributeValues[0],
+			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value1",
+			expectedObligationValue:   updatedOblValue,
 		},
 	})
 	s.Require().NotEqual(oblValue.GetTriggers()[1].GetAttributeValue().GetFqn(), updatedOblValue.GetTriggers()[0].GetAttributeValue().GetFqn(), "The second trigger should have been removed")
@@ -1225,7 +1231,6 @@ func (s *ObligationsSuite) assertTriggers(oblVal *policy.ObligationValue, expect
 	found := 0
 	for _, t := range triggers {
 		for _, expected := range expectedTriggers {
-
 			if t.GetAction().GetId() == expected.expectedAction.GetId() &&
 				t.GetAttributeValue().GetId() == expected.expectedAttributeValue.ID &&
 				t.GetObligationValue().GetId() == expected.expectedObligationValue.GetId() {

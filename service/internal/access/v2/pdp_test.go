@@ -340,7 +340,7 @@ func (s *PDPTestSuite) SetupTest() {
 	s.fixtures.ukMapping = createSimpleSubjectMapping(
 		testCountryUKFQN,
 		"uk",
-		[]*policy.Action{testActionRead},
+		[]*policy.Action{testActionRead, testActionDelete},
 		".properties.country[]",
 		[]string{"uk"},
 	)
@@ -1397,14 +1397,14 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 	pdp, err := NewPolicyDecisionPoint(
 		s.T().Context(),
 		s.logger,
-		[]*policy.Attribute{f.classificationAttr, f.departmentAttr, f.projectAttr},
+		[]*policy.Attribute{f.classificationAttr, f.departmentAttr, f.projectAttr, f.countryAttr},
 		[]*policy.SubjectMapping{
 			f.secretMapping, f.topSecretMapping, printConfidentialMapping, allActionsPublicMapping,
-			f.engineeringMapping, f.financeMapping, viewProjectAlphaMapping,
+			f.engineeringMapping, f.financeMapping, viewProjectAlphaMapping, f.ukMapping,
 		},
 		[]*policy.RegisteredResource{
 			f.classificationRegRes, f.deptRegRes, f.projectRegRes,
-			readConfidentialRegRes,
+			readConfidentialRegRes, f.countryRegRes,
 		},
 	)
 	s.Require().NoError(err)
@@ -1581,8 +1581,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		s.False(decision.Access)
 	})
 
-	// TODO: test with non-hierarchical as well
-	s.Run("Requested entitled action not supported by registered resource fails", func() {
+	s.Run("Requested entitled action (on hierarchical attribute) not supported by registered resource fails", func() {
 		entity := s.createEntityWithProps("conf-printer-reader", map[string]interface{}{
 			"clearance": "confidential",
 		})
@@ -1600,6 +1599,41 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		// Test print access - should be denied because RR action-attribute-value does not support it despite
 		// entity's entitlement to the action on the attribute
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionPrint, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+
+		// Test unentitled action - should be denied
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionList, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+
+		// Test read access - should be allowed
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+	})
+
+	s.Run("Requested entitled action (on any_of attribute) not supported by registered resource fails", func() {
+		entity := s.createEntityWithProps("country-uk-reader-deleter", map[string]interface{}{
+			"country": []any{"uk"},
+		})
+
+		readCountryUKRegResFQN := createRegisteredResourceValueFQN(f.countryRegRes.GetName(), f.countryRegRes.GetValues()[1].GetValue())
+
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: readCountryUKRegResFQN,
+				},
+			},
+		}
+
+		// Test delete access - should be denied because RR action-attribute-value does not support it despite
+		// entity's entitlement to the action on the attribute
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionDelete, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)

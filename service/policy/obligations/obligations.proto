@@ -16,16 +16,14 @@ import "policy/selectors.proto";
 
 // Definitions
 message GetObligationRequest {
-    oneof identifier {
-        option (buf.validate.oneof).required = true;
-        string id = 1 [(buf.validate.field).string.uuid = true];
-        string fqn = 2 [
-            (buf.validate.field).string = {
-                min_len : 1
-                uri : true
-            }
-        ];
-    }
+    option (buf.validate.message).oneof = { fields: ["id", "fqn"] };
+    string id = 1 [(buf.validate.field).string.uuid = true];
+    string fqn = 2 [
+        (buf.validate.field).string = {
+            min_len : 1
+            uri : true
+        }
+    ];
 }
 
 message GetObligationResponse {

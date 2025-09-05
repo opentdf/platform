@@ -157,10 +157,9 @@ message ListObligationsResponse {
 
 // Values
 message GetObligationValueRequest {
-    oneof identifier {
-        string id = 1;
-        string fqn = 2;
-    }
+    option (buf.validate.message).oneof = { fields: ["id", "fqn"], required: true };
+    string id = 1;
+    string fqn = 2;
 }
 
 message GetObligationValueResponse {

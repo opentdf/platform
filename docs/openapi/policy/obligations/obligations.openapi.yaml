@@ -1618,6 +1618,7 @@ components:
           type: string
           title: id
           format: uuid
+          description: Required
       title: RemoveObligationTriggerRequest
       additionalProperties: false
     policy.obligations.RemoveObligationTriggerResponse:

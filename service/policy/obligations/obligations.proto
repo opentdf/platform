@@ -187,6 +187,7 @@ message AddObligationTriggerResponse {
 }
 
 message RemoveObligationTriggerRequest {
+    // Required
     string id = 1 [(buf.validate.field).string.uuid = true];
 }
 

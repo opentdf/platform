@@ -6,6 +6,9 @@ import (
 )
 
 type Encapsulator interface {
+	// Encapsulate wraps a secret key with the encapsulation key
+	Encapsulate(dek ProtectedKey) ([]byte, error)
+
 	// Encrypt wraps a secret key with the encapsulation key
 	Encrypt(data []byte) ([]byte, error)
 
@@ -23,6 +26,7 @@ type ProtectedKey interface {
 	VerifyBinding(ctx context.Context, policy, binding []byte) error
 
 	// Export returns the raw key data, optionally encrypting it with the provided encryptor
+	// Deprecated: Use the Encapsulator's Encapsulate method instead
 	Export(encryptor Encapsulator) ([]byte, error)
 
 	// Used to decrypt encrypted policies and metadata

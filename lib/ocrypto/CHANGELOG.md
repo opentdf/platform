@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.4.0...lib/ocrypto/v0.5.0) (2025-09-04)
+
+
+### Features
+
+* **core:** Encapsulate&gt;Encrypt ([#2676](https://github.com/opentdf/platform/issues/2676)) ([3c5a614](https://github.com/opentdf/platform/commit/3c5a6145c9bcac47001639bdcf2576a444493dd5))
+
+## [0.4.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.3.0...lib/ocrypto/v0.4.0) (2025-09-02)
+
+
+### Features
+
+* add AES protected key interface and implementation ([#2599](https://github.com/opentdf/platform/issues/2599)) ([2bb7eb0](https://github.com/opentdf/platform/commit/2bb7eb06858b2b53e608dd016d5a7a15e4092db2))
+
 ## [0.3.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.2.0...lib/ocrypto/v0.3.0) (2025-06-30)
 
 

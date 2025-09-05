@@ -68,7 +68,7 @@ message CreateObligationRequest {
             id: "obligation_name_format",
             message: "Obligation name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.",
             expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
-        };
+        }
     ];
 
     // Optional

@@ -98,10 +98,7 @@ message CreateObligationResponse {
 
 message UpdateObligationRequest {
     // Required
-    string id = 1 [
-        (buf.validate.field).string.uuid = true,
-        (buf.validate.field).required = true
-    ];
+    string id = 1 [(buf.validate.field).string.uuid = true];
 
     // Optional
     string name = 2 [

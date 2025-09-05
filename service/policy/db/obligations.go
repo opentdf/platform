@@ -16,6 +16,8 @@ import (
 /// Obligation Definitions
 ///
 
+// TODO: convert names and values to lowercase
+
 func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.CreateObligationRequest) (*policy.Obligation, error) {
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {

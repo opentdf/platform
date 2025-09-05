@@ -11,6 +11,9 @@ import "policy/selectors.proto";
 /// Obligation
 ///
 
+// TODO: implement this
+// https://buf.build/blog/fixing-oneofs
+
 // Definitions
 message GetObligationRequest {
     oneof identifier {
@@ -138,10 +141,9 @@ message DeleteObligationResponse {
 message ListObligationsRequest {
     // Optional
     // Namespace ID or FQN
-    oneof namespace_identifier {
-        string id = 1;
-        string fqn = 2;
-    }
+    option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
+    string namespace_id = 1;
+    string namespace_fqn = 2;
 
     // Optional
     policy.PageRequest pagination = 10;

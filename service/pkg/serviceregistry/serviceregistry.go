@@ -396,5 +396,13 @@ func (reg Registry) RegisterServicesFromConfiguration(modes []ModeName, configur
 		}
 	}
 
+	// Error if configuration results in no active services.
+	if len(includedModes) > 0 && len(registeredServices) == 0 {
+		return nil, &ServiceConfigError{
+			Type:    "registration",
+			Message: "no services enabled for specified modes",
+		}
+	}
+
 	return registeredServices, nil
 }

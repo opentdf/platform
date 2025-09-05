@@ -345,6 +345,12 @@ func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
 			shouldError:           true,
 			expectedErrorContains: "empty service name after '-'",
 		},
+		{
+			name:                  "Negate_All_Services_In_Mode_Should_Error",
+			modes:                 []serviceregistry.ModeName{"entityresolution", "-entityresolution"},
+			shouldError:           true,
+			expectedErrorContains: "no services enabled for specified modes",
+		},
 	}
 
 	for _, tc := range testCases {

@@ -167,7 +167,18 @@ message GetObligationValueResponse {
 }
 
 message GetObligationValuesByFQNsRequest {
-    repeated string fqns = 1;
+    repeated string fqns = 1 [
+        (buf.validate.field).repeated = {
+            min_items: 1,
+            unique: true,
+            items: {
+                string: {
+                    min_len: 1,
+                    uri: true
+                }
+            },
+        }
+    ];
 }
 
 message GetObligationValuesByFQNsResponse {

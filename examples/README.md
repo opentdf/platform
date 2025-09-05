@@ -31,7 +31,7 @@ go build -o examples-cli
 - [Authorization Service](./cmd/authorization.go) - Authorization and access control
 
 ### Assertion Providers
-- [Assertion Providers](./cmd/assertion_providers.go) - Custom signing and validation providers
+- [Assertion Providers](./cmd/assertion.go) - Custom signing and validation providers
   - Default provider (backward compatible)
   - X.509 certificate provider (PIV/CAC support)
   - Hardware token provider (YubiKey, CAC cards)
@@ -132,15 +132,6 @@ The examples CLI supports various configuration options:
 
 For local development and testing:
 
-
-# Set platform endpoint
-export PLATFORM_ENDPOINT=http://localhost:8080
-
-# Set client credentials
-export CLIENT_ID=opentdf
-export CLIENT_SECRET=secret
-
-# Run examples using environment variables
 ```shell
 ./examples-cli --platformEndpoint "http://localhost:8080" --creds "opentdf:secret" attributes ls
 ```

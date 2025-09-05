@@ -10,6 +10,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -22,10 +23,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	// RSA key size for certificate generation
+	rsaKeySize = 2048
+	// Number of JWS parts (header.payload.signature)
+	jwsParts = 3
+	// Statement value display length for truncation
+	statementDisplayLength = 100
+	// Truncation indicator length
+	truncationLength = 3
+	// Statement truncation length (100 - 3 = 97)
+	statementTruncateLength = statementDisplayLength - truncationLength
+	// Separator line length
+	separatorLength = 60
+)
+
 // generateTestCertificate creates a self-signed certificate for testing
 func generateTestCertificate() (*rsa.PrivateKey, *x509.Certificate, error) {
 	// Generate RSA key
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	priv, err := rsa.GenerateKey(rand.Reader, rsaKeySize)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -65,9 +81,66 @@ func generateTestCertificate() (*rsa.PrivateKey, *x509.Certificate, error) {
 	return priv, cert, nil
 }
 
+// verifyX5CHeader extracts and verifies the x5c header from a JWS signature
+func verifyX5CHeader(signature string) error {
+	parts := strings.Split(signature, ".")
+	if len(parts) != jwsParts {
+		return nil // Skip verification if not a proper JWS
+	}
+
+	headerJSON, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return fmt.Errorf("failed to decode JWS header: %w", err)
+	}
+
+	var header map[string]interface{}
+	if err := json.Unmarshal(headerJSON, &header); err != nil {
+		return fmt.Errorf("failed to parse JWS header: %w", err)
+	}
+
+	if x5c, ok := header["x5c"]; ok {
+		if x5cSlice, isSlice := x5c.([]interface{}); isSlice {
+			log.Printf("✓ x5c header present with %d certificate(s)\n", len(x5cSlice))
+		}
+	}
+
+	return nil
+}
+
+// validateJWSAssertion handles JWS signature validation with detailed logging
+func validateJWSAssertion(assertion sdk.Assertion, validationProvider *sdk.X509ValidationProvider) {
+	if assertion.Binding.Signature == "" {
+		return
+	}
+
+	ctx := context.Background()
+	hash, sig, err := validationProvider.Validate(ctx, assertion)
+	if err != nil {
+		// Try to extract certificates even if validation fails
+		certs, certErr := sdk.ExtractX5CCertificates(assertion.Binding.Signature)
+		if certErr == nil && len(certs) > 0 {
+			log.Printf("  ℹ️  Certificate found in x5c:\n")
+			log.Printf("     Subject: %s\n", certs[0].Subject.String())
+			log.Printf("     Issuer: %s\n", certs[0].Issuer.String())
+		}
+		log.Printf("  ❌ Validation failed: %v\n", err)
+		return
+	}
+
+	log.Printf("  ✅ Signature validated successfully\n")
+	log.Printf("     Hash: %.32s...\n", hash)
+	log.Printf("     Sig: %.32s...\n", sig)
+
+	// Extract and display certificate info
+	certs, err := sdk.ExtractX5CCertificates(assertion.Binding.Signature)
+	if err == nil && len(certs) > 0 {
+		log.Printf("     Certificate: %s\n", certs[0].Subject.CommonName)
+	}
+}
+
 // signAssertion demonstrates signing an assertion with X.509 certificates
 func signAssertion() (string, *x509.Certificate, error) {
-	fmt.Println("\n=== Signing Assertion with X.509 Certificate ===")
+	log.Println("\n=== Signing Assertion with X.509 Certificate ===")
 
 	// Generate a test certificate (in production, load from hardware token or file)
 	privKey, cert, err := generateTestCertificate()
@@ -75,7 +148,7 @@ func signAssertion() (string, *x509.Certificate, error) {
 		return "", nil, fmt.Errorf("failed to generate certificate: %w", err)
 	}
 
-	fmt.Printf("✓ Generated certificate: CN=%s\n", cert.Subject.CommonName)
+	log.Printf("✓ Generated certificate: CN=%s\n", cert.Subject.CommonName)
 
 	// Create signing provider with X.509 certificate
 	signingProvider, err := sdk.NewX509SigningProvider(privKey, []*x509.Certificate{cert})
@@ -83,7 +156,7 @@ func signAssertion() (string, *x509.Certificate, error) {
 		return "", nil, fmt.Errorf("failed to create signing provider: %w", err)
 	}
 
-	fmt.Printf("✓ Created X509SigningProvider with algorithm: %s\n", signingProvider.GetAlgorithm())
+	log.Printf("✓ Created X509SigningProvider with algorithm: %s\n", signingProvider.GetAlgorithm())
 
 	// Create an assertion to sign
 	assertion := &sdk.Assertion{
@@ -106,17 +179,11 @@ func signAssertion() (string, *x509.Certificate, error) {
 		return "", nil, fmt.Errorf("failed to sign assertion: %w", err)
 	}
 
-	fmt.Printf("✓ Signed assertion (JWS length: %d bytes)\n", len(signature))
+	log.Printf("✓ Signed assertion (JWS length: %d bytes)\n", len(signature))
 
 	// Verify x5c is in the header
-	parts := strings.Split(signature, ".")
-	if len(parts) == 3 {
-		headerJSON, _ := base64.RawURLEncoding.DecodeString(parts[0])
-		var header map[string]interface{}
-		json.Unmarshal(headerJSON, &header)
-		if x5c, ok := header["x5c"]; ok {
-			fmt.Printf("✓ x5c header present with %d certificate(s)\n", len(x5c.([]interface{})))
-		}
+	if err := verifyX5CHeader(signature); err != nil {
+		return "", nil, err
 	}
 
 	return signature, cert, nil
@@ -124,7 +191,7 @@ func signAssertion() (string, *x509.Certificate, error) {
 
 // verifyAssertion demonstrates verifying an assertion signed with X.509 certificates
 func verifyAssertion(signature string, trustedCert *x509.Certificate) error {
-	fmt.Println("\n=== Verifying Assertion with X.509 Certificate ===")
+	log.Println("\n=== Verifying Assertion with X.509 Certificate ===")
 
 	// Create certificate pool with trusted certificate
 	certPool := x509.NewCertPool()
@@ -137,7 +204,7 @@ func verifyAssertion(signature string, trustedCert *x509.Certificate) error {
 		// RequiredPolicies: []string{"2.16.840.1.101.3.2.1.3.13"}, // Uncomment to require PIV OID
 	})
 
-	fmt.Printf("✓ Created X509ValidationProvider\n")
+	log.Printf("✓ Created X509ValidationProvider\n")
 
 	// Create an assertion with the signature to validate
 	assertion := sdk.Assertion{
@@ -154,13 +221,13 @@ func verifyAssertion(signature string, trustedCert *x509.Certificate) error {
 		return fmt.Errorf("validation failed: %w", err)
 	}
 
-	fmt.Printf("✓ Signature validated successfully\n")
-	fmt.Printf("  - Assertion Hash: %.32s...\n", hash)
-	fmt.Printf("  - Assertion Signature: %s\n", sig)
+	log.Printf("✓ Signature validated successfully\n")
+	log.Printf("  - Assertion Hash: %.32s...\n", hash)
+	log.Printf("  - Assertion Signature: %s\n", sig)
 
 	// Check trusted authorities
 	authorities := validationProvider.GetTrustedAuthorities()
-	fmt.Printf("✓ Trusted authorities: %v\n", authorities)
+	log.Printf("✓ Trusted authorities: %v\n", authorities)
 
 	// Extract and display certificate from x5c
 	certs, err := sdk.ExtractX5CCertificates(signature)
@@ -169,10 +236,10 @@ func verifyAssertion(signature string, trustedCert *x509.Certificate) error {
 	}
 
 	if len(certs) > 0 {
-		fmt.Printf("✓ Extracted %d certificate(s) from x5c header\n", len(certs))
-		fmt.Printf("  - Subject: %s\n", certs[0].Subject.String())
-		fmt.Printf("  - Issuer: %s\n", certs[0].Issuer.String())
-		fmt.Printf("  - Serial: %s\n", certs[0].SerialNumber.String())
+		log.Printf("✓ Extracted %d certificate(s) from x5c header\n", len(certs))
+		log.Printf("  - Subject: %s\n", certs[0].Subject.String())
+		log.Printf("  - Issuer: %s\n", certs[0].Issuer.String())
+		log.Printf("  - Serial: %s\n", certs[0].SerialNumber.String())
 	}
 
 	return nil
@@ -180,9 +247,9 @@ func verifyAssertion(signature string, trustedCert *x509.Certificate) error {
 
 // demonstrateAssertionWorkflow shows the complete assertion signing and verification process
 func demonstrateAssertionWorkflow() error {
-	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("X.509 Certificate-Based Assertion Example")
-	fmt.Println(strings.Repeat("=", 60))
+	log.Println("\n" + strings.Repeat("=", separatorLength))
+	log.Println("X.509 Certificate-Based Assertion Example")
+	log.Println(strings.Repeat("=", separatorLength))
 
 	// Step 1: Sign an assertion
 	signature, cert, err := signAssertion()
@@ -196,18 +263,18 @@ func demonstrateAssertionWorkflow() error {
 		return fmt.Errorf("verification failed: %w", err)
 	}
 
-	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("✅ Assertion signing and verification completed successfully!")
-	fmt.Println(strings.Repeat("=", 60))
+	log.Println("\n" + strings.Repeat("=", separatorLength))
+	log.Println("✅ Assertion signing and verification completed successfully!")
+	log.Println(strings.Repeat("=", separatorLength))
 
 	return nil
 }
 
 // demonstrateInvalidSignature shows what happens with an invalid signature
 func demonstrateInvalidSignature() error {
-	fmt.Println("\n" + strings.Repeat("=", 60))
-	fmt.Println("Invalid Signature Verification Example")
-	fmt.Println(strings.Repeat("=", 60))
+	log.Println("\n" + strings.Repeat("=", separatorLength))
+	log.Println("Invalid Signature Verification Example")
+	log.Println(strings.Repeat("=", separatorLength))
 
 	// Create two different certificates
 	_, cert1, err := generateTestCertificate()
@@ -221,14 +288,20 @@ func demonstrateInvalidSignature() error {
 	}
 
 	// Sign with cert2
-	signingProvider, _ := sdk.NewX509SigningProvider(privKey2, []*x509.Certificate{cert2})
+	signingProvider, err := sdk.NewX509SigningProvider(privKey2, []*x509.Certificate{cert2})
+	if err != nil {
+		return fmt.Errorf("failed to create signing provider: %w", err)
+	}
 	ctx := context.Background()
-	signature, _ := signingProvider.Sign(ctx, &sdk.Assertion{}, "hash", "sig")
+	signature, err := signingProvider.Sign(ctx, &sdk.Assertion{}, "hash", "sig")
+	if err != nil {
+		return fmt.Errorf("failed to sign assertion: %w", err)
+	}
 
-	fmt.Println("\n✓ Signed assertion with Certificate 2")
+	log.Println("\n✓ Signed assertion with Certificate 2")
 
 	// Try to verify with cert1 (should fail)
-	fmt.Println("\nAttempting to verify with Certificate 1 (different from signing cert)...")
+	log.Println("\nAttempting to verify with Certificate 1 (different from signing cert)...")
 
 	certPool := x509.NewCertPool()
 	certPool.AddCert(cert1) // Wrong certificate!
@@ -248,11 +321,11 @@ func demonstrateInvalidSignature() error {
 
 	_, _, err = validationProvider.Validate(ctx, assertion)
 	if err != nil {
-		fmt.Printf("✓ Validation correctly failed: %v\n", err)
+		log.Printf("✓ Validation correctly failed: %v\n", err)
 		return nil
 	}
 
-	return fmt.Errorf("validation should have failed but didn't")
+	return errors.New("validation should have failed but didn't")
 }
 
 // TDFManifest represents the structure of a TDF manifest
@@ -296,7 +369,7 @@ func readTDFManifest(tdfPath string) (*TDFManifest, error) {
 	}
 
 	if manifestFile == nil {
-		return nil, fmt.Errorf("manifest.json not found in TDF")
+		return nil, errors.New("manifest.json not found in TDF")
 	}
 
 	// Read manifest content
@@ -320,72 +393,12 @@ func readTDFManifest(tdfPath string) (*TDFManifest, error) {
 	return &manifest, nil
 }
 
-// verifyOtdfctlAssertion verifies assertions created by otdfctl with tdfPolicyHash and keyAccessDigest
-func verifyOtdfctlAssertion(assertion sdk.Assertion, manifest *TDFManifest) error {
-	if assertion.Binding.Method != "jws" || assertion.Binding.Signature == "" {
-		return fmt.Errorf("not a JWS binding")
-	}
-
-	// Parse the JWS to extract claims
-	parts := strings.Split(assertion.Binding.Signature, ".")
-	if len(parts) != 3 {
-		return fmt.Errorf("invalid JWS format")
-	}
-
-	// Decode payload
-	payloadJSON, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return fmt.Errorf("failed to decode payload: %w", err)
-	}
-
-	var claims map[string]interface{}
-	if err := json.Unmarshal(payloadJSON, &claims); err != nil {
-		return fmt.Errorf("failed to parse claims: %w", err)
-	}
-
-	// Check for otdfctl-style claims
-	tdfPolicyHash, hasPolicyHash := claims["tdfPolicyHash"]
-	keyAccessDigest, hasKeyAccess := claims["keyAccessDigest"]
-
-	if hasPolicyHash && hasKeyAccess {
-		fmt.Printf("  ✓ Found otdfctl assertion binding:\n")
-		fmt.Printf("     TDF Policy Hash: %.32s...\n", fmt.Sprint(tdfPolicyHash))
-		fmt.Printf("     Key Access Digest: %.32s...\n", fmt.Sprint(keyAccessDigest))
-
-		// TODO: In a full implementation, we would:
-		// 1. Compute the actual policy hash from manifest
-		// 2. Compute the key access digest from manifest
-		// 3. Compare them to verify binding
-
-		// Extract certificate info if available
-		certs, err := sdk.ExtractX5CCertificates(assertion.Binding.Signature)
-		if err == nil && len(certs) > 0 {
-			fmt.Printf("     Signer: %s\n", certs[0].Subject.CommonName)
-		}
-
-		return nil
-	}
-
-	// Check for SDK-style claims (assertionHash, assertionSig)
-	assertionHash, hasAssertionHash := claims["assertionHash"]
-	assertionSig, hasAssertionSig := claims["assertionSig"]
-
-	if hasAssertionHash && hasAssertionSig {
-		fmt.Printf("  ✓ Found SDK assertion binding:\n")
-		fmt.Printf("     Assertion Hash: %.32s...\n", fmt.Sprint(assertionHash))
-		fmt.Printf("     Assertion Sig: %.32s...\n", fmt.Sprint(assertionSig))
-		return nil
-	}
-
-	return fmt.Errorf("no recognized assertion binding claims found")
-}
-
 // verifyTDFAssertions reads a TDF file and verifies all assertions
 func verifyTDFAssertions(tdfPath string) error {
-	fmt.Printf("\n" + strings.Repeat("=", 60) + "\n")
-	fmt.Printf("Verifying Assertions from TDF File\n")
-	fmt.Printf(strings.Repeat("=", 60) + "\n")
-	fmt.Printf("TDF File: %s\n", tdfPath)
+	log.Print("\n" + strings.Repeat("=", separatorLength) + "\n")
+	log.Print("Verifying Assertions from TDF File\n")
+	log.Print(strings.Repeat("=", separatorLength) + "\n")
+	log.Printf("TDF File: %s\n", tdfPath)
 
 	// Read manifest from TDF
 	manifest, err := readTDFManifest(tdfPath)
@@ -393,11 +406,11 @@ func verifyTDFAssertions(tdfPath string) error {
 		return fmt.Errorf("failed to read TDF manifest: %w", err)
 	}
 
-	fmt.Printf("\n✓ Successfully read TDF manifest\n")
-	fmt.Printf("  - Found %d assertion(s)\n", len(manifest.Assertions))
+	log.Printf("\n✓ Successfully read TDF manifest\n")
+	log.Printf("  - Found %d assertion(s)\n", len(manifest.Assertions))
 
 	if len(manifest.Assertions) == 0 {
-		fmt.Println("\n⚠️  No assertions found in TDF")
+		log.Println("\n⚠️  No assertions found in TDF")
 		return nil
 	}
 
@@ -409,66 +422,43 @@ func verifyTDFAssertions(tdfPath string) error {
 
 	// Verify each assertion
 	for i, assertion := range manifest.Assertions {
-		fmt.Printf("\n--- Assertion %d ---\n", i+1)
-		fmt.Printf("  ID: %s\n", assertion.ID)
-		fmt.Printf("  Type: %s\n", assertion.Type)
-		fmt.Printf("  Scope: %s\n", assertion.Scope)
+		log.Printf("\n--- Assertion %d ---\n", i+1)
+		log.Printf("  ID: %s\n", assertion.ID)
+		log.Printf("  Type: %s\n", assertion.Type)
+		log.Printf("  Scope: %s\n", assertion.Scope)
 
 		if assertion.Statement.Format != "" {
-			fmt.Printf("  Statement Format: %s\n", assertion.Statement.Format)
+			log.Printf("  Statement Format: %s\n", assertion.Statement.Format)
 			// Truncate long values for display
 			value := assertion.Statement.Value
-			if len(value) > 100 {
-				value = value[:97] + "..."
+			if len(value) > statementDisplayLength {
+				value = value[:statementTruncateLength] + "..."
 			}
-			fmt.Printf("  Statement Value: %s\n", value)
+			log.Printf("  Statement Value: %s\n", value)
 		}
 
 		// Check binding method
 		if assertion.Binding.Method == "" {
-			fmt.Printf("  ⚠️  No binding method specified\n")
+			log.Printf("  ⚠️  No binding method specified\n")
 			continue
 		}
 
-		fmt.Printf("  Binding Method: %s\n", assertion.Binding.Method)
+		log.Printf("  Binding Method: %s\n", assertion.Binding.Method)
 
-		if assertion.Binding.Method == "jws" && assertion.Binding.Signature != "" {
-			// Try to verify the JWS signature
-			ctx := context.Background()
-			hash, sig, err := validationProvider.Validate(ctx, assertion)
-			if err != nil {
-				// Try to extract certificates even if validation fails
-				certs, certErr := sdk.ExtractX5CCertificates(assertion.Binding.Signature)
-				if certErr == nil && len(certs) > 0 {
-					fmt.Printf("  ℹ️  Certificate found in x5c:\n")
-					fmt.Printf("     Subject: %s\n", certs[0].Subject.String())
-					fmt.Printf("     Issuer: %s\n", certs[0].Issuer.String())
-				}
-				fmt.Printf("  ❌ Validation failed: %v\n", err)
-			} else {
-				fmt.Printf("  ✅ Signature validated successfully\n")
-				fmt.Printf("     Hash: %.32s...\n", hash)
-				fmt.Printf("     Sig: %.32s...\n", sig)
-
-				// Extract and display certificate info
-				certs, err := sdk.ExtractX5CCertificates(assertion.Binding.Signature)
-				if err == nil && len(certs) > 0 {
-					fmt.Printf("     Certificate: %s\n", certs[0].Subject.CommonName)
-				}
-			}
-		} else if assertion.Binding.Method == "hash" {
-			fmt.Printf("  ℹ️  Hash binding (signature: %.32s...)\n", assertion.Binding.Signature)
-		} else {
-			fmt.Printf("  ⚠️  Unsupported or missing binding\n")
+		switch assertion.Binding.Method {
+		case "jws":
+			validateJWSAssertion(assertion, validationProvider)
+		case "hash":
+			log.Printf("  ℹ️  Hash binding (signature: %.32s...)\n", assertion.Binding.Signature)
+		default:
+			log.Printf("  ⚠️  Unsupported or missing binding\n")
 		}
 	}
 
 	return nil
 }
 
-var (
-	tdfFile string
-)
+var tdfFileFlag string
 
 // assertionCmd represents the assertion command
 var assertionCmd = &cobra.Command{
@@ -487,13 +477,13 @@ Usage:
   
   # Verify assertions in a TDF file
   examples-cli assertion --tdf-file path/to/file.tdf`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		// If TDF file is specified, verify its assertions
-		if tdfFile != "" {
-			if err := verifyTDFAssertions(tdfFile); err != nil {
+		if tdfFileFlag != "" {
+			if err := verifyTDFAssertions(tdfFileFlag); err != nil {
 				log.Fatalf("TDF assertion verification failed: %v", err)
 			}
-			fmt.Println("\n✅ TDF assertion verification completed!")
+			log.Println("\n✅ TDF assertion verification completed!")
 			return
 		}
 
@@ -508,11 +498,11 @@ Usage:
 			log.Fatalf("Invalid signature demo failed: %v", err)
 		}
 
-		fmt.Println("\n✨ All examples completed successfully!")
+		log.Println("\n✨ All examples completed successfully!")
 	},
 }
 
 func init() {
-	assertionCmd.Flags().StringVar(&tdfFile, "tdf-file", "", "Path to TDF file to verify assertions from")
+	assertionCmd.Flags().StringVar(&tdfFileFlag, "tdf-file", "", "Path to TDF file to verify assertions from")
 	ExamplesCmd.AddCommand(assertionCmd)
 }

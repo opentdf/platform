@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const LoaderNameFile = "config-file"
+
 // FileLoader implements Loader using Viper
 type FileLoader struct {
 	viper *viper.Viper
@@ -77,7 +79,7 @@ func (l *FileLoader) Watch(ctx context.Context, _ *Config, onChange func(context
 }
 
 func (l *FileLoader) Name() string {
-	return "config-file"
+	return LoaderNameFile
 }
 
 func (l *FileLoader) Close() error {

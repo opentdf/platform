@@ -46,7 +46,11 @@ func Start(f ...StartOptions) error {
 	ctx := context.Background()
 
 	slog.Debug("loading configuration from environment")
-	loaderOrder := []string{"environment-value", "config-file", "default-settings"}
+	loaderOrder := []string{
+		config.LoaderNameEnvironmentValue,
+		config.LoaderNameFile,
+		config.LoaderNameDefaultSettings,
+	}
 	if startConfig.configLoaderOrder != nil {
 		loaderOrder = startConfig.configLoaderOrder
 	} else if startConfig.configLoaders != nil {
@@ -66,17 +70,17 @@ func Start(f ...StartOptions) error {
 		var loader config.Loader
 		var err error
 		switch loaderName {
-		case "environment-value":
+		case config.LoaderNameEnvironmentValue:
 			loader, err = config.NewEnvironmentValueLoader(startConfig.ConfigKey, nil)
 			if err != nil {
 				return err
 			}
-		case "config-file":
+		case config.LoaderNameFile:
 			loader, err = config.NewConfigFileLoader(startConfig.ConfigKey, startConfig.ConfigFile)
 			if err != nil {
 				return err
 			}
-		case "default-settings":
+		case config.LoaderNameDefaultSettings:
 			loader, err = config.NewDefaultSettingsLoader()
 			if err != nil {
 				return err

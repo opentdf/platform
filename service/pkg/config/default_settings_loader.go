@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const LoaderNameDefaultSettings = "default-settings"
+
 // DefaultSettingsLoader implements Loader using Viper
 type DefaultSettingsLoader struct {
 	KVMap map[string]any
@@ -93,7 +95,7 @@ func (l *DefaultSettingsLoader) Watch(_ context.Context, _ *Config, _ func(conte
 }
 
 func (l *DefaultSettingsLoader) Name() string {
-	return "default-settings"
+	return LoaderNameDefaultSettings
 }
 
 func (l *DefaultSettingsLoader) Close() error {

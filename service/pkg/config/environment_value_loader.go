@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"reflect"
 	"strings"
-	"time"
 
 	"github.com/spf13/viper"
 )
+
+const LoaderNameEnvironmentValue = "environment-value"
 
 // EnvironmentValueLoader implements Loader using Viper
 type EnvironmentValueLoader struct {
@@ -66,66 +66,14 @@ func (l *EnvironmentValueLoader) Load(_ Config) error {
 }
 
 // Watch starts watching the config file for configuration changes
-func (l *EnvironmentValueLoader) Watch(ctx context.Context, _ *Config, onChange func(context.Context) error) error {
-	// Environment variables can't be watched directly, so we poll them.
-	interval := defaultWatchViaPollInterval
-	slog.DebugContext(ctx, "starting environment configuration polling", slog.Duration("interval", interval))
-
-	ticker := time.NewTicker(interval)
-
-	go func() {
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				slog.DebugContext(ctx, "polling environment variables for changes")
-				// Create a temporary viper instance to read the current state of environment variables.
-				currentEnvViper := viper.New()
-				currentEnvViper.SetEnvPrefix(l.viper.GetEnvPrefix())
-				currentEnvViper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-				currentEnvViper.AutomaticEnv()
-
-				changed := false
-				if l.allowListMap != nil {
-					// If there's an allow list, only check those keys for changes.
-					for key := range l.allowListMap {
-						oldValue := l.viper.Get(key)
-						newValue := currentEnvViper.Get(key)
-						if !reflect.DeepEqual(oldValue, newValue) {
-							slog.DebugContext(ctx, "environment config change detected",
-								slog.String("key", key),
-								slog.Any("old_value", oldValue),
-								slog.Any("new_value", newValue))
-							changed = true
-							break
-						}
-					}
-				} else if !reflect.DeepEqual(l.viper.AllSettings(), currentEnvViper.AllSettings()) {
-					slog.DebugContext(ctx, "environment config change detected: settings map differs")
-					changed = true
-				}
-
-				if changed {
-					// The state has changed. Update our loader's viper instance to reflect the new state for the next check.
-					l.viper = currentEnvViper
-					// Trigger the main config reload function.
-					if err := onChange(ctx); err != nil {
-						slog.ErrorContext(ctx, "error processing environment config change", slog.Any("error", err))
-					}
-				}
-			case <-ctx.Done():
-				slog.DebugContext(ctx, "stopping environment configuration polling")
-				return
-			}
-		}
-	}()
-
+func (l *EnvironmentValueLoader) Watch(_ context.Context, _ *Config, _ func(context.Context) error) error {
+	// Environment variables can't be watched.
 	return nil
 }
 
 // Name returns the name of the environment configuration loader
 func (l *EnvironmentValueLoader) Name() string {
-	return "environment-value"
+	return LoaderNameEnvironmentValue
 }
 
 // Close closes the environment configuration loader

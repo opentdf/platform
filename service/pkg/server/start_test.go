@@ -528,9 +528,9 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 			err = Start(
 				WithConfigFile(tempFilePath),
 				WithConfigLoaderOrder([]string{
-					"environment-value",
-					"config-file",
-					"default-settings",
+					config.LoaderNameEnvironmentValue,
+					config.LoaderNameFile,
+					config.LoaderNameDefaultSettings,
 				}),
 			)
 			// require that it got past the service config and mode setup

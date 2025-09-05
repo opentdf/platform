@@ -110,7 +110,9 @@ type ValueTriggerRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ActionId         string `protobuf:"bytes,1,opt,name=action_id,json=actionId,proto3" json:"action_id,omitempty"`
+	// Required. The ID of the action that will trigger this obligation value policy decisioning.
+	ActionId string `protobuf:"bytes,1,opt,name=action_id,json=actionId,proto3" json:"action_id,omitempty"`
+	// Required. The attribute value ID that will trigger this obligation value policy decisioning.
 	AttributeValueId string `protobuf:"bytes,2,opt,name=attribute_value_id,json=attributeValueId,proto3" json:"attribute_value_id,omitempty"`
 }
 

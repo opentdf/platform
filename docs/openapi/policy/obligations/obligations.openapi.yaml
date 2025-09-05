@@ -1698,10 +1698,12 @@ components:
           type: string
           title: action_id
           format: uuid
+          description: Required. The ID of the action that will trigger this obligation value policy decisioning.
         attributeValueId:
           type: string
           title: attribute_value_id
           format: uuid
+          description: Required. The attribute value ID that will trigger this obligation value policy decisioning.
       title: ValueTriggerRequest
       additionalProperties: false
     connect-protocol-version:

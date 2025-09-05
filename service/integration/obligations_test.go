@@ -33,9 +33,9 @@ type TriggerSetup struct {
 type TriggerAssertion struct {
 	expectedAction            *policy.Action
 	expectedObligation        *policy.Obligation
-	expectedObligationValue   *policy.ObligationValue
 	expectedAttributeValue    *fixtures.FixtureDataAttributeValue
 	expectedAttributeValueFQN string
+	expectedObligationValue   *policy.ObligationValue
 }
 
 func (s *ObligationsSuite) SetupSuite() {
@@ -591,14 +591,16 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_Succeeds() {
 	s.assertObligationValueBasics(oblValue, oblValPrefix+"test-1", triggerSetup.namespace.ID, triggerSetup.namespace.Name, httpsPrefix+triggerSetup.namespace.Name)
 	s.assertTriggers(oblValue, []*TriggerAssertion{
 		{
-			expectedAction:         triggerSetup.action,
-			expectedObligation:     triggerSetup.createdObl,
-			expectedAttributeValue: triggerSetup.attributeValues[0],
+			expectedAction:          triggerSetup.action,
+			expectedObligation:      triggerSetup.createdObl,
+			expectedAttributeValue:  triggerSetup.attributeValues[0],
+			expectedObligationValue: oblValue,
 		},
 		{
-			expectedAction:         triggerSetup.action,
-			expectedObligation:     triggerSetup.createdObl,
-			expectedAttributeValue: triggerSetup.attributeValues[1],
+			expectedAction:          triggerSetup.action,
+			expectedObligation:      triggerSetup.createdObl,
+			expectedAttributeValue:  triggerSetup.attributeValues[1],
+			expectedObligationValue: oblValue,
 		},
 	})
 }
@@ -1003,14 +1005,16 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 	s.assertObligationValueBasics(oblValue, oblValPrefix+"test-1", triggerSetup.namespace.ID, triggerSetup.namespace.Name, httpsPrefix+triggerSetup.namespace.Name)
 	s.assertTriggers(oblValue, []*TriggerAssertion{
 		{
-			expectedAction:         triggerSetup.action,
-			expectedObligation:     triggerSetup.createdObl,
-			expectedAttributeValue: triggerSetup.attributeValues[0],
+			expectedAction:          triggerSetup.action,
+			expectedObligation:      triggerSetup.createdObl,
+			expectedAttributeValue:  triggerSetup.attributeValues[0],
+			expectedObligationValue: oblValue,
 		},
 		{
-			expectedAction:         triggerSetup.action,
-			expectedObligation:     triggerSetup.createdObl,
-			expectedAttributeValue: triggerSetup.attributeValues[1],
+			expectedAction:          triggerSetup.action,
+			expectedObligation:      triggerSetup.createdObl,
+			expectedAttributeValue:  triggerSetup.attributeValues[1],
+			expectedObligationValue: oblValue,
 		},
 	})
 
@@ -1217,26 +1221,25 @@ func (s *ObligationsSuite) setupTriggerTests() *TriggerSetup {
 func (s *ObligationsSuite) assertTriggers(oblVal *policy.ObligationValue, expectedTriggers []*TriggerAssertion) {
 	triggers := oblVal.GetTriggers()
 	s.Require().NotNil(triggers)
-	s.Len(triggers, len(expectedTriggers))
-	count := 0
+	s.Require().Len(triggers, len(expectedTriggers))
+	found := 0
 	for _, t := range triggers {
 		for _, expected := range expectedTriggers {
+
 			if t.GetAction().GetId() == expected.expectedAction.GetId() &&
 				t.GetAttributeValue().GetId() == expected.expectedAttributeValue.ID &&
 				t.GetObligationValue().GetId() == expected.expectedObligationValue.GetId() {
-				// Validate some other fields
-				count++
+				found++
 				s.Require().Equal(expected.expectedAction.GetName(), t.GetAction().GetName())
 				s.Require().Equal(expected.expectedAttributeValue.Value, t.GetAttributeValue().GetValue())
 				s.Require().Equal(expected.expectedAttributeValueFQN, t.GetAttributeValue().GetFqn())
-				s.Require().Equal(expected.expectedObligationValue.GetId(), t.GetObligationValue().GetId())
 				s.Require().Equal(expected.expectedObligationValue.GetValue(), t.GetObligationValue().GetValue())
 				s.Require().Equal(expected.expectedObligationValue.GetObligation().GetId(), t.GetObligationValue().GetObligation().GetId())
-				s.Require().Equal(oblVal.GetId(), t.GetObligationValue().GetId())
 				s.Require().Equal(oblVal.GetObligation().GetId(), t.GetObligationValue().GetObligation().GetId())
 			}
 		}
 	}
+	s.Require().Equal(len(expectedTriggers), found)
 }
 
 func (s *ObligationsSuite) createObligation(namespaceID, name string, values []string) *policy.Obligation {

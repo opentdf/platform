@@ -2,11 +2,6 @@ package config
 
 import (
 	"context"
-	"time"
-)
-
-const (
-	defaultWatchViaPollInterval = 15 * time.Second
 )
 
 // Loader defines the interface for loading and managing configuration

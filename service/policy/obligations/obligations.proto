@@ -67,7 +67,7 @@ message CreateObligationRequest {
         (buf.validate.field).required = true,
         (buf.validate.field).string.max_len = 253,
         (buf.validate.field).cel = {
-            id: "obl_name_format",
+            id: "obligation_name_format",
             message: "Obligation name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.",
             expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
         };
@@ -108,7 +108,7 @@ message UpdateObligationRequest {
         (buf.validate.field).required = false,
         (buf.validate.field).string.max_len = 253,
         (buf.validate.field).cel = {
-            id: "obl_name_format",
+            id: "obligation_name_format",
             message: "Obligation name must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored name will be normalized to lower case.",
             expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
         }
@@ -187,11 +187,18 @@ message GetObligationValuesByFQNsResponse {
 
 message CreateObligationValueRequest {
     // Required
-    oneof obligation_identifier {
-        string id = 1;
-        string fqn = 2;
-    }
-    string value = 3;
+    option (buf.validate.message).oneof = { fields: ["obligation_id", "obligation_fqn"], required: true };
+    string obligation_id = 1;
+    string obligation_fqn = 2;
+    string value = 3 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).string.max_len = 253,
+        (buf.validate.field).cel = {
+            id: "obligation_value_format",
+            message: "Obligation value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored value will be normalized to lower case.",
+            expression: "this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$')"
+        }
+    ];
 
     // Optional
     // Common metadata

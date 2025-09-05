@@ -16,7 +16,7 @@ import "policy/selectors.proto";
 
 // Definitions
 message GetObligationRequest {
-    option (buf.validate.message).oneof = { fields: ["id", "fqn"] };
+    option (buf.validate.message).oneof = { fields: ["id", "fqn"], required: true };
     string id = 1 [(buf.validate.field).string.uuid = true];
     string fqn = 2 [
         (buf.validate.field).string = {
@@ -51,7 +51,7 @@ message GetObligationsByFQNsResponse {
 
 message CreateObligationRequest {
     // Required
-    option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"] };
+    option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: true };
     string namespace_id = 1 [(buf.validate.field).string.uuid = true];
     string namespace_fqn = 2 [
         (buf.validate.field).string = {
@@ -115,7 +115,7 @@ message UpdateObligationResponse {
 }
 
 message DeleteObligationRequest {
-    option (buf.validate.message).oneof = { fields: ["id", "fqn"] };
+    option (buf.validate.message).oneof = { fields: ["id", "fqn"], required: true };
     string id = 1 [(buf.validate.field).string.uuid = true];
     string fqn = 2 [
         (buf.validate.field).string = {

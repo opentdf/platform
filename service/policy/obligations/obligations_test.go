@@ -9,20 +9,23 @@ import (
 )
 
 const (
-	validUUID            = "00000000-0000-0000-0000-000000000000"
-	validName            = "drm"
-	validValue           = "watermark"
-	validFQN             = "https://namespace.com/obl/" + validName + "/value/" + validValue
-	invalidUUID          = "invalid-uuid"
-	invalidName          = "invalid name"
-	invalidFQN           = "invalid-fqn"
-	errMessageUUID       = "string.uuid"
-	errMessageURI        = "string.uri"
-	errMessageMinItems   = "repeated.min_items"
-	errMessageUnique     = "repeated.unique"
-	errMessageOneOf      = "message.oneof"
-	errMessageRequired   = "required"
-	errMessageNameFormat = "obligation_name_format"
+	validUUID             = "00000000-0000-0000-0000-000000000000"
+	validName             = "drm"
+	validValue            = "watermark"
+	validFQN              = "https://namespace.com/obl/" + validName + "/value/" + validValue
+	validValue2           = "expiration"
+	validFQN2             = "https://namespace.com/obl/" + validName + "/value/" + validValue2
+	invalidUUID           = "invalid-uuid"
+	invalidName           = "invalid name"
+	invalidFQN            = "invalid-fqn"
+	errMessageUUID        = "string.uuid"
+	errMessageURI         = "string.uri"
+	errMessageMinItems    = "repeated.min_items"
+	errMessageUnique      = "repeated.unique"
+	errMessageOneOf       = "message.oneof"
+	errMessageRequired    = "required"
+	errMessageNameFormat  = "obligation_name_format"
+	errMessageValueFormat = "obligation_value_format"
 )
 
 func getValidator() protovalidate.Validator {
@@ -76,7 +79,7 @@ func Test_GetObligation_Fails(t *testing.T) {
 func Test_GetObligationsByFQNs_Succeeds(t *testing.T) {
 	validFQNs := []string{
 		validFQN,
-		"https://namespace.com/obl/drm/value/expiration",
+		validFQN2,
 	}
 	req := &obligations.GetObligationsByFQNsRequest{
 		Fqns: validFQNs,
@@ -125,7 +128,7 @@ func Test_CreateObligation_Succeeds(t *testing.T) {
 	req = &obligations.CreateObligationRequest{
 		NamespaceFqn: validFQN,
 		Name:         validName,
-		Values:       []string{validValue, "expiration"},
+		Values:       []string{validValue, validValue2},
 	}
 	v = getValidator()
 	err = v.Validate(req)
@@ -296,4 +299,233 @@ func Test_ListObligations_Fails(t *testing.T) {
 	err = v.Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageURI)
+}
+
+func Test_GetObligationValue_Succeeds(t *testing.T) {
+	req := &obligations.GetObligationValueRequest{
+		Id: validUUID,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.NoError(t, err)
+
+	req = &obligations.GetObligationValueRequest{
+		Fqn: validFQN,
+	}
+	err = v.Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_GetObligationValue_Fails(t *testing.T) {
+	req := &obligations.GetObligationValueRequest{
+		Id: invalidUUID,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageUUID)
+
+	req = &obligations.GetObligationValueRequest{
+		Fqn: invalidFQN,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageURI)
+
+	req = &obligations.GetObligationValueRequest{
+		Id:  validUUID,
+		Fqn: validFQN,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageOneOf)
+
+	req = &obligations.GetObligationValueRequest{}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageOneOf)
+}
+
+func Test_GetObligationValuesByFQNs_Succeeds(t *testing.T) {
+	validFQNs := []string{
+		validFQN,
+		validFQN2,
+	}
+	req := &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: validFQNs,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_GetObligationValuesByFQNs_Fails(t *testing.T) {
+	emptyFQNs := []string{}
+	req := &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: emptyFQNs,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinItems)
+
+	invalidFQNs := []string{invalidFQN}
+	req = &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: invalidFQNs,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageURI)
+
+	duplicateFQNs := []string{validFQN, validFQN}
+	req = &obligations.GetObligationValuesByFQNsRequest{
+		Fqns: duplicateFQNs,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageUnique)
+}
+
+func Test_CreateObligationValue_Succeeds(t *testing.T) {
+	req := &obligations.CreateObligationValueRequest{
+		ObligationId: validUUID,
+		Value:        validValue,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.NoError(t, err)
+
+	req = &obligations.CreateObligationValueRequest{
+		ObligationFqn: validFQN,
+		Value:         validValue,
+	}
+	err = v.Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_CreateObligationValue_Fails(t *testing.T) {
+	req := &obligations.CreateObligationValueRequest{
+		ObligationId: invalidUUID,
+		Value:        validValue,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageUUID)
+
+	req = &obligations.CreateObligationValueRequest{
+		ObligationFqn: invalidFQN,
+		Value:         validValue,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageURI)
+
+	req = &obligations.CreateObligationValueRequest{
+		ObligationId: validUUID,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageRequired)
+
+	req = &obligations.CreateObligationValueRequest{
+		ObligationId:  validUUID,
+		ObligationFqn: validFQN,
+		Value:         validValue,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageOneOf)
+
+	req = &obligations.CreateObligationValueRequest{
+		ObligationId: validUUID,
+		Value:        invalidName,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageValueFormat)
+
+	req = &obligations.CreateObligationValueRequest{}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageOneOf)
+}
+
+func Test_UpdateObligationValue_Succeeds(t *testing.T) {
+	req := &obligations.UpdateObligationValueRequest{
+		Id: validUUID,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.NoError(t, err)
+
+	req = &obligations.UpdateObligationValueRequest{
+		Id:    validUUID,
+		Value: validValue,
+	}
+	err = v.Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_UpdateObligationValue_Fails(t *testing.T) {
+	req := &obligations.UpdateObligationValueRequest{
+		Id: invalidUUID,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageUUID)
+
+	req = &obligations.UpdateObligationValueRequest{
+		Id:    validUUID,
+		Value: invalidName,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageValueFormat)
+}
+
+func Test_DeleteObligationValue_Succeeds(t *testing.T) {
+	req := &obligations.DeleteObligationValueRequest{
+		Id: validUUID,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.NoError(t, err)
+
+	req = &obligations.DeleteObligationValueRequest{
+		Fqn: validFQN,
+	}
+	err = v.Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_DeleteObligationValue_Fails(t *testing.T) {
+	req := &obligations.DeleteObligationValueRequest{
+		Id: invalidUUID,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageUUID)
+
+	req = &obligations.DeleteObligationValueRequest{
+		Fqn: invalidFQN,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageURI)
+
+	req = &obligations.DeleteObligationValueRequest{
+		Id:  validUUID,
+		Fqn: validFQN,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageOneOf)
+
+	req = &obligations.DeleteObligationValueRequest{}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageOneOf)
 }

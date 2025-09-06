@@ -25,7 +25,7 @@ message GetKeyAccessServerRequest {
   // Deprecated
   string id = 1 [
     deprecated = true,
-    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string.uuid = true
   ];
 
@@ -244,7 +244,7 @@ message ListPublicKeyMappingRequest {
   // Optional Public Key ID
   string public_key_id = 4 [
     (buf.validate.field).string.uuid = true,
-    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
   ];
 
   // Optional

@@ -217,7 +217,6 @@ func Test_UpdateObligation_Fails(t *testing.T) {
 	err = v.Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageNameFormat)
-	println(err.Error())
 }
 
 func Test_DeleteObligation_Succeeds(t *testing.T) {

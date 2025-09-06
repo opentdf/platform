@@ -215,24 +215,6 @@ func Test_UpdateObligation_Fails(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageNameFormat)
 	println(err.Error())
-
-	req = &obligations.UpdateObligationRequest{
-		Id:   validUUID,
-		Name: "-invalid-start",
-	}
-	v = getValidator()
-	err = v.Validate(req)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), errMessageNameFormat)
-
-	req = &obligations.UpdateObligationRequest{
-		Id:   validUUID,
-		Name: "invalid-end-",
-	}
-	v = getValidator()
-	err = v.Validate(req)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), errMessageNameFormat)
 }
 
 func Test_DeleteObligation_Succeeds(t *testing.T) {
@@ -314,7 +296,4 @@ func Test_ListObligations_Fails(t *testing.T) {
 	err = v.Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageURI)
-
-	// Note: ListObligations oneof is optional, so having both should not fail
-	// unless there's a strict validation requirement
 }

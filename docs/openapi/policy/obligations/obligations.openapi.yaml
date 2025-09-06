@@ -1496,9 +1496,11 @@ components:
             type: string
             minLength: 1
             format: uri
+            maxItems: 250
             minItems: 1
             uniqueItems: true
           title: fqns
+          maxItems: 250
           minItems: 1
           uniqueItems: true
       title: GetObligationValuesByFQNsRequest
@@ -1534,9 +1536,11 @@ components:
             type: string
             minLength: 1
             format: uri
+            maxItems: 250
             minItems: 1
             uniqueItems: true
           title: fqns
+          maxItems: 250
           minItems: 1
           uniqueItems: true
       title: GetObligationsByFQNsRequest

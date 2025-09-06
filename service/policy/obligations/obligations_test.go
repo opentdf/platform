@@ -9,16 +9,20 @@ import (
 )
 
 const (
-	validUUID          = "00000000-0000-0000-0000-000000000000"
-	validFQN           = "https://namespace.com/obl/drm/value/watermark"
-	invalidUUID        = "invalid-uuid"
-	invalidFQN         = "invalid-fqn"
-	errMessageUUID     = "string.uuid"
-	errMessageURI      = "string.uri"
-	errMessageMinItems = "repeated.min_items"
-	errMessageUnique   = "repeated.unique"
-	errMessageOneOf    = "message.oneof"
-	errMessageRequired = "required"
+	validUUID            = "00000000-0000-0000-0000-000000000000"
+	validName            = "drm"
+	validValue           = "watermark"
+	validFQN             = "https://namespace.com/obl/" + validName + "/value/" + validValue
+	invalidUUID          = "invalid-uuid"
+	invalidName          = "invalid name"
+	invalidFQN           = "invalid-fqn"
+	errMessageUUID       = "string.uuid"
+	errMessageURI        = "string.uri"
+	errMessageMinItems   = "repeated.min_items"
+	errMessageUnique     = "repeated.unique"
+	errMessageOneOf      = "message.oneof"
+	errMessageRequired   = "required"
+	errMessageNameFormat = "obligation_name_format"
 )
 
 func getValidator() protovalidate.Validator {
@@ -112,7 +116,7 @@ func Test_GetObligationsByFQNs_Fails(t *testing.T) {
 func Test_CreateObligation_Succeeds(t *testing.T) {
 	req := &obligations.CreateObligationRequest{
 		NamespaceId: validUUID,
-		Name:        "drm",
+		Name:        validName,
 	}
 	v := getValidator()
 	err := v.Validate(req)
@@ -120,8 +124,8 @@ func Test_CreateObligation_Succeeds(t *testing.T) {
 
 	req = &obligations.CreateObligationRequest{
 		NamespaceFqn: validFQN,
-		Name:         "drm",
-		Values:       []string{"watermark", "expiration"},
+		Name:         validName,
+		Values:       []string{validValue, "expiration"},
 	}
 	v = getValidator()
 	err = v.Validate(req)
@@ -131,7 +135,7 @@ func Test_CreateObligation_Succeeds(t *testing.T) {
 func Test_CreateObligation_Fails(t *testing.T) {
 	req := &obligations.CreateObligationRequest{
 		NamespaceId: invalidUUID,
-		Name:        "drm",
+		Name:        validName,
 	}
 	v := getValidator()
 	err := v.Validate(req)
@@ -140,7 +144,7 @@ func Test_CreateObligation_Fails(t *testing.T) {
 
 	req = &obligations.CreateObligationRequest{
 		NamespaceFqn: invalidFQN,
-		Name:         "drm",
+		Name:         validName,
 	}
 	v = getValidator()
 	err = v.Validate(req)
@@ -158,7 +162,7 @@ func Test_CreateObligation_Fails(t *testing.T) {
 	req = &obligations.CreateObligationRequest{
 		NamespaceId:  validUUID,
 		NamespaceFqn: validFQN,
-		Name:         "drm",
+		Name:         validName,
 	}
 	v = getValidator()
 	err = v.Validate(req)
@@ -168,11 +172,149 @@ func Test_CreateObligation_Fails(t *testing.T) {
 	req = &obligations.CreateObligationRequest{
 		NamespaceId:  validUUID,
 		NamespaceFqn: validFQN,
-		Name:         "drm",
-		Values:       []string{"watermark", "watermark"},
+		Name:         validName,
+		Values:       []string{validValue, validValue},
 	}
 	v = getValidator()
 	err = v.Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageUnique)
+}
+
+func Test_UpdateObligation_Succeeds(t *testing.T) {
+	req := &obligations.UpdateObligationRequest{
+		Id: validUUID,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.NoError(t, err)
+
+	req = &obligations.UpdateObligationRequest{
+		Id:   validUUID,
+		Name: validName,
+	}
+	err = v.Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_UpdateObligation_Fails(t *testing.T) {
+	req := &obligations.UpdateObligationRequest{
+		Id: invalidUUID,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageUUID)
+
+	req = &obligations.UpdateObligationRequest{
+		Id:   validUUID,
+		Name: invalidName,
+	}
+	v = getValidator()
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageNameFormat)
+	println(err.Error())
+
+	req = &obligations.UpdateObligationRequest{
+		Id:   validUUID,
+		Name: "-invalid-start",
+	}
+	v = getValidator()
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageNameFormat)
+
+	req = &obligations.UpdateObligationRequest{
+		Id:   validUUID,
+		Name: "invalid-end-",
+	}
+	v = getValidator()
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageNameFormat)
+}
+
+func Test_DeleteObligation_Succeeds(t *testing.T) {
+	req := &obligations.DeleteObligationRequest{
+		Id: validUUID,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.NoError(t, err)
+
+	req = &obligations.DeleteObligationRequest{
+		Fqn: validFQN,
+	}
+	err = v.Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_DeleteObligation_Fails(t *testing.T) {
+	req := &obligations.DeleteObligationRequest{
+		Id: invalidUUID,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageUUID)
+
+	req = &obligations.DeleteObligationRequest{
+		Fqn: invalidFQN,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageURI)
+
+	req = &obligations.DeleteObligationRequest{
+		Id:  validUUID,
+		Fqn: validFQN,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageOneOf)
+
+	req = &obligations.DeleteObligationRequest{}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageOneOf)
+}
+
+func Test_ListObligations_Succeeds(t *testing.T) {
+	req := &obligations.ListObligationsRequest{}
+	v := getValidator()
+	err := v.Validate(req)
+	require.NoError(t, err)
+
+	req = &obligations.ListObligationsRequest{
+		NamespaceId: validUUID,
+	}
+	err = v.Validate(req)
+	require.NoError(t, err)
+
+	req = &obligations.ListObligationsRequest{
+		NamespaceFqn: validFQN,
+	}
+	err = v.Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_ListObligations_Fails(t *testing.T) {
+	req := &obligations.ListObligationsRequest{
+		NamespaceId: invalidUUID,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageUUID)
+
+	req = &obligations.ListObligationsRequest{
+		NamespaceFqn: invalidFQN,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageURI)
+
+	// Note: ListObligations oneof is optional, so having both should not fail
+	// unless there's a strict validation requirement
 }

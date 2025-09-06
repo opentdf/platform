@@ -11,9 +11,6 @@ import "policy/selectors.proto";
 /// Obligation
 ///
 
-// TODO: implement this
-// https://buf.build/blog/fixing-oneofs
-
 // Definitions
 message GetObligationRequest {
     option (buf.validate.message).oneof = { fields: ["id", "fqn"], required: true };
@@ -133,8 +130,13 @@ message ListObligationsRequest {
     // Optional
     // Namespace ID or FQN
     option (buf.validate.message).oneof = { fields: ["namespace_id", "namespace_fqn"], required: false };
-    string namespace_id = 1;
-    string namespace_fqn = 2;
+    string namespace_id = 1 [(buf.validate.field).string.uuid = true];
+    string namespace_fqn = 2 [
+        (buf.validate.field).string = {
+            min_len : 1
+            uri : true
+        }
+    ];
 
     // Optional
     policy.PageRequest pagination = 10;
@@ -149,8 +151,13 @@ message ListObligationsResponse {
 // Values
 message GetObligationValueRequest {
     option (buf.validate.message).oneof = { fields: ["id", "fqn"], required: true };
-    string id = 1;
-    string fqn = 2;
+    string id = 1 [(buf.validate.field).string.uuid = true];
+    string fqn = 2 [
+        (buf.validate.field).string = {
+            min_len : 1
+            uri : true
+        }
+    ];
 }
 
 message GetObligationValueResponse {
@@ -179,8 +186,13 @@ message GetObligationValuesByFQNsResponse {
 message CreateObligationValueRequest {
     // Required
     option (buf.validate.message).oneof = { fields: ["obligation_id", "obligation_fqn"], required: true };
-    string obligation_id = 1;
-    string obligation_fqn = 2;
+    string obligation_id = 1 [(buf.validate.field).string.uuid = true];
+    string obligation_fqn = 2 [
+        (buf.validate.field).string = {
+            min_len : 1
+            uri : true
+        }
+    ];
     string value = 3 [
         (buf.validate.field).required = true,
         (buf.validate.field).string.max_len = 253,
@@ -202,10 +214,21 @@ message CreateObligationValueResponse {
 
 message UpdateObligationValueRequest {
     // Required
-    string id = 1;
+    string id = 1 [(buf.validate.field).string.uuid = true];
     
     // Optional
-    string value = 2;
+    string value = 2 [
+        (buf.validate.field).required = false,
+        (buf.validate.field).string.max_len = 253,
+        (buf.validate.field).cel = {
+            id: "obligation_value_format",
+            message: "Obligation value must be an alphanumeric string, allowing hyphens and underscores but not as the first or last character. The stored value will be normalized to lower case.",
+            expression: "size(this) > 0 ? this.matches('^[a-zA-Z0-9](?:[a-zA-Z0-9_-]*[a-zA-Z0-9])?$') : true"
+        }
+    ];
+
+    // Optional
+    // Common metadata
     common.MetadataMutable metadata = 100;
     common.MetadataUpdateEnum metadata_update_behavior = 101;
 }
@@ -215,10 +238,14 @@ message UpdateObligationValueResponse {
 }
 
 message DeleteObligationValueRequest {
-    oneof identifier {
-        string id = 1;
-        string fqn = 2;
-    }
+    option (buf.validate.message).oneof = { fields: ["id", "fqn"], required: true };
+    string id = 1 [(buf.validate.field).string.uuid = true];
+    string fqn = 2 [
+        (buf.validate.field).string = {
+            min_len : 1
+            uri : true
+        }
+    ];
 }
 
 message DeleteObligationValueResponse {

@@ -10,10 +10,13 @@ import (
 )
 
 const (
-	invalidUUID    = "invalid-uuid"
-	invalidFQN     = "invalid-fqn"
-	errMessageUUID = "string.uuid"
-	errMessageURI  = "string.uri"
+	validFQN           = "https://namespace.com/obl/drm/value/watermark"
+	invalidUUID        = "invalid-uuid"
+	invalidFQN         = "invalid-fqn"
+	errMessageUUID     = "string.uuid"
+	errMessageURI      = "string.uri"
+	errMessageMinItems = "repeated.min_items"
+	errMessageUnique   = "repeated.unique"
 )
 
 func getValidator() protovalidate.Validator {
@@ -33,7 +36,6 @@ func Test_GetObligation_Succeeds(t *testing.T) {
 	err := v.Validate(req)
 	require.NoError(t, err)
 
-	validFQN := "https://namespace.com/obl/drm/value/watermark"
 	req = &obligations.GetObligationRequest{
 		Fqn: validFQN,
 	}
@@ -56,4 +58,44 @@ func Test_GetObligation_Fails(t *testing.T) {
 	err = v.Validate(req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageURI)
+}
+
+func Test_GetObligationsByFQNs_Succeeds(t *testing.T) {
+	validFQNs := []string{
+		validFQN,
+		"https://namespace.com/obl/drm/value/expiration",
+	}
+	req := &obligations.GetObligationsByFQNsRequest{
+		Fqns: validFQNs,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.NoError(t, err)
+}
+
+func Test_GetObligationsByFQNs_Fails(t *testing.T) {
+	emptyFQNs := []string{}
+	req := &obligations.GetObligationsByFQNsRequest{
+		Fqns: emptyFQNs,
+	}
+	v := getValidator()
+	err := v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageMinItems)
+
+	invalidFQNs := []string{invalidFQN}
+	req = &obligations.GetObligationsByFQNsRequest{
+		Fqns: invalidFQNs,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageURI)
+
+	duplicateFQNs := []string{validFQN, validFQN}
+	req = &obligations.GetObligationsByFQNsRequest{
+		Fqns: duplicateFQNs,
+	}
+	err = v.Validate(req)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), errMessageUnique)
 }

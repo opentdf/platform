@@ -266,6 +266,7 @@ type TDFReaderOption func(*TDFReaderConfig) error
 type TDFReaderConfig struct {
 	verifiers                    AssertionVerificationKeys
 	disableAssertionVerification bool
+	assertionVerifier            AssertionVerifier // Optional custom verifier override
 
 	schemaValidationIntensity SchemaValidationIntensity
 	kasSessionKey             ocrypto.KeyPair
@@ -367,6 +368,15 @@ func newTDFReaderConfig(opt ...TDFReaderOption) (*TDFReaderConfig, error) {
 func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.verifiers = keys
+		return nil
+	}
+}
+
+// WithReaderAssertionVerifier sets a custom assertion verifier for this specific reader.
+// This overrides the SDK-level verifier if one was set.
+func WithReaderAssertionVerifier(verifier AssertionVerifier) TDFReaderOption {
+	return func(c *TDFReaderConfig) error {
+		c.assertionVerifier = verifier
 		return nil
 	}
 }

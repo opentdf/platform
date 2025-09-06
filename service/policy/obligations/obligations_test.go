@@ -11,8 +11,8 @@ import (
 const (
 	validUUID             = "00000000-0000-0000-0000-000000000000"
 	validName             = "drm"
-	validValue            = "watermark"
-	validFQN              = "https://namespace.com/obl/" + validName + "/value/" + validValue
+	validValue1           = "watermark"
+	validFQN1             = "https://namespace.com/obl/" + validName + "/value/" + validValue1
 	validValue2           = "expiration"
 	validFQN2             = "https://namespace.com/obl/" + validName + "/value/" + validValue2
 	invalidUUID           = "invalid-uuid"
@@ -45,7 +45,7 @@ func Test_GetObligation_Succeeds(t *testing.T) {
 	require.NoError(t, err)
 
 	req = &obligations.GetObligationRequest{
-		Fqn: validFQN,
+		Fqn: validFQN1,
 	}
 	err = v.Validate(req)
 	require.NoError(t, err)
@@ -69,7 +69,7 @@ func Test_GetObligation_Fails(t *testing.T) {
 
 	req = &obligations.GetObligationRequest{
 		Id:  validUUID,
-		Fqn: validFQN,
+		Fqn: validFQN1,
 	}
 	err = v.Validate(req)
 	require.Error(t, err)
@@ -78,7 +78,7 @@ func Test_GetObligation_Fails(t *testing.T) {
 
 func Test_GetObligationsByFQNs_Succeeds(t *testing.T) {
 	validFQNs := []string{
-		validFQN,
+		validFQN1,
 		validFQN2,
 	}
 	req := &obligations.GetObligationsByFQNsRequest{
@@ -107,7 +107,7 @@ func Test_GetObligationsByFQNs_Fails(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageURI)
 
-	duplicateFQNs := []string{validFQN, validFQN}
+	duplicateFQNs := []string{validFQN1, validFQN1}
 	req = &obligations.GetObligationsByFQNsRequest{
 		Fqns: duplicateFQNs,
 	}
@@ -126,9 +126,9 @@ func Test_CreateObligation_Succeeds(t *testing.T) {
 	require.NoError(t, err)
 
 	req = &obligations.CreateObligationRequest{
-		NamespaceFqn: validFQN,
+		NamespaceFqn: validFQN1,
 		Name:         validName,
-		Values:       []string{validValue, validValue2},
+		Values:       []string{validValue1, validValue2},
 	}
 	v = getValidator()
 	err = v.Validate(req)
@@ -164,7 +164,7 @@ func Test_CreateObligation_Fails(t *testing.T) {
 
 	req = &obligations.CreateObligationRequest{
 		NamespaceId:  validUUID,
-		NamespaceFqn: validFQN,
+		NamespaceFqn: validFQN1,
 		Name:         validName,
 	}
 	v = getValidator()
@@ -174,9 +174,9 @@ func Test_CreateObligation_Fails(t *testing.T) {
 
 	req = &obligations.CreateObligationRequest{
 		NamespaceId:  validUUID,
-		NamespaceFqn: validFQN,
+		NamespaceFqn: validFQN1,
 		Name:         validName,
-		Values:       []string{validValue, validValue},
+		Values:       []string{validValue1, validValue1},
 	}
 	v = getValidator()
 	err = v.Validate(req)
@@ -229,7 +229,7 @@ func Test_DeleteObligation_Succeeds(t *testing.T) {
 	require.NoError(t, err)
 
 	req = &obligations.DeleteObligationRequest{
-		Fqn: validFQN,
+		Fqn: validFQN1,
 	}
 	err = v.Validate(req)
 	require.NoError(t, err)
@@ -253,7 +253,7 @@ func Test_DeleteObligation_Fails(t *testing.T) {
 
 	req = &obligations.DeleteObligationRequest{
 		Id:  validUUID,
-		Fqn: validFQN,
+		Fqn: validFQN1,
 	}
 	err = v.Validate(req)
 	require.Error(t, err)
@@ -278,7 +278,7 @@ func Test_ListObligations_Succeeds(t *testing.T) {
 	require.NoError(t, err)
 
 	req = &obligations.ListObligationsRequest{
-		NamespaceFqn: validFQN,
+		NamespaceFqn: validFQN1,
 	}
 	err = v.Validate(req)
 	require.NoError(t, err)
@@ -310,7 +310,7 @@ func Test_GetObligationValue_Succeeds(t *testing.T) {
 	require.NoError(t, err)
 
 	req = &obligations.GetObligationValueRequest{
-		Fqn: validFQN,
+		Fqn: validFQN1,
 	}
 	err = v.Validate(req)
 	require.NoError(t, err)
@@ -334,7 +334,7 @@ func Test_GetObligationValue_Fails(t *testing.T) {
 
 	req = &obligations.GetObligationValueRequest{
 		Id:  validUUID,
-		Fqn: validFQN,
+		Fqn: validFQN1,
 	}
 	err = v.Validate(req)
 	require.Error(t, err)
@@ -348,7 +348,7 @@ func Test_GetObligationValue_Fails(t *testing.T) {
 
 func Test_GetObligationValuesByFQNs_Succeeds(t *testing.T) {
 	validFQNs := []string{
-		validFQN,
+		validFQN1,
 		validFQN2,
 	}
 	req := &obligations.GetObligationValuesByFQNsRequest{
@@ -377,7 +377,7 @@ func Test_GetObligationValuesByFQNs_Fails(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageURI)
 
-	duplicateFQNs := []string{validFQN, validFQN}
+	duplicateFQNs := []string{validFQN1, validFQN1}
 	req = &obligations.GetObligationValuesByFQNsRequest{
 		Fqns: duplicateFQNs,
 	}
@@ -389,15 +389,15 @@ func Test_GetObligationValuesByFQNs_Fails(t *testing.T) {
 func Test_CreateObligationValue_Succeeds(t *testing.T) {
 	req := &obligations.CreateObligationValueRequest{
 		ObligationId: validUUID,
-		Value:        validValue,
+		Value:        validValue1,
 	}
 	v := getValidator()
 	err := v.Validate(req)
 	require.NoError(t, err)
 
 	req = &obligations.CreateObligationValueRequest{
-		ObligationFqn: validFQN,
-		Value:         validValue,
+		ObligationFqn: validFQN1,
+		Value:         validValue1,
 	}
 	err = v.Validate(req)
 	require.NoError(t, err)
@@ -406,7 +406,7 @@ func Test_CreateObligationValue_Succeeds(t *testing.T) {
 func Test_CreateObligationValue_Fails(t *testing.T) {
 	req := &obligations.CreateObligationValueRequest{
 		ObligationId: invalidUUID,
-		Value:        validValue,
+		Value:        validValue1,
 	}
 	v := getValidator()
 	err := v.Validate(req)
@@ -415,7 +415,7 @@ func Test_CreateObligationValue_Fails(t *testing.T) {
 
 	req = &obligations.CreateObligationValueRequest{
 		ObligationFqn: invalidFQN,
-		Value:         validValue,
+		Value:         validValue1,
 	}
 	err = v.Validate(req)
 	require.Error(t, err)
@@ -430,8 +430,8 @@ func Test_CreateObligationValue_Fails(t *testing.T) {
 
 	req = &obligations.CreateObligationValueRequest{
 		ObligationId:  validUUID,
-		ObligationFqn: validFQN,
-		Value:         validValue,
+		ObligationFqn: validFQN1,
+		Value:         validValue1,
 	}
 	err = v.Validate(req)
 	require.Error(t, err)
@@ -461,7 +461,7 @@ func Test_UpdateObligationValue_Succeeds(t *testing.T) {
 
 	req = &obligations.UpdateObligationValueRequest{
 		Id:    validUUID,
-		Value: validValue,
+		Value: validValue1,
 	}
 	err = v.Validate(req)
 	require.NoError(t, err)
@@ -494,7 +494,7 @@ func Test_DeleteObligationValue_Succeeds(t *testing.T) {
 	require.NoError(t, err)
 
 	req = &obligations.DeleteObligationValueRequest{
-		Fqn: validFQN,
+		Fqn: validFQN1,
 	}
 	err = v.Validate(req)
 	require.NoError(t, err)
@@ -518,7 +518,7 @@ func Test_DeleteObligationValue_Fails(t *testing.T) {
 
 	req = &obligations.DeleteObligationValueRequest{
 		Id:  validUUID,
-		Fqn: validFQN,
+		Fqn: validFQN1,
 	}
 	err = v.Validate(req)
 	require.Error(t, err)

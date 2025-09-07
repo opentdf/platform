@@ -20,6 +20,7 @@ type StartConfig struct {
 	extraServices         []serviceregistry.IService
 	casbinAdapter         persist.Adapter
 	configLoaders         []config.Loader
+	configLoaderOrder     []string
 
 	trustKeyManagers []trust.NamedKeyManagerFactory
 }
@@ -123,6 +124,14 @@ func WithCasbinAdapter(adapter persist.Adapter) StartOptions {
 func WithAdditionalConfigLoader(loader config.Loader) StartOptions {
 	return func(c StartConfig) StartConfig {
 		c.configLoaders = append(c.configLoaders, loader)
+		return c
+	}
+}
+
+// WithConfigLoaderOrder option is a slice of config.Loader names and is used as the priority of the loaders.
+func WithConfigLoaderOrder(loaderOrder []string) StartOptions {
+	return func(c StartConfig) StartConfig {
+		c.configLoaderOrder = loaderOrder
 		return c
 	}
 }

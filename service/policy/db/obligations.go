@@ -496,15 +496,11 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 	var oblValReq *obligations.GetObligationValueRequest
 	if r.GetObligationValue().GetId() != "" {
 		oblValReq = &obligations.GetObligationValueRequest{
-			Identifier: &obligations.GetObligationValueRequest_Id{
-				Id: r.GetObligationValue().GetId(),
-			},
+			Id: r.GetObligationValue().GetId(),
 		}
 	} else {
 		oblValReq = &obligations.GetObligationValueRequest{
-			Identifier: &obligations.GetObligationValueRequest_Fqn{
-				Fqn: r.GetObligationValue().GetFqn(),
-			},
+			Fqn: r.GetObligationValue().GetFqn(),
 		}
 	}
 

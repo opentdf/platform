@@ -13,6 +13,7 @@ const (
 	ObjectTypeAttributeValue
 	ObjectTypeObligationDefinition
 	ObjectTypeObligationValue
+	ObjectTypeObligationTrigger
 	ObjectTypeNamespace
 	ObjectTypeConditionSet
 	ObjectTypeKasRegistry
@@ -41,6 +42,7 @@ func (ot ObjectType) String() string {
 		"attribute_value",
 		"obligation_definition",
 		"obligation_value",
+		"obligation_trigger",
 		"namespace",
 		"condition_set",
 		"kas_registry",

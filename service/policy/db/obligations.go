@@ -481,3 +481,76 @@ func (c PolicyDBClient) DeleteObligationValue(ctx context.Context, r *obligation
 		Id: id,
 	}, nil
 }
+
+// ********************************************
+// ! Obligation Triggers
+// ********************************************
+
+func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligations.AddObligationTriggerRequest) (*policy.ObligationTrigger, error) {
+	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
+	if err != nil {
+		return nil, err
+	}
+
+	// Get obligation
+	var oblValReq *obligations.GetObligationValueRequest
+	if r.GetObligationValue().GetId() != "" {
+		oblValReq = &obligations.GetObligationValueRequest{
+			Identifier: &obligations.GetObligationValueRequest_Id{
+				Id: r.GetObligationValue().GetId(),
+			},
+		}
+	} else {
+		oblValReq = &obligations.GetObligationValueRequest{
+			Identifier: &obligations.GetObligationValueRequest_Fqn{
+				Fqn: r.GetObligationValue().GetFqn(),
+			},
+		}
+	}
+
+	oblVal, err := c.GetObligationValue(ctx, oblValReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get obligation value: %w", err)
+	}
+
+	params := createObligationTriggerParams{
+		ObligationValueID: oblVal.GetId(),
+		ActionName:        r.GetAction().GetName(),
+		ActionID:          r.GetAction().GetId(),
+		AttributeValueID:  r.GetAttributeValue().GetId(),
+		AttributeValueFqn: r.GetAttributeValue().GetFqn(),
+		Metadata:          metadataJSON,
+	}
+	row, err := c.queries.createObligationTrigger(ctx, params)
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+
+	metadata := &common.Metadata{}
+	if err := unmarshalMetadata(row.Metadata, metadata); err != nil {
+		return nil, err
+	}
+
+	trigger, err := unmarshalObligationTrigger(row.Trigger)
+	if err != nil {
+		return nil, err
+	}
+
+	trigger.Metadata = metadata
+
+	return trigger, nil
+}
+
+func (c PolicyDBClient) DeleteObligationTrigger(ctx context.Context, r *obligations.RemoveObligationTriggerRequest) (*policy.ObligationTrigger, error) {
+	id, err := c.queries.deleteObligationTrigger(ctx, r.GetId())
+	if err != nil {
+		return nil, db.WrapIfKnownInvalidQueryErr(err)
+	}
+	if id == "" {
+		return nil, db.ErrNotFound
+	}
+
+	return &policy.ObligationTrigger{
+		Id: id,
+	}, nil
+}

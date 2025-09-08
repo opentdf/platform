@@ -179,6 +179,14 @@
             <ul>
               
                 <li>
+                  <a href="#common.IdFqnIdentifier"><span class="badge">M</span>IdFqnIdentifier</a>
+                </li>
+              
+                <li>
+                  <a href="#common.IdNameIdentifier"><span class="badge">M</span>IdNameIdentifier</a>
+                </li>
+              
+                <li>
                   <a href="#common.Metadata"><span class="badge">M</span>Metadata</a>
                 </li>
               
@@ -2012,6 +2020,68 @@
       </div>
       <p></p>
 
+      
+        <h3 id="common.IdFqnIdentifier">IdFqnIdentifier</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="common.IdNameIdentifier">IdNameIdentifier</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
       
         <h3 id="common.Metadata">Metadata</h3>
         <p>Struct to uniquely identify a resource with optional additional metadata</p>
@@ -12233,22 +12303,22 @@ Namespace &lt;&gt; Key RPCs
             <tbody>
               
                 <tr>
-                  <td>obligation_value_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>obligation_value</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
                   <td></td>
                   <td><p>Required </p></td>
                 </tr>
               
                 <tr>
-                  <td>action_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>action</td>
+                  <td><a href="#common.IdNameIdentifier">common.IdNameIdentifier</a></td>
                   <td></td>
                   <td><p>Required </p></td>
                 </tr>
               
                 <tr>
-                  <td>attribute_value_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>attribute_value</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
                   <td></td>
                   <td><p>Required </p></td>
                 </tr>
@@ -13099,15 +13169,15 @@ Obligation Triggers provided here will replace all existing records in the datab
             <tbody>
               
                 <tr>
-                  <td>action_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>action</td>
+                  <td><a href="#common.IdNameIdentifier">common.IdNameIdentifier</a></td>
                   <td></td>
                   <td><p>Required. The ID of the action that will trigger this obligation value policy decisioning. </p></td>
                 </tr>
               
                 <tr>
-                  <td>attribute_value_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>attribute_value</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
                   <td></td>
                   <td><p>Required. The attribute value ID that will trigger this obligation value policy decisioning. </p></td>
                 </tr>

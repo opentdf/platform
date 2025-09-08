@@ -328,9 +328,9 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 	if len(r.GetTriggers()) > 0 {
 		for i, trigger := range r.GetTriggers() {
 			createdTrigger, err := c.CreateObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
-				ObligationValueId: row.ID,
-				ActionId:          trigger.GetActionId(),
-				AttributeValueId:  trigger.GetAttributeValueId(),
+				ObligationValue: &common.IdFqnIdentifier{Id: row.ID},
+				Action:          trigger.GetAction(),
+				AttributeValue:  trigger.GetAttributeValue(),
 			})
 			if err != nil {
 				return nil, err
@@ -508,9 +508,9 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 		triggers = make([]*policy.ObligationTrigger, len(r.GetTriggers()))
 		for i, trigger := range r.GetTriggers() {
 			createdTrigger, err := c.CreateObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
-				ObligationValueId: id,
-				ActionId:          trigger.GetActionId(),
-				AttributeValueId:  trigger.GetAttributeValueId(),
+				ObligationValue: &common.IdFqnIdentifier{Id: id},
+				Action:          trigger.GetAction(),
+				AttributeValue:  trigger.GetAttributeValue(),
 			})
 			if err != nil {
 				return nil, err
@@ -560,10 +560,33 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		return nil, err
 	}
 
+	// Get obligation
+	var oblValReq *obligations.GetObligationValueRequest
+	if r.GetObligationValue().GetId() != "" {
+		oblValReq = &obligations.GetObligationValueRequest{
+			Identifier: &obligations.GetObligationValueRequest_Id{
+				Id: r.GetObligationValue().GetId(),
+			},
+		}
+	} else {
+		oblValReq = &obligations.GetObligationValueRequest{
+			Identifier: &obligations.GetObligationValueRequest_Fqn{
+				Fqn: r.GetObligationValue().GetFqn(),
+			},
+		}
+	}
+
+	oblVal, err := c.GetObligationValue(ctx, oblValReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get obligation value: %w", err)
+	}
+
 	params := createObligationTriggerParams{
-		ObligationValueID: r.GetObligationValueId(),
-		ActionID:          r.GetActionId(),
-		AttributeValueID:  r.GetAttributeValueId(),
+		ObligationValueID: oblVal.GetId(),
+		ActionName:        r.GetAction().GetName(),
+		ActionID:          r.GetAction().GetId(),
+		AttributeValueID:  r.GetAttributeValue().GetId(),
+		AttributeValueFqn: r.GetAttributeValue().GetFqn(),
 		Metadata:          metadataJSON,
 	}
 	row, err := c.queries.createObligationTrigger(ctx, params)

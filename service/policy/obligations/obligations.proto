@@ -22,9 +22,9 @@ message GetObligationRequest {
 
 message ValueTriggerRequest {
     // Required. The ID of the action that will trigger this obligation value policy decisioning.
-    string action_id = 1 [(buf.validate.field).string.uuid = true];
+    common.IdNameIdentifier action = 1 [(buf.validate.field).required = true];
     // Required. The attribute value ID that will trigger this obligation value policy decisioning.
-    string attribute_value_id = 2 [(buf.validate.field).string.uuid = true];
+    common.IdFqnIdentifier attribute_value = 2 [(buf.validate.field).required = true];
 }
 
 message GetObligationResponse {
@@ -174,11 +174,11 @@ message DeleteObligationValueResponse {
 // Triggers
 message AddObligationTriggerRequest {
     // Required
-    string obligation_value_id = 1 [(buf.validate.field).string.uuid = true];
+    common.IdFqnIdentifier obligation_value = 1 [(buf.validate.field).required = true];
     // Required
-    string action_id = 2 [(buf.validate.field).string.uuid = true];
+    common.IdNameIdentifier action = 2 [(buf.validate.field).required = true];
     // Required
-    string attribute_value_id = 3 [(buf.validate.field).string.uuid = true];
+    common.IdFqnIdentifier attribute_value = 3 [(buf.validate.field).required = true];
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;

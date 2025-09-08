@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -591,7 +592,11 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 	}
 	row, err := c.queries.createObligationTrigger(ctx, params)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		wrappedErr := db.WrapIfKnownInvalidQueryErr(err)
+		if errors.Is(wrappedErr, db.ErrNotNullViolation) {
+			return nil, errors.Join(db.ErrInvalidOblTriParam, wrappedErr)
+		}
+		return nil, wrappedErr
 	}
 
 	metadata := &common.Metadata{}

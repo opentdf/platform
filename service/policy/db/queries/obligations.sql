@@ -51,47 +51,28 @@ LEFT JOIN inserted_values iv ON iv.obligation_definition_id = io.id
 GROUP BY io.id, io.name, io.metadata, n.id, fqns.fqn;
 
 -- name: getObligation :one
-SELECT
-    od.id,
-    od.name,
-    JSON_BUILD_OBJECT(
-        'id', n.id,
-        'name', n.name,
-        'fqn', fqns.fqn
-    ) as namespace,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
-    JSON_AGG(
-        JSON_BUILD_OBJECT(
-            'id', ov.id,
-            'value', ov.value
-        )
-    ) FILTER (WHERE ov.id IS NOT NULL) as values
-    -- todo: add triggers and fulfillers
-FROM obligation_definitions od
-JOIN attribute_namespaces n on od.namespace_id = n.id
-LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
-WHERE
-    -- lookup by obligation id OR by namespace fqn + obligation name
-    (
-        -- lookup by obligation id
-        (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = @id::UUID)
-        OR
-        -- lookup by namespace fqn + obligation name
-        (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL 
-         AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
-    )
-GROUP BY od.id, n.id, fqns.fqn;
-
--- name: listObligations :many
-WITH counted AS (
-    SELECT COUNT(od.id) AS total
-    FROM obligation_definitions od
-    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
-    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
-    WHERE
-        (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
-        (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
+WITH obligation_triggers_agg AS (
+    SELECT
+        ot.obligation_value_id,
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', ot.id,
+                'action', JSON_BUILD_OBJECT(
+                    'id', a.id,
+                    'name', a.name
+                ),
+                'attribute_value', JSON_BUILD_OBJECT(
+                    'id', av.id,
+                    'value', av.value,
+                    'fqn', COALESCE(av_fqns.fqn, '')
+                )
+            )
+        ) as triggers
+    FROM obligation_triggers ot
+    JOIN actions a ON ot.action_id = a.id
+    JOIN attribute_values av ON ot.attribute_value_id = av.id
+    LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
+    GROUP BY ot.obligation_value_id
 )
 SELECT
     od.id,
@@ -105,16 +86,86 @@ SELECT
     JSON_AGG(
         JSON_BUILD_OBJECT(
             'id', ov.id,
-            'value', ov.value
+            'value', ov.value,
+            'triggers', COALESCE(ota.triggers, '[]'::JSON)
         )
-    ) FILTER (WHERE ov.id IS NOT NULL) as values,
-    -- todo: add triggers and fulfillers
+    ) FILTER (WHERE ov.id IS NOT NULL) as values
+FROM obligation_definitions od
+JOIN attribute_namespaces n on od.namespace_id = n.id
+LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
+LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
+WHERE
+    -- lookup by obligation id OR by namespace fqn + obligation name
+    (
+        -- lookup by obligation id
+        (NULLIF(@id::TEXT, '') IS NOT NULL AND od.id = @id::UUID)
+        OR
+        -- lookup by namespace fqn + obligation name
+        (NULLIF(@namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@name::TEXT, '') IS NOT NULL
+         AND fqns.fqn = @namespace_fqn::VARCHAR AND od.name = @name::VARCHAR)
+    )
+GROUP BY od.id, n.id, fqns.fqn;
+
+-- name: listObligations :many
+WITH counted AS (
+    SELECT COUNT(od.id) AS total
+    FROM obligation_definitions od
+    LEFT JOIN attribute_namespaces n ON od.namespace_id = n.id
+    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+    WHERE
+        (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
+        (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
+),
+obligation_triggers_agg AS (
+    SELECT
+        ot.obligation_value_id,
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', ot.id,
+                'action', JSON_BUILD_OBJECT(
+                    'id', a.id,
+                    'name', a.name
+                ),
+                'attribute_value', JSON_BUILD_OBJECT(
+                    'id', av.id,
+                    'value', av.value,
+                    'fqn', COALESCE(av_fqns.fqn, '')
+                )
+            )
+        ) as triggers
+    FROM obligation_triggers ot
+    JOIN actions a ON ot.action_id = a.id
+    JOIN attribute_values av ON ot.attribute_value_id = av.id
+    LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
+    GROUP BY ot.obligation_value_id
+)
+SELECT
+    od.id,
+    od.name,
+    JSON_BUILD_OBJECT(
+        'id', n.id,
+        'name', n.name,
+        'fqn', fqns.fqn
+    ) as namespace,
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
+    COALESCE(
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', ov.id,
+                'value', ov.value,
+                'triggers', COALESCE(ota.triggers, '[]'::JSON)
+            )
+        ) FILTER (WHERE ov.id IS NOT NULL),
+        '[]'::JSON
+    ) as values,
     counted.total
 FROM obligation_definitions od
 JOIN attribute_namespaces n on od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
 CROSS JOIN counted
 LEFT JOIN obligation_values_standard ov on od.id = ov.obligation_definition_id
+LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 WHERE
     (NULLIF(@namespace_id::TEXT, '') IS NULL OR od.namespace_id = @namespace_id::UUID) AND
     (NULLIF(@namespace_fqn::TEXT, '') IS NULL OR fqns.fqn = @namespace_fqn::VARCHAR)
@@ -150,6 +201,29 @@ WHERE id IN (
 RETURNING id;
 
 -- name: getObligationsByFQNs :many
+WITH obligation_triggers_agg AS (
+    SELECT
+        ot.obligation_value_id,
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', ot.id,
+                'action', JSON_BUILD_OBJECT(
+                    'id', a.id,
+                    'name', a.name
+                ),
+                'attribute_value', JSON_BUILD_OBJECT(
+                    'id', av.id,
+                    'value', av.value,
+                    'fqn', COALESCE(av_fqns.fqn, '')
+                )
+            )
+        ) as triggers
+    FROM obligation_triggers ot
+    JOIN actions a ON ot.action_id = a.id
+    JOIN attribute_values av ON ot.attribute_value_id = av.id
+    LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
+    GROUP BY ot.obligation_value_id
+)
 SELECT
     od.id,
     od.name,
@@ -163,7 +237,8 @@ SELECT
         JSON_AGG(
             JSON_BUILD_OBJECT(
                 'id', ov.id,
-                'value', ov.value
+                'value', ov.value,
+                'triggers', COALESCE(ota.triggers, '[]'::JSON)
             )
         ) FILTER (WHERE ov.id IS NOT NULL),
         '[]'::JSON
@@ -180,6 +255,8 @@ ON
     fqns.fqn = fqn_pairs.ns_fqn AND od.name = fqn_pairs.obl_name
 LEFT JOIN
     obligation_values_standard ov on od.id = ov.obligation_definition_id
+LEFT JOIN
+    obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 GROUP BY
     od.id, n.id, fqns.fqn;
 
@@ -227,6 +304,29 @@ JOIN attribute_namespaces n ON od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL;
 
 -- name: getObligationValue :one
+WITH obligation_triggers_agg AS (
+    SELECT
+        ot.obligation_value_id,
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', ot.id,
+                'action', JSON_BUILD_OBJECT(
+                    'id', a.id,
+                    'name', a.name
+                ),
+                'attribute_value', JSON_BUILD_OBJECT(
+                    'id', av.id,
+                    'value', av.value,
+                    'fqn', COALESCE(av_fqns.fqn, '')
+                )
+            )
+        ) as triggers
+    FROM obligation_triggers ot
+    JOIN actions a ON ot.action_id = a.id
+    JOIN attribute_values av ON ot.attribute_value_id = av.id
+    LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
+    GROUP BY ot.obligation_value_id
+)
 SELECT
     ov.id,
     ov.value,
@@ -237,11 +337,13 @@ SELECT
         'name', n.name,
         'fqn', fqns.fqn
     ) as namespace,
-    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ov.metadata -> 'labels', 'created_at', ov.created_at,'updated_at', ov.updated_at)) as metadata
+    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', ov.metadata -> 'labels', 'created_at', ov.created_at,'updated_at', ov.updated_at)) as metadata,
+    COALESCE(ota.triggers, '[]'::JSON) as triggers
 FROM obligation_values_standard ov
 JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
 JOIN attribute_namespaces n ON od.namespace_id = n.id
 LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
+LEFT JOIN obligation_triggers_agg ota on ov.id = ota.obligation_value_id
 WHERE
     -- lookup by value id OR by namespace fqn + obligation name + value name
     (
@@ -261,6 +363,29 @@ SET
 WHERE id = @id;
 
 -- name: getObligationValuesByFQNs :many
+WITH obligation_triggers_agg AS (
+    SELECT
+        ot.obligation_value_id,
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'id', ot.id,
+                'action', JSON_BUILD_OBJECT(
+                    'id', a.id,
+                    'name', a.name
+                ),
+                'attribute_value', JSON_BUILD_OBJECT(
+                    'id', av.id,
+                    'value', av.value,
+                    'fqn', COALESCE(av_fqns.fqn, '')
+                )
+            )
+        ) as triggers
+    FROM obligation_triggers ot
+    JOIN actions a ON ot.action_id = a.id
+    JOIN attribute_values av ON ot.attribute_value_id = av.id
+    LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
+    GROUP BY ot.obligation_value_id
+)
 SELECT
     ov.id,
     ov.value,
@@ -271,7 +396,8 @@ SELECT
         'id', n.id,
         'name', n.name,
         'fqn', fqns.fqn
-    ) as namespace
+    ) as namespace,
+    COALESCE(ota.triggers, '[]'::JSON) as triggers
 FROM
     obligation_values_standard ov
 JOIN
@@ -283,7 +409,9 @@ JOIN
 JOIN
     (SELECT unnest(@namespace_fqns::text[]) as ns_fqn, unnest(@names::text[]) as obl_name, unnest(@values::text[]) as value) as fqn_pairs
 ON
-    fqns.fqn = fqn_pairs.ns_fqn AND od.name = fqn_pairs.obl_name AND ov.value = fqn_pairs.value;
+    fqns.fqn = fqn_pairs.ns_fqn AND od.name = fqn_pairs.obl_name AND ov.value = fqn_pairs.value
+LEFT JOIN
+    obligation_triggers_agg ota on ov.id = ota.obligation_value_id;
 
 -- name: deleteObligationValue :one
 DELETE FROM obligation_values_standard

@@ -96,7 +96,7 @@ message GetAttributeRequest {
   // Deprecated
   string id = 1 [
     deprecated = true,
-    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string.uuid = true
   ];
 
@@ -192,7 +192,7 @@ message GetAttributeValueRequest {
   // Deprecated
   string id = 1 [
     deprecated = true,
-    (buf.validate.field).ignore = IGNORE_IF_DEFAULT_VALUE,
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string.uuid = true
   ];
 

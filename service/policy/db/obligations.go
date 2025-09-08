@@ -518,17 +518,34 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		return nil, err
 	}
 
-	nsFQN, oblName, oblVal := breakOblValFQN(r.GetObligationValue().GetFqn())
+	// Get obligation
+	var oblValReq *obligations.GetObligationValueRequest
+	if r.GetObligationValue().GetId() != "" {
+		oblValReq = &obligations.GetObligationValueRequest{
+			Identifier: &obligations.GetObligationValueRequest_Id{
+				Id: r.GetObligationValue().GetId(),
+			},
+		}
+	} else {
+		oblValReq = &obligations.GetObligationValueRequest{
+			Identifier: &obligations.GetObligationValueRequest_Fqn{
+				Fqn: r.GetObligationValue().GetFqn(),
+			},
+		}
+	}
+
+	oblVal, err := c.GetObligationValue(ctx, oblValReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get obligation value: %w", err)
+	}
+
 	params := createObligationTriggerParams{
-		ObligationValueID:      r.GetObligationValue().GetId(),
-		ObligationNamespaceFqn: nsFQN,
-		ObligationName:         oblName,
-		ObligationValue:        oblVal,
-		ActionName:             r.GetAction().GetName(),
-		ActionID:               r.GetAction().GetId(),
-		AttributeValueID:       r.GetAttributeValue().GetId(),
-		AttributeValueFqn:      r.GetAttributeValue().GetFqn(),
-		Metadata:               metadataJSON,
+		ObligationValueID: oblVal.GetId(),
+		ActionName:        r.GetAction().GetName(),
+		ActionID:          r.GetAction().GetId(),
+		AttributeValueID:  r.GetAttributeValue().GetId(),
+		AttributeValueFqn: r.GetAttributeValue().GetFqn(),
+		Metadata:          metadataJSON,
 	}
 	row, err := c.queries.createObligationTrigger(ctx, params)
 	if err != nil {

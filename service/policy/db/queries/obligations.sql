@@ -311,20 +311,12 @@ RETURNING id;
 ----------------------------------------------------------------
 
 -- name: createObligationTrigger :one
-WITH
-ov_id AS (
+WITH ov_id AS (
     SELECT ov.id, od.namespace_id
     FROM obligation_values_standard ov
     JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
-    JOIN attribute_namespaces n ON od.namespace_id = n.id
-    LEFT JOIN attribute_fqns fqns ON fqns.namespace_id = n.id AND fqns.attribute_id IS NULL AND fqns.value_id IS NULL
     WHERE
         (NULLIF(@obligation_value_id::TEXT, '') IS NOT NULL AND ov.id = @obligation_value_id::UUID)
-        OR
-        (
-            (NULLIF(@obligation_namespace_fqn::TEXT, '') IS NOT NULL AND NULLIF(@obligation_name::TEXT, '') IS NOT NULL AND NULLIF(@obligation_value::TEXT, '') IS NOT NULL AND
-            fqns.fqn = @obligation_namespace_fqn::VARCHAR AND od.name = @obligation_name::VARCHAR AND ov.value = @obligation_value::VARCHAR)
-        )
 ),
 a_id AS (
     SELECT id FROM actions

@@ -173,7 +173,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ObligationValueNo
 		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
 	})
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotNullViolation)
+	s.Require().ErrorIs(err, db.ErrNotFound)
 	s.Nil(trigger)
 }
 

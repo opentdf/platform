@@ -31,3 +31,20 @@ func TestBreakOblValFQN(t *testing.T) {
 	require.Equal(t, "", oblName)
 	require.Equal(t, "", valName)
 }
+
+func TestBuildOblFQN(t *testing.T) {
+	nsFQN := "https://namespace.com"
+	oblName := "drm"
+	expectedFQN := nsFQN + "/obl/" + oblName
+	fqn := BuildOblFQN(nsFQN, oblName)
+	require.Equal(t, expectedFQN, fqn)
+}
+
+func TestBuildOblValFQN(t *testing.T) {
+	nsFQN := "https://namespace.com"
+	oblName := "drm"
+	valName := "watermark"
+	expectedFQN := nsFQN + "/obl/" + oblName + "/value/" + valName
+	fqn := BuildOblValFQN(nsFQN, oblName, valName)
+	require.Equal(t, expectedFQN, fqn)
+}

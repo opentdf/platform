@@ -12,6 +12,7 @@ import (
 
 const (
 	invalidUUID = "invalid-uuid"
+	validURI    = "https://example.com/attr/value/1"
 )
 
 func getValidator() protovalidate.Validator {
@@ -246,14 +247,28 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "valid with one trigger",
+			name: "valid with one trigger and ids",
 			req: &obligations.CreateObligationValueRequest{
 				ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{Id: validUUID},
 				Value:                "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						ActionId:         validUUID,
-						AttributeValueId: validUUID,
+						Action:         &common.IdNameIdentifier{Id: validUUID},
+						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "valid with one trigger and fqns/names",
+			req: &obligations.CreateObligationValueRequest{
+				ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{Id: validUUID},
+				Value:                "value",
+				Triggers: []*obligations.ValueTriggerRequest{
+					{
+						Action:         &common.IdNameIdentifier{Name: validUUID},
+						AttributeValue: &common.IdFqnIdentifier{Fqn: validURI},
 					},
 				},
 			},
@@ -266,12 +281,12 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 				Value:                "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						ActionId:         validUUID,
-						AttributeValueId: validUUID,
+						Action:         &common.IdNameIdentifier{Id: validUUID},
+						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
 					},
 					{
-						ActionId:         validUUID,
-						AttributeValueId: validUUID,
+						Action:         &common.IdNameIdentifier{Id: validUUID},
+						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
 					},
 				},
 			},
@@ -284,8 +299,8 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 				Value:                "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						ActionId:         invalidUUID,
-						AttributeValueId: validUUID,
+						Action:         &common.IdNameIdentifier{Id: invalidUUID},
+						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
 					},
 				},
 			},
@@ -299,8 +314,8 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 				Value:                "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						ActionId:         validUUID,
-						AttributeValueId: invalidUUID,
+						Action:         &common.IdNameIdentifier{Id: validUUID},
+						AttributeValue: &common.IdFqnIdentifier{Id: invalidUUID},
 					},
 				},
 			},
@@ -314,7 +329,7 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 				Value:                "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						AttributeValueId: validUUID,
+						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
 					},
 				},
 			},
@@ -328,7 +343,7 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 				Value:                "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						ActionId: validUUID,
+						Action: &common.IdNameIdentifier{Id: validUUID},
 					},
 				},
 			},
@@ -375,8 +390,8 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 				Value: "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						ActionId:         validUUID,
-						AttributeValueId: validUUID,
+						Action:         &common.IdNameIdentifier{Id: validUUID},
+						AttributeValue: &common.IdFqnIdentifier{Fqn: validURI},
 					},
 				},
 			},
@@ -389,12 +404,12 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 				Value: "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						ActionId:         validUUID,
-						AttributeValueId: validUUID,
+						Action:         &common.IdNameIdentifier{Id: validUUID},
+						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
 					},
 					{
-						ActionId:         validUUID,
-						AttributeValueId: validUUID,
+						Action:         &common.IdNameIdentifier{Id: validUUID},
+						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
 					},
 				},
 			},
@@ -407,8 +422,8 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 				Value: "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						ActionId:         invalidUUID,
-						AttributeValueId: validUUID,
+						Action:         &common.IdNameIdentifier{Id: invalidUUID},
+						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
 					},
 				},
 			},
@@ -422,8 +437,8 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 				Value: "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						ActionId:         validUUID,
-						AttributeValueId: invalidUUID,
+						Action:         &common.IdNameIdentifier{Id: validUUID},
+						AttributeValue: &common.IdFqnIdentifier{Id: invalidUUID},
 					},
 				},
 			},
@@ -437,7 +452,7 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 				Value: "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						AttributeValueId: validUUID,
+						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
 					},
 				},
 			},
@@ -451,7 +466,7 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 				Value: "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						ActionId: validUUID,
+						Action: &common.IdNameIdentifier{Id: validUUID},
 					},
 				},
 			},

@@ -562,7 +562,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_Succeeds() {
 	s.deleteObligations([]string{createdObl.GetId()})
 }
 
-func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_Succeeds() {
+func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_IDs_Succeeds() {
 	// Set up the obligation
 	triggerSetup := s.setupTriggerTests()
 	defer s.deleteObligations([]string{triggerSetup.createdObl.GetId()})
@@ -575,12 +575,57 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_Succeeds() {
 		Value: oblValPrefix + "test-1",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
-				ActionId:         triggerSetup.action.GetId(),
-				AttributeValueId: triggerSetup.attributeValues[0].ID,
+				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[0].ID},
 			},
 			{
-				ActionId:         triggerSetup.action.GetId(),
-				AttributeValueId: triggerSetup.attributeValues[1].ID,
+				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[1].ID},
+			},
+		},
+	})
+
+	// Assert the results
+	s.Require().NoError(err)
+	s.NotNil(oblValue)
+	s.assertObligationValueBasics(oblValue, oblValPrefix+"test-1", triggerSetup.namespace.ID, triggerSetup.namespace.Name, httpsPrefix+triggerSetup.namespace.Name)
+	s.assertTriggers(oblValue, []*TriggerAssertion{
+		{
+			expectedAction:            triggerSetup.action,
+			expectedObligation:        triggerSetup.createdObl,
+			expectedAttributeValue:    triggerSetup.attributeValues[0],
+			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value1",
+			expectedObligationValue:   oblValue,
+		},
+		{
+			expectedAction:            triggerSetup.action,
+			expectedObligation:        triggerSetup.createdObl,
+			expectedAttributeValue:    triggerSetup.attributeValues[1],
+			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value2",
+			expectedObligationValue:   oblValue,
+		},
+	})
+}
+
+func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_FQNsNames_Succeeds() {
+	// Set up the obligation
+	triggerSetup := s.setupTriggerTests()
+	defer s.deleteObligations([]string{triggerSetup.createdObl.GetId()})
+
+	// Create the obligation value with a trigger
+	oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
+			Id: triggerSetup.createdObl.GetId(),
+		},
+		Value: oblValPrefix + "test-1",
+		Triggers: []*obligations.ValueTriggerRequest{
+			{
+				Action:         &common.IdNameIdentifier{Name: triggerSetup.action.GetName()},
+				AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value1"},
+			},
+			{
+				Action:         &common.IdNameIdentifier{Name: triggerSetup.action.GetName()},
+				AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value2"},
 			},
 		},
 	})
@@ -980,7 +1025,7 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_Succeeds() {
 
 // TODO:  Add a test to verify that no existing triggers change when not specifying triggers.
 // TODO:  Add test when we return triggers in Obligation GETs/Lists
-func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
+func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_IDs_Succeeds() {
 	triggerSetup := s.setupTriggerTests()
 	defer s.deleteObligations([]string{triggerSetup.createdObl.GetId()})
 
@@ -991,12 +1036,12 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 		Value: oblValPrefix + "test-1",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
-				ActionId:         triggerSetup.action.GetId(),
-				AttributeValueId: triggerSetup.attributeValues[0].ID,
+				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[0].ID},
 			},
 			{
-				ActionId:         triggerSetup.action.GetId(),
-				AttributeValueId: triggerSetup.attributeValues[1].ID,
+				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[1].ID},
 			},
 		},
 	})
@@ -1027,8 +1072,75 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 		Value: oblValPrefix + "test-1-updated",
 		Triggers: []*obligations.ValueTriggerRequest{
 			{
-				ActionId:         triggerSetup.action.GetId(),
-				AttributeValueId: triggerSetup.attributeValues[0].ID,
+				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[0].ID},
+			},
+		},
+	})
+	s.Require().NoError(err)
+	s.NotNil(updatedOblValue)
+	s.assertObligationValueBasics(updatedOblValue, oblValPrefix+"test-1-updated", triggerSetup.namespace.ID, triggerSetup.namespace.Name, httpsPrefix+triggerSetup.namespace.Name)
+	s.assertTriggers(updatedOblValue, []*TriggerAssertion{
+		{
+			expectedAction:            triggerSetup.action,
+			expectedObligation:        triggerSetup.createdObl,
+			expectedAttributeValue:    triggerSetup.attributeValues[0],
+			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value1",
+			expectedObligationValue:   updatedOblValue,
+		},
+	})
+	s.Require().NotEqual(oblValue.GetTriggers()[1].GetAttributeValue().GetFqn(), updatedOblValue.GetTriggers()[0].GetAttributeValue().GetFqn(), "The second trigger should have been removed")
+}
+
+func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_FQNName_Succeeds() {
+	triggerSetup := s.setupTriggerTests()
+	defer s.deleteObligations([]string{triggerSetup.createdObl.GetId()})
+
+	oblValue, err := s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
+		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
+			Id: triggerSetup.createdObl.GetId(),
+		},
+		Value: oblValPrefix + "test-1",
+		Triggers: []*obligations.ValueTriggerRequest{
+			{
+				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[0].ID},
+			},
+			{
+				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
+				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[1].ID},
+			},
+		},
+	})
+
+	// Assert the results
+	s.Require().NoError(err)
+	s.NotNil(oblValue)
+	s.assertObligationValueBasics(oblValue, oblValPrefix+"test-1", triggerSetup.namespace.ID, triggerSetup.namespace.Name, httpsPrefix+triggerSetup.namespace.Name)
+	s.assertTriggers(oblValue, []*TriggerAssertion{
+		{
+			expectedAction:            triggerSetup.action,
+			expectedObligation:        triggerSetup.createdObl,
+			expectedAttributeValue:    triggerSetup.attributeValues[0],
+			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value1",
+			expectedObligationValue:   oblValue,
+		},
+		{
+			expectedAction:            triggerSetup.action,
+			expectedObligation:        triggerSetup.createdObl,
+			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value2",
+			expectedAttributeValue:    triggerSetup.attributeValues[1],
+			expectedObligationValue:   oblValue,
+		},
+	})
+
+	updatedOblValue, err := s.db.PolicyClient.UpdateObligationValue(s.ctx, &obligations.UpdateObligationValueRequest{
+		Id:    oblValue.GetId(),
+		Value: oblValPrefix + "test-1-updated",
+		Triggers: []*obligations.ValueTriggerRequest{
+			{
+				Action:         &common.IdNameIdentifier{Name: triggerSetup.action.GetName()},
+				AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value1"},
 			},
 		},
 	})

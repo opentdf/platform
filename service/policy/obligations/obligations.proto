@@ -22,9 +22,9 @@ message GetObligationRequest {
 
 message ValueTriggerRequest {
     // Required. The ID of the action that will trigger this obligation value policy decisioning.
-    string action_id = 1 [(buf.validate.field).string.uuid = true];
+    common.IdNameIdentifier action = 1 [(buf.validate.field).required = true];
     // Required. The attribute value ID that will trigger this obligation value policy decisioning.
-    string attribute_value_id = 2 [(buf.validate.field).string.uuid = true];
+    common.IdFqnIdentifier attribute_value = 2 [(buf.validate.field).required = true];
 }
 
 message GetObligationResponse {

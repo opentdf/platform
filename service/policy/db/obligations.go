@@ -328,9 +328,9 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 	if len(r.GetTriggers()) > 0 {
 		for i, trigger := range r.GetTriggers() {
 			createdTrigger, err := c.CreateObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
-				ObligationValueId: row.ID,
-				ActionId:          trigger.GetActionId(),
-				AttributeValueId:  trigger.GetAttributeValueId(),
+				ObligationValue: &common.IdFqnIdentifier{Id: row.ID},
+				Action:          trigger.GetAction(),
+				AttributeValue:  trigger.GetAttributeValue(),
 			})
 			if err != nil {
 				return nil, err
@@ -508,9 +508,9 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 		triggers = make([]*policy.ObligationTrigger, len(r.GetTriggers()))
 		for i, trigger := range r.GetTriggers() {
 			createdTrigger, err := c.CreateObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
-				ObligationValueId: id,
-				ActionId:          trigger.GetActionId(),
-				AttributeValueId:  trigger.GetAttributeValueId(),
+				ObligationValue: &common.IdFqnIdentifier{Id: id},
+				Action:          trigger.GetAction(),
+				AttributeValue:  trigger.GetAttributeValue(),
 			})
 			if err != nil {
 				return nil, err

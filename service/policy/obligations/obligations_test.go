@@ -316,7 +316,7 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: "action_id",
+			errorMessage: "action.id",
 		},
 		{
 			name: "invalid trigger with invalid attribute_value_id",
@@ -331,7 +331,7 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: "attribute_value_id",
+			errorMessage: "attribute_value.id",
 		},
 		{
 			name: "invalid trigger with missing action_id",
@@ -345,7 +345,7 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: "action_id",
+			errorMessage: "action",
 		},
 		{
 			name: "invalid trigger with missing attribute_value_id",
@@ -359,7 +359,7 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: "attribute_value_id",
+			errorMessage: "attribute_value",
 		},
 	}
 
@@ -439,7 +439,7 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: "action_id",
+			errorMessage: "action.id",
 		},
 		{
 			name: "invalid trigger with invalid attribute_value_id",
@@ -454,7 +454,7 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: "attribute_value_id",
+			errorMessage: "attribute_value.id",
 		},
 		{
 			name: "invalid trigger with missing action_id",
@@ -468,7 +468,7 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: "action_id",
+			errorMessage: "action",
 		},
 		{
 			name: "invalid trigger with missing attribute_value_id",
@@ -482,7 +482,7 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 				},
 			},
 			expectError:  true,
-			errorMessage: "attribute_value_id",
+			errorMessage: "attribute_value",
 		},
 	}
 

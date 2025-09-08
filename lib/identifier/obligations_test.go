@@ -14,8 +14,8 @@ func TestBreakOblFQN(t *testing.T) {
 
 	invalidFQN := ""
 	nsFQN, oblName = BreakOblFQN(invalidFQN)
-	require.Equal(t, "", nsFQN)
-	require.Equal(t, "", oblName)
+	require.Empty(t, nsFQN)
+	require.Empty(t, oblName)
 }
 
 func TestBreakOblValFQN(t *testing.T) {
@@ -27,9 +27,9 @@ func TestBreakOblValFQN(t *testing.T) {
 
 	invalidFQN := ""
 	nsFQN, oblName, valName = BreakOblValFQN(invalidFQN)
-	require.Equal(t, "", nsFQN)
-	require.Equal(t, "", oblName)
-	require.Equal(t, "", valName)
+	require.Empty(t, nsFQN)
+	require.Empty(t, oblName)
+	require.Empty(t, valName)
 }
 
 func TestBuildOblFQN(t *testing.T) {

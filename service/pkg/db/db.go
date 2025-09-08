@@ -70,22 +70,22 @@ type PgxIface interface {
 // PoolConfig holds all connection pool related configuration
 type PoolConfig struct {
 	// Maximum amount of connections to keep in the pool.
-	MaxConns int32 `mapstructure:"max_connection_count" json:"maxConnectionsCount" default:"4"`
+	MaxConns int32 `mapstructure:"max_connection_count" json:"max_connection_count" default:"4"`
 
 	// Minimum amount of connections to keep in the pool.
-	MinConns int32 `mapstructure:"min_connection_count" json:"minConnectionsCount" default:"0"`
+	MinConns int32 `mapstructure:"min_connection_count" json:"min_connection_count" default:"0"`
 
 	// Minimum amount of idle connections to keep in the pool.
-	MinIdleConns int32 `mapstructure:"min_idle_connections_count" json:"minIdleConnectionsCount" default:"0"`
+	MinIdleConns int32 `mapstructure:"min_idle_connections_count" json:"min_idle_connections_count" default:"0"`
 
 	// Maximum amount of time a connection may be reused, in seconds. Default: 3600 seconds (1 hour).
-	MaxConnLifetime int `mapstructure:"max_connection_lifetime_seconds" json:"maxConnectionLifetimeSeconds" default:"3600"`
+	MaxConnLifetime int `mapstructure:"max_connection_lifetime_seconds" json:"max_connection_lifetime_seconds" default:"3600"`
 
 	// Maximum amount of time a connection may be idle before being closed, in seconds. Default: 1800 seconds (30 minutes).
-	MaxConnIdleTime int `mapstructure:"max_connection_idle_seconds" json:"maxConnectionIdleSeconds" default:"1800"`
+	MaxConnIdleTime int `mapstructure:"max_connection_idle_seconds" json:"max_connection_idle_seconds" default:"1800"`
 
 	// Period at which the pool will check the health of idle connections, in seconds. Default: 60 seconds (1 minute).
-	HealthCheckPeriod int `mapstructure:"health_check_period_seconds" json:"healthCheckPeriodSeconds" default:"60"`
+	HealthCheckPeriod int `mapstructure:"health_check_period_seconds" json:"health_check_period_seconds" default:"60"`
 }
 
 type Config struct {
@@ -96,11 +96,11 @@ type Config struct {
 	Password       string     `mapstructure:"password" json:"password" default:"changeme"`
 	SSLMode        string     `mapstructure:"sslmode" json:"sslmode" default:"prefer"`
 	Schema         string     `mapstructure:"schema" json:"schema" default:"opentdf"`
-	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connectTimeoutSeconds" default:"15"`
+	ConnectTimeout int        `mapstructure:"connect_timeout_seconds" json:"connect_timeout_seconds" default:"15"`
 	Pool           PoolConfig `mapstructure:"pool" json:"pool"`
 
 	RunMigrations    bool      `mapstructure:"runMigrations" json:"runMigrations" default:"true"`
-	MigrationsFS     *embed.FS `mapstructure:"-"`
+	MigrationsFS     *embed.FS `mapstructure:"-" json:"-"`
 	VerifyConnection bool      `mapstructure:"verifyConnection" json:"verifyConnection" default:"true"`
 }
 

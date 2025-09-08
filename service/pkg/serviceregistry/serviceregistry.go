@@ -237,18 +237,24 @@ type Namespace struct {
 	Services []IService
 }
 
-// Registry represents a map of service namespaces.
-type Registry map[string]Namespace
+// Registry is a collection of services, organized by namespace, that preserves registration order.
+type Registry struct {
+	namespaces map[string]*Namespace
+	order      []string
+}
 
 // NewServiceRegistry creates a new instance of the service registry.
-func NewServiceRegistry() Registry {
-	return make(Registry)
+func NewServiceRegistry() *Registry {
+	return &Registry{
+		namespaces: make(map[string]*Namespace),
+		order:      make([]string, 0),
+	}
 }
 
 // RegisterCoreService registers a core service with the given registration information.
 // It calls the RegisterService method of the Registry instance with the provided registration and service type "core".
 // Returns an error if the registration fails.
-func (reg Registry) RegisterCoreService(svc IService) error {
+func (reg *Registry) RegisterCoreService(svc IService) error {
 	return reg.RegisterService(svc, "core")
 }
 
@@ -258,39 +264,48 @@ func (reg Registry) RegisterCoreService(svc IService) error {
 // such as the namespace and service description.
 // The mode string specifies the mode in which the service should be registered.
 // It returns an error if the service is already registered in the specified namespace.
-func (reg Registry) RegisterService(svc IService, mode string) error {
-	// Can't directly modify structs within a map, so we need to copy the namespace
-	copyNamespace := reg[svc.GetNamespace()]
-	copyNamespace.Mode = mode
-	if copyNamespace.Services == nil {
-		copyNamespace.Services = make([]IService, 0)
+func (reg *Registry) RegisterService(svc IService, mode string) error {
+	nsName := svc.GetNamespace()
+	ns, _ := reg.GetNamespace(nsName)
+
+	if ns == nil {
+		ns = &Namespace{
+			Mode:     mode,
+			Services: make([]IService, 0),
+		}
+		reg.namespaces[nsName] = ns
+		reg.order = append(reg.order, nsName)
 	}
-	found := slices.ContainsFunc(reg[svc.GetNamespace()].Services, func(s IService) bool {
+
+	// Check if a service with the same name is already registered in this namespace.
+	found := slices.ContainsFunc(ns.Services, func(s IService) bool {
 		return s.GetServiceDesc().ServiceName == svc.GetServiceDesc().ServiceName
 	})
-
 	if found {
-		return fmt.Errorf("service already registered namespace:%s service:%s", svc.GetNamespace(), svc.GetServiceDesc().ServiceName)
+		return fmt.Errorf("service already registered namespace:%s service:%s", nsName, svc.GetServiceDesc().ServiceName)
 	}
 
 	slog.Info(
 		"registered service",
-		slog.String("namespace", svc.GetNamespace()),
+		slog.String("namespace", nsName),
 		slog.String("service", svc.GetServiceDesc().ServiceName),
 	)
-	copyNamespace.Services = append(copyNamespace.Services, svc)
 
-	reg[svc.GetNamespace()] = copyNamespace
+	ns.Mode = mode
+	ns.Services = append(ns.Services, svc)
+	reg.namespaces[nsName] = ns
+
 	return nil
 }
 
-// Shutdown stops all the services in the service registry.
-// It iterates over each namespace and service in the registry,
-// checks if the service has a Close method and if it has been started,
-// and then calls the Close method to stop the service.
-func (reg Registry) Shutdown() {
-	for name, ns := range reg {
-		for _, svc := range ns.Services {
+// Shutdown stops all the registered services in the reverse order of registration.
+// If a service is started and has a Close method, the Close method will be called.
+func (reg *Registry) Shutdown() {
+	for nsIdx := len(reg.order) - 1; nsIdx >= 0; nsIdx-- {
+		name := reg.order[nsIdx]
+		ns := reg.namespaces[name]
+		for serviceIdx := len(ns.Services) - 1; serviceIdx >= 0; serviceIdx-- {
+			svc := ns.Services[serviceIdx]
 			if svc.IsStarted() {
 				slog.Info("stopping service",
 					slog.String("namespace", name),
@@ -309,10 +324,18 @@ func (reg Registry) Shutdown() {
 }
 
 // GetNamespace returns the namespace with the given name from the service registry.
-func (reg Registry) GetNamespace(namespace string) (Namespace, error) {
-	ns, ok := reg[namespace]
+func (reg *Registry) GetNamespace(namespace string) (*Namespace, error) {
+	ns, ok := reg.namespaces[namespace]
 	if !ok {
-		return Namespace{}, fmt.Errorf("namespace not found: %s", namespace)
+		return nil, fmt.Errorf("namespace not found: %s", namespace)
 	}
 	return ns, nil
+}
+
+// GetNamespaces returns the names of the namespaces in the order they were registered.
+func (reg *Registry) GetNamespaces() []string {
+	// Return a copy to prevent modification of the internal order slice.
+	orderCopy := make([]string, len(reg.order))
+	copy(orderCopy, reg.order)
+	return orderCopy
 }

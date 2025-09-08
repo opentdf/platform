@@ -146,17 +146,46 @@ func (q *Queries) createObligation(ctx context.Context, arg createObligationPara
 
 const createObligationTrigger = `-- name: createObligationTrigger :one
 
-WITH inserted AS (    
+WITH ov_id AS (
+    SELECT ov.id, od.namespace_id
+    FROM obligation_values_standard ov
+    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+    WHERE
+        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+),
+a_id AS (
+    SELECT id FROM actions
+    WHERE
+        (NULLIF($2::TEXT, '') IS NOT NULL AND id = $2::UUID)
+        OR
+        (NULLIF($3::TEXT, '') IS NOT NULL AND name = $3::TEXT)
+),
+av_id AS (
+    SELECT av.id
+    FROM attribute_values av
+    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+    LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
+    WHERE
+        ((NULLIF($4::TEXT, '') IS NOT NULL AND av.id = $4::UUID)
+        OR
+        (NULLIF($5::TEXT, '') IS NOT NULL AND fqns.fqn = $5))
+        AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
+),
+inserted AS (
     INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata)
-    VALUES ($1, $2, $3, $4)
+    SELECT
+        (SELECT id FROM ov_id),
+        (SELECT id FROM a_id),
+        (SELECT id FROM av_id),
+        $6
     RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at
 )
 SELECT
     JSON_STRIP_NULLS(
         JSON_BUILD_OBJECT(
-            'labels', i.metadata -> 'labels',         
-            'created_at', i.created_at,               
-            'updated_at', i.updated_at                
+            'labels', i.metadata -> 'labels',
+            'created_at', i.created_at,
+            'updated_at', i.updated_at
         )
     ) AS metadata,
     JSON_STRIP_NULLS(
@@ -199,7 +228,9 @@ LEFT JOIN attribute_fqns av_fqns ON av_fqns.value_id = av.id
 type createObligationTriggerParams struct {
 	ObligationValueID string `json:"obligation_value_id"`
 	ActionID          string `json:"action_id"`
+	ActionName        string `json:"action_name"`
 	AttributeValueID  string `json:"attribute_value_id"`
+	AttributeValueFqn string `json:"attribute_value_fqn"`
 	Metadata          []byte `json:"metadata"`
 }
 
@@ -211,10 +242,40 @@ type createObligationTriggerRow struct {
 // --------------------------------------------------------------
 // OBLIGATION TRIGGERS
 // --------------------------------------------------------------
+// Gets the attribute value, but also ensures that the attribute value belongs to the same namespace as the obligation, to which the obligation value belongs
 //
-//	WITH inserted AS (
+//	WITH ov_id AS (
+//	    SELECT ov.id, od.namespace_id
+//	    FROM obligation_values_standard ov
+//	    JOIN obligation_definitions od ON ov.obligation_definition_id = od.id
+//	    WHERE
+//	        (NULLIF($1::TEXT, '') IS NOT NULL AND ov.id = $1::UUID)
+//	),
+//	a_id AS (
+//	    SELECT id FROM actions
+//	    WHERE
+//	        (NULLIF($2::TEXT, '') IS NOT NULL AND id = $2::UUID)
+//	        OR
+//	        (NULLIF($3::TEXT, '') IS NOT NULL AND name = $3::TEXT)
+//	),
+//	av_id AS (
+//	    SELECT av.id
+//	    FROM attribute_values av
+//	    JOIN attribute_definitions ad ON av.attribute_definition_id = ad.id
+//	    LEFT JOIN attribute_fqns fqns ON fqns.value_id = av.id
+//	    WHERE
+//	        ((NULLIF($4::TEXT, '') IS NOT NULL AND av.id = $4::UUID)
+//	        OR
+//	        (NULLIF($5::TEXT, '') IS NOT NULL AND fqns.fqn = $5))
+//	        AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
+//	),
+//	inserted AS (
 //	    INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata)
-//	    VALUES ($1, $2, $3, $4)
+//	    SELECT
+//	        (SELECT id FROM ov_id),
+//	        (SELECT id FROM a_id),
+//	        (SELECT id FROM av_id),
+//	        $6
 //	    RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at
 //	)
 //	SELECT
@@ -264,7 +325,9 @@ func (q *Queries) createObligationTrigger(ctx context.Context, arg createObligat
 	row := q.db.QueryRow(ctx, createObligationTrigger,
 		arg.ObligationValueID,
 		arg.ActionID,
+		arg.ActionName,
 		arg.AttributeValueID,
+		arg.AttributeValueFqn,
 		arg.Metadata,
 	)
 	var i createObligationTriggerRow

@@ -560,10 +560,33 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		return nil, err
 	}
 
+	// Get obligation
+	var oblValReq *obligations.GetObligationValueRequest
+	if r.GetObligationValue().GetId() != "" {
+		oblValReq = &obligations.GetObligationValueRequest{
+			Identifier: &obligations.GetObligationValueRequest_Id{
+				Id: r.GetObligationValue().GetId(),
+			},
+		}
+	} else {
+		oblValReq = &obligations.GetObligationValueRequest{
+			Identifier: &obligations.GetObligationValueRequest_Fqn{
+				Fqn: r.GetObligationValue().GetFqn(),
+			},
+		}
+	}
+
+	oblVal, err := c.GetObligationValue(ctx, oblValReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get obligation value: %w", err)
+	}
+
 	params := createObligationTriggerParams{
-		ObligationValueID: r.GetObligationValueId(),
-		ActionID:          r.GetActionId(),
-		AttributeValueID:  r.GetAttributeValueId(),
+		ObligationValueID: oblVal.GetId(),
+		ActionName:        r.GetAction().GetName(),
+		ActionID:          r.GetAction().GetId(),
+		AttributeValueID:  r.GetAttributeValue().GetId(),
+		AttributeValueFqn: r.GetAttributeValue().GetFqn(),
 		Metadata:          metadataJSON,
 	}
 	row, err := c.queries.createObligationTrigger(ctx, params)

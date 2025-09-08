@@ -352,10 +352,28 @@ func (s *Service) AddObligationTrigger(ctx context.Context, req *connect.Request
 		ObjectType: audit.ObjectTypeObligationTrigger,
 	}
 
+	oblIdentifier := req.Msg.GetObligationValue()
+	oblVal := oblIdentifier.GetId()
+	if oblVal == "" {
+		oblVal = oblIdentifier.GetFqn()
+	}
+
+	actionIdentifier := req.Msg.GetAction()
+	act := actionIdentifier.GetId()
+	if act == "" {
+		act = actionIdentifier.GetName()
+	}
+
+	attrValIdentifier := req.Msg.GetAttributeValue()
+	attrVal := attrValIdentifier.GetId()
+	if attrVal == "" {
+		attrVal = attrValIdentifier.GetFqn()
+	}
+
 	s.logger.DebugContext(ctx, "adding obligation trigger",
-		slog.String("obligation_value_id", req.Msg.GetObligationValueId()),
-		slog.String("action_id", req.Msg.GetActionId()),
-		slog.String("attribute_value_id", req.Msg.GetAttributeValueId()),
+		slog.String("obligation_value", oblVal),
+		slog.String("action", act),
+		slog.String("attribute_value", attrVal),
 	)
 
 	err := s.dbClient.RunInTx(ctx, func(txClient *policydb.PolicyDBClient) error {

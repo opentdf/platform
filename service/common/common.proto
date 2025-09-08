@@ -3,6 +3,24 @@ syntax = "proto3";
 package common;
 
 import "google/protobuf/timestamp.proto";
+import "buf/validate/validate.proto";
+
+message IdNameIdentifier {
+    option (buf.validate.message).oneof = { fields: ["id", "name"], required: true };
+    string id = 1 [(buf.validate.field).string.uuid = true];
+    string name = 2 [(buf.validate.field).string = {
+        min_len: 1
+    }];
+}
+
+message IdFqnIdentifier {
+    option (buf.validate.message).oneof = { fields: ["id", "fqn"], required: true };
+    string id = 1 [(buf.validate.field).string.uuid = true];
+    string fqn = 2 [(buf.validate.field).string = {
+        min_len: 1
+        uri: true
+    }];
+}
 
 // Struct to uniquely identify a resource with optional additional metadata
 message Metadata {

@@ -1235,16 +1235,13 @@ SELECT
         'fqn', fqns.fqn
     ) as namespace,
     JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
-    COALESCE(
-        JSON_AGG(
-            JSON_BUILD_OBJECT(
-                'id', ov.id,
-                'value', ov.value,
-                'triggers', COALESCE(ota.triggers, '[]'::JSON)
-            )
-        ) FILTER (WHERE ov.id IS NOT NULL),
-        '[]'::JSON
-    ) as values,
+    JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'id', ov.id,
+            'value', ov.value,
+            'triggers', COALESCE(ota.triggers, '[]'::JSON)
+        )
+    ) FILTER (WHERE ov.id IS NOT NULL) as values,
     counted.total
 FROM obligation_definitions od
 JOIN attribute_namespaces n on od.namespace_id = n.id
@@ -1268,12 +1265,12 @@ type listObligationsParams struct {
 }
 
 type listObligationsRow struct {
-	ID        string      `json:"id"`
-	Name      string      `json:"name"`
-	Namespace []byte      `json:"namespace"`
-	Metadata  []byte      `json:"metadata"`
-	Values    interface{} `json:"values"`
-	Total     int64       `json:"total"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Namespace []byte `json:"namespace"`
+	Metadata  []byte `json:"metadata"`
+	Values    []byte `json:"values"`
+	Total     int64  `json:"total"`
 }
 
 // listObligations
@@ -1319,16 +1316,13 @@ type listObligationsRow struct {
 //	        'fqn', fqns.fqn
 //	    ) as namespace,
 //	    JSON_STRIP_NULLS(JSON_BUILD_OBJECT('labels', od.metadata -> 'labels', 'created_at', od.created_at,'updated_at', od.updated_at)) as metadata,
-//	    COALESCE(
-//	        JSON_AGG(
-//	            JSON_BUILD_OBJECT(
-//	                'id', ov.id,
-//	                'value', ov.value,
-//	                'triggers', COALESCE(ota.triggers, '[]'::JSON)
-//	            )
-//	        ) FILTER (WHERE ov.id IS NOT NULL),
-//	        '[]'::JSON
-//	    ) as values,
+//	    JSON_AGG(
+//	        JSON_BUILD_OBJECT(
+//	            'id', ov.id,
+//	            'value', ov.value,
+//	            'triggers', COALESCE(ota.triggers, '[]'::JSON)
+//	        )
+//	    ) FILTER (WHERE ov.id IS NOT NULL) as values,
 //	    counted.total
 //	FROM obligation_definitions od
 //	JOIN attribute_namespaces n on od.namespace_id = n.id

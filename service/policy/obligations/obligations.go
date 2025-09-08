@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"connectrpc.com/connect"
+	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/opentdf/platform/protocol/go/policy/obligations/obligationsconnect"
@@ -151,7 +152,7 @@ func (s *Service) GetObligationsByFQNs(ctx context.Context, req *connect.Request
 	}
 	obls := make(map[string]*policy.Obligation)
 	for _, obl := range os {
-		obls[policydb.BuildOblFQN(obl.GetNamespace().GetFqn(), obl.GetName())] = obl
+		obls[identifier.BuildOblFQN(obl.GetNamespace().GetFqn(), obl.GetName())] = obl
 	}
 	rsp := &obligations.GetObligationsByFQNsResponse{FqnObligationMap: obls}
 	return connect.NewResponse(rsp), nil
@@ -271,7 +272,7 @@ func (s *Service) GetObligationValuesByFQNs(ctx context.Context, req *connect.Re
 	vals := make(map[string]*policy.ObligationValue)
 	for _, val := range vs {
 		obl := val.GetObligation()
-		vals[policydb.BuildOblValFQN(obl.GetNamespace().GetFqn(), obl.GetName(), val.GetValue())] = val
+		vals[identifier.BuildOblValFQN(obl.GetNamespace().GetFqn(), obl.GetName(), val.GetValue())] = val
 	}
 	rsp := &obligations.GetObligationValuesByFQNsResponse{FqnValueMap: vals}
 	return connect.NewResponse(rsp), nil

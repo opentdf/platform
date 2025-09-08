@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/opentdf/platform/lib/identifier"
 	"github.com/opentdf/platform/protocol/go/common"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
@@ -15,28 +16,6 @@ import (
 ///
 /// Obligation Definitions
 ///
-
-func breakOblFQN(fqn string) (string, string) {
-	nsFQN := strings.Split(fqn, "/obl/")[0]
-	parts := strings.Split(fqn, "/")
-	oblName := strings.ToLower(parts[len(parts)-1])
-	return nsFQN, oblName
-}
-
-func breakOblValFQN(fqn string) (string, string, string) {
-	parts := strings.Split(fqn, "/value/")
-	nsFQN, oblName := breakOblFQN(parts[0])
-	oblVal := strings.ToLower(parts[len(parts)-1])
-	return nsFQN, oblName, oblVal
-}
-
-func BuildOblFQN(nsFQN, oblName string) string {
-	return nsFQN + "/obl/" + strings.ToLower(oblName)
-}
-
-func BuildOblValFQN(nsFQN, oblName, oblVal string) string {
-	return BuildOblFQN(nsFQN, oblName) + "/value/" + strings.ToLower(oblVal)
-}
 
 func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.CreateObligationRequest) (*policy.Obligation, error) {
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
@@ -87,7 +66,7 @@ func (c PolicyDBClient) CreateObligation(ctx context.Context, r *obligations.Cre
 }
 
 func (c PolicyDBClient) GetObligation(ctx context.Context, r *obligations.GetObligationRequest) (*policy.Obligation, error) {
-	nsFQN, oblName := breakOblFQN(r.GetFqn())
+	nsFQN, oblName := identifier.BreakOblFQN(r.GetFqn())
 	queryParams := getObligationParams{
 		ID:           r.GetId(),
 		Name:         oblName,
@@ -127,7 +106,7 @@ func (c PolicyDBClient) GetObligationsByFQNs(ctx context.Context, r *obligations
 	nsFQNs := make([]string, 0, len(r.GetFqns()))
 	oblNames := make([]string, 0, len(r.GetFqns()))
 	for _, fqn := range r.GetFqns() {
-		nsFQN, oblName := breakOblFQN(fqn)
+		nsFQN, oblName := identifier.BreakOblFQN(fqn)
 		nsFQNs = append(nsFQNs, nsFQN)
 		oblNames = append(oblNames, oblName)
 	}
@@ -276,7 +255,7 @@ func (c PolicyDBClient) UpdateObligation(ctx context.Context, r *obligations.Upd
 }
 
 func (c PolicyDBClient) DeleteObligation(ctx context.Context, r *obligations.DeleteObligationRequest) (*policy.Obligation, error) {
-	nsFQN, oblName := breakOblFQN(r.GetFqn())
+	nsFQN, oblName := identifier.BreakOblFQN(r.GetFqn())
 	queryParams := deleteObligationParams{
 		ID:           r.GetId(),
 		NamespaceFqn: nsFQN,
@@ -301,7 +280,7 @@ func (c PolicyDBClient) DeleteObligation(ctx context.Context, r *obligations.Del
 ///
 
 func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligations.CreateObligationValueRequest) (*policy.ObligationValue, error) {
-	nsFQN, oblName := breakOblFQN(r.GetObligationFqn())
+	nsFQN, oblName := identifier.BreakOblFQN(r.GetObligationFqn())
 	value := strings.ToLower(r.GetValue())
 	metadataJSON, _, err := db.MarshalCreateMetadata(r.GetMetadata())
 	if err != nil {
@@ -350,7 +329,7 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 }
 
 func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.GetObligationValueRequest) (*policy.ObligationValue, error) {
-	nsFQN, oblName, oblVal := breakOblValFQN(r.GetFqn())
+	nsFQN, oblName, oblVal := identifier.BreakOblValFQN(r.GetFqn())
 	queryParams := getObligationValueParams{
 		ID:           r.GetId(),
 		Name:         oblName,
@@ -392,7 +371,7 @@ func (c PolicyDBClient) GetObligationValuesByFQNs(ctx context.Context, r *obliga
 	oblNames := make([]string, 0, len(r.GetFqns()))
 	oblVals := make([]string, 0, len(r.GetFqns()))
 	for _, fqn := range r.GetFqns() {
-		nsFQN, oblName, oblVal := breakOblValFQN(fqn)
+		nsFQN, oblName, oblVal := identifier.BreakOblValFQN(fqn)
 		nsFQNs = append(nsFQNs, nsFQN)
 		oblNames = append(oblNames, oblName)
 		oblVals = append(oblVals, oblVal)
@@ -482,7 +461,7 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 }
 
 func (c PolicyDBClient) DeleteObligationValue(ctx context.Context, r *obligations.DeleteObligationValueRequest) (*policy.ObligationValue, error) {
-	nsFQN, oblName, valName := breakOblValFQN(r.GetFqn())
+	nsFQN, oblName, valName := identifier.BreakOblValFQN(r.GetFqn())
 	queryParams := deleteObligationValueParams{
 		ID:           r.GetId(),
 		NamespaceFqn: nsFQN,

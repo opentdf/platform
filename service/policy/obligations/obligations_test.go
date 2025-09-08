@@ -12,6 +12,7 @@ import (
 
 const (
 	invalidUUID = "invalid-uuid"
+	invalidName = "&hello"
 )
 
 func getValidator() protovalidate.Validator {
@@ -157,6 +158,16 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 			},
 			expectError:  true,
 			errorMessage: "action",
+		},
+		{
+			name: "action name not alphanumeric",
+			req: &obligations.AddObligationTriggerRequest{
+				ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
+				Action:          &common.IdNameIdentifier{Name: invalidName},
+				AttributeValue:  &common.IdFqnIdentifier{Id: validUUID},
+			},
+			expectError:  true,
+			errorMessage: "name_format",
 		},
 	}
 

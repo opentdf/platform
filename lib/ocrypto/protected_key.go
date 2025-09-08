@@ -58,8 +58,8 @@ func (k *AESProtectedKey) DecryptAESGCM(iv []byte, body []byte, tagSize int) ([]
 // Deprecated: Use the Encapsulator's Encapsulate method instead
 func (k *AESProtectedKey) Export(encapsulator Encapsulator) ([]byte, error) {
 	if encapsulator == nil {
-		// Return raw key data without encryption - caller should be aware of this
-		return append([]byte{}, k.rawKey...), nil
+		// Return error if encapsulator is nil
+		return nil, errors.New("encapsulator cannot be nil")
 	}
 
 	// Encrypt the key data before returning

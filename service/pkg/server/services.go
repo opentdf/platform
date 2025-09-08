@@ -83,7 +83,7 @@ func (s ServiceName) String() string {
 }
 
 // RegisterEssentialServices registers the essential services directly
-func RegisterEssentialServices(reg serviceregistry.Registry) error {
+func RegisterEssentialServices(reg *serviceregistry.Registry) error {
 	essentialServices := []serviceregistry.IService{
 		health.NewRegistration(),
 	}
@@ -97,7 +97,7 @@ func RegisterEssentialServices(reg serviceregistry.Registry) error {
 }
 
 // RegisterCoreServices registers the core services using declarative configuration
-func RegisterCoreServices(reg serviceregistry.Registry, modes []serviceregistry.ModeName) ([]string, error) {
+func RegisterCoreServices(reg *serviceregistry.Registry, modes []serviceregistry.ModeName) ([]string, error) {
 	return reg.RegisterServicesFromConfiguration(modes, getServiceConfigurations())
 }
 
@@ -106,7 +106,7 @@ type startServicesParams struct {
 	otdf                *server.OpenTDFServer
 	client              *sdk.SDK
 	logger              *logging.Logger
-	reg                 serviceregistry.Registry
+	reg                 *serviceregistry.Registry
 	cacheManager        *cache.Manager
 	keyManagerFactories []trust.NamedKeyManagerFactory
 }
@@ -126,8 +126,12 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	cacheManager := params.cacheManager
 	keyManagerFactories := params.keyManagerFactories
 
-	// Iterate through the registered namespaces
-	for ns, namespace := range reg {
+	for _, ns := range reg.GetNamespaces() {
+		namespace, err := reg.GetNamespace(ns)
+		if err != nil {
+			// This is an internal inconsistency and should not happen.
+			return nil, fmt.Errorf("namespace not found: %w", err)
+		}
 		// Check if this namespace should be enabled based on configured modes
 		modeEnabled := namespace.IsEnabled(cfg.Mode)
 

@@ -527,6 +527,11 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 
 			err = Start(
 				WithConfigFile(tempFilePath),
+				WithConfigLoaderOrder([]string{
+					config.LoaderNameEnvironmentValue,
+					config.LoaderNameFile,
+					config.LoaderNameDefaultSettings,
+				}),
 			)
 			// The ServiceManager now handles these configurations more gracefully
 			// If database is available, services should start successfully

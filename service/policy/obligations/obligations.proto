@@ -5,6 +5,7 @@ package policy.obligations;
 import "common/common.proto";
 import "policy/objects.proto";
 import "policy/selectors.proto";
+import "buf/validate/validate.proto";
 // import "google/protobuf/struct.proto";
 
 ///
@@ -158,9 +159,11 @@ message DeleteObligationValueResponse {
 // Triggers
 message AddObligationTriggerRequest {
     // Required
-    string obligation_value_id = 1;
-    string action_id = 2;
-    string attribute_value_id = 3;
+    common.IdFqnIdentifier obligation_value = 1 [(buf.validate.field).required = true];
+    // Required
+    common.IdNameIdentifier action = 2 [(buf.validate.field).required = true];
+    // Required
+    common.IdFqnIdentifier attribute_value = 3 [(buf.validate.field).required = true];
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;
@@ -171,7 +174,8 @@ message AddObligationTriggerResponse {
 }
 
 message RemoveObligationTriggerRequest {
-    string id = 1;
+    // Required
+    string id = 1 [(buf.validate.field).string.uuid = true];
 }
 
 message RemoveObligationTriggerResponse {

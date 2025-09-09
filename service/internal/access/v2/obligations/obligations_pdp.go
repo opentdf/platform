@@ -112,25 +112,29 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 	// Required obligations per resource of a given index
 	requiredOblValueFQNsPerResource := make([][]string, len(resources))
 	// Set of required obligations across all resources
-	allRequiredOblValueFQNs := make([]string, 0)
+	var allRequiredOblValueFQNs []string
 	allOblValFQNsSeen := make(map[string]struct{})
 
 	pepClientID := decisionRequestContext.PEP.clientID
+	actionName := action.GetName()
 
 	l := p.logger.
-		With("action", action.GetName()).
+		With("action", actionName).
 		With("pep_client_id", pepClientID).
 		With("resources_count", strconv.Itoa(len(resources)))
 
 	// Short-circuit if the requested action and optional scoping clientID are not found within any obligation triggers
-	attrValueFQNsToObligations, triggersOnActionExist := p.simpleTriggerActionsToAttributes[action.GetName()]
+	attrValueFQNsToObligations, triggersOnActionExist := p.simpleTriggerActionsToAttributes[actionName]
 	clientScoped, triggersOnClientIDExist := p.clientIDScopedTriggerActionsToAttributes[pepClientID]
 	if triggersOnClientIDExist {
-		_, triggersOnClientIDExist = clientScoped[action.GetName()]
+		_, triggersOnClientIDExist = clientScoped[actionName]
 	}
 	if !triggersOnActionExist && !triggersOnClientIDExist {
-		l.DebugContext(ctx, "no triggered obligations found for action")
-		return nil, nil, nil
+		l.DebugContext(ctx, "no triggered obligations found for action",
+			slog.Any("simple", p.simpleTriggerActionsToAttributes),
+			slog.Any("client_scoped", p.clientIDScopedTriggerActionsToAttributes),
+		)
+		return requiredOblValueFQNsPerResource, nil, nil
 	}
 
 	// Traverse trigger lookup graphs to resolve required obligations

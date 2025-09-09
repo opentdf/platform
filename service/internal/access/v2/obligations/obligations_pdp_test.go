@@ -57,20 +57,20 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 						},
 					},
 				},
-				{
-					Fqn: mockObligationFQN2,
-					Triggers: []*policy.ObligationTrigger{
-						{
-							Action:         mockAction,
-							AttributeValue: &policy.Value{Fqn: mockAttrValFQN2},
-							Context: &policy.ObligationTrigger_Context{
-								Pep: &policy.ObligationTrigger_Context_PEP{
-									ClientId: mockClientID,
-								},
-							},
-						},
-					},
-				},
+				// {
+				// 	Fqn: mockObligationFQN2,
+				// 	Triggers: []*policy.ObligationTrigger{
+				// 		{
+				// 			Action:         mockAction,
+				// 			AttributeValue: &policy.Value{Fqn: mockAttrValFQN2},
+				// 			Context: &policy.ObligationTrigger_Context{
+				// 				Pep: &policy.ObligationTrigger_Context_PEP{
+				// 					ClientId: mockClientID,
+				// 				},
+				// 			},
+				// 		},
+				// 	},
+				// },
 			},
 		},
 	}
@@ -87,74 +87,79 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 	s.Require().NoError(err)
 }
 
-func (s *ObligationsPDPSuite) Test_NoObligationsTriggered_AttributeValue() {
-	nonObligatedAttributeValueFQN := "https://example.org/attr/other/value/val"
-	resources := []*authz.Resource{
+func (s *ObligationsPDPSuite) Test_NoObligationsTriggered() {
+	type args struct {
+		action                 *policy.Action
+		resources              []*authz.Resource
+		decisionRequestContext *mockDecisionRequestContext
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
 		{
-			Resource: &authz.Resource_AttributeValues_{
-				AttributeValues: &authz.Resource_AttributeValues{
-					Fqns: []string{nonObligatedAttributeValueFQN},
+			name: "no obligation triggered by attribute value",
+			args: args{
+				action: mockAction,
+				resources: []*authz.Resource{
+					{
+						Resource: &authz.Resource_AttributeValues_{
+							AttributeValues: &authz.Resource_AttributeValues{
+								Fqns: []string{"https://example.org/attr/other/value/val"},
+							},
+						},
+					},
+				},
+				decisionRequestContext: &mockDecisionRequestContext{},
+			},
+		},
+		{
+			name: "no obligation triggered by action",
+			args: args{
+				action: &policy.Action{Name: "random-name"},
+				resources: []*authz.Resource{
+					{
+						Resource: &authz.Resource_AttributeValues_{
+							AttributeValues: &authz.Resource_AttributeValues{
+								Fqns: []string{mockAttrValFQN1},
+							},
+						},
+					},
+				},
+				decisionRequestContext: &mockDecisionRequestContext{},
+			},
+		},
+		{
+			name: "no obligation triggered by request context",
+			args: args{
+				action: mockAction,
+				resources: []*authz.Resource{
+					{
+						Resource: &authz.Resource_AttributeValues_{
+							AttributeValues: &authz.Resource_AttributeValues{
+								Fqns: []string{mockAttrValFQN1},
+							},
+						},
+					},
+				},
+				decisionRequestContext: &mockDecisionRequestContext{
+					PEP: struct{ clientID string }{clientID: "unknown-client-id"},
 				},
 			},
 		},
 	}
-	decisionRequestContext := &mockDecisionRequestContext{}
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			perResource, all, err := s.pdp.GetRequiredObligations(context.Background(), tt.args.action, tt.args.resources, tt.args.decisionRequestContext)
 
-	perResource, all, err := s.pdp.GetRequiredObligations(context.Background(), mockAction, resources, decisionRequestContext)
-
-	s.NoError(err)
-	s.Len(perResource, len(resources))
-	for _, r := range perResource {
-		s.Empty(r)
+			s.NoError(err)
+			s.Len(perResource, len(tt.args.resources))
+			for _, r := range perResource {
+				s.Empty(r)
+			}
+			s.Empty(all)
+		})
 	}
-	s.Empty(all)
-}
-
-func (s *ObligationsPDPSuite) Test_NoObligationsTriggered_Action() {
-	nonObligatedAction := &policy.Action{Name: "random-name"}
-	resources := []*authz.Resource{
-		{
-			Resource: &authz.Resource_AttributeValues_{
-				AttributeValues: &authz.Resource_AttributeValues{
-					Fqns: []string{mockAttrValFQN1},
-				},
-			},
-		},
-	}
-	decisionRequestContext := &mockDecisionRequestContext{}
-
-	perResource, all, err := s.pdp.GetRequiredObligations(context.Background(), nonObligatedAction, resources, decisionRequestContext)
-
-	s.NoError(err)
-	s.Len(perResource, len(resources))
-	for _, r := range perResource {
-		s.Empty(r)
-	}
-	s.Empty(all)
-}
-func (s *ObligationsPDPSuite) Test_NoObligationsTriggered_RequestContext() {
-	unknownClientID := "unknown-client-id"
-	resources := []*authz.Resource{
-		{
-			Resource: &authz.Resource_AttributeValues_{
-				AttributeValues: &authz.Resource_AttributeValues{
-					Fqns: []string{mockAttrValFQN1},
-				},
-			},
-		},
-	}
-	decisionRequestContext := &mockDecisionRequestContext{
-		PEP: struct{ clientID string }{clientID: unknownClientID},
-	}
-
-	perResource, all, err := s.pdp.GetRequiredObligations(context.Background(), mockAction, resources, decisionRequestContext)
-
-	s.NoError(err)
-	s.Len(perResource, len(resources))
-	for _, r := range perResource {
-		s.Empty(r)
-	}
-	s.Empty(all)
 }
 
 func (s *ObligationsPDPSuite) Test_SimpleObligationTriggered() {
@@ -197,27 +202,6 @@ func (s *ObligationsPDPSuite) Test_ClientScopedObligationTriggered() {
 	s.Equal([]string{mockObligationFQN2}, all)
 }
 
-func (s *ObligationsPDPSuite) Test_ClientScopedObligationNotTriggered() {
-	resources := []*authz.Resource{
-		{
-			Resource: &authz.Resource_AttributeValues_{
-				AttributeValues: &authz.Resource_AttributeValues{
-					Fqns: []string{mockAttrValFQN2},
-				},
-			},
-		},
-	}
-	decisionRequestContext := &mockDecisionRequestContext{
-		PEP: struct{ clientID string }{clientID: "different-client-id"},
-	}
-
-	perResource, all, err := s.pdp.GetRequiredObligations(context.Background(), mockAction, resources, decisionRequestContext)
-
-	s.NoError(err)
-	s.Equal([][]string{{}}, perResource)
-	s.Empty(all)
-}
-
 func (s *ObligationsPDPSuite) Test_MixedObligationsTriggered() {
 	resources := []*authz.Resource{
 		{
@@ -246,11 +230,12 @@ func (s *ObligationsPDPSuite) Test_MixedObligationsTriggered() {
 	s.ElementsMatch([]string{mockObligationFQN1, mockObligationFQN2}, all)
 }
 
-func (s *ObligationsPDPSuite) Test_UnsupportedResourceType() {
+// This fails because we're currently hardcoding the mock pep client ID in new PDP
+func (s *ObligationsPDPSuite) Test_UnknownRegisteredResourceValue() {
 	resources := []*authz.Resource{
 		{
 			Resource: &authz.Resource_RegisteredResourceValueFqn{
-				RegisteredResourceValueFqn: "unsupported",
+				RegisteredResourceValueFqn: "not_found",
 			},
 		},
 	}

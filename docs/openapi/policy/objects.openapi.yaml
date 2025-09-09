@@ -601,6 +601,9 @@ components:
           items:
             $ref: '#/components/schemas/policy.ObligationValue'
           title: values
+        fqn:
+          type: string
+          title: fqn
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -648,6 +651,9 @@ components:
           items:
             $ref: '#/components/schemas/policy.ObligationTrigger'
           title: triggers
+        fqn:
+          type: string
+          title: fqn
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'

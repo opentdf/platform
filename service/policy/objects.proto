@@ -461,6 +461,7 @@ message RegisteredResourceValue {
   common.Metadata metadata = 100;
 }
 
+// A Policy Enforcement Point (PEP) that is registered with the policy database.
 message RegisteredPEP {
   string client_id = 1 [
     (buf.validate.field).string = {min_len: 1}

@@ -729,6 +729,7 @@ components:
           minLength: 1
       title: RegisteredPEP
       additionalProperties: false
+      description: A Policy Enforcement Point (PEP) that is registered with the policy database.
     policy.RegisteredResource:
       type: object
       properties:

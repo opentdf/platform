@@ -2291,6 +2291,7 @@ func (x *RegisteredResourceValue) GetMetadata() *common.Metadata {
 	return nil
 }
 
+// A Policy Enforcement Point (PEP) that is registered with the policy database.
 type RegisteredPEP struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

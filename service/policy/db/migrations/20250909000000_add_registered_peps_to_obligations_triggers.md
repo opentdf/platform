@@ -35,4 +35,4 @@ erDiagram
 
 ### 1. **Column Addition**
 
-- Require registered_peps to be apart of a trigger.
+- Require registered_peps to be a part of a trigger.

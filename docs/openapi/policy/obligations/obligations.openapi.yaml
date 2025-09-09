@@ -1142,6 +1142,7 @@ components:
           minLength: 1
       title: RegisteredPEP
       additionalProperties: false
+      description: A Policy Enforcement Point (PEP) that is registered with the policy database.
     policy.ResourceMapping:
       type: object
       properties:
@@ -1697,6 +1698,7 @@ components:
       required:
         - peps
       additionalProperties: false
+      description: Map of client_id's to registered PEP objects
     policy.obligations.RegisteredPEPMap.PepsEntry:
       type: object
       properties:

@@ -105,6 +105,7 @@ func (*GetObligationRequest_Id) isGetObligationRequest_Identifier() {}
 
 func (*GetObligationRequest_Fqn) isGetObligationRequest_Identifier() {}
 
+// Map of client_id's to registered PEP objects
 type RegisteredPEPMap struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

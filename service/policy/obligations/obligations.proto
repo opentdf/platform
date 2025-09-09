@@ -20,6 +20,7 @@ message GetObligationRequest {
     }
 }
 
+// Map of client_id's to registered PEP objects
 message RegisteredPEPMap {  
     map<string, policy.RegisteredPEP> peps = 1 [
             (buf.validate.field).required = true,

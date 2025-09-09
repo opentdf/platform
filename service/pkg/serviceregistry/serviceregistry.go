@@ -371,7 +371,7 @@ func (reg *Registry) GetNamespaces() []string {
 }
 
 // RegisterServicesFromConfiguration handles service registration using declarative configuration with negation support.
-func (reg Registry) RegisterServicesFromConfiguration(modes []ModeName, configurations []ServiceConfiguration) ([]string, error) {
+func (reg *Registry) RegisterServicesFromConfiguration(modes []ModeName, configurations []ServiceConfiguration) ([]string, error) {
 	// Parse modes to separate inclusions and exclusions
 	includedModes, excludedServices, err := ParseModesWithNegation(modes)
 	if err != nil {

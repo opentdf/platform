@@ -152,8 +152,19 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithIDs_Success()
 	})
 	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
 	s.Require().NoError(err)
-	s.validateTrigger(trigger)
+	s.validateTrigger(trigger, true)
 	s.Require().Equal("test", trigger.GetMetadata().GetLabels()["source"])
+}
+
+func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_NoCtx_Success() {
+	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
+		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
+		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
+		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
+	})
+	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
+	s.Require().NoError(err)
+	s.validateTrigger(trigger, false)
 }
 
 func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithNameFQN_Success() {
@@ -172,7 +183,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithNameFQN_Succe
 	})
 	s.triggerIDsToClean = append(s.triggerIDsToClean, trigger.GetId())
 	s.Require().NoError(err)
-	s.validateTrigger(trigger)
+	s.validateTrigger(trigger, true)
 	s.Require().Equal("test", trigger.GetMetadata().GetLabels()["source"])
 }
 
@@ -224,18 +235,6 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ActionNotFound_Fa
 	})
 	s.Require().Error(err)
 	s.Require().ErrorIs(err, db.ErrInvalidOblTriParam)
-	s.Nil(trigger)
-}
-
-func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ClientIDNull_Fails() {
-	trigger, err := s.db.PolicyClient.CreateObligationTrigger(s.ctx, &obligations.AddObligationTriggerRequest{
-		ObligationValue: &common.IdFqnIdentifier{Id: s.obligationValue.GetId()},
-		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
-		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
-		Context:         &policy.RequestContext{}, // No PEP, so client ID is null
-	})
-	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrCheckViolation)
 	s.Nil(trigger)
 }
 
@@ -313,11 +312,11 @@ func (s *ObligationTriggersSuite) createGenericTrigger() *policy.ObligationTrigg
 		},
 	})
 	s.Require().NoError(err)
-	s.validateTrigger(trigger)
+	s.validateTrigger(trigger, true)
 	return trigger
 }
 
-func (s *ObligationTriggersSuite) validateTrigger(trigger *policy.ObligationTrigger) {
+func (s *ObligationTriggersSuite) validateTrigger(trigger *policy.ObligationTrigger, shouldHaveCtx bool) {
 	s.Require().NotNil(trigger)
 	s.Require().NotEmpty(trigger.GetId())
 	s.Require().Equal(s.attributeValue.GetId(), trigger.GetAttributeValue().GetId())
@@ -331,8 +330,12 @@ func (s *ObligationTriggersSuite) validateTrigger(trigger *policy.ObligationTrig
 	s.Require().Empty(trigger.GetObligationValue().GetTriggers())
 	s.Require().Equal(s.action.GetId(), trigger.GetAction().GetId())
 	s.Require().Equal(s.action.GetName(), trigger.GetAction().GetName())
-	s.Require().NotNil(trigger.GetContext())
-	s.Require().Len(trigger.GetContext(), 1)
-	s.Require().NotNil(trigger.GetContext()[0].GetPep())
-	s.Require().Equal(clientID, trigger.GetContext()[0].GetPep().GetClientId())
+	if shouldHaveCtx {
+		s.Require().NotNil(trigger.GetContext())
+		s.Require().Len(trigger.GetContext(), 1)
+		s.Require().NotNil(trigger.GetContext()[0].GetPep())
+		s.Require().Equal(clientID, trigger.GetContext()[0].GetPep().GetClientId())
+	} else {
+		s.Require().Empty(trigger.GetContext())
+	}
 }

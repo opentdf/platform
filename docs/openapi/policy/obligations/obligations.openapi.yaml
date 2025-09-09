@@ -1372,7 +1372,6 @@ components:
         - obligationValue
         - action
         - attributeValue
-        - context
       additionalProperties: false
       description: Triggers
     policy.obligations.AddObligationTriggerResponse:
@@ -1775,13 +1774,12 @@ components:
           $ref: '#/components/schemas/common.IdFqnIdentifier'
         context:
           title: context
-          description: Required. The request context for this obligation value policy decisioning.
+          description: Optional. The request context for this obligation value policy decisioning.
           $ref: '#/components/schemas/policy.RequestContext'
       title: ValueTriggerRequest
       required:
         - action
         - attributeValue
-        - context
       additionalProperties: false
     connect-protocol-version:
       type: number

@@ -66,13 +66,16 @@ WITH obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
-                'context', JSON_BUILD_ARRAY(
-                    JSON_BUILD_OBJECT(
-                        'pep', JSON_BUILD_OBJECT(
-                            'client_id', ot.client_id
+                'context', CASE
+                    WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
+                        JSON_BUILD_OBJECT(
+                            'pep', JSON_BUILD_OBJECT(
+                                'client_id', ot.client_id
+                            )
                         )
                     )
-                )
+                    ELSE '[]'::JSON
+                END
             )
         ) as triggers
     FROM obligation_triggers ot
@@ -139,13 +142,16 @@ obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
-                'context', JSON_BUILD_ARRAY(
-                    JSON_BUILD_OBJECT(
-                        'pep', JSON_BUILD_OBJECT(
-                            'client_id', ot.client_id
+                'context', CASE
+                    WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
+                        JSON_BUILD_OBJECT(
+                            'pep', JSON_BUILD_OBJECT(
+                                'client_id', ot.client_id
+                            )
                         )
                     )
-                )
+                    ELSE '[]'::JSON
+                END
             )
         ) as triggers
     FROM obligation_triggers ot
@@ -227,13 +233,16 @@ WITH obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
-                'context', JSON_BUILD_ARRAY(
-                    JSON_BUILD_OBJECT(
-                        'pep', JSON_BUILD_OBJECT(
-                            'client_id', ot.client_id
+                'context', CASE
+                    WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
+                        JSON_BUILD_OBJECT(
+                            'pep', JSON_BUILD_OBJECT(
+                                'client_id', ot.client_id
+                            )
                         )
                     )
-                )
+                    ELSE '[]'::JSON
+                END
             )
         ) as triggers
     FROM obligation_triggers ot
@@ -337,13 +346,16 @@ WITH obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
-                'context', JSON_BUILD_ARRAY(
-                    JSON_BUILD_OBJECT(
-                        'pep', JSON_BUILD_OBJECT(
-                            'client_id', ot.client_id
+                'context', CASE
+                    WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
+                        JSON_BUILD_OBJECT(
+                            'pep', JSON_BUILD_OBJECT(
+                                'client_id', ot.client_id
+                            )
                         )
                     )
-                )
+                    ELSE '[]'::JSON
+                END
             )
         ) as triggers
     FROM obligation_triggers ot
@@ -403,13 +415,16 @@ WITH obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
-                'context', JSON_BUILD_ARRAY(
-                    JSON_BUILD_OBJECT(
-                        'pep', JSON_BUILD_OBJECT(
-                            'client_id', ot.client_id
+                'context', CASE
+                    WHEN ot.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
+                        JSON_BUILD_OBJECT(
+                            'pep', JSON_BUILD_OBJECT(
+                                'client_id', ot.client_id
+                            )
                         )
                     )
-                )
+                    ELSE '[]'::JSON
+                END
             )
         ) as triggers
     FROM obligation_triggers ot
@@ -504,7 +519,7 @@ inserted AS (
         (SELECT id FROM a_id),
         (SELECT id FROM av_id),
         @metadata,
-        @client_id
+        NULLIF(@client_id::TEXT, '')
     RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at, client_id
 )
 SELECT
@@ -540,13 +555,15 @@ SELECT
                 'value', av.value,
                 'fqn', COALESCE(av_fqns.fqn, '')
             ),
-            'context', JSON_BUILD_ARRAY (
-                JSON_BUILD_OBJECT(
-                    'pep', JSON_BUILD_OBJECT(
-                        'client_id', i.client_id
-                    )
-                )
-            )
+            'context', CASE
+                WHEN i.client_id IS NOT NULL THEN JSON_BUILD_ARRAY(
+                    JSON_BUILD_OBJECT(
+                        'pep', JSON_BUILD_OBJECT(
+                            'client_id', i.client_id
+                        )
+                    ))
+                ELSE '[]'::JSON
+            END
         )
     ) as trigger
 FROM inserted i

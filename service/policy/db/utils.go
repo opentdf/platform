@@ -153,6 +153,7 @@ func unmarshalObligationTrigger(triggerJSON []byte) (*policy.ObligationTrigger, 
 	if triggerJSON == nil {
 		return trigger, nil
 	}
+
 	if err := protojson.Unmarshal(triggerJSON, trigger); err != nil {
 		return nil, errors.Join(fmt.Errorf("failed to unmarshal obligation trigger context [%s]: %w", string(triggerJSON), err), db.ErrUnmarshalValueFailed)
 	}

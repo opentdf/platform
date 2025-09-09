@@ -152,8 +152,8 @@ func (s *ObligationsSuite) Test_GetObligation_Succeeds() {
 	})
 	s.Require().NoError(err)
 	s.assertObligationBasics(obl, oblName, namespaceID, namespace.Name, namespaceFQN)
-	s.Require().Len(obl.GetValues()[0].GetTriggers(), 0)
-	s.Require().Len(obl.GetValues()[1].GetTriggers(), 0)
+	s.Require().Empty(obl.GetValues()[0].GetTriggers())
+	s.Require().Empty(obl.GetValues()[1].GetTriggers())
 
 	s.deleteObligations([]string{createdObl.GetId()})
 }
@@ -300,11 +300,6 @@ func (s *ObligationsSuite) Test_GetObligationsByFQNs_WithTriggers_Succeeds() {
 		{
 			Action:         &common.IdNameIdentifier{Name: "create"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.net/attr/attr1/value/value1"},
-			Context: &policy.RequestContext{
-				Pep: &policy.PolicyEnforcemenPoint{
-					ClientId: clientID,
-				},
-			},
 		},
 	}
 	oblValue2 := s.createObligationValueWithTriggers(obl2.GetId(), oblValPrefix+"trigger-val2", obl2Triggers) // Get multiple obligations by FQNs and verify triggers are returned
@@ -535,11 +530,6 @@ func (s *ObligationsSuite) Test_ListObligations_WithTriggers_Succeeds() {
 		{
 			Action:         &common.IdNameIdentifier{Name: "create"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.net/attr/attr1/value/value1"},
-			Context: &policy.RequestContext{
-				Pep: &policy.PolicyEnforcemenPoint{
-					ClientId: clientID,
-				},
-			},
 		},
 	}
 	createdValue3 := s.createObligationValueWithTriggers(otherObl.GetId(), oblValPrefix+"other-trigger-val", otherOblTriggers)
@@ -818,11 +808,6 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_IDs_Succeeds(
 			{
 				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[1].ID},
-				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcemenPoint{
-						ClientId: clientID,
-					},
-				},
 			},
 		},
 	})
@@ -846,7 +831,6 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_IDs_Succeeds(
 			expectedAttributeValue:    triggerSetup.attributeValues[1],
 			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value2",
 			expectedObligationValue:   oblValue,
-			expectedClientID:          clientID,
 		},
 	})
 }
@@ -875,11 +859,6 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_FQNsNames_Suc
 			{
 				Action:         &common.IdNameIdentifier{Name: triggerSetup.action.GetName()},
 				AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value2"},
-				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcemenPoint{
-						ClientId: clientID,
-					},
-				},
 			},
 		},
 	})
@@ -903,7 +882,6 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_FQNsNames_Suc
 			expectedAttributeValue:    triggerSetup.attributeValues[1],
 			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value2",
 			expectedObligationValue:   oblValue,
-			expectedClientID:          clientID,
 		},
 	})
 }
@@ -1227,11 +1205,6 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_WithTriggers_Succeeds(
 		{
 			Action:         &common.IdNameIdentifier{Name: "create"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.net/attr/attr1/value/value1"},
-			Context: &policy.RequestContext{
-				Pep: &policy.PolicyEnforcemenPoint{
-					ClientId: clientID,
-				},
-			},
 		},
 	}
 	oblVal2 := s.createObligationValueWithTriggers(obl2.GetId(), oblValPrefix+"trigger-val3", obl2Triggers) // Test 1: Get multiple obligation values by FQNs and verify triggers are returned
@@ -1557,11 +1530,6 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 			{
 				Action:         &common.IdNameIdentifier{Name: "read"},
 				AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value2"},
-				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcemenPoint{
-						ClientId: clientID,
-					},
-				},
 			},
 		},
 	})
@@ -1575,7 +1543,6 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 			expectedAttributeValue:    triggerSetup.attributeValues[1],
 			expectedAttributeValueFQN: "https://example.com/attr/attr1/value/value2",
 			expectedObligationValue:   updatedOblValue,
-			expectedClientID:          clientID,
 		},
 	})
 	s.Require().Equal(oblValue.GetTriggers()[1].GetAttributeValue().GetFqn(), updatedOblValue.GetTriggers()[0].GetAttributeValue().GetFqn())
@@ -1791,8 +1758,12 @@ func (s *ObligationsSuite) assertTriggers(oblVal *policy.ObligationValue, expect
 				s.Require().Equal(expected.expectedObligationValue.GetValue(), t.GetObligationValue().GetValue())
 				s.Require().Equal(expected.expectedObligationValue.GetObligation().GetId(), t.GetObligationValue().GetObligation().GetId())
 				s.Require().Equal(oblVal.GetObligation().GetId(), t.GetObligationValue().GetObligation().GetId())
-				s.Require().Len(t.GetContext(), 1)
-				s.Require().Equal(expected.expectedClientID, t.GetContext()[0].GetPep().GetClientId())
+				if expected.expectedClientID != "" {
+					s.Require().Len(t.GetContext(), 1)
+					s.Require().Equal(expected.expectedClientID, t.GetContext()[0].GetPep().GetClientId())
+				} else {
+					s.Require().Empty(t.GetContext())
+				}
 			}
 		}
 	}

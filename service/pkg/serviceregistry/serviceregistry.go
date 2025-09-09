@@ -268,14 +268,17 @@ type ServiceConfiguration struct {
 type Registry map[string]Namespace
 
 // NewServiceRegistry creates a new instance of the service registry.
-func NewServiceRegistry() Registry {
-	return make(Registry)
+func NewServiceRegistry() *Registry {
+	return &Registry{
+		namespaces: make(map[string]*Namespace),
+		order:      make([]string, 0),
+	}
 }
 
 // RegisterCoreService registers a core service with the given registration information.
 // It calls the RegisterService method of the Registry instance with the provided registration and service type "core".
 // Returns an error if the registration fails.
-func (reg Registry) RegisterCoreService(svc IService) error {
+func (reg *Registry) RegisterCoreService(svc IService) error {
 	return reg.RegisterService(svc, "core")
 }
 
@@ -292,32 +295,36 @@ func (reg Registry) RegisterService(svc IService, mode ModeName) error {
 	if copyNamespace.Services == nil {
 		copyNamespace.Services = make([]IService, 0)
 	}
-	found := slices.ContainsFunc(reg[svc.GetNamespace()].Services, func(s IService) bool {
+
+	// Check if a service with the same name is already registered in this namespace.
+	found := slices.ContainsFunc(ns.Services, func(s IService) bool {
 		return s.GetServiceDesc().ServiceName == svc.GetServiceDesc().ServiceName
 	})
-
 	if found {
-		return fmt.Errorf("service already registered namespace:%s service:%s", svc.GetNamespace(), svc.GetServiceDesc().ServiceName)
+		return fmt.Errorf("service already registered namespace:%s service:%s", nsName, svc.GetServiceDesc().ServiceName)
 	}
 
 	slog.Info(
 		"registered service",
-		slog.String("namespace", svc.GetNamespace()),
+		slog.String("namespace", nsName),
 		slog.String("service", svc.GetServiceDesc().ServiceName),
 	)
-	copyNamespace.Services = append(copyNamespace.Services, svc)
 
-	reg[svc.GetNamespace()] = copyNamespace
+	ns.Mode = mode
+	ns.Services = append(ns.Services, svc)
+	reg.namespaces[nsName] = ns
+
 	return nil
 }
 
-// Shutdown stops all the services in the service registry.
-// It iterates over each namespace and service in the registry,
-// checks if the service has a Close method and if it has been started,
-// and then calls the Close method to stop the service.
-func (reg Registry) Shutdown() {
-	for name, ns := range reg {
-		for _, svc := range ns.Services {
+// Shutdown stops all the registered services in the reverse order of registration.
+// If a service is started and has a Close method, the Close method will be called.
+func (reg *Registry) Shutdown() {
+	for nsIdx := len(reg.order) - 1; nsIdx >= 0; nsIdx-- {
+		name := reg.order[nsIdx]
+		ns := reg.namespaces[name]
+		for serviceIdx := len(ns.Services) - 1; serviceIdx >= 0; serviceIdx-- {
+			svc := ns.Services[serviceIdx]
 			if svc.IsStarted() {
 				slog.Info("stopping service",
 					slog.String("namespace", name),
@@ -336,8 +343,8 @@ func (reg Registry) Shutdown() {
 }
 
 // GetNamespace returns the namespace with the given name from the service registry.
-func (reg Registry) GetNamespace(namespace string) (Namespace, error) {
-	ns, ok := reg[namespace]
+func (reg *Registry) GetNamespace(namespace string) (*Namespace, error) {
+	ns, ok := reg.namespaces[namespace]
 	if !ok {
 		return Namespace{}, &ServiceConfigError{
 			Type:    "lookup",

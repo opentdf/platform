@@ -35,7 +35,6 @@ var (
 	ServiceWellKnown        ServiceName = "wellknown"
 	ServiceEntityResolution ServiceName = "entityresolution"
 	ServiceAuthorization    ServiceName = "authorization"
-
 )
 
 // getServiceConfigurations returns fresh service configurations each time it's called.
@@ -107,7 +106,7 @@ type startServicesParams struct {
 	otdf                *server.OpenTDFServer
 	client              *sdk.SDK
 	logger              *logging.Logger
-	reg                 serviceregistry.Registry
+	reg                 *serviceregistry.Registry
 	cacheManager        *cache.Manager
 	keyManagerFactories []trust.NamedKeyManagerFactory
 }

@@ -11,6 +11,9 @@ const (
 	ObjectTypeResourceMapping
 	ObjectTypeAttributeDefinition
 	ObjectTypeAttributeValue
+	ObjectTypeObligationDefinition
+	ObjectTypeObligationValue
+	ObjectTypeObligationTrigger
 	ObjectTypeNamespace
 	ObjectTypeConditionSet
 	ObjectTypeKasRegistry
@@ -37,6 +40,9 @@ func (ot ObjectType) String() string {
 		"resource_mapping",
 		"attribute_definition",
 		"attribute_value",
+		"obligation_definition",
+		"obligation_value",
+		"obligation_trigger",
 		"namespace",
 		"condition_set",
 		"kas_registry",

@@ -87,11 +87,9 @@ var (
 	testPlatformOnPremFQN = createAttrValueFQN(testSecondaryNamespace, "platform", "onprem")
 	testPlatformHybridFQN = createAttrValueFQN(testSecondaryNamespace, "platform", "hybrid")
 
-	// Registered resource value FQNs (TODO: remove)
+	// Registered resource value FQNs
 	testNetworkPrivateFQN = createRegisteredResourceValueFQN("network", "private")
 	testNetworkPublicFQN  = createRegisteredResourceValueFQN("network", "public")
-	// testNetworkConfidentialFQN = createRegisteredResourceValueFQN("network", "confidential")
-	// testNetworkAlphaFQN        = createRegisteredResourceValueFQN("network", "alpha")
 )
 
 // registered resource value FQNs using identifier package
@@ -99,27 +97,11 @@ var (
 	// Classification values
 	testClassSecretRegResFQN       = createRegisteredResourceValueFQN("classification", "secret")
 	testClassConfidentialRegResFQN = createRegisteredResourceValueFQN("classification", "confidential")
-	// testClassPublicRegResFQN       = createRegisteredResourceValueFQN("classification", "public")
 
 	// Department values
-	// testDeptRnDRegResFQN         = createRegisteredResourceValueFQN("department", "rnd")
 	testDeptEngineeringRegResFQN = createRegisteredResourceValueFQN("department", "engineering")
-	// testDeptSalesRegResFQN       = createRegisteredResourceValueFQN("department", "sales")
-	testDeptFinanceRegResFQN = createRegisteredResourceValueFQN("department", "finance")
-
-	// Country values
-	// testCountryUSARegResFQN = createRegisteredResourceValueFQN("country", "usa")
-	// testCountryUKRegResFQN  = createRegisteredResourceValueFQN("country", "uk")
-
-	// Project values in secondary namespace
-	testProjectAlphaRegResFQN = createRegisteredResourceValueFQN("project", "alpha")
-	// testProjectBetaRegResFQN  = createRegisteredResourceValueFQN("project", "beta")
-	// testProjectGammaRegResFQN = createRegisteredResourceValueFQN("project", "gamma")
-
-	// Platform values in secondary namespace
-	// testPlatformCloudRegResFQN  = createRegisteredResourceValueFQN("platform", "cloud")
-	// testPlatformOnPremRegResFQN = createRegisteredResourceValueFQN("platform", "onprem")
-	// testPlatformHybridRegResFQN = createRegisteredResourceValueFQN("platform", "hybrid")
+	testDeptFinanceRegResFQN     = createRegisteredResourceValueFQN("department", "finance")
+	testProjectAlphaRegResFQN    = createRegisteredResourceValueFQN("project", "alpha")
 )
 
 // Registered resource value FQNs using identifier package
@@ -292,7 +274,7 @@ func (s *PDPTestSuite) SetupTest() {
 
 	// Initialize subject mappings
 	s.fixtures.topSecretMapping = createSimpleSubjectMapping(
-		testClassSecretFQN,
+		testClassTopSecretFQN,
 		"topsecret",
 		[]*policy.Action{testActionRead},
 		".properties.clearance",
@@ -358,7 +340,7 @@ func (s *PDPTestSuite) SetupTest() {
 	s.fixtures.ukMapping = createSimpleSubjectMapping(
 		testCountryUKFQN,
 		"uk",
-		[]*policy.Action{testActionRead},
+		[]*policy.Action{testActionRead, testActionDelete},
 		".properties.country[]",
 		[]string{"uk"},
 	)
@@ -893,7 +875,7 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		s.T().Context(),
 		s.logger,
 		[]*policy.Attribute{f.classificationAttr, f.departmentAttr},
-		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping, f.publicMapping, f.engineeringMapping, f.financeMapping},
+		[]*policy.SubjectMapping{f.secretMapping, f.topSecretMapping, f.confidentialMapping, f.publicMapping, f.rndMapping, f.engineeringMapping, f.financeMapping},
 		[]*policy.RegisteredResource{f.classificationRegRes, f.deptRegRes},
 	)
 	s.Require().NoError(err)
@@ -988,10 +970,14 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 		}
 
 		s.assertAllDecisionResults(decision, expectedResults)
-		for _, result := range decision.Results {
+		for idx, result := range decision.Results {
 			s.False(result.Passed, "Data rules should not pass")
-			s.Len(result.DataRuleResults, 1)
-			s.NotEmpty(result.DataRuleResults[0].EntitlementFailures)
+			// Only expect rule results if the rule was evaluated, which doesn't happen for early
+			// failures within action-attribute-value mismatches with the requested action
+			if idx < 3 {
+				s.Len(result.DataRuleResults, 1)
+				s.NotEmpty(result.DataRuleResults[0].EntitlementFailures)
+			}
 		}
 	})
 
@@ -1061,6 +1047,292 @@ func (s *PDPTestSuite) Test_GetDecision_MultipleResources() {
 			}
 		}
 	})
+
+	s.Run("Multiple registered resources - entity has full access", func() {
+		entity := s.createEntityWithProps("topsecret-rnd-user", map[string]interface{}{
+			"clearance":  "ts",
+			"department": "rnd",
+		})
+
+		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: rndDeptRegResFQN,
+				},
+			},
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: topsecretClassRegResFQN,
+				},
+			},
+		}
+
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+		s.Len(decision.Results, 2)
+
+		foundRnd := false
+		foundTopSecret := false
+		for _, result := range decision.Results {
+			s.True(result.Passed, "All registered resource value access requests should pass")
+			s.Len(result.DataRuleResults, 1)
+			s.Empty(result.DataRuleResults[0].EntitlementFailures)
+			switch result.ResourceName {
+			case rndDeptRegResFQN:
+				foundRnd = true
+			case topsecretClassRegResFQN:
+				foundTopSecret = true
+			default:
+				s.Failf("Unexpected resource name: %s", result.ResourceName)
+			}
+		}
+		s.True(foundRnd)
+		s.True(foundTopSecret)
+	})
+
+	s.Run("Multiple registered resources and entitled actions/attributes of varied casing - full access", func() {
+		entity := s.createEntityWithProps("topsecret-rnd-user", map[string]interface{}{
+			"clearance":  "ts",
+			"department": "rnd",
+		})
+
+		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+
+		// Upper case both registered resource value FQNs for assurance FQNs will be case-normalized
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: strings.ToUpper(rndDeptRegResFQN),
+				},
+			},
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: strings.ToUpper(topsecretClassRegResFQN),
+				},
+			},
+		}
+
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+		s.Len(decision.Results, 2)
+
+		foundRnd := false
+		foundTopSecret := false
+		for _, result := range decision.Results {
+			s.True(result.Passed, "All registered resource value access requests should pass")
+			s.Len(result.DataRuleResults, 1)
+			s.Empty(result.DataRuleResults[0].EntitlementFailures)
+			switch result.ResourceName {
+			case rndDeptRegResFQN:
+				foundRnd = true
+			case topsecretClassRegResFQN:
+				foundTopSecret = true
+			default:
+				s.Failf("Unexpected resource name: %s", result.ResourceName)
+			}
+		}
+		s.True(foundRnd)
+		s.True(foundTopSecret)
+	})
+
+	s.Run("Multiple registered resources and unentitled attributes - full denial", func() {
+		entity := s.createEntityWithProps("test-user-2", map[string]interface{}{
+			"clearance":  "confidential", // Not high enough for read on topsecret
+			"department": "finance",      // Not rnd
+		})
+
+		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: rndDeptRegResFQN,
+				},
+			},
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: topsecretClassRegResFQN,
+				},
+			},
+		}
+
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+		s.Len(decision.Results, 2)
+
+		foundRnd := false
+		foundTopSecret := false
+		for _, result := range decision.Results {
+			s.False(result.Passed, "All registered resource access requests should fail")
+			s.Len(result.DataRuleResults, 1)
+			s.NotEmpty(result.DataRuleResults[0].EntitlementFailures)
+			switch result.ResourceName {
+			case rndDeptRegResFQN:
+				foundRnd = true
+			case topsecretClassRegResFQN:
+				foundTopSecret = true
+			default:
+				s.Failf("Unexpected resource name: %s", result.ResourceName)
+			}
+		}
+		s.True(foundRnd)
+		s.True(foundTopSecret)
+	})
+
+	s.Run("Multiple registered resources and unentitled actions - full denial", func() {
+		entity := s.createEntityWithProps("test-user-2", map[string]interface{}{
+			"clearance":  "ts",  // subject mapping permits read
+			"department": "rnd", // subject mapping permits read/update
+		})
+
+		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: rndDeptRegResFQN,
+				},
+			},
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: topsecretClassRegResFQN,
+				},
+			},
+		}
+
+		unentitledAction := testActionDelete
+		decision, err := pdp.GetDecision(s.T().Context(), entity, unentitledAction, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+		s.Len(decision.Results, 2)
+
+		foundRnd := false
+		foundTopSecret := false
+		for _, result := range decision.Results {
+			s.False(result.Passed, "All registered resource access requests should fail")
+			switch result.ResourceName {
+			case rndDeptRegResFQN:
+				foundRnd = true
+			case topsecretClassRegResFQN:
+				foundTopSecret = true
+			default:
+				s.Failf("Unexpected resource name: %s", result.ResourceName)
+			}
+		}
+		s.True(foundRnd)
+		s.True(foundTopSecret)
+	})
+
+	s.Run("Multiple registered resources and unentitled actions - partial action-specific denial", func() {
+		entity := s.createEntityWithProps("test-user-2", map[string]interface{}{
+			"clearance":  "ts",  // subject mapping permits read
+			"department": "rnd", // subject mapping permits read/update
+		})
+
+		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: rndDeptRegResFQN,
+				},
+			},
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: topsecretClassRegResFQN,
+				},
+			},
+		}
+
+		partiallyEntitledAction := testActionUpdate
+		decision, err := pdp.GetDecision(s.T().Context(), entity, partiallyEntitledAction, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+		s.Len(decision.Results, 2)
+
+		foundRnd := false
+		foundTopSecret := false
+		for _, result := range decision.Results {
+			switch result.ResourceName {
+			case rndDeptRegResFQN:
+				s.Len(result.DataRuleResults, 1)
+				s.True(result.DataRuleResults[0].Passed)
+				s.Empty(result.DataRuleResults[0].EntitlementFailures)
+				foundRnd = true
+			case topsecretClassRegResFQN:
+				foundTopSecret = true
+			default:
+				s.Failf("Unexpected resource name: %s", result.ResourceName)
+			}
+		}
+		s.True(foundRnd)
+		s.True(foundTopSecret)
+	})
+
+	s.Run("Multiple registered resources - partial attribute-specific denial", func() {
+		entity := s.createEntityWithProps("test-user-4", map[string]interface{}{
+			"clearance":  "confidential", // not top secret
+			"department": "rnd",
+		})
+
+		rndDeptRegResFQN := createRegisteredResourceValueFQN(f.deptRegRes.GetName(), f.deptRegRes.GetValues()[0].GetValue())
+		topsecretClassRegResFQN := createRegisteredResourceValueFQN(f.classificationRegRes.GetName(), f.classificationRegRes.GetValues()[0].GetValue())
+
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: rndDeptRegResFQN,
+				},
+			},
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: topsecretClassRegResFQN,
+				},
+			},
+		}
+
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+		s.Len(decision.Results, 2)
+
+		foundRnd := false
+		foundTopSecret := false
+		for _, result := range decision.Results {
+			s.Len(result.DataRuleResults, 1)
+
+			switch result.ResourceName {
+			case rndDeptRegResFQN:
+				s.True(result.DataRuleResults[0].Passed)
+				s.Empty(result.DataRuleResults[0].EntitlementFailures)
+				foundRnd = true
+			case topsecretClassRegResFQN:
+				s.False(result.DataRuleResults[0].Passed)
+				s.NotEmpty(result.DataRuleResults[0].EntitlementFailures)
+				foundTopSecret = true
+			default:
+				s.Failf("Unexpected resource name: %s", result.ResourceName)
+			}
+		}
+		s.True(foundRnd)
+		s.True(foundTopSecret)
+	})
 }
 
 // Test_GetDecision_PartialActionEntitlement tests scenarios where actions only partially align with entitlements
@@ -1082,21 +1354,14 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		[]string{"confidential"},
 	)
 
-	printConfidentialRegRes := &policy.RegisteredResource{
-		Name: "classification-print",
+	readConfidentialRegRes := &policy.RegisteredResource{
+		Name: "docs",
 		Values: []*policy.RegisteredResourceValue{
 			{
-				Value: "confidential-print",
+				Value: "confidential-read",
 				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
 					{
 						Action: testActionRead,
-						AttributeValue: &policy.Value{
-							Fqn:   testClassConfidentialFQN,
-							Value: "confidential",
-						},
-					},
-					{
-						Action: testActionPrint,
 						AttributeValue: &policy.Value{
 							Fqn:   testClassConfidentialFQN,
 							Value: "confidential",
@@ -1119,118 +1384,33 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		[]string{"public"},
 	)
 
-	allActionsPublicRegRes := &policy.RegisteredResource{
-		Name: "classification-all-actions",
-		Values: []*policy.RegisteredResourceValue{
-			{
-				Value: "public-all-actions",
-				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
-					{
-						Action: testActionRead,
-						AttributeValue: &policy.Value{
-							Fqn:   testClassPublicFQN,
-							Value: "public",
-						},
-					},
-					{
-						Action: testActionCreate,
-						AttributeValue: &policy.Value{
-							Fqn:   testClassPublicFQN,
-							Value: "public",
-						},
-					},
-					{
-						Action: testActionUpdate,
-						AttributeValue: &policy.Value{
-							Fqn:   testClassPublicFQN,
-							Value: "public",
-						},
-					},
-					{
-						Action: testActionDelete,
-						AttributeValue: &policy.Value{
-							Fqn:   testClassPublicFQN,
-							Value: "public",
-						},
-					},
-					{
-						Action: testActionPrint,
-						AttributeValue: &policy.Value{
-							Fqn:   testClassPublicFQN,
-							Value: "public",
-						},
-					},
-					{
-						Action: testActionView,
-						AttributeValue: &policy.Value{
-							Fqn:   testClassPublicFQN,
-							Value: "public",
-						},
-					},
-					{
-						Action: testActionList,
-						AttributeValue: &policy.Value{
-							Fqn:   testClassPublicFQN,
-							Value: "public",
-						},
-					},
-					{
-						Action: testActionSearch,
-						AttributeValue: &policy.Value{
-							Fqn:   testClassPublicFQN,
-							Value: "public",
-						},
-					},
-				},
-			},
-		},
-	}
-
 	// Create a view mapping for Project Alpha with view being a parent action of read and list
 	viewProjectAlphaMapping := createSimpleSubjectMapping(
 		testProjectAlphaFQN,
 		"alpha",
-		[]*policy.Action{testActionView},
+		[]*policy.Action{testActionView, actionCreate, actionRead},
 		".properties.project",
 		[]string{"alpha"},
 	)
-
-	viewProjectAlphaRegRes := &policy.RegisteredResource{
-		Name: "project-view",
-		Values: []*policy.RegisteredResourceValue{
-			{
-				Value: "alpha-view",
-				ActionAttributeValues: []*policy.RegisteredResourceValue_ActionAttributeValue{
-					{
-						Action: testActionView,
-						AttributeValue: &policy.Value{
-							Fqn:   testProjectAlphaFQN,
-							Value: "alpha",
-						},
-					},
-				},
-			},
-		},
-	}
 
 	// Create a PDP with relevant attributes and mappings
 	pdp, err := NewPolicyDecisionPoint(
 		s.T().Context(),
 		s.logger,
-		[]*policy.Attribute{f.classificationAttr, f.departmentAttr, f.projectAttr},
+		[]*policy.Attribute{f.classificationAttr, f.departmentAttr, f.projectAttr, f.countryAttr},
 		[]*policy.SubjectMapping{
 			f.secretMapping, f.topSecretMapping, printConfidentialMapping, allActionsPublicMapping,
-			f.engineeringMapping, f.financeMapping, viewProjectAlphaMapping,
+			f.engineeringMapping, f.financeMapping, viewProjectAlphaMapping, f.ukMapping,
 		},
 		[]*policy.RegisteredResource{
 			f.classificationRegRes, f.deptRegRes, f.projectRegRes,
-			printConfidentialRegRes, allActionsPublicRegRes, viewProjectAlphaRegRes,
+			readConfidentialRegRes, f.countryRegRes,
 		},
 	)
 	s.Require().NoError(err)
 	s.Require().NotNil(pdp)
 
-	s.Run("Scenario 1: User has subset of requested actions", func() {
+	s.Run("User has subset of requested actions", func() {
 		// Entity with secret clearance - only entitled to read and update on secret
 		entity := s.createEntityWithProps("user123", map[string]interface{}{
 			"clearance": "secret",
@@ -1255,7 +1435,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		s.Len(decision.Results, 2)
 	})
 
-	s.Run("Scenario 2: User has overlapping action sets", func() {
+	s.Run("User has overlapping action sets", func() {
 		// Entity with both confidential clearance and finance department
 		entity := s.createEntityWithProps("user456", map[string]interface{}{
 			"clearance":  "confidential",
@@ -1298,18 +1478,19 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		s.False(decision.Access)
 	})
 
-	s.Run("Scenario 3: Action inheritance with partial permissions", func() {
+	s.Run("Action inheritance with partial permissions", func() {
 		entity := s.createEntityWithProps("user789", map[string]interface{}{
 			"project": "alpha",
 		})
 
+		// testProjectAlphaRegResFQN - read/create,
 		resources := createResourcePerFqn(testProjectAlphaFQN, testProjectAlphaRegResFQN)
 
-		// Test view access - should be allowed
+		// Test view access - should be denied as view action not supported by registered resource
 		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionView, resources)
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
-		s.True(decision.Access)
+		s.False(decision.Access)
 
 		// Test list access - should be denied
 		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionList, resources)
@@ -1322,9 +1503,21 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)
+
+		// Test read access - should be allowed
+		decision, err = pdp.GetDecision(s.T().Context(), entity, actionRead, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+
+		// Test create access - should be allowed
+		decision, err = pdp.GetDecision(s.T().Context(), entity, actionCreate, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
 	})
 
-	s.Run("Scenario 4: Conflicting action policies across multiple attributes", func() {
+	s.Run("Conflicting action policies across multiple attributes", func() {
 		// Set up a PDP with the comprehensive actions public mapping and restricted mapping
 		restrictedMapping := createSimpleSubjectMapping(
 			testClassConfidentialFQN,
@@ -1356,7 +1549,7 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 			s.logger,
 			[]*policy.Attribute{f.classificationAttr},
 			[]*policy.SubjectMapping{allActionsPublicMapping, restrictedMapping},
-			[]*policy.RegisteredResource{f.classificationRegRes, allActionsPublicRegRes, restrictedRegRes},
+			[]*policy.RegisteredResource{f.classificationRegRes, restrictedRegRes},
 		)
 		s.Require().NoError(err)
 		s.Require().NotNil(classificationPDP)
@@ -1386,6 +1579,76 @@ func (s *PDPTestSuite) Test_GetDecision_PartialActionEntitlement() {
 		s.Require().NoError(err)
 		s.Require().NotNil(decision)
 		s.False(decision.Access)
+	})
+
+	s.Run("Requested entitled action (on hierarchical attribute) not supported by registered resource fails", func() {
+		entity := s.createEntityWithProps("conf-printer-reader", map[string]interface{}{
+			"clearance": "confidential",
+		})
+
+		readConfidentialRegResFQN := createRegisteredResourceValueFQN(readConfidentialRegRes.GetName(), readConfidentialRegRes.GetValues()[0].GetValue())
+
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: readConfidentialRegResFQN,
+				},
+			},
+		}
+
+		// Test print access - should be denied because RR action-attribute-value does not support it despite
+		// entity's entitlement to the action on the attribute
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionPrint, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+
+		// Test unentitled action - should be denied
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionList, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+
+		// Test read access - should be allowed
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
+	})
+
+	s.Run("Requested entitled action (on any_of attribute) not supported by registered resource fails", func() {
+		entity := s.createEntityWithProps("country-uk-reader-deleter", map[string]interface{}{
+			"country": []any{"uk"},
+		})
+
+		readCountryUKRegResFQN := createRegisteredResourceValueFQN(f.countryRegRes.GetName(), f.countryRegRes.GetValues()[1].GetValue())
+
+		resources := []*authz.Resource{
+			{
+				Resource: &authz.Resource_RegisteredResourceValueFqn{
+					RegisteredResourceValueFqn: readCountryUKRegResFQN,
+				},
+			},
+		}
+
+		// Test delete access - should be denied because RR action-attribute-value does not support it despite
+		// entity's entitlement to the action on the attribute
+		decision, err := pdp.GetDecision(s.T().Context(), entity, testActionDelete, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+
+		// Test unentitled action - should be denied
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionList, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.False(decision.Access)
+
+		// Test read access - should be allowed
+		decision, err = pdp.GetDecision(s.T().Context(), entity, testActionRead, resources)
+		s.Require().NoError(err)
+		s.Require().NotNil(decision)
+		s.True(decision.Access)
 	})
 }
 
@@ -2194,10 +2457,14 @@ func (s *PDPTestSuite) Test_GetDecisionRegisteredResource_MultipleResources() {
 		}
 
 		s.assertAllDecisionResults(decision, expectedResults)
-		for _, result := range decision.Results {
+		for idx, result := range decision.Results {
 			s.False(result.Passed, "Data rules should not pass")
-			s.Len(result.DataRuleResults, 1)
-			s.NotEmpty(result.DataRuleResults[0].EntitlementFailures)
+			// Only expect rule results if the rule was evaluated, which doesn't happen for early
+			// failures within action-attribute-value mismatches with the requested action
+			if idx < 3 {
+				s.Len(result.DataRuleResults, 1)
+				s.NotEmpty(result.DataRuleResults[0].EntitlementFailures)
+			}
 		}
 	})
 

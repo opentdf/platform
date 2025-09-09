@@ -179,6 +179,14 @@
             <ul>
               
                 <li>
+                  <a href="#common.IdFqnIdentifier"><span class="badge">M</span>IdFqnIdentifier</a>
+                </li>
+              
+                <li>
+                  <a href="#common.IdNameIdentifier"><span class="badge">M</span>IdNameIdentifier</a>
+                </li>
+              
+                <li>
                   <a href="#common.Metadata"><span class="badge">M</span>Metadata</a>
                 </li>
               
@@ -1524,6 +1532,10 @@
                   <a href="#policy.obligations.UpdateObligationValueResponse"><span class="badge">M</span>UpdateObligationValueResponse</a>
                 </li>
               
+                <li>
+                  <a href="#policy.obligations.ValueTriggerRequest"><span class="badge">M</span>ValueTriggerRequest</a>
+                </li>
+              
               
               
               
@@ -2008,6 +2020,68 @@
       </div>
       <p></p>
 
+      
+        <h3 id="common.IdFqnIdentifier">IdFqnIdentifier</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="common.IdNameIdentifier">IdNameIdentifier</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>id</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>name</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
       
         <h3 id="common.Metadata">Metadata</h3>
         <p>Struct to uniquely identify a resource with optional additional metadata</p>
@@ -2779,6 +2853,13 @@ Unique name of the KAS instance </p></td>
                 </tr>
               
                 <tr>
+                  <td>manager</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -2991,6 +3072,13 @@ enable federation </p></td>
                   <td>value</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>triggers</td>
+                  <td><a href="#policy.ObligationTrigger">ObligationTrigger</a></td>
+                  <td>repeated</td>
                   <td><p> </p></td>
                 </tr>
               
@@ -11143,7 +11231,7 @@ Request to create a new key in the Key Access Service.</p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Required
-The name of the key provider. (e.g. &#34;AWS KMS&#34;, &#34;Google Cloud KMS&#34;, &#34;Azure Key Vault&#34;) </p></td>
+The name of the key provider. (e.g. &#34;AWS KMS Instance 1&#34;, &#34;Google Cloud KMS Instance 2&#34;) </p></td>
                 </tr>
               
                 <tr>
@@ -11152,6 +11240,14 @@ The name of the key provider. (e.g. &#34;AWS KMS&#34;, &#34;Google Cloud KMS&#34
                   <td></td>
                   <td><p>Required
 JSON configuration for the key provider. This is unique to individual key providers. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>manager</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Required
+The type of key manager (e.g. &#34;aws&#34;, &#34;gcp&#34;, &#34;azure&#34;, &#34;opentdf.io/basic&#34;) </p></td>
                 </tr>
               
                 <tr>
@@ -11262,6 +11358,13 @@ JSON configuration for the key provider. This is unique to individual key provid
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>manager</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p>Optional - filter by manager type when searching by name </p></td>
                 </tr>
               
             </tbody>
@@ -11377,6 +11480,13 @@ JSON configuration for the key provider. This is unique to individual key provid
                 <tr>
                   <td>config_json</td>
                   <td><a href="#bytes">bytes</a></td>
+                  <td></td>
+                  <td><p>Optional </p></td>
+                </tr>
+              
+                <tr>
+                  <td>manager</td>
+                  <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p>Optional </p></td>
                 </tr>
@@ -12193,24 +12303,24 @@ Namespace &lt;&gt; Key RPCs
             <tbody>
               
                 <tr>
-                  <td>obligation_value_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>obligation_value</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
                   <td></td>
                   <td><p>Required </p></td>
                 </tr>
               
                 <tr>
-                  <td>action_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>action</td>
+                  <td><a href="#common.IdNameIdentifier">common.IdNameIdentifier</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
-                  <td>attribute_value_id</td>
-                  <td><a href="#string">string</a></td>
+                  <td>attribute_value</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
                 <tr>
@@ -12358,6 +12468,14 @@ Common metadata </p></td>
                   <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>triggers</td>
+                  <td><a href="#policy.obligations.ValueTriggerRequest">ValueTriggerRequest</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional
+Combination of action and attribute_value that will trigger this obligation value policy decisioning. </p></td>
                 </tr>
               
                 <tr>
@@ -12860,7 +12978,7 @@ Common metadata </p></td>
                   <td>id</td>
                   <td><a href="#string">string</a></td>
                   <td></td>
-                  <td><p> </p></td>
+                  <td><p>Required </p></td>
                 </tr>
               
             </tbody>
@@ -12988,6 +13106,14 @@ Common metadata </p></td>
                 </tr>
               
                 <tr>
+                  <td>triggers</td>
+                  <td><a href="#policy.obligations.ValueTriggerRequest">ValueTriggerRequest</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional
+Obligation Triggers provided here will replace all existing records in the database. </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
@@ -13023,6 +13149,37 @@ Common metadata </p></td>
                   <td><a href="#policy.ObligationValue">policy.ObligationValue</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.ValueTriggerRequest">ValueTriggerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#common.IdNameIdentifier">common.IdNameIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required. The ID of the action that will trigger this obligation value policy decisioning. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required. The attribute value ID that will trigger this obligation value policy decisioning. </p></td>
                 </tr>
               
             </tbody>

@@ -470,6 +470,8 @@ message Obligation {
 
   repeated ObligationValue values = 4;
 
+  string fqn = 5;
+
   common.Metadata metadata = 100;
 }
 
@@ -481,6 +483,8 @@ message ObligationValue {
   string value = 3;
 
   repeated ObligationTrigger triggers = 4;
+
+  string fqn = 5;
 
   common.Metadata metadata = 100;
 }

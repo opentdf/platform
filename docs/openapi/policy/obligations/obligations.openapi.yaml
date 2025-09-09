@@ -996,6 +996,9 @@ components:
           items:
             $ref: '#/components/schemas/policy.ObligationValue'
           title: values
+        fqn:
+          type: string
+          title: fqn
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1038,6 +1041,9 @@ components:
           items:
             $ref: '#/components/schemas/policy.ObligationTrigger'
           title: triggers
+        fqn:
+          type: string
+          title: fqn
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1411,6 +1417,14 @@ components:
         value:
           type: string
           title: value
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.obligations.ValueTriggerRequest'
+          title: triggers
+          description: |-
+            Optional
+             Combination of action and attribute_value that will trigger this obligation value policy decisioning.
         metadata:
           title: metadata
           description: |-
@@ -1694,6 +1708,14 @@ components:
           type: string
           title: value
           description: Optional
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.obligations.ValueTriggerRequest'
+          title: triggers
+          description: |-
+            Optional
+             Obligation Triggers provided here will replace all existing records in the database.
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.MetadataMutable'
@@ -1709,6 +1731,22 @@ components:
           title: value
           $ref: '#/components/schemas/policy.ObligationValue'
       title: UpdateObligationValueResponse
+      additionalProperties: false
+    policy.obligations.ValueTriggerRequest:
+      type: object
+      properties:
+        action:
+          title: action
+          description: Required. The ID of the action that will trigger this obligation value policy decisioning.
+          $ref: '#/components/schemas/common.IdNameIdentifier'
+        attributeValue:
+          title: attribute_value
+          description: Required. The attribute value ID that will trigger this obligation value policy decisioning.
+          $ref: '#/components/schemas/common.IdFqnIdentifier'
+      title: ValueTriggerRequest
+      required:
+        - action
+        - attributeValue
       additionalProperties: false
     connect-protocol-version:
       type: number

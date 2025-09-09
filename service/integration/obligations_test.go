@@ -1380,7 +1380,7 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_Succeeds() {
 	s.deleteObligations([]string{createdObl.GetId()})
 }
 
-func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_IDs_Succeeds() {
+func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 	triggerSetup := s.setupTriggerTests()
 	defer s.deleteObligations([]string{triggerSetup.createdObl.GetId()})
 

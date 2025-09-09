@@ -150,16 +150,11 @@ type OCEncapsulator struct {
 }
 
 func (e *OCEncapsulator) Encapsulate(dek ocrypto.ProtectedKey) ([]byte, error) {
-	ipk, ok := dek.(*ocrypto.AESProtectedKey)
+	protectedKey, ok := dek.(*ocrypto.AESProtectedKey)
 	if !ok {
 		return nil, errors.New("invalid DEK type for encapsulation")
 	}
-	// Export the raw key without encryption
-	rawKey, err := ipk.Export(nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to export raw key: %w", err)
-	}
-	return e.Encrypt(rawKey)
+	return e.Encrypt(protectedKey.Key())
 }
 
 func (e *OCEncapsulator) PublicKeyAsPEM() (string, error) {

@@ -113,6 +113,30 @@ func (m *MockEncapsulator) EphemeralKey() []byte {
 	return nil
 }
 
+// noOpEncapsulator is a test encapsulator that returns raw key data without encryption
+type noOpEncapsulator struct{}
+
+func (n *noOpEncapsulator) Encapsulate(pk ocrypto.ProtectedKey) ([]byte, error) {
+	aesKey, ok := pk.(*ocrypto.AESProtectedKey)
+	if !ok {
+		return nil, errors.New("expected AESProtectedKey")
+	}
+
+	return aesKey.Key(), nil
+}
+
+func (n *noOpEncapsulator) Encrypt(data []byte) ([]byte, error) {
+	return data, nil
+}
+
+func (n *noOpEncapsulator) PublicKeyAsPEM() (string, error) {
+	return "", nil
+}
+
+func (n *noOpEncapsulator) EphemeralKey() []byte {
+	return nil
+}
+
 // Helper function to wrap a key with AES-GCM
 func wrapKeyWithAESGCM(keyToWrap []byte, rootKey []byte) (string, error) {
 	gcm, err := ocrypto.NewAESGcm(rootKey)
@@ -298,7 +322,9 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, protectedKey)
 
-		decryptedPayload, err := protectedKey.Export(nil)
+		// Use noOpEncapsulator to get raw key data for testing
+		noOpEnc := &noOpEncapsulator{}
+		decryptedPayload, err := protectedKey.Export(noOpEnc)
 		require.NoError(t, err)
 		assert.Equal(t, samplePayload, decryptedPayload)
 	})
@@ -324,7 +350,9 @@ func TestBasicManager_Decrypt(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, protectedKey)
 
-		decryptedPayload, err := protectedKey.Export(nil)
+		// Use noOpEncapsulator to get raw key data for testing
+		noOpEnc := &noOpEncapsulator{}
+		decryptedPayload, err := protectedKey.Export(noOpEnc)
 		require.NoError(t, err)
 		assert.Equal(t, samplePayload, decryptedPayload)
 	})
@@ -445,7 +473,9 @@ func TestBasicManager_DeriveKey(t *testing.T) {
 		expectedDerivedKey, err := ocrypto.CalculateHKDF(NanoVersionSalt(), expectedSharedSecret)
 		require.NoError(t, err)
 
-		actualDerivedKey, err := protectedKey.Export(nil)
+		// Use noOpEncapsulator to get raw key data for testing
+		noOpEnc := &noOpEncapsulator{}
+		actualDerivedKey, err := protectedKey.Export(noOpEnc)
 		require.NoError(t, err)
 		assert.Equal(t, expectedDerivedKey, actualDerivedKey)
 	})

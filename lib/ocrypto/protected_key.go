@@ -83,6 +83,11 @@ func (k *AESProtectedKey) VerifyBinding(_ context.Context, policy, policyBinding
 	return nil
 }
 
+// Key returns raw key
+func (k *AESProtectedKey) Key() []byte {
+	return k.rawKey
+}
+
 // generateHMACDigest is a helper to generate an HMAC digest from a message using the key
 func (k *AESProtectedKey) generateHMACDigest(msg []byte) []byte {
 	mac := hmac.New(sha256.New, k.rawKey)

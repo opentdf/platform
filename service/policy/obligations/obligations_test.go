@@ -6,6 +6,7 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/google/uuid"
 	"github.com/opentdf/platform/protocol/go/common"
+	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/obligations"
 	"github.com/stretchr/testify/require"
 )
@@ -29,6 +30,12 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 	validFQN := "https://example.com/attr/value/1"
 	invalidFQN := "invalid-fqn"
 	validName := "kas"
+	validRequestContext := &policy.RequestContext{
+		Pep: &policy.PolicyEnforcemenPoint{
+			ClientId: "client-id",
+		},
+	}
+
 	testCases := []struct {
 		name         string
 		req          *obligations.AddObligationTriggerRequest
@@ -41,6 +48,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 				ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
 				Action:          &common.IdNameIdentifier{Id: validUUID},
 				AttributeValue:  &common.IdFqnIdentifier{Id: validUUID},
+				Context:         validRequestContext,
 			},
 			expectError: false,
 		},
@@ -50,6 +58,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 				ObligationValue: &common.IdFqnIdentifier{Fqn: validFQN},
 				Action:          &common.IdNameIdentifier{Name: validName},
 				AttributeValue:  &common.IdFqnIdentifier{Fqn: validFQN},
+				Context:         validRequestContext,
 			},
 			expectError: false,
 		},
@@ -59,6 +68,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 				ObligationValue: &common.IdFqnIdentifier{Id: invalidUUID},
 				Action:          &common.IdNameIdentifier{Id: validUUID},
 				AttributeValue:  &common.IdFqnIdentifier{Id: validUUID},
+				Context:         validRequestContext,
 			},
 			expectError:  true,
 			errorMessage: "obligation_value.id",
@@ -69,6 +79,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 				ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
 				Action:          &common.IdNameIdentifier{Id: invalidUUID},
 				AttributeValue:  &common.IdFqnIdentifier{Id: validUUID},
+				Context:         validRequestContext,
 			},
 			expectError:  true,
 			errorMessage: "action.id",
@@ -79,6 +90,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 				ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
 				Action:          &common.IdNameIdentifier{Id: validUUID},
 				AttributeValue:  &common.IdFqnIdentifier{Id: invalidUUID},
+				Context:         validRequestContext,
 			},
 			expectError:  true,
 			errorMessage: "attribute_value.id",
@@ -89,6 +101,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 				ObligationValue: &common.IdFqnIdentifier{Fqn: invalidFQN},
 				Action:          &common.IdNameIdentifier{Id: validUUID},
 				AttributeValue:  &common.IdFqnIdentifier{Fqn: validFQN},
+				Context:         validRequestContext,
 			},
 			expectError:  true,
 			errorMessage: "obligation_value.fqn",
@@ -99,6 +112,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 				ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
 				Action:          &common.IdNameIdentifier{Id: validUUID},
 				AttributeValue:  &common.IdFqnIdentifier{Fqn: invalidFQN},
+				Context:         validRequestContext,
 			},
 			expectError:  true,
 			errorMessage: "attribute_value.fqn",
@@ -108,6 +122,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 			req: &obligations.AddObligationTriggerRequest{
 				Action:         &common.IdNameIdentifier{Id: validUUID},
 				AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
+				Context:        validRequestContext,
 			},
 			expectError:  true,
 			errorMessage: "obligation_value",
@@ -117,6 +132,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 			req: &obligations.AddObligationTriggerRequest{
 				ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
 				AttributeValue:  &common.IdFqnIdentifier{Id: validUUID},
+				Context:         validRequestContext,
 			},
 			expectError:  true,
 			errorMessage: "action",
@@ -126,9 +142,20 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 			req: &obligations.AddObligationTriggerRequest{
 				ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
 				Action:          &common.IdNameIdentifier{Id: validUUID},
+				Context:         validRequestContext,
 			},
 			expectError:  true,
 			errorMessage: "attribute_value",
+		},
+		{
+			name: "missing context",
+			req: &obligations.AddObligationTriggerRequest{
+				ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
+				Action:          &common.IdNameIdentifier{Id: validUUID},
+				AttributeValue:  &common.IdFqnIdentifier{Id: validUUID},
+			},
+			expectError:  true,
+			errorMessage: "context",
 		},
 		{
 			name: "two attribute_values - fqn and id",
@@ -136,6 +163,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 				ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
 				Action:          &common.IdNameIdentifier{Id: validUUID},
 				AttributeValue:  &common.IdFqnIdentifier{Id: validUUID, Fqn: validFQN},
+				Context:         validRequestContext,
 			},
 			expectError:  true,
 			errorMessage: "attribute_value",
@@ -146,6 +174,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 				ObligationValue: &common.IdFqnIdentifier{Id: validUUID, Fqn: validFQN},
 				Action:          &common.IdNameIdentifier{Id: validUUID},
 				AttributeValue:  &common.IdFqnIdentifier{Id: validUUID},
+				Context:         validRequestContext,
 			},
 			expectError:  true,
 			errorMessage: "obligation_value",
@@ -156,6 +185,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 				ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
 				Action:          &common.IdNameIdentifier{Id: validUUID, Name: validName},
 				AttributeValue:  &common.IdFqnIdentifier{Id: validUUID},
+				Context:         validRequestContext,
 			},
 			expectError:  true,
 			errorMessage: "action",
@@ -166,6 +196,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 				ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
 				Action:          &common.IdNameIdentifier{Name: invalidName},
 				AttributeValue:  &common.IdFqnIdentifier{Id: validUUID},
+				Context:         validRequestContext,
 			},
 			expectError:  true,
 			errorMessage: "name_format",
@@ -235,6 +266,11 @@ func Test_RemoveObligationTrigger_Request(t *testing.T) {
 
 func Test_CreateObligationValue_Request(t *testing.T) {
 	validUUID := uuid.NewString()
+	validRequestContext := &policy.RequestContext{
+		Pep: &policy.PolicyEnforcemenPoint{
+			ClientId: "client-id",
+		},
+	}
 	testCases := []struct {
 		name         string
 		req          *obligations.CreateObligationValueRequest
@@ -266,6 +302,7 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 					{
 						Action:         &common.IdNameIdentifier{Id: validUUID},
 						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
+						Context:        validRequestContext,
 					},
 				},
 			},
@@ -280,6 +317,7 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 					{
 						Action:         &common.IdNameIdentifier{Name: validUUID},
 						AttributeValue: &common.IdFqnIdentifier{Fqn: validURI},
+						Context:        validRequestContext,
 					},
 				},
 			},
@@ -294,10 +332,12 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 					{
 						Action:         &common.IdNameIdentifier{Id: validUUID},
 						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
+						Context:        validRequestContext,
 					},
 					{
 						Action:         &common.IdNameIdentifier{Id: validUUID},
 						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
+						Context:        validRequestContext,
 					},
 				},
 			},
@@ -312,6 +352,7 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 					{
 						Action:         &common.IdNameIdentifier{Id: invalidUUID},
 						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
+						Context:        validRequestContext,
 					},
 				},
 			},
@@ -327,6 +368,7 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 					{
 						Action:         &common.IdNameIdentifier{Id: validUUID},
 						AttributeValue: &common.IdFqnIdentifier{Id: invalidUUID},
+						Context:        validRequestContext,
 					},
 				},
 			},
@@ -341,6 +383,7 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
 						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
+						Context:        validRequestContext,
 					},
 				},
 			},
@@ -354,12 +397,28 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 				Value:                "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						Action: &common.IdNameIdentifier{Id: validUUID},
+						Action:  &common.IdNameIdentifier{Id: validUUID},
+						Context: validRequestContext,
 					},
 				},
 			},
 			expectError:  true,
 			errorMessage: "attribute_value",
+		},
+		{
+			name: "invalid trigger with missing context",
+			req: &obligations.CreateObligationValueRequest{
+				ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{Id: validUUID},
+				Value:                "value",
+				Triggers: []*obligations.ValueTriggerRequest{
+					{
+						Action:         &common.IdNameIdentifier{Id: validUUID},
+						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "context",
 		},
 	}
 
@@ -380,6 +439,11 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 
 func Test_UpdateObligationValue_Request(t *testing.T) {
 	validUUID := uuid.NewString()
+	validRequestContext := &policy.RequestContext{
+		Pep: &policy.PolicyEnforcemenPoint{
+			ClientId: "client-id",
+		},
+	}
 	testCases := []struct {
 		name         string
 		req          *obligations.UpdateObligationValueRequest
@@ -403,6 +467,7 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 					{
 						Action:         &common.IdNameIdentifier{Id: validUUID},
 						AttributeValue: &common.IdFqnIdentifier{Fqn: validURI},
+						Context:        validRequestContext,
 					},
 				},
 			},
@@ -417,10 +482,12 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 					{
 						Action:         &common.IdNameIdentifier{Id: validUUID},
 						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
+						Context:        validRequestContext,
 					},
 					{
 						Action:         &common.IdNameIdentifier{Id: validUUID},
 						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
+						Context:        validRequestContext,
 					},
 				},
 			},
@@ -435,6 +502,7 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 					{
 						Action:         &common.IdNameIdentifier{Id: invalidUUID},
 						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
+						Context:        validRequestContext,
 					},
 				},
 			},
@@ -450,6 +518,7 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 					{
 						Action:         &common.IdNameIdentifier{Id: validUUID},
 						AttributeValue: &common.IdFqnIdentifier{Id: invalidUUID},
+						Context:        validRequestContext,
 					},
 				},
 			},
@@ -464,6 +533,7 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
 						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
+						Context:        validRequestContext,
 					},
 				},
 			},
@@ -477,12 +547,28 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 				Value: "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
-						Action: &common.IdNameIdentifier{Id: validUUID},
+						Action:  &common.IdNameIdentifier{Id: validUUID},
+						Context: validRequestContext,
 					},
 				},
 			},
 			expectError:  true,
 			errorMessage: "attribute_value",
+		},
+		{
+			name: "invalid trigger with missing context",
+			req: &obligations.UpdateObligationValueRequest{
+				Id:    validUUID,
+				Value: "value",
+				Triggers: []*obligations.ValueTriggerRequest{
+					{
+						Action:         &common.IdNameIdentifier{Id: validUUID},
+						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "context",
 		},
 	}
 

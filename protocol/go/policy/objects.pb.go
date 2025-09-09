@@ -2549,12 +2549,12 @@ type ObligationTrigger struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id              string           `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ObligationValue *ObligationValue `protobuf:"bytes,2,opt,name=obligation_value,json=obligationValue,proto3" json:"obligation_value,omitempty"`
-	Action          *Action          `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
-	AttributeValue  *Value           `protobuf:"bytes,4,opt,name=attribute_value,json=attributeValue,proto3" json:"attribute_value,omitempty"`
-	Context         *RequestContext  `protobuf:"bytes,5,opt,name=context,proto3" json:"context,omitempty"`
-	Metadata        *common.Metadata `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	Id              string            `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ObligationValue *ObligationValue  `protobuf:"bytes,2,opt,name=obligation_value,json=obligationValue,proto3" json:"obligation_value,omitempty"`
+	Action          *Action           `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
+	AttributeValue  *Value            `protobuf:"bytes,4,opt,name=attribute_value,json=attributeValue,proto3" json:"attribute_value,omitempty"`
+	Context         []*RequestContext `protobuf:"bytes,5,rep,name=context,proto3" json:"context,omitempty"`
+	Metadata        *common.Metadata  `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
 
 func (x *ObligationTrigger) Reset() {
@@ -2617,7 +2617,7 @@ func (x *ObligationTrigger) GetAttributeValue() *Value {
 	return nil
 }
 
-func (x *ObligationTrigger) GetContext() *RequestContext {
+func (x *ObligationTrigger) GetContext() []*RequestContext {
 	if x != nil {
 		return x.Context
 	}
@@ -3495,7 +3495,7 @@ var file_policy_objects_proto_rawDesc = []byte{
 	0x61, 0x6c, 0x75, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0d, 0x2e, 0x70, 0x6f, 0x6c,
 	0x69, 0x63, 0x79, 0x2e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x0e, 0x61, 0x74, 0x74, 0x72, 0x69,
 	0x62, 0x75, 0x74, 0x65, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x30, 0x0a, 0x07, 0x63, 0x6f, 0x6e,
-	0x74, 0x65, 0x78, 0x74, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x70, 0x6f, 0x6c,
+	0x74, 0x65, 0x78, 0x74, 0x18, 0x05, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x70, 0x6f, 0x6c,
 	0x69, 0x63, 0x79, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x43, 0x6f, 0x6e, 0x74, 0x65,
 	0x78, 0x74, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x78, 0x74, 0x12, 0x2c, 0x0a, 0x08, 0x6d,
 	0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x64, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x10, 0x2e,

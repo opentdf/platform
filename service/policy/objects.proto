@@ -505,7 +505,7 @@ message ObligationTrigger {
 
   Value attribute_value = 4;
 
-  RequestContext context = 5;
+  repeated RequestContext context = 5;
 
   common.Metadata metadata = 100;
 }

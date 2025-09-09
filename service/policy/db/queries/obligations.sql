@@ -66,9 +66,11 @@ WITH obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
-                'context', JSON_BUILD_OBJECT(
-                    'pep', JSON_BUILD_OBJECT(
-                        'client_id', ot.client_id
+                'context', JSON_BUILD_ARRAY(
+                    JSON_BUILD_OBJECT(
+                        'pep', JSON_BUILD_OBJECT(
+                            'client_id', ot.client_id
+                        )
                     )
                 )
             )
@@ -137,9 +139,11 @@ obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
-                'context', JSON_BUILD_OBJECT(
-                    'pep', JSON_BUILD_OBJECT(
-                        'client_id', ot.client_id
+                'context', JSON_BUILD_ARRAY(
+                    JSON_BUILD_OBJECT(
+                        'pep', JSON_BUILD_OBJECT(
+                            'client_id', ot.client_id
+                        )
                     )
                 )
             )
@@ -223,9 +227,11 @@ WITH obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
-                'context', JSON_BUILD_OBJECT(
-                    'pep', JSON_BUILD_OBJECT(
-                        'client_id', ot.client_id
+                'context', JSON_BUILD_ARRAY(
+                    JSON_BUILD_OBJECT(
+                        'pep', JSON_BUILD_OBJECT(
+                            'client_id', ot.client_id
+                        )
                     )
                 )
             )
@@ -331,9 +337,11 @@ WITH obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
-                'context', JSON_BUILD_OBJECT(
-                    'pep', JSON_BUILD_OBJECT(
-                        'client_id', ot.client_id
+                'context', JSON_BUILD_ARRAY(
+                    JSON_BUILD_OBJECT(
+                        'pep', JSON_BUILD_OBJECT(
+                            'client_id', ot.client_id
+                        )
                     )
                 )
             )
@@ -395,9 +403,11 @@ WITH obligation_triggers_agg AS (
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
                 ),
-                'context', JSON_BUILD_OBJECT(
-                    'pep', JSON_BUILD_OBJECT(
-                        'client_id', ot.client_id
+                'context', JSON_BUILD_ARRAY(
+                    JSON_BUILD_OBJECT(
+                        'pep', JSON_BUILD_OBJECT(
+                            'client_id', ot.client_id
+                        )
                     )
                 )
             )
@@ -530,9 +540,11 @@ SELECT
                 'value', av.value,
                 'fqn', COALESCE(av_fqns.fqn, '')
             ),
-            'context', JSON_BUILD_OBJECT(
-                'pep', JSON_BUILD_OBJECT(
-                    'client_id', i.client_id
+            'context', JSON_BUILD_ARRAY (
+                JSON_BUILD_OBJECT(
+                    'pep', JSON_BUILD_OBJECT(
+                        'client_id', i.client_id
+                    )
                 )
             )
         )

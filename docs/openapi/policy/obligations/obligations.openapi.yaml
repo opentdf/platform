@@ -1017,8 +1017,10 @@ components:
           title: attribute_value
           $ref: '#/components/schemas/policy.Value'
         context:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.RequestContext'
           title: context
-          $ref: '#/components/schemas/policy.RequestContext'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'

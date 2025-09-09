@@ -461,6 +461,12 @@ message RegisteredResourceValue {
   common.Metadata metadata = 100;
 }
 
+message RegisteredPEP {
+  string client_id = 1 [
+    (buf.validate.field).string = {min_len: 1}
+  ];
+}
+
 message Obligation {
   string id = 1;
 
@@ -493,6 +499,10 @@ message ObligationTrigger {
   Action action = 3;
 
   Value attribute_value = 4;
+
+  // Holds the RegisteredPEP objects that are associated with this trigger.
+  // Map includes client_id => RegisteredPEP object
+  map<string, RegisteredPEP> peps = 5;
 
   common.Metadata metadata = 100;
 }

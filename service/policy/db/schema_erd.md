@@ -158,6 +158,7 @@ erDiagram
         uuid id PK 
         jsonb metadata 
         uuid obligation_value_id FK,UK 
+        jsonb registered_peps "Holds the RegisteredPEP objects that are associated with this trigger. Map contains client_id -> RegisteredPEP object"
         timestamp_with_time_zone updated_at 
     }
 
@@ -174,8 +175,9 @@ erDiagram
         jsonb config "Configuration details for the key provider"
         timestamp_with_time_zone created_at "Timestamp when the provider configuration was created"
         uuid id PK "Unique identifier for the provider configuration"
+        character_varying manager UK "Type of key manager (e.g., opentdf.io/basic, aws, azure, gcp)"
         jsonb metadata "Additional metadata for the provider configuration"
-        character_varying provider_name UK "Unique name for the key provider."
+        character_varying provider_name UK "Name of the key provider instance."
         timestamp_with_time_zone updated_at "Timestamp when the provider configuration was last updated"
     }
 

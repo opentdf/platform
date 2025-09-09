@@ -2291,6 +2291,53 @@ func (x *RegisteredResourceValue) GetMetadata() *common.Metadata {
 	return nil
 }
 
+type RegisteredPEP struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ClientId string `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+}
+
+func (x *RegisteredPEP) Reset() {
+	*x = RegisteredPEP{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_policy_objects_proto_msgTypes[22]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RegisteredPEP) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisteredPEP) ProtoMessage() {}
+
+func (x *RegisteredPEP) ProtoReflect() protoreflect.Message {
+	mi := &file_policy_objects_proto_msgTypes[22]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisteredPEP.ProtoReflect.Descriptor instead.
+func (*RegisteredPEP) Descriptor() ([]byte, []int) {
+	return file_policy_objects_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *RegisteredPEP) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
 type Obligation struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2306,7 +2353,7 @@ type Obligation struct {
 func (x *Obligation) Reset() {
 	*x = Obligation{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_objects_proto_msgTypes[22]
+		mi := &file_policy_objects_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2319,7 +2366,7 @@ func (x *Obligation) String() string {
 func (*Obligation) ProtoMessage() {}
 
 func (x *Obligation) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_objects_proto_msgTypes[22]
+	mi := &file_policy_objects_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2332,7 +2379,7 @@ func (x *Obligation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Obligation.ProtoReflect.Descriptor instead.
 func (*Obligation) Descriptor() ([]byte, []int) {
-	return file_policy_objects_proto_rawDescGZIP(), []int{22}
+	return file_policy_objects_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *Obligation) GetId() string {
@@ -2385,7 +2432,7 @@ type ObligationValue struct {
 func (x *ObligationValue) Reset() {
 	*x = ObligationValue{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_objects_proto_msgTypes[23]
+		mi := &file_policy_objects_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2398,7 +2445,7 @@ func (x *ObligationValue) String() string {
 func (*ObligationValue) ProtoMessage() {}
 
 func (x *ObligationValue) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_objects_proto_msgTypes[23]
+	mi := &file_policy_objects_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2411,7 +2458,7 @@ func (x *ObligationValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ObligationValue.ProtoReflect.Descriptor instead.
 func (*ObligationValue) Descriptor() ([]byte, []int) {
-	return file_policy_objects_proto_rawDescGZIP(), []int{23}
+	return file_policy_objects_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ObligationValue) GetId() string {
@@ -2458,13 +2505,16 @@ type ObligationTrigger struct {
 	ObligationValue *ObligationValue `protobuf:"bytes,2,opt,name=obligation_value,json=obligationValue,proto3" json:"obligation_value,omitempty"`
 	Action          *Action          `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
 	AttributeValue  *Value           `protobuf:"bytes,4,opt,name=attribute_value,json=attributeValue,proto3" json:"attribute_value,omitempty"`
-	Metadata        *common.Metadata `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	// Holds the RegisteredPEP objects that are associated with this trigger.
+	// Map includes client_id => RegisteredPEP object
+	Peps     map[string]*RegisteredPEP `protobuf:"bytes,5,rep,name=peps,proto3" json:"peps,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Metadata *common.Metadata          `protobuf:"bytes,100,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
 
 func (x *ObligationTrigger) Reset() {
 	*x = ObligationTrigger{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_objects_proto_msgTypes[24]
+		mi := &file_policy_objects_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2477,7 +2527,7 @@ func (x *ObligationTrigger) String() string {
 func (*ObligationTrigger) ProtoMessage() {}
 
 func (x *ObligationTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_objects_proto_msgTypes[24]
+	mi := &file_policy_objects_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2490,7 +2540,7 @@ func (x *ObligationTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ObligationTrigger.ProtoReflect.Descriptor instead.
 func (*ObligationTrigger) Descriptor() ([]byte, []int) {
-	return file_policy_objects_proto_rawDescGZIP(), []int{24}
+	return file_policy_objects_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ObligationTrigger) GetId() string {
@@ -2521,6 +2571,13 @@ func (x *ObligationTrigger) GetAttributeValue() *Value {
 	return nil
 }
 
+func (x *ObligationTrigger) GetPeps() map[string]*RegisteredPEP {
+	if x != nil {
+		return x.Peps
+	}
+	return nil
+}
+
 func (x *ObligationTrigger) GetMetadata() *common.Metadata {
 	if x != nil {
 		return x.Metadata
@@ -2541,7 +2598,7 @@ type KasKey struct {
 func (x *KasKey) Reset() {
 	*x = KasKey{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_objects_proto_msgTypes[25]
+		mi := &file_policy_objects_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2554,7 +2611,7 @@ func (x *KasKey) String() string {
 func (*KasKey) ProtoMessage() {}
 
 func (x *KasKey) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_objects_proto_msgTypes[25]
+	mi := &file_policy_objects_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2567,7 +2624,7 @@ func (x *KasKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KasKey.ProtoReflect.Descriptor instead.
 func (*KasKey) Descriptor() ([]byte, []int) {
-	return file_policy_objects_proto_rawDescGZIP(), []int{25}
+	return file_policy_objects_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *KasKey) GetKasId() string {
@@ -2603,7 +2660,7 @@ type PublicKeyCtx struct {
 func (x *PublicKeyCtx) Reset() {
 	*x = PublicKeyCtx{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_objects_proto_msgTypes[26]
+		mi := &file_policy_objects_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2616,7 +2673,7 @@ func (x *PublicKeyCtx) String() string {
 func (*PublicKeyCtx) ProtoMessage() {}
 
 func (x *PublicKeyCtx) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_objects_proto_msgTypes[26]
+	mi := &file_policy_objects_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2629,7 +2686,7 @@ func (x *PublicKeyCtx) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublicKeyCtx.ProtoReflect.Descriptor instead.
 func (*PublicKeyCtx) Descriptor() ([]byte, []int) {
-	return file_policy_objects_proto_rawDescGZIP(), []int{26}
+	return file_policy_objects_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *PublicKeyCtx) GetPem() string {
@@ -2653,7 +2710,7 @@ type PrivateKeyCtx struct {
 func (x *PrivateKeyCtx) Reset() {
 	*x = PrivateKeyCtx{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_objects_proto_msgTypes[27]
+		mi := &file_policy_objects_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2666,7 +2723,7 @@ func (x *PrivateKeyCtx) String() string {
 func (*PrivateKeyCtx) ProtoMessage() {}
 
 func (x *PrivateKeyCtx) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_objects_proto_msgTypes[27]
+	mi := &file_policy_objects_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2679,7 +2736,7 @@ func (x *PrivateKeyCtx) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PrivateKeyCtx.ProtoReflect.Descriptor instead.
 func (*PrivateKeyCtx) Descriptor() ([]byte, []int) {
-	return file_policy_objects_proto_rawDescGZIP(), []int{27}
+	return file_policy_objects_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *PrivateKeyCtx) GetKeyId() string {
@@ -2726,7 +2783,7 @@ type AsymmetricKey struct {
 func (x *AsymmetricKey) Reset() {
 	*x = AsymmetricKey{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_objects_proto_msgTypes[28]
+		mi := &file_policy_objects_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2739,7 +2796,7 @@ func (x *AsymmetricKey) String() string {
 func (*AsymmetricKey) ProtoMessage() {}
 
 func (x *AsymmetricKey) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_objects_proto_msgTypes[28]
+	mi := &file_policy_objects_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2752,7 +2809,7 @@ func (x *AsymmetricKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AsymmetricKey.ProtoReflect.Descriptor instead.
 func (*AsymmetricKey) Descriptor() ([]byte, []int) {
-	return file_policy_objects_proto_rawDescGZIP(), []int{28}
+	return file_policy_objects_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *AsymmetricKey) GetId() string {
@@ -2843,7 +2900,7 @@ type SymmetricKey struct {
 func (x *SymmetricKey) Reset() {
 	*x = SymmetricKey{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_objects_proto_msgTypes[29]
+		mi := &file_policy_objects_proto_msgTypes[30]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2856,7 +2913,7 @@ func (x *SymmetricKey) String() string {
 func (*SymmetricKey) ProtoMessage() {}
 
 func (x *SymmetricKey) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_objects_proto_msgTypes[29]
+	mi := &file_policy_objects_proto_msgTypes[30]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2869,7 +2926,7 @@ func (x *SymmetricKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SymmetricKey.ProtoReflect.Descriptor instead.
 func (*SymmetricKey) Descriptor() ([]byte, []int) {
-	return file_policy_objects_proto_rawDescGZIP(), []int{29}
+	return file_policy_objects_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *SymmetricKey) GetId() string {
@@ -2936,7 +2993,7 @@ type RegisteredResourceValue_ActionAttributeValue struct {
 func (x *RegisteredResourceValue_ActionAttributeValue) Reset() {
 	*x = RegisteredResourceValue_ActionAttributeValue{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_policy_objects_proto_msgTypes[30]
+		mi := &file_policy_objects_proto_msgTypes[31]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2949,7 +3006,7 @@ func (x *RegisteredResourceValue_ActionAttributeValue) String() string {
 func (*RegisteredResourceValue_ActionAttributeValue) ProtoMessage() {}
 
 func (x *RegisteredResourceValue_ActionAttributeValue) ProtoReflect() protoreflect.Message {
-	mi := &file_policy_objects_proto_msgTypes[30]
+	mi := &file_policy_objects_proto_msgTypes[31]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3345,48 +3402,60 @@ var file_policy_objects_proto_rawDesc = []byte{
 	0x62, 0x75, 0x74, 0x65, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x2c, 0x0a, 0x08, 0x6d, 0x65, 0x74,
 	0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x64, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x63, 0x6f,
 	0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x52, 0x08, 0x6d,
-	0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x22, 0xc0, 0x01, 0x0a, 0x0a, 0x4f, 0x62, 0x6c, 0x69,
-	0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x2f, 0x0a, 0x09, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70,
-	0x61, 0x63, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x11, 0x2e, 0x70, 0x6f, 0x6c, 0x69,
-	0x63, 0x79, 0x2e, 0x4e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x52, 0x09, 0x6e, 0x61,
-	0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18,
-	0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x2f, 0x0a, 0x06, 0x76,
-	0x61, 0x6c, 0x75, 0x65, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x70, 0x6f,
-	0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56,
-	0x61, 0x6c, 0x75, 0x65, 0x52, 0x06, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x12, 0x2c, 0x0a, 0x08,
-	0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x64, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x10,
-	0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
-	0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x22, 0xd0, 0x01, 0x0a, 0x0f, 0x4f,
-	0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x0e,
-	0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x32,
-	0x0a, 0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x0b, 0x32, 0x12, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69,
-	0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x35, 0x0a, 0x08, 0x74, 0x72, 0x69, 0x67,
-	0x67, 0x65, 0x72, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x70, 0x6f, 0x6c,
-	0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x54, 0x72,
-	0x69, 0x67, 0x67, 0x65, 0x72, 0x52, 0x08, 0x74, 0x72, 0x69, 0x67, 0x67, 0x65, 0x72, 0x73, 0x12,
-	0x2c, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x64, 0x20, 0x01, 0x28,
-	0x0b, 0x32, 0x10, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64,
-	0x61, 0x74, 0x61, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x22, 0xf5, 0x01,
-	0x0a, 0x11, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x54, 0x72, 0x69, 0x67,
-	0x67, 0x65, 0x72, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x02, 0x69, 0x64, 0x12, 0x42, 0x0a, 0x10, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x5f, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e,
-	0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x0f, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x26, 0x0a, 0x06, 0x61, 0x63, 0x74, 0x69, 0x6f,
-	0x6e, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0e, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79,
-	0x2e, 0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x06, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x12,
-	0x36, 0x0a, 0x0f, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x5f, 0x76, 0x61, 0x6c,
-	0x75, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0d, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63,
-	0x79, 0x2e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x0e, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75,
-	0x74, 0x65, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x2c, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64,
+	0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x22, 0x35, 0x0a, 0x0d, 0x52, 0x65, 0x67, 0x69, 0x73,
+	0x74, 0x65, 0x72, 0x65, 0x64, 0x50, 0x45, 0x50, 0x12, 0x24, 0x0a, 0x09, 0x63, 0x6c, 0x69, 0x65,
+	0x6e, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x42, 0x07, 0xba, 0x48, 0x04,
+	0x72, 0x02, 0x10, 0x01, 0x52, 0x08, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x49, 0x64, 0x22, 0xc0,
+	0x01, 0x0a, 0x0a, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x0e, 0x0a,
+	0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x2f, 0x0a,
+	0x09, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x11, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4e, 0x61, 0x6d, 0x65, 0x73, 0x70,
+	0x61, 0x63, 0x65, 0x52, 0x09, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x12, 0x12,
+	0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61,
+	0x6d, 0x65, 0x12, 0x2f, 0x0a, 0x06, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x73, 0x18, 0x04, 0x20, 0x03,
+	0x28, 0x0b, 0x32, 0x17, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69,
+	0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x06, 0x76, 0x61, 0x6c,
+	0x75, 0x65, 0x73, 0x12, 0x2c, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18,
+	0x64, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e, 0x2e, 0x4d,
+	0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74,
+	0x61, 0x22, 0xd0, 0x01, 0x0a, 0x0f, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x56, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x32, 0x0a, 0x0a, 0x6f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x12, 0x2e, 0x70, 0x6f, 0x6c, 0x69,
+	0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x0a, 0x6f,
+	0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c,
+	0x75, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x12,
+	0x35, 0x0a, 0x08, 0x74, 0x72, 0x69, 0x67, 0x67, 0x65, 0x72, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28,
+	0x0b, 0x32, 0x19, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x54, 0x72, 0x69, 0x67, 0x67, 0x65, 0x72, 0x52, 0x08, 0x74, 0x72,
+	0x69, 0x67, 0x67, 0x65, 0x72, 0x73, 0x12, 0x2c, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61,
+	0x74, 0x61, 0x18, 0x64, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x63, 0x6f, 0x6d, 0x6d, 0x6f,
+	0x6e, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61,
+	0x64, 0x61, 0x74, 0x61, 0x22, 0xfe, 0x02, 0x0a, 0x11, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x54, 0x72, 0x69, 0x67, 0x67, 0x65, 0x72, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x42, 0x0a, 0x10, 0x6f, 0x62,
+	0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62,
+	0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x0f, 0x6f,
+	0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x26,
+	0x0a, 0x06, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0e,
+	0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x06,
+	0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x36, 0x0a, 0x0f, 0x61, 0x74, 0x74, 0x72, 0x69, 0x62,
+	0x75, 0x74, 0x65, 0x5f, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32,
+	0x0d, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x0e,
+	0x61, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x37,
+	0x0a, 0x04, 0x70, 0x65, 0x70, 0x73, 0x18, 0x05, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x23, 0x2e, 0x70,
+	0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x4f, 0x62, 0x6c, 0x69, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x54, 0x72, 0x69, 0x67, 0x67, 0x65, 0x72, 0x2e, 0x50, 0x65, 0x70, 0x73, 0x45, 0x6e, 0x74, 0x72,
+	0x79, 0x52, 0x04, 0x70, 0x65, 0x70, 0x73, 0x12, 0x2c, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64,
 	0x61, 0x74, 0x61, 0x18, 0x64, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x63, 0x6f, 0x6d, 0x6d,
 	0x6f, 0x6e, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x52, 0x08, 0x6d, 0x65, 0x74,
-	0x61, 0x64, 0x61, 0x74, 0x61, 0x22, 0x61, 0x0a, 0x06, 0x4b, 0x61, 0x73, 0x4b, 0x65, 0x79, 0x12,
+	0x61, 0x64, 0x61, 0x74, 0x61, 0x1a, 0x4e, 0x0a, 0x09, 0x50, 0x65, 0x70, 0x73, 0x45, 0x6e, 0x74,
+	0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x03, 0x6b, 0x65, 0x79, 0x12, 0x2b, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x52, 0x65, 0x67,
+	0x69, 0x73, 0x74, 0x65, 0x72, 0x65, 0x64, 0x50, 0x45, 0x50, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75,
+	0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x61, 0x0a, 0x06, 0x4b, 0x61, 0x73, 0x4b, 0x65, 0x79, 0x12,
 	0x15, 0x0a, 0x06, 0x6b, 0x61, 0x73, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
 	0x05, 0x6b, 0x61, 0x73, 0x49, 0x64, 0x12, 0x27, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20,
 	0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x70, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x2e, 0x41, 0x73, 0x79,
@@ -3553,7 +3622,7 @@ func file_policy_objects_proto_rawDescGZIP() []byte {
 }
 
 var file_policy_objects_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_policy_objects_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_policy_objects_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_policy_objects_proto_goTypes = []interface{}{
 	(AttributeRuleTypeEnum)(0),      // 0: policy.AttributeRuleTypeEnum
 	(SubjectMappingOperatorEnum)(0), // 1: policy.SubjectMappingOperatorEnum
@@ -3586,103 +3655,107 @@ var file_policy_objects_proto_goTypes = []interface{}{
 	(*PublicKey)(nil),               // 28: policy.PublicKey
 	(*RegisteredResource)(nil),      // 29: policy.RegisteredResource
 	(*RegisteredResourceValue)(nil), // 30: policy.RegisteredResourceValue
-	(*Obligation)(nil),              // 31: policy.Obligation
-	(*ObligationValue)(nil),         // 32: policy.ObligationValue
-	(*ObligationTrigger)(nil),       // 33: policy.ObligationTrigger
-	(*KasKey)(nil),                  // 34: policy.KasKey
-	(*PublicKeyCtx)(nil),            // 35: policy.PublicKeyCtx
-	(*PrivateKeyCtx)(nil),           // 36: policy.PrivateKeyCtx
-	(*AsymmetricKey)(nil),           // 37: policy.AsymmetricKey
-	(*SymmetricKey)(nil),            // 38: policy.SymmetricKey
-	(*RegisteredResourceValue_ActionAttributeValue)(nil), // 39: policy.RegisteredResourceValue.ActionAttributeValue
-	(*common.Metadata)(nil),                              // 40: common.Metadata
-	(*wrapperspb.BoolValue)(nil),                         // 41: google.protobuf.BoolValue
+	(*RegisteredPEP)(nil),           // 31: policy.RegisteredPEP
+	(*Obligation)(nil),              // 32: policy.Obligation
+	(*ObligationValue)(nil),         // 33: policy.ObligationValue
+	(*ObligationTrigger)(nil),       // 34: policy.ObligationTrigger
+	(*KasKey)(nil),                  // 35: policy.KasKey
+	(*PublicKeyCtx)(nil),            // 36: policy.PublicKeyCtx
+	(*PrivateKeyCtx)(nil),           // 37: policy.PrivateKeyCtx
+	(*AsymmetricKey)(nil),           // 38: policy.AsymmetricKey
+	(*SymmetricKey)(nil),            // 39: policy.SymmetricKey
+	(*RegisteredResourceValue_ActionAttributeValue)(nil), // 40: policy.RegisteredResourceValue.ActionAttributeValue
+	nil,                          // 41: policy.ObligationTrigger.PepsEntry
+	(*common.Metadata)(nil),      // 42: common.Metadata
+	(*wrapperspb.BoolValue)(nil), // 43: google.protobuf.BoolValue
 }
 var file_policy_objects_proto_depIdxs = []int32{
 	5,  // 0: policy.SimpleKasPublicKey.algorithm:type_name -> policy.Algorithm
 	9,  // 1: policy.SimpleKasKey.public_key:type_name -> policy.SimpleKasPublicKey
-	40, // 2: policy.KeyProviderConfig.metadata:type_name -> common.Metadata
-	41, // 3: policy.Namespace.active:type_name -> google.protobuf.BoolValue
-	40, // 4: policy.Namespace.metadata:type_name -> common.Metadata
+	42, // 2: policy.KeyProviderConfig.metadata:type_name -> common.Metadata
+	43, // 3: policy.Namespace.active:type_name -> google.protobuf.BoolValue
+	42, // 4: policy.Namespace.metadata:type_name -> common.Metadata
 	24, // 5: policy.Namespace.grants:type_name -> policy.KeyAccessServer
 	10, // 6: policy.Namespace.kas_keys:type_name -> policy.SimpleKasKey
 	12, // 7: policy.Attribute.namespace:type_name -> policy.Namespace
 	0,  // 8: policy.Attribute.rule:type_name -> policy.AttributeRuleTypeEnum
 	14, // 9: policy.Attribute.values:type_name -> policy.Value
 	24, // 10: policy.Attribute.grants:type_name -> policy.KeyAccessServer
-	41, // 11: policy.Attribute.active:type_name -> google.protobuf.BoolValue
+	43, // 11: policy.Attribute.active:type_name -> google.protobuf.BoolValue
 	10, // 12: policy.Attribute.kas_keys:type_name -> policy.SimpleKasKey
-	40, // 13: policy.Attribute.metadata:type_name -> common.Metadata
+	42, // 13: policy.Attribute.metadata:type_name -> common.Metadata
 	13, // 14: policy.Value.attribute:type_name -> policy.Attribute
 	24, // 15: policy.Value.grants:type_name -> policy.KeyAccessServer
-	41, // 16: policy.Value.active:type_name -> google.protobuf.BoolValue
+	43, // 16: policy.Value.active:type_name -> google.protobuf.BoolValue
 	16, // 17: policy.Value.subject_mappings:type_name -> policy.SubjectMapping
 	10, // 18: policy.Value.kas_keys:type_name -> policy.SimpleKasKey
 	23, // 19: policy.Value.resource_mappings:type_name -> policy.ResourceMapping
-	40, // 20: policy.Value.metadata:type_name -> common.Metadata
+	42, // 20: policy.Value.metadata:type_name -> common.Metadata
 	8,  // 21: policy.Action.standard:type_name -> policy.Action.StandardAction
-	40, // 22: policy.Action.metadata:type_name -> common.Metadata
+	42, // 22: policy.Action.metadata:type_name -> common.Metadata
 	14, // 23: policy.SubjectMapping.attribute_value:type_name -> policy.Value
 	20, // 24: policy.SubjectMapping.subject_condition_set:type_name -> policy.SubjectConditionSet
 	15, // 25: policy.SubjectMapping.actions:type_name -> policy.Action
-	40, // 26: policy.SubjectMapping.metadata:type_name -> common.Metadata
+	42, // 26: policy.SubjectMapping.metadata:type_name -> common.Metadata
 	1,  // 27: policy.Condition.operator:type_name -> policy.SubjectMappingOperatorEnum
 	17, // 28: policy.ConditionGroup.conditions:type_name -> policy.Condition
 	2,  // 29: policy.ConditionGroup.boolean_operator:type_name -> policy.ConditionBooleanTypeEnum
 	18, // 30: policy.SubjectSet.condition_groups:type_name -> policy.ConditionGroup
 	19, // 31: policy.SubjectConditionSet.subject_sets:type_name -> policy.SubjectSet
-	40, // 32: policy.SubjectConditionSet.metadata:type_name -> common.Metadata
-	40, // 33: policy.ResourceMappingGroup.metadata:type_name -> common.Metadata
-	40, // 34: policy.ResourceMapping.metadata:type_name -> common.Metadata
+	42, // 32: policy.SubjectConditionSet.metadata:type_name -> common.Metadata
+	42, // 33: policy.ResourceMappingGroup.metadata:type_name -> common.Metadata
+	42, // 34: policy.ResourceMapping.metadata:type_name -> common.Metadata
 	14, // 35: policy.ResourceMapping.attribute_value:type_name -> policy.Value
 	22, // 36: policy.ResourceMapping.group:type_name -> policy.ResourceMappingGroup
 	28, // 37: policy.KeyAccessServer.public_key:type_name -> policy.PublicKey
 	3,  // 38: policy.KeyAccessServer.source_type:type_name -> policy.SourceType
 	10, // 39: policy.KeyAccessServer.kas_keys:type_name -> policy.SimpleKasKey
-	40, // 40: policy.KeyAccessServer.metadata:type_name -> common.Metadata
-	41, // 41: policy.Key.is_active:type_name -> google.protobuf.BoolValue
-	41, // 42: policy.Key.was_mapped:type_name -> google.protobuf.BoolValue
+	42, // 40: policy.KeyAccessServer.metadata:type_name -> common.Metadata
+	43, // 41: policy.Key.is_active:type_name -> google.protobuf.BoolValue
+	43, // 42: policy.Key.was_mapped:type_name -> google.protobuf.BoolValue
 	26, // 43: policy.Key.public_key:type_name -> policy.KasPublicKey
 	24, // 44: policy.Key.kas:type_name -> policy.KeyAccessServer
-	40, // 45: policy.Key.metadata:type_name -> common.Metadata
+	42, // 45: policy.Key.metadata:type_name -> common.Metadata
 	4,  // 46: policy.KasPublicKey.alg:type_name -> policy.KasPublicKeyAlgEnum
 	26, // 47: policy.KasPublicKeySet.keys:type_name -> policy.KasPublicKey
 	27, // 48: policy.PublicKey.cached:type_name -> policy.KasPublicKeySet
 	30, // 49: policy.RegisteredResource.values:type_name -> policy.RegisteredResourceValue
-	40, // 50: policy.RegisteredResource.metadata:type_name -> common.Metadata
+	42, // 50: policy.RegisteredResource.metadata:type_name -> common.Metadata
 	29, // 51: policy.RegisteredResourceValue.resource:type_name -> policy.RegisteredResource
-	39, // 52: policy.RegisteredResourceValue.action_attribute_values:type_name -> policy.RegisteredResourceValue.ActionAttributeValue
-	40, // 53: policy.RegisteredResourceValue.metadata:type_name -> common.Metadata
+	40, // 52: policy.RegisteredResourceValue.action_attribute_values:type_name -> policy.RegisteredResourceValue.ActionAttributeValue
+	42, // 53: policy.RegisteredResourceValue.metadata:type_name -> common.Metadata
 	12, // 54: policy.Obligation.namespace:type_name -> policy.Namespace
-	32, // 55: policy.Obligation.values:type_name -> policy.ObligationValue
-	40, // 56: policy.Obligation.metadata:type_name -> common.Metadata
-	31, // 57: policy.ObligationValue.obligation:type_name -> policy.Obligation
-	33, // 58: policy.ObligationValue.triggers:type_name -> policy.ObligationTrigger
-	40, // 59: policy.ObligationValue.metadata:type_name -> common.Metadata
-	32, // 60: policy.ObligationTrigger.obligation_value:type_name -> policy.ObligationValue
+	33, // 55: policy.Obligation.values:type_name -> policy.ObligationValue
+	42, // 56: policy.Obligation.metadata:type_name -> common.Metadata
+	32, // 57: policy.ObligationValue.obligation:type_name -> policy.Obligation
+	34, // 58: policy.ObligationValue.triggers:type_name -> policy.ObligationTrigger
+	42, // 59: policy.ObligationValue.metadata:type_name -> common.Metadata
+	33, // 60: policy.ObligationTrigger.obligation_value:type_name -> policy.ObligationValue
 	15, // 61: policy.ObligationTrigger.action:type_name -> policy.Action
 	14, // 62: policy.ObligationTrigger.attribute_value:type_name -> policy.Value
-	40, // 63: policy.ObligationTrigger.metadata:type_name -> common.Metadata
-	37, // 64: policy.KasKey.key:type_name -> policy.AsymmetricKey
-	5,  // 65: policy.AsymmetricKey.key_algorithm:type_name -> policy.Algorithm
-	6,  // 66: policy.AsymmetricKey.key_status:type_name -> policy.KeyStatus
-	7,  // 67: policy.AsymmetricKey.key_mode:type_name -> policy.KeyMode
-	35, // 68: policy.AsymmetricKey.public_key_ctx:type_name -> policy.PublicKeyCtx
-	36, // 69: policy.AsymmetricKey.private_key_ctx:type_name -> policy.PrivateKeyCtx
-	11, // 70: policy.AsymmetricKey.provider_config:type_name -> policy.KeyProviderConfig
-	40, // 71: policy.AsymmetricKey.metadata:type_name -> common.Metadata
-	6,  // 72: policy.SymmetricKey.key_status:type_name -> policy.KeyStatus
-	7,  // 73: policy.SymmetricKey.key_mode:type_name -> policy.KeyMode
-	11, // 74: policy.SymmetricKey.provider_config:type_name -> policy.KeyProviderConfig
-	40, // 75: policy.SymmetricKey.metadata:type_name -> common.Metadata
-	15, // 76: policy.RegisteredResourceValue.ActionAttributeValue.action:type_name -> policy.Action
-	14, // 77: policy.RegisteredResourceValue.ActionAttributeValue.attribute_value:type_name -> policy.Value
-	40, // 78: policy.RegisteredResourceValue.ActionAttributeValue.metadata:type_name -> common.Metadata
-	79, // [79:79] is the sub-list for method output_type
-	79, // [79:79] is the sub-list for method input_type
-	79, // [79:79] is the sub-list for extension type_name
-	79, // [79:79] is the sub-list for extension extendee
-	0,  // [0:79] is the sub-list for field type_name
+	41, // 63: policy.ObligationTrigger.peps:type_name -> policy.ObligationTrigger.PepsEntry
+	42, // 64: policy.ObligationTrigger.metadata:type_name -> common.Metadata
+	38, // 65: policy.KasKey.key:type_name -> policy.AsymmetricKey
+	5,  // 66: policy.AsymmetricKey.key_algorithm:type_name -> policy.Algorithm
+	6,  // 67: policy.AsymmetricKey.key_status:type_name -> policy.KeyStatus
+	7,  // 68: policy.AsymmetricKey.key_mode:type_name -> policy.KeyMode
+	36, // 69: policy.AsymmetricKey.public_key_ctx:type_name -> policy.PublicKeyCtx
+	37, // 70: policy.AsymmetricKey.private_key_ctx:type_name -> policy.PrivateKeyCtx
+	11, // 71: policy.AsymmetricKey.provider_config:type_name -> policy.KeyProviderConfig
+	42, // 72: policy.AsymmetricKey.metadata:type_name -> common.Metadata
+	6,  // 73: policy.SymmetricKey.key_status:type_name -> policy.KeyStatus
+	7,  // 74: policy.SymmetricKey.key_mode:type_name -> policy.KeyMode
+	11, // 75: policy.SymmetricKey.provider_config:type_name -> policy.KeyProviderConfig
+	42, // 76: policy.SymmetricKey.metadata:type_name -> common.Metadata
+	15, // 77: policy.RegisteredResourceValue.ActionAttributeValue.action:type_name -> policy.Action
+	14, // 78: policy.RegisteredResourceValue.ActionAttributeValue.attribute_value:type_name -> policy.Value
+	42, // 79: policy.RegisteredResourceValue.ActionAttributeValue.metadata:type_name -> common.Metadata
+	31, // 80: policy.ObligationTrigger.PepsEntry.value:type_name -> policy.RegisteredPEP
+	81, // [81:81] is the sub-list for method output_type
+	81, // [81:81] is the sub-list for method input_type
+	81, // [81:81] is the sub-list for extension type_name
+	81, // [81:81] is the sub-list for extension extendee
+	0,  // [0:81] is the sub-list for field type_name
 }
 
 func init() { file_policy_objects_proto_init() }
@@ -3956,7 +4029,7 @@ func file_policy_objects_proto_init() {
 			}
 		}
 		file_policy_objects_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Obligation); i {
+			switch v := v.(*RegisteredPEP); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3968,7 +4041,7 @@ func file_policy_objects_proto_init() {
 			}
 		}
 		file_policy_objects_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ObligationValue); i {
+			switch v := v.(*Obligation); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3980,7 +4053,7 @@ func file_policy_objects_proto_init() {
 			}
 		}
 		file_policy_objects_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ObligationTrigger); i {
+			switch v := v.(*ObligationValue); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3992,7 +4065,7 @@ func file_policy_objects_proto_init() {
 			}
 		}
 		file_policy_objects_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*KasKey); i {
+			switch v := v.(*ObligationTrigger); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4004,7 +4077,7 @@ func file_policy_objects_proto_init() {
 			}
 		}
 		file_policy_objects_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PublicKeyCtx); i {
+			switch v := v.(*KasKey); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4016,7 +4089,7 @@ func file_policy_objects_proto_init() {
 			}
 		}
 		file_policy_objects_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*PrivateKeyCtx); i {
+			switch v := v.(*PublicKeyCtx); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4028,7 +4101,7 @@ func file_policy_objects_proto_init() {
 			}
 		}
 		file_policy_objects_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AsymmetricKey); i {
+			switch v := v.(*PrivateKeyCtx); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4040,7 +4113,7 @@ func file_policy_objects_proto_init() {
 			}
 		}
 		file_policy_objects_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SymmetricKey); i {
+			switch v := v.(*AsymmetricKey); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4052,6 +4125,18 @@ func file_policy_objects_proto_init() {
 			}
 		}
 		file_policy_objects_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SymmetricKey); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_policy_objects_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*RegisteredResourceValue_ActionAttributeValue); i {
 			case 0:
 				return &v.state
@@ -4078,7 +4163,7 @@ func file_policy_objects_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_policy_objects_proto_rawDesc,
 			NumEnums:      9,
-			NumMessages:   31,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -25,6 +25,8 @@ message ValueTriggerRequest {
     common.IdNameIdentifier action = 1 [(buf.validate.field).required = true];
     // Required. The attribute value ID that will trigger this obligation value policy decisioning.
     common.IdFqnIdentifier attribute_value = 2 [(buf.validate.field).required = true];
+    // Required. Map contains client_id -> RegisteredPEP object
+    map<string, policy.RegisteredPEP> peps = 3 [(buf.validate.field).required = true];
 }
 
 message GetObligationResponse {
@@ -179,6 +181,12 @@ message AddObligationTriggerRequest {
     common.IdNameIdentifier action = 2 [(buf.validate.field).required = true];
     // Required
     common.IdFqnIdentifier attribute_value = 3 [(buf.validate.field).required = true];
+
+    // Required
+    // Holds the RegisteredPEP objects that are associated with this trigger.
+    // Map contains client_id -> RegisteredPEP object
+    map<string, policy.RegisteredPEP> peps = 4 [(buf.validate.field).required = true];
+
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;

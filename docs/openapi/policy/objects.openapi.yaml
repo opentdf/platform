@@ -621,10 +621,30 @@ components:
         attributeValue:
           title: attribute_value
           $ref: '#/components/schemas/policy.Value'
+        peps:
+          type: object
+          title: peps
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.RegisteredPEP'
+          description: |-
+            Holds the RegisteredPEP objects that are associated with this trigger.
+             Map includes client_id => RegisteredPEP object
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
       title: ObligationTrigger
+      additionalProperties: false
+    policy.ObligationTrigger.PepsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.RegisteredPEP'
+      title: PepsEntry
       additionalProperties: false
     policy.ObligationValue:
       type: object
@@ -699,6 +719,15 @@ components:
           minLength: 1
           description: Required Base64 encoded public key in PEM format
       title: PublicKeyCtx
+      additionalProperties: false
+    policy.RegisteredPEP:
+      type: object
+      properties:
+        clientId:
+          type: string
+          title: client_id
+          minLength: 1
+      title: RegisteredPEP
       additionalProperties: false
     policy.RegisteredResource:
       type: object

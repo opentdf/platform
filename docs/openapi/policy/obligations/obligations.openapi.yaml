@@ -1016,10 +1016,30 @@ components:
         attributeValue:
           title: attribute_value
           $ref: '#/components/schemas/policy.Value'
+        peps:
+          type: object
+          title: peps
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.RegisteredPEP'
+          description: |-
+            Holds the RegisteredPEP objects that are associated with this trigger.
+             Map includes client_id => RegisteredPEP object
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
       title: ObligationTrigger
+      additionalProperties: false
+    policy.ObligationTrigger.PepsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.RegisteredPEP'
+      title: PepsEntry
       additionalProperties: false
     policy.ObligationValue:
       type: object
@@ -1113,6 +1133,15 @@ components:
       title: PublicKey
       additionalProperties: false
       description: Deprecated
+    policy.RegisteredPEP:
+      type: object
+      properties:
+        clientId:
+          type: string
+          title: client_id
+          minLength: 1
+      title: RegisteredPEP
+      additionalProperties: false
     policy.ResourceMapping:
       type: object
       properties:
@@ -1326,6 +1355,16 @@ components:
           title: attribute_value
           description: Required
           $ref: '#/components/schemas/common.IdFqnIdentifier'
+        peps:
+          type: object
+          title: peps
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.RegisteredPEP'
+          description: |-
+            Optional
+             Holds the RegisteredPEP objects that are associated with this trigger.
+             Map contains client_id -> RegisteredPEP object
         metadata:
           title: metadata
           description: |-
@@ -1339,6 +1378,17 @@ components:
         - attributeValue
       additionalProperties: false
       description: Triggers
+    policy.obligations.AddObligationTriggerRequest.PepsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.RegisteredPEP'
+      title: PepsEntry
+      additionalProperties: false
     policy.obligations.AddObligationTriggerResponse:
       type: object
       properties:
@@ -1737,10 +1787,28 @@ components:
           title: attribute_value
           description: Required. The attribute value ID that will trigger this obligation value policy decisioning.
           $ref: '#/components/schemas/common.IdFqnIdentifier'
+        peps:
+          type: object
+          title: peps
+          additionalProperties:
+            title: value
+            $ref: '#/components/schemas/policy.RegisteredPEP'
+          description: Optional. Add RegisteredPEP objects that are associated with this trigger.
       title: ValueTriggerRequest
       required:
         - action
         - attributeValue
+      additionalProperties: false
+    policy.obligations.ValueTriggerRequest.PepsEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          title: key
+        value:
+          title: value
+          $ref: '#/components/schemas/policy.RegisteredPEP'
+      title: PepsEntry
       additionalProperties: false
     connect-protocol-version:
       type: number

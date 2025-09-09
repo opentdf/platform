@@ -302,6 +302,8 @@ type ObligationTrigger struct {
 	Metadata          []byte             `json:"metadata"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	// Holds the client_id associated with this trigger.
+	ClientID string `json:"client_id"`
 }
 
 type ObligationValuesStandard struct {

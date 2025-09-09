@@ -172,13 +172,14 @@ av_id AS (
         AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 ),
 inserted AS (
-    INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata)
+    INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata, client_id)
     SELECT
         (SELECT id FROM ov_id),
         (SELECT id FROM a_id),
         (SELECT id FROM av_id),
-        $6
-    RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at
+        $6,
+        $7
+    RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at, client_id
 )
 SELECT
     JSON_STRIP_NULLS(
@@ -212,6 +213,11 @@ SELECT
                 'id', av.id,
                 'value', av.value,
                 'fqn', COALESCE(av_fqns.fqn, '')
+            ),
+            'context', JSON_BUILD_OBJECT(
+                'pep', JSON_BUILD_OBJECT(
+                    'client_id', i.client_id
+                )
             )
         )
     ) as trigger
@@ -232,6 +238,7 @@ type createObligationTriggerParams struct {
 	AttributeValueID  string `json:"attribute_value_id"`
 	AttributeValueFqn string `json:"attribute_value_fqn"`
 	Metadata          []byte `json:"metadata"`
+	ClientID          string `json:"client_id"`
 }
 
 type createObligationTriggerRow struct {
@@ -270,13 +277,14 @@ type createObligationTriggerRow struct {
 //	        AND ad.namespace_id = (SELECT namespace_id FROM ov_id)
 //	),
 //	inserted AS (
-//	    INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata)
+//	    INSERT INTO obligation_triggers (obligation_value_id, action_id, attribute_value_id, metadata, client_id)
 //	    SELECT
 //	        (SELECT id FROM ov_id),
 //	        (SELECT id FROM a_id),
 //	        (SELECT id FROM av_id),
-//	        $6
-//	    RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at
+//	        $6,
+//	        $7
+//	    RETURNING id, obligation_value_id, action_id, attribute_value_id, metadata, created_at, updated_at, client_id
 //	)
 //	SELECT
 //	    JSON_STRIP_NULLS(
@@ -310,6 +318,11 @@ type createObligationTriggerRow struct {
 //	                'id', av.id,
 //	                'value', av.value,
 //	                'fqn', COALESCE(av_fqns.fqn, '')
+//	            ),
+//	            'context', JSON_BUILD_OBJECT(
+//	                'pep', JSON_BUILD_OBJECT(
+//	                    'client_id', i.client_id
+//	                )
 //	            )
 //	        )
 //	    ) as trigger
@@ -329,6 +342,7 @@ func (q *Queries) createObligationTrigger(ctx context.Context, arg createObligat
 		arg.AttributeValueID,
 		arg.AttributeValueFqn,
 		arg.Metadata,
+		arg.ClientID,
 	)
 	var i createObligationTriggerRow
 	err := row.Scan(&i.Metadata, &i.Trigger)
@@ -617,6 +631,11 @@ WITH obligation_triggers_agg AS (
                     'id', av.id,
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
+                ),
+                'context', JSON_BUILD_OBJECT(
+                    'pep', JSON_BUILD_OBJECT(
+                        'client_id', ot.client_id
+                    )
                 )
             )
         ) as triggers
@@ -690,6 +709,11 @@ type getObligationRow struct {
 //	                    'id', av.id,
 //	                    'value', av.value,
 //	                    'fqn', COALESCE(av_fqns.fqn, '')
+//	                ),
+//	                'context', JSON_BUILD_OBJECT(
+//	                    'pep', JSON_BUILD_OBJECT(
+//	                        'client_id', ot.client_id
+//	                    )
 //	                )
 //	            )
 //	        ) as triggers
@@ -759,6 +783,11 @@ WITH obligation_triggers_agg AS (
                     'id', av.id,
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
+                ),
+                'context', JSON_BUILD_OBJECT(
+                    'pep', JSON_BUILD_OBJECT(
+                        'client_id', ot.client_id
+                    )
                 )
             )
         ) as triggers
@@ -830,6 +859,11 @@ type getObligationValueRow struct {
 //	                    'id', av.id,
 //	                    'value', av.value,
 //	                    'fqn', COALESCE(av_fqns.fqn, '')
+//	                ),
+//	                'context', JSON_BUILD_OBJECT(
+//	                    'pep', JSON_BUILD_OBJECT(
+//	                        'client_id', ot.client_id
+//	                    )
 //	                )
 //	            )
 //	        ) as triggers
@@ -901,6 +935,11 @@ WITH obligation_triggers_agg AS (
                     'id', av.id,
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
+                ),
+                'context', JSON_BUILD_OBJECT(
+                    'pep', JSON_BUILD_OBJECT(
+                        'client_id', ot.client_id
+                    )
                 )
             )
         ) as triggers
@@ -970,6 +1009,11 @@ type getObligationValuesByFQNsRow struct {
 //	                    'id', av.id,
 //	                    'value', av.value,
 //	                    'fqn', COALESCE(av_fqns.fqn, '')
+//	                ),
+//	                'context', JSON_BUILD_OBJECT(
+//	                    'pep', JSON_BUILD_OBJECT(
+//	                        'client_id', ot.client_id
+//	                    )
 //	                )
 //	            )
 //	        ) as triggers
@@ -1048,6 +1092,11 @@ WITH obligation_triggers_agg AS (
                     'id', av.id,
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
+                ),
+                'context', JSON_BUILD_OBJECT(
+                    'pep', JSON_BUILD_OBJECT(
+                        'client_id', ot.client_id
+                    )
                 )
             )
         ) as triggers
@@ -1123,6 +1172,11 @@ type getObligationsByFQNsRow struct {
 //	                    'id', av.id,
 //	                    'value', av.value,
 //	                    'fqn', COALESCE(av_fqns.fqn, '')
+//	                ),
+//	                'context', JSON_BUILD_OBJECT(
+//	                    'pep', JSON_BUILD_OBJECT(
+//	                        'client_id', ot.client_id
+//	                    )
 //	                )
 //	            )
 //	        ) as triggers
@@ -1217,6 +1271,11 @@ obligation_triggers_agg AS (
                     'id', av.id,
                     'value', av.value,
                     'fqn', COALESCE(av_fqns.fqn, '')
+                ),
+                'context', JSON_BUILD_OBJECT(
+                    'pep', JSON_BUILD_OBJECT(
+                        'client_id', ot.client_id
+                    )
                 )
             )
         ) as triggers
@@ -1298,6 +1357,11 @@ type listObligationsRow struct {
 //	                    'id', av.id,
 //	                    'value', av.value,
 //	                    'fqn', COALESCE(av_fqns.fqn, '')
+//	                ),
+//	                'context', JSON_BUILD_OBJECT(
+//	                    'pep', JSON_BUILD_OBJECT(
+//	                        'client_id', ot.client_id
+//	                    )
 //	                )
 //	            )
 //	        ) as triggers

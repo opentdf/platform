@@ -461,11 +461,15 @@ message RegisteredResourceValue {
   common.Metadata metadata = 100;
 }
 
-// A Policy Enforcement Point (PEP) that is registered with the policy database.
-message RegisteredPEP {
+message PolicyEnforcemenPoint {
   string client_id = 1 [
     (buf.validate.field).string = {min_len: 1}
   ];
+}
+
+// Holds the context needed for obligation fulfillment
+message RequestContext {
+  PolicyEnforcemenPoint pep = 1;
 }
 
 message Obligation {
@@ -501,9 +505,7 @@ message ObligationTrigger {
 
   Value attribute_value = 4;
 
-  // Holds the RegisteredPEP objects that are associated with this trigger.
-  // Map includes client_id => RegisteredPEP object
-  map<string, RegisteredPEP> peps = 5;
+  RequestContext context = 5;
 
   common.Metadata metadata = 100;
 }

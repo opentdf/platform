@@ -1,17 +1,16 @@
 -- +goose Up
 -- +goose StatementBegin
--- Add registered_peps column to obligation_triggers table
+-- Add client_id column to obligation_triggers table
 ALTER TABLE IF EXISTS obligation_triggers
-ADD COLUMN IF NOT EXISTS registered_peps JSONB NOT NULL DEFAULT '{}'::jsonb;
+ADD COLUMN IF NOT EXISTS client_id TEXT NOT NULL DEFAULT '';
 
-COMMENT ON COLUMN obligation_triggers.registered_peps IS 'Holds the RegisteredPEP objects that are associated with this trigger. Map contains client_id -> RegisteredPEP object';
+COMMENT ON COLUMN obligation_triggers.client_id IS 'Holds the client_id associated with this trigger.';
 -- +goose StatementEnd
-
 
 -- +goose Down
 -- +goose StatementBegin
--- Drop the registered_peps column
+-- Drop the client_id column
 ALTER TABLE IF EXISTS obligation_triggers
-DROP COLUMN IF EXISTS registered_peps;
+DROP COLUMN IF EXISTS client_id;
 
 -- +goose StatementEnd

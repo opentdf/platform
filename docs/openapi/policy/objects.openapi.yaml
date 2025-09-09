@@ -621,30 +621,13 @@ components:
         attributeValue:
           title: attribute_value
           $ref: '#/components/schemas/policy.Value'
-        peps:
-          type: object
-          title: peps
-          additionalProperties:
-            title: value
-            $ref: '#/components/schemas/policy.RegisteredPEP'
-          description: |-
-            Holds the RegisteredPEP objects that are associated with this trigger.
-             Map includes client_id => RegisteredPEP object
+        context:
+          title: context
+          $ref: '#/components/schemas/policy.RequestContext'
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
       title: ObligationTrigger
-      additionalProperties: false
-    policy.ObligationTrigger.PepsEntry:
-      type: object
-      properties:
-        key:
-          type: string
-          title: key
-        value:
-          title: value
-          $ref: '#/components/schemas/policy.RegisteredPEP'
-      title: PepsEntry
       additionalProperties: false
     policy.ObligationValue:
       type: object
@@ -667,6 +650,15 @@ components:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
       title: ObligationValue
+      additionalProperties: false
+    policy.PolicyEnforcemenPoint:
+      type: object
+      properties:
+        clientId:
+          type: string
+          title: client_id
+          minLength: 1
+      title: PolicyEnforcemenPoint
       additionalProperties: false
     policy.PrivateKeyCtx:
       type: object
@@ -720,16 +712,6 @@ components:
           description: Required Base64 encoded public key in PEM format
       title: PublicKeyCtx
       additionalProperties: false
-    policy.RegisteredPEP:
-      type: object
-      properties:
-        clientId:
-          type: string
-          title: client_id
-          minLength: 1
-      title: RegisteredPEP
-      additionalProperties: false
-      description: A Policy Enforcement Point (PEP) that is registered with the policy database.
     policy.RegisteredResource:
       type: object
       properties:
@@ -791,6 +773,15 @@ components:
           $ref: '#/components/schemas/common.Metadata'
       title: ActionAttributeValue
       additionalProperties: false
+    policy.RequestContext:
+      type: object
+      properties:
+        pep:
+          title: pep
+          $ref: '#/components/schemas/policy.PolicyEnforcemenPoint'
+      title: RequestContext
+      additionalProperties: false
+      description: Holds the context needed for obligation fulfillment
     policy.ResourceMapping:
       type: object
       properties:

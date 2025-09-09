@@ -1,7 +1,6 @@
 # Add Registered_Peps Column Migration
 
-Adds a column for connecting registered peps with obligations. Doing so bridges the gap between PEPs and Obligations.
-"this" obligation.
+Adds a column for connecting a client with obligations. Doing so bridges the gap between PEPs and Obligations.
 
 ## Schema Changes
 
@@ -22,11 +21,11 @@ erDiagram
     obligation_triggers_after {
         uuid action_id FK,UK 
         uuid attribute_value_id FK,UK 
+        text client_id "Holds the client_id associated with this trigger."
         timestamp_with_time_zone created_at 
         uuid id PK 
         jsonb metadata 
         uuid obligation_value_id FK,UK 
-        jsonb registered_peps "Holds the RegisteredPEP objects that are associated with this trigger. Map contains client_id -> RegisteredPEP object"
         timestamp_with_time_zone updated_at 
     }
 ```
@@ -35,4 +34,4 @@ erDiagram
 
 ### 1. **Column Addition**
 
-- Require registered_peps to be a part of a trigger.
+- Require `client_id` to be a part of a trigger.

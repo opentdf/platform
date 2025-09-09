@@ -154,11 +154,11 @@ erDiagram
     obligation_triggers {
         uuid action_id FK,UK 
         uuid attribute_value_id FK,UK 
+        text client_id "Holds the client_id associated with this trigger."
         timestamp_with_time_zone created_at 
         uuid id PK 
         jsonb metadata 
         uuid obligation_value_id FK,UK 
-        jsonb registered_peps "Holds the RegisteredPEP objects that are associated with this trigger. Map contains client_id -> RegisteredPEP object"
         timestamp_with_time_zone updated_at 
     }
 

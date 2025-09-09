@@ -278,11 +278,11 @@
                 </li>
               
                 <li>
-                  <a href="#policy.ObligationTrigger.PepsEntry"><span class="badge">M</span>ObligationTrigger.PepsEntry</a>
+                  <a href="#policy.ObligationValue"><span class="badge">M</span>ObligationValue</a>
                 </li>
               
                 <li>
-                  <a href="#policy.ObligationValue"><span class="badge">M</span>ObligationValue</a>
+                  <a href="#policy.PolicyEnforcemenPoint"><span class="badge">M</span>PolicyEnforcemenPoint</a>
                 </li>
               
                 <li>
@@ -298,10 +298,6 @@
                 </li>
               
                 <li>
-                  <a href="#policy.RegisteredPEP"><span class="badge">M</span>RegisteredPEP</a>
-                </li>
-              
-                <li>
                   <a href="#policy.RegisteredResource"><span class="badge">M</span>RegisteredResource</a>
                 </li>
               
@@ -311,6 +307,10 @@
               
                 <li>
                   <a href="#policy.RegisteredResourceValue.ActionAttributeValue"><span class="badge">M</span>RegisteredResourceValue.ActionAttributeValue</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.RequestContext"><span class="badge">M</span>RequestContext</a>
                 </li>
               
                 <li>
@@ -1514,14 +1514,6 @@
               
                 <li>
                   <a href="#policy.obligations.ListObligationsResponse"><span class="badge">M</span>ListObligationsResponse</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.obligations.RegisteredPEPMap"><span class="badge">M</span>RegisteredPEPMap</a>
-                </li>
-              
-                <li>
-                  <a href="#policy.obligations.RegisteredPEPMap.PepsEntry"><span class="badge">M</span>RegisteredPEPMap.PepsEntry</a>
                 </li>
               
                 <li>
@@ -3047,47 +3039,15 @@ enable federation </p></td>
                 </tr>
               
                 <tr>
-                  <td>peps</td>
-                  <td><a href="#policy.ObligationTrigger.PepsEntry">ObligationTrigger.PepsEntry</a></td>
-                  <td>repeated</td>
-                  <td><p>Holds the RegisteredPEP objects that are associated with this trigger.
-Map includes client_id =&gt; RegisteredPEP object </p></td>
+                  <td>context</td>
+                  <td><a href="#policy.RequestContext">RequestContext</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
                 <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.ObligationTrigger.PepsEntry">ObligationTrigger.PepsEntry</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>value</td>
-                  <td><a href="#policy.RegisteredPEP">RegisteredPEP</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -3140,6 +3100,30 @@ Map includes client_id =&gt; RegisteredPEP object </p></td>
                 <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.PolicyEnforcemenPoint">PolicyEnforcemenPoint</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>client_id</td>
+                  <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -3234,30 +3218,6 @@ Base64 encoded wrapped key. Conditionally required if key_mode is LOCAL. Should 
                   <td><p>Required
 
 Base64 encoded public key in PEM format </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.RegisteredPEP">RegisteredPEP</h3>
-        <p>A Policy Enforcement Point (PEP) that is registered with the policy database.</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>client_id</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -3400,6 +3360,30 @@ Base64 encoded public key in PEM format </p></td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
                   <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.RequestContext">RequestContext</h3>
+        <p>Holds the context needed for obligation fulfillment</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>pep</td>
+                  <td><a href="#policy.PolicyEnforcemenPoint">PolicyEnforcemenPoint</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -12403,12 +12387,11 @@ Namespace &lt;&gt; Key RPCs
                 </tr>
               
                 <tr>
-                  <td>peps</td>
-                  <td><a href="#policy.obligations.RegisteredPEPMap">RegisteredPEPMap</a></td>
+                  <td>context</td>
+                  <td><a href="#policy.RequestContext">policy.RequestContext</a></td>
                   <td></td>
                   <td><p>Required
-Holds the RegisteredPEP objects that are associated with this trigger.
-Map contains client_id -&gt; RegisteredPEP object </p></td>
+The request context for this obligation value policy decisioning. </p></td>
                 </tr>
               
                 <tr>
@@ -13052,61 +13035,6 @@ Common metadata </p></td>
 
         
       
-        <h3 id="policy.obligations.RegisteredPEPMap">RegisteredPEPMap</h3>
-        <p>Map of client_id's to registered PEP objects</p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>peps</td>
-                  <td><a href="#policy.obligations.RegisteredPEPMap.PepsEntry">RegisteredPEPMap.PepsEntry</a></td>
-                  <td>repeated</td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
-        <h3 id="policy.obligations.RegisteredPEPMap.PepsEntry">RegisteredPEPMap.PepsEntry</h3>
-        <p></p>
-
-        
-          <table class="field-table">
-            <thead>
-              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
-            </thead>
-            <tbody>
-              
-                <tr>
-                  <td>key</td>
-                  <td><a href="#string">string</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-                <tr>
-                  <td>value</td>
-                  <td><a href="#policy.RegisteredPEP">policy.RegisteredPEP</a></td>
-                  <td></td>
-                  <td><p> </p></td>
-                </tr>
-              
-            </tbody>
-          </table>
-
-          
-
-        
-      
         <h3 id="policy.obligations.RemoveObligationTriggerRequest">RemoveObligationTriggerRequest</h3>
         <p></p>
 
@@ -13326,10 +13254,10 @@ Obligation Triggers provided here will replace all existing records in the datab
                 </tr>
               
                 <tr>
-                  <td>peps</td>
-                  <td><a href="#policy.obligations.RegisteredPEPMap">RegisteredPEPMap</a></td>
+                  <td>context</td>
+                  <td><a href="#policy.RequestContext">policy.RequestContext</a></td>
                   <td></td>
-                  <td><p>Required. Map contains client_id -&gt; RegisteredPEP object </p></td>
+                  <td><p>Required. The request context for this obligation value policy decisioning. </p></td>
                 </tr>
               
             </tbody>

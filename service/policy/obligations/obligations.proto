@@ -20,22 +20,13 @@ message GetObligationRequest {
     }
 }
 
-// Map of client_id's to registered PEP objects
-message RegisteredPEPMap {  
-    map<string, policy.RegisteredPEP> peps = 1 [
-            (buf.validate.field).required = true,
-            (buf.validate.field).map.min_pairs = 1,
-            (buf.validate.field).map.keys.string.min_len = 1
-        ];
-}
-
 message ValueTriggerRequest {
     // Required. The ID of the action that will trigger this obligation value policy decisioning.
     common.IdNameIdentifier action = 1 [(buf.validate.field).required = true];
     // Required. The attribute value ID that will trigger this obligation value policy decisioning.
     common.IdFqnIdentifier attribute_value = 2 [(buf.validate.field).required = true];
-    // Required. Map contains client_id -> RegisteredPEP object
-    RegisteredPEPMap peps = 3 [(buf.validate.field).required = true];
+    // Required. The request context for this obligation value policy decisioning.
+    policy.RequestContext context = 3 [(buf.validate.field).required = true];
 }
 
 message GetObligationResponse {
@@ -192,9 +183,8 @@ message AddObligationTriggerRequest {
     common.IdFqnIdentifier attribute_value = 3 [(buf.validate.field).required = true];
 
     // Required
-    // Holds the RegisteredPEP objects that are associated with this trigger.
-    // Map contains client_id -> RegisteredPEP object
-    RegisteredPEPMap peps = 4 [(buf.validate.field).required = true];
+    // The request context for this obligation value policy decisioning.
+    policy.RequestContext context = 4 [(buf.validate.field).required = true];
 
     // Optional
     // Common metadata

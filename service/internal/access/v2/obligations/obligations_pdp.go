@@ -59,7 +59,8 @@ func NewObligationsPolicyDecisionPoint(
 			for _, trigger := range obligationValue.GetTriggers() {
 				attrValFqn := trigger.GetAttributeValue().GetFqn()
 				actionName := trigger.GetAction().GetName()
-				optionalPepClientID := trigger.GetContext().GetPep().GetClientId()
+				optionalPepClientID := "mock-client-id"
+				// optionalPepClientID := trigger.GetContext().GetPep().GetClientId()
 
 				// If the request context PEP client ID was provided to scope an obligation value to a PEP, populate that lookup graph
 				if optionalPepClientID != "" {
@@ -71,7 +72,7 @@ func NewObligationsPolicyDecisionPoint(
 					}
 					clientScopedTriggered[optionalPepClientID][actionName][attrValFqn] = append(clientScopedTriggered[optionalPepClientID][actionName][attrValFqn], obligationValue.GetFqn())
 				} else {
-					// Otherwise, populate unscoped lookup graph
+					// Otherwise, populate unscoped lookup graph with just actions and attributes alone
 					if _, ok := simpleTriggered[actionName]; !ok {
 						simpleTriggered[actionName] = make(map[string][]string)
 					}
@@ -211,3 +212,5 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 
 	return requiredOblValueFQNsPerResource, allRequiredOblValueFQNs, nil
 }
+
+// TODO: pdp.GetObligationsFulfilled?

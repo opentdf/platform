@@ -392,6 +392,11 @@ func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.G
 		return nil, fmt.Errorf("failed to unmarshal obligation metadata: %w", err)
 	}
 
+	triggers, err := unmarshalObligationTriggers(row.Triggers)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligation triggers: %w", err)
+	}
+
 	obl := &policy.Obligation{
 		Id:        row.ObligationID,
 		Name:      row.Name,
@@ -403,6 +408,7 @@ func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.G
 		Obligation: obl,
 		Value:      row.Value,
 		Metadata:   metadata,
+		Triggers:   triggers,
 	}, nil
 }
 
@@ -440,6 +446,11 @@ func (c PolicyDBClient) GetObligationValuesByFQNs(ctx context.Context, r *obliga
 			return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 		}
 
+		triggers, err := unmarshalObligationTriggers(r.Triggers)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal obligation triggers: %w", err)
+		}
+
 		obl := &policy.Obligation{
 			Id:        r.ObligationID,
 			Name:      r.Name,
@@ -451,6 +462,7 @@ func (c PolicyDBClient) GetObligationValuesByFQNs(ctx context.Context, r *obliga
 			Value:      r.Value,
 			Metadata:   metadata,
 			Obligation: obl,
+			Triggers:   triggers,
 		}
 	}
 

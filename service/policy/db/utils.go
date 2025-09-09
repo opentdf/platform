@@ -125,6 +125,29 @@ func unmarshalPrivatePublicKeyContext(pubCtx, privCtx []byte) (*policy.PublicKey
 	return pubKey, privKey, nil
 }
 
+func unmarshalObligationTriggers(triggersJSON []byte) ([]*policy.ObligationTrigger, error) {
+	obligationTriggers := make([]*policy.ObligationTrigger, 0)
+	if triggersJSON == nil {
+		return obligationTriggers, nil
+	}
+
+	raw := []json.RawMessage{}
+	if err := json.Unmarshal(triggersJSON, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal triggers array [%s]: %w", string(triggersJSON), err)
+	}
+
+	triggers := make([]*policy.ObligationTrigger, 0, len(raw))
+	for _, r := range raw {
+		t := &policy.ObligationTrigger{}
+		if err := protojson.Unmarshal(r, t); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal trigger [%s]: %w", string(r), err)
+		}
+		triggers = append(triggers, t)
+	}
+
+	return triggers, nil
+}
+
 func unmarshalObligationTrigger(triggerJSON []byte) (*policy.ObligationTrigger, error) {
 	trigger := &policy.ObligationTrigger{}
 	if triggerJSON == nil {

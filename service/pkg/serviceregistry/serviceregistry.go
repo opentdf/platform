@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 
 	"connectrpc.com/connect"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -266,13 +267,21 @@ type ServiceConfiguration struct {
 
 // Registry represents a service registry with namespaces and their registration order.
 type Registry struct {
+	mu         sync.RWMutex
 	namespaces map[string]*Namespace
 	order      []string
 }
 
 // GetNamespaces returns all namespaces in the registry
 func (reg *Registry) GetNamespaces() map[string]*Namespace {
-	return reg.namespaces
+	reg.mu.RLock()
+	defer reg.mu.RUnlock()
+	
+	result := make(map[string]*Namespace, len(reg.namespaces))
+	for k, v := range reg.namespaces {
+		result[k] = v
+	}
+	return result
 }
 
 // NewServiceRegistry creates a new instance of the service registry.
@@ -290,6 +299,9 @@ func NewServiceRegistry() *Registry {
 // The mode string specifies the mode in which the service should be registered.
 // It returns an error if the service is already registered in the specified namespace.
 func (reg *Registry) RegisterService(svc IService, mode ModeName) error {
+	reg.mu.Lock()
+	defer reg.mu.Unlock()
+	
 	nsName := svc.GetNamespace()
 
 	// Get or create the namespace
@@ -326,6 +338,9 @@ func (reg *Registry) RegisterService(svc IService, mode ModeName) error {
 // Shutdown stops all the registered services in the reverse order of registration.
 // If a service is started and has a Close method, the Close method will be called.
 func (reg *Registry) Shutdown() {
+	reg.mu.RLock()
+	defer reg.mu.RUnlock()
+	
 	for nsIdx := len(reg.order) - 1; nsIdx >= 0; nsIdx-- {
 		name := reg.order[nsIdx]
 		ns := reg.namespaces[name]
@@ -350,6 +365,9 @@ func (reg *Registry) Shutdown() {
 
 // GetNamespace returns the namespace with the given name from the service registry.
 func (reg *Registry) GetNamespace(namespace string) (*Namespace, error) {
+	reg.mu.RLock()
+	defer reg.mu.RUnlock()
+	
 	ns, ok := reg.namespaces[namespace]
 	if !ok {
 		return nil, &ServiceConfigError{

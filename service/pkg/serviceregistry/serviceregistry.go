@@ -272,24 +272,24 @@ type Registry struct {
 	order      []string
 }
 
-// GetNamespaces returns all namespaces in the registry
-func (reg *Registry) GetNamespaces() map[string]*Namespace {
-	reg.mu.RLock()
-	defer reg.mu.RUnlock()
-	
-	result := make(map[string]*Namespace, len(reg.namespaces))
-	for k, v := range reg.namespaces {
-		result[k] = v
-	}
-	return result
-}
-
 // NewServiceRegistry creates a new instance of the service registry.
 func NewServiceRegistry() *Registry {
 	return &Registry{
 		namespaces: make(map[string]*Namespace),
 		order:      make([]string, 0),
 	}
+}
+
+// GetNamespaces returns all namespaces in the registry
+func (reg *Registry) GetNamespaces() map[string]*Namespace {
+	reg.mu.RLock()
+	defer reg.mu.RUnlock()
+
+	result := make(map[string]*Namespace, len(reg.namespaces))
+	for k, v := range reg.namespaces {
+		result[k] = v
+	}
+	return result
 }
 
 // RegisterService registers a service in the service registry.
@@ -301,7 +301,7 @@ func NewServiceRegistry() *Registry {
 func (reg *Registry) RegisterService(svc IService, mode ModeName) error {
 	reg.mu.Lock()
 	defer reg.mu.Unlock()
-	
+
 	nsName := svc.GetNamespace()
 
 	// Get or create the namespace
@@ -340,7 +340,7 @@ func (reg *Registry) RegisterService(svc IService, mode ModeName) error {
 func (reg *Registry) Shutdown() {
 	reg.mu.RLock()
 	defer reg.mu.RUnlock()
-	
+
 	for nsIdx := len(reg.order) - 1; nsIdx >= 0; nsIdx-- {
 		name := reg.order[nsIdx]
 		ns := reg.namespaces[name]
@@ -367,7 +367,7 @@ func (reg *Registry) Shutdown() {
 func (reg *Registry) GetNamespace(namespace string) (*Namespace, error) {
 	reg.mu.RLock()
 	defer reg.mu.RUnlock()
-	
+
 	ns, ok := reg.namespaces[namespace]
 	if !ok {
 		return nil, &ServiceConfigError{

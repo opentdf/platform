@@ -252,58 +252,12 @@ func Start(f ...StartOptions) error {
 		if slices.Contains(cfg.Mode, serviceregistry.ModeCore.String()) && !slices.Contains(cfg.Mode, serviceregistry.ModeERS.String()) {
 			logger.Info("core mode")
 
-			if cfg.SDKConfig.EntityResolutionConnection.Endpoint == "" {
-				return errors.New("entityresolution endpoint must be provided in core mode")
+			ersConnectRPCConn, err := setupERSConnection(cfg, oidcconfig, logger)
+			if err != nil {
+				return err
 			}
 
-			ersConnectRPCConn := sdk.ConnectRPCConnection{}
-
-			var tlsConfig *tls.Config
-			if cfg.SDKConfig.EntityResolutionConnection.Insecure {
-				tlsConfig = &tls.Config{
-					MinVersion:         tls.VersionTLS12,
-					InsecureSkipVerify: true, // #nosec G402
-				}
-				ersConnectRPCConn.Client = httputil.SafeHTTPClientWithTLSConfig(tlsConfig)
-			}
-			if cfg.SDKConfig.EntityResolutionConnection.Plaintext {
-				tlsConfig = &tls.Config{}
-				ersConnectRPCConn.Client = httputil.SafeHTTPClient()
-			}
-
-			if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
-				if oidcconfig.Issuer == "" {
-					// this should not occur, it will have been set above if this block is entered
-					return errors.New("cannot add token interceptor: oidcconfig is empty")
-				}
-
-				rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
-				if err != nil {
-					return fmt.Errorf("could not generate RSA Key: %w", err)
-				}
-				ts, err := sdk.NewIDPAccessTokenSource(
-					oauth.ClientCredentials{ClientID: cfg.SDKConfig.ClientID, ClientAuth: cfg.SDKConfig.ClientSecret},
-					oidcconfig.TokenEndpoint,
-					nil,
-					&rsaKeyPair,
-				)
-				if err != nil {
-					return fmt.Errorf("error creating ERS tokensource: %w", err)
-				}
-
-				interceptor := sdkauth.NewTokenAddingInterceptorWithClient(ts,
-					httputil.SafeHTTPClientWithTLSConfig(tlsConfig))
-
-				ersConnectRPCConn.Options = append(ersConnectRPCConn.Options, connect.WithInterceptors(interceptor.AddCredentialsConnect()))
-			}
-
-			if sdk.IsPlatformEndpointMalformed(cfg.SDKConfig.EntityResolutionConnection.Endpoint) {
-				return fmt.Errorf("entityresolution endpoint is malformed: %s", cfg.SDKConfig.EntityResolutionConnection.Endpoint)
-			}
-			ersConnectRPCConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
-
-			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(&ersConnectRPCConn))
-			logger.Info("added with custom ers connection", slog.String("ers_connection_endpoint", ersConnectRPCConn.Endpoint))
+			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(ersConnectRPCConn))
 		}
 
 		client, err = sdk.New("", sdkOptions...)
@@ -408,4 +362,82 @@ func modeRequiresIpc(cfg *config.Config) bool {
 
 	// All other modes use external SDK connections
 	return false
+}
+
+// setupERSConnection creates an ERS connection configuration for core mode
+func setupERSConnection(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, logger *logger.Logger) (*sdk.ConnectRPCConnection, error) {
+	if cfg.SDKConfig.EntityResolutionConnection.Endpoint == "" {
+		return nil, errors.New("entityresolution endpoint must be provided in core mode")
+	}
+
+	ersConnectRPCConn := &sdk.ConnectRPCConnection{}
+
+	// Configure TLS
+	tlsConfig, err := configureTLSForERS(cfg, ersConnectRPCConn)
+	if err != nil {
+		return nil, err
+	}
+
+	// Configure authentication if credentials are provided
+	if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
+		if err := configureERSAuthentication(cfg, oidcconfig, tlsConfig, ersConnectRPCConn); err != nil {
+			return nil, err
+		}
+	}
+
+	// Validate and set endpoint
+	if sdk.IsPlatformEndpointMalformed(cfg.SDKConfig.EntityResolutionConnection.Endpoint) {
+		return nil, fmt.Errorf("entityresolution endpoint is malformed: %s", cfg.SDKConfig.EntityResolutionConnection.Endpoint)
+	}
+	ersConnectRPCConn.Endpoint = cfg.SDKConfig.EntityResolutionConnection.Endpoint
+
+	logger.Info("added with custom ers connection", slog.String("ers_connection_endpoint", ersConnectRPCConn.Endpoint))
+	return ersConnectRPCConn, nil
+}
+
+// configureTLSForERS configures TLS settings for ERS connection
+func configureTLSForERS(cfg *config.Config, ersConnectRPCConn *sdk.ConnectRPCConnection) (*tls.Config, error) {
+	var tlsConfig *tls.Config
+	ersConn := &cfg.SDKConfig.EntityResolutionConnection
+
+	if ersConn.Insecure {
+		tlsConfig = &tls.Config{
+			MinVersion:         tls.VersionTLS12,
+			InsecureSkipVerify: true, // #nosec G402
+		}
+		ersConnectRPCConn.Client = httputil.SafeHTTPClientWithTLSConfig(tlsConfig)
+	} else if ersConn.Plaintext {
+		tlsConfig = &tls.Config{}
+		ersConnectRPCConn.Client = httputil.SafeHTTPClient()
+	}
+
+	return tlsConfig, nil
+}
+
+// configureERSAuthentication sets up authentication for ERS connection
+func configureERSAuthentication(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, tlsConfig *tls.Config, ersConn *sdk.ConnectRPCConnection) error {
+	if oidcconfig.Issuer == "" {
+		return errors.New("cannot add token interceptor: oidcconfig is empty")
+	}
+
+	rsaKeyPair, err := ocrypto.NewRSAKeyPair(dpopKeySize)
+	if err != nil {
+		return fmt.Errorf("could not generate RSA Key: %w", err)
+	}
+
+	ts, err := sdk.NewIDPAccessTokenSource(
+		oauth.ClientCredentials{ClientID: cfg.SDKConfig.ClientID, ClientAuth: cfg.SDKConfig.ClientSecret},
+		oidcconfig.TokenEndpoint,
+		nil,
+		&rsaKeyPair,
+	)
+	if err != nil {
+		return fmt.Errorf("error creating ERS tokensource: %w", err)
+	}
+
+	interceptor := sdkauth.NewTokenAddingInterceptorWithClient(ts,
+		httputil.SafeHTTPClientWithTLSConfig(tlsConfig))
+
+	ersConn.Options = append(ersConn.Options, connect.WithInterceptors(interceptor.AddCredentialsConnect()))
+	return nil
 }

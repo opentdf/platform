@@ -46,8 +46,7 @@ func ParseModesWithNegation(modes []string) ([]ModeName, []string, error) {
 	var excluded []string
 
 	for _, mode := range modes {
-		modeStr := string(mode)
-		if serviceName, found := strings.CutPrefix(modeStr, "-"); found {
+		if serviceName, found := strings.CutPrefix(mode, "-"); found {
 			// This is an exclusion
 			if serviceName == "" {
 				return nil, nil, errors.New("empty service name after '-'")

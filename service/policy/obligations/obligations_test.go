@@ -531,6 +531,7 @@ func Test_DeleteObligationValue_Fails(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errMessageOneOf)
 }
+
 func Test_AddObligationTrigger_Request(t *testing.T) {
 	validUUID := uuid.NewString()
 	validFQN := "https://example.com/attr/value/1"

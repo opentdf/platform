@@ -282,6 +282,10 @@
                 </li>
               
                 <li>
+                  <a href="#policy.PolicyEnforcementPoint"><span class="badge">M</span>PolicyEnforcementPoint</a>
+                </li>
+              
+                <li>
                   <a href="#policy.PrivateKeyCtx"><span class="badge">M</span>PrivateKeyCtx</a>
                 </li>
               
@@ -303,6 +307,10 @@
               
                 <li>
                   <a href="#policy.RegisteredResourceValue.ActionAttributeValue"><span class="badge">M</span>RegisteredResourceValue.ActionAttributeValue</a>
+                </li>
+              
+                <li>
+                  <a href="#policy.RequestContext"><span class="badge">M</span>RequestContext</a>
                 </li>
               
                 <li>
@@ -3038,6 +3046,13 @@ enable federation </p></td>
                 </tr>
               
                 <tr>
+                  <td>context</td>
+                  <td><a href="#policy.RequestContext">RequestContext</a></td>
+                  <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -3099,6 +3114,30 @@ enable federation </p></td>
                 <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.PolicyEnforcementPoint">PolicyEnforcementPoint</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>client_id</td>
+                  <td><a href="#string">string</a></td>
                   <td></td>
                   <td><p> </p></td>
                 </tr>
@@ -3335,6 +3374,30 @@ Base64 encoded public key in PEM format </p></td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
                   <td><p>Common metadata </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.RequestContext">RequestContext</h3>
+        <p>Holds the context needed for obligation fulfillment</p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>pep</td>
+                  <td><a href="#policy.PolicyEnforcementPoint">PolicyEnforcementPoint</a></td>
+                  <td></td>
+                  <td><p> </p></td>
                 </tr>
               
             </tbody>
@@ -12338,6 +12401,14 @@ Namespace &lt;&gt; Key RPCs
                 </tr>
               
                 <tr>
+                  <td>context</td>
+                  <td><a href="#policy.RequestContext">policy.RequestContext</a></td>
+                  <td></td>
+                  <td><p>Optional
+The request context for this obligation value policy decisioning. </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
@@ -13194,6 +13265,13 @@ Obligation Triggers provided here will replace all existing records in the datab
                   <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
                   <td></td>
                   <td><p>Required. The attribute value ID that will trigger this obligation value policy decisioning. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>context</td>
+                  <td><a href="#policy.RequestContext">policy.RequestContext</a></td>
+                  <td></td>
+                  <td><p>Optional. The request context for this obligation value policy decisioning. </p></td>
                 </tr>
               
             </tbody>

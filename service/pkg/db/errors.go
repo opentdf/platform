@@ -38,6 +38,7 @@ var (
 	ErrKIDMismatch                = errors.New("ErrKIDMismatch: Key ID mismatch")
 	ErrKasURIMismatch             = errors.New("ErrKasURIMismatch: KAS URI mismatch")
 	ErrInvalidOblTriParam         = errors.New("ErrInvalidOblTriParam: either the obligation value, attribute value, or action provided was not found")
+	ErrCheckViolation             = errors.New("ErrCheckViolation: check constraint violation")
 )
 
 // Get helpful error message for PostgreSQL violation
@@ -60,6 +61,8 @@ func WrapIfKnownInvalidQueryErr(err error) error {
 				return errors.Join(ErrUUIDInvalid, e)
 			}
 			return errors.Join(ErrEnumValueInvalid, e)
+		case pgerrcode.CheckViolation:
+			return errors.Join(ErrCheckViolation, e)
 		default:
 			slog.Error("unknown error code",
 				slog.String("error", e.Message),

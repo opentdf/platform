@@ -25,6 +25,8 @@ message ValueTriggerRequest {
     common.IdNameIdentifier action = 1 [(buf.validate.field).required = true];
     // Required. The attribute value ID that will trigger this obligation value policy decisioning.
     common.IdFqnIdentifier attribute_value = 2 [(buf.validate.field).required = true];
+    // Optional. The request context for this obligation value policy decisioning.
+    policy.RequestContext context = 3;
 }
 
 message GetObligationResponse {
@@ -179,6 +181,11 @@ message AddObligationTriggerRequest {
     common.IdNameIdentifier action = 2 [(buf.validate.field).required = true];
     // Required
     common.IdFqnIdentifier attribute_value = 3 [(buf.validate.field).required = true];
+
+    // Optional
+    // The request context for this obligation value policy decisioning.
+    policy.RequestContext context = 4;
+
     // Optional
     // Common metadata
     common.MetadataMutable metadata = 100;

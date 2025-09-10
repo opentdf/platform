@@ -154,6 +154,7 @@ erDiagram
     obligation_triggers {
         uuid action_id FK,UK 
         uuid attribute_value_id FK,UK 
+        text client_id "Holds the client_id associated with this trigger."
         timestamp_with_time_zone created_at 
         uuid id PK 
         jsonb metadata 
@@ -174,8 +175,9 @@ erDiagram
         jsonb config "Configuration details for the key provider"
         timestamp_with_time_zone created_at "Timestamp when the provider configuration was created"
         uuid id PK "Unique identifier for the provider configuration"
+        character_varying manager UK "Type of key manager (e.g., opentdf.io/basic, aws, azure, gcp)"
         jsonb metadata "Additional metadata for the provider configuration"
-        character_varying provider_name UK "Unique name for the key provider."
+        character_varying provider_name UK "Name of the key provider instance."
         timestamp_with_time_zone updated_at "Timestamp when the provider configuration was last updated"
     }
 

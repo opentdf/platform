@@ -1019,6 +1019,11 @@ components:
         attributeValue:
           title: attribute_value
           $ref: '#/components/schemas/policy.Value'
+        context:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.RequestContext'
+          title: context
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -1091,6 +1096,15 @@ components:
           description: Total count of entire list
       title: PageResponse
       additionalProperties: false
+    policy.PolicyEnforcementPoint:
+      type: object
+      properties:
+        clientId:
+          type: string
+          title: client_id
+          minLength: 1
+      title: PolicyEnforcementPoint
+      additionalProperties: false
     policy.PublicKey:
       type: object
       oneOf:
@@ -1119,6 +1133,15 @@ components:
       title: PublicKey
       additionalProperties: false
       description: Deprecated
+    policy.RequestContext:
+      type: object
+      properties:
+        pep:
+          title: pep
+          $ref: '#/components/schemas/policy.PolicyEnforcementPoint'
+      title: RequestContext
+      additionalProperties: false
+      description: Holds the context needed for obligation fulfillment
     policy.ResourceMapping:
       type: object
       properties:
@@ -1332,6 +1355,12 @@ components:
           title: attribute_value
           description: Required
           $ref: '#/components/schemas/common.IdFqnIdentifier'
+        context:
+          title: context
+          description: |-
+            Optional
+             The request context for this obligation value policy decisioning.
+          $ref: '#/components/schemas/policy.RequestContext'
         metadata:
           title: metadata
           description: |-
@@ -1762,6 +1791,10 @@ components:
           title: attribute_value
           description: Required. The attribute value ID that will trigger this obligation value policy decisioning.
           $ref: '#/components/schemas/common.IdFqnIdentifier'
+        context:
+          title: context
+          description: Optional. The request context for this obligation value policy decisioning.
+          $ref: '#/components/schemas/policy.RequestContext'
       title: ValueTriggerRequest
       required:
         - action

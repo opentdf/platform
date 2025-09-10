@@ -310,6 +310,7 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 				ObligationValue: &common.IdFqnIdentifier{Id: row.ID},
 				Action:          trigger.GetAction(),
 				AttributeValue:  trigger.GetAttributeValue(),
+				Context:         trigger.GetContext(),
 			})
 			if err != nil {
 				return nil, err
@@ -498,6 +499,7 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 				ObligationValue: &common.IdFqnIdentifier{Id: id},
 				Action:          trigger.GetAction(),
 				AttributeValue:  trigger.GetAttributeValue(),
+				Context:         trigger.GetContext(),
 			})
 			if err != nil {
 				return nil, err
@@ -570,6 +572,7 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		ActionID:          r.GetAction().GetId(),
 		AttributeValueID:  r.GetAttributeValue().GetId(),
 		AttributeValueFqn: r.GetAttributeValue().GetFqn(),
+		ClientID:          r.GetContext().GetPep().GetClientId(),
 		Metadata:          metadataJSON,
 	}
 	row, err := c.queries.createObligationTrigger(ctx, params)

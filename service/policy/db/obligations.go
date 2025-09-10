@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -301,6 +302,22 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 		return nil, db.WrapIfKnownInvalidQueryErr(err)
 	}
 
+	// Create triggers for obligation value if provided
+	triggers := make([]*policy.ObligationTrigger, len(r.GetTriggers()))
+	if len(r.GetTriggers()) > 0 {
+		for i, trigger := range r.GetTriggers() {
+			createdTrigger, err := c.CreateObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
+				ObligationValue: &common.IdFqnIdentifier{Id: row.ID},
+				Action:          trigger.GetAction(),
+				AttributeValue:  trigger.GetAttributeValue(),
+			})
+			if err != nil {
+				return nil, err
+			}
+			triggers[i] = createdTrigger
+		}
+	}
+
 	namespace := &policy.Namespace{}
 	if err := unmarshalNamespace(row.Namespace, namespace); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
@@ -325,6 +342,7 @@ func (c PolicyDBClient) CreateObligationValue(ctx context.Context, r *obligation
 		Obligation: obl,
 		Value:      value,
 		Metadata:   metadata,
+		Triggers:   triggers,
 	}, nil
 }
 
@@ -352,6 +370,11 @@ func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.G
 		return nil, fmt.Errorf("failed to unmarshal obligation metadata: %w", err)
 	}
 
+	triggers, err := unmarshalObligationTriggers(row.Triggers)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal obligation triggers: %w", err)
+	}
+
 	obl := &policy.Obligation{
 		Id:        row.ObligationID,
 		Name:      row.Name,
@@ -363,6 +386,7 @@ func (c PolicyDBClient) GetObligationValue(ctx context.Context, r *obligations.G
 		Obligation: obl,
 		Value:      row.Value,
 		Metadata:   metadata,
+		Triggers:   triggers,
 	}, nil
 }
 
@@ -400,6 +424,11 @@ func (c PolicyDBClient) GetObligationValuesByFQNs(ctx context.Context, r *obliga
 			return nil, fmt.Errorf("failed to unmarshal obligation namespace: %w", err)
 		}
 
+		triggers, err := unmarshalObligationTriggers(r.Triggers)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal obligation triggers: %w", err)
+		}
+
 		obl := &policy.Obligation{
 			Id:        r.ObligationID,
 			Name:      r.Name,
@@ -411,6 +440,7 @@ func (c PolicyDBClient) GetObligationValuesByFQNs(ctx context.Context, r *obliga
 			Value:      r.Value,
 			Metadata:   metadata,
 			Obligation: obl,
+			Triggers:   triggers,
 		}
 	}
 
@@ -452,11 +482,36 @@ func (c PolicyDBClient) UpdateObligationValue(ctx context.Context, r *obligation
 	metadata.CreatedAt = oblVal.GetMetadata().GetCreatedAt()
 	metadata.UpdatedAt = now
 
+	// Update triggers for obligation value if provided
+	triggers := oblVal.GetTriggers()
+	if len(r.GetTriggers()) > 0 {
+		// Delete all existing triggers for this obligation value
+		_, err := c.queries.deleteAllObligationTriggersForValue(ctx, id)
+		if err != nil {
+			return nil, db.WrapIfKnownInvalidQueryErr(err)
+		}
+
+		// Create new triggers
+		triggers = make([]*policy.ObligationTrigger, len(r.GetTriggers()))
+		for i, trigger := range r.GetTriggers() {
+			createdTrigger, err := c.CreateObligationTrigger(ctx, &obligations.AddObligationTriggerRequest{
+				ObligationValue: &common.IdFqnIdentifier{Id: id},
+				Action:          trigger.GetAction(),
+				AttributeValue:  trigger.GetAttributeValue(),
+			})
+			if err != nil {
+				return nil, err
+			}
+			triggers[i] = createdTrigger
+		}
+	}
+
 	return &policy.ObligationValue{
 		Id:         id,
 		Value:      value,
 		Metadata:   metadata,
 		Obligation: oblVal.GetObligation(),
+		Triggers:   triggers,
 	}, nil
 }
 
@@ -519,7 +574,11 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 	}
 	row, err := c.queries.createObligationTrigger(ctx, params)
 	if err != nil {
-		return nil, db.WrapIfKnownInvalidQueryErr(err)
+		wrappedErr := db.WrapIfKnownInvalidQueryErr(err)
+		if errors.Is(wrappedErr, db.ErrNotNullViolation) {
+			return nil, errors.Join(db.ErrInvalidOblTriParam, wrappedErr)
+		}
+		return nil, wrappedErr
 	}
 
 	metadata := &common.Metadata{}

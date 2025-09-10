@@ -197,7 +197,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ActionNotFound_Fa
 		Action:          &common.IdNameIdentifier{Id: randomID},
 	})
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotNullViolation)
+	s.Require().ErrorIs(err, db.ErrInvalidOblTriParam)
 	s.Nil(trigger)
 }
 
@@ -234,7 +234,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_AttributeValueDif
 		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
 	})
 	s.Require().Error(err)
-	s.Require().ErrorIs(err, db.ErrNotNullViolation)
+	s.Require().ErrorIs(err, db.ErrInvalidOblTriParam)
 	s.Nil(trigger)
 }
 

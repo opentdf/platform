@@ -1532,6 +1532,10 @@
                   <a href="#policy.obligations.UpdateObligationValueResponse"><span class="badge">M</span>UpdateObligationValueResponse</a>
                 </li>
               
+                <li>
+                  <a href="#policy.obligations.ValueTriggerRequest"><span class="badge">M</span>ValueTriggerRequest</a>
+                </li>
+              
               
               
               
@@ -2975,6 +2979,13 @@ enable federation </p></td>
                 </tr>
               
                 <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.Metadata">common.Metadata</a></td>
                   <td></td>
@@ -3075,6 +3086,13 @@ enable federation </p></td>
                   <td>triggers</td>
                   <td><a href="#policy.ObligationTrigger">ObligationTrigger</a></td>
                   <td>repeated</td>
+                  <td><p> </p></td>
+                </tr>
+              
+                <tr>
+                  <td>fqn</td>
+                  <td><a href="#string">string</a></td>
+                  <td></td>
                   <td><p> </p></td>
                 </tr>
               
@@ -12467,6 +12485,14 @@ Common metadata </p></td>
                 </tr>
               
                 <tr>
+                  <td>triggers</td>
+                  <td><a href="#policy.obligations.ValueTriggerRequest">ValueTriggerRequest</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional
+Combination of action and attribute_value that will trigger this obligation value policy decisioning. </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
@@ -13094,6 +13120,14 @@ Common metadata </p></td>
                 </tr>
               
                 <tr>
+                  <td>triggers</td>
+                  <td><a href="#policy.obligations.ValueTriggerRequest">ValueTriggerRequest</a></td>
+                  <td>repeated</td>
+                  <td><p>Optional
+Obligation Triggers provided here will replace all existing records in the database. </p></td>
+                </tr>
+              
+                <tr>
                   <td>metadata</td>
                   <td><a href="#common.MetadataMutable">common.MetadataMutable</a></td>
                   <td></td>
@@ -13130,6 +13164,37 @@ Common metadata </p></td>
                   <td><a href="#policy.ObligationValue">policy.ObligationValue</a></td>
                   <td></td>
                   <td><p> </p></td>
+                </tr>
+              
+            </tbody>
+          </table>
+
+          
+
+        
+      
+        <h3 id="policy.obligations.ValueTriggerRequest">ValueTriggerRequest</h3>
+        <p></p>
+
+        
+          <table class="field-table">
+            <thead>
+              <tr><td>Field</td><td>Type</td><td>Label</td><td>Description</td></tr>
+            </thead>
+            <tbody>
+              
+                <tr>
+                  <td>action</td>
+                  <td><a href="#common.IdNameIdentifier">common.IdNameIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required. The ID of the action that will trigger this obligation value policy decisioning. </p></td>
+                </tr>
+              
+                <tr>
+                  <td>attribute_value</td>
+                  <td><a href="#common.IdFqnIdentifier">common.IdFqnIdentifier</a></td>
+                  <td></td>
+                  <td><p>Required. The attribute value ID that will trigger this obligation value policy decisioning. </p></td>
                 </tr>
               
             </tbody>

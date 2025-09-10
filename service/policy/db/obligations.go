@@ -596,13 +596,18 @@ func (c PolicyDBClient) CreateObligationTrigger(ctx context.Context, r *obligati
 		return nil, fmt.Errorf("failed to get obligation value: %w", err)
 	}
 
+	clientID := ""
+	if r.GetContext() != nil && r.GetContext().GetPep() != nil {
+		clientID = r.GetContext().GetPep().GetClientId()
+	}
+
 	params := createObligationTriggerParams{
 		ObligationValueID: oblVal.GetId(),
 		ActionName:        r.GetAction().GetName(),
 		ActionID:          r.GetAction().GetId(),
 		AttributeValueID:  r.GetAttributeValue().GetId(),
 		AttributeValueFqn: r.GetAttributeValue().GetFqn(),
-		ClientID:          r.GetContext().GetPep().GetClientId(),
+		ClientID:          clientID,
 		Metadata:          metadataJSON,
 	}
 	row, err := c.queries.createObligationTrigger(ctx, params)

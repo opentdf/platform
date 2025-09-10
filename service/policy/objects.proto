@@ -461,7 +461,7 @@ message RegisteredResourceValue {
   common.Metadata metadata = 100;
 }
 
-message PolicyEnforcemenPoint {
+message PolicyEnforcementPoint {
   string client_id = 1 [
     (buf.validate.field).string = {min_len: 1}
   ];
@@ -469,7 +469,7 @@ message PolicyEnforcemenPoint {
 
 // Holds the context needed for obligation fulfillment
 message RequestContext {
-  PolicyEnforcemenPoint pep = 1;
+  PolicyEnforcementPoint pep = 1;
 }
 
 message Obligation {

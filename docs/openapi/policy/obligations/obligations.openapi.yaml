@@ -1096,14 +1096,14 @@ components:
           description: Total count of entire list
       title: PageResponse
       additionalProperties: false
-    policy.PolicyEnforcemenPoint:
+    policy.PolicyEnforcementPoint:
       type: object
       properties:
         clientId:
           type: string
           title: client_id
           minLength: 1
-      title: PolicyEnforcemenPoint
+      title: PolicyEnforcementPoint
       additionalProperties: false
     policy.PublicKey:
       type: object
@@ -1138,7 +1138,7 @@ components:
       properties:
         pep:
           title: pep
-          $ref: '#/components/schemas/policy.PolicyEnforcemenPoint'
+          $ref: '#/components/schemas/policy.PolicyEnforcementPoint'
       title: RequestContext
       additionalProperties: false
       description: Holds the context needed for obligation fulfillment
@@ -1358,7 +1358,7 @@ components:
         context:
           title: context
           description: |-
-            Required
+            Optional
              The request context for this obligation value policy decisioning.
           $ref: '#/components/schemas/policy.RequestContext'
         metadata:

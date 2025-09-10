@@ -284,7 +284,7 @@ func (s *ObligationsSuite) Test_GetObligationsByFQNs_WithTriggers_Succeeds() {
 			Action:         &common.IdNameIdentifier{Name: "read"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value1"},
 			Context: &policy.RequestContext{
-				Pep: &policy.PolicyEnforcemenPoint{
+				Pep: &policy.PolicyEnforcementPoint{
 					ClientId: clientID,
 				},
 			},
@@ -501,7 +501,7 @@ func (s *ObligationsSuite) Test_ListObligations_WithTriggers_Succeeds() {
 			Action:         &common.IdNameIdentifier{Name: "read"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value1"},
 			Context: &policy.RequestContext{
-				Pep: &policy.PolicyEnforcemenPoint{
+				Pep: &policy.PolicyEnforcementPoint{
 					ClientId: clientID,
 				},
 			},
@@ -516,7 +516,7 @@ func (s *ObligationsSuite) Test_ListObligations_WithTriggers_Succeeds() {
 			Action:         &common.IdNameIdentifier{Name: "update"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value2"},
 			Context: &policy.RequestContext{
-				Pep: &policy.PolicyEnforcemenPoint{
+				Pep: &policy.PolicyEnforcementPoint{
 					ClientId: clientID,
 				},
 			},
@@ -800,7 +800,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_IDs_Succeeds(
 				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[0].ID},
 				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcemenPoint{
+					Pep: &policy.PolicyEnforcementPoint{
 						ClientId: clientID,
 					},
 				},
@@ -851,7 +851,7 @@ func (s *ObligationsSuite) Test_CreateObligationValue_WithTriggers_FQNsNames_Suc
 				Action:         &common.IdNameIdentifier{Name: triggerSetup.action.GetName()},
 				AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value1"},
 				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcemenPoint{
+					Pep: &policy.PolicyEnforcementPoint{
 						ClientId: clientID,
 					},
 				},
@@ -1179,7 +1179,7 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_WithTriggers_Succeeds(
 			Action:         &common.IdNameIdentifier{Name: "read"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value1"},
 			Context: &policy.RequestContext{
-				Pep: &policy.PolicyEnforcemenPoint{
+				Pep: &policy.PolicyEnforcementPoint{
 					ClientId: clientID,
 				},
 			},
@@ -1192,7 +1192,7 @@ func (s *ObligationsSuite) Test_GetObligationValuesByFQNs_WithTriggers_Succeeds(
 			Action:         &common.IdNameIdentifier{Name: "update"},
 			AttributeValue: &common.IdFqnIdentifier{Fqn: "https://example.com/attr/attr1/value/value2"},
 			Context: &policy.RequestContext{
-				Pep: &policy.PolicyEnforcemenPoint{
+				Pep: &policy.PolicyEnforcementPoint{
 					ClientId: clientID,
 				},
 			},
@@ -1434,7 +1434,7 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[0].ID},
 				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcemenPoint{
+					Pep: &policy.PolicyEnforcementPoint{
 						ClientId: clientID,
 					},
 				},
@@ -1443,7 +1443,7 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[1].ID},
 				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcemenPoint{
+					Pep: &policy.PolicyEnforcementPoint{
 						ClientId: clientID,
 					},
 				},
@@ -1483,7 +1483,7 @@ func (s *ObligationsSuite) Test_UpdateObligationValue_WithTriggers_Succeeds() {
 				Action:         &common.IdNameIdentifier{Id: triggerSetup.action.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerSetup.attributeValues[0].ID},
 				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcemenPoint{
+					Pep: &policy.PolicyEnforcementPoint{
 						ClientId: updatedClientID,
 					},
 				},
@@ -1826,7 +1826,7 @@ func (s *ObligationsSuite) createObligationValueWithTriggers(obligationID string
 				Action:         &common.IdNameIdentifier{Id: triggerAction.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerAttributeValue.ID},
 				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcemenPoint{
+					Pep: &policy.PolicyEnforcementPoint{
 						ClientId: clientID,
 					},
 				},
@@ -1835,7 +1835,7 @@ func (s *ObligationsSuite) createObligationValueWithTriggers(obligationID string
 				Action:         &common.IdNameIdentifier{Id: triggerAction.GetId()},
 				AttributeValue: &common.IdFqnIdentifier{Id: triggerAttributeValue2.ID},
 				Context: &policy.RequestContext{
-					Pep: &policy.PolicyEnforcemenPoint{
+					Pep: &policy.PolicyEnforcementPoint{
 						ClientId: clientID,
 					},
 				},
@@ -1906,15 +1906,13 @@ func (s *ObligationsSuite) assertObligationValuesSpecificTriggers(obl *policy.Ob
 			s.Require().Nil(actualTrigger.GetObligationValue(),
 				"Trigger's obligation_value field should be empty to avoid circular references")
 			s.Require().Len(actualTrigger.GetContext(), len(expectedTrigger.GetContext()))
-			found := 0
-			for _, actReqContext := range actualTrigger.GetContext() {
-				for _, expReqContext := range expectedTrigger.GetContext() {
-					if actReqContext.GetPep().GetClientId() == expReqContext.GetPep().GetClientId() {
-						found++
-					}
-				}
+			expectedClientIDs := make(map[string]bool)
+			for _, expReqContext := range expectedTrigger.GetContext() {
+				expectedClientIDs[expReqContext.GetPep().GetClientId()] = true
 			}
-			s.Require().Len(expectedTrigger.GetContext(), found)
+			for _, actReqContext := range actualTrigger.GetContext() {
+				s.Require().True(expectedClientIDs[actReqContext.GetPep().GetClientId()], "unexpected client id %s", actReqContext.GetPep().GetClientId())
+			}
 		}
 	}
 }

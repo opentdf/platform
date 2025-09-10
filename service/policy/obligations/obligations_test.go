@@ -31,7 +31,7 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 	invalidFQN := "invalid-fqn"
 	validName := "kas"
 	validRequestContext := &policy.RequestContext{
-		Pep: &policy.PolicyEnforcemenPoint{
+		Pep: &policy.PolicyEnforcementPoint{
 			ClientId: "client-id",
 		},
 	}
@@ -266,7 +266,7 @@ func Test_RemoveObligationTrigger_Request(t *testing.T) {
 func Test_CreateObligationValue_Request(t *testing.T) {
 	validUUID := uuid.NewString()
 	validRequestContext := &policy.RequestContext{
-		Pep: &policy.PolicyEnforcemenPoint{
+		Pep: &policy.PolicyEnforcementPoint{
 			ClientId: "client-id",
 		},
 	}
@@ -438,7 +438,7 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 func Test_UpdateObligationValue_Request(t *testing.T) {
 	validUUID := uuid.NewString()
 	validRequestContext := &policy.RequestContext{
-		Pep: &policy.PolicyEnforcemenPoint{
+		Pep: &policy.PolicyEnforcementPoint{
 			ClientId: "client-id",
 		},
 	}

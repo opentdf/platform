@@ -34,4 +34,4 @@ erDiagram
 
 ### 1. **Column Addition**
 
-- Require `client_id` to be a part of a trigger.
+- Add optional `client_id` to be a part of a trigger.

@@ -182,7 +182,7 @@ message AddObligationTriggerRequest {
     // Required
     common.IdFqnIdentifier attribute_value = 3 [(buf.validate.field).required = true];
 
-    // Required
+    // Optional
     // The request context for this obligation value policy decisioning.
     policy.RequestContext context = 4;
 

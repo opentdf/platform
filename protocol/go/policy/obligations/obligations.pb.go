@@ -1516,7 +1516,7 @@ type AddObligationTriggerRequest struct {
 	Action *common.IdNameIdentifier `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
 	// Required
 	AttributeValue *common.IdFqnIdentifier `protobuf:"bytes,3,opt,name=attribute_value,json=attributeValue,proto3" json:"attribute_value,omitempty"`
-	// Required
+	// Optional
 	// The request context for this obligation value policy decisioning.
 	Context *policy.RequestContext `protobuf:"bytes,4,opt,name=context,proto3" json:"context,omitempty"`
 	// Optional

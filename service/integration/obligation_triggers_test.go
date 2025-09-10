@@ -145,7 +145,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithIDs_Success()
 			Labels: map[string]string{"source": "test"},
 		},
 		Context: &policy.RequestContext{
-			Pep: &policy.PolicyEnforcemenPoint{
+			Pep: &policy.PolicyEnforcementPoint{
 				ClientId: clientID,
 			},
 		},
@@ -176,7 +176,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_WithNameFQN_Succe
 			Labels: map[string]string{"source": "test"},
 		},
 		Context: &policy.RequestContext{
-			Pep: &policy.PolicyEnforcemenPoint{
+			Pep: &policy.PolicyEnforcementPoint{
 				ClientId: clientID,
 			},
 		},
@@ -194,7 +194,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ObligationValueNo
 		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
 		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
 		Context: &policy.RequestContext{
-			Pep: &policy.PolicyEnforcemenPoint{
+			Pep: &policy.PolicyEnforcementPoint{
 				ClientId: clientID,
 			},
 		},
@@ -211,7 +211,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_AttributeValueNot
 		AttributeValue:  &common.IdFqnIdentifier{Id: randomID},
 		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
 		Context: &policy.RequestContext{
-			Pep: &policy.PolicyEnforcemenPoint{
+			Pep: &policy.PolicyEnforcementPoint{
 				ClientId: clientID,
 			},
 		},
@@ -228,7 +228,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_ActionNotFound_Fa
 		AttributeValue:  &common.IdFqnIdentifier{Id: s.attributeValue.GetId()},
 		Action:          &common.IdNameIdentifier{Id: randomID},
 		Context: &policy.RequestContext{
-			Pep: &policy.PolicyEnforcemenPoint{
+			Pep: &policy.PolicyEnforcementPoint{
 				ClientId: clientID,
 			},
 		},
@@ -270,7 +270,7 @@ func (s *ObligationTriggersSuite) Test_CreateObligationTrigger_AttributeValueDif
 		AttributeValue:  &common.IdFqnIdentifier{Id: differentAttributeValue.GetId()},
 		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
 		Context: &policy.RequestContext{
-			Pep: &policy.PolicyEnforcemenPoint{
+			Pep: &policy.PolicyEnforcementPoint{
 				ClientId: clientID,
 			},
 		},
@@ -306,7 +306,7 @@ func (s *ObligationTriggersSuite) createGenericTrigger() *policy.ObligationTrigg
 		Action:          &common.IdNameIdentifier{Id: s.action.GetId()},
 		Metadata:        &common.MetadataMutable{},
 		Context: &policy.RequestContext{
-			Pep: &policy.PolicyEnforcemenPoint{
+			Pep: &policy.PolicyEnforcementPoint{
 				ClientId: clientID,
 			},
 		},

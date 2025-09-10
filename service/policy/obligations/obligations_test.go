@@ -794,7 +794,7 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 		{
 			name: "valid with fqn and no triggers",
 			req: &obligations.CreateObligationValueRequest{
-				ObligationFqn: "f.q.n",
+				ObligationFqn: validFQN1,
 				Value:         "value",
 			},
 			expectError: false,

@@ -1373,7 +1373,13 @@ components:
         - action
         - attributeValue
       additionalProperties: false
-      description: Triggers
+      description: |+
+        Triggers
+        RequestContext must have a clientID specified when provided.:
+        ```
+        !has(this.context) || (has(this.context) && has(this.context.pep) && size(this.context.pep.client_id) > 0)
+        ```
+
     policy.obligations.AddObligationTriggerResponse:
       type: object
       properties:
@@ -1800,6 +1806,12 @@ components:
         - action
         - attributeValue
       additionalProperties: false
+      description: |+
+        RequestContext must have a clientID specified when provided.:
+        ```
+        !has(this.context) || (has(this.context) && has(this.context.pep) && size(this.context.pep.client_id) > 0)
+        ```
+
     connect-protocol-version:
       type: number
       title: Connect-Protocol-Version

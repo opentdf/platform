@@ -24,6 +24,12 @@ message GetObligationRequest {
 }
 
 message ValueTriggerRequest {
+    option (buf.validate.message).cel = {
+        id: "context_client_id_required"
+        message: "RequestContext must have a clientID specified when provided."
+        expression: "!has(this.context) || (has(this.context) && has(this.context.pep) && size(this.context.pep.client_id) > 0)"
+    };
+    
     // Required. The ID of the action that will trigger this obligation value policy decisioning.
     common.IdNameIdentifier action = 1 [(buf.validate.field).required = true];
     // Required. The attribute value ID that will trigger this obligation value policy decisioning.
@@ -273,6 +279,12 @@ message DeleteObligationValueResponse {
 
 // Triggers
 message AddObligationTriggerRequest {
+    option (buf.validate.message).cel = {
+        id: "context_client_id_required"
+        message: "RequestContext must have a clientID specified when provided."
+        expression: "!has(this.context) || (has(this.context) && has(this.context.pep) && size(this.context.pep.client_id) > 0)"
+    };
+    
     // Required
     common.IdFqnIdentifier obligation_value = 1 [(buf.validate.field).required = true];
     // Required

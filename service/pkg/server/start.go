@@ -225,8 +225,8 @@ func Start(f ...StartOptions) error {
 
 	// Check if SDK config is required for the current mode combination
 	if modeRequiresSdkConfig(cfg) && cfg.SDKConfig == (config.SDKConfig{}) {
-		logger.Error("sdk config is required for this mode combination but not provided")
-		return errors.New("sdk config is required for this mode combination but not provided")
+		logger.Error("no sdk config provided")
+		return errors.New("no sdk config provided")
 	}
 
 	// If client credentials are provided, use them

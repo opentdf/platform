@@ -242,42 +242,14 @@ func Start(f ...StartOptions) error {
 		sdkOptions = append(sdkOptions, sdk.WithTokenEndpoint(oidcconfig.TokenEndpoint))
 	}
 
-	// If the mode is all, use IPC for the SDK client
+	// Configure SDK based on mode
 	if modeRequiresIpc(cfg) {
-		// Use IPC for the SDK client
-		sdkOptions = append(sdkOptions, sdk.WithIPC())
-		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.ConnectRPCInProcess.Conn()))
-
-		// handle ERS connection for core mode
-		if slices.Contains(cfg.Mode, serviceregistry.ModeCore.String()) && !slices.Contains(cfg.Mode, serviceregistry.ModeERS.String()) {
-			logger.Info("core mode")
-
-			ersConnectRPCConn, err := setupERSConnection(cfg, oidcconfig, logger)
-			if err != nil {
-				return err
-			}
-
-			sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(ersConnectRPCConn))
-		}
-
-		client, err = sdk.New("", sdkOptions...)
-		if err != nil {
-			logger.Error("issue creating sdk client", slog.Any("error", err))
-			return fmt.Errorf("issue creating sdk client: %w", err)
-		}
+		client, err = setupIPCSDK(cfg, oidcconfig, otdf, logger, sdkOptions)
 	} else {
-		// Use the provided SDK config
-		if cfg.SDKConfig.CorePlatformConnection.Insecure {
-			sdkOptions = append(sdkOptions, sdk.WithInsecureSkipVerifyConn())
-		}
-		if cfg.SDKConfig.CorePlatformConnection.Plaintext {
-			sdkOptions = append(sdkOptions, sdk.WithInsecurePlaintextConn())
-		}
-		client, err = sdk.New(cfg.SDKConfig.CorePlatformConnection.Endpoint, sdkOptions...)
-		if err != nil {
-			logger.Error("issue creating sdk client", slog.String("error", err.Error()))
-			return fmt.Errorf("issue creating sdk client: %w", err)
-		}
+		client, err = setupExternalSDK(cfg, logger, sdkOptions)
+	}
+	if err != nil {
+		return err
 	}
 
 	defer client.Close()
@@ -373,10 +345,7 @@ func setupERSConnection(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, 
 	ersConnectRPCConn := &sdk.ConnectRPCConnection{}
 
 	// Configure TLS
-	tlsConfig, err := configureTLSForERS(cfg, ersConnectRPCConn)
-	if err != nil {
-		return nil, err
-	}
+	tlsConfig := configureTLSForERS(cfg, ersConnectRPCConn)
 
 	// Configure authentication if credentials are provided
 	if cfg.SDKConfig.ClientID != "" && cfg.SDKConfig.ClientSecret != "" {
@@ -396,7 +365,7 @@ func setupERSConnection(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, 
 }
 
 // configureTLSForERS configures TLS settings for ERS connection
-func configureTLSForERS(cfg *config.Config, ersConnectRPCConn *sdk.ConnectRPCConnection) (*tls.Config, error) {
+func configureTLSForERS(cfg *config.Config, ersConnectRPCConn *sdk.ConnectRPCConnection) *tls.Config {
 	var tlsConfig *tls.Config
 	ersConn := &cfg.SDKConfig.EntityResolutionConnection
 
@@ -411,7 +380,7 @@ func configureTLSForERS(cfg *config.Config, ersConnectRPCConn *sdk.ConnectRPCCon
 		ersConnectRPCConn.Client = httputil.SafeHTTPClient()
 	}
 
-	return tlsConfig, nil
+	return tlsConfig
 }
 
 // configureERSAuthentication sets up authentication for ERS connection
@@ -440,4 +409,48 @@ func configureERSAuthentication(cfg *config.Config, oidcconfig *auth.OIDCConfigu
 
 	ersConn.Options = append(ersConn.Options, connect.WithInterceptors(interceptor.AddCredentialsConnect()))
 	return nil
+}
+
+// setupIPCSDK configures and creates SDK client for IPC mode
+func setupIPCSDK(cfg *config.Config, oidcconfig *auth.OIDCConfiguration, otdf *server.OpenTDFServer, logger *logger.Logger, sdkOptions []sdk.Option) (*sdk.SDK, error) {
+	// Use IPC for the SDK client
+	sdkOptions = append(sdkOptions, sdk.WithIPC())
+	sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.ConnectRPCInProcess.Conn()))
+
+	// handle ERS connection for core mode
+	if slices.Contains(cfg.Mode, serviceregistry.ModeCore.String()) && !slices.Contains(cfg.Mode, serviceregistry.ModeERS.String()) {
+		logger.Info("core mode")
+
+		ersConnectRPCConn, err := setupERSConnection(cfg, oidcconfig, logger)
+		if err != nil {
+			return nil, err
+		}
+
+		sdkOptions = append(sdkOptions, sdk.WithCustomEntityResolutionConnection(ersConnectRPCConn))
+	}
+
+	client, err := sdk.New("", sdkOptions...)
+	if err != nil {
+		logger.Error("issue creating sdk client", slog.Any("error", err))
+		return nil, fmt.Errorf("issue creating sdk client: %w", err)
+	}
+
+	return client, nil
+}
+
+// setupExternalSDK configures and creates SDK client for external mode
+func setupExternalSDK(cfg *config.Config, logger *logger.Logger, sdkOptions []sdk.Option) (*sdk.SDK, error) {
+	// Use the provided SDK config
+	if cfg.SDKConfig.CorePlatformConnection.Insecure {
+		sdkOptions = append(sdkOptions, sdk.WithInsecureSkipVerifyConn())
+	}
+	if cfg.SDKConfig.CorePlatformConnection.Plaintext {
+		sdkOptions = append(sdkOptions, sdk.WithInsecurePlaintextConn())
+	}
+	client, err := sdk.New(cfg.SDKConfig.CorePlatformConnection.Endpoint, sdkOptions...)
+	if err != nil {
+		logger.Error("issue creating sdk client", slog.String("error", err.Error()))
+		return nil, fmt.Errorf("issue creating sdk client: %w", err)
+	}
+	return client, nil
 }

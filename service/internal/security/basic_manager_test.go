@@ -117,16 +117,12 @@ func (m *MockEncapsulator) EphemeralKey() []byte {
 type noOpEncapsulator struct{}
 
 func (n *noOpEncapsulator) Encapsulate(pk ocrypto.ProtectedKey) ([]byte, error) {
-	aesKey, ok := pk.(*ocrypto.AESProtectedKey)
-	if !ok {
-		return nil, errors.New("expected AESProtectedKey")
-	}
-
-	return aesKey.Key(), nil
+    // Delegate to ProtectedKey to avoid accessing raw key directly
+    return pk.Export(n)
 }
 
 func (n *noOpEncapsulator) Encrypt(data []byte) ([]byte, error) {
-	return data, nil
+    return data, nil
 }
 
 func (n *noOpEncapsulator) PublicKeyAsPEM() (string, error) {

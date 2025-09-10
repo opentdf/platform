@@ -150,11 +150,8 @@ type OCEncapsulator struct {
 }
 
 func (e *OCEncapsulator) Encapsulate(dek ocrypto.ProtectedKey) ([]byte, error) {
-	protectedKey, ok := dek.(*ocrypto.AESProtectedKey)
-	if !ok {
-		return nil, errors.New("invalid DEK type for encapsulation")
-	}
-	return e.Encrypt(protectedKey.Key())
+	// Delegate to the ProtectedKey to avoid exposing raw key material
+	return dek.Export(e)
 }
 
 func (e *OCEncapsulator) PublicKeyAsPEM() (string, error) {

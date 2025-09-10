@@ -264,8 +264,16 @@ type ServiceConfiguration struct {
 	Services []IService
 }
 
-// Registry represents a map of service namespaces.
-type Registry map[string]Namespace
+// Registry represents a service registry with namespaces and their registration order.
+type Registry struct {
+	namespaces map[string]*Namespace
+	order      []string
+}
+
+// GetNamespaces returns all namespaces in the registry
+func (reg *Registry) GetNamespaces() map[string]*Namespace {
+	return reg.namespaces
+}
 
 // NewServiceRegistry creates a new instance of the service registry.
 func NewServiceRegistry() *Registry {
@@ -275,25 +283,24 @@ func NewServiceRegistry() *Registry {
 	}
 }
 
-// RegisterCoreService registers a core service with the given registration information.
-// It calls the RegisterService method of the Registry instance with the provided registration and service type "core".
-// Returns an error if the registration fails.
-func (reg *Registry) RegisterCoreService(svc IService) error {
-	return reg.RegisterService(svc, "core")
-}
-
 // RegisterService registers a service in the service registry.
 // It takes an serviceregistry.IService and a mode string as parameters.
 // The IService implementation contains information about the service to be registered,
 // such as the namespace and service description.
 // The mode string specifies the mode in which the service should be registered.
 // It returns an error if the service is already registered in the specified namespace.
-func (reg Registry) RegisterService(svc IService, mode ModeName) error {
-	// Can't directly modify structs within a map, so we need to copy the namespace
-	copyNamespace := reg[svc.GetNamespace()]
-	copyNamespace.Mode = mode.String()
-	if copyNamespace.Services == nil {
-		copyNamespace.Services = make([]IService, 0)
+func (reg *Registry) RegisterService(svc IService, mode ModeName) error {
+	nsName := svc.GetNamespace()
+
+	// Get or create the namespace
+	ns, exists := reg.namespaces[nsName]
+	if !exists {
+		ns = &Namespace{
+			Mode:     mode.String(),
+			Services: make([]IService, 0),
+		}
+		reg.namespaces[nsName] = ns
+		reg.order = append(reg.order, nsName)
 	}
 
 	// Check if a service with the same name is already registered in this namespace.
@@ -310,9 +317,8 @@ func (reg Registry) RegisterService(svc IService, mode ModeName) error {
 		slog.String("service", svc.GetServiceDesc().ServiceName),
 	)
 
-	ns.Mode = mode
+	ns.Mode = mode.String()
 	ns.Services = append(ns.Services, svc)
-	reg.namespaces[nsName] = ns
 
 	return nil
 }
@@ -346,7 +352,7 @@ func (reg *Registry) Shutdown() {
 func (reg *Registry) GetNamespace(namespace string) (*Namespace, error) {
 	ns, ok := reg.namespaces[namespace]
 	if !ok {
-		return Namespace{}, &ServiceConfigError{
+		return nil, &ServiceConfigError{
 			Type:    "lookup",
 			Message: "namespace not found: " + namespace,
 		}
@@ -355,7 +361,7 @@ func (reg *Registry) GetNamespace(namespace string) (*Namespace, error) {
 }
 
 // RegisterServicesFromConfiguration handles service registration using declarative configuration with negation support.
-func (reg Registry) RegisterServicesFromConfiguration(modes []ModeName, configurations []ServiceConfiguration) ([]string, error) {
+func (reg *Registry) RegisterServicesFromConfiguration(modes []string, configurations []ServiceConfiguration) ([]string, error) {
 	// Parse modes to separate inclusions and exclusions
 	includedModes, excludedServices, err := ParseModesWithNegation(modes)
 	if err != nil {
@@ -385,20 +391,14 @@ func (reg Registry) RegisterServicesFromConfiguration(modes []ModeName, configur
 
 		registeredServices = append(registeredServices, config.Name.String())
 
-		// Register the services using their own defined namespace
+		// Register all services using their own defined namespace
 		for _, service := range config.Services {
 			// Get the namespace from the service itself
 			namespace := service.GetNamespace()
 
-			// Register based on the service's own namespace
-			if namespace == ModeCore.String() {
-				if err := reg.RegisterCoreService(service); err != nil {
-					return nil, err
-				}
-			} else {
-				if err := reg.RegisterService(service, ModeName(namespace)); err != nil {
-					return nil, err
-				}
+			// Always register the service in its own namespace
+			if err := reg.RegisterService(service, ModeName(namespace)); err != nil {
+				return nil, err
 			}
 		}
 	}

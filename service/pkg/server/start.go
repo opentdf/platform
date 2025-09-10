@@ -181,13 +181,8 @@ func Start(f ...StartOptions) error {
 
 	logger.Debug("registering services")
 
-	var registeredCoreServices []string
-
-	modes := make([]serviceregistry.ModeName, len(cfg.Mode))
-	for i, m := range cfg.Mode {
-		modes[i] = serviceregistry.ModeName(m)
-	}
-	registeredCoreServices, err = RegisterCoreServices(svcRegistry, modes)
+	var registeredServices []string
+	registeredServices, err = svcRegistry.RegisterServicesFromConfiguration(cfg.Mode, getServiceConfigurations())
 	if err != nil {
 		logger.Error("could not register core services", slog.String("error", err.Error()))
 		return fmt.Errorf("could not register core services: %w", err)
@@ -197,7 +192,7 @@ func Start(f ...StartOptions) error {
 	if len(startConfig.extraCoreServices) > 0 {
 		logger.Debug("registering extra core services")
 		for _, service := range startConfig.extraCoreServices {
-			err := svcRegistry.RegisterCoreService(service)
+			err := svcRegistry.RegisterService(service, serviceregistry.ModeCore)
 			if err != nil {
 				logger.Error("could not register extra core service", slog.String("error", err.Error()))
 				return fmt.Errorf("could not register extra core service: %w", err)
@@ -220,7 +215,7 @@ func Start(f ...StartOptions) error {
 		}
 	}
 
-	logger.Info("registered the following core services", slog.Any("core_services", registeredCoreServices))
+	logger.Info("registered the following services", slog.Any("services", registeredServices))
 
 	var (
 		sdkOptions []sdk.Option
@@ -228,15 +223,10 @@ func Start(f ...StartOptions) error {
 		oidcconfig *auth.OIDCConfiguration
 	)
 
-	// If the mode is not all, does not include both core and entityresolution, or is not entityresolution on its own, we need to have a valid SDK config
-	// entityresolution does not connect to other services and can run on its own
-	// core only connects to entityresolution
-	if !(slices.Contains(cfg.Mode, "all") || // no config required for all mode
-		(slices.Contains(cfg.Mode, "core") && slices.Contains(cfg.Mode, "entityresolution")) || // or core and entityresolution modes togethor
-		(slices.Contains(cfg.Mode, "entityresolution") && len(cfg.Mode) == 1)) && // or entityresolution on its own
-		cfg.SDKConfig == (config.SDKConfig{}) {
-		logger.Error("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
-		return errors.New("mode is not all, entityresolution, or a combination of core and entityresolution, but no sdk config provided")
+	// Check if SDK config is required for the current mode combination
+	if modeRequiresSdkConfig(cfg) && cfg.SDKConfig == (config.SDKConfig{}) {
+		logger.Error("sdk config is required for this mode combination but not provided")
+		return errors.New("sdk config is required for this mode combination but not provided")
 	}
 
 	// If client credentials are provided, use them
@@ -253,15 +243,13 @@ func Start(f ...StartOptions) error {
 	}
 
 	// If the mode is all, use IPC for the SDK client
-	if slices.Contains(cfg.Mode, "all") || //nolint:nestif // Need to handle all config options
-		slices.Contains(cfg.Mode, "entityresolution") || // ERS does not connect to anything so it can also use IPC mode
-		slices.Contains(cfg.Mode, "core") {
+	if modeRequiresIpc(cfg) {
 		// Use IPC for the SDK client
 		sdkOptions = append(sdkOptions, sdk.WithIPC())
 		sdkOptions = append(sdkOptions, sdk.WithCustomCoreConnection(otdf.ConnectRPCInProcess.Conn()))
 
 		// handle ERS connection for core mode
-		if slices.Contains(cfg.Mode, "core") && !slices.Contains(cfg.Mode, "entityresolution") {
+		if slices.Contains(cfg.Mode, serviceregistry.ModeCore.String()) && !slices.Contains(cfg.Mode, serviceregistry.ModeERS.String()) {
 			logger.Info("core mode")
 
 			if cfg.SDKConfig.EntityResolutionConnection.Endpoint == "" {
@@ -380,4 +368,44 @@ func waitForShutdownSignal() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs
+}
+
+func modeRequiresSdkConfig(cfg *config.Config) bool {
+	// No SDK config required for 'all' mode
+	if slices.Contains(cfg.Mode, serviceregistry.ModeALL.String()) {
+		return false
+	}
+
+	// No SDK config required for entityresolution-only mode (runs standalone)
+	if slices.Contains(cfg.Mode, serviceregistry.ModeERS.String()) && len(cfg.Mode) == 1 {
+		return false
+	}
+
+	// No SDK config required when both core and entityresolution modes are present
+	if slices.Contains(cfg.Mode, serviceregistry.ModeCore.String()) && slices.Contains(cfg.Mode, serviceregistry.ModeERS.String()) {
+		return false
+	}
+
+	// All other mode combinations require SDK config
+	return true
+}
+
+func modeRequiresIpc(cfg *config.Config) bool {
+	// Use IPC for 'all' mode (everything runs in process)
+	if slices.Contains(cfg.Mode, serviceregistry.ModeALL.String()) {
+		return true
+	}
+
+	// Use IPC for entityresolution mode (does not connect to external services)
+	if slices.Contains(cfg.Mode, serviceregistry.ModeERS.String()) {
+		return true
+	}
+
+	// Use IPC for core mode (can use in-process connections)
+	if slices.Contains(cfg.Mode, serviceregistry.ModeCore.String()) {
+		return true
+	}
+
+	// All other modes use external SDK connections
+	return false
 }

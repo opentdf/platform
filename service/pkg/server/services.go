@@ -41,11 +41,7 @@ var (
 // This prevents state sharing between test runs by creating new service instances.
 func getServiceConfigurations() []serviceregistry.ServiceConfiguration {
 	return []serviceregistry.ServiceConfiguration{
-		{
-			Name:     ServiceHealth,
-			Modes:    []serviceregistry.ModeName{serviceregistry.ModeEssential},
-			Services: []serviceregistry.IService{health.NewRegistration()},
-		},
+		// Note: Health service is registered separately via RegisterEssentialServices
 		{
 			Name:     ServicePolicy,
 			Modes:    []serviceregistry.ModeName{serviceregistry.ModeALL, serviceregistry.ModeCore},
@@ -74,20 +70,11 @@ func getServiceConfigurations() []serviceregistry.ServiceConfiguration {
 	}
 }
 
-// ServiceName represents a typed service identifier
-type ServiceName string
-
-// String returns the string representation of ServiceName
-func (s ServiceName) String() string {
-	return string(s)
-}
-
 // RegisterEssentialServices registers the essential services directly
-func RegisterEssentialServices(reg serviceregistry.Registry) error {
+func RegisterEssentialServices(reg *serviceregistry.Registry) error {
 	essentialServices := []serviceregistry.IService{
 		health.NewRegistration(),
 	}
-
 	for _, svc := range essentialServices {
 		if err := reg.RegisterService(svc, serviceregistry.ModeEssential); err != nil {
 			return err
@@ -97,8 +84,21 @@ func RegisterEssentialServices(reg serviceregistry.Registry) error {
 }
 
 // RegisterCoreServices registers the core services using declarative configuration
-func RegisterCoreServices(reg serviceregistry.Registry, modes []serviceregistry.ModeName) ([]string, error) {
-	return reg.RegisterServicesFromConfiguration(modes, getServiceConfigurations())
+func RegisterCoreServices(reg *serviceregistry.Registry, modes []serviceregistry.ModeName) ([]string, error) {
+	// Convert ModeName slice to string slice
+	stringModes := make([]string, len(modes))
+	for i, mode := range modes {
+		stringModes[i] = mode.String()
+	}
+	return reg.RegisterServicesFromConfiguration(stringModes, getServiceConfigurations())
+}
+
+// ServiceName represents a typed service identifier
+type ServiceName string
+
+// String returns the string representation of ServiceName
+func (s ServiceName) String() string {
+	return string(s)
 }
 
 type startServicesParams struct {
@@ -127,7 +127,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	keyManagerFactories := params.keyManagerFactories
 
 	// Iterate through the registered namespaces
-	for ns, namespace := range reg {
+	for ns, namespace := range reg.GetNamespaces() {
 		// Check if this namespace should be enabled based on configured modes
 		modeEnabled := namespace.IsEnabled(cfg.Mode)
 

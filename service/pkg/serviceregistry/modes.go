@@ -41,7 +41,7 @@ func (e *ServiceConfigError) Error() string {
 }
 
 // ParseModesWithNegation parses mode strings and separates included and excluded services
-func ParseModesWithNegation(modes []ModeName) ([]ModeName, []string, error) {
+func ParseModesWithNegation(modes []string) ([]ModeName, []string, error) {
 	var included []ModeName
 	var excluded []string
 
@@ -55,8 +55,9 @@ func ParseModesWithNegation(modes []ModeName) ([]ModeName, []string, error) {
 			slog.Debug("negated registered service", slog.String("service", serviceName))
 			excluded = append(excluded, serviceName)
 		} else {
+			m := ModeName(mode)
 			// This is an inclusion
-			included = append(included, mode)
+			included = append(included, m)
 		}
 	}
 

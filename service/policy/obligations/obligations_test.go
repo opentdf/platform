@@ -750,24 +750,24 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 		{
 			name: "valid with no triggers",
 			req: &obligations.CreateObligationValueRequest{
-				ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{Id: validUUID},
-				Value:                "value",
+				ObligationId: validUUID,
+				Value:        "value",
 			},
 			expectError: false,
 		},
 		{
 			name: "valid with fqn and no triggers",
 			req: &obligations.CreateObligationValueRequest{
-				ObligationIdentifier: &obligations.CreateObligationValueRequest_Fqn{Fqn: "f.q.n"},
-				Value:                "value",
+				ObligationFqn: "f.q.n",
+				Value:         "value",
 			},
 			expectError: false,
 		},
 		{
 			name: "valid with one trigger and ids",
 			req: &obligations.CreateObligationValueRequest{
-				ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{Id: validUUID},
-				Value:                "value",
+				ObligationId: validUUID,
+				Value:        "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
 						Action:         &common.IdNameIdentifier{Id: validUUID},
@@ -780,8 +780,8 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 		{
 			name: "valid with one trigger and fqns/names",
 			req: &obligations.CreateObligationValueRequest{
-				ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{Id: validUUID},
-				Value:                "value",
+				ObligationId: validUUID,
+				Value:        "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
 						Action:         &common.IdNameIdentifier{Name: validUUID},
@@ -794,8 +794,8 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 		{
 			name: "valid with multiple triggers",
 			req: &obligations.CreateObligationValueRequest{
-				ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{Id: validUUID},
-				Value:                "value",
+				ObligationId: validUUID,
+				Value:        "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
 						Action:         &common.IdNameIdentifier{Id: validUUID},
@@ -812,8 +812,8 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 		{
 			name: "invalid trigger with invalid action_id",
 			req: &obligations.CreateObligationValueRequest{
-				ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{Id: validUUID},
-				Value:                "value",
+				ObligationId: validUUID,
+				Value:        "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
 						Action:         &common.IdNameIdentifier{Id: invalidUUID},
@@ -827,8 +827,8 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 		{
 			name: "invalid trigger with invalid attribute_value_id",
 			req: &obligations.CreateObligationValueRequest{
-				ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{Id: validUUID},
-				Value:                "value",
+				ObligationId: validUUID,
+				Value:        "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
 						Action:         &common.IdNameIdentifier{Id: validUUID},
@@ -842,8 +842,8 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 		{
 			name: "invalid trigger with missing action_id",
 			req: &obligations.CreateObligationValueRequest{
-				ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{Id: validUUID},
-				Value:                "value",
+				ObligationId: validUUID,
+				Value:        "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
 						AttributeValue: &common.IdFqnIdentifier{Id: validUUID},
@@ -856,8 +856,8 @@ func Test_CreateObligationValue_Request(t *testing.T) {
 		{
 			name: "invalid trigger with missing attribute_value_id",
 			req: &obligations.CreateObligationValueRequest{
-				ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{Id: validUUID},
-				Value:                "value",
+				ObligationId: validUUID,
+				Value:        "value",
 				Triggers: []*obligations.ValueTriggerRequest{
 					{
 						Action: &common.IdNameIdentifier{Id: validUUID},

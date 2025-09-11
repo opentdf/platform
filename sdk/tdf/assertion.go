@@ -1,11 +1,9 @@
-package sdk
+package tdf
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime"
-	"time"
 
 	"github.com/gowebpki/jcs"
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -14,12 +12,45 @@ import (
 )
 
 const (
+	// SystemMetadataAssertionID is the standard ID for system metadata assertions
 	SystemMetadataAssertionID = "system-metadata"
-	SystemMetadataSchemaV1    = "system-metadata-v1"
+	// SystemMetadataSchemaV1 defines the schema version for system metadata
+	SystemMetadataSchemaV1 = "system-metadata-v1"
+	// kAssertionSignature is the JWT claim key for assertion signatures
+	kAssertionSignature = "assertionSig"
+	// kAssertionHash is the JWT claim key for assertion hashes
+	kAssertionHash = "assertionHash"
 )
 
-// AssertionConfig is a shadow of Assertion with the addition of the signing key.
-// It is used on creation
+// AssertionConfig defines an assertion to be included in the TDF during creation.
+//
+// AssertionConfig extends Assertion with a signing key, enabling creation
+// of cryptographically signed assertions. The signing key is used during
+// TDF creation but is not stored in the final TDF.
+//
+// Required fields:
+//   - ID: Unique identifier for the assertion
+//   - Type: The kind of assertion (BaseAssertion, HandlingAssertion)
+//   - Scope: What the assertion applies to (PayloadScope, TrustedDataObjScope)
+//   - AppliesToState: When the assertion is relevant (Encrypted, Unencrypted)
+//   - Statement: The assertion content and metadata
+//
+// Optional fields:
+//   - SigningKey: Custom signing key (defaults to DEK with HS256)
+//
+// Example:
+//
+//	assertion := AssertionConfig{
+//		ID:             "retention-policy",
+//		Type:           HandlingAssertion,
+//		Scope:          PayloadScope,
+//		AppliesToState: Unencrypted,
+//		Statement: Statement{
+//			Format: "json",
+//			Schema: "retention-v1",
+//			Value:  `{"retain_days": 90, "auto_delete": true}`,
+//		},
+//	}
 type AssertionConfig struct {
 	ID             string         `validate:"required"`
 	Type           AssertionType  `validate:"required"`
@@ -29,6 +60,19 @@ type AssertionConfig struct {
 	SigningKey     AssertionKey
 }
 
+// Assertion represents a cryptographically signed assertion in the TDF manifest.
+//
+// Assertions provide integrity verification and handling instructions that are
+// cryptographically bound to the TDF. They cannot be modified or copied to
+// another TDF without detection due to the cryptographic binding.
+//
+// The assertion structure includes:
+//   - Metadata: ID, type, scope, and state applicability
+//   - Statement: The actual assertion content in structured format
+//   - Binding: Cryptographic signature ensuring integrity
+//
+// Assertions are verified during TDF reading to ensure they haven't been
+// tampered with since TDF creation.
 type Assertion struct {
 	ID             string         `json:"id"`
 	Type           AssertionType  `json:"type"`
@@ -184,12 +228,20 @@ type Binding struct {
 	Signature string `json:"signature,omitempty"`
 }
 
-// AssertionType represents the type of the assertion.
+// AssertionType represents the category of assertion being made.
+//
+// Different assertion types serve different purposes in TDF handling:
+//   - HandlingAssertion: Instructions for data processing, retention, deletion
+//   - BaseAssertion: General-purpose assertions including metadata, audit info
 type AssertionType string
 
 const (
+	// HandlingAssertion provides instructions for data handling and processing.
+	// Examples: retention policies, deletion schedules, processing requirements
 	HandlingAssertion AssertionType = "handling"
-	BaseAssertion     AssertionType = "other"
+	// BaseAssertion is a general-purpose assertion type for metadata and other content.
+	// Examples: audit information, system metadata, custom business logic
+	BaseAssertion AssertionType = "other"
 )
 
 // String returns the string representation of the assertion type.
@@ -197,12 +249,20 @@ func (at AssertionType) String() string {
 	return string(at)
 }
 
-// Scope represents the object which the assertion applies to.
+// Scope defines what component of the TDF the assertion applies to.
+//
+// Scope determines which part of the TDF structure the assertion governs:
+//   - TrustedDataObjScope: Assertion applies to the entire TDF object
+//   - PayloadScope: Assertion applies only to the encrypted payload data
 type Scope string
 
 const (
+	// TrustedDataObjScope indicates the assertion applies to the complete TDF object.
+	// This includes manifest, key access objects, and payload.
 	TrustedDataObjScope Scope = "tdo"
-	PayloadScope        Scope = "payload"
+	// PayloadScope indicates the assertion applies only to the payload data.
+	// This is the most common scope for data handling assertions.
+	PayloadScope Scope = "payload"
 )
 
 // String returns the string representation of the scope.
@@ -210,11 +270,20 @@ func (s Scope) String() string {
 	return string(s)
 }
 
-// AppliesToState indicates whether the assertion applies to encrypted or unencrypted data.
+// AppliesToState indicates when the assertion is relevant in the TDF lifecycle.
+//
+// This determines whether the assertion should be processed before or after
+// decryption, enabling different handling patterns:
+//   - Encrypted: Process before decryption (e.g., access logging)
+//   - Unencrypted: Process after decryption (e.g., content filtering)
 type AppliesToState string
 
 const (
-	Encrypted   AppliesToState = "encrypted"
+	// Encrypted means the assertion should be processed before payload decryption.
+	// Used for access control, audit logging, and pre-processing requirements.
+	Encrypted AppliesToState = "encrypted"
+	// Unencrypted means the assertion should be processed after payload decryption.
+	// Used for content analysis, post-processing, and data handling requirements.
 	Unencrypted AppliesToState = "unencrypted"
 )
 
@@ -223,10 +292,15 @@ func (ats AppliesToState) String() string {
 	return string(ats)
 }
 
-// BindingMethod represents the method used to bind the assertion.
+// BindingMethod represents the cryptographic method used to bind assertions to the TDF.
+//
+// The binding method ensures assertions cannot be modified or transferred
+// to other TDFs without detection.
 type BindingMethod string
 
 const (
+	// JWS (JSON Web Signature) is the standard method for assertion binding.
+	// Uses JWT-based cryptographic signatures for tamper detection.
 	JWS BindingMethod = "jws"
 )
 
@@ -235,11 +309,19 @@ func (bm BindingMethod) String() string {
 	return string(bm)
 }
 
-// AssertionKeyAlg represents the algorithm of an assertion key.
+// AssertionKeyAlg represents the cryptographic algorithm for assertion signing keys.
+//
+// Different algorithms provide different security and compatibility characteristics:
+//   - RS256: RSA-based signatures, widely supported, good for public key scenarios
+//   - HS256: HMAC-based signatures, simpler, good for shared key scenarios
 type AssertionKeyAlg string
 
 const (
+	// AssertionKeyAlgRS256 uses RSA-SHA256 for assertion signatures.
+	// Suitable when assertions need to be verified by parties without access to signing keys.
 	AssertionKeyAlgRS256 AssertionKeyAlg = "RS256"
+	// AssertionKeyAlgHS256 uses HMAC-SHA256 for assertion signatures.
+	// More efficient, suitable when the same key used for TDF encryption can sign assertions.
 	AssertionKeyAlgHS256 AssertionKeyAlg = "HS256"
 )
 
@@ -248,20 +330,39 @@ func (a AssertionKeyAlg) String() string {
 	return string(a)
 }
 
-// AssertionKey represents a key for assertions.
+// AssertionKey represents a cryptographic key for signing and verifying assertions.
+//
+// The key can be either RSA or HMAC-based depending on the algorithm:
+//   - RS256: Key should be an RSA private key (*rsa.PrivateKey or jwk.Key)
+//   - HS256: Key should be a byte slice containing the shared secret
+//
+// Example usage:
+//
+//	// HMAC key using TDF's Data Encryption Key
+//	hmacKey := AssertionKey{
+//		Alg: AssertionKeyAlgHS256,
+//		Key: dek, // 32-byte AES key
+//	}
+//
+//	// RSA key for public key scenarios
+//	rsaKey := AssertionKey{
+//		Alg: AssertionKeyAlgRS256,
+//		Key: privateKey, // *rsa.PrivateKey
+//	}
 type AssertionKey struct {
-	// Algorithm of the key.
+	// Alg specifies the cryptographic algorithm for this key
 	Alg AssertionKeyAlg
-	// Key value.
+	// Key contains the actual key material (type depends on algorithm)
 	Key interface{}
 }
 
-// Algorithm returns the algorithm of the key.
+// Algorithm returns the cryptographic algorithm of the key.
 func (k AssertionKey) Algorithm() AssertionKeyAlg {
 	return k.Alg
 }
 
-// IsEmpty returns true if the key and the algorithm are empty.
+// IsEmpty returns true if the key has no algorithm or key material configured.
+// Used to check if a default signing key should be used instead.
 func (k AssertionKey) IsEmpty() bool {
 	return k.Key == nil && k.Alg == ""
 }
@@ -289,45 +390,4 @@ func (k AssertionVerificationKeys) Get(assertionID string) (AssertionKey, error)
 // IsEmpty returns true if the default key and the keys map are empty.
 func (k AssertionVerificationKeys) IsEmpty() bool {
 	return k.DefaultKey.IsEmpty() && len(k.Keys) == 0
-}
-
-// GetSystemMetadataAssertionConfig returns a default assertion configuration with predefined values.
-func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
-	// Define the JSON structure
-	type Metadata struct {
-		TDFSpecVersion string `json:"tdf_spec_version,omitempty"`
-		CreationDate   string `json:"creation_date,omitempty"`
-		OS             string `json:"operating_system,omitempty"`
-		SDKVersion     string `json:"sdk_version,omitempty"`
-		GoVersion      string `json:"go_version,omitempty"`
-		Architecture   string `json:"architecture,omitempty"`
-	}
-
-	// Populate the metadata
-	metadata := Metadata{
-		TDFSpecVersion: TDFSpecVersion,
-		CreationDate:   time.Now().Format(time.RFC3339),
-		OS:             runtime.GOOS,
-		SDKVersion:     "Go-" + Version,
-		GoVersion:      runtime.Version(),
-		Architecture:   runtime.GOARCH,
-	}
-
-	// Marshal the metadata to JSON
-	metadataJSON, err := json.Marshal(metadata)
-	if err != nil {
-		return AssertionConfig{}, fmt.Errorf("failed to marshal system metadata: %w", err)
-	}
-
-	return AssertionConfig{
-		ID:             SystemMetadataAssertionID,
-		Type:           BaseAssertion,
-		Scope:          PayloadScope,
-		AppliesToState: Unencrypted,
-		Statement: Statement{
-			Format: "json",
-			Schema: SystemMetadataSchemaV1,
-			Value:  string(metadataJSON),
-		},
-	}, nil
 }

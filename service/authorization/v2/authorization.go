@@ -78,6 +78,24 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				}
 				l.Debug("authorization service config", slog.Any("config", authZCfg.LogValue()))
 
+				// If supportedregistered plugin PDPs have a name matching auth service config,
+				// mount the interface along with its config to the auth service struct.
+				for _, pluginPDP := range srp.RegisteredPluginPDPs {
+					for _, configuredPDP := range authZCfg.PluginPDPs {
+						l.Debug("plugin name", slog.String("name", pluginPDP.Name()), slog.String("configured name", configuredPDP.Name))
+						if configuredPDP.Name == pluginPDP.Name() {
+							l.Debug("registering plugin PDP",
+								slog.String("name", pluginPDP.Name()),
+							)
+							as.configuredPluginPDPs = append(as.configuredPluginPDPs, plugin.PolicyDecisionPointConfig{
+								PolicyDecisionPointI: pluginPDP,
+								AttributePrefixes:    configuredPDP.AttributePrefixes,
+								Name:                 configuredPDP.Name,
+							})
+						}
+					}
+				}
+
 				if !authZCfg.Cache.Enabled {
 					l.Debug("entitlement policy cache is disabled")
 					return as, nil
@@ -100,24 +118,6 @@ func NewRegistration() *serviceregistry.Service[authzV2Connect.AuthorizationServ
 				if err != nil {
 					l.Error("failed to create entitlement policy cache", slog.Any("error", err))
 					panic(fmt.Errorf("failed to create entitlement policy cache: %w", err))
-				}
-
-				// If supportedregistered plugin PDPs have a name matching auth service config,
-				// mount the interface along with its config to the auth service struct.
-				for _, pluginPDP := range srp.RegisteredPluginPDPs {
-					for _, configuredPDP := range authZCfg.PluginPDPs {
-						l.Debug("plugin name", slog.String("name", pluginPDP.Name()), slog.String("configured name", configuredPDP.Name))
-						if configuredPDP.Name == pluginPDP.Name() {
-							l.Debug("registering plugin PDP",
-								slog.String("name", pluginPDP.Name()),
-							)
-							as.configuredPluginPDPs = append(as.configuredPluginPDPs, plugin.PolicyDecisionPointConfig{
-								PolicyDecisionPointI: pluginPDP,
-								AttributePrefixes:    configuredPDP.AttributePrefixes,
-								Name:                 configuredPDP.Name,
-							})
-						}
-					}
 				}
 
 				// if err := srp.RegisterReadinessCheck("authorization", as.IsReady); err != nil {

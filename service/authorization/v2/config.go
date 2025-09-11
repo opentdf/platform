@@ -54,5 +54,6 @@ func (c *Config) LogValue() slog.Value {
 				slog.String("refresh_interval", c.Cache.RefreshInterval),
 			),
 		),
+		slog.Any("plugin_pdps", c.PluginPDPs),
 	)
 }

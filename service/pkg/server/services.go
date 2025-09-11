@@ -119,13 +119,13 @@ func registerCoreServices(reg *serviceregistry.Registry, mode []string) ([]strin
 }
 
 type startServicesParams struct {
-	cfg                 *config.Config
-	otdf                *server.OpenTDFServer
-	client              *sdk.SDK
-	logger              *logging.Logger
-	reg                 *serviceregistry.Registry
-	cacheManager        *cache.Manager
-	keyManagerFactories []trust.NamedKeyManagerFactory
+	cfg                    *config.Config
+	otdf                   *server.OpenTDFServer
+	client                 *sdk.SDK
+	logger                 *logging.Logger
+	reg                    *serviceregistry.Registry
+	cacheManager           *cache.Manager
+	keyManagerCtxFactories []trust.NamedKeyManagerCtxFactory
 }
 
 // startServices iterates through the registered namespaces and starts the services
@@ -141,7 +141,19 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 	logger := params.logger
 	reg := params.reg
 	cacheManager := params.cacheManager
-	keyManagerFactories := params.keyManagerFactories
+	keyManagerCtxFactories := params.keyManagerCtxFactories
+
+	// Create a copy of the key manager factories as the context version for legacy services that don't load the new version with context
+	var keyManagerFactories []trust.NamedKeyManagerFactory
+	for _, factory := range keyManagerCtxFactories {
+		keyManagerFactories = append(keyManagerFactories, trust.NamedKeyManagerFactory{
+			Name: factory.Name,
+			//nolint:contextcheck // This is called later, so will be in a new context
+			Factory: func(opts *trust.KeyManagerFactoryOptions) (trust.KeyManager, error) {
+				return factory.Factory(context.Background(), opts)
+			},
+		})
+	}
 
 	for _, ns := range reg.GetNamespaces() {
 		namespace, err := reg.GetNamespace(ns)
@@ -225,6 +237,7 @@ func startServices(ctx context.Context, params startServicesParams) (func(), err
 				Tracer:                 tracer,
 				NewCacheClient:         createCacheClient,
 				KeyManagerFactories:    keyManagerFactories,
+				KeyManagerCtxFactories: keyManagerCtxFactories,
 			})
 			if err != nil {
 				return func() {}, err

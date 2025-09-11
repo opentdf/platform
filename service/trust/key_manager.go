@@ -67,3 +67,9 @@ type NamedKeyManagerFactory struct {
 	Name    string
 	Factory KeyManagerFactory
 }
+
+// NamedKeyManagerCtxFactory pairs a KeyManagerFactoryCtx with its intended registration name.
+type NamedKeyManagerCtxFactory struct {
+	Name    string
+	Factory KeyManagerFactoryCtx
+}

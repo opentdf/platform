@@ -94,128 +94,128 @@ func TestServiceTestSuite(t *testing.T) {
 
 func (suite *ServiceTestSuite) TestRegisterEssentialServiceRegistrationIsSuccessful() {
 	registry := serviceregistry.NewServiceRegistry()
-	err := registerEssentialServices(registry)
+	err := RegisterEssentialServices(registry)
 	suite.Require().NoError(err)
 	ns, err := registry.GetNamespace("health")
 	suite.Require().NoError(err)
 	suite.Len(ns.Services, 1)
-	suite.Equal(modeEssential, ns.Mode)
+	suite.Equal(string(serviceregistry.ModeEssential), ns.Mode)
 }
 
 func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_ALL_Expect_All_Services_Registered() {
 	registry := serviceregistry.NewServiceRegistry()
-	_, err := registerCoreServices(registry, []string{modeALL})
+	_, err := RegisterCoreServices(registry, []serviceregistry.ModeName{serviceregistry.ModeALL})
 	suite.Require().NoError(err)
 
-	authz, err := registry.GetNamespace(serviceAuthorization)
+	authz, err := registry.GetNamespace(ServiceAuthorization.String())
 	suite.Require().NoError(err)
 	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
-	suite.Equal(modeCore, authz.Mode)
+	suite.Equal(ServiceAuthorization.String(), authz.Mode)
 
-	kas, err := registry.GetNamespace(serviceKAS)
+	kas, err := registry.GetNamespace(ServiceKAS.String())
 	suite.Require().NoError(err)
 	suite.Len(kas.Services, 1)
-	suite.Equal(modeCore, kas.Mode)
+	suite.Equal(ServiceKAS.String(), kas.Mode)
 
-	policy, err := registry.GetNamespace(servicePolicy)
+	policy, err := registry.GetNamespace(ServicePolicy.String())
 	suite.Require().NoError(err)
 	suite.Len(policy.Services, numExpectedPolicyServices)
-	suite.Equal(modeCore, policy.Mode)
+	suite.Equal(ServicePolicy.String(), policy.Mode)
 
-	wellKnown, err := registry.GetNamespace(serviceWellKnown)
+	wellKnown, err := registry.GetNamespace(ServiceWellKnown.String())
 	suite.Require().NoError(err)
 	suite.Len(wellKnown.Services, 1)
-	suite.Equal(modeCore, wellKnown.Mode)
+	suite.Equal(ServiceWellKnown.String(), wellKnown.Mode)
 
-	ers, err := registry.GetNamespace(serviceEntityResolution)
+	ers, err := registry.GetNamespace(ServiceEntityResolution.String())
 	suite.Require().NoError(err)
 	suite.Len(ers.Services, numExpectedEntityResolutionServiceVersions)
-	suite.Equal(modeCore, ers.Mode)
+	suite.Equal(ServiceEntityResolution.String(), ers.Mode)
 }
 
 // Every service except kas is registered
 func (suite *ServiceTestSuite) Test_RegisterCoreServices_In_Mode_Core_Expect_Core_Services_Registered() {
 	registry := serviceregistry.NewServiceRegistry()
-	_, err := registerCoreServices(registry, []string{modeCore})
+	_, err := RegisterCoreServices(registry, []serviceregistry.ModeName{serviceregistry.ModeCore})
 	suite.Require().NoError(err)
 
-	authz, err := registry.GetNamespace(serviceAuthorization)
+	authz, err := registry.GetNamespace(ServiceAuthorization.String())
 	suite.Require().NoError(err)
 	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
-	suite.Equal(modeCore, authz.Mode)
+	suite.Equal(ServiceAuthorization.String(), authz.Mode)
 
-	_, err = registry.GetNamespace(serviceKAS)
+	_, err = registry.GetNamespace(ServiceKAS.String())
 	suite.Require().Error(err)
 	suite.Require().ErrorContains(err, "namespace not found")
 
-	policy, err := registry.GetNamespace(servicePolicy)
+	policy, err := registry.GetNamespace(ServicePolicy.String())
 	suite.Require().NoError(err)
 	suite.Len(policy.Services, numExpectedPolicyServices)
-	suite.Equal(modeCore, policy.Mode)
+	suite.Equal(ServicePolicy.String(), policy.Mode)
 
-	wellKnown, err := registry.GetNamespace(serviceWellKnown)
+	wellKnown, err := registry.GetNamespace(ServiceWellKnown.String())
 	suite.Require().NoError(err)
 	suite.Len(wellKnown.Services, 1)
-	suite.Equal(modeCore, wellKnown.Mode)
+	suite.Equal(ServiceWellKnown.String(), wellKnown.Mode)
 }
 
 // Register core and kas services
 func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expect_Core_And_Kas_Services_Registered() {
 	registry := serviceregistry.NewServiceRegistry()
-	_, err := registerCoreServices(registry, []string{modeCore, modeKAS})
+	_, err := RegisterCoreServices(registry, []serviceregistry.ModeName{serviceregistry.ModeCore, serviceregistry.ModeKAS})
 	suite.Require().NoError(err)
 
-	authz, err := registry.GetNamespace(serviceAuthorization)
+	authz, err := registry.GetNamespace(ServiceAuthorization.String())
 	suite.Require().NoError(err)
 	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
-	suite.Equal(modeCore, authz.Mode)
+	suite.Equal(ServiceAuthorization.String(), authz.Mode)
 
-	kas, err := registry.GetNamespace(serviceKAS)
+	kas, err := registry.GetNamespace(ServiceKAS.String())
 	suite.Require().NoError(err)
 	suite.Len(kas.Services, 1)
-	suite.Equal(modeKAS, kas.Mode)
+	suite.Equal(ServiceKAS.String(), kas.Mode)
 
-	policy, err := registry.GetNamespace(servicePolicy)
+	policy, err := registry.GetNamespace(ServicePolicy.String())
 	suite.Require().NoError(err)
 	suite.Len(policy.Services, numExpectedPolicyServices)
-	suite.Equal(modeCore, policy.Mode)
+	suite.Equal(ServicePolicy.String(), policy.Mode)
 
-	wellKnown, err := registry.GetNamespace(serviceWellKnown)
+	wellKnown, err := registry.GetNamespace(ServiceWellKnown.String())
 	suite.Require().NoError(err)
 	suite.Len(wellKnown.Services, 1)
-	suite.Equal(modeCore, wellKnown.Mode)
+	suite.Equal(ServiceWellKnown.String(), wellKnown.Mode)
 }
 
 // Register core and kas and ERS services
 func (suite *ServiceTestSuite) Test_RegisterServices_In_Mode_Core_Plus_Kas_Expect_Core_And_Kas_And_ERS_Services_Registered() {
 	registry := serviceregistry.NewServiceRegistry()
-	_, err := registerCoreServices(registry, []string{modeCore, modeKAS, modeERS})
+	_, err := RegisterCoreServices(registry, []serviceregistry.ModeName{serviceregistry.ModeCore, serviceregistry.ModeKAS, serviceregistry.ModeERS})
 	suite.Require().NoError(err)
 
-	authz, err := registry.GetNamespace(serviceAuthorization)
+	authz, err := registry.GetNamespace(ServiceAuthorization.String())
 	suite.Require().NoError(err)
 	suite.Len(authz.Services, numExpectedAuthorizationServiceVersions)
-	suite.Equal(modeCore, authz.Mode)
+	suite.Equal(ServiceAuthorization.String(), authz.Mode)
 
-	kas, err := registry.GetNamespace(serviceKAS)
+	kas, err := registry.GetNamespace(ServiceKAS.String())
 	suite.Require().NoError(err)
 	suite.Len(kas.Services, 1)
-	suite.Equal(modeKAS, kas.Mode)
+	suite.Equal(ServiceKAS.String(), kas.Mode)
 
-	policy, err := registry.GetNamespace(servicePolicy)
+	policy, err := registry.GetNamespace(ServicePolicy.String())
 	suite.Require().NoError(err)
 	suite.Len(policy.Services, numExpectedPolicyServices)
-	suite.Equal(modeCore, policy.Mode)
+	suite.Equal(ServicePolicy.String(), policy.Mode)
 
-	wellKnown, err := registry.GetNamespace(serviceWellKnown)
+	wellKnown, err := registry.GetNamespace(ServiceWellKnown.String())
 	suite.Require().NoError(err)
 	suite.Len(wellKnown.Services, 1)
-	suite.Equal(modeCore, wellKnown.Mode)
+	suite.Equal(ServiceWellKnown.String(), wellKnown.Mode)
 
-	ers, err := registry.GetNamespace(serviceEntityResolution)
+	ers, err := registry.GetNamespace(ServiceEntityResolution.String())
 	suite.Require().NoError(err)
 	suite.Len(ers.Services, numExpectedEntityResolutionServiceVersions)
-	suite.Equal(modeERS, ers.Mode)
+	suite.Equal(ServiceEntityResolution.String(), ers.Mode)
 }
 
 func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
@@ -307,4 +307,166 @@ func (suite *ServiceTestSuite) TestStartServicesWithVariousCases() {
 
 	// call close function
 	registry.Shutdown()
+}
+
+// Test service negation functionality
+func (suite *ServiceTestSuite) TestRegisterCoreServices_WithNegation() {
+	testCases := []struct {
+		name                  string
+		modes                 []serviceregistry.ModeName
+		expectedServices      []string
+		shouldError           bool
+		expectedErrorContains string
+	}{
+		{
+			name:             "All_Minus_KAS",
+			modes:            []serviceregistry.ModeName{"all", "-kas"},
+			expectedServices: []string{"policy", "authorization", "wellknown", "entityresolution"},
+		},
+		{
+			name:             "All_Minus_EntityResolution",
+			modes:            []serviceregistry.ModeName{"all", "-entityresolution"},
+			expectedServices: []string{"policy", "authorization", "kas", "wellknown"},
+		},
+		{
+			name:             "All_Minus_Multiple_Services",
+			modes:            []serviceregistry.ModeName{"all", "-kas", "-entityresolution"},
+			expectedServices: []string{"policy", "authorization", "wellknown"},
+		},
+		{
+			name:                  "Negation_Without_Base_Mode",
+			modes:                 []serviceregistry.ModeName{"-kas"},
+			shouldError:           true,
+			expectedErrorContains: "cannot exclude services without including base modes",
+		},
+		{
+			name:                  "Invalid_Empty_Negation",
+			modes:                 []serviceregistry.ModeName{"all", "-"},
+			shouldError:           true,
+			expectedErrorContains: "empty service name after '-'",
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			registry := serviceregistry.NewServiceRegistry()
+
+			registeredServices, err := RegisterCoreServices(registry, tc.modes)
+
+			if tc.shouldError {
+				suite.Error(err)
+				if tc.expectedErrorContains != "" {
+					suite.Contains(err.Error(), tc.expectedErrorContains)
+				}
+				return
+			}
+
+			suite.Require().NoError(err)
+			suite.ElementsMatch(tc.expectedServices, registeredServices)
+		})
+	}
+}
+
+// Test backward compatibility - existing modes should work unchanged
+func (suite *ServiceTestSuite) TestRegisterCoreServices_BackwardCompatibility() {
+	testCases := []struct {
+		name             string
+		mode             []serviceregistry.ModeName
+		expectedServices []string
+	}{
+		{
+			name:             "All_Mode_No_Negation",
+			mode:             []serviceregistry.ModeName{"all"},
+			expectedServices: []string{ServicePolicy.String(), ServiceAuthorization.String(), ServiceKAS.String(), ServiceWellKnown.String(), ServiceEntityResolution.String()},
+		},
+		{
+			name:             "Core_Mode_No_Negation",
+			mode:             []serviceregistry.ModeName{"core"},
+			expectedServices: []string{ServicePolicy.String(), ServiceAuthorization.String(), ServiceWellKnown.String()},
+		},
+		{
+			name:             "KAS_Mode_No_Negation",
+			mode:             []serviceregistry.ModeName{"kas"},
+			expectedServices: []string{ServiceKAS.String()},
+		},
+		{
+			name:             "EntityResolution_Mode_No_Negation",
+			mode:             []serviceregistry.ModeName{"entityresolution"},
+			expectedServices: []string{ServiceEntityResolution.String()},
+		},
+		{
+			name:             "Mixed_Modes_No_Negation",
+			mode:             []serviceregistry.ModeName{"core", "kas"},
+			expectedServices: []string{ServicePolicy.String(), ServiceAuthorization.String(), ServiceWellKnown.String(), ServiceKAS.String()},
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			registry := serviceregistry.NewServiceRegistry()
+
+			registeredServices, err := RegisterCoreServices(registry, tc.mode)
+
+			suite.Require().NoError(err)
+			suite.ElementsMatch(tc.expectedServices, registeredServices)
+		})
+	}
+}
+
+// Test the isNamespaceEnabled helper function
+func (suite *ServiceTestSuite) TestIsNamespaceEnabled() {
+	testCases := []struct {
+		name           string
+		configModes    []string
+		namespaceMode  string
+		expectedResult bool
+	}{
+		{
+			name:           "All_Mode_Enables_Any_Namespace",
+			configModes:    []string{"all"},
+			namespaceMode:  "core",
+			expectedResult: true,
+		},
+		{
+			name:           "Essential_Always_Enabled",
+			configModes:    []string{"core"},
+			namespaceMode:  "essential",
+			expectedResult: true,
+		},
+		{
+			name:           "Matching_Mode_Enabled",
+			configModes:    []string{"core", "kas"},
+			namespaceMode:  "kas",
+			expectedResult: true,
+		},
+		{
+			name:           "Non_Matching_Mode_Disabled",
+			configModes:    []string{"core"},
+			namespaceMode:  "kas",
+			expectedResult: false,
+		},
+		{
+			name:           "Case_Insensitive_Matching",
+			configModes:    []string{"CORE"},
+			namespaceMode:  "core",
+			expectedResult: true,
+		},
+		{
+			name:           "Multiple_Modes_One_Match",
+			configModes:    []string{"core", "entityresolution"},
+			namespaceMode:  "entityresolution",
+			expectedResult: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// Create a namespace with the test mode
+			namespace := serviceregistry.Namespace{Mode: tc.namespaceMode}
+			result := namespace.IsEnabled(tc.configModes)
+			suite.Equal(tc.expectedResult, result,
+				"Expected %v for modes %v and namespace %s, got %v",
+				tc.expectedResult, tc.configModes, tc.namespaceMode, result)
+		})
+	}
 }

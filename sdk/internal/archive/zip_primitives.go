@@ -1,14 +1,13 @@
 package archive
 
 import (
-	"bytes"
-	"encoding/binary"
-	"hash/crc32"
-	"time"
+    "bytes"
+    "encoding/binary"
+    "time"
 )
 
-// Pre-computed CRC32 table for performance - avoids recreating table on each calculation
-var crc32IEEETable = crc32.MakeTable(crc32.IEEE)
+// Note: CRC32 calculation for the payload is performed using a combine
+// approach over per-segment CRCs and sizes to avoid buffering segments.
 
 // FileEntry represents a file in the ZIP archive with metadata
 type FileEntry struct {
@@ -23,134 +22,106 @@ type FileEntry struct {
 
 // SegmentEntry represents a single segment in out-of-order writing
 type SegmentEntry struct {
-	Index   int       // Segment index (0-based)
-	Data    []byte    // Encrypted segment data
-	Size    uint64    // Size of original plaintext data
-	CRC32   uint32    // CRC32 of original plaintext data
-	Written time.Time // When this segment was written
+    Index   int       // Segment index (0-based)
+    Size    uint64    // Size of stored segment bytes (no compression)
+    CRC32   uint32    // CRC32 of stored segment bytes
+    Written time.Time // When this segment was written
 }
 
-// SegmentMetadata tracks segment state with memory-efficient contiguous chunk processing
+// SegmentMetadata tracks per-segment metadata for out-of-order writing.
+// It stores only plaintext size and CRC for each index and computes the
+// final CRC via CRC32-combine at finalize time (no payload buffering).
 type SegmentMetadata struct {
-	ExpectedCount int                   // Total number of expected segments
-	Segments      map[int]*SegmentEntry // Map of unprocessed segments only
-	TotalSize     uint64                // Cumulative size of all segments
-
-	// Memory-efficient contiguous processing
-	processedUpTo int    // Last segment index processed contiguously (-1 initially)
-	runningCRC32  uint32 // Incremental CRC32 state for processed segments
-	TotalCRC32    uint32 // Final CRC32 when all segments are processed
+    ExpectedCount int                   // Total number of expected segments
+    Segments      map[int]*SegmentEntry // Map of segments by index
+    TotalSize     uint64                // Cumulative size of all segments
+    presentCount  int                   // Number of segments recorded
+    TotalCRC32    uint32                // Final CRC32 when all segments are processed
 }
 
-// NewSegmentMetadata creates metadata for tracking segments with contiguous processing
+// NewSegmentMetadata creates metadata for tracking segments using combine-based CRC.
 func NewSegmentMetadata(expectedCount int) *SegmentMetadata {
-	return &SegmentMetadata{
-		ExpectedCount: expectedCount,
-		Segments:      make(map[int]*SegmentEntry),
-		processedUpTo: -1,                      // No segments processed initially
-		runningCRC32:  crc32.NewIEEE().Sum32(), // Initialize empty CRC32 state
-		TotalCRC32:    0,                       // Will be set when all segments processed
-	}
+    return &SegmentMetadata{
+        ExpectedCount: expectedCount,
+        Segments:      make(map[int]*SegmentEntry),
+        presentCount:  0,
+        TotalCRC32:    0,
+    }
 }
 
-// AddSegment adds a segment and processes contiguous chunks to minimize memory usage
-func (sm *SegmentMetadata) AddSegment(index int, data []byte, originalSize uint64, originalCRC32 uint32) error {
-	if index < 0 {
-		return ErrInvalidSegment
-	}
+// AddSegment records metadata for a segment (size + CRC) without retaining payload bytes.
+func (sm *SegmentMetadata) AddSegment(index int, _ []byte, originalSize uint64, originalCRC32 uint32) error {
+    if index < 0 {
+        return ErrInvalidSegment
+    }
 
 	// Allow dynamic expansion beyond ExpectedCount for streaming use cases
 	if index >= sm.ExpectedCount {
 		sm.ExpectedCount = index + 1
 	}
 
-	if _, exists := sm.Segments[index]; exists {
-		return ErrDuplicateSegment
-	}
+    if _, exists := sm.Segments[index]; exists {
+        return ErrDuplicateSegment
+    }
 
-	// Check if this segment can be processed immediately (contiguous from processedUpTo+1)
-	if index == sm.processedUpTo+1 {
-		// Process this segment immediately
-		sm.runningCRC32 = crc32.Update(sm.runningCRC32, crc32IEEETable, data)
-		sm.TotalSize += originalSize
-		sm.processedUpTo = index
+    // Record per-segment metadata only (no buffering of data)
+    sm.Segments[index] = &SegmentEntry{
+        Index:   index,
+        Size:    originalSize,
+        CRC32:   originalCRC32,
+        Written: time.Now(),
+    }
 
-		// Check if we can now process additional contiguous segments
-		sm.processContiguousSegments()
+    sm.TotalSize += originalSize
+    sm.presentCount++
 
-		// If all segments are now processed, finalize CRC32
-		if sm.processedUpTo == sm.ExpectedCount-1 {
-			sm.TotalCRC32 = sm.runningCRC32
-		}
-
-		return nil
-	}
-
-	// Store segment for later processing (not contiguous yet)
-	// Copy data to prevent issues if caller reuses the slice
-	dataCopy := make([]byte, len(data))
-	copy(dataCopy, data)
-	sm.Segments[index] = &SegmentEntry{
-		Index:   index,
-		Data:    dataCopy,
-		Size:    originalSize,
-		CRC32:   originalCRC32,
-		Written: time.Now(),
-	}
-
-	sm.TotalSize += originalSize
-
-	return nil
+    return nil
 }
 
 // IsComplete returns true if all expected segments have been processed
 func (sm *SegmentMetadata) IsComplete() bool {
-	return sm.processedUpTo == sm.ExpectedCount-1
+    if sm.ExpectedCount <= 0 {
+        return false
+    }
+    return sm.presentCount == sm.ExpectedCount
 }
 
 // GetMissingSegments returns a list of missing segment indices
 func (sm *SegmentMetadata) GetMissingSegments() []int {
 	missing := make([]int, 0)
-	for i := 0; i < sm.ExpectedCount; i++ {
-		// Check if segment is processed or in unprocessed map
-		if i <= sm.processedUpTo {
-			continue // Already processed
-		}
-		if _, exists := sm.Segments[i]; !exists {
-			missing = append(missing, i)
-		}
-	}
-	return missing
+    for i := 0; i < sm.ExpectedCount; i++ {
+        if _, exists := sm.Segments[i]; !exists {
+            missing = append(missing, i)
+        }
+    }
+    return missing
 }
 
 // GetTotalCRC32 returns the final CRC32 value (only valid when IsComplete() is true)
-func (sm *SegmentMetadata) GetTotalCRC32() uint32 {
-	return sm.TotalCRC32
-}
+func (sm *SegmentMetadata) GetTotalCRC32() uint32 { return sm.TotalCRC32 }
 
-// processContiguousSegments processes any newly contiguous segments after adding a new one
-func (sm *SegmentMetadata) processContiguousSegments() {
-	// Keep processing segments that are now contiguous
-	for {
-		nextIndex := sm.processedUpTo + 1
-		segment, exists := sm.Segments[nextIndex]
-		if !exists {
-			break // No more contiguous segments available
-		}
-
-		// Process this segment with incremental CRC32
-		sm.runningCRC32 = crc32.Update(sm.runningCRC32, crc32IEEETable, segment.Data)
-		sm.processedUpTo = nextIndex
-
-		// Remove from unprocessed segments map to free memory
-		delete(sm.Segments, nextIndex)
-
-		// Check if all segments are now processed
-		if sm.processedUpTo == sm.ExpectedCount-1 {
-			sm.TotalCRC32 = sm.runningCRC32
-			break
-		}
-	}
+// FinalizeCRC computes the total CRC32 by combining per-segment CRCs in index order.
+func (sm *SegmentMetadata) FinalizeCRC() {
+    if sm.ExpectedCount <= 0 {
+        sm.TotalCRC32 = 0
+        return
+    }
+    var total uint32 = 0
+    var initialized bool
+    for i := 0; i < sm.ExpectedCount; i++ {
+        seg, ok := sm.Segments[i]
+        if !ok {
+            // Incomplete; leave TotalCRC32 as zero
+            return
+        }
+        if !initialized {
+            total = seg.CRC32
+            initialized = true
+        } else {
+            total = CRC32CombineIEEE(total, seg.CRC32, int64(seg.Size))
+        }
+    }
+    sm.TotalCRC32 = total
 }
 
 // CentralDirectory manages the ZIP central directory structure

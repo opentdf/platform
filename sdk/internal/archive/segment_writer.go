@@ -75,9 +75,9 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 	default:
 	}
 
-	// Calculate original data CRC32 (before encryption)
-	originalCRC := crc32.ChecksumIEEE(data)
-	originalSize := uint64(len(data))
+    // CRC32 over stored segment bytes (what goes into the ZIP entry)
+    originalCRC := crc32.ChecksumIEEE(data)
+    originalSize := uint64(len(data))
 
 	// Create segment buffer for this segment's output
 	buffer := &bytes.Buffer{}
@@ -95,8 +95,8 @@ func (sw *segmentWriter) WriteSegment(ctx context.Context, index int, data []byt
 		return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
 	}
 
-	// AddSegment now handles memory management efficiently with contiguous processing
-	// Only unprocessed segments are stored, processed segments are immediately freed
+    // Record segment metadata only (no payload retention). Payload bytes are returned
+    // to the caller and may be uploaded; we keep only CRC and size for finalize.
 	if err := sw.metadata.AddSegment(index, data, originalSize, originalCRC); err != nil {
 		return nil, &Error{Op: "write-segment", Type: "segment", Err: err}
 	}
@@ -135,8 +135,8 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 		return nil, &Error{Op: "finalize", Type: "segment", Err: ErrSegmentMissing}
 	}
 
-	// With contiguous processing, CRC32 is automatically calculated as segments are processed
-	// TotalCRC32 is ready when IsComplete() returns true
+    // Compute final CRC32 by combining per-segment CRCs now that all are present
+    sw.metadata.FinalizeCRC()
 
 	// Create finalization buffer
 	buffer := &bytes.Buffer{}
@@ -146,22 +146,32 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	// This is complex because segment 0 includes the local file header, but we need
 	// to account for the data descriptor that gets added during finalization.
 
-	// The total payload size is: header + data (data descriptor is separate)
-	headerSize := localFileHeaderSize + uint64(len(sw.payloadEntry.Name))
-	if sw.config.EnableZip64 {
-		headerSize += zip64ExtendedLocalInfoExtraFieldSize
-	}
+    // The total payload size is: header + data (data descriptor is separate)
+    headerSize := localFileHeaderSize + uint64(len(sw.payloadEntry.Name))
+    // Only include ZIP64 local extra when forcing ZIP64 in headers
+    if sw.config.Zip64 == Zip64Always {
+        headerSize += zip64ExtendedLocalInfoExtraFieldSize
+    }
 
 	// Total payload size = header + all data (no data descriptor in this calculation)
 	totalPayloadSize := headerSize + sw.payloadEntry.CompressedSize
 
-	// 1. Write data descriptor for payload
-	if err := sw.writeDataDescriptor(buffer); err != nil {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
-	}
+    // Decide whether payload descriptor must be ZIP64
+    const max32 = ^uint32(0)
+    needZip64ForPayload := sw.config.Zip64 == Zip64Always ||
+        sw.payloadEntry.Size > uint64(max32) ||
+        sw.payloadEntry.CompressedSize > uint64(max32)
 
-	// 2. Update payload entry CRC32 and add to central directory
-	sw.payloadEntry.CRC32 = sw.metadata.TotalCRC32
+    // 1. Write data descriptor for payload (fail if Zip64Never but required)
+    if sw.config.Zip64 == Zip64Never && needZip64ForPayload {
+        return nil, &Error{Op: "finalize", Type: "segment", Err: ErrZip64Required}
+    }
+    if err := sw.writeDataDescriptor(buffer, needZip64ForPayload); err != nil {
+        return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+    }
+
+    // 2. Update payload entry CRC32 and add to central directory
+    sw.payloadEntry.CRC32 = sw.metadata.TotalCRC32
 	sw.centralDir.AddFile(*sw.payloadEntry)
 
 	// 3. Write manifest file (local header + data)
@@ -182,12 +192,17 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	// 4. Add manifest entry to central directory
 	sw.centralDir.AddFile(manifestEntry)
 
-	// 5. Write central directory
-	sw.centralDir.Offset = totalPayloadSize + uint64(buffer.Len())
-	cdBytes, err := sw.centralDir.GenerateBytes(sw.config.EnableZip64)
-	if err != nil {
-		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
-	}
+    // 5. Write central directory
+    sw.centralDir.Offset = totalPayloadSize + uint64(buffer.Len())
+    // Decide if ZIP64 is needed for central directory/EOCD based on offset or forced mode
+    needZip64ForCD := needZip64ForPayload || sw.config.Zip64 == Zip64Always || sw.centralDir.Offset > uint64(max32) || len(sw.centralDir.Entries) > int(^uint16(0))
+    if sw.config.Zip64 == Zip64Never && needZip64ForCD {
+        return nil, &Error{Op: "finalize", Type: "segment", Err: ErrZip64Required}
+    }
+    cdBytes, err := sw.centralDir.GenerateBytes(needZip64ForCD)
+    if err != nil {
+        return nil, &Error{Op: "finalize", Type: "segment", Err: err}
+    }
 
 	if _, err := buffer.Write(cdBytes); err != nil {
 		return nil, &Error{Op: "finalize", Type: "segment", Err: err}
@@ -202,44 +217,48 @@ func (sw *segmentWriter) Finalize(ctx context.Context, manifest []byte) ([]byte,
 	return result, nil
 }
 
-// CleanupSegment clears unprocessed segment data from memory after it's been uploaded.
-// With contiguous processing, most segments are automatically cleaned up as they're processed.
-// Only unprocessed (non-contiguous) segments remain in memory and can be cleaned with this method.
-// Safe to call on any segment index - no-op if segment was already processed or doesn't exist.
+// CleanupSegment removes the presence marker for a segment index. Since payload
+// bytes are not retained, this only affects metadata tracking. Calling this
+// before Finalize will cause IsComplete() to fail for that index.
 func (sw *segmentWriter) CleanupSegment(index int) error {
-	sw.mu.Lock()
-	defer sw.mu.Unlock()
+    sw.mu.Lock()
+    defer sw.mu.Unlock()
 
-	// Remove segment from unprocessed map (no-op if already processed or not found)
-	delete(sw.metadata.Segments, index)
+    // Remove segment from unprocessed map (no-op if already processed or not found)
+    if _, ok := sw.metadata.Segments[index]; ok {
+        delete(sw.metadata.Segments, index)
+        if sw.metadata.presentCount > 0 {
+            sw.metadata.presentCount--
+        }
+    }
 
-	return nil
+    return nil
 }
 
 // writeDataDescriptor writes the data descriptor for the payload
-func (sw *segmentWriter) writeDataDescriptor(buf *bytes.Buffer) error {
-	if sw.config.EnableZip64 {
-		dataDesc := Zip64DataDescriptor{
-			Signature:        dataDescriptorSignature,
-			Crc32:            sw.metadata.TotalCRC32,
-			CompressedSize:   sw.payloadEntry.CompressedSize,
-			UncompressedSize: sw.payloadEntry.Size,
-		}
-		return binary.Write(buf, binary.LittleEndian, dataDesc)
-	}
+func (sw *segmentWriter) writeDataDescriptor(buf *bytes.Buffer, zip64 bool) error {
+    if zip64 {
+        dataDesc := Zip64DataDescriptor{
+            Signature:        dataDescriptorSignature,
+            Crc32:            sw.metadata.TotalCRC32,
+            CompressedSize:   sw.payloadEntry.CompressedSize,
+            UncompressedSize: sw.payloadEntry.Size,
+        }
+        return binary.Write(buf, binary.LittleEndian, dataDesc)
+    }
 
-	dataDesc := Zip32DataDescriptor{
-		Signature:        dataDescriptorSignature,
-		Crc32:            sw.metadata.TotalCRC32,
-		CompressedSize:   uint32(sw.payloadEntry.CompressedSize),
-		UncompressedSize: uint32(sw.payloadEntry.Size),
-	}
-	return binary.Write(buf, binary.LittleEndian, dataDesc)
+    dataDesc := Zip32DataDescriptor{
+        Signature:        dataDescriptorSignature,
+        Crc32:            sw.metadata.TotalCRC32,
+        CompressedSize:   uint32(sw.payloadEntry.CompressedSize),
+        UncompressedSize: uint32(sw.payloadEntry.Size),
+    }
+    return binary.Write(buf, binary.LittleEndian, dataDesc)
 }
 
 // writeManifestFile writes the manifest as a complete file entry
 func (sw *segmentWriter) writeManifestFile(buf *bytes.Buffer, manifest []byte, entry FileEntry) error {
-	fileTime, fileDate := sw.getTimeDateUnMSDosFormat(entry.ModTime)
+	fileTime, fileDate := sw.getTimeDateInMSDosFormat(entry.ModTime)
 
 	// Write local file header for manifest
 	header := LocalFileHeader{
@@ -273,8 +292,8 @@ func (sw *segmentWriter) writeManifestFile(buf *bytes.Buffer, manifest []byte, e
 	return nil
 }
 
-// getTimeDateUnMSDosFormat converts time to MS-DOS format
-func (sw *segmentWriter) getTimeDateUnMSDosFormat(t time.Time) (uint16, uint16) {
+// getTimeDateInMSDosFormat converts time to MS-DOS format
+func (sw *segmentWriter) getTimeDateInMSDosFormat(t time.Time) (uint16, uint16) {
 	const monthShift = 5
 
 	timeInDos := t.Hour()<<11 | t.Minute()<<5 | t.Second()>>1
@@ -285,7 +304,7 @@ func (sw *segmentWriter) getTimeDateUnMSDosFormat(t time.Time) (uint16, uint16) 
 
 // writeLocalFileHeader writes the ZIP local file header for the payload
 func (sw *segmentWriter) writeLocalFileHeader(buf *bytes.Buffer) error {
-	fileTime, fileDate := sw.getTimeDateUnMSDosFormat(sw.payloadEntry.ModTime)
+	fileTime, fileDate := sw.getTimeDateInMSDosFormat(sw.payloadEntry.ModTime)
 
 	header := LocalFileHeader{
 		Signature:             fileHeaderSignature,
@@ -301,12 +320,12 @@ func (sw *segmentWriter) writeLocalFileHeader(buf *bytes.Buffer) error {
 		ExtraFieldLength:      0,
 	}
 
-	// Enable ZIP64 if needed
-	if sw.config.EnableZip64 {
-		header.CompressedSize = zip64MagicVal
-		header.UncompressedSize = zip64MagicVal
-		header.ExtraFieldLength = zip64ExtendedLocalInfoExtraFieldSize
-	}
+    // Only force ZIP64 markers in the local header when Zip64Always is set.
+    if sw.config.Zip64 == Zip64Always {
+        header.CompressedSize = zip64MagicVal
+        header.UncompressedSize = zip64MagicVal
+        header.ExtraFieldLength = zip64ExtendedLocalInfoExtraFieldSize
+    }
 
 	// Write local file header
 	if err := binary.Write(buf, binary.LittleEndian, header); err != nil {

@@ -52,6 +52,44 @@
 //		log.Fatal(err)
 //	}
 //
+// # Initial Attributes and Default KAS at Writer Creation
+//
+// Callers can provide initial attributes and a default KAS when constructing
+// the writer. If Finalize options omit these, the writer-level values are used.
+// Finalize-specified values always take precedence.
+//
+//	attrs := []*policy.Value{ /* ... */ }
+//	kasKey := &policy.SimpleKasKey{ /* ... */ }
+//	writer, err := tdf.NewWriter(ctx,
+//		tdf.WithInitialAttributes(attrs),
+//		tdf.WithDefaultKASForWriter(kasKey),
+//	)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	// Later, Finalize without attributes/KAS uses the initial values.
+//
+// # Segment Overrides at Finalize (Contiguous Prefix)
+//
+// You can restrict finalization to a contiguous prefix of written segments
+// using `WithSegments([]int{0, 1, ..., K})`. Indices must start at 0 with no
+// gaps or duplicates, and no segments may have been written beyond K.
+//
+//	// Write segments 0 and 1
+//	_, _ = writer.WriteSegment(ctx, 0, []byte("part-0"))
+//	_, _ = writer.WriteSegment(ctx, 1, []byte("part-1"))
+//
+//	// Finalize keeping the prefix [0,1]
+//	finalBytes, manifest, err := writer.Finalize(ctx,
+//		tdf.WithSegments([]int{0, 1}),
+//	)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+// If all segments should be kept, `WithSegments([0..N-1])` is equivalent to
+// the default behavior and is optional.
+//
 // # Advanced Features
 //
 // The package supports advanced TDF features including:
@@ -83,13 +121,13 @@
 // The implementation is optimized for:
 //
 //   - Linear time complexity O(n) for n segments
-//   - Memory usage proportional to buffered out-of-order segments
-//   - Efficient contiguous segment processing
+//   - Memory usage independent of write order (no payload buffering)
+//   - CRC aggregation via combine over per-segment CRCs
 //   - Minimal allocation patterns for high-throughput scenarios
 //
 // Current benchmarks (100 segments, 1KB each):
 //   - Sequential: ~240μs/op, ~530KB memory/op
-//   - Out-of-order: Similar performance due to contiguous processing optimization
+//   - Out-of-order: Similar performance due to combine-based CRC approach
 //
 // # Compatibility
 //

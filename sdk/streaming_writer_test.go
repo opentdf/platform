@@ -315,6 +315,50 @@ func setupMockKASServer(t testing.TB) (*SDK, func()) {
 	return sdk, cleanup
 }
 
+func TestStreamingWriter_WithSegments_And_GetManifest(t *testing.T) {
+    s, cleanup := setupMockKASServer(t)
+    defer cleanup()
+
+    w, err := s.NewStreamingWriter(t.Context())
+    require.NoError(t, err)
+
+    // Write a couple of segments
+    _, err = w.WriteSegment(t.Context(), 0, []byte("a"))
+    require.NoError(t, err)
+    _, err = w.WriteSegment(t.Context(), 1, []byte("b"))
+    require.NoError(t, err)
+
+    // Pre-finalize manifest should be available
+    m := w.GetManifest()
+    require.NotNil(t, m)
+
+    // Finalize keeping contiguous prefix [0,1]
+    res, err := w.Finalize(t.Context(), []string{"https://example.com/attr/Basic/value/Test"}, WithSegments([]int{0, 1}))
+    require.NoError(t, err)
+    require.NotNil(t, res.Manifest)
+    assert.Equal(t, 2, res.TotalSegments)
+}
+
+func TestStreamingWriter_NewWithOptions_Initials(t *testing.T) {
+    s, cleanup := setupMockKASServer(t)
+    defer cleanup()
+
+    // Supply initial attribute by FQN and default KAS at writer creation
+    sw, err := s.NewStreamingWriterWithOptions(t.Context(),
+        s.WithInitialAttributeFQNs(t.Context(), []string{"https://example.com/attr/Basic/value/Test"}),
+        WithDefaultKASForWriter(&policy.SimpleKasKey{KasUri: s.conn.Endpoint}),
+    )
+    require.NoError(t, err)
+
+    _, err = sw.WriteSegment(t.Context(), 0, []byte("x"))
+    require.NoError(t, err)
+
+    res, err := sw.Finalize(t.Context(), []string{})
+    require.NoError(t, err)
+    require.NotNil(t, res.Manifest)
+    assert.GreaterOrEqual(t, len(res.Manifest.EncryptionInformation.KeyAccessObjs), 1)
+}
+
 // Mock attributes client that implements the interface directly (no HTTP calls)
 type mockAttributesClientStub struct {
 	sdkconnect.AttributesServiceClient // cspell: disable-line

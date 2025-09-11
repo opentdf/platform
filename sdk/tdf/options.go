@@ -45,11 +45,19 @@ type BaseConfig struct{}
 //
 // These can be set independently to optimize for different security/performance requirements.
 type WriterConfig struct {
-	BaseConfig
-	// integrityAlgorithm specifies the algorithm for root integrity verification
-	integrityAlgorithm IntegrityAlgorithm
-	// segmentIntegrityAlgorithm specifies the algorithm for segment-level integrity
-	segmentIntegrityAlgorithm IntegrityAlgorithm
+    BaseConfig
+    // integrityAlgorithm specifies the algorithm for root integrity verification
+    integrityAlgorithm IntegrityAlgorithm
+    // segmentIntegrityAlgorithm specifies the algorithm for segment-level integrity
+    segmentIntegrityAlgorithm IntegrityAlgorithm
+
+    // initialAttributes allows callers to provide attribute values at writer creation time.
+    // These will be used during Finalize() if no attributes are provided there.
+    initialAttributes []*policy.Value
+
+    // initialDefaultKAS allows callers to provide a default KAS at writer creation time.
+    // This will be used during Finalize() if no default KAS is provided there.
+    initialDefaultKAS *policy.SimpleKasKey
 }
 
 // ReaderConfig contains configuration options for TDF Reader creation.
@@ -109,9 +117,29 @@ func WithIntegrityAlgorithm(algo IntegrityAlgorithm) Option[*WriterConfig] {
 //		WithIntegrityAlgorithm(HS256),        // Compatible root signature
 //	)
 func WithSegmentIntegrityAlgorithm(algo IntegrityAlgorithm) Option[*WriterConfig] {
-	return func(c *WriterConfig) {
-		c.segmentIntegrityAlgorithm = algo
-	}
+    return func(c *WriterConfig) {
+        c.segmentIntegrityAlgorithm = algo
+    }
+}
+
+// WithInitialAttributes sets data attributes on the Writer at creation time.
+//
+// These attributes are used by Finalize() if no attributes are provided via
+// Finalize options. Finalize-specified attributes always take precedence.
+func WithInitialAttributes(values []*policy.Value) Option[*WriterConfig] {
+    return func(c *WriterConfig) {
+        c.initialAttributes = values
+    }
+}
+
+// WithDefaultKASForWriter sets the default KAS on the Writer at creation time.
+//
+// This default KAS is used by Finalize() if no default KAS is provided via
+// Finalize options. Finalize-specified default KAS always takes precedence.
+func WithDefaultKASForWriter(kas *policy.SimpleKasKey) Option[*WriterConfig] {
+    return func(c *WriterConfig) {
+        c.initialDefaultKAS = kas
+    }
 }
 
 // WriterFinalizeConfig contains configuration options for TDF finalization.
@@ -146,9 +174,14 @@ type WriterFinalizeConfig struct {
 	// successful attribute-based access control validation.
 	encryptedMetadata string
 
-	// payloadMimeType specifies the MIME type of the payload content.
-	// Used by readers to determine appropriate content handling.
-	payloadMimeType string
+    // payloadMimeType specifies the MIME type of the payload content.
+    // Used by readers to determine appropriate content handling.
+    payloadMimeType string
+
+    // keepSegments indicates caller-provided segment indices to keep when finalizing.
+    // Indices must form a contiguous prefix [0..K]. If empty, all written
+    // segments (default behavior) are used.
+    keepSegments []int
 }
 
 // WithEncryptedMetadata includes encrypted metadata in the TDF.
@@ -187,9 +220,19 @@ func WithEncryptedMetadata(metadata string) Option[*WriterFinalizeConfig] {
 //		WithPayloadMimeType("application/json"),
 //	)
 func WithPayloadMimeType(mimeType string) Option[*WriterFinalizeConfig] {
-	return func(c *WriterFinalizeConfig) {
-		c.payloadMimeType = mimeType
-	}
+    return func(c *WriterFinalizeConfig) {
+        c.payloadMimeType = mimeType
+    }
+}
+
+// WithSegments restricts finalization to the provided segment indices.
+// The indices must form a contiguous prefix [0..K] with no gaps or duplicates.
+// If any segments were written beyond K, finalization will fail to avoid
+// mismatches between payload and manifest.
+func WithSegments(indices []int) Option[*WriterFinalizeConfig] {
+    return func(c *WriterFinalizeConfig) {
+        c.keepSegments = indices
+    }
 }
 
 // WithDefaultKAS sets the default Key Access Server for attribute resolution.

@@ -4,12 +4,9 @@ import (
 	"testing"
 )
 
-// BenchmarkSegmentWriter_CRC32ContiguousProcessing benchmarks CRC32 processing performance under different segment write ordering patterns.
-//
-// This benchmark tests the contiguous processing optimization where segments written in order (0,1,2...)
-// can be processed immediately with incremental CRC32 calculation, while out-of-order segments must be
-// buffered in memory until they become contiguous. The test measures both CRC32 calculation efficiency
-// and memory pressure from buffering non-contiguous segments.
+// BenchmarkSegmentWriter_CRC32ContiguousProcessing benchmarks CRC32-related performance under
+// different segment write ordering patterns. The current implementation uses CRC32-combine over
+// per-segment CRCs and sizes and does not retain payload bytes between calls.
 //
 // Test patterns:
 //   - sequential: Optimal case where segments arrive in order (enables immediate processing)
@@ -242,21 +239,18 @@ func BenchmarkSegmentWriter_ZIPGeneration(b *testing.B) {
 		name         string
 		segmentCount int
 		segmentSize  int
-		useZip64     bool
+        zip64Mode    Zip64Mode
 	}{
-		{"zip32_small", 10, 1024, false},
-		{"zip32_large", 100, 1024, false},
-		{"zip64_small", 10, 1024, true},
-		{"zip64_large", 100, 1024, true},
-		{"zip64_huge_segments", 5, 65536, true}, // Large segments requiring ZIP64
+        {"zip32_small", 10, 1024, Zip64Never},
+        {"zip32_large", 100, 1024, Zip64Never},
+        {"zip64_small", 10, 1024, Zip64Always},
+        {"zip64_large", 100, 1024, Zip64Always},
+        {"zip64_huge_segments", 5, 65536, Zip64Auto}, // Auto triggers ZIP64 by size
 	}
 
 	for _, tc := range testCases {
 		b.Run(tc.name, func(b *testing.B) {
-			options := make([]Option, 0)
-			if tc.useZip64 {
-				options = append(options, WithZip64())
-			}
+            options := []Option{WithZip64Mode(tc.zip64Mode)}
 
 			b.ResetTimer()
 			b.ReportAllocs()
@@ -298,15 +292,15 @@ func BenchmarkSegmentWriter_ZIPGeneration(b *testing.B) {
 // performance characteristics. All patterns are deterministic to ensure reproducible benchmark results.
 //
 // Supported patterns:
-//   - "sequential": Natural order (0,1,2,3...) - enables optimal contiguous processing
-//   - "reverse": Backward order (...3,2,1,0) - worst case requiring full buffering
+//   - "sequential": Natural order (0,1,2,3...)
+//   - "reverse": Backward order (...3,2,1,0)
 //   - "interleaved": Even indices first (0,2,4...), then odd (1,3,5...) - moderate out-of-order
 //   - "worst_case": Middle-out pattern starting from center, alternating left/right - maximizes buffering
 //   - "random"/"mixed": Pseudo-random using modular arithmetic (i*17+7)%count for deterministic chaos
 //
 // The patterns are designed to stress different aspects:
-//   - Memory usage (how many segments must be buffered)
-//   - Processing efficiency (how often contiguous processing can occur)
+//   - Memory usage patterns
+//   - Processing efficiency
 //   - Cache locality (how segments are accessed in memory)
 func generateWriteOrder(count int, pattern string) []int {
 	order := make([]int, count)
@@ -338,8 +332,7 @@ func generateWriteOrder(count int, pattern string) []int {
 			}
 		}
 	case "worst_case":
-		// Worst case: completely scattered pattern that maximizes memory buffering
-		// Pattern: middle-out then random to stress contiguous processing
+    // A scattered pattern that stresses segment bookkeeping
 		mid := count / 2
 		order[0] = mid
 		left, right := mid-1, mid+1

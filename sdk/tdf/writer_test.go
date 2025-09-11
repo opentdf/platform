@@ -1,6 +1,7 @@
 package tdf
 
 import (
+    "fmt"
 	"crypto/rand"
 	"encoding/json"
 	"os"
@@ -45,11 +46,16 @@ func TestWriterEndToEnd(t *testing.T) {
 		{"MultiSegmentFlow", testMultiSegmentFlow},
 		{"KeySplittingWithMultipleAttributes", testKeySplittingWithMultipleAttributes},
 		{"ManifestGeneration", testManifestGeneration},
-		{"AssertionsAndMetadata", testAssertionsAndMetadata},
+        {"AssertionsAndMetadata", testAssertionsAndMetadata},
+        {"GetManifestBeforeAndAfterFinalize", testGetManifestBeforeAndAfterFinalize},
 		{"ErrorConditions", testErrorConditions},
 		{"XORReconstruction", testXORReconstruction},
 		{"DifferentAttributeRules", testDifferentAttributeRules},
 		{"OutOfOrderSegments", testOutOfOrderSegments},
+		{"InitialAttributesOnWriter", testInitialAttributesOnWriter},
+		{"GetManifestIncludesInitialPolicy", testGetManifestIncludesInitialPolicy},
+		{"FinalizeWithSegmentsContiguousPrefix", testFinalizeWithSegmentsContiguousPrefix},
+		{"FinalizeWithSegmentsInvalidCases", testFinalizeWithSegmentsInvalidCases},
 	}
 
 	for _, tc := range testCases {
@@ -57,6 +63,171 @@ func TestWriterEndToEnd(t *testing.T) {
 			tc.test(t)
 		})
 	}
+}
+
+// testFinalizeWithSegmentsContiguousPrefix validates successful finalize when
+// segments are restricted to a contiguous prefix and no later segments exist.
+func testFinalizeWithSegmentsContiguousPrefix(t *testing.T) {
+    ctx := t.Context()
+
+    writer, err := NewWriter(ctx)
+    require.NoError(t, err)
+
+    // Write segments 0,1,2 only
+    for i := 0; i < 3; i++ {
+        _, err := writer.WriteSegment(ctx, i, []byte(fmt.Sprintf("seg-%d", i)))
+        require.NoError(t, err)
+    }
+
+    // Keep all segments via contiguous prefix [0,1,2]
+    attrs := []*policy.Value{createTestAttribute("https://example.com/attr/Basic/value/Test", testKAS1, "kid1")}
+    fin, err := writer.Finalize(ctx,
+        WithAttributeValues(attrs),
+        WithSegments([]int{0, 1, 2}),
+    )
+    require.NoError(t, err)
+    require.NotNil(t, fin.Manifest)
+    assert.Equal(t, 3, fin.TotalSegments)
+}
+
+// testFinalizeWithSegmentsInvalidCases checks validation errors for non-prefix
+// selections or when later segments exist.
+func testFinalizeWithSegmentsInvalidCases(t *testing.T) {
+    ctx := t.Context()
+
+    // Case 1: write 0..4 then try to keep only 0..2 → should fail
+    w1, err := NewWriter(ctx)
+    require.NoError(t, err)
+    for i := 0; i < 5; i++ {
+        _, err := w1.WriteSegment(ctx, i, []byte("x"))
+        require.NoError(t, err)
+    }
+    _, err = w1.Finalize(ctx, WithSegments([]int{0, 1, 2}))
+    require.Error(t, err)
+
+    // Case 2: non-contiguous indices → should fail
+    w2, err := NewWriter(ctx)
+    require.NoError(t, err)
+    for i := 0; i < 3; i++ {
+        _, err := w2.WriteSegment(ctx, i, []byte("y"))
+        require.NoError(t, err)
+    }
+    _, err = w2.Finalize(ctx, WithSegments([]int{0, 2}))
+    require.Error(t, err)
+
+    // Case 3: duplicates → should fail
+    w3, err := NewWriter(ctx)
+    require.NoError(t, err)
+    for i := 0; i < 2; i++ {
+        _, err := w3.WriteSegment(ctx, i, []byte("z"))
+        require.NoError(t, err)
+    }
+    _, err = w3.Finalize(ctx, WithSegments([]int{0, 0}))
+    require.Error(t, err)
+}
+
+// testGetManifestIncludesInitialPolicy ensures that GetManifest() returns a
+// provisional policy when initial attributes are provided to NewWriter.
+func testGetManifestIncludesInitialPolicy(t *testing.T) {
+    ctx := t.Context()
+
+    initAttrs := []*policy.Value{
+        createTestAttribute("https://example.com/attr/Init/value/One", testKAS1, "kid1"),
+    }
+
+    writer, err := NewWriter(ctx, WithInitialAttributes(initAttrs))
+    require.NoError(t, err)
+
+    // Pre-finalize manifest should include policy derived from initial attributes
+    m := writer.GetManifest()
+    require.NotNil(t, m)
+    require.NotEmpty(t, m.EncryptionInformation.Policy, "expected provisional policy in stub manifest")
+
+    policyBytes, err := ocrypto.Base64Decode([]byte(m.EncryptionInformation.Policy))
+    require.NoError(t, err)
+
+    var pol Policy
+    require.NoError(t, json.Unmarshal(policyBytes, &pol))
+
+    found := false
+    for _, pa := range pol.Body.DataAttributes {
+        if pa.Attribute == "https://example.com/attr/Init/value/One" {
+            found = true
+            break
+        }
+    }
+    assert.True(t, found, "provisional policy should include initial attribute FQN")
+
+    // Also ensure no key access objects or root signature present pre-finalize
+    assert.Len(t, m.EncryptionInformation.KeyAccessObjs, 0)
+    assert.Empty(t, m.EncryptionInformation.RootSignature.Signature)
+}
+
+// testInitialAttributesOnWriter verifies that attributes/KAS supplied at
+// NewWriter are used by Finalize when not overridden, and that Finalize
+// overrides take precedence.
+func testInitialAttributesOnWriter(t *testing.T) {
+    ctx := t.Context()
+
+    initAttrs := []*policy.Value{
+        createTestAttribute("https://example.com/attr/Init/value/One", testKAS1, "kid1"),
+    }
+    initKAS := &policy.SimpleKasKey{KasUri: testKAS1, PublicKey: &policy.SimpleKasPublicKey{Algorithm: policy.Algorithm_ALGORITHM_RSA_2048, Kid: "kid1", Pem: mockRSAPublicKey1}}
+
+    writer, err := NewWriter(ctx,
+        WithInitialAttributes(initAttrs),
+        WithDefaultKASForWriter(initKAS),
+    )
+    require.NoError(t, err)
+
+    _, err = writer.WriteSegment(ctx, 0, []byte("hello"))
+    require.NoError(t, err)
+
+    fin1, err := writer.Finalize(ctx)
+    require.NoError(t, err)
+    require.NotNil(t, fin1.Manifest)
+    assert.GreaterOrEqual(t, len(fin1.Manifest.EncryptionInformation.KeyAccessObjs), 1)
+
+    policyBytes, err := ocrypto.Base64Decode([]byte(fin1.Manifest.EncryptionInformation.Policy))
+    require.NoError(t, err)
+    var pol1 Policy
+    require.NoError(t, json.Unmarshal(policyBytes, &pol1))
+    found := false
+    for _, pa := range pol1.Body.DataAttributes {
+        if pa.Attribute == "https://example.com/attr/Init/value/One" {
+            found = true
+            break
+        }
+    }
+    assert.True(t, found, "policy should include initial attribute")
+
+    // Overrides at Finalize should take precedence
+    writer2, err := NewWriter(ctx,
+        WithInitialAttributes(initAttrs),
+        WithDefaultKASForWriter(initKAS),
+    )
+    require.NoError(t, err)
+    _, err = writer2.WriteSegment(ctx, 0, []byte("world"))
+    require.NoError(t, err)
+
+    overrideAttrs := []*policy.Value{
+        createTestAttribute("https://example.com/attr/Override/value/Two", testKAS2, "kid2"),
+    }
+    fin2, err := writer2.Finalize(ctx, WithAttributeValues(overrideAttrs))
+    require.NoError(t, err)
+
+    policyBytes2, err := ocrypto.Base64Decode([]byte(fin2.Manifest.EncryptionInformation.Policy))
+    require.NoError(t, err)
+    var pol2 Policy
+    require.NoError(t, json.Unmarshal(policyBytes2, &pol2))
+    found2 := false
+    for _, pa := range pol2.Body.DataAttributes {
+        if pa.Attribute == "https://example.com/attr/Override/value/Two" {
+            found2 = true
+            break
+        }
+    }
+    assert.True(t, found2, "policy should reflect override attributes at finalize")
 }
 
 // testBasicTDFCreationFlow tests the basic flow: NewWriter -> WriteSegment -> Finalize
@@ -798,4 +969,49 @@ func BenchmarkTDFCreation(b *testing.B) {
 			}
 		}
 	})
+}
+// testGetManifestBeforeAndAfterFinalize verifies GetManifest returns a stub
+// before finalization and the final manifest after finalization.
+func testGetManifestBeforeAndAfterFinalize(t *testing.T) {
+    ctx := t.Context()
+
+    writer, err := NewWriter(ctx)
+    require.NoError(t, err)
+
+    // Before writing any segment, stub manifest should still be available
+    m0 := writer.GetManifest()
+    require.NotNil(t, m0)
+    assert.Equal(t, TDFSpecVersion, m0.TDFVersion)
+    assert.Equal(t, tdfAsZip, m0.Payload.Protocol)
+    assert.Equal(t, tdfZipReference, m0.Payload.Type)
+    assert.True(t, m0.Payload.IsEncrypted)
+    // No segments yet
+    assert.Len(t, m0.EncryptionInformation.Segments, 0)
+
+    // Write a segment and check stub updates
+    data := []byte("abc123")
+    _, err = writer.WriteSegment(ctx, 0, data)
+    require.NoError(t, err)
+
+    m1 := writer.GetManifest()
+    require.NotNil(t, m1)
+    // Should reflect first segment defaults and sizes
+    assert.Len(t, m1.EncryptionInformation.Segments, 1)
+    assert.Equal(t, int64(len(data)), m1.EncryptionInformation.DefaultSegmentSize)
+    assert.Greater(t, m1.EncryptionInformation.DefaultEncryptedSegSize, int64(len(data)))
+    assert.Equal(t, writer.segmentIntegrityAlgorithm.String(), m1.EncryptionInformation.SegmentHashAlgorithm)
+
+    // Finalize and GetManifest should return the final one (with key access, root signature)
+    attrs := []*policy.Value{createTestAttribute("https://example.com/attr/Test/value/Basic", testKAS1, "kid1")}
+    fin, err := writer.Finalize(ctx, WithAttributeValues(attrs))
+    require.NoError(t, err)
+    require.NotNil(t, fin.Manifest)
+
+    m2 := writer.GetManifest()
+    // Expect at least one key access and a root signature after finalize
+    assert.GreaterOrEqual(t, len(m2.EncryptionInformation.KeyAccessObjs), 1)
+    assert.NotEmpty(t, m2.EncryptionInformation.RootSignature.Signature)
+
+    // Ensure GetManifest returns a clone, not the same pointer
+    assert.NotSame(t, fin.Manifest, m2)
 }

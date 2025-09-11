@@ -1,4 +1,4 @@
-package types //nolint:revive // already exported
+package types
 
 import (
 	"context"

@@ -209,7 +209,7 @@ func (e *Enforcer) extractRolesFromToken(t jwt.Token) []string {
 			)
 			return nil
 		}
-		claim = dotNotation(claimMap, roleClaim)
+		claim = dotNotation(claimMap, strings.Join(selectors[1:], "."))
 		if claim == nil {
 			e.logger.Warn("claim not found",
 				slog.String("claim", roleClaim),

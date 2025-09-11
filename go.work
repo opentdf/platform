@@ -6,8 +6,8 @@ use (
 	./examples
 	./lib/fixtures
 	./lib/flattening
-	./lib/identifier
 	./lib/ocrypto
+	./lib/identifier
 	./protocol/go
 	./sdk
 	./service

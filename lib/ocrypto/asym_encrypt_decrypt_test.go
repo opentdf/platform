@@ -3,9 +3,6 @@ package ocrypto
 import (
 	"crypto/sha256"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func salty(s string) []byte {
@@ -312,28 +309,40 @@ MJseKiCRhbMS8XoCOTogO4Au9SqpOKqHq2CFRb4=
 	for _, test := range keypairs {
 		t.Run(test.n, func(t *testing.T) {
 			asymEncryptor, err := FromPublicPEMWithSalt(test.publicKey, test.salt, test.info)
-			require.NoError(t, err, "NewAsymEncryption - failed")
+			if err != nil {
+				t.Fatalf("NewAsymEncryption - failed: %v", err)
+			}
 
 			plainText := "virtru"
 			cipherText, err := asymEncryptor.Encrypt([]byte(plainText))
-			require.NoError(t, err, "AsymEncryption encrypt failed")
+			if err != nil {
+				t.Fatalf("AsymEncryption encrypt failed: %v", err)
+			}
 
 			asymDecryptor, err := FromPrivatePEMWithSalt(test.privateKey, test.salt, test.info)
-			require.NoError(t, err, "NewAsymDecryption - failed")
+			if err != nil {
+				t.Fatalf("NewAsymDecryption - failed: %v", err)
+			}
 
 			var decryptedText []byte
 			ek := asymEncryptor.EphemeralKey()
 			if ek == nil {
 				decryptedText, err = asymDecryptor.Decrypt(cipherText)
-				require.NoError(t, err, "AsymDecryption decrypt failed")
+				if err != nil {
+					t.Fatalf("AsymDecryption decrypt failed: %v", err)
+				}
 			} else if ecd, ok := asymDecryptor.(ECDecryptor); ok {
 				decryptedText, err = ecd.DecryptWithEphemeralKey(cipherText, ek)
-				require.NoError(t, err, "AsymDecryption WithEphemeralKey decrypt failed")
+				if err != nil {
+					t.Fatalf("AsymDecryption decrypt failed: %v", err)
+				}
 			} else {
-				require.FailNowf(t, "AsymDecryption wrong type", "expected ECDecryptor but got %T", asymDecryptor)
+				t.Fatalf("AsymDecryption wrong type: %T", asymDecryptor)
 			}
 
-			assert.Equal(t, plainText, string(decryptedText), "Asym encrypt/decrypt failed")
+			if string(decryptedText) != plainText {
+				t.Error("Asym encrypt/decrypt failed")
+			}
 		})
 	}
 }

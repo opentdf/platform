@@ -768,11 +768,13 @@ func (s *EvaluateTestSuite) TestEvaluateResourceAttributeValues() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
+			notRegisteredResourceFQN := ""
 			resourceDecision, err := evaluateResourceAttributeValues(
 				s.T().Context(),
 				s.logger,
 				tc.resourceAttrs,
 				"test-resource-id",
+				notRegisteredResourceFQN,
 				s.action,
 				tc.entitlements,
 				s.accessibleAttrValues,

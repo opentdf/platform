@@ -14,15 +14,16 @@ message SimpleKasPublicKey {
 }
 
 message SimpleKasKey {
-    string kas_uri = 1; // The URL of the Key Access Server
-    SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
-    string kas_id = 3; // The ID of the Key Access Server
-};
+  string kas_uri = 1; // The URL of the Key Access Server
+  SimpleKasPublicKey public_key = 2; // The public key of the Key that belongs to the KAS
+  string kas_id = 3; // The ID of the Key Access Server
+}
 
 message KeyProviderConfig {
   string id = 1;
   string name = 2;
   bytes config_json = 3;
+  string manager = 4;
 
   // Common metadata
   common.Metadata metadata = 100;
@@ -460,6 +461,17 @@ message RegisteredResourceValue {
   common.Metadata metadata = 100;
 }
 
+message PolicyEnforcementPoint {
+  string client_id = 1 [
+    (buf.validate.field).string = {min_len: 1}
+  ];
+}
+
+// Holds the context needed for obligation fulfillment
+message RequestContext {
+  PolicyEnforcementPoint pep = 1;
+}
+
 message Obligation {
   string id = 1;
 
@@ -468,7 +480,9 @@ message Obligation {
   string name = 3;
 
   repeated ObligationValue values = 4;
-  
+
+  string fqn = 5;
+
   common.Metadata metadata = 100;
 }
 
@@ -478,6 +492,10 @@ message ObligationValue {
   Obligation obligation = 2;
 
   string value = 3;
+
+  repeated ObligationTrigger triggers = 4;
+
+  string fqn = 5;
 
   common.Metadata metadata = 100;
 }
@@ -490,6 +508,8 @@ message ObligationTrigger {
   Action action = 3;
 
   Value attribute_value = 4;
+
+  repeated RequestContext context = 5;
 
   common.Metadata metadata = 100;
 }

@@ -57,7 +57,7 @@ func (k *InProcessAESKey) Export(encapsulator trust.Encapsulator) ([]byte, error
 	}
 
 	// If an encryptor is provided, encrypt the key data before returning
-	encryptedKey, err := encapsulator.Encrypt(k.rawKey)
+	encryptedKey, err := encapsulator.Encapsulate(k)
 	if err != nil {
 		if k.logger != nil {
 			k.logger.Warn("failed to encrypt key data for export", slog.Any("err", err))
@@ -349,7 +349,11 @@ func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDet
 
 // GenerateECSessionKey generates a session key for NanoTDF
 func (a *InProcessProvider) GenerateECSessionKey(_ context.Context, ephemeralPublicKey string) (trust.Encapsulator, error) {
-	return ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
+	pke, err := ocrypto.FromPublicPEMWithSalt(ephemeralPublicKey, NanoVersionSalt(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("session key generation failed to create public key encryptor: %w", err)
+	}
+	return &OCEncapsulator{PublicKeyEncryptor: pke}, nil
 }
 
 // Close releases any resources held by the provider

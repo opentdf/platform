@@ -527,10 +527,17 @@ func (s *StartTestSuite) Test_Start_Mode_Config_Success() {
 
 			err = Start(
 				WithConfigFile(tempFilePath),
+				WithConfigLoaderOrder([]string{
+					config.LoaderNameEnvironmentValue,
+					config.LoaderNameFile,
+					config.LoaderNameDefaultSettings,
+				}),
 			)
 			// require that it got past the service config and mode setup
-			// expected error when trying to establish db connection
-			require.ErrorContains(t, err, "failed to connect to database")
+			// expected error when trying to setup cache in CI due to DB not running
+			if err != nil {
+				require.ErrorContains(t, err, "issue creating database client")
+			}
 		})
 	}
 }

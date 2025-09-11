@@ -538,6 +538,9 @@ components:
           type: string
           title: config_json
           format: byte
+        manager:
+          type: string
+          title: manager
         metadata:
           title: metadata
           description: Common metadata
@@ -598,6 +601,9 @@ components:
           items:
             $ref: '#/components/schemas/policy.ObligationValue'
           title: values
+        fqn:
+          type: string
+          title: fqn
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -618,6 +624,11 @@ components:
         attributeValue:
           title: attribute_value
           $ref: '#/components/schemas/policy.Value'
+        context:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.RequestContext'
+          title: context
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
@@ -635,10 +646,27 @@ components:
         value:
           type: string
           title: value
+        triggers:
+          type: array
+          items:
+            $ref: '#/components/schemas/policy.ObligationTrigger'
+          title: triggers
+        fqn:
+          type: string
+          title: fqn
         metadata:
           title: metadata
           $ref: '#/components/schemas/common.Metadata'
       title: ObligationValue
+      additionalProperties: false
+    policy.PolicyEnforcementPoint:
+      type: object
+      properties:
+        clientId:
+          type: string
+          title: client_id
+          minLength: 1
+      title: PolicyEnforcementPoint
       additionalProperties: false
     policy.PrivateKeyCtx:
       type: object
@@ -753,6 +781,15 @@ components:
           $ref: '#/components/schemas/common.Metadata'
       title: ActionAttributeValue
       additionalProperties: false
+    policy.RequestContext:
+      type: object
+      properties:
+        pep:
+          title: pep
+          $ref: '#/components/schemas/policy.PolicyEnforcementPoint'
+      title: RequestContext
+      additionalProperties: false
+      description: Holds the context needed for obligation fulfillment
     policy.ResourceMapping:
       type: object
       properties:

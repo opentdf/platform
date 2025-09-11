@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.5.0...lib/ocrypto/v0.6.0) (2025-09-11)
+
+
+### Bug Fixes
+
+* have export call encrypt instead of encapsulate ([#2709](https://github.com/opentdf/platform/issues/2709)) ([cdff893](https://github.com/opentdf/platform/commit/cdff893a09b66a386ec7ff19490ff777cdb84a14))
+
 ## [0.5.0](https://github.com/opentdf/platform/compare/lib/ocrypto/v0.4.0...lib/ocrypto/v0.5.0) (2025-09-04)
 
 

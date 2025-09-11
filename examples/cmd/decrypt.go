@@ -1,4 +1,3 @@
-//nolint:forbidigo,nestif // Sample code
 package cmd
 
 import (
@@ -8,15 +7,15 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/opentdf/platform/sdk"
-
 	"github.com/spf13/cobra"
 )
 
 var (
-	decryptAlg    string
-	useX509Verify bool
+	decryptAlg string
+	magicWord  string
 )
 
 func init() {
@@ -27,7 +26,7 @@ func init() {
 		Args:  cobra.MinimumNArgs(1),
 	}
 	decryptCmd.Flags().StringVarP(&decryptAlg, "rewrap-encapsulation-algorithm", "A", "rsa:2048", "Key wrap response algorithm algorithm:parameters")
-	decryptCmd.Flags().BoolVar(&useX509Verify, "x509-verify", false, "Use X.509 certificate validation for assertions (for TDFs created with X.509 signatures)")
+	decryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Use the simple 'magic word' validation provider with the given word.")
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 
@@ -38,7 +37,7 @@ func decrypt(cmd *cobra.Command, args []string) error {
 
 	tdfFile := args[0]
 
-	// Create new client
+	// Configure new client
 	client, err := newSDK()
 	if err != nil {
 		return err
@@ -100,13 +99,17 @@ func decrypt(cmd *cobra.Command, args []string) error {
 			opts = append(opts, sdk.WithSessionKeyType(kt))
 		}
 
-		// If the user specifies --x509-verify, use the X509ValidationProvider
-		// This is needed for TDFs created with X.509 signatures (e.g., from otdfctl)
-		if useX509Verify {
-			x509Provider := sdk.NewX509ValidationProvider(sdk.X509ValidationOptions{
-				AllowSelfSigned: true, // Allow self-signed certificates for testing
-			})
-			opts = append(opts, sdk.WithReaderAssertionValidationProvider(x509Provider))
+		// If the user specifies --magic-word, use the factory with the simple provider.
+		if magicWord != "" {
+			// Create assertion provider factory
+			factory := sdk.NewAssertionProviderFactory()
+			factory.SetDefaultValidationProvider(sdk.NoopAssertionValidationProvider{})
+			simpleProvider := &MagicWordAssertionProvider{MagicWord: magicWord}
+
+			// Register the provider to handle any assertion ID.
+			pattern, _ := regexp.Compile(MagicWordAssertionID)
+			factory.RegisterAssertionProvider(pattern, simpleProvider)
+			opts = append(opts, sdk.WithAssertionProviderFactory(*factory))
 		}
 
 		tdfreader, err := client.LoadTDF(file, opts...)

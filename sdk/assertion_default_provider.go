@@ -1,12 +1,15 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/opentdf/platform/lib/ocrypto"
 )
 
 // DefaultSigningProvider implements the existing key-based signing logic.
@@ -22,13 +25,18 @@ func NewDefaultSigningProvider(key AssertionKey) *DefaultSigningProvider {
 	}
 }
 
+func (p *DefaultSigningProvider) CreateAssertionConfig() AssertionConfig {
+	// TODO implement
+	panic("implement me")
+}
+
 // Sign creates a JWS signature using the configured key
 func (p *DefaultSigningProvider) Sign(_ context.Context, _ *Assertion, assertionHash, assertionSig string) (string, error) {
 	if p.key.IsEmpty() {
 		return "", errors.New("signing key not configured")
 	}
 
-	// Create JWT with assertion hash and signature claims
+	// Configure JWT with assertion hash and signature claims
 	tok := jwt.New()
 	if err := tok.Set(kAssertionHash, assertionHash); err != nil {
 		return "", fmt.Errorf("failed to set assertion hash: %w", err)
@@ -65,36 +73,46 @@ func (p *DefaultSigningProvider) GetAlgorithm() string {
 // DefaultValidationProvider implements the existing key-based validation logic.
 // This preserves backward compatibility with the current SDK behavior.
 type DefaultValidationProvider struct {
-	keys AssertionVerificationKeys
+	keys          AssertionVerificationKeys
+	aggregateHash []byte
 }
 
 // NewDefaultValidationProvider creates a validation provider using the existing verification keys
-func NewDefaultValidationProvider(keys AssertionVerificationKeys) *DefaultValidationProvider {
-	return &DefaultValidationProvider{
-		keys: keys,
-	}
+func NewDefaultValidationProvider() *DefaultValidationProvider {
+	return &DefaultValidationProvider{}
 }
 
 // NewDefaultValidationProviderWithKey creates a validation provider with a single key
-func NewDefaultValidationProviderWithKey(key AssertionKey) *DefaultValidationProvider {
+func NewDefaultValidationProviderWithKey(key AssertionKey, bytes []byte) *DefaultValidationProvider {
 	return &DefaultValidationProvider{
 		keys: AssertionVerificationKeys{
 			DefaultKey: key,
 		},
+		aggregateHash: bytes,
 	}
 }
 
-// Validate verifies the assertion signature using the configured keys
-func (p *DefaultValidationProvider) Validate(_ context.Context, assertion Assertion) (string, string, error) {
+// Verify verifies the assertion signature using the configured keys
+func (p *DefaultValidationProvider) Verify(_ context.Context, assertion Assertion, t TDFObject) error {
+	//if !r.config.verifiers.IsEmpty() {
+	//	foundKey, err := r.config.verifiers.Get(assertion.ID)
+	//	if err != nil {
+	//		return nil, fmt.Errorf("%w: %w", ErrAssertionFailure{ID: assertion.ID}, err)
+	//	}
+	//	if !foundKey.IsEmpty() {
+	//		assertionKey.Alg = foundKey.Alg
+	//		assertionKey.Key = foundKey.Key
+	//	}
+	//}
 	// Get the appropriate key for this assertion
 	key, err := p.keys.Get(assertion.ID)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to get verification key: %w", err)
+		return fmt.Errorf("failed to get verification key: %w", err)
 	}
 
 	// If no key is configured, skip validation (backward compatibility)
 	if key.IsEmpty() {
-		return "", "", nil
+		return nil
 	}
 
 	// Parse and verify the JWS
@@ -102,30 +120,34 @@ func (p *DefaultValidationProvider) Validate(_ context.Context, assertion Assert
 		jwt.WithKey(jwa.KeyAlgorithmFrom(key.Alg.String()), key.Key),
 	)
 	if err != nil {
-		return "", "", fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
+		return fmt.Errorf("%w: %w", errAssertionVerifyKeyFailure, err)
 	}
 
 	// Extract the hash claim
 	hashClaim, found := tok.Get(kAssertionHash)
 	if !found {
-		return "", "", errors.New("hash claim not found")
+		return errors.New("hash claim not found")
 	}
 	hash, ok := hashClaim.(string)
 	if !ok {
-		return "", "", errors.New("hash claim is not a string")
+		return errors.New("hash claim is not a string")
 	}
 
 	// Extract the signature claim
 	sigClaim, found := tok.Get(kAssertionSignature)
 	if !found {
-		return "", "", errors.New("signature claim not found")
+		return errors.New("signature claim not found")
 	}
 	sig, ok := sigClaim.(string)
 	if !ok {
-		return "", "", errors.New("signature claim is not a string")
+		return errors.New("signature claim is not a string")
 	}
 
-	return hash, sig, nil
+	if err := performStandardAssertionChecks(assertion, hash, sig, p.aggregateHash, t.Manifest()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // IsTrusted always returns nil for the default provider (key-based trust)
@@ -177,7 +199,7 @@ func (p *PayloadKeyProvider) Sign(_ context.Context, _ *Assertion, assertionHash
 		return "", errors.New("payload key not configured")
 	}
 
-	// Create JWT with assertion hash and signature claims
+	// Configure JWT with assertion hash and signature claims
 	tok := jwt.New()
 	if err := tok.Set(kAssertionHash, assertionHash); err != nil {
 		return "", fmt.Errorf("failed to set assertion hash: %w", err)
@@ -262,4 +284,40 @@ func (p *PayloadKeyValidationProvider) IsTrusted(_ context.Context, _ Assertion)
 // GetTrustedAuthorities returns payload key as the trusted authority
 func (p *PayloadKeyValidationProvider) GetTrustedAuthorities() []string {
 	return []string{"payload-key:HS256"}
+}
+
+// performStandardAssertionChecks performs the standard DEK-based assertion validation checks
+func performStandardAssertionChecks(assertion Assertion, assertionHash, assertionSig string, aggregateHashBytes []byte, m Manifest) error {
+	// Get the hash of the assertion
+	hashOfAssertionAsHex, err := assertion.GetHash()
+	if err != nil {
+		return fmt.Errorf("%w: failed to get hash of assertion: %w", ErrAssertionFailure{ID: assertion.ID}, err)
+	}
+
+	hashOfAssertion := make([]byte, hex.DecodedLen(len(hashOfAssertionAsHex)))
+	_, err = hex.Decode(hashOfAssertion, hashOfAssertionAsHex)
+	if err != nil {
+		return fmt.Errorf("error decoding hex string: %w", err)
+	}
+
+	isLegacyTDF := m.TDFVersion == ""
+	if isLegacyTDF {
+		hashOfAssertion = hashOfAssertionAsHex
+	}
+
+	var completeHashBuilder bytes.Buffer
+	completeHashBuilder.Write(aggregateHashBytes)
+	completeHashBuilder.Write(hashOfAssertion)
+
+	base64Hash := ocrypto.Base64Encode(completeHashBuilder.Bytes())
+
+	if string(hashOfAssertionAsHex) != assertionHash {
+		return fmt.Errorf("%w: assertion hash missmatch", ErrAssertionFailure{ID: assertion.ID})
+	}
+
+	if assertionSig != string(base64Hash) {
+		return fmt.Errorf("%w: failed integrity check on assertion signature", ErrAssertionFailure{ID: assertion.ID})
+	}
+
+	return nil
 }

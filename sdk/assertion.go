@@ -26,8 +26,6 @@ type AssertionConfig struct {
 	AppliesToState AppliesToState `validate:"required"`
 	Statement      Statement
 	SigningKey     AssertionKey
-	// SigningProvider allows custom signing implementation (optional)
-	SigningProvider AssertionSigningProvider
 }
 
 type Assertion struct {
@@ -68,24 +66,6 @@ func (a *Assertion) SignWithProvider(ctx context.Context, hash, sig string, prov
 	a.Binding.Signature = signature
 
 	return nil
-}
-
-// Verify checks the binding signature of the assertion and
-// returns the hash and the signature. It returns an error if the verification fails.
-func (a Assertion) Verify(key AssertionKey) (string, string, error) {
-	// Use default provider with the provided key
-	provider := NewDefaultValidationProviderWithKey(key)
-	return a.VerifyWithProvider(context.Background(), provider)
-}
-
-// VerifyWithProvider validates the assertion using a custom provider.
-// This method allows for flexible validation implementations including certificate-based validation.
-func (a Assertion) VerifyWithProvider(ctx context.Context, provider AssertionValidationProvider) (string, string, error) {
-	if provider == nil {
-		return "", "", errors.New("validation provider is required")
-	}
-
-	return provider.Validate(ctx, a)
 }
 
 // GetHash returns the hash of the assertion in hex format.
@@ -158,10 +138,15 @@ func (s *Statement) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+const (
+	StatementFormatJSONStructured = "json-structured"
+	StatementFormatString         = "string"
+)
+
 // Statement includes information applying to the scope of the assertion.
 // It could contain rights, handling instructions, or general metadata.
 type Statement struct {
-	// Format describes the payload encoding format. (e.g. json)
+	// Format describes the payload encoding format. (e.g. json-structured, string)
 	Format string `json:"format,omitempty" validate:"required"`
 	// Schema describes the schema of the payload. (e.g. tdf)
 	Schema string `json:"schema,omitempty" validate:"required"`

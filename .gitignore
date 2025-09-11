@@ -42,12 +42,11 @@ coverage.lcov
 sdk/nanotest1.ntdf
 
 *.zip
-sensitive.txt.tdf
 keys/
-/examples/sensitive.txt.ntdf
-sensitive.txt.ntdf
 traces/
 
 # Cucumber / BDD log files
 *.log
 /examples/examples-cli
+/examples/*.tdf
+/examples/*.ntdf

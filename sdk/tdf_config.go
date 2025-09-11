@@ -83,6 +83,7 @@ type TDFConfig struct {
 	AssertionSigningProvider AssertionSigningProvider
 	// AssertionValidationProvider allows custom validation implementation (optional)
 	AssertionValidationProvider AssertionValidationProvider
+	// FIXME replace with AssertionProvider
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
@@ -198,7 +199,7 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 }
 
-// WithDefaultAssertion returns an Option that adds a default assertion to the TDF.
+// WithSystemMetadataAssertion returns an Option that adds a default assertion to the TDF.
 func WithSystemMetadataAssertion() TDFOption {
 	return func(c *TDFConfig) error {
 		c.addDefaultAssertion = true
@@ -264,15 +265,6 @@ func WithAssertionSigningProvider(provider AssertionSigningProvider) TDFOption {
 	}
 }
 
-// WithAssertionValidationProvider sets a custom assertion validation provider.
-// If not set, the default key-based provider will be used.
-func WithAssertionValidationProvider(provider AssertionValidationProvider) TDFOption {
-	return func(c *TDFConfig) error {
-		c.AssertionValidationProvider = provider
-		return nil
-	}
-}
-
 // Schema Validation where 0 = none (skip), 1 = lax (allowing novel entries, 'falsy' values for unkowns), 2 = strict (rejecting novel entries, strict match to manifest schema)
 type SchemaValidationIntensity int
 
@@ -286,15 +278,17 @@ const (
 type TDFReaderOption func(*TDFReaderConfig) error
 
 type TDFReaderConfig struct {
-	verifiers                    AssertionVerificationKeys
+	// verifiers verification public keys
+	verifiers AssertionVerificationKeys
+	// TODO only disable DEK?
 	disableAssertionVerification bool
+	// AssertionProviderFactory allows custom validation implementation
+	AssertionProviderFactory AssertionProviderFactory
 
 	schemaValidationIntensity SchemaValidationIntensity
 	kasSessionKey             ocrypto.KeyPair
 	kasAllowlist              AllowList // KAS URLs that are allowed to be used for reading TDFs
 	ignoreAllowList           bool      // If true, the kasAllowlist will be ignored, and all KAS URLs will be allowed
-	// AssertionValidationProvider allows custom validation implementation (optional)
-	AssertionValidationProvider AssertionValidationProvider
 }
 
 type AllowList map[string]bool
@@ -395,11 +389,11 @@ func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOpti
 	}
 }
 
-// WithReaderAssertionValidationProvider sets a custom assertion validation provider for reading.
+// WithAssertionProviderFactory sets a custom assertion validation provider for reading.
 // If not set, the default key-based provider will be used.
-func WithReaderAssertionValidationProvider(provider AssertionValidationProvider) TDFReaderOption {
+func WithAssertionProviderFactory(factory AssertionProviderFactory) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
-		c.AssertionValidationProvider = provider
+		c.AssertionProviderFactory = factory
 		return nil
 	}
 }

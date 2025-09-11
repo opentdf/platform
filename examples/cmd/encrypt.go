@@ -31,11 +31,11 @@ var (
 func init() {
 	encryptCmd := cobra.Command{
 		Use:   "encrypt",
-		Short: "Create encrypted TDF",
+		Short: "Configure encrypted TDF",
 		RunE:  encrypt,
 		Args:  cobra.MinimumNArgs(1),
 	}
-	encryptCmd.Flags().StringSliceVarP(&dataAttributes, "data-attributes", "a", []string{"https://example.com/attr/attr1/value/value1"}, "space separated list of data attributes")
+	encryptCmd.Flags().StringSliceVarP(&dataAttributes, "data-attributes", "a", []string{}, "space separated list of data attributes")
 	encryptCmd.Flags().BoolVar(&nanoFormat, "nano", false, "Output in nanoTDF format")
 	encryptCmd.Flags().BoolVar(&autoconfigure, "autoconfigure", true, "Use attribute grants to select kases")
 	encryptCmd.Flags().BoolVar(&noKIDInKAO, "no-kid-in-kao", false, "[deprecated] Disable storing key identifiers in TDF KAOs")
@@ -56,7 +56,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 	plainText := args[0]
 	in := strings.NewReader(plainText)
 
-	// Create new offline client
+	// Configure new offline client
 	client, err := newSDK()
 	if err != nil {
 		return err
@@ -97,6 +97,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 
 	if !nanoFormat {
 		opts := []sdk.TDFOption{sdk.WithDataAttributes(dataAttributes...)}
+		autoconfigure = false
 		if !autoconfigure {
 			opts = append(opts, sdk.WithAutoconfigure(autoconfigure))
 			opts = append(opts, sdk.WithKasInformation(
@@ -112,7 +113,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			}
 			opts = append(opts, sdk.WithWrappingKeyAlg(kt))
 		}
-		tdf, err := client.CreateTDF(out, in, opts...)
+		tdf, err := client.CreateTDFContext(cmd.Context(), out, in, opts...)
 		if err != nil {
 			return err
 		}

@@ -17,9 +17,6 @@ go build -o examples-cli
 # List attributes
 ./examples-cli attributes ls
 
-# Show assertion provider examples
-./examples-cli assertion --help
-
 # Run encryption example
 ./examples-cli encrypt sensitive.txt -o sensitive.txt.tdf
 ```
@@ -30,17 +27,12 @@ go build -o examples-cli
 - [Attribute Service](./cmd/attributes.go) - Manage and query data attributes
 - [Authorization Service](./cmd/authorization.go) - Authorization and access control
 
-### Assertion Providers
-- [Assertion Providers](./cmd/assertion.go) - Custom signing and validation providers
-  - Default provider (backward compatible)
-  - X.509 certificate provider (PIV/CAC support)
-  - Hardware token provider (YubiKey, CAC cards)
-  - Custom validation providers
-  - Hybrid validation (multiple methods)
+### Assertion
+- [Assertion](./cmd/assertion.go) - Examples of custom signing and validation providers.
 
 ### Encryption & Decryption
-- [Encrypt](./cmd/encrypt.go) - Create encrypted TDF files
-- [Decrypt](./cmd/decrypt.go) - Decrypt TDF files
+- [Encrypt](./cmd/encrypt.go) - Create encrypted TDF files.
+- [Decrypt](./cmd/decrypt.go) - Decrypt TDF files. Now includes a "Magic Word" example for simple custom validation.
 - [IsValid](./cmd/isvalid.go) - Validate TDF files
 
 ### Key Access Service (KAS)
@@ -53,59 +45,30 @@ go build -o examples-cli
 
 ## Assertion Provider Examples
 
-The assertion provider examples demonstrate how to implement custom signing and validation for TDF assertions, enabling support for hardware security modules, smart cards, and flexible validation strategies.
+The `assertion` command demonstrates how to use the `ProviderFactory` to implement custom signing and validation for TDF assertions.
 
-### Running Assertion Provider Examples
+### Adding an Assertion to an Existing TDF
+
+The `assertion add` subcommand demonstrates how to add a new assertion to an existing TDF. To ensure the integrity of the TDF is maintained, this is accomplished by performing a full decrypt and re-encrypt workflow. This process guarantees that the TDF's root signature is correctly recalculated to include the new assertion.
+
+**To use this example:**
 
 ```shell
-# Show all available assertion provider commands
-./examples-cli assertion --help
-
-# Run the default provider example (backward compatible)
-./examples-cli assertion default
-
-# Demonstrate X.509 certificate-based signing (PIV/CAC support)
-./examples-cli assertion x509
-./examples-cli assertion x509 --details  # Show certificate details
-
-# Show hardware token provider implementation
-./examples-cli assertion hardware --details
-
-# Demonstrate custom validation with trust policies
-./examples-cli assertion validation
-
-# Show hybrid validation combining multiple methods
-./examples-cli assertion hybrid
+# Add a new assertion to a TDF, creating a new output file
+./examples-cli assertion add --in sensitive.tdf --out sensitive-plus-assertion.tdf --magic-word swordfish
 ```
-
-### Key Features Demonstrated
-
-1. **Default Provider** - Shows existing key-based signing (100% backward compatible)
-2. **X.509 Provider** - Certificate-based signing for PIV/CAC cards
-3. **Hardware Provider** - Integration with YubiKey, CAC cards via PKCS#11
-4. **Custom Validation** - X.509 validation with Federal PKI trust anchors
-5. **Hybrid Validation** - Combines multiple validation methods with fallback
-
-### Use Cases
-
-- **Government/Military**: PIV/CAC card integration for classified data
-- **Enterprise**: Hardware security module (HSM) integration
-- **Migration**: Gradual transition from key-based to certificate-based authentication
-- **Compliance**: Meet NIST SP 800-78, FIPS 201, NATO STANAG 4774 requirements
 
 ### Implementation Details
 
 The provider interfaces allow developers to:
-- Implement custom signing logic without modifying core SDK
-- Support hardware tokens that never expose private keys
-- Validate assertions using custom trust models
-- Maintain backward compatibility while adding new capabilities
+- Implement custom signing logic without modifying the core SDK.
+- Support hardware tokens that never expose private keys.
+- Validate assertions using custom trust models.
+- Maintain backward compatibility while adding new capabilities.
 
 For full implementation details, see:
+- [Provider Factory](../sdk/assertion_provider_factory.go)
 - [Provider Interfaces](../sdk/assertion_provider.go)
-- [Default Implementation](../sdk/assertion_default_provider.go)
-- [X.509 Implementation](../sdk/assertion_x5c_provider.go)
-- [Provider Tests](../sdk/assertion_provider_test.go)
 
 ## Configuration Options
 
@@ -122,10 +85,9 @@ The examples CLI supports various configuration options:
 ./examples-cli --insecurePlaintextConn # Use plaintext connection (dev only)
 
 # Example with full configuration
-./examples-cli assertion x509 \
-              --platformEndpoint https://platform.example.com \
-              --creds myapp:mysecret \
-              --details
+./examples-cli assertion add --in sensitive.tdf --out sensitive-plus-assertion.tdf --magic-word swordfish \
+              --platformEndpoint https://platform.example.com 
+              --creds myapp:mysecret
 ```
 
 ## Environment Setup
@@ -133,5 +95,21 @@ The examples CLI supports various configuration options:
 For local development and testing:
 
 ```shell
-./examples-cli --platformEndpoint "http://localhost:8080" --creds "opentdf:secret" attributes ls
+./examples-cli --platformEndpoint "http://localhost:8080" --creds "opentdf:secret" \
+attributes ls
+```
+
+```shell
+./examples-cli --platformEndpoint "http://localhost:8080" --creds "opentdf:secret" \
+encrypt --autoconfigure=false README.md -o sensitive.txt.tdf
+```
+
+```shell
+./examples-cli --platformEndpoint "http://localhost:8080" --creds "opentdf:secret" \
+assertion add --in sensitive.txt.tdf --out sensitive-plus-assertion.tdf --magic-word swordfish
+```
+
+```shell
+./examples-cli --platformEndpoint "http://localhost:8080" --creds "opentdf:secret" \
+decrypt sensitive-plus-assertion.tdf --magic-word swordfish
 ```

@@ -36,7 +36,7 @@ require (
 	github.com/opentdf/platform/lib/flattening v0.1.3
 	github.com/opentdf/platform/lib/identifier v0.0.2
 	github.com/opentdf/platform/lib/ocrypto v0.6.0
-	github.com/opentdf/platform/protocol/go v0.7.0
+	github.com/opentdf/platform/protocol/go v0.8.0
 	github.com/opentdf/platform/sdk v0.7.0
 	github.com/pressly/goose/v3 v3.24.3
 	github.com/spf13/cobra v1.9.1

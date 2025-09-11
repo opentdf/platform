@@ -57,20 +57,22 @@ func (s *ObligationsPDPSuite) SetupSuite() {
 						},
 					},
 				},
-				// {
-				// 	Fqn: mockObligationFQN2,
-				// 	Triggers: []*policy.ObligationTrigger{
-				// 		{
-				// 			Action:         mockAction,
-				// 			AttributeValue: &policy.Value{Fqn: mockAttrValFQN2},
-				// 			Context: &policy.ObligationTrigger_Context{
-				// 				Pep: &policy.ObligationTrigger_Context_PEP{
-				// 					ClientId: mockClientID,
-				// 				},
-				// 			},
-				// 		},
-				// 	},
-				// },
+				{
+					Fqn: mockObligationFQN2,
+					Triggers: []*policy.ObligationTrigger{
+						{
+							Action:         mockAction,
+							AttributeValue: &policy.Value{Fqn: mockAttrValFQN2},
+							Context: []*policy.RequestContext{
+								{
+									Pep: &policy.PolicyEnforcementPoint{
+										ClientId: mockClientID,
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -91,7 +93,7 @@ func (s *ObligationsPDPSuite) Test_NoObligationsTriggered() {
 	type args struct {
 		action                 *policy.Action
 		resources              []*authz.Resource
-		decisionRequestContext *mockDecisionRequestContext
+		decisionRequestContext *policy.RequestContext
 	}
 	tests := []struct {
 		name string
@@ -110,7 +112,7 @@ func (s *ObligationsPDPSuite) Test_NoObligationsTriggered() {
 						},
 					},
 				},
-				decisionRequestContext: &mockDecisionRequestContext{},
+				decisionRequestContext: &policy.RequestContext{},
 			},
 		},
 		{
@@ -126,7 +128,7 @@ func (s *ObligationsPDPSuite) Test_NoObligationsTriggered() {
 						},
 					},
 				},
-				decisionRequestContext: &mockDecisionRequestContext{},
+				decisionRequestContext: &policy.RequestContext{},
 			},
 		},
 		{
@@ -142,8 +144,10 @@ func (s *ObligationsPDPSuite) Test_NoObligationsTriggered() {
 						},
 					},
 				},
-				decisionRequestContext: &mockDecisionRequestContext{
-					PEP: struct{ clientID string }{clientID: "unknown-client-id"},
+				decisionRequestContext: &policy.RequestContext{
+					Pep: &policy.PolicyEnforcementPoint{
+						ClientId: "unknown-client-id",
+					},
 				},
 			},
 		},
@@ -172,7 +176,7 @@ func (s *ObligationsPDPSuite) Test_SimpleObligationTriggered() {
 			},
 		},
 	}
-	decisionRequestContext := &mockDecisionRequestContext{}
+	decisionRequestContext := &policy.RequestContext{}
 
 	perResource, all, err := s.pdp.GetRequiredObligations(context.Background(), mockAction, resources, decisionRequestContext)
 
@@ -191,8 +195,10 @@ func (s *ObligationsPDPSuite) Test_ClientScopedObligationTriggered() {
 			},
 		},
 	}
-	decisionRequestContext := &mockDecisionRequestContext{
-		PEP: struct{ clientID string }{clientID: mockClientID},
+	decisionRequestContext := &policy.RequestContext{
+		Pep: &policy.PolicyEnforcementPoint{
+			ClientId: mockClientID,
+		},
 	}
 
 	perResource, all, err := s.pdp.GetRequiredObligations(context.Background(), mockAction, resources, decisionRequestContext)
@@ -219,8 +225,10 @@ func (s *ObligationsPDPSuite) Test_MixedObligationsTriggered() {
 			},
 		},
 	}
-	decisionRequestContext := &mockDecisionRequestContext{
-		PEP: struct{ clientID string }{clientID: mockClientID},
+	decisionRequestContext := &policy.RequestContext{
+		Pep: &policy.PolicyEnforcementPoint{
+			ClientId: mockClientID,
+		},
 	}
 
 	perResource, all, err := s.pdp.GetRequiredObligations(context.Background(), mockAction, resources, decisionRequestContext)
@@ -239,7 +247,7 @@ func (s *ObligationsPDPSuite) Test_UnknownRegisteredResourceValue() {
 			},
 		},
 	}
-	decisionRequestContext := &mockDecisionRequestContext{}
+	decisionRequestContext := &policy.RequestContext{}
 
 	_, _, err := s.pdp.GetRequiredObligations(context.Background(), mockAction, resources, decisionRequestContext)
 

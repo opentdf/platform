@@ -59,24 +59,28 @@ func NewObligationsPolicyDecisionPoint(
 			for _, trigger := range obligationValue.GetTriggers() {
 				attrValFqn := trigger.GetAttributeValue().GetFqn()
 				actionName := trigger.GetAction().GetName()
-				optionalPepClientID := "mock-client-id"
-				// optionalPepClientID := trigger.GetContext().GetPep().GetClientId()
-
-				// If the request context PEP client ID was provided to scope an obligation value to a PEP, populate that lookup graph
-				if optionalPepClientID != "" {
-					if _, ok := clientScopedTriggered[optionalPepClientID]; !ok {
-						clientScopedTriggered[optionalPepClientID] = make(obligationValuesByActionOnAnAttributeValue)
-					}
-					if _, ok := clientScopedTriggered[optionalPepClientID][actionName]; !ok {
-						clientScopedTriggered[optionalPepClientID][actionName] = make(map[string][]string)
-					}
-					clientScopedTriggered[optionalPepClientID][actionName][attrValFqn] = append(clientScopedTriggered[optionalPepClientID][actionName][attrValFqn], obligationValue.GetFqn())
-				} else {
-					// Otherwise, populate unscoped lookup graph with just actions and attributes alone
+				// Populate unscoped lookup graph with just actions and attributes alone
+				if len(trigger.GetContext()) == 0 {
 					if _, ok := simpleTriggered[actionName]; !ok {
 						simpleTriggered[actionName] = make(map[string][]string)
 					}
 					simpleTriggered[actionName][attrValFqn] = append(simpleTriggered[actionName][attrValFqn], obligationValue.GetFqn())
+				}
+
+				// If request contexts were provided, PEP client ID was required to scope an obligation value to a PEP, so populate that lookup graph
+				for _, optionalRequestContext := range trigger.GetContext() {
+					requiredPEPClientID := optionalRequestContext.GetPep().GetClientId()
+
+					if requiredPEPClientID == "" {
+						return nil, fmt.Errorf("trigger request context is optional but must contain PEP client ID")
+					}
+					if _, ok := clientScopedTriggered[requiredPEPClientID]; !ok {
+						clientScopedTriggered[requiredPEPClientID] = make(obligationValuesByActionOnAnAttributeValue)
+					}
+					if _, ok := clientScopedTriggered[requiredPEPClientID][actionName]; !ok {
+						clientScopedTriggered[requiredPEPClientID][actionName] = make(map[string][]string)
+					}
+					clientScopedTriggered[requiredPEPClientID][actionName][attrValFqn] = append(clientScopedTriggered[requiredPEPClientID][actionName][attrValFqn], obligationValue.GetFqn())
 				}
 			}
 		}
@@ -107,7 +111,7 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 	ctx context.Context,
 	action *policy.Action,
 	resources []*authz.Resource,
-	decisionRequestContext *mockDecisionRequestContext,
+	decisionRequestContext *policy.RequestContext,
 ) ([][]string, []string, error) {
 	// Required obligations per resource of a given index
 	requiredOblValueFQNsPerResource := make([][]string, len(resources))
@@ -115,7 +119,7 @@ func (p *ObligationsPolicyDecisionPoint) GetRequiredObligations(
 	var allRequiredOblValueFQNs []string
 	allOblValFQNsSeen := make(map[string]struct{})
 
-	pepClientID := decisionRequestContext.PEP.clientID
+	pepClientID := decisionRequestContext.GetPep().GetClientId()
 	actionName := action.GetName()
 
 	l := p.logger.

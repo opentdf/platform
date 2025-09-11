@@ -113,7 +113,7 @@ func TestAESProtectedKey_Export_EncapsulatorError(t *testing.T) {
 	require.NoError(t, err)
 
 	mockEncapsulator := &mockEncapsulator{
-		encapsulateFunc: func(_ ProtectedKey) ([]byte, error) {
+		encryptFunc: func(_ []byte) ([]byte, error) {
 			return nil, assert.AnError
 		},
 	}

@@ -430,12 +430,13 @@ func NanoVersionSalt() []byte {
 }
 
 // ECDecrypt uses hybrid ECIES to decrypt the data.
-func (s *StandardCrypto) ECDecrypt(ctx context.Context, keyID string, ephemeralPublicKey, ciphertext []byte) ([]byte, error) {
+func (s *StandardCrypto) ECDecrypt(ctx context.Context, keyID string, ephemeralPublicKey, ciphertext []byte) (ocrypto.ProtectedKey, error) {
 	unwrappedKey, err := s.Decrypt(ctx, trust.KeyIdentifier(keyID), ciphertext, ephemeralPublicKey)
 	if err != nil {
 		return nil, err
 	}
-	return unwrappedKey.Export(nil)
+
+	return unwrappedKey, nil
 }
 
 // Decrypt implements the SecurityProvider Decrypt method

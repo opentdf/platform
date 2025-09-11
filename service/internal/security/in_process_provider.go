@@ -220,8 +220,11 @@ func (a *InProcessProvider) ListKeysWith(ctx context.Context, opts trust.ListKey
 }
 
 // Decrypt implements the unified decryption method for both RSA and EC
-func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (trust.ProtectedKey, error) {
+func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDetails, ciphertext []byte, ephemeralPublicKey []byte) (ocrypto.ProtectedKey, error) {
 	kid := string(keyDetails.ID())
+
+	var protectedKey ocrypto.ProtectedKey
+	var err error
 
 	// Try to determine the key type
 	keyType, err := a.determineKeyType(ctx, kid)
@@ -241,7 +244,7 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 		if len(ephemeralPublicKey) == 0 {
 			return nil, errors.New("ephemeral public key is required for EC decryption")
 		}
-		rawKey, err = a.cryptoProvider.ECDecrypt(ctx, kid, ephemeralPublicKey, ciphertext)
+		protectedKey, err = a.cryptoProvider.ECDecrypt(ctx, kid, ephemeralPublicKey, ciphertext)
 
 	default:
 		return nil, errors.New("unsupported key algorithm")
@@ -251,15 +254,18 @@ func (a *InProcessProvider) Decrypt(ctx context.Context, keyDetails trust.KeyDet
 		return nil, err
 	}
 
-	protectedKey, err := ocrypto.NewAESProtectedKey(rawKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create protected key: %w", err)
+	if protectedKey == nil {
+		protectedKey, err = ocrypto.NewAESProtectedKey(rawKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create protected key: %w", err)
+		}
 	}
+
 	return protectedKey, nil
 }
 
 // DeriveKey generates a symmetric key for NanoTDF
-func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (trust.ProtectedKey, error) {
+func (a *InProcessProvider) DeriveKey(_ context.Context, keyDetails trust.KeyDetails, ephemeralPublicKeyBytes []byte, curve elliptic.Curve) (ocrypto.ProtectedKey, error) {
 	k, err := a.cryptoProvider.GenerateNanoTDFSymmetricKey(string(keyDetails.ID()), ephemeralPublicKeyBytes, curve)
 	if err != nil {
 		return nil, err

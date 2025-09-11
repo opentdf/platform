@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
+	"github.com/opentdf/platform/service/internal/access/v2/plugin"
 	"github.com/opentdf/platform/service/internal/server"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
@@ -47,7 +48,8 @@ type RegistrationParams struct {
 	// NewCacheClient is a function that can be used to create a new cache instance for the service
 	NewCacheClient func(cache.Options) (*cache.Cache, error)
 
-	KeyManagerFactories []trust.NamedKeyManagerFactory
+	KeyManagerFactories  []trust.NamedKeyManagerFactory
+	RegisteredPluginPDPs []plugin.PolicyDecisionPoint
 
 	////// The following functions are optional and intended to be called by the service //////
 

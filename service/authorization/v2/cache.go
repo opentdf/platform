@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/opentdf/platform/protocol/go/policy"
-	"github.com/opentdf/platform/service/internal/access/v2"
+	policyStore "github.com/opentdf/platform/service/internal/access/v2/store"
 	"github.com/opentdf/platform/service/logger"
 	"github.com/opentdf/platform/service/pkg/cache"
 )
@@ -45,7 +45,7 @@ type EntitlementPolicyCache struct {
 	cacheClient *cache.Cache
 
 	// SDK-connected retriever to fetch fresh data from policy services
-	retriever *access.EntitlementPolicyRetriever
+	retriever *policyStore.EntitlementPolicyRetriever
 
 	// Refresh state
 	configuredRefreshInterval time.Duration
@@ -69,7 +69,7 @@ type EntitlementPolicy struct {
 func NewEntitlementPolicyCache(
 	ctx context.Context,
 	l *logger.Logger,
-	retriever *access.EntitlementPolicyRetriever,
+	retriever *policyStore.EntitlementPolicyRetriever,
 	cacheClient *cache.Cache,
 	cacheRefreshInterval time.Duration,
 ) (*EntitlementPolicyCache, error) {

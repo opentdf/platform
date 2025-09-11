@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/opentdf/platform/service/internal/access/v2/plugin"
 )
 
 // Manage config for EntitlementPolicyCache: attributes, subject mappings, and registered resources
@@ -14,7 +16,8 @@ type EntitlementPolicyCacheConfig struct {
 }
 
 type Config struct {
-	Cache EntitlementPolicyCacheConfig `mapstructure:"entitlement_policy_cache" json:"entitlement_policy_cache"`
+	Cache      EntitlementPolicyCacheConfig       `mapstructure:"entitlement_policy_cache" json:"entitlement_policy_cache"`
+	PluginPDPs []plugin.PolicyDecisionPointConfig `mapstructure:"plugin_pdps" json:"plugin_pdps"`
 }
 
 // Validate tests for a sensible configuration

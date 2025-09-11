@@ -1140,6 +1140,8 @@ components:
           title: pep
           $ref: '#/components/schemas/policy.PolicyEnforcementPoint'
       title: RequestContext
+      required:
+        - pep
       additionalProperties: false
       description: Holds the context needed for obligation fulfillment
     policy.ResourceMapping:
@@ -1373,13 +1375,7 @@ components:
         - action
         - attributeValue
       additionalProperties: false
-      description: |+
-        Triggers
-        RequestContext must have a clientID specified when provided.:
-        ```
-        !has(this.context) || (has(this.context) && has(this.context.pep) && size(this.context.pep.client_id) > 0)
-        ```
-
+      description: Triggers
     policy.obligations.AddObligationTriggerResponse:
       type: object
       properties:
@@ -1806,12 +1802,6 @@ components:
         - action
         - attributeValue
       additionalProperties: false
-      description: |+
-        RequestContext must have a clientID specified when provided.:
-        ```
-        !has(this.context) || (has(this.context) && has(this.context.pep) && size(this.context.pep.client_id) > 0)
-        ```
-
     connect-protocol-version:
       type: number
       title: Connect-Protocol-Version

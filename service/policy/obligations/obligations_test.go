@@ -707,6 +707,28 @@ func Test_AddObligationTrigger_Request(t *testing.T) {
 			expectError:  true,
 			errorMessage: "name_format",
 		},
+		{
+			name: "missing context pep",
+			req: &obligations.AddObligationTriggerRequest{
+				ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
+				Action:          &common.IdNameIdentifier{Id: validUUID},
+				AttributeValue:  &common.IdFqnIdentifier{Id: validUUID},
+				Context:         &policy.RequestContext{},
+			},
+			expectError:  true,
+			errorMessage: "context.pep",
+		},
+		{
+			name: "missing pep client_id",
+			req: &obligations.AddObligationTriggerRequest{
+				ObligationValue: &common.IdFqnIdentifier{Id: validUUID},
+				Action:          &common.IdNameIdentifier{Id: validUUID},
+				AttributeValue:  &common.IdFqnIdentifier{Id: validUUID},
+				Context:         &policy.RequestContext{Pep: &policy.PolicyEnforcementPoint{}},
+			},
+			expectError:  true,
+			errorMessage: "pep.client_id",
+		},
 	}
 
 	v := getValidator()
@@ -1073,6 +1095,38 @@ func Test_UpdateObligationValue_Request(t *testing.T) {
 			},
 			expectError:  true,
 			errorMessage: "attribute_value",
+		},
+		{
+			name: "missing context pep",
+			req: &obligations.UpdateObligationValueRequest{
+				Id:    validUUID,
+				Value: "value",
+				Triggers: []*obligations.ValueTriggerRequest{
+					{
+						Action:         &common.IdNameIdentifier{Id: validUUID},
+						AttributeValue: &common.IdFqnIdentifier{Fqn: validFQN1},
+						Context:        &policy.RequestContext{},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "context.pep",
+		},
+		{
+			name: "missing pep client_id",
+			req: &obligations.UpdateObligationValueRequest{
+				Id:    validUUID,
+				Value: "value",
+				Triggers: []*obligations.ValueTriggerRequest{
+					{
+						Action:         &common.IdNameIdentifier{Id: validUUID},
+						AttributeValue: &common.IdFqnIdentifier{Fqn: validFQN1},
+						Context:        &policy.RequestContext{Pep: &policy.PolicyEnforcementPoint{}},
+					},
+				},
+			},
+			expectError:  true,
+			errorMessage: "pep.client_id",
 		},
 	}
 

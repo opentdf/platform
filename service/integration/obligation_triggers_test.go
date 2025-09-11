@@ -81,19 +81,15 @@ func (s *ObligationTriggersSuite) SetupSuite() {
 
 	// Create an obligation
 	s.obligation, err = s.db.PolicyClient.CreateObligation(s.ctx, &obligations.CreateObligationRequest{
-		Name: obligationName,
-		NamespaceIdentifier: &obligations.CreateObligationRequest_Id{
-			Id: s.namespace.GetId(),
-		},
+		Name:        obligationName,
+		NamespaceId: s.namespace.GetId(),
 	})
 	s.Require().NoError(err)
 
 	// Create an obligation value
 	s.obligationValue, err = s.db.PolicyClient.CreateObligationValue(s.ctx, &obligations.CreateObligationValueRequest{
-		ObligationIdentifier: &obligations.CreateObligationValueRequest_Id{
-			Id: s.obligation.GetId(),
-		},
-		Value: obligationValue,
+		ObligationId: s.obligation.GetId(),
+		Value:        obligationValue,
 	})
 	s.Require().NoError(err)
 }
@@ -103,9 +99,7 @@ func (s *ObligationTriggersSuite) TearDownSuite() {
 	ctx := context.Background()
 
 	_, err = s.db.PolicyClient.DeleteObligation(ctx, &obligations.DeleteObligationRequest{
-		Identifier: &obligations.DeleteObligationRequest_Id{
-			Id: s.obligation.GetId(),
-		},
+		Id: s.obligation.GetId(),
 	})
 	s.Require().NoError(err)
 

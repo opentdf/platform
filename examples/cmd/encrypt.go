@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/opentdf/platform/lib/ocrypto"
@@ -44,7 +45,7 @@ func init() {
 	encryptCmd.Flags().StringVarP(&alg, "key-encapsulation-algorithm", "A", "rsa:2048", "Key wrap algorithm algorithm:parameters")
 	encryptCmd.Flags().IntVarP(&collection, "collection", "c", 0, "number of nano's to create for collection. If collection >0 (default) then output will be <iteration>_<output>")
 	encryptCmd.Flags().StringVar(&policyMode, "policy-mode", "", "Store policy as encrypted instead of plaintext (nanoTDF only) [plaintext|encrypted]")
-
+	encryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Use a 'magic word' as a shared secret.")
 	ExamplesCmd.AddCommand(&encryptCmd)
 }
 
@@ -106,6 +107,7 @@ func encrypt(cmd *cobra.Command, args []string) error {
 					PublicKey: "",
 				}))
 		}
+		// Deprecated: WithWrappingKeyAlg sets the key type for the TDF wrapping key for both storage and transit.
 		if alg != "" {
 			kt, err := keyTypeForKeyType(alg)
 			if err != nil {
@@ -113,6 +115,22 @@ func encrypt(cmd *cobra.Command, args []string) error {
 			}
 			opts = append(opts, sdk.WithWrappingKeyAlg(kt))
 		}
+		// Assertion
+		// Create an assertion provider factory
+		factory := sdk.NewAssertionProviderFactory()
+		// Provider with state, this works in a simple CLI
+		magicWordProvider := NewMagicWordAssertionProvider(magicWord)
+		// Register the provider to handle the exact assertion ID.
+		magicWordPattern, _ := regexp.Compile("^" + MagicWordAssertionID + "$")
+		factory.RegisterAssertionProvider(magicWordPattern, magicWordProvider)
+		// Provider without state that provides system information
+		// FIXME since a DEK is needed, do not setup here
+		// systemMetadataAssertionProvider := sdk.NewSystemMetadataAssertionProvider()
+		// systemMetadataPattern, _ := regexp.Compile("^" + sdk.SystemMetadataAssertionID + "$")
+		// factory.RegisterAssertionProvider(systemMetadataPattern, systemMetadataAssertionProvider)
+		opts = append(opts, sdk.WithSystemMetadataAssertion())
+		// Register the factory with the SDK client
+		opts = append(opts, sdk.WithCreateTDFAssertionProviderFactory(factory))
 		tdf, err := client.CreateTDFContext(cmd.Context(), out, in, opts...)
 		if err != nil {
 			return err

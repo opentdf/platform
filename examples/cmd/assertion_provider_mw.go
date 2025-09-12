@@ -1,6 +1,6 @@
 package cmd
 
-// Simple Magic Word Provider Example
+// Simple Magic Word Assertion Provider Example
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 const MagicWordAssertionID = "magic-word"
 
 // MagicWordAssertionProvider "signs" an assertion by appending a secret word.
-// implements sdk.AssertionSigningProvider
+// Implements sdk.AssertionProvider
 type MagicWordAssertionProvider struct {
 	MagicWord string
 }
@@ -74,6 +74,7 @@ func (p *MagicWordAssertionProvider) Verify(_ context.Context, a sdk.Assertion, 
 	return nil
 }
 
+// Validate does nothing.
 func (p *MagicWordAssertionProvider) Validate(_ context.Context, a sdk.Assertion) error {
 	return nil
 }

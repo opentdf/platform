@@ -26,7 +26,7 @@ func init() {
 		Args:  cobra.MinimumNArgs(1),
 	}
 	decryptCmd.Flags().StringVarP(&decryptAlg, "rewrap-encapsulation-algorithm", "A", "rsa:2048", "Key wrap response algorithm algorithm:parameters")
-	decryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Use the simple 'magic word' validation provider with the given word.")
+	decryptCmd.Flags().StringVar(&magicWord, "magic-word", "", "Use a 'magic word' as a shared secret.")
 	ExamplesCmd.AddCommand(decryptCmd)
 }
 
@@ -107,11 +107,12 @@ func decrypt(cmd *cobra.Command, args []string) error {
 		// Register the provider to handle the exact assertion ID.
 		pattern, _ := regexp.Compile("^" + MagicWordAssertionID + "$")
 		// Provider with state, this works in a simple CLI
-		simpleProvider := NewMagicWordAssertionProvider(magicWord)
-		factory.RegisterAssertionProvider(pattern, simpleProvider)
+		magicWordProvider := NewMagicWordAssertionProvider(magicWord)
+		factory.RegisterAssertionProvider(pattern, magicWordProvider)
 		// Register the factory with the SDK client
 		opts = append(opts, sdk.WithAssertionProviderFactory(factory))
-
+		// Disable assertion verification
+		opts = append(opts, sdk.WithDisableAssertionVerification(false))
 		tdfreader, err := client.LoadTDF(file, opts...)
 		if err != nil {
 			return err

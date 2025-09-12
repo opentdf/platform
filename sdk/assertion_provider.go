@@ -13,7 +13,7 @@ type AssertionProvider interface {
 	Configure(ctx context.Context) (AssertionConfig, error)
 	Bind(ctx context.Context, ac AssertionConfig, m Manifest) (Assertion, error)
 	Verify(ctx context.Context, a Assertion, t TDFObject) error
-	// TODO add obligations and more
+	// TODO add obligationStatus and more
 	Validate(ctx context.Context, a Assertion) error
 }
 

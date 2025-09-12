@@ -5,16 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime"
-	"time"
 
 	"github.com/gowebpki/jcs"
 	"github.com/opentdf/platform/lib/ocrypto"
-)
-
-const (
-	SystemMetadataAssertionID = "system-metadata"
-	SystemMetadataSchemaV1    = "system-metadata-v1"
 )
 
 // AssertionConfig is a shadow of Assertion with the addition of the signing key.
@@ -44,7 +37,7 @@ var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with 
 // The assertion binding is updated with the method and the signature.
 func (a *Assertion) Sign(hash, sig string, key AssertionKey) error {
 	// Use default provider with the provided key
-	provider := NewDefaultSigningProvider(key)
+	provider := NewPublicKeySigningProvider(key)
 	return a.SignWithProvider(context.Background(), hash, sig, provider)
 }
 
@@ -139,8 +132,9 @@ func (s *Statement) UnmarshalJSON(data []byte) error {
 }
 
 const (
-	StatementFormatJSONStructured = "json-structured"
-	StatementFormatString         = "string"
+	// StatementFormatJSON is a marshaled JSON object into a string
+	StatementFormatJSON   = "json"
+	StatementFormatString = "string"
 )
 
 // Statement includes information applying to the scope of the assertion.
@@ -148,7 +142,7 @@ const (
 type Statement struct {
 	// Format describes the payload encoding format. (e.g. json-structured, string)
 	Format string `json:"format,omitempty" validate:"required"`
-	// Schema describes the schema of the payload. (e.g. tdf)
+	// Schema URI identifying the schema or standard that defines the structure and semantics of the value.
 	Schema string `json:"schema,omitempty" validate:"required"`
 	// Value is the payload of the assertion.
 	Value string `json:"value,omitempty"  validate:"required"`
@@ -268,45 +262,4 @@ func (k AssertionVerificationKeys) Get(assertionID string) (AssertionKey, error)
 // IsEmpty returns true if the default key and the keys map are empty.
 func (k AssertionVerificationKeys) IsEmpty() bool {
 	return k.DefaultKey.IsEmpty() && len(k.Keys) == 0
-}
-
-// GetSystemMetadataAssertionConfig returns a default assertion configuration with predefined values.
-func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
-	// Define the JSON structure
-	type Metadata struct {
-		TDFSpecVersion string `json:"tdf_spec_version,omitempty"`
-		CreationDate   string `json:"creation_date,omitempty"`
-		OS             string `json:"operating_system,omitempty"`
-		SDKVersion     string `json:"sdk_version,omitempty"`
-		GoVersion      string `json:"go_version,omitempty"`
-		Architecture   string `json:"architecture,omitempty"`
-	}
-
-	// Populate the metadata
-	metadata := Metadata{
-		TDFSpecVersion: TDFSpecVersion,
-		CreationDate:   time.Now().Format(time.RFC3339),
-		OS:             runtime.GOOS,
-		SDKVersion:     "Go-" + Version,
-		GoVersion:      runtime.Version(),
-		Architecture:   runtime.GOARCH,
-	}
-
-	// Marshal the metadata to JSON
-	metadataJSON, err := json.Marshal(metadata)
-	if err != nil {
-		return AssertionConfig{}, fmt.Errorf("failed to marshal system metadata: %w", err)
-	}
-
-	return AssertionConfig{
-		ID:             SystemMetadataAssertionID,
-		Type:           BaseAssertion,
-		Scope:          PayloadScope,
-		AppliesToState: Unencrypted,
-		Statement: Statement{
-			Format: "json",
-			Schema: SystemMetadataSchemaV1,
-			Value:  string(metadataJSON),
-		},
-	}, nil
 }

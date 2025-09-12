@@ -1,5 +1,7 @@
 package sdk
 
+// Assertion Provider Factory (and Bridge) - perhaps more of a manager than a factory
+
 import (
 	"context"
 	"fmt"
@@ -29,8 +31,7 @@ type registeredValidationProvider struct {
 type AssertionProviderFactory struct {
 	signingProviders          []registeredSigningProvider
 	validationProviders       []registeredValidationProvider
-	providers                 []registeredAssertionProvider
-	defaultSigningProvider    AssertionSigningProvider
+	registeredProviders       []registeredAssertionProvider
 	defaultValidationProvider AssertionValidationProvider
 }
 
@@ -42,15 +43,24 @@ func NewAssertionProviderFactory() *AssertionProviderFactory {
 	}
 }
 
-func (f *AssertionProviderFactory) RegisterAssertionProvider(pattern *regexp.Regexp, provider AssertionProvider) {
-	f.providers = append(f.providers, registeredAssertionProvider{
+func (f *AssertionProviderFactory) RegisterAssertionProvider(pattern *regexp.Regexp, provider AssertionProvider) error {
+	// error if already registered
+	for _, p := range f.registeredProviders {
+		if p.pattern.String() == pattern.String() {
+			return fmt.Errorf("pattern '%s' is already registered", pattern.String())
+		}
+	}
+	// register
+	f.registeredProviders = append(f.registeredProviders, registeredAssertionProvider{
 		pattern, provider,
 	})
+	// TODO can we remove this bridge
 	bridge := bridgeAssertionValidationProvider{p: provider}
 	f.validationProviders = append(f.validationProviders, registeredValidationProvider{
 		pattern:  pattern,
 		provider: bridge,
 	})
+	return nil
 }
 
 // RegisterSigningProvider registers an AssertionSigningProvider for a given regex pattern.
@@ -78,30 +88,19 @@ func (f *AssertionProviderFactory) RegisterValidationProvider(pattern string, pr
 	return nil
 }
 
-// SetDefaultSigningProvider sets a default provider to use when no pattern matches.
-func (f *AssertionProviderFactory) SetDefaultSigningProvider(provider AssertionSigningProvider) {
-	f.defaultSigningProvider = provider
-}
-
 // SetDefaultValidationProvider sets a default provider to use when no pattern matches.
 func (f *AssertionProviderFactory) SetDefaultValidationProvider(provider AssertionValidationProvider) {
 	f.defaultValidationProvider = provider
 }
 
 // GetSigningProvider finds and returns the first registered AssertionSigningProvider
-// that matches the given assertionID. If no provider matches, it returns the default
-// provider if one is set, otherwise it returns an error.
+// that matches the given assertionID.
 func (f *AssertionProviderFactory) GetSigningProvider(assertionID string) (AssertionSigningProvider, error) {
 	for _, p := range f.signingProviders {
 		if p.pattern.MatchString(assertionID) {
 			return p.provider, nil
 		}
 	}
-
-	if f.defaultSigningProvider != nil {
-		return f.defaultSigningProvider, nil
-	}
-
 	return nil, fmt.Errorf("no signing provider registered for assertion ID '%s'", assertionID)
 }
 

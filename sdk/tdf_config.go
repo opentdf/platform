@@ -69,7 +69,7 @@ type TDFConfig struct {
 	mimeType                   string
 	integrityAlgorithm         IntegrityAlgorithm
 	segmentIntegrityAlgorithm  IntegrityAlgorithm
-	assertions                 []AssertionConfig
+	assertionConfigs           []AssertionConfig
 	attributes                 []AttributeValueFQN
 	attributeValues            []*policy.Value
 	kasInfoList                []KASInfo
@@ -78,23 +78,20 @@ type TDFConfig struct {
 	preferredKeyWrapAlg        ocrypto.KeyType
 	useHex                     bool
 	excludeVersionFromManifest bool
-	addDefaultAssertion        bool
-	// AssertionSigningProvider allows custom signing implementation (optional)
-	AssertionSigningProvider AssertionSigningProvider
-	// AssertionValidationProvider allows custom validation implementation (optional)
-	AssertionValidationProvider AssertionValidationProvider
-	// FIXME replace with AssertionProvider
+	addSystemMetadataAssertion bool
+	// AssertionProviderFactory allows custom assertions (optional)
+	AssertionProviderFactory *AssertionProviderFactory
 }
 
 func newTDFConfig(opt ...TDFOption) (*TDFConfig, error) {
 	c := &TDFConfig{
-		autoconfigure:             true,
-		defaultSegmentSize:        defaultSegmentSize,
-		enableEncryption:          true,
-		tdfFormat:                 JSONFormat,
-		integrityAlgorithm:        HS256,
-		segmentIntegrityAlgorithm: GMAC,
-		addDefaultAssertion:       false,
+		autoconfigure:              true,
+		defaultSegmentSize:         defaultSegmentSize,
+		enableEncryption:           true,
+		tdfFormat:                  JSONFormat,
+		integrityAlgorithm:         HS256,
+		segmentIntegrityAlgorithm:  GMAC,
+		addSystemMetadataAssertion: false,
 	}
 
 	for _, o := range opt {
@@ -199,18 +196,18 @@ func WithSegmentSize(size int64) TDFOption {
 	}
 }
 
-// WithSystemMetadataAssertion returns an Option that adds a default assertion to the TDF.
+// WithSystemMetadataAssertion returns an Option that enables public key assertions.
 func WithSystemMetadataAssertion() TDFOption {
 	return func(c *TDFConfig) error {
-		c.addDefaultAssertion = true
+		c.addSystemMetadataAssertion = true
 		return nil
 	}
 }
 
-// WithAssertions returns an Option that add assertions to TDF.
+// WithAssertions returns an Option that adds public key assertion configs.
 func WithAssertions(assertionList ...AssertionConfig) TDFOption {
 	return func(c *TDFConfig) error {
-		c.assertions = append(c.assertions, assertionList...)
+		c.assertionConfigs = append(c.assertionConfigs, assertionList...)
 		return nil
 	}
 }
@@ -256,11 +253,10 @@ func WithTargetMode(mode string) TDFOption {
 	}
 }
 
-// WithAssertionSigningProvider sets a custom assertion signing provider.
-// If not set, the default key-based provider will be used.
-func WithAssertionSigningProvider(provider AssertionSigningProvider) TDFOption {
+// WithCreateTDFAssertionProviderFactory enables custom assertion signing
+func WithCreateTDFAssertionProviderFactory(factory *AssertionProviderFactory) TDFOption {
 	return func(c *TDFConfig) error {
-		c.AssertionSigningProvider = provider
+		c.AssertionProviderFactory = factory
 		return nil
 	}
 }
@@ -405,6 +401,7 @@ func WithSchemaValidation(intensity SchemaValidationIntensity) TDFReaderOption {
 	}
 }
 
+// WithDisableAssertionVerification disables system metadata assertion verification for reading.
 func WithDisableAssertionVerification(disable bool) TDFReaderOption {
 	return func(c *TDFReaderConfig) error {
 		c.disableAssertionVerification = disable
